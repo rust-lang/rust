@@ -10,8 +10,6 @@
 
 // aux-build:use-macro-self.rs
 
-#![feature(use_extern_macros)]
-
 #[macro_use]
 extern crate use_macro_self;
 

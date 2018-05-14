@@ -12,8 +12,6 @@
 // build-aux-docs
 // ignore-cross-compile
 
-#![feature(use_extern_macros)]
-
 #[macro_use] extern crate qwop;
 
 // @has macro_vis/macro.some_macro.html

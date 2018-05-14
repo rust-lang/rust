@@ -30,8 +30,6 @@ fn main() {
     env!(foo, abr, baz); //~ ERROR
     env!("RUST_HOPEFULLY_THIS_DOESNT_EXIST"); //~ ERROR
 
-    foo::blah!(); //~ ERROR
-
     format!(invalid); //~ ERROR
 
     include!(invalid); //~ ERROR

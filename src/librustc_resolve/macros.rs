@@ -16,7 +16,7 @@ use build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
 use resolve_imports::ImportResolver;
 use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex,
                          DefIndexAddressSpace};
-use rustc::hir::def::{Def, Export, NonMacroAttrKind};
+use rustc::hir::def::{Def, NonMacroAttrKind};
 use rustc::hir::map::{self, DefCollector};
 use rustc::{ty, lint};
 use rustc::middle::cstore::CrateStore;
@@ -524,21 +524,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         self.current_module = if module.is_trait() { module.parent.unwrap() } else { module };
 
         // Possibly apply the macro helper hack
-        if self.use_extern_macros && kind == MacroKind::Bang && path.len() == 1 &&
+        if kind == MacroKind::Bang && path.len() == 1 &&
            path[0].span.ctxt().outer().expn_info().map_or(false, |info| info.local_inner_macros) {
             let root = Ident::new(keywords::DollarCrate.name(), path[0].span);
             path.insert(0, root);
         }
 
         if path.len() > 1 {
-            if !self.use_extern_macros && self.gated_errors.insert(span) {
-                let msg = "non-ident macro paths are experimental";
-                let feature = "use_extern_macros";
-                emit_feature_err(&self.session.parse_sess, feature, span, GateIssue::Language, msg);
-                self.found_unresolved_macro = true;
-                return Err(Determinacy::Determined);
-            }
-
             let res = self.resolve_path(None, &path, Some(MacroNS), false, span, CrateLint::No);
             let def = match res {
                 PathResult::NonModule(path_res) => match path_res.base_def() {
@@ -843,7 +835,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                 record_used: bool)
                                 -> Option<MacroBinding<'a>> {
         let ident = ident.modern();
-        let mut possible_time_travel = None;
         let mut relative_depth: u32 = 0;
         let mut binding = None;
         loop {
@@ -853,9 +844,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     match invocation.expansion.get() {
                         LegacyScope::Invocation(_) => scope.set(invocation.legacy_scope.get()),
                         LegacyScope::Empty => {
-                            if possible_time_travel.is_none() {
-                                possible_time_travel = Some(scope);
-                            }
                             scope = &invocation.legacy_scope;
                         }
                         _ => {
@@ -870,7 +858,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
                 LegacyScope::Binding(potential_binding) => {
                     if potential_binding.ident == ident {
-                        if (!self.use_extern_macros || record_used) && relative_depth > 0 {
+                        if record_used && relative_depth > 0 {
                             self.disallowed_shadowing.push(potential_binding);
                         }
                         binding = Some(potential_binding);
@@ -884,20 +872,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         let binding = if let Some(binding) = binding {
             MacroBinding::Legacy(binding)
         } else if let Some(binding) = self.macro_prelude.get(&ident.name).cloned() {
-            if !self.use_extern_macros {
-                self.record_use(ident, MacroNS, binding, DUMMY_SP);
-            }
             MacroBinding::Global(binding)
         } else {
             return None;
         };
-
-        if !self.use_extern_macros {
-            if let Some(scope) = possible_time_travel {
-                // Check for disallowed shadowing later
-                self.lexical_macro_resolutions.push((ident, scope));
-            }
-        }
 
         Some(binding)
     }
@@ -1008,9 +986,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             find_best_match_for_name(names, name, None)
         // Then check modules.
         }).or_else(|| {
-            if !self.use_extern_macros {
-                return None;
-            }
             let is_macro = |def| {
                 if let Def::Macro(_, def_kind) = def {
                     def_kind == kind
@@ -1086,19 +1061,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             let def = Def::Macro(def_id, MacroKind::Bang);
             self.all_macros.insert(ident.name, def);
             if attr::contains_name(&item.attrs, "macro_export") {
-                if self.use_extern_macros {
-                    let module = self.graph_root;
-                    let vis = ty::Visibility::Public;
-                    self.define(module, ident, MacroNS,
-                                (def, vis, item.span, expansion, IsMacroExport));
-                } else {
-                    self.macro_exports.push(Export {
-                        ident: ident.modern(),
-                        def: def,
-                        vis: ty::Visibility::Public,
-                        span: item.span,
-                    });
-                }
+                let module = self.graph_root;
+                let vis = ty::Visibility::Public;
+                self.define(module, ident, MacroNS,
+                            (def, vis, item.span, expansion, IsMacroExport));
             } else {
                 self.unused_macros.insert(def_id);
             }

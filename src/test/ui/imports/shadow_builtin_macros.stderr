@@ -1,5 +1,5 @@
 error: `panic` is already in scope
-  --> $DIR/shadow_builtin_macros.rs:42:9
+  --> $DIR/shadow_builtin_macros.rs:40:9
    |
 LL |         macro_rules! panic { () => {} } //~ ERROR `panic` is already in scope
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -10,13 +10,13 @@ LL |     m!();
    = note: macro-expanded `macro_rules!`s may not shadow existing macros (see RFC 1560)
 
 error[E0659]: `panic` is ambiguous
-  --> $DIR/shadow_builtin_macros.rs:27:14
+  --> $DIR/shadow_builtin_macros.rs:25:14
    |
 LL |     fn f() { panic!(); } //~ ERROR ambiguous
    |              ^^^^^
    |
 note: `panic` could refer to the name imported here
-  --> $DIR/shadow_builtin_macros.rs:26:9
+  --> $DIR/shadow_builtin_macros.rs:24:9
    |
 LL |     use foo::*;
    |         ^^^^^^
@@ -24,13 +24,13 @@ LL |     use foo::*;
    = note: consider adding an explicit import of `panic` to disambiguate
 
 error[E0659]: `panic` is ambiguous
-  --> $DIR/shadow_builtin_macros.rs:32:14
+  --> $DIR/shadow_builtin_macros.rs:30:14
    |
 LL |     fn f() { panic!(); } //~ ERROR ambiguous
    |              ^^^^^
    |
 note: `panic` could refer to the name imported here
-  --> $DIR/shadow_builtin_macros.rs:31:26
+  --> $DIR/shadow_builtin_macros.rs:29:26
    |
 LL |     ::two_macros::m!(use foo::panic;);
    |                          ^^^^^^^^^^
@@ -38,18 +38,18 @@ LL |     ::two_macros::m!(use foo::panic;);
    = note: macro-expanded macro imports do not shadow
 
 error[E0659]: `n` is ambiguous
-  --> $DIR/shadow_builtin_macros.rs:61:5
+  --> $DIR/shadow_builtin_macros.rs:59:5
    |
 LL |     n!(); //~ ERROR ambiguous
    |     ^
    |
 note: `n` could refer to the name imported here
-  --> $DIR/shadow_builtin_macros.rs:60:9
+  --> $DIR/shadow_builtin_macros.rs:58:9
    |
 LL |     use bar::*;
    |         ^^^^^^
 note: `n` could also refer to the name imported here
-  --> $DIR/shadow_builtin_macros.rs:48:13
+  --> $DIR/shadow_builtin_macros.rs:46:13
    |
 LL | #[macro_use(n)]
    |             ^

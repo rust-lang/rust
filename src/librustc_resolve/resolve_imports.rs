@@ -24,7 +24,7 @@ use rustc::lint::builtin::{DUPLICATE_MACRO_EXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CR
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::def::*;
 use rustc::session::DiagnosticMessageId;
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc::util::nodemap::FxHashSet;
 
 use syntax::ast::{Ident, Name, NodeId, CRATE_NODE_ID};
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
@@ -1142,24 +1142,6 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         *module.globs.borrow_mut() = Vec::new();
 
         let mut reexports = Vec::new();
-        let mut exported_macro_names = FxHashMap();
-        if ptr::eq(module, self.graph_root) {
-            let macro_exports = mem::replace(&mut self.macro_exports, Vec::new());
-            for export in macro_exports.into_iter().rev() {
-                if let Some(later_span) = exported_macro_names.insert(export.ident.modern(),
-                                                                      export.span) {
-                    self.session.buffer_lint_with_diagnostic(
-                        DUPLICATE_MACRO_EXPORTS,
-                        CRATE_NODE_ID,
-                        later_span,
-                        &format!("a macro named `{}` has already been exported", export.ident),
-                        BuiltinLintDiagnostics::DuplicatedMacroExports(
-                            export.ident, export.span, later_span));
-                } else {
-                    reexports.push(export);
-                }
-            }
-        }
 
         for (&(ident, ns), resolution) in module.resolutions.borrow().iter() {
             let resolution = &mut *resolution.borrow_mut();
@@ -1173,16 +1155,6 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 if def != Def::Err {
                     if !def.def_id().is_local() {
                         self.cstore.export_macros_untracked(def.def_id().krate);
-                    }
-                    if let Def::Macro(..) = def {
-                        if let Some(&span) = exported_macro_names.get(&ident.modern()) {
-                            let msg =
-                                format!("a macro named `{}` has already been exported", ident);
-                            self.session.struct_span_err(span, &msg)
-                                .span_label(span, format!("`{}` already exported", ident))
-                                .span_note(binding.span, "previous macro export here")
-                                .emit();
-                        }
                     }
                     reexports.push(Export {
                         ident: ident.modern(),

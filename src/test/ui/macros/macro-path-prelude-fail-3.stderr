@@ -1,11 +1,11 @@
 error: cannot find derive macro `inline` in this scope
-  --> $DIR/macro-path-prelude-fail-3.rs:13:10
+  --> $DIR/macro-path-prelude-fail-3.rs:11:10
    |
 LL | #[derive(inline)] //~ ERROR cannot find derive macro `inline` in this scope
    |          ^^^^^^
 
 error: cannot find macro `inline!` in this scope
-  --> $DIR/macro-path-prelude-fail-3.rs:17:5
+  --> $DIR/macro-path-prelude-fail-3.rs:15:5
    |
 LL |     inline!(); //~ ERROR cannot find macro `inline!` in this scope
    |     ^^^^^^ help: you could try the macro: `line`

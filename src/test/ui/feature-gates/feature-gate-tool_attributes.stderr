@@ -1,5 +1,5 @@
 error[E0658]: tool attributes are unstable (see issue #44690)
-  --> $DIR/feature-gate-tool_attributes.rs:14:5
+  --> $DIR/feature-gate-tool_attributes.rs:12:5
    |
 LL |     #[rustfmt::skip] //~ ERROR tool attributes are unstable
    |     ^^^^^^^^^^^^^^^^

@@ -12,8 +12,6 @@
 // ignore-stage1
 // ignore-wasm32
 
-#![feature(use_extern_macros)]
-
 extern crate test_macros;
 
 use test_macros::{nop_attr, no_output, emit_input};

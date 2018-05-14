@@ -10,8 +10,6 @@
 
 // compile-pass
 
-#![feature(use_extern_macros)]
-
 #[macro_export(local_inner_macros)]
 macro_rules! dollar_crate_exported {
     (1) => { $crate::exported!(); };

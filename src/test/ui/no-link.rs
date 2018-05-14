@@ -12,7 +12,6 @@
 
 #[no_link]
 extern crate empty_struct;
-//~^ WARN proc macro crates and `#[no_link]` crates have no effect without `#[macro_use]`
 
 fn main() {
     empty_struct::XEmpty1; //~ ERROR cannot find value `XEmpty1` in module `empty_struct`

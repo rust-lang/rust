@@ -12,7 +12,6 @@
 // ignore-stage1
 // compile-pass
 
-#![feature(use_extern_macros)]
 #![warn(unused)]
 
 extern crate attributes_included;

@@ -11,8 +11,6 @@
 // compile-pass
 // aux-build:local_inner_macros.rs
 
-#![feature(use_extern_macros)]
-
 extern crate local_inner_macros;
 
 use local_inner_macros::{public_macro, public_macro_dynamic};

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(use_extern_macros)]
-
 fn main() {
     #[rustfmt::skip] //~ ERROR tool attributes are unstable
     let x = 3

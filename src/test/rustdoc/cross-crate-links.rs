@@ -11,8 +11,6 @@
 // aux-build:all-item-types.rs
 // build-aux-docs
 
-#![feature(use_extern_macros)]
-
 #![crate_name = "foo"]
 
 #[macro_use]

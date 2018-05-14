@@ -1124,9 +1124,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 return attrs;
             }
 
-            if self.cx.ecfg.use_extern_macros_enabled() {
-                attr = find_attr_invoc(&mut attrs);
-            }
+            attr = find_attr_invoc(&mut attrs);
             traits = collect_derives(&mut self.cx, &mut attrs);
             attrs
         });
@@ -1147,9 +1145,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 return attrs;
             }
 
-            if self.cx.ecfg.use_extern_macros_enabled() {
-                attr = find_attr_invoc(&mut attrs);
-            }
+            attr = find_attr_invoc(&mut attrs);
             attrs
         });
 
@@ -1666,10 +1662,6 @@ impl<'feat> ExpansionConfig<'feat> {
         fn proc_macro_gen = proc_macro_gen,
         fn proc_macro_expr = proc_macro_expr,
         fn proc_macro_non_items = proc_macro_non_items,
-    }
-
-    pub fn use_extern_macros_enabled(&self) -> bool {
-        self.features.map_or(false, |features| features.use_extern_macros())
     }
 }
 

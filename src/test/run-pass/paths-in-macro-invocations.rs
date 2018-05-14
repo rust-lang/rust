@@ -10,8 +10,6 @@
 
 // aux-build:two_macros.rs
 
-#![feature(use_extern_macros)]
-
 extern crate two_macros;
 
 ::two_macros::macro_one!();

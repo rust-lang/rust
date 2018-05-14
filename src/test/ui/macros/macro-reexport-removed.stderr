@@ -4,7 +4,7 @@ error[E0557]: feature has been removed
 LL | #![feature(macro_reexport)] //~ ERROR feature has been removed
    |            ^^^^^^^^^^^^^^
    |
-note: subsumed by `#![feature(use_extern_macros)]` and `pub use`
+note: subsumed by `pub use`
   --> $DIR/macro-reexport-removed.rs:13:12
    |
 LL | #![feature(macro_reexport)] //~ ERROR feature has been removed

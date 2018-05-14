@@ -10,8 +10,6 @@
 
 // aux-build:pub-use-extern-macros.rs
 
-#![feature(use_extern_macros)]
-
 extern crate macros;
 
 // @has pub_use_extern_macros/macro.bar.html
