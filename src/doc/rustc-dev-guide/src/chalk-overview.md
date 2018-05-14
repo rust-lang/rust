@@ -68,6 +68,8 @@ essentially one of the following:
   * `forall<T> { ... }` is represented in the code using the [`Binders<T>`
     struct][binders-struct].
 
+*See also: [Goals and Clauses][goals-and-clauses]*
+
 Lowering is the phase where we encode the rules of the trait system into logic.
 For example, if we have the following Rust:
 
@@ -137,6 +139,7 @@ See [The SLG Solver][slg].
 [lowering-forall]: https://rust-lang-nursery.github.io/rustc-guide/traits-lowering-to-logic.html#type-checking-generic-functions-beyond-horn-clauses
 [programclause]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/ir.rs#L721
 [clause]: https://github.com/rust-lang-nursery/chalk/blob/master/GLOSSARY.md#clause
+[goals-and-clauses]: traits-goals-and-clauses.html
 [well-formedness-checks]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/ir/lowering.rs#L230-L232
 [ir-code]: https://github.com/rust-lang-nursery/chalk/blob/master/src/ir.rs
 [HIR]: hir.html
