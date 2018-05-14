@@ -174,7 +174,7 @@ See [Configurations.md](Configurations.md) for details.
 * For things you do not want rustfmt to mangle, use one of
 
     ```rust
-    #[rustfmt_skip]  // requires nightly and #![feature(custom_attribute)] in crate root
+    #[rustfmt::skip]  // requires nightly Rust and #![feature(tool_attributes)] in crate root
     #[cfg_attr(rustfmt, rustfmt_skip)]  // works in stable
     ```
 * When you run rustfmt, place a file named `rustfmt.toml` or `.rustfmt.toml` in

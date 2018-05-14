@@ -22,8 +22,8 @@ use config::Color;
 use rewrite::RewriteContext;
 use shape::Shape;
 
-// When we get scoped annotations, we should have rustfmt::skip.
-const SKIP_ANNOTATION: &str = "rustfmt_skip";
+const DEPR_SKIP_ANNOTATION: &str = "rustfmt_skip";
+const SKIP_ANNOTATION: &str = "rustfmt::skip";
 
 // Computes the length of a string's last line, minus offset.
 pub fn extra_offset(text: &str, shape: Shape) -> usize {
@@ -212,7 +212,10 @@ pub fn last_line_extendable(s: &str) -> bool {
 #[inline]
 fn is_skip(meta_item: &MetaItem) -> bool {
     match meta_item.node {
-        MetaItemKind::Word => meta_item.name() == SKIP_ANNOTATION,
+        MetaItemKind::Word => {
+            let path_str = meta_item.ident.to_string();
+            path_str == SKIP_ANNOTATION || path_str == DEPR_SKIP_ANNOTATION
+        }
         MetaItemKind::List(ref l) => {
             meta_item.name() == "cfg_attr" && l.len() == 2 && is_skip_nested(&l[1])
         }

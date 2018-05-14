@@ -1,10 +1,10 @@
 // Test the skip attribute works
 
-#[rustfmt_skip]
+#[rustfmt::skip]
 fn foo() { badly; formatted; stuff
 ; }
 
-#[rustfmt_skip]
+#[rustfmt::skip]
 trait Foo
 {
 fn foo(
@@ -32,7 +32,7 @@ fn issue1346() {
 
 fn skip_on_statements() {
     // Outside block
-    #[rustfmt_skip]
+    #[rustfmt::skip]
     {
         foo; bar;
             // junk
@@ -40,7 +40,7 @@ fn skip_on_statements() {
 
     {
         // Inside block
-        #![rustfmt_skip]
+        #![rustfmt::skip]
         foo; bar;
             // junk
     }
@@ -79,7 +79,7 @@ fn skip_on_statements() {
 }
 
 // Check that the skip attribute applies to other attributes.
-#[rustfmt_skip]
+#[rustfmt::skip]
 #[cfg
 (  a , b
 )]
