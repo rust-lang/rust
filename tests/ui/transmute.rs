@@ -152,11 +152,17 @@ fn transmute_ptr_to_ptr() {
         let _: &f32 = std::mem::transmute(&1u32);
         let _: &mut f32 = std::mem::transmute(&mut 1u32);
     }
-    // These should be fine
+    // These should be fine:
+    // Recommendations for solving the above; if these break we need to update
+    // those suggestions
     let _ = ptr as *const f32;
     let _ = mut_ptr as *mut f32;
     let _ = unsafe { &*(&1u32 as *const u32 as *const f32) };
     let _ = unsafe { &mut *(&mut 1u32 as *mut u32 as *mut f32) };
+    // This is just modifying the lifetime, and is one of the recommended uses
+    // of transmute
+    let n = 1u32;
+    let _ = unsafe { std::mem::transmute::<&'_ u32, &'static u32>(&n) };
 }
 
 fn main() { }
