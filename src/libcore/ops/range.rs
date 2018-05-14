@@ -400,11 +400,9 @@ impl<Idx> RangeInclusive<Idx> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(inclusive_range_methods)]
-    ///
     /// assert_eq!((3..=5).into_inner(), (3, 5));
     /// ```
-    #[unstable(feature = "inclusive_range_methods", issue = "49022")]
+    #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
     #[inline]
     pub fn into_inner(self) -> (Idx, Idx) {
         (self.start, self.end)
