@@ -422,22 +422,23 @@ pub fn const_val_field<'a, 'tcx>(
     let mut ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let result = (|| {
         let value = ecx.const_value_to_value(value, ty)?;
-        let (field, ty) = match value {
-            Value::ByValPair(..) | Value::ByVal(_) => 
-                ecx.read_field(value, variant, field, ty)?.expect("const_val_field on non-field"),
-            Value::ByRef(ptr, align) => {
-                let place = Place::Ptr {
-                    ptr,
-                    align,
-                    extra: variant.map_or(PlaceExtra::None, PlaceExtra::DowncastVariant),
-                };
-                let layout = ecx.layout_of(ty)?;
-                let (place, layout) = ecx.place_field(place, field, layout)?;
-                let (ptr, align) = place.to_ptr_align();
-                (Value::ByRef(ptr, align), layout.ty)
-            }
+        let layout = ecx.layout_of(ty)?;
+        let (ptr, align) = match value {
+            Value::ByRef(ptr, align) => (ptr, align),
+            Value::ByValPair(..) | Value::ByVal(_) => {
+                let ptr = ecx.alloc_ptr(ty)?.into();
+                ecx.write_value_to_ptr(value, ptr, ty)?;
+                (ptr, layout.align)
+            },
         };
-        Ok(value_to_const_value(&ecx, field, ty))
+        let place = Place::Ptr {
+            ptr,
+            align,
+            extra: variant.map_or(PlaceExtra::None, PlaceExtra::DowncastVariant),
+        };
+        let (place, layout) = ecx.place_field(place, field, layout)?;
+        let (ptr, align) = place.to_ptr_align();
+        Ok((Value::ByRef(ptr, align), layout.ty))
     })();
     result.map_err(|err| {
         let (trace, span) = ecx.generate_stacktrace(None);
@@ -478,7 +479,10 @@ pub fn const_value_to_allocation_provider<'a, 'tcx>(
     (val, ty): (ConstValue<'tcx>, Ty<'tcx>),
 ) -> &'tcx Allocation {
     match val {
-        ConstValue::ByRef(alloc) => return alloc,
+        ConstValue::ByRef(alloc, offset) => {
+            assert_eq!(offset, 0);
+            return alloc;
+        },
         _ => ()
     }
     let result = || -> EvalResult<'tcx, &'tcx Allocation> {

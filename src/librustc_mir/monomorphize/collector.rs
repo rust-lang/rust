@@ -1249,7 +1249,7 @@ fn collect_const<'a, 'tcx>(
         ConstVal::Value(ConstValue::ByValPair(PrimVal::Ptr(ptr), _)) |
         ConstVal::Value(ConstValue::ByVal(PrimVal::Ptr(ptr))) =>
             collect_miri(tcx, ptr.alloc_id, output),
-        ConstVal::Value(ConstValue::ByRef(alloc)) => {
+        ConstVal::Value(ConstValue::ByRef(alloc, _offset)) => {
             for &id in alloc.relocations.values() {
                 collect_miri(tcx, id, output);
             }

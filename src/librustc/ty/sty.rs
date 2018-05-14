@@ -19,7 +19,7 @@ use ty::subst::{Substs, Subst, Kind, UnpackedKind};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use ty::{Slice, TyS};
 use util::captures::Captures;
-use mir::interpret::{Allocation, PrimVal, MemoryPointer, Value, ConstValue};
+use mir::interpret::{PrimVal, MemoryPointer, Value, ConstValue};
 
 use std::iter;
 use std::cmp::Ordering;
@@ -1765,15 +1765,6 @@ impl<'tcx> Const<'tcx> {
         ty: Ty<'tcx>,
     ) -> &'tcx Self {
         Self::from_const_val(tcx, ConstVal::Value(val), ty)
-    }
-
-    #[inline]
-    pub fn from_alloc(
-        tcx: TyCtxt<'_, '_, 'tcx>,
-        alloc: &'tcx Allocation,
-        ty: Ty<'tcx>,
-    ) -> &'tcx Self {
-        Self::from_const_value(tcx, ConstValue::ByRef(alloc), ty)
     }
 
     #[inline]

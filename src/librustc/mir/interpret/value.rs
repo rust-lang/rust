@@ -9,12 +9,12 @@ use super::{EvalResult, MemoryPointer, PointerArithmetic, Allocation};
 /// matches Value's optimizations for easy conversions between these two types
 #[derive(Clone, Copy, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
 pub enum ConstValue<'tcx> {
-    // Used only for types with layout::abi::Scalar ABI and ZSTs which use PrimVal::Undef
+    /// Used only for types with layout::abi::Scalar ABI and ZSTs which use PrimVal::Undef
     ByVal(PrimVal),
-    // Used only for types with layout::abi::ScalarPair
+    /// Used only for types with layout::abi::ScalarPair
     ByValPair(PrimVal, PrimVal),
-    // Used only for the remaining cases
-    ByRef(&'tcx Allocation),
+    /// Used only for the remaining cases. An allocation + offset into the allocation
+    ByRef(&'tcx Allocation, u64),
 }
 
 impl<'tcx> ConstValue<'tcx> {

@@ -243,10 +243,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         _ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Value> {
         match val {
-            ConstValue::ByRef(alloc) => {
+            ConstValue::ByRef(alloc, offset) => {
                 // FIXME: Allocate new AllocId for all constants inside
                 let id = self.memory.allocate_value(alloc.clone(), Some(MemoryKind::Stack))?;
-                Ok(Value::ByRef(MemoryPointer::new(id, 0).into(), alloc.align))
+                Ok(Value::ByRef(MemoryPointer::new(id, offset).into(), alloc.align))
             },
             ConstValue::ByValPair(a, b) => Ok(Value::ByValPair(a, b)),
             ConstValue::ByVal(val) => Ok(Value::ByVal(val)),
