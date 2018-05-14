@@ -67,6 +67,13 @@ about it not being const fn, we produce a specialized error with the panic's
 message. This panic reporting machinery is already present in the mir
 interpreter, but needs the lang item detection in order to work.
 
+Note that this internal machinery is inherently unstable and thus never
+invoked directly by users. Users will use the `panic!` macro as an entry point.
+The internal details of the panic handling might change in the future, but always
+in a way that will keep allowing MIR interpretation to evaluate it. All future
+changes will have to address this directly and regression tests should ensure
+that we never break the const evaluability.
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
