@@ -30,7 +30,8 @@ use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
 use middle::resolve_lifetime as rl;
 use rustc::mir::mono::Linkage;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{UnpackedKind, Substs};
+use rustc::ty::GenericParamDefKind;
 use rustc::ty::{ToPredicate, ReprOptions};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
@@ -1096,15 +1097,17 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             let substs = ty::ClosureSubsts {
-                substs: Substs::for_item(
-                    tcx,
-                    def_id,
-                    |def, _| {
-                        let region = def.to_early_bound_region_data();
-                        tcx.mk_region(ty::ReEarlyBound(region))
-                    },
-                    |def, _| tcx.mk_ty_param_from_def(def)
-                )
+                substs: Substs::for_item(tcx, def_id, |param, _| {
+                    match param.kind {
+                        GenericParamDefKind::Lifetime => {
+                            let region = param.to_early_bound_region_data();
+                            UnpackedKind::Lifetime(tcx.mk_region(ty::ReEarlyBound(region)))
+                        }
+                        GenericParamDefKind::Type(_) => {
+                            UnpackedKind::Type(tcx.mk_ty_param_from_def(param))
+                        }
+                    }
+                })
             };
 
             tcx.mk_closure(def_id, substs)

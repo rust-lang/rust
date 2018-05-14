@@ -22,8 +22,8 @@ use hir::def_id::DefId;
 use infer::outlives::env::OutlivesEnvironment;
 use middle::region;
 use middle::const_val::ConstEvalErr;
-use ty::subst::Substs;
-use ty::{self, AdtKind, Slice, Ty, TyCtxt, TypeFoldable, ToPredicate};
+use ty::subst::{UnpackedKind, Substs};
+use ty::{self, AdtKind, Slice, Ty, TyCtxt, GenericParamDefKind, TypeFoldable, ToPredicate};
 use ty::error::{ExpectedFound, TypeError};
 use infer::{InferCtxt};
 
@@ -841,10 +841,16 @@ fn vtable_methods<'a, 'tcx>(
                 // the method may have some early-bound lifetimes, add
                 // regions for those
                 let substs = trait_ref.map_bound(|trait_ref| {
-                    Substs::for_item(
-                        tcx, def_id,
-                        |_, _| tcx.types.re_erased,
-                        |def, _| trait_ref.substs.type_for_def(def))
+                    Substs::for_item(tcx, def_id, |param, _| {
+                        match param.kind {
+                            GenericParamDefKind::Lifetime => {
+                                UnpackedKind::Lifetime(tcx.types.re_erased)
+                            }
+                            GenericParamDefKind::Type(_) => {
+                                UnpackedKind::Type(trait_ref.substs.type_for_def(param))
+                            }
+                        }
+                    })
                 });
 
                 // the trait type may have higher-ranked lifetimes in it;

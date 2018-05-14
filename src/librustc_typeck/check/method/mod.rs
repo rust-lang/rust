@@ -19,7 +19,8 @@ use namespace::Namespace;
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
-use rustc::ty::subst::Subst;
+use rustc::ty::GenericParamDefKind;
+use rustc::ty::subst::{UnpackedKind, Subst};
 use rustc::infer::{self, InferOk};
 
 use syntax::ast;
@@ -253,16 +254,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                trait_def_id);
 
         // Construct a trait-reference `self_ty : Trait<input_tys>`
-        let substs = Substs::for_item(self.tcx,
-                                      trait_def_id,
-                                      |def, _| self.region_var_for_def(span, def),
-                                      |def, _substs| {
-            if def.index == 0 {
-                self_ty
-            } else if let Some(ref input_types) = opt_input_types {
-                input_types[def.index as usize - 1]
-            } else {
-                self.type_var_for_def(span, def)
+        let substs = Substs::for_item(self.tcx, trait_def_id, |param, _| {
+            match param.kind {
+                GenericParamDefKind::Lifetime => {
+                    UnpackedKind::Lifetime(self.region_var_for_def(span, param))
+                }
+                GenericParamDefKind::Type(_) => {
+                    let ty = if param.index == 0 {
+                        self_ty
+                    } else if let Some(ref input_types) = opt_input_types {
+                        input_types[param.index as usize - 1]
+                    } else {
+                        self.type_var_for_def(span, param)
+                    };
+                    UnpackedKind::Type(ty)
+                }
             }
         });
 

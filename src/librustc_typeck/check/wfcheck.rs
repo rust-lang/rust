@@ -11,11 +11,10 @@
 use check::{Inherited, FnCtxt};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 
-use ty::GenericParamDefKind;
-
 use hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
-use rustc::ty::{self, Lift, Ty, TyCtxt};
+use rustc::ty::{self, Lift, Ty, TyCtxt, GenericParamDefKind};
+use rustc::ty::subst::{UnpackedKind, Substs};
 use rustc::ty::util::ExplicitSelf;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::middle::lang_items;
@@ -406,22 +405,28 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     // For more examples see tests `defaults-well-formedness.rs` and `type-check-defaults.rs`.
     //
     // First we build the defaulted substitution.
-    let substs = ty::subst::Substs::for_item(fcx.tcx, def_id, |def, _| {
-            // All regions are identity.
-            fcx.tcx.mk_region(ty::ReEarlyBound(def.to_early_bound_region_data()))
-        }, |def, _| {
-            // If the param has a default,
-            if is_our_default(def) {
-                let default_ty = fcx.tcx.type_of(def.def_id);
-                // and it's not a dependent default
-                if !default_ty.needs_subst() {
-                    // then substitute with the default.
-                    return default_ty;
-                }
+    let substs = Substs::for_item(fcx.tcx, def_id, |param, _| {
+        match param.kind {
+            GenericParamDefKind::Lifetime => {
+                // All regions are identity.
+                UnpackedKind::Lifetime(
+                    fcx.tcx.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())))
             }
-            // Mark unwanted params as err.
-            fcx.tcx.types.err
-        });
+            GenericParamDefKind::Type(_) => {
+                // If the param has a default,
+                if is_our_default(param) {
+                    let default_ty = fcx.tcx.type_of(param.def_id);
+                    // and it's not a dependent default
+                    if !default_ty.needs_subst() {
+                        // then substitute with the default.
+                        return UnpackedKind::Type(default_ty);
+                    }
+                }
+                // Mark unwanted params as err.
+                UnpackedKind::Type(fcx.tcx.types.err)
+            }
+        }
+    });
     // Now we build the substituted predicates.
     for &pred in predicates.predicates.iter() {
         struct CountParams { params: FxHashSet<u32> }

@@ -18,8 +18,8 @@ use rustc::infer::{InferOk, InferResult};
 use rustc::infer::LateBoundRegionConversionTime;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::error_reporting::ArgKind;
-use rustc::ty::{self, ToPolyTraitRef, Ty};
-use rustc::ty::subst::Substs;
+use rustc::ty::{self, ToPolyTraitRef, Ty, GenericParamDefKind};
+use rustc::ty::subst::{UnpackedKind, Substs};
 use rustc::ty::TypeFoldable;
 use std::cmp;
 use std::iter;
@@ -104,15 +104,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // inference phase (`upvar.rs`).
         let base_substs =
             Substs::identity_for_item(self.tcx, self.tcx.closure_base_def_id(expr_def_id));
-        let substs = base_substs.extend_to(
-            self.tcx,
-            expr_def_id,
-            |_, _| span_bug!(expr.span, "closure has region param"),
-            |_, _| {
-                self.infcx
-                    .next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span))
-            },
-        );
+        let substs = base_substs.extend_to(self.tcx,expr_def_id, |param, _| {
+            match param.kind {
+                GenericParamDefKind::Lifetime => {
+                    span_bug!(expr.span, "closure has region param")
+                }
+                GenericParamDefKind::Type(_) => {
+                    UnpackedKind::Type(self.infcx
+                        .next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span)))
+                }
+            }
+        });
         if let Some(GeneratorTypes { yield_ty, interior, movability }) = generator_types {
             let substs = ty::GeneratorSubsts { substs };
             self.demand_eqtype(

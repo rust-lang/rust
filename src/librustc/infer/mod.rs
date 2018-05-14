@@ -21,9 +21,9 @@ use hir::def_id::DefId;
 use middle::free_region::RegionRelations;
 use middle::region;
 use middle::lang_items;
-use ty::subst::Substs;
+use ty::subst::{UnpackedKind, Substs};
 use ty::{TyVid, IntVid, FloatVid};
-use ty::{self, Ty, TyCtxt};
+use ty::{self, Ty, TyCtxt, GenericParamDefKind};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::TypeFoldable;
 use ty::relate::RelateResult;
@@ -941,10 +941,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                  span: Span,
                                  def_id: DefId)
                                  -> &'tcx Substs<'tcx> {
-        Substs::for_item(self.tcx, def_id, |def, _| {
-            self.region_var_for_def(span, def)
-        }, |def, _| {
-            self.type_var_for_def(span, def)
+        Substs::for_item(self.tcx, def_id, |param, _| {
+            match param.kind {
+                GenericParamDefKind::Lifetime => {
+                    UnpackedKind::Lifetime(self.region_var_for_def(span, param))
+                }
+                GenericParamDefKind::Type(_) => {
+                    UnpackedKind::Type(self.type_var_for_def(span, param))
+                }
+            }
         })
     }
 

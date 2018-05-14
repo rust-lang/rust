@@ -11,7 +11,7 @@
 // Type substitutions.
 
 use hir::def_id::DefId;
-use ty::{self, Lift, Slice, Region, Ty, TyCtxt};
+use ty::{self, Lift, Slice, Region, Ty, TyCtxt, GenericParamDefKind};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use serialize::{self, Encodable, Encoder, Decodable, Decoder};
@@ -174,80 +174,80 @@ impl<'tcx> Decodable for Kind<'tcx> {
     }
 }
 
-/// A substitution mapping type/region parameters to new values.
+/// A substitution mapping generic parameters to new values.
 pub type Substs<'tcx> = Slice<Kind<'tcx>>;
 
 impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     /// Creates a Substs that maps each generic parameter to itself.
     pub fn identity_for_item(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId)
                              -> &'tcx Substs<'tcx> {
-        Substs::for_item(tcx, def_id, |def, _| {
-            tcx.mk_region(ty::ReEarlyBound(def.to_early_bound_region_data()))
-        }, |def, _| tcx.mk_ty_param_from_def(def))
+        Substs::for_item(tcx, def_id, |param, _| {
+            match param.kind {
+                GenericParamDefKind::Lifetime => {
+                    UnpackedKind::Lifetime(
+                        tcx.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())))
+                }
+                GenericParamDefKind::Type(_) => {
+                    UnpackedKind::Type(tcx.mk_ty_param_from_def(param))
+                }
+            }
+        })
     }
 
     /// Creates a Substs for generic parameter definitions,
-    /// by calling closures to obtain each region and type.
+    /// by calling closures to obtain each kind.
     /// The closures get to observe the Substs as they're
     /// being built, which can be used to correctly
-    /// substitute defaults of type parameters.
-    pub fn for_item<FR, FT>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                            def_id: DefId,
-                            mut mk_region: FR,
-                            mut mk_type: FT)
-                            -> &'tcx Substs<'tcx>
-    where FR: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
-          FT: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Ty<'tcx> {
+    /// substitute defaults of generic parameters.
+    pub fn for_item<F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                       def_id: DefId,
+                       mut mk_kind: F)
+                       -> &'tcx Substs<'tcx>
+    where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> UnpackedKind<'tcx>
+    {
         let defs = tcx.generics_of(def_id);
         let mut substs = Vec::with_capacity(defs.count());
-        Substs::fill_item(&mut substs, tcx, defs, &mut mk_region, &mut mk_type);
+        Substs::fill_item(&mut substs, tcx, defs, &mut mk_kind);
         tcx.intern_substs(&substs)
     }
 
-    pub fn extend_to<FR, FT>(&self,
-                             tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                             def_id: DefId,
-                             mut mk_region: FR,
-                             mut mk_type: FT)
-                             -> &'tcx Substs<'tcx>
-    where FR: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
-          FT: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Ty<'tcx>
+    pub fn extend_to<F>(&self,
+                        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                        def_id: DefId,
+                        mut mk_kind: F)
+                        -> &'tcx Substs<'tcx>
+    where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> UnpackedKind<'tcx>
     {
         let defs = tcx.generics_of(def_id);
         let mut result = Vec::with_capacity(defs.count());
         result.extend(self[..].iter().cloned());
-        Substs::fill_single(&mut result, defs, &mut mk_region, &mut mk_type);
+        Substs::fill_single(&mut result, defs, &mut mk_kind);
         tcx.intern_substs(&result)
     }
 
-    pub fn fill_item<FR, FT>(substs: &mut Vec<Kind<'tcx>>,
+    pub fn fill_item<F>(substs: &mut Vec<Kind<'tcx>>,
                              tcx: TyCtxt<'a, 'gcx, 'tcx>,
                              defs: &ty::Generics,
-                             mk_region: &mut FR,
-                             mk_type: &mut FT)
-    where FR: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
-          FT: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Ty<'tcx> {
+                             mk_kind: &mut F)
+    where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> UnpackedKind<'tcx>
+    {
 
         if let Some(def_id) = defs.parent {
             let parent_defs = tcx.generics_of(def_id);
-            Substs::fill_item(substs, tcx, parent_defs, mk_region, mk_type);
+            Substs::fill_item(substs, tcx, parent_defs, mk_kind);
         }
-        Substs::fill_single(substs, defs, mk_region, mk_type)
+        Substs::fill_single(substs, defs, mk_kind)
     }
 
-    fn fill_single<FR, FT>(substs: &mut Vec<Kind<'tcx>>,
+    fn fill_single<F>(substs: &mut Vec<Kind<'tcx>>,
                            defs: &ty::Generics,
-                           mk_region: &mut FR,
-                           mk_type: &mut FT)
-    where FR: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
-          FT: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Ty<'tcx> {
+                           mk_kind: &mut F)
+    where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> UnpackedKind<'tcx>
+    {
         for param in &defs.params {
-            let kind = match param.kind {
-                ty::GenericParamDefKind::Lifetime => mk_region(param, substs).into(),
-                ty::GenericParamDefKind::Type(_) => mk_type(param, substs).into(),
-            };
+            let kind = mk_kind(param, substs);
             assert_eq!(param.index as usize, substs.len());
-            substs.push(kind);
+            substs.push(kind.pack());
         }
     }
 

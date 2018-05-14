@@ -17,9 +17,9 @@ use hir;
 use ich::NodeIdHashingMode;
 use middle::const_val::ConstVal;
 use traits::{self, ObligationCause};
-use ty::{self, Ty, TyCtxt, TypeFoldable};
+use ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
 use ty::fold::TypeVisitor;
-use ty::subst::UnpackedKind;
+use ty::subst::{Substs, UnpackedKind};
 use ty::maps::TyCtxtAt;
 use ty::TypeVariants::*;
 use ty::layout::{Integer, IntegerExt};
@@ -573,11 +573,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Given the def-id of some item that has no type parameters, make
     /// a suitable "empty substs" for it.
-    pub fn empty_substs_for_def_id(self, item_def_id: DefId) -> &'tcx ty::Substs<'tcx> {
-        ty::Substs::for_item(self, item_def_id,
-                             |_, _| self.types.re_erased,
-                             |_, _| {
-            bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
+    pub fn empty_substs_for_def_id(self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
+        Substs::for_item(self, item_def_id, |param, _| {
+            match param.kind {
+                GenericParamDefKind::Lifetime => UnpackedKind::Lifetime(self.types.re_erased),
+                GenericParamDefKind::Type(_) => {
+                    bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
+                }
+            }
         })
     }
 

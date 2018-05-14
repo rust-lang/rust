@@ -32,7 +32,7 @@ use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use middle::stability;
 use mir::{self, Mir, interpret};
-use ty::subst::{Kind, Substs, Subst};
+use ty::subst::{Kind, UnpackedKind, Substs, Subst};
 use ty::ReprOptions;
 use ty::Instance;
 use traits;
@@ -44,6 +44,7 @@ use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predic
 use ty::RegionKind;
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
+use ty::GenericParamDefKind;
 use ty::layout::{LayoutDetails, TargetDataLayout};
 use ty::maps;
 use ty::steal::Steal;
@@ -2325,16 +2326,22 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem);
         let adt_def = self.adt_def(def_id);
-        let substs = Substs::for_item(self, def_id, |_, _| bug!(), |def, substs| {
-            if def.index == 0 {
-                ty
-            } else {
-                match def.kind {
-                    ty::GenericParamDefKind::Type(ty_param) => {
-                        assert!(ty_param.has_default);
-                        self.type_of(def.def_id).subst(self, substs)
+        let substs = Substs::for_item(self, def_id, |param, substs| {
+            match param.kind {
+                GenericParamDefKind::Lifetime => bug!(),
+                GenericParamDefKind::Type(_) => {
+                    if param.index == 0 {
+                        UnpackedKind::Type(ty)
+                    } else {
+                        match param.kind {
+                            ty::GenericParamDefKind::Type(ty_param) => {
+                                assert!(ty_param.has_default);
+                                UnpackedKind::Type(
+                                    self.type_of(param.def_id).subst(self, substs))
+                            }
+                            _ => unreachable!()
+                        }
                     }
-                    _ => unreachable!()
                 }
             }
         });

@@ -17,9 +17,10 @@ use check::FnCtxt;
 use hir::def_id::DefId;
 use hir::def::Def;
 use namespace::Namespace;
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{UnpackedKind, Subst, Substs};
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TraitRef, TypeFoldable};
+use rustc::ty::GenericParamDefKind;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::util::nodemap::FxHashSet;
 use rustc::infer::{self, InferOk};
@@ -1387,21 +1388,28 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         if generics.params.is_empty() {
             xform_fn_sig.subst(self.tcx, substs)
         } else {
-            let substs = Substs::for_item(self.tcx, method, |def, _| {
-                let i = def.index as usize;
-                if i < substs.len() {
-                    substs.region_at(i)
-                } else {
-                    // In general, during probe we erase regions. See
-                    // `impl_self_ty()` for an explanation.
-                    self.tcx.types.re_erased
-                }
-            }, |def, _cur_substs| {
-                let i = def.index as usize;
-                if i < substs.len() {
-                    substs.type_at(i)
-                } else {
-                    self.type_var_for_def(self.span, def)
+            let substs = Substs::for_item(self.tcx, method, |param, _| {
+                match param.kind {
+                    GenericParamDefKind::Lifetime => {
+                        let i = param.index as usize;
+                        let lt = if i < substs.len() {
+                            substs.region_at(i)
+                        } else {
+                            // In general, during probe we erase regions. See
+                            // `impl_self_ty()` for an explanation.
+                            self.tcx.types.re_erased
+                        };
+                        UnpackedKind::Lifetime(lt)
+                    }
+                    GenericParamDefKind::Type(_) => {
+                        let i = param.index as usize;
+                        let ty = if i < substs.len() {
+                            substs.type_at(i)
+                        } else {
+                            self.type_var_for_def(self.span, param)
+                        };
+                        UnpackedKind::Type(ty)
+                    }
                 }
             });
             xform_fn_sig.subst(self.tcx, substs)
@@ -1414,12 +1422,18 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     fn fresh_item_substs(&self, def_id: DefId) -> &'tcx Substs<'tcx> {
-        Substs::for_item(self.tcx,
-                         def_id,
-                         |_, _| self.tcx.types.re_erased,
-                         |_, _| self.next_ty_var(
-                             TypeVariableOrigin::SubstitutionPlaceholder(
-                                 self.tcx.def_span(def_id))))
+        Substs::for_item(self.tcx, def_id, |param, _| {
+            match param.kind {
+                GenericParamDefKind::Lifetime => {
+                    UnpackedKind::Lifetime(self.tcx.types.re_erased)
+                }
+                GenericParamDefKind::Type(_) => {
+                    UnpackedKind::Type(self.next_ty_var(
+                        TypeVariableOrigin::SubstitutionPlaceholder(
+                        self.tcx.def_span(def_id))))
+                }
+            }
+        })
     }
 
     /// Replace late-bound-regions bound by `value` with `'static` using

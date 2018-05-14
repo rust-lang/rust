@@ -15,8 +15,8 @@ use check::{FnCtxt, PlaceOp, callee, Needs};
 use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
-use rustc::ty::{self, Ty};
-use rustc::ty::subst::Subst;
+use rustc::ty::{self, Ty, GenericParamDefKind};
+use rustc::ty::subst::{UnpackedKind, Subst};
 use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
 use rustc::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
@@ -317,30 +317,37 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         assert_eq!(method_generics.parent_count, parent_substs.len());
         let provided = &segment.parameters;
         let own_counts = method_generics.own_counts();
-        Substs::for_item(self.tcx, pick.item.def_id, |def, _| {
-            let i = def.index as usize;
-            if i < parent_substs.len() {
-                parent_substs.region_at(i)
-            } else if let Some(lifetime)
-                    = provided.as_ref().and_then(|p| p.lifetimes.get(i - parent_substs.len())) {
-                AstConv::ast_region_to_region(self.fcx, lifetime, Some(def))
-            } else {
-                self.region_var_for_def(self.span, def)
-            }
-        }, |def, _cur_substs| {
-            let i = def.index as usize;
-            if i < parent_substs.len() {
-                parent_substs.type_at(i)
-            } else if let Some(ast_ty)
-                = provided.as_ref().and_then(|p| {
-                    let idx =
-                        i - parent_substs.len() - own_counts.lifetimes;
-                    p.types.get(idx)
-                })
-            {
-                self.to_ty(ast_ty)
-            } else {
-                self.type_var_for_def(self.span, def)
+        Substs::for_item(self.tcx, pick.item.def_id, |param, _| {
+            match param.kind {
+                GenericParamDefKind::Lifetime => {
+                    let i = param.index as usize;
+                    let lt = if i < parent_substs.len() {
+                        parent_substs.region_at(i)
+                    } else if let Some(lifetime)
+                            = provided.as_ref().and_then(|p| p.lifetimes.get(i - parent_substs.len())) {
+                        AstConv::ast_region_to_region(self.fcx, lifetime, Some(param))
+                    } else {
+                        self.region_var_for_def(self.span, param)
+                    };
+                    UnpackedKind::Lifetime(lt)
+                }
+                GenericParamDefKind::Type(_) => {
+                    let i = param.index as usize;
+                    let ty = if i < parent_substs.len() {
+                        parent_substs.type_at(i)
+                    } else if let Some(ast_ty)
+                        = provided.as_ref().and_then(|p| {
+                            let idx =
+                                i - parent_substs.len() - own_counts.lifetimes;
+                            p.types.get(idx)
+                        })
+                    {
+                        self.to_ty(ast_ty)
+                    } else {
+                        self.type_var_for_def(self.span, param)
+                    };
+                    UnpackedKind::Type(ty)
+                }
             }
         })
     }

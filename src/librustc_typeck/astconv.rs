@@ -20,7 +20,8 @@ use middle::resolve_lifetime as rl;
 use namespace::Namespace;
 use rustc::ty::subst::{Kind, UnpackedKind, Subst, Substs};
 use rustc::traits;
-use rustc::ty::{self, RegionKind, Ty, TyCtxt, GenericParamDefKind, ToPredicate, TypeFoldable};
+use rustc::ty::{self, RegionKind, Ty, TyCtxt, ToPredicate, TypeFoldable};
+use rustc::ty::GenericParamDefKind;
 use rustc::ty::wf::object_region_bounds;
 use rustc_target::spec::abi;
 use std::slice;
@@ -264,66 +265,76 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         };
 
         let own_self = self_ty.is_some() as usize;
-        let substs = Substs::for_item(tcx, def_id, |def, _| {
-            let i = def.index as usize - own_self;
-            if let Some(lifetime) = parameters.lifetimes.get(i) {
-                self.ast_region_to_region(lifetime, Some(def))
-            } else {
-                tcx.types.re_static
-            }
-        }, |def, substs| {
-            let i = def.index as usize;
-
-            // Handle Self first, so we can adjust the index to match the AST.
-            if let (0, Some(ty)) = (i, self_ty) {
-                return ty;
-            }
-
-            let has_default = match def.kind {
-                GenericParamDefKind::Type(ty) => ty.has_default,
-                _ => unreachable!()
-            };
-
-            let i = i - (lt_accepted + own_self);
-            if i < ty_provided {
-                // A provided type parameter.
-                self.ast_ty_to_ty(&parameters.types[i])
-            } else if infer_types {
-                // No type parameters were provided, we can infer all.
-                let ty_var = if !default_needs_object_self(def) {
-                    self.ty_infer_for_def(def, span)
-                } else {
-                    self.ty_infer(span)
-                };
-                ty_var
-            } else if has_default {
-                // No type parameter provided, but a default exists.
-
-                // If we are converting an object type, then the
-                // `Self` parameter is unknown. However, some of the
-                // other type parameters may reference `Self` in their
-                // defaults. This will lead to an ICE if we are not
-                // careful!
-                if default_needs_object_self(def) {
-                    struct_span_err!(tcx.sess, span, E0393,
-                                     "the type parameter `{}` must be explicitly specified",
-                                     def.name)
-                        .span_label(span, format!("missing reference to `{}`", def.name))
-                        .note(&format!("because of the default `Self` reference, \
-                                        type parameters must be specified on object types"))
-                        .emit();
-                    tcx.types.err
-                } else {
-                    // This is a default type parameter.
-                    self.normalize_ty(
-                        span,
-                        tcx.at(span).type_of(def.def_id)
-                            .subst_spanned(tcx, substs, Some(span))
-                    )
+        let substs = Substs::for_item(tcx, def_id, |param, substs| {
+            match param.kind {
+                GenericParamDefKind::Lifetime => {
+                    let i = param.index as usize - own_self;
+                    let lt = if let Some(lifetime) = parameters.lifetimes.get(i) {
+                        self.ast_region_to_region(lifetime, Some(param))
+                    } else {
+                        tcx.types.re_static
+                    };
+                    UnpackedKind::Lifetime(lt)
                 }
-            } else {
-                // We've already errored above about the mismatch.
-                tcx.types.err
+                GenericParamDefKind::Type(_) => {
+                    let i = param.index as usize;
+
+                    // Handle Self first, so we can adjust the index to match the AST.
+                    if let (0, Some(ty)) = (i, self_ty) {
+                        return UnpackedKind::Type(ty);
+                    }
+
+                    let has_default = match param.kind {
+                        GenericParamDefKind::Type(ty) => ty.has_default,
+                        _ => unreachable!()
+                    };
+
+                    let i = i - (lt_accepted + own_self);
+                    let ty = if i < ty_provided {
+                        // A provided type parameter.
+                        self.ast_ty_to_ty(&parameters.types[i])
+                    } else if infer_types {
+                        // No type parameters were provided, we can infer all.
+                        let ty_var = if !default_needs_object_self(param) {
+                            self.ty_infer_for_def(param, span)
+                        } else {
+                            self.ty_infer(span)
+                        };
+                        ty_var
+                    } else if has_default {
+                        // No type parameter provided, but a default exists.
+
+                        // If we are converting an object type, then the
+                        // `Self` parameter is unknown. However, some of the
+                        // other type parameters may reference `Self` in their
+                        // defaults. This will lead to an ICE if we are not
+                        // careful!
+                        if default_needs_object_self(param) {
+                            struct_span_err!(tcx.sess, span, E0393,
+                                             "the type parameter `{}` must be explicitly \
+                                             specified",
+                                             param.name)
+                                .span_label(span,
+                                            format!("missing reference to `{}`", param.name))
+                                .note(&format!("because of the default `Self` reference, \
+                                                type parameters must be specified on object \
+                                                types"))
+                                .emit();
+                            tcx.types.err
+                        } else {
+                            // This is a default type parameter.
+                            self.normalize_ty(
+                                span,
+                                tcx.at(span).type_of(param.def_id)
+                                    .subst_spanned(tcx, substs, Some(span))
+                            )
+                        }
+                    } else {
+                        // We've already errored above about the mismatch.
+                        tcx.types.err
+                    };
+                    UnpackedKind::Type(ty)
+                }
             }
         });
 
@@ -1154,12 +1165,17 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let mut substs = Vec::with_capacity(generics.count());
         if let Some(parent_id) = generics.parent {
             let parent_generics = tcx.generics_of(parent_id);
-            Substs::fill_item(
-                &mut substs, tcx, parent_generics,
-                &mut |def, _| tcx.mk_region(
-                    ty::ReEarlyBound(def.to_early_bound_region_data())),
-                &mut |def, _| tcx.mk_ty_param_from_def(def)
-            );
+            Substs::fill_item(&mut substs, tcx, parent_generics, &mut |param, _| {
+                match param.kind {
+                    GenericParamDefKind::Lifetime => {
+                        UnpackedKind::Lifetime(
+                            tcx.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())))
+                    }
+                    GenericParamDefKind::Type(_) => {
+                        UnpackedKind::Type(tcx.mk_ty_param_from_def(param))
+                    }
+                }
+            });
 
             // Replace all lifetimes with 'static
             for subst in &mut substs {

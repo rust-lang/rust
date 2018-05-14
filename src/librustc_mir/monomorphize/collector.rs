@@ -196,8 +196,8 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
-use rustc::ty::subst::{Substs, Kind};
-use rustc::ty::{self, TypeFoldable, Ty, TyCtxt};
+use rustc::ty::subst::{Substs, Kind, UnpackedKind};
+use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::session::config;
 use rustc::mir::{self, Location, Promoted};
@@ -1112,10 +1112,16 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         continue;
                     }
 
-                    let substs = Substs::for_item(tcx,
-                                                  method.def_id,
-                                                  |_, _| tcx.types.re_erased,
-                                                  |def, _| trait_ref.substs.type_for_def(def));
+                    let substs = Substs::for_item(tcx, method.def_id, |param, _| {
+                        match param.kind {
+                            GenericParamDefKind::Lifetime => {
+                                UnpackedKind::Lifetime(tcx.types.re_erased)
+                            }
+                            GenericParamDefKind::Type(_) => {
+                                UnpackedKind::Type(trait_ref.substs.type_for_def(param))
+                            }
+                        }
+                    });
 
                     let instance = ty::Instance::resolve(tcx,
                                                          ty::ParamEnv::reveal_all(),
