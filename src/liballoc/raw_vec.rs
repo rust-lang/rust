@@ -618,8 +618,8 @@ impl<T, A: Alloc> RawVec<T, A> {
         }
     }
 
-    /// Shrinks the allocation down to the specified amount. If the given amount
-    /// is 0, actually completely deallocates.
+    /// Non-biding request to reduce the capacity of the vector to `amount`. If the given
+    /// `amount` is `0` it deallocates.
     ///
     /// # Panics
     ///
@@ -666,14 +666,26 @@ impl<T, A: Alloc> RawVec<T, A> {
                 let new_size = elem_size * amount;
                 let align = mem::align_of::<T>();
                 let old_layout = Layout::from_size_align_unchecked(old_size, align);
-                match self.a.realloc(NonNull::from(self.ptr).as_opaque(),
-                                     old_layout,
-                                     new_size) {
-                    Ok(p) => self.ptr = p.cast().into(),
-                    Err(_) => oom(),
+                // If we can shrink the allocation in place we just update
+                // the capacity. Otherwise, we re-allocate.
+                match self.a.shrink_in_place(NonNull::from(self.ptr).as_opaque(),
+                                             old_layout, new_size) {
+                    Ok(()) => {
+                        self.cap = amount
+                    },
+                    Err(_) => {
+                        match self.a.realloc(NonNull::from(self.ptr).as_opaque(),
+                                             old_layout,
+                                             new_size) {
+                            Ok(ptr) => {
+                                self.ptr = ptr.cast().into();
+                                self.cap = amount;
+                            }
+                            Err(_) => oom(),
+                        }
+                    }
                 }
             }
-            self.cap = amount;
         }
     }
 }
