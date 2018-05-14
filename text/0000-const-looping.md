@@ -82,11 +82,15 @@ indefinitely, we count the number of terminators processed and whenever we reach
 a fixed limit, we report a lint mentioning that we cannot guarantee that the
 evaluation will terminate and reset the counter to zero. This lint should recur
 in a non-annoying amount of time (e.g. at least 30 seconds between occurrences).
+This means that there's an internal deterministic counter (for the terminators) and
+a timestamp of the last (if any) loop warning emission. Both the counter needs to reach
+its limit and 30 seconds have to have passed since the last warning emission in order
+for a new warning to be emitted.
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-* Infinite loops will hang the compiler if the lint is not denied
+* Infinite loops will cause the compiler to never finish if the lint is not denied
 
 # Rationale and alternatives
 [alternatives]: #alternatives
