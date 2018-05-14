@@ -1,19 +1,20 @@
 # An Overview of Chalk
 
 > Chalk is under heavy development, so if any of these links are broken or if
-> any of the information is inconsistent with the code or outdated, please open
-> an issue so we can fix it. If you are able to fix the issue yourself, we would
+> any of the information is inconsistent with the code or outdated, please
+> [open an issue][rustc-issues] so we can fix it. If you are able to fix the issue yourself, we would
 > love your contribution!
 
 [Chalk][chalk] recasts Rust's trait system explicitly in terms of logic
 programming by "lowering" Rust code into a kind of logic program we can then
-execute queries against. Its goal is to be an executable, highly readable
-specification of the Rust trait system.[^negativechalk]
+execute queries against. (See [*Lowering to Logic*][lowering-to-logic] and
+[*Lowering Rules*][lowering-rules]) Its goal is to be an executable, highly
+readable specification of the Rust trait system.
 
 There are many expected benefits from this work. It will consolidate our
 existing, somewhat ad-hoc implementation into something far more principled and
 expressive, which should behave better in corner cases, and be much easier to
-extend.[^negativechalk]
+extend.
 
 ## Resources
 
@@ -124,9 +125,10 @@ is the function that is ultimately called.
 
 See [The SLG Solver][slg].
 
-[^negativechalk]: [*Negative reasoning in Chalk* by Aaron Turon](http://aturon.github.io/blog/2017/04/24/negative-chalk/)
-
+[rustc-issues]: https://github.com/rust-lang-nursery/rustc-guide/issues
 [chalk]: https://github.com/rust-lang-nursery/chalk
+[lowering-to-logic]: traits-lowering-to-logic.html
+[lowering-rules]: traits-lowering-rules.html
 [ast]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
 [chalk-ast]: https://github.com/rust-lang-nursery/chalk/blob/master/chalk-parse/src/ast.rs
 [universal quantification]: https://en.wikipedia.org/wiki/Universal_quantification
