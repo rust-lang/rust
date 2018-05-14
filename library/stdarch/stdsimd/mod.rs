@@ -14,9 +14,6 @@
 /// `i686-pc-windows-msvc` target will have an `x86` module here, whereas
 /// `x86_64-pc-windows-msvc` has `x86_64`.
 ///
-/// > **Note**: This module is currently unstable. It was designed in
-/// > [RFC 2325][rfc] and is currently [tracked] for stabilization.
-///
 /// [rfc]: https://github.com/rust-lang/rfcs/pull/2325
 /// [tracked]: https://github.com/rust-lang/rust/issues/48556
 ///
