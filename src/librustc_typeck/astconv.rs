@@ -87,6 +87,11 @@ struct ConvertedBinding<'tcx> {
     span: Span,
 }
 
+struct ParamRange {
+    required: usize,
+    accepted: usize
+}
+
 /// Dummy type used for the `Self` of a `TraitRef` created for converting
 /// a trait object, and which gets removed in `ExistentialTraitRef`.
 /// This type must not appear anywhere in other converted types.
@@ -212,23 +217,23 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let lt_provided = parameters.lifetimes.len();
 
         let mut lt_accepted = 0;
-        let mut ty_range = (0, 0);
+        let mut ty_params = ParamRange { required: 0, accepted: 0 };
         for param in &decl_generics.params {
             match param.kind {
                 GenericParamDefKind::Lifetime => {
                     lt_accepted += 1;
                 }
                 GenericParamDefKind::Type(ty) => {
-                    ty_range.1 += 1;
+                    ty_params.accepted += 1;
                     if !ty.has_default {
-                        ty_range.0 += 1;
+                        ty_params.required += 1;
                     }
                 }
             };
         }
         if self_ty.is_some() {
-            ty_range.0 -= 1;
-            ty_range.1 -= 1;
+            ty_params.required -= 1;
+            ty_params.accepted -= 1;
         }
 
         if lt_accepted != lt_provided {
@@ -239,8 +244,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         assert_eq!(decl_generics.has_self, self_ty.is_some());
 
         // Check the number of type parameters supplied by the user.
-        if !infer_types || ty_provided > ty_range.0 {
-            check_type_argument_count(tcx, span, ty_provided, ty_range);
+        if !infer_types || ty_provided > ty_params.required {
+            check_type_argument_count(tcx, span, ty_provided, ty_params);
         }
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
@@ -1327,9 +1332,9 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 fn check_type_argument_count(tcx: TyCtxt,
                              span: Span,
                              supplied: usize,
-                             ty_range: (usize, usize))
+                             ty_params: ParamRange)
 {
-    let (required, accepted) = ty_range;
+    let (required, accepted) = (ty_params.required, ty_params.accepted);
     if supplied < required {
         let expected = if required < accepted {
             "expected at least"

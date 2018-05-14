@@ -290,7 +290,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
         let generic_map = generics.params.iter().filter_map(|param| {
             let value = match param.kind {
                 GenericParamDefKind::Type(_) => {
-                    trait_ref.substs.type_for_def(&param).to_string()
+                    trait_ref.substs[param.index as usize].to_string()
                 },
                 GenericParamDefKind::Lifetime => return None
             };

@@ -4925,27 +4925,32 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Check provided parameters.
         let ((ty_required, ty_accepted), lt_accepted) =
             segment.map_or(((0, 0), 0), |(_, generics)| {
+                struct ParamRange {
+                    required: usize,
+                    accepted: usize
+                };
+
                 let mut lt_accepted = 0;
-                let mut ty_range = (0, 0);
+                let mut ty_params = ParamRange { required: 0, accepted: 0 };
                 for param in &generics.params {
                     match param.kind {
                         GenericParamDefKind::Lifetime => {
                             lt_accepted += 1;
                         }
                         GenericParamDefKind::Type(ty) => {
-                            ty_range.1 += 1;
+                            ty_params.accepted += 1;
                             if !ty.has_default {
-                                ty_range.0 += 1;
+                                ty_params.required += 1;
                             }
                         }
                     };
                 }
                 if generics.parent.is_none() && generics.has_self {
-                    ty_range.0 -= 1;
-                    ty_range.1 -= 1;
+                    ty_params.required -= 1;
+                    ty_params.accepted -= 1;
                 }
 
-                ((ty_range.0, ty_range.1), lt_accepted)
+                ((ty_params.required, ty_params.accepted), lt_accepted)
             });
 
         if types.len() > ty_accepted {

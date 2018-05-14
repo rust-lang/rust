@@ -837,7 +837,7 @@ impl<'a, 'gcx, 'tcx> Generics {
             let param = &self.params[index as usize];
             match param.kind {
                 ty::GenericParamDefKind::Lifetime => param,
-                _ => bug!("expected region parameter, but found another generic parameter")
+                _ => bug!("expected lifetime parameter, but found another generic parameter")
             }
         } else {
             tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
@@ -851,7 +851,11 @@ impl<'a, 'gcx, 'tcx> Generics {
                       tcx: TyCtxt<'a, 'gcx, 'tcx>)
                       -> &'tcx GenericParamDef {
         if let Some(index) = param.idx.checked_sub(self.parent_count as u32) {
-            &self.params[index as usize]
+            let param = &self.params[index as usize];
+            match param.kind {
+                ty::GenericParamDefKind::Type(_) => param,
+                _ => bug!("expected type parameter, but found another generic parameter")
+            }
         } else {
             tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
                 .type_param(param, tcx)
