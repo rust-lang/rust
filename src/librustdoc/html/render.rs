@@ -413,9 +413,9 @@ impl ToJson for Type {
         match self.name {
             Some(ref name) => {
                 let mut data = BTreeMap::new();
-                data.insert("name".to_owned(), name.to_json());
+                data.insert("n".to_owned(), name.to_json());
                 if let Some(ref generics) = self.generics {
-                    data.insert("generics".to_owned(), generics.to_json());
+                    data.insert("g".to_owned(), generics.to_json());
                 }
                 Json::Object(data)
             },
@@ -438,8 +438,12 @@ impl ToJson for IndexItemFunctionType {
             Json::Null
         } else {
             let mut data = BTreeMap::new();
-            data.insert("inputs".to_owned(), self.inputs.to_json());
-            data.insert("output".to_owned(), self.output.to_json());
+            if !self.inputs.is_empty() {
+                data.insert("i".to_owned(), self.inputs.to_json());
+            }
+            if let Some(ref output) = self.output {
+                data.insert("o".to_owned(), output.to_json());
+            }
             Json::Object(data)
         }
     }
@@ -789,7 +793,8 @@ fn write_shared(cx: &Context,
           format!(
 r#"var themes = document.getElementById("theme-choices");
 var themePicker = document.getElementById("theme-picker");
-themePicker.onclick = function() {{
+
+function switchThemeButtonState() {{
     if (themes.style.display === "block") {{
         themes.style.display = "none";
         themePicker.style.borderBottomRightRadius = "3px";
@@ -800,12 +805,29 @@ themePicker.onclick = function() {{
         themePicker.style.borderBottomLeftRadius = "0";
     }}
 }};
+
+function handleThemeButtonsBlur(e) {{
+    var active = document.activeElement;
+    var related = e.relatedTarget;
+
+    if (active.id !== "themePicker" &&
+        (!active.parentNode || active.parentNode.id !== "theme-choices") &&
+        (!related ||
+         (related.id !== "themePicker" &&
+          (!related.parentNode || related.parentNode.id !== "theme-choices")))) {{
+        switchThemeButtonState();
+    }}
+}}
+
+themePicker.onclick = switchThemeButtonState;
+themePicker.onblur = handleThemeButtonsBlur;
 [{}].forEach(function(item) {{
     var but = document.createElement('button');
     but.innerHTML = item;
     but.onclick = function(el) {{
         switchTheme(currentTheme, mainTheme, item);
     }};
+    but.onblur = handleThemeButtonsBlur;
     themes.appendChild(but);
 }});"#,
                  themes.iter()
@@ -879,8 +901,8 @@ themePicker.onclick = function() {{
     }
 
     fn show_item(item: &IndexItem, krate: &str) -> String {
-        format!("{{'crate':'{}','ty':{},'name':'{}','path':'{}'{}}}",
-                krate, item.ty as usize, item.name, item.path,
+        format!("{{'crate':'{}','ty':{},'name':'{}','desc':'{}','p':'{}'{}}}",
+                krate, item.ty as usize, item.name, item.desc.replace("'", "\\'"), item.path,
                 if let Some(p) = item.parent_idx {
                     format!(",'parent':{}", p)
                 } else {
@@ -1442,7 +1464,7 @@ impl<'a> Cache {
                                 ty: item.type_(),
                                 name: item_name.to_string(),
                                 path: path.clone(),
-                                desc: String::new(),
+                                desc: plain_summary_line(item.doc_value()),
                                 parent: None,
                                 parent_idx: None,
                                 search_type: get_index_search_type(&item),

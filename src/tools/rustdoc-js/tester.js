@@ -160,10 +160,11 @@ function main(argv) {
     // execQuery first parameter is built in getQuery (which takes in the search input).
     // execQuery last parameter is built in buildIndex.
     // buildIndex requires the hashmap from search-index.
-    var functionsToLoad = ["levenshtein", "validateResult", "getQuery", "buildIndex", "execQuery",
-                           "execSearch"];
+    var functionsToLoad = ["buildHrefAndPath", "pathSplitter", "levenshtein", "validateResult",
+                           "getQuery", "buildIndex", "execQuery", "execSearch"];
 
     finalJS += 'window = { "currentCrate": "std" };\n';
+    finalJS += 'var rootPath = "../";\n';
     finalJS += ALIASES;
     finalJS += loadThings(arraysToLoad, 'array', extractArrayVariable, mainJs);
     finalJS += loadThings(variablesToLoad, 'variable', extractVariable, mainJs);
