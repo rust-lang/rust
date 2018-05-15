@@ -147,10 +147,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
             1
         };
         let used_width = extra_offset(ident, shape);
-        let one_line_width = shape
-            .width
-            .checked_sub(used_width + 2 * paren_overhead)
-            .unwrap_or(0);
+        let one_line_width = shape.width.saturating_sub(used_width + 2 * paren_overhead);
 
         // 1 = "(" or ")"
         let one_line_shape = shape
@@ -412,10 +409,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
 
     fn wrap_items(&self, items_str: &str, shape: Shape, is_extendable: bool) -> String {
         let shape = Shape {
-            width: shape
-                .width
-                .checked_sub(last_line_width(self.ident))
-                .unwrap_or(0),
+            width: shape.width.saturating_sub(last_line_width(self.ident)),
             ..shape
         };
 

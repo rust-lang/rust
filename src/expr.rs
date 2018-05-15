@@ -326,7 +326,7 @@ pub fn format_expr(
                 rw
             } else {
                 // 9 = `do catch `
-                let budget = shape.width.checked_sub(9).unwrap_or(0);
+                let budget = shape.width.saturating_sub(9);
                 Some(format!(
                     "{}{}",
                     "do catch ",
@@ -1002,8 +1002,7 @@ impl<'a> ControlFlow<'a> {
         let one_line_budget = context
             .config
             .max_width()
-            .checked_sub(constr_shape.used_width() + offset + brace_overhead)
-            .unwrap_or(0);
+            .saturating_sub(constr_shape.used_width() + offset + brace_overhead);
         let force_newline_brace = (pat_expr_string.contains('\n')
             || pat_expr_string.len() > one_line_budget)
             && !last_line_extendable(&pat_expr_string);
@@ -1109,7 +1108,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
             return Some(cond_str);
         }
 
-        let block_width = shape.width.checked_sub(used_width).unwrap_or(0);
+        let block_width = shape.width.saturating_sub(used_width);
         // This is used only for the empty block case: `{}`. So, we use 1 if we know
         // we should avoid the single line case.
         let block_width = if self.else_block.is_some() || self.nested_if {
@@ -1828,7 +1827,7 @@ pub fn rewrite_field(
         Some(attrs_str + &name)
     } else {
         let mut separator = String::from(struct_lit_field_separator(context.config));
-        for _ in 0..prefix_max_width.checked_sub(name.len()).unwrap_or(0) {
+        for _ in 0..prefix_max_width.saturating_sub(name.len()) {
             separator.push(' ');
         }
         let overhead = name.len() + separator.len();
@@ -2053,13 +2052,11 @@ pub fn rewrite_assign_rhs_with<S: Into<String>, R: Rewrite>(
     rhs_tactics: RhsTactics,
 ) -> Option<String> {
     let lhs = lhs.into();
-    let last_line_width = last_line_width(&lhs)
-        .checked_sub(if lhs.contains('\n') {
-            shape.indent.width()
-        } else {
-            0
-        })
-        .unwrap_or(0);
+    let last_line_width = last_line_width(&lhs).saturating_sub(if lhs.contains('\n') {
+        shape.indent.width()
+    } else {
+        0
+    });
     // 1 = space between operator and rhs.
     let orig_shape = shape.offset_left(last_line_width + 1).unwrap_or(Shape {
         width: 0,

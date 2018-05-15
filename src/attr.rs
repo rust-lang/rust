@@ -77,7 +77,7 @@ fn format_derive(context: &RewriteContext, derive_args: &[&str], shape: Shape) -
             result.push_str(&(shape.indent + 9).to_string(context.config));
             budget = initial_budget;
         } else {
-            budget = budget.checked_sub(width).unwrap_or(0);
+            budget = budget.saturating_sub(width);
         }
         result.push_str(a);
         if i != num - 1 {

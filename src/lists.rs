@@ -193,7 +193,7 @@ where
     };
 
     let (sep_count, total_width) = calculate_width(items.clone());
-    let total_sep_len = sep.len() * sep_count.checked_sub(1).unwrap_or(0);
+    let total_sep_len = sep.len() * sep_count.saturating_sub(1);
     let real_total = total_width + total_sep_len;
 
     if real_total <= limit
@@ -485,9 +485,7 @@ where
 }
 
 fn post_comment_alignment(item_max_width: Option<usize>, inner_item_len: usize) -> usize {
-    item_max_width
-        .and_then(|max_line_width| max_line_width.checked_sub(inner_item_len))
-        .unwrap_or(0)
+    item_max_width.unwrap_or(0).saturating_sub(inner_item_len)
 }
 
 pub struct ListItems<'a, I, F1, F2, F3>

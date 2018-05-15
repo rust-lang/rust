@@ -703,7 +703,7 @@ fn rewrite_nested_use_tree(
     let remaining_width = if has_nested_list {
         0
     } else {
-        shape.width.checked_sub(2).unwrap_or(0)
+        shape.width.saturating_sub(2)
     };
 
     let tactic = definitive_tactic(

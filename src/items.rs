@@ -1503,7 +1503,7 @@ pub fn rewrite_struct_field(
         attrs_extendable,
     )?;
     let overhead = last_line_width(&attr_prefix);
-    let lhs_offset = lhs_max_width.checked_sub(overhead).unwrap_or(0);
+    let lhs_offset = lhs_max_width.saturating_sub(overhead);
     for _ in 0..lhs_offset {
         spacing.push(' ');
     }

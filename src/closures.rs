@@ -240,10 +240,7 @@ fn rewrite_closure_fn_decl(
     );
     let item_vec = arg_items.collect::<Vec<_>>();
     // 1 = space between arguments and return type.
-    let horizontal_budget = nested_shape
-        .width
-        .checked_sub(ret_str.len() + 1)
-        .unwrap_or(0);
+    let horizontal_budget = nested_shape.width.saturating_sub(ret_str.len() + 1);
     let tactic = definitive_tactic(
         &item_vec,
         ListTactic::HorizontalVertical,
