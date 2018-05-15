@@ -60,7 +60,7 @@
 //! sort of a minor point so I've opted to leave it for later---after all
 //! we may want to adjust precisely when coercions occur.
 
-use check::{Diverges, FnCtxt, Needs};
+use check::{FnCtxt, Needs};
 
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -800,21 +800,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 exprs: &[E],
                                 prev_ty: Ty<'tcx>,
                                 new: &hir::Expr,
-                                new_ty: Ty<'tcx>,
-                                new_diverges: Diverges)
+                                new_ty: Ty<'tcx>)
                                 -> RelateResult<'tcx, Ty<'tcx>>
         where E: AsCoercionSite
     {
         let prev_ty = self.resolve_type_vars_with_obligations(prev_ty);
         let new_ty = self.resolve_type_vars_with_obligations(new_ty);
         debug!("coercion::try_find_coercion_lub({:?}, {:?})", prev_ty, new_ty);
-
-        // Special-ish case: we can coerce any type `T` into the `!`
-        // type, but only if the source expression diverges.
-        if prev_ty.is_never() && new_diverges.always() {
-            debug!("permit coercion to `!` because expr diverges");
-            return Ok(prev_ty);
-        }
 
         // Special-case that coercion alone cannot handle:
         // Two function item types of differing IDs or Substs.
@@ -1054,14 +1046,12 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                       fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                       cause: &ObligationCause<'tcx>,
                       expression: &'gcx hir::Expr,
-                      expression_ty: Ty<'tcx>,
-                      expression_diverges: Diverges)
+                      expression_ty: Ty<'tcx>)
     {
         self.coerce_inner(fcx,
                           cause,
                           Some(expression),
                           expression_ty,
-                          expression_diverges,
                           None, false)
     }
 
@@ -1087,7 +1077,6 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                           cause,
                           None,
                           fcx.tcx.mk_nil(),
-                          Diverges::Maybe,
                           Some(augment_error),
                           label_unit_as_expected)
     }
@@ -1100,7 +1089,6 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         cause: &ObligationCause<'tcx>,
                         expression: Option<&'gcx hir::Expr>,
                         mut expression_ty: Ty<'tcx>,
-                        expression_diverges: Diverges,
                         augment_error: Option<&mut FnMut(&mut DiagnosticBuilder)>,
                         label_expression_as_expected: bool)
     {
@@ -1134,15 +1122,13 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                                                   exprs,
                                                   self.merged_ty(),
                                                   expression,
-                                                  expression_ty,
-                                                  expression_diverges),
+                                                  expression_ty),
                     Expressions::UpFront(ref coercion_sites) =>
                         fcx.try_find_coercion_lub(cause,
                                                   &coercion_sites[0..self.pushed],
                                                   self.merged_ty(),
                                                   expression,
-                                                  expression_ty,
-                                                  expression_diverges),
+                                                  expression_ty),
                 }
             }
         } else {
