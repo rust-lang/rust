@@ -20,7 +20,7 @@ use hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use hir::map::Map;
 use hir::ItemLocalId;
 use hir::LifetimeName;
-use ty::{self, TyCtxt};
+use ty::{self, TyCtxt, GenericParamDefKind};
 
 use errors::DiagnosticBuilder;
 use rustc::lint;
@@ -667,8 +667,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 for lt_def in generics.lifetimes() {
                     let (lt_name, region) = Region::early(&self.tcx.hir, &mut index, &lt_def);
                     if let hir::LifetimeName::Underscore = lt_name {
-                        // Pick the elided lifetime "definition" if one exists and use it to make an
-                        // elision scope.
+                        // Pick the elided lifetime "definition" if one exists and use it to make
+                        // an elision scope.
                         elision = Some(region);
                     } else {
                         lifetimes.insert(lt_name, region);
@@ -1659,9 +1659,16 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     .entry(def_id)
                     .or_insert_with(|| {
                         tcx.generics_of(def_id)
-                            .types
+                            .params
                             .iter()
-                            .map(|def| def.object_lifetime_default)
+                            .filter_map(|param| {
+                                match param.kind {
+                                    GenericParamDefKind::Type(ty) => {
+                                        Some(ty.object_lifetime_default)
+                                    }
+                                    GenericParamDefKind::Lifetime => None,
+                                }
+                            })
                             .collect()
                     })
             };

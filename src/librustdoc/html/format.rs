@@ -117,11 +117,11 @@ impl<'a> fmt::Display for TyParamBounds<'a> {
     }
 }
 
-impl fmt::Display for clean::GenericParam {
+impl fmt::Display for clean::GenericParamDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            clean::GenericParam::Lifetime(ref lp) => write!(f, "{}", lp),
-            clean::GenericParam::Type(ref tp) => {
+            clean::GenericParamDef::Lifetime(ref lp) => write!(f, "{}", lp),
+            clean::GenericParamDef::Type(ref tp) => {
                 f.write_str(&tp.name)?;
 
                 if !tp.bounds.is_empty() {

@@ -21,6 +21,7 @@ use namespace::Namespace;
 use rustc::ty::subst::{Kind, UnpackedKind, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, RegionKind, Ty, TyCtxt, ToPredicate, TypeFoldable};
+use rustc::ty::GenericParamDefKind;
 use rustc::ty::wf::object_region_bounds;
 use rustc_target::spec::abi;
 use std::slice;
@@ -43,7 +44,7 @@ pub trait AstConv<'gcx, 'tcx> {
                                  -> ty::GenericPredicates<'tcx>;
 
     /// What lifetime should we use when a lifetime is omitted (and not elided)?
-    fn re_infer(&self, span: Span, _def: Option<&ty::RegionParameterDef>)
+    fn re_infer(&self, span: Span, _def: Option<&ty::GenericParamDef>)
                 -> Option<ty::Region<'tcx>>;
 
     /// What type should we use when a type is omitted?
@@ -51,7 +52,7 @@ pub trait AstConv<'gcx, 'tcx> {
 
     /// Same as ty_infer, but with a known type parameter definition.
     fn ty_infer_for_def(&self,
-                        _def: &ty::TypeParameterDef,
+                        _def: &ty::GenericParamDef,
                         span: Span) -> Ty<'tcx> {
         self.ty_infer(span)
     }
@@ -87,6 +88,11 @@ struct ConvertedBinding<'tcx> {
     span: Span,
 }
 
+struct ParamRange {
+    required: usize,
+    accepted: usize
+}
+
 /// Dummy type used for the `Self` of a `TraitRef` created for converting
 /// a trait object, and which gets removed in `ExistentialTraitRef`.
 /// This type must not appear anywhere in other converted types.
@@ -95,7 +101,7 @@ const TRAIT_OBJECT_DUMMY_SELF: ty::TypeVariants<'static> = ty::TyInfer(ty::Fresh
 impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     pub fn ast_region_to_region(&self,
         lifetime: &hir::Lifetime,
-        def: Option<&ty::RegionParameterDef>)
+        def: Option<&ty::GenericParamDef>)
         -> ty::Region<'tcx>
     {
         let tcx = self.tcx();
@@ -208,92 +214,119 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
         let decl_generics = tcx.generics_of(def_id);
-        let num_types_provided = parameters.types.len();
-        let expected_num_region_params = decl_generics.regions.len();
-        let supplied_num_region_params = parameters.lifetimes.len();
-        if expected_num_region_params != supplied_num_region_params {
-            report_lifetime_number_error(tcx, span,
-                                         supplied_num_region_params,
-                                         expected_num_region_params);
+        let ty_provided = parameters.types.len();
+        let lt_provided = parameters.lifetimes.len();
+
+        let mut lt_accepted = 0;
+        let mut ty_params = ParamRange { required: 0, accepted: 0 };
+        for param in &decl_generics.params {
+            match param.kind {
+                GenericParamDefKind::Lifetime => {
+                    lt_accepted += 1;
+                }
+                GenericParamDefKind::Type(ty) => {
+                    ty_params.accepted += 1;
+                    if !ty.has_default {
+                        ty_params.required += 1;
+                    }
+                }
+            };
+        }
+        if self_ty.is_some() {
+            ty_params.required -= 1;
+            ty_params.accepted -= 1;
+        }
+
+        if lt_accepted != lt_provided {
+            report_lifetime_number_error(tcx, span, lt_provided, lt_accepted);
         }
 
         // If a self-type was declared, one should be provided.
         assert_eq!(decl_generics.has_self, self_ty.is_some());
 
         // Check the number of type parameters supplied by the user.
-        let ty_param_defs = &decl_generics.types[self_ty.is_some() as usize..];
-        if !infer_types || num_types_provided > ty_param_defs.len() {
-            check_type_argument_count(tcx, span, num_types_provided, ty_param_defs);
+        if !infer_types || ty_provided > ty_params.required {
+            check_type_argument_count(tcx, span, ty_provided, ty_params);
         }
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
-        let default_needs_object_self = |p: &ty::TypeParameterDef| {
-            if is_object && p.has_default {
-                if tcx.at(span).type_of(p.def_id).has_self_ty() {
-                    // There is no suitable inference default for a type parameter
-                    // that references self, in an object type.
-                    return true;
+        let default_needs_object_self = |param: &ty::GenericParamDef| {
+            if let GenericParamDefKind::Type(ty) = param.kind {
+                if is_object && ty.has_default {
+                    if tcx.at(span).type_of(param.def_id).has_self_ty() {
+                        // There is no suitable inference default for a type parameter
+                        // that references self, in an object type.
+                        return true;
+                    }
                 }
             }
 
             false
         };
 
-        let substs = Substs::for_item(tcx, def_id, |def, _| {
-            let i = def.index as usize - self_ty.is_some() as usize;
-            if let Some(lifetime) = parameters.lifetimes.get(i) {
-                self.ast_region_to_region(lifetime, Some(def))
-            } else {
-                tcx.types.re_static
-            }
-        }, |def, substs| {
-            let i = def.index as usize;
-
-            // Handle Self first, so we can adjust the index to match the AST.
-            if let (0, Some(ty)) = (i, self_ty) {
-                return ty;
-            }
-
-            let i = i - self_ty.is_some() as usize - decl_generics.regions.len();
-            if i < num_types_provided {
-                // A provided type parameter.
-                self.ast_ty_to_ty(&parameters.types[i])
-            } else if infer_types {
-                // No type parameters were provided, we can infer all.
-                let ty_var = if !default_needs_object_self(def) {
-                    self.ty_infer_for_def(def, span)
-                } else {
-                    self.ty_infer(span)
-                };
-                ty_var
-            } else if def.has_default {
-                // No type parameter provided, but a default exists.
-
-                // If we are converting an object type, then the
-                // `Self` parameter is unknown. However, some of the
-                // other type parameters may reference `Self` in their
-                // defaults. This will lead to an ICE if we are not
-                // careful!
-                if default_needs_object_self(def) {
-                    struct_span_err!(tcx.sess, span, E0393,
-                                     "the type parameter `{}` must be explicitly specified",
-                                     def.name)
-                        .span_label(span, format!("missing reference to `{}`", def.name))
-                        .note(&format!("because of the default `Self` reference, \
-                                        type parameters must be specified on object types"))
-                        .emit();
-                    tcx.types.err
-                } else {
-                    // This is a default type parameter.
-                    self.normalize_ty(
-                        span,
-                        tcx.at(span).type_of(def.def_id)
-                            .subst_spanned(tcx, substs, Some(span))
-                    )
+        let own_self = self_ty.is_some() as usize;
+        let substs = Substs::for_item(tcx, def_id, |param, substs| {
+            match param.kind {
+                GenericParamDefKind::Lifetime => {
+                    let i = param.index as usize - own_self;
+                    if let Some(lifetime) = parameters.lifetimes.get(i) {
+                        self.ast_region_to_region(lifetime, Some(param)).into()
+                    } else {
+                        tcx.types.re_static.into()
+                    }
                 }
-            } else {
-                // We've already errored above about the mismatch.
-                tcx.types.err
+                GenericParamDefKind::Type(ty) => {
+                    let i = param.index as usize;
+
+                    // Handle Self first, so we can adjust the index to match the AST.
+                    if let (0, Some(ty)) = (i, self_ty) {
+                        return ty.into();
+                    }
+
+                    let i = i - (lt_accepted + own_self);
+                    if i < ty_provided {
+                        // A provided type parameter.
+                        self.ast_ty_to_ty(&parameters.types[i]).into()
+                    } else if infer_types {
+                        // No type parameters were provided, we can infer all.
+                        if !default_needs_object_self(param) {
+                            self.ty_infer_for_def(param, span).into()
+                        } else {
+                            self.ty_infer(span).into()
+                        }
+                    } else if ty.has_default {
+                        // No type parameter provided, but a default exists.
+
+                        // If we are converting an object type, then the
+                        // `Self` parameter is unknown. However, some of the
+                        // other type parameters may reference `Self` in their
+                        // defaults. This will lead to an ICE if we are not
+                        // careful!
+                        if default_needs_object_self(param) {
+                            struct_span_err!(tcx.sess, span, E0393,
+                                             "the type parameter `{}` must be explicitly \
+                                             specified",
+                                             param.name)
+                                .span_label(span,
+                                            format!("missing reference to `{}`", param.name))
+                                .note(&format!("because of the default `Self` reference, \
+                                                type parameters must be specified on object \
+                                                types"))
+                                .emit();
+                            tcx.types.err.into()
+                        } else {
+                            // This is a default type parameter.
+                            self.normalize_ty(
+                                span,
+                                tcx.at(span).type_of(param.def_id)
+                                    .subst_spanned(tcx, substs, Some(span))
+                            ).into()
+                        }
+                    } else {
+                        // We've already errored above about the mismatch.
+                        tcx.types.err.into()
+                    }
+                }
             }
         });
 
@@ -979,8 +1012,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let item_id = tcx.hir.get_parent_node(node_id);
                 let item_def_id = tcx.hir.local_def_id(item_id);
                 let generics = tcx.generics_of(item_def_id);
-                let index = generics.type_param_to_index[&tcx.hir.local_def_id(node_id)];
-                tcx.mk_param(index, tcx.hir.name(node_id).as_interned_str())
+                let index = generics.param_def_id_to_index[&tcx.hir.local_def_id(node_id)];
+                tcx.mk_ty_param(index, tcx.hir.name(node_id).as_interned_str())
             }
             Def::SelfTy(_, Some(def_id)) => {
                 // Self in impl (we know the concrete type).
@@ -1124,12 +1157,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let mut substs = Vec::with_capacity(generics.count());
         if let Some(parent_id) = generics.parent {
             let parent_generics = tcx.generics_of(parent_id);
-            Substs::fill_item(
-                &mut substs, tcx, parent_generics,
-                &mut |def, _| tcx.mk_region(
-                    ty::ReEarlyBound(def.to_early_bound_region_data())),
-                &mut |def, _| tcx.mk_param_from_def(def)
-            );
+            Substs::fill_item(&mut substs, tcx, parent_generics, &mut |param, _| {
+                tcx.mk_param_from_def(param)
+            });
 
             // Replace all lifetimes with 'static
             for subst in &mut substs {
@@ -1139,10 +1169,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             debug!("impl_trait_ty_to_ty: substs from parent = {:?}", substs);
         }
-        assert_eq!(substs.len(), generics.parent_count());
+        assert_eq!(substs.len(), generics.parent_count);
 
         // Fill in our own generics with the resolved lifetimes
-        assert_eq!(lifetimes.len(), generics.own_count());
+        assert_eq!(lifetimes.len(), generics.params.len());
         substs.extend(lifetimes.iter().map(|lt| Kind::from(self.ast_region_to_region(lt, None))));
 
         debug!("impl_trait_ty_to_ty: final substs = {:?}", substs);
@@ -1299,10 +1329,12 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     (auto_traits, trait_bounds)
 }
 
-fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
-                             ty_param_defs: &[ty::TypeParameterDef]) {
-    let accepted = ty_param_defs.len();
-    let required = ty_param_defs.iter().take_while(|x| !x.has_default).count();
+fn check_type_argument_count(tcx: TyCtxt,
+                             span: Span,
+                             supplied: usize,
+                             ty_params: ParamRange)
+{
+    let (required, accepted) = (ty_params.required, ty_params.accepted);
     if supplied < required {
         let expected = if required < accepted {
             "expected at least"

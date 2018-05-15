@@ -36,6 +36,7 @@ use std::fmt;
 use syntax::ast;
 use session::DiagnosticMessageId;
 use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
+use ty::GenericParamDefKind;
 use ty::error::ExpectedFound;
 use ty::fast_reject;
 use ty::fold::TypeFolder;
@@ -378,12 +379,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             flags.push(("_Self".to_string(), Some(self.tcx.type_of(def.did).to_string())));
         }
 
-        for param in generics.types.iter() {
+        for param in generics.params.iter() {
+            let value = match param.kind {
+                GenericParamDefKind::Type(_) => {
+                    trait_ref.substs[param.index as usize].to_string()
+                },
+                GenericParamDefKind::Lifetime => continue,
+            };
             let name = param.name.to_string();
-            let ty = trait_ref.substs.type_for_def(param);
-            let ty_str = ty.to_string();
-            flags.push((name.clone(),
-                        Some(ty_str.clone())));
+            flags.push((name, Some(value)));
         }
 
         if let Some(true) = self_ty.ty_to_def_id().map(|def_id| def_id.is_local()) {

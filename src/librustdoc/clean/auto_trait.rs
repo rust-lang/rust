@@ -224,42 +224,39 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
     }
 
     fn generics_to_path_params(&self, generics: ty::Generics) -> hir::PathParameters {
-        let lifetimes = HirVec::from_vec(
-            generics
-                .regions
-                .iter()
-                .map(|p| {
-                    let name = if p.name == "" {
+        let mut lifetimes = vec![];
+        let mut types = vec![];
+
+        for param in generics.params.iter() {
+            match param.kind {
+                ty::GenericParamDefKind::Lifetime => {
+                    let name = if param.name == "" {
                         hir::LifetimeName::Static
                     } else {
-                        hir::LifetimeName::Name(p.name.as_symbol())
+                        hir::LifetimeName::Name(param.name.as_symbol())
                     };
 
-                    hir::Lifetime {
+                    lifetimes.push(hir::Lifetime {
                         id: ast::DUMMY_NODE_ID,
                         span: DUMMY_SP,
                         name,
-                    }
-                })
-                .collect(),
-        );
-        let types = HirVec::from_vec(
-            generics
-                .types
-                .iter()
-                .map(|p| P(self.ty_param_to_ty(p.clone())))
-                .collect(),
-        );
+                    });
+                }
+                ty::GenericParamDefKind::Type(_) => {
+                    types.push(P(self.ty_param_to_ty(param.clone())));
+                }
+            }
+        }
 
         hir::PathParameters {
-            lifetimes: lifetimes,
-            types: types,
+            lifetimes: HirVec::from_vec(lifetimes),
+            types: HirVec::from_vec(types),
             bindings: HirVec::new(),
             parenthesized: false,
         }
     }
 
-    fn ty_param_to_ty(&self, param: ty::TypeParameterDef) -> hir::Ty {
+    fn ty_param_to_ty(&self, param: ty::GenericParamDef) -> hir::Ty {
         debug!("ty_param_to_ty({:?}) {:?}", param, param.def_id);
         hir::Ty {
             id: ast::DUMMY_NODE_ID,
@@ -494,7 +491,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         &self,
         tcx: TyCtxt<'b, 'c, 'd>,
         pred: ty::Predicate<'d>,
-    ) -> FxHashSet<GenericParam> {
+    ) -> FxHashSet<GenericParamDef> {
         pred.walk_tys()
             .flat_map(|t| {
                 let mut regions = FxHashSet();
@@ -505,7 +502,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                         // We only care about late bound regions, as we need to add them
                         // to the 'for<>' section
                         &ty::ReLateBound(_, ty::BoundRegion::BrNamed(_, name)) => {
-                            Some(GenericParam::Lifetime(Lifetime(name.to_string())))
+                            Some(GenericParamDef::Lifetime(Lifetime(name.to_string())))
                         }
                         &ty::ReVar(_) | &ty::ReEarlyBound(_) => None,
                         _ => panic!("Unexpected region type {:?}", r),
@@ -853,7 +850,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
         for p in generic_params.iter_mut() {
             match p {
-                &mut GenericParam::Type(ref mut ty) => {
+                &mut GenericParamDef::Type(ref mut ty) => {
                     // We never want something like 'impl<T=Foo>'
                     ty.default.take();
 
@@ -863,7 +860,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                         ty.bounds.insert(0, TyParamBound::maybe_sized(self.cx));
                     }
                 }
-                _ => {}
+                GenericParamDef::Lifetime(_) => {}
             }
         }
 

@@ -28,7 +28,7 @@ trait BadAnnotation1
 {}
 
 #[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{C}>`"]
-//~^ ERROR there is no type parameter C on trait BadAnnotation2
+//~^ ERROR there is no parameter C on trait BadAnnotation2
 trait BadAnnotation2<A,B>
 {}
 

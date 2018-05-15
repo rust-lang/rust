@@ -45,7 +45,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let i_n_tps = tcx.generics_of(def_id).types.len();
+    let i_n_tps = tcx.generics_of(def_id).own_counts().types;
     if i_n_tps != n_tps {
         let span = match it.node {
             hir::ForeignItemFn(_, _, ref generics) => generics.span,
@@ -76,7 +76,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// and in libcore/intrinsics.rs
 pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       it: &hir::ForeignItem) {
-    let param = |n| tcx.mk_param(n, Symbol::intern(&format!("P{}", n)).as_interned_str());
+    let param = |n| tcx.mk_ty_param(n, Symbol::intern(&format!("P{}", n)).as_interned_str());
     let name = it.name.as_str();
     let (n_tps, inputs, output) = if name.starts_with("atomic_") {
         let split : Vec<&str> = name.split('_').collect();
@@ -342,11 +342,11 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                it: &hir::ForeignItem) {
     let param = |n| {
         let name = Symbol::intern(&format!("P{}", n)).as_interned_str();
-        tcx.mk_param(n, name)
+        tcx.mk_ty_param(n, name)
     };
 
     let def_id = tcx.hir.local_def_id(it.id);
-    let i_n_tps = tcx.generics_of(def_id).types.len();
+    let i_n_tps = tcx.generics_of(def_id).own_counts().types;
     let name = it.name.as_str();
 
     let (n_tps, inputs, output) = match &*name {

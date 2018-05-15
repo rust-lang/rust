@@ -25,7 +25,7 @@ use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray, DIFlags};
 use rustc::hir::TransFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Substs, UnpackedKind};
 
 use abi::Abi;
 use common::CodegenCx;
@@ -390,20 +390,25 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
         // Again, only create type information if full debuginfo is enabled
         let template_params: Vec<_> = if cx.sess().opts.debuginfo == FullDebugInfo {
-            let names = get_type_parameter_names(cx, generics);
-            substs.types().zip(names).map(|(ty, name)| {
-                let actual_type = cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
-                let actual_type_metadata = type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
-                let name = CString::new(name.as_str().as_bytes()).unwrap();
-                unsafe {
-                    llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
-                        DIB(cx),
-                        ptr::null_mut(),
-                        name.as_ptr(),
-                        actual_type_metadata,
-                        file_metadata,
-                        0,
-                        0)
+            let names = get_parameter_names(cx, generics);
+            substs.iter().zip(names).filter_map(|(kind, name)| {
+                if let UnpackedKind::Type(ty) = kind.unpack() {
+                    let actual_type = cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
+                    let actual_type_metadata =
+                        type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
+                    let name = CString::new(name.as_str().as_bytes()).unwrap();
+                    Some(unsafe {
+                        llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
+                            DIB(cx),
+                            ptr::null_mut(),
+                            name.as_ptr(),
+                            actual_type_metadata,
+                            file_metadata,
+                            0,
+                            0)
+                    })
+                } else {
+                    None
                 }
             }).collect()
         } else {
@@ -413,11 +418,13 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         return create_DIArray(DIB(cx), &template_params[..]);
     }
 
-    fn get_type_parameter_names(cx: &CodegenCx, generics: &ty::Generics) -> Vec<InternedString> {
+    fn get_parameter_names(cx: &CodegenCx,
+                           generics: &ty::Generics)
+                           -> Vec<InternedString> {
         let mut names = generics.parent.map_or(vec![], |def_id| {
-            get_type_parameter_names(cx, cx.tcx.generics_of(def_id))
+            get_parameter_names(cx, cx.tcx.generics_of(def_id))
         });
-        names.extend(generics.types.iter().map(|param| param.name));
+        names.extend(generics.params.iter().map(|param| param.name));
         names
     }
 

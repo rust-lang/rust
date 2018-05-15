@@ -735,54 +735,40 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::Generics {
                                           hasher: &mut StableHasher<W>) {
         let ty::Generics {
             parent,
-            parent_regions,
-            parent_types,
-            ref regions,
-            ref types,
+            ref parent_count,
+            ref params,
 
-            // Reverse map to each `TypeParameterDef`'s `index` field, from
+            // Reverse map to each `TypeParamDef`'s `index` field, from
             // `def_id.index` (`def_id.krate` is the same as the item's).
-            type_param_to_index: _, // Don't hash this
+            param_def_id_to_index: _, // Don't hash this
             has_self,
             has_late_bound_regions,
         } = *self;
 
         parent.hash_stable(hcx, hasher);
-        parent_regions.hash_stable(hcx, hasher);
-        parent_types.hash_stable(hcx, hasher);
-        regions.hash_stable(hcx, hasher);
-        types.hash_stable(hcx, hasher);
+        parent_count.hash_stable(hcx, hasher);
+        params.hash_stable(hcx, hasher);
         has_self.hash_stable(hcx, hasher);
         has_late_bound_regions.hash_stable(hcx, hasher);
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>>
-for ty::RegionParameterDef {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        let ty::RegionParameterDef {
-            name,
-            def_id,
-            index,
-            pure_wrt_drop
-        } = *self;
+impl_stable_hash_for!(enum ty::GenericParamDefKind {
+    Lifetime,
+    Type(ty)
+});
 
-        name.hash_stable(hcx, hasher);
-        def_id.hash_stable(hcx, hasher);
-        index.hash_stable(hcx, hasher);
-        pure_wrt_drop.hash_stable(hcx, hasher);
-    }
-}
-
-impl_stable_hash_for!(struct ty::TypeParameterDef {
+impl_stable_hash_for!(struct ty::GenericParamDef {
     name,
     def_id,
     index,
+    pure_wrt_drop,
+    kind
+});
+
+impl_stable_hash_for!(struct ty::TypeParamDef {
     has_default,
     object_lifetime_default,
-    pure_wrt_drop,
     synthetic
 });
 

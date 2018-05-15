@@ -44,6 +44,7 @@ use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predic
 use ty::RegionKind;
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
+use ty::GenericParamDefKind;
 use ty::layout::{LayoutDetails, TargetDataLayout};
 use ty::maps;
 use ty::steal::Steal;
@@ -2325,15 +2326,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem);
         let adt_def = self.adt_def(def_id);
-        let generics = self.generics_of(def_id);
-        let mut substs = vec![Kind::from(ty)];
-        // Add defaults for other generic params if there are some.
-        for def in generics.types.iter().skip(1) {
-            assert!(def.has_default);
-            let ty = self.type_of(def.def_id).subst(self, &substs);
-            substs.push(ty.into());
-        }
-        let substs = self.mk_substs(substs.into_iter());
+        let substs = Substs::for_item(self, def_id, |param, substs| {
+            match param.kind {
+                GenericParamDefKind::Lifetime => bug!(),
+                GenericParamDefKind::Type(ty_param) => {
+                    if param.index == 0 {
+                        ty.into()
+                    } else {
+                        assert!(ty_param.has_default);
+                        self.type_of(param.def_id).subst(self, substs).into()
+                    }
+                }
+            }
+        });
         self.mk_ty(TyAdt(adt_def, substs))
     }
 
@@ -2457,18 +2462,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(TyInfer(it))
     }
 
-    pub fn mk_param(self,
+    pub fn mk_ty_param(self,
                     index: u32,
                     name: InternedString) -> Ty<'tcx> {
         self.mk_ty(TyParam(ParamTy { idx: index, name: name }))
     }
 
     pub fn mk_self_type(self) -> Ty<'tcx> {
-        self.mk_param(0, keywords::SelfType.name().as_interned_str())
+        self.mk_ty_param(0, keywords::SelfType.name().as_interned_str())
     }
 
-    pub fn mk_param_from_def(self, def: &ty::TypeParameterDef) -> Ty<'tcx> {
-        self.mk_param(def.index, def.name)
+    pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> Kind<'tcx> {
+        match param.kind {
+            GenericParamDefKind::Lifetime => {
+                self.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())).into()
+            }
+            GenericParamDefKind::Type(_) => self.mk_ty_param(param.index, param.name).into(),
+        }
     }
 
     pub fn mk_anon(self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {

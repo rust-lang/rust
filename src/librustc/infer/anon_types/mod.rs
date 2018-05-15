@@ -14,7 +14,7 @@ use infer::outlives::free_region_map::FreeRegionRelations;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast;
 use traits::{self, PredicateObligation};
-use ty::{self, Ty, TyCtxt};
+use ty::{self, Ty, TyCtxt, GenericParamDefKind};
 use ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use ty::outlives::Component;
 use ty::subst::{Kind, Substs, UnpackedKind};
@@ -313,12 +313,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // `['a]` for the first impl trait and `'b` for the
         // second.
         let mut least_region = None;
-        for region_def in &abstract_type_generics.regions {
-            // Find the index of this region in the list of substitutions.
-            let index = region_def.index as usize;
-
+        for param in &abstract_type_generics.params {
+            match param.kind {
+                GenericParamDefKind::Lifetime => {}
+                _ => continue
+            }
             // Get the value supplied for this region from the substs.
-            let subst_arg = anon_defn.substs.region_at(index);
+            let subst_arg = anon_defn.substs.region_at(param.index as usize);
 
             // Compute the least upper bound of it with the other regions.
             debug!("constrain_anon_types: least_region={:?}", least_region);
@@ -616,10 +617,9 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
                 // during trans.
 
                 let generics = self.tcx.generics_of(def_id);
-                let parent_len = generics.parent_count();
                 let substs = self.tcx.mk_substs(substs.substs.iter().enumerate().map(
                     |(index, &kind)| {
-                        if index < parent_len {
+                        if index < generics.parent_count {
                             // Accommodate missing regions in the parent kinds...
                             self.fold_kind_mapping_missing_regions_to_empty(kind)
                         } else {

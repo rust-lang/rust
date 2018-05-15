@@ -12,6 +12,7 @@
 //! the guts are broken up into modules; see the comments in those modules.
 
 #![feature(crate_visibility_modifier)]
+#![feature(iterator_find_map)]
 
 #[macro_use]
 extern crate log;

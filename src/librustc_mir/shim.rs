@@ -12,7 +12,7 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer;
 use rustc::mir::*;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::ty::maps::Providers;
 
@@ -427,12 +427,12 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
 
-        let substs = Substs::for_item(
-            tcx,
-            self.def_id,
-            |_, _| tcx.types.re_erased,
-            |_, _| ty
-        );
+        let substs = Substs::for_item(tcx, self.def_id, |param, _| {
+            match param.kind {
+                GenericParamDefKind::Lifetime => tcx.types.re_erased.into(),
+                GenericParamDefKind::Type(_) => ty.into(),
+            }
+        });
 
         // `func == Clone::clone(&ty) -> ty`
         let func_ty = tcx.mk_fn_def(self.def_id, substs);

@@ -10,7 +10,7 @@
 
 use rustc::hir::{self, ImplItemKind, TraitItemKind};
 use rustc::infer::{self, InferOk};
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, GenericParamDefKind};
 use rustc::ty::util::ExplicitSelf;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::error::{ExpectedFound, TypeError};
@@ -357,8 +357,8 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 trait_to_skol_substs: &Substs<'tcx>)
                                                 -> Result<(), ErrorReported> {
     let span = tcx.sess.codemap().def_span(span);
-    let trait_params = &trait_generics.regions[..];
-    let impl_params = &impl_generics.regions[..];
+    let trait_params = trait_generics.own_counts().lifetimes;
+    let impl_params = impl_generics.own_counts().lifetimes;
 
     debug!("check_region_bounds_on_impl_method: \
             trait_generics={:?} \
@@ -377,7 +377,7 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // but found 0" it's confusing, because it looks like there
     // are zero. Since I don't quite know how to phrase things at
     // the moment, give a kind of vague error message.
-    if trait_params.len() != impl_params.len() {
+    if trait_params != impl_params {
         let mut err = struct_span_err!(tcx.sess,
                                        span,
                                        E0195,
@@ -574,8 +574,8 @@ fn compare_number_of_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         -> Result<(), ErrorReported> {
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
-    let num_impl_m_type_params = impl_m_generics.types.len();
-    let num_trait_m_type_params = trait_m_generics.types.len();
+    let num_impl_m_type_params = impl_m_generics.own_counts().types;
+    let num_trait_m_type_params = trait_m_generics.own_counts().types;
     if num_impl_m_type_params != num_trait_m_type_params {
         let impl_m_node_id = tcx.hir.as_local_node_id(impl_m.def_id).unwrap();
         let impl_m_item = tcx.hir.expect_impl_item(impl_m_node_id);
@@ -728,11 +728,24 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut error_found = false;
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
-    for (impl_ty, trait_ty) in impl_m_generics.types.iter().zip(trait_m_generics.types.iter()) {
-        if impl_ty.synthetic != trait_ty.synthetic {
-            let impl_node_id = tcx.hir.as_local_node_id(impl_ty.def_id).unwrap();
+    let impl_m_type_params = impl_m_generics.params.iter().filter_map(|param| {
+        match param.kind {
+            GenericParamDefKind::Type(ty) => Some((param.def_id, ty.synthetic)),
+            GenericParamDefKind::Lifetime => None,
+        }
+    });
+    let trait_m_type_params = trait_m_generics.params.iter().filter_map(|param| {
+        match param.kind {
+            GenericParamDefKind::Type(ty) => Some((param.def_id, ty.synthetic)),
+            GenericParamDefKind::Lifetime => None,
+        }
+    });
+    for ((impl_def_id, impl_synthetic),
+         (trait_def_id, trait_synthetic)) in impl_m_type_params.zip(trait_m_type_params) {
+        if impl_synthetic != trait_synthetic {
+            let impl_node_id = tcx.hir.as_local_node_id(impl_def_id).unwrap();
             let impl_span = tcx.hir.span(impl_node_id);
-            let trait_span = tcx.def_span(trait_ty.def_id);
+            let trait_span = tcx.def_span(trait_def_id);
             let mut err = struct_span_err!(tcx.sess,
                                            impl_span,
                                            E0643,

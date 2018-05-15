@@ -19,7 +19,7 @@ use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
 use ty::{TyClosure, TyGenerator, TyGeneratorWitness, TyForeign, TyProjection, TyAnon};
 use ty::{TyDynamic, TyInt, TyUint, TyInfer};
-use ty::{self, Ty, TyCtxt, TypeFoldable};
+use ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
 use util::nodemap::FxHashSet;
 
 use std::cell::Cell;
@@ -256,8 +256,10 @@ impl PrintContext {
         let verbose = self.is_verbose;
         let mut num_supplied_defaults = 0;
         let mut has_self = false;
-        let mut num_regions = 0;
-        let mut num_types = 0;
+        let mut own_counts = GenericParamCount {
+            lifetimes: 0,
+            types: 0,
+        };
         let mut is_value_path = false;
         let fn_trait_kind = ty::tls::with(|tcx| {
             // Unfortunately, some kinds of items (e.g., closures) don't have
@@ -303,6 +305,7 @@ impl PrintContext {
                 }
             }
             let mut generics = tcx.generics_of(item_def_id);
+            let child_own_counts = generics.own_counts();
             let mut path_def_id = did;
             has_self = generics.has_self;
 
@@ -310,10 +313,9 @@ impl PrintContext {
             if let Some(def_id) = generics.parent {
                 // Methods.
                 assert!(is_value_path);
-                child_types = generics.types.len();
+                child_types = child_own_counts.types;
                 generics = tcx.generics_of(def_id);
-                num_regions = generics.regions.len();
-                num_types = generics.types.len();
+                own_counts = generics.own_counts();
 
                 if has_self {
                     print!(f, self, write("<"), print_display(substs.type_at(0)), write(" as "))?;
@@ -328,20 +330,30 @@ impl PrintContext {
                     assert_eq!(has_self, false);
                 } else {
                     // Types and traits.
-                    num_regions = generics.regions.len();
-                    num_types = generics.types.len();
+                    own_counts = child_own_counts;
                 }
             }
 
             if !verbose {
-                if generics.types.last().map_or(false, |def| def.has_default) {
+                let mut type_params =
+                    generics.params.iter().rev().filter_map(|param| {
+                        match param.kind {
+                            GenericParamDefKind::Type(ty) => Some((param.def_id, ty.has_default)),
+                            GenericParamDefKind::Lifetime => None,
+                        }
+                    }).peekable();
+                let has_default = {
+                    let has_default = type_params.peek().map(|(_, has_default)| has_default);
+                    *has_default.unwrap_or(&false)
+                };
+                if has_default {
                     if let Some(substs) = tcx.lift(&substs) {
-                        let tps = substs.types().rev().skip(child_types);
-                        for (def, actual) in generics.types.iter().rev().zip(tps) {
-                            if !def.has_default {
+                        let mut types = substs.types().rev().skip(child_types);
+                        for ((def_id, has_default), actual) in type_params.zip(types) {
+                            if !has_default {
                                 break;
                             }
-                            if tcx.type_of(def.def_id).subst(tcx, substs) != actual {
+                            if tcx.type_of(def_id).subst(tcx, substs) != actual {
                                 break;
                             }
                             num_supplied_defaults += 1;
@@ -401,10 +413,11 @@ impl PrintContext {
             Ok(())
         };
 
-        print_regions(f, "<", 0, num_regions)?;
+        print_regions(f, "<", 0, own_counts.lifetimes)?;
 
-        let tps = substs.types().take(num_types - num_supplied_defaults)
-                                .skip(has_self as usize);
+        let tps = substs.types()
+                        .take(own_counts.types - num_supplied_defaults)
+                        .skip(has_self as usize);
 
         for ty in tps {
             start_or_continue(f, "<", ", ")?;
@@ -435,10 +448,10 @@ impl PrintContext {
                 write!(f, "::{}", item_name)?;
             }
 
-            print_regions(f, "::<", num_regions, usize::MAX)?;
+            print_regions(f, "::<", own_counts.lifetimes, usize::MAX)?;
 
             // FIXME: consider being smart with defaults here too
-            for ty in substs.types().skip(num_types) {
+            for ty in substs.types().skip(own_counts.types) {
                 start_or_continue(f, "::<", ", ")?;
                 ty.print_display(f, self)?;
             }
@@ -588,18 +601,14 @@ define_print! {
     }
 }
 
-impl fmt::Debug for ty::TypeParameterDef {
+impl fmt::Debug for ty::GenericParamDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TypeParameterDef({}, {:?}, {})",
-               self.name,
-               self.def_id,
-               self.index)
-    }
-}
-
-impl fmt::Debug for ty::RegionParameterDef {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RegionParameterDef({}, {:?}, {})",
+        let type_name = match self.kind {
+            ty::GenericParamDefKind::Lifetime => "Lifetime",
+            ty::GenericParamDefKind::Type(_) => "Type",
+        };
+        write!(f, "{}({}, {:?}, {})",
+               type_name,
                self.name,
                self.def_id,
                self.index)

@@ -284,7 +284,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         // We can't monomorphize things like `fn foo<A>(...)`.
-        if !self.generics_of(method.def_id).types.is_empty() {
+        if self.generics_of(method.def_id).own_counts().types != 0 {
             return Some(MethodViolationCode::Generic);
         }
 
@@ -387,7 +387,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 pub(super) fn is_object_safe_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                         trait_def_id: DefId)
-                                         -> bool {
+                                                trait_def_id: DefId) -> bool {
     tcx.object_safety_violations(trait_def_id).is_empty()
 }

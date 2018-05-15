@@ -94,9 +94,9 @@ use rustc::infer::anon_types::AnonTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
 use rustc::mir::interpret::{GlobalId};
-use rustc::ty::subst::{Kind, Subst, Substs};
+use rustc::ty::subst::{Kind, UnpackedKind, Subst, Substs};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
-use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPredicate};
+use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::maps::Providers;
@@ -1239,7 +1239,7 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
         } else {
             for item in &m.items {
                 let generics = tcx.generics_of(tcx.hir.local_def_id(item.id));
-                if !generics.types.is_empty() {
+                if generics.params.len() - generics.own_counts().lifetimes != 0 {
                     let mut err = struct_span_err!(tcx.sess, item.span, E0044,
                         "foreign items may not have type parameters");
                     err.span_label(item.span, "can't have type parameters");
@@ -1716,7 +1716,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         let item_id = tcx.hir.ty_param_owner(node_id);
         let item_def_id = tcx.hir.local_def_id(item_id);
         let generics = tcx.generics_of(item_def_id);
-        let index = generics.type_param_to_index[&def_id];
+        let index = generics.param_def_id_to_index[&def_id];
         ty::GenericPredicates {
             parent: None,
             predicates: self.param_env.caller_bounds.iter().filter(|predicate| {
@@ -1730,7 +1730,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn re_infer(&self, span: Span, def: Option<&ty::RegionParameterDef>)
+    fn re_infer(&self, span: Span, def: Option<&ty::GenericParamDef>)
                 -> Option<ty::Region<'tcx>> {
         let v = match def {
             Some(def) => infer::EarlyBoundRegion(span, def.name),
@@ -1744,9 +1744,12 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn ty_infer_for_def(&self,
-                        ty_param_def: &ty::TypeParameterDef,
+                        ty_param_def: &ty::GenericParamDef,
                         span: Span) -> Ty<'tcx> {
-        self.type_var_for_def(span, ty_param_def)
+        if let UnpackedKind::Type(ty) = self.var_for_def(span, ty_param_def).unpack() {
+            return ty;
+        }
+        unreachable!()
     }
 
     fn projected_ty_from_poly_trait_ref(&self,
@@ -4751,41 +4754,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let (fn_start, has_self) = match (type_segment, fn_segment) {
             (_, Some((_, generics))) => {
-                (generics.parent_count(), generics.has_self)
+                (generics.parent_count, generics.has_self)
             }
             (Some((_, generics)), None) => {
-                (generics.own_count(), generics.has_self)
+                (generics.params.len(), generics.has_self)
             }
             (None, None) => (0, false)
         };
-        let substs = Substs::for_item(self.tcx, def.def_id(), |def, _| {
-            let mut i = def.index as usize;
+        let substs = Substs::for_item(self.tcx, def.def_id(), |param, substs| {
+            let mut i = param.index as usize;
 
             let segment = if i < fn_start {
-                i -= has_self as usize;
-                type_segment
-            } else {
-                i -= fn_start;
-                fn_segment
-            };
-            let lifetimes = segment.map_or(&[][..], |(s, _)| {
-                s.parameters.as_ref().map_or(&[][..], |p| &p.lifetimes[..])
-            });
-
-            if let Some(lifetime) = lifetimes.get(i) {
-                AstConv::ast_region_to_region(self, lifetime, Some(def))
-            } else {
-                self.re_infer(span, Some(def)).unwrap()
-            }
-        }, |def, substs| {
-            let mut i = def.index as usize;
-
-            let segment = if i < fn_start {
-                // Handle Self first, so we can adjust the index to match the AST.
-                if has_self && i == 0 {
-                    return opt_self_ty.unwrap_or_else(|| {
-                        self.type_var_for_def(span, def)
-                    });
+                if let GenericParamDefKind::Type(_) = param.kind {
+                    // Handle Self first, so we can adjust the index to match the AST.
+                    if has_self && i == 0 {
+                        return opt_self_ty.map(|ty| Kind::from(ty)).unwrap_or_else(|| {
+                            self.var_for_def(span, param)
+                        });
+                    }
                 }
                 i -= has_self as usize;
                 type_segment
@@ -4793,31 +4779,52 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 i -= fn_start;
                 fn_segment
             };
-            let (types, infer_types) = segment.map_or((&[][..], true), |(s, _)| {
-                (s.parameters.as_ref().map_or(&[][..], |p| &p.types[..]), s.infer_types)
-            });
 
-            // Skip over the lifetimes in the same segment.
-            if let Some((_, generics)) = segment {
-                i -= generics.regions.len();
-            }
+            match param.kind {
+                GenericParamDefKind::Lifetime => {
+                    let lifetimes = segment.map_or(&[][..], |(s, _)| {
+                        s.parameters.as_ref().map_or(&[][..], |p| &p.lifetimes[..])
+                    });
 
-            if let Some(ast_ty) = types.get(i) {
-                // A provided type parameter.
-                self.to_ty(ast_ty)
-            } else if !infer_types && def.has_default {
-                // No type parameter provided, but a default exists.
-                let default = self.tcx.type_of(def.def_id);
-                self.normalize_ty(
-                    span,
-                    default.subst_spanned(self.tcx, substs, Some(span))
-                )
-            } else {
-                // No type parameters were provided, we can infer all.
-                // This can also be reached in some error cases:
-                // We prefer to use inference variables instead of
-                // TyError to let type inference recover somewhat.
-                self.type_var_for_def(span, def)
+                    if let Some(lifetime) = lifetimes.get(i) {
+                        AstConv::ast_region_to_region(self, lifetime, Some(param)).into()
+                    } else {
+                        self.re_infer(span, Some(param)).unwrap().into()
+                    }
+                }
+                GenericParamDefKind::Type(_) => {
+                    let (types, infer_types) = segment.map_or((&[][..], true), |(s, _)| {
+                        (s.parameters.as_ref().map_or(&[][..], |p| &p.types[..]), s.infer_types)
+                    });
+
+                    // Skip over the lifetimes in the same segment.
+                    if let Some((_, generics)) = segment {
+                        i -= generics.own_counts().lifetimes;
+                    }
+
+                    let has_default = match param.kind {
+                        GenericParamDefKind::Type(ty) => ty.has_default,
+                        _ => unreachable!()
+                    };
+
+                    if let Some(ast_ty) = types.get(i) {
+                        // A provided type parameter.
+                        self.to_ty(ast_ty).into()
+                    } else if !infer_types && has_default {
+                        // No type parameter provided, but a default exists.
+                        let default = self.tcx.type_of(param.def_id);
+                        self.normalize_ty(
+                            span,
+                            default.subst_spanned(self.tcx, substs, Some(span))
+                        ).into()
+                    } else {
+                        // No type parameters were provided, we can infer all.
+                        // This can also be reached in some error cases:
+                        // We prefer to use inference variables instead of
+                        // TyError to let type inference recover somewhat.
+                        self.var_for_def(span, param)
+                    }
+                }
             }
         });
 
@@ -4917,18 +4924,40 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             format!("{} type parameter{}", n, if n == 1 { "" } else { "s" })
         };
 
-        // Check provided type parameters.
-        let type_defs = segment.map_or(&[][..], |(_, generics)| {
-            if generics.parent.is_none() {
-                &generics.types[generics.has_self as usize..]
-            } else {
-                &generics.types
-            }
-        });
-        let required_len = type_defs.iter().take_while(|d| !d.has_default).count();
-        if types.len() > type_defs.len() {
-            let span = types[type_defs.len()].span;
-            let expected_text = count_type_params(type_defs.len());
+        // Check provided parameters.
+        let ((ty_required, ty_accepted), lt_accepted) =
+            segment.map_or(((0, 0), 0), |(_, generics)| {
+                struct ParamRange {
+                    required: usize,
+                    accepted: usize
+                };
+
+                let mut lt_accepted = 0;
+                let mut ty_params = ParamRange { required: 0, accepted: 0 };
+                for param in &generics.params {
+                    match param.kind {
+                        GenericParamDefKind::Lifetime => {
+                            lt_accepted += 1;
+                        }
+                        GenericParamDefKind::Type(ty) => {
+                            ty_params.accepted += 1;
+                            if !ty.has_default {
+                                ty_params.required += 1;
+                            }
+                        }
+                    };
+                }
+                if generics.parent.is_none() && generics.has_self {
+                    ty_params.required -= 1;
+                    ty_params.accepted -= 1;
+                }
+
+                ((ty_params.required, ty_params.accepted), lt_accepted)
+            });
+
+        if types.len() > ty_accepted {
+            let span = types[ty_accepted].span;
+            let expected_text = count_type_params(ty_accepted);
             let actual_text = count_type_params(types.len());
             struct_span_err!(self.tcx.sess, span, E0087,
                              "too many type parameters provided: \
@@ -4941,8 +4970,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // type parameters, we force instantiate_value_path to
             // use inference variables instead of the provided types.
             *segment = None;
-        } else if types.len() < required_len && !infer_types && !supress_mismatch_error {
-            let expected_text = count_type_params(required_len);
+        } else if types.len() < ty_required && !infer_types && !supress_mismatch_error {
+            let expected_text = count_type_params(ty_required);
             let actual_text = count_type_params(types.len());
             struct_span_err!(self.tcx.sess, span, E0089,
                              "too few type parameters provided: \
@@ -4956,10 +4985,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             AstConv::prohibit_projection(self, bindings[0].span);
         }
 
-        // Check provided lifetime parameters.
-        let lifetime_defs = segment.map_or(&[][..], |(_, generics)| &generics.regions);
-        let required_len = lifetime_defs.len();
-
         // Prohibit explicit lifetime arguments if late bound lifetime parameters are present.
         let has_late_bound_lifetime_defs =
             segment.map_or(None, |(_, generics)| generics.has_late_bound_regions);
@@ -4968,8 +4993,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let primary_msg = "cannot specify lifetime arguments explicitly \
                                if late bound lifetime parameters are present";
             let note_msg = "the late bound lifetime parameter is introduced here";
-            if !is_method_call && (lifetimes.len() > lifetime_defs.len() ||
-                                   lifetimes.len() < required_len && !infer_lifetimes) {
+            if !is_method_call && (lifetimes.len() > lt_accepted ||
+                                   lifetimes.len() < lt_accepted && !infer_lifetimes) {
                 let mut err = self.tcx.sess.struct_span_err(lifetimes[0].span, primary_msg);
                 err.span_note(span_late, note_msg);
                 err.emit();
@@ -4983,9 +5008,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        if lifetimes.len() > lifetime_defs.len() {
-            let span = lifetimes[lifetime_defs.len()].span;
-            let expected_text = count_lifetime_params(lifetime_defs.len());
+        if lifetimes.len() > lt_accepted {
+            let span = lifetimes[lt_accepted].span;
+            let expected_text = count_lifetime_params(lt_accepted);
             let actual_text = count_lifetime_params(lifetimes.len());
             struct_span_err!(self.tcx.sess, span, E0088,
                              "too many lifetime parameters provided: \
@@ -4993,8 +5018,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                              expected_text, actual_text)
                 .span_label(span, format!("expected {}", expected_text))
                 .emit();
-        } else if lifetimes.len() < required_len && !infer_lifetimes {
-            let expected_text = count_lifetime_params(lifetime_defs.len());
+        } else if lifetimes.len() < lt_accepted && !infer_lifetimes {
+            let expected_text = count_lifetime_params(lt_accepted);
             let actual_text = count_lifetime_params(lifetimes.len());
             struct_span_err!(self.tcx.sess, span, E0090,
                              "too few lifetime parameters provided: \
@@ -5010,17 +5035,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         span: Span,
                         segment: &mut Option<(&hir::PathSegment, &ty::Generics)>)
                         -> bool {
-        use hir::SyntheticTyParamKind::*;
-
         let segment = segment.map(|(path_segment, generics)| {
             let explicit = !path_segment.infer_types;
-            let impl_trait = generics.types.iter()
-                                           .any(|ty_param| {
-                                               match ty_param.synthetic {
-                                                   Some(ImplTrait) => true,
-                                                   _ => false,
-                                               }
-                                           });
+            let impl_trait = generics.params.iter().any(|param| {
+                if let ty::GenericParamDefKind::Type(ty) = param.kind {
+                    if let Some(hir::SyntheticTyParamKind::ImplTrait) = ty.synthetic {
+                        return true;
+                    }
+                }
+                false
+            });
 
             if explicit && impl_trait {
                 let mut err = struct_span_err! {

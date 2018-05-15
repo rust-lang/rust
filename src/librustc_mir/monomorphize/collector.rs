@@ -197,7 +197,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::ty::subst::{Substs, Kind};
-use rustc::ty::{self, TypeFoldable, Ty, TyCtxt};
+use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::session::config;
 use rustc::mir::{self, Location, Promoted};
@@ -1076,7 +1076,7 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
 
 fn item_has_type_parameters<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
     let generics = tcx.generics_of(def_id);
-    generics.parent_types as usize + generics.types.len() > 0
+    generics.requires_monomorphization(tcx)
 }
 
 fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1108,14 +1108,18 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         continue;
                     }
 
-                    if !tcx.generics_of(method.def_id).types.is_empty() {
+                    if tcx.generics_of(method.def_id).own_counts().types != 0 {
                         continue;
                     }
 
-                    let substs = Substs::for_item(tcx,
-                                                  method.def_id,
-                                                  |_, _| tcx.types.re_erased,
-                                                  |def, _| trait_ref.substs.type_for_def(def));
+                    let substs = Substs::for_item(tcx, method.def_id, |param, _| {
+                        match param.kind {
+                            GenericParamDefKind::Lifetime => tcx.types.re_erased.into(),
+                            GenericParamDefKind::Type(_) => {
+                                trait_ref.substs[param.index as usize]
+                            }
+                        }
+                    });
 
                     let instance = ty::Instance::resolve(tcx,
                                                          ty::ParamEnv::reveal_all(),

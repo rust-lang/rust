@@ -292,7 +292,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// ordering.
     fn split(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> SplitClosureSubsts<'tcx> {
         let generics = tcx.generics_of(def_id);
-        let parent_len = generics.parent_count();
+        let parent_len = generics.parent_count;
         SplitClosureSubsts {
             closure_kind_ty: self.substs.type_at(parent_len),
             closure_sig_ty: self.substs.type_at(parent_len + 1),
@@ -366,7 +366,7 @@ struct SplitGeneratorSubsts<'tcx> {
 impl<'tcx> GeneratorSubsts<'tcx> {
     fn split(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> SplitGeneratorSubsts<'tcx> {
         let generics = tcx.generics_of(def_id);
-        let parent_len = generics.parent_count();
+        let parent_len = generics.parent_count;
         SplitGeneratorSubsts {
             yield_ty: self.substs.type_at(parent_len),
             return_ty: self.substs.type_at(parent_len + 1),
@@ -928,12 +928,12 @@ impl<'a, 'gcx, 'tcx> ParamTy {
         ParamTy::new(0, keywords::SelfType.name().as_interned_str())
     }
 
-    pub fn for_def(def: &ty::TypeParameterDef) -> ParamTy {
+    pub fn for_def(def: &ty::GenericParamDef) -> ParamTy {
         ParamTy::new(def.index, def.name)
     }
 
     pub fn to_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
-        tcx.mk_param(self.idx, self.name)
+        tcx.mk_ty_param(self.idx, self.name)
     }
 
     pub fn is_self(&self) -> bool {
