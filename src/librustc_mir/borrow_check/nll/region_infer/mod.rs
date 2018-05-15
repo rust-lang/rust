@@ -129,9 +129,6 @@ pub struct Constraint {
     /// Region that must be outlived.
     sub: RegionVid,
 
-    /// At this location.
-    point: Location,
-
     /// Later on, we thread the constraints onto a linked list
     /// grouped by their `sub` field. So if you had:
     ///
@@ -383,15 +380,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         span: Span,
         sup: RegionVid,
         sub: RegionVid,
-        point: Location,
     ) {
-        debug!("add_outlives({:?}: {:?} @ {:?}", sup, sub, point);
+        debug!("add_outlives({:?}: {:?})", sup, sub);
         assert!(self.inferred_values.is_none(), "values already inferred");
         self.constraints.push(Constraint {
             span,
             sup,
             sub,
-            point,
             next: None,
         });
     }
@@ -1143,8 +1138,8 @@ impl fmt::Debug for Constraint {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
             formatter,
-            "({:?}: {:?} @ {:?}) due to {:?}",
-            self.sup, self.sub, self.point, self.span
+            "({:?}: {:?}) due to {:?}",
+            self.sup, self.sub, self.span
         )
     }
 }

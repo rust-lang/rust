@@ -276,7 +276,6 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
                                 span,
                                 ref_region.to_region_vid(),
                                 borrow_region.to_region_vid(),
-                                location.successor_within_block(),
                             );
 
                             if let Some(all_facts) = self.all_facts {
