@@ -438,6 +438,9 @@ extern "C" void LLVMRustConfigurePassManagerBuilder(
 #if LLVM_VERSION_GE(4, 0)
   unwrap(PMBR)->PrepareForThinLTO = PrepareForThinLTO;
 #endif
+#if LLVM_VERSION_GE(6, 0)
+  unwrap(PMBR)->NewGVN = true;
+#endif
 
 #ifdef PGO_AVAILABLE
   if (PGOGenPath) {
