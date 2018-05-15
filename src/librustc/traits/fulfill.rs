@@ -330,7 +330,7 @@ fn process_predicate<'a, 'gcx, 'tcx>(
         ty::Predicate::Trait(ref data) => {
             let trait_obligation = obligation.with(data.clone());
 
-            if data.is_global() {
+            if data.is_global() && !data.has_late_bound_regions() {
                 // no type variables present, can use evaluation for better caching.
                 // FIXME: consider caching errors too.
                 if selcx.infcx().predicate_must_hold(&obligation) {

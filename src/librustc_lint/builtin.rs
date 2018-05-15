@@ -1637,7 +1637,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
                     Subtype(..) |
                     ConstEvaluatable(..) => continue,
                 };
-                if !predicate.is_global() {
+                if predicate.is_global() {
                     cx.span_lint(
                         TRIVIAL_BOUNDS,
                         item.span,

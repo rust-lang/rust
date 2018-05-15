@@ -441,7 +441,7 @@ bitflags! {
 
         // true if there are "names" of types and regions and so forth
         // that are local to a particular fn
-        const HAS_LOCAL_NAMES    = 1 << 10;
+        const HAS_FREE_LOCAL_NAMES    = 1 << 10;
 
         // Present if the type belongs in a local type context.
         // Only set for TyInfer other than Fresh.
@@ -454,6 +454,10 @@ bitflags! {
         // Set if this includes a "canonical" type or region var --
         // ought to be true only for the results of canonicalization.
         const HAS_CANONICAL_VARS = 1 << 13;
+
+        /// Does this have any `ReLateBound` regions? Used to check
+        /// if a global bound is safe to evaluate.
+        const HAS_RE_LATE_BOUND = 1 << 14;
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
@@ -472,9 +476,10 @@ bitflags! {
                                   TypeFlags::HAS_TY_ERR.bits |
                                   TypeFlags::HAS_PROJECTION.bits |
                                   TypeFlags::HAS_TY_CLOSURE.bits |
-                                  TypeFlags::HAS_LOCAL_NAMES.bits |
+                                  TypeFlags::HAS_FREE_LOCAL_NAMES.bits |
                                   TypeFlags::KEEP_IN_LOCAL_TCX.bits |
-                                  TypeFlags::HAS_CANONICAL_VARS.bits;
+                                  TypeFlags::HAS_CANONICAL_VARS.bits |
+                                  TypeFlags::HAS_RE_LATE_BOUND.bits;
     }
 }
 

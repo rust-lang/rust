@@ -683,8 +683,8 @@ fn check_false_global_bounds<'a, 'gcx, 'tcx>(
     let implied_obligations = traits::elaborate_predicates(fcx.tcx, predicates);
 
     for pred in implied_obligations {
-        // HAS_LOCAL_NAMES is used to match the existing behvaiour.
-        if !pred.has_type_flags(ty::TypeFlags::HAS_LOCAL_NAMES) {
+        // Match the existing behavior.
+        if pred.is_global() && !pred.has_late_bound_regions() {
             let obligation = traits::Obligation::new(
                 traits::ObligationCause::new(
                     span,
