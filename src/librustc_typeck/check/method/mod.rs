@@ -20,7 +20,7 @@ use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::ty::GenericParamDefKind;
-use rustc::ty::subst::{UnpackedKind, Subst};
+use rustc::ty::subst::Subst;
 use rustc::infer::{self, InferOk};
 
 use syntax::ast;
@@ -259,9 +259,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type(_) => {
                     if param.index == 0 {
-                        return UnpackedKind::Type(self_ty);
+                        return self_ty.into();
                     } else if let Some(ref input_types) = opt_input_types {
-                        return UnpackedKind::Type(input_types[param.index as usize - 1]);
+                        return input_types[param.index as usize - 1].into();
                     }
                 }
             }

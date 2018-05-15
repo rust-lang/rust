@@ -17,7 +17,7 @@ use check::FnCtxt;
 use hir::def_id::DefId;
 use hir::def::Def;
 use namespace::Namespace;
-use rustc::ty::subst::{UnpackedKind, Subst, Substs};
+use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, ObligationCause};
 use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TraitRef, TypeFoldable};
 use rustc::ty::GenericParamDefKind;
@@ -1391,13 +1391,13 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             let substs = Substs::for_item(self.tcx, method, |param, _| {
                 let i = param.index as usize;
                 if i < substs.len() {
-                    substs[i].unpack()
+                    substs[i]
                 } else {
                     match param.kind {
                         GenericParamDefKind::Lifetime => {
                             // In general, during probe we erase regions. See
                             // `impl_self_ty()` for an explanation.
-                            UnpackedKind::Lifetime(self.tcx.types.re_erased)
+                            self.tcx.types.re_erased.into()
                         }
                         GenericParamDefKind::Type(_) => self.var_for_def(self.span, param),
                     }
@@ -1415,13 +1415,10 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     fn fresh_item_substs(&self, def_id: DefId) -> &'tcx Substs<'tcx> {
         Substs::for_item(self.tcx, def_id, |param, _| {
             match param.kind {
-                GenericParamDefKind::Lifetime => {
-                    UnpackedKind::Lifetime(self.tcx.types.re_erased)
-                }
+                GenericParamDefKind::Lifetime => self.tcx.types.re_erased.into(),
                 GenericParamDefKind::Type(_) => {
-                    UnpackedKind::Type(self.next_ty_var(
-                        TypeVariableOrigin::SubstitutionPlaceholder(
-                        self.tcx.def_span(def_id))))
+                    self.next_ty_var(TypeVariableOrigin::SubstitutionPlaceholder(
+                        self.tcx.def_span(def_id))).into()
                 }
             }
         })

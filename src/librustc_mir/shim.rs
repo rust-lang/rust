@@ -13,7 +13,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer;
 use rustc::mir::*;
 use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind};
-use rustc::ty::subst::{Kind, UnpackedKind, Subst, Substs};
+use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::ty::maps::Providers;
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -429,8 +429,8 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
 
         let substs = Substs::for_item(tcx, self.def_id, |param, _| {
             match param.kind {
-                GenericParamDefKind::Lifetime => UnpackedKind::Lifetime(tcx.types.re_erased),
-                GenericParamDefKind::Type(_) => UnpackedKind::Type(ty),
+                GenericParamDefKind::Lifetime => tcx.types.re_erased.into(),
+                GenericParamDefKind::Type(_) => ty.into(),
             }
         });
 

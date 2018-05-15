@@ -21,7 +21,7 @@ use hir::def_id::DefId;
 use middle::free_region::RegionRelations;
 use middle::region;
 use middle::lang_items;
-use ty::subst::{UnpackedKind, Substs};
+use ty::subst::{Kind, Substs};
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt, GenericParamDefKind};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
@@ -908,12 +908,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn var_for_def(&self,
                        span: Span,
                        param: &ty::GenericParamDef)
-                       -> UnpackedKind<'tcx> {
+                       -> Kind<'tcx> {
         match param.kind {
             GenericParamDefKind::Lifetime => {
                 // Create a region inference variable for the given
                 // region parameter definition.
-                UnpackedKind::Lifetime(self.next_region_var(EarlyBoundRegion(span, param.name)))
+                self.next_region_var(EarlyBoundRegion(span, param.name)).into()
             }
             GenericParamDefKind::Type(_) => {
                 // Create a type inference variable for the given
@@ -930,7 +930,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                              false,
                                              TypeVariableOrigin::TypeParameterDefinition(span, param.name));
 
-                UnpackedKind::Type(self.tcx.mk_var(ty_var_id))
+                self.tcx.mk_var(ty_var_id).into()
             }
         }
     }

@@ -30,7 +30,7 @@ use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
 use middle::resolve_lifetime as rl;
 use rustc::mir::mono::Linkage;
-use rustc::ty::subst::{UnpackedKind, Substs};
+use rustc::ty::subst::Substs;
 use rustc::ty::GenericParamDefKind;
 use rustc::ty::{ToPredicate, ReprOptions};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
@@ -1101,11 +1101,9 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     match param.kind {
                         GenericParamDefKind::Lifetime => {
                             let region = param.to_early_bound_region_data();
-                            UnpackedKind::Lifetime(tcx.mk_region(ty::ReEarlyBound(region)))
+                            tcx.mk_region(ty::ReEarlyBound(region)).into()
                         }
-                        GenericParamDefKind::Type(_) => {
-                            UnpackedKind::Type(tcx.mk_ty_param_from_def(param))
-                        }
+                        GenericParamDefKind::Type(_) => tcx.mk_ty_param_from_def(param).into(),
                     }
                 })
             };

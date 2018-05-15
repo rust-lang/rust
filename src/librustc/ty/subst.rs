@@ -184,12 +184,9 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         Substs::for_item(tcx, def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => {
-                    UnpackedKind::Lifetime(
-                        tcx.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())))
+                    tcx.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())).into()
                 }
-                GenericParamDefKind::Type(_) => {
-                    UnpackedKind::Type(tcx.mk_ty_param_from_def(param))
-                }
+                GenericParamDefKind::Type(_) => tcx.mk_ty_param_from_def(param).into(),
             }
         })
     }
@@ -203,7 +200,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                        def_id: DefId,
                        mut mk_kind: F)
                        -> &'tcx Substs<'tcx>
-    where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> UnpackedKind<'tcx>
+    where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
         let defs = tcx.generics_of(def_id);
         let mut substs = Vec::with_capacity(defs.count());
@@ -216,7 +213,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                         def_id: DefId,
                         mut mk_kind: F)
                         -> &'tcx Substs<'tcx>
-    where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> UnpackedKind<'tcx>
+    where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
         let defs = tcx.generics_of(def_id);
         let mut result = Vec::with_capacity(defs.count());
@@ -229,7 +226,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                              tcx: TyCtxt<'a, 'gcx, 'tcx>,
                              defs: &ty::Generics,
                              mk_kind: &mut F)
-    where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> UnpackedKind<'tcx>
+    where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
 
         if let Some(def_id) = defs.parent {
@@ -242,12 +239,12 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     fn fill_single<F>(substs: &mut Vec<Kind<'tcx>>,
                            defs: &ty::Generics,
                            mk_kind: &mut F)
-    where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> UnpackedKind<'tcx>
+    where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
         for param in &defs.params {
             let kind = mk_kind(param, substs);
             assert_eq!(param.index as usize, substs.len());
-            substs.push(kind.pack());
+            substs.push(kind);
         }
     }
 

@@ -19,7 +19,7 @@ use rustc::infer::LateBoundRegionConversionTime;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::error_reporting::ArgKind;
 use rustc::ty::{self, ToPolyTraitRef, Ty, GenericParamDefKind};
-use rustc::ty::subst::{UnpackedKind, Substs};
+use rustc::ty::subst::Substs;
 use rustc::ty::TypeFoldable;
 use std::cmp;
 use std::iter;
@@ -110,8 +110,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     span_bug!(expr.span, "closure has region param")
                 }
                 GenericParamDefKind::Type(_) => {
-                    UnpackedKind::Type(self.infcx
-                        .next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span)))
+                    self.infcx
+                        .next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span)).into()
                 }
             }
         });

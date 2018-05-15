@@ -269,31 +269,30 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             match param.kind {
                 GenericParamDefKind::Lifetime => {
                     let i = param.index as usize - own_self;
-                    let lt = if let Some(lifetime) = parameters.lifetimes.get(i) {
-                        self.ast_region_to_region(lifetime, Some(param))
+                    if let Some(lifetime) = parameters.lifetimes.get(i) {
+                        self.ast_region_to_region(lifetime, Some(param)).into()
                     } else {
-                        tcx.types.re_static
-                    };
-                    UnpackedKind::Lifetime(lt)
+                        tcx.types.re_static.into()
+                    }
                 }
                 GenericParamDefKind::Type(ty) => {
                     let i = param.index as usize;
 
                     // Handle Self first, so we can adjust the index to match the AST.
                     if let (0, Some(ty)) = (i, self_ty) {
-                        return UnpackedKind::Type(ty);
+                        return ty.into();
                     }
 
                     let i = i - (lt_accepted + own_self);
-                    let ty = if i < ty_provided {
+                    if i < ty_provided {
                         // A provided type parameter.
-                        self.ast_ty_to_ty(&parameters.types[i])
+                        self.ast_ty_to_ty(&parameters.types[i]).into()
                     } else if infer_types {
                         // No type parameters were provided, we can infer all.
                         if !default_needs_object_self(param) {
-                            self.ty_infer_for_def(param, span)
+                            self.ty_infer_for_def(param, span).into()
                         } else {
-                            self.ty_infer(span)
+                            self.ty_infer(span).into()
                         }
                     } else if ty.has_default {
                         // No type parameter provided, but a default exists.
@@ -314,20 +313,19 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                 type parameters must be specified on object \
                                                 types"))
                                 .emit();
-                            tcx.types.err
+                            tcx.types.err.into()
                         } else {
                             // This is a default type parameter.
                             self.normalize_ty(
                                 span,
                                 tcx.at(span).type_of(param.def_id)
                                     .subst_spanned(tcx, substs, Some(span))
-                            )
+                            ).into()
                         }
                     } else {
                         // We've already errored above about the mismatch.
-                        tcx.types.err
-                    };
-                    UnpackedKind::Type(ty)
+                        tcx.types.err.into()
+                    }
                 }
             }
         });
@@ -1162,12 +1160,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             Substs::fill_item(&mut substs, tcx, parent_generics, &mut |param, _| {
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
-                        UnpackedKind::Lifetime(
-                            tcx.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())))
+                        tcx.mk_region(
+                            ty::ReEarlyBound(param.to_early_bound_region_data())).into()
                     }
-                    GenericParamDefKind::Type(_) => {
-                        UnpackedKind::Type(tcx.mk_ty_param_from_def(param))
-                    }
+                    GenericParamDefKind::Type(_) => tcx.mk_ty_param_from_def(param).into(),
                 }
             });
 

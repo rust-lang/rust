@@ -1746,11 +1746,10 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     fn ty_infer_for_def(&self,
                         ty_param_def: &ty::GenericParamDef,
                         span: Span) -> Ty<'tcx> {
-        if let UnpackedKind::Type(ty) = self.var_for_def(span, ty_param_def) {
-            ty
-        } else {
-            unreachable!()
+        if let UnpackedKind::Type(ty) = self.var_for_def(span, ty_param_def).unpack() {
+            return ty;
         }
+        unreachable!()
     }
 
     fn projected_ty_from_poly_trait_ref(&self,
@@ -4769,7 +4768,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let GenericParamDefKind::Type(_) = param.kind {
                     // Handle Self first, so we can adjust the index to match the AST.
                     if has_self && i == 0 {
-                        return opt_self_ty.map(|ty| UnpackedKind::Type(ty)).unwrap_or_else(|| {
+                        return opt_self_ty.map(|ty| Kind::from(ty)).unwrap_or_else(|| {
                             self.var_for_def(span, param)
                         });
                     }
@@ -4787,12 +4786,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         s.parameters.as_ref().map_or(&[][..], |p| &p.lifetimes[..])
                     });
 
-                    let lt = if let Some(lifetime) = lifetimes.get(i) {
-                        AstConv::ast_region_to_region(self, lifetime, Some(param))
+                    if let Some(lifetime) = lifetimes.get(i) {
+                        AstConv::ast_region_to_region(self, lifetime, Some(param)).into()
                     } else {
-                        self.re_infer(span, Some(param)).unwrap()
-                    };
-                    UnpackedKind::Lifetime(lt)
+                        self.re_infer(span, Some(param)).unwrap().into()
+                    }
                 }
                 GenericParamDefKind::Type(_) => {
                     let (types, infer_types) = segment.map_or((&[][..], true), |(s, _)| {
@@ -4811,14 +4809,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                     if let Some(ast_ty) = types.get(i) {
                         // A provided type parameter.
-                        UnpackedKind::Type(self.to_ty(ast_ty))
+                        self.to_ty(ast_ty).into()
                     } else if !infer_types && has_default {
                         // No type parameter provided, but a default exists.
                         let default = self.tcx.type_of(param.def_id);
-                        UnpackedKind::Type(self.normalize_ty(
+                        self.normalize_ty(
                             span,
                             default.subst_spanned(self.tcx, substs, Some(span))
-                        ))
+                        ).into()
                     } else {
                         // No type parameters were provided, we can infer all.
                         // This can also be reached in some error cases:

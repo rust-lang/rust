@@ -196,7 +196,7 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
-use rustc::ty::subst::{Substs, Kind, UnpackedKind};
+use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::session::config;
@@ -1114,11 +1114,9 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                     let substs = Substs::for_item(tcx, method.def_id, |param, _| {
                         match param.kind {
-                            GenericParamDefKind::Lifetime => {
-                                UnpackedKind::Lifetime(tcx.types.re_erased)
-                            }
+                            GenericParamDefKind::Lifetime => tcx.types.re_erased.into(),
                             GenericParamDefKind::Type(_) => {
-                                UnpackedKind::Type(trait_ref.substs.type_for_def(param))
+                                trait_ref.substs.type_for_def(param).into()
                             }
                         }
                     });

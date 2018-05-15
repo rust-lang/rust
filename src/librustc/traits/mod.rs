@@ -22,7 +22,7 @@ use hir::def_id::DefId;
 use infer::outlives::env::OutlivesEnvironment;
 use middle::region;
 use middle::const_val::ConstEvalErr;
-use ty::subst::{UnpackedKind, Substs};
+use ty::subst::Substs;
 use ty::{self, AdtKind, Slice, Ty, TyCtxt, GenericParamDefKind, TypeFoldable, ToPredicate};
 use ty::error::{ExpectedFound, TypeError};
 use infer::{InferCtxt};
@@ -843,11 +843,9 @@ fn vtable_methods<'a, 'tcx>(
                 let substs = trait_ref.map_bound(|trait_ref| {
                     Substs::for_item(tcx, def_id, |param, _| {
                         match param.kind {
-                            GenericParamDefKind::Lifetime => {
-                                UnpackedKind::Lifetime(tcx.types.re_erased)
-                            }
+                            GenericParamDefKind::Lifetime => tcx.types.re_erased.into(),
                             GenericParamDefKind::Type(_) => {
-                                UnpackedKind::Type(trait_ref.substs.type_for_def(param))
+                                trait_ref.substs.type_for_def(param).into()
                             }
                         }
                     })

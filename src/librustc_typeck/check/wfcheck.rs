@@ -14,7 +14,7 @@ use constrained_type_params::{identify_constrained_type_params, Parameter};
 use hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Lift, Ty, TyCtxt, GenericParamDefKind};
-use rustc::ty::subst::{UnpackedKind, Substs};
+use rustc::ty::subst::Substs;
 use rustc::ty::util::ExplicitSelf;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::middle::lang_items;
@@ -409,8 +409,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
         match param.kind {
             GenericParamDefKind::Lifetime => {
                 // All regions are identity.
-                UnpackedKind::Lifetime(
-                    fcx.tcx.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())))
+                fcx.tcx.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())).into()
             }
             GenericParamDefKind::Type(_) => {
                 // If the param has a default,
@@ -419,11 +418,11 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                     // and it's not a dependent default
                     if !default_ty.needs_subst() {
                         // then substitute with the default.
-                        return UnpackedKind::Type(default_ty);
+                        return default_ty.into();
                     }
                 }
                 // Mark unwanted params as err.
-                UnpackedKind::Type(fcx.tcx.types.err)
+                fcx.tcx.types.err.into()
             }
         }
     });

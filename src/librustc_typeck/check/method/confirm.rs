@@ -16,7 +16,7 @@ use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty, GenericParamDefKind};
-use rustc::ty::subst::{UnpackedKind, Subst};
+use rustc::ty::subst::Subst;
 use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
 use rustc::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
@@ -320,22 +320,22 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         Substs::for_item(self.tcx, pick.item.def_id, |param, _| {
             let i = param.index as usize;
             if i < parent_substs.len() {
-                parent_substs[i].unpack()
+                parent_substs[i]
             } else {
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
                         if let Some(lifetime) = provided.as_ref().and_then(|p| {
                             p.lifetimes.get(i - parent_substs.len())
                         }) {
-                            return UnpackedKind::Lifetime(
-                                AstConv::ast_region_to_region(self.fcx, lifetime, Some(param)));
+                            return AstConv::ast_region_to_region(
+                                self.fcx, lifetime, Some(param)).into();
                         }
                     }
                     GenericParamDefKind::Type(_) => {
                         if let Some(ast_ty) = provided.as_ref().and_then(|p| {
                             p.types.get(i - parent_substs.len() - own_counts.lifetimes)
                         }) {
-                            return UnpackedKind::Type(self.to_ty(ast_ty));
+                            return self.to_ty(ast_ty).into();
                         }
                     }
                 }
