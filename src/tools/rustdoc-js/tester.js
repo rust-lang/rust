@@ -12,73 +12,148 @@ const fs = require('fs');
 
 const TEST_FOLDER = 'src/test/rustdoc-js/';
 
+function getNextStep(content, pos, stop) {
+    while (pos < content.length && content[pos] !== stop &&
+           (content[pos] === ' ' || content[pos] === '\t' || content[pos] === '\n')) {
+        pos += 1;
+    }
+    if (pos >= content.length) {
+        return null;
+    }
+    if (content[pos] !== stop) {
+        return pos * -1;
+    }
+    return pos;
+}
+
 // Stupid function extractor based on indent.
 function extractFunction(content, functionName) {
-    var x = content.split('\n');
-    var in_func = false;
     var indent = 0;
-    var lines = [];
+    var splitter = "function " + functionName + "(";
 
-    for (var i = 0; i < x.length; ++i) {
-        if (in_func === false) {
-            var splitter = "function " + functionName + "(";
-            if (x[i].trim().startsWith(splitter)) {
-                in_func = true;
-                indent = x[i].split(splitter)[0].length;
-                lines.push(x[i]);
-            }
-        } else {
-            lines.push(x[i]);
-            if (x[i].trim() === "}" && x[i].split("}")[0].length === indent) {
-                return lines.join("\n");
-            }
+    while (true) {
+        var start = content.indexOf(splitter);
+        if (start === -1) {
+            break;
         }
+        var pos = start;
+        while (pos < content.length && content[pos] !== ')') {
+            pos += 1;
+        }
+        if (pos >= content.length) {
+            break;
+        }
+        pos = getNextStep(content, pos + 1, '{');
+        if (pos === null) {
+            break;
+        } else if (pos < 0) {
+            content = content.slice(-pos);
+            continue;
+        }
+        while (pos < content.length) {
+            if (content[pos] === '"' || content[pos] === "'") {
+                var stop = content[pos];
+                var is_escaped = false;
+                do {
+                    if (content[pos] === '\\') {
+                        pos += 2;
+                    } else {
+                        pos += 1;
+                    }
+                } while (pos < content.length &&
+                         (content[pos] !== stop || content[pos - 1] === '\\'));
+            } else if (content[pos] === '{') {
+                indent += 1;
+            } else if (content[pos] === '}') {
+                indent -= 1;
+                if (indent === 0) {
+                    return content.slice(start, pos + 1);
+                }
+            }
+            pos += 1;
+        }
+        content = content.slice(start + 1);
     }
     return null;
 }
 
 // Stupid function extractor for array.
 function extractArrayVariable(content, arrayName) {
-    var x = content.split('\n');
-    var found_var = false;
-    var lines = [];
-
-    for (var i = 0; i < x.length; ++i) {
-        if (found_var === false) {
-            var splitter = "var " + arrayName + " = [";
-            if (x[i].trim().startsWith(splitter)) {
-                found_var = true;
-                i -= 1;
-            }
-        } else {
-            lines.push(x[i]);
-            if (x[i].endsWith('];')) {
-                return lines.join("\n");
-            }
+    var splitter = "var " + arrayName;
+    while (true) {
+        var start = content.indexOf(splitter);
+        if (start === -1) {
+            break;
         }
+        var pos = getNextStep(content, start, '=');
+        if (pos === null) {
+            break;
+        } else if (pos < 0) {
+            content = content.slice(-pos);
+            continue;
+        }
+        pos = getNextStep(content, pos, '[');
+        if (pos === null) {
+            break;
+        } else if (pos < 0) {
+            content = content.slice(-pos);
+            continue;
+        }
+        while (pos < content.length) {
+            if (content[pos] === '"' || content[pos] === "'") {
+                var stop = content[pos];
+                do {
+                    if (content[pos] === '\\') {
+                        pos += 2;
+                    } else {
+                        pos += 1;
+                    }
+                } while (pos < content.length &&
+                         (content[pos] !== stop || content[pos - 1] === '\\'));
+            } else if (content[pos] === ']' &&
+                       pos + 1 < content.length &&
+                       content[pos + 1] === ';') {
+                return content.slice(start, pos + 2);
+            }
+            pos += 1;
+        }
+        content = content.slice(start + 1);
     }
     return null;
 }
 
 // Stupid function extractor for variable.
 function extractVariable(content, varName) {
-    var x = content.split('\n');
-    var found_var = false;
-    var lines = [];
-
-    for (var i = 0; i < x.length; ++i) {
-        if (found_var === false) {
-            var splitter = "var " + varName + " = ";
-            if (x[i].trim().startsWith(splitter)) {
-                found_var = true;
-                i -= 1;
-            }
-        } else {
-            lines.push(x[i]);
-            if (x[i].endsWith(';')) {
-                return lines.join("\n");
-            }
+    var splitter = "var " + varName;
+    while (true) {
+        var start = content.indexOf(splitter);
+        if (start === -1) {
+            break;
         }
+        var pos = getNextStep(content, start, '=');
+        if (pos === null) {
+            break;
+        } else if (pos < 0) {
+            content = content.slice(-pos);
+            continue;
+        }
+        while (pos < content.length) {
+            if (content[pos] === '"' || content[pos] === "'") {
+                var stop = content[pos];
+                do {
+                    if (content[pos] === '\\') {
+                        pos += 2;
+                    } else {
+                        pos += 1;
+                    }
+                } while (pos < content.length &&
+                         (content[pos] !== stop || content[pos - 1] === '\\'));
+            } else if (content[pos] === ';') {
+                return content.slice(start, pos + 1);
+            }
+            pos += 1;
+        }
+        content = content.slice(start + 1);
     }
     return null;
 }
@@ -101,7 +176,7 @@ function loadThings(thingsToLoad, kindOfLoad, funcToCall, fileContent) {
     for (var i = 0; i < thingsToLoad.length; ++i) {
         var tmp = funcToCall(fileContent, thingsToLoad[i]);
         if (tmp === null) {
-            console.error('enable to find ' + kindOfLoad + ' "' + thingsToLoad[i] + '"');
+            console.error('unable to find ' + kindOfLoad + ' "' + thingsToLoad[i] + '"');
             process.exit(1);
         }
         content += tmp;

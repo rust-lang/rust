@@ -202,7 +202,7 @@
                 onEach(e.getElementsByTagName('span'), function(i_e) {
                     removeClass(i_e, 'line-highlighted');
                 });
-            })
+            });
             for (i = from; i <= to; ++i) {
                 addClass(document.getElementById(i), 'line-highlighted');
             }
@@ -1972,7 +1972,7 @@
               hasClass(next.nextElementSibling, 'docblock')))) {
             insertAfter(toggle.cloneNode(true), e.childNodes[e.childNodes.length - 1]);
         }
-    }
+    };
     onEach(document.getElementsByClassName('method'), func);
     onEach(document.getElementsByClassName('impl'), func);
     onEach(document.getElementsByClassName('impl-items'), function(e) {
