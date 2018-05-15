@@ -16,10 +16,6 @@ struct Error;
 #[derive(PartialOrd,PartialEq)]
 struct Struct {
     x: Error //~ ERROR
-//~^ ERROR
-//~^^ ERROR
-//~^^^ ERROR
-//~^^^^ ERROR
 }
 
 fn main() {}
