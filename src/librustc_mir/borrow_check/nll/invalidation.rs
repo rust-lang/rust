@@ -8,26 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::borrow_set::BorrowSet;
+use borrow_check::borrow_set::{BorrowSet, BorrowData};
 use borrow_check::location::LocationTable;
 use borrow_check::{JustWrite, WriteAndRead};
 use borrow_check::{ShallowOrDeep, Deep, Shallow};
 use borrow_check::{ReadOrWrite, Activation, Read, Reservation, Write};
 use borrow_check::{Context, ContextKind};
 use borrow_check::{LocalMutationIsAllowed, MutateMode};
+use borrow_check::ArtificialField;
+use borrow_check::{ReadKind, WriteKind, Overlap};
+use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::facts::AllFacts;
+use dataflow::move_paths::indexes::BorrowIndex;
 use rustc::hir;
 use rustc::infer::InferCtxt;
-use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;
-use rustc::mir::Place::Projection;
-use rustc::mir::{BasicBlock, BasicBlockData, Location, Mir, Place, Rvalue};
-use rustc::mir::{Local, PlaceProjection, ProjectionElem};
+use rustc::mir::{BasicBlock, Location, Mir, Place, Rvalue, Projection};
+use rustc::mir::{Local, ProjectionElem};
 use rustc::mir::{Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::Substs;
-use rustc::ty::{self, CanonicalTy, ClosureSubsts};
+use rustc::mir::{Field, Operand, BorrowKind};
+use rustc::ty;
+use rustc_data_structures::indexed_vec::Idx;
+use std::iter;
 
 pub(super) fn generate_invalidates<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
@@ -43,7 +46,7 @@ pub(super) fn generate_invalidates<'cx, 'gcx, 'tcx>(
     }
 
     let mut ig = InvalidationGenerator {
-        all_facts: all_facts.unwrap()
+        all_facts: &mut all_facts.unwrap(),
         borrow_set,
         infcx,
         regioncx,
@@ -64,19 +67,19 @@ struct InvalidationGenerator<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> {
 
 /// Visits the whole MIR and generates invalidates() facts
 /// Most of the code implementing this was stolen from borrow_check/mod.rs
-impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for InvalidationGenerator {
-    fn visit_statement(&mut self, block: BasicBlock, statement: &Statemnt<'tcx>, location: Location) {
+impl<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'gcx, 'tcx> {
+    fn visit_statement(&mut self, block: BasicBlock, statement: &Statement<'tcx>, location: Location) {
         match statement.kind {
             StatementKind::Assign(ref lhs, ref rhs) => {
-                self.consumer_rvalue(
+                self.consume_rvalue(
                     ContextKind::AssignRhs.new(location),
-                    (rhs, location),
-                    locaiton
+                    rhs,
+                    location
                 );
 
                 self.mutate_place(
                     ContextKind::AssignLhs.new(location),
-                    (lhs, location),
+                    lhs,
                     Shallow(None),
                     JustWrite
                 );
@@ -87,7 +90,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for InvalidationGenerator {
             } => {
                 self.mutate_place(
                     ContextKind::SetDiscrim.new(location),
-                    (place, location),
+                    place,
                     Shallow(Some(ArtificialField::Discriminant)),
                     JustWrite,
                 );
@@ -104,21 +107,21 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for InvalidationGenerator {
                         // be encoeded through MIR place derefs instead.
                         self.access_place(
                             context,
-                            (output, location),
+                            output,
                             (Deep, Read(ReadKind::Copy)),
                             LocalMutationIsAllowed::No,
                         );
                     } else {
                         self.mutate_place(
                             context,
-                            (output, location),
+                            output,
                             if o.is_rw { Deep } else { Shallow(None) },
                             if o.is_rw { WriteAndRead } else { JustWrite },
                         );
                     }
                 }
                 for input in inputs {
-                    self.consume_operand(context, (input, location));
+                    self.consume_operand(context, input);
                 }
             }
             // EndRegion matters to older NLL/MIR AST borrowck, not to alias NLL
@@ -133,14 +136,14 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for InvalidationGenerator {
             StatementKind::StorageDead(local) => {
                 self.access_place(
                     ContextKind::StorageDead.new(location),
-                    (&Place::Local(local), location),
+                    &Place::Local(local),
                     (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
                     LocalMutationIsAllowed::Yes,
                 );
             }
         }
 
-        self.super_statment(block, statement, location);
+        self.super_statement(block, statement, location);
     }
 
     fn visit_terminator(
@@ -156,7 +159,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for InvalidationGenerator {
                 values: _,
                 targets: _,
             } => {
-                self.consume_operand(ContextKind::SwitchInt.new(loc,c (discr, location)));
+                self.consume_operand(ContextKind::SwitchInt.new(location), discr);
             }
             TerminatorKind::Drop {
                 location: ref drop_place,
@@ -167,7 +170,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for InvalidationGenerator {
                 let gcx = tcx.global_tcx();
                 let drop_place_ty = drop_place.ty(self.mir, tcx);
                 let drop_place_ty = tcx.erase_regions(&drop_place_ty).to_ty(tcx);
-                self.visit_terminator_drop(loc, term)
+                self.visit_terminator_drop(location, terminator, drop_place, drop_place_ty);
             }
             TerminatorKind::DropAndReplace {
                 location: ref drop_place,
@@ -176,14 +179,14 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for InvalidationGenerator {
                 unwind: _,
             } => {
                 self.mutate_place(
-                    ContextKind::DropAndReplace.new(loc),
-                    (drop_place, location),
+                    ContextKind::DropAndReplace.new(location),
+                    drop_place,
                     Deep,
                     JustWrite,
                 );
                 self.consume_operand(
-                    ContextKind::DropAndReplace.new(loc),
-                    (new_value, location),
+                    ContextKind::DropAndReplace.new(location),
+                    new_value,
                 );
             }
             TerminatorKind::Call {
@@ -192,17 +195,14 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for InvalidationGenerator {
                 ref destination,
                 cleanup: _,
             } => {
-                self.consume_operand(ContextKind::CallOperator.new(loc), (func, location));
+                self.consume_operand(ContextKind::CallOperator.new(location), func);
                 for arg in args {
-                    self.consume_operand(
-                        ContextKind::CallOperand.new(loc),
-                        (arg, location),
-                    );
+                    self.consume_operand(ContextKind::CallOperand.new(location), arg);
                 }
                 if let Some((ref dest, _ /*bb*/)) = *destination {
                     self.mutate_place(
-                        ContextKind::CallDest.new(loc),
-                        (dest, location),
+                        ContextKind::CallDest.new(location),
+                        dest,
                         Deep,
                         JustWrite,
                     );
@@ -215,14 +215,11 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for InvalidationGenerator {
                 target: _,
                 cleanup: _,
             } => {
-                self.consume_operand(ContextKind::Assert.new(loc), (cond, location));
+                self.consume_operand(ContextKind::Assert.new(location), cond);
                 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
                 if let BoundsCheck { ref len, ref index } = *msg {
-                    self.consume_operand(ContextKind::Assert.new(loc), (len, location));
-                    self.consume_operand(
-                        ContextKind::Assert.new(loc),
-                        (index, location),
-                    );
+                    self.consume_operand(ContextKind::Assert.new(location), len);
+                    self.consume_operand(ContextKind::Assert.new(location), index);
                 }
             }
             TerminatorKind::Yield {
@@ -230,7 +227,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for InvalidationGenerator {
                 resume: _,
                 drop: _,
             } => {
-                self.consume_operand(ContextKind::Yield.new(loc), (value, location));
+                self.consume_operand(ContextKind::Yield.new(location), value);
 
                 // ** TODO(bob_twinkles) figure out what the equivalent of this is
                 // if self.movable_generator {
@@ -278,7 +275,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for InvalidationGenerator {
     }
 }
 
-impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
+impl<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> InvalidationGenerator<'cg, 'cx, 'gcx, 'tcx> {
     /// Simulates dropping of a variable
     fn visit_terminator_drop(
         &mut self,
@@ -286,17 +283,16 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
         term: &Terminator<'tcx>,
         drop_place: &Place<'tcx>,
         erased_drop_place_ty: ty::Ty<'gcx>,
-        location: Location
     ) {
         let gcx = self.infcx.tcx.global_tcx();
         let drop_field = |
-        ig: &mut InvalidationGenerator<'cx, 'gcx, 'tcx>,
+        ig: &mut InvalidationGenerator<'cg, 'cx, 'gcx, 'tcx>,
         (index, field): (usize, ty::Ty<'gcx>),
         | {
-            let field_ty = gcx.normalize_erasing_regions(mir.param_env, field);
+            let field_ty = gcx.normalize_erasing_regions(self.mir.param_env, field);
             let place = drop_place.clone().field(Field::new(index), field_ty);
 
-            ig.visit_terminator_drop(loc, term, &place, field_ty, location);
+            ig.visit_terminator_drop(loc, term, &place, field_ty);
         };
 
         match erased_drop_place_ty.sty {
@@ -319,13 +315,18 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
             }
             // Closures and generators also have disjoint fields, but they are only
             // directly accessed in the body of the closure/generator.
-            ty::TyClosure(def, substs)
-            | ty::TyGenerator(def, substs, ..)
+            ty::TyGenerator(def, substs, ..)
                 if *drop_place == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty()
             => {
                 substs.upvar_tys(def, self.infcx.tcx).enumerate()
                     .for_each(|field| drop_field(self, field));
             }
+            ty::TyClosure(def, substs)
+                if *drop_place == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty()
+                => {
+                    substs.upvar_tys(def, self.infcx.tcx).enumerate()
+                        .for_each(|field| drop_field(self, field));
+                }
             _ => {
                 // We have now refined the type of the value being
                 // dropped (potentially) to just the type of a
@@ -335,7 +336,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
                 if erased_drop_place_ty.needs_drop(gcx, self.param_env) {
                     self.access_place(
                         ContextKind::Drop.new(loc),
-                        (drop_place, location),
+                        drop_place,
                         (Deep, Write(WriteKind::StorageDeadOrDrop)),
                         LocalMutationIsAllowed::Yes,
                     );
@@ -348,13 +349,13 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
     fn mutate_place(
         &mut self,
         context: Context,
-        place_location: &(Place<'tcx>, location),
-        kind: (ShallowOrDeep, ReadOrWrite),
+        place: &Place<'tcx>,
+        kind: ShallowOrDeep,
         mode: MutateMode,
     ) {
         self.access_place(
             context,
-            place_location,
+            place,
             (kind, Write(WriteKind::Mutate)),
             LocalMutationIsAllowed::ExceptUpvars,
         );
@@ -364,13 +365,13 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
     fn consume_operand(
         &mut self,
         context: Context,
-        (operand, location): (&Operand<'tcx>, location),
+        operand: &Operand<'tcx>,
     ) {
         match *operand {
             Operand::Copy(ref place) => {
                 self.access_place(
                     context,
-                    (place, location),
+                    place,
                     (Deep, Read(ReadKind::Copy)),
                     LocalMutationIsAllowed::No,
                 );
@@ -378,8 +379,8 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
             Operand::Move(ref place) => {
                 self.access_place(
                     context,
-                    (place, location),
-                    (Deep, Write(WriteKind::move)),
+                    place,
+                    (Deep, Write(WriteKind::Move)),
                     LocalMutationIsAllowed::Yes,
                 );
             }
@@ -391,8 +392,8 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
     fn consume_rvalue(
         &mut self,
         context: Context,
-        (rvalue, location): (&Rvalue<'tcx>, Location),
-        _location: Location,
+        rvalue: &Rvalue<'tcx>,
+        location: Location,
     ) {
         match *rvalue {
             Rvalue::Ref(_ /*rgn*/, bk, ref place) => {
@@ -410,7 +411,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
 
                 self.access_place(
                     context,
-                    (place, location),
+                    place,
                     access_kind,
                     LocalMutationIsAllowed::No,
                 );
@@ -420,7 +421,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
             | Rvalue::Repeat(ref operand, _)
             | Rvalue::UnaryOp(_ /*un_op*/, ref operand)
             | Rvalue::Cast(_ /*cast_kind*/, ref operand, _ /*ty*/) => {
-                self.consume_operand(context, (operand, location))
+                self.consume_operand(context, operand)
             }
 
             Rvalue::Len(ref place) | Rvalue::Discriminant(ref place) => {
@@ -431,21 +432,16 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
                 };
                 self.access_place(
                     context,
-                    (place, location),
+                    place,
                     (Shallow(Some(af)), Read(ReadKind::Copy)),
                     LocalMutationIsAllowed::No,
-                );
-                self.check_if_path_or_subpath_is_moved(
-                    context,
-                    InitializationRequiringAction::Use,
-                    (place, location),
                 );
             }
 
             Rvalue::BinaryOp(_bin_op, ref operand1, ref operand2)
             | Rvalue::CheckedBinaryOp(_bin_op, ref operand1, ref operand2) => {
-                self.consume_operand(context, (operand1, location));
-                self.consume_operand(context, (operand2, location));
+                self.consume_operand(context, operand1);
+                self.consume_operand(context, operand2);
             }
 
             Rvalue::NullaryOp(_op, _ty) => {
@@ -453,7 +449,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
 
             Rvalue::Aggregate(ref aggregate_kind, ref operands) => {
                 for operand in operands {
-                    self.consume_operand(context, (operand, location));
+                    self.consume_operand(context, operand);
                 }
             }
         }
@@ -463,34 +459,33 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
     fn access_place(
         &mut self,
         context: Context,
-        place_location: (&Place<'tcx>, Location),
+        place: &Place<'tcx>,
         kind: (ShallowOrDeep, ReadOrWrite),
         is_local_mutation_allowed: LocalMutationIsAllowed,
     ) {
         let (sd, rw) = kind;
         // note: not doing check_access_permissions checks because they don't generate invalidates
-        self.check_acess_for_conflict(context, place_location, sd, rw);
+        self.check_access_for_conflict(context, place, sd, rw);
     }
 
     fn check_access_for_conflict(
         &mut self,
         context: Context,
-        (place, location): (&Place<'tcx>, Location),
+        place: &Place<'tcx>,
         sd: ShallowOrDeep,
         rw: ReadOrWrite,
     ) {
         debug!(
-            "invalidation::check_access_for_conflict(context={:?}, place_location={:?}, sd={:?}, \
+            "invalidation::check_access_for_conflict(context={:?}, place={:?}, sd={:?}, \
              rw={:?})",
             context,
-            (place, location),
+            place,
             sd,
             rw,
         );
         self.each_borrow_involving_path(
             context,
-            (sd, place_location.0),
-            flow_state,
+            (sd, place),
             |this, borrow_index, borrow| match (rw, borrow.kind) {
                 // Obviously an activation is compatible with its own
                 // reservation (or even prior activating uses of same
@@ -499,84 +494,43 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
                 // NOTE: *reservations* do conflict with themselves;
                 // thus aren't injecting unsoundenss w/ this check.)
                 (Activation(_, activating), _) if activating == borrow_index => {
-                    debug!(
-                        "check_access_for_conflict place_location: {:?} sd: {:?} rw: {:?} \
-                         skipping {:?} b/c activation of same borrow_index",
-                        (place, location),
-                        sd,
-                        rw,
-                        (borrow_index, borrow),
-                    );
-                    Control::Continue
+                    // Activating a borrow doesn't generate any invalidations, since we
+                    // have already taken the reservation
                 }
 
                 (Read(_), BorrowKind::Shared) | (Reservation(..), BorrowKind::Shared) => {
-                    Control::Continue
+                    // Reads/reservations don't invalidate shared borrows
                 }
 
                 (Read(kind), BorrowKind::Unique) | (Read(kind), BorrowKind::Mut { .. }) => {
                     // Reading from mere reservations of mutable-borrows is OK.
-                    if this.is_active(borrow, context.loc) {
-                        self.generate_invalidates(borrow_index);
-                        Control::Break
-                    } else {
+                    if !this.is_active(borrow, context.loc) {
+                        // If the borrow isn't active yet, reads don't invalidate it
                         assert!(this.allow_two_phase_borrow(borrow.kind));
-                        Control::Continue
+                        return;
+                    }
+
+                    // Unique and mutable borrows are invalidated by reads from any
+                    // involved path
+                    match kind {
+                        ReadKind::Copy => {
+                            this.generate_invalidates(borrow_index, context.loc);
+                        }
+                        ReadKind::Borrow(bk) => {
+                            this.generate_invalidates(borrow_index, context.loc);
+                        }
                     }
                 }
 
-                // ****** XXX: rewrite the rest of this function to use generate_invalidates instead of reporting errors ******
                 (Reservation(kind), BorrowKind::Unique)
                 | (Reservation(kind), BorrowKind::Mut { .. })
                 | (Activation(kind, _), _)
                 | (Write(kind), _) => {
-                    match rw {
-                        Reservation(_) => {
-                            debug!(
-                                "recording invalid reservation of \
-                                 place: {:?}",
-                                place_span.0
-                            );
-                            this.reservation_error_reported.insert(place_span.0.clone());
-                        }
-                        Activation(_, activating) => {
-                            debug!(
-                                "observing check_place for activation of \
-                                 borrow_index: {:?}",
-                                activating
-                            );
-                        }
-                        Read(..) | Write(..) => {}
-                    }
-
-                    match kind {
-                        WriteKind::MutableBorrow(bk) => {
-                            error_reported = true;
-                            this.report_conflicting_borrow(
-                                context,
-                                place_span,
-                                bk,
-                                &borrow,
-                            )
-                        }
-                        WriteKind::StorageDeadOrDrop => {
-                            error_reported = true;
-                            this.report_borrowed_value_does_not_live_long_enough(
-                                context,
-                                borrow,
-                                place_span.1,
-                            );
-                        }
-                        WriteKind::Mutate => {
-                            error_reported = true;
-                            this.report_illegal_mutation_of_borrowed(context, place_span, borrow)
-                        }
-                        WriteKind::Move => {
-                            error_reported = true;
-                            this.report_move_out_while_borrowed(context, place_span, &borrow)
-                        }
-                    }
-                    Control::Break
+                    // unique or mutable borrows are invalidated by writes.
+                    // Reservations count as writes since we need to check
+                    // that activating the borrow will be OK
+                    // TOOD(bob_twinkles) is this actually the right thing to do?
+                    this.generate_invalidates(borrow_index, context.loc);
                 }
             },
         );
@@ -592,8 +546,9 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
     }
 
     /// Generate a new invalidates(L, B) fact
-    fn generate_invalidates(&mut self, b: BorrowIndex, l: LocationIndex) {
-        self.all_facts.invalidates.append((l, b));
+    fn generate_invalidates(&mut self, b: BorrowIndex, l: Location) {
+        let lidx = self.location_table.mid_index(l);
+        self.all_facts.invalidates.push((lidx, b));
     }
 
     /// This function iterates over all borrows that intersect with an
@@ -610,7 +565,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
         access_place: (ShallowOrDeep, &Place<'tcx>),
         mut op: F,
     ) where
-        F: FnMut(&mut Self, BorrowIndex, &BorrowData<'tcx>) -> Control,
+        F: FnMut(&mut Self, BorrowIndex, &BorrowData<'tcx>),
     {
         let (access, place) = access_place;
 
@@ -620,7 +575,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
         // check for loan restricting path P being used. Accounts for
         // borrows of P, P.a.b, etc.
         let borrow_set = self.borrow_set.clone();
-        for i in borrow_set.borrows.iter() {
+        for i in borrow_set.borrows.indices() {
             let borrowed = &borrow_set[i];
 
             if self.places_conflict(&borrowed.borrowed_place, place, access) {
@@ -628,10 +583,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
                     "each_borrow_involving_path: {:?} @ {:?} vs. {:?}/{:?}",
                     i, borrowed, place, access
                 );
-                let ctrl = op(self, i, borrowed);
-                if ctrl == Control::Break {
-                    return;
-                }
+                op(self, i, borrowed);
             }
         }
     }
@@ -751,7 +703,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
                         Place::Projection(box Projection { base, elem }) => (base, elem),
                         _ => bug!("place has no base?"),
                     };
-                    let base_ty = base.ty(self.mir, self.tcx).to_ty(self.tcx);
+                    let base_ty = base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
 
                     match (elem, &base_ty.sty, access) {
                         (_, _, Shallow(Some(ArtificialField::Discriminant)))
@@ -778,13 +730,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
                         }
                         (
                             ProjectionElem::Deref,
-                            ty::TyRef(
-                                _,
-                                ty::TypeAndMut {
-                                    ty: _,
-                                    mutbl: hir::MutImmutable,
-                                },
-                            ),
+                            ty::TyRef( _, _, hir::MutImmutable),
                             _,
                         ) => {
                             // the borrow goes through a dereference of a shared reference.
@@ -842,5 +788,147 @@ impl<'cg, 'cx, 'gcx, 'tcx> InvalidationGenerator {
             }
         }
         unreachable!("iter::repeat returned None")
+    }
+
+    // Given that the bases of `elem1` and `elem2` are always either equal
+    // or disjoint (and have the same type!), return the overlap situation
+    // between `elem1` and `elem2`.
+    fn place_element_conflict(&self, elem1: &Place<'tcx>, elem2: &Place<'tcx>) -> Overlap {
+        match (elem1, elem2) {
+            (Place::Local(l1), Place::Local(l2)) => {
+                if l1 == l2 {
+                    // the same local - base case, equal
+                    debug!("place_element_conflict: DISJOINT-OR-EQ-LOCAL");
+                    Overlap::EqualOrDisjoint
+                } else {
+                    // different locals - base case, disjoint
+                    debug!("place_element_conflict: DISJOINT-LOCAL");
+                    Overlap::Disjoint
+                }
+            }
+            (Place::Static(static1), Place::Static(static2)) => {
+                if static1.def_id != static2.def_id {
+                    debug!("place_element_conflict: DISJOINT-STATIC");
+                    Overlap::Disjoint
+                } else if self.infcx.tcx.is_static(static1.def_id) == Some(hir::Mutability::MutMutable) {
+                    // We ignore mutable statics - they can only be unsafe code.
+                    debug!("place_element_conflict: IGNORE-STATIC-MUT");
+                    Overlap::Disjoint
+                } else {
+                    debug!("place_element_conflict: DISJOINT-OR-EQ-STATIC");
+                    Overlap::EqualOrDisjoint
+                }
+            }
+            (Place::Local(_), Place::Static(_)) | (Place::Static(_), Place::Local(_)) => {
+                debug!("place_element_conflict: DISJOINT-STATIC-LOCAL");
+                Overlap::Disjoint
+            }
+            (Place::Projection(pi1), Place::Projection(pi2)) => {
+                match (&pi1.elem, &pi2.elem) {
+                    (ProjectionElem::Deref, ProjectionElem::Deref) => {
+                        // derefs (e.g. `*x` vs. `*x`) - recur.
+                        debug!("place_element_conflict: DISJOINT-OR-EQ-DEREF");
+                        Overlap::EqualOrDisjoint
+                    }
+                    (ProjectionElem::Field(f1, _), ProjectionElem::Field(f2, _)) => {
+                        if f1 == f2 {
+                            // same field (e.g. `a.y` vs. `a.y`) - recur.
+                            debug!("place_element_conflict: DISJOINT-OR-EQ-FIELD");
+                            Overlap::EqualOrDisjoint
+                        } else {
+                            let ty = pi1.base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+                            match ty.sty {
+                                ty::TyAdt(def, _) if def.is_union() => {
+                                    // Different fields of a union, we are basically stuck.
+                                    debug!("place_element_conflict: STUCK-UNION");
+                                    Overlap::Arbitrary
+                                }
+                                _ => {
+                                    // Different fields of a struct (`a.x` vs. `a.y`). Disjoint!
+                                    debug!("place_element_conflict: DISJOINT-FIELD");
+                                    Overlap::Disjoint
+                                }
+                            }
+                        }
+                    }
+                    (ProjectionElem::Downcast(_, v1), ProjectionElem::Downcast(_, v2)) => {
+                        // different variants are treated as having disjoint fields,
+                        // even if they occupy the same "space", because it's
+                        // impossible for 2 variants of the same enum to exist
+                        // (and therefore, to be borrowed) at the same time.
+                        //
+                        // Note that this is different from unions - we *do* allow
+                        // this code to compile:
+                        //
+                        // ```
+                        // fn foo(x: &mut Result<i32, i32>) {
+                        //     let mut v = None;
+                        //     if let Ok(ref mut a) = *x {
+                        //         v = Some(a);
+                        //     }
+                        //     // here, you would *think* that the
+                        //     // *entirety* of `x` would be borrowed,
+                        //     // but in fact only the `Ok` variant is,
+                        //     // so the `Err` variant is *entirely free*:
+                        //     if let Err(ref mut a) = *x {
+                        //         v = Some(a);
+                        //     }
+                        //     drop(v);
+                        // }
+                        // ```
+                        if v1 == v2 {
+                            debug!("place_element_conflict: DISJOINT-OR-EQ-FIELD");
+                            Overlap::EqualOrDisjoint
+                        } else {
+                            debug!("place_element_conflict: DISJOINT-FIELD");
+                            Overlap::Disjoint
+                        }
+                    }
+                    (ProjectionElem::Index(..), ProjectionElem::Index(..))
+                    | (ProjectionElem::Index(..), ProjectionElem::ConstantIndex { .. })
+                    | (ProjectionElem::Index(..), ProjectionElem::Subslice { .. })
+                    | (ProjectionElem::ConstantIndex { .. }, ProjectionElem::Index(..))
+                    | (
+                        ProjectionElem::ConstantIndex { .. },
+                        ProjectionElem::ConstantIndex { .. },
+                    )
+                    | (ProjectionElem::ConstantIndex { .. }, ProjectionElem::Subslice { .. })
+                    | (ProjectionElem::Subslice { .. }, ProjectionElem::Index(..))
+                    | (ProjectionElem::Subslice { .. }, ProjectionElem::ConstantIndex { .. })
+                    | (ProjectionElem::Subslice { .. }, ProjectionElem::Subslice { .. }) => {
+                        // Array indexes (`a[0]` vs. `a[i]`). These can either be disjoint
+                        // (if the indexes differ) or equal (if they are the same), so this
+                        // is the recursive case that gives "equal *or* disjoint" its meaning.
+                        //
+                        // Note that by construction, MIR at borrowck can't subdivide
+                        // `Subslice` accesses (e.g. `a[2..3][i]` will never be present) - they
+                        // are only present in slice patterns, and we "merge together" nested
+                        // slice patterns. That means we don't have to think about these. It's
+                        // probably a good idea to assert this somewhere, but I'm too lazy.
+                        //
+                        // FIXME(#8636) we might want to return Disjoint if
+                        // both projections are constant and disjoint.
+                        debug!("place_element_conflict: DISJOINT-OR-EQ-ARRAY");
+                        Overlap::EqualOrDisjoint
+                    }
+
+                    (ProjectionElem::Deref, _)
+                    | (ProjectionElem::Field(..), _)
+                    | (ProjectionElem::Index(..), _)
+                    | (ProjectionElem::ConstantIndex { .. }, _)
+                    | (ProjectionElem::Subslice { .. }, _)
+                    | (ProjectionElem::Downcast(..), _) => bug!(
+                        "mismatched projections in place_element_conflict: {:?} and {:?}",
+                        elem1,
+                        elem2
+                    ),
+                }
+            }
+            (Place::Projection(_), _) | (_, Place::Projection(_)) => bug!(
+                "unexpected elements in place_element_conflict: {:?} and {:?}",
+                elem1,
+                elem2
+            ),
+        }
     }
 }
