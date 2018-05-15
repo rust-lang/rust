@@ -21,11 +21,11 @@ use borrow_check::nll::renumber;
 use borrow_check::nll::universal_regions::UniversalRegions;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferOk;
-use rustc::ty::Ty;
-use rustc::ty::subst::Subst;
-use rustc::mir::*;
 use rustc::mir::visit::TyContext;
+use rustc::mir::*;
 use rustc::traits::PredicateObligations;
+use rustc::ty::subst::Subst;
+use rustc::ty::Ty;
 
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -50,18 +50,18 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         // Equate expected input tys with those in the MIR.
         let argument_locals = (1..).map(Local::new);
         for (&unnormalized_input_ty, local) in unnormalized_input_tys.iter().zip(argument_locals) {
-            let input_ty = self.normalize(&unnormalized_input_ty, Locations::All);
+            let input_ty = self.normalize(&unnormalized_input_ty, Locations::Entry);
             let mir_input_ty = mir.local_decls[local].ty;
-            self.equate_normalized_input_or_output(input_ty, mir_input_ty);
+            self.equate_normalized_input_or_output(Locations::Entry, input_ty, mir_input_ty);
         }
 
         assert!(
-            mir.yield_ty.is_some() && universal_regions.yield_ty.is_some() ||
-            mir.yield_ty.is_none() && universal_regions.yield_ty.is_none()
+            mir.yield_ty.is_some() && universal_regions.yield_ty.is_some()
+                || mir.yield_ty.is_none() && universal_regions.yield_ty.is_none()
         );
         if let Some(mir_yield_ty) = mir.yield_ty {
             let ur_yield_ty = universal_regions.yield_ty.unwrap();
-            self.equate_normalized_input_or_output(ur_yield_ty, mir_yield_ty);
+            self.equate_normalized_input_or_output(Locations::Yield, ur_yield_ty, mir_yield_ty);
         }
 
         // Return types are a bit more complex. They may contain existential `impl Trait`
@@ -70,13 +70,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             "equate_inputs_and_outputs: unnormalized_output_ty={:?}",
             unnormalized_output_ty
         );
-        let output_ty = self.normalize(&unnormalized_output_ty, Locations::All);
+        let output_ty = self.normalize(&unnormalized_output_ty, Locations::Return);
         debug!(
             "equate_inputs_and_outputs: normalized output_ty={:?}",
             output_ty
         );
         let mir_output_ty = mir.local_decls[RETURN_PLACE].ty;
-        let anon_type_map = self.fully_perform_op(Locations::All, |cx| {
+        let anon_type_map = self.fully_perform_op(Locations::Return, |cx| {
             let mut obligations = ObligationAccumulator::default();
 
             let (output_ty, anon_type_map) = obligations.add(infcx.instantiate_anon_types(
@@ -127,23 +127,23 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 obligations: obligations.into_vec(),
             })
         }).unwrap_or_else(|terr| {
-                span_mirbug!(
-                    self,
-                    Location::START,
-                    "equate_inputs_and_outputs: `{:?}=={:?}` failed with `{:?}`",
-                    output_ty,
-                    mir_output_ty,
-                    terr
-                );
-                None
-            });
+            span_mirbug!(
+                self,
+                Location::START,
+                "equate_inputs_and_outputs: `{:?}=={:?}` failed with `{:?}`",
+                output_ty,
+                mir_output_ty,
+                terr
+            );
+            None
+        });
 
         // Finally, if we instantiated the anon types successfully, we
         // have to solve any bounds (e.g., `-> impl Iterator` needs to
         // prove that `T: Iterator` where `T` is the type we
         // instantiated it with).
         if let Some(anon_type_map) = anon_type_map {
-            self.fully_perform_op(Locations::All, |_cx| {
+            self.fully_perform_op(Locations::Return, |_cx| {
                 infcx.constrain_anon_types(&anon_type_map, universal_regions);
                 Ok(InferOk {
                     value: (),
@@ -153,10 +153,15 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn equate_normalized_input_or_output(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
+    fn equate_normalized_input_or_output(
+        &mut self,
+        locations: Locations,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+    ) {
         debug!("equate_normalized_input_or_output(a={:?}, b={:?})", a, b);
 
-        if let Err(terr) = self.eq_types(a, b, Locations::All) {
+        if let Err(terr) = self.eq_types(a, b, locations) {
             span_mirbug!(
                 self,
                 Location::START,

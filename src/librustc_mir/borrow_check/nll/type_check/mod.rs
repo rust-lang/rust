@@ -624,38 +624,18 @@ pub struct OutlivesSet<'tcx> {
 /// want the constraint to hold at all points.
 #[derive(Copy, Clone, Debug)]
 pub enum Locations {
-    /// Indicates that a type constraint should always be true. This
-    /// is particularly important in the new borrowck analysis for
-    /// things like the type of the return slot. Consider this
-    /// example:
-    ///
-    /// ```
-    /// fn foo<'a>(x: &'a u32) -> &'a u32 {
-    ///     let y = 22;
-    ///     return &y; // error
-    /// }
-    /// ```
-    ///
-    /// Here, we wind up with the signature from the return type being
-    /// something like `&'1 u32` where `'1` is a universal region. But
-    /// the type of the return slot `_0` is something like `&'2 u32`
-    /// where `'2` is an existential region variable. The type checker
-    /// requires that `&'2 u32 = &'1 u32` -- but at what point? In the
-    /// older NLL analysis, we required this only at the entry point
-    /// to the function. By the nature of the constraints, this wound
-    /// up propagating to all points reachable from start (because
-    /// `'1` -- as a universal region -- is live everywhere).  In the
-    /// newer analysis, though, this doesn't work: `_0` is considered
-    /// dead at the start (it has no usable value) and hence this type
-    /// equality is basically a no-op. Then, later on, when we do `_0
-    /// = &'3 y`, that region `'3` never winds up related to the
-    /// universal region `'1` and hence no error occurs. Therefore, we
-    /// use Locations::All instead, which ensures that the `'1` and
-    /// `'2` are equal everything. We also use this for other
-    /// user-given type annotations; e.g., if the user wrote `let mut
-    /// x: &'static u32 = ...`, we would ensure that all values
-    /// assigned to `x` are of `'static` lifetime.
-    All,
+    /// At the location of every Yield terminator -- this occurs when
+    /// we are unifiying the "internal" view of the yield type with
+    /// the external view.
+    Yield,
+
+    /// At the location of every Return terminator -- this occurs when
+    /// we are unifiying the "internal" view of the return type with
+    /// the external view.
+    Return,
+
+    /// At the start location
+    Entry,
 
     Pair {
         /// The location in the MIR that generated these constraints.
@@ -672,17 +652,34 @@ pub enum Locations {
 
 impl Locations {
     crate fn span(&self, mir: &Mir<'_>) -> Span {
-        let location = match self {
-            Locations::All => Location::START,
-            Locations::Pair { from_location, .. } => *from_location,
-        };
-        mir.source_info(location).span
+        match self {
+            Locations::Entry => mir.source_info(Location::START).span,
+            Locations::Return | Locations::Yield => mir.span, // FIXME
+            Locations::Pair { from_location, .. } => mir.source_info(*from_location).span,
+        }
     }
 
-    crate fn from_location(&self) -> Option<Location> {
+    crate fn each_point(&self, mir: &Mir<'_>, mut op: impl FnMut(Location)) {
+        let mut want_yield = false;
+        let mut want_return = false;
+
         match self {
-            Locations::All => None,
-            Locations::Pair { from_location, .. } => Some(*from_location),
+            Locations::Pair { from_location, .. } => return op(*from_location),
+            Locations::Entry => return op(Location::START),
+            Locations::Yield => want_yield = true,
+            Locations::Return => want_return = true,
+        }
+
+        for (block, block_data) in mir.basic_blocks().iter_enumerated() {
+            let want_term = match block_data.terminator().kind {
+                TerminatorKind::Return => want_return,
+                TerminatorKind::Yield { .. } => want_yield,
+                _ => false,
+            };
+
+            if want_term {
+                op(mir.terminator_location(block));
+            }
         }
     }
 }
@@ -826,7 +823,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     "check_stmt: user_assert_ty ty={:?} local_ty={:?}",
                     ty, local_ty
                 );
-                if let Err(terr) = self.eq_types(ty, local_ty, Locations::All) {
+                if let Err(terr) = self.eq_types(ty, local_ty, location.at_self()) {
                     span_mirbug!(
                         self,
                         stmt,

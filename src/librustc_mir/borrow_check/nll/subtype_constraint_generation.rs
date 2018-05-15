@@ -110,21 +110,17 @@ impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
                 // talk about `<=`.
                 self.regioncx.add_outlives(span, b_vid, a_vid);
 
-                // In the new analysis, all outlives relations etc
-                // "take effect" at the mid point of the statement
-                // that requires them, so ignore the `at_location`.
                 if let Some(all_facts) = all_facts {
-                    if let Some(from_location) = locations.from_location() {
+                    locations.each_point(self.mir, |location| {
+                        // In the new analysis, all outlives relations etc
+                        // "take effect" at the mid point of the
+                        // statement(s) that require them.
                         all_facts.outlives.push((
                             b_vid,
                             a_vid,
-                            self.location_table.mid_index(from_location),
+                            self.location_table.mid_index(location),
                         ));
-                    } else {
-                        for location in self.location_table.all_points() {
-                            all_facts.outlives.push((b_vid, a_vid, location));
-                        }
-                    }
+                    });
                 }
             }
 
