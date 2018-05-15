@@ -42,6 +42,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
 <head>\
     <meta charset=\"utf-8\">\
     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\
+    <meta http-equiv=\"Content-Security-Policy\" content=\"default-src *; script-src 'self'; object-src 'none'">
     <meta name=\"generator\" content=\"rustdoc\">\
     <meta name=\"description\" content=\"{description}\">\
     <meta name=\"keywords\" content=\"{keywords}\">\
