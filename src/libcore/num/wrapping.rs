@@ -874,7 +874,7 @@ When return value overflows (i.e. `self > (1 << (N-1))` for type
 Basic usage:
 
 ```
-#![feature(wrapping_int_impl)]
+#![feature(wrapping_next_power_of_two)]
 use std::num::Wrapping;
 
 assert_eq!(Wrapping(2", stringify!($t), ").next_power_of_two(), Wrapping(2));
@@ -882,7 +882,8 @@ assert_eq!(Wrapping(3", stringify!($t), ").next_power_of_two(), Wrapping(4));
 assert_eq!(Wrapping(200_u8).next_power_of_two(), Wrapping(0));
 ```"),
                 #[inline]
-                #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+                #[unstable(feature = "wrapping_next_power_of_two", issue = "32463",
+                           reason = "needs decision on wrapping behaviour")]
                 pub fn next_power_of_two(self) -> Self {
                     Wrapping(self.0.wrapping_next_power_of_two())
                 }
