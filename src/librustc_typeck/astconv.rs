@@ -1158,13 +1158,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         if let Some(parent_id) = generics.parent {
             let parent_generics = tcx.generics_of(parent_id);
             Substs::fill_item(&mut substs, tcx, parent_generics, &mut |param, _| {
-                match param.kind {
-                    GenericParamDefKind::Lifetime => {
-                        tcx.mk_region(
-                            ty::ReEarlyBound(param.to_early_bound_region_data())).into()
-                    }
-                    GenericParamDefKind::Type(_) => tcx.mk_ty_param_from_def(param).into(),
-                }
+                tcx.mk_param_from_def(param)
             });
 
             // Replace all lifetimes with 'static

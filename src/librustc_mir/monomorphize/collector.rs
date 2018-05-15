@@ -1116,7 +1116,7 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         match param.kind {
                             GenericParamDefKind::Lifetime => tcx.types.re_erased.into(),
                             GenericParamDefKind::Type(_) => {
-                                trait_ref.substs.type_for_def(param).into()
+                                trait_ref.substs[param.index as usize]
                             }
                         }
                     });

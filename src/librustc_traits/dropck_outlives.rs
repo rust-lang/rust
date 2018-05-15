@@ -14,7 +14,7 @@ use rustc::traits::{FulfillmentContext, Normalized, ObligationCause};
 use rustc::traits::query::{CanonicalTyGoal, NoSolution};
 use rustc::traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
-use rustc::ty::subst::Subst;
+use rustc::ty::subst::{UnpackedKind, Subst};
 use rustc::util::nodemap::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use syntax::codemap::{Span, DUMMY_SP};
@@ -278,11 +278,16 @@ crate fn adt_dtorck_constraint<'a, 'tcx>(
     debug!("dtorck_constraint: {:?}", def);
 
     if def.is_phantom_data() {
-        // The first generic parameter here is guaranteed to be a type because it's `PhantomData`.
+        // The first generic parameter here is guaranteed to be a type because it's
+        // `PhantomData`.
         let param = &tcx.generics_of(def_id).params[0];
+        let ty = match tcx.mk_param_from_def(param).unpack() {
+            UnpackedKind::Type(ty) => ty,
+            _ => unreachable!(),
+        };
         let result = DtorckConstraint {
             outlives: vec![],
-            dtorck_types: vec![tcx.mk_ty_param_from_def(param)],
+            dtorck_types: vec![ty],
             overflows: vec![],
         };
         debug!("dtorck_constraint: {:?} => {:?}", def, result);

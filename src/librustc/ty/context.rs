@@ -2472,8 +2472,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty_param(0, keywords::SelfType.name().as_interned_str())
     }
 
-    pub fn mk_ty_param_from_def(self, def: &ty::GenericParamDef) -> Ty<'tcx> {
-        self.mk_ty_param(def.index, def.name)
+    pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> Kind<'tcx> {
+        match param.kind {
+            GenericParamDefKind::Lifetime => {
+                self.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())).into()
+            }
+            GenericParamDefKind::Type(_) => self.mk_ty_param(param.index, param.name).into(),
+        }
     }
 
     pub fn mk_anon(self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {

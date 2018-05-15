@@ -11,7 +11,7 @@
 // Type substitutions.
 
 use hir::def_id::DefId;
-use ty::{self, Lift, Slice, Region, Ty, TyCtxt, GenericParamDefKind};
+use ty::{self, Lift, Slice, Region, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use serialize::{self, Encodable, Encoder, Decodable, Decoder};
@@ -182,12 +182,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     pub fn identity_for_item(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId)
                              -> &'tcx Substs<'tcx> {
         Substs::for_item(tcx, def_id, |param, _| {
-            match param.kind {
-                GenericParamDefKind::Lifetime => {
-                    tcx.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())).into()
-                }
-                GenericParamDefKind::Type(_) => tcx.mk_ty_param_from_def(param).into(),
-            }
+            tcx.mk_param_from_def(param)
         })
     }
 
@@ -293,13 +288,8 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     }
 
     #[inline]
-    pub fn type_for_def(&self, ty_param_def: &ty::GenericParamDef) -> Ty<'tcx> {
-        self.type_at(ty_param_def.index as usize)
-    }
-
-    #[inline]
-    pub fn region_for_def(&self, def: &ty::GenericParamDef) -> ty::Region<'tcx> {
-        self.region_at(def.index as usize)
+    pub fn type_for_def(&self, def: &ty::GenericParamDef) -> Kind<'tcx> {
+        self.type_at(def.index as usize).into()
     }
 
     /// Transform from substitutions for a child of `source_ancestor`

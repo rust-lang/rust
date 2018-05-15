@@ -845,7 +845,7 @@ fn vtable_methods<'a, 'tcx>(
                         match param.kind {
                             GenericParamDefKind::Lifetime => tcx.types.re_erased.into(),
                             GenericParamDefKind::Type(_) => {
-                                trait_ref.substs.type_for_def(param).into()
+                                trait_ref.substs[param.index as usize]
                             }
                         }
                     })

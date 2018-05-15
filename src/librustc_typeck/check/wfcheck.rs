@@ -409,7 +409,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
         match param.kind {
             GenericParamDefKind::Lifetime => {
                 // All regions are identity.
-                fcx.tcx.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())).into()
+                fcx.tcx.mk_param_from_def(param)
             }
             GenericParamDefKind::Type(_) => {
                 // If the param has a default,
