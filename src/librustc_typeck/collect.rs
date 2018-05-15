@@ -1029,9 +1029,14 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         NodeItem(item) => {
             match item.node {
                 ItemStatic(ref t, ..) | ItemConst(ref t, _) |
-                ItemTy(ref t, _, _) | ItemImpl(.., ref t, _) => {
+                ItemTy(ref t, _, hir::AliasKind::Weak) | ItemImpl(.., ref t, _) => {
                     icx.to_ty(t)
                 }
+                ItemTy(_, _, hir::AliasKind::Existential) => {
+                    let substs = Substs::identity_for_item(tcx, def_id);
+                    // TODO this is obviously wrong, but should give fun error messages
+                    tcx.mk_anon(def_id, substs)
+                },
                 ItemFn(..) => {
                     let substs = Substs::identity_for_item(tcx, def_id);
                     tcx.mk_fn_def(def_id, substs)

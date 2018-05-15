@@ -14,6 +14,6 @@ fn main() {}
 
 existential type Foo: std::fmt::Debug;
 
-fn foo() -> Foo { //~ ERROR expected type, found existential type `Foo`
-    ""
+fn foo() -> Foo { //~ ERROR trait bound `impl ?Sized: std::marker::Sized` is not satisfied
+    "" //~ ERROR mismatched types
 }
