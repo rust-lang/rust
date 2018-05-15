@@ -442,6 +442,7 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Fn(_) |
             EntryKind::ForeignFn(_) => Def::Fn(did),
             EntryKind::Method(_) => Def::Method(did),
+            EntryKind::Existential => Def::Existential(did),
             EntryKind::Type => Def::TyAlias(did),
             EntryKind::AssociatedType(_) => Def::AssociatedTy(did),
             EntryKind::Mod(_) => Def::Mod(did),
