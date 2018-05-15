@@ -23,6 +23,7 @@ echo "Integration tests for: ${INTEGRATION}"
 function check_fmt {
     cargo fmt --all -v -- --error-on-unformatted &> rustfmt_output
     if [[ $? != 0 ]]; then
+        cat rustfmt_output
         return 1
     fi
     cat rustfmt_output
