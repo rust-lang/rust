@@ -338,9 +338,8 @@ mod test;
 #[cfg(test)]
 pub use self::test::*;
 
-#[doc(hidden)]
 #[allow(non_camel_case_types)]
-#[stable(feature = "simd_x86", since = "1.27.0")]
+#[unstable(feature = "stdimd_internal", issue = "0")]
 pub(crate) trait m128iExt: Sized {
     fn as_m128i(self) -> __m128i;
 
@@ -392,9 +391,8 @@ impl m128iExt for __m128i {
     }
 }
 
-#[doc(hidden)]
 #[allow(non_camel_case_types)]
-#[stable(feature = "simd_x86", since = "1.27.0")]
+#[unstable(feature = "stdimd_internal", issue = "0")]
 pub(crate) trait m256iExt: Sized {
     fn as_m256i(self) -> __m256i;
 
