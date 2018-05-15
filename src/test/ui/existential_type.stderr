@@ -1,24 +1,9 @@
-error[E0308]: mismatched types
-  --> $DIR/existential_type.rs:18:5
-   |
-LL | fn foo() -> Foo { //~ ERROR Sized` is not satisfied [E0277]
-   |             --- expected `std::fmt::Debug + 'static` because of return type
-LL |     "" //~ ERROR mismatched types [E0308]
-   |     ^^ expected trait std::fmt::Debug, found reference
-   |
-   = note: expected type `std::fmt::Debug + 'static`
-              found type `&'static str`
-
-error[E0277]: the trait bound `std::fmt::Debug + 'static: std::marker::Sized` is not satisfied
+error[E0573]: expected type, found existential type `Foo`
   --> $DIR/existential_type.rs:17:13
    |
-LL | fn foo() -> Foo { //~ ERROR Sized` is not satisfied [E0277]
-   |             ^^^ `std::fmt::Debug + 'static` does not have a constant size known at compile-time
-   |
-   = help: the trait `std::marker::Sized` is not implemented for `std::fmt::Debug + 'static`
-   = note: the return type of a function must have a statically known size
+LL | fn foo() -> Foo { //~ ERROR expected type, found existential type `Foo`
+   |             ^^^ not a type
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors occurred: E0277, E0308.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0573`.

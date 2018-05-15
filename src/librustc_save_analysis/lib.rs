@@ -743,6 +743,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::Union(def_id) |
             HirDef::Enum(def_id) |
             HirDef::TyAlias(def_id) |
+            HirDef::Existential(def_id) |
             HirDef::TyForeign(def_id) |
             HirDef::TraitAlias(def_id) |
             HirDef::AssociatedTy(def_id) |

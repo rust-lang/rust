@@ -294,6 +294,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             HirDef::Union(..) |
             HirDef::Enum(..) |
             HirDef::TyAlias(..) |
+            HirDef::Existential(..) |
             HirDef::TyForeign(..) |
             HirDef::TraitAlias(..) |
             HirDef::Trait(_) => {

@@ -14,6 +14,6 @@ fn main() {}
 
 existential type Foo: std::fmt::Debug;
 
-fn foo() -> Foo { //~ ERROR Sized` is not satisfied [E0277]
-    "" //~ ERROR mismatched types [E0308]
+fn foo() -> Foo { //~ ERROR expected type, found existential type `Foo`
+    ""
 }

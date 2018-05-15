@@ -1051,6 +1051,7 @@ impl_stable_hash_for!(enum hir::def::Def {
     Variant(def_id),
     Trait(def_id),
     TyAlias(def_id),
+    Existential(def_id),
     TraitAlias(def_id),
     AssociatedTy(def_id),
     PrimTy(prim_ty),
