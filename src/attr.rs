@@ -20,6 +20,7 @@ use expr::rewrite_literal;
 use lists::{itemize_list, write_list, ListFormatting};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
+use types::{rewrite_path, PathContext};
 use utils::{count_newlines, mk_sp};
 
 /// Returns attributes on the given statement.
@@ -200,9 +201,11 @@ fn allow_mixed_tactic_for_nested_metaitem_list(list: &[ast::NestedMetaItem]) -> 
 impl Rewrite for ast::MetaItem {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         Some(match self.node {
-            ast::MetaItemKind::Word => String::from(&*self.name().as_str()),
+            ast::MetaItemKind::Word => {
+                rewrite_path(context, PathContext::Type, None, &self.ident, shape)?
+            }
             ast::MetaItemKind::List(ref list) => {
-                let name = self.name().as_str();
+                let path = rewrite_path(context, PathContext::Type, None, &self.ident, shape)?;
                 let item_shape = match context.config.indent_style() {
                     IndentStyle::Block => shape
                         .block_indent(context.config.tab_spaces())
@@ -210,7 +213,7 @@ impl Rewrite for ast::MetaItem {
                     // 1 = `(`, 2 = `]` and `)`
                     IndentStyle::Visual => shape
                         .visual_indent(0)
-                        .shrink_left(name.len() + 1)
+                        .shrink_left(path.len() + 1)
                         .and_then(|s| s.sub_width(2))?,
                 };
                 let items = itemize_list(
@@ -248,21 +251,21 @@ impl Rewrite for ast::MetaItem {
                 };
                 let item_str = write_list(&item_vec, &fmt)?;
                 // 3 = "()" and "]"
-                let one_line_budget = shape.offset_left(name.len())?.sub_width(3)?.width;
+                let one_line_budget = shape.offset_left(path.len())?.sub_width(3)?.width;
                 if context.config.indent_style() == IndentStyle::Visual
                     || (!item_str.contains('\n') && item_str.len() <= one_line_budget)
                 {
-                    format!("{}({})", name, item_str)
+                    format!("{}({})", path, item_str)
                 } else {
                     let indent = shape.indent.to_string_with_newline(context.config);
                     let nested_indent = item_shape.indent.to_string_with_newline(context.config);
-                    format!("{}({}{}{})", name, nested_indent, item_str, indent)
+                    format!("{}({}{}{})", path, nested_indent, item_str, indent)
                 }
             }
             ast::MetaItemKind::NameValue(ref literal) => {
-                let name = self.name().as_str();
+                let path = rewrite_path(context, PathContext::Type, None, &self.ident, shape)?;
                 // 3 = ` = `
-                let lit_shape = shape.shrink_left(name.len() + 3)?;
+                let lit_shape = shape.shrink_left(path.len() + 3)?;
                 // `rewrite_literal` returns `None` when `literal` exceeds max
                 // width. Since a literal is basically unformattable unless it
                 // is a string literal (and only if `format_strings` is set),
@@ -271,7 +274,7 @@ impl Rewrite for ast::MetaItem {
                 // See #2479 for example.
                 let value = rewrite_literal(context, literal, lit_shape)
                     .unwrap_or_else(|| context.snippet(literal.span).to_owned());
-                format!("{} = {}", name, value)
+                format!("{} = {}", path, value)
             }
         })
     }

@@ -1,10 +1,10 @@
 // Test the skip attribute works
 
-#[rustfmt_skip]
+#[rustfmt::skip]
 fn foo() { badly; formatted; stuff
 ; }
 
-#[rustfmt_skip]
+#[rustfmt::skip]
 trait Foo
 {
 fn foo(
@@ -12,13 +12,13 @@ fn foo(
 }
 
 impl LateLintPass for UsedUnderscoreBinding {
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[cfg_attr(rustfmt, rustfmt::skip)]
     fn check_expr() { // comment
     }
 }
 
 fn issue1346() {
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[cfg_attr(rustfmt, rustfmt::skip)]
     Box::new(self.inner.call(req).then(move |result| {
         match result {
             Ok(resp) => Box::new(future::done(Ok(resp))),
@@ -32,7 +32,7 @@ fn issue1346() {
 
 fn skip_on_statements() {
     // Outside block
-    #[rustfmt_skip]
+    #[rustfmt::skip]
     {
         foo; bar;
             // junk
@@ -40,13 +40,13 @@ fn skip_on_statements() {
 
     {
         // Inside block
-        #![rustfmt_skip]
+        #![rustfmt::skip]
         foo; bar;
             // junk
     }
 
     // Semi
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[cfg_attr(rustfmt, rustfmt::skip)]
     foo(
         1, 2, 3, 4,
         1, 2,
@@ -54,15 +54,15 @@ fn skip_on_statements() {
     );
 
     // Local
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[cfg_attr(rustfmt, rustfmt::skip)]
     let x = foo(  a,   b  ,  c);
 
     // Item
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[cfg_attr(rustfmt, rustfmt::skip)]
     use foobar;
 
     // Mac
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[cfg_attr(rustfmt, rustfmt::skip)]
     vec![
         1, 2, 3, 4,
         1, 2, 3, 4,
@@ -74,12 +74,12 @@ fn skip_on_statements() {
     ];
 
     // Expr
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[cfg_attr(rustfmt, rustfmt::skip)]
     foo(  a,   b  ,  c)
 }
 
 // Check that the skip attribute applies to other attributes.
-#[rustfmt_skip]
+#[rustfmt::skip]
 #[cfg
 (  a , b
 )]

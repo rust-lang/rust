@@ -1,3 +1,3 @@
-#![rustfmt_skip]
+#![rustfmt::skip]
 use a ::  b
 ;

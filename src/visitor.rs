@@ -26,7 +26,11 @@ use macros::{rewrite_macro, rewrite_macro_def, MacroPosition};
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use spanned::Spanned;
-use utils::{self, contains_skip, count_newlines, inner_attributes, mk_sp, ptr_vec_to_ref_vec};
+use utils::{
+    self, contains_skip, count_newlines, inner_attributes, mk_sp, ptr_vec_to_ref_vec,
+    DEPR_SKIP_ANNOTATION,
+};
+use {ErrorKind, FormatReport, FormattingError};
 
 use std::cell::RefCell;
 
@@ -66,6 +70,7 @@ pub struct FmtVisitor<'a> {
     pub snippet_provider: &'a SnippetProvider<'a>,
     pub line_number: usize,
     pub skipped_range: Vec<(usize, usize)>,
+    pub report: FormatReport,
 }
 
 impl<'b, 'a: 'b> FmtVisitor<'a> {
@@ -552,13 +557,19 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     }
 
     pub fn from_context(ctx: &'a RewriteContext) -> FmtVisitor<'a> {
-        FmtVisitor::from_codemap(ctx.parse_session, ctx.config, ctx.snippet_provider)
+        FmtVisitor::from_codemap(
+            ctx.parse_session,
+            ctx.config,
+            ctx.snippet_provider,
+            ctx.report.clone(),
+        )
     }
 
     pub fn from_codemap(
         parse_session: &'a ParseSess,
         config: &'a Config,
         snippet_provider: &'a SnippetProvider,
+        report: FormatReport,
     ) -> FmtVisitor<'a> {
         FmtVisitor {
             parse_session,
@@ -571,6 +582,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             snippet_provider,
             line_number: 0,
             skipped_range: vec![],
+            report,
         }
     }
 
@@ -584,6 +596,33 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
     // Returns true if we should skip the following item.
     pub fn visit_attrs(&mut self, attrs: &[ast::Attribute], style: ast::AttrStyle) -> bool {
+        for attr in attrs {
+            if attr.name() == DEPR_SKIP_ANNOTATION {
+                let file_name = self.codemap.span_to_filename(attr.span);
+                self.report.append(
+                    file_name,
+                    vec![FormattingError::from_span(
+                        &attr.span,
+                        &self.codemap,
+                        ErrorKind::DeprecatedAttr,
+                    )],
+                );
+            } else if attr.path.segments[0].ident.to_string() == "rustfmt" {
+                if attr.path.segments.len() == 1
+                    || attr.path.segments[1].ident.to_string() != "skip"
+                {
+                    let file_name = self.codemap.span_to_filename(attr.span);
+                    self.report.append(
+                        file_name,
+                        vec![FormattingError::from_span(
+                            &attr.span,
+                            &self.codemap,
+                            ErrorKind::BadAttr,
+                        )],
+                    );
+                }
+            }
+        }
         if contains_skip(attrs) {
             return true;
         }
@@ -711,6 +750,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             is_if_else_block: RefCell::new(false),
             force_one_line_chain: RefCell::new(false),
             snippet_provider: self.snippet_provider,
+            report: self.report.clone(),
         }
     }
 }

@@ -58,7 +58,7 @@ fn baz<
     extern crate foo;
 }
 
-#[rustfmt_skip]
+#[rustfmt::skip]
 fn qux(a: dadsfa,   // Comment 1
        b: sdfasdfa, // Comment 2
        c: dsfdsafa) // Comment 3
@@ -103,7 +103,7 @@ pub trait GraphWalk<'a, N, E> {
 /// A Doc comment
 #[AnAttribute]
 pub struct Foo {
-    #[rustfmt_skip]
+    #[rustfmt::skip]
     f :   SomeType, // Comment beside a field
     f: SomeType, // Comment beside a field
     // Comment on a field
@@ -172,7 +172,7 @@ fn deconstruct(
 ) {
 }
 
-#[rustfmt_skip]
+#[rustfmt::skip]
 mod a{
 fn foo(x:    T) {
     let x:    T = dfasdf;

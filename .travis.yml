@@ -28,9 +28,7 @@ matrix:
     - env: INTEGRATION=futures-rs
     - env: INTEGRATION=rand
     - env: INTEGRATION=failure
-    - env: INTEGRATION=glob
     - env: INTEGRATION=error-chain
-    - env: INTEGRATION=tempdir
     - env: INTEGRATION=bitflags
     - env: INTEGRATION=log
   allow_failures:
@@ -47,6 +45,8 @@ matrix:
     - env: INTEGRATION=futures-rs
     - env: INTEGRATION=log
     - env: INTEGRATION=rand
+    - env: INTEGRATION=glob
+    - env: INTEGRATION=tempdir
 
 before_script:
 - |

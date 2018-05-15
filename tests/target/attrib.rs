@@ -171,3 +171,9 @@ struct A {
     feature = "this_line_is_101_characters_long_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 )]
 pub fn foo() {}
+
+// path attrs
+#[clippy::bar]
+#[clippy::bar=foo]
+#[clippy::bar(a, b, c)]
+pub fn foo() {}

@@ -48,7 +48,7 @@ fn foo() {
         #[an_attribute]
         // Comment after an attribute.
         None => 0,
-        #[rustfmt_skip]
+        #[rustfmt::skip]
         Blurb     =>     {                  }
     };
 }
@@ -103,7 +103,7 @@ fn matches() {
 
 fn match_skip() {
     let _ = match Some(1) {
-        #[rustfmt_skip]
+        #[rustfmt::skip]
         Some( n ) => n,
         None      => 1,
     };
