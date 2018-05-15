@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This file was auto-generated using 'src/etc/generate-deriving-span-tests.py'
+// ignore-order
 
-#[derive(PartialEq)]
-struct Error;
+const QUERY = 'is_nan';
 
-#[derive(PartialOrd,PartialEq)]
-struct Struct {
-    x: Error //~ ERROR
-}
-
-fn main() {}
+const EXPECTED = {
+    'others': [
+        { 'path': 'std::f32', 'name': 'is_nan' },
+        { 'path': 'std::f64', 'name': 'is_nan' },
+        { 'path': 'std::option::Option', 'name': 'is_none' },
+    ],
+};

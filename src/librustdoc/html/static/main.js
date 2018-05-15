@@ -57,6 +57,12 @@
             return this.indexOf(searchString, position) === position;
         };
     }
+    if (!String.prototype.endsWith) {
+        String.prototype.endsWith = function(suffix, length) {
+            var l = length || this.length;
+            return this.indexOf(suffix, l - suffix.length) !== -1;
+        };
+    }
 
     function getPageId() {
         var id = document.location.href.split('#')[1];
@@ -454,11 +460,15 @@
                         var obj = searchIndex[results[i].id];
                         obj.lev = results[i].lev;
                         if (isType !== true || obj.type) {
+                            var res = buildHrefAndPath(obj);
+                            obj.displayPath = pathSplitter(res[0]);
+                            obj.fullPath = obj.displayPath + obj.name;
+                            obj.href = res[1];
                             out.push(obj);
+                            if (out.length >= MAX_RESULTS) {
+                                break;
+                            }
                         }
-                    }
-                    if (out.length >= MAX_RESULTS) {
-                        break;
                     }
                 }
                 return out;
@@ -587,8 +597,8 @@
                 // match as well.
                 var lev_distance = MAX_LEV_DISTANCE + 1;
                 if (val.generics.length > 0) {
-                    if (obj.generics && obj.generics.length >= val.generics.length) {
-                        var elems = obj.generics.slice(0);
+                    if (obj.g && obj.g.length >= val.generics.length) {
+                        var elems = obj.g.slice(0);
                         var total = 0;
                         var done = 0;
                         // We need to find the type that matches the most to remove it in order
@@ -620,11 +630,11 @@
             // Check for type name and type generics (if any).
             function checkType(obj, val, literalSearch) {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
-                if (obj.name === val.name) {
+                if (obj.n === val.name) {
                     if (literalSearch === true) {
                         if (val.generics && val.generics.length !== 0) {
-                            if (obj.generics && obj.length >= val.generics.length) {
-                                var elems = obj.generics.slice(0);
+                            if (obj.g && obj.length >= val.generics.length) {
+                                var elems = obj.g.slice(0);
                                 var allFound = true;
                                 var x;
 
@@ -648,7 +658,7 @@
                     }
                     // If the type has generics but don't match, then it won't return at this point.
                     // Otherwise, `checkGenerics` will return 0 and it'll return.
-                    if (obj.generics && obj.generics.length !== 0) {
+                    if (obj.g && obj.g.length !== 0) {
                         var tmp_lev = checkGenerics(obj, val);
                         if (tmp_lev <= MAX_LEV_DISTANCE) {
                             return tmp_lev;
@@ -659,22 +669,22 @@
                 }
                 // Names didn't match so let's check if one of the generic types could.
                 if (literalSearch === true) {
-                     if (obj.generics && obj.generics.length > 0) {
-                        for (var x = 0; x < obj.generics.length; ++x) {
-                            if (obj.generics[x] === val.name) {
+                     if (obj.g && obj.g.length > 0) {
+                        for (var x = 0; x < obj.g.length; ++x) {
+                            if (obj.g[x] === val.name) {
                                 return true;
                             }
                         }
                     }
                     return false;
                 }
-                var lev_distance = Math.min(levenshtein(obj.name, val.name), lev_distance);
+                var lev_distance = Math.min(levenshtein(obj.n, val.name), lev_distance);
                 if (lev_distance <= MAX_LEV_DISTANCE) {
                     lev_distance = Math.min(checkGenerics(obj, val), lev_distance);
-                } else if (obj.generics && obj.generics.length > 0) {
+                } else if (obj.g && obj.g.length > 0) {
                     // We can check if the type we're looking for is inside the generics!
-                    for (var x = 0; x < obj.generics.length; ++x) {
-                        lev_distance = Math.min(levenshtein(obj.generics[x], val.name),
+                    for (var x = 0; x < obj.g.length; ++x) {
+                        lev_distance = Math.min(levenshtein(obj.g[x], val.name),
                                                 lev_distance);
                     }
                 }
@@ -686,9 +696,9 @@
             function findArg(obj, val, literalSearch) {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
 
-                if (obj && obj.type && obj.type.inputs.length > 0) {
-                    for (var i = 0; i < obj.type.inputs.length; i++) {
-                        var tmp = checkType(obj.type.inputs[i], val, literalSearch);
+                if (obj && obj.type && obj.type.i && obj.type.i.length > 0) {
+                    for (var i = 0; i < obj.type.i.length; i++) {
+                        var tmp = checkType(obj.type.i[i], val, literalSearch);
                         if (literalSearch === true && tmp === true) {
                             return true;
                         }
@@ -704,8 +714,8 @@
             function checkReturned(obj, val, literalSearch) {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
 
-                if (obj && obj.type && obj.type.output) {
-                    var tmp = checkType(obj.type.output, val, literalSearch);
+                if (obj && obj.type && obj.type.o) {
+                    var tmp = checkType(obj.type.o, val, literalSearch);
                     if (literalSearch === true && tmp === true) {
                         return true;
                     }
@@ -850,7 +860,7 @@
                     var fullId = generateId(ty);
 
                     // allow searching for void (no output) functions as well
-                    var typeOutput = type.output ? type.output.name : "";
+                    var typeOutput = type.o ? type.o.name : "";
                     var returned = checkReturned(ty, output, true);
                     if (output.name === "*" || returned === true) {
                         var in_args = false;
@@ -1017,6 +1027,13 @@
                     ALIASES[window.currentCrate][query.raw]) {
                 var aliases = ALIASES[window.currentCrate][query.raw];
                 for (var i = 0; i < aliases.length; ++i) {
+                    aliases[i].is_alias = true;
+                    aliases[i].alias = query.raw;
+                    aliases[i].path = aliases[i].p;
+                    var res = buildHrefAndPath(aliases[i]);
+                    aliases[i].displayPath = pathSplitter(res[0]);
+                    aliases[i].fullPath = aliases[i].displayPath + aliases[i].name;
+                    aliases[i].href = res[1];
                     ret['others'].unshift(aliases[i]);
                     if (ret['others'].length > MAX_RESULTS) {
                         ret['others'].pop();
@@ -1179,16 +1196,6 @@
             };
         }
 
-        function escape(content) {
-            var h1 = document.createElement('h1');
-            h1.textContent = content;
-            return h1.innerHTML;
-        }
-
-        function pathSplitter(path) {
-            return '<span>' + path.replace(/::/g, '::</span><span>');
-        }
-
         function buildHrefAndPath(item) {
             var displayPath;
             var href;
@@ -1227,6 +1234,20 @@
             return [displayPath, href];
         }
 
+        function escape(content) {
+            var h1 = document.createElement('h1');
+            h1.textContent = content;
+            return h1.innerHTML;
+        }
+
+        function pathSplitter(path) {
+            var tmp = '<span>' + path.replace(/::/g, '::</span><span>');
+            if (tmp.endsWith("<span>")) {
+                return tmp.slice(0, tmp.length - 6);
+            }
+            return tmp;
+        }
+
         function addTab(array, query, display) {
             var extraStyle = '';
             if (display === false) {
@@ -1234,31 +1255,33 @@
             }
 
             var output = '';
+            var duplicates = {};
+            var length = 0;
             if (array.length > 0) {
                 output = '<table class="search-results"' + extraStyle + '>';
-                var shown = [];
 
                 array.forEach(function(item) {
-                    var name, type, href, displayPath;
+                    var name, type;
 
-                    var id_ty = item.ty + item.path + item.name;
-                    if (shown.indexOf(id_ty) !== -1) {
-                        return;
-                    }
-
-                    shown.push(id_ty);
                     name = item.name;
                     type = itemTypes[item.ty];
 
-                    var res = buildHrefAndPath(item);
-                    var href = res[1];
-                    var displayPath = res[0];
+                    if (item.is_alias !== true) {
+                        if (duplicates[item.fullPath]) {
+                            return;
+                        }
+                        duplicates[item.fullPath] = true;
+                    }
+                    length += 1;
 
                     output += '<tr class="' + type + ' result"><td>' +
-                              '<a href="' + href + '">' +
-                              pathSplitter(displayPath) + '<span class="' + type + '">' +
+                              '<a href="' + item.href + '">' +
+                              (item.is_alias === true ?
+                               ('<span class="alias"><b>' + item.alias + ' </b></span><span ' +
+                                  'class="grey"><i>&nbsp;- see&nbsp;</i></span>') : '') +
+                              item.displayPath + '<span class="' + type + '">' +
                               name + '</span></a></td><td>' +
-                              '<a href="' + href + '">' +
+                              '<a href="' + item.href + '">' +
                               '<span class="desc">' + escape(item.desc) +
                               '&nbsp;</span></a></td></tr>';
                 });
@@ -1269,7 +1292,7 @@
                     encodeURIComponent('rust ' + query.query) +
                     '">DuckDuckGo</a>?</div>';
             }
-            return output;
+            return [output, length];
         }
 
         function makeTabHeader(tabNb, text, nbElems) {
@@ -1284,28 +1307,28 @@
             if (results['others'].length === 1 &&
                 getCurrentValue('rustdoc-go-to-only-result') === "true") {
                 var elem = document.createElement('a');
-                var res = buildHrefAndPath(results['others'][0]);
-                elem.href = res[1];
+                elem.href = results['others'][0].href;
                 elem.style.display = 'none';
                 // For firefox, we need the element to be in the DOM so it can be clicked.
                 document.body.appendChild(elem);
                 elem.click();
             }
-            var output, query = getQuery(search_input.value);
+            var query = getQuery(search_input.value);
 
             currentResults = query.id;
-            output = '<h1>Results for ' + escape(query.query) +
+
+            var ret_others = addTab(results['others'], query);
+            var ret_in_args = addTab(results['in_args'], query, false);
+            var ret_returned = addTab(results['returned'], query, false);
+
+            var output = '<h1>Results for ' + escape(query.query) +
                 (query.type ? ' (type: ' + escape(query.type) + ')' : '') + '</h1>' +
                 '<div id="titles">' +
-                makeTabHeader(0, "In Names", results['others'].length) +
-                makeTabHeader(1, "In Parameters", results['in_args'].length) +
-                makeTabHeader(2, "In Return Types", results['returned'].length) +
-                '</div><div id="results">';
-
-            output += addTab(results['others'], query);
-            output += addTab(results['in_args'], query, false);
-            output += addTab(results['returned'], query, false);
-            output += '</div>';
+                makeTabHeader(0, "In Names", ret_others[1]) +
+                makeTabHeader(1, "In Parameters", ret_in_args[1]) +
+                makeTabHeader(2, "In Return Types", ret_returned[1]) +
+                '</div><div id="results">' +
+                ret_others[0] + ret_in_args[0] + ret_returned[0] + '</div>';
 
             addClass(document.getElementById('main'), 'hidden');
             var search = document.getElementById('search');
@@ -1347,12 +1370,13 @@
                 }
             }
             if (queries.length > 1) {
-                function getSmallest(arrays, positions) {
+                function getSmallest(arrays, positions, notDuplicates) {
                     var start = null;
 
                     for (var it = 0; it < positions.length; ++it) {
                         if (arrays[it].length > positions[it] &&
-                            (start === null || start > arrays[it][positions[it]].lev)) {
+                            (start === null || start > arrays[it][positions[it]].lev) &&
+                            !notDuplicates[arrays[it][positions[it]].fullPath]) {
                             start = arrays[it][positions[it]].lev;
                         }
                     }
@@ -1362,19 +1386,23 @@
                 function mergeArrays(arrays) {
                     var ret = [];
                     var positions = [];
+                    var notDuplicates = {};
 
                     for (var x = 0; x < arrays.length; ++x) {
                         positions.push(0);
                     }
                     while (ret.length < MAX_RESULTS) {
-                        var smallest = getSmallest(arrays, positions);
+                        var smallest = getSmallest(arrays, positions, notDuplicates);
+
                         if (smallest === null) {
                             break;
                         }
                         for (x = 0; x < arrays.length && ret.length < MAX_RESULTS; ++x) {
                             if (arrays[x].length > positions[x] &&
-                                    arrays[x][positions[x]].lev === smallest) {
+                                    arrays[x][positions[x]].lev === smallest &&
+                                    !notDuplicates[arrays[x][positions[x]].fullPath]) {
                                 ret.push(arrays[x][positions[x]]);
+                                notDuplicates[arrays[x][positions[x]].fullPath] = true;
                                 positions[x] += 1;
                             }
                         }

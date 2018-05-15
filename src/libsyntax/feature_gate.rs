@@ -396,9 +396,6 @@ declare_features! (
     // Termination trait in tests (RFC 1937)
     (active, termination_trait_test, "1.24.0", Some(48854), Some(Edition::Edition2018)),
 
-    // Allows use of the :lifetime macro fragment specifier
-    (active, macro_lifetime_matcher, "1.24.0", Some(46895), None),
-
     // `extern` in paths
     (active, extern_in_paths, "1.23.0", Some(44660), None),
 
@@ -598,6 +595,8 @@ declare_features! (
     (accepted, dyn_trait, "1.27.0", Some(44662), None),
     // allow `#[must_use]` on functions; and, must-use operators (RFC 1940)
     (accepted, fn_must_use, "1.27.0", Some(43302), None),
+    // Allows use of the :lifetime macro fragment specifier
+    (accepted, macro_lifetime_matcher, "1.27.0", Some(34303), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1330,9 +1329,6 @@ pub const EXPLAIN_DERIVE_UNDERSCORE: &'static str =
 
 pub const EXPLAIN_VIS_MATCHER: &'static str =
     ":vis fragment specifier is experimental and subject to change";
-
-pub const EXPLAIN_LIFETIME_MATCHER: &'static str =
-    ":lifetime fragment specifier is experimental and subject to change";
 
 pub const EXPLAIN_LITERAL_MATCHER: &'static str =
     ":literal fragment specifier is experimental and subject to change";

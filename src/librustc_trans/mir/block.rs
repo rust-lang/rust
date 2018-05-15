@@ -17,7 +17,7 @@ use rustc::mir::interpret::EvalErrorKind;
 use abi::{Abi, ArgType, ArgTypeExt, FnType, FnTypeExt, LlvmType, PassMode};
 use base;
 use callee;
-use builder::Builder;
+use builder::{Builder, MemFlags};
 use common::{self, C_bool, C_str_slice, C_struct, C_u32, C_uint_big, C_undef};
 use consts;
 use meth;
@@ -626,7 +626,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     // have scary latent bugs around.
 
                     let scratch = PlaceRef::alloca(bx, arg.layout, "arg");
-                    base::memcpy_ty(bx, scratch.llval, llval, op.layout, align);
+                    base::memcpy_ty(bx, scratch.llval, llval, op.layout, align, MemFlags::empty());
                     (scratch.llval, scratch.align, true)
                 } else {
                     (llval, align, true)

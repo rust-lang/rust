@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that the :lifetime macro fragment cannot be used when macro_lifetime_matcher
-// feature gate is not used.
-
-macro_rules! m { ($lt:lifetime) => {} }
-//~^ ERROR :lifetime fragment specifier is experimental and subject to change
-
+enum Void {}
+fn foo(_: Result<(Void, u32), (Void, String)>) {}
 fn main() {
-    m!('a);
+    let _: fn(_) = foo;
 }

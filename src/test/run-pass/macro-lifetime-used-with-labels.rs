@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![allow(unreachable_code)]
-#![feature(macro_lifetime_matcher)]
 
 macro_rules! x {
     ($a:lifetime) => {

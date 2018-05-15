@@ -56,9 +56,8 @@ fn call_foo_f() {
 }
 
 fn array_a() {
-    // Accepted: return is coerced to `!` just fine, and then `22` can be
-    // because we already diverged.
-    let x: [!; 2] = [return, 22];
+    // Return is coerced to `!` just fine, but `22` cannot be.
+    let x: [!; 2] = [return, 22]; //~ ERROR mismatched types
 }
 
 fn array_b() {

@@ -50,6 +50,13 @@ fn noname() -> *const c_char {
     &CNULL
 }
 
+bitflags! {
+    pub struct MemFlags: u8 {
+        const VOLATILE = 1 << 0;
+        const NONTEMPORAL = 1 << 1;
+    }
+}
+
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn new_block<'b>(cx: &'a CodegenCx<'a, 'tcx>, llfn: ValueRef, name: &'b str) -> Self {
         let bx = Builder::with_cx(cx);
@@ -579,26 +586,36 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn store(&self, val: ValueRef, ptr: ValueRef, align: Align) -> ValueRef {
-        debug!("Store {:?} -> {:?}", Value(val), Value(ptr));
+        self.store_with_flags(val, ptr, align, MemFlags::empty())
+    }
+
+    pub fn store_with_flags(
+        &self,
+        val: ValueRef,
+        ptr: ValueRef,
+        align: Align,
+        flags: MemFlags,
+    ) -> ValueRef {
+        debug!("Store {:?} -> {:?} ({:?})", Value(val), Value(ptr), flags);
         assert!(!self.llbuilder.is_null());
         self.count_insn("store");
         let ptr = self.check_store(val, ptr);
         unsafe {
             let store = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
             llvm::LLVMSetAlignment(store, align.abi() as c_uint);
+            if flags.contains(MemFlags::VOLATILE) {
+                llvm::LLVMSetVolatile(store, llvm::True);
+            }
+            if flags.contains(MemFlags::NONTEMPORAL) {
+                // According to LLVM [1] building a nontemporal store must
+                // *always* point to a metadata value of the integer 1.
+                //
+                // [1]: http://llvm.org/docs/LangRef.html#store-instruction
+                let one = C_i32(self.cx, 1);
+                let node = llvm::LLVMMDNodeInContext(self.cx.llcx, &one, 1);
+                llvm::LLVMSetMetadata(store, llvm::MD_nontemporal as c_uint, node);
+            }
             store
-        }
-    }
-
-    pub fn volatile_store(&self, val: ValueRef, ptr: ValueRef) -> ValueRef {
-        debug!("Store {:?} -> {:?}", Value(val), Value(ptr));
-        assert!(!self.llbuilder.is_null());
-        self.count_insn("store.volatile");
-        let ptr = self.check_store(val, ptr);
-        unsafe {
-            let insn = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
-            llvm::LLVMSetVolatile(insn, llvm::True);
-            insn
         }
     }
 
@@ -612,29 +629,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // FIXME(eddyb) Isn't it UB to use `pref` instead of `abi` here?
             // Also see `atomic_load` for more context.
             llvm::LLVMSetAlignment(store, align.pref() as c_uint);
-        }
-    }
-
-    pub fn nontemporal_store(&self, val: ValueRef, ptr: ValueRef) -> ValueRef {
-        debug!("Store {:?} -> {:?}", Value(val), Value(ptr));
-        assert!(!self.llbuilder.is_null());
-        self.count_insn("store.nontemporal");
-        let ptr = self.check_store(val, ptr);
-        unsafe {
-            let insn = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
-
-            // According to LLVM [1] building a nontemporal store must *always*
-            // point to a metadata value of the integer 1. Who knew?
-            //
-            // [1]: http://llvm.org/docs/LangRef.html#store-instruction
-            let one = C_i32(self.cx, 1);
-            let node = llvm::LLVMMDNodeInContext(self.cx.llcx,
-                                                 &one,
-                                                 1);
-            llvm::LLVMSetMetadata(insn,
-                                  llvm::MD_nontemporal as c_uint,
-                                  node);
-            insn
         }
     }
 
