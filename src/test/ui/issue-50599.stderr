@@ -1,0 +1,15 @@
+error[E0425]: cannot find value `LOG10_2` in module `std::f64`
+  --> $DIR/issue-50599.rs:13:48
+   |
+LL |     const M: usize = (f64::from(N) * std::f64::LOG10_2) as usize; //~ ERROR cannot find value
+   |                                                ^^^^^^^ not found in `std::f64`
+help: possible candidates are found in other modules, you can import them into scope
+   |
+LL | use std::f32::consts::LOG10_2;
+   |
+LL | use std::f64::consts::LOG10_2;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0425`.
