@@ -10,11 +10,11 @@
 
 #![feature(allocator_api, nonnull)]
 
-use std::alloc::{Alloc, Global, oom};
+use std::alloc::{Alloc, Global, Layout, oom};
 
 fn main() {
     unsafe {
-        let ptr = Global.alloc_one::<i32>().unwrap_or_else(|_| oom());
+        let ptr = Global.alloc_one::<i32>().unwrap_or_else(|_| oom(Layout::new::<i32>()));
         *ptr.as_ptr() = 4;
         assert_eq!(*ptr.as_ptr(), 4);
         Global.dealloc_one(ptr);

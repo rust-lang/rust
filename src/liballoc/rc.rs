@@ -668,7 +668,7 @@ impl<T: ?Sized> Rc<T> {
         let layout = Layout::for_value(&*fake_ptr);
 
         let mem = Global.alloc(layout)
-            .unwrap_or_else(|_| oom());
+            .unwrap_or_else(|_| oom(layout));
 
         // Initialize the real RcBox
         let inner = set_data_ptr(ptr as *mut T, mem.as_ptr() as *mut u8) as *mut RcBox<T>;

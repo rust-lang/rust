@@ -50,7 +50,7 @@ unsafe fn test_triangle() -> bool {
             println!("allocate({:?})", layout);
         }
 
-        let ret = Global.alloc(layout.clone()).unwrap_or_else(|_| oom());
+        let ret = Global.alloc(layout).unwrap_or_else(|_| oom(layout));
 
         if PRINT {
             println!("allocate({:?}) = {:?}", layout, ret);
@@ -72,8 +72,8 @@ unsafe fn test_triangle() -> bool {
             println!("reallocate({:?}, old={:?}, new={:?})", ptr, old, new);
         }
 
-        let ret = Global.realloc(NonNull::new_unchecked(ptr).as_opaque(), old.clone(), new.size())
-            .unwrap_or_else(|_| oom());
+        let ret = Global.realloc(NonNull::new_unchecked(ptr).as_opaque(), old, new.size())
+            .unwrap_or_else(|_| oom(Layout::from_size_align_unchecked(new.size(), old.align())));
 
         if PRINT {
             println!("reallocate({:?}, old={:?}, new={:?}) = {:?}",

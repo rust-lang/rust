@@ -13,14 +13,14 @@
 #![unstable(issue = "32838", feature = "allocator_api")]
 
 #[doc(inline)] #[allow(deprecated)] pub use alloc_crate::alloc::Heap;
-#[doc(inline)] pub use alloc_crate::alloc::{Global, oom};
+#[doc(inline)] pub use alloc_crate::alloc::{Global, Layout, oom};
 #[doc(inline)] pub use alloc_system::System;
 #[doc(inline)] pub use core::alloc::*;
 
 #[cfg(not(test))]
 #[doc(hidden)]
 #[lang = "oom"]
-pub extern fn rust_oom() -> ! {
+pub extern fn rust_oom(_: Layout) -> ! {
     rtabort!("memory allocation failed");
 }
 
