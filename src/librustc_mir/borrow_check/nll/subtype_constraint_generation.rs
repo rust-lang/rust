@@ -152,14 +152,12 @@ impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
 
         let lower_bound = self.to_region_vid(verify.region);
 
-        let point = locations.at_location().unwrap_or(Location::START);
-
         let test = self.verify_bound_to_region_test(&verify.bound);
 
         TypeTest {
             generic_kind,
             lower_bound,
-            point,
+            locations: *locations,
             span,
             test,
         }

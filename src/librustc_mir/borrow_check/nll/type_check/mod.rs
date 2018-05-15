@@ -677,13 +677,6 @@ impl Locations {
             Locations::Pair { from_location, .. } => Some(*from_location),
         }
     }
-
-    pub fn at_location(&self) -> Option<Location> {
-        match self {
-            Locations::All => None,
-            Locations::Pair { at_location, .. } => Some(*at_location),
-        }
-    }
 }
 
 impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
