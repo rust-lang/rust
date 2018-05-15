@@ -10,7 +10,7 @@
 
 // FIXME: talk about offset, copy_memory, copy_nonoverlapping_memory
 
-//! Raw, unsafe pointers, `*const T`, and `*mut T`.
+//! Manually manage memory through raw pointers.
 //!
 //! *[See also the pointer primitive types](../../std/primitive.pointer.html).*
 
@@ -38,21 +38,62 @@ pub use intrinsics::write_bytes;
 
 /// Executes the destructor (if any) of the pointed-to value.
 ///
-/// This has two use cases:
+/// This is semantically equivalent to calling [`ptr::read`] and discarding
+/// the result, but has the following advantages:
 ///
 /// * It is *required* to use `drop_in_place` to drop unsized types like
 ///   trait objects, because they can't be read out onto the stack and
 ///   dropped normally.
 ///
-/// * It is friendlier to the optimizer to do this over `ptr::read` when
+/// * It is friendlier to the optimizer to do this over [`ptr::read`] when
 ///   dropping manually allocated memory (e.g. when writing Box/Rc/Vec),
 ///   as the compiler doesn't need to prove that it's sound to elide the
 ///   copy.
 ///
+/// [`ptr::read`]: ../ptr/fn.read.html
+///
 /// # Safety
 ///
-/// This has all the same safety problems as `ptr::read` with respect to
-/// invalid pointers, types, and double drops.
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `to_drop` must point to valid memory.
+///
+/// * `to_drop` must be properly aligned.
+///
+/// Additionally, if `T` is not [`Copy`], using the pointed-to value after
+/// calling `drop_in_place` can cause undefined behavior. Note that `*to_drop =
+/// foo` counts as a use because it will cause the the value to be dropped
+/// again. [`write`] can be used to overwrite data without causing it to be
+/// dropped.
+///
+/// [`Copy`]: ../marker/trait.Copy.html
+/// [`write`]: ../ptr/fn.write.html
+///
+/// # Examples
+///
+/// Manually remove the last item from a vector:
+///
+/// ```
+/// use std::ptr;
+/// use std::rc::Rc;
+///
+/// let last = Rc::new(1);
+/// let weak = Rc::downgrade(&last);
+///
+/// let mut v = vec![Rc::new(0), last];
+///
+/// unsafe {
+///     // Without a call `drop_in_place`, the last item would never be dropped,
+///     // and the memory it manages would be leaked.
+///     ptr::drop_in_place(&mut v[1]);
+///     v.set_len(1);
+/// }
+///
+/// assert_eq!(v, &[0.into()]);
+///
+/// // Ensure that the last item was dropped.
+/// assert!(weak.upgrade().is_none());
+/// ```
 #[stable(feature = "drop_in_place", since = "1.8.0")]
 #[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
@@ -93,17 +134,25 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 /// Swaps the values at two mutable locations of the same type, without
 /// deinitializing either.
 ///
-/// The values pointed at by `x` and `y` may overlap, unlike `mem::swap` which
-/// is otherwise equivalent. If the values do overlap, then the overlapping
-/// region of memory from `x` will be used. This is demonstrated in the
-/// examples section below.
+/// But for the following two exceptions, this function is semantically
+/// equivalent to [`mem::swap`]:
+///
+/// * It operates on raw pointers instead of references. When references are
+///   available, [`mem::swap`] should be preferred.
+///
+/// * The two pointed-to values may overlap. If the values do overlap, then the
+///   overlapping region of memory from `x` will be used. This is demonstrated
+///   in the examples below.
+///
+/// [`mem::swap`]: ../mem/fn.swap.html
 ///
 /// # Safety
 ///
-/// This function copies the memory through the raw pointers passed to it
-/// as arguments.
+/// Behavior is undefined if any of the following conditions are violated:
 ///
-/// Ensure that these pointers are valid before calling `swap`.
+/// * `x` and `y` must point to valid, initialized memory.
+///
+/// * `x` and `y` must be properly aligned.
 ///
 /// # Examples
 ///
@@ -239,13 +288,39 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     }
 }
 
-/// Replaces the value at `dest` with `src`, returning the old
-/// value, without dropping either.
+/// Replaces the value at `dest` with `src`, returning the old value, without
+/// dropping either.
+///
+/// This function is semantically equivalent to [`mem::replace`] except that it
+/// operates on raw pointers instead of references. When references are
+/// available, [`mem::replace`] should be preferred.
+///
+/// [`mem::replace`]: ../mem/fn.replace.html
 ///
 /// # Safety
 ///
-/// This is only unsafe because it accepts a raw pointer.
-/// Otherwise, this operation is identical to `mem::replace`.
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `dest` must point to valid, initialized memory.
+///
+/// * `dest` must be properly aligned.
+///
+/// # Examples
+///
+/// ```
+/// use std::ptr;
+///
+/// let mut rust = vec!['b', 'u', 's', 't'];
+///
+/// // `mem::replace` would have the same effect without requiring the unsafe
+/// // block.
+/// let b = unsafe {
+///     ptr::replace(&mut rust[0], 'r')
+/// };
+///
+/// assert_eq!(b, 'b');
+/// assert_eq!(rust, &['r', 'u', 's', 't']);
+/// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
@@ -258,14 +333,23 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 ///
 /// # Safety
 ///
-/// Beyond accepting a raw pointer, this is unsafe because it semantically
-/// moves the value out of `src` without preventing further usage of `src`.
-/// If `T` is not `Copy`, then care must be taken to ensure that the value at
-/// `src` is not used before the data is overwritten again (e.g. with `write`,
-/// `write_bytes`, or `copy`). Note that `*src = foo` counts as a use
-/// because it will attempt to drop the value previously at `*src`.
+/// Behavior is undefined if any of the following conditions are violated:
 ///
-/// The pointer must be aligned; use `read_unaligned` if that is not the case.
+/// * `src` must point to valid, initialized memory.
+///
+/// * `src` must be properly aligned. Use [`read_unaligned`] if this is not the
+///   case.
+///
+/// Additionally, if `T` is not [`Copy`], only the returned value *or* the
+/// pointed-to value can be used or dropped after calling `read`. `read` creates
+/// a bitwise copy of `T`, regardless of whether `T: Copy`, which can result
+/// in undefined behavior if both copies are used. Note that `*src = foo` counts
+/// as a use because it will attempt to drop the value previously at `*src`.
+/// [`write`] can be used to overwrite data without causing it to be dropped.
+///
+/// [`Copy`]: ../marker/trait.Copy.html
+/// [`read_unaligned`]: ./fn.read_unaligned.html
+/// [`write`]: ./fn.write.html
 ///
 /// # Examples
 ///
@@ -279,6 +363,44 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 ///     assert_eq!(std::ptr::read(y), 12);
 /// }
 /// ```
+///
+/// Manually implement [`mem::swap`]:
+///
+/// ```
+/// use std::ptr;
+///
+/// fn swap<T>(a: &mut T, b: &mut T) {
+///     unsafe {
+///         // Create a bitwise copy of the value at `a` in `tmp`.
+///         let tmp = ptr::read(a);
+///
+///         // Exiting at this point (either by explicitly returning or by
+///         // calling a function which panics) would cause the value in `tmp` to
+///         // be dropped while the same value is still referenced by `a`. This
+///         // could trigger undefined behavior if `T` is not `Copy`.
+///
+///         // Create a bitwise copy of the value at `b` in `a`.
+///         // This is safe because mutable references cannot alias.
+///         ptr::copy_nonoverlapping(b, a, 1);
+///
+///         // As above, exiting here could trigger undefined behavior because
+///         // the same value is referenced by `a` and `b`.
+///
+///         // Move `tmp` into `b`.
+///         ptr::write(b, tmp);
+///     }
+/// }
+///
+/// let mut foo = "foo".to_owned();
+/// let mut bar = "bar".to_owned();
+///
+/// swap(&mut foo, &mut bar);
+///
+/// assert_eq!(foo, "bar");
+/// assert_eq!(bar, "foo");
+/// ```
+///
+/// [`mem::swap`]: ../mem/fn.swap.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn read<T>(src: *const T) -> T {
@@ -290,28 +412,62 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// Reads the value from `src` without moving it. This leaves the
 /// memory in `src` unchanged.
 ///
-/// Unlike `read`, the pointer may be unaligned.
+/// Unlike [`read`], `read_unaligned` works with unaligned pointers.
+///
+/// [`read`]: ./fn.read.html
 ///
 /// # Safety
 ///
-/// Beyond accepting a raw pointer, this is unsafe because it semantically
-/// moves the value out of `src` without preventing further usage of `src`.
-/// If `T` is not `Copy`, then care must be taken to ensure that the value at
-/// `src` is not used before the data is overwritten again (e.g. with `write`,
-/// `write_bytes`, or `copy`). Note that `*src = foo` counts as a use
-/// because it will attempt to drop the value previously at `*src`.
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `src` must point to valid, initialized memory.
+///
+/// Additionally, if `T` is not [`Copy`], only the returned value *or* the
+/// pointed-to value can be used or dropped after calling `read_unaligned`.
+/// `read_unaligned` creates a bitwise copy of `T`, regardless of whether `T:
+/// Copy`, and this can result in undefined behavior if both copies are used.
+/// Note that `*src = foo` counts as a use because it will attempt to drop the
+/// value previously at `*src`.  [`write_unaligned`] can be used to overwrite
+/// data without causing it to be dropped.
+///
+/// [`Copy`]: ../marker/trait.Copy.html
+/// [`write_unaligned`]: ./fn.write_unaligned.html
 ///
 /// # Examples
 ///
-/// Basic usage:
+/// Access members of a packed struct by reference:
 ///
 /// ```
-/// let x = 12;
-/// let y = &x as *const i32;
+/// use std::ptr;
 ///
-/// unsafe {
-///     assert_eq!(std::ptr::read_unaligned(y), 12);
+/// #[repr(packed, C)]
+/// #[derive(Default)]
+/// struct Packed {
+///     _padding: u8,
+///     unaligned: u32,
 /// }
+///
+/// let x = Packed {
+///     _padding: 0x00,
+///     unaligned: 0x01020304,
+/// };
+///
+/// let v = unsafe {
+///     // Take a reference to a 32-bit integer which is not aligned.
+///     let unaligned = &x.unaligned;
+///
+///     // Dereferencing normally will emit an unaligned load instruction,
+///     // causing undefined behavior.
+///     // let v = *unaligned; // ERROR
+///
+///     // Instead, use `read_unaligned` to read improperly aligned values.
+///     let v = ptr::read_unaligned(unaligned);
+///
+///     v
+/// };
+///
+/// // Accessing unaligned values directly is safe.
+/// assert!(x.unaligned == v);
 /// ```
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
@@ -326,11 +482,7 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// Overwrites a memory location with the given value without reading or
 /// dropping the old value.
 ///
-/// # Safety
-///
-/// This operation is marked unsafe because it accepts a raw pointer.
-///
-/// It does not drop the contents of `dst`. This is safe, but it could leak
+/// `write` does not drop the contents of `dst`. This is safe, but it could leak
 /// allocations or resources, so care must be taken not to overwrite an object
 /// that should be dropped.
 ///
@@ -338,9 +490,20 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// location pointed to by `dst`.
 ///
 /// This is appropriate for initializing uninitialized memory, or overwriting
-/// memory that has previously been `read` from.
+/// memory that has previously been [`read`] from.
 ///
-/// The pointer must be aligned; use `write_unaligned` if that is not the case.
+/// [`read`]: ./fn.read.html
+///
+/// # Safety
+///
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `dst` must point to valid memory.
+///
+/// * `dst` must be properly aligned. Use [`write_unaligned`] if this is not the
+///   case.
+///
+/// [`write_unaligned`]: ./fn.write_unaligned.html
 ///
 /// # Examples
 ///
@@ -356,6 +519,30 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 ///     assert_eq!(std::ptr::read(y), 12);
 /// }
 /// ```
+///
+/// Manually implement [`mem::swap`]:
+///
+/// ```
+/// use std::ptr;
+///
+/// fn swap<T>(a: &mut T, b: &mut T) {
+///     unsafe {
+///         let tmp = ptr::read(a);
+///         ptr::copy_nonoverlapping(b, a, 1);
+///         ptr::write(b, tmp);
+///     }
+/// }
+///
+/// let mut foo = "foo".to_owned();
+/// let mut bar = "bar".to_owned();
+///
+/// swap(&mut foo, &mut bar);
+///
+/// assert_eq!(foo, "bar");
+/// assert_eq!(bar, "foo");
+/// ```
+///
+/// [`mem::swap`]: ../mem/fn.swap.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn write<T>(dst: *mut T, src: T) {
@@ -365,36 +552,58 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// Overwrites a memory location with the given value without reading or
 /// dropping the old value.
 ///
-/// Unlike `write`, the pointer may be unaligned.
+/// Unlike [`write`], the pointer may be unaligned.
 ///
-/// # Safety
-///
-/// This operation is marked unsafe because it accepts a raw pointer.
-///
-/// It does not drop the contents of `dst`. This is safe, but it could leak
-/// allocations or resources, so care must be taken not to overwrite an object
-/// that should be dropped.
+/// `write_unaligned` does not drop the contents of `dst`. This is safe, but it
+/// could leak allocations or resources, so care must be taken not to overwrite
+/// an object that should be dropped.
 ///
 /// Additionally, it does not drop `src`. Semantically, `src` is moved into the
 /// location pointed to by `dst`.
 ///
 /// This is appropriate for initializing uninitialized memory, or overwriting
-/// memory that has previously been `read` from.
+/// memory that has previously been read with [`read_unaligned`].
+///
+/// [`write`]: ./fn.write.html
+/// [`read_unaligned`]: ./fn.read_unaligned.html
+///
+/// # Safety
+///
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `dst` must point to valid memory.
 ///
 /// # Examples
 ///
-/// Basic usage:
+/// Access fields in a packed struct:
 ///
 /// ```
-/// let mut x = 0;
-/// let y = &mut x as *mut i32;
-/// let z = 12;
+/// use std::{mem, ptr};
+///
+/// #[repr(packed, C)]
+/// #[derive(Default)]
+/// struct Packed {
+///     _padding: u8,
+///     unaligned: u32,
+/// }
+///
+/// let v = 0x01020304;
+/// let mut x: Packed = unsafe { mem::zeroed() };
 ///
 /// unsafe {
-///     std::ptr::write_unaligned(y, z);
-///     assert_eq!(std::ptr::read_unaligned(y), 12);
+///     // Take a reference to a 32-bit integer which is not aligned.
+///     let unaligned = &mut x.unaligned;
+///
+///     // Dereferencing normally will emit an unaligned store instruction,
+///     // causing undefined behavior.
+///     // *unaligned = v; // ERROR
+///
+///     // Instead, use `write_unaligned` to write improperly aligned values.
+///     ptr::write_unaligned(unaligned, v);
 /// }
-/// ```
+///
+/// // Accessing unaligned values directly is safe.
+/// assert!(x.unaligned == v);
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
@@ -410,6 +619,11 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// Volatile operations are intended to act on I/O memory, and are guaranteed
 /// to not be elided or reordered by the compiler across other volatile
 /// operations.
+///
+/// Memory read with `read_volatile` should almost always be written to using
+/// [`write_volatile`].
+///
+/// [`write_volatile`]: ./fn.write_volatile.html
 ///
 /// # Notes
 ///
@@ -427,12 +641,19 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///
 /// # Safety
 ///
-/// Beyond accepting a raw pointer, this is unsafe because it semantically
-/// moves the value out of `src` without preventing further usage of `src`.
-/// If `T` is not `Copy`, then care must be taken to ensure that the value at
-/// `src` is not used before the data is overwritten again (e.g. with `write`,
-/// `write_bytes`, or `copy`). Note that `*src = foo` counts as a use
-/// because it will attempt to drop the value previously at `*src`.
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * `src` must point to valid, initialized memory.
+///
+/// * `src` must be properly aligned.
+///
+/// Like [`read`], `read_volatile` creates a bitwise copy of the pointed-to
+/// object, regardless of whether `T` is [`Copy`]. Using both values can cause
+/// undefined behavior. However, storing non-[`Copy`] data in I/O memory is
+/// almost certainly incorrect.
+///
+/// [`Copy`]: ../marker/trait.Copy.html
+/// [`read`]: ./fn.read.html
 ///
 /// # Examples
 ///
@@ -459,6 +680,18 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// to not be elided or reordered by the compiler across other volatile
 /// operations.
 ///
+/// Memory written with `write_volatile` should almost always be read from using
+/// [`read_volatile`].
+///
+/// `write_volatile` does not drop the contents of `dst`. This is safe, but it
+/// could leak allocations or resources, so care must be taken not to overwrite
+/// an object that should be dropped.
+///
+/// Additionally, it does not drop `src`. Semantically, `src` is moved into the
+/// location pointed to by `dst`.
+///
+/// [`read_volatile`]: ./fn.read_volatile.html
+///
 /// # Notes
 ///
 /// Rust does not currently have a rigorously and formally defined memory model,
@@ -475,14 +708,11 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// # Safety
 ///
-/// This operation is marked unsafe because it accepts a raw pointer.
+/// Behavior is undefined if any of the following conditions are violated:
 ///
-/// It does not drop the contents of `dst`. This is safe, but it could leak
-/// allocations or resources, so care must be taken not to overwrite an object
-/// that should be dropped.
+/// * `dst` must point to valid memory.
 ///
-/// This is appropriate for initializing uninitialized memory, or overwriting
-/// memory that has previously been `read` from.
+/// * `dst` must be properly aligned.
 ///
 /// # Examples
 ///
