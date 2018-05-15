@@ -13,7 +13,7 @@ use borrow_check::nll::facts::AllFacts;
 use rustc::infer::region_constraints::Constraint;
 use rustc::infer::region_constraints::RegionConstraintData;
 use rustc::infer::region_constraints::{Verify, VerifyBound};
-use rustc::mir::{Location, Mir};
+use rustc::mir::Mir;
 use rustc::ty;
 use std::iter;
 use syntax::codemap::Span;
@@ -90,9 +90,7 @@ impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
                 givens,
             } = data;
 
-            let span = self.mir
-                .source_info(locations.from_location().unwrap_or(Location::START))
-                .span;
+            let span = locations.span(self.mir);
 
             for constraint in constraints.keys() {
                 debug!("generate: constraint: {:?}", constraint);

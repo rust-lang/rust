@@ -671,7 +671,15 @@ pub enum Locations {
 }
 
 impl Locations {
-    pub fn from_location(&self) -> Option<Location> {
+    crate fn span(&self, mir: &Mir<'_>) -> Span {
+        let location = match self {
+            Locations::All => Location::START,
+            Locations::Pair { from_location, .. } => *from_location,
+        };
+        mir.source_info(location).span
+    }
+
+    crate fn from_location(&self) -> Option<Location> {
         match self {
             Locations::All => None,
             Locations::Pair { from_location, .. } => Some(*from_location),
