@@ -117,6 +117,57 @@ impl DocAccessLevels for AccessLevels<DefId> {
     }
 }
 
+/// Creates a new diagnostic `Handler` that can be used to emit warnings and errors.
+///
+/// If the given `error_format` is `ErrorOutputType::Json` and no `CodeMap` is given, a new one
+/// will be created for the handler.
+pub fn new_handler(error_format: ErrorOutputType, codemap: Option<Lrc<codemap::CodeMap>>)
+    -> errors::Handler
+{
+    // rustdoc doesn't override (or allow to override) anything from this that is relevant here, so
+    // stick to the defaults
+    let sessopts = config::basic_options();
+    let emitter: Box<dyn Emitter + sync::Send> = match error_format {
+        ErrorOutputType::HumanReadable(color_config) => Box::new(
+            EmitterWriter::stderr(
+                color_config,
+                codemap.map(|cm| cm as _),
+                false,
+                sessopts.debugging_opts.teach,
+            ).ui_testing(sessopts.debugging_opts.ui_testing)
+        ),
+        ErrorOutputType::Json(pretty) => {
+            let codemap = codemap.unwrap_or_else(
+                || Lrc::new(codemap::CodeMap::new(sessopts.file_path_mapping())));
+            Box::new(
+                JsonEmitter::stderr(
+                    None,
+                    codemap,
+                    pretty,
+                    sessopts.debugging_opts.suggestion_applicability,
+                ).ui_testing(sessopts.debugging_opts.ui_testing)
+            )
+        },
+        ErrorOutputType::Short(color_config) => Box::new(
+            EmitterWriter::stderr(
+                color_config,
+                codemap.map(|cm| cm as _),
+                true,
+                false)
+        ),
+    };
+
+    errors::Handler::with_emitter_and_flags(
+        emitter,
+        errors::HandlerFlags {
+            can_emit_warnings: true,
+            treat_err_as_bug: false,
+            external_macro_backtrace: false,
+            ..Default::default()
+        },
+    )
+}
+
 pub fn run_core(search_paths: SearchPaths,
                 cfgs: Vec<String>,
                 externs: config::Externs,
@@ -159,41 +210,11 @@ pub fn run_core(search_paths: SearchPaths,
         },
         error_format,
         edition,
-        ..config::basic_options().clone()
+        ..config::basic_options()
     };
     driver::spawn_thread_pool(sessopts, move |sessopts| {
         let codemap = Lrc::new(codemap::CodeMap::new(sessopts.file_path_mapping()));
-        let emitter: Box<dyn Emitter + sync::Send> = match error_format {
-            ErrorOutputType::HumanReadable(color_config) => Box::new(
-                EmitterWriter::stderr(
-                    color_config,
-                    Some(codemap.clone()),
-                    false,
-                    sessopts.debugging_opts.teach,
-                ).ui_testing(sessopts.debugging_opts.ui_testing)
-            ),
-            ErrorOutputType::Json(pretty) => Box::new(
-                JsonEmitter::stderr(
-                    None,
-                    codemap.clone(),
-                    pretty,
-                    sessopts.debugging_opts.suggestion_applicability,
-                ).ui_testing(sessopts.debugging_opts.ui_testing)
-            ),
-            ErrorOutputType::Short(color_config) => Box::new(
-                EmitterWriter::stderr(color_config, Some(codemap.clone()), true, false)
-            ),
-        };
-
-        let diagnostic_handler = errors::Handler::with_emitter_and_flags(
-            emitter,
-            errors::HandlerFlags {
-                can_emit_warnings: true,
-                treat_err_as_bug: false,
-                external_macro_backtrace: false,
-                ..Default::default()
-            },
-        );
+        let diagnostic_handler = new_handler(error_format, Some(codemap.clone()));
 
         let mut sess = session::build_session_(
             sessopts, cpath, diagnostic_handler, codemap,
