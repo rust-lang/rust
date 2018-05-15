@@ -1,0 +1,32 @@
+warning: unused loop label
+  --> $DIR/unused_loop_label.rs:19:5
+   |
+LL |     'unused_while_label: while 0 == 0 {
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: requested on the command line with `-W unused-loop-label`
+
+warning: unused loop label
+  --> $DIR/unused_loop_label.rs:24:5
+   |
+LL |     'unused_while_let_label: while let Some(_) = opt {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused loop label
+  --> $DIR/unused_loop_label.rs:28:5
+   |
+LL |     'unused_for_label: for _ in 0..10 {
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: unused loop label
+  --> $DIR/unused_loop_label.rs:44:9
+   |
+LL |         'unused_loop_label_inner: loop {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused loop label
+  --> $DIR/unused_loop_label.rs:52:5
+   |
+LL |     'unused_loop_label: loop {
+   |     ^^^^^^^^^^^^^^^^^^
+

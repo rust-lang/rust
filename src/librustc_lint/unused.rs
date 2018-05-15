@@ -25,6 +25,8 @@ use syntax_pos::Span;
 
 use rustc::hir;
 
+use std::vec;
+
 declare_lint! {
     pub UNUSED_MUST_USE,
     Warn,
@@ -461,6 +463,67 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
                 };
                 cx.span_lint(UNUSED_ALLOCATION, e.span, msg);
             }
+        }
+    }
+}
+
+declare_lint! {
+    pub(super) UNUSED_LOOP_LABEL,
+    Warn,
+    "warns on unused labels for loops"
+}
+
+#[derive(Clone)]
+pub struct UnusedLoopLabel(pub vec::Vec<ast::Label>);
+
+impl UnusedLoopLabel {
+    pub fn new() -> Self {
+        UnusedLoopLabel(vec![])
+    }
+}
+
+impl LintPass for UnusedLoopLabel {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNUSED_LOOP_LABEL)
+    }
+}
+
+impl EarlyLintPass for UnusedLoopLabel {
+    fn check_expr(&mut self, _: &EarlyContext, expr: &ast::Expr) {
+        match expr.node {
+            ast::ExprKind::While(_, _, Some(ref label))
+            | ast::ExprKind::WhileLet(_, _, _, Some(ref label))
+            | ast::ExprKind::ForLoop(_, _, _, Some(ref label))
+            | ast::ExprKind::Loop(_, Some(ref label)) => {
+                self.0.push(*label);
+            }
+            ast::ExprKind::Break(Some(ref label), _) | ast::ExprKind::Continue(Some(ref label)) => {
+                'remove_used_label: for i in (0..self.0.len()).rev() {
+                    if self.0.get(i).unwrap().ident.name == label.ident.name {
+                        self.0.remove(i);
+                        break 'remove_used_label;
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn check_expr_post(&mut self, ctxt: &EarlyContext, expr: &ast::Expr) {
+        match expr.node {
+            ast::ExprKind::While(_, _, Some(ref label))
+            | ast::ExprKind::WhileLet(_, _, _, Some(ref label))
+            | ast::ExprKind::ForLoop(_, _, _, Some(ref label))
+            | ast::ExprKind::Loop(_, Some(ref label)) => if !self.0.is_empty() {
+                {
+                    let unused_label = self.0.last().unwrap();
+                    if label.ident.name == unused_label.ident.name {
+                        ctxt.span_lint(UNUSED_LOOP_LABEL, label.ident.span, "unused loop label");
+                    }
+                }
+                self.0.pop();
+            },
+            _ => {}
         }
     }
 }
