@@ -69,6 +69,11 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name, visited: &mut FxHa
             ret.extend(build_impls(cx, did, false));
             clean::TypedefItem(build_type_alias(cx, did), false, AliasKind::Weak)
         }
+        Def::Existential(did) => {
+            record_extern_fqn(cx, did, clean::TypeKind::Typedef);
+            ret.extend(build_impls(cx, did, false));
+            clean::TypedefItem(build_type_alias(cx, did), false, AliasKind::Existential)
+        }
         Def::Enum(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Enum);
             ret.extend(build_impls(cx, did, true));
