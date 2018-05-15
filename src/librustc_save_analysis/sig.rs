@@ -441,8 +441,12 @@ impl Sig for ast::Item {
                     refs: vec![],
                 })
             }
-            ast::ItemKind::Ty(ref ty, ref generics) => {
-                let text = "type ".to_owned();
+            ast::ItemKind::Ty(ref ty, ref generics, kind) => {
+                let text = match kind {
+                    ast::AliasKind::Weak => "type ",
+                    ast::AliasKind::Existential => "existential type ",
+                };
+                let text = text.to_owned();
                 let mut sig = name_and_generics(text, offset, generics, self.id, self.ident, scx)?;
 
                 sig.text.push_str(" = ");

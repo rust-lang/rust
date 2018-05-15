@@ -487,7 +487,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
         ItemGlobalAsm(_) => {
             visitor.visit_id(item.id);
         }
-        ItemTy(ref typ, ref type_parameters) => {
+        ItemTy(ref typ, ref type_parameters, _) => {
             visitor.visit_id(item.id);
             visitor.visit_ty(typ);
             visitor.visit_generics(type_parameters)
@@ -886,7 +886,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
                              impl_item.span,
                              impl_item.id);
         }
-        ImplItemKind::Type(ref ty) => {
+        ImplItemKind::Type(ref ty, _) => {
             visitor.visit_id(impl_item.id);
             visitor.visit_ty(ty);
         }

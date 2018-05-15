@@ -241,7 +241,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
         }
         ItemKind::GlobalAsm(ref ga) => visitor.visit_global_asm(ga),
-        ItemKind::Ty(ref typ, ref type_parameters) => {
+        ItemKind::Ty(ref typ, ref type_parameters, _) => {
             visitor.visit_ty(typ);
             visitor.visit_generics(type_parameters)
         }
@@ -600,7 +600,7 @@ pub fn walk_impl_item<'a, V: Visitor<'a>>(visitor: &mut V, impl_item: &'a ImplIt
             visitor.visit_fn(FnKind::Method(impl_item.ident, sig, Some(&impl_item.vis), body),
                              &sig.decl, impl_item.span, impl_item.id);
         }
-        ImplItemKind::Type(ref ty) => {
+        ImplItemKind::Type(ref ty, _) => {
             visitor.visit_ty(ty);
         }
         ImplItemKind::Macro(ref mac) => {

@@ -496,7 +496,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |_, this| intravisit::walk_item(this, item));
             }
-            hir::ItemTy(_, ref generics)
+            hir::ItemTy(_, ref generics, _)
             | hir::ItemEnum(_, ref generics)
             | hir::ItemStruct(_, ref generics)
             | hir::ItemUnion(_, ref generics)
@@ -776,7 +776,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     |this| intravisit::walk_impl_item(this, impl_item),
                 )
             }
-            Type(ref ty) => {
+            Type(ref ty, _) => {
                 let generics = &impl_item.generics;
                 let mut index = self.next_early_index();
                 debug!("visit_ty: index = {}", index);
@@ -1153,7 +1153,7 @@ fn compute_object_lifetime_defaults(
             hir::ItemStruct(_, ref generics)
             | hir::ItemUnion(_, ref generics)
             | hir::ItemEnum(_, ref generics)
-            | hir::ItemTy(_, ref generics)
+            | hir::ItemTy(_, ref generics, _)
             | hir::ItemTrait(_, _, ref generics, ..) => {
                 let result = object_lifetime_defaults_for_item(tcx, generics);
 

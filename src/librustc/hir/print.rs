@@ -502,8 +502,12 @@ impl<'a> State<'a> {
     fn print_associated_type(&mut self,
                              name: ast::Name,
                              bounds: Option<&hir::TyParamBounds>,
-                             ty: Option<&hir::Ty>)
+                             ty: Option<&hir::Ty>,
+                             ak: hir::AliasKind)
                              -> io::Result<()> {
+        if let hir::AliasKind::Existential = ak {
+            self.word_space("existential")?;
+        }
         self.word_space("type")?;
         self.print_name(name)?;
         if let Some(bounds) = bounds {
@@ -511,7 +515,10 @@ impl<'a> State<'a> {
         }
         if let Some(ty) = ty {
             self.s.space()?;
-            self.word_space("=")?;
+            match ak {
+                hir::AliasKind::Weak => self.word_space("=")?,
+                hir::AliasKind::Existential => self.word_space(":")?,
+            }
             self.print_type(ty)?;
         }
         self.s.word(";")
@@ -621,10 +628,12 @@ impl<'a> State<'a> {
                 self.s.word(&ga.asm.as_str())?;
                 self.end()?
             }
-            hir::ItemTy(ref ty, ref generics) => {
+            hir::ItemTy(ref ty, ref generics, kind) => {
                 self.ibox(indent_unit)?;
                 self.ibox(0)?;
-                self.word_nbsp(&visibility_qualified(&item.vis, "type"))?;
+                self.print_visibility(&item.vis)?;
+                self.print_alias_kind(kind)?;
+                self.word_nbsp("type")?;
                 self.print_name(item.name)?;
                 self.print_generic_params(&generics.params)?;
                 self.end()?; // end the inner ibox
@@ -820,6 +829,13 @@ impl<'a> State<'a> {
         Ok(())
     }
 
+    pub fn print_alias_kind(&mut self, alias_kind: hir::AliasKind) -> io::Result<()> {
+        match alias_kind {
+            hir::AliasKind::Weak => Ok(()),
+            hir::AliasKind::Existential => self.word_nbsp("existential"),
+        }
+    }
+
     pub fn print_struct(&mut self,
                         struct_def: &hir::VariantData,
                         generics: &hir::Generics,
@@ -923,7 +939,8 @@ impl<'a> State<'a> {
             hir::TraitItemKind::Type(ref bounds, ref default) => {
                 self.print_associated_type(ti.name,
                                            Some(bounds),
-                                           default.as_ref().map(|ty| &**ty))?;
+                                           default.as_ref().map(|ty| &**ty),
+                                           hir::AliasKind::Weak)?;
             }
         }
         self.ann.post(self, NodeSubItem(ti.id))
@@ -948,8 +965,8 @@ impl<'a> State<'a> {
                 self.end()?; // need to close a box
                 self.ann.nested(self, Nested::Body(body))?;
             }
-            hir::ImplItemKind::Type(ref ty) => {
-                self.print_associated_type(ii.name, None, Some(ty))?;
+            hir::ImplItemKind::Type(ref ty, kind) => {
+                self.print_associated_type(ii.name, None, Some(ty), kind)?;
             }
         }
         self.ann.post(self, NodeSubItem(ii.id))

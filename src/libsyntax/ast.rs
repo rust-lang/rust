@@ -1386,7 +1386,7 @@ pub struct ImplItem {
 pub enum ImplItemKind {
     Const(P<Ty>, P<Expr>),
     Method(MethodSig, P<Block>),
-    Type(P<Ty>),
+    Type(P<Ty>, AliasKind),
     Macro(Mac),
 }
 
@@ -1763,6 +1763,15 @@ pub enum Constness {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+/// Whether the type alias or associated type is a concrete type or an existential type
+pub enum AliasKind {
+    /// Just a new name for the same type
+    Weak,
+    /// Only trait impls of the type will be usable, not the actual type itself
+    Existential,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Defaultness {
     Default,
     Final,
@@ -2088,8 +2097,8 @@ pub enum ItemKind {
     GlobalAsm(P<GlobalAsm>),
     /// A type alias (`type` or `pub type`).
     ///
-    /// E.g. `type Foo = Bar<u8>;`
-    Ty(P<Ty>, Generics),
+    /// E.g. `type Foo = Bar<u8>;` or `existential type Foo = Debug;`
+    Ty(P<Ty>, Generics, AliasKind),
     /// An enum definition (`enum` or `pub enum`).
     ///
     /// E.g. `enum Foo<A, B> { C<A>, D<B> }`

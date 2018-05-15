@@ -199,7 +199,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             }
                         }
                     }
-                    hir::ImplItemKind::Type(_) => false,
+                    hir::ImplItemKind::Type(..) => false,
                 }
             }
             Some(_) => false,
@@ -298,7 +298,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             self.visit_nested_body(body)
                         }
                     }
-                    hir::ImplItemKind::Type(_) => {}
+                    hir::ImplItemKind::Type(..) => {}
                 }
             }
             hir_map::NodeExpr(&hir::Expr { node: hir::ExprClosure(.., body, _, _), .. }) => {
