@@ -234,10 +234,11 @@ macro_rules! is_x86_feature_detected {
 /// X86 CPU Feature enum. Each variant denotes a position in a bitset for a
 /// particular feature.
 ///
-/// PLEASE: do not use this, it is an implementation detail subject to change.
-#[doc(hidden)]
+/// This is an unstable implementation detail subject to change.
 #[allow(non_camel_case_types)]
 #[repr(u8)]
+#[doc(hidden)]
+#[unstable(feature = "stdsimd_internal", issue = "0")]
 pub enum Feature {
     /// AES (Advanced Encryption Standard New Instructions AES-NI)
     aes,

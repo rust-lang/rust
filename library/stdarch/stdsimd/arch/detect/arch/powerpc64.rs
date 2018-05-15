@@ -2,6 +2,7 @@
 
 #[macro_export]
 #[unstable(feature = "stdsimd", issue = "0")]
+#[allow_internal_unstable]
 macro_rules! is_powerpc64_feature_detected {
     ("altivec") => {
         cfg!(target_feature = "altivec") ||
@@ -26,6 +27,7 @@ macro_rules! is_powerpc64_feature_detected {
 #[doc(hidden)]
 #[allow(non_camel_case_types)]
 #[repr(u8)]
+#[unstable(feature = "stdsimd_internal", issue = "0")]
 pub enum Feature {
     /// Altivec
     altivec,

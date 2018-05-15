@@ -2,6 +2,7 @@
 
 #[macro_export]
 #[unstable(feature = "stdsimd", issue = "0")]
+#[allow_internal_unstable]
 macro_rules! is_aarch64_feature_detected {
     ("neon") => {
         // FIXME: this should be removed once we rename Aarch64 neon to asimd
@@ -74,6 +75,7 @@ macro_rules! is_aarch64_feature_detected {
 #[doc(hidden)]
 #[allow(non_camel_case_types)]
 #[repr(u8)]
+#[unstable(feature = "stdsimd_internal", issue = "0")]
 pub enum Feature {
     /// ARM Advanced SIMD (ASIMD)
     asimd,

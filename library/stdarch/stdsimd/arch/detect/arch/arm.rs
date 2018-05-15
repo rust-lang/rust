@@ -2,6 +2,7 @@
 
 #[macro_export]
 #[unstable(feature = "stdsimd", issue = "0")]
+#[allow_internal_unstable]
 macro_rules! is_arm_feature_detected {
     ("neon") => {
         cfg!(target_feature = "neon") ||
@@ -25,6 +26,7 @@ macro_rules! is_arm_feature_detected {
 #[doc(hidden)]
 #[allow(non_camel_case_types)]
 #[repr(u8)]
+#[unstable(feature = "stdsimd_internal", issue = "0")]
 pub enum Feature {
     /// ARM Advanced SIMD (NEON) - Aarch32
     neon,
