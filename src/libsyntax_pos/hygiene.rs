@@ -13,7 +13,7 @@
 //! `[1]` Matthew Flatt, Ryan Culpepper, David Darais, and Robert Bruce Findler. 2012.
 //! *Macros that work together: Compile-time bindings, partial expansion,
 //! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
-//! DOI=10.1017/S0956796812000093 <http://dx.doi.org/10.1017/S0956796812000093>
+//! DOI=10.1017/S0956796812000093 <https://doi.org/10.1017/S0956796812000093>
 
 use GLOBALS;
 use Span;
