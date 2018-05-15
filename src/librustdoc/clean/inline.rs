@@ -13,7 +13,7 @@
 use std::iter::once;
 
 use syntax::ast;
-use rustc::hir;
+use rustc::hir::{self, AliasKind};
 
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
@@ -67,7 +67,7 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name, visited: &mut FxHa
         Def::TyAlias(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Typedef);
             ret.extend(build_impls(cx, did, false));
-            clean::TypedefItem(build_type_alias(cx, did), false)
+            clean::TypedefItem(build_type_alias(cx, did), false, AliasKind::Weak)
         }
         Def::Enum(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Enum);

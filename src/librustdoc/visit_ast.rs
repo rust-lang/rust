@@ -458,7 +458,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             hir::ItemFn(ref fd, ref unsafety, constness, ref abi, ref gen, body) =>
                 om.fns.push(self.visit_fn(item, name, &**fd, unsafety,
                                           constness, abi, gen, body)),
-            hir::ItemTy(ref ty, ref gen) => {
+            hir::ItemTy(ref ty, ref gen, kind) => {
                 let t = Typedef {
                     ty: ty.clone(),
                     gen: gen.clone(),
@@ -470,7 +470,10 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                     stab: self.stability(item.id),
                     depr: self.deprecation(item.id),
                 };
-                om.typedefs.push(t);
+                match kind {
+                    hir::AliasKind::Weak => om.typedefs.push(t),
+                    hir::AliasKind::Existential => om.existentials.push(t),
+                }
             },
             hir::ItemStatic(ref ty, ref mut_, ref exp) => {
                 let s = Static {
