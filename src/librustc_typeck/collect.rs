@@ -1096,9 +1096,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             let substs = ty::ClosureSubsts {
-                substs: Substs::for_item(tcx, def_id, |param, _| {
-                    tcx.mk_param_from_def(param)
-                })
+                substs: Substs::identity_for_item(tcx, def_id),
             };
 
             tcx.mk_closure(def_id, substs)
