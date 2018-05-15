@@ -49,6 +49,8 @@ impl f32 {
 
     /// Returns the largest integer less than or equal to a number.
     ///
+    /// # Examples
+    ///
     /// ```
     /// let f = 3.99_f32;
     /// let g = 3.0_f32;
@@ -80,6 +82,8 @@ impl f32 {
 
     /// Returns the smallest integer greater than or equal to a number.
     ///
+    /// # Examples
+    ///
     /// ```
     /// let f = 3.01_f32;
     /// let g = 4.0_f32;
@@ -100,6 +104,8 @@ impl f32 {
     /// Returns the nearest integer to a number. Round half-way cases away from
     /// `0.0`.
     ///
+    /// # Examples
+    ///
     /// ```
     /// let f = 3.3_f32;
     /// let g = -3.3_f32;
@@ -115,6 +121,8 @@ impl f32 {
 
     /// Returns the integer part of a number.
     ///
+    /// # Examples
+    ///
     /// ```
     /// let f = 3.3_f32;
     /// let g = -3.7_f32;
@@ -129,6 +137,8 @@ impl f32 {
     }
 
     /// Returns the fractional part of a number.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f32;
@@ -147,6 +157,8 @@ impl f32 {
 
     /// Computes the absolute value of `self`. Returns `NAN` if the
     /// number is `NAN`.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f32;
@@ -174,6 +186,8 @@ impl f32 {
     /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
     /// - `NAN` if the number is `NAN`
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -200,6 +214,8 @@ impl f32 {
     /// Using `mul_add` can be more performant than an unfused multiply-add if
     /// the target architecture has a dedicated `fma` CPU instruction.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -225,6 +241,8 @@ impl f32 {
     /// In other words, the result is `self / rhs` rounded to the integer `n`
     /// such that `self >= n * rhs`.
     ///
+    /// # Examples
+    ///
     /// ```
     /// #![feature(euclidean_division)]
     /// let a: f32 = 7.0;
@@ -247,6 +265,8 @@ impl f32 {
     /// Calculates the Euclidean modulo (self mod rhs), which is never negative.
     ///
     /// In particular, the result `n` satisfies `0 <= n < rhs.abs()`.
+    ///
+    /// # Examples
     ///
     /// ```
     /// #![feature(euclidean_division)]
@@ -273,6 +293,8 @@ impl f32 {
     ///
     /// Using this function is generally faster than using `powf`
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -288,6 +310,8 @@ impl f32 {
     }
 
     /// Raises a number to a floating point power.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f32;
@@ -311,6 +335,8 @@ impl f32 {
     ///
     /// Returns NaN if `self` is a negative number.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -333,6 +359,8 @@ impl f32 {
     }
 
     /// Returns `e^(self)`, (the exponential function).
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f32;
@@ -358,6 +386,8 @@ impl f32 {
 
     /// Returns `2^(self)`.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -375,6 +405,8 @@ impl f32 {
     }
 
     /// Returns the natural logarithm of the number.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f32;
@@ -404,6 +436,8 @@ impl f32 {
     /// `self.log2()` can produce more accurate results for base 2, and
     /// `self.log10()` can produce more accurate results for base 10.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -419,6 +453,8 @@ impl f32 {
     pub fn log(self, base: f32) -> f32 { self.ln() / base.ln() }
 
     /// Returns the base 2 logarithm of the number.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f32;
@@ -440,6 +476,8 @@ impl f32 {
     }
 
     /// Returns the base 10 logarithm of the number.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f32;
@@ -465,6 +503,8 @@ impl f32 {
     ///
     /// * If `self <= other`: `0:0`
     /// * Else: `self - other`
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f32;
@@ -493,6 +533,8 @@ impl f32 {
 
     /// Takes the cubic root of a number.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -512,6 +554,8 @@ impl f32 {
     /// Calculates the length of the hypotenuse of a right-angle triangle given
     /// legs of length `x` and `y`.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -530,6 +574,8 @@ impl f32 {
     }
 
     /// Computes the sine of a number (in radians).
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f32;
@@ -552,6 +598,8 @@ impl f32 {
 
     /// Computes the cosine of a number (in radians).
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -573,6 +621,8 @@ impl f32 {
 
     /// Computes the tangent of a number (in radians).
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -590,6 +640,8 @@ impl f32 {
     /// Computes the arcsine of a number. Return value is in radians in
     /// the range [-pi/2, pi/2] or NaN if the number is outside the range
     /// [-1, 1].
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f32;
@@ -611,6 +663,8 @@ impl f32 {
     /// the range [0, pi] or NaN if the number is outside the range
     /// [-1, 1].
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -629,6 +683,8 @@ impl f32 {
 
     /// Computes the arctangent of a number. Return value is in radians in the
     /// range [-pi/2, pi/2];
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f32;
@@ -652,6 +708,8 @@ impl f32 {
     /// * `x >= 0`: `arctan(y/x)` -> `[-pi/2, pi/2]`
     /// * `y >= 0`: `arctan(y/x) + pi` -> `(pi/2, pi]`
     /// * `y < 0`: `arctan(y/x) - pi` -> `(-pi, -pi/2)`
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f32;
@@ -682,6 +740,8 @@ impl f32 {
     /// Simultaneously computes the sine and cosine of the number, `x`. Returns
     /// `(sin(x), cos(x))`.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -703,6 +763,8 @@ impl f32 {
     /// Returns `e^(self) - 1` in a way that is accurate even if the
     /// number is close to zero.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -722,6 +784,8 @@ impl f32 {
     /// Returns `ln(1+n)` (natural logarithm) more accurately than if
     /// the operations were performed separately.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -739,6 +803,8 @@ impl f32 {
     }
 
     /// Hyperbolic sine function.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f32;
@@ -761,6 +827,8 @@ impl f32 {
 
     /// Hyperbolic cosine function.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -782,6 +850,8 @@ impl f32 {
 
     /// Hyperbolic tangent function.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -802,6 +872,8 @@ impl f32 {
     }
 
     /// Inverse hyperbolic sine function.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f32;
@@ -825,6 +897,8 @@ impl f32 {
 
     /// Inverse hyperbolic cosine function.
     ///
+    /// # Examples
+    ///
     /// ```
     /// use std::f32;
     ///
@@ -845,6 +919,8 @@ impl f32 {
     }
 
     /// Inverse hyperbolic tangent function.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::f32;

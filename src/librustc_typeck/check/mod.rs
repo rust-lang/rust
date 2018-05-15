@@ -3058,7 +3058,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                    base: &'gcx hir::Expr,
                    field: &Spanned<ast::Name>) -> Ty<'tcx> {
         let expr_t = self.check_expr_with_needs(base, needs);
-        let expr_t = self.structurally_resolved_type(expr.span,
+        let expr_t = self.structurally_resolved_type(base.span,
                                                      expr_t);
         let mut private_candidate = None;
         let mut autoderef = self.autoderef(expr.span, expr_t);
@@ -4077,7 +4077,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               } else if idx_t.references_error() {
                   idx_t
               } else {
-                  let base_t = self.structurally_resolved_type(expr.span, base_t);
+                  let base_t = self.structurally_resolved_type(base.span, base_t);
                   match self.lookup_indexing(expr, base, base_t, idx_t, needs) {
                       Some((index_ty, element_ty)) => {
                           // two-phase not needed because index_ty is never mutable
@@ -5049,7 +5049,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty
         } else {
             if !self.is_tainted_by_errors() {
-                self.need_type_info((**self).body_id, sp, ty);
+                self.need_type_info_err((**self).body_id, sp, ty)
+                    .note("type must be known at this point")
+                    .emit();
             }
             self.demand_suptype(sp, self.tcx.types.err, ty);
             self.tcx.types.err

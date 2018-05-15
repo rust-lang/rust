@@ -48,6 +48,7 @@ extern crate test as testing;
 extern crate rustc_errors as errors;
 extern crate pulldown_cmark;
 extern crate tempdir;
+extern crate minifier;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
@@ -299,6 +300,11 @@ pub fn opts() -> Vec<RustcOptGroup> {
                      "How errors and other messages are produced",
                      "human|json|short")
         }),
+        unstable("disable-minification", |o| {
+             o.optflag("",
+                       "disable-minification",
+                       "Disable minification applied on JS files")
+        }),
     ]
 }
 
@@ -480,6 +486,7 @@ pub fn main_args(args: &[String]) -> isize {
     let linker = matches.opt_str("linker").map(PathBuf::from);
     let sort_modules_alphabetically = !matches.opt_present("sort-modules-by-appearance");
     let resource_suffix = matches.opt_str("resource-suffix");
+    let enable_minification = !matches.opt_present("disable-minification");
 
     let edition = matches.opt_str("edition").unwrap_or("2015".to_string());
     let edition = match edition.parse() {
@@ -523,7 +530,8 @@ pub fn main_args(args: &[String]) -> isize {
                                   css_file_extension,
                                   renderinfo,
                                   sort_modules_alphabetically,
-                                  themes)
+                                  themes,
+                                  enable_minification)
                     .expect("failed to generate documentation");
                 0
             }

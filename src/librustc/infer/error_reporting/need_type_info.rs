@@ -14,6 +14,7 @@ use infer::InferCtxt;
 use infer::type_variable::TypeVariableOrigin;
 use ty::{self, Ty, TyInfer, TyVar};
 use syntax_pos::Span;
+use errors::DiagnosticBuilder;
 
 struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
@@ -86,7 +87,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn need_type_info(&self, body_id: Option<hir::BodyId>, span: Span, ty: Ty<'tcx>) {
+    pub fn need_type_info_err(&self,
+                            body_id: Option<hir::BodyId>,
+                            span: Span,
+                            ty: Ty<'tcx>)
+                            -> DiagnosticBuilder<'gcx> {
         let ty = self.resolve_type_vars_if_possible(&ty);
         let name = self.extract_type_name(&ty);
 
@@ -142,6 +147,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             err.span_label(target_span, label_message);
         }
 
-        err.emit();
+        err
     }
 }
