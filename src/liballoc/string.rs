@@ -378,6 +378,7 @@ impl String {
     /// ```
     /// let s = String::new();
     /// ```
+    #[must_use = "newly created String must be used"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_string_new")]
