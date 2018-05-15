@@ -10,7 +10,7 @@
 
 // Check that existential types must be ungated to use the `existential` keyword
 
-// gate-test-existential-type
+
 
 existential type Foo: std::fmt::Debug; //~ ERROR existential types are unstable
 
