@@ -2,7 +2,7 @@
 
 Macro expansion happens during parsing. `rustc` has two parsers, in fact: the
 normal Rust parser, and the macro parser. During the parsing phase, the normal
-Rust parser will set aside the contents of macros and their invokations. Later,
+Rust parser will set aside the contents of macros and their invocations. Later,
 before name resolution, macros are expanded using these portions of the code.
 The macro parser, in turn, may call the normal Rust parser when it needs to
 bind a metavariable (e.g.  `$my_expr`) while parsing the contents of a macro
