@@ -265,6 +265,12 @@ impl Span {
         span.lo <= other.lo && other.hi <= span.hi
     }
 
+    pub fn proper_contains(self, other: Span) -> bool {
+        let span = self.data();
+        let other = other.data();
+        span.lo < other.lo && other.hi < span.hi
+    }
+
     /// Return true if the spans are equal with regards to the source text.
     ///
     /// Use this instead of `==` when either span could be generated code,

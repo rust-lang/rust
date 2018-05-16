@@ -106,6 +106,7 @@ pub mod diagnostics {
     pub mod macros;
     pub mod plugin;
     pub mod metadata;
+    pub mod ast;
 }
 
 // NB: This module needs to be declared first so diagnostics are

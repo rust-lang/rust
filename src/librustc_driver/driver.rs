@@ -196,6 +196,11 @@ pub fn compile_input(
             )?
         };
 
+        // Let diagnostics access the AST for allowing to show function names in messages.
+        let expanded_crate = Lrc::new(expanded_crate);
+        sess.diagnostic().set_ast(
+            Box::new(syntax::diagnostics::ast::ContextResolver::new(expanded_crate.clone())));
+
         let output_paths = generated_output_paths(sess, &outputs, output.is_some(), &crate_name);
 
         // Ensure the source file isn't accidentally overwritten during compilation.
@@ -257,7 +262,7 @@ pub fn compile_input(
                     &hir_map,
                     &analysis,
                     &resolutions,
-                    &expanded_crate,
+                    &*expanded_crate,
                     &hir_map.krate(),
                     &outputs,
                     &crate_name
@@ -267,8 +272,10 @@ pub fn compile_input(
         }
 
         let opt_crate = if control.keep_ast {
-            Some(&expanded_crate)
+            Some(&*expanded_crate)
         } else {
+            // AST will be kept for scope naming in diagnostic, should
+            // depricate keep_ast?
             drop(expanded_crate);
             None
         };
