@@ -21,9 +21,9 @@ use ops;
 use str::FromStr;
 
 macro_rules! impl_nonzero_fmt {
-    ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
+    ( ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
         $(
-            #[$stability]
+            #[stable(feature = "nonzero", since = "1.28.0")]
             impl fmt::$Trait for $Ty {
                 #[inline]
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -35,7 +35,7 @@ macro_rules! impl_nonzero_fmt {
 }
 
 macro_rules! nonzero_integers {
-    ( #[$stability: meta] $( $Ty: ident($Int: ty); )+ ) => {
+    ( $( $Ty: ident($Int: ty); )+ ) => {
         $(
             /// An integer that is known not to equal zero.
             ///
@@ -46,7 +46,7 @@ macro_rules! nonzero_integers {
             /// use std::mem::size_of;
             /// assert_eq!(size_of::<Option<std::num::NonZeroU32>>(), size_of::<u32>());
             /// ```
-            #[$stability]
+            #[stable(feature = "nonzero", since = "1.28.0")]
             #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
             pub struct $Ty(NonZero<$Int>);
 
@@ -56,14 +56,14 @@ macro_rules! nonzero_integers {
                 /// # Safety
                 ///
                 /// The value must not be zero.
-                #[$stability]
+                #[stable(feature = "nonzero", since = "1.28.0")]
                 #[inline]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
                     $Ty(NonZero(n))
                 }
 
                 /// Create a non-zero if the given value is not zero.
-                #[$stability]
+                #[stable(feature = "nonzero", since = "1.28.0")]
                 #[inline]
                 pub fn new(n: $Int) -> Option<Self> {
                     if n != 0 {
@@ -74,7 +74,7 @@ macro_rules! nonzero_integers {
                 }
 
                 /// Returns the value as a primitive type.
-                #[$stability]
+                #[stable(feature = "nonzero", since = "1.28.0")]
                 #[inline]
                 pub fn get(self) -> $Int {
                     self.0 .0
@@ -83,7 +83,6 @@ macro_rules! nonzero_integers {
             }
 
             impl_nonzero_fmt! {
-                #[$stability]
                 (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
             }
         )+
@@ -91,7 +90,6 @@ macro_rules! nonzero_integers {
 }
 
 nonzero_integers! {
-    #[unstable(feature = "nonzero", issue = "49137")]
     NonZeroU8(u8);
     NonZeroU16(u16);
     NonZeroU32(u32);

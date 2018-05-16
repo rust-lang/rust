@@ -10,7 +10,6 @@
 
 // https://github.com/rust-lang/rust/issues/41898
 
-#![feature(nonzero)]
 use std::num::NonZeroU64;
 
 fn main() {
