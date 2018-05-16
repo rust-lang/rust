@@ -761,7 +761,7 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     Ok(PathBuf::from(OsString::from_vec(buf)))
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use fs::{File, set_permissions};
     if !from.is_file() {
@@ -778,7 +778,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     Ok(ret)
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use fs::{File, set_permissions};
 
@@ -812,7 +812,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         let metadata = reader.metadata()?;
         (metadata.permissions(), metadata.size())
     };
-    
+
     let mut written = 0u64;
     while written < len {
         let copy_result = unsafe {
