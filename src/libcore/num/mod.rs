@@ -252,7 +252,7 @@ depending on `radix`:
 
  * `0-9`
  * `a-z`
- * `a-z`
+ * `A-Z`
 
 # Panics
 
