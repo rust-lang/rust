@@ -8,5 +8,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         file
 
 ENV CARGO_TARGET_POWERPC_UNKNOWN_LINUX_GNU_LINKER=powerpc-linux-gnu-gcc \
-    CARGO_TARGET_POWERPC_UNKNOWN_LINUX_GNU_RUNNER="qemu-ppc -L /usr/powerpc-linux-gnu" \
+    CARGO_TARGET_POWERPC_UNKNOWN_LINUX_GNU_RUNNER="qemu-ppc -cpu Vger -L /usr/powerpc-linux-gnu" \
     OBJDUMP=powerpc-linux-gnu-objdump

@@ -65,7 +65,9 @@ impl<T, U> IntoBits<U> for T
 where
     U: FromBits<T>,
 {
-    #[inline]
+    // FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/449
+    #[cfg_attr(any(target_arch = "powerpc", target_arch = "powerpc64"), inline(always))]
+    #[cfg_attr(not(any(target_arch = "powerpc", target_arch = "powerpc64")), inline)]
     fn into_bits(self) -> U {
         debug_assert!(::mem::size_of::<Self>() == ::mem::size_of::<U>());
         U::from_bits(self)
@@ -74,7 +76,9 @@ where
 
 // FromBits (and thus IntoBits) is reflexive.
 impl<T> FromBits<T> for T {
-    #[inline]
+    // FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/449
+    #[cfg_attr(any(target_arch = "powerpc", target_arch = "powerpc64"), inline(always))]
+    #[cfg_attr(not(any(target_arch = "powerpc", target_arch = "powerpc64")), inline)]
     fn from_bits(t: Self) -> Self {
         t
     }

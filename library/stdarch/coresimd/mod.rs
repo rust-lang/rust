@@ -34,6 +34,8 @@ pub mod simd {
 /// * [`aarch64`]
 /// * [`mips`]
 /// * [`mips64`]
+/// * [`PowerPC`]
+/// * [`PowerPC64`]
 ///
 /// [`x86`]: https://rust-lang-nursery.github.io/stdsimd/x86/stdsimd/arch/index.html
 /// [`x86_64`]: https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/arch/index.html
@@ -41,6 +43,8 @@ pub mod simd {
 /// [`aarch64`]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/index.html
 /// [`mips`]: https://rust-lang-nursery.github.io/stdsimd/mips/stdsimd/arch/index.html
 /// [`mips64`]: https://rust-lang-nursery.github.io/stdsimd/mips64/stdsimd/arch/index.html
+/// [`PowerPC`]: https://rust-lang-nursery.github.io/stdsimd/powerpc/stdsimd/arch/index.html
+/// [`PowerPC64`]: https://rust-lang-nursery.github.io/stdsimd/powerpc64/stdsimd/arch/index.html
 #[stable(feature = "simd_arch", since = "1.27.0")]
 pub mod arch {
     /// Platform-specific intrinsics for the `x86` platform.
@@ -116,6 +120,27 @@ pub mod arch {
     pub mod mips64 {
         pub use coresimd::mips::*;
     }
+
+    /// Platform-specific intrinsics for the `PowerPC` platform.
+    ///
+    /// See the [module documentation](../index.html) for more details.
+    #[cfg(any(target_arch = "powerpc", dox))]
+    #[doc(cfg(target_arch = "powerpc"))]
+    #[unstable(feature = "stdsimd", issue = "0")]
+    pub mod powerpc {
+        pub use coresimd::powerpc::*;
+    }
+
+    /// Platform-specific intrinsics for the `PowerPC64` platform.
+    ///
+    /// See the [module documentation](../index.html) for more details.
+    #[cfg(target_arch = "powerpc64")]
+    #[cfg(any(target_arch = "powerpc64", dox))]
+    #[doc(cfg(target_arch = "powerpc64"))]
+    #[unstable(feature = "stdsimd", issue = "0")]
+    pub mod powerpc64 {
+        pub use coresimd::powerpc64::*;
+    }
 }
 
 mod simd_llvm;
@@ -134,5 +159,11 @@ mod wasm32;
 
 #[cfg(any(target_arch = "mips", target_arch = "mips64", dox))]
 mod mips;
+
+#[cfg(any(target_arch = "powerpc", target_arch = "powerpc64", dox))]
+mod powerpc;
+
+#[cfg(any(target_arch = "powerpc64", dox))]
+mod powerpc64;
 
 mod nvptx;

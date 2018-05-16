@@ -62,7 +62,10 @@ pub fn assert_instr(
     for arg in func.decl.inputs.iter() {
         let capture = match *arg {
             syn::FnArg::Captured(ref c) => c,
-            _ => panic!("arguments must not have patterns"),
+            ref v => panic!(
+                "arguments must not have patterns: `{:?}`",
+                v.clone().into_tokens()
+            ),
         };
         let ident = match capture.pat {
             syn::Pat::Ident(ref i) => &i.ident,
