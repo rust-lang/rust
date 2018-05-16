@@ -614,8 +614,8 @@ pub fn is_test(file_name: &OsString) -> bool {
 }
 
 pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn {
-
     let early_props = if config.mode == Mode::RunMake {
+        // Allow `ignore` directives to be in the Makefile.
         EarlyProps::from_file(config, &testpaths.file.join("Makefile"))
     } else {
         EarlyProps::from_file(config, &testpaths.file)
