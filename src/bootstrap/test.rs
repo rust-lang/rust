@@ -976,6 +976,9 @@ impl Step for Compiletest {
             builder.ensure(compile::Std { compiler, target: compiler.host });
         }
 
+        // HACK(eddyb) ensure that `libproc_macro` is available on the host.
+        builder.ensure(compile::Test { compiler, target: compiler.host });
+
         builder.ensure(native::TestHelpers { target });
         builder.ensure(RemoteCopyLibs { compiler, target });
 
