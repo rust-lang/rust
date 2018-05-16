@@ -36,34 +36,9 @@
                       and related macros",
             issue = "0")]
 
-#[cfg(not(stage0))]
-use any::Any;
 use fmt;
 #[cfg(not(stage0))]
 use panic::{Location, PanicInfo};
-
-// NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
-#[cfg(not(stage0))]
-#[allow(improper_ctypes)] // PanicInfo contains a trait object which is not FFI safe
-extern "Rust" {
-    #[lang = "panic_impl"]
-    fn panic_impl(pi: &PanicInfo) -> !;
-}
-
-#[cfg(not(stage0))]
-#[cold] #[inline(never)]
-pub fn panic_payload<M>(msg: M, file_line_col: &(&'static str, u32, u32)) -> !
-where
-    M: Any + Send,
-{
-    let (file, line, col) = *file_line_col;
-    let mut pi = PanicInfo::internal_constructor(
-        None,
-        Location::internal_constructor(file, line, col),
-    );
-    pi.set_payload(&msg);
-    unsafe { panic_impl(&pi) }
-}
 
 #[cold] #[inline(never)] // this is the slow path, always
 #[lang = "panic"]
@@ -102,6 +77,13 @@ pub fn panic_fmt(fmt: fmt::Arguments, file_line_col: &(&'static str, u32, u32)) 
 #[cfg(not(stage0))]
 #[cold] #[inline(never)]
 pub fn panic_fmt(fmt: fmt::Arguments, file_line_col: &(&'static str, u32, u32)) -> ! {
+    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+    #[allow(improper_ctypes)] // PanicInfo contains a trait object which is not FFI safe
+    extern "Rust" {
+        #[lang = "panic_impl"]
+        fn panic_impl(pi: &PanicInfo) -> !;
+    }
+
     let (file, line, col) = *file_line_col;
     let pi = PanicInfo::internal_constructor(
         Some(&fmt),
