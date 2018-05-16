@@ -58,20 +58,20 @@ function check {
 
 case ${INTEGRATION} in
     cargo)
-        git clone https://github.com/rust-lang/${INTEGRATION}.git
+        git clone --depth=1 https://github.com/rust-lang/${INTEGRATION}.git
         cd ${INTEGRATION}
         export CFG_DISABLE_CROSS_TESTS=1
         check
         cd -
         ;;
     failure)
-        git clone https://github.com/rust-lang-nursery/${INTEGRATION}.git
+        git clone --depth=1 https://github.com/rust-lang-nursery/${INTEGRATION}.git
         cd ${INTEGRATION}/failure-1.X
         check
         cd -
         ;;
     *)
-        git clone https://github.com/rust-lang-nursery/${INTEGRATION}.git
+        git clone --depth=1 https://github.com/rust-lang-nursery/${INTEGRATION}.git
         cd ${INTEGRATION}
         check
         cd -
