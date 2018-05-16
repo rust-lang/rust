@@ -179,9 +179,11 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                     let (constraint, _str_style) = panictry!(p.parse_str());
 
                     if constraint.as_str().starts_with("=") {
-                        cx.span_err(p.prev_span, "input operand constraint contains '='");
+                        span_err_if_not_stage0!(cx, p.prev_span, E0662,
+                                                "input operand constraint contains '='");
                     } else if constraint.as_str().starts_with("+") {
-                        cx.span_err(p.prev_span, "input operand constraint contains '+'");
+                        span_err_if_not_stage0!(cx, p.prev_span, E0663,
+                                                "input operand constraint contains '+'");
                     }
 
                     panictry!(p.expect(&token::OpenDelim(token::Paren)));
@@ -203,7 +205,8 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                     if OPTIONS.iter().any(|&opt| s == opt) {
                         cx.span_warn(p.prev_span, "expected a clobber, found an option");
                     } else if s.as_str().starts_with("{") || s.as_str().ends_with("}") {
-                        cx.span_err(p.prev_span, "clobber should not be surrounded by braces");
+                        span_err_if_not_stage0!(cx, p.prev_span, E0664,
+                                                "clobber should not be surrounded by braces");
                     }
 
                     clobs.push(s);
