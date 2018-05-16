@@ -1726,7 +1726,7 @@ impl<'a> LoweringContext<'a> {
         hir::PathSegment::new(
             self.lower_ident(segment.ident),
             generic_args,
-            infer_types
+            infer_types,
         )
     }
 
@@ -1738,7 +1738,7 @@ impl<'a> LoweringContext<'a> {
     ) -> (hir::GenericArgs, bool) {
         let &AngleBracketedArgs { ref args, ref bindings, .. } = data;
         (hir::GenericArgs {
-            args: args.iter().map(|p| self.lower_generic_arg(p, itctx)).collect(),
+            args: args.iter().map(|a| self.lower_generic_arg(a, itctx)).collect(),
             bindings: bindings.iter().map(|b| self.lower_ty_binding(b, itctx)).collect(),
             parenthesized: false,
         },

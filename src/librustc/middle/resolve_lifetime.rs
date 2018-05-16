@@ -1601,20 +1601,21 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         &mut self,
         def: Def,
         depth: usize,
-        args: &'tcx hir::GenericArgs,
+        generic_args: &'tcx hir::GenericArgs,
     ) {
-        if args.parenthesized {
+        if generic_args.parenthesized {
             let was_in_fn_syntax = self.is_in_fn_syntax;
             self.is_in_fn_syntax = true;
-            self.visit_fn_like_elision(args.inputs(), Some(&args.bindings[0].ty));
+            self.visit_fn_like_elision(generic_args.inputs(),
+                                       Some(&generic_args.bindings[0].ty));
             self.is_in_fn_syntax = was_in_fn_syntax;
             return;
         }
 
-        if args.lifetimes().all(|l| l.is_elided()) {
-            self.resolve_elided_lifetimes(args.lifetimes().collect(), true);
+        if generic_args.lifetimes().all(|l| l.is_elided()) {
+            self.resolve_elided_lifetimes(generic_args.lifetimes().collect(), true);
         } else {
-            for l in args.lifetimes() {
+            for l in generic_args.lifetimes() {
                 self.visit_lifetime(l);
             }
         }
@@ -1686,13 +1687,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     } else {
                         Some(Region::Static)
                     },
-                    Set1::One(r) => r.subst(args.lifetimes(), map),
+                    Set1::One(r) => r.subst(generic_args.lifetimes(), map),
                     Set1::Many => None,
                 })
                 .collect()
         });
 
-        for (i, ty) in args.types().enumerate() {
+        for (i, ty) in generic_args.types().enumerate() {
             if let Some(&lt) = object_lifetime_defaults.get(i) {
                 let scope = Scope::ObjectLifetimeDefault {
                     lifetime: lt,
@@ -1704,7 +1705,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         }
 
-        for b in &args.bindings {
+        for b in &generic_args.bindings {
             self.visit_assoc_type_binding(b);
         }
     }

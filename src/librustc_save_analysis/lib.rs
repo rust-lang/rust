@@ -692,8 +692,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             if path.segments.len() != 1 {
                 return false;
             }
-            if let Some(ref args) = path.segments[0].args {
-                if let ast::GenericArgs::Parenthesized(_) = **args {
+            if let Some(ref generic_args) = path.segments[0].args {
+                if let ast::GenericArgs::Parenthesized(_) = **generic_args {
                     return true;
                 }
             }

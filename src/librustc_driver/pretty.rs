@@ -677,7 +677,7 @@ impl<'a> ReplaceBodyWithLoop<'a> {
                     ast::TyKind::Paren(ref subty) => involves_impl_trait(subty),
                     ast::TyKind::Tup(ref tys) => any_involves_impl_trait(tys.iter()),
                     ast::TyKind::Path(_, ref path) => path.segments.iter().any(|seg| {
-                        match seg.args.as_ref().map(|p| &**p) {
+                        match seg.args.as_ref().map(|generic_arg| &**generic_arg) {
                             None => false,
                             Some(&ast::GenericArgs::AngleBracketed(ref data)) =>
                                 any_involves_impl_trait(data.types().into_iter()) ||

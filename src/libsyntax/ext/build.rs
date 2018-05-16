@@ -31,7 +31,7 @@ pub trait AstBuilder {
     fn path_all(&self, sp: Span,
                 global: bool,
                 idents: Vec<ast::Ident>,
-                parameters: Vec<ast::GenericArg>,
+                args: Vec<ast::GenericArg>,
                 bindings: Vec<ast::TypeBinding>)
         -> ast::Path;
 
@@ -42,7 +42,7 @@ pub trait AstBuilder {
     fn qpath_all(&self, self_type: P<ast::Ty>,
                 trait_path: ast::Path,
                 ident: ast::Ident,
-                parameters: Vec<ast::GenericArg>,
+                args: Vec<ast::GenericArg>,
                 bindings: Vec<ast::TypeBinding>)
                 -> (ast::QSelf, ast::Path);
 
@@ -302,13 +302,13 @@ pub trait AstBuilder {
 
 impl<'a> AstBuilder for ExtCtxt<'a> {
     fn path(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path {
-        self.path_all(span, false, strs, Vec::new(), Vec::new())
+        self.path_all(span, false, strs, vec![], vec![])
     }
     fn path_ident(&self, span: Span, id: ast::Ident) -> ast::Path {
         self.path(span, vec![id])
     }
     fn path_global(&self, span: Span, strs: Vec<ast::Ident> ) -> ast::Path {
-        self.path_all(span, true, strs, Vec::new(), Vec::new())
+        self.path_all(span, true, strs, vec![], vec![])
     }
     fn path_all(&self,
                 span: Span,
@@ -318,7 +318,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 bindings: Vec<ast::TypeBinding> )
                 -> ast::Path {
         let last_ident = idents.pop().unwrap();
-        let mut segments: Vec<ast::PathSegment> = Vec::new();
+        let mut segments: Vec<ast::PathSegment> = vec![];
 
         segments.extend(idents.into_iter().map(|ident| {
             ast::PathSegment::from_ident(ident.with_span_pos(span))
@@ -424,7 +424,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             self.path_all(DUMMY_SP,
                           true,
                           self.std_path(&["option", "Option"]),
-                          vec![ ast::GenericArg::Type(ty) ],
+                          vec![ast::GenericArg::Type(ty)],
                           Vec::new()))
     }
 

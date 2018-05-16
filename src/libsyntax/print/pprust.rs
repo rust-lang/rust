@@ -1017,8 +1017,8 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_param(&mut self, param: &GenericArg) -> io::Result<()> {
-        match param {
+    pub fn print_generic_arg(&mut self, generic_arg: &GenericArg) -> io::Result<()> {
+        match generic_arg {
             GenericArg::Lifetime(lt) => self.print_lifetime(lt),
             GenericArg::Type(ty) => self.print_type(ty),
         }
@@ -2469,9 +2469,9 @@ impl<'a> State<'a> {
     }
 
     fn print_generic_args(&mut self,
-                             args: &ast::GenericArgs,
-                             colons_before_params: bool)
-                             -> io::Result<()>
+                          args: &ast::GenericArgs,
+                          colons_before_params: bool)
+                          -> io::Result<()>
     {
         if colons_before_params {
             self.s.word("::")?
@@ -2481,7 +2481,9 @@ impl<'a> State<'a> {
             ast::GenericArgs::AngleBracketed(ref data) => {
                 self.s.word("<")?;
 
-                self.commasep(Inconsistent, &data.args, |s, p| s.print_param(p))?;
+                self.commasep(Inconsistent, &data.args, |s, generic_arg| {
+                    s.print_generic_arg(generic_arg)
+                })?;
 
                 let mut comma = data.args.len() != 0;
 

@@ -188,8 +188,8 @@ pub struct AngleBracketedArgs {
 
 impl AngleBracketedArgs {
     pub fn lifetimes(&self) -> impl DoubleEndedIterator<Item = &Lifetime> {
-        self.args.iter().filter_map(|p| {
-            if let GenericArg::Lifetime(lt) = p {
+        self.args.iter().filter_map(|arg| {
+            if let GenericArg::Lifetime(lt) = arg {
                 Some(lt)
             } else {
                 None
@@ -198,8 +198,8 @@ impl AngleBracketedArgs {
     }
 
     pub fn types(&self) -> impl DoubleEndedIterator<Item = &P<Ty>> {
-        self.args.iter().filter_map(|p| {
-            if let GenericArg::Type(ty) = p {
+        self.args.iter().filter_map(|arg| {
+            if let GenericArg::Type(ty) = arg {
                 Some(ty)
             } else {
                 None

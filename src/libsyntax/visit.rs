@@ -131,8 +131,8 @@ pub trait Visitor<'ast>: Sized {
     fn visit_generic_args(&mut self, path_span: Span, generic_args: &'ast GenericArgs) {
         walk_generic_args(self, path_span, generic_args)
     }
-    fn visit_angle_bracketed_param(&mut self, param: &'ast GenericArg) {
-        match param {
+    fn visit_generic_arg(&mut self, generic_arg: &'ast GenericArg) {
+        match generic_arg {
             GenericArg::Lifetime(lt) => self.visit_lifetime(lt),
             GenericArg::Type(ty)     => self.visit_ty(ty),
         }
@@ -393,7 +393,7 @@ pub fn walk_generic_args<'a, V>(visitor: &mut V,
 {
     match *generic_args {
         GenericArgs::AngleBracketed(ref data) => {
-            walk_list!(visitor, visit_angle_bracketed_param, &data.args);
+            walk_list!(visitor, visit_generic_arg, &data.args);
             walk_list!(visitor, visit_assoc_type_binding, &data.bindings);
         }
         GenericArgs::Parenthesized(ref data) => {

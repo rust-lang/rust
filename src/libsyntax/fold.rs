@@ -132,10 +132,9 @@ pub trait Folder : Sized {
         noop_fold_exprs(es, self)
     }
 
-    fn fold_param(&mut self, p: GenericArg) -> GenericArg {
-        match p {
-            GenericArg::Lifetime(lt) =>
-                GenericArg::Lifetime(self.fold_lifetime(lt)),
+    fn fold_generic_arg(&mut self, arg: GenericArg) -> GenericArg {
+        match arg {
+            GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.fold_lifetime(lt)),
             GenericArg::Type(ty) => GenericArg::Type(self.fold_ty(ty)),
         }
     }
@@ -441,9 +440,9 @@ pub fn noop_fold_usize<T: Folder>(i: usize, _: &mut T) -> usize {
 
 pub fn noop_fold_path<T: Folder>(Path { segments, span }: Path, fld: &mut T) -> Path {
     Path {
-        segments: segments.move_map(|PathSegment {ident, args}| PathSegment {
+        segments: segments.move_map(|PathSegment { ident, args }| PathSegment {
             ident: fld.fold_ident(ident),
-            args: args.map(|ps| ps.map(|ps| fld.fold_generic_args(ps))),
+            args: args.map(|args| args.map(|args| fld.fold_generic_args(args))),
         }),
         span: fld.new_span(span)
     }
@@ -462,14 +461,15 @@ pub fn noop_fold_qpath<T: Folder>(qself: Option<QSelf>,
     (qself, fld.fold_path(path))
 }
 
-pub fn noop_fold_generic_args<T: Folder>(generic_args: GenericArgs, fld: &mut T)
-                                         -> GenericArgs
+pub fn noop_fold_generic_args<T: Folder>(generic_args: GenericArgs, fld: &mut T) -> GenericArgs
 {
     match generic_args {
-        GenericArgs::AngleBracketed(data) =>
-            GenericArgs::AngleBracketed(fld.fold_angle_bracketed_parameter_data(data)),
-        GenericArgs::Parenthesized(data) =>
-            GenericArgs::Parenthesized(fld.fold_parenthesized_parameter_data(data)),
+        GenericArgs::AngleBracketed(data) => {
+            GenericArgs::AngleBracketed(fld.fold_angle_bracketed_parameter_data(data))
+        }
+        GenericArgs::Parenthesized(data) => {
+            GenericArgs::Parenthesized(fld.fold_parenthesized_parameter_data(data))
+        }
     }
 }
 
@@ -478,9 +478,11 @@ pub fn noop_fold_angle_bracketed_parameter_data<T: Folder>(data: AngleBracketedA
                                                            -> AngleBracketedArgs
 {
     let AngleBracketedArgs { args, bindings, span } = data;
-    AngleBracketedArgs { args: args.move_map(|p| fld.fold_param(p)),
-                                  bindings: bindings.move_map(|b| fld.fold_ty_binding(b)),
-                                  span: fld.new_span(span) }
+    AngleBracketedArgs {
+        args: args.move_map(|arg| fld.fold_generic_arg(arg)),
+        bindings: bindings.move_map(|b| fld.fold_ty_binding(b)),
+        span: fld.new_span(span)
+    }
 }
 
 pub fn noop_fold_parenthesized_parameter_data<T: Folder>(data: ParenthesizedArgData,
@@ -488,9 +490,11 @@ pub fn noop_fold_parenthesized_parameter_data<T: Folder>(data: ParenthesizedArgD
                                                          -> ParenthesizedArgData
 {
     let ParenthesizedArgData { inputs, output, span } = data;
-    ParenthesizedArgData { inputs: inputs.move_map(|ty| fld.fold_ty(ty)),
-                                 output: output.map(|ty| fld.fold_ty(ty)),
-                                 span: fld.new_span(span) }
+    ParenthesizedArgData {
+        inputs: inputs.move_map(|ty| fld.fold_ty(ty)),
+        output: output.map(|ty| fld.fold_ty(ty)),
+        span: fld.new_span(span)
+    }
 }
 
 pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {
@@ -1191,8 +1195,8 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 ExprKind::MethodCall(
                     PathSegment {
                         ident: folder.fold_ident(seg.ident),
-                        args: seg.args.map(|ps| {
-                            ps.map(|ps| folder.fold_generic_args(ps))
+                        args: seg.args.map(|args| {
+                            args.map(|args| folder.fold_generic_args(args))
                         }),
                     },
                     folder.fold_exprs(args))

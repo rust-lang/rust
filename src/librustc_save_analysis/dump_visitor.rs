@@ -820,8 +820,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
         // Type arguments
         for seg in &path.segments {
-            if let Some(ref args) = seg.args {
-                match **args {
+            if let Some(ref generic_args) = seg.args {
+                match **generic_args {
                     ast::GenericArgs::AngleBracketed(ref data) => for t in data.types() {
                         self.visit_ty(t);
                     },
@@ -905,8 +905,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         }
 
         // Explicit types in the turbo-fish.
-        if let Some(ref args) = seg.args {
-            if let ast::GenericArgs::AngleBracketed(ref data) = **args {
+        if let Some(ref generic_args) = seg.args {
+            if let ast::GenericArgs::AngleBracketed(ref data) = **generic_args {
                 for t in data.types() {
                     self.visit_ty(t);
                 }

@@ -10,7 +10,7 @@
 
 #![feature(generic_associated_types)]
 
-//FIXME(#44265): "lifetime parameter not allowed" errors will be addressed in a
+//FIXME(#44265): "lifetime parameter not allowed on this type" errors will be addressed in a
 // follow-up PR
 
 use std::fmt::Display;

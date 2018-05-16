@@ -2851,7 +2851,7 @@ impl Clean<Type> for hir::Ty {
                     let provided_params = &path.segments.last().unwrap();
                     let mut ty_substs = FxHashMap();
                     let mut lt_substs = FxHashMap();
-                    provided_params.with_args(|provided_params| {
+                    provided_params.with_generic_args(|generic_args| {
                         let mut indices = GenericParamCount {
                             lifetimes: 0,
                             types: 0
@@ -2859,7 +2859,7 @@ impl Clean<Type> for hir::Ty {
                         for param in generics.params.iter() {
                             match param {
                                 hir::GenericParam::Lifetime(lt_param) => {
-                                    if let Some(lt) = provided_params.lifetimes()
+                                    if let Some(lt) = generic_args.lifetimes()
                                         .nth(indices.lifetimes).cloned() {
                                         if !lt.is_elided() {
                                             let lt_def_id =
@@ -2872,7 +2872,7 @@ impl Clean<Type> for hir::Ty {
                                 hir::GenericParam::Type(ty_param) => {
                                     let ty_param_def =
                                         Def::TyParam(cx.tcx.hir.local_def_id(ty_param.id));
-                                    if let Some(ty) = provided_params.types()
+                                    if let Some(ty) = generic_args.types()
                                         .nth(indices.types).cloned() {
                                         ty_substs.insert(ty_param_def, ty.into_inner().clean(cx));
                                     } else if let Some(default) = ty_param.default.clone() {
@@ -3497,9 +3497,9 @@ impl Clean<GenericArgs> for hir::GenericArgs {
                 lifetimes: if self.lifetimes().all(|lt| lt.is_elided()) {
                     vec![]
                 } else {
-                    self.lifetimes().map(|lp| lp.clean(cx)).collect()
+                    self.lifetimes().map(|lt| lt.clean(cx)).collect()
                 },
-                types: self.types().map(|tp| tp.clean(cx)).collect(),
+                types: self.types().map(|ty| ty.clean(cx)).collect(),
                 bindings: self.bindings.clean(cx),
             }
         }
@@ -3516,7 +3516,7 @@ impl Clean<PathSegment> for hir::PathSegment {
     fn clean(&self, cx: &DocContext) -> PathSegment {
         PathSegment {
             name: self.name.clean(cx),
-            args: self.with_args(|args| args.clean(cx))
+            args: self.with_generic_args(|generic_args| generic_args.clean(cx))
         }
     }
 }
