@@ -816,6 +816,8 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let mut written = 0u64;
     while written < len {
         let copy_result = unsafe {
+            // We actually don't have to adjust the offsets,
+            // because copy_file_range adjusts the file offset automatically
             cvt(copy_file_range(reader.as_raw_fd(),
                                 ptr::null_mut(),
                                 writer.as_raw_fd(),
