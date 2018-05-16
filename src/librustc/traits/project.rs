@@ -596,7 +596,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             // Once we have inferred everything we need to know, we
             // can ignore the `obligations` from that point on.
             if !infcx.any_unresolved_type_vars(&ty.value) {
-                infcx.projection_cache.borrow_mut().complete(cache_key);
+                infcx.projection_cache.borrow_mut().complete_normalized(cache_key, &ty);
                 ty.obligations = vec![];
             }
 
@@ -1680,6 +1680,23 @@ impl<'tcx> ProjectionCache<'tcx> {
             value: ty,
             obligations: vec![]
         }));
+    }
+
+    /// A specialized version of `complete` for when the key's value is known
+    /// to be a NormalizedTy.
+    pub fn complete_normalized(&mut self, key: ProjectionCacheKey<'tcx>, ty: &NormalizedTy<'tcx>) {
+        // We want to insert `ty` with no obligations. If the existing value
+        // already has no obligations (as is common) we can use `insert_noop`
+        // to do a minimal amount of work -- the HashMap insertion is skipped,
+        // and minimal changes are made to the undo log.
+        if ty.obligations.is_empty() {
+            self.map.insert_noop();
+        } else {
+            self.map.insert(key, ProjectionCacheEntry::NormalizedTy(Normalized {
+                value: ty.value,
+                obligations: vec![]
+            }));
+        }
     }
 
     /// Indicates that trying to normalize `key` resulted in
