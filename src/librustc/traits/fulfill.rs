@@ -161,19 +161,18 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         // FIXME(#20304) -- cache
 
         let mut selcx = SelectionContext::new(infcx);
-        let normalized = project::normalize_projection_type(&mut selcx,
-                                                            param_env,
-                                                            projection_ty,
-                                                            cause,
-                                                            0);
+        let mut obligations = vec![];
+        let normalized_ty = project::normalize_projection_type(&mut selcx,
+                                                               param_env,
+                                                               projection_ty,
+                                                               cause,
+                                                               0,
+                                                               &mut obligations);
+        self.register_predicate_obligations(infcx, obligations);
 
-        for obligation in normalized.obligations {
-            self.register_predicate_obligation(infcx, obligation);
-        }
+        debug!("normalize_projection_type: result={:?}", normalized_ty);
 
-        debug!("normalize_projection_type: result={:?}", normalized.value);
-
-        normalized.value
+        normalized_ty
     }
 
     /// Requires that `ty` must implement the trait with `def_id` in

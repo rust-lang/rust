@@ -225,12 +225,14 @@ fn project_and_unify_type<'cx, 'gcx, 'tcx>(
     debug!("project_and_unify_type(obligation={:?})",
            obligation);
 
-    let Normalized { value: normalized_ty, mut obligations } =
+    let mut obligations = vec![];
+    let normalized_ty =
         match opt_normalize_projection_type(selcx,
                                             obligation.param_env,
                                             obligation.predicate.projection_ty,
                                             obligation.cause.clone(),
-                                            obligation.recursion_depth) {
+                                            obligation.recursion_depth,
+                                            &mut obligations) {
             Some(n) => n,
             None => return Ok(None),
         };
@@ -386,16 +388,15 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                 // binder). It would be better to normalize in a
                 // binding-aware fashion.
 
-                let Normalized { value: normalized_ty, obligations } =
-                    normalize_projection_type(self.selcx,
-                                              self.param_env,
-                                              data.clone(),
-                                              self.cause.clone(),
-                                              self.depth);
-                debug!("AssociatedTypeNormalizer: depth={} normalized {:?} to {:?} \
-                        with {} add'l obligations",
-                       self.depth, ty, normalized_ty, obligations.len());
-                self.obligations.extend(obligations);
+                let normalized_ty = normalize_projection_type(self.selcx,
+                                                              self.param_env,
+                                                              data.clone(),
+                                                              self.cause.clone(),
+                                                              self.depth,
+                                                              &mut self.obligations);
+                debug!("AssociatedTypeNormalizer: depth={} normalized {:?} to {:?}, \
+                        now with {} obligations",
+                       self.depth, ty, normalized_ty, self.obligations.len());
                 normalized_ty
             }
 
@@ -471,10 +472,12 @@ pub fn normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     projection_ty: ty::ProjectionTy<'tcx>,
     cause: ObligationCause<'tcx>,
-    depth: usize)
-    -> NormalizedTy<'tcx>
+    depth: usize,
+    obligations: &mut Vec<PredicateObligation<'tcx>>)
+    -> Ty<'tcx>
 {
-    opt_normalize_projection_type(selcx, param_env, projection_ty.clone(), cause.clone(), depth)
+    opt_normalize_projection_type(selcx, param_env, projection_ty.clone(), cause.clone(), depth,
+                                  obligations)
         .unwrap_or_else(move || {
             // if we bottom out in ambiguity, create a type variable
             // and a deferred predicate to resolve this when more type
@@ -490,10 +493,8 @@ pub fn normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             });
             let obligation = Obligation::with_depth(
                 cause, depth + 1, param_env, projection.to_predicate());
-            Normalized {
-                value: ty_var,
-                obligations: vec![obligation]
-            }
+            obligations.push(obligation);
+            ty_var
         })
 }
 
@@ -501,13 +502,20 @@ pub fn normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
 /// as Trait>::Item`. The result is always a type (and possibly
 /// additional obligations). Returns `None` in the case of ambiguity,
 /// which indicates that there are unbound type variables.
+///
+/// This function used to return `Option<NormalizedTy<'tcx>>`, which contains a
+/// `Ty<'tcx>` and an obligations vector. But that obligation vector was very
+/// often immediately appended to another obligations vector. So now this
+/// function takes an obligations vector and appends to it directly, which is
+/// slightly uglier but avoids the need for an extra short-lived allocation.
 fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
     selcx: &'a mut SelectionContext<'b, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     projection_ty: ty::ProjectionTy<'tcx>,
     cause: ObligationCause<'tcx>,
-    depth: usize)
-    -> Option<NormalizedTy<'tcx>>
+    depth: usize,
+    obligations: &mut Vec<PredicateObligation<'tcx>>)
+    -> Option<Ty<'tcx>>
 {
     let infcx = selcx.infcx();
 
@@ -579,7 +587,9 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                                                     projection_ty);
             selcx.infcx().report_overflow_error(&obligation, false);
         }
-        Err(ProjectionCacheEntry::NormalizedTy(mut ty)) => {
+        Err(ProjectionCacheEntry::NormalizedTy(ty)) => {
+            // This is the hottest path in this function.
+            //
             // If we find the value in the cache, then return it along
             // with the obligations that went along with it. Note
             // that, when using a fulfillment context, these
@@ -597,28 +607,31 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             // can ignore the `obligations` from that point on.
             if !infcx.any_unresolved_type_vars(&ty.value) {
                 infcx.projection_cache.borrow_mut().complete_normalized(cache_key, &ty);
-                ty.obligations = vec![];
+                // No need to extend `obligations`.
+            } else {
+                obligations.extend(ty.obligations);
             }
 
-            push_paranoid_cache_value_obligation(infcx,
-                                                 param_env,
-                                                 projection_ty,
-                                                 cause,
-                                                 depth,
-                                                 &mut ty);
-
-            return Some(ty);
+            obligations.push(get_paranoid_cache_value_obligation(infcx,
+                                                                 param_env,
+                                                                 projection_ty,
+                                                                 cause,
+                                                                 depth));
+            return Some(ty.value);
         }
         Err(ProjectionCacheEntry::Error) => {
             debug!("opt_normalize_projection_type: \
                     found error");
-            return Some(normalize_to_error(selcx, param_env, projection_ty, cause, depth));
+            let result = normalize_to_error(selcx, param_env, projection_ty, cause, depth);
+            obligations.extend(result.obligations);
+            return Some(result.value)
         }
     }
 
     let obligation = Obligation::with_depth(cause.clone(), depth, param_env, projection_ty);
     match project_type(selcx, &obligation) {
-        Ok(ProjectedTy::Progress(Progress { ty: projected_ty, mut obligations })) => {
+        Ok(ProjectedTy::Progress(Progress { ty: projected_ty,
+                                            obligations: mut projected_obligations })) => {
             // if projection succeeded, then what we get out of this
             // is also non-normalized (consider: it was derived from
             // an impl, where-clause etc) and hence we must
@@ -627,10 +640,10 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             debug!("opt_normalize_projection_type: \
                     projected_ty={:?} \
                     depth={} \
-                    obligations={:?}",
+                    projected_obligations={:?}",
                    projected_ty,
                    depth,
-                   obligations);
+                   projected_obligations);
 
             let result = if projected_ty.has_projections() {
                 let mut normalizer = AssociatedTypeNormalizer::new(selcx,
@@ -644,22 +657,22 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                        normalized_ty,
                        depth);
 
-                obligations.extend(normalizer.obligations);
+                projected_obligations.extend(normalizer.obligations);
                 Normalized {
                     value: normalized_ty,
-                    obligations,
+                    obligations: projected_obligations,
                 }
             } else {
                 Normalized {
                     value: projected_ty,
-                    obligations,
+                    obligations: projected_obligations,
                 }
             };
 
             let cache_value = prune_cache_value_obligations(infcx, &result);
             infcx.projection_cache.borrow_mut().insert_ty(cache_key, cache_value);
-
-            Some(result)
+            obligations.extend(result.obligations);
+            Some(result.value)
         }
         Ok(ProjectedTy::NoProgress(projected_ty)) => {
             debug!("opt_normalize_projection_type: \
@@ -670,7 +683,8 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                 obligations: vec![]
             };
             infcx.projection_cache.borrow_mut().insert_ty(cache_key, result.clone());
-            Some(result)
+            // No need to extend `obligations`.
+            Some(result.value)
         }
         Err(ProjectionTyError::TooManyCandidates) => {
             debug!("opt_normalize_projection_type: \
@@ -688,7 +702,9 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
 
             infcx.projection_cache.borrow_mut()
                                   .error(cache_key);
-            Some(normalize_to_error(selcx, param_env, projection_ty, cause, depth))
+            let result = normalize_to_error(selcx, param_env, projection_ty, cause, depth);
+            obligations.extend(result.obligations);
+            Some(result.value)
         }
     }
 }
@@ -737,7 +753,7 @@ fn prune_cache_value_obligations<'a, 'gcx, 'tcx>(infcx: &'a InferCtxt<'a, 'gcx, 
 /// may or may not be necessary -- in principle, all the obligations
 /// that must be proven to show that `T: Trait` were also returned
 /// when the cache was first populated. But there are some vague concerns,
-/// and so we take the precatuionary measure of including `T: Trait` in
+/// and so we take the precautionary measure of including `T: Trait` in
 /// the result:
 ///
 /// Concern #1. The current setup is fragile. Perhaps someone could
@@ -754,19 +770,21 @@ fn prune_cache_value_obligations<'a, 'gcx, 'tcx>(infcx: &'a InferCtxt<'a, 'gcx, 
 /// that may yet turn out to be wrong.  This *may* lead to some sort
 /// of trouble, though we don't have a concrete example of how that
 /// can occur yet.  But it seems risky at best.
-fn push_paranoid_cache_value_obligation<'a, 'gcx, 'tcx>(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-                                                        param_env: ty::ParamEnv<'tcx>,
-                                                        projection_ty: ty::ProjectionTy<'tcx>,
-                                                        cause: ObligationCause<'tcx>,
-                                                        depth: usize,
-                                                        result: &mut NormalizedTy<'tcx>)
+fn get_paranoid_cache_value_obligation<'a, 'gcx, 'tcx>(
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    projection_ty: ty::ProjectionTy<'tcx>,
+    cause: ObligationCause<'tcx>,
+    depth: usize)
+    -> PredicateObligation<'tcx>
 {
     let trait_ref = projection_ty.trait_ref(infcx.tcx).to_poly_trait_ref();
-    let trait_obligation = Obligation { cause,
-                                        recursion_depth: depth,
-                                        param_env,
-                                        predicate: trait_ref.to_predicate() };
-    result.obligations.push(trait_obligation);
+    Obligation {
+        cause,
+        recursion_depth: depth,
+        param_env,
+        predicate: trait_ref.to_predicate(),
+    }
 }
 
 /// If we are projecting `<T as Trait>::Item`, but `T: Trait` does not
