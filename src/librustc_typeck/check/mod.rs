@@ -94,7 +94,7 @@ use rustc::infer::anon_types::AnonTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
 use rustc::mir::interpret::{GlobalId};
-use rustc::ty::subst::{Kind, UnpackedKind, Subst, Substs};
+use rustc::ty::subst::{UnpackedKind, Subst, Substs};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
@@ -4754,7 +4754,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let GenericParamDefKind::Type(_) = param.kind {
                     // Handle Self first, so we can adjust the index to match the AST.
                     if has_self && i == 0 {
-                        return opt_self_ty.map(|ty| Kind::from(ty)).unwrap_or_else(|| {
+                        return opt_self_ty.map(|ty| ty.into()).unwrap_or_else(|| {
                             self.var_for_def(span, param)
                         });
                     }

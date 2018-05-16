@@ -37,7 +37,7 @@ use dep_graph::{DepNodeIndex, DepKind};
 use hir::def_id::DefId;
 use infer;
 use infer::{InferCtxt, InferOk, TypeFreshener};
-use ty::subst::{Kind, Subst, Substs};
+use ty::subst::{Subst, Substs};
 use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::fast_reject;
 use ty::relate::TypeRelation;
@@ -3019,7 +3019,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // with a potentially unsized trailing field.
                 let params = substs_a.iter().enumerate().map(|(i, &k)| {
                     if ty_params.contains(i) {
-                        Kind::from(tcx.types.err)
+                        tcx.types.err.into()
                     } else {
                         k
                     }

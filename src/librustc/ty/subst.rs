@@ -11,7 +11,7 @@
 // Type substitutions.
 
 use hir::def_id::DefId;
-use ty::{self, Lift, Slice, Region, Ty, TyCtxt};
+use ty::{self, Lift, Slice, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use serialize::{self, Encodable, Encoder, Decodable, Decoder};
@@ -39,7 +39,7 @@ const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 
-#[derive(Debug)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub enum UnpackedKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
@@ -142,34 +142,13 @@ impl<'tcx> TypeFoldable<'tcx> for Kind<'tcx> {
 
 impl<'tcx> Encodable for Kind<'tcx> {
     fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
-        e.emit_enum("Kind", |e| {
-            match self.unpack() {
-                UnpackedKind::Lifetime(lt) => {
-                    e.emit_enum_variant("Region", REGION_TAG, 1, |e| {
-                        e.emit_enum_variant_arg(0, |e| lt.encode(e))
-                    })
-                }
-                UnpackedKind::Type(ty) => {
-                    e.emit_enum_variant("Ty", TYPE_TAG, 1, |e| {
-                        e.emit_enum_variant_arg(0, |e| ty.encode(e))
-                    })
-                }
-            }
-        })
+        self.unpack().encode(e)
     }
 }
 
 impl<'tcx> Decodable for Kind<'tcx> {
     fn decode<D: Decoder>(d: &mut D) -> Result<Kind<'tcx>, D::Error> {
-        d.read_enum("Kind", |d| {
-            d.read_enum_variant(&["Ty", "Region"], |d, tag| {
-                match tag {
-                    TYPE_TAG => Ty::decode(d).map(Kind::from),
-                    REGION_TAG => Region::decode(d).map(Kind::from),
-                    _ => Err(d.error("invalid Kind tag"))
-                }
-            })
-        })
+        Ok(UnpackedKind::decode(d)?.pack())
     }
 }
 
