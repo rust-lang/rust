@@ -17,7 +17,6 @@ use hir;
 use ich::NodeIdHashingMode;
 use traits::{self, ObligationCause};
 use ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
-use ty::fold::TypeVisitor;
 use ty::subst::{Substs, UnpackedKind};
 use ty::maps::TyCtxtAt;
 use ty::TypeVariants::*;
