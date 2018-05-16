@@ -2678,11 +2678,11 @@ fn adt_sized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   -> &'tcx [Ty<'tcx>] {
     let def = tcx.adt_def(def_id);
 
-    let result = tcx.intern_type_list(&def.variants.iter().flat_map(|v| {
+    let result = tcx.mk_type_list(def.variants.iter().flat_map(|v| {
         v.fields.last()
     }).flat_map(|f| {
         def.sized_constraint_for_ty(tcx, tcx.type_of(f.did))
-    }).collect::<Vec<_>>());
+    }));
 
     debug!("adt_sized_constraint: {:?} => {:?}", def, result);
 
