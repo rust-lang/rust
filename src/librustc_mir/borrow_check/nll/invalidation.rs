@@ -75,7 +75,10 @@ struct InvalidationGenerator<'cg, 'cx: 'cg, 'tcx: 'cx, 'gcx: 'tcx> {
 /// Visits the whole MIR and generates invalidates() facts
 /// Most of the code implementing this was stolen from borrow_check/mod.rs
 impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
-    fn visit_statement(&mut self, block: BasicBlock, statement: &Statement<'tcx>, location: Location) {
+    fn visit_statement(&mut self,
+                       block: BasicBlock,
+                       statement: &Statement<'tcx>,
+                       location: Location) {
         match statement.kind {
             StatementKind::Assign(ref lhs, ref rhs) => {
                 self.consume_rvalue(
@@ -236,7 +239,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
             } => {
                 self.consume_operand(ContextKind::Yield.new(location), value);
 
-                // ** TODO(bob_twinkles) figure out what the equivalent of this is
+                // ** FIXME(bob_twinkles) figure out what the equivalent of this is
                 // if self.movable_generator {
                 //     // Look for any active borrows to locals
                 //     let borrow_set = self.borrow_set.clone();
@@ -249,8 +252,9 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
                 // }
             }
             TerminatorKind::Resume | TerminatorKind::Return | TerminatorKind::GeneratorDrop => {
-                // ** TODO(bob_twinkles) figure out what the equivalent of this is
-                // // Returning from the function implicitly kills storage for all locals and statics.
+                // ** FIXME(bob_twinkles) figure out what the equivalent of this is
+                // // Returning from the function implicitly kills storage for all locals and
+                // // statics.
                 // // Often, the storage will already have been killed by an explicit
                 // // StorageDead, but we don't always emit those (notably on unwind paths),
                 // // so this "extra check" serves as a kind of backup.
@@ -826,7 +830,8 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
                 if static1.def_id != static2.def_id {
                     debug!("place_element_conflict: DISJOINT-STATIC");
                     Overlap::Disjoint
-                } else if self.infcx.tcx.is_static(static1.def_id) == Some(hir::Mutability::MutMutable) {
+                } else if self.infcx.tcx.is_static(static1.def_id) ==
+                          Some(hir::Mutability::MutMutable) {
                     // We ignore mutable statics - they can only be unsafe code.
                     debug!("place_element_conflict: IGNORE-STATIC-MUT");
                     Overlap::Disjoint
