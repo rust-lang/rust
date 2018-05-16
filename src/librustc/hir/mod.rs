@@ -1502,46 +1502,6 @@ impl fmt::Display for LoopIdError {
     }
 }
 
-// FIXME(cramertj) this should use `Result` once master compiles w/ a vesion of Rust where
-// `Result` implements `Encodable`/`Decodable`
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum LoopIdResult {
-    Ok(NodeId),
-    Err(LoopIdError),
-}
-impl Into<Result<NodeId, LoopIdError>> for LoopIdResult {
-    fn into(self) -> Result<NodeId, LoopIdError> {
-        match self {
-            LoopIdResult::Ok(ok) => Ok(ok),
-            LoopIdResult::Err(err) => Err(err),
-        }
-    }
-}
-impl From<Result<NodeId, LoopIdError>> for LoopIdResult {
-    fn from(res: Result<NodeId, LoopIdError>) -> Self {
-        match res {
-            Ok(ok) => LoopIdResult::Ok(ok),
-            Err(err) => LoopIdResult::Err(err),
-        }
-    }
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum ScopeTarget {
-    Block(NodeId),
-    Loop(LoopIdResult),
-}
-
-impl ScopeTarget {
-    pub fn opt_id(self) -> Option<NodeId> {
-        match self {
-            ScopeTarget::Block(node_id) |
-            ScopeTarget::Loop(LoopIdResult::Ok(node_id)) => Some(node_id),
-            ScopeTarget::Loop(LoopIdResult::Err(_)) => None,
-        }
-    }
-}
-
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub struct Destination {
     // This is `Some(_)` iff there is an explicit user-specified `label
@@ -1549,7 +1509,7 @@ pub struct Destination {
 
     // These errors are caught and then reported during the diagnostics pass in
     // librustc_passes/loops.rs
-    pub target_id: ScopeTarget,
+    pub target_id: Result<NodeId, LoopIdError>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]

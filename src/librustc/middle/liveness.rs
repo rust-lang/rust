@@ -571,9 +571,6 @@ struct Liveness<'a, 'tcx: 'a> {
     // it probably doesn't now)
     break_ln: NodeMap<LiveNode>,
     cont_ln: NodeMap<LiveNode>,
-
-    // mappings from node ID to LiveNode for "breakable" blocks-- currently only `catch {...}`
-    breakable_block_ln: NodeMap<LiveNode>,
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
@@ -601,7 +598,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             users: vec![invalid_users(); num_live_nodes * num_vars],
             break_ln: NodeMap(),
             cont_ln: NodeMap(),
-            breakable_block_ln: NodeMap(),
         }
     }
 
@@ -870,7 +866,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn propagate_through_block(&mut self, blk: &hir::Block, succ: LiveNode)
                                -> LiveNode {
         if blk.targeted_by_break {
-            self.breakable_block_ln.insert(blk.id, succ);
+            self.break_ln.insert(blk.id, succ);
         }
         let succ = self.propagate_through_opt_expr(blk.expr.as_ref().map(|e| &**e), succ);
         blk.stmts.iter().rev().fold(succ, |succ, stmt| {
@@ -1055,12 +1051,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           hir::ExprBreak(label, ref opt_expr) => {
               // Find which label this break jumps to
               let target = match label.target_id {
-                    hir::ScopeTarget::Block(node_id) =>
-                        self.breakable_block_ln.get(&node_id),
-                    hir::ScopeTarget::Loop(hir::LoopIdResult::Ok(node_id)) =>
-                        self.break_ln.get(&node_id),
-                    hir::ScopeTarget::Loop(hir::LoopIdResult::Err(err)) =>
-                        span_bug!(expr.span, "loop scope error: {}", err),
+                    Ok(node_id) => self.break_ln.get(&node_id),
+                    Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
               }.map(|x| *x);
 
               // Now that we know the label we're going to,
@@ -1075,10 +1067,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           hir::ExprAgain(label) => {
               // Find which label this expr continues to
               let sc = match label.target_id {
-                    hir::ScopeTarget::Block(_) => bug!("can't `continue` to a non-loop block"),
-                    hir::ScopeTarget::Loop(hir::LoopIdResult::Ok(node_id)) => node_id,
-                    hir::ScopeTarget::Loop(hir::LoopIdResult::Err(err)) =>
-                        span_bug!(expr.span, "loop scope error: {}", err),
+                    Ok(node_id) => node_id,
+                    Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
               };
 
               // Now that we know the label we're going to,

@@ -656,20 +656,10 @@ impl_stable_hash_for!(struct hir::Destination {
 
 impl_stable_hash_for_spanned!(ast::Ident);
 
-impl_stable_hash_for!(enum hir::LoopIdResult {
-    Ok(node_id),
-    Err(loop_id_error)
-});
-
 impl_stable_hash_for!(enum hir::LoopIdError {
     OutsideLoopScope,
     UnlabeledCfInWhileCondition,
     UnresolvedLabel
-});
-
-impl_stable_hash_for!(enum hir::ScopeTarget {
-    Block(node_id),
-    Loop(loop_id_result)
 });
 
 impl<'a> HashStable<StableHashingContext<'a>> for ast::Ident {
