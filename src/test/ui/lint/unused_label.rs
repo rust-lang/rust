@@ -13,20 +13,20 @@
 // within nested loops
 
 // compile-pass
-// compile-flags: -W unused_loop_label
+// compile-flags: -W unused-label
 
 fn main() {
     'unused_while_label: while 0 == 0 {
-        //~^ WARN unused loop label
+        //~^ WARN unused label
     }
 
     let opt = Some(0);
     'unused_while_let_label: while let Some(_) = opt {
-        //~^ WARN unused loop label
+        //~^ WARN unused label
     }
 
     'unused_for_label: for _ in 0..10 {
-        //~^ WARN unused loop label
+        //~^ WARN unused label
     }
 
     'used_loop_label: loop {
@@ -42,14 +42,14 @@ fn main() {
 
     'used_loop_label_outer_2: loop {
         'unused_loop_label_inner_2: loop {
-            //~^ WARN unused loop label
+            //~^ WARN unused label
             break 'used_loop_label_outer_2;
         }
     }
 
     'unused_loop_label_outer_3: loop {
+        //~^ WARN unused label
         'used_loop_label_inner_3: loop {
-            //~^ WARN unused loop label
             break 'used_loop_label_inner_3;
         }
     }
@@ -57,6 +57,6 @@ fn main() {
     // This is diverging, so put it at the end so we don't get
     // unreachable_code errors everywhere else
     'unused_loop_label: loop {
-        //~^ WARN unused loop label
+        //~^ WARN unused label
     }
 }

@@ -25,13 +25,13 @@ LL |         'unused_loop_label_inner_2: loop {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused label
-  --> $DIR/unused_label.rs:50:9
+  --> $DIR/unused_label.rs:50:5
    |
 LL |     'unused_loop_label_outer_3: loop {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused label
-  --> $DIR/unused_label.rs:52:5
+  --> $DIR/unused_label.rs:59:5
    |
 LL |     'unused_loop_label: loop {
    |     ^^^^^^^^^^^^^^^^^^

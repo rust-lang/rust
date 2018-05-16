@@ -25,8 +25,6 @@ use syntax_pos::Span;
 
 use rustc::hir;
 
-use std::vec;
-
 declare_lint! {
     pub UNUSED_MUST_USE,
     Warn,
@@ -468,41 +466,38 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
 }
 
 declare_lint! {
-    pub(super) UNUSED_LOOP_LABEL,
+    pub(super) UNUSED_LABEL,
     Warn,
-    "warns on unused labels for loops"
+    "warns on unused labels"
 }
 
 #[derive(Clone)]
-pub struct UnusedLoopLabel(pub vec::Vec<ast::Label>);
+pub struct UnusedLabel(pub Vec<ast::Label>);
 
-impl UnusedLoopLabel {
+impl UnusedLabel {
     pub fn new() -> Self {
-        UnusedLoopLabel(vec![])
+        UnusedLabel(vec![])
     }
 }
 
-impl LintPass for UnusedLoopLabel {
+impl LintPass for UnusedLabel {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_LOOP_LABEL)
+        lint_array!(UNUSED_LABEL)
     }
 }
 
-impl EarlyLintPass for UnusedLoopLabel {
+impl EarlyLintPass for UnusedLabel {
     fn check_expr(&mut self, _: &EarlyContext, expr: &ast::Expr) {
         match expr.node {
-            ast::ExprKind::While(_, _, Some(ref label))
-            | ast::ExprKind::WhileLet(_, _, _, Some(ref label))
-            | ast::ExprKind::ForLoop(_, _, _, Some(ref label))
-            | ast::ExprKind::Loop(_, Some(ref label)) => {
-                self.0.push(*label);
+            ast::ExprKind::While(_, _, Some(label))
+            | ast::ExprKind::WhileLet(_, _, _, Some(label))
+            | ast::ExprKind::ForLoop(_, _, _, Some(label))
+            | ast::ExprKind::Loop(_, Some(label)) => {
+                self.0.push(label);
             }
-            ast::ExprKind::Break(Some(ref label), _) | ast::ExprKind::Continue(Some(ref label)) => {
-                'remove_used_label: for i in (0..self.0.len()).rev() {
-                    if self.0.get(i).unwrap().ident.name == label.ident.name {
-                        self.0.remove(i);
-                        break 'remove_used_label;
-                    }
+            ast::ExprKind::Break(Some(label), _) | ast::ExprKind::Continue(Some(label)) => {
+                if let Some(index) = self.0.iter().rposition(|&l| l.ident == label.ident) {
+                    self.0.remove(index);
                 }
             }
             _ => {}
@@ -511,17 +506,17 @@ impl EarlyLintPass for UnusedLoopLabel {
 
     fn check_expr_post(&mut self, ctxt: &EarlyContext, expr: &ast::Expr) {
         match expr.node {
-            ast::ExprKind::While(_, _, Some(ref label))
-            | ast::ExprKind::WhileLet(_, _, _, Some(ref label))
-            | ast::ExprKind::ForLoop(_, _, _, Some(ref label))
-            | ast::ExprKind::Loop(_, Some(ref label)) => if !self.0.is_empty() {
-                {
-                    let unused_label = self.0.last().unwrap();
-                    if label.ident.name == unused_label.ident.name {
-                        ctxt.span_lint(UNUSED_LOOP_LABEL, label.ident.span, "unused loop label");
+            ast::ExprKind::While(_, _, Some(label))
+            | ast::ExprKind::WhileLet(_, _, _, Some(label))
+            | ast::ExprKind::ForLoop(_, _, _, Some(label))
+            | ast::ExprKind::Loop(_, Some(label)) => {
+                if let Some(unused_label) = self.0.pop() {
+                    if label.ident == unused_label.ident {
+                        ctxt.span_lint(UNUSED_LABEL, label.ident.span, "unused label");
+                    } else {
+                        self.0.push(unused_label);
                     }
                 }
-                self.0.pop();
             },
             _ => {}
         }

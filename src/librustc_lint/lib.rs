@@ -110,7 +110,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
 
     add_early_builtin_with_new!(sess,
                                 DeprecatedAttr,
-                                UnusedLoopLabel,
+                                UnusedLabel,
                                 );
 
     add_builtin!(sess,
@@ -178,8 +178,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     UNUSED_DOC_COMMENT,
                     UNUSED_EXTERN_CRATES,
                     UNUSED_FEATURES,
-                    UNUSED_PARENS,
-                    UNUSED_LOOP_LABEL);
+                    UNUSED_LABEL,
+                    UNUSED_PARENS);
 
     add_lint_group!(sess,
                     "rust_2018_idioms",
