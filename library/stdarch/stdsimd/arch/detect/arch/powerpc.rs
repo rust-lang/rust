@@ -1,9 +1,9 @@
-//! Run-time feature detection on PowerPC64.
+//! Run-time feature detection on PowerPC.
 
 #[macro_export]
 #[unstable(feature = "stdsimd", issue = "0")]
 #[allow_internal_unstable]
-macro_rules! is_powerpc64_feature_detected {
+macro_rules! is_powerpc_feature_detected {
     ("altivec") => {
         cfg!(target_feature = "altivec") ||
             $crate::arch::detect::check_for($crate::arch::detect::Feature::altivec)
@@ -16,11 +16,11 @@ macro_rules! is_powerpc64_feature_detected {
         cfg!(target_feature = "power8") ||
             $crate::arch::detect::check_for($crate::arch::detect::Feature::power8)
     };
-    ($t:tt) => { compile_error!(concat!("unknown powerpc64 target feature: ", $t)) };
+    ($t:tt) => { compile_error!(concat!("unknown powerpc target feature: ", $t)) };
 }
 
 
-/// PowerPC64 CPU Feature enum. Each variant denotes a position in a bitset
+/// PowerPC CPU Feature enum. Each variant denotes a position in a bitset
 /// for a particular feature.
 ///
 /// PLEASE: do not use this, it is an implementation detail subject to change.

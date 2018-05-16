@@ -5,7 +5,7 @@
 
 #[cfg(any(target_arch = "arm", target_arch = "aarch64",
           target_arch = "x86", target_arch = "x86_64",
-          target_arch = "powerpc64"))]
+          target_arch = "powerpc", target_arch = "powerpc64"))]
 #[macro_use]
 extern crate stdsimd;
 
@@ -38,6 +38,20 @@ fn aarch64_linux() {
     println!(
         "dotprod: {}",
         is_aarch64_feature_detected!("dotprod")
+    );
+}
+
+#[test]
+#[cfg(all(target_arch = "powerpc", target_os = "linux"))]
+fn powerpc_linux() {
+    println!(
+        "altivec: {}",
+        is_powerpc_feature_detected!("altivec")
+    );
+    println!("vsx: {}", is_powerpc_feature_detected!("vsx"));
+    println!(
+        "power8: {}",
+        is_powerpc_feature_detected!("power8")
     );
 }
 

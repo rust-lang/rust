@@ -187,6 +187,8 @@
 /// * [`aarch64`]
 /// * [`mips`]
 /// * [`mips64`]
+/// * [`powerpc`]
+/// * [`powerpc64`]
 ///
 /// [`x86`]: https://rust-lang-nursery.github.io/stdsimd/i686/stdsimd/arch/x86/index.html
 /// [`x86_64`]: https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/arch/x86_64/index.html
@@ -194,6 +196,8 @@
 /// [`aarch64`]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/aarch64/index.html
 /// [`mips`]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/mips/index.html
 /// [`mips64`]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/mips64/index.html
+/// [`powerpc`]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/powerpc/index.html
+/// [`powerpc64`]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/powerpc64/index.html
 ///
 /// # Examples
 ///
@@ -370,6 +374,14 @@ pub mod arch {
     #[unstable(feature = "stdsimd", issue = "0")]
     pub use coresimd::arch::mips64;
 
+    #[cfg(all(not(dox), target_arch = "powerpc"))]
+    #[unstable(feature = "stdsimd", issue = "0")]
+    pub use coresimd::arch::powerpc;
+
+    #[cfg(all(not(dox), target_arch = "powerpc64"))]
+    #[unstable(feature = "stdsimd", issue = "0")]
+    pub use coresimd::arch::powerpc64;
+
     #[doc(hidden)] // unstable implementation detail
     #[unstable(feature = "stdsimd", issue = "0")]
     pub mod detect;
@@ -445,6 +457,30 @@ pub mod arch {
     #[doc(cfg(target_arch = "mips64"))]
     #[unstable(feature = "stdsimd", issue = "0")]
     pub mod mips64 {}
+
+    /// Platform-specific intrinsics for the `powerpc` platform.
+    ///
+    /// The documentation with the full listing of `powerpc` intrinsics is
+    /// available in [libcore], but the module is re-exported here in std
+    /// as well.
+    ///
+    /// [libcore]: ../../../core/arch/powerpc/index.html
+    #[cfg(dox)]
+    #[doc(cfg(target_arch = "powerpc"))]
+    #[unstable(feature = "stdsimd", issue = "0")]
+    pub mod powerpc {}
+
+    /// Platform-specific intrinsics for the `powerpc64` platform.
+    ///
+    /// The documentation with the full listing of `powerpc64` intrinsics is
+    /// available in [libcore], but the module is re-exported here in std
+    /// as well.
+    ///
+    /// [libcore]: ../../../core/arch/powerpc64/index.html
+    #[cfg(dox)]
+    #[doc(cfg(target_arch = "powerpc64"))]
+    #[unstable(feature = "stdsimd", issue = "0")]
+    pub mod powerpc64 {}
 }
 
 #[unstable(feature = "stdsimd", issue = "0")]

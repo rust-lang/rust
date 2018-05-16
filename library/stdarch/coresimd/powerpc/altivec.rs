@@ -330,10 +330,14 @@ where
     a.vec_add(b)
 }
 
-#[cfg(all(test, target_arch = "powerpc64"))]
+#[cfg(test)]
 mod tests {
+    #[cfg(target_arch = "powerpc")]
+    use coresimd::arch::powerpc::*;
+
     #[cfg(target_arch = "powerpc64")]
     use coresimd::arch::powerpc64::*;
+
     use simd::*;
     use stdsimd_test::simd_test;
 

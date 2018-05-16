@@ -1,4 +1,4 @@
-//! Run-time feature detection for ARM on Linux.
+//! Run-time feature detection for PowerPC on Linux.
 
 use arch::detect::Feature;
 use arch::detect::cache;

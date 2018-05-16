@@ -68,6 +68,7 @@ pub fn simd_test(
         "i686" | "x86_64" | "i586" => "is_x86_feature_detected",
         "arm" | "armv7" => "is_arm_feature_detected",
         "aarch64" => "is_aarch64_feature_detected",
+        "powerpc" | "powerpcle" => "is_powerpc_feature_detected",
         "powerpc64" | "powerpc64le" => "is_powerpc64_feature_detected",
         "mips" | "mipsel" => {
             // FIXME:
