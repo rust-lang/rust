@@ -360,6 +360,9 @@ impl<Idx> RangeInclusive<Idx> {
     /// whether the inclusive range is empty, use the [`is_empty()`] method
     /// instead of comparing `start() > end()`.
     ///
+    /// Note: the value returned by this method is unspecified after the range
+    /// has been iterated to exhaustion.
+    ///
     /// [`end()`]: #method.end
     /// [`is_empty()`]: #method.is_empty
     ///
@@ -381,6 +384,9 @@ impl<Idx> RangeInclusive<Idx> {
     /// whether the inclusive range is empty, use the [`is_empty()`] method
     /// instead of comparing `start() > end()`.
     ///
+    /// Note: the value returned by this method is unspecified after the range
+    /// has been iterated to exhaustion.
+    ///
     /// [`start()`]: #method.start
     /// [`is_empty()`]: #method.is_empty
     ///
@@ -395,7 +401,10 @@ impl<Idx> RangeInclusive<Idx> {
         &self.end
     }
 
-    /// Destructures the RangeInclusive into (lower bound, upper (inclusive) bound).
+    /// Destructures the `RangeInclusive` into (lower bound, upper (inclusive) bound).
+    ///
+    /// Note: the value returned by this method is unspecified after the range
+    /// has been iterated to exhaustion.
     ///
     /// # Examples
     ///
