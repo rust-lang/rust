@@ -15,7 +15,6 @@ use hir::def_id::DefId;
 use hir::map::{DefPathData, Node};
 use hir;
 use ich::NodeIdHashingMode;
-use middle::const_val::ConstVal;
 use traits::{self, ObligationCause};
 use ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
 use ty::fold::TypeVisitor;
