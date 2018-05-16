@@ -496,7 +496,9 @@ impl EarlyLintPass for UnusedLabel {
                 self.0.push((label, false));
             }
             ast::ExprKind::Break(Some(label), _) | ast::ExprKind::Continue(Some(label)) => {
-                if let Some((_, ref mut was_used)) = self.0.iter_mut().rev().find(|(l, _)| label == *l) {
+                if let Some((_, ref mut was_used)) =
+                    self.0.iter_mut().rev().find(|(l, _)| label == *l)
+                {
                     *was_used = true;
                 }
             }
@@ -515,7 +517,7 @@ impl EarlyLintPass for UnusedLabel {
                         ctxt.span_lint(UNUSED_LABEL, label.ident.span, "unused label");
                     }
                 }
-            },
+            }
             _ => {}
         }
     }
