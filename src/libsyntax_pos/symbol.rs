@@ -393,6 +393,7 @@ declare_keywords! {
     (59, Default,            "default")
     (60, Dyn,                "dyn")
     (61, Union,              "union")
+    (62, Existential,        "existential")
 }
 
 // If an interner exists, return it. Otherwise, prepare a fresh one.

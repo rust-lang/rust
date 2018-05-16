@@ -2151,7 +2151,7 @@ impl<'a> Resolver<'a> {
 
         match item.node {
             ItemKind::Enum(_, ref generics) |
-            ItemKind::Ty(_, ref generics) |
+            ItemKind::Ty(_, ref generics, _) |
             ItemKind::Struct(_, ref generics) |
             ItemKind::Union(_, ref generics) |
             ItemKind::Fn(.., ref generics, _) => {
@@ -2457,7 +2457,7 @@ impl<'a> Resolver<'a> {
 
                                             visit::walk_impl_item(this, impl_item);
                                         }
-                                        ImplItemKind::Type(ref ty) => {
+                                        ImplItemKind::Type(ref ty, _) => {
                                             // If this is a trait impl, ensure the type
                                             // exists in trait
                                             this.check_trait_item(impl_item.ident,

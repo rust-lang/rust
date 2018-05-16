@@ -911,8 +911,8 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
         ItemKind::Mod(m) => ItemKind::Mod(folder.fold_mod(m)),
         ItemKind::ForeignMod(nm) => ItemKind::ForeignMod(folder.fold_foreign_mod(nm)),
         ItemKind::GlobalAsm(ga) => ItemKind::GlobalAsm(folder.fold_global_asm(ga)),
-        ItemKind::Ty(t, generics) => {
-            ItemKind::Ty(folder.fold_ty(t), folder.fold_generics(generics))
+        ItemKind::Ty(t, generics, kind) => {
+            ItemKind::Ty(folder.fold_ty(t), folder.fold_generics(generics), kind)
         }
         ItemKind::Enum(enum_definition, generics) => {
             let generics = folder.fold_generics(generics);
@@ -1003,7 +1003,7 @@ pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T)
                 ast::ImplItemKind::Method(noop_fold_method_sig(sig, folder),
                                folder.fold_block(body))
             }
-            ast::ImplItemKind::Type(ty) => ast::ImplItemKind::Type(folder.fold_ty(ty)),
+            ast::ImplItemKind::Type(ty, ak) => ast::ImplItemKind::Type(folder.fold_ty(ty), ak),
             ast::ImplItemKind::Macro(mac) => ast::ImplItemKind::Macro(folder.fold_mac(mac))
         },
         span: folder.new_span(i.span),

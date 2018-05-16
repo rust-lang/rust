@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc_target::spec::abi::Abi;
-use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind};
+use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind, AliasKind};
 use attr;
 use syntax_pos::{Pos, Span, DUMMY_SP};
 use codemap::{dummy_spanned, respan, Spanned};
@@ -271,8 +271,9 @@ pub trait AstBuilder {
                     span: Span,
                     name: Ident,
                     ty: P<ast::Ty>,
-                    generics: Generics) -> P<ast::Item>;
-    fn item_ty(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> P<ast::Item>;
+                    generics: Generics,
+                    ak: AliasKind) -> P<ast::Item>;
+    fn item_ty(&self, span: Span, name: Ident, ty: P<ast::Ty>, ak: AliasKind) -> P<ast::Item>;
 
     fn attribute(&self, sp: Span, mi: ast::MetaItem) -> ast::Attribute;
 
@@ -1121,12 +1122,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn item_ty_poly(&self, span: Span, name: Ident, ty: P<ast::Ty>,
-                    generics: Generics) -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::Ty(ty, generics))
+                    generics: Generics, ak: AliasKind) -> P<ast::Item> {
+        self.item(span, name, Vec::new(), ast::ItemKind::Ty(ty, generics, ak))
     }
 
-    fn item_ty(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> P<ast::Item> {
-        self.item_ty_poly(span, name, ty, Generics::default())
+    fn item_ty(&self, span: Span, name: Ident, ty: P<ast::Ty>, ak: AliasKind) -> P<ast::Item> {
+        self.item_ty_poly(span, name, ty, Generics::default(), ak)
     }
 
     fn attribute(&self, sp: Span, mi: ast::MetaItem) -> ast::Attribute {

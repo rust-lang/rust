@@ -315,7 +315,7 @@ impl<'a> LoweringContext<'a> {
                     ItemKind::Struct(_, ref generics)
                     | ItemKind::Union(_, ref generics)
                     | ItemKind::Enum(_, ref generics)
-                    | ItemKind::Ty(_, ref generics)
+                    | ItemKind::Ty(_, ref generics, _)
                     | ItemKind::Trait(_, _, ref generics, ..) => {
                         let def_id = self.lctx.resolver.definitions().local_def_id(item.id);
                         let count = generics
@@ -2225,9 +2225,10 @@ impl<'a> LoweringContext<'a> {
             ItemKind::Mod(ref m) => hir::ItemMod(self.lower_mod(m)),
             ItemKind::ForeignMod(ref nm) => hir::ItemForeignMod(self.lower_foreign_mod(nm)),
             ItemKind::GlobalAsm(ref ga) => hir::ItemGlobalAsm(self.lower_global_asm(ga)),
-            ItemKind::Ty(ref t, ref generics) => hir::ItemTy(
+            ItemKind::Ty(ref t, ref generics, kind) => hir::ItemTy(
                 self.lower_ty(t, ImplTraitContext::Disallowed),
                 self.lower_generics(generics, ImplTraitContext::Disallowed),
+                self.lower_alias_kind(kind),
             ),
             ItemKind::Enum(ref enum_definition, ref generics) => hir::ItemEnum(
                 hir::EnumDef {
@@ -2599,9 +2600,12 @@ impl<'a> LoweringContext<'a> {
                         },
                     )
                 }
-                ImplItemKind::Type(ref ty) => (
+                ImplItemKind::Type(ref ty, ak) => (
                     this.lower_generics(&i.generics, ImplTraitContext::Disallowed),
-                    hir::ImplItemKind::Type(this.lower_ty(ty, ImplTraitContext::Disallowed)),
+                    hir::ImplItemKind::Type(
+                        this.lower_ty(ty, ImplTraitContext::Disallowed),
+                        this.lower_alias_kind(ak),
+                    ),
                 ),
                 ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
             };
@@ -3707,7 +3711,14 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_defaultness(&mut self, d: Defaultness, has_value: bool) -> hir::Defaultness {
+    fn lower_alias_kind(&self, alias_kind: AliasKind) -> hir::AliasKind {
+        match alias_kind {
+            AliasKind::Existential => hir::AliasKind::Existential,
+            AliasKind::Weak => hir::AliasKind::Weak,
+        }
+    }
+
+    fn lower_defaultness(&self, d: Defaultness, has_value: bool) -> hir::Defaultness {
         match d {
             Defaultness::Default => hir::Defaultness::Default {
                 has_value: has_value,

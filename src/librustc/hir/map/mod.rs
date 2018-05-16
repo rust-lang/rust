@@ -1282,8 +1282,12 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ImplItemKind::Method(..) => {
                     format!("method {} in {}{}", ii.name, path_str(), id_str)
                 }
-                ImplItemKind::Type(_) => {
-                    format!("assoc type {} in {}{}", ii.name, path_str(), id_str)
+                ImplItemKind::Type(_, kind) => {
+                    let kind = match kind {
+                        AliasKind::Existential => "existential ",
+                        AliasKind::Weak => "",
+                    };
+                    format!("assoc {}type {} in {}{}", kind, ii.name, path_str(), id_str)
                 }
             }
         }

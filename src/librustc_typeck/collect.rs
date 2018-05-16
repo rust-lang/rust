@@ -271,7 +271,7 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             match item.node {
                 ItemFn(.., ref generics, _) |
                 ItemImpl(_, _, _, ref generics, ..) |
-                ItemTy(_, ref generics) |
+                ItemTy(_, ref generics, _) |
                 ItemEnum(_, ref generics) |
                 ItemStruct(_, ref generics) |
                 ItemUnion(_, ref generics) => generics,
@@ -825,7 +825,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ItemFn(.., ref generics, _) |
                 ItemImpl(_, _, _, ref generics, ..) => generics,
 
-                ItemTy(_, ref generics) |
+                ItemTy(_, ref generics, _) |
                 ItemEnum(_, ref generics) |
                 ItemStruct(_, ref generics) |
                 ItemUnion(_, ref generics) => {
@@ -1021,7 +1021,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     tcx.mk_fn_def(def_id, substs)
                 }
                 ImplItemKind::Const(ref ty, _) => icx.to_ty(ty),
-                ImplItemKind::Type(ref ty) => {
+                ImplItemKind::Type(ref ty, _) => {
                     if tcx.impl_trait_ref(tcx.hir.get_parent_did(node_id)).is_none() {
                         span_err!(tcx.sess, item.span, E0202,
                                   "associated types are not allowed in inherent impls");
@@ -1035,7 +1035,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         NodeItem(item) => {
             match item.node {
                 ItemStatic(ref t, ..) | ItemConst(ref t, _) |
-                ItemTy(ref t, _) | ItemImpl(.., ref t, _) => {
+                ItemTy(ref t, _, _) | ItemImpl(.., ref t, _) => {
                     icx.to_ty(t)
                 }
                 ItemFn(..) => {
@@ -1334,7 +1334,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     generics
                 }
                 ItemFn(.., ref generics, _) |
-                ItemTy(_, ref generics) |
+                ItemTy(_, ref generics, _) |
                 ItemEnum(_, ref generics) |
                 ItemStruct(_, ref generics) |
                 ItemUnion(_, ref generics) => generics,

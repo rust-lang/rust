@@ -1227,7 +1227,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     impl_item.span,
                 );
             }
-            ast::ImplItemKind::Type(ref ty) => {
+            ast::ImplItemKind::Type(ref ty, _) => {
                 // FIXME uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the
                 // trait.
@@ -1442,7 +1442,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                 self.process_mod(item);
                 self.nest_scope(item.id, |v| visit::walk_mod(v, m));
             }
-            Ty(ref ty, ref ty_params) => {
+            Ty(ref ty, ref ty_params, _) => {
                 let qualname = format!("::{}", self.tcx.node_path_str(item.id));
                 let value = ty_to_string(&ty);
                 let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Type);

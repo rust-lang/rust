@@ -36,7 +36,7 @@ use rustc::middle::resolve_lifetime as rl;
 use rustc::ty::fold::TypeFolder;
 use rustc::middle::lang_items;
 use rustc::mir::interpret::GlobalId;
-use rustc::hir::{self, HirVec};
+use rustc::hir::{self, HirVec, AliasKind};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::def_id::DefIndexAddressSpace;
@@ -450,7 +450,7 @@ pub enum ItemEnum {
     EnumItem(Enum),
     FunctionItem(Function),
     ModuleItem(Module),
-    TypedefItem(Typedef, bool /* is associated type */),
+    TypedefItem(Typedef, bool /* is associated type */, AliasKind),
     StaticItem(Static),
     ConstantItem(Constant),
     TraitItem(Trait),
@@ -471,7 +471,7 @@ pub enum ItemEnum {
     MacroItem(Macro),
     PrimitiveItem(PrimitiveType),
     AssociatedConstItem(Type, Option<String>),
-    AssociatedTypeItem(Vec<TyParamBound>, Option<Type>),
+    AssociatedTypeItem(Vec<TyParamBound>, Option<Type>, AliasKind),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemEnum>),
 }
@@ -482,7 +482,7 @@ impl ItemEnum {
             ItemEnum::StructItem(ref s) => &s.generics,
             ItemEnum::EnumItem(ref e) => &e.generics,
             ItemEnum::FunctionItem(ref f) => &f.generics,
-            ItemEnum::TypedefItem(ref t, _) => &t.generics,
+            ItemEnum::TypedefItem(ref t, _, _) => &t.generics,
             ItemEnum::TraitItem(ref t) => &t.generics,
             ItemEnum::ImplItem(ref i) => &i.generics,
             ItemEnum::TyMethodItem(ref i) => &i.generics,
@@ -2170,7 +2170,7 @@ impl Clean<Item> for hir::TraitItem {
                 })
             }
             hir::TraitItemKind::Type(ref bounds, ref default) => {
-                AssociatedTypeItem(bounds.clean(cx), default.clean(cx))
+                AssociatedTypeItem(bounds.clean(cx), default.clean(cx), AliasKind::Weak)
             }
         };
         Item {
@@ -2196,10 +2196,14 @@ impl Clean<Item> for hir::ImplItem {
             hir::ImplItemKind::Method(ref sig, body) => {
                 MethodItem((sig, &self.generics, body).clean(cx))
             }
-            hir::ImplItemKind::Type(ref ty) => TypedefItem(Typedef {
-                type_: ty.clean(cx),
-                generics: Generics::default(),
-            }, true),
+            hir::ImplItemKind::Type(ref ty, kind) => TypedefItem(
+                    Typedef {
+                    type_: ty.clean(cx),
+                    generics: Generics::default(),
+                },
+                true,
+                kind,
+            ),
         };
         Item {
             name: Some(self.name.clean(cx)),
@@ -2325,15 +2329,21 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                         None
                     };
 
-                    AssociatedTypeItem(bounds, ty.clean(cx))
+                    // FIXME(oli-obk): add alias kind to ty::AssociatedItem
+                    AssociatedTypeItem(bounds, ty.clean(cx), AliasKind::Weak)
                 } else {
-                    TypedefItem(Typedef {
-                        type_: cx.tcx.type_of(self.def_id).clean(cx),
-                        generics: Generics {
-                            params: Vec::new(),
-                            where_predicates: Vec::new(),
+                    TypedefItem(
+                        Typedef {
+                            type_: cx.tcx.type_of(self.def_id).clean(cx),
+                            generics: Generics {
+                                params: Vec::new(),
+                                where_predicates: Vec::new(),
+                            },
                         },
-                    }, true)
+                        true,
+                        // FIXME(oli-obk): add alias kind to ty::AssociatedItem
+                        AliasKind::Weak,
+                    )
                 }
             }
         };
@@ -2682,7 +2692,7 @@ impl Clean<Type> for hir::Ty {
                     }
                 };
 
-                if let Some(&hir::ItemTy(ref ty, ref generics)) = alias {
+                if let Some(&hir::ItemTy(ref ty, ref generics, _)) = alias {
                     let provided_params = &path.segments.last().unwrap();
                     let mut ty_substs = FxHashMap();
                     let mut lt_substs = FxHashMap();
@@ -3442,7 +3452,8 @@ impl Clean<Item> for doctree::Typedef {
             inner: TypedefItem(Typedef {
                 type_: self.ty.clean(cx),
                 generics: self.gen.clean(cx),
-            }, false),
+            // FIXME(oli-obk): Typedef vs existential type
+            }, false, AliasKind::Weak),
         }
     }
 }
@@ -3626,7 +3637,7 @@ fn build_deref_target_impls(cx: &DocContext,
 
     for item in items {
         let target = match item.inner {
-            TypedefItem(ref t, true) => &t.type_,
+            TypedefItem(ref t, true, _) => &t.type_,
             _ => continue,
         };
         let primitive = match *target {

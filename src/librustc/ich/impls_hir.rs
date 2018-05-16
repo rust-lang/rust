@@ -742,7 +742,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem {
 impl_stable_hash_for!(enum hir::ImplItemKind {
     Const(t, body),
     Method(sig, body),
-    Type(t)
+    Type(t, alias_kind)
 });
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Visibility {
@@ -781,6 +781,11 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Defaultness {
         }
     }
 }
+
+impl_stable_hash_for!(enum hir::AliasKind {
+    Weak,
+    Existential
+});
 
 impl_stable_hash_for!(enum hir::ImplPolarity {
     Positive,
@@ -875,7 +880,7 @@ impl_stable_hash_for!(enum hir::Item_ {
     ItemMod(module),
     ItemForeignMod(foreign_mod),
     ItemGlobalAsm(global_asm),
-    ItemTy(ty, generics),
+    ItemTy(ty, generics, alias_kind),
     ItemEnum(enum_def, generics),
     ItemStruct(variant_data, generics),
     ItemUnion(variant_data, generics),
