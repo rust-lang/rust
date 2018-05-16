@@ -472,7 +472,7 @@ declare_lint! {
 }
 
 #[derive(Clone)]
-pub struct UnusedLabel(pub Vec<ast::Label>);
+pub struct UnusedLabel(pub Vec<(ast::Label, bool)>);
 
 impl UnusedLabel {
     pub fn new() -> Self {
@@ -493,11 +493,11 @@ impl EarlyLintPass for UnusedLabel {
             | ast::ExprKind::WhileLet(_, _, _, Some(label))
             | ast::ExprKind::ForLoop(_, _, _, Some(label))
             | ast::ExprKind::Loop(_, Some(label)) => {
-                self.0.push(label);
+                self.0.push((label, false));
             }
             ast::ExprKind::Break(Some(label), _) | ast::ExprKind::Continue(Some(label)) => {
-                if let Some(index) = self.0.iter().rposition(|&l| l.ident == label.ident) {
-                    self.0.remove(index);
+                if let Some((_, ref mut was_used)) = self.0.iter_mut().rev().find(|(l, _)| label == *l) {
+                    *was_used = true;
                 }
             }
             _ => {}
@@ -510,11 +510,9 @@ impl EarlyLintPass for UnusedLabel {
             | ast::ExprKind::WhileLet(_, _, _, Some(label))
             | ast::ExprKind::ForLoop(_, _, _, Some(label))
             | ast::ExprKind::Loop(_, Some(label)) => {
-                if let Some(unused_label) = self.0.pop() {
-                    if label.ident == unused_label.ident {
+                if let Some((_, was_used)) = self.0.pop() {
+                    if !was_used {
                         ctxt.span_lint(UNUSED_LABEL, label.ident.span, "unused label");
-                    } else {
-                        self.0.push(unused_label);
                     }
                 }
             },
