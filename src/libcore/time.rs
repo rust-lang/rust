@@ -498,7 +498,7 @@ impl fmt::Debug for Duration {
         /// to be less than `10 * divisor`!
         fn fmt_decimal(
             f: &mut fmt::Formatter,
-            integer_part: u64,
+            mut integer_part: u64,
             mut fractional_part: u32,
             mut divisor: u32,
         ) -> fmt::Result {
@@ -520,6 +520,40 @@ impl fmt::Debug for Duration {
                 fractional_part %= divisor;
                 divisor /= 10;
                 pos += 1;
+            }
+
+            // If a precision < 9 was specified, there may be some non-zero
+            // digits left that weren't written into the buffer. In that case we
+            // need to perform rounding to match the semantics of printing
+            // normal floating point numbers. However, we only need to do work
+            // when rounding up. This happens if the first digit of the
+            // remaining ones is >= 5.
+            if fractional_part > 0 && fractional_part >= divisor * 5 {
+                // Round up the number contained in the buffer. We go through
+                // the buffer backwards and keep track of the carry.
+                let mut rev_pos = pos;
+                let mut carry = true;
+                while carry && rev_pos > 0 {
+                    rev_pos -= 1;
+
+                    // If the digit in the buffer is not '9', we just need to
+                    // increment it and can stop then (since we don't have a
+                    // carry anymore). Otherwise, we set it to '0' (overflow)
+                    // and continue.
+                    if buf[rev_pos] < b'9' {
+                        buf[rev_pos] += 1;
+                        carry = false;
+                    } else {
+                        buf[rev_pos] = b'0';
+                    }
+                }
+
+                // If we still have the carry bit set, that means that we set
+                // the whole buffer to '0's and need to increment the integer
+                // part.
+                if carry {
+                    integer_part += 1;
+                }
             }
 
             // If we haven't emitted a single fractional digit and the precision
