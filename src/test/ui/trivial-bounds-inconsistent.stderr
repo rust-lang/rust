@@ -1,0 +1,112 @@
+warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent.rs:24:1
+   |
+LL | enum E where i32: Foo { V }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(trivial_bounds)] on by default
+
+warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent.rs:26:1
+   |
+LL | struct S where i32: Foo;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent.rs:28:1
+   |
+LL | trait T where i32: Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent.rs:30:1
+   |
+LL | union U where i32: Foo { f: i32 }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: where clauses are not enforced in type aliases
+  --> $DIR/trivial-bounds-inconsistent.rs:32:14
+   |
+LL | type Y where i32: Foo = ();
+   |              ^^^^^^^^
+   |
+   = note: #[warn(type_alias_bounds)] on by default
+   = help: the clause will not be checked when the type alias is used, and should be removed
+
+warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent.rs:32:1
+   |
+LL | type Y where i32: Foo = ();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent.rs:34:1
+   |
+LL | / impl Foo for () where i32: Foo {
+LL | |     fn test(&self) {
+LL | |         3i32.test();
+LL | |         Foo::test(&4i32);
+LL | |         generic_function(5i32);
+LL | |     }
+LL | | }
+   | |_^
+
+warning: Trait bound i32: Foo does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent.rs:42:1
+   |
+LL | / fn f() where i32: Foo {
+LL | |     let s = S;
+LL | |     3i32.test();
+LL | |     Foo::test(&4i32);
+LL | |     generic_function(5i32);
+LL | | }
+   | |_^
+
+warning: Trait bound &'static str: Foo does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent.rs:49:1
+   |
+LL | / fn g() where &'static str: Foo {
+LL | |     "Foo".test();
+LL | |     Foo::test(&"Foo");
+LL | |     generic_function("Foo");
+LL | | }
+   | |_^
+
+warning: Trait bound str: std::marker::Sized does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent.rs:63:1
+   |
+LL | struct TwoStrs(str, str) where str: Sized;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: Trait bound for<'a> Dst<A + 'a>: std::marker::Sized does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent.rs:65:1
+   |
+LL | / fn unsized_local() where for<'a> Dst<A + 'a>: Sized {
+LL | |     let x: Dst<A> = *(Box::new(Dst { x: 1 }) as Box<Dst<A>>);
+LL | | }
+   | |_^
+
+warning: Trait bound str: std::marker::Sized does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent.rs:69:1
+   |
+LL | / fn return_str() -> str where str: Sized {
+LL | |     *"Sized".to_string().into_boxed_str()
+LL | | }
+   | |_^
+
+warning: Trait bound std::string::String: std::ops::Neg does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent.rs:73:1
+   |
+LL | / fn use_op(s: String) -> String where String: ::std::ops::Neg<Output=String> {
+LL | |     -s
+LL | | }
+   | |_^
+
+warning: Trait bound i32: std::iter::Iterator does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent.rs:77:1
+   |
+LL | / fn use_for() where i32: Iterator {
+LL | |     for _ in 2i32 {}
+LL | | }
+   | |_^
+

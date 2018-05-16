@@ -463,6 +463,9 @@ declare_features! (
 
     // Allows use of the :literal macro fragment specifier (RFC 1576)
     (active, macro_literal_matcher, "1.27.0", Some(35625), None),
+
+    // inconsistent bounds in where clauses
+    (active, trivial_bounds, "1.28.0", Some(48214), None),
 );
 
 declare_features! (

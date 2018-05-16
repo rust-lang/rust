@@ -1,0 +1,19 @@
+error[E0596]: cannot borrow immutable item `**t` as mutable
+  --> $DIR/trivial-bounds-inconsistent-copy-reborrow.rs:16:5
+   |
+LL |     *t //~ ERROR
+   |     ^^ cannot borrow as mutable
+   |
+   = note: the value which is causing this path not to be mutable is...: `*t`
+
+error[E0596]: cannot borrow immutable item `**t` as mutable
+  --> $DIR/trivial-bounds-inconsistent-copy-reborrow.rs:20:6
+   |
+LL |     {*t} //~ ERROR
+   |      ^^ cannot borrow as mutable
+   |
+   = note: the value which is causing this path not to be mutable is...: `*t`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

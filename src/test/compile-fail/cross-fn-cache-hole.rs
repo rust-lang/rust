@@ -11,10 +11,9 @@
 // Check that when there are vacuous predicates in the environment
 // (which make a fn uncallable) we don't erroneously cache those and
 // then consider them satisfied elsewhere. The current technique for
-// doing this is just to filter "global" predicates out of the
-// environment, which means that we wind up with an error in the
-// function `vacuous`, because even though `i32: Bar<u32>` is implied
-// by its where clause, that where clause never holds.
+// doing this is to not use global caches when there is a chance that
+// the environment contains such a predicate.
+// We still error for `i32: Bar<u32>` pending #48214
 
 trait Foo<X,Y>: Bar<X> {
 }

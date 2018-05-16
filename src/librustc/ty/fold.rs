@@ -116,10 +116,14 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
 
     /// Indicates whether this value references only 'global'
     /// types/lifetimes that are the same regardless of what fn we are
-    /// in. This is used for caching. Errs on the side of returning
-    /// false.
+    /// in. This is used for caching.
     fn is_global(&self) -> bool {
-        !self.has_type_flags(TypeFlags::HAS_LOCAL_NAMES)
+        !self.has_type_flags(TypeFlags::HAS_FREE_LOCAL_NAMES)
+    }
+
+    /// True if there are any late-bound regions
+    fn has_late_bound_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND)
     }
 }
 

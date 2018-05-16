@@ -243,6 +243,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             super::IntrinsicType => Some(super::IntrinsicType),
             super::MethodReceiver => Some(super::MethodReceiver),
             super::BlockTailExpression(id) => Some(super::BlockTailExpression(id)),
+            super::TrivialBound => Some(super::TrivialBound),
         }
     }
 }

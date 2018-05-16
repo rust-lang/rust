@@ -243,6 +243,9 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Block implicit return
     BlockTailExpression(ast::NodeId),
+
+    /// #[feature(trivial_bounds)] is not enabled
+    TrivialBound,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -641,16 +644,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let predicates: Vec<_> =
         util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.to_vec())
-        .filter(|p| !p.is_global()) // (*)
         .collect();
-
-    // (*) Any predicate like `i32: Trait<u32>` or whatever doesn't
-    // need to be in the *environment* to be proven, so screen those
-    // out. This is important for the soundness of inter-fn
-    // caching. Note though that we should probably check that these
-    // predicates hold at the point where the environment is
-    // constructed, but I am not currently doing so out of laziness.
-    // -nmatsakis
 
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}",
            predicates);

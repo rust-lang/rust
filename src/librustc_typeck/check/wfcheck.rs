@@ -47,6 +47,12 @@ impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
         let param_env = self.param_env;
         self.inherited.enter(|inh| {
             let fcx = FnCtxt::new(&inh, param_env, id);
+            if !inh.tcx.features().trivial_bounds {
+                // As predicates are cached rather than obligations, this
+                // needsto be called first so that they are checked with an
+                // empty param_env.
+                check_false_global_bounds(&fcx, span, id);
+            }
             let wf_tys = f(&fcx, fcx.tcx.global_tcx());
             fcx.select_all_obligations_or_error();
             fcx.regionck_item(id, span, &wf_tys);
@@ -684,6 +690,41 @@ fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
             error_194(tcx, type_span, trait_decl_span, &method_param.name.as_str()[..]);
         }
     }
+}
+
+/// Feature gates RFC 2056 - trivial bounds, checking for global bounds that
+/// aren't true.
+fn check_false_global_bounds<'a, 'gcx, 'tcx>(
+        fcx: &FnCtxt<'a, 'gcx, 'tcx>,
+        span: Span,
+        id: ast::NodeId,
+) {
+    use rustc::ty::TypeFoldable;
+
+    let empty_env = ty::ParamEnv::empty();
+
+    let def_id = fcx.tcx.hir.local_def_id(id);
+    let predicates = fcx.tcx.predicates_of(def_id).predicates;
+    // Check elaborated bounds
+    let implied_obligations = traits::elaborate_predicates(fcx.tcx, predicates);
+
+    for pred in implied_obligations {
+        // Match the existing behavior.
+        if pred.is_global() && !pred.has_late_bound_regions() {
+            let obligation = traits::Obligation::new(
+                traits::ObligationCause::new(
+                    span,
+                    id,
+                    traits::TrivialBound,
+                ),
+                empty_env,
+                pred,
+            );
+            fcx.register_predicate(obligation);
+        }
+    }
+
+    fcx.select_all_obligations_or_error();
 }
 
 pub struct CheckTypeWellFormedVisitor<'a, 'tcx: 'a> {
