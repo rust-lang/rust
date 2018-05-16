@@ -116,7 +116,6 @@ use std::collections::hash_map::Entry;
 use std::cmp;
 use std::fmt::Display;
 use std::mem::replace;
-use std::iter;
 use std::ops::{self, Deref};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
@@ -1114,7 +1113,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
             if id == fn_id {
                 match entry_type {
                     config::EntryMain => {
-                        let substs = fcx.tcx.mk_substs(iter::once(Kind::from(declared_ret_ty)));
+                        let substs = fcx.tcx.mk_substs_trait(declared_ret_ty, &[]);
                         let trait_ref = ty::TraitRef::new(term_id, substs);
                         let return_ty_span = decl.output.span();
                         let cause = traits::ObligationCause::new(

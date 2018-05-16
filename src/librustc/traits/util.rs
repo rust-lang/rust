@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use ty::subst::{Subst, Substs};
+use ty::subst::{Kind, Subst, Substs};
 use ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use ty::outlives::Component;
 use util::nodemap::FxHashSet;
@@ -430,13 +430,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                    cause: ObligationCause<'tcx>,
                                    trait_def_id: DefId,
                                    recursion_depth: usize,
-                                   param_ty: Ty<'tcx>,
-                                   ty_params: &[Ty<'tcx>])
+                                   self_ty: Ty<'tcx>,
+                                   params: &[Kind<'tcx>])
         -> PredicateObligation<'tcx>
     {
         let trait_ref = ty::TraitRef {
             def_id: trait_def_id,
-            substs: self.mk_substs_trait(param_ty, ty_params)
+            substs: self.mk_substs_trait(self_ty, params)
         };
         predicate_for_trait_ref(cause, param_env, trait_ref, recursion_depth)
     }
@@ -512,7 +512,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
         let trait_ref = ty::TraitRef {
             def_id: fn_trait_def_id,
-            substs: self.mk_substs_trait(self_ty, &[arguments_tuple]),
+            substs: self.mk_substs_trait(self_ty, &[arguments_tuple.into()]),
         };
         ty::Binder::bind((trait_ref, sig.skip_binder().output()))
     }

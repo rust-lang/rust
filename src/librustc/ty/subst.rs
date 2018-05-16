@@ -20,7 +20,6 @@ use rustc_data_structures::accumulate_vec::AccumulateVec;
 
 use core::intrinsics;
 use std::fmt;
-use std::iter;
 use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZeroUsize;
@@ -541,56 +540,5 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
             return region;
         }
         self.tcx().mk_region(ty::fold::shift_region(*region, self.region_binders_passed))
-    }
-}
-
-// Helper methods that modify substitutions.
-
-impl<'a, 'gcx, 'tcx> ty::TraitRef<'tcx> {
-    pub fn from_method(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                       trait_id: DefId,
-                       substs: &Substs<'tcx>)
-                       -> ty::TraitRef<'tcx> {
-        let defs = tcx.generics_of(trait_id);
-
-        ty::TraitRef {
-            def_id: trait_id,
-            substs: tcx.intern_substs(&substs[..defs.params.len()])
-        }
-    }
-}
-
-impl<'a, 'gcx, 'tcx> ty::ExistentialTraitRef<'tcx> {
-    pub fn erase_self_ty(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                         trait_ref: ty::TraitRef<'tcx>)
-                         -> ty::ExistentialTraitRef<'tcx> {
-        // Assert there is a Self.
-        trait_ref.substs.type_at(0);
-
-        ty::ExistentialTraitRef {
-            def_id: trait_ref.def_id,
-            substs: tcx.intern_substs(&trait_ref.substs[1..])
-        }
-    }
-}
-
-impl<'a, 'gcx, 'tcx> ty::PolyExistentialTraitRef<'tcx> {
-    /// Object types don't have a self-type specified. Therefore, when
-    /// we convert the principal trait-ref into a normal trait-ref,
-    /// you must give *some* self-type. A common choice is `mk_err()`
-    /// or some skolemized type.
-    pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                        self_ty: Ty<'tcx>)
-                        -> ty::PolyTraitRef<'tcx>  {
-        // otherwise the escaping regions would be captured by the binder
-        assert!(!self_ty.has_escaping_regions());
-
-        self.map_bound(|trait_ref| {
-            ty::TraitRef {
-                def_id: trait_ref.def_id,
-                substs: tcx.mk_substs(
-                    iter::once(self_ty.into()).chain(trait_ref.substs.iter().cloned()))
-            }
-        })
     }
 }

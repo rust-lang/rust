@@ -2584,11 +2584,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_substs_trait(self,
-                     s: Ty<'tcx>,
-                     t: &[Ty<'tcx>])
+                     self_ty: Ty<'tcx>,
+                     rest: &[Kind<'tcx>])
                     -> &'tcx Substs<'tcx>
     {
-        self.mk_substs(iter::once(s).chain(t.into_iter().cloned()).map(Kind::from))
+        self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
     }
 
     pub fn mk_clauses<I: InternAs<[Clause<'tcx>], Clauses<'tcx>>>(self, iter: I) -> I::Output {
