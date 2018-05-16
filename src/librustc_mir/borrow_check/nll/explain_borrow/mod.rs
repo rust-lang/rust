@@ -11,9 +11,11 @@ use rustc::mir::{
 };
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::adjustment::{PointerCast};
+use rustc_index::vec::IndexVec;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;
+use syntax_pos::symbol::Symbol;
 
 mod find_use;
 
@@ -56,6 +58,7 @@ impl BorrowExplanation {
         &self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
+        local_names: &IndexVec<Local, Option<Symbol>>,
         err: &mut DiagnosticBuilder<'_>,
         borrow_desc: &str,
         borrow_span: Option<Span>,
@@ -112,7 +115,7 @@ impl BorrowExplanation {
                     _ => ("destructor", format!("type `{}`", local_decl.ty)),
                 };
 
-                match local_decl.name {
+                match local_names[dropped_local] {
                     Some(local_name) if !local_decl.from_compiler_desugaring() => {
                         let message = format!(
                             "{B}borrow might be used here, when `{LOC}` is dropped \
@@ -271,10 +274,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             Some(Cause::DropVar(local, location)) => {
                 let mut should_note_order = false;
-                if body.local_decls[local].name.is_some() {
+                if self.local_names[local].is_some() {
                     if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
                         if let Some(borrowed_local) = place.as_local() {
-                             if body.local_decls[borrowed_local].name.is_some()
+                            if self.local_names[borrowed_local].is_some()
                                 && local != borrowed_local
                             {
                                 should_note_order = true;
@@ -295,6 +298,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let (category, from_closure, span, region_name) =
                         self.nonlexical_regioncx.free_region_constraint_info(
                             self.body,
+                        &self.local_names,
                         &self.upvars,
                             self.mir_def_id,
                             self.infcx,
@@ -495,7 +499,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             Operand::Move(place) => {
                                 if let Some(l) = place.as_local() {
                                     let local_decl = &self.body.local_decls[l];
-                                    if local_decl.name.is_none() {
+                                    if self.local_names[l].is_none() {
                                         local_decl.source_info.span
                                     } else {
                                         span

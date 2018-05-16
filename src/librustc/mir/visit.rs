@@ -221,6 +221,11 @@ macro_rules! make_mir_visitor {
                 self.super_local_decl(local, local_decl);
             }
 
+            fn visit_var_debug_info(&mut self,
+                                    var_debug_info: & $($mutability)* VarDebugInfo<'tcx>) {
+                self.super_var_debug_info(var_debug_info);
+            }
+
             fn visit_local(&mut self,
                             _local: & $($mutability)? Local,
                             _context: PlaceContext,
@@ -277,6 +282,10 @@ macro_rules! make_mir_visitor {
                     self.visit_user_type_annotation(
                         index, annotation
                     );
+                }
+
+                for var_debug_info in &$($mutability)? body.var_debug_info {
+                    self.visit_var_debug_info(var_debug_info);
                 }
 
                 self.visit_span(&$($mutability)? body.span);
@@ -687,9 +696,7 @@ macro_rules! make_mir_visitor {
                     mutability: _,
                     ty,
                     user_ty,
-                    name: _,
                     source_info,
-                    visibility_scope,
                     internal: _,
                     local_info: _,
                     is_block_tail: _,
@@ -703,7 +710,23 @@ macro_rules! make_mir_visitor {
                     self.visit_user_type_projection(user_ty);
                 }
                 self.visit_source_info(source_info);
-                self.visit_source_scope(visibility_scope);
+            }
+
+            fn super_var_debug_info(&mut self,
+                                    var_debug_info: & $($mutability)? VarDebugInfo<'tcx>) {
+                let VarDebugInfo {
+                    name: _,
+                    source_info,
+                    place,
+                } = var_debug_info;
+
+                self.visit_source_info(source_info);
+                let location = START_BLOCK.start_location();
+                self.visit_place(
+                    place,
+                    PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                    location,
+                );
             }
 
             fn super_source_scope(&mut self,
@@ -1029,6 +1052,8 @@ pub enum NonUseContext {
     StorageDead,
     /// User type annotation assertions for NLL.
     AscribeUserTy,
+    /// The data of an user variable, for debug info.
+    VarDebugInfo,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

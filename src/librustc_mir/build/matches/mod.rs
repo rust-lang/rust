@@ -1721,6 +1721,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
 
         let tcx = self.hir.tcx();
+        let debug_source_info = SourceInfo {
+            span: source_info.span,
+            scope: visibility_scope,
+        };
         let binding_mode = match mode {
             BindingMode::ByValue => ty::BindingMode::BindByValue(mutability.into()),
             BindingMode::ByRef(_) => ty::BindingMode::BindByReference(mutability.into()),
@@ -1730,9 +1734,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             mutability,
             ty: var_ty,
             user_ty,
-            name: Some(name),
             source_info,
-            visibility_scope,
             internal: false,
             is_block_tail: None,
             local_info: LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
@@ -1749,6 +1751,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ))),
         };
         let for_arm_body = self.local_decls.push(local);
+        self.var_debug_info.push(VarDebugInfo {
+            name,
+            source_info: debug_source_info,
+            place: for_arm_body.into(),
+        });
         let locals = if has_guard.0 {
             let ref_for_guard = self.local_decls.push(LocalDecl::<'tcx> {
                 // This variable isn't mutated but has a name, so has to be
@@ -1756,12 +1763,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 mutability: Mutability::Not,
                 ty: tcx.mk_imm_ref(tcx.lifetimes.re_erased, var_ty),
                 user_ty: UserTypeProjections::none(),
-                name: Some(name),
                 source_info,
-                visibility_scope,
                 internal: false,
                 is_block_tail: None,
                 local_info: LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard)),
+            });
+            self.var_debug_info.push(VarDebugInfo {
+                name,
+                source_info: debug_source_info,
+                place: ref_for_guard.into(),
             });
             LocalsForNode::ForGuard {
                 ref_for_guard,

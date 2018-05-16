@@ -219,13 +219,6 @@ impl Inliner<'tcx> {
         debug!("should_inline({:?})", callsite);
         let tcx = self.tcx;
 
-        // Don't inline closures that have capture debuginfo
-        // FIXME: Handle closures better
-        if callee_body.__upvar_debuginfo_codegen_only_do_not_use.len() > 0 {
-            debug!("    upvar debuginfo present - not inlining");
-            return false;
-        }
-
         // Cannot inline generators which haven't been transformed yet
         if callee_body.yield_ty.is_some() {
             debug!("    yield ty present - not inlining");
@@ -413,7 +406,6 @@ impl Inliner<'tcx> {
                     local.source_info.scope =
                         scope_map[local.source_info.scope];
                     local.source_info.span = callsite.location.span;
-                    local.visibility_scope = scope_map[local.visibility_scope];
 
                     let idx = caller_body.local_decls.push(local);
                     local_map.push(idx);
@@ -484,6 +476,10 @@ impl Inliner<'tcx> {
                     tcx: self.tcx,
                 };
 
+                for mut var_debug_info in callee_body.var_debug_info.drain(..) {
+                    integrator.visit_var_debug_info(&mut var_debug_info);
+                    caller_body.var_debug_info.push(var_debug_info);
+                }
 
                 for (bb, mut block) in callee_body.basic_blocks_mut().drain_enumerated(..) {
                     integrator.visit_basic_block_data(bb, &mut block);

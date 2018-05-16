@@ -11,10 +11,11 @@ use rustc::hir;
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::mir::Body;
+use rustc::mir::{Local, Body};
 use rustc::ty::subst::{SubstsRef, GenericArgKind};
 use rustc::ty::{self, RegionKind, RegionVid, Ty, TyCtxt};
 use rustc::ty::print::RegionHighlightMode;
+use rustc_index::vec::IndexVec;
 use rustc_errors::DiagnosticBuilder;
 use syntax::symbol::kw;
 use rustc_data_structures::fx::FxHashMap;
@@ -210,7 +211,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr: RegionVid,
     ) -> Option<RegionName> {
         let ErrorReportingCtx {
-            infcx, body, mir_def_id, upvars, ..
+            infcx, body, mir_def_id, local_names, upvars, ..
         } = errctx;
 
         debug!("give_region_a_name(fr={:?}, counter={:?})", fr, renctx.counter);
@@ -225,7 +226,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .give_name_from_error_region(infcx.tcx, *mir_def_id, fr, renctx)
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_arguments(
-                    infcx, body, *mir_def_id, fr, renctx,
+                    infcx, body, local_names, *mir_def_id, fr, renctx,
                 )
             })
             .or_else(|| {
@@ -395,6 +396,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
+        local_names: &IndexVec<Local, Option<Symbol>>,
         mir_def_id: DefId,
         fr: RegionVid,
         renctx: &mut RegionErrorNamingCtx,
@@ -415,7 +417,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return Some(region_name);
         }
 
-        self.give_name_if_we_cannot_match_hir_ty(infcx, body, fr, arg_ty, renctx)
+        self.give_name_if_we_cannot_match_hir_ty(infcx, body, local_names, fr, arg_ty, renctx)
     }
 
     fn give_name_if_we_can_match_hir_ty_from_argument(
@@ -463,6 +465,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
+        local_names: &IndexVec<Local, Option<Symbol>>,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
         renctx: &mut RegionErrorNamingCtx,
@@ -479,7 +482,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let assigned_region_name = if type_name.find(&format!("'{}", counter)).is_some() {
             // Only add a label if we can confirm that a region was labelled.
             let argument_index = self.get_argument_index_for_region(infcx.tcx, needle_fr)?;
-            let (_, span) = self.get_argument_name_and_span_for_region(body, argument_index);
+            let (_, span) =
+                self.get_argument_name_and_span_for_region(body, local_names, argument_index);
 
             Some(RegionName {
                 // This counter value will already have been used, so this function will increment

@@ -32,7 +32,6 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc::mir::visit::{MutVisitor, Visitor, PlaceContext, MutatingUseContext};
-use rustc::session::config::DebugInfo;
 use std::borrow::Cow;
 use crate::transform::{MirPass, MirSource};
 
@@ -305,13 +304,6 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
             marker.locals.insert(RETURN_PLACE);
             for arg in body.args_iter() {
                 marker.locals.insert(arg);
-            }
-
-            // We may need to keep dead user variables live for debuginfo.
-            if tcx.sess.opts.debuginfo == DebugInfo::Full {
-                for local in body.vars_iter() {
-                    marker.locals.insert(local);
-                }
             }
 
             marker.locals

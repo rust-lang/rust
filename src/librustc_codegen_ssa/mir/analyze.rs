@@ -5,7 +5,9 @@ use rustc_index::bit_set::BitSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc::mir::{self, Location, TerminatorKind};
-use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext};
+use rustc::mir::visit::{
+    Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext, NonUseContext,
+};
 use rustc::mir::traversal;
 use rustc::session::config::DebugInfo;
 use rustc::ty;
@@ -27,7 +29,7 @@ pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // FIXME(eddyb): We should figure out how to use llvm.dbg.value instead
         // of putting everything in allocas just so we can use llvm.dbg.declare.
         if fx.cx.sess().opts.debuginfo == DebugInfo::Full {
-            if mir.local_kind(local) == mir::LocalKind::Arg || decl.name.is_some() {
+            if mir.local_kind(local) == mir::LocalKind::Arg {
                 analyzer.not_ssa(local);
                 continue;
             }
@@ -114,6 +116,12 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
         let cx = self.fx.cx;
 
         if let [proj_base @ .., elem] = place_ref.projection {
+            let mut base_context = if context.is_mutating_use() {
+                PlaceContext::MutatingUse(MutatingUseContext::Projection)
+            } else {
+                PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
+            };
+
             // Allow uses of projections that are ZSTs or from scalar fields.
             let is_consume = match context {
                 PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
@@ -145,47 +153,81 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                         // Recurse with the same context, instead of `Projection`,
                         // potentially stopping at non-operand projections,
                         // which would trigger `not_ssa` on locals.
-                        self.process_place(
-                            &mir::PlaceRef {
-                                base: place_ref.base,
-                                projection: proj_base,
-                            },
-                            context,
-                            location,
-                        );
-                        return;
+                        base_context = context;
                     }
                 }
             }
 
-            // A deref projection only reads the pointer, never needs the place.
             if let mir::ProjectionElem::Deref = elem {
-                self.process_place(
-                    &mir::PlaceRef {
-                        base: place_ref.base,
-                        projection: proj_base,
-                    },
+                // Deref projections typically only read the pointer.
+                // (the exception being `VarDebugInfo` contexts, handled below)
+                base_context = PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy);
+
+                // Indirect debuginfo requires going through memory, that only
+                // the debugger accesses, following our emitted DWARF pointer ops.
+                //
+                // FIXME(eddyb) Investigate the possibility of relaxing this, but
+                // note that `llvm.dbg.declare` *must* be used for indirect places,
+                // even if we start using `llvm.dbg.value` for all other cases,
+                // as we don't necessarily know when the value changes, but only
+                // where it lives in memory.
+                //
+                // It's possible `llvm.dbg.declare` could support starting from
+                // a pointer that doesn't point to an `alloca`, but this would
+                // only be useful if we know the pointer being `Deref`'d comes
+                // from an immutable place, and if `llvm.dbg.declare` calls
+                // must be at the very start of the function, then only function
+                // arguments could contain such pointers.
+                if context == PlaceContext::NonUse(NonUseContext::VarDebugInfo) {
+                    // We use `NonUseContext::VarDebugInfo` for the base,
+                    // which might not force the base local to memory,
+                    // so we have to do it manually.
+                    if let mir::PlaceBase::Local(local) = place_ref.base {
+                        self.visit_local(&local, context, location);
+                    }
+                }
+            }
+
+            // `NonUseContext::VarDebugInfo` needs to flow all the
+            // way down to the base local (see `visit_local`).
+            if context == PlaceContext::NonUse(NonUseContext::VarDebugInfo) {
+                base_context = context;
+            }
+
+            self.process_place(
+                &mir::PlaceRef {
+                    base: place_ref.base,
+                    projection: proj_base,
+                },
+                base_context,
+                location
+            );
+            // HACK(eddyb) this emulates the old `visit_projection_elem`, this
+            // entire `visit_place`-like `process_place` method should be rewritten,
+            // now that we have moved to the "slice of projections" representation.
+            if let mir::ProjectionElem::Index(local) = elem {
+                self.visit_local(
+                    local,
                     PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
                     location
                 );
-                return;
             }
+        } else {
+            // FIXME this is super_place code, is repeated here to avoid cloning place or changing
+            // visit_place API
+            let mut context = context;
+
+            if !place_ref.projection.is_empty() {
+                context = if context.is_mutating_use() {
+                    PlaceContext::MutatingUse(MutatingUseContext::Projection)
+                } else {
+                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
+                };
+            }
+
+            self.visit_place_base(place_ref.base, context, location);
+            self.visit_projection(place_ref.base, place_ref.projection, context, location);
         }
-
-        // FIXME this is super_place code, is repeated here to avoid cloning place or changing
-        // visit_place API
-        let mut context = context;
-
-        if !place_ref.projection.is_empty() {
-            context = if context.is_mutating_use() {
-                PlaceContext::MutatingUse(MutatingUseContext::Projection)
-            } else {
-                PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
-            };
-        }
-
-        self.visit_place_base(place_ref.base, context, location);
-        self.visit_projection(place_ref.base, place_ref.projection, context, location);
     }
 
 }
@@ -262,6 +304,15 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
         match context {
             PlaceContext::MutatingUse(MutatingUseContext::Call) => {
                 self.assign(local, location);
+            }
+
+            PlaceContext::NonUse(NonUseContext::VarDebugInfo) => {
+                // We need to keep locals in `alloca`s for debuginfo.
+                // FIXME(eddyb): We should figure out how to use `llvm.dbg.value` instead
+                // of putting everything in allocas just so we can use `llvm.dbg.declare`.
+                if self.fx.cx.sess().opts.debuginfo == DebugInfo::Full {
+                    self.not_ssa(local);
+                }
             }
 
             PlaceContext::NonUse(_) |

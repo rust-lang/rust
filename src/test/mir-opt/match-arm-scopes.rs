@@ -53,8 +53,14 @@ fn main() {
 // let _15: bool;                       // `b`
 // let _16: std::string::String;        // `t`
 // scope 1 {
+//     debug a => _5;
+//     debug a => _6;
+//     debug s => _7;
+//     debug s => _8;
 // }
 // scope 2 {
+//     debug b => _15;
+//     debug t => _16;
 // }
 // bb0: {
 //     FakeRead(ForMatchedPlace, _2);

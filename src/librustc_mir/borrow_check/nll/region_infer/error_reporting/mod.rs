@@ -9,7 +9,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
 use rustc::infer::NLLRegionVariableOrigin;
-use rustc::mir::{ConstraintCategory, Location, Body};
+use rustc::mir::{ConstraintCategory, Local, Location, Body};
 use rustc::ty::{self, RegionVid};
 use rustc_index::vec::IndexVec;
 use rustc_errors::DiagnosticBuilder;
@@ -17,6 +17,7 @@ use std::collections::VecDeque;
 use syntax::errors::Applicability;
 use syntax::symbol::kw;
 use syntax_pos::Span;
+use syntax_pos::symbol::Symbol;
 
 use self::outlives_suggestion::OutlivesSuggestionBuilder;
 
@@ -70,6 +71,9 @@ pub struct ErrorReportingCtx<'a, 'b, 'tcx> {
 
     /// The MIR body we are reporting errors on (for convenience).
     body: &'b Body<'tcx>,
+
+    /// User variable names for MIR locals (where applicable).
+    local_names: &'b IndexVec<Local, Option<Symbol>>,
 
     /// Any upvars for the MIR body we have kept track of during borrow checking.
     upvars: &'b [Upvar],
@@ -367,13 +371,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(super) fn report_error<'a>(
         &'a self,
         body: &Body<'tcx>,
+        local_names: &IndexVec<Local, Option<Symbol>>,
         upvars: &[Upvar],
         infcx: &'a InferCtxt<'a, 'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
         fr_origin: NLLRegionVariableOrigin,
         outlived_fr: RegionVid,
-        outlives_suggestion: &mut OutlivesSuggestionBuilder,
+        outlives_suggestion: &mut OutlivesSuggestionBuilder<'_>,
         renctx: &mut RegionErrorNamingCtx,
     ) -> DiagnosticBuilder<'a> {
         debug!("report_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
@@ -407,6 +412,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             infcx,
             mir_def_id,
             body,
+            local_names,
             upvars,
         };
 
@@ -551,7 +557,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         renctx: &mut RegionErrorNamingCtx,
     ) -> DiagnosticBuilder<'_> {
         let ErrorReportingCtx {
-            infcx, body, upvars, ..
+            infcx, body, upvars, local_names, ..
         } = errctx;
 
         let ErrorConstraintInfo {
@@ -559,9 +565,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         } = errci;
 
         let fr_name_and_span =
-            self.get_var_name_and_span_for_region(infcx.tcx, body, upvars, errci.fr);
-        let outlived_fr_name_and_span =
-            self.get_var_name_and_span_for_region(infcx.tcx, body, upvars, errci.outlived_fr);
+            self.get_var_name_and_span_for_region(infcx.tcx, body, local_names, upvars, errci.fr);
+        let outlived_fr_name_and_span = self.get_var_name_and_span_for_region(
+            infcx.tcx,
+            body,
+            local_names,
+            upvars,
+            errci.outlived_fr,
+        );
 
         let escapes_from = match self.universal_regions.defining_ty {
             DefiningTy::Closure(..) => "closure",
@@ -789,6 +800,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     crate fn free_region_constraint_info(
         &self,
         body: &Body<'tcx>,
+        local_names: &IndexVec<Local, Option<Symbol>>,
         upvars: &[Upvar],
         mir_def_id: DefId,
         infcx: &InferCtxt<'_, 'tcx>,
@@ -804,7 +816,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let mut renctx = RegionErrorNamingCtx::new();
         let errctx = ErrorReportingCtx {
-            infcx, body, upvars, mir_def_id,
+            infcx, body, local_names, upvars, mir_def_id,
             region_infcx: self,
         };
         let outlived_fr_name = self.give_region_a_name(&errctx, &mut renctx, outlived_region);

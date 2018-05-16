@@ -115,6 +115,20 @@ fn do_mir_borrowck<'a, 'tcx>(
         .as_local_hir_id(def_id)
         .expect("do_mir_borrowck: non-local DefId");
 
+    let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
+    for var_debug_info in &input_body.var_debug_info {
+        if let Some(local) = var_debug_info.place.as_local() {
+            if let Some(prev_name) = local_names[local] {
+                if var_debug_info.name != prev_name {
+                    span_bug!(var_debug_info.source_info.span,
+                        "local {:?} has many names (`{}` vs `{}`)",
+                        local, prev_name, var_debug_info.name);
+                }
+            }
+            local_names[local] = Some(var_debug_info.name);
+        }
+    }
+
     // Gather the upvars of a closure, if any.
     let tables = tcx.typeck_tables_of(def_id);
     let upvars: Vec<_> = tables
@@ -189,6 +203,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         free_regions,
         body,
         &promoted,
+        &local_names,
         &upvars,
         location_table,
         param_env,
@@ -264,6 +279,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         borrow_set,
         dominators,
         upvars,
+        local_names,
     };
 
     let mut state = Flows::new(
@@ -325,13 +341,8 @@ fn do_mir_borrowck<'a, 'tcx>(
         if let ClearCrossCrate::Set(ref vsi) = mbcx.body.source_scope_local_data {
             let local_decl = &mbcx.body.local_decls[local];
 
-            // Skip implicit `self` argument for closures
-            if local.index() == 1 && tcx.is_closure(mbcx.mir_def_id) {
-                continue;
-            }
-
             // Skip over locals that begin with an underscore or have no name
-            match local_decl.name {
+            match mbcx.local_names[local] {
                 Some(name) => if name.as_str().starts_with("_") {
                     continue;
                 },
@@ -463,6 +474,9 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
 
     /// Information about upvars not necessarily preserved in types or MIR
     upvars: Vec<Upvar>,
+
+    /// Names of local (user) variables (extracted from `var_debug_info`).
+    local_names: IndexVec<Local, Option<Name>>,
 }
 
 // Check that:

@@ -197,13 +197,13 @@ fn write_graph_label<'tcx, W: Write>(
             write!(w, "mut ")?;
         }
 
-        if let Some(name) = decl.name {
-            write!(w, r#"{:?}: {}; // {}<br align="left"/>"#,
-                   Place::from(local), escape(&decl.ty), name)?;
-        } else {
-            write!(w, r#"{:?}: {};<br align="left"/>"#,
-                   Place::from(local), escape(&decl.ty))?;
-        }
+        write!(w, r#"{:?}: {};<br align="left"/>"#,
+               Place::from(local), escape(&decl.ty))?;
+    }
+
+    for var_debug_info in &body.var_debug_info {
+        write!(w, r#"debug {} => {};<br align="left"/>"#,
+               var_debug_info.name, escape(&var_debug_info.place))?;
     }
 
     writeln!(w, ">;")

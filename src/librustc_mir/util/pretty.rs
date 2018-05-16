@@ -463,6 +463,30 @@ fn write_scope_tree(
 ) -> io::Result<()> {
     let indent = depth * INDENT.len();
 
+    // Local variable debuginfo.
+    for var_debug_info in &body.var_debug_info {
+        if var_debug_info.source_info.scope != parent {
+            // Not declared in this scope.
+            continue;
+        }
+
+        let indented_debug_info = format!(
+            "{0:1$}debug {2} => {3:?};",
+            INDENT,
+            indent,
+            var_debug_info.name,
+            var_debug_info.place,
+        );
+
+        writeln!(
+            w,
+            "{0:1$} // in {2}",
+            indented_debug_info,
+            ALIGN,
+            comment(tcx, var_debug_info.source_info),
+        )?;
+    }
+
     // Local variable types (including the user's name in a comment).
     for (local, local_decl) in body.local_decls.iter_enumerated() {
         if (1..body.arg_count+1).contains(&local.index()) {
@@ -496,8 +520,6 @@ fn write_scope_tree(
 
         let local_name = if local == RETURN_PLACE {
             format!(" return place")
-        } else if let Some(name) = local_decl.name {
-            format!(" \"{}\"", name)
         } else {
             String::new()
         };
