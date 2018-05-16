@@ -101,20 +101,15 @@ properties: `ident`, `non_null`, `non_eol`, `non_single_quote` and
 
 ### Identifiers
 
-The `ident` production is any nonempty Unicode[^non_ascii_idents] string of
+The `ident` production is any nonempty Unicode string of
 the following form:
 
-[^non_ascii_idents]: Non-ASCII characters in identifiers are currently feature
-  gated. This is expected to improve soon.
+- The first character is in one of the following ranges `U+0041` to `U+005A`
+("A" to "Z"), `U+0061` to `U+007A` ("a" to "z"), or `U+005F` ("\_").
+- The remaining characters are in the range `U+0030` to `U+0039` ("0" to "9"),
+or any of the prior valid initial characters.
 
-- The first character has property `XID_start`
-- The remaining characters have property `XID_continue`
-
-that does _not_ occur in the set of [keywords](#keywords).
-
-> **Note**: `XID_start` and `XID_continue` as character properties cover the
-> character ranges used to form the more familiar C and Java language-family
-> identifiers.
+as long as the identifier does _not_ occur in the set of [keywords](#keywords).
 
 ### Delimiter-restricted productions
 
