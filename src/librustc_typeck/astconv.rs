@@ -224,9 +224,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 GenericParamDefKind::Lifetime => {
                     lt_accepted += 1;
                 }
-                GenericParamDefKind::Type(ty) => {
+                GenericParamDefKind::Type { has_default, .. } => {
                     ty_params.accepted += 1;
-                    if !ty.has_default {
+                    if !has_default {
                         ty_params.required += 1;
                     }
                 }
@@ -251,8 +251,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
         let default_needs_object_self = |param: &ty::GenericParamDef| {
-            if let GenericParamDefKind::Type(ty) = param.kind {
-                if is_object && ty.has_default {
+            if let GenericParamDefKind::Type { has_default, .. } = param.kind {
+                if is_object && has_default {
                     if tcx.at(span).type_of(param.def_id).has_self_ty() {
                         // There is no suitable inference default for a type parameter
                         // that references self, in an object type.
@@ -275,7 +275,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         tcx.types.re_static.into()
                     }
                 }
-                GenericParamDefKind::Type(ty) => {
+                GenericParamDefKind::Type { has_default, .. } => {
                     let i = param.index as usize;
 
                     // Handle Self first, so we can adjust the index to match the AST.
@@ -294,7 +294,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         } else {
                             self.ty_infer(span).into()
                         }
-                    } else if ty.has_default {
+                    } else if has_default {
                         // No type parameter provided, but a default exists.
 
                         // If we are converting an object type, then the

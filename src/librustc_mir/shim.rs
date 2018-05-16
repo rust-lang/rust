@@ -430,7 +430,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let substs = Substs::for_item(tcx, self.def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => tcx.types.re_erased.into(),
-                GenericParamDefKind::Type(_) => ty.into(),
+                GenericParamDefKind::Type {..} => ty.into(),
             }
         });
 

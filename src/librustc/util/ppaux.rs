@@ -337,7 +337,9 @@ impl PrintContext {
                 let mut type_params =
                     generics.params.iter().rev().filter_map(|param| {
                         match param.kind {
-                            GenericParamDefKind::Type(ty) => Some((param.def_id, ty.has_default)),
+                            GenericParamDefKind::Type { has_default, .. } => {
+                                Some((param.def_id, has_default))
+                            }
                             GenericParamDefKind::Lifetime => None,
                         }
                     }).peekable();
@@ -604,7 +606,7 @@ impl fmt::Debug for ty::GenericParamDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let type_name = match self.kind {
             ty::GenericParamDefKind::Lifetime => "Lifetime",
-            ty::GenericParamDefKind::Type(_) => "Type",
+            ty::GenericParamDefKind::Type {..} => "Type",
         };
         write!(f, "{}({}, {:?}, {})",
                type_name,

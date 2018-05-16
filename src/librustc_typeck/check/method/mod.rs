@@ -257,7 +257,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let substs = Substs::for_item(self.tcx, trait_def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => {}
-                GenericParamDefKind::Type(_) => {
+                GenericParamDefKind::Type {..} => {
                     if param.index == 0 {
                         return self_ty.into();
                     } else if let Some(ref input_types) = opt_input_types {

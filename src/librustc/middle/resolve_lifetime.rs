@@ -1658,18 +1658,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 self.xcrate_object_lifetime_defaults
                     .entry(def_id)
                     .or_insert_with(|| {
-                        tcx.generics_of(def_id)
-                            .params
-                            .iter()
-                            .filter_map(|param| {
-                                match param.kind {
-                                    GenericParamDefKind::Type(ty) => {
-                                        Some(ty.object_lifetime_default)
-                                    }
-                                    GenericParamDefKind::Lifetime => None,
+                        tcx.generics_of(def_id).params.iter().filter_map(|param| {
+                            match param.kind {
+                                GenericParamDefKind::Type { object_lifetime_default, .. } => {
+                                    Some(object_lifetime_default)
                                 }
-                            })
-                            .collect()
+                                GenericParamDefKind::Lifetime => None,
+                            }
+                        }).collect()
                     })
             };
             unsubst

@@ -739,8 +739,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::Generics {
             ref parent_count,
             ref params,
 
-            // Reverse map to each `TypeParamDef`'s `index` field, from
-            // `def_id.index` (`def_id.krate` is the same as the item's).
+            // Reverse map to each param's `index` field, from its `def_id`.
             param_def_id_to_index: _, // Don't hash this
             has_self,
             has_late_bound_regions,
@@ -754,11 +753,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::Generics {
     }
 }
 
-impl_stable_hash_for!(enum ty::GenericParamDefKind {
-    Lifetime,
-    Type(ty)
-});
-
 impl_stable_hash_for!(struct ty::GenericParamDef {
     name,
     def_id,
@@ -767,11 +761,25 @@ impl_stable_hash_for!(struct ty::GenericParamDef {
     kind
 });
 
-impl_stable_hash_for!(struct ty::TypeParamDef {
-    has_default,
-    object_lifetime_default,
-    synthetic
-});
+impl<'a> HashStable<StableHashingContext<'a>> for ty::GenericParamDefKind {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            ty::GenericParamDefKind::Lifetime => {}
+            ty::GenericParamDefKind::Type {
+                has_default,
+                ref object_lifetime_default,
+                ref synthetic,
+            } => {
+                has_default.hash_stable(hcx, hasher);
+                object_lifetime_default.hash_stable(hcx, hasher);
+                synthetic.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}
 
 impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>>
 for ::middle::resolve_lifetime::Set1<T>

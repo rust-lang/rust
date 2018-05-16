@@ -377,8 +377,8 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     let generics = tcx.generics_of(def_id);
     let is_our_default = |def: &ty::GenericParamDef| {
         match def.kind {
-            GenericParamDefKind::Type(ty) => {
-                ty.has_default && def.index >= generics.parent_count as u32
+            GenericParamDefKind::Type { has_default, .. } => {
+                has_default && def.index >= generics.parent_count as u32
             }
             _ => unreachable!()
         }
@@ -389,7 +389,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     // struct Foo<T = Vec<[u32]>> { .. }
     // Here the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
     for param in &generics.params {
-        if let GenericParamDefKind::Type(_) = param.kind {
+        if let GenericParamDefKind::Type {..} = param.kind {
             if is_our_default(&param) {
                 let ty = fcx.tcx.type_of(param.def_id);
                 // ignore dependent defaults -- that is, where the default of one type
@@ -417,7 +417,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                 // All regions are identity.
                 fcx.tcx.mk_param_from_def(param)
             }
-            GenericParamDefKind::Type(_) => {
+            GenericParamDefKind::Type {..} => {
                 // If the param has a default,
                 if is_our_default(param) {
                     let default_ty = fcx.tcx.type_of(param.def_id);
@@ -668,7 +668,7 @@ fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
                      .flat_map(|param| {
                          match param.kind {
                              GenericParamDefKind::Lifetime => None,
-                             GenericParamDefKind::Type(_) => Some((param.name, param.def_id)),
+                             GenericParamDefKind::Type {..} => Some((param.name, param.def_id)),
                          }
                      })
                      .collect();

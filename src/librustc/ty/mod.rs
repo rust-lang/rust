@@ -714,13 +714,6 @@ pub enum IntVarValue {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct FloatVarValue(pub ast::FloatTy);
 
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct TypeParamDef {
-    pub has_default: bool,
-    pub object_lifetime_default: ObjectLifetimeDefault,
-    pub synthetic: Option<hir::SyntheticTyParamKind>,
-}
-
 impl ty::EarlyBoundRegion {
     pub fn to_bound_region(&self) -> ty::BoundRegion {
         ty::BoundRegion::BrNamed(self.def_id, self.name)
@@ -730,7 +723,11 @@ impl ty::EarlyBoundRegion {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum GenericParamDefKind {
     Lifetime,
-    Type(TypeParamDef),
+    Type {
+        has_default: bool,
+        object_lifetime_default: ObjectLifetimeDefault,
+        synthetic: Option<hir::SyntheticTyParamKind>,
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
@@ -811,7 +808,7 @@ impl<'a, 'gcx, 'tcx> Generics {
         for param in &self.params {
             match param.kind {
                 GenericParamDefKind::Lifetime => own_counts.lifetimes += 1,
-                GenericParamDefKind::Type(_) => own_counts.types += 1,
+                GenericParamDefKind::Type {..} => own_counts.types += 1,
             };
         }
 
@@ -821,7 +818,7 @@ impl<'a, 'gcx, 'tcx> Generics {
     pub fn requires_monomorphization(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         for param in &self.params {
             match param.kind {
-                GenericParamDefKind::Type(_) => return true,
+                GenericParamDefKind::Type {..} => return true,
                 GenericParamDefKind::Lifetime => {}
             }
         }
@@ -850,7 +847,7 @@ impl<'a, 'gcx, 'tcx> Generics {
         }
     }
 
-    /// Returns the `TypeParamDef` associated with this `ParamTy`.
+    /// Returns the `GenericParamDef` associated with this `ParamTy`.
     pub fn type_param(&'tcx self,
                       param: &ParamTy,
                       tcx: TyCtxt<'a, 'gcx, 'tcx>)
@@ -858,7 +855,7 @@ impl<'a, 'gcx, 'tcx> Generics {
         if let Some(index) = param.idx.checked_sub(self.parent_count as u32) {
             let param = &self.params[index as usize];
             match param.kind {
-                ty::GenericParamDefKind::Type(_) => param,
+                ty::GenericParamDefKind::Type {..} => param,
                 _ => bug!("expected type parameter, but found another generic parameter")
             }
         } else {

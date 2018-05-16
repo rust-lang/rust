@@ -2329,11 +2329,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let substs = Substs::for_item(self, def_id, |param, substs| {
             match param.kind {
                 GenericParamDefKind::Lifetime => bug!(),
-                GenericParamDefKind::Type(ty_param) => {
+                GenericParamDefKind::Type { has_default, .. } => {
                     if param.index == 0 {
                         ty.into()
                     } else {
-                        assert!(ty_param.has_default);
+                        assert!(has_default);
                         self.type_of(param.def_id).subst(self, substs).into()
                     }
                 }
@@ -2477,7 +2477,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             GenericParamDefKind::Lifetime => {
                 self.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())).into()
             }
-            GenericParamDefKind::Type(_) => self.mk_ty_param(param.index, param.name).into(),
+            GenericParamDefKind::Type {..} => self.mk_ty_param(param.index, param.name).into(),
         }
     }
 

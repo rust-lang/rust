@@ -4751,7 +4751,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let mut i = param.index as usize;
 
             let segment = if i < fn_start {
-                if let GenericParamDefKind::Type(_) = param.kind {
+                if let GenericParamDefKind::Type {..} = param.kind {
                     // Handle Self first, so we can adjust the index to match the AST.
                     if has_self && i == 0 {
                         return opt_self_ty.map(|ty| ty.into()).unwrap_or_else(|| {
@@ -4778,7 +4778,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.re_infer(span, Some(param)).unwrap().into()
                     }
                 }
-                GenericParamDefKind::Type(_) => {
+                GenericParamDefKind::Type {..} => {
                     let (types, infer_types) = segment.map_or((&[][..], true), |(s, _)| {
                         (s.parameters.as_ref().map_or(&[][..], |p| &p.types[..]), s.infer_types)
                     });
@@ -4789,7 +4789,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
 
                     let has_default = match param.kind {
-                        GenericParamDefKind::Type(ty) => ty.has_default,
+                        GenericParamDefKind::Type { has_default, .. } => has_default,
                         _ => unreachable!()
                     };
 
@@ -4925,9 +4925,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         GenericParamDefKind::Lifetime => {
                             lt_accepted += 1;
                         }
-                        GenericParamDefKind::Type(ty) => {
+                        GenericParamDefKind::Type { has_default, .. } => {
                             ty_params.accepted += 1;
-                            if !ty.has_default {
+                            if !has_default {
                                 ty_params.required += 1;
                             }
                         }
@@ -5024,12 +5024,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let segment = segment.map(|(path_segment, generics)| {
             let explicit = !path_segment.infer_types;
             let impl_trait = generics.params.iter().any(|param| {
-                if let ty::GenericParamDefKind::Type(ty) = param.kind {
-                    if let Some(hir::SyntheticTyParamKind::ImplTrait) = ty.synthetic {
-                        return true;
-                    }
+                match param.kind {
+                    ty::GenericParamDefKind::Type {
+                        synthetic: Some(hir::SyntheticTyParamKind::ImplTrait), ..
+                    } => true,
+                    _ => false,
                 }
-                false
             });
 
             if explicit && impl_trait {

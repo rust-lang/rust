@@ -845,11 +845,11 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         name: keywords::SelfType.name().as_interned_str(),
                         def_id: tcx.hir.local_def_id(param_id),
                         pure_wrt_drop: false,
-                        kind: ty::GenericParamDefKind::Type(ty::TypeParamDef {
+                        kind: ty::GenericParamDefKind::Type {
                             has_default: false,
                             object_lifetime_default: rl::Set1::Empty,
                             synthetic: None,
-                        }),
+                        },
                     });
 
                     allow_defaults = true;
@@ -925,12 +925,12 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             name: p.name.as_interned_str(),
             def_id: tcx.hir.local_def_id(p.id),
             pure_wrt_drop: p.pure_wrt_drop,
-            kind: ty::GenericParamDefKind::Type(ty::TypeParamDef {
+            kind: ty::GenericParamDefKind::Type {
                 has_default: p.default.is_some(),
                 object_lifetime_default:
                     object_lifetime_defaults.as_ref().map_or(rl::Set1::Empty, |o| o[i]),
                 synthetic: p.synthetic,
-            }),
+            },
         }
     }));
 
@@ -950,11 +950,11 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 name: Symbol::intern(arg).as_interned_str(),
                 def_id,
                 pure_wrt_drop: false,
-                kind: ty::GenericParamDefKind::Type(ty::TypeParamDef {
+                kind: ty::GenericParamDefKind::Type {
                     has_default: false,
                     object_lifetime_default: rl::Set1::Empty,
                     synthetic: None,
-                }),
+                },
             });
         }
 
@@ -965,11 +965,11 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     name: Symbol::intern("<upvar>").as_interned_str(),
                     def_id,
                     pure_wrt_drop: false,
-                    kind: ty::GenericParamDefKind::Type(ty::TypeParamDef {
+                    kind: ty::GenericParamDefKind::Type {
                         has_default: false,
                         object_lifetime_default: rl::Set1::Empty,
                         synthetic: None,
-                    }),
+                    },
                 }
             }));
         });
