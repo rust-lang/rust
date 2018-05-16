@@ -32,6 +32,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub UNUSED_CONST_FN_RESULTS,
+    Warn,
+    "unused result of a const fn invocation in a statement"
+}
+
+declare_lint! {
     pub UNUSED_RESULTS,
     Allow,
     "unused result of an expression in a statement"
@@ -42,7 +48,7 @@ pub struct UnusedResults;
 
 impl LintPass for UnusedResults {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_MUST_USE, UNUSED_RESULTS)
+        lint_array!(UNUSED_MUST_USE, UNUSED_CONST_FN_RESULTS, UNUSED_RESULTS)
     }
 }
 
@@ -95,6 +101,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         if let Some(def) = maybe_def {
             let def_id = def.def_id();
             fn_warned = check_must_use(cx, def_id, s.span, "return value of ");
+            if cx.tcx.is_const_fn(def_id) {
+                cx.span_lint(UNUSED_CONST_FN_RESULTS, s.span,
+                             "unused const fn result");
+            }
         }
         let must_use_op = match expr.node {
             // Hardcoding operators here seemed more expedient than the

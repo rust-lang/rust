@@ -177,7 +177,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     UNUSED_DOC_COMMENT,
                     UNUSED_EXTERN_CRATES,
                     UNUSED_FEATURES,
-                    UNUSED_PARENS);
+                    UNUSED_PARENS,
+                    UNUSED_CONST_FN_RESULTS);
 
     add_lint_group!(sess,
                     "rust_2018_idioms",

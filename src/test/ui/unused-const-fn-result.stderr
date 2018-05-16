@@ -1,0 +1,20 @@
+error: unused const fn result
+  --> $DIR/unused-const-fn-result.rs:23:5
+   |
+LL |     identity(42); //~ ERROR unused const fn result [unused_const_fn_results]
+   |     ^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/unused-const-fn-result.rs:12:9
+   |
+LL | #![deny(unused_const_fn_results)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused const fn result
+  --> $DIR/unused-const-fn-result.rs:24:5
+   |
+LL |     identity(black_box(42)); //~ ERROR unused const fn result [unused_const_fn_results]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
