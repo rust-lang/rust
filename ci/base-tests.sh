@@ -1,7 +1,6 @@
 set -ex
 PATH=$PATH:./node_modules/.bin
 remark -f *.md > /dev/null
-set -e
 cargo build --features debugging
 cargo test --features debugging
 mkdir -p ~/rust/cargo/bin
