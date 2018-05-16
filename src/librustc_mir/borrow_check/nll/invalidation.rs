@@ -17,10 +17,10 @@ use borrow_check::{Context, ContextKind};
 use borrow_check::{LocalMutationIsAllowed, MutateMode};
 use borrow_check::ArtificialField;
 use borrow_check::{ReadKind, WriteKind, Overlap};
-use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::facts::AllFacts;
 use dataflow::move_paths::indexes::BorrowIndex;
 use rustc::hir;
+use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::visit::Visitor;
 use rustc::mir::{BasicBlock, Location, Mir, Place, Rvalue, Projection};
@@ -28,16 +28,16 @@ use rustc::mir::{Local, ProjectionElem};
 use rustc::mir::{Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
 use rustc::mir::{Field, Operand, BorrowKind};
-use rustc::ty;
+use rustc::ty::{self, ParamEnv};
 use rustc_data_structures::indexed_vec::Idx;
 use std::iter;
 
 pub(super) fn generate_invalidates<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
-    regioncx: &mut RegionInferenceContext<'tcx>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
     mir: &Mir<'tcx>,
+    mir_def_id: DefId,
     borrow_set: &BorrowSet<'tcx>,
 ) {
     if !all_facts.is_some() {
@@ -45,36 +45,42 @@ pub(super) fn generate_invalidates<'cx, 'gcx, 'tcx>(
         return;
     }
 
-    let mut ig = InvalidationGenerator {
-        all_facts: &mut all_facts.unwrap(),
-        borrow_set,
-        infcx,
-        regioncx,
-        location_table,
-        mir,
-    };
+    let param_env = infcx.tcx.param_env(mir_def_id);
+
+    let mut all_facts_taken = all_facts.take().unwrap();
+    {
+        let mut ig = InvalidationGenerator {
+            all_facts: &mut all_facts_taken,
+            borrow_set,
+            infcx,
+            location_table,
+            mir,
+            param_env,
+        };
+        ig.visit_mir(mir);
+    }
+    *all_facts = Some(all_facts_taken);
 }
 
 /// 'cg = the duration of the constraint generation process itself.
-struct InvalidationGenerator<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> {
+struct InvalidationGenerator<'cg, 'cx: 'cg, 'tcx: 'cx, 'gcx: 'tcx> {
     infcx: &'cg InferCtxt<'cx, 'gcx, 'tcx>,
     all_facts: &'cg mut AllFacts,
     location_table: &'cg LocationTable,
-    regioncx: &'cg mut RegionInferenceContext<'tcx>,
     mir: &'cg Mir<'tcx>,
     borrow_set: &'cg BorrowSet<'tcx>,
+    param_env: ParamEnv<'gcx>,
 }
 
 /// Visits the whole MIR and generates invalidates() facts
 /// Most of the code implementing this was stolen from borrow_check/mod.rs
-impl<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'gcx, 'tcx> {
+impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
     fn visit_statement(&mut self, block: BasicBlock, statement: &Statement<'tcx>, location: Location) {
         match statement.kind {
             StatementKind::Assign(ref lhs, ref rhs) => {
                 self.consume_rvalue(
                     ContextKind::AssignRhs.new(location),
                     rhs,
-                    location
                 );
 
                 self.mutate_place(
@@ -170,6 +176,7 @@ impl<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> Visitor<'tcx> for InvalidationGenerat
                 let gcx = tcx.global_tcx();
                 let drop_place_ty = drop_place.ty(self.mir, tcx);
                 let drop_place_ty = tcx.erase_regions(&drop_place_ty).to_ty(tcx);
+                let drop_place_ty = gcx.lift(&drop_place_ty).unwrap();
                 self.visit_terminator_drop(location, terminator, drop_place, drop_place_ty);
             }
             TerminatorKind::DropAndReplace {
@@ -275,7 +282,7 @@ impl<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> Visitor<'tcx> for InvalidationGenerat
     }
 }
 
-impl<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> InvalidationGenerator<'cg, 'cx, 'gcx, 'tcx> {
+impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
     /// Simulates dropping of a variable
     fn visit_terminator_drop(
         &mut self,
@@ -286,10 +293,10 @@ impl<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> InvalidationGenerator<'cg, 'cx, 'gcx,
     ) {
         let gcx = self.infcx.tcx.global_tcx();
         let drop_field = |
-        ig: &mut InvalidationGenerator<'cg, 'cx, 'gcx, 'tcx>,
-        (index, field): (usize, ty::Ty<'gcx>),
+            ig: &mut InvalidationGenerator<'cg, 'cx, 'gcx, 'tcx>,
+            (index, field): (usize, ty::Ty<'gcx>),
         | {
-            let field_ty = gcx.normalize_erasing_regions(self.mir.param_env, field);
+            let field_ty = gcx.normalize_erasing_regions(ig.param_env, field);
             let place = drop_place.clone().field(Field::new(index), field_ty);
 
             ig.visit_terminator_drop(loc, term, &place, field_ty);
@@ -351,7 +358,7 @@ impl<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> InvalidationGenerator<'cg, 'cx, 'gcx,
         context: Context,
         place: &Place<'tcx>,
         kind: ShallowOrDeep,
-        mode: MutateMode,
+        _mode: MutateMode,
     ) {
         self.access_place(
             context,
@@ -393,7 +400,6 @@ impl<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> InvalidationGenerator<'cg, 'cx, 'gcx,
         &mut self,
         context: Context,
         rvalue: &Rvalue<'tcx>,
-        location: Location,
     ) {
         match *rvalue {
             Rvalue::Ref(_ /*rgn*/, bk, ref place) => {
@@ -447,7 +453,7 @@ impl<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> InvalidationGenerator<'cg, 'cx, 'gcx,
             Rvalue::NullaryOp(_op, _ty) => {
             }
 
-            Rvalue::Aggregate(ref aggregate_kind, ref operands) => {
+            Rvalue::Aggregate(_, ref operands) => {
                 for operand in operands {
                     self.consume_operand(context, operand);
                 }
@@ -461,7 +467,7 @@ impl<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> InvalidationGenerator<'cg, 'cx, 'gcx,
         context: Context,
         place: &Place<'tcx>,
         kind: (ShallowOrDeep, ReadOrWrite),
-        is_local_mutation_allowed: LocalMutationIsAllowed,
+        _is_local_mutation_allowed: LocalMutationIsAllowed,
     ) {
         let (sd, rw) = kind;
         // note: not doing check_access_permissions checks because they don't generate invalidates
@@ -502,7 +508,7 @@ impl<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> InvalidationGenerator<'cg, 'cx, 'gcx,
                     // Reads/reservations don't invalidate shared borrows
                 }
 
-                (Read(kind), BorrowKind::Unique) | (Read(kind), BorrowKind::Mut { .. }) => {
+                (Read(_), BorrowKind::Unique) | (Read(_), BorrowKind::Mut { .. }) => {
                     // Reading from mere reservations of mutable-borrows is OK.
                     if !this.is_active(borrow, context.loc) {
                         // If the borrow isn't active yet, reads don't invalidate it
@@ -512,20 +518,13 @@ impl<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> InvalidationGenerator<'cg, 'cx, 'gcx,
 
                     // Unique and mutable borrows are invalidated by reads from any
                     // involved path
-                    match kind {
-                        ReadKind::Copy => {
-                            this.generate_invalidates(borrow_index, context.loc);
-                        }
-                        ReadKind::Borrow(bk) => {
-                            this.generate_invalidates(borrow_index, context.loc);
-                        }
-                    }
+                    this.generate_invalidates(borrow_index, context.loc);
                 }
 
-                (Reservation(kind), BorrowKind::Unique)
-                | (Reservation(kind), BorrowKind::Mut { .. })
-                | (Activation(kind, _), _)
-                | (Write(kind), _) => {
+                (Reservation(_), BorrowKind::Unique)
+                | (Reservation(_), BorrowKind::Mut { .. })
+                | (Activation(_, _), _)
+                | (Write(_), _) => {
                     // unique or mutable borrows are invalidated by writes.
                     // Reservations count as writes since we need to check
                     // that activating the borrow will be OK
@@ -585,6 +584,23 @@ impl<'cg, 'cx: 'cg, 'gcx: 'tcx, 'tcx: 'cx> InvalidationGenerator<'cg, 'cx, 'gcx,
                 );
                 op(self, i, borrowed);
             }
+        }
+    }
+
+    /// Determine if a given two-phase borrow is active using dominator information
+    fn is_active(&self, borrow: &BorrowData, location: Location) -> bool {
+        // If it's not two-phase, the borrow is definitely active
+        if !self.allow_two_phase_borrow(borrow.kind) {
+            return true;
+        }
+        if borrow.activation_location.is_none() {
+            return false;
+        }
+        let activation_location = borrow.activation_location.unwrap();
+        if activation_location.block == location.block {
+            activation_location.statement_index >= location.statement_index
+        } else {
+            self.mir.dominators().is_dominated_by(location.block, activation_location.block)
         }
     }
 

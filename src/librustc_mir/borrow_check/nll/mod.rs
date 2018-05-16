@@ -131,6 +131,14 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         &mir,
         borrow_set,
     );
+    invalidation::generate_invalidates(
+        infcx,
+        &mut all_facts,
+        location_table,
+        &mir,
+        def_id,
+        borrow_set
+    );
 
     // Dump facts if requested.
     if let Some(all_facts) = all_facts {
