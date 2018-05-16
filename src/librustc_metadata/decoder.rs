@@ -445,6 +445,7 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Existential => Def::Existential(did),
             EntryKind::Type => Def::TyAlias(did),
             EntryKind::AssociatedType(_) => Def::AssociatedTy(did),
+            EntryKind::AssociatedExistential(_) => Def::AssociatedExistential(did),
             EntryKind::Mod(_) => Def::Mod(did),
             EntryKind::Variant(_) => Def::Variant(did),
             EntryKind::Trait(_) => Def::Trait(did),

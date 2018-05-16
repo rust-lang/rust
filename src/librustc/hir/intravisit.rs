@@ -487,9 +487,14 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
         ItemGlobalAsm(_) => {
             visitor.visit_id(item.id);
         }
-        ItemTy(ref typ, ref type_parameters, _) => {
+        ItemTy(ref typ, ref type_parameters) => {
             visitor.visit_id(item.id);
             visitor.visit_ty(typ);
+            visitor.visit_generics(type_parameters)
+        }
+        ItemExistential(ref bounds, ref type_parameters) => {
+            visitor.visit_id(item.id);
+            walk_list!(visitor, visit_ty_param_bound, bounds);
             visitor.visit_generics(type_parameters)
         }
         ItemEnum(ref enum_definition, ref type_parameters) => {
@@ -886,9 +891,13 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
                              impl_item.span,
                              impl_item.id);
         }
-        ImplItemKind::Type(ref ty, _) => {
+        ImplItemKind::Type(ref ty) => {
             visitor.visit_id(impl_item.id);
             visitor.visit_ty(ty);
+        }
+        ImplItemKind::Existential(ref bounds) => {
+            visitor.visit_id(impl_item.id);
+            walk_list!(visitor, visit_ty_param_bound, bounds);
         }
     }
 }

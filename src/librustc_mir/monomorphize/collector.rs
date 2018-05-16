@@ -939,6 +939,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             hir::ItemUse(..)         |
             hir::ItemForeignMod(..)  |
             hir::ItemTy(..)          |
+            hir::ItemExistential(..) |
             hir::ItemTrait(..)       |
             hir::ItemTraitAlias(..)  |
             hir::ItemMod(..)         => {

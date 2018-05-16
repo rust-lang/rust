@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use rustc_target::spec::abi::{self, Abi};
-use ast::AliasKind;
 use ast::{AngleBracketedParameterData, ParenthesizedParameterData, AttrStyle, BareFnTy};
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Unsafety;
@@ -62,6 +61,15 @@ use std::cmp;
 use std::mem;
 use std::path::{self, Path, PathBuf};
 use std::slice;
+
+#[derive(Debug)]
+/// Whether the type alias or associated type is a concrete type or an existential type
+pub enum AliasKind {
+    /// Just a new name for the same type
+    Weak(P<Ty>),
+    /// Only trait impls of the type will be usable, not the actual type itself
+    Existential(TyParamBounds),
+}
 
 bitflags! {
     pub struct Restrictions: u8 {
@@ -5299,38 +5307,19 @@ impl<'a> Parser<'a> {
         Ok(item)
     }
 
-    fn eat_type(&mut self) -> Option<AliasKind> {
-        if self.check_keyword(keywords::Type) ||
-           self.check_keyword(keywords::Existential) &&
-                self.look_ahead(1, |t| t.is_keyword(keywords::Type)) {
-            let kind = if self.eat_keyword(keywords::Existential) {
-                AliasKind::Existential
-            } else {
-                AliasKind::Weak
-            };
-            assert!(self.eat_keyword(keywords::Type));
-            Some(kind)
-        } else {
-            None
-        }
-    }
-
     fn parse_impl_item_(&mut self,
                         at_end: &mut bool,
                         mut attrs: Vec<Attribute>) -> PResult<'a, ImplItem> {
         let lo = self.span;
         let vis = self.parse_visibility(false)?;
         let defaultness = self.parse_defaultness();
-        let (name, node, generics) = if let Some(alias_kind) = self.eat_type() {
-            // This parses the grammar:
-            //     ImplItemAssocTy = Ident ["<"...">"] ["where" ...] ("=" | ":") Ty ";"
-            let name = self.parse_ident()?;
-            let mut generics = self.parse_generics()?;
-            generics.where_clause = self.parse_where_clause()?;
-            self.parse_type_alias_separator(alias_kind)?;
-            let typ = self.parse_ty()?;
-            self.expect(&token::Semi)?;
-            (name, ast::ImplItemKind::Type(typ, alias_kind), generics)
+        let (name, node, generics) = if let Some(type_) = self.eat_type() {
+            let (name, alias, generics) = type_?;
+            let kind = match alias {
+                AliasKind::Weak(typ) => ast::ImplItemKind::Type(typ),
+                AliasKind::Existential(bounds) => ast::ImplItemKind::Existential(bounds),
+            };
+            (name, kind, generics)
         } else if self.is_const_item() {
             // This parses the grammar:
             //     ImplItemConst = "const" Ident ":" Ty "=" Expr ";"
@@ -6332,22 +6321,41 @@ impl<'a> Parser<'a> {
     /// Parse type Foo = Bar;
     /// or
     /// existential type Foo: Bar;
-    fn parse_item_type(&mut self, alias_kind: AliasKind) -> PResult<'a, ItemInfo> {
+    /// or
+    /// return None without modifying the parser state
+    fn eat_type(&mut self) -> Option<PResult<'a, (Ident, AliasKind, ast::Generics)>> {
+        // This parses the grammar:
+        //     Ident ["<"...">"] ["where" ...] ("=" | ":") Ty ";"
+        if self.check_keyword(keywords::Type) ||
+           self.check_keyword(keywords::Existential) &&
+                self.look_ahead(1, |t| t.is_keyword(keywords::Type)) {
+            let existential = self.eat_keyword(keywords::Existential);
+            assert!(self.eat_keyword(keywords::Type));
+            Some(self.parse_existential_or_alias(existential))
+        } else {
+            None
+        }
+    }
+
+    /// Parse type alias or existential type
+    fn parse_existential_or_alias(
+        &mut self,
+        existential: bool,
+    ) -> PResult<'a, (Ident, AliasKind, ast::Generics)> {
         let ident = self.parse_ident()?;
         let mut tps = self.parse_generics()?;
         tps.where_clause = self.parse_where_clause()?;
-        self.parse_type_alias_separator(alias_kind)?;
-        let ty = self.parse_ty()?;
+        let alias = if existential {
+            self.expect(&token::Colon)?;
+            let bounds = self.parse_ty_param_bounds()?;
+            AliasKind::Existential(bounds)
+        } else {
+            self.expect(&token::Eq)?;
+            let ty = self.parse_ty()?;
+            AliasKind::Weak(ty)
+        };
         self.expect(&token::Semi)?;
-        Ok((ident, ItemKind::Ty(ty, tps, alias_kind), None))
-    }
-
-    /// Parse colon or eq sign depending on existentialness
-    fn parse_type_alias_separator(&mut self, alias_kind: AliasKind) -> PResult<'a, ()> {
-        match alias_kind {
-            AliasKind::Weak => self.expect(&token::Eq),
-            AliasKind::Existential => self.expect(&token::Colon),
-        }
+        Ok((ident, alias, tps))
     }
 
     /// Parse the part of an "enum" decl following the '{'
@@ -6662,15 +6670,19 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return Ok(Some(item));
         }
-        if let Some(alias_kind) = self.eat_type() {
+        if let Some(type_) = self.eat_type() {
+            let (ident, alias, generics) = type_?;
             // TYPE ITEM
-            let (ident, item_, extra_attrs) = self.parse_item_type(alias_kind)?;
+            let item_ = match alias {
+                AliasKind::Weak(ty) => ItemKind::Ty(ty, generics),
+                AliasKind::Existential(bounds) => ItemKind::Existential(bounds, generics),
+            };
             let prev_span = self.prev_span;
             let item = self.mk_item(lo.to(prev_span),
                                     ident,
                                     item_,
                                     visibility,
-                                    maybe_append(attrs, extra_attrs));
+                                    attrs);
             return Ok(Some(item));
         }
         if self.eat_keyword(keywords::Enum) {

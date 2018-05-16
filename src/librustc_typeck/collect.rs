@@ -271,7 +271,8 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             match item.node {
                 ItemFn(.., ref generics, _) |
                 ItemImpl(_, _, _, ref generics, ..) |
-                ItemTy(_, ref generics, _) |
+                ItemTy(_, ref generics) |
+                ItemExistential(_, ref generics) |
                 ItemEnum(_, ref generics) |
                 ItemStruct(_, ref generics) |
                 ItemUnion(_, ref generics) => generics,
@@ -420,6 +421,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
                 convert_variant_ctor(tcx, struct_def.id());
             }
         },
+        hir::ItemExistential(..) |
         hir::ItemTy(..) | hir::ItemStatic(..) | hir::ItemConst(..) | hir::ItemFn(..) => {
             tcx.generics_of(def_id);
             tcx.type_of(def_id);
@@ -825,7 +827,8 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ItemFn(.., ref generics, _) |
                 ItemImpl(_, _, _, ref generics, ..) => generics,
 
-                ItemTy(_, ref generics, _) |
+                ItemTy(_, ref generics) |
+                ItemExistential(_, ref generics) |
                 ItemEnum(_, ref generics) |
                 ItemStruct(_, ref generics) |
                 ItemUnion(_, ref generics) => {
@@ -983,6 +986,13 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     })
 }
 
+fn report_assoc_ty_on_inherent_impl<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    span: Span,
+) {
+    span_err!(tcx.sess, span, E0202, "associated types are not allowed in inherent impls");
+}
+
 fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                      def_id: DefId)
                      -> Ty<'tcx> {
@@ -1015,10 +1025,16 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     tcx.mk_fn_def(def_id, substs)
                 }
                 ImplItemKind::Const(ref ty, _) => icx.to_ty(ty),
-                ImplItemKind::Type(ref ty, _) => {
+                ImplItemKind::Existential(ref _bounds) => {
                     if tcx.impl_trait_ref(tcx.hir.get_parent_did(node_id)).is_none() {
-                        span_err!(tcx.sess, item.span, E0202,
-                                  "associated types are not allowed in inherent impls");
+                        report_assoc_ty_on_inherent_impl(tcx, item.span);
+                    }
+                    // TODO oli-obk
+                    unimplemented!()
+                }
+                ImplItemKind::Type(ref ty) => {
+                    if tcx.impl_trait_ref(tcx.hir.get_parent_did(node_id)).is_none() {
+                        report_assoc_ty_on_inherent_impl(tcx, item.span);
                     }
 
                     icx.to_ty(ty)
@@ -1029,10 +1045,10 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         NodeItem(item) => {
             match item.node {
                 ItemStatic(ref t, ..) | ItemConst(ref t, _) |
-                ItemTy(ref t, _, hir::AliasKind::Weak) | ItemImpl(.., ref t, _) => {
+                ItemTy(ref t, _) | ItemImpl(.., ref t, _) => {
                     icx.to_ty(t)
                 }
-                ItemTy(_, _, hir::AliasKind::Existential) => {
+                ItemExistential(_, _) => {
                     let substs = Substs::identity_for_item(tcx, def_id);
                     // TODO this is obviously wrong, but should give fun error messages
                     tcx.mk_anon(def_id, substs)
@@ -1341,7 +1357,8 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     generics
                 }
                 ItemFn(.., ref generics, _) |
-                ItemTy(_, ref generics, _) |
+                ItemTy(_, ref generics) |
+                ItemExistential(_, ref generics) |
                 ItemEnum(_, ref generics) |
                 ItemStruct(_, ref generics) |
                 ItemUnion(_, ref generics) => generics,

@@ -1621,7 +1621,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
-            ast::ItemKind::Ty(_, _, ast::AliasKind::Existential) => {
+            ast::ItemKind::Existential(..) => {
                 gate_feature_post!(
                     &self,
                     existential_type,
@@ -1808,7 +1808,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, const_fn, ii.span, "const fn is unstable");
                 }
             }
-            ast::ImplItemKind::Type(_, ast::AliasKind::Existential) => {
+            ast::ImplItemKind::Existential(..) => {
                 gate_feature_post!(
                     &self,
                     existential_type,

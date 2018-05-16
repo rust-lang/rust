@@ -269,6 +269,7 @@ impl PrintContext {
                 match key.disambiguated_data.data {
                     DefPathData::AssocTypeInTrait(_) |
                     DefPathData::AssocTypeInImpl(_) |
+                    DefPathData::AssocExistentialInImpl(_) |
                     DefPathData::Trait(_) |
                     DefPathData::TypeNs(_) => {
                         break;

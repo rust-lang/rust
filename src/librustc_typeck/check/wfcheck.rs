@@ -202,6 +202,9 @@ fn check_associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     fcx.register_wf_obligation(ty, span, code.clone());
                 }
             }
+            ty::AssociatedKind::Existential => {
+                // TODO oli-obk
+            }
         }
 
         implied_bounds

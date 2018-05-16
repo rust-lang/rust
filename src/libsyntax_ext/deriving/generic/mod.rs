@@ -541,7 +541,6 @@ impl<'a> TraitDef<'a> {
                 generics: Generics::default(),
                 node: ast::ImplItemKind::Type(
                     type_def.to_ty(cx, self.span, type_ident, generics),
-                    ast::AliasKind::Weak,
                 ),
                 tokens: None,
             }

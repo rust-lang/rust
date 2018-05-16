@@ -1331,7 +1331,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         match self.mode {
             Mode::MethodCall => item.method_has_self_argument,
             Mode::Path => match item.kind {
-                ty::AssociatedKind::Type => false,
+                ty::AssociatedKind::Existential | ty::AssociatedKind::Type => false,
                 ty::AssociatedKind::Method | ty::AssociatedKind::Const => true
             },
         }

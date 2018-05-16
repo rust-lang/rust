@@ -829,6 +829,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 }))
             }
             ty::AssociatedKind::Type => EntryKind::AssociatedType(container),
+            ty::AssociatedKind::Existential =>
+                span_bug!(ast_item.span, "existential type in trait"),
         };
 
         Entry {
@@ -852,6 +854,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                         None
                     }
                 }
+                ty::AssociatedKind::Existential => unreachable!(),
             },
             inherent_impls: LazySeq::empty(),
             variances: if trait_item.kind == ty::AssociatedKind::Method {
@@ -921,6 +924,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     has_self: impl_item.method_has_self_argument,
                 }))
             }
+            ty::AssociatedKind::Existential => EntryKind::AssociatedExistential(container),
             ty::AssociatedKind::Type => EntryKind::AssociatedType(container)
         };
 
@@ -937,6 +941,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
                     needs_inline || is_const_fn || always_encode_mir
                 },
+                hir::ImplItemKind::Existential(..) |
                 hir::ImplItemKind::Type(..) => false,
             };
 
@@ -1052,6 +1057,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             hir::ItemForeignMod(_) => EntryKind::ForeignMod,
             hir::ItemGlobalAsm(..) => EntryKind::GlobalAsm,
             hir::ItemTy(..) => EntryKind::Type,
+            hir::ItemExistential(..) => EntryKind::Existential,
             hir::ItemEnum(..) => EntryKind::Enum(get_repr_options(&tcx, def_id)),
             hir::ItemStruct(ref struct_def, _) => {
                 let variant = tcx.adt_def(def_id).non_enum_variant();
@@ -1700,6 +1706,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
             hir::ItemGlobalAsm(..) |
             hir::ItemExternCrate(..) |
             hir::ItemUse(..) |
+            hir::ItemExistential(..) |
             hir::ItemTy(..) |
             hir::ItemTraitAlias(..) => {
                 // no sub-item recording needed in these cases

@@ -1657,8 +1657,10 @@ pub enum ImplItemKind {
     Const(P<Ty>, BodyId),
     /// A method implementation with the given signature and body
     Method(MethodSig, BodyId),
-    /// An associated (possibly existential) type
-    Type(P<Ty>, AliasKind),
+    /// An associated type
+    Type(P<Ty>),
+    /// An associated existential type
+    Existential(TyParamBounds),
 }
 
 // Bind a type to an associated type: `A=Foo`.
@@ -1820,15 +1822,6 @@ pub enum Constness {
 pub enum Defaultness {
     Default { has_value: bool },
     Final,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-/// Whether the type alias or associated type is a concrete type or an existential type
-pub enum AliasKind {
-    /// Just a new name for the same type
-    Weak,
-    /// Only trait impls of the type will be usable, not the actual type itself
-    Existential,
 }
 
 impl Defaultness {
@@ -2116,7 +2109,9 @@ pub enum Item_ {
     /// Module-level inline assembly (from global_asm!)
     ItemGlobalAsm(P<GlobalAsm>),
     /// A type alias, e.g. `type Foo = Bar<u8>`
-    ItemTy(P<Ty>, Generics, AliasKind),
+    ItemTy(P<Ty>, Generics),
+    /// An existential type definition, e.g. `existential type Foo: Bar;`
+    ItemExistential(TyParamBounds, Generics),
     /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
     ItemEnum(EnumDef, Generics),
     /// A struct definition, e.g. `struct Foo<A> {x: A}`
@@ -2150,6 +2145,7 @@ impl Item_ {
             ItemForeignMod(..) => "foreign module",
             ItemGlobalAsm(..) => "global asm",
             ItemTy(..) => "type alias",
+            ItemExistential(..) => "existential type",
             ItemEnum(..) => "enum",
             ItemStruct(..) => "struct",
             ItemUnion(..) => "union",
@@ -2171,7 +2167,8 @@ impl Item_ {
     pub fn generics(&self) -> Option<&Generics> {
         Some(match *self {
             ItemFn(_, _, _, _, ref generics, _) |
-            ItemTy(_, ref generics, _) |
+            ItemTy(_, ref generics) |
+            ItemExistential(_, ref generics) |
             ItemEnum(_, ref generics) |
             ItemStruct(_, ref generics) |
             ItemUnion(_, ref generics) |
@@ -2218,6 +2215,7 @@ pub enum AssociatedItemKind {
     Const,
     Method { has_self: bool },
     Type,
+    Existential,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

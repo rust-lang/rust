@@ -462,10 +462,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         let desc = match impl_item.node {
             hir::ImplItemKind::Const(..) => "an associated constant",
             hir::ImplItemKind::Method(..) => "a method",
-            hir::ImplItemKind::Type(_, hir::AliasKind::Weak) => "an associated type",
-            hir::ImplItemKind::Type(_, hir::AliasKind::Existential) => {
-                "an associated existential type"
-            },
+            hir::ImplItemKind::Type(_) => "an associated type",
+            hir::ImplItemKind::Existential(_) => "an associated existential type",
         };
         self.check_missing_docs_attrs(cx,
                                       Some(impl_item.id),
@@ -1419,7 +1417,7 @@ impl TypeAliasBounds {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
         let (ty, type_alias_generics) = match item.node {
-            hir::ItemTy(ref ty, ref generics, _) => (&*ty, generics),
+            hir::ItemTy(ref ty, ref generics) => (&*ty, generics),
             _ => return,
         };
         let mut suggested_changing_assoc_types = false;
@@ -1520,7 +1518,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedBrokenConst {
             hir::ItemConst(_, body_id) => {
                 check_const(cx, body_id, "constant");
             },
-            hir::ItemTy(ref ty, _, _) => hir::intravisit::walk_ty(
+            hir::ItemTy(ref ty, _) => hir::intravisit::walk_ty(
                 &mut UnusedBrokenConstVisitor(cx),
                 ty
             ),

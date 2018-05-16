@@ -752,7 +752,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem {
 impl_stable_hash_for!(enum hir::ImplItemKind {
     Const(t, body),
     Method(sig, body),
-    Type(t, alias_kind)
+    Type(t),
+    Existential(bounds)
 });
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Visibility {
@@ -791,11 +792,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Defaultness {
         }
     }
 }
-
-impl_stable_hash_for!(enum hir::AliasKind {
-    Weak,
-    Existential
-});
 
 impl_stable_hash_for!(enum hir::ImplPolarity {
     Positive,
@@ -890,7 +886,8 @@ impl_stable_hash_for!(enum hir::Item_ {
     ItemMod(module),
     ItemForeignMod(foreign_mod),
     ItemGlobalAsm(global_asm),
-    ItemTy(ty, generics, alias_kind),
+    ItemTy(ty, generics),
+    ItemExistential(bounds, generics),
     ItemEnum(enum_def, generics),
     ItemStruct(variant_data, generics),
     ItemUnion(variant_data, generics),
@@ -924,6 +921,7 @@ for hir::AssociatedItemKind {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
             hir::AssociatedItemKind::Const |
+            hir::AssociatedItemKind::Existential |
             hir::AssociatedItemKind::Type => {
                 // No fields to hash.
             }
@@ -1054,6 +1052,7 @@ impl_stable_hash_for!(enum hir::def::Def {
     Existential(def_id),
     TraitAlias(def_id),
     AssociatedTy(def_id),
+    AssociatedExistential(def_id),
     PrimTy(prim_ty),
     TyParam(def_id),
     SelfTy(trait_def_id, impl_def_id),

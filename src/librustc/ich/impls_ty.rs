@@ -1157,6 +1157,7 @@ impl_stable_hash_for!(struct ty::AssociatedItem {
 impl_stable_hash_for!(enum ty::AssociatedKind {
     Const,
     Method,
+    Existential,
     Type
 });
 

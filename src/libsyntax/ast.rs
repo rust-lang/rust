@@ -1386,7 +1386,8 @@ pub struct ImplItem {
 pub enum ImplItemKind {
     Const(P<Ty>, P<Expr>),
     Method(MethodSig, P<Block>),
-    Type(P<Ty>, AliasKind),
+    Type(P<Ty>),
+    Existential(TyParamBounds),
     Macro(Mac),
 }
 
@@ -1763,15 +1764,6 @@ pub enum Constness {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-/// Whether the type alias or associated type is a concrete type or an existential type
-pub enum AliasKind {
-    /// Just a new name for the same type
-    Weak,
-    /// Only trait impls of the type will be usable, not the actual type itself
-    Existential,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Defaultness {
     Default,
     Final,
@@ -2097,8 +2089,12 @@ pub enum ItemKind {
     GlobalAsm(P<GlobalAsm>),
     /// A type alias (`type` or `pub type`).
     ///
-    /// E.g. `type Foo = Bar<u8>;` or `existential type Foo = Debug;`
-    Ty(P<Ty>, Generics, AliasKind),
+    /// E.g. `type Foo = Bar<u8>;`
+    Ty(P<Ty>, Generics),
+    /// An existential type declaration (`existential type`).
+    ///
+    /// E.g. `existential type Foo: Bar + Boo;`
+    Existential(TyParamBounds, Generics),
     /// An enum definition (`enum` or `pub enum`).
     ///
     /// E.g. `enum Foo<A, B> { C<A>, D<B> }`
@@ -2150,6 +2146,7 @@ impl ItemKind {
             ItemKind::ForeignMod(..) => "foreign module",
             ItemKind::GlobalAsm(..) => "global asm",
             ItemKind::Ty(..) => "type alias",
+            ItemKind::Existential(..) => "existential type",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",
             ItemKind::Union(..) => "union",

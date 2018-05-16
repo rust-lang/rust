@@ -158,6 +158,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemGlobalAsm(..) | hir::ItemFn(..) | hir::ItemMod(..) |
             hir::ItemStatic(..) | hir::ItemStruct(..) |
             hir::ItemTrait(..) | hir::ItemTraitAlias(..) |
+            hir::ItemExistential(..) |
             hir::ItemTy(..) | hir::ItemUnion(..) | hir::ItemUse(..) => {
                 if item.vis == hir::Public { self.prev_level } else { None }
             }
@@ -210,6 +211,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                     }
                 }
             }
+            hir::ItemExistential(..) |
             hir::ItemUse(..) | hir::ItemStatic(..) | hir::ItemConst(..) |
             hir::ItemGlobalAsm(..) | hir::ItemTy(..) | hir::ItemMod(..) | hir::ItemTraitAlias(..) |
             hir::ItemFn(..) | hir::ItemExternCrate(..) => {}
@@ -227,6 +229,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemGlobalAsm(..) => {}
             // Visit everything
             hir::ItemConst(..) | hir::ItemStatic(..) |
+            hir::ItemExistential(..) |
             hir::ItemFn(..) | hir::ItemTy(..) => {
                 if item_level.is_some() {
                     self.reach(item.id).generics().predicates().ty();
@@ -1148,6 +1151,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                          hir::ImplItemKind::Method(..) => {
                                              self.access_levels.is_reachable(impl_item.id)
                                          }
+                                         hir::ImplItemKind::Existential(..) |
                                          hir::ImplItemKind::Type(..) => false,
                                      }
                                  });
@@ -1200,7 +1204,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                             // Those in 3. are warned with this call.
                             for impl_item_ref in impl_item_refs {
                                 let impl_item = self.tcx.hir.impl_item(impl_item_ref.id);
-                                if let hir::ImplItemKind::Type(ref ty, _) = impl_item.node {
+                                if let hir::ImplItemKind::Type(ref ty) = impl_item.node {
                                     self.visit_ty(ty);
                                 }
                             }
@@ -1536,6 +1540,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             hir::ItemGlobalAsm(..) => {}
             // Subitems of these items have inherited publicity
             hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
+            hir::ItemExistential(..) |
             hir::ItemTy(..) => {
                 self.check(item.id, item_visibility).generics().predicates().ty();
 

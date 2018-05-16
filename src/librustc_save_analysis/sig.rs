@@ -441,12 +441,20 @@ impl Sig for ast::Item {
                     refs: vec![],
                 })
             }
-            ast::ItemKind::Ty(ref ty, ref generics, kind) => {
-                let text = match kind {
-                    ast::AliasKind::Weak => "type ",
-                    ast::AliasKind::Existential => "existential type ",
-                };
-                let text = text.to_owned();
+            ast::ItemKind::Existential(ref bounds, ref generics) => {
+                let text = "existential type ".to_owned();
+                let mut sig = name_and_generics(text, offset, generics, self.id, self.ident, scx)?;
+
+                if !bounds.is_empty() {
+                    sig.text.push_str(": ");
+                    sig.text.push_str(&pprust::bounds_to_string(bounds));
+                }
+                sig.text.push(';');
+
+                Ok(sig)
+            }
+            ast::ItemKind::Ty(ref ty, ref generics) => {
+                let text = "type ".to_owned();
                 let mut sig = name_and_generics(text, offset, generics, self.id, self.ident, scx)?;
 
                 sig.text.push_str(" = ");

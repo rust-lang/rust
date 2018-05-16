@@ -215,6 +215,7 @@ impl DefKey {
             DefPathData::Trait(name) |
             DefPathData::AssocTypeInTrait(name) |
             DefPathData::AssocTypeInImpl(name) |
+            DefPathData::AssocExistentialInImpl(name) |
             DefPathData::ValueNs(name) |
             DefPathData::Module(name) |
             DefPathData::MacroDef(name) |
@@ -367,6 +368,8 @@ pub enum DefPathData {
     AssocTypeInTrait(InternedString),
     /// An associated type **value** (i.e., in an impl)
     AssocTypeInImpl(InternedString),
+    /// An existential associated type **value** (i.e., in an impl)
+    AssocExistentialInImpl(InternedString),
     /// Something in the type NS
     TypeNs(InternedString),
     /// Something in the value NS
@@ -651,6 +654,7 @@ impl DefPathData {
             Trait(name) |
             AssocTypeInTrait(name) |
             AssocTypeInImpl(name) |
+            AssocExistentialInImpl(name) |
             ValueNs(name) |
             Module(name) |
             MacroDef(name) |
@@ -678,6 +682,7 @@ impl DefPathData {
             Trait(name) |
             AssocTypeInTrait(name) |
             AssocTypeInImpl(name) |
+            AssocExistentialInImpl(name) |
             ValueNs(name) |
             Module(name) |
             MacroDef(name) |

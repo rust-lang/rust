@@ -496,7 +496,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |_, this| intravisit::walk_item(this, item));
             }
-            hir::ItemTy(_, ref generics, _)
+            hir::ItemTy(_, ref generics)
+            | hir::ItemExistential(_, ref generics)
             | hir::ItemEnum(_, ref generics)
             | hir::ItemStruct(_, ref generics)
             | hir::ItemUnion(_, ref generics)
@@ -776,7 +777,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     |this| intravisit::walk_impl_item(this, impl_item),
                 )
             }
-            Type(ref ty, _) => {
+            Type(ref ty) => {
                 let generics = &impl_item.generics;
                 let mut index = self.next_early_index();
                 debug!("visit_ty: index = {}", index);
@@ -796,6 +797,30 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 self.with(scope, |_old_scope, this| {
                     this.visit_generics(generics);
                     this.visit_ty(ty);
+                });
+            }
+            Existential(ref bounds) => {
+                let generics = &impl_item.generics;
+                let mut index = self.next_early_index();
+                debug!("visit_ty: index = {}", index);
+                let lifetimes = generics
+                    .lifetimes()
+                    .map(|lt_def| Region::early(&self.tcx.hir, &mut index, lt_def))
+                    .collect();
+
+                let next_early_index = index + generics.ty_params().count() as u32;
+                let scope = Scope::Binder {
+                    lifetimes,
+                    next_early_index,
+                    s: self.scope,
+                    track_lifetime_uses: true,
+                    abstract_type_parent: true,
+                };
+                self.with(scope, |_old_scope, this| {
+                    this.visit_generics(generics);
+                    for bound in bounds {
+                        this.visit_ty_param_bound(bound);
+                    }
                 });
             }
             Const(_, _) => {
@@ -1153,7 +1178,8 @@ fn compute_object_lifetime_defaults(
             hir::ItemStruct(_, ref generics)
             | hir::ItemUnion(_, ref generics)
             | hir::ItemEnum(_, ref generics)
-            | hir::ItemTy(_, ref generics, _)
+            | hir::ItemExistential(_, ref generics)
+            | hir::ItemTy(_, ref generics)
             | hir::ItemTrait(_, _, ref generics, ..) => {
                 let result = object_lifetime_defaults_for_item(tcx, generics);
 

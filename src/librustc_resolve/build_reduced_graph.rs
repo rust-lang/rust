@@ -33,7 +33,7 @@ use syntax::ast::{Name, Ident};
 use syntax::attr;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
-use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind, Variant, AliasKind};
+use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind, Variant};
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
@@ -320,12 +320,12 @@ impl<'a> Resolver<'a> {
             }
 
             // These items live in the type namespace.
-            ItemKind::Ty(_, _, AliasKind::Weak) => {
+            ItemKind::Ty(_, _) => {
                 let def = Def::TyAlias(self.definitions.local_def_id(item.id));
                 self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
             }
 
-            ItemKind::Ty(_, _, AliasKind::Existential) => {
+            ItemKind::Existential(_, _) => {
                 let def = Def::Existential(self.definitions.local_def_id(item.id));
                 self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
             }

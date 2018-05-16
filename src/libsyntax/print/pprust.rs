@@ -1168,12 +1168,8 @@ impl<'a> State<'a> {
     fn print_associated_type(&mut self,
                              ident: ast::Ident,
                              bounds: Option<&ast::TyParamBounds>,
-                             ty: Option<&ast::Ty>,
-                             ak: ast::AliasKind)
+                             ty: Option<&ast::Ty>)
                              -> io::Result<()> {
-        if let ast::AliasKind::Existential = ak {
-            self.word_space("existential")?;
-        }
         self.word_space("type")?;
         self.print_ident(ident)?;
         if let Some(bounds) = bounds {
@@ -1181,10 +1177,7 @@ impl<'a> State<'a> {
         }
         if let Some(ty) = ty {
             self.s.space()?;
-            match ak {
-                ast::AliasKind::Weak => self.word_space("=")?,
-                ast::AliasKind::Existential => self.word_space(":")?,
-            }
+            self.word_space("=")?;
             self.print_type(ty)?;
         }
         self.s.word(";")
@@ -1280,11 +1273,10 @@ impl<'a> State<'a> {
                 self.s.word(&ga.asm.as_str())?;
                 self.end()?;
             }
-            ast::ItemKind::Ty(ref ty, ref generics, kind) => {
+            ast::ItemKind::Ty(ref ty, ref generics) => {
                 self.ibox(INDENT_UNIT)?;
                 self.ibox(0)?;
                 self.print_visibility(&item.vis)?;
-                self.print_alias_kind(kind)?;
                 self.word_nbsp("type")?;
                 self.print_ident(item.ident)?;
                 self.print_generic_params(&generics.params)?;
@@ -1294,6 +1286,21 @@ impl<'a> State<'a> {
                 self.s.space()?;
                 self.word_space("=")?;
                 self.print_type(ty)?;
+                self.s.word(";")?;
+                self.end()?; // end the outer ibox
+            }
+            ast::ItemKind::Existential(ref bounds, ref generics) => {
+                self.ibox(INDENT_UNIT)?;
+                self.ibox(0)?;
+                self.print_visibility(&item.vis)?;
+                self.word_nbsp("existential type")?;
+                self.print_ident(item.ident)?;
+                self.print_generic_params(&generics.params)?;
+                self.end()?; // end the inner ibox
+
+                self.print_where_clause(&generics.where_clause)?;
+                self.s.space()?;
+                self.print_bounds(":", bounds)?;
                 self.s.word(";")?;
                 self.end()?; // end the outer ibox
             }
@@ -1503,13 +1510,6 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_alias_kind(&mut self, alias_kind: ast::AliasKind) -> io::Result<()> {
-        match alias_kind {
-            ast::AliasKind::Weak => Ok(()),
-            ast::AliasKind::Existential => self.word_nbsp("existential"),
-        }
-    }
-
     pub fn print_struct(&mut self,
                         struct_def: &ast::VariantData,
                         generics: &ast::Generics,
@@ -1622,8 +1622,7 @@ impl<'a> State<'a> {
             }
             ast::TraitItemKind::Type(ref bounds, ref default) => {
                 self.print_associated_type(ti.ident, Some(bounds),
-                                           default.as_ref().map(|ty| &**ty),
-                                           ast::AliasKind::Weak)?;
+                                           default.as_ref().map(|ty| &**ty))?;
             }
             ast::TraitItemKind::Macro(codemap::Spanned { ref node, .. }) => {
                 // code copied from ItemKind::Mac:
@@ -1656,8 +1655,12 @@ impl<'a> State<'a> {
                 self.nbsp()?;
                 self.print_block_with_attrs(body, &ii.attrs)?;
             }
-            ast::ImplItemKind::Type(ref ty, ak) => {
-                self.print_associated_type(ii.ident, None, Some(ty), ak)?;
+            ast::ImplItemKind::Type(ref ty) => {
+                self.print_associated_type(ii.ident, None, Some(ty))?;
+            }
+            ast::ImplItemKind::Existential(ref bounds) => {
+                self.word_space("existential")?;
+                self.print_associated_type(ii.ident, Some(bounds), None)?;
             }
             ast::ImplItemKind::Macro(codemap::Spanned { ref node, .. }) => {
                 // code copied from ItemKind::Mac:

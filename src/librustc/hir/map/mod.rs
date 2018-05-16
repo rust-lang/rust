@@ -392,6 +392,7 @@ impl<'hir> Map<'hir> {
                     ItemMod(..) => Some(Def::Mod(def_id())),
                     ItemGlobalAsm(..) => Some(Def::GlobalAsm(def_id())),
                     ItemTy(..) => Some(Def::TyAlias(def_id())),
+                    ItemExistential(..) => Some(Def::Existential(def_id())),
                     ItemEnum(..) => Some(Def::Enum(def_id())),
                     ItemStruct(..) => Some(Def::Struct(def_id())),
                     ItemUnion(..) => Some(Def::Union(def_id())),
@@ -427,6 +428,7 @@ impl<'hir> Map<'hir> {
                     ImplItemKind::Const(..) => Some(Def::AssociatedConst(def_id)),
                     ImplItemKind::Method(..) => Some(Def::Method(def_id)),
                     ImplItemKind::Type(..) => Some(Def::AssociatedTy(def_id)),
+                    ImplItemKind::Existential(..) => Some(Def::AssociatedExistential(def_id)),
                 }
             }
             NodeVariant(variant) => {
@@ -1262,6 +1264,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemForeignMod(..) => "foreign mod",
                 ItemGlobalAsm(..) => "global asm",
                 ItemTy(..) => "ty",
+                ItemExistential(..) => "existential type",
                 ItemEnum(..) => "enum",
                 ItemStruct(..) => "struct",
                 ItemUnion(..) => "union",
@@ -1282,12 +1285,11 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ImplItemKind::Method(..) => {
                     format!("method {} in {}{}", ii.name, path_str(), id_str)
                 }
-                ImplItemKind::Type(_, kind) => {
-                    let kind = match kind {
-                        AliasKind::Existential => "existential ",
-                        AliasKind::Weak => "",
-                    };
-                    format!("assoc {}type {} in {}{}", kind, ii.name, path_str(), id_str)
+                ImplItemKind::Type(_) => {
+                    format!("assoc type {} in {}{}", ii.name, path_str(), id_str)
+                }
+                ImplItemKind::Existential(_) => {
+                    format!("assoc existential type {} in {}{}", ii.name, path_str(), id_str)
                 }
             }
         }

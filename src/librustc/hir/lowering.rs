@@ -315,7 +315,8 @@ impl<'a> LoweringContext<'a> {
                     ItemKind::Struct(_, ref generics)
                     | ItemKind::Union(_, ref generics)
                     | ItemKind::Enum(_, ref generics)
-                    | ItemKind::Ty(_, ref generics, _)
+                    | ItemKind::Ty(_, ref generics)
+                    | ItemKind::Existential(_, ref generics)
                     | ItemKind::Trait(_, _, ref generics, ..) => {
                         let def_id = self.lctx.resolver.definitions().local_def_id(item.id);
                         let count = generics
@@ -2228,10 +2229,13 @@ impl<'a> LoweringContext<'a> {
             ItemKind::Mod(ref m) => hir::ItemMod(self.lower_mod(m)),
             ItemKind::ForeignMod(ref nm) => hir::ItemForeignMod(self.lower_foreign_mod(nm)),
             ItemKind::GlobalAsm(ref ga) => hir::ItemGlobalAsm(self.lower_global_asm(ga)),
-            ItemKind::Ty(ref t, ref generics, kind) => hir::ItemTy(
+            ItemKind::Ty(ref t, ref generics) => hir::ItemTy(
                 self.lower_ty(t, ImplTraitContext::Disallowed),
                 self.lower_generics(generics, ImplTraitContext::Disallowed),
-                self.lower_alias_kind(kind),
+            ),
+            ItemKind::Existential(ref b, ref generics) => hir::ItemExistential(
+                self.lower_bounds(b, ImplTraitContext::Disallowed),
+                self.lower_generics(generics, ImplTraitContext::Disallowed),
             ),
             ItemKind::Enum(ref enum_definition, ref generics) => hir::ItemEnum(
                 hir::EnumDef {
@@ -2603,11 +2607,16 @@ impl<'a> LoweringContext<'a> {
                         },
                     )
                 }
-                ImplItemKind::Type(ref ty, ak) => (
+                ImplItemKind::Type(ref ty) => (
                     this.lower_generics(&i.generics, ImplTraitContext::Disallowed),
                     hir::ImplItemKind::Type(
                         this.lower_ty(ty, ImplTraitContext::Disallowed),
-                        this.lower_alias_kind(ak),
+                    ),
+                ),
+                ImplItemKind::Existential(ref bounds) => (
+                    this.lower_generics(&i.generics, ImplTraitContext::Disallowed),
+                    hir::ImplItemKind::Existential(
+                        this.lower_bounds(bounds, ImplTraitContext::Disallowed),
                     ),
                 ),
                 ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
@@ -2639,6 +2648,7 @@ impl<'a> LoweringContext<'a> {
             kind: match i.node {
                 ImplItemKind::Const(..) => hir::AssociatedItemKind::Const,
                 ImplItemKind::Type(..) => hir::AssociatedItemKind::Type,
+                ImplItemKind::Existential(..) => hir::AssociatedItemKind::Existential,
                 ImplItemKind::Method(ref sig, _) => hir::AssociatedItemKind::Method {
                     has_self: sig.decl.has_self(),
                 },
@@ -3715,13 +3725,6 @@ impl<'a> LoweringContext<'a> {
                 },
             },
             VisibilityKind::Inherited => hir::Inherited,
-        }
-    }
-
-    fn lower_alias_kind(&self, alias_kind: AliasKind) -> hir::AliasKind {
-        match alias_kind {
-            AliasKind::Existential => hir::AliasKind::Existential,
-            AliasKind::Weak => hir::AliasKind::Weak,
         }
     }
 

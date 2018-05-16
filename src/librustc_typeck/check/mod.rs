@@ -1228,7 +1228,8 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
       hir::ItemUnion(..) => {
         check_union(tcx, it.id, it.span);
       }
-      hir::ItemTy(_, ref generics, _) => {
+      hir::ItemExistential(_, ref generics) |
+      hir::ItemTy(_, ref generics) => {
         let def_id = tcx.hir.local_def_id(it.id);
         let pty_ty = tcx.type_of(def_id);
         check_bounds_are_used(tcx, generics, pty_ty);
@@ -1328,6 +1329,7 @@ fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let kind = match impl_item.node {
         hir::ImplItemKind::Const(..) => ty::AssociatedKind::Const,
         hir::ImplItemKind::Method(..) => ty::AssociatedKind::Method,
+        hir::ImplItemKind::Existential(..) => ty::AssociatedKind::Existential,
         hir::ImplItemKind::Type(..) => ty::AssociatedKind::Type
     };
 
@@ -1421,6 +1423,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          err.emit()
                     }
                 }
+                hir::ImplItemKind::Existential(..) |
                 hir::ImplItemKind::Type(..) => {
                     if ty_trait_item.kind == ty::AssociatedKind::Type {
                         if ty_trait_item.defaultness.has_value() {
