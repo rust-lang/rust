@@ -584,11 +584,10 @@ impl<'a> Builder<'a> {
             cargo.env("RUST_CHECK", "1");
         }
 
-        // If we were invoked from `make` then that's already got a jobserver
-        // set up for us so no need to tell Cargo about jobs all over again.
-        if env::var_os("MAKEFLAGS").is_none() && env::var_os("MFLAGS").is_none() {
-             cargo.arg("-j").arg(self.jobs().to_string());
-        }
+        cargo.arg("-j").arg(self.jobs().to_string());
+        // Remove make-related flags to ensure Cargo can correctly set things up
+        cargo.env_remove("MAKEFLAGS");
+        cargo.env_remove("MFLAGS");
 
         // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
         // Force cargo to output binaries with disambiguating hashes in the name
