@@ -228,7 +228,7 @@ impl UnsafeCode {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        if let hir::ExprBlock(ref blk) = e.node {
+        if let hir::ExprBlock(ref blk, _) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
             if blk.rules == hir::UnsafeBlock(hir::UserProvided) {
                 self.report_unsafe(cx, blk.span, "usage of an `unsafe` block");

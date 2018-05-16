@@ -3753,6 +3753,8 @@ impl<'a> Resolver<'a> {
                 self.ribs[ValueNS].pop();
             }
 
+            ExprKind::Block(ref block, label) => self.resolve_labeled_block(label, block.id, block),
+
             // Equivalent to `visit::walk_expr` + passing some context to children.
             ExprKind::Field(ref subexpression, _) => {
                 self.resolve_expr(subexpression, Some(expr));

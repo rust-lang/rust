@@ -179,7 +179,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
     fn expr(&mut self, expr: &hir::Expr, pred: CFGIndex) -> CFGIndex {
         match expr.node {
-            hir::ExprBlock(ref blk) => {
+            hir::ExprBlock(ref blk, _) => {
                 let blk_exit = self.block(&blk, pred);
                 self.add_ast_node(expr.hir_id.local_id, &[blk_exit])
             }

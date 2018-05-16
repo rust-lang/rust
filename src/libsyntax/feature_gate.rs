@@ -466,6 +466,9 @@ declare_features! (
 
     // inconsistent bounds in where clauses
     (active, trivial_bounds, "1.28.0", Some(48214), None),
+
+    // 'a: { break 'a; }
+    (active, label_break_value, "1.28.0", Some(48594), None),
 );
 
 declare_features! (
@@ -1694,6 +1697,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if pats.len() > 1 {
                     gate_feature_post!(&self, if_while_or_patterns, e.span,
                                     "multiple patterns in `if let` and `while let` are unstable");
+                }
+            }
+            ast::ExprKind::Block(_, opt_label) => {
+                if let Some(label) = opt_label {
+                    gate_feature_post!(&self, label_break_value, label.ident.span,
+                                    "labels on blocks are unstable");
                 }
             }
             _ => {}

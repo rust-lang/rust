@@ -128,7 +128,7 @@ macro_rules! maybe_whole_expr {
                 token::NtBlock(ref block) => {
                     $p.bump();
                     let span = $p.span;
-                    let kind = ExprKind::Block((*block).clone());
+                    let kind = ExprKind::Block((*block).clone(), None);
                     return Ok($p.mk_expr(span, kind, ThinVec::new()));
                 }
                 _ => {},
@@ -2244,7 +2244,7 @@ impl<'a> Parser<'a> {
                 };
             }
             token::OpenDelim(token::Brace) => {
-                return self.parse_block_expr(lo, BlockCheckMode::Default, attrs);
+                return self.parse_block_expr(None, lo, BlockCheckMode::Default, attrs);
             }
             token::BinOp(token::Or) | token::OrOr => {
                 return self.parse_lambda_expr(attrs);
@@ -2318,7 +2318,13 @@ impl<'a> Parser<'a> {
                     if self.eat_keyword(keywords::Loop) {
                         return self.parse_loop_expr(Some(label), lo, attrs)
                     }
-                    let msg = "expected `while`, `for`, or `loop` after a label";
+                    if self.token == token::OpenDelim(token::Brace) {
+                        return self.parse_block_expr(Some(label),
+                                                     lo,
+                                                     BlockCheckMode::Default,
+                                                     attrs);
+                    }
+                    let msg = "expected `while`, `for`, `loop` or `{` after a label";
                     let mut err = self.fatal(msg);
                     err.span_label(self.span, msg);
                     return Err(err);
@@ -2338,6 +2344,7 @@ impl<'a> Parser<'a> {
                 }
                 if self.eat_keyword(keywords::Unsafe) {
                     return self.parse_block_expr(
+                        None,
                         lo,
                         BlockCheckMode::Unsafe(ast::UserProvided),
                         attrs);
@@ -2502,7 +2509,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a block or unsafe block
-    pub fn parse_block_expr(&mut self, lo: Span, blk_mode: BlockCheckMode,
+    pub fn parse_block_expr(&mut self, opt_label: Option<Label>,
+                            lo: Span, blk_mode: BlockCheckMode,
                             outer_attrs: ThinVec<Attribute>)
                             -> PResult<'a, P<Expr>> {
         self.expect(&token::OpenDelim(token::Brace))?;
@@ -2511,7 +2519,7 @@ impl<'a> Parser<'a> {
         attrs.extend(self.parse_inner_attributes()?);
 
         let blk = self.parse_block_tail(lo, blk_mode)?;
-        return Ok(self.mk_expr(blk.span, ExprKind::Block(blk), attrs));
+        return Ok(self.mk_expr(blk.span, ExprKind::Block(blk, opt_label), attrs));
     }
 
     /// parse a.b or a(13) or a[4] or just a
@@ -3261,7 +3269,7 @@ impl<'a> Parser<'a> {
                 // If an explicit return type is given, require a
                 // block to appear (RFC 968).
                 let body_lo = self.span;
-                self.parse_block_expr(body_lo, BlockCheckMode::Default, ThinVec::new())?
+                self.parse_block_expr(None, body_lo, BlockCheckMode::Default, ThinVec::new())?
             }
         };
 
@@ -3277,7 +3285,7 @@ impl<'a> Parser<'a> {
             return self.parse_if_expr(ThinVec::new());
         } else {
             let blk = self.parse_block()?;
-            return Ok(self.mk_expr(blk.span, ExprKind::Block(blk), ThinVec::new()));
+            return Ok(self.mk_expr(blk.span, ExprKind::Block(blk, None), ThinVec::new()));
         }
     }
 

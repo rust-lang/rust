@@ -342,7 +342,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             let mut callee = &**callee;
             loop {
                 callee = match callee.node {
-                    hir::ExprBlock(ref block) => match block.expr {
+                    hir::ExprBlock(ref block, _) => match block.expr {
                         Some(ref tail) => &tail,
                         None => break
                     },
@@ -404,7 +404,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
 
-        hir::ExprBlock(_) |
+        hir::ExprBlock(..) |
         hir::ExprIndex(..) |
         hir::ExprField(..) |
         hir::ExprArray(_) |
