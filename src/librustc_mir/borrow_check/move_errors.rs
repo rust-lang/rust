@@ -256,7 +256,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             let origin = Origin::Mir;
             debug!("report: original_path={:?} span={:?}, kind={:?} \
                    original_path.is_upvar_field_projection={:?}", original_path, span, kind,
-                   original_path.is_upvar_field_projection(self.mir, &self.infcx.tcx));
+                   self.is_upvar_field_projection(original_path));
             (
                 match kind {
                     IllegalMoveOriginKind::Static => {
@@ -269,8 +269,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         let ty = place.ty(self.mir, self.infcx.tcx).ty;
                         let is_upvar_field_projection =
                             self.prefixes(&original_path, PrefixSet::All)
-                            .any(|p| p.is_upvar_field_projection(self.mir, &self.infcx.tcx)
-                                 .is_some());
+                            .any(|p| self.is_upvar_field_projection(p).is_some());
                         debug!("report: ty={:?}", ty);
                         match ty.sty {
                             ty::Array(..) | ty::Slice(..) =>
@@ -278,7 +277,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                     span, ty, None, origin
                                 ),
                             ty::Closure(def_id, closure_substs)
-                                if !self.mir.upvar_decls.is_empty() && is_upvar_field_projection
+                                if def_id == self.mir_def_id && is_upvar_field_projection
                             => {
                                 let closure_kind_ty =
                                     closure_substs.closure_kind_ty(def_id, self.infcx.tcx);
@@ -303,11 +302,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                     span, place_description, origin);
 
                                 for prefix in self.prefixes(&original_path, PrefixSet::All) {
-                                    if let Some(field) = prefix.is_upvar_field_projection(
-                                            self.mir, &self.infcx.tcx) {
-                                        let upvar_decl = &self.mir.upvar_decls[field.index()];
-                                        let upvar_hir_id =
-                                            upvar_decl.var_hir_id.assert_crate_local();
+                                    if let Some(field) = self.is_upvar_field_projection(prefix) {
+                                        let upvar_hir_id = self.upvars[field.index()].var_hir_id;
                                         let upvar_span = self.infcx.tcx.hir().span_by_hir_id(
                                             upvar_hir_id);
                                         diag.span_label(upvar_span, "captured outer variable");
