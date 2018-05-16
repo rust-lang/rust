@@ -1,0 +1,14 @@
+error: unexpected close delimiter: `)`
+  --> $DIR/invalid-punct-ident-4.rs:16:1
+   |
+LL | lexer_failure!(); //~ ERROR proc macro panicked
+   | ^^^^^^^^^^^^^^^^^
+
+error: proc macro panicked
+  --> $DIR/invalid-punct-ident-4.rs:16:1
+   |
+LL | lexer_failure!(); //~ ERROR proc macro panicked
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

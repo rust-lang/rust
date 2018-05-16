@@ -8,16 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-prefer-dynamic
+// aux-build:lifetimes.rs
+// ignore-stage1
 
-#![crate_type = "proc-macro"]
+#![feature(proc_macro)]
 
-extern crate proc_macro;
+extern crate lifetimes;
+use lifetimes::*;
 
-use proc_macro::TokenStream;
+lifetimes_bang! {
+    fn bang<'a>() -> &'a u8 { &0 }
+}
 
-#[proc_macro_derive(Foo, attributes(foo))]
-pub fn derive(input: TokenStream) -> TokenStream {
-    assert!(!input.to_string().contains("#[cfg(any())]"));
-    "".parse().unwrap()
+#[lifetimes_attr]
+fn attr<'a>() -> &'a u8 { &1 }
+
+#[derive(Lifetimes)]
+pub struct Lifetimes<'a> {
+    pub field: &'a u8,
+}
+
+fn main() {
+    assert_eq!(bang::<'static>(), &0);
+    assert_eq!(attr::<'static>(), &1);
+    let l1 = Lifetimes { field: &0 };
+    let l2 = m::Lifetimes { field: &1 };
 }

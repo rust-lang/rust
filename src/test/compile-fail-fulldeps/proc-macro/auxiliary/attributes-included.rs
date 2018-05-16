@@ -53,7 +53,7 @@ pub fn bar(attr: TokenStream, input: TokenStream) -> TokenStream {
 
 fn assert_inline(slice: &mut &[TokenTree]) {
     match &slice[0] {
-        TokenTree::Op(tt) => assert_eq!(tt.op(), '#'),
+        TokenTree::Punct(tt) => assert_eq!(tt.as_char(), '#'),
         _ => panic!("expected '#' char"),
     }
     match &slice[1] {
@@ -65,8 +65,8 @@ fn assert_inline(slice: &mut &[TokenTree]) {
 
 fn assert_doc(slice: &mut &[TokenTree]) {
     match &slice[0] {
-        TokenTree::Op(tt) => {
-            assert_eq!(tt.op(), '#');
+        TokenTree::Punct(tt) => {
+            assert_eq!(tt.as_char(), '#');
             assert_eq!(tt.spacing(), Spacing::Alone);
         }
         _ => panic!("expected #"),
@@ -86,12 +86,12 @@ fn assert_doc(slice: &mut &[TokenTree]) {
     }
 
     match &tokens[0] {
-        TokenTree::Term(tt) => assert_eq!("doc", &*tt.to_string()),
+        TokenTree::Ident(tt) => assert_eq!("doc", &*tt.to_string()),
         _ => panic!("expected `doc`"),
     }
     match &tokens[1] {
-        TokenTree::Op(tt) => {
-            assert_eq!(tt.op(), '=');
+        TokenTree::Punct(tt) => {
+            assert_eq!(tt.as_char(), '=');
             assert_eq!(tt.spacing(), Spacing::Alone);
         }
         _ => panic!("expected equals"),
@@ -106,7 +106,7 @@ fn assert_doc(slice: &mut &[TokenTree]) {
 
 fn assert_invoc(slice: &mut &[TokenTree]) {
     match &slice[0] {
-        TokenTree::Op(tt) => assert_eq!(tt.op(), '#'),
+        TokenTree::Punct(tt) => assert_eq!(tt.as_char(), '#'),
         _ => panic!("expected '#' char"),
     }
     match &slice[1] {
@@ -118,11 +118,11 @@ fn assert_invoc(slice: &mut &[TokenTree]) {
 
 fn assert_foo(slice: &mut &[TokenTree]) {
     match &slice[0] {
-        TokenTree::Term(tt) => assert_eq!(&*tt.to_string(), "fn"),
+        TokenTree::Ident(tt) => assert_eq!(&*tt.to_string(), "fn"),
         _ => panic!("expected fn"),
     }
     match &slice[1] {
-        TokenTree::Term(tt) => assert_eq!(&*tt.to_string(), "foo"),
+        TokenTree::Ident(tt) => assert_eq!(&*tt.to_string(), "foo"),
         _ => panic!("expected foo"),
     }
     match &slice[2] {
@@ -148,8 +148,8 @@ fn fold_tree(input: TokenTree) -> TokenTree {
         TokenTree::Group(b) => {
             TokenTree::Group(Group::new(b.delimiter(), fold_stream(b.stream())))
         }
-        TokenTree::Op(b) => TokenTree::Op(b),
-        TokenTree::Term(a) => TokenTree::Term(a),
+        TokenTree::Punct(b) => TokenTree::Punct(b),
+        TokenTree::Ident(a) => TokenTree::Ident(a),
         TokenTree::Literal(a) => {
             if a.to_string() != "\"foo\"" {
                 TokenTree::Literal(a)

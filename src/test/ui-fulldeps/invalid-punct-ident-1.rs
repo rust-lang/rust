@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that a macro can emit delimiters with nothing inside - `()`, `{}`
+// aux-build:invalid-punct-ident.rs
 
-// aux-build:hello_macro.rs
-// ignore-stage1
+#[macro_use]
+extern crate invalid_punct_ident;
 
-#![feature(use_extern_macros, proc_macro_non_items)]
-
-extern crate hello_macro;
-
-fn main() {
-    hello_macro::hello!();
-}
+invalid_punct!(); //~ ERROR proc macro panicked

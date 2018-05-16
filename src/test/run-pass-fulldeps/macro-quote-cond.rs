@@ -11,7 +11,7 @@
 // aux-build:cond_plugin.rs
 // ignore-stage1
 
-#![feature(proc_macro, proc_macro_non_items)]
+#![feature(use_extern_macros, proc_macro_non_items)]
 
 extern crate cond_plugin;
 

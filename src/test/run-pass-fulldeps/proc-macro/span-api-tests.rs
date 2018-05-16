@@ -13,7 +13,7 @@
 
 // ignore-pretty
 
-#![feature(proc_macro)]
+#![feature(use_extern_macros)]
 
 #[macro_use]
 extern crate span_test_macros;
