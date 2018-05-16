@@ -4,7 +4,7 @@
 
 use crate::hir::def::{CtorKind, Namespace};
 use crate::hir::def_id::DefId;
-use crate::hir::{self, HirId, InlineAsm as HirInlineAsm};
+use crate::hir::{self, InlineAsm as HirInlineAsm};
 use crate::mir::interpret::{ConstValue, InterpError, Scalar};
 use crate::mir::visit::MirVisitable;
 use rustc_apfloat::ieee::{Double, Single};
@@ -138,15 +138,15 @@ pub struct Mir<'tcx> {
     /// If this MIR was built for a constant, this will be 0.
     pub arg_count: usize,
 
-    /// Names and capture modes of all the closure upvars, assuming
-    /// the first argument is either the closure or a reference to it.
-    pub upvar_decls: Vec<UpvarDecl>,
-
     /// Mark an argument local (which must be a tuple) as getting passed as
     /// its individual components at the LLVM level.
     ///
     /// This is used for the "rust-call" ABI.
     pub spread_arg: Option<Local>,
+
+    /// Names and capture modes of all the closure upvars, assuming
+    /// the first argument is either the closure or a reference to it.
+    pub upvar_decls: Vec<UpvarDecl>,
 
     /// Mark this MIR of a const context other than const functions as having converted a `&&` or
     /// `||` expression into `&` or `|` respectively. This is problematic because if we ever stop
@@ -986,13 +986,8 @@ impl<'tcx> LocalDecl<'tcx> {
 pub struct UpvarDecl {
     pub debug_name: Name,
 
-    /// `HirId` of the captured variable
-    pub var_hir_id: ClearCrossCrate<HirId>,
-
     /// If true, the capture is behind a reference.
     pub by_ref: bool,
-
-    pub mutability: Mutability,
 }
 
 ///////////////////////////////////////////////////////////////////////////

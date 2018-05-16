@@ -556,10 +556,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 );
                 // Not in a closure
                 debug_assert!(
-                    this.upvar_decls.len() > upvar_index.index(),
+                    this.upvar_mutbls.len() > upvar_index.index(),
                     "Unexpected capture place"
                 );
-                this.upvar_decls[upvar_index.index()].mutability
+                this.upvar_mutbls[upvar_index.index()]
             }
             _ => bug!("Unexpected capture place"),
         };
