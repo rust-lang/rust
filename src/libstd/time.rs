@@ -211,6 +211,13 @@ impl Instant {
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
+impl Default for Instant {
+    fn default() -> Self {
+        Self::now()
+    }
+}
+
+#[stable(feature = "time2", since = "1.8.0")]
 impl Add<Duration> for Instant {
     type Output = Instant;
 
