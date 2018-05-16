@@ -1,3 +1,4 @@
+set -ex
 cargo install --force
 
 echo "Running integration test for crate ${INTEGRATION}"

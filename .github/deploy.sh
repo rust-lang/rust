@@ -1,8 +1,7 @@
 #!/bin/bash
 # Automatically deploy on gh-pages
 
-set -e
-set -x
+set -ex
 
 SOURCE_BRANCH="master"
 TARGET_BRANCH="gh-pages"

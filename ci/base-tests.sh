@@ -1,3 +1,4 @@
+set -ex
 PATH=$PATH:./node_modules/.bin
 remark -f *.md > /dev/null
 set -e
