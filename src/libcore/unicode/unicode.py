@@ -486,7 +486,7 @@ pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
                 to_upper, to_lower, to_title) = load_unicode_data("UnicodeData.txt")
         load_special_casing("SpecialCasing.txt", to_upper, to_lower, to_title)
         want_derived = ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase",
-                        "Cased", "Case_Ignorable"]
+                        "Cased", "Case_Ignorable", "Grapheme_Extend"]
         derived = load_properties("DerivedCoreProperties.txt", want_derived)
         scripts = load_properties("Scripts.txt", [])
         props = load_properties("PropList.txt",
@@ -495,7 +495,7 @@ pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
                      ["Full_Composition_Exclusion"])
 
         # category tables
-        for (name, cat, pfuns) in ("general_category", gencats, ["N", "Cc", "Mn"]), \
+        for (name, cat, pfuns) in ("general_category", gencats, ["N", "Cc"]), \
                                   ("derived_property", derived, want_derived), \
                                   ("property", props, ["White_Space", "Pattern_White_Space"]):
             emit_property_module(rf, name, cat, pfuns)
@@ -503,3 +503,4 @@ pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
         # normalizations and conversions module
         emit_norm_module(rf, canon_decomp, compat_decomp, combines, norm_props)
         emit_conversions_module(rf, to_upper, to_lower, to_title)
+    print("Regenerated tables.rs.")

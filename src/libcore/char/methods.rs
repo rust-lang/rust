@@ -229,6 +229,9 @@ impl char {
             '\r' => EscapeDefaultState::Backslash('r'),
             '\n' => EscapeDefaultState::Backslash('n'),
             '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
+            _ if self.is_grapheme_extended() => {
+                EscapeDefaultState::Unicode(self.escape_unicode())
+            }
             _ if is_printable(self) => EscapeDefaultState::Char(self),
             _ => EscapeDefaultState::Unicode(self.escape_unicode()),
         };
@@ -692,16 +695,13 @@ impl char {
         general_category::Cc(self)
     }
 
-    /// Returns true if this `char` is a nonspacing mark code point, and false otherwise.
+    /// Returns true if this `char` is an extended grapheme character, and false otherwise.
     ///
-    /// 'Nonspacing mark code point' is defined in terms of the Unicode General
-    /// Category `Mn`.
-    #[unstable(feature = "rustc_private",
-               reason = "mainly needed for compiler internals",
-               issue = "27812")]
+    /// 'Extended grapheme character' is defined in terms of the Unicode Shaping and Rendering
+    /// Category `Grapheme_Extend`.
     #[inline]
-    pub fn is_nonspacing_mark(self) -> bool {
-        general_category::Mn(self)
+    pub(crate) fn is_grapheme_extended(self) -> bool {
+        derived_property::Grapheme_Extend(self)
     }
 
     /// Returns true if this `char` is numeric, and false otherwise.
