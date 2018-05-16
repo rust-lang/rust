@@ -330,27 +330,14 @@ where
     a.vec_add(b)
 }
 
-#[cfg(tests)]
+#[cfg(all(test, target_arch = "powerpc64"))]
 mod tests {
-    use coresimd::arch::powerpc::*;
+    #[cfg(target_arch = "powerpc64")]
+    use coresimd::arch::powerpc64::*;
     use simd::*;
     use stdsimd_test::simd_test;
 
-    #[simd_test = "altivec"]
-    unsafe fn endianness() {
-        let x = i32x4::new(0, 1, 2, 3);
-        for i in 0..4 {
-            assert_eq!(x.extract(i), i);
-        }
-
-        let x: i16x8 = x.into_bits();
-        let e: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
-        for i in 0..8 {
-            assert_eq!(x.extract(i), e.extract(i));
-        }
-    }
-
-    #[simd_test = "altivec"]
+    #[simd_test(enable = "altivec")]
     unsafe fn vec_add_i32x4_i32x4() {
         let x = i32x4::new(1, 2, 3, 4);
         let y = i32x4::new(4, 3, 2, 1);
