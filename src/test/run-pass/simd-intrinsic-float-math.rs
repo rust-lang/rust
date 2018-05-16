@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-emscripten
-// error-pattern: panicked
 
 // Test that the simd floating-point math intrinsics produce correct results.
 

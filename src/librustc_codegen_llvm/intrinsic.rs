@@ -1260,6 +1260,36 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         return simd_simple_float_intrinsic("fma", in_elem, in_ty, in_len, bx, span, args);
     }
 
+    // FIXME: use:
+    //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Function.h#L182
+    //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Intrinsics.h#L81
+    fn llvm_vector_str(elem_ty: ty::Ty, vec_len: usize, no_pointers: usize) -> String {
+        let p0s: String = "p0".repeat(no_pointers);
+        match elem_ty.sty {
+            ty::TyInt(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
+            ty::TyUint(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
+            ty::TyFloat(v) => format!("v{}{}f{}", vec_len, p0s, v.bit_width()),
+            _ => unreachable!(),
+        }
+    }
+
+    fn llvm_vector_ty(cx: &CodegenCx, elem_ty: ty::Ty, vec_len: usize,
+                      mut no_pointers: usize) -> Type {
+        // FIXME: use cx.layout_of(ty).llvm_type() ?
+        let mut elem_ty = match elem_ty.sty {
+            ty::TyInt(v) => Type::int_from_ty(cx, v),
+            ty::TyUint(v) => Type::uint_from_ty(cx, v),
+            ty::TyFloat(v) => Type::float_from_ty(cx, v),
+            _ => unreachable!(),
+        };
+        while no_pointers > 0 {
+            elem_ty = elem_ty.ptr_to();
+            no_pointers -= 1;
+        }
+        Type::vector(&elem_ty, vec_len as u64)
+    }
+
+
     if name == "simd_gather"  {
         // simd_gather(values: <N x T>, pointers: <N x *_ T>,
         //             mask: <N x i{M}>) -> <N x T>
@@ -1342,36 +1372,6 @@ fn generic_simd_intrinsic<'a, 'tcx>(
             let i1xn = Type::vector(&i1, in_len as u64);
             (bx.trunc(args[2].immediate(), i1xn), i1xn)
         };
-
-        // FIXME: use:
-        //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Function.h#L182
-        //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Intrinsics.h#L81
-        fn llvm_vector_str(elem_ty: ty::Ty, vec_len: usize, no_pointers: usize) -> String {
-            let p0s: String = "p0".repeat(no_pointers);
-            match elem_ty.sty {
-                ty::TyInt(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
-                ty::TyUint(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
-                ty::TyFloat(v) => format!("v{}{}f{}", vec_len, p0s, v.bit_width()),
-                _ => unreachable!(),
-            }
-        }
-
-        fn llvm_vector_ty(cx: &CodegenCx, elem_ty: ty::Ty, vec_len: usize,
-                          mut no_pointers: usize) -> Type {
-            // FIXME: use cx.layout_of(ty).llvm_type() ?
-            let mut elem_ty = match elem_ty.sty {
-                ty::TyInt(v) => Type::int_from_ty(cx, v),
-                ty::TyUint(v) => Type::uint_from_ty(cx, v),
-                ty::TyFloat(v) => Type::float_from_ty(cx, v),
-                _ => unreachable!(),
-            };
-            while no_pointers > 0 {
-                elem_ty = elem_ty.ptr_to();
-                no_pointers -= 1;
-            }
-            Type::vector(&elem_ty, vec_len as u64)
-        }
-
 
         // Type of the vector of pointers:
         let llvm_pointer_vec_ty = llvm_vector_ty(bx.cx, underlying_ty, in_len, pointer_count);
@@ -1471,36 +1471,6 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         };
 
         let ret_t = Type::void(bx.cx);
-
-        // FIXME: use:
-        //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Function.h#L182
-        //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Intrinsics.h#L81
-        fn llvm_vector_str(elem_ty: ty::Ty, vec_len: usize, no_pointers: usize) -> String {
-            let p0s: String = "p0".repeat(no_pointers);
-            match elem_ty.sty {
-                ty::TyInt(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
-                ty::TyUint(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
-                ty::TyFloat(v) => format!("v{}{}f{}", vec_len, p0s, v.bit_width()),
-                _ => unreachable!(),
-            }
-        }
-
-        fn llvm_vector_ty(cx: &CodegenCx, elem_ty: ty::Ty, vec_len: usize,
-                          mut no_pointers: usize) -> Type {
-            // FIXME: use cx.layout_of(ty).llvm_type() ?
-            let mut elem_ty = match elem_ty.sty {
-                ty::TyInt(v) => Type::int_from_ty(cx, v),
-                ty::TyUint(v) => Type::uint_from_ty(cx, v),
-                ty::TyFloat(v) => Type::float_from_ty(cx, v),
-                _ => unreachable!(),
-            };
-            while no_pointers > 0 {
-                elem_ty = elem_ty.ptr_to();
-                no_pointers -= 1;
-            }
-            Type::vector(&elem_ty, vec_len as u64)
-        }
-
 
         // Type of the vector of pointers:
         let llvm_pointer_vec_ty = llvm_vector_ty(bx.cx, underlying_ty, in_len, pointer_count);
