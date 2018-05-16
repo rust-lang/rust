@@ -9,7 +9,7 @@ cd checkout
 function check() {
   cargo clippy --all &> clippy_output
   cat clippy_output
-  ! cat clippy_output | grep -q "internal error"
+  ! cat clippy_output | grep -q "internal compiler error"
   if [[ $? != 0 ]]; then
     return 1
   fi
