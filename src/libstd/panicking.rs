@@ -321,7 +321,6 @@ pub fn panicking() -> bool {
 #[cfg(not(test))]
 #[cfg(stage0)]
 #[lang = "panic_fmt"]
-#[unwind(allowed)]
 pub extern fn rust_begin_panic(msg: fmt::Arguments,
                                file: &'static str,
                                line: u32,
