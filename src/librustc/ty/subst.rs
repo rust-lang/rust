@@ -17,6 +17,7 @@ use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
+use rustc_data_structures::array_vec::ArrayVec;
 
 use core::intrinsics;
 use std::fmt;
@@ -176,7 +177,12 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
         let defs = tcx.generics_of(def_id);
-        let mut substs = Vec::with_capacity(defs.count());
+        let count = defs.count();
+        let mut substs = if count <= 8 {
+            AccumulateVec::Array(ArrayVec::new())
+        } else {
+            AccumulateVec::Heap(Vec::with_capacity(count))
+        };
         Substs::fill_item(&mut substs, tcx, defs, &mut mk_kind);
         tcx.intern_substs(&substs)
     }
@@ -188,14 +194,15 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                         -> &'tcx Substs<'tcx>
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
-        let defs = tcx.generics_of(def_id);
-        let mut result = Vec::with_capacity(defs.count());
-        result.extend(self[..].iter().cloned());
-        Substs::fill_single(&mut result, defs, &mut mk_kind);
-        tcx.intern_substs(&result)
+        Substs::for_item(tcx, def_id, |param, substs| {
+            match self.get(param.index as usize) {
+                Some(&kind) => kind,
+                None => mk_kind(param, substs),
+            }
+        })
     }
 
-    fn fill_item<F>(substs: &mut Vec<Kind<'tcx>>,
+    fn fill_item<F>(substs: &mut AccumulateVec<[Kind<'tcx>; 8]>,
                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                     defs: &ty::Generics,
                     mk_kind: &mut F)
@@ -209,7 +216,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         Substs::fill_single(substs, defs, mk_kind)
     }
 
-    fn fill_single<F>(substs: &mut Vec<Kind<'tcx>>,
+    fn fill_single<F>(substs: &mut AccumulateVec<[Kind<'tcx>; 8]>,
                       defs: &ty::Generics,
                       mk_kind: &mut F)
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
@@ -217,7 +224,10 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         for param in &defs.params {
             let kind = mk_kind(param, substs);
             assert_eq!(param.index as usize, substs.len());
-            substs.push(kind);
+            match *substs {
+                AccumulateVec::Array(ref mut arr) => arr.push(kind),
+                AccumulateVec::Heap(ref mut vec) => vec.push(kind),
+            }
         }
     }
 
