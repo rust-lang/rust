@@ -779,7 +779,7 @@ pub struct Block {
     pub span: Span,
     /// If true, then there may exist `break 'a` values that aim to
     /// break out of this block early.
-    /// Used by `'label {}` blocks and by `catch` statements.
+    /// Used by `'label: {}` blocks and by `catch` statements.
     pub targeted_by_break: bool,
     /// If true, don't emit return value type errors as the parser had
     /// to recover from a parse error so this block will not have an

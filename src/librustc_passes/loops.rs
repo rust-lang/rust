@@ -21,7 +21,6 @@ use syntax_pos::Span;
 enum LoopKind {
     Loop(hir::LoopSource),
     WhileLoop,
-    Block,
 }
 
 impl LoopKind {
@@ -31,7 +30,6 @@ impl LoopKind {
             LoopKind::Loop(hir::LoopSource::WhileLet) => "while let",
             LoopKind::Loop(hir::LoopSource::ForLoop) => "for",
             LoopKind::WhileLoop => "while",
-            LoopKind::Block => "block",
         }
     }
 }
@@ -91,7 +89,11 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 self.with_context(LabeledBlock, |v| v.visit_block(&b));
             }
             hir::ExprBreak(label, ref opt_expr) => {
-                self.require_label_in_labeled_block(e.span, &label, "break");
+                if self.require_label_in_labeled_block(e.span, &label, "break") {
+                    // If we emitted an error about an unlabeled break in a labeled
+                    // block, we don't need any further checking for this break any more
+                    return;
+                }
 
                 let loop_id = match label.target_id.into() {
                     Ok(loop_id) => loop_id,
@@ -110,10 +112,6 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     }
                 }
 
-                if self.cx == LabeledBlock {
-                    return;
-                }
-
                 if opt_expr.is_some() {
                     let loop_kind = if loop_id == ast::DUMMY_NODE_ID {
                         None
@@ -121,15 +119,13 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                         Some(match self.hir_map.expect_expr(loop_id).node {
                             hir::ExprWhile(..) => LoopKind::WhileLoop,
                             hir::ExprLoop(_, _, source) => LoopKind::Loop(source),
-                            hir::ExprBlock(..) => LoopKind::Block,
                             ref r => span_bug!(e.span,
                                                "break label resolved to a non-loop: {:?}", r),
                         })
                     };
                     match loop_kind {
                         None |
-                        Some(LoopKind::Loop(hir::LoopSource::Loop)) |
-                        Some(LoopKind::Block) => (),
+                        Some(LoopKind::Loop(hir::LoopSource::Loop)) => (),
                         Some(kind) => {
                             struct_span_err!(self.sess, e.span, E0571,
                                              "`break` with value from a `{}` loop",
@@ -203,7 +199,9 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
         }
     }
 
-    fn require_label_in_labeled_block(&mut self, span: Span, label: &Destination, cf_type: &str) {
+    fn require_label_in_labeled_block(&mut self, span: Span, label: &Destination, cf_type: &str)
+        -> bool
+    {
         if self.cx == LabeledBlock {
             if label.label.is_none() {
                 struct_span_err!(self.sess, span, E0695,
@@ -212,8 +210,10 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
                                 format!("`{}` statements that would diverge to or through \
                                 a labeled block need to bear a label", cf_type))
                     .emit();
+                return true;
             }
         }
+        return false;
     }
     fn emit_unlabled_cf_in_while_condition(&mut self, span: Span, cf_type: &str) {
         struct_span_err!(self.sess, span, E0590,
