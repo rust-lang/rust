@@ -3536,7 +3536,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Warn for non-block expressions with diverging children.
         match expr.node {
-            hir::ExprBlock(_) |
+            hir::ExprBlock(..) |
             hir::ExprLoop(..) | hir::ExprWhile(..) |
             hir::ExprIf(..) | hir::ExprMatch(..) => {}
 
@@ -3912,7 +3912,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::ExprClosure(capture, ref decl, body_id, _, gen) => {
               self.check_expr_closure(expr, capture, &decl, body_id, gen, expected)
           }
-          hir::ExprBlock(ref body) => {
+          hir::ExprBlock(ref body, _) => {
             self.check_block_with_expected(&body, expected)
           }
           hir::ExprCall(ref callee, ref args) => {
@@ -4326,8 +4326,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // In some cases, blocks have just one exit, but other blocks
-        // can be targeted by multiple breaks. This cannot happen in
-        // normal Rust syntax today, but it can happen when we desugar
+        // can be targeted by multiple breaks. This can happen both
+        // with labeled blocks as well as when we desugar
         // a `do catch { ... }` expression.
         //
         // Example 1:

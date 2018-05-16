@@ -1187,7 +1187,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             succ
           }
 
-          hir::ExprBlock(ref blk) => {
+          // Note that labels have been resolved, so we don't need to look
+          // at the label ident
+          hir::ExprBlock(ref blk, _) => {
             self.propagate_through_block(&blk, succ)
           }
         }

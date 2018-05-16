@@ -1247,7 +1247,7 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
             hir::ExprCast(ref subexpr, _) => {
                 record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id)
             }
-            hir::ExprBlock(ref block) => {
+            hir::ExprBlock(ref block, _) => {
                 if let Some(ref subexpr) = block.expr {
                     record_rvalue_scope_if_borrow_expr(
                         visitor, &subexpr, blk_id);

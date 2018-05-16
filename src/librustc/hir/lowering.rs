@@ -3048,7 +3048,7 @@ impl<'a> LoweringContext<'a> {
                     );
                     block.expr = Some(this.wrap_in_try_constructor(
                         "from_ok", tail, unstable_span));
-                    hir::ExprBlock(P(block))
+                    hir::ExprBlock(P(block), None)
                 })
             }
             ExprKind::Match(ref expr, ref arms) => hir::ExprMatch(
@@ -3100,7 +3100,11 @@ impl<'a> LoweringContext<'a> {
                     })
                 })
             }
-            ExprKind::Block(ref blk) => hir::ExprBlock(self.lower_block(blk, false)),
+            ExprKind::Block(ref blk, opt_label) => {
+                hir::ExprBlock(self.lower_block(blk,
+                                                opt_label.is_some()),
+                                                self.lower_label(opt_label))
+            }
             ExprKind::Assign(ref el, ref er) => {
                 hir::ExprAssign(P(self.lower_expr(el)), P(self.lower_expr(er)))
             }
@@ -3843,7 +3847,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn expr_block(&mut self, b: P<hir::Block>, attrs: ThinVec<Attribute>) -> hir::Expr {
-        self.expr(b.span, hir::ExprBlock(b), attrs)
+        self.expr(b.span, hir::ExprBlock(b, None), attrs)
     }
 
     fn expr_tuple(&mut self, sp: Span, exprs: hir::HirVec<hir::Expr>) -> P<hir::Expr> {

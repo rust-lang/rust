@@ -778,9 +778,8 @@ pub struct Block {
     pub rules: BlockCheckMode,
     pub span: Span,
     /// If true, then there may exist `break 'a` values that aim to
-    /// break out of this block early. As of this writing, this is not
-    /// currently permitted in Rust itself, but it is generated as
-    /// part of `catch` statements.
+    /// break out of this block early.
+    /// Used by `'label: {}` blocks and by `catch` statements.
     pub targeted_by_break: bool,
     /// If true, don't emit return value type errors as the parser had
     /// to recover from a parse error so this block will not have an
@@ -1381,8 +1380,8 @@ pub enum Expr_ {
     /// This may also be a generator literal, indicated by the final boolean,
     /// in that case there is an GeneratorClause.
     ExprClosure(CaptureClause, P<FnDecl>, BodyId, Span, Option<GeneratorMovability>),
-    /// A block (`{ ... }`)
-    ExprBlock(P<Block>),
+    /// A block (`'label: { ... }`)
+    ExprBlock(P<Block>, Option<Label>),
 
     /// An assignment (`a = foo()`)
     ExprAssign(P<Expr>, P<Expr>),

@@ -36,7 +36,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         self.in_opt_scope(opt_destruction_scope.map(|de|(de, source_info)), block, move |this| {
             this.in_scope((region_scope, source_info), LintLevel::Inherited, block, move |this| {
                 if targeted_by_break {
-                    // This is a `break`-able block (currently only `catch { ... }`)
+                    // This is a `break`-able block
                     let exit_block = this.cfg.start_new_block();
                     let block_exit = this.in_breakable_scope(
                         None, exit_block, destination.clone(), |this| {
