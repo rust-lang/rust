@@ -1144,7 +1144,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                 let span = fcx.tcx.hir.span(fn_id);
                 if inputs.len() == 1 {
                     let arg_is_panic_info = match inputs[0].sty {
-                        ty::TyRef(region, ty::TypeAndMut { ty, mutbl }) => match ty.sty {
+                        ty::TyRef(region, ty, mutbl) => match ty.sty {
                             ty::TyAdt(ref adt, _) => {
                                 adt.did == panic_info_did &&
                                     mutbl == hir::Mutability::MutImmutable &&
