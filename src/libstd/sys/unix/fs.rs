@@ -815,6 +815,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 
     let mut written = 0u64;
     while written < len {
+        let bytes_to_copy = len - written;
         let copy_result = unsafe {
             // We actually don't have to adjust the offsets,
             // because copy_file_range adjusts the file offset automatically
@@ -822,7 +823,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
                                 ptr::null_mut(),
                                 writer.as_raw_fd(),
                                 ptr::null_mut(),
-                                len as usize,
+                                bytes_to_copy as usize,
                                 0)
                 )
         };
