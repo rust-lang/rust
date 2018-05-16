@@ -2600,7 +2600,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_goal(self, goal: Goal<'tcx>) -> &'tcx Goal {
-        &self.mk_goals(iter::once(goal))[0]
+        &self.intern_goals(&[goal])[0]
     }
 
     pub fn lint_node<S: Into<MultiSpan>>(self,

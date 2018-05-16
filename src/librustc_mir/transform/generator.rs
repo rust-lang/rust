@@ -861,8 +861,10 @@ impl MirPass for StateTransform {
         // Compute GeneratorState<yield_ty, return_ty>
         let state_did = tcx.lang_items().gen_state().unwrap();
         let state_adt_ref = tcx.adt_def(state_did);
-        let state_substs = tcx.mk_substs([yield_ty.into(),
-            mir.return_ty().into()].iter());
+        let state_substs = tcx.intern_substs(&[
+            yield_ty.into(),
+            mir.return_ty().into(),
+        ]);
         let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
         // We rename RETURN_PLACE which has type mir.return_ty to new_ret_local

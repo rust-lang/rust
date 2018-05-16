@@ -669,7 +669,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                 assert_eq!(self.mir_def_id, def_id);
                 let ty = tcx.type_of(def_id);
                 let ty = indices.fold_to_region_vids(tcx, &ty);
-                ty::Binder::dummy(tcx.mk_type_list(iter::once(ty)))
+                ty::Binder::dummy(tcx.intern_type_list(&[ty]))
             }
         }
     }

@@ -170,7 +170,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let substs = if let Some(ty) = ty {
-        tcx.mk_substs(iter::once(ty.into()))
+        tcx.intern_substs(&[ty.into()])
     } else {
         Substs::identity_for_item(tcx, def_id)
     };

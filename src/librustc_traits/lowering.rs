@@ -220,7 +220,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
     // `Implemented(Self: Trait<P1..Pn>) :- FromEnv(Self: Trait<P1..Pn>)`
     let implemented_from_env = ProgramClause {
         goal: impl_trait,
-        hypotheses: tcx.mk_goals(iter::once(from_env)),
+        hypotheses: tcx.intern_goals(&[from_env]),
     };
     let clauses = iter::once(Clause::ForAll(ty::Binder::dummy(implemented_from_env)));
 
@@ -256,7 +256,7 @@ fn implied_bound_from_trait<'a, 'tcx>(
     // `FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn>)`
     Clause::ForAll(where_clause.lower().map_bound(|goal| ProgramClause {
         goal: goal.into_from_env_goal(),
-        hypotheses: tcx.mk_goals(iter::once(Goal::from(impl_trait))),
+        hypotheses: tcx.intern_goals(&[Goal::from(impl_trait)]),
     }))
 }
 
@@ -290,7 +290,7 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
                 .map(|wc| Goal::from_poly_domain_goal(wc, tcx)),
         ),
     };
-    tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::dummy(clause))))
+    tcx.intern_clauses(&[Clause::ForAll(ty::Binder::dummy(clause))])
 }
 
 pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
@@ -344,7 +344,7 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
                 .map(|wc| Goal::from_poly_domain_goal(wc, tcx)),
         ),
     };
-    tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::dummy(clause))))
+    tcx.intern_clauses(&[Clause::ForAll(ty::Binder::dummy(clause))])
 }
 
 pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {

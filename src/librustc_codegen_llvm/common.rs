@@ -431,8 +431,10 @@ pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             sig.map_bound(|sig| {
                 let state_did = tcx.lang_items().gen_state().unwrap();
                 let state_adt_ref = tcx.adt_def(state_did);
-                let state_substs = tcx.mk_substs([sig.yield_ty.into(),
-                    sig.return_ty.into()].iter());
+                let state_substs = tcx.intern_substs(&[
+                    sig.yield_ty.into(),
+                    sig.return_ty.into(),
+                ]);
                 let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
                 tcx.mk_fn_sig(iter::once(env_ty),
