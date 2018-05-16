@@ -355,6 +355,18 @@ impl<'tcx> Visitor<'tcx> for DefsUsesVisitor {
             None => {}
         }
     }
+
+    fn visit_terminator(
+        &mut self,
+        block: BasicBlock,
+        terminator: &Terminator<'tcx>,
+        location: Location,
+    ) {
+        if let TerminatorKind::Return = terminator.kind {
+            self.defs_uses.add_use(RETURN_PLACE);
+        }
+        self.super_terminator(block, terminator, location);
+    }
 }
 
 fn block<'tcx>(mode: LivenessMode, b: &BasicBlockData<'tcx>, locals: usize) -> DefsUses {

@@ -193,6 +193,10 @@ impl<'tcx> Mir<'tcx> {
         Location { block, statement_index: num_statements }
     }
 
+    pub fn visitable(&self, location: Location) -> &dyn MirVisitable<'tcx> {
+        self.basic_blocks[location.block].visitable(location.statement_index)
+    }
+
     #[inline]
     pub fn predecessors(&self) -> ReadGuard<IndexVec<BasicBlock, Vec<BasicBlock>>> {
         self.cache.predecessors(self)
