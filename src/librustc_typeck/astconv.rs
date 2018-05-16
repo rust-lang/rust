@@ -18,7 +18,7 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use namespace::Namespace;
-use rustc::ty::subst::{UnpackedKind, Subst, Substs};
+use rustc::ty::subst::{Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::GenericParamDefKind;
@@ -1152,32 +1152,29 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let tcx = self.tcx();
         let generics = tcx.generics_of(def_id);
 
-        // Fill in the substs of the parent generics
         debug!("impl_trait_ty_to_ty: generics={:?}", generics);
-        let mut substs = Vec::with_capacity(generics.count());
-        if let Some(parent_id) = generics.parent {
-            let parent_generics = tcx.generics_of(parent_id);
-            Substs::fill_item(&mut substs, tcx, parent_generics, &mut |param, _| {
-                tcx.mk_param_from_def(param)
-            });
-
-            // Replace all lifetimes with 'static
-            for subst in &mut substs {
-                if let UnpackedKind::Lifetime(_) = subst.unpack() {
-                    *subst = tcx.types.re_static.into();
+        let substs = Substs::for_item(tcx, def_id, |param, _| {
+            if let Some(i) = (param.index as usize).checked_sub(generics.parent_count) {
+                // Our own parameters are the resolved lifetimes.
+                match param.kind {
+                    GenericParamDefKind::Lifetime => {
+                        self.ast_region_to_region(&lifetimes[i], None).into()
+                    }
+                    _ => bug!()
+                }
+            } else {
+                // Replace all parent lifetimes with 'static.
+                match param.kind {
+                    GenericParamDefKind::Lifetime => {
+                        tcx.types.re_static.into()
+                    }
+                    _ => tcx.mk_param_from_def(param)
                 }
             }
-            debug!("impl_trait_ty_to_ty: substs from parent = {:?}", substs);
-        }
-        assert_eq!(substs.len(), generics.parent_count);
-
-        // Fill in our own generics with the resolved lifetimes
-        assert_eq!(lifetimes.len(), generics.params.len());
-        substs.extend(lifetimes.iter().map(|lt| self.ast_region_to_region(lt, None).into()));
-
+        });
         debug!("impl_trait_ty_to_ty: final substs = {:?}", substs);
 
-        tcx.mk_anon(def_id, tcx.intern_substs(&substs))
+        tcx.mk_anon(def_id, substs)
     }
 
     pub fn ty_of_arg(&self,

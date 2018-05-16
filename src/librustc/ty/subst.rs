@@ -195,10 +195,10 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         tcx.intern_substs(&result)
     }
 
-    pub fn fill_item<F>(substs: &mut Vec<Kind<'tcx>>,
-                             tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                             defs: &ty::Generics,
-                             mk_kind: &mut F)
+    fn fill_item<F>(substs: &mut Vec<Kind<'tcx>>,
+                    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                    defs: &ty::Generics,
+                    mk_kind: &mut F)
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
 
@@ -210,8 +210,8 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     }
 
     fn fill_single<F>(substs: &mut Vec<Kind<'tcx>>,
-                           defs: &ty::Generics,
-                           mk_kind: &mut F)
+                      defs: &ty::Generics,
+                      mk_kind: &mut F)
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
         for param in &defs.params {
