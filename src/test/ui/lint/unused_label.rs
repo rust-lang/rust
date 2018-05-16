@@ -33,22 +33,29 @@ fn main() {
         break 'used_loop_label;
     }
 
-    'used_loop_label_outer: loop {
-        'used_loop_label_inner: loop {
-            break 'used_loop_label_inner;
+    'used_loop_label_outer_1: loop {
+        'used_loop_label_inner_1: loop {
+            break 'used_loop_label_inner_1;
         }
-        break 'used_loop_label_outer;
+        break 'used_loop_label_outer_1;
     }
 
-    'unused_loop_label_outer: loop {
-        'unused_loop_label_inner: loop {
+    'used_loop_label_outer_2: loop {
+        'unused_loop_label_inner_2: loop {
             //~^ WARN unused loop label
-            break 'unused_loop_label_outer;
+            break 'used_loop_label_outer_2;
         }
     }
 
-    // This is diverging, so put it at the end so we don't get unreachable_code errors everywhere
-    // else
+    'unused_loop_label_outer_3: loop {
+        'used_loop_label_inner_3: loop {
+            //~^ WARN unused loop label
+            break 'used_loop_label_inner_3;
+        }
+    }
+
+    // This is diverging, so put it at the end so we don't get
+    // unreachable_code errors everywhere else
     'unused_loop_label: loop {
         //~^ WARN unused loop label
     }
