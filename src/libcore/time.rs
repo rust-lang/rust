@@ -511,9 +511,9 @@ impl fmt::Debug for Duration {
             // The next digit is written at this position
             let mut pos = 0;
 
-            // We can stop when there are no non-zero digits left or (when a
-            // precision was set and we already emitted that many digits).
-            while fractional_part > 0 && f.precision().map(|p| p > pos).unwrap_or(true) {
+            // We keep writing digits into the buffer while there are non-zero
+            // digits left and we haven't written enough digits yet.
+            while fractional_part > 0 && pos < f.precision().unwrap_or(9) {
                 // Write new digit into the buffer
                 buf[pos] = b'0' + (fractional_part / divisor) as u8;
 
@@ -556,9 +556,13 @@ impl fmt::Debug for Duration {
                 }
             }
 
+            // Determine the end of the buffer: if precision is set, we just
+            // use as many digits from the buffer (capped to 9). If it isn't
+            // set, we only use all digits up to the last non-zero one.
+            let end = f.precision().map(|p| ::cmp::min(p, 9)).unwrap_or(pos);
+
             // If we haven't emitted a single fractional digit and the precision
             // wasn't set to a non-zero value, we don't print the decimal point.
-            let end = f.precision().unwrap_or(pos);
             if end == 0 {
                 write!(f, "{}", integer_part)
             } else {
@@ -568,7 +572,9 @@ impl fmt::Debug for Duration {
                     ::str::from_utf8_unchecked(&buf[..end])
                 };
 
-                write!(f, "{}.{}", integer_part, s)
+                // If the user request a precision > 9, we pad '0's at the end.
+                let w = f.precision().unwrap_or(pos);
+                write!(f, "{}.{:0<width$}", integer_part, s, width = w)
             }
         }
 
@@ -587,7 +593,8 @@ impl fmt::Debug for Duration {
             fmt_decimal(f, self.nanos as u64 / 1_000, self.nanos % 1_000, 100)?;
             f.write_str("µs")
         } else {
-            write!(f, "{}ns", self.nanos)
+            fmt_decimal(f, self.nanos as u64, 0, 1)?;
+            f.write_str("ns")
         }
     }
 }

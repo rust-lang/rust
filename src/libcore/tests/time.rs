@@ -219,11 +219,8 @@ fn debug_formatting_precision_zero() {
 
 #[test]
 fn debug_formatting_precision_two() {
-    // This might seem inconsistent with the other units, but printing
-    // fractional digits for nano seconds would imply more precision than is
-    // actually stored.
-    assert_eq!(format!("{:.2?}", Duration::new(0, 0)), "0ns");
-    assert_eq!(format!("{:.2?}", Duration::new(0, 123)), "123ns");
+    assert_eq!(format!("{:.2?}", Duration::new(0, 0)), "0.00ns");
+    assert_eq!(format!("{:.2?}", Duration::new(0, 123)), "123.00ns");
 
     assert_eq!(format!("{:.2?}", Duration::new(0, 1_000)), "1.00µs");
     assert_eq!(format!("{:.2?}", Duration::new(0, 7_001)), "7.00µs");
@@ -243,4 +240,13 @@ fn debug_formatting_precision_two() {
     assert_eq!(format!("{:.2?}", Duration::new(2, 104_990_000)), "2.10s");
     assert_eq!(format!("{:.2?}", Duration::new(2, 105_000_000)), "2.11s");
     assert_eq!(format!("{:.2?}", Duration::new(8, 999_999_999)), "9.00s");
+}
+
+#[test]
+fn debug_formatting_precision_high() {
+    assert_eq!(format!("{:.5?}",  Duration::new(0, 23_678)), "23.67800µs");
+
+    assert_eq!(format!("{:.9?}",  Duration::new(1, 000_000_000)), "1.000000000s");
+    assert_eq!(format!("{:.10?}", Duration::new(4, 001_000_000)), "4.0010000000s");
+    assert_eq!(format!("{:.20?}", Duration::new(4, 001_000_000)), "4.00100000000000000000s");
 }
