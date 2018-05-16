@@ -297,7 +297,12 @@ fn main() {
     }
 
     if verbose > 1 {
-        eprintln!("rustc command: {:?}", cmd);
+        eprintln!(
+            "rustc command: {:?}={:?} {:?}",
+            bootstrap::util::dylib_path_var(),
+            env::join_paths(&dylib_path).unwrap(),
+            cmd,
+        );
         eprintln!("sysroot: {:?}", sysroot);
         eprintln!("libdir: {:?}", libdir);
     }

@@ -311,6 +311,8 @@ impl<'a> ShouldRun<'a> {
 pub enum Kind {
     Build,
     Check,
+    /// Run tests and replace any failing tests' output files (stderr/stout) with the correct ones
+    Bless,
     Test,
     Bench,
     Dist,
@@ -334,6 +336,7 @@ impl<'a> Builder<'a> {
                 native::Llvm, tool::Rustfmt, tool::Miri, native::Lld),
             Kind::Check => describe!(check::Std, check::Test, check::Rustc, check::CodegenBackend,
                 check::Rustdoc),
+            Kind::Bless |
             Kind::Test => describe!(test::Tidy, test::Bootstrap, test::Ui, test::RunPass,
                 test::CompileFail, test::ParseFail, test::RunFail, test::RunPassValgrind,
                 test::MirOpt, test::Codegen, test::CodegenUnits, test::Incremental, test::Debuginfo,
@@ -367,6 +370,7 @@ impl<'a> Builder<'a> {
         let kind = match subcommand {
             "build" => Kind::Build,
             "doc" => Kind::Doc,
+            "bless" => Kind::Bless,
             "test" => Kind::Test,
             "bench" => Kind::Bench,
             "dist" => Kind::Dist,
@@ -408,6 +412,7 @@ impl<'a> Builder<'a> {
             Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
             Subcommand::Check { ref paths } => (Kind::Check, &paths[..]),
             Subcommand::Doc { ref paths } => (Kind::Doc, &paths[..]),
+            Subcommand::Test { ref paths, bless: true, .. } => (Kind::Bless, &paths[..]),
             Subcommand::Test { ref paths, .. } => (Kind::Test, &paths[..]),
             Subcommand::Bench { ref paths, .. } => (Kind::Bench, &paths[..]),
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),

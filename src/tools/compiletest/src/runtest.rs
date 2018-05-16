@@ -2926,29 +2926,31 @@ impl<'test> TestCx<'test> {
             return 0;
         }
 
-        if expected.is_empty() {
-            println!("normalized {}:\n{}\n", kind, actual);
-        } else {
-            println!("diff of {}:\n", kind);
-            let diff_results = make_diff(expected, actual, 3);
-            for result in diff_results {
-                let mut line_number = result.line_number;
-                for line in result.lines {
-                    match line {
-                        DiffLine::Expected(e) => {
-                            println!("-\t{}", e);
-                            line_number += 1;
-                        }
-                        DiffLine::Context(c) => {
-                            println!("{}\t{}", line_number, c);
-                            line_number += 1;
-                        }
-                        DiffLine::Resulting(r) => {
-                            println!("+\t{}", r);
+        if !self.config.bless {
+            if expected.is_empty() {
+                println!("normalized {}:\n{}\n", kind, actual);
+            } else {
+                println!("diff of {}:\n", kind);
+                let diff_results = make_diff(expected, actual, 3);
+                for result in diff_results {
+                    let mut line_number = result.line_number;
+                    for line in result.lines {
+                        match line {
+                            DiffLine::Expected(e) => {
+                                println!("-\t{}", e);
+                                line_number += 1;
+                            }
+                            DiffLine::Context(c) => {
+                                println!("{}\t{}", line_number, c);
+                                line_number += 1;
+                            }
+                            DiffLine::Resulting(r) => {
+                                println!("+\t{}", r);
+                            }
                         }
                     }
+                    println!("");
                 }
-                println!("");
             }
         }
 
@@ -2958,19 +2960,42 @@ impl<'test> TestCx<'test> {
             .with_extra_extension(mode)
             .with_extra_extension(kind);
 
-        match File::create(&output_file).and_then(|mut f| f.write_all(actual.as_bytes())) {
-            Ok(()) => {}
-            Err(e) => self.fatal(&format!(
-                "failed to write {} to `{}`: {}",
-                kind,
-                output_file.display(),
-                e
-            )),
+        let mut files = vec![output_file];
+        if self.config.bless {
+            files.push(self.expected_output_path(kind));
+        }
+
+        for output_file in &files {
+            if actual.is_empty() {
+                if let Err(e) = ::std::fs::remove_file(output_file) {
+                    self.fatal(&format!(
+                        "failed to delete `{}`: {}",
+                        output_file.display(),
+                        e,
+                    ));
+                }
+            } else {
+                match File::create(&output_file).and_then(|mut f| f.write_all(actual.as_bytes())) {
+                    Ok(()) => {}
+                    Err(e) => self.fatal(&format!(
+                        "failed to write {} to `{}`: {}",
+                        kind,
+                        output_file.display(),
+                        e
+                    )),
+                }
+            }
         }
 
         println!("\nThe actual {0} differed from the expected {0}.", kind);
-        println!("Actual {} saved to {}", kind, output_file.display());
-        1
+        for output_file in files {
+            println!("Actual {} saved to {}", kind, output_file.display());
+        }
+        if self.config.bless {
+            0
+        } else {
+            1
+        }
     }
 
     fn create_stamp(&self) {

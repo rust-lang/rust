@@ -118,6 +118,9 @@ impl CompareMode {
 
 #[derive(Clone)]
 pub struct Config {
+    /// Whether to overwrite stderr/stdout files instead of complaining about changes in output
+    pub bless: bool,
+
     /// The library paths required for running the compiler
     pub compile_lib_path: PathBuf,
 

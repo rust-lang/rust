@@ -59,6 +59,8 @@ pub enum Subcommand {
     },
     Test {
         paths: Vec<PathBuf>,
+        /// Whether to automatically update stderr/stdout files
+        bless: bool,
         test_args: Vec<String>,
         rustc_args: Vec<String>,
         fail_fast: bool,
@@ -142,6 +144,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         let subcommand = args.iter().find(|&s|
             (s == "build")
             || (s == "check")
+            || (s == "bless")
             || (s == "test")
             || (s == "bench")
             || (s == "doc")
@@ -162,6 +165,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
 
         // Some subcommands get extra options
         match subcommand.as_str() {
+            "bless" |
             "test"  => {
                 opts.optflag("", "no-fail-fast", "Run all tests regardless of failure");
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
@@ -249,6 +253,12 @@ Arguments:
     ignore the stage passed, as there's no way to compile in non-stage 0 without actually building
     the compiler.");
             }
+            "bless" => {
+                subcommand_help.push_str("\n
+Arguments:
+    This subcommand works exactly like the `test` subcommand, but also updates stderr/stdout files
+    before they cause a test failure");
+            }
             "test" => {
                 subcommand_help.push_str("\n
 Arguments:
@@ -319,9 +329,11 @@ Arguments:
             "check" => {
                 Subcommand::Check { paths: paths }
             }
+            "bless" |
             "test" => {
                 Subcommand::Test {
                     paths,
+                    bless: subcommand.as_str() == "bless",
                     test_args: matches.opt_strs("test-args"),
                     rustc_args: matches.opt_strs("rustc-args"),
                     fail_fast: !matches.opt_present("no-fail-fast"),
