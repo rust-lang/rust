@@ -144,7 +144,6 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         let subcommand = args.iter().find(|&s|
             (s == "build")
             || (s == "check")
-            || (s == "bless")
             || (s == "test")
             || (s == "bench")
             || (s == "doc")
@@ -165,7 +164,6 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
 
         // Some subcommands get extra options
         match subcommand.as_str() {
-            "bless" |
             "test"  => {
                 opts.optflag("", "no-fail-fast", "Run all tests regardless of failure");
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
@@ -177,6 +175,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
                 );
                 opts.optflag("", "no-doc", "do not run doc tests");
                 opts.optflag("", "doc", "only run doc tests");
+                opts.optflag("", "bless", "update all stderr/stdout files of failing ui tests");
             },
             "bench" => { opts.optmulti("", "test-args", "extra arguments", "ARGS"); },
             "clean" => { opts.optflag("", "all", "clean all build artifacts"); },
@@ -253,12 +252,6 @@ Arguments:
     ignore the stage passed, as there's no way to compile in non-stage 0 without actually building
     the compiler.");
             }
-            "bless" => {
-                subcommand_help.push_str("\n
-Arguments:
-    This subcommand works exactly like the `test` subcommand, but also updates stderr/stdout files
-    before they cause a test failure");
-            }
             "test" => {
                 subcommand_help.push_str("\n
 Arguments:
@@ -268,6 +261,7 @@ Arguments:
         ./x.py test src/test/run-pass
         ./x.py test src/libstd --test-args hash_map
         ./x.py test src/libstd --stage 0
+        ./x.py test src/test/ui --bless
 
     If no arguments are passed then the complete artifacts for that stage are
     compiled and tested.
@@ -329,11 +323,10 @@ Arguments:
             "check" => {
                 Subcommand::Check { paths: paths }
             }
-            "bless" |
             "test" => {
                 Subcommand::Test {
                     paths,
-                    bless: subcommand.as_str() == "bless",
+                    bless: matches.opt_present("bless"),
                     test_args: matches.opt_strs("test-args"),
                     rustc_args: matches.opt_strs("rustc-args"),
                     fail_fast: !matches.opt_present("no-fail-fast"),
@@ -434,6 +427,13 @@ impl Subcommand {
         match *self {
             Subcommand::Test { doc_tests, .. } => doc_tests,
             _ => DocTests::Yes,
+        }
+    }
+
+    pub fn bless(&self) -> bool {
+        match *self {
+            Subcommand::Test { bless, .. } => bless,
+            _ => false,
         }
     }
 }

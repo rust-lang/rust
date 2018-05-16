@@ -41,8 +41,6 @@ const ADB_TEST_DIR: &str = "/data/tmp/work";
 /// The two modes of the test runner; tests or benchmarks.
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, PartialOrd, Ord)]
 pub enum TestKind {
-    /// Run `cargo bless`
-    Bless,
     /// Run `cargo test`
     Test,
     /// Run `cargo bench`
@@ -53,7 +51,6 @@ impl From<Kind> for TestKind {
     fn from(kind: Kind) -> Self {
         match kind {
             Kind::Test => TestKind::Test,
-            Kind::Bless => TestKind::Bless,
             Kind::Bench => TestKind::Bench,
             _ => panic!("unexpected kind in crate: {:?}", kind)
         }
@@ -64,8 +61,6 @@ impl TestKind {
     // Return the cargo subcommand for this test kind
     fn subcommand(self) -> &'static str {
         match self {
-            // bless and test are both `test` for folder names and cargo subcommands
-            TestKind::Bless |
             TestKind::Test => "test",
             TestKind::Bench => "bench",
         }
@@ -75,7 +70,6 @@ impl TestKind {
 impl fmt::Display for TestKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match *self {
-            TestKind::Bless => "Testing (bless)",
             TestKind::Test => "Testing",
             TestKind::Bench => "Benchmarking",
         })
@@ -967,7 +961,7 @@ impl Step for Compiletest {
         cmd.arg("--host").arg(&*compiler.host);
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.build));
 
-        if builder.kind == Kind::Bless {
+        if builder.config.cmd.bless() {
             cmd.arg("--bless");
         }
 
