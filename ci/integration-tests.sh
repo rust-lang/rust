@@ -3,7 +3,8 @@ cargo install --force
 
 echo "Running integration test for crate ${INTEGRATION}"
 
-git clone https://github.com/${INTEGRATION}.git
+git clone --depth=1 https://github.com/${INTEGRATION}.git checkout
+cd checkout
 
 function check() {
   cargo clippy --all &> clippy_output
@@ -19,7 +20,6 @@ case ${INTEGRATION} in
     check
     ;;
   *)
-    cd ${INTEGRATION}
     check
     ;;
 esac
