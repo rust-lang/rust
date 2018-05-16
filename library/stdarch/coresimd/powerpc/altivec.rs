@@ -15,6 +15,9 @@
 
 use coresimd::simd::*;
 use coresimd::simd_llvm::*;
+
+use mem;
+
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
@@ -355,9 +358,45 @@ impl_from_bits_!(
     vector_bool_int
 );
 
+#[allow(improper_ctypes)]
+extern "C" {
+#[ link_name = "llvm.ppc.altivec.vperm" ]
+fn vperm(a: vector_signed_int, b: vector_signed_int, c: vector_unsigned_char) -> vector_signed_int;
+}
+
 mod sealed {
 
     use super::*;
+
+    pub trait VectorPerm {
+        unsafe fn vec_vperm(self, b: Self, c: vector_unsigned_char) -> Self;
+    }
+
+    macro_rules! vector_perm {
+        {$impl: ident} => {
+            impl VectorPerm for $impl {
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            unsafe fn vec_vperm(self, b: Self, c: vector_unsigned_char) -> Self {
+                    mem::transmute(vperm(mem::transmute(self), mem::transmute(b), c))
+                }
+            }
+        }
+    }
+
+    vector_perm!{ vector_signed_char }
+    vector_perm!{ vector_unsigned_char }
+    vector_perm!{ vector_bool_char }
+
+    vector_perm!{ vector_signed_short }
+    vector_perm!{ vector_unsigned_short }
+    vector_perm!{ vector_bool_short }
+
+    vector_perm!{ vector_signed_int }
+    vector_perm!{ vector_unsigned_int }
+    vector_perm!{ vector_bool_int }
+
+    vector_perm!{ vector_float }
 
     pub trait VectorAdd<Other> {
         type Result;
@@ -655,6 +694,28 @@ where
     a.vec_add(b)
 }
 
+/// Vector permute.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_perm<T>(a: T, b: T, c: vector_unsigned_char) -> T
+where
+    T: sealed::VectorPerm,
+{
+
+    if cfg!(target_endian = "little") {
+        // vperm has big-endian bias
+        //
+        // Xor the mask and flip the arguments
+        let d = u8x16::new(255, 255, 255, 255, 255, 255, 255, 255,
+                           255, 255, 255, 255, 255, 255, 255, 255).into_bits();
+        let c = simd_xor(c, d);
+
+        b.vec_vperm(a, c)
+    } else {
+        a.vec_vperm(b, c)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[cfg(target_arch = "powerpc")]
@@ -665,6 +726,18 @@ mod tests {
 
     use simd::*;
     use stdsimd_test::simd_test;
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn vec_perm_u16x8() {
+        let a: vector_signed_short = u16x8::new(0, 1, 2, 3, 4, 5, 6, 7).into_bits();
+        let b = u16x8::new(10, 11, 12, 13, 14, 15, 16, 17).into_bits();
+
+        let c = u8x16::new(0x00, 0x01, 0x10, 0x11, 0x02, 0x03, 0x12, 0x13,
+                           0x04, 0x05, 0x14, 0x15, 0x06, 0x07, 0x16, 0x17).into_bits();
+        let d = u16x8::new(0, 10, 1, 11, 2, 12, 3, 13);
+
+        assert_eq!(d, vec_perm(a, b, c).into_bits());
+    }
 
     #[simd_test(enable = "altivec")]
     unsafe fn vec_add_i32x4_i32x4() {
