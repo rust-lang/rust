@@ -33,24 +33,38 @@ fn main() {
         break 'used_loop_label;
     }
 
-    'used_loop_label_outer_1: loop {
-        'used_loop_label_inner_1: loop {
+    'used_loop_label_outer_1: for _ in 0..10 {
+        'used_loop_label_inner_1: for _ in 0..10 {
             break 'used_loop_label_inner_1;
         }
         break 'used_loop_label_outer_1;
     }
 
-    'used_loop_label_outer_2: loop {
-        'unused_loop_label_inner_2: loop {
+    'used_loop_label_outer_2: for _ in 0..10 {
+        'unused_loop_label_inner_2: for _ in 0..10 {
             //~^ WARN unused label
             break 'used_loop_label_outer_2;
         }
     }
 
-    'unused_loop_label_outer_3: loop {
+    'unused_loop_label_outer_3: for _ in 0..10 {
         //~^ WARN unused label
-        'used_loop_label_inner_3: loop {
+        'used_loop_label_inner_3: for _ in 0..10 {
             break 'used_loop_label_inner_3;
+        }
+    }
+
+    // Test breaking many times with the same inner label doesn't break the
+    // warning on the outer label
+    'many_used_shadowed: for _ in 0..10 {
+        //~^ WARN unused label
+        'many_used_shadowed: for _ in 0..10 {
+            //~^ WARN label name `'many_used_shadowed` shadows a label name that is already in scope
+            if 1 % 2 == 0 {
+                break 'many_used_shadowed;
+            } else {
+                break 'many_used_shadowed;
+            }
         }
     }
 

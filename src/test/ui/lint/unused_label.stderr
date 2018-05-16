@@ -21,18 +21,33 @@ LL |     'unused_for_label: for _ in 0..10 {
 warning: unused label
   --> $DIR/unused_label.rs:44:9
    |
-LL |         'unused_loop_label_inner_2: loop {
+LL |         'unused_loop_label_inner_2: for _ in 0..10 {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused label
   --> $DIR/unused_label.rs:50:5
    |
-LL |     'unused_loop_label_outer_3: loop {
+LL |     'unused_loop_label_outer_3: for _ in 0..10 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused label
   --> $DIR/unused_label.rs:59:5
    |
+LL |     'many_used_shadowed: for _ in 0..10 {
+   |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused label
+  --> $DIR/unused_label.rs:73:5
+   |
 LL |     'unused_loop_label: loop {
    |     ^^^^^^^^^^^^^^^^^^
+
+warning: label name `'many_used_shadowed` shadows a label name that is already in scope
+  --> $DIR/unused_label.rs:61:9
+   |
+LL |     'many_used_shadowed: for _ in 0..10 {
+   |     ------------------- first declared here
+LL |         //~^ WARN unused label
+LL |         'many_used_shadowed: for _ in 0..10 {
+   |         ^^^^^^^^^^^^^^^^^^^ lifetime 'many_used_shadowed already in scope
 
