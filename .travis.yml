@@ -31,6 +31,7 @@ install:
 
 matrix:
   include:
+    - env: BASE_TESTS=true # runs the base tests
     - env: INTEGRATION=rust-lang/cargo
     - env: INTEGRATION=rust-lang-nursery/rand
   allow_failures:
