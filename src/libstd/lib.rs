@@ -291,6 +291,7 @@
 #![feature(ptr_internals)]
 #![feature(rand)]
 #![feature(raw)]
+#![feature(raw_entry)]
 #![feature(rustc_attrs)]
 #![feature(std_internals)]
 #![feature(stdsimd)]
