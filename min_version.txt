@@ -1,7 +1,7 @@
-rustc 1.27.0-nightly (9fae15374 2018-05-13)
+rustc 1.27.0-nightly (2f2a11dfc 2018-05-16)
 binary: rustc
-commit-hash: 9fae1537462bb10fd17d07816efc17cfe4786806
-commit-date: 2018-05-13
+commit-hash: 2f2a11dfc436fc0f401b595f22ed043c46dbebe7
+commit-date: 2018-05-16
 host: x86_64-unknown-linux-gnu
 release: 1.27.0-nightly
 LLVM version: 6.0
