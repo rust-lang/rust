@@ -284,6 +284,7 @@
 #![feature(prelude_import)]
 #![feature(ptr_internals)]
 #![feature(raw)]
+#![feature(raw_entry)]
 #![feature(rustc_attrs)]
 #![feature(rustc_const_unstable)]
 #![feature(std_internals)]
