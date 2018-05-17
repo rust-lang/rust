@@ -19,11 +19,11 @@ use ast::{Constness, Crate};
 use ast::Defaultness;
 use ast::EnumDef;
 use ast::{Expr, ExprKind, RangeLimits};
-use ast::{Field, FnDecl};
+use ast::{Field, FnDecl, FnHeader};
 use ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
 use ast::{GenericParam, GenericParamKind};
 use ast::GenericArg;
-use ast::{Ident, ImplItem, IsAuto, Item, ItemKind};
+use ast::{Ident, ImplItem, IsAsync, IsAuto, Item, ItemKind};
 use ast::{Label, Lifetime, Lit, LitKind};
 use ast::Local;
 use ast::MacStmtStyle;
@@ -1356,10 +1356,13 @@ impl<'a> Parser<'a> {
             generics.where_clause = self.parse_where_clause()?;
 
             let sig = ast::MethodSig {
-                unsafety,
-                constness,
+                header: FnHeader {
+                    unsafety,
+                    constness,
+                    abi,
+                    asyncness: IsAsync::NotAsync,
+                },
                 decl: d,
-                abi,
             };
 
             let body = match self.token {
@@ -5349,6 +5352,7 @@ impl<'a> Parser<'a> {
     /// Parse an item-position function declaration.
     fn parse_item_fn(&mut self,
                      unsafety: Unsafety,
+                     asyncness: IsAsync,
                      constness: Spanned<Constness>,
                      abi: Abi)
                      -> PResult<'a, ItemInfo> {
@@ -5356,7 +5360,8 @@ impl<'a> Parser<'a> {
         let decl = self.parse_fn_decl(false)?;
         generics.where_clause = self.parse_where_clause()?;
         let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-        Ok((ident, ItemKind::Fn(decl, unsafety, constness, abi, generics, body), Some(inner_attrs)))
+        let header = FnHeader { unsafety, asyncness, constness, abi };
+        Ok((ident, ItemKind::Fn(decl, header, generics, body), Some(inner_attrs)))
     }
 
     /// true if we are looking at `const ID`, false for things like `const fn` etc
@@ -5531,12 +5536,11 @@ impl<'a> Parser<'a> {
             generics.where_clause = self.parse_where_clause()?;
             *at_end = true;
             let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-            Ok((ident, inner_attrs, generics, ast::ImplItemKind::Method(ast::MethodSig {
-                abi,
-                unsafety,
-                constness,
-                decl,
-             }, body)))
+            let header = ast::FnHeader { abi, unsafety, constness, asyncness: IsAsync::NotAsync };
+            Ok((ident, inner_attrs, generics, ast::ImplItemKind::Method(
+                ast::MethodSig { header, decl },
+                body
+            )))
         }
     }
 
@@ -6622,6 +6626,7 @@ impl<'a> Parser<'a> {
                 let abi = opt_abi.unwrap_or(Abi::C);
                 let (ident, item_, extra_attrs) =
                     self.parse_item_fn(Unsafety::Normal,
+                                       IsAsync::NotAsync,
                                        respan(fn_span, Constness::NotConst),
                                        abi)?;
                 let prev_span = self.prev_span;
@@ -6665,6 +6670,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 let (ident, item_, extra_attrs) =
                     self.parse_item_fn(unsafety,
+                                       IsAsync::NotAsync,
                                        respan(const_span, Constness::Const),
                                        Abi::Rust)?;
                 let prev_span = self.prev_span;
@@ -6684,6 +6690,24 @@ impl<'a> Parser<'a> {
                                  .emit();
             }
             let (ident, item_, extra_attrs) = self.parse_item_const(None)?;
+            let prev_span = self.prev_span;
+            let item = self.mk_item(lo.to(prev_span),
+                                    ident,
+                                    item_,
+                                    visibility,
+                                    maybe_append(attrs, extra_attrs));
+            return Ok(Some(item));
+        }
+        if self.eat_keyword(keywords::Async) {
+            // ASYNC FUNCTION ITEM
+            let unsafety = self.parse_unsafety();
+            self.expect_keyword(keywords::Fn)?;
+            let fn_span = self.prev_span;
+            let (ident, item_, extra_attrs) =
+                self.parse_item_fn(unsafety,
+                                   IsAsync::Async,
+                                   respan(fn_span, Constness::NotConst),
+                                   Abi::Rust)?;
             let prev_span = self.prev_span;
             let item = self.mk_item(lo.to(prev_span),
                                     ident,
@@ -6737,6 +6761,7 @@ impl<'a> Parser<'a> {
             let fn_span = self.prev_span;
             let (ident, item_, extra_attrs) =
                 self.parse_item_fn(Unsafety::Normal,
+                                   IsAsync::NotAsync,
                                    respan(fn_span, Constness::NotConst),
                                    Abi::Rust)?;
             let prev_span = self.prev_span;
@@ -6762,6 +6787,7 @@ impl<'a> Parser<'a> {
             let fn_span = self.prev_span;
             let (ident, item_, extra_attrs) =
                 self.parse_item_fn(Unsafety::Unsafe,
+                                   IsAsync::NotAsync,
                                    respan(fn_span, Constness::NotConst),
                                    abi)?;
             let prev_span = self.prev_span;

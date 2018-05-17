@@ -13,7 +13,6 @@
 
 use std::mem;
 
-use rustc_target::spec::abi;
 use syntax::ast;
 use syntax::attr;
 use syntax_pos::Span;
@@ -172,9 +171,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
 
     pub fn visit_fn(&mut self, item: &hir::Item,
                     name: ast::Name, fd: &hir::FnDecl,
-                    unsafety: &hir::Unsafety,
-                    constness: hir::Constness,
-                    abi: &abi::Abi,
+                    header: hir::FnHeader,
                     gen: &hir::Generics,
                     body: hir::BodyId) -> Function {
         debug!("Visiting fn");
@@ -188,9 +185,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             name,
             whence: item.span,
             generics: gen.clone(),
-            unsafety: *unsafety,
-            constness,
-            abi: *abi,
+            header,
             body,
         }
     }
@@ -463,9 +458,8 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 om.structs.push(self.visit_variant_data(item, name, sd, gen)),
             hir::ItemUnion(ref sd, ref gen) =>
                 om.unions.push(self.visit_union_data(item, name, sd, gen)),
-            hir::ItemFn(ref fd, ref unsafety, constness, ref abi, ref gen, body) =>
-                om.fns.push(self.visit_fn(item, name, &**fd, unsafety,
-                                          constness, abi, gen, body)),
+            hir::ItemFn(ref fd, header, ref gen, body) =>
+                om.fns.push(self.visit_fn(item, name, &**fd, header, gen, body)),
             hir::ItemTy(ref ty, ref gen) => {
                 let t = Typedef {
                     ty: ty.clone(),

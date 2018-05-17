@@ -476,7 +476,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {
-            hir::ItemFn(ref decl, _, _, _, ref generics, _) => {
+            hir::ItemFn(ref decl, _, ref generics, _) => {
                 self.visit_early_late(None, decl, generics, |this| {
                     intravisit::walk_item(this, item);
                 });

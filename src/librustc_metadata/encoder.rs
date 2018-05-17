@@ -917,7 +917,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             ty::AssociatedKind::Method => {
                 let fn_data = if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
                     FnData {
-                        constness: sig.constness,
+                        constness: sig.header.constness,
                         arg_names: self.encode_fn_arg_names_for_body(body),
                         sig: self.lazy(&tcx.fn_sig(def_id)),
                     }
@@ -941,7 +941,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     let needs_inline = (generics.requires_monomorphization(self.tcx) ||
                                         tcx.codegen_fn_attrs(def_id).requests_inline()) &&
                                         !self.metadata_output_only();
-                    let is_const_fn = sig.constness == hir::Constness::Const;
+                    let is_const_fn = sig.header.constness == hir::Constness::Const;
                     let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
                     needs_inline || is_const_fn || always_encode_mir
                 },
@@ -1045,9 +1045,9 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     self.encode_rendered_const_for_body(body_id)
                 )
             }
-            hir::ItemFn(_, _, constness, .., body) => {
+            hir::ItemFn(_, header, .., body) => {
                 let data = FnData {
-                    constness,
+                    constness: header.constness,
                     arg_names: self.encode_fn_arg_names_for_body(body),
                     sig: self.lazy(&tcx.fn_sig(def_id)),
                 };
@@ -1235,7 +1235,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     self.encode_optimized_mir(def_id)
                 }
                 hir::ItemConst(..) => self.encode_optimized_mir(def_id),
-                hir::ItemFn(_, _, constness, ..) => {
+                hir::ItemFn(_, header, ..) => {
                     let generics = tcx.generics_of(def_id);
                     let has_types = generics.params.iter().any(|param| match param.kind {
                         ty::GenericParamDefKind::Type { .. } => true,
@@ -1245,7 +1245,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                         (has_types || tcx.codegen_fn_attrs(def_id).requests_inline()) &&
                             !self.metadata_output_only();
                     let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
-                    if needs_inline || constness == hir::Constness::Const || always_encode_mir {
+                    if needs_inline || header.constness == hir::Constness::Const || always_encode_mir {
                         self.encode_optimized_mir(def_id)
                     } else {
                         None

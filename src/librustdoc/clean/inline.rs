@@ -198,9 +198,12 @@ fn build_external_function(cx: &DocContext, did: DefId) -> clean::Function {
     clean::Function {
         decl: (did, sig).clean(cx),
         generics: (cx.tcx.generics_of(did), &predicates).clean(cx),
-        unsafety: sig.unsafety(),
-        constness,
-        abi: sig.abi(),
+        header: hir::FnHeader {
+            unsafety: sig.unsafety(),
+            abi: sig.abi(),
+            constness,
+            ..hir::FnHeader::default()
+        }
     }
 }
 

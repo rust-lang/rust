@@ -712,8 +712,8 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
     fn fold_item_kind(&mut self, i: ast::ItemKind) -> ast::ItemKind {
         let is_const = match i {
             ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => true,
-            ast::ItemKind::Fn(ref decl, _, ref constness, _, _, _) =>
-                constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
+            ast::ItemKind::Fn(ref decl, ref header, _, _) =>
+                header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
             _ => false,
         };
         self.run(is_const, |s| fold::noop_fold_item_kind(i, s))
@@ -722,8 +722,8 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
     fn fold_trait_item(&mut self, i: ast::TraitItem) -> SmallVector<ast::TraitItem> {
         let is_const = match i.node {
             ast::TraitItemKind::Const(..) => true,
-            ast::TraitItemKind::Method(ast::MethodSig { ref decl, ref constness, .. }, _) =>
-                constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
+            ast::TraitItemKind::Method(ast::MethodSig { ref decl, ref header, .. }, _) =>
+                header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
             _ => false,
         };
         self.run(is_const, |s| fold::noop_fold_trait_item(i, s))
@@ -732,8 +732,8 @@ impl<'a> fold::Folder for ReplaceBodyWithLoop<'a> {
     fn fold_impl_item(&mut self, i: ast::ImplItem) -> SmallVector<ast::ImplItem> {
         let is_const = match i.node {
             ast::ImplItemKind::Const(..) => true,
-            ast::ImplItemKind::Method(ast::MethodSig { ref decl, ref constness, .. }, _) =>
-                constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
+            ast::ImplItemKind::Method(ast::MethodSig { ref decl, ref header, .. }, _) =>
+                header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
             _ => false,
         };
         self.run(is_const, |s| fold::noop_fold_impl_item(i, s))

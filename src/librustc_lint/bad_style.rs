@@ -284,9 +284,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
                     _ => (),
                 }
             }
-            FnKind::ItemFn(name, _, _, _, abi, _, attrs) => {
+            FnKind::ItemFn(name, _, header, _, attrs) => {
                 // Skip foreign-ABI #[no_mangle] functions (Issue #31924)
-                if abi != Abi::Rust && attr::find_by_name(attrs, "no_mangle").is_some() {
+                if header.abi != Abi::Rust && attr::find_by_name(attrs, "no_mangle").is_some() {
                     return;
                 }
                 self.check_snake_case(cx, "function", &name.as_str(), Some(span))

@@ -259,12 +259,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
                 span: Span,
                 _: ast::NodeId) {
         match fk {
-            FnKind::ItemFn(_, _, hir::Unsafety::Unsafe, ..) => {
+            FnKind::ItemFn(_, _, hir::FnHeader { unsafety: hir::Unsafety::Unsafe, .. }, ..) => {
                 self.report_unsafe(cx, span, "declaration of an `unsafe` function")
             }
 
             FnKind::Method(_, sig, ..) => {
-                if sig.unsafety == hir::Unsafety::Unsafe {
+                if sig.header.unsafety == hir::Unsafety::Unsafe {
                     self.report_unsafe(cx, span, "implementation of an `unsafe` method")
                 }
             }
@@ -275,7 +275,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
         if let hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(_)) = item.node {
-            if sig.unsafety == hir::Unsafety::Unsafe {
+            if sig.header.unsafety == hir::Unsafety::Unsafe {
                 self.report_unsafe(cx, item.span, "declaration of an `unsafe` method")
             }
         }

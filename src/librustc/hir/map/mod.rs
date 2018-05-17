@@ -210,7 +210,7 @@ impl<'hir> MapEntry<'hir> {
                 match item.node {
                     ItemConst(_, body) |
                     ItemStatic(.., body) |
-                    ItemFn(_, _, _, _, _, body) => Some(body),
+                    ItemFn(_, _, _, body) => Some(body),
                     _ => None,
                 }
             }

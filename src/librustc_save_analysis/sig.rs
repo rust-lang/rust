@@ -380,17 +380,20 @@ impl Sig for ast::Item {
 
                 Ok(extend_sig(ty, text, defs, vec![]))
             }
-            ast::ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, _) => {
+            ast::ItemKind::Fn(ref decl, header, ref generics, _) => {
                 let mut text = String::new();
-                if constness.node == ast::Constness::Const {
+                if header.constness.node == ast::Constness::Const {
                     text.push_str("const ");
                 }
-                if unsafety == ast::Unsafety::Unsafe {
+                if header.asyncness == ast::IsAsync::Async {
+                    text.push_str("async ");
+                }
+                if header.unsafety == ast::Unsafety::Unsafe {
                     text.push_str("unsafe ");
                 }
-                if abi != ::rustc_target::spec::abi::Abi::Rust {
+                if header.abi != ::rustc_target::spec::abi::Abi::Rust {
                     text.push_str("extern");
-                    text.push_str(&abi.to_string());
+                    text.push_str(&header.abi.to_string());
                     text.push(' ');
                 }
                 text.push_str("fn ");
@@ -914,15 +917,18 @@ fn make_method_signature(
 ) -> Result {
     // FIXME code dup with function signature
     let mut text = String::new();
-    if m.constness.node == ast::Constness::Const {
+    if m.header.constness.node == ast::Constness::Const {
         text.push_str("const ");
     }
-    if m.unsafety == ast::Unsafety::Unsafe {
+    if m.header.asyncness == ast::IsAsync::Async {
+        text.push_str("async ");
+    }
+    if m.header.unsafety == ast::Unsafety::Unsafe {
         text.push_str("unsafe ");
     }
-    if m.abi != ::rustc_target::spec::abi::Abi::Rust {
+    if m.header.abi != ::rustc_target::spec::abi::Abi::Rust {
         text.push_str("extern");
-        text.push_str(&m.abi.to_string());
+        text.push_str(&m.header.abi.to_string());
         text.push(' ');
     }
     text.push_str("fn ");

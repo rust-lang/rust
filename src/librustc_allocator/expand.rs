@@ -10,12 +10,11 @@
 
 use rustc::middle::allocator::AllocatorKind;
 use rustc_errors;
-use rustc_target::spec::abi::Abi;
 use syntax::ast::{Attribute, Crate, LitKind, StrStyle};
-use syntax::ast::{Arg, Constness, Generics, Mac, Mutability, Ty, Unsafety};
+use syntax::ast::{Arg, FnHeader, Generics, Mac, Mutability, Ty, Unsafety};
 use syntax::ast::{self, Expr, Ident, Item, ItemKind, TyKind, VisibilityKind};
 use syntax::attr;
-use syntax::codemap::{dummy_spanned, respan};
+use syntax::codemap::respan;
 use syntax::codemap::{ExpnInfo, MacroAttribute, NameAndSpan};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::base::Resolver;
@@ -152,9 +151,10 @@ impl<'a> AllocFnFactory<'a> {
         let (output_ty, output_expr) = self.ret_ty(&method.output, result);
         let kind = ItemKind::Fn(
             self.cx.fn_decl(abi_args, ast::FunctionRetTy::Ty(output_ty)),
-            Unsafety::Unsafe,
-            dummy_spanned(Constness::NotConst),
-            Abi::Rust,
+            FnHeader {
+                unsafety: Unsafety::Unsafe,
+                ..FnHeader::default()
+            },
             Generics::default(),
             self.cx.block_expr(output_expr),
         );

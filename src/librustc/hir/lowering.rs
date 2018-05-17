@@ -2284,7 +2284,7 @@ impl<'a> LoweringContext<'a> {
                 let value = self.lower_body(None, |this| this.lower_expr(e));
                 hir::ItemConst(self.lower_ty(t, ImplTraitContext::Disallowed), value)
             }
-            ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
+            ItemKind::Fn(ref decl, header, ref generics, ref body) => {
                 let fn_def_id = self.resolver.definitions().local_def_id(id);
                 self.with_new_scopes(|this| {
                     let body_id = this.lower_body(Some(decl), |this| {
@@ -2300,9 +2300,7 @@ impl<'a> LoweringContext<'a> {
 
                     hir::ItemFn(
                         fn_decl,
-                        this.lower_unsafety(unsafety),
-                        this.lower_constness(constness),
-                        abi,
+                        this.lower_fn_header(header),
                         generics,
                         body_id,
                     )
@@ -2891,9 +2889,7 @@ impl<'a> LoweringContext<'a> {
         impl_trait_return_allow: bool,
     ) -> hir::MethodSig {
         hir::MethodSig {
-            abi: sig.abi,
-            unsafety: self.lower_unsafety(sig.unsafety),
-            constness: self.lower_constness(sig.constness),
+            header: self.lower_fn_header(sig.header),
             decl: self.lower_fn_decl(&sig.decl, Some(fn_def_id), impl_trait_return_allow),
         }
     }
@@ -2902,6 +2898,15 @@ impl<'a> LoweringContext<'a> {
         match a {
             IsAuto::Yes => hir::IsAuto::Yes,
             IsAuto::No => hir::IsAuto::No,
+        }
+    }
+
+    fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
+        hir::FnHeader {
+            unsafety: self.lower_unsafety(h.unsafety),
+            asyncness: self.lower_asyncness(h.asyncness),
+            constness: self.lower_constness(h.constness),
+            abi: h.abi,
         }
     }
 
@@ -2916,6 +2921,13 @@ impl<'a> LoweringContext<'a> {
         match c.node {
             Constness::Const => hir::Constness::Const,
             Constness::NotConst => hir::Constness::NotConst,
+        }
+    }
+
+    fn lower_asyncness(&mut self, a: IsAsync) -> hir::IsAsync {
+        match a {
+            IsAsync::Async => hir::IsAsync::Async,
+            IsAsync::NotAsync => hir::IsAsync::NotAsync,
         }
     }
 

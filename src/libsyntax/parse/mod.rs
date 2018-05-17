@@ -928,12 +928,15 @@ mod tests {
                                     output: ast::FunctionRetTy::Default(sp(15, 15)),
                                     variadic: false
                                 }),
-                                        ast::Unsafety::Normal,
-                                        Spanned {
-                                            span: sp(0,2),
-                                            node: ast::Constness::NotConst,
+                                        ast::FnHeader {
+                                            unsafety: ast::Unsafety::Normal,
+                                            asyncness: ast::IsAsync::NotAsync,
+                                            constness: Spanned {
+                                                span: sp(0,2),
+                                                node: ast::Constness::NotConst,
+                                            },
+                                            abi: Abi::Rust,
                                         },
-                                        Abi::Rust,
                                         ast::Generics{
                                             params: Vec::new(),
                                             where_clause: ast::WhereClause {

@@ -41,7 +41,6 @@
 //! This order consistency is required in a few places in rustc, for
 //! example generator inference, and possibly also HIR borrowck.
 
-use rustc_target::spec::abi::Abi;
 use syntax::ast::{NodeId, CRATE_NODE_ID, Ident, Name, Attribute};
 use syntax_pos::Span;
 use hir::*;
@@ -54,8 +53,8 @@ use std::u32;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
-    /// fn foo() or extern "Abi" fn foo()
-    ItemFn(Name, &'a Generics, Unsafety, Constness, Abi, &'a Visibility, &'a [Attribute]),
+    /// #[xxx] pub async/const/extern "Abi" fn foo()
+    ItemFn(Name, &'a Generics, FnHeader, &'a Visibility, &'a [Attribute]),
 
     /// fn foo(&self)
     Method(Name, &'a MethodSig, Option<&'a Visibility>, &'a [Attribute]),
@@ -479,12 +478,10 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_ty(typ);
             visitor.visit_nested_body(body);
         }
-        ItemFn(ref declaration, unsafety, constness, abi, ref generics, body_id) => {
+        ItemFn(ref declaration, header, ref generics, body_id) => {
             visitor.visit_fn(FnKind::ItemFn(item.name,
                                             generics,
-                                            unsafety,
-                                            constness,
-                                            abi,
+                                            header,
                                             &item.vis,
                                             &item.attrs),
                              declaration,
