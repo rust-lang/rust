@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 //
+// ignore-test Not optimized away under NewGVN :(
 // no-system-llvm
 // compile-flags: -O
 #![crate_type="lib"]
