@@ -129,20 +129,20 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
         }
 
         let mut selcx = traits::SelectionContext::new(self.fcx);
-        let normalized = traits::normalize_projection_type(&mut selcx,
-                                                           self.fcx.param_env,
-                                                           ty::ProjectionTy::from_ref_and_name(
-                                                               tcx,
-                                                               trait_ref,
-                                                               Symbol::intern("Target"),
-                                                           ),
-                                                           cause,
-                                                           0);
+        let normalized_ty = traits::normalize_projection_type(&mut selcx,
+                                                              self.fcx.param_env,
+                                                              ty::ProjectionTy::from_ref_and_name(
+                                                                  tcx,
+                                                                  trait_ref,
+                                                                  Symbol::intern("Target"),
+                                                              ),
+                                                              cause,
+                                                              0,
+                                                              &mut self.obligations);
 
-        debug!("overloaded_deref_ty({:?}) = {:?}", ty, normalized);
-        self.obligations.extend(normalized.obligations);
+        debug!("overloaded_deref_ty({:?}) = {:?}", ty, normalized_ty);
 
-        Some(self.fcx.resolve_type_vars_if_possible(&normalized.value))
+        Some(self.fcx.resolve_type_vars_if_possible(&normalized_ty))
     }
 
     /// Returns the final type, generating an error if it is an
