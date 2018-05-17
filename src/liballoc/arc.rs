@@ -1001,14 +1001,9 @@ impl Arc<Any + Send + Sync> {
         T: Any + Send + Sync + 'static,
     {
         if (*self).is::<T>() {
-            unsafe {
-                let raw: *const ArcInner<Any + Send + Sync> = self.ptr.as_ptr();
-                mem::forget(self);
-                Ok(Arc {
-                    ptr: NonNull::new_unchecked(raw as *const ArcInner<T> as *mut _),
-                    phantom: PhantomData,
-                })
-            }
+            let ptr = self.ptr.cast::<ArcInner<T>>();
+            mem::forget(self);
+            Ok(Arc { ptr, phantom: PhantomData })
         } else {
             Err(self)
         }
