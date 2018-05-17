@@ -47,6 +47,16 @@ pub enum TestKind {
     Bench,
 }
 
+impl From<Kind> for TestKind {
+    fn from(kind: Kind) -> Self {
+        match kind {
+            Kind::Test => TestKind::Test,
+            Kind::Bench => TestKind::Bench,
+            _ => panic!("unexpected kind in crate: {:?}", kind)
+        }
+    }
+}
+
 impl TestKind {
     // Return the cargo subcommand for this test kind
     fn subcommand(self) -> &'static str {
@@ -951,6 +961,10 @@ impl Step for Compiletest {
         cmd.arg("--host").arg(&*compiler.host);
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.build));
 
+        if builder.config.cmd.bless() {
+            cmd.arg("--bless");
+        }
+
         if let Some(ref nodejs) = builder.config.nodejs {
             cmd.arg("--nodejs").arg(nodejs);
         }
@@ -1342,13 +1356,7 @@ impl Step for CrateLibrustc {
 
         for krate in builder.in_tree_crates("rustc-main") {
             if run.path.ends_with(&krate.path) {
-                let test_kind = if builder.kind == Kind::Test {
-                    TestKind::Test
-                } else if builder.kind == Kind::Bench {
-                    TestKind::Bench
-                } else {
-                    panic!("unexpected builder.kind in crate: {:?}", builder.kind);
-                };
+                let test_kind = builder.kind.into();
 
                 builder.ensure(CrateLibrustc {
                     compiler,
@@ -1394,13 +1402,7 @@ impl Step for CrateNotDefault {
         let builder = run.builder;
         let compiler = builder.compiler(builder.top_stage, run.host);
 
-        let test_kind = if builder.kind == Kind::Test {
-            TestKind::Test
-        } else if builder.kind == Kind::Bench {
-            TestKind::Bench
-        } else {
-            panic!("unexpected builder.kind in crate: {:?}", builder.kind);
-        };
+        let test_kind = builder.kind.into();
 
         builder.ensure(CrateNotDefault {
             compiler,
@@ -1461,13 +1463,7 @@ impl Step for Crate {
         let compiler = builder.compiler(builder.top_stage, run.host);
 
         let make = |mode: Mode, krate: &CargoCrate| {
-            let test_kind = if builder.kind == Kind::Test {
-                TestKind::Test
-            } else if builder.kind == Kind::Bench {
-                TestKind::Bench
-            } else {
-                panic!("unexpected builder.kind in crate: {:?}", builder.kind);
-            };
+            let test_kind = builder.kind.into();
 
             builder.ensure(Crate {
                 compiler,
@@ -1625,13 +1621,7 @@ impl Step for CrateRustdoc {
     fn make_run(run: RunConfig) {
         let builder = run.builder;
 
-        let test_kind = if builder.kind == Kind::Test {
-            TestKind::Test
-        } else if builder.kind == Kind::Bench {
-            TestKind::Bench
-        } else {
-            panic!("unexpected builder.kind in crate: {:?}", builder.kind);
-        };
+        let test_kind = builder.kind.into();
 
         builder.ensure(CrateRustdoc {
             host: run.host,
