@@ -82,7 +82,7 @@
 
 pub use self::NamedMatch::*;
 pub use self::ParseResult::*;
-use self::TokenTreeOrTokenTreeVec::*;
+use self::TokenTreeOrTokenTreeSlice::*;
 
 use ast::Ident;
 use syntax_pos::{self, BytePos, Span};
@@ -106,12 +106,12 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 /// Either a sequence of token trees or a single one. This is used as the representation of the
 /// sequence of tokens that make up a matcher.
 #[derive(Clone)]
-enum TokenTreeOrTokenTreeVec {
+enum TokenTreeOrTokenTreeSlice<'a> {
     Tt(TokenTree),
-    TtSeq(Vec<TokenTree>),
+    TtSeq(&'a [TokenTree]),
 }
 
-impl TokenTreeOrTokenTreeVec {
+impl<'a> TokenTreeOrTokenTreeSlice<'a> {
     /// Returns the number of constituent top-level token trees of `self` (top-level in that it
     /// will not recursively descend into subtrees).
     fn len(&self) -> usize {
@@ -135,9 +135,9 @@ impl TokenTreeOrTokenTreeVec {
 /// This is used by `inner_parse_loop` to keep track of delimited submatchers that we have
 /// descended into.
 #[derive(Clone)]
-struct MatcherTtFrame {
+struct MatcherTtFrame<'a> {
     /// The "parent" matcher that we are descending into.
-    elts: TokenTreeOrTokenTreeVec,
+    elts: TokenTreeOrTokenTreeSlice<'a>,
     /// The position of the "dot" in `elts` at the time we descended.
     idx: usize,
 }
@@ -145,9 +145,9 @@ struct MatcherTtFrame {
 /// Represents a single "position" (aka "matcher position", aka "item"), as described in the module
 /// documentation.
 #[derive(Clone)]
-struct MatcherPos {
+struct MatcherPos<'a> {
     /// The token or sequence of tokens that make up the matcher
-    top_elts: TokenTreeOrTokenTreeVec,
+    top_elts: TokenTreeOrTokenTreeSlice<'a>,
     /// The position of the "dot" in this matcher
     idx: usize,
     /// The beginning position in the source that the beginning of this matcher corresponds to. In
@@ -186,7 +186,7 @@ struct MatcherPos {
     sep: Option<Token>,
     /// The "parent" matcher position if we are in a repetition. That is, the matcher position just
     /// before we enter the sequence.
-    up: Option<Box<MatcherPos>>,
+    up: Option<Box<MatcherPos<'a>>>,
 
     // Specifically used to "unzip" token trees. By "unzip", we mean to unwrap the delimiters from
     // a delimited token tree (e.g. something wrapped in `(` `)`) or to get the contents of a doc
@@ -195,10 +195,10 @@ struct MatcherPos {
     /// pat ) pat`), we need to keep track of the matchers we are descending into. This stack does
     /// that where the bottom of the stack is the outermost matcher.
     // Also, throughout the comments, this "descent" is often referred to as "unzipping"...
-    stack: Vec<MatcherTtFrame>,
+    stack: Vec<MatcherTtFrame<'a>>,
 }
 
-impl MatcherPos {
+impl<'a> MatcherPos<'a> {
     /// Add `m` as a named match for the `idx`-th metavar.
     fn push_match(&mut self, idx: usize, m: NamedMatch) {
         let matches = Rc::make_mut(&mut self.matches[idx]);
@@ -241,8 +241,8 @@ fn create_matches(len: usize) -> Vec<Rc<Vec<NamedMatch>>> {
 
 /// Generate the top-level matcher position in which the "dot" is before the first token of the
 /// matcher `ms` and we are going to start matching at position `lo` in the source.
-fn initial_matcher_pos(ms: Vec<TokenTree>, lo: BytePos) -> Box<MatcherPos> {
-    let match_idx_hi = count_names(&ms[..]);
+fn initial_matcher_pos(ms: &[TokenTree], lo: BytePos) -> Box<MatcherPos> {
+    let match_idx_hi = count_names(ms);
     let matches = create_matches(match_idx_hi);
     Box::new(MatcherPos {
         // Start with the top level matcher given to us
@@ -394,12 +394,12 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 /// # Returns
 ///
 /// A `ParseResult`. Note that matches are kept track of through the items generated.
-fn inner_parse_loop(
+fn inner_parse_loop<'a>(
     sess: &ParseSess,
-    cur_items: &mut SmallVector<Box<MatcherPos>>,
-    next_items: &mut Vec<Box<MatcherPos>>,
-    eof_items: &mut SmallVector<Box<MatcherPos>>,
-    bb_items: &mut SmallVector<Box<MatcherPos>>,
+    cur_items: &mut SmallVector<Box<MatcherPos<'a>>>,
+    next_items: &mut Vec<Box<MatcherPos<'a>>>,
+    eof_items: &mut SmallVector<Box<MatcherPos<'a>>>,
+    bb_items: &mut SmallVector<Box<MatcherPos<'a>>>,
     token: &Token,
     span: syntax_pos::Span,
 ) -> ParseResult<()> {
@@ -596,7 +596,7 @@ pub fn parse(
     // processes all of these possible matcher positions and produces posible next positions into
     // `next_items`. After some post-processing, the contents of `next_items` replenish `cur_items`
     // and we start over again.
-    let mut cur_items = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo()));
+    let mut cur_items = SmallVector::one(initial_matcher_pos(ms, parser.span.lo()));
     let mut next_items = Vec::new();
 
     loop {
