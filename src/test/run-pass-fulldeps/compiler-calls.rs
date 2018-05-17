@@ -31,11 +31,11 @@ use syntax::ast;
 
 use std::path::PathBuf;
 
-struct TestCalls {
-    count: u32
+struct TestCalls<'a> {
+    count: &'a mut u32
 }
 
-impl<'a> CompilerCalls<'a> for TestCalls {
+impl<'a> CompilerCalls<'a> for TestCalls<'a> {
     fn early_callback(&mut self,
                       _: &getopts::Matches,
                       _: &config::Options,
@@ -43,7 +43,7 @@ impl<'a> CompilerCalls<'a> for TestCalls {
                       _: &errors::registry::Registry,
                       _: config::ErrorOutputType)
                       -> Compilation {
-        self.count *= 2;
+        *self.count *= 2;
         Compilation::Continue
     }
 
@@ -56,13 +56,13 @@ impl<'a> CompilerCalls<'a> for TestCalls {
                      _: &Option<PathBuf>,
                      _: &Option<PathBuf>)
                      -> Compilation {
-        self.count *= 3;
+        *self.count *= 3;
         Compilation::Stop
     }
 
     fn some_input(&mut self, input: Input, input_path: Option<PathBuf>)
                   -> (Input, Option<PathBuf>) {
-        self.count *= 5;
+        *self.count *= 5;
         (input, input_path)
     }
 
@@ -77,7 +77,7 @@ impl<'a> CompilerCalls<'a> for TestCalls {
         panic!("This shouldn't happen");
     }
 
-    fn build_controller(&mut self,
+    fn build_controller(self: Box<Self>,
                         _: &Session,
                         _: &getopts::Matches)
                         -> driver::CompileController<'a> {
@@ -87,9 +87,12 @@ impl<'a> CompilerCalls<'a> for TestCalls {
 
 
 fn main() {
-    let mut tc = TestCalls { count: 1 };
-    // we should never get use this filename, but lets make sure they are valid args.
-    let args = vec!["compiler-calls".to_string(), "foo.rs".to_string()];
-    rustc_driver::run_compiler(&args, &mut tc, None, None);
-    assert_eq!(tc.count, 30);
+    let mut count = 1;
+    {
+        let tc = TestCalls { count: &mut count };
+        // we should never get use this filename, but lets make sure they are valid args.
+        let args = vec!["compiler-calls".to_string(), "foo.rs".to_string()];
+        rustc_driver::run_compiler(&args, Box::new(tc), None, None);
+    }
+    assert_eq!(count, 30);
 }
