@@ -368,6 +368,13 @@ mod sealed {
 
     use super::*;
 
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vperm))]
+    unsafe fn vec_vperm(a: vector_signed_int, b: vector_signed_int, c: vector_unsigned_char) -> vector_signed_int {
+        vperm(a, b, c)
+    }
+
     pub trait VectorPerm {
         unsafe fn vec_vperm(self, b: Self, c: vector_unsigned_char) -> Self;
     }
@@ -378,7 +385,7 @@ mod sealed {
             #[inline]
             #[target_feature(enable = "altivec")]
             unsafe fn vec_vperm(self, b: Self, c: vector_unsigned_char) -> Self {
-                    mem::transmute(vperm(mem::transmute(self), mem::transmute(b), c))
+                    mem::transmute(vec_vperm(mem::transmute(self), mem::transmute(b), c))
                 }
             }
         }
