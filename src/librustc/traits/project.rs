@@ -597,7 +597,11 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             // can ignore the `obligations` from that point on.
             if !infcx.any_unresolved_type_vars(&ty.value) {
                 infcx.projection_cache.borrow_mut().complete(cache_key);
-                ty.obligations = vec![];
+                // Use with_capacity(1) because
+                // push_paranoid_cache_value_obligation() will push one
+                // element, and then usually no more elements are pushed.
+                // (Vec::new() + push() gives a capacity of 4.)
+                ty.obligations = Vec::with_capacity(1);
             }
 
             push_paranoid_cache_value_obligation(infcx,

@@ -181,7 +181,7 @@ fn build_local_id_to_index(body: Option<&hir::Body>,
 
     cfg.graph.each_node(|node_idx, node| {
         if let cfg::CFGNodeData::AST(id) = node.data {
-            index.entry(id).or_insert(vec![]).push(node_idx);
+            index.entry(id).or_insert_with(|| Vec::with_capacity(1)).push(node_idx);
         }
         true
     });
@@ -209,7 +209,8 @@ fn build_local_id_to_index(body: Option<&hir::Body>,
             }
 
             fn visit_pat(&mut self, p: &hir::Pat) {
-                self.index.entry(p.hir_id.local_id).or_insert(vec![]).push(self.entry);
+                self.index.entry(p.hir_id.local_id)
+                    .or_insert_with(|| Vec::with_capacity(1)).push(self.entry);
                 intravisit::walk_pat(self, p)
             }
         }
