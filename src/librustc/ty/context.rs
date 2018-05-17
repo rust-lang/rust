@@ -52,6 +52,7 @@ use ty::BindingMode;
 use ty::CanonicalTy;
 use util::nodemap::{DefIdSet, ItemLocalMap};
 use util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxInterner;
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
@@ -132,7 +133,7 @@ pub struct CtxtInterners<'tcx> {
 
     /// Specifically use a speedy hash algorithm for these hash sets,
     /// they're accessed quite often.
-    type_: InternedSet<'tcx, TyS<'tcx>>,
+    type_: Lock<FxInterner<Interned<'tcx, TyS<'tcx>>>>,
     type_list: InternedSet<'tcx, Slice<Ty<'tcx>>>,
     substs: InternedSet<'tcx, Substs<'tcx>>,
     canonical_var_infos: InternedSet<'tcx, Slice<CanonicalVarInfo>>,
@@ -173,51 +174,39 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
         // determine that all contents are in the global tcx.
         // See comments on Lift for why we can't use that.
         if flags.flags.intersects(ty::TypeFlags::KEEP_IN_LOCAL_TCX) {
-            let mut interner = local.type_.borrow_mut();
-            if let Some(&Interned(ty)) = interner.get(&st) {
-                return ty;
-            }
+            local.type_.borrow_mut().intern(st, |st| {
+                let ty_struct = TyS {
+                    sty: st,
+                    flags: flags.flags,
+                    outer_exclusive_binder: flags.outer_exclusive_binder,
+                };
 
-            let ty_struct = TyS {
-                sty: st,
-                flags: flags.flags,
-                outer_exclusive_binder: flags.outer_exclusive_binder,
-            };
+                // Make sure we don't end up with inference
+                // types/regions in the global interner
+                if local as *const _ as usize == global as *const _ as usize {
+                    bug!("Attempted to intern `{:?}` which contains \
+                        inference types/regions in the global type context",
+                        &ty_struct);
+                }
 
-            // Make sure we don't end up with inference
-            // types/regions in the global interner
-            if local as *const _ as usize == global as *const _ as usize {
-                bug!("Attempted to intern `{:?}` which contains \
-                    inference types/regions in the global type context",
-                    &ty_struct);
-            }
-
-            // Don't be &mut TyS.
-            let ty: Ty<'tcx> = local.arena.alloc(ty_struct);
-            interner.insert(Interned(ty));
-            ty
+                Interned(local.arena.alloc(ty_struct))
+            }).0
         } else {
-            let mut interner = global.type_.borrow_mut();
-            if let Some(&Interned(ty)) = interner.get(&st) {
-                return ty;
-            }
+            global.type_.borrow_mut().intern(st, |st| {
+                let ty_struct = TyS {
+                    sty: st,
+                    flags: flags.flags,
+                    outer_exclusive_binder: flags.outer_exclusive_binder,
+                };
 
-            let ty_struct = TyS {
-                sty: st,
-                flags: flags.flags,
-                outer_exclusive_binder: flags.outer_exclusive_binder,
-            };
+                // This is safe because all the types the ty_struct can point to
+                // already is in the global arena
+                let ty_struct: TyS<'gcx> = unsafe {
+                    mem::transmute(ty_struct)
+                };
 
-            // This is safe because all the types the ty_struct can point to
-            // already is in the global arena
-            let ty_struct: TyS<'gcx> = unsafe {
-                mem::transmute(ty_struct)
-            };
-
-            // Don't be &mut TyS.
-            let ty: Ty<'gcx> = global.arena.alloc(ty_struct);
-            interner.insert(Interned(ty));
-            ty
+                Interned(global.arena.alloc(ty_struct))
+            }).0
         }
     }
 }
@@ -1929,7 +1918,7 @@ macro_rules! sty_debug_print {
                 };
                 $(let mut $variant = total;)*
 
-
+/*
                 for &Interned(t) in tcx.interners.type_.borrow().iter() {
                     let variant = match t.sty {
                         ty::TyBool | ty::TyChar | ty::TyInt(..) | ty::TyUint(..) |
@@ -1945,7 +1934,7 @@ macro_rules! sty_debug_print {
                     if region { total.region_infer += 1; variant.region_infer += 1 }
                     if ty { total.ty_infer += 1; variant.ty_infer += 1 }
                     if region && ty { total.both_infer += 1; variant.both_infer += 1 }
-                }
+                }*/
                 println!("Ty interner             total           ty region  both");
                 $(println!("    {:18}: {uses:6} {usespc:4.1}%, \
 {ty:4.1}% {region:5.1}% {both:4.1}%",

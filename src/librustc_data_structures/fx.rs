@@ -11,10 +11,12 @@
 use std::collections::{HashMap, HashSet};
 use std::default::Default;
 use std::hash::Hash;
+use interner;
 
 pub use rustc_hash::FxHashMap;
 pub use rustc_hash::FxHashSet;
 pub use rustc_hash::FxHasher;
+pub type FxInterner<V> = interner::Interner<V, BuildHasherDefault<FxHasher>>;
 
 #[allow(non_snake_case)]
 pub fn FxHashMap<K: Hash + Eq, V>() -> FxHashMap<K, V> {

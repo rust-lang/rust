@@ -28,6 +28,8 @@
 #![feature(optin_builtin_traits)]
 #![feature(macro_vis_matcher)]
 #![feature(allow_internal_unstable)]
+#![feature(ptr_internals)]
+#![feature(allocator_api)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
@@ -62,6 +64,7 @@ pub mod bitvec;
 pub mod graph;
 pub mod indexed_set;
 pub mod indexed_vec;
+pub mod interner;
 pub mod obligation_forest;
 pub mod sip128;
 pub mod snapshot_map;
