@@ -210,7 +210,7 @@ impl Instant {
     }
 }
 
-#[stable(feature = "time2", since = "1.8.0")]
+#[stable(feature = "instant_default", since = "1.28.0")]
 impl Default for Instant {
     fn default() -> Self {
         Self::now()
