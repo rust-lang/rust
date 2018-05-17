@@ -372,12 +372,15 @@ impl str {
 
     /// Escapes each char in `s` with [`char::escape_debug`].
     ///
+    /// Note: only extended grapheme codepoints that begin the string will be
+    /// escaped.
+    ///
     /// [`char::escape_debug`]: primitive.char.html#method.escape_debug
     #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator",
                issue = "27791")]
     pub fn escape_debug(&self) -> String {
-        self.chars().flat_map(|c| c.escape_debug()).collect()
+        self.chars().enumerate().flat_map(|(i, c)| c.escape_debug_ext(i == 0)).collect()
     }
 
     /// Escapes each char in `s` with [`char::escape_default`].

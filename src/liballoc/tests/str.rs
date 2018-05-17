@@ -999,7 +999,7 @@ fn test_escape_debug() {
     assert_eq!("\u{10000}\u{10ffff}".escape_debug(), "\u{10000}\\u{10ffff}");
     assert_eq!("ab\u{200b}".escape_debug(), "ab\\u{200b}");
     assert_eq!("\u{10d4ea}\r".escape_debug(), "\\u{10d4ea}\\r");
-    assert_eq!("\u{301}a\u{301}bé\u{e000}".escape_debug(), "\\u{301}a\\u{301}bé\\u{e000}");
+    assert_eq!("\u{301}a\u{301}bé\u{e000}".escape_debug(), "\\u{301}a\u{301}bé\\u{e000}");
 }
 
 #[test]
