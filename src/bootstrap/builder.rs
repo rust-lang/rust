@@ -1461,6 +1461,7 @@ mod __test {
             rustc_args: vec![],
             fail_fast: true,
             doc_tests: DocTests::No,
+            bless: false,
         };
 
         let build = Build::new(config);
