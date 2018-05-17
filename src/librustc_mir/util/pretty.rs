@@ -461,9 +461,7 @@ fn comment(tcx: TyCtxt<'_, '_, '_>, SourceInfo { span, scope }: SourceInfo) -> S
     )
 }
 
-/// Prints user-defined variables in a scope tree.
-///
-/// Returns the total number of variables printed.
+/// Prints local variables in a scope tree.
 fn write_scope_tree(
     tcx: TyCtxt<'_, '_, '_>,
     mir: &Mir<'_>,
@@ -474,57 +472,64 @@ fn write_scope_tree(
 ) -> io::Result<()> {
     let indent = depth * INDENT.len();
 
+    // Local variable types (including the user's name in a comment).
+    for (local, local_decl) in mir.local_decls.iter_enumerated() {
+        if (1..mir.arg_count+1).contains(&local.index()) {
+            // Skip over argument locals, they're printed in the signature.
+            continue;
+        }
+
+        if local_decl.source_info.scope != parent {
+            // Not declared in this scope.
+            continue;
+        }
+
+        let mut_str = if local_decl.mutability == Mutability::Mut {
+            "mut "
+        } else {
+            ""
+        };
+
+        let mut indented_decl = format!(
+            "{0:1$}let {2}{3:?}: {4:?}",
+            INDENT,
+            indent,
+            mut_str,
+            local,
+            local_decl.ty
+        );
+        for user_ty in local_decl.user_ty.projections() {
+            write!(indented_decl, " as {:?}", user_ty).unwrap();
+        }
+        indented_decl.push_str(";");
+
+        let local_name = if local == RETURN_PLACE {
+            format!(" return place")
+        } else if let Some(name) = local_decl.name {
+            format!(" \"{}\"", name)
+        } else {
+            String::new()
+        };
+
+        writeln!(
+            w,
+            "{0:1$} //{2} in {3}",
+            indented_decl,
+            ALIGN,
+            local_name,
+            comment(tcx, local_decl.source_info),
+        )?;
+    }
+
     let children = match scope_tree.get(&parent) {
-        Some(children) => children,
+        Some(childs) => childs,
         None => return Ok(()),
     };
 
     for &child in children {
-        let data = &mir.source_scopes[child];
-        assert_eq!(data.parent_scope, Some(parent));
+        assert_eq!(mir.source_scopes[child].parent_scope, Some(parent));
         writeln!(w, "{0:1$}scope {2} {{", "", indent, child.index())?;
-
-        // User variable types (including the user's name in a comment).
-        for local in mir.vars_iter() {
-            let var = &mir.local_decls[local];
-            let (name, source_info) = if var.source_info.scope == child {
-                (var.name.unwrap(), var.source_info)
-            } else {
-                // Not a variable or not declared in this scope.
-                continue;
-            };
-
-            let mut_str = if var.mutability == Mutability::Mut {
-                "mut "
-            } else {
-                ""
-            };
-
-            let indent = indent + INDENT.len();
-            let mut indented_var = format!(
-                "{0:1$}let {2}{3:?}: {4:?}",
-                INDENT,
-                indent,
-                mut_str,
-                local,
-                var.ty
-            );
-            for user_ty in var.user_ty.projections() {
-                write!(indented_var, " as {:?}", user_ty).unwrap();
-            }
-            indented_var.push_str(";");
-            writeln!(
-                w,
-                "{0:1$} // \"{2}\" in {3}",
-                indented_var,
-                ALIGN,
-                name,
-                comment(tcx, source_info)
-            )?;
-        }
-
         write_scope_tree(tcx, mir, scope_tree, w, child, depth + 1)?;
-
         writeln!(w, "{0:1$}}}", "", depth * INDENT.len())?;
     }
 
@@ -556,18 +561,7 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
         }
     }
 
-    // Print return place
-    let indented_retptr = format!("{}let mut {:?}: {};",
-                                  INDENT,
-                                  RETURN_PLACE,
-                                  mir.local_decls[RETURN_PLACE].ty);
-    writeln!(w, "{0:1$} // return place",
-             indented_retptr,
-             ALIGN)?;
-
     write_scope_tree(tcx, mir, &scope_tree, w, OUTERMOST_SOURCE_SCOPE, 1)?;
-
-    write_temp_decls(mir, w)?;
 
     // Add an empty line before the first block is printed.
     writeln!(w, "")?;
@@ -628,22 +622,6 @@ fn write_mir_sig(
 
     write!(w, " ")?;
     // Next thing that gets printed is the opening {
-
-    Ok(())
-}
-
-fn write_temp_decls(mir: &Mir<'_>, w: &mut dyn Write) -> io::Result<()> {
-    // Compiler-introduced temporary types.
-    for temp in mir.temps_iter() {
-        writeln!(
-            w,
-            "{}let {}{:?}: {};",
-            INDENT,
-            if mir.local_decls[temp].mutability == Mutability::Mut {"mut "} else {""},
-            temp,
-            mir.local_decls[temp].ty
-        )?;
-    }
 
     Ok(())
 }
