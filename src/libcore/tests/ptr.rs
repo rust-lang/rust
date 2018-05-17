@@ -322,8 +322,8 @@ fn align_offset_stride1() {
             let offset = if expected == 0 { 0 } else { align - expected };
             assert_eq!((ptr as *const u8).align_offset(align), offset,
             "ptr = {}, align = {}, size = 1", ptr, align);
-            align = (align + 1).next_power_of_two();
         }
+        align = (align + 1).next_power_of_two();
     }
 }
 

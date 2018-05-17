@@ -821,7 +821,7 @@ fn test_align_to_simple() {
     assert!(prefix == [1] || suffix == [7]);
     let expect1 = [1 << 8 | 2, 3 << 8 | 4, 5 << 8 | 6];
     let expect2 = [1 | 2 << 8, 3 | 4 << 8, 5 | 6 << 8];
-    let expect3 = [2 | 3 << 8, 4 | 5 << 8, 6 | 7 << 8];
+    let expect3 = [2 << 8 | 3, 4 << 8 | 5, 6 << 8 | 7];
     let expect4 = [2 | 3 << 8, 4 | 5 << 8, 6 | 7 << 8];
     assert!(aligned == expect1 || aligned == expect2 || aligned == expect3 || aligned == expect4,
             "aligned={:?} expected={:?} || {:?} || {:?} || {:?}",
