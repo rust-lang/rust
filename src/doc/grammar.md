@@ -116,9 +116,9 @@ as long as the identifier does _not_ occur in the set of [keywords](#keywords).
 Some productions are defined by exclusion of particular Unicode characters:
 
 - `non_null` is any single Unicode character aside from `U+0000` (null)
-- `non_eol` is `non_null` restricted to exclude `U+000A` (`'\n'`)
-- `non_single_quote` is `non_null` restricted to exclude `U+0027`  (`'`)
-- `non_double_quote` is `non_null` restricted to exclude `U+0022` (`"`)
+- `non_eol` is any single Unicode character aside from `U+000A` (`'\n'`)
+- `non_single_quote` is any single Unicode character aside from `U+0027`  (`'`)
+- `non_double_quote` is any single Unicode character aside from `U+0022` (`"`)
 
 ## Comments
 
