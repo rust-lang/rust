@@ -1412,9 +1412,23 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         Ok(())
     }
 
+    pub fn try_read_by_ref(&self, mut val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+        // Convert to ByVal or ByValPair if possible
+        if let Value::ByRef(ptr, align) = val {
+            if let Some(read_val) = self.try_read_value(ptr, align, ty)? {
+                val = read_val;
+            }
+        }
+        Ok(val)
+    }
+
     pub fn try_read_value(&self, ptr: Pointer, ptr_align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
         let layout = self.layout_of(ty)?;
         self.memory.check_align(ptr, ptr_align)?;
+
+        if layout.size.bytes() == 0 {
+            return Ok(Some(Value::ByVal(PrimVal::Undef)));
+        }
 
         let ptr = ptr.to_ptr()?;
 

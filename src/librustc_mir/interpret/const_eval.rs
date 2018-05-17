@@ -95,42 +95,35 @@ pub fn eval_body<'a, 'tcx>(
 
 pub fn value_to_const_value<'tcx>(
     ecx: &EvalContext<'_, '_, 'tcx, CompileTimeEvaluator>,
-    mut val: Value,
+    val: Value,
     ty: Ty<'tcx>,
 ) -> &'tcx ty::Const<'tcx> {
-    let layout = tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap();
+    let layout = ecx.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap();
     match (val, &layout.abi) {
+        (Value::ByVal(PrimVal::Undef), _) if layout.is_zst() => {},
         (Value::ByRef(..), _) |
         (Value::ByVal(_), &layout::Abi::Scalar(_)) |
         (Value::ByValPair(..), &layout::Abi::ScalarPair(..)) => {},
         _ => bug!("bad value/layout combo: {:#?}, {:#?}", val, layout),
     }
     let val = (|| {
-        // Convert to ByVal or ByValPair if possible
-        if let Value::ByRef(ptr, align) = val {
-            if let Some(read_val) = ecx.try_read_value(ptr, align, ty)? {
-                val = read_val;
-            }
-        }
         match val {
             Value::ByVal(val) => Ok(ConstValue::ByVal(val)),
             Value::ByValPair(a, b) => Ok(ConstValue::ByValPair(a, b)),
             Value::ByRef(ptr, align) => {
                 let ptr = ptr.primval.to_ptr().unwrap();
-                assert_eq!(ptr.offset, 0);
                 let alloc = ecx.memory.get(ptr.alloc_id)?;
-                assert!(alloc.align.abi() >= layout.align.abi());
-                assert!(alloc.bytes.len() as u64 == layout.size.bytes());
+                assert!(alloc.align.abi() >= align.abi());
+                assert!(alloc.bytes.len() as u64 - ptr.offset >= layout.size.bytes());
                 let mut alloc = alloc.clone();
-                // The align field is meaningless for values, so just use the layout's align
-                alloc.align = layout.align;
+                alloc.align = align;
                 let alloc = ecx.tcx.intern_const_alloc(alloc);
-                Ok(ConstValue::ByRef(alloc))
+                Ok(ConstValue::ByRef(alloc, ptr.offset))
             }
         }
     })();
-    match result {
-        Ok(v) => ty::Const::from_const_value(tcx, val, ty),
+    match val {
+        Ok(val) => ty::Const::from_const_value(ecx.tcx.tcx, val, ty),
         Err(mut err) => {
             ecx.report(&mut err, true, None);
             bug!("miri error occured when converting Value to ConstValue")
@@ -427,7 +420,7 @@ pub fn const_val_field<'a, 'tcx>(
             Value::ByRef(ptr, align) => (ptr, align),
             Value::ByValPair(..) | Value::ByVal(_) => {
                 let ptr = ecx.alloc_ptr(ty)?.into();
-                ecx.write_value_to_ptr(value, ptr, ty)?;
+                ecx.write_value_to_ptr(value, ptr, layout.align, ty)?;
                 (ptr, layout.align)
             },
         };
@@ -438,7 +431,21 @@ pub fn const_val_field<'a, 'tcx>(
         };
         let (place, layout) = ecx.place_field(place, field, layout)?;
         let (ptr, align) = place.to_ptr_align();
-        Ok((Value::ByRef(ptr, align), layout.ty))
+        let mut new_value = Value::ByRef(ptr, align);
+        new_value = ecx.try_read_by_ref(new_value, layout.ty)?;
+        use rustc_data_structures::indexed_vec::Idx;
+        match (value, new_value) {
+            (Value::ByVal(_), Value::ByRef(..)) |
+            (Value::ByValPair(..), Value::ByRef(..)) |
+            (Value::ByVal(_), Value::ByValPair(..)) => bug!(
+                "field {} of {:?} yielded {:?}",
+                field.index(),
+                value,
+                new_value,
+            ),
+            _ => {},
+        }
+        Ok(value_to_const_value(&ecx, new_value, layout.ty))
     })();
     result.map_err(|err| {
         let (trace, span) = ecx.generate_stacktrace(None);
@@ -535,8 +542,11 @@ pub fn const_eval_provider<'a, 'tcx>(
     };
 
     let (res, ecx) = eval_body_and_ecx(tcx, cid, None, key.param_env);
-    res.map(|(val, _, miri_ty)| {
-        value_to_const_value(&ecx, val, miri_ty)
+    res.and_then(|(mut val, _, miri_ty)| {
+        if tcx.is_static(def_id).is_none() {
+            val = ecx.try_read_by_ref(val, miri_ty)?;
+        }
+        Ok(value_to_const_value(&ecx, val, miri_ty))
     }).map_err(|mut err| {
         if tcx.is_static(def_id).is_some() {
             ecx.report(&mut err, true, None);
