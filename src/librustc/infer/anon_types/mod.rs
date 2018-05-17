@@ -614,7 +614,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
                 // compiler; those regions are ignored for the
                 // outlives relation, and hence don't affect trait
                 // selection or auto traits, and they are erased
-                // during trans.
+                // during codegen.
 
                 let generics = self.tcx.generics_of(def_id);
                 let substs = self.tcx.mk_substs(substs.substs.iter().enumerate().map(

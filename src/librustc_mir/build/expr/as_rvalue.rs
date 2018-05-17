@@ -140,7 +140,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.and(Rvalue::Cast(CastKind::Unsize, source, expr.ty))
             }
             ExprKind::Array { fields } => {
-                // (*) We would (maybe) be closer to trans if we
+                // (*) We would (maybe) be closer to codegen if we
                 // handled this and other aggregate cases via
                 // `into()`, not `as_rvalue` -- in that case, instead
                 // of generating

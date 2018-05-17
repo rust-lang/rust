@@ -1135,7 +1135,7 @@ define_print! {
                         })?
                     } else {
                         // cross-crate closure types should only be
-                        // visible in trans bug reports, I imagine.
+                        // visible in codegen bug reports, I imagine.
                         write!(f, "@{:?}", did)?;
                         let mut sep = " ";
                         for (index, upvar_ty) in upvar_tys.enumerate() {
@@ -1175,7 +1175,7 @@ define_print! {
                         })?
                     } else {
                         // cross-crate closure types should only be
-                        // visible in trans bug reports, I imagine.
+                        // visible in codegen bug reports, I imagine.
                         write!(f, "@{:?}", did)?;
                         let mut sep = " ";
                         for (index, upvar_ty) in upvar_tys.enumerate() {

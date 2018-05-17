@@ -856,10 +856,10 @@ impl DepGraph {
 /// each partition. In the first run, we create partitions based on
 /// the symbols that need to be compiled. For each partition P, we
 /// hash the symbols in P and create a `WorkProduct` record associated
-/// with `DepNode::TransPartition(P)`; the hash is the set of symbols
+/// with `DepNode::CodegenUnit(P)`; the hash is the set of symbols
 /// in P.
 ///
-/// The next time we compile, if the `DepNode::TransPartition(P)` is
+/// The next time we compile, if the `DepNode::CodegenUnit(P)` is
 /// judged to be clean (which means none of the things we read to
 /// generate the partition were found to be dirty), it will be loaded
 /// into previous work products. We will then regenerate the set of

@@ -69,8 +69,8 @@ fn make_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             )
         }
         ty::InstanceDef::Virtual(def_id, _) => {
-            // We are translating a call back to our def-id, which
-            // trans::mir knows to turn to an actual virtual call.
+            // We are generating a call back to our def-id, which the
+            // codegen backend knows to turn to an actual virtual call.
             build_call_shim(
                 tcx,
                 def_id,

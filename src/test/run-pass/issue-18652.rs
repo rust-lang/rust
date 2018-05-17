@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Tests multiple free variables being passed by value into an unboxed
-// once closure as an optimization by trans.  This used to hit an
+// once closure as an optimization by codegen.  This used to hit an
 // incorrect assert.
 
 fn main() {

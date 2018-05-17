@@ -388,7 +388,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   Options.FunctionSections = FunctionSections;
 
   if (TrapUnreachable) {
-    // Tell LLVM to translate `unreachable` into an explicit trap instruction.
+    // Tell LLVM to codegen `unreachable` into an explicit trap instruction.
     // This limits the extent of possible undefined behavior in some cases, as
     // it prevents control flow from "falling through" into whatever code
     // happens to be laid out next in memory.

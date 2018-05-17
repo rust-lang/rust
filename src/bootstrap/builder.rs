@@ -844,7 +844,7 @@ impl<'a> Builder<'a> {
         // default via `-ldylib=winapi_foo`. That is, they're linked with the
         // `dylib` type with a `winapi_` prefix (so the winapi ones don't
         // conflict with the system MinGW ones). This consequently means that
-        // the binaries we ship of things like rustc_trans (aka the rustc_trans
+        // the binaries we ship of things like rustc_codegen_llvm (aka the rustc_codegen_llvm
         // DLL) when linked against *again*, for example with procedural macros
         // or plugins, will trigger the propagation logic of `-ldylib`, passing
         // `-lwinapi_foo` to the linker again. This isn't actually available in

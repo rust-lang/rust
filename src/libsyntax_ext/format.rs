@@ -79,7 +79,7 @@ struct Context<'a, 'b: 'a> {
     /// final generated static argument array. We record the starting indices
     /// corresponding to each positional argument, and number of references
     /// consumed so far for each argument, to facilitate correct `Position`
-    /// mapping in `trans_piece`. In effect this can be seen as a "flattened"
+    /// mapping in `build_piece`. In effect this can be seen as a "flattened"
     /// version of `arg_unique_types`.
     ///
     /// Again with the example described above in docstring for `args`:
@@ -108,7 +108,7 @@ struct Context<'a, 'b: 'a> {
 
     /// Current position of the implicit positional arg pointer, as if it
     /// still existed in this phase of processing.
-    /// Used only for `all_pieces_simple` tracking in `trans_piece`.
+    /// Used only for `all_pieces_simple` tracking in `build_piece`.
     curarg: usize,
     /// Keep track of invalid references to positional arguments
     invalid_refs: Vec<usize>,
@@ -373,7 +373,7 @@ impl<'a, 'b> Context<'a, 'b> {
         ecx.std_path(&["fmt", "rt", "v1", s])
     }
 
-    fn trans_count(&self, c: parse::Count) -> P<ast::Expr> {
+    fn build_count(&self, c: parse::Count) -> P<ast::Expr> {
         let sp = self.macsp;
         let count = |c, arg| {
             let mut path = Context::rtpath(self.ecx, "Count");
@@ -401,17 +401,17 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
-    /// Translate the accumulated string literals to a literal expression
-    fn trans_literal_string(&mut self) -> P<ast::Expr> {
+    /// Build a literal expression from the accumulated string literals
+    fn build_literal_string(&mut self) -> P<ast::Expr> {
         let sp = self.fmtsp;
         let s = Symbol::intern(&self.literal);
         self.literal.clear();
         self.ecx.expr_str(sp, s)
     }
 
-    /// Translate a `parse::Piece` to a static `rt::Argument` or append
+    /// Build a static `rt::Argument` from a `parse::Piece` or append
     /// to the `literal` string.
-    fn trans_piece(&mut self,
+    fn build_piece(&mut self,
                    piece: &parse::Piece,
                    arg_index_consumed: &mut Vec<usize>)
                    -> Option<P<ast::Expr>> {
@@ -422,7 +422,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 None
             }
             parse::NextArgument(ref arg) => {
-                // Translate the position
+                // Build the position
                 let pos = {
                     let pos = |c, arg| {
                         let mut path = Context::rtpath(self.ecx, "Position");
@@ -486,7 +486,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     self.all_pieces_simple = false;
                 }
 
-                // Translate the format
+                // Build the format
                 let fill = self.ecx.expr_lit(sp, ast::LitKind::Char(fill));
                 let align = |name| {
                     let mut p = Context::rtpath(self.ecx, "Alignment");
@@ -501,8 +501,8 @@ impl<'a, 'b> Context<'a, 'b> {
                 };
                 let align = self.ecx.expr_path(align);
                 let flags = self.ecx.expr_u32(sp, arg.format.flags);
-                let prec = self.trans_count(arg.format.precision);
-                let width = self.trans_count(arg.format.width);
+                let prec = self.build_count(arg.format.precision);
+                let width = self.build_count(arg.format.width);
                 let path = self.ecx.path_global(sp, Context::rtpath(self.ecx, "FormatSpec"));
                 let fmt =
                     self.ecx.expr_struct(sp,
@@ -759,8 +759,8 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
 
     let mut arg_index_consumed = vec![0usize; cx.arg_index_map.len()];
     for piece in pieces {
-        if let Some(piece) = cx.trans_piece(&piece, &mut arg_index_consumed) {
-            let s = cx.trans_literal_string();
+        if let Some(piece) = cx.build_piece(&piece, &mut arg_index_consumed) {
+            let s = cx.build_literal_string();
             cx.str_pieces.push(s);
             cx.pieces.push(piece);
         }
@@ -776,7 +776,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         return DummyResult::raw_expr(sp);
     }
     if !cx.literal.is_empty() {
-        let s = cx.trans_literal_string();
+        let s = cx.build_literal_string();
         cx.str_pieces.push(s);
     }
 

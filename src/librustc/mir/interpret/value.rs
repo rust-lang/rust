@@ -75,7 +75,7 @@ impl<'tcx> ConstValue<'tcx> {
 ///
 /// For optimization of a few very common cases, there is also a representation for a pair of
 /// primitive values (`ByValPair`). It allows Miri to avoid making allocations for checked binary
-/// operations and fat pointers. This idea was taken from rustc's trans.
+/// operations and fat pointers. This idea was taken from rustc's codegen.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
 pub enum Value {
     ByRef(Pointer, Align),

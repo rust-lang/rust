@@ -15,7 +15,7 @@
 //!
 //! The `SimplifyLocals` pass is kinda expensive and therefore not very suitable to be run often.
 //! Most of the passes should not care or be impacted in meaningful ways due to extra locals
-//! either, so running the pass once, right before translation, should suffice.
+//! either, so running the pass once, right before codegen, should suffice.
 //!
 //! On the other side of the spectrum, the `SimplifyCfg` pass is considerably cheap to run, thus
 //! one should run it after every pass which may modify CFG in significant ways. This pass must

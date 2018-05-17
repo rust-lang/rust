@@ -665,7 +665,7 @@ enum Op {
 ///    `PartialEq` is not applicable.
 ///
 /// Reason #2 is the killer. I tried for a while to always use
-/// overloaded logic and just check the types in constants/trans after
+/// overloaded logic and just check the types in constants/codegen after
 /// the fact, and it worked fine, except for SIMD types. -nmatsakis
 fn is_builtin_binop(lhs: Ty, rhs: Ty, op: hir::BinOp) -> bool {
     match BinOpCategory::from(op) {

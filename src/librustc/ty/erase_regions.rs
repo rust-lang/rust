@@ -68,7 +68,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionEraserVisitor<'a, 'gcx, 't
         //
         // Note that we *CAN* replace early-bound regions -- the
         // type system never "sees" those, they get substituted
-        // away. In trans, they will always be erased to 'erased
+        // away. In codegen, they will always be erased to 'erased
         // whenever a substitution occurs.
         match *r {
             ty::ReLateBound(..) => r,
@@ -76,4 +76,3 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionEraserVisitor<'a, 'gcx, 't
         }
     }
 }
-

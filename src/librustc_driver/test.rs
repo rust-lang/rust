@@ -122,7 +122,7 @@ fn test_env_with_pool<F>(
                                        None,
                                        diagnostic_handler,
                                        Lrc::new(CodeMap::new(FilePathMapping::empty())));
-    let cstore = CStore::new(::get_trans(&sess).metadata_loader());
+    let cstore = CStore::new(::get_codegen_backend(&sess).metadata_loader());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {
         name: FileName::Anon,

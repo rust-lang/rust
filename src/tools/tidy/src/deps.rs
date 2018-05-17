@@ -52,7 +52,7 @@ static EXCEPTIONS: &'static [&'static str] = &[
 /// Which crates to check against the whitelist?
 static WHITELIST_CRATES: &'static [CrateVersion] = &[
     CrateVersion("rustc", "0.0.0"),
-    CrateVersion("rustc_trans", "0.0.0"),
+    CrateVersion("rustc_codegen_llvm", "0.0.0"),
 ];
 
 /// Whitelist of crates rustc is allowed to depend on. Avoid adding to the list if possible.

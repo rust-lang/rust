@@ -184,11 +184,11 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
 
         name.hash_stable(hcx, hasher);
 
-        let mut items: Vec<(Fingerprint, _)> = items.iter().map(|(trans_item, &attrs)| {
+        let mut items: Vec<(Fingerprint, _)> = items.iter().map(|(mono_item, &attrs)| {
             let mut hasher = StableHasher::new();
-            trans_item.hash_stable(hcx, &mut hasher);
-            let trans_item_fingerprint = hasher.finish();
-            (trans_item_fingerprint, attrs)
+            mono_item.hash_stable(hcx, &mut hasher);
+            let mono_item_fingerprint = hasher.finish();
+            (mono_item_fingerprint, attrs)
         }).collect();
 
         items.sort_unstable_by_key(|i| i.0);
@@ -238,4 +238,3 @@ impl Stats {
         self.fn_stats.extend(stats.fn_stats);
     }
 }
-

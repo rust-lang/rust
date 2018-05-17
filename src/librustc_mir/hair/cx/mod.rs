@@ -77,7 +77,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
         // Some functions always have overflow checks enabled,
         // however, they may not get codegen'd, depending on
-        // the settings for the crate they are translated in.
+        // the settings for the crate they are codegened in.
         let mut check_overflow = attr::contains_name(attrs, "rustc_inherit_overflow_checks");
 
         // Respect -C overflow-checks.

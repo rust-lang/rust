@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //! Check properties that are required by built-in traits and set
-//! up data structures required by type-checking/translation.
+//! up data structures required by type-checking/codegen.
 
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::middle::region;

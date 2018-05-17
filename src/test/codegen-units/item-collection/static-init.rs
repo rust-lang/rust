@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-Zprint-trans-items=eager
+// compile-flags:-Zprint-mono-items=eager
 // ignore-tidy-linelength
 
 #![feature(start)]
@@ -17,12 +17,11 @@ pub static FN : fn() = foo::<i32>;
 
 pub fn foo<T>() { }
 
-//~ TRANS_ITEM fn static_init::foo[0]<i32>
-//~ TRANS_ITEM static static_init::FN[0]
+//~ MONO_ITEM fn static_init::foo[0]<i32>
+//~ MONO_ITEM static static_init::FN[0]
 
-//~ TRANS_ITEM fn static_init::start[0]
+//~ MONO_ITEM fn static_init::start[0]
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
     0
 }
-

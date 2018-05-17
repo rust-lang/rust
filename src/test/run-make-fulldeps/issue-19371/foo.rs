@@ -15,7 +15,7 @@ extern crate rustc_driver;
 extern crate rustc_lint;
 extern crate rustc_metadata;
 extern crate rustc_errors;
-extern crate rustc_trans_utils;
+extern crate rustc_codegen_utils;
 extern crate syntax;
 
 use rustc::session::{build_session, Session};
@@ -25,7 +25,7 @@ use rustc_driver::driver::{compile_input, CompileController};
 use rustc_metadata::cstore::CStore;
 use rustc_errors::registry::Registry;
 use syntax::codemap::FileName;
-use rustc_trans_utils::trans_crate::TransCrate;
+use rustc_codegen_utils::codegen_backend::CodegenBackend;
 
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -52,7 +52,7 @@ fn main() {
     compile(src.to_string(), tmpdir.join("out"), sysroot.clone());
 }
 
-fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>, Box<TransCrate>) {
+fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>, Box<CodegenBackend>) {
     let mut opts = basic_options();
     opts.output_types = OutputTypes::new(&[(OutputType::Exe, None)]);
     opts.maybe_sysroot = Some(sysroot);
@@ -62,19 +62,19 @@ fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>, Box<TransCrate>) {
 
     let descriptions = Registry::new(&rustc::DIAGNOSTICS);
     let sess = build_session(opts, None, descriptions);
-    let trans = rustc_driver::get_trans(&sess);
-    let cstore = Rc::new(CStore::new(trans.metadata_loader()));
+    let codegen_backend = rustc_driver::get_codegen_backend(&sess);
+    let cstore = Rc::new(CStore::new(codegen_backend.metadata_loader()));
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
-    (sess, cstore, trans)
+    (sess, cstore, codegen_backend)
 }
 
 fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
     syntax::with_globals(|| {
-        let (sess, cstore, trans) = basic_sess(sysroot);
+        let (sess, cstore, codegen_backend) = basic_sess(sysroot);
         let control = CompileController::basic();
         let input = Input::Str { name: FileName::Anon, input: code };
         let _ = compile_input(
-            trans,
+            codegen_backend,
             &sess,
             &cstore,
             &None,

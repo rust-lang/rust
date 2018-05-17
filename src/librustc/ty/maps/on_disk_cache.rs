@@ -224,7 +224,7 @@ impl<'sess> OnDiskCache<'sess> {
                 encode_query_results::<predicates_of, _>(tcx, enc, qri)?;
                 encode_query_results::<used_trait_imports, _>(tcx, enc, qri)?;
                 encode_query_results::<typeck_tables_of, _>(tcx, enc, qri)?;
-                encode_query_results::<trans_fulfill_obligation, _>(tcx, enc, qri)?;
+                encode_query_results::<codegen_fulfill_obligation, _>(tcx, enc, qri)?;
                 encode_query_results::<optimized_mir, _>(tcx, enc, qri)?;
                 encode_query_results::<unsafety_check_result, _>(tcx, enc, qri)?;
                 encode_query_results::<borrowck, _>(tcx, enc, qri)?;
@@ -234,7 +234,7 @@ impl<'sess> OnDiskCache<'sess> {
                 encode_query_results::<const_is_rvalue_promotable_to_static, _>(tcx, enc, qri)?;
                 encode_query_results::<symbol_name, _>(tcx, enc, qri)?;
                 encode_query_results::<check_match, _>(tcx, enc, qri)?;
-                encode_query_results::<trans_fn_attrs, _>(tcx, enc, qri)?;
+                encode_query_results::<codegen_fn_attrs, _>(tcx, enc, qri)?;
                 encode_query_results::<specialization_graph_of, _>(tcx, enc, qri)?;
 
                 // const eval is special, it only encodes successfully evaluated constants

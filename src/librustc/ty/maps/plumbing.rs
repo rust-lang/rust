@@ -871,7 +871,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
     // Since we cannot reconstruct the query key of a DepNode::CodegenUnit, we
     // would always end up having to evaluate the first caller of the
     // `codegen_unit` query that *is* reconstructible. This might very well be
-    // the `compile_codegen_unit` query, thus re-translating the whole CGU just
+    // the `compile_codegen_unit` query, thus re-codegenning the whole CGU just
     // to re-trigger calling the `codegen_unit` query with the right key. At
     // that point we would already have re-done all the work we are trying to
     // avoid doing in the first place.
@@ -1046,7 +1046,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         }
         DepKind::IsMirAvailable => { force!(is_mir_available, def_id!()); }
         DepKind::ItemAttrs => { force!(item_attrs, def_id!()); }
-        DepKind::TransFnAttrs => { force!(trans_fn_attrs, def_id!()); }
+        DepKind::CodegenFnAttrs => { force!(codegen_fn_attrs, def_id!()); }
         DepKind::FnArgNames => { force!(fn_arg_names, def_id!()); }
         DepKind::RenderedConst => { force!(rendered_const, def_id!()); }
         DepKind::DylibDepFormats => { force!(dylib_dependency_formats, krate!()); }
@@ -1121,10 +1121,10 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::AllTraits => { force!(all_traits, LOCAL_CRATE); }
         DepKind::AllCrateNums => { force!(all_crate_nums, LOCAL_CRATE); }
         DepKind::ExportedSymbols => { force!(exported_symbols, krate!()); }
-        DepKind::CollectAndPartitionTranslationItems => {
-            force!(collect_and_partition_translation_items, LOCAL_CRATE);
+        DepKind::CollectAndPartitionMonoItems => {
+            force!(collect_and_partition_mono_items, LOCAL_CRATE);
         }
-        DepKind::IsTranslatedItem => { force!(is_translated_item, def_id!()); }
+        DepKind::IsCodegenedItem => { force!(is_codegened_item, def_id!()); }
         DepKind::OutputFilenames => { force!(output_filenames, LOCAL_CRATE); }
 
         DepKind::TargetFeaturesWhitelist => { force!(target_features_whitelist, LOCAL_CRATE); }
@@ -1207,6 +1207,6 @@ impl_load_from_cache!(
     GenericsOfItem => generics_of,
     PredicatesOfItem => predicates_of,
     UsedTraitImports => used_trait_imports,
-    TransFnAttrs => trans_fn_attrs,
+    CodegenFnAttrs => codegen_fn_attrs,
     SpecializationGraph => specialization_graph_of,
 );

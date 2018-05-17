@@ -219,19 +219,19 @@ pub fn run_core(search_paths: SearchPaths,
         let mut sess = session::build_session_(
             sessopts, cpath, diagnostic_handler, codemap,
         );
-        let trans = rustc_driver::get_trans(&sess);
-        let cstore = Rc::new(CStore::new(trans.metadata_loader()));
+        let codegen_backend = rustc_driver::get_codegen_backend(&sess);
+        let cstore = Rc::new(CStore::new(codegen_backend.metadata_loader()));
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs));
-        target_features::add_configuration(&mut cfg, &sess, &*trans);
+        target_features::add_configuration(&mut cfg, &sess, &*codegen_backend);
         sess.parse_sess.config = cfg;
 
         let control = &driver::CompileController::basic();
 
         let krate = panictry!(driver::phase_1_parse_input(control, &sess, &input));
 
-        let name = ::rustc_trans_utils::link::find_crate_name(Some(&sess), &krate.attrs, &input);
+        let name = ::rustc_codegen_utils::link::find_crate_name(Some(&sess), &krate.attrs, &input);
 
         let mut crate_loader = CrateLoader::new(&sess, &cstore, &name);
 
@@ -279,7 +279,7 @@ pub fn run_core(search_paths: SearchPaths,
 
         let resolver = RefCell::new(resolver);
 
-        abort_on_err(driver::phase_3_run_analysis_passes(&*trans,
+        abort_on_err(driver::phase_3_run_analysis_passes(&*codegen_backend,
                                                         control,
                                                         &sess,
                                                         &*cstore,

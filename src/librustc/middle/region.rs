@@ -1279,7 +1279,7 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
         loop {
             // Note: give all the expressions matching `ET` with the
             // extended temporary lifetime, not just the innermost rvalue,
-            // because in trans if we must compile e.g. `*rvalue()`
+            // because in codegen if we must compile e.g. `*rvalue()`
             // into a temporary, we request the temporary scope of the
             // outer expression.
             visitor.scope_tree.record_rvalue_scope(expr.hir_id.local_id, blk_scope);

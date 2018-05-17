@@ -64,7 +64,7 @@ mod on_unimplemented;
 mod select;
 mod specialize;
 mod structural_impls;
-pub mod trans;
+pub mod codegen;
 mod util;
 
 pub mod query;
@@ -473,8 +473,8 @@ pub enum Vtable<'tcx, N> {
 ///
 /// The type parameter `N` indicates the type used for "nested
 /// obligations" that are required by the impl. During type check, this
-/// is `Obligation`, as one might expect. During trans, however, this
-/// is `()`, because trans only requires a shallow resolution of an
+/// is `Obligation`, as one might expect. During codegen, however, this
+/// is `()`, because codegen only requires a shallow resolution of an
 /// impl, and nested obligations are satisfied later.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct VtableImplData<'tcx, N> {
@@ -856,7 +856,7 @@ fn vtable_methods<'a, 'tcx>(
                 // It's possible that the method relies on where clauses that
                 // do not hold for this particular set of type parameters.
                 // Note that this method could then never be called, so we
-                // do not want to try and trans it, in that case (see #23435).
+                // do not want to try and codegen it, in that case (see #23435).
                 let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
                 if !normalize_and_test_predicates(tcx, predicates.predicates) {
                     debug!("vtable_methods: predicates do not hold");
@@ -992,7 +992,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         is_object_safe: object_safety::is_object_safe_provider,
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
-        trans_fulfill_obligation: trans::trans_fulfill_obligation,
+        codegen_fulfill_obligation: codegen::codegen_fulfill_obligation,
         vtable_methods,
         substitute_normalize_and_test_predicates,
         ..*providers

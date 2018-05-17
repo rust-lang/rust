@@ -896,7 +896,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         .map(|b| GuardFrameLocal::new(b.var_id, b.binding_mode))
                         .collect(),
                 };
-                debug!("Entering guard translation context: {:?}", guard_frame);
+                debug!("Entering guard building context: {:?}", guard_frame);
                 self.guard_context.push(guard_frame);
             } else {
                 self.bind_matched_candidate_for_arm_body(block, &candidate.bindings, false);
@@ -909,7 +909,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let cond = unpack!(block = self.as_local_operand(block, guard));
             if autoref {
                 let guard_frame = self.guard_context.pop().unwrap();
-                debug!("Exiting guard translation context with locals: {:?}", guard_frame);
+                debug!("Exiting guard building context with locals: {:?}", guard_frame);
             }
 
             let false_edge_block = self.cfg.start_new_block();

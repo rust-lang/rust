@@ -1,0 +1,23 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_codegen_utils"
+version = "0.0.0"
+
+[lib]
+name = "rustc_codegen_utils"
+path = "lib.rs"
+crate-type = ["dylib"]
+test = false
+
+[dependencies]
+ar = "0.3.0"
+flate2 = "1.0"
+log = "0.4"
+
+syntax = { path = "../libsyntax" }
+syntax_pos = { path = "../libsyntax_pos" }
+rustc = { path = "../librustc" }
+rustc_target = { path = "../librustc_target" }
+rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_mir = { path = "../librustc_mir" }
+rustc_incremental = { path = "../librustc_incremental" }

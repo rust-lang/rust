@@ -33,7 +33,7 @@ extern crate getopts;
 extern crate env_logger;
 extern crate rustc;
 extern crate rustc_data_structures;
-extern crate rustc_trans_utils;
+extern crate rustc_codegen_utils;
 extern crate rustc_driver;
 extern crate rustc_resolve;
 extern crate rustc_lint;

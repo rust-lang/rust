@@ -401,7 +401,7 @@ pub struct TypeckTables<'tcx> {
     /// For each fn, records the "liberated" types of its arguments
     /// and return type. Liberated means that all bound regions
     /// (including late-bound regions) are replaced with free
-    /// equivalents. This table is not used in trans (since regions
+    /// equivalents. This table is not used in codegen (since regions
     /// are erased there) and hence is not serialized to metadata.
     liberated_fn_sigs: ItemLocalMap<ty::FnSig<'tcx>>,
 
@@ -921,7 +921,7 @@ pub struct GlobalCtxt<'tcx> {
     /// A general purpose channel to throw data out the back towards LLVM worker
     /// threads.
     ///
-    /// This is intended to only get used during the trans phase of the compiler
+    /// This is intended to only get used during the codegen phase of the compiler
     /// when satisfying the query for a particular codegen unit. Internally in
     /// the query it'll send data along this channel to get processed later.
     pub tx_to_llvm_workers: Lock<mpsc::Sender<Box<dyn Any + Send>>>,

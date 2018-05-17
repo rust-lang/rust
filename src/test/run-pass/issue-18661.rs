@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Test that param substitutions from the correct environment are
-// used when translating unboxed closure calls.
+// used when codegenning unboxed closure calls.
 
 // pretty-expanded FIXME #23616
 

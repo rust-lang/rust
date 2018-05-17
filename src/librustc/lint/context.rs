@@ -10,15 +10,15 @@
 
 //! Implementation of lint checking.
 //!
-//! The lint checking is mostly consolidated into one pass which runs just
-//! before translation to LLVM bytecode. Throughout compilation, lint warnings
+//! The lint checking is mostly consolidated into one pass which runs
+//! after all other analyses. Throughout compilation, lint warnings
 //! can be added via the `add_lint` method on the Session structure. This
 //! requires a span and an id of the node that the lint is being added to. The
 //! lint isn't actually emitted at that time because it is unknown what the
 //! actual lint level at that location is.
 //!
-//! To actually emit lint warnings/errors, a separate pass is used just before
-//! translation. A context keeps track of the current state of all lint levels.
+//! To actually emit lint warnings/errors, a separate pass is used.
+//! A context keeps track of the current state of all lint levels.
 //! Upon entering a node of the ast which can modify the lint settings, the
 //! previous lint state is pushed onto a stack and the ast is then recursed
 //! upon.  As the ast is traversed, this keeps track of the current lint level

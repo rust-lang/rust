@@ -11,7 +11,7 @@
 //! Inlining pass for MIR functions
 
 use rustc::hir;
-use rustc::hir::TransFnAttrFlags;
+use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::DefId;
 
 use rustc_data_structures::bitvec::BitVector;
@@ -211,16 +211,16 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             return false;
         }
 
-        // Do not inline {u,i}128 lang items, trans const eval depends
+        // Do not inline {u,i}128 lang items, codegen const eval depends
         // on detecting calls to these lang items and intercepting them
         if tcx.is_binop_lang_item(callsite.callee).is_some() {
             debug!("    not inlining 128bit integer lang item");
             return false;
         }
 
-        let trans_fn_attrs = tcx.trans_fn_attrs(callsite.callee);
+        let codegen_fn_attrs = tcx.codegen_fn_attrs(callsite.callee);
 
-        let hinted = match trans_fn_attrs.inline {
+        let hinted = match codegen_fn_attrs.inline {
             // Just treat inline(always) as a hint for now,
             // there are cases that prevent inlining that we
             // need to check for first.
@@ -250,7 +250,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         };
 
         // Significantly lower the threshold for inlining cold functions
-        if trans_fn_attrs.flags.contains(TransFnAttrFlags::COLD) {
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
             threshold /= 5;
         }
 
@@ -355,7 +355,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             }
         }
 
-        if let attr::InlineAttr::Always = trans_fn_attrs.inline {
+        if let attr::InlineAttr::Always = codegen_fn_attrs.inline {
             debug!("INLINING {:?} because inline(always) [cost={}]", callsite, cost);
             true
         } else {
@@ -515,8 +515,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         //     Fn::call(closure_ref, tuple_tmp)
         //
         // meanwhile the closure body expects the arguments (here, `a`, `b`, and `c`)
-        // as distinct arguments. (This is the "rust-call" ABI hack.) Normally, trans has
-        // the job of unpacking this tuple. But here, we are trans. =) So we want to create
+        // as distinct arguments. (This is the "rust-call" ABI hack.) Normally, codegen has
+        // the job of unpacking this tuple. But here, we are codegen. =) So we want to create
         // a vector like
         //
         //     [closure_ref, tuple_tmp.0, tuple_tmp.1, tuple_tmp.2]

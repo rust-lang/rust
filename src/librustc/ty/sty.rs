@@ -243,7 +243,7 @@ pub enum TypeVariants<'tcx> {
 /// out later.
 ///
 /// All right, you say, but why include the type parameters from the
-/// original function then? The answer is that trans may need them
+/// original function then? The answer is that codegen may need them
 /// when monomorphizing, and they may not appear in the upvars.  A
 /// closure could capture no variables but still make use of some
 /// in-scope type parameter with a bound (e.g., if our example above
@@ -273,7 +273,7 @@ pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function,
     /// concatenated with the types of the upvars.
     ///
-    /// These are separated out because trans wants to pass them around
+    /// These are separated out because codegen wants to pass them around
     /// when monomorphizing.
     pub substs: &'tcx Substs<'tcx>,
 }
@@ -1093,7 +1093,7 @@ pub enum RegionKind {
     /// variable with no constraints.
     ReEmpty,
 
-    /// Erased region, used by trait selection, in MIR and during trans.
+    /// Erased region, used by trait selection, in MIR and during codegen.
     ReErased,
 
     /// These are regions bound in the "defining type" for a
