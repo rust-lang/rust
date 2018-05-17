@@ -127,8 +127,12 @@ impl LlvmType for Reg {
 impl LlvmType for CastTarget {
     fn llvm_type(&self, cx: &CodegenCx) -> Type {
         let rest_ll_unit = self.rest.unit.llvm_type(cx);
-        let rest_count = self.rest.total.bytes() / self.rest.unit.size.bytes();
-        let rem_bytes = self.rest.total.bytes() % self.rest.unit.size.bytes();
+        let (rest_count, rem_bytes) = if self.rest.unit.size.bytes() == 0 {
+            (0, 0)
+        } else {
+            (self.rest.total.bytes() / self.rest.unit.size.bytes(),
+            self.rest.total.bytes() % self.rest.unit.size.bytes())
+        };
 
         if self.prefix.iter().all(|x| x.is_none()) {
             // Simplify to a single unit when there is no prefix and size <= unit size
