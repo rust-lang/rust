@@ -18,17 +18,342 @@ use coresimd::simd_llvm::*;
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
-pub type vector_signed_char = i8x16;
-pub type vector_unsigned_char = u8x16;
-pub type vector_bool_char = m8x16;
-pub type vector_signed_short = i16x8;
-pub type vector_unsigned_short = u16x8;
-pub type vector_bool_short = m16x8;
-// pub type vector_pixel = ???;
-pub type vector_signed_int = i32x4;
-pub type vector_unsigned_int = u32x4;
-pub type vector_bool_int = m32x4;
-pub type vector_float = f32x4;
+types! {
+    /// PowerPC-specific 128-bit wide vector of sixteen packed `i8`
+    pub struct vector_signed_char(i8, i8, i8, i8, i8, i8, i8, i8,
+                                  i8, i8, i8, i8, i8, i8, i8, i8);
+    /// PowerPC-specific 128-bit wide vector of sixteen packed `u8`
+    pub struct vector_unsigned_char(u8, u8, u8, u8, u8, u8, u8, u8,
+                                    u8, u8, u8, u8, u8, u8, u8, u8);
+
+    /// PowerPC-specific 128-bit wide vector mask of sixteen packed elements
+    pub struct vector_bool_char(i8, i8, i8, i8, i8, i8, i8, i8,
+                                i8, i8, i8, i8, i8, i8, i8, i8);
+    /// PowerPC-specific 128-bit wide vector of eight packed `i16`
+    pub struct vector_signed_short(i16, i16, i16, i16, i16, i16, i16, i16);
+    /// PowerPC-specific 128-bit wide vector of eight packed `u16`
+    pub struct vector_unsigned_short(u16, u16, u16, u16, u16, u16, u16, u16);
+    /// PowerPC-specific 128-bit wide vector mask of eight packed elements
+    pub struct vector_bool_short(i16, i16, i16, i16, i16, i16, i16, i16);
+    // pub struct vector_pixel(???);
+    /// PowerPC-specific 128-bit wide vector of four packed `i32`
+    pub struct vector_signed_int(i32, i32, i32, i32);
+    /// PowerPC-specific 128-bit wide vector of four packed `u32`
+    pub struct vector_unsigned_int(u32, u32, u32, u32);
+    /// PowerPC-specific 128-bit wide vector mask of four packed elements
+    pub struct vector_bool_int(i32, i32, i32, i32);
+    /// PowerPC-specific 128-bit wide vector of four packed `f32`
+    pub struct vector_float(f32, f32, f32, f32);
+}
+
+impl_from_bits_!(
+    vector_signed_char: u64x2,
+    i64x2,
+    f64x2,
+    m64x2,
+    u32x4,
+    i32x4,
+    f32x4,
+    m32x4,
+    u16x8,
+    i16x8,
+    m16x8,
+    u8x16,
+    i8x16,
+    m8x16,
+    vector_unsigned_char,
+    vector_bool_char,
+    vector_signed_short,
+    vector_unsigned_short,
+    vector_bool_short,
+    vector_signed_int,
+    vector_unsigned_int,
+    vector_float,
+    vector_bool_int
+);
+impl_from_bits_!(
+    i8x16:
+    vector_signed_char,
+    vector_unsigned_char,
+    vector_bool_char,
+    vector_signed_short,
+    vector_unsigned_short,
+    vector_bool_short,
+    vector_signed_int,
+    vector_unsigned_int,
+    vector_float,
+    vector_bool_int
+);
+
+impl_from_bits_!(
+    vector_unsigned_char: u64x2,
+    i64x2,
+    f64x2,
+    m64x2,
+    u32x4,
+    i32x4,
+    f32x4,
+    m32x4,
+    u16x8,
+    i16x8,
+    m16x8,
+    u8x16,
+    i8x16,
+    m8x16,
+    vector_signed_char,
+    vector_bool_char,
+    vector_signed_short,
+    vector_unsigned_short,
+    vector_bool_short,
+    vector_signed_int,
+    vector_unsigned_int,
+    vector_float,
+    vector_bool_int
+);
+impl_from_bits_!(
+    u8x16:
+    vector_signed_char,
+    vector_unsigned_char,
+    vector_bool_char,
+    vector_signed_short,
+    vector_unsigned_short,
+    vector_bool_short,
+    vector_signed_int,
+    vector_unsigned_int,
+    vector_float,
+    vector_bool_int
+);
+
+impl_from_bits_!(
+    vector_bool_char: m64x2,
+    m32x4,
+    m16x8,
+    m8x16,
+    vector_bool_short,
+    vector_bool_int
+);
+impl_from_bits_!(
+    m8x16: vector_bool_char,
+    vector_bool_short,
+    vector_bool_int
+);
+
+impl_from_bits_!(
+    vector_signed_short: u64x2,
+    i64x2,
+    f64x2,
+    m64x2,
+    u32x4,
+    i32x4,
+    f32x4,
+    m32x4,
+    u16x8,
+    i16x8,
+    m16x8,
+    u8x16,
+    i8x16,
+    m8x16,
+    vector_signed_char,
+    vector_bool_char,
+    vector_unsigned_short,
+    vector_bool_short,
+    vector_signed_int,
+    vector_unsigned_int,
+    vector_float,
+    vector_bool_int
+);
+impl_from_bits_!(
+    i16x8:
+    vector_signed_char,
+    vector_unsigned_char,
+    vector_bool_char,
+    vector_signed_short,
+    vector_unsigned_short,
+    vector_bool_short,
+    vector_signed_int,
+    vector_unsigned_int,
+    vector_float,
+    vector_bool_int
+);
+
+impl_from_bits_!(
+    vector_unsigned_short: u64x2,
+    i64x2,
+    f64x2,
+    m64x2,
+    u32x4,
+    i32x4,
+    f32x4,
+    m32x4,
+    u16x8,
+    i16x8,
+    m16x8,
+    u8x16,
+    i8x16,
+    m8x16,
+    vector_signed_char,
+    vector_bool_char,
+    vector_signed_short,
+    vector_bool_short,
+    vector_signed_int,
+    vector_unsigned_int,
+    vector_float,
+    vector_bool_int
+);
+impl_from_bits_!(
+    u16x8:
+    vector_signed_char,
+    vector_unsigned_char,
+    vector_bool_char,
+    vector_signed_short,
+    vector_unsigned_short,
+    vector_bool_short,
+    vector_signed_int,
+    vector_unsigned_int,
+    vector_float,
+    vector_bool_int
+);
+
+impl_from_bits_!(
+    vector_bool_short: m64x2,
+    m32x4,
+    m16x8,
+    m8x16,
+    vector_bool_int
+);
+impl_from_bits_!(m16x8: vector_bool_short, vector_bool_int);
+
+impl_from_bits_!(
+    vector_signed_int: u64x2,
+    i64x2,
+    f64x2,
+    m64x2,
+    u32x4,
+    i32x4,
+    f32x4,
+    m32x4,
+    u16x8,
+    i16x8,
+    m16x8,
+    u8x16,
+    i8x16,
+    m8x16,
+    vector_signed_char,
+    vector_bool_char,
+    vector_signed_short,
+    vector_unsigned_short,
+    vector_bool_short,
+    vector_unsigned_int,
+    vector_float,
+    vector_bool_int
+);
+impl_from_bits_!(
+    i32x4:
+    vector_signed_char,
+    vector_unsigned_char,
+    vector_bool_char,
+    vector_signed_short,
+    vector_unsigned_short,
+    vector_bool_short,
+    vector_signed_int,
+    vector_unsigned_int,
+    vector_float,
+    vector_bool_int
+);
+
+impl_from_bits_!(
+    vector_unsigned_int: u64x2,
+    i64x2,
+    f64x2,
+    m64x2,
+    u32x4,
+    i32x4,
+    f32x4,
+    m32x4,
+    u16x8,
+    i16x8,
+    m16x8,
+    u8x16,
+    i8x16,
+    m8x16,
+    vector_signed_char,
+    vector_bool_char,
+    vector_signed_short,
+    vector_unsigned_short,
+    vector_bool_short,
+    vector_signed_int,
+    vector_float,
+    vector_bool_int
+);
+impl_from_bits_!(
+    u32x4:
+    vector_signed_char,
+    vector_unsigned_char,
+    vector_bool_char,
+    vector_signed_short,
+    vector_unsigned_short,
+    vector_bool_short,
+    vector_signed_int,
+    vector_unsigned_int,
+    vector_float,
+    vector_bool_int
+);
+
+impl_from_bits_!(
+    vector_bool_int: u64x2,
+    i64x2,
+    f64x2,
+    m64x2,
+    u32x4,
+    i32x4,
+    f32x4,
+    m32x4,
+    u16x8,
+    i16x8,
+    m16x8,
+    u8x16,
+    i8x16,
+    m8x16
+);
+impl_from_bits_!(m32x4: vector_bool_int);
+
+impl_from_bits_!(
+    vector_float: u64x2,
+    i64x2,
+    f64x2,
+    m64x2,
+    u32x4,
+    i32x4,
+    f32x4,
+    m32x4,
+    u16x8,
+    i16x8,
+    m16x8,
+    u8x16,
+    i8x16,
+    m8x16,
+    vector_signed_char,
+    vector_bool_char,
+    vector_signed_short,
+    vector_unsigned_short,
+    vector_bool_short,
+    vector_signed_int,
+    vector_unsigned_int,
+    vector_bool_int
+);
+impl_from_bits_!(
+    f32x4:
+    vector_signed_char,
+    vector_unsigned_char,
+    vector_bool_char,
+    vector_signed_short,
+    vector_unsigned_short,
+    vector_bool_short,
+    vector_signed_int,
+    vector_unsigned_int,
+    vector_float,
+    vector_bool_int
+);
 
 mod sealed {
 
@@ -345,7 +670,9 @@ mod tests {
     unsafe fn vec_add_i32x4_i32x4() {
         let x = i32x4::new(1, 2, 3, 4);
         let y = i32x4::new(4, 3, 2, 1);
+        let x: vector_signed_int = x.into_bits();
+        let y: vector_signed_int = y.into_bits();
         let z = vec_add(x, y);
-        assert_eq!(z, i32x4::splat(5));
+        assert_eq!(i32x4::splat(5), z.into_bits());
     }
 }
