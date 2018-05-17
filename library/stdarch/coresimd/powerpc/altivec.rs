@@ -701,15 +701,18 @@ where
     a.vec_add(b)
 }
 
-/// Vector permute.
-#[inline]
-#[target_feature(enable = "altivec")]
-pub unsafe fn vec_perm<T>(a: T, b: T, c: vector_unsigned_char) -> T
-where
-    T: sealed::VectorPerm,
-{
 
-    if cfg!(target_endian = "little") {
+/// Endian-biased intrinsics
+#[cfg(target_endian = "little")]
+mod endian {
+    use super::*;
+    /// Vector permute.
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    pub unsafe fn vec_perm<T>(a: T, b: T, c: vector_unsigned_char) -> T
+    where
+        T: sealed::VectorPerm,
+    {
         // vperm has big-endian bias
         //
         // Xor the mask and flip the arguments
@@ -718,10 +721,23 @@ where
         let c = simd_xor(c, d);
 
         b.vec_vperm(a, c)
-    } else {
+    }
+}
+#[cfg(target_endian = "big")]
+mod endian {
+    use super::*;
+    /// Vector permute.
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    pub unsafe fn vec_perm<T>(a: T, b: T, c: vector_unsigned_char) -> T
+    where
+        T: sealed::VectorPerm,
+    {
         a.vec_vperm(b, c)
     }
 }
+
+pub use self::endian::*;
 
 #[cfg(test)]
 mod tests {
