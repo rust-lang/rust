@@ -67,7 +67,7 @@ use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability};
 use doctree;
 use fold::DocFolder;
 use html::escape::Escape;
-use html::format::{ConstnessSpace};
+use html::format::{AsyncSpace, ConstnessSpace};
 use html::format::{TyParamBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
@@ -2592,9 +2592,10 @@ fn item_static(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
 fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
-    let name_len = format!("{}{}{}{:#}fn {}{:#}",
+    let name_len = format!("{}{}{}{}{:#}fn {}{:#}",
                            VisSpace(&it.visibility),
                            ConstnessSpace(f.header.constness),
+                           AsyncSpace(f.header.asyncness),
                            UnsafetySpace(f.header.unsafety),
                            AbiSpace(f.header.abi),
                            it.name.as_ref().unwrap(),
@@ -2602,9 +2603,10 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     write!(w, "{}<pre class='rust fn'>", render_spotlight_traits(it)?)?;
     render_attributes(w, it)?;
     write!(w,
-           "{vis}{constness}{unsafety}{abi}fn {name}{generics}{decl}{where_clause}</pre>",
+           "{vis}{constness}{asyncness}{unsafety}{abi}fn {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(&it.visibility),
            constness = ConstnessSpace(f.header.constness),
+           asyncness = AsyncSpace(f.header.asyncness),
            unsafety = UnsafetySpace(f.header.unsafety),
            abi = AbiSpace(f.header.abi),
            name = it.name.as_ref().unwrap(),
