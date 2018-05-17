@@ -41,7 +41,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     }
 
     /// Check whether two statements are the same.
-    pub fn eq_stmt(&self, left: &Stmt, right: &Stmt) -> bool {
+    pub fn eq_stmt(&mut self, left: &Stmt, right: &Stmt) -> bool {
         match (&left.node, &right.node) {
             (&StmtDecl(ref l, _), &StmtDecl(ref r, _)) => {
                 if let (&DeclLocal(ref l), &DeclLocal(ref r)) = (&l.node, &r.node) {
@@ -58,12 +58,12 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     }
 
     /// Check whether two blocks are the same.
-    pub fn eq_block(&self, left: &Block, right: &Block) -> bool {
+    pub fn eq_block(&mut self, left: &Block, right: &Block) -> bool {
         over(&left.stmts, &right.stmts, |l, r| self.eq_stmt(l, r))
             && both(&left.expr, &right.expr, |l, r| self.eq_expr(l, r))
     }
 
-    pub fn eq_expr(&self, left: &Expr, right: &Expr) -> bool {
+    pub fn eq_expr(&mut self, left: &Expr, right: &Expr) -> bool {
         if self.ignore_fn && differing_macro_contexts(left.span, right.span) {
             return false;
         }
@@ -144,20 +144,20 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    fn eq_exprs(&self, left: &P<[Expr]>, right: &P<[Expr]>) -> bool {
+    fn eq_exprs(&mut self, left: &P<[Expr]>, right: &P<[Expr]>) -> bool {
         over(left, right, |l, r| self.eq_expr(l, r))
     }
 
-    fn eq_field(&self, left: &Field, right: &Field) -> bool {
+    fn eq_field(&mut self, left: &Field, right: &Field) -> bool {
         left.name.node == right.name.node && self.eq_expr(&left.expr, &right.expr)
     }
 
-    fn eq_lifetime(&self, left: &Lifetime, right: &Lifetime) -> bool {
+    fn eq_lifetime(&mut self, left: &Lifetime, right: &Lifetime) -> bool {
         left.name == right.name
     }
 
     /// Check whether two patterns are the same.
-    pub fn eq_pat(&self, left: &Pat, right: &Pat) -> bool {
+    pub fn eq_pat(&mut self, left: &Pat, right: &Pat) -> bool {
         match (&left.node, &right.node) {
             (&PatKind::Box(ref l), &PatKind::Box(ref r)) => self.eq_pat(l, r),
             (&PatKind::TupleStruct(ref lp, ref la, ls), &PatKind::TupleStruct(ref rp, ref ra, rs)) => {
@@ -184,7 +184,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    fn eq_qpath(&self, left: &QPath, right: &QPath) -> bool {
+    fn eq_qpath(&mut self, left: &QPath, right: &QPath) -> bool {
         match (left, right) {
             (&QPath::Resolved(ref lty, ref lpath), &QPath::Resolved(ref rty, ref rpath)) => {
                 both(lty, rty, |l, r| self.eq_ty(l, r)) && self.eq_path(lpath, rpath)
@@ -196,12 +196,12 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    fn eq_path(&self, left: &Path, right: &Path) -> bool {
+    fn eq_path(&mut self, left: &Path, right: &Path) -> bool {
         left.is_global() == right.is_global()
             && over(&left.segments, &right.segments, |l, r| self.eq_path_segment(l, r))
     }
 
-    fn eq_path_parameters(&self, left: &PathParameters, right: &PathParameters) -> bool {
+    fn eq_path_parameters(&mut self, left: &PathParameters, right: &PathParameters) -> bool {
         if !(left.parenthesized || right.parenthesized) {
             over(&left.lifetimes, &right.lifetimes, |l, r| self.eq_lifetime(l, r))
                 && over(&left.types, &right.types, |l, r| self.eq_ty(l, r))
@@ -218,7 +218,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    fn eq_path_segment(&self, left: &PathSegment, right: &PathSegment) -> bool {
+    fn eq_path_segment(&mut self, left: &PathSegment, right: &PathSegment) -> bool {
         // The == of idents doesn't work with different contexts,
         // we have to be explicit about hygiene
         if left.name.as_str() != right.name.as_str() {
@@ -231,12 +231,23 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    fn eq_ty(&self, left: &Ty, right: &Ty) -> bool {
+    fn eq_ty(&mut self, left: &Ty, right: &Ty) -> bool {
         match (&left.node, &right.node) {
             (&TySlice(ref l_vec), &TySlice(ref r_vec)) => self.eq_ty(l_vec, r_vec),
             (&TyArray(ref lt, ll_id), &TyArray(ref rt, rl_id)) => {
-                self.eq_ty(lt, rt)
-                    && self.eq_expr(&self.cx.tcx.hir.body(ll_id).value, &self.cx.tcx.hir.body(rl_id).value)
+                let full_table = self.tables;
+
+                let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(ll_id));
+                self.tables = self.cx.tcx.body_tables(ll_id);
+                let ll = celcx.expr(&self.cx.tcx.hir.body(ll_id).value);
+
+                let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(rl_id));
+                self.tables = self.cx.tcx.body_tables(rl_id);
+                let rl = celcx.expr(&self.cx.tcx.hir.body(rl_id).value);
+
+                let eq_ty = self.eq_ty(lt, rt);
+                self.tables = full_table;
+                eq_ty && ll == rl
             },
             (&TyPtr(ref l_mut), &TyPtr(ref r_mut)) => l_mut.mutbl == r_mut.mutbl && self.eq_ty(&*l_mut.ty, &*r_mut.ty),
             (&TyRptr(_, ref l_rmut), &TyRptr(_, ref r_rmut)) => {
@@ -249,7 +260,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
     }
 
-    fn eq_type_binding(&self, left: &TypeBinding, right: &TypeBinding) -> bool {
+    fn eq_type_binding(&mut self, left: &TypeBinding, right: &TypeBinding) -> bool {
         left.name == right.name && self.eq_ty(&left.ty, &right.ty)
     }
 }
@@ -467,8 +478,10 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 let c: fn(_, _) -> _ = ExprRepeat;
                 c.hash(&mut self.s);
                 self.hash_expr(e);
+                let full_table = self.tables;
                 self.tables = self.cx.tcx.body_tables(l_id);
                 self.hash_expr(&self.cx.tcx.hir.body(l_id).value);
+                self.tables = full_table;
             },
             ExprRet(ref e) => {
                 let c: fn(_) -> _ = ExprRet;

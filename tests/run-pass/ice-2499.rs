@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, char_lit_as_u8, needless_bool)]
 
 /// Should not trigger an ICE in `SpanlessHash` / `consts::constant`
 ///
@@ -9,7 +9,7 @@ fn f(s: &[u8]) -> bool {
 
     match t {
         'E' | 'W' => {}
-        'T' => if &s[0..(0 + 4)] != &['0' as u8; 4] {
+        'T' => if s[0..4] != ['0' as u8; 4] {
             return false;
         } else {
             return true;
