@@ -2962,7 +2962,12 @@ impl<'test> TestCx<'test> {
 
         let mut files = vec![output_file];
         if self.config.bless {
-            files.push(self.expected_output_path(kind));
+            files.push(expected_output_path(
+                self.testpaths,
+                self.revision,
+                &self.config.compare_mode,
+                kind,
+            ));
         }
 
         for output_file in &files {
