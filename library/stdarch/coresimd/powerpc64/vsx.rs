@@ -10,6 +10,12 @@
 
 use coresimd::powerpc::*;
 use coresimd::simd::*;
+use coresimd::simd_llvm::*;
+
+#[cfg(test)]
+use stdsimd_test::assert_instr;
+
+use mem;
 
 types! {
     // pub struct vector_Float16 = f16x8;
@@ -216,3 +222,75 @@ impl_from_bits_!(
     vector_bool_long,
     vector_double
 );
+
+mod sealed {
+
+    use super::*;
+
+    pub trait VectorPermDI {
+        unsafe fn vec_xxpermdi(self, b: Self, dm: u8) -> Self;
+    }
+
+    #[inline]
+    #[target_feature(enable = "vsx")]
+    #[cfg_attr(test, assert_instr(xxpermdi, dm = 0x0))]
+    unsafe fn xxpermdi(a: i64x2, b: i64x2, dm: u8) -> i64x2 {
+        match dm & 0b11 {
+            0 => simd_shuffle2(a, b, [0b00, 0b10]),
+            1 => simd_shuffle2(a, b, [0b01, 0b10]),
+            2 => simd_shuffle2(a, b, [0b00, 0b11]),
+            _ => simd_shuffle2(a, b, [0b01, 0b11]),
+        }
+    }
+
+    macro_rules! vec_xxpermdi {
+        {$impl: ident} => {
+            impl VectorPermDI for $impl {
+                #[inline]
+                #[target_feature(enable = "vsx")]
+                unsafe fn vec_xxpermdi(self, b: Self, dm: u8) -> Self {
+                    mem::transmute(xxpermdi(mem::transmute(self), mem::transmute(b), dm))
+                }
+            }
+        }
+    }
+
+    vec_xxpermdi! { vector_unsigned_long }
+    vec_xxpermdi! { vector_signed_long }
+    vec_xxpermdi! { vector_bool_long }
+    vec_xxpermdi! { vector_double }
+}
+
+/// Vector permute.
+#[inline]
+#[target_feature(enable = "vsx")]
+#[rustc_args_required_const(2)]
+pub unsafe fn vec_xxpermdi<T>(a: T, b: T, dm: u8) -> T
+where
+    T: sealed::VectorPermDI,
+{
+    a.vec_xxpermdi(b, dm)
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(target_arch = "powerpc")]
+    use coresimd::arch::powerpc::*;
+
+    #[cfg(target_arch = "powerpc64")]
+    use coresimd::arch::powerpc64::*;
+
+    use simd::*;
+    use stdsimd_test::simd_test;
+
+    #[simd_test(enable = "vsx")]
+    unsafe fn vec_xxpermdi_u62x2() {
+        let a: vector_unsigned_long = u64x2::new(0, 1).into_bits();
+        let b = u64x2::new(2, 3).into_bits();
+
+        assert_eq!(u64x2::new(0, 2), vec_xxpermdi(a, b, 0).into_bits());
+        assert_eq!(u64x2::new(1, 2), vec_xxpermdi(a, b, 1).into_bits());
+        assert_eq!(u64x2::new(0, 3), vec_xxpermdi(a, b, 2).into_bits());
+        assert_eq!(u64x2::new(1, 3), vec_xxpermdi(a, b, 3).into_bits());
+    }
+}
