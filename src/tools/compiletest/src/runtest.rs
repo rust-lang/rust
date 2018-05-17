@@ -2596,15 +2596,13 @@ impl<'test> TestCx<'test> {
         }
 
         if errors > 0 {
-            println!("To update references, run this command from build directory:");
+            println!("To update references, rerun the tests and pass the `--bless` flag");
             let relative_path_to_file = self.testpaths
                 .relative_dir
                 .join(self.testpaths.file.file_name().unwrap());
             println!(
-                "{}/update-references.sh '{}' '{}'",
-                self.config.src_base.display(),
-                self.config.build_base.display(),
-                relative_path_to_file.display()
+                "To only update this specific test, also pass `--test-args {}`",
+                relative_path_to_file.display(),
             );
             self.fatal_proc_rec(
                 &format!("{} errors occurred comparing output.", errors),

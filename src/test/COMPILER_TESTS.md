@@ -140,13 +140,9 @@ check that the test compiles successfully.
 ### Editing and updating the reference files
 
 If you have changed the compiler's output intentionally, or you are
-making a new test, you can use the script `ui/update-references.sh` to
-update the references. When you run the test framework, it will report
-various errors: in those errors is a command you can use to run the
-`ui/update-references.sh` script, which will then copy over the files
-from the build directory and use them as the new reference. You can
-also just run `ui/update-all-references.sh`. In both cases, you can run
-the script with `--help` to get a help message.
+making a new test, you can pass `--bless` to the command you used to
+run the tests. This will then copy over the files
+from the build directory and use them as the new reference.
 
 ### Normalization
 
