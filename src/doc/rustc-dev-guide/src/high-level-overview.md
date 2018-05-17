@@ -104,8 +104,8 @@ take:
       nodes, and hence may strip things out of the AST as well.
 3. **Lowering to HIR**
     - Once name resolution completes, we convert the AST into the HIR,
-      or "high-level IR". The HIR is defined in `src/librustc/hir/`;
-      that module also includes the lowering code.
+      or "[high-level intermediate representation]". The HIR is defined in
+      `src/librustc/hir/`; that module also includes the lowering code.
     - The HIR is a lightly desugared variant of the AST. It is more processed
       than the AST and more suitable for the analyses that follow.
       It is **not** required to match the syntax of the Rust language.
@@ -138,3 +138,4 @@ take:
 
 
 [query model]: query.html
+[high-level intermediate representation]: hir.html
