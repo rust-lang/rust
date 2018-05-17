@@ -5,7 +5,7 @@ LL |     bar; //~ ERROR cannot find value `bar`
    |     ^^^ not found in this scope
 
 error[E0308]: mismatched types
-  --> $DIR/tab.rs:18:2
+  --> $DIR/tab.rs:18:2: in fn foo
    |
 LL | fn foo() {
    |          - help: try adding a return type: `-> &'static str`

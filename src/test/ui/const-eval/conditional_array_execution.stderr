@@ -13,7 +13,7 @@ LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempt to subtract with overflow
 
 warning: constant evaluation error
-  --> $DIR/conditional_array_execution.rs:20:20
+  --> $DIR/conditional_array_execution.rs:20:20: in fn main
    |
 LL |     println!("{}", FOO);
    |                    ^^^ referenced constant has errors

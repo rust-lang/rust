@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/propagate-from-trait-match.rs:55:9
+  --> $DIR/propagate-from-trait-match.rs:55:9: in fn supply
    |
 LL |         require(value);
    |         ^^^^^^^
 
 note: External requirements
-  --> $DIR/propagate-from-trait-match.rs:42:36
+  --> $DIR/propagate-from-trait-match.rs:42:36: in fn supply
    |
 LL |       establish_relationships(value, |value| {
    |  ____________________________________^
@@ -27,7 +27,7 @@ LL | |     });
    = note: where T: '_#1r
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/propagate-from-trait-match.rs:42:36
+  --> $DIR/propagate-from-trait-match.rs:42:36: in fn supply
    |
 LL |       establish_relationships(value, |value| {
    |  ____________________________________^

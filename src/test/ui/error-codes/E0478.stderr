@@ -1,5 +1,5 @@
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/E0478.rs:14:5
+  --> $DIR/E0478.rs:14:5: in struct Prince
    |
 LL |     child: Box<Wedding<'kiss> + 'SnowWhite>, //~ ERROR E0478
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

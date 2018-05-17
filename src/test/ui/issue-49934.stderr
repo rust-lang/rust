@@ -7,7 +7,7 @@ LL |     #[derive(Debug)]
    = note: this may become a hard error in a future release
 
 warning: unused attribute
-  --> $DIR/issue-49934.rs:16:8
+  --> $DIR/issue-49934.rs:16:8: in fn foo
    |
 LL | fn foo<#[derive(Debug)] T>() { //~ WARN unused attribute
    |        ^^^^^^^^^^^^^^^^
@@ -19,31 +19,31 @@ LL | #![warn(unused_attributes)] //~ NOTE lint level defined here
    |         ^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-49934.rs:18:9
+  --> $DIR/issue-49934.rs:18:9: in fn foo
    |
 LL |         #[derive(Debug)] //~ WARN unused attribute
    |         ^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-49934.rs:36:5
+  --> $DIR/issue-49934.rs:36:5: in fn main
    |
 LL |     #[derive(Debug)] //~ WARN unused attribute
    |     ^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-49934.rs:40:5
+  --> $DIR/issue-49934.rs:40:5: in fn main
    |
 LL |     #[derive(Debug)] //~ WARN unused attribute
    |     ^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-49934.rs:44:13
+  --> $DIR/issue-49934.rs:44:13: in fn main
    |
 LL |     let _ = #[derive(Debug)] "Hello, world!";
    |             ^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-49934.rs:49:9
+  --> $DIR/issue-49934.rs:49:9: in fn main
    |
 LL |         #[derive(Debug)] //~ WARN unused attribute
    |         ^^^^^^^^^^^^^^^^

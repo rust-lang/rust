@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/main.rs:12:18
+  --> $DIR/main.rs:12:18: in fn main
    |
 LL |       let x: u32 = ( //~ ERROR mismatched types
    |  __________________^

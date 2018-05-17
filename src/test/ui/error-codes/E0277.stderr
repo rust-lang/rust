@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `[u8]: std::marker::Sized` is not satisfied in `std::path::Path`
-  --> $DIR/E0277.rs:23:6
+  --> $DIR/E0277.rs:23:6: in fn f
    |
 LL | fn f(p: Path) { }
    |      ^ `[u8]` does not have a constant size known at compile-time
@@ -9,7 +9,7 @@ LL | fn f(p: Path) { }
    = note: all local variables must have a statically known size
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
-  --> $DIR/E0277.rs:27:5
+  --> $DIR/E0277.rs:27:5: in fn main
    |
 LL |     some_func(5i32);
    |     ^^^^^^^^^ the trait `Foo` is not implemented for `i32`

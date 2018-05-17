@@ -1,5 +1,5 @@
 error[E0631]: type mismatch in closure arguments
-  --> $DIR/unboxed-closures-vtable-mismatch.rs:25:13
+  --> $DIR/unboxed-closures-vtable-mismatch.rs:25:13: in fn main
    |
 LL |     let f = to_fn_mut(|x: usize, y: isize| -> isize { (x as isize) + y });
    |                       ----------------------------- found signature of `fn(usize, isize) -> _`

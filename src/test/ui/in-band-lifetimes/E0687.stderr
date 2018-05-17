@@ -1,23 +1,23 @@
 error[E0687]: lifetimes used in `fn` or `Fn` syntax must be explicitly declared using `<...>` binders
-  --> $DIR/E0687.rs:14:15
+  --> $DIR/E0687.rs:14:15: in fn foo
    |
 LL | fn foo(x: fn(&'a u32)) {} //~ ERROR must be explicitly
    |               ^^ in-band lifetime definition
 
 error[E0687]: lifetimes used in `fn` or `Fn` syntax must be explicitly declared using `<...>` binders
-  --> $DIR/E0687.rs:16:16
+  --> $DIR/E0687.rs:16:16: in fn bar
    |
 LL | fn bar(x: &Fn(&'a u32)) {} //~ ERROR must be explicitly
    |                ^^ in-band lifetime definition
 
 error[E0687]: lifetimes used in `fn` or `Fn` syntax must be explicitly declared using `<...>` binders
-  --> $DIR/E0687.rs:18:15
+  --> $DIR/E0687.rs:18:15: in fn baz
    |
 LL | fn baz(x: fn(&'a u32), y: &'a u32) {} //~ ERROR must be explicitly
    |               ^^ in-band lifetime definition
 
 error[E0687]: lifetimes used in `fn` or `Fn` syntax must be explicitly declared using `<...>` binders
-  --> $DIR/E0687.rs:23:26
+  --> $DIR/E0687.rs:23:26: in fn bar::bar
    |
 LL |     fn bar(&self, x: fn(&'a u32)) {} //~ ERROR must be explicitly
    |                          ^^ in-band lifetime definition

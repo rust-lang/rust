@@ -23,7 +23,7 @@ LL |     -> <dyn Iterator<Item = impl Debug> as Iterator>::Item
    |                             ^^^^^^^^^^
 
 error[E0223]: ambiguous associated type
-  --> $DIR/impl_trait_projections.rs:21:50
+  --> $DIR/impl_trait_projections.rs:21:50: in fn projection_is_disallowed
    |
 LL | fn projection_is_disallowed(x: impl Iterator) -> <impl Iterator>::Item {
    |                                                  ^^^^^^^^^^^^^^^^^^^^^ ambiguous associated type

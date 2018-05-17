@@ -1,5 +1,5 @@
 error[E0283]: type annotations required: cannot resolve `_: std::convert::Into<std::string::String>`
-  --> $DIR/type-annotation-needed.rs:15:5
+  --> $DIR/type-annotation-needed.rs:15:5: in fn main
    |
 LL |     foo(42);
    |     ^^^

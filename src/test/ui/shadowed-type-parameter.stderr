@@ -1,5 +1,5 @@
 error[E0194]: type parameter `T` shadows another type parameter of the same name
-  --> $DIR/shadowed-type-parameter.rs:30:27
+  --> $DIR/shadowed-type-parameter.rs:30:27: in trait Bar::shadow_in_required
    |
 LL | trait Bar<T> {
    |           - first `T` declared here
@@ -8,7 +8,7 @@ LL |     fn shadow_in_required<T>(&self);
    |                           ^ shadows another type parameter
 
 error[E0194]: type parameter `T` shadows another type parameter of the same name
-  --> $DIR/shadowed-type-parameter.rs:33:27
+  --> $DIR/shadowed-type-parameter.rs:33:27: in fn Bar::shadow_in_provided::shadow_in_provided
    |
 LL | trait Bar<T> {
    |           - first `T` declared here
@@ -17,7 +17,7 @@ LL |     fn shadow_in_provided<T>(&self) {}
    |                           ^ shadows another type parameter
 
 error[E0194]: type parameter `T` shadows another type parameter of the same name
-  --> $DIR/shadowed-type-parameter.rs:18:25
+  --> $DIR/shadowed-type-parameter.rs:18:25: in fn shadow_in_method::shadow_in_method
    |
 LL | impl<T> Foo<T> {
    |      - first `T` declared here

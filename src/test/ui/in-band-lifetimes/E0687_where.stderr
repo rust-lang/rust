@@ -1,11 +1,11 @@
 error[E0687]: lifetimes used in `fn` or `Fn` syntax must be explicitly declared using `<...>` binders
-  --> $DIR/E0687_where.rs:14:31
+  --> $DIR/E0687_where.rs:14:31: in fn bar
    |
 LL | fn bar<F>(x: &F) where F: Fn(&'a u32) {} //~ ERROR must be explicitly
    |                               ^^ in-band lifetime definition
 
 error[E0687]: lifetimes used in `fn` or `Fn` syntax must be explicitly declared using `<...>` binders
-  --> $DIR/E0687_where.rs:16:21
+  --> $DIR/E0687_where.rs:16:21: in fn baz
    |
 LL | fn baz(x: &impl Fn(&'a u32)) {} //~ ERROR must be explicitly
    |                     ^^ in-band lifetime definition

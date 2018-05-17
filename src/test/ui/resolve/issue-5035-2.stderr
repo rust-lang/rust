@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `I + 'static: std::marker::Sized` is not satisfied
-  --> $DIR/issue-5035-2.rs:14:8
+  --> $DIR/issue-5035-2.rs:14:8: in fn foo
    |
 LL | fn foo(_x: K) {} //~ ERROR: `I + 'static: std::marker::Sized` is not satisfied
    |        ^^ `I + 'static` does not have a constant size known at compile-time

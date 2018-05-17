@@ -1,5 +1,5 @@
 warning: attempt to subtract with overflow
-  --> $DIR/issue-43197.rs:20:20
+  --> $DIR/issue-43197.rs:20:20: in fn main
    |
 LL |     const X: u32 = 0-1;
    |                    ^^^
@@ -7,31 +7,31 @@ LL |     const X: u32 = 0-1;
    = note: #[warn(const_err)] on by default
 
 warning: this constant cannot be used
-  --> $DIR/issue-43197.rs:20:5
+  --> $DIR/issue-43197.rs:20:5: in fn main
    |
 LL |     const X: u32 = 0-1;
    |     ^^^^^^^^^^^^^^^^^^^ attempt to subtract with overflow
 
 warning: attempt to subtract with overflow
-  --> $DIR/issue-43197.rs:23:24
+  --> $DIR/issue-43197.rs:23:24: in fn main
    |
 LL |     const Y: u32 = foo(0-1);
    |                        ^^^
 
 warning: this constant cannot be used
-  --> $DIR/issue-43197.rs:23:5
+  --> $DIR/issue-43197.rs:23:5: in fn main
    |
 LL |     const Y: u32 = foo(0-1);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ attempt to subtract with overflow
 
 warning: constant evaluation error
-  --> $DIR/issue-43197.rs:26:23
+  --> $DIR/issue-43197.rs:26:23: in fn main
    |
 LL |     println!("{} {}", X, Y);
    |                       ^ referenced constant has errors
 
 warning: constant evaluation error
-  --> $DIR/issue-43197.rs:26:26
+  --> $DIR/issue-43197.rs:26:26: in fn main
    |
 LL |     println!("{} {}", X, Y);
    |                          ^ referenced constant has errors

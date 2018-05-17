@@ -1,5 +1,5 @@
 error[E0597]: `*v.0` does not live long enough
-  --> $DIR/issue-31567.rs:22:26
+  --> $DIR/issue-31567.rs:22:26: in fn get_dangling
    |
 LL |     let s_inner: &'a S = &*v.0; //~ ERROR `*v.0` does not live long enough
    |                          ^^^^^ borrowed value does not live long enough

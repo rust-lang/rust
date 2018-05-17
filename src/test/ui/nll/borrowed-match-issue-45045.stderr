@@ -1,5 +1,5 @@
 error[E0503]: cannot use `e` because it was mutably borrowed
-  --> $DIR/borrowed-match-issue-45045.rs:24:5
+  --> $DIR/borrowed-match-issue-45045.rs:24:5: in fn main
    |
 LL |       let f = &mut e;
    |               ------ borrow of `e` occurs here
@@ -14,7 +14,7 @@ LL |       *g = Xyz::B;
    |       ----------- borrow later used here
 
 error[E0503]: cannot use `e` because it was mutably borrowed
-  --> $DIR/borrowed-match-issue-45045.rs:25:9
+  --> $DIR/borrowed-match-issue-45045.rs:25:9: in fn main
    |
 LL |     let f = &mut e;
    |             ------ borrow of `e` occurs here

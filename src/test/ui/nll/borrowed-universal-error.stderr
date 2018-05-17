@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowed-universal-error.rs:20:12
+  --> $DIR/borrowed-universal-error.rs:20:12: in fn foo
    |
 LL |     gimme(&(v,))
    |            ^^^^ temporary value does not live long enough

@@ -1,5 +1,5 @@
 error: unnecessary `unsafe` block
-  --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:17:13
+  --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:17:13: in fn main
    |
 LL |     unsafe {
    |     ------ because it's nested under this `unsafe` block
@@ -14,7 +14,7 @@ LL | #[deny(unused_unsafe)]
    |        ^^^^^^^^^^^^^
 
 error: unnecessary `unsafe` block
-  --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:19:38
+  --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:19:38: in fn main
    |
 LL |     unsafe {
    |     ------ because it's nested under this `unsafe` block
@@ -23,7 +23,7 @@ LL |                 |w: &mut Vec<u32>| { unsafe { //~ ERROR unnecessary `unsafe
    |                                      ^^^^^^ unnecessary `unsafe` block
 
 error: unnecessary `unsafe` block
-  --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:23:34
+  --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:23:34: in fn main
    |
 LL |     unsafe {
    |     ------ because it's nested under this `unsafe` block

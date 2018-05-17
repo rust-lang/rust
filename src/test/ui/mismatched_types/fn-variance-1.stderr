@@ -1,5 +1,5 @@
 error[E0631]: type mismatch in function arguments
-  --> $DIR/fn-variance-1.rs:21:5
+  --> $DIR/fn-variance-1.rs:21:5: in fn main
    |
 LL | fn takes_mut(x: &mut isize) { }
    | --------------------------- found signature of `for<'r> fn(&'r mut isize) -> _`
@@ -14,7 +14,7 @@ LL | fn apply<T, F>(t: T, f: F) where F: FnOnce(T) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0631]: type mismatch in function arguments
-  --> $DIR/fn-variance-1.rs:25:5
+  --> $DIR/fn-variance-1.rs:25:5: in fn main
    |
 LL | fn takes_imm(x: &isize) { }
    | ----------------------- found signature of `for<'r> fn(&'r isize) -> _`

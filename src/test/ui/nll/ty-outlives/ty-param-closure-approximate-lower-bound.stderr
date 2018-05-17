@@ -1,23 +1,23 @@
 warning: not reporting region error due to nll
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:34:31
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:34:31: in fn generic
    |
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                               ^^^^^^^^^^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:31
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:31: in fn generic_fail
    |
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                               ^^^^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:31
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:31: in fn generic_fail
    |
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                               ^^^^^^^^^^^^
 
 note: External requirements
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:34:24
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:34:24: in fn generic
    |
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:24
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:24: in fn generic_fail
    |
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL |     twice(cell, value, |a, b| invoke(a, b));
    = note: where T: '_#1r
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:24
+  --> $DIR/ty-param-closure-approximate-lower-bound.rs:42:24: in fn generic_fail
    |
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^

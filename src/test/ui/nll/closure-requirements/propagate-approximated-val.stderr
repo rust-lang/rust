@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/propagate-approximated-val.rs:50:9
+  --> $DIR/propagate-approximated-val.rs:50:9: in fn test
    |
 LL |         demand_y(outlives1, outlives2, x.get()) //~ WARNING not reporting region error due to nll
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: External requirements
-  --> $DIR/propagate-approximated-val.rs:46:45
+  --> $DIR/propagate-approximated-val.rs:46:45: in fn test
    |
 LL |       establish_relationships(cell_a, cell_b, |outlives1, outlives2, x, y| {
    |  _____________________________________________^
@@ -24,7 +24,7 @@ LL | |     });
    = note: where '_#1r: '_#2r
 
 error[E0623]: lifetime mismatch
-  --> $DIR/propagate-approximated-val.rs:46:29
+  --> $DIR/propagate-approximated-val.rs:46:29: in fn test
    |
 LL | fn test<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
    |                              -------                -------

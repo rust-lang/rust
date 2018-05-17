@@ -1,5 +1,5 @@
 error[E0223]: ambiguous associated type
-  --> $DIR/associated-types-in-ambiguous-context.rs:16:36
+  --> $DIR/associated-types-in-ambiguous-context.rs:16:36: in fn get
    |
 LL | fn get<T:Get,U:Get>(x: T, y: U) -> Get::Value {}
    |                                    ^^^^^^^^^^ ambiguous associated type
@@ -15,7 +15,7 @@ LL | type X = std::ops::Deref::Target;
    = note: specify the type using the syntax `<Type as std::ops::Deref>::Target`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/associated-types-in-ambiguous-context.rs:21:23
+  --> $DIR/associated-types-in-ambiguous-context.rs:21:23: in trait Grab::grab
    |
 LL |     fn grab(&self) -> Grab::Value;
    |                       ^^^^^^^^^^^ ambiguous associated type

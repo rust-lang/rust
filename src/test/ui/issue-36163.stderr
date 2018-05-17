@@ -1,5 +1,5 @@
 error[E0391]: cycle detected when processing `Foo::B::{{initializer}}`
-  --> $DIR/issue-36163.rs:14:9
+  --> $DIR/issue-36163.rs:14:9: in enum Foo
    |
 LL |     B = A, //~ ERROR E0391
    |         ^
@@ -11,7 +11,7 @@ LL | const A: isize = Foo::B as isize;
    |                  ^^^^^^^^^^^^^^^
    = note: ...which again requires processing `Foo::B::{{initializer}}`, completing the cycle
 note: cycle used when const-evaluating `Foo::B::{{initializer}}`
-  --> $DIR/issue-36163.rs:14:9
+  --> $DIR/issue-36163.rs:14:9: in enum Foo
    |
 LL |     B = A, //~ ERROR E0391
    |         ^

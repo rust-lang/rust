@@ -1,5 +1,5 @@
 error[E0597]: `v` does not live long enough
-  --> $DIR/borrowed-universal-error-2.rs:16:5
+  --> $DIR/borrowed-universal-error-2.rs:16:5: in fn foo
    |
 LL |     &v
    |     ^^ borrowed value does not live long enough

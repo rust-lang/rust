@@ -1,5 +1,5 @@
 error: unreachable expression
-  --> $DIR/expr_box.rs:16:13
+  --> $DIR/expr_box.rs:16:13: in fn main
    |
 LL |     let x = box return; //~ ERROR unreachable
    |             ^^^^^^^^^^

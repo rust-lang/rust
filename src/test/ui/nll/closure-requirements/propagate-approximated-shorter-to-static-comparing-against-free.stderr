@@ -1,17 +1,17 @@
 warning: not reporting region error due to nll
-  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:31:5
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:31:5: in fn case1
    |
 LL |     foo(cell, |cell_a, cell_x| {
    |     ^^^
 
 error: free region `ReFree(DefId(0/1:12 ~ propagate_approximated_shorter_to_static_comparing_against_free[317d]::case1[0]::{{closure}}[0]), BrAnon(1))` does not outlive free region `'_#1r`
-  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:33:9
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:33:9: in fn case1
    |
 LL |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
    |         ^^^^^^
 
 note: No external requirements
-  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:31:15
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:31:15: in fn case1
    |
 LL |       foo(cell, |cell_a, cell_x| {
    |  _______________^
@@ -41,7 +41,7 @@ LL | | }
    = note: defining type: DefId(0/0:5 ~ propagate_approximated_shorter_to_static_comparing_against_free[317d]::case1[0]) with substs []
 
 note: External requirements
-  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:46:15
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:46:15: in fn case2
    |
 LL |       foo(cell, |cell_a, cell_x| {
    |  _______________^
@@ -71,7 +71,7 @@ LL | | }
    = note: defining type: DefId(0/0:6 ~ propagate_approximated_shorter_to_static_comparing_against_free[317d]::case2[0]) with substs []
 
 error[E0597]: `a` does not live long enough
-  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:41:26
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:41:26: in fn case2
    |
 LL |     let cell = Cell::new(&a);
    |                          ^^ borrowed value does not live long enough

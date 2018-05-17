@@ -1,5 +1,5 @@
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:39:20
+  --> $DIR/dropck-eyepatch-extern-crate.rs:39:20: in fn main
    |
 LL |     dt = Dt("dt", &c);
    |                    ^ borrowed value does not live long enough
@@ -10,7 +10,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:41:20
+  --> $DIR/dropck-eyepatch-extern-crate.rs:41:20: in fn main
    |
 LL |     dr = Dr("dr", &c);
    |                    ^ borrowed value does not live long enough
@@ -21,7 +21,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:49:29
+  --> $DIR/dropck-eyepatch-extern-crate.rs:49:29: in fn main
    |
 LL |     pt = Pt("pt", &c_long, &c);
    |                             ^ borrowed value does not live long enough
@@ -32,7 +32,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:51:29
+  --> $DIR/dropck-eyepatch-extern-crate.rs:51:29: in fn main
    |
 LL |     pr = Pr("pr", &c_long, &c);
    |                             ^ borrowed value does not live long enough

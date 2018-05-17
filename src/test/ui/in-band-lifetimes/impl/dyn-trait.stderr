@@ -1,5 +1,5 @@
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
-  --> $DIR/dyn-trait.rs:32:16
+  --> $DIR/dyn-trait.rs:32:16: in fn with_dyn_debug_static
    |
 LL |     static_val(x); //~ ERROR cannot infer
    |                ^

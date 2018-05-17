@@ -1,11 +1,11 @@
 error[E0283]: type annotations required: cannot resolve `_: Generator`
-  --> $DIR/E0283.rs:28:21
+  --> $DIR/E0283.rs:28:21: in fn main
    |
 LL |     let cont: u32 = Generator::create(); //~ ERROR E0283
    |                     ^^^^^^^^^^^^^^^^^
    |
 note: required by `Generator::create`
-  --> $DIR/E0283.rs:12:5
+  --> $DIR/E0283.rs:12:5: in trait Generator
    |
 LL |     fn create() -> u32;
    |     ^^^^^^^^^^^^^^^^^^^

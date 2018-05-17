@@ -1,5 +1,5 @@
 error: hidden lifetime parameters are deprecated, try `Foo<'_>`
-  --> $DIR/ellided-lifetimes.rs:15:12
+  --> $DIR/ellided-lifetimes.rs:15:12: in fn foo
    |
 LL | fn foo(x: &Foo) {
    |            ^^^

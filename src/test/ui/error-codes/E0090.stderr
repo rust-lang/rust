@@ -1,5 +1,5 @@
 error[E0090]: too few lifetime parameters provided: expected 2 lifetime parameters, found 1 lifetime parameter
-  --> $DIR/E0090.rs:14:5
+  --> $DIR/E0090.rs:14:5: in fn main
    |
 LL |     foo::<'static>(); //~ ERROR expected 2 lifetime parameters, found 1 lifetime parameter [E0090]
    |     ^^^^^^^^^^^^^^ expected 2 lifetime parameters

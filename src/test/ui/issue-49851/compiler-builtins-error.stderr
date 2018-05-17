@@ -1,7 +1,2 @@
-error[E0463]: can't find crate for `core`
-   |
-   = note: the `thumbv7em-none-eabihf` target may not be installed
+error: Could not create LLVM TargetMachine for triple: thumbv7em-none-eabihf: No available targets are compatible with this triple.
 
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0463`.

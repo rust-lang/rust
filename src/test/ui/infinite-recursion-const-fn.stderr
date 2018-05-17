@@ -1,5 +1,5 @@
 error[E0080]: constant evaluation error
-  --> $DIR/infinite-recursion-const-fn.rs:14:25
+  --> $DIR/infinite-recursion-const-fn.rs:14:25: in fn a
    |
 LL | const fn a() -> usize { b() } //~ ERROR constant evaluation error
    |                         ^^^

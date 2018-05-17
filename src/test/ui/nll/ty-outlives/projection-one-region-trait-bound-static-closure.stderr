@@ -1,5 +1,5 @@
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-static-closure.rs:46:29
+  --> $DIR/projection-one-region-trait-bound-static-closure.rs:46:29: in fn no_relationships_late
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL | | }
            ]
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-static-closure.rs:55:29
+  --> $DIR/projection-one-region-trait-bound-static-closure.rs:55:29: in fn no_relationships_early
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -60,7 +60,7 @@ LL | | }
            ]
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-static-closure.rs:74:29
+  --> $DIR/projection-one-region-trait-bound-static-closure.rs:74:29: in fn projection_outlives
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -92,7 +92,7 @@ LL | | }
            ]
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-static-closure.rs:83:29
+  --> $DIR/projection-one-region-trait-bound-static-closure.rs:83:29: in fn elements_outlive
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -124,7 +124,7 @@ LL | | }
            ]
 
 note: No external requirements
-  --> $DIR/projection-one-region-trait-bound-static-closure.rs:95:29
+  --> $DIR/projection-one-region-trait-bound-static-closure.rs:95:29: in fn one_region
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^

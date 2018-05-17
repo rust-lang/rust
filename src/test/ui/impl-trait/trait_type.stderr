@@ -8,7 +8,7 @@ LL |    fn fmt(&self, x: &str) -> () { }
               found type `fn(&MyType, &str)`
 
 error[E0050]: method `fmt` has 1 parameter but the declaration in trait `std::fmt::Display::fmt` has 2
-  --> $DIR/trait_type.rs:22:11
+  --> $DIR/trait_type.rs:22:11: in fn fmt::fmt
    |
 LL |    fn fmt(&self) -> () { }
    |           ^^^^^ expected 2 parameters, found 1

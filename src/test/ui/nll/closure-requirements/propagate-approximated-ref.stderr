@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/propagate-approximated-ref.rs:57:9
+  --> $DIR/propagate-approximated-ref.rs:57:9: in fn supply
    |
 LL |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to nll
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 note: External requirements
-  --> $DIR/propagate-approximated-ref.rs:53:47
+  --> $DIR/propagate-approximated-ref.rs:53:47: in fn supply
    |
 LL |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
    |  _______________________________________________^
@@ -24,7 +24,7 @@ LL | |     });
    = note: where '_#1r: '_#2r
 
 error[E0623]: lifetime mismatch
-  --> $DIR/propagate-approximated-ref.rs:53:29
+  --> $DIR/propagate-approximated-ref.rs:53:29: in fn supply
    |
 LL | fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
    |                                -------                -------

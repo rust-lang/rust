@@ -1,5 +1,5 @@
 error[E0599]: no method named `f9` found for type `usize` in the current scope
-  --> $DIR/issue-7575.rs:74:18
+  --> $DIR/issue-7575.rs:74:18: in fn no_param_bound
    |
 LL |     u.f8(42) + u.f9(342) + m.fff(42)
    |                  ^^
@@ -7,19 +7,19 @@ LL |     u.f8(42) + u.f9(342) + m.fff(42)
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
    = help: try with `usize::f9`
 note: candidate #1 is defined in the trait `CtxtFn`
-  --> $DIR/issue-7575.rs:16:5
+  --> $DIR/issue-7575.rs:16:5: in trait CtxtFn
    |
 LL |     fn f9(_: usize) -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `CtxtFn::f9(u, 342)` instead
 note: candidate #2 is defined in the trait `OtherTrait`
-  --> $DIR/issue-7575.rs:20:5
+  --> $DIR/issue-7575.rs:20:5: in trait OtherTrait
    |
 LL |     fn f9(_: usize) -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `OtherTrait::f9(u, 342)` instead
 note: candidate #3 is defined in the trait `UnusedTrait`
-  --> $DIR/issue-7575.rs:29:5
+  --> $DIR/issue-7575.rs:29:5: in trait UnusedTrait
    |
 LL |     fn f9(_: usize) -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL |     fn f9(_: usize) -> usize;
            candidate #3: `UnusedTrait`
 
 error[E0599]: no method named `fff` found for type `Myisize` in the current scope
-  --> $DIR/issue-7575.rs:74:30
+  --> $DIR/issue-7575.rs:74:30: in fn no_param_bound
    |
 LL | struct Myisize(isize);
    | ---------------------- method `fff` not found for this
@@ -48,7 +48,7 @@ LL |     fn fff(i: isize) -> isize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0599]: no method named `is_str` found for type `T` in the current scope
-  --> $DIR/issue-7575.rs:82:7
+  --> $DIR/issue-7575.rs:82:7: in fn param_bound
    |
 LL |     t.is_str()
    |       ^^^^^^
@@ -56,7 +56,7 @@ LL |     t.is_str()
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
    = help: try with `T::is_str`
 note: candidate #1 is defined in the trait `ManyImplTrait`
-  --> $DIR/issue-7575.rs:57:5
+  --> $DIR/issue-7575.rs:57:5: in trait ManyImplTrait
    |
 LL |     fn is_str() -> bool {
    |     ^^^^^^^^^^^^^^^^^^^

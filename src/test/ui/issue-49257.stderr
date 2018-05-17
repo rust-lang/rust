@@ -5,7 +5,7 @@ LL |     let Point { .., y } = p; //~ ERROR expected `}`, found `,`
    |                   ^ `..` must be in the last position, and cannot have a trailing comma
 
 error[E0027]: pattern does not mention fields `x`, `y`
-  --> $DIR/issue-49257.rs:20:9
+  --> $DIR/issue-49257.rs:20:9: in fn main
    |
 LL |     let Point { .., y } = p; //~ ERROR expected `}`, found `,`
    |         ^^^^^^^^^^^^^^^ missing fields `x`, `y`

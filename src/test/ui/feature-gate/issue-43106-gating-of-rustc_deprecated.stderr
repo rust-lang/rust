@@ -11,31 +11,31 @@ LL | #[rustc_deprecated = "1500"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:23:17
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:23:17: in mod rustc_deprecated::inner
    |
 LL |     mod inner { #![rustc_deprecated="1500"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:26:5
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:26:5: in mod rustc_deprecated
    |
 LL |     #[rustc_deprecated = "1500"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:29:5
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:29:5: in mod rustc_deprecated
    |
 LL |     #[rustc_deprecated = "1500"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:32:5
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:32:5: in mod rustc_deprecated
    |
 LL |     #[rustc_deprecated = "1500"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:35:5
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:35:5: in mod rustc_deprecated
    |
 LL |     #[rustc_deprecated = "1500"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

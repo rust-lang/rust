@@ -1,5 +1,5 @@
 error[E0277]: `*mut std::ops::Fn() + 'static` cannot be shared between threads safely
-  --> $DIR/send-sync.rs:18:5
+  --> $DIR/send-sync.rs:18:5: in fn main
    |
 LL |     send(format_args!("{:?}", c)); //~ ERROR E0277
    |     ^^^^ `*mut std::ops::Fn() + 'static` cannot be shared between threads safely
@@ -19,7 +19,7 @@ LL | fn send<T: Send>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `*mut std::ops::Fn() + 'static` cannot be shared between threads safely
-  --> $DIR/send-sync.rs:19:5
+  --> $DIR/send-sync.rs:19:5: in fn main
    |
 LL |     sync(format_args!("{:?}", c)); //~ ERROR E0277
    |     ^^^^ `*mut std::ops::Fn() + 'static` cannot be shared between threads safely

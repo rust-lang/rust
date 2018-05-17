@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough (Ast)
-  --> $DIR/issue-46472.rs:14:10
+  --> $DIR/issue-46472.rs:14:10: in fn bar
    |
 LL |     &mut 4
    |          ^ temporary value does not live long enough
@@ -14,7 +14,7 @@ LL | fn bar<'a>() -> &'a mut u32 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0597]: borrowed value does not live long enough (Mir)
-  --> $DIR/issue-46472.rs:14:10
+  --> $DIR/issue-46472.rs:14:10: in fn bar
    |
 LL |     &mut 4
    |          ^ temporary value does not live long enough

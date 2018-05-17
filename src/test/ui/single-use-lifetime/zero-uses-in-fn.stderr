@@ -1,5 +1,5 @@
 error: lifetime parameter `'a` never used
-  --> $DIR/zero-uses-in-fn.rs:17:6
+  --> $DIR/zero-uses-in-fn.rs:17:6: in fn d
    |
 LL | fn d<'a>() { } //~ ERROR `'a` never used
    |      ^^

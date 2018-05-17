@@ -156,7 +156,7 @@ LL |     let _: Z = m::n::Z::Unit {};
    |                ^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/privacy-enum-ctor.rs:37:20
+  --> $DIR/privacy-enum-ctor.rs:37:20: in fn m::f
    |
 LL |         let _: Z = Z::Fn;
    |                    ^^^^^ expected enum `m::n::Z`, found fn item
@@ -165,7 +165,7 @@ LL |         let _: Z = Z::Fn;
               found type `fn(u8) -> m::n::Z {m::n::Z::Fn}`
 
 error[E0618]: expected function, found enum variant `Z::Unit`
-  --> $DIR/privacy-enum-ctor.rs:41:17
+  --> $DIR/privacy-enum-ctor.rs:41:17: in fn m::f
    |
 LL |             Unit,
    |             ---- `Z::Unit` defined here
@@ -178,7 +178,7 @@ LL |         let _ = Z::Unit;
    |                 ^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/privacy-enum-ctor.rs:53:16
+  --> $DIR/privacy-enum-ctor.rs:53:16: in fn main
    |
 LL |     let _: E = m::E::Fn;
    |                ^^^^^^^^ expected enum `m::E`, found fn item
@@ -187,7 +187,7 @@ LL |     let _: E = m::E::Fn;
               found type `fn(u8) -> m::E {m::E::Fn}`
 
 error[E0618]: expected function, found enum variant `m::E::Unit`
-  --> $DIR/privacy-enum-ctor.rs:57:16
+  --> $DIR/privacy-enum-ctor.rs:57:16: in fn main
    |
 LL |         Unit,
    |         ---- `m::E::Unit` defined here
@@ -200,7 +200,7 @@ LL |     let _: E = m::E::Unit;
    |                ^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/privacy-enum-ctor.rs:61:16
+  --> $DIR/privacy-enum-ctor.rs:61:16: in fn main
    |
 LL |     let _: E = E::Fn;
    |                ^^^^^ expected enum `m::E`, found fn item
@@ -209,7 +209,7 @@ LL |     let _: E = E::Fn;
               found type `fn(u8) -> m::E {m::E::Fn}`
 
 error[E0618]: expected function, found enum variant `E::Unit`
-  --> $DIR/privacy-enum-ctor.rs:65:16
+  --> $DIR/privacy-enum-ctor.rs:65:16: in fn main
    |
 LL |         Unit,
    |         ---- `E::Unit` defined here

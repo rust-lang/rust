@@ -1,5 +1,5 @@
 error[E0395]: raw pointers cannot be compared in constants
-  --> $DIR/issue-25826.rs:13:21
+  --> $DIR/issue-25826.rs:13:21: in fn main
    |
 LL |     const A: bool = id::<u8> as *const () < id::<u16> as *const ();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comparing raw pointers in static

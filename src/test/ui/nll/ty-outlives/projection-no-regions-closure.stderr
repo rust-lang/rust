@@ -1,17 +1,17 @@
 warning: not reporting region error due to nll
-  --> $DIR/projection-no-regions-closure.rs:35:31
+  --> $DIR/projection-no-regions-closure.rs:35:31: in fn no_region
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                               ^^^^^^^^^^^^^^^^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/projection-no-regions-closure.rs:53:31
+  --> $DIR/projection-no-regions-closure.rs:53:31: in fn wrong_region
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                               ^^^^^^^^^^^^^^^^^^
 
 note: External requirements
-  --> $DIR/projection-no-regions-closure.rs:35:23
+  --> $DIR/projection-no-regions-closure.rs:35:23: in fn no_region
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    = note: where <T as std::iter::Iterator>::Item: '_#2r
 
 error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
-  --> $DIR/projection-no-regions-closure.rs:35:23
+  --> $DIR/projection-no-regions-closure.rs:35:23: in fn no_region
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -51,7 +51,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/projection-no-regions-closure.rs:45:23
+  --> $DIR/projection-no-regions-closure.rs:45:23: in fn correct_region
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -82,7 +82,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/projection-no-regions-closure.rs:53:23
+  --> $DIR/projection-no-regions-closure.rs:53:23: in fn wrong_region
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -98,7 +98,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    = note: where <T as std::iter::Iterator>::Item: '_#3r
 
 error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
-  --> $DIR/projection-no-regions-closure.rs:53:23
+  --> $DIR/projection-no-regions-closure.rs:53:23: in fn wrong_region
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -124,7 +124,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/projection-no-regions-closure.rs:64:23
+  --> $DIR/projection-no-regions-closure.rs:64:23: in fn outlives_region
    |
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error: lifetime parameter `'g` only used once
-  --> $DIR/one-use-in-trait-method-argument.rs:25:13
+  --> $DIR/one-use-in-trait-method-argument.rs:25:13: in fn next::next
    |
 LL |     fn next<'g>(&'g mut self) -> Option<Self::Item> { //~ ERROR `'g` only used once
    |             ^^

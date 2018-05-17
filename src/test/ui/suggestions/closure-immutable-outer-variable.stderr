@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to captured outer variable in an `FnMut` closure
-  --> $DIR/closure-immutable-outer-variable.rs:21:26
+  --> $DIR/closure-immutable-outer-variable.rs:21:26: in fn main
    |
 LL |     let y = true;
    |         - help: consider making `y` mutable: `mut y`

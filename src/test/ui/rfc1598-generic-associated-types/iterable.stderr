@@ -1,35 +1,35 @@
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/iterable.rs:20:47
+  --> $DIR/iterable.rs:20:47: in trait Iterable::Iter
    |
 LL |     type Iter<'a>: Iterator<Item = Self::Item<'a>>;
    |                                               ^^ lifetime parameter not allowed on this type
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/iterable.rs:49:53
+  --> $DIR/iterable.rs:49:53: in fn make_iter
    |
 LL | fn make_iter<'a, I: Iterable>(it: &'a I) -> I::Iter<'a> {
    |                                                     ^^ lifetime parameter not allowed on this type
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/iterable.rs:54:60
+  --> $DIR/iterable.rs:54:60: in fn get_first
    |
 LL | fn get_first<'a, I: Iterable>(it: &'a I) -> Option<I::Item<'a>> {
    |                                                            ^^ lifetime parameter not allowed on this type
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/iterable.rs:23:41
+  --> $DIR/iterable.rs:23:41: in trait Iterable::iter
    |
 LL |     fn iter<'a>(&'a self) -> Self::Iter<'a>;
    |                                         ^^ lifetime parameter not allowed on this type
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/iterable.rs:32:41
+  --> $DIR/iterable.rs:32:41: in fn iter::iter
    |
 LL |     fn iter<'a>(&'a self) -> Self::Iter<'a> {
    |                                         ^^ lifetime parameter not allowed on this type
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/iterable.rs:43:41
+  --> $DIR/iterable.rs:43:41: in fn iter::iter
    |
 LL |     fn iter<'a>(&'a self) -> Self::Iter<'a> {
    |                                         ^^ lifetime parameter not allowed on this type

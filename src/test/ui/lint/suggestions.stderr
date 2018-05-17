@@ -19,7 +19,7 @@ LL | #[no_debug] // should suggest removal of deprecated attribute
    = note: #[warn(deprecated)] on by default
 
 warning: variable does not need to be mutable
-  --> $DIR/suggestions.rs:48:13
+  --> $DIR/suggestions.rs:48:13: in fn main
    |
 LL |         let mut a = (1); // should suggest no `mut`, no parens
    |             ----^
@@ -33,7 +33,7 @@ LL | #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issu
    |         ^^^^^^^^^^
 
 warning: variable does not need to be mutable
-  --> $DIR/suggestions.rs:52:13
+  --> $DIR/suggestions.rs:52:13: in fn main
    |
 LL |            let mut
    |   _____________^
@@ -85,19 +85,19 @@ LL | fn rio_grande() {} // should suggest `pub`
    = note: #[warn(private_no_mangle_fns)] on by default
 
 warning: static is marked #[no_mangle], but not exported
-  --> $DIR/suggestions.rs:33:18
+  --> $DIR/suggestions.rs:33:18: in mod badlands
    |
 LL |     #[no_mangle] pub static DAUNTLESS: bool = true;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: function is marked #[no_mangle], but not exported
-  --> $DIR/suggestions.rs:35:18
+  --> $DIR/suggestions.rs:35:18: in mod badlands
    |
 LL |     #[no_mangle] pub fn val_jean() {}
    |                  ^^^^^^^^^^^^^^^^^^^^
 
 warning: denote infinite loops with `loop { ... }`
-  --> $DIR/suggestions.rs:46:5
+  --> $DIR/suggestions.rs:46:5: in fn main
    |
 LL |     while true { // should suggest `loop`
    |     ^^^^^^^^^^ help: use `loop`
@@ -105,7 +105,7 @@ LL |     while true { // should suggest `loop`
    = note: #[warn(while_true)] on by default
 
 warning: the `warp_factor:` in this pattern is redundant
-  --> $DIR/suggestions.rs:57:23
+  --> $DIR/suggestions.rs:57:23: in fn main
    |
 LL |             Equinox { warp_factor: warp_factor } => {} // should suggest shorthand
    |                       ------------^^^^^^^^^^^^

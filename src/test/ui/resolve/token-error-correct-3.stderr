@@ -32,7 +32,7 @@ LL |         if !is_directory(path.as_ref()) { //~ ERROR: cannot find function `
    |             ^^^^^^^^^^^^ not found in this scope
 
 error[E0308]: mismatched types
-  --> $DIR/token-error-correct-3.rs:25:13
+  --> $DIR/token-error-correct-3.rs:25:13: in fn raw::ensure_dir_exists
    |
 LL |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- help: try adding a semicolon: `;`

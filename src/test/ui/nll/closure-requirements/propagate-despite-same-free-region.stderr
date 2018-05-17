@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/propagate-despite-same-free-region.rs:54:21
+  --> $DIR/propagate-despite-same-free-region.rs:54:21: in fn supply
    |
 LL |             let p = x.get();
    |                     ^^^^^^^
 
 note: External requirements
-  --> $DIR/propagate-despite-same-free-region.rs:52:9
+  --> $DIR/propagate-despite-same-free-region.rs:52:9: in fn supply
    |
 LL | /         |_outlives1, _outlives2, x, y| {
 LL | |             // Only works if 'x: 'y:
