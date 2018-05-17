@@ -79,7 +79,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&ExprAssignOp(ref lo, ref ll, ref lr), &ExprAssignOp(ref ro, ref rl, ref rr)) => {
                 lo.node == ro.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
             },
-            (&ExprBlock(ref l), &ExprBlock(ref r)) => self.eq_block(l, r),
+            (&ExprBlock(ref l, _), &ExprBlock(ref r, _)) => self.eq_block(l, r),
             (&ExprBinary(l_op, ref ll, ref lr), &ExprBinary(r_op, ref rl, ref rr)) => {
                 l_op.node == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
                     || swap_binop(l_op.node, ll, lr).map_or(false, |(l_op, ll, lr)| {
@@ -353,8 +353,8 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(l);
                 self.hash_expr(r);
             },
-            ExprBlock(ref b) => {
-                let c: fn(_) -> _ = ExprBlock;
+            ExprBlock(ref b, _) => {
+                let c: fn(_, _) -> _ = ExprBlock;
                 c.hash(&mut self.s);
                 self.hash_block(b);
             },

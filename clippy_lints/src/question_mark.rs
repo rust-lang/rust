@@ -87,7 +87,7 @@ impl QuestionMarkPass {
 
     fn expression_returns_none(cx: &LateContext, expression: &Expr) -> bool {
         match expression.node {
-            ExprBlock(ref block) => {
+            ExprBlock(ref block, _) => {
                 if let Some(return_expression) = Self::return_expression(block) {
                     return Self::expression_returns_none(cx, &return_expression);
                 }

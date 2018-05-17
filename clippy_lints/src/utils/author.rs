@@ -356,7 +356,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.current = sub_pat;
                 self.visit_expr(sub);
             },
-            Expr_::ExprBlock(ref block) => {
+            Expr_::ExprBlock(ref block, _) => {
                 let block_pat = self.next("block");
                 println!("Block(ref {}) = {};", block_pat, current);
                 self.current = block_pat;

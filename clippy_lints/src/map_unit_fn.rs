@@ -120,7 +120,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext, expr: &'a hir::Expr) -> Option<S
             // Calls can't be reduced any more
             Some(expr.span)
         },
-        hir::ExprBlock(ref block) => {
+        hir::ExprBlock(ref block, _) => {
             match (&block.stmts[..], block.expr.as_ref()) {
                 (&[], Some(inner_expr)) => {
                     // If block only contains an expression,

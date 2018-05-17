@@ -160,7 +160,7 @@ fn is_infinite(cx: &LateContext, expr: &Expr) -> Finiteness {
             }
             Finite
         },
-        ExprBlock(ref block) => block.expr.as_ref().map_or(Finite, |e| is_infinite(cx, e)),
+        ExprBlock(ref block, _) => block.expr.as_ref().map_or(Finite, |e| is_infinite(cx, e)),
         ExprBox(ref e) | ExprAddrOf(_, ref e) => is_infinite(cx, e),
         ExprCall(ref path, _) => if let ExprPath(ref qpath) = path.node {
             match_qpath(qpath, &paths::REPEAT).into()

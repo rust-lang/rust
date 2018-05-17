@@ -80,7 +80,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
                     hint,
                 );
             };
-            if let ExprBlock(ref then_block) = then_block.node {
+            if let ExprBlock(ref then_block, _) = then_block.node {
                 match (fetch_bool_block(then_block), fetch_bool_expr(else_expr)) {
                     (RetBool(true), RetBool(true)) | (Bool(true), Bool(true)) => {
                         span_lint(
@@ -199,7 +199,7 @@ fn fetch_bool_block(block: &Block) -> Expression {
 
 fn fetch_bool_expr(expr: &Expr) -> Expression {
     match expr.node {
-        ExprBlock(ref block) => fetch_bool_block(block),
+        ExprBlock(ref block, _) => fetch_bool_block(block),
         ExprLit(ref lit_ptr) => if let LitKind::Bool(value) = lit_ptr.node {
             Expression::Bool(value)
         } else {

@@ -638,10 +638,9 @@ fn never_loop_expr(expr: &Expr, main_loop_id: &NodeId) -> NeverLoopResult {
                 combine_seq(e, arms)
             }
         },
-        ExprBlock(ref b) => never_loop_block(b, main_loop_id),
+        ExprBlock(ref b, _) => never_loop_block(b, main_loop_id),
         ExprAgain(d) => {
             let id = d.target_id
-                .opt_id()
                 .expect("target id can only be missing in the presence of compilation errors");
             if id == *main_loop_id {
                 NeverLoopResult::MayContinueMainLoop
@@ -849,7 +848,7 @@ fn get_indexed_assignments<'a, 'tcx>(
         }
     }
 
-    if let Expr_::ExprBlock(ref b) = body.node {
+    if let Expr_::ExprBlock(ref b, _) = body.node {
         let Block {
             ref stmts,
             ref expr,
@@ -1842,7 +1841,7 @@ fn extract_first_expr(block: &Block) -> Option<&Expr> {
 fn is_simple_break_expr(expr: &Expr) -> bool {
     match expr.node {
         ExprBreak(dest, ref passed_expr) if dest.label.is_none() && passed_expr.is_none() => true,
-        ExprBlock(ref b) => match extract_first_expr(b) {
+        ExprBlock(ref b, _) => match extract_first_expr(b) {
             Some(subexpr) => is_simple_break_expr(subexpr),
             None => false,
         },

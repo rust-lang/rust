@@ -444,7 +444,7 @@ pub fn expr_block<'a, 'b, T: LintContext<'b>>(
 ) -> Cow<'a, str> {
     let code = snippet_block(cx, expr.span, default);
     let string = option.unwrap_or_default();
-    if let ExprBlock(_) = expr.node {
+    if let ExprBlock(_, _) = expr.node {
         Cow::Owned(format!("{}{}", code, string))
     } else if string.is_empty() {
         Cow::Owned(format!("{{ {} }}", code))
@@ -529,7 +529,7 @@ pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeI
                 node: ImplItemKind::Method(_, eid),
                 ..
             }) => match cx.tcx.hir.body(eid).value.node {
-                ExprBlock(ref block) => Some(block),
+                ExprBlock(ref block, _) => Some(block),
                 _ => None,
             },
             _ => None,
@@ -934,7 +934,7 @@ pub fn is_automatically_derived(attrs: &[ast::Attribute]) -> bool {
 /// Ie. `x`, `{ x }` and `{{{{ x }}}}` all give `x`. `{ x; y }` and `{}` return
 /// themselves.
 pub fn remove_blocks(expr: &Expr) -> &Expr {
-    if let ExprBlock(ref block) = expr.node {
+    if let ExprBlock(ref block, _) = expr.node {
         if block.stmts.is_empty() {
             if let Some(ref expr) = block.expr {
                 remove_blocks(expr)

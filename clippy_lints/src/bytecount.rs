@@ -99,7 +99,7 @@ fn check_arg(name: Name, arg: Name, needle: &Expr) -> bool {
 fn get_path_name(expr: &Expr) -> Option<Name> {
     match expr.node {
         ExprBox(ref e) | ExprAddrOf(_, ref e) | ExprUnary(UnOp::UnDeref, ref e) => get_path_name(e),
-        ExprBlock(ref b) => if b.stmts.is_empty() {
+        ExprBlock(ref b, _) => if b.stmts.is_empty() {
             b.expr.as_ref().and_then(|p| get_path_name(p))
         } else {
             None

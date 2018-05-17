@@ -34,7 +34,7 @@ impl LintPass for Pass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
-            if let ExprBlock(ref block) = expr.node;
+            if let ExprBlock(ref block, _) = expr.node;
             if let Some(ref ex) = block.expr;
             if let ExprCall(ref fun, ref params) = ex.node;
             if params.len() == 2;
