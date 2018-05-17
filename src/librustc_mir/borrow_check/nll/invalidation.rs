@@ -234,38 +234,29 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
             }
             TerminatorKind::Yield {
                 ref value,
-                resume: _,
+                resume,
                 drop: _,
             } => {
                 self.consume_operand(ContextKind::Yield.new(location), value);
 
-                // ** FIXME(bob_twinkles) figure out what the equivalent of this is
-                // if self.movable_generator {
-                //     // Look for any active borrows to locals
-                //     let borrow_set = self.borrow_set.clone();
-                //     flow_state.with_outgoing_borrows(|borrows| {
-                //         for i in borrows {
-                //             let borrow = &borrow_set[i];
-                //             self.check_for_local_borrow(borrow, span);
-                //         }
-                //     });
-                // }
+                // Invalidate all borrows of local places
+                let borrow_set = self.borrow_set.clone();
+                let resume = self.location_table.start_index(resume.start_location());
+                for i in borrow_set.borrows.indices() {
+                    if borrow_of_local_data(&borrow_set.borrows[i].borrowed_place) {
+                        self.all_facts.invalidates.push((resume, i));
+                    }
+                }
             }
             TerminatorKind::Resume | TerminatorKind::Return | TerminatorKind::GeneratorDrop => {
-                // ** FIXME(bob_twinkles) figure out what the equivalent of this is
-                // // Returning from the function implicitly kills storage for all locals and
-                // // statics.
-                // // Often, the storage will already have been killed by an explicit
-                // // StorageDead, but we don't always emit those (notably on unwind paths),
-                // // so this "extra check" serves as a kind of backup.
-                // let borrow_set = self.borrow_set.clone();
-                // flow_state.with_outgoing_borrows(|borrows| {
-                //     for i in borrows {
-                //         let borrow = &borrow_set[i];
-                //         let context = ContextKind::StorageDead.new(loc);
-                //         self.check_for_invalidation_at_exit(context, borrow, span);
-                //     }
-                // });
+                // Invalidate all borrows of local places
+                let borrow_set = self.borrow_set.clone();
+                let start = self.location_table.start_index(location);
+                for i in borrow_set.borrows.indices() {
+                    if borrow_of_local_data(&borrow_set.borrows[i].borrowed_place) {
+                        self.all_facts.invalidates.push((start, i));
+                    }
+                }
             }
             TerminatorKind::Goto { target: _ }
             | TerminatorKind::Abort
@@ -950,6 +941,30 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
                 elem1,
                 elem2
             ),
+        }
+    }
+}
+
+
+/// Determines if a given borrow is borrowing local data
+/// This is called for all Yield statements on movable generators
+fn borrow_of_local_data<'tcx>(place: &Place<'tcx>) -> bool {
+    match place {
+        Place::Static(..) => false,
+        Place::Local(..) => true,
+        Place::Projection(box proj) => {
+            match proj.elem {
+                // Reborrow of already borrowed data is ignored
+                // Any errors will be caught on the initial borrow
+                ProjectionElem::Deref => false,
+
+                // For interior references and downcasts, find out if the base is local
+                ProjectionElem::Field(..)
+                    | ProjectionElem::Index(..)
+                    | ProjectionElem::ConstantIndex { .. }
+                | ProjectionElem::Subslice { .. }
+                | ProjectionElem::Downcast(..) => borrow_of_local_data(&proj.base),
+            }
         }
     }
 }
