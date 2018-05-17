@@ -7,7 +7,7 @@ authors = ["The Rust Project Developers"]
 # the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
 # rustdoc a different name.
 [[bin]]
-name = "rustdoc-tool-binary"
+name = "rustdoc_tool_binary"
 path = "main.rs"
 
 [dependencies]

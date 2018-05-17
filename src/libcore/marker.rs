@@ -611,7 +611,6 @@ pub unsafe auto trait Unpin {}
 ///
 /// Implementations that cannot be described in Rust
 /// are implemented in `SelectionContext::copy_clone_conditions()` in librustc.
-#[cfg(not(stage0))]
 mod copy_impls {
 
     use super::Copy;

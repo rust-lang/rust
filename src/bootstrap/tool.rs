@@ -431,7 +431,7 @@ impl Step for Rustdoc {
         // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
         // rustdoc a different name.
         let tool_rustdoc = builder.cargo_out(build_compiler, Mode::Tool, target)
-            .join(exe("rustdoc-tool-binary", &target_compiler.host));
+            .join(exe("rustdoc_tool_binary", &target_compiler.host));
 
         // don't create a stage0-sysroot/bin directory.
         if target_compiler.stage > 0 {

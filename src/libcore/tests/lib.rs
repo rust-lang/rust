@@ -41,7 +41,6 @@
 #![feature(try_from)]
 #![feature(try_trait)]
 #![feature(exact_chunks)]
-#![cfg_attr(stage0, feature(atomic_nand))]
 #![feature(reverse_bits)]
 #![feature(inclusive_range_methods)]
 #![feature(iterator_find_map)]

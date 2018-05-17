@@ -17,7 +17,6 @@
 #[doc(inline)] pub use alloc_system::System;
 #[doc(inline)] pub use core::alloc::*;
 
-#[cfg(not(stage0))]
 #[cfg(not(test))]
 #[doc(hidden)]
 #[lang = "oom"]
@@ -43,13 +42,6 @@ pub mod __default_lib_allocator {
         System.alloc(layout) as *mut u8
     }
 
-    #[cfg(stage0)]
-    #[no_mangle]
-    #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rdl_oom() -> ! {
-        super::oom()
-    }
-
     #[no_mangle]
     #[rustc_std_internal_symbol]
     pub unsafe extern fn __rdl_dealloc(ptr: *mut u8,
@@ -73,58 +65,5 @@ pub mod __default_lib_allocator {
     pub unsafe extern fn __rdl_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
         let layout = Layout::from_size_align_unchecked(size, align);
         System.alloc_zeroed(layout) as *mut u8
-    }
-
-    #[cfg(stage0)]
-    pub mod stage0 {
-        #[no_mangle]
-        #[rustc_std_internal_symbol]
-        pub unsafe extern fn __rdl_usable_size(_layout: *const u8,
-                                               _min: *mut usize,
-                                               _max: *mut usize) {
-            unimplemented!()
-        }
-
-        #[no_mangle]
-        #[rustc_std_internal_symbol]
-        pub unsafe extern fn __rdl_alloc_excess(_size: usize,
-                                                _align: usize,
-                                                _excess: *mut usize,
-                                                _err: *mut u8) -> *mut u8 {
-            unimplemented!()
-        }
-
-        #[no_mangle]
-        #[rustc_std_internal_symbol]
-        pub unsafe extern fn __rdl_realloc_excess(_ptr: *mut u8,
-                                                  _old_size: usize,
-                                                  _old_align: usize,
-                                                  _new_size: usize,
-                                                  _new_align: usize,
-                                                  _excess: *mut usize,
-                                                  _err: *mut u8) -> *mut u8 {
-            unimplemented!()
-        }
-
-        #[no_mangle]
-        #[rustc_std_internal_symbol]
-        pub unsafe extern fn __rdl_grow_in_place(_ptr: *mut u8,
-                                                 _old_size: usize,
-                                                 _old_align: usize,
-                                                 _new_size: usize,
-                                                 _new_align: usize) -> u8 {
-            unimplemented!()
-        }
-
-        #[no_mangle]
-        #[rustc_std_internal_symbol]
-        pub unsafe extern fn __rdl_shrink_in_place(_ptr: *mut u8,
-                                                   _old_size: usize,
-                                                   _old_align: usize,
-                                                   _new_size: usize,
-                                                   _new_align: usize) -> u8 {
-            unimplemented!()
-        }
-
     }
 }

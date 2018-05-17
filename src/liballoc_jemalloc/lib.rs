@@ -97,13 +97,6 @@ mod contents {
         ptr
     }
 
-    #[cfg(stage0)]
-    #[no_mangle]
-    #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rde_oom() -> ! {
-        ::core::intrinsics::abort();
-    }
-
     #[no_mangle]
     #[rustc_std_internal_symbol]
     pub unsafe extern fn __rde_dealloc(ptr: *mut u8,

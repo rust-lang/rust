@@ -101,7 +101,6 @@ use core::cmp::Ordering::{self, Less};
 use core::mem::size_of;
 use core::mem;
 use core::ptr;
-#[cfg(stage0)] use core::slice::SliceExt;
 use core::{u8, u16, u32};
 
 use borrow::{Borrow, BorrowMut, ToOwned};
@@ -171,13 +170,9 @@ mod hack {
     }
 }
 
-#[cfg_attr(stage0, lang = "slice")]
-#[cfg_attr(not(stage0), lang = "slice_alloc")]
+#[lang = "slice_alloc"]
 #[cfg(not(test))]
 impl<T> [T] {
-    #[cfg(stage0)]
-    slice_core_methods!();
-
     /// Sorts the slice.
     ///
     /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
@@ -467,8 +462,7 @@ impl<T> [T] {
     }
 }
 
-#[cfg_attr(stage0, lang = "slice_u8")]
-#[cfg_attr(not(stage0), lang = "slice_u8_alloc")]
+#[lang = "slice_u8_alloc"]
 #[cfg(not(test))]
 impl [u8] {
     /// Returns a vector containing a copy of this slice where each byte
@@ -504,9 +498,6 @@ impl [u8] {
         me.make_ascii_lowercase();
         me
     }
-
-    #[cfg(stage0)]
-    slice_u8_core_methods!();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

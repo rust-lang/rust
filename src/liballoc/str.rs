@@ -40,7 +40,6 @@
 
 use core::fmt;
 use core::str as core_str;
-#[cfg(stage0)] use core::str::StrExt;
 use core::str::pattern::Pattern;
 use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
@@ -158,13 +157,9 @@ impl ToOwned for str {
 }
 
 /// Methods for string slices.
-#[cfg_attr(stage0, lang = "str")]
-#[cfg_attr(not(stage0), lang = "str_alloc")]
+#[lang = "str_alloc"]
 #[cfg(not(test))]
 impl str {
-    #[cfg(stage0)]
-    str_core_methods!();
-
     /// Converts a `Box<str>` into a `Box<[u8]>` without copying or allocating.
     ///
     /// # Examples
