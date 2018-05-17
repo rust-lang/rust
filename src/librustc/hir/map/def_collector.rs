@@ -231,13 +231,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         };
 
         let def = self.create_def(ti.id, def_data, ITEM_LIKE_SPACE, ti.span);
-        self.with_parent(def, |this| {
-            if let TraitItemKind::Const(_, Some(ref expr)) = ti.node {
-                this.visit_const_expr(expr);
-            }
-
-            visit::walk_trait_item(this, ti);
-        });
+        self.with_parent(def, |this| visit::walk_trait_item(this, ti));
     }
 
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {
@@ -249,13 +243,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         };
 
         let def = self.create_def(ii.id, def_data, ITEM_LIKE_SPACE, ii.span);
-        self.with_parent(def, |this| {
-            if let ImplItemKind::Const(_, ref expr) = ii.node {
-                this.visit_const_expr(expr);
-            }
-
-            visit::walk_impl_item(this, ii);
-        });
+        self.with_parent(def, |this| visit::walk_impl_item(this, ii));
     }
 
     fn visit_pat(&mut self, pat: &'a Pat) {
