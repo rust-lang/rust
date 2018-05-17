@@ -1,10 +1,14 @@
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/issue-46983.rs:14:5
+  --> $DIR/issue-46983.rs:13:1
    |
-LL | fn foo(x: &u32) -> &'static u32 {
-   |        - consider changing the type of `x` to `&'static u32`
-LL |     &*x
-   |     ^^^ lifetime `'static` required
+LL |   fn foo(x: &u32) -> &'static u32 {
+   |   ^      - consider changing the type of `x` to `&'static u32`
+   |  _|
+   | |
+LL | |     //~^ ERROR explicit lifetime required in the type of `x` [E0621]
+LL | |     &*x
+LL | | }
+   | |_^ lifetime `'static` required
 
 error: aborting due to previous error
 

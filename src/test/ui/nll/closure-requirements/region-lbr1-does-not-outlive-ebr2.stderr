@@ -1,18 +1,22 @@
 warning: not reporting region error due to nll
-  --> $DIR/region-lbr1-does-not-outlive-ebr2.rs:19:5
+  --> $DIR/region-lbr1-does-not-outlive-ebr2.rs:20:5
    |
 LL |     &*x
    |     ^^^
 
 error[E0623]: lifetime mismatch
-  --> $DIR/region-lbr1-does-not-outlive-ebr2.rs:19:5
+  --> $DIR/region-lbr1-does-not-outlive-ebr2.rs:18:1
    |
-LL | fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
-   |                   -------                 -------
-   |                   |
-   |                   this parameter and the return type are declared with different lifetimes...
-LL |     &*x
-   |     ^^^ ...but data from `x` is returned here
+LL |   fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
+   |   ^                 -------                 -------
+   |   |                 |
+   |  _|                 this parameter and the return type are declared with different lifetimes...
+   | |
+LL | |         //~^ ERROR lifetime mismatch
+LL | |     &*x
+LL | |         //~^ WARN not reporting region error due to nll
+LL | | }
+   | |_^ ...but data from `x` is returned here
 
 error: aborting due to previous error
 

@@ -16,9 +16,9 @@
 // compile-flags:-Zborrowck=mir -Zverbose
 
 fn foo<'a>(x: &'a u32) -> &'static u32 {
+        //~^ ERROR does not outlive free region
     &*x
         //~^ WARN not reporting region error due to nll
-        //~| ERROR does not outlive free region
 }
 
 fn main() { }

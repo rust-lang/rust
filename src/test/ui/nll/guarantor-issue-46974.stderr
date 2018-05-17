@@ -10,13 +10,16 @@ LL |     *x
    |     -- borrow later used here
 
 error[E0621]: explicit lifetime required in the type of `s`
-  --> $DIR/guarantor-issue-46974.rs:25:5
+  --> $DIR/guarantor-issue-46974.rs:23:1
    |
-LL | fn bar(s: &Box<(i32,)>) -> &'static i32 {
-   |        - consider changing the type of `s` to `&'static std::boxed::Box<(i32,)>`
-LL |     // FIXME(#46983): error message should be better
-LL |     &s.0 //~ ERROR explicit lifetime required in the type of `s` [E0621]
-   |     ^^^^ lifetime `'static` required
+LL |   fn bar(s: &Box<(i32,)>) -> &'static i32 { //~ ERROR explicit lifetime required
+   |   ^      - consider changing the type of `s` to `&'static std::boxed::Box<(i32,)>`
+   |  _|
+   | |
+LL | |     // FIXME(#46983): error message should be better
+LL | |     &s.0
+LL | | }
+   | |_^ lifetime `'static` required
 
 error: aborting due to 2 previous errors
 

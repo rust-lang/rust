@@ -1,16 +1,21 @@
 warning: not reporting region error due to nll
-  --> $DIR/impl-trait-captures.rs:21:5
+  --> $DIR/impl-trait-captures.rs:22:5
    |
 LL |     x
    |     ^
 
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/impl-trait-captures.rs:21:5
+  --> $DIR/impl-trait-captures.rs:20:1
    |
-LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> {
-   |               - consider changing the type of `x` to `&ReEarlyBound(0, 'a) T`
-LL |     x
-   |     ^ lifetime `ReEarlyBound(0, 'a)` required
+LL |   fn foo<'a, T>(x: &T) -> impl Foo<'a> {
+   |   ^             - consider changing the type of `x` to `&ReEarlyBound(0, 'a) T`
+   |  _|
+   | |
+LL | |         //~^ ERROR explicit lifetime required in the type of `x` [E0621]
+LL | |     x
+LL | |         //~^ WARNING not reporting region error due to nll
+LL | | }
+   | |_^ lifetime `ReEarlyBound(0, 'a)` required
 
 error: aborting due to previous error
 

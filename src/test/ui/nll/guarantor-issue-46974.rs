@@ -20,9 +20,9 @@ fn foo(s: &mut (i32,)) -> i32 {
     *x
 }
 
-fn bar(s: &Box<(i32,)>) -> &'static i32 {
+fn bar(s: &Box<(i32,)>) -> &'static i32 { //~ ERROR explicit lifetime required
     // FIXME(#46983): error message should be better
-    &s.0 //~ ERROR explicit lifetime required in the type of `s` [E0621]
+    &s.0
 }
 
 fn main() {
