@@ -272,6 +272,9 @@ pub trait Visitor<'v> : Sized {
     fn visit_decl(&mut self, d: &'v Decl) {
         walk_decl(self, d)
     }
+    fn visit_anon_const(&mut self, c: &'v AnonConst) {
+        walk_anon_const(self, c)
+    }
     fn visit_expr(&mut self, ex: &'v Expr) {
         walk_expr(self, ex)
     }
@@ -547,7 +550,7 @@ pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
                                generics,
                                parent_item_id,
                                variant.span);
-    walk_list!(visitor, visit_nested_body, variant.node.disr_expr);
+    walk_list!(visitor, visit_anon_const, &variant.node.disr_expr);
     walk_list!(visitor, visit_attribute, &variant.node.attrs);
 }
 
@@ -576,9 +579,9 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
         TyPath(ref qpath) => {
             visitor.visit_qpath(qpath, typ.id, typ.span);
         }
-        TyArray(ref ty, length) => {
+        TyArray(ref ty, ref length) => {
             visitor.visit_ty(ty);
-            visitor.visit_nested_body(length)
+            visitor.visit_anon_const(length)
         }
         TyTraitObject(ref bounds, ref lifetime) => {
             for bound in bounds {
@@ -592,8 +595,8 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             walk_list!(visitor, visit_ty_param_bound, bounds);
             walk_list!(visitor, visit_lifetime, lifetimes);
         }
-        TyTypeof(expression) => {
-            visitor.visit_nested_body(expression)
+        TyTypeof(ref expression) => {
+            visitor.visit_anon_const(expression)
         }
         TyInfer | TyErr => {}
     }
@@ -944,6 +947,11 @@ pub fn walk_decl<'v, V: Visitor<'v>>(visitor: &mut V, declaration: &'v Decl) {
     }
 }
 
+pub fn walk_anon_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v AnonConst) {
+    visitor.visit_id(constant.id);
+    visitor.visit_nested_body(constant.body);
+}
+
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
     visitor.visit_id(expression.id);
     walk_list!(visitor, visit_attribute, expression.attrs.iter());
@@ -954,9 +962,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         ExprArray(ref subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
-        ExprRepeat(ref element, count) => {
+        ExprRepeat(ref element, ref count) => {
             visitor.visit_expr(element);
-            visitor.visit_nested_body(count)
+            visitor.visit_anon_const(count)
         }
         ExprStruct(ref qpath, ref fields, ref optional_base) => {
             visitor.visit_qpath(qpath, expression.id, expression.span);

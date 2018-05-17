@@ -481,8 +481,8 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // fill the discriminant values and field types
     for variant in variants {
         let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
-        prev_discr = Some(if let Some(e) = variant.node.disr_expr {
-            let expr_did = tcx.hir.local_def_id(e.node_id);
+        prev_discr = Some(if let Some(ref e) = variant.node.disr_expr {
+            let expr_did = tcx.hir.local_def_id(e.id);
             def.eval_explicit_discr(tcx, expr_did)
         } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
             Some(discr)
@@ -565,9 +565,9 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let mut distance_from_explicit = 0;
             (AdtKind::Enum, def.variants.iter().map(|v| {
                 let did = tcx.hir.local_def_id(v.node.data.id());
-                let discr = if let Some(e) = v.node.disr_expr {
+                let discr = if let Some(ref e) = v.node.disr_expr {
                     distance_from_explicit = 0;
-                    ty::VariantDiscr::Explicit(tcx.hir.local_def_id(e.node_id))
+                    ty::VariantDiscr::Explicit(tcx.hir.local_def_id(e.id))
                 } else {
                     ty::VariantDiscr::Relative(distance_from_explicit)
                 };
@@ -1102,20 +1102,20 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             tcx.mk_closure(def_id, substs)
         }
 
-        NodeExpr(_) => match tcx.hir.get(tcx.hir.get_parent_node(node_id)) {
-            NodeTy(&hir::Ty { node: TyArray(_, body), .. }) |
-            NodeTy(&hir::Ty { node: TyTypeof(body), .. }) |
-            NodeExpr(&hir::Expr { node: ExprRepeat(_, body), .. })
-                if body.node_id == node_id => tcx.types.usize,
+        NodeAnonConst(_) => match tcx.hir.get(tcx.hir.get_parent_node(node_id)) {
+            NodeTy(&hir::Ty { node: TyArray(_, ref constant), .. }) |
+            NodeTy(&hir::Ty { node: TyTypeof(ref constant), .. }) |
+            NodeExpr(&hir::Expr { node: ExprRepeat(_, ref constant), .. })
+                if constant.id == node_id => tcx.types.usize,
 
-            NodeVariant(&Spanned { node: Variant_ { disr_expr: Some(e), .. }, .. })
-                if e.node_id == node_id => {
+            NodeVariant(&Spanned { node: Variant_ { disr_expr: Some(ref e), .. }, .. })
+                if e.id == node_id => {
                     tcx.adt_def(tcx.hir.get_parent_did(node_id))
                         .repr.discr_type().to_ty(tcx)
                 }
 
             x => {
-                bug!("unexpected expr parent in type_of_def_id(): {:?}", x);
+                bug!("unexpected const parent in type_of_def_id(): {:?}", x);
             }
         },
 

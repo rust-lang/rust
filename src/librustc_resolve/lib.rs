@@ -802,6 +802,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
     fn visit_block(&mut self, block: &'tcx Block) {
         self.resolve_block(block);
     }
+    fn visit_anon_const(&mut self, constant: &'tcx ast::AnonConst) {
+        self.with_constant_rib(|this| {
+            visit::walk_anon_const(this, constant);
+        });
+    }
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         self.resolve_expr(expr, None);
     }
@@ -819,13 +824,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                               .map_or(Def::Err, |d| d.def());
                 self.record_def(ty.id, PathResolution::new(def));
             }
-            TyKind::Array(ref element, ref length) => {
-                self.visit_ty(element);
-                self.with_constant_rib(|this| {
-                    this.visit_expr(length);
-                });
-                return;
-            }
             _ => (),
         }
         visit::walk_ty(self, ty);
@@ -836,24 +834,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         self.smart_resolve_path(tref.trait_ref.ref_id, None,
                                 &tref.trait_ref.path, PathSource::Trait(AliasPossibility::Maybe));
         visit::walk_poly_trait_ref(self, tref, m);
-    }
-    fn visit_variant(&mut self,
-                     variant: &'tcx ast::Variant,
-                     generics: &'tcx Generics,
-                     item_id: ast::NodeId) {
-        if let Some(ref dis_expr) = variant.node.disr_expr {
-            // resolve the discriminator expr as a constant
-            self.with_constant_rib(|this| {
-                this.visit_expr(dis_expr);
-            });
-        }
-
-        // `visit::walk_variant` without the discriminant expression.
-        self.visit_variant_data(&variant.node.data,
-                                variant.node.ident,
-                                generics,
-                                item_id,
-                                variant.span);
     }
     fn visit_foreign_item(&mut self, foreign_item: &'tcx ForeignItem) {
         let type_parameters = match foreign_item.node {
@@ -3820,12 +3800,6 @@ impl<'a> Resolver<'a> {
                 self.visit_path_segment(expr.span, segment);
             }
 
-            ExprKind::Repeat(ref element, ref count) => {
-                self.visit_expr(element);
-                self.with_constant_rib(|this| {
-                    this.visit_expr(count);
-                });
-            }
             ExprKind::Call(ref callee, ref arguments) => {
                 self.resolve_expr(callee, Some(expr));
                 for argument in arguments {

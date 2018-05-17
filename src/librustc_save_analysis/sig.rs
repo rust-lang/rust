@@ -313,7 +313,7 @@ impl Sig for ast::Ty {
             }
             ast::TyKind::Array(ref ty, ref v) => {
                 let nested_ty = ty.make(offset + 1, id, scx)?;
-                let expr = pprust::expr_to_string(v).replace('\n', " ");
+                let expr = pprust::expr_to_string(&v.value).replace('\n', " ");
                 let text = format!("[{}; {}]", nested_ty.text, expr);
                 Ok(replace_text(nested_ty, text))
             }

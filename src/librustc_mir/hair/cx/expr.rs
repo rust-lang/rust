@@ -506,9 +506,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
 
         // Now comes the rote stuff:
-        hir::ExprRepeat(ref v, count) => {
-            let c = &cx.tcx.hir.body(count).value;
-            let def_id = cx.tcx.hir.body_owner_def_id(count);
+        hir::ExprRepeat(ref v, ref count) => {
+            let def_id = cx.tcx.hir.local_def_id(count.id);
             let substs = Substs::identity_for_item(cx.tcx.global_tcx(), def_id);
             let instance = ty::Instance::resolve(
                 cx.tcx.global_tcx(),
@@ -520,7 +519,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 instance,
                 promoted: None
             };
-            let count = match cx.tcx.at(c.span).const_eval(cx.param_env.and(global_id)) {
+            let span = cx.tcx.def_span(def_id);
+            let count = match cx.tcx.at(span).const_eval(cx.param_env.and(global_id)) {
                 Ok(cv) => cv.unwrap_usize(cx.tcx),
                 Err(e) => {
                     e.report(cx.tcx, cx.tcx.def_span(def_id), "array length");

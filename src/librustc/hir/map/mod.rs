@@ -53,6 +53,7 @@ pub enum Node<'hir> {
     NodeImplItem(&'hir ImplItem),
     NodeVariant(&'hir Variant),
     NodeField(&'hir StructField),
+    NodeAnonConst(&'hir AnonConst),
     NodeExpr(&'hir Expr),
     NodeStmt(&'hir Stmt),
     NodeTy(&'hir Ty),
@@ -85,6 +86,7 @@ enum MapEntry<'hir> {
     EntryImplItem(NodeId, DepNodeIndex, &'hir ImplItem),
     EntryVariant(NodeId, DepNodeIndex, &'hir Variant),
     EntryField(NodeId, DepNodeIndex, &'hir StructField),
+    EntryAnonConst(NodeId, DepNodeIndex, &'hir AnonConst),
     EntryExpr(NodeId, DepNodeIndex, &'hir Expr),
     EntryStmt(NodeId, DepNodeIndex, &'hir Stmt),
     EntryTy(NodeId, DepNodeIndex, &'hir Ty),
@@ -120,6 +122,7 @@ impl<'hir> MapEntry<'hir> {
             EntryImplItem(id, _, _) => id,
             EntryVariant(id, _, _) => id,
             EntryField(id, _, _) => id,
+            EntryAnonConst(id, _, _) => id,
             EntryExpr(id, _, _) => id,
             EntryStmt(id, _, _) => id,
             EntryTy(id, _, _) => id,
@@ -147,6 +150,7 @@ impl<'hir> MapEntry<'hir> {
             EntryImplItem(_, _, n) => NodeImplItem(n),
             EntryVariant(_, _, n) => NodeVariant(n),
             EntryField(_, _, n) => NodeField(n),
+            EntryAnonConst(_, _, n) => NodeAnonConst(n),
             EntryExpr(_, _, n) => NodeExpr(n),
             EntryStmt(_, _, n) => NodeStmt(n),
             EntryTy(_, _, n) => NodeTy(n),
@@ -192,6 +196,8 @@ impl<'hir> MapEntry<'hir> {
                     _ => None,
                 }
             }
+
+            EntryAnonConst(_, _, constant) => Some(constant.body),
 
             EntryExpr(_, _, expr) => {
                 match expr.node {
@@ -290,6 +296,7 @@ impl<'hir> Map<'hir> {
             EntryLifetime(_, dep_node_index, _) |
             EntryTyParam(_, dep_node_index, _) |
             EntryVisibility(_, dep_node_index, _) |
+            EntryAnonConst(_, dep_node_index, _) |
             EntryExpr(_, dep_node_index, _) |
             EntryLocal(_, dep_node_index, _) |
             EntryMacroDef(dep_node_index, _) |
@@ -434,6 +441,7 @@ impl<'hir> Map<'hir> {
                 Some(Def::Variant(def_id))
             }
             NodeField(_) |
+            NodeAnonConst(_) |
             NodeExpr(_) |
             NodeStmt(_) |
             NodeTy(_) |
@@ -495,15 +503,11 @@ impl<'hir> Map<'hir> {
 
     /// Returns the `NodeId` that corresponds to the definition of
     /// which this is the body of, i.e. a `fn`, `const` or `static`
-    /// item (possibly associated), or a closure, or the body itself
-    /// for embedded constant expressions (e.g. `N` in `[T; N]`).
+    /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(&self, BodyId { node_id }: BodyId) -> NodeId {
         let parent = self.get_parent_node(node_id);
-        if self.map[parent.as_usize()].is_body_owner(node_id) {
-            parent
-        } else {
-            node_id
-        }
+        assert!(self.map[parent.as_usize()].is_body_owner(node_id));
+        parent
     }
 
     pub fn body_owner_def_id(&self, id: BodyId) -> DefId {
@@ -520,19 +524,7 @@ impl<'hir> Map<'hir> {
                 self.dep_graph.read(def_path_hash.to_dep_node(DepKind::HirBody));
             }
 
-            if let Some(body_id) = entry.associated_body() {
-                // For item-like things and closures, the associated
-                // body has its own distinct id, and that is returned
-                // by `associated_body`.
-                Some(body_id)
-            } else {
-                // For some expressions, the expression is its own body.
-                if let EntryExpr(_, _, expr) = entry {
-                    Some(BodyId { node_id: expr.id })
-                } else {
-                    None
-                }
-            }
+            entry.associated_body()
         } else {
             bug!("no entry for id `{}`", id)
         }
@@ -547,17 +539,11 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body_owner_kind(&self, id: NodeId) -> BodyOwnerKind {
-        // Handle constants in enum discriminants, types, and repeat expressions.
-        let def_id = self.local_def_id(id);
-        let def_key = self.def_key(def_id);
-        if def_key.disambiguated_data.data == DefPathData::Initializer {
-            return BodyOwnerKind::Const;
-        }
-
         match self.get(id) {
             NodeItem(&Item { node: ItemConst(..), .. }) |
             NodeTraitItem(&TraitItem { node: TraitItemKind::Const(..), .. }) |
-            NodeImplItem(&ImplItem { node: ImplItemKind::Const(..), .. }) => {
+            NodeImplItem(&ImplItem { node: ImplItemKind::Const(..), .. }) |
+            NodeAnonConst(_) => {
                 BodyOwnerKind::Const
             }
             NodeItem(&Item { node: ItemStatic(_, m, _), .. }) => {
@@ -982,6 +968,7 @@ impl<'hir> Map<'hir> {
             Some(EntryImplItem(_, _, impl_item)) => impl_item.span,
             Some(EntryVariant(_, _, variant)) => variant.span,
             Some(EntryField(_, _, field)) => field.span,
+            Some(EntryAnonConst(_, _, constant)) => self.body(constant.body).value.span,
             Some(EntryExpr(_, _, expr)) => expr.span,
             Some(EntryStmt(_, _, stmt)) => stmt.span,
             Some(EntryTy(_, _, ty)) => ty.span,
@@ -1201,6 +1188,7 @@ impl<'a> print::State<'a> {
             NodeTraitItem(a)   => self.print_trait_item(a),
             NodeImplItem(a)    => self.print_impl_item(a),
             NodeVariant(a)     => self.print_variant(&a),
+            NodeAnonConst(a)   => self.print_anon_const(&a),
             NodeExpr(a)        => self.print_expr(&a),
             NodeStmt(a)        => self.print_stmt(&a),
             NodeTy(a)          => self.print_type(&a),
@@ -1305,6 +1293,9 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
             format!("field {} in {}{}",
                     field.name,
                     path_str(), id_str)
+        }
+        Some(NodeAnonConst(_)) => {
+            format!("const {}{}", map.node_to_pretty_string(id), id_str)
         }
         Some(NodeExpr(_)) => {
             format!("expr {}{}", map.node_to_pretty_string(id), id_str)

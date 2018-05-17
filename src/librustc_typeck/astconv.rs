@@ -1116,8 +1116,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 };
                 self.associated_path_def_to_ty(ast_ty.id, ast_ty.span, ty, def, segment).0
             }
-            hir::TyArray(ref ty, length) => {
-                let length_def_id = tcx.hir.body_owner_def_id(length);
+            hir::TyArray(ref ty, ref length) => {
+                let length_def_id = tcx.hir.local_def_id(length.id);
                 let substs = Substs::identity_for_item(tcx, length_def_id);
                 let length = ty::Const::unevaluated(tcx, length_def_id, substs, tcx.types.usize);
                 let array_ty = tcx.mk_ty(ty::TyArray(self.ast_ty_to_ty(&ty), length));

@@ -920,6 +920,18 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
+/// A constant (expression) that's not an item or associated item,
+/// but needs its own `DefId` for type-checking, const-eval, etc.
+/// These are usually found nested inside types (e.g. array lengths)
+/// or expressions (e.g. repeat counts), and also used to define
+/// explicit discriminant values for enum variants.
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct AnonConst {
+    pub id: NodeId,
+    pub value: P<Expr>,
+}
+
+
 /// An expression
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash,)]
 pub struct Expr {
@@ -1168,9 +1180,9 @@ pub enum ExprKind {
 
     /// An array literal constructed from one repeated element.
     ///
-    /// For example, `[1; 5]`. The first expression is the element
-    /// to be repeated; the second is the number of times to repeat it.
-    Repeat(P<Expr>, P<Expr>),
+    /// For example, `[1; 5]`. The expression is the element to be
+    /// repeated; the constant is the number of times to repeat it.
+    Repeat(P<Expr>, AnonConst),
 
     /// No-op: used solely so we can pretty-print faithfully
     Paren(P<Expr>),
@@ -1565,7 +1577,7 @@ pub enum TyKind {
     /// A variable-length slice (`[T]`)
     Slice(P<Ty>),
     /// A fixed length array (`[T; n]`)
-    Array(P<Ty>, P<Expr>),
+    Array(P<Ty>, AnonConst),
     /// A raw pointer (`*const T` or `*mut T`)
     Ptr(MutTy),
     /// A reference (`&'a T` or `&'a mut T`)
@@ -1590,7 +1602,7 @@ pub enum TyKind {
     /// No-op; kept solely so that we can pretty-print faithfully
     Paren(P<Ty>),
     /// Unused for now
-    Typeof(P<Expr>),
+    Typeof(AnonConst),
     /// TyKind::Infer means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     Infer,
@@ -1856,7 +1868,7 @@ pub struct Variant_ {
     pub attrs: Vec<Attribute>,
     pub data: VariantData,
     /// Explicit discriminant, e.g. `Foo = 1`
-    pub disr_expr: Option<P<Expr>>,
+    pub disr_expr: Option<AnonConst>,
 }
 
 pub type Variant = Spanned<Variant_>;

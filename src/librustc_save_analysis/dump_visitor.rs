@@ -1516,7 +1516,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
             }
             ast::TyKind::Array(ref element, ref length) => {
                 self.visit_ty(element);
-                self.nest_tables(length.id, |v| v.visit_expr(length));
+                self.nest_tables(length.id, |v| v.visit_expr(&length.value));
             }
             _ => visit::walk_ty(self, t),
         }
@@ -1589,7 +1589,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
             }
             ast::ExprKind::Repeat(ref element, ref count) => {
                 self.visit_expr(element);
-                self.nest_tables(count.id, |v| v.visit_expr(count));
+                self.nest_tables(count.id, |v| v.visit_expr(&count.value));
             }
             // In particular, we take this branch for call and path expressions,
             // where we'll index the idents involved just by continuing to walk.

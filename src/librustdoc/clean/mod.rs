@@ -2669,19 +2669,19 @@ impl Clean<Type> for hir::Ty {
                              type_: box m.ty.clean(cx)}
             }
             TySlice(ref ty) => Slice(box ty.clean(cx)),
-            TyArray(ref ty, n) => {
-                let def_id = cx.tcx.hir.body_owner_def_id(n);
+            TyArray(ref ty, ref length) => {
+                let def_id = cx.tcx.hir.local_def_id(length.id);
                 let param_env = cx.tcx.param_env(def_id);
                 let substs = Substs::identity_for_item(cx.tcx, def_id);
                 let cid = GlobalId {
                     instance: ty::Instance::new(def_id, substs),
                     promoted: None
                 };
-                let n = cx.tcx.const_eval(param_env.and(cid)).unwrap_or_else(|_| {
+                let length = cx.tcx.const_eval(param_env.and(cid)).unwrap_or_else(|_| {
                     ty::Const::unevaluated(cx.tcx, def_id, substs, cx.tcx.types.usize)
                 });
-                let n = print_const(cx, n);
-                Array(box ty.clean(cx), n)
+                let length = print_const(cx, length);
+                Array(box ty.clean(cx), length)
             },
             TyTup(ref tys) => Tuple(tys.clean(cx)),
             TyPath(hir::QPath::Resolved(None, ref path)) => {

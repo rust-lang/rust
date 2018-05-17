@@ -1359,8 +1359,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         }
     }
 
-    fn encode_info_for_embedded_const(&mut self, def_id: DefId) -> Entry<'tcx> {
-        debug!("IsolatedEncoder::encode_info_for_embedded_const({:?})", def_id);
+    fn encode_info_for_anon_const(&mut self, def_id: DefId) -> Entry<'tcx> {
+        debug!("IsolatedEncoder::encode_info_for_anon_const({:?})", def_id);
         let tcx = self.tcx;
         let id = tcx.hir.as_local_node_id(def_id).unwrap();
         let body_id = tcx.hir.body_owned_by(id);
@@ -1623,9 +1623,9 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
                      id: ast::NodeId) {
         intravisit::walk_variant(self, v, g, id);
 
-        if let Some(discr) = v.node.disr_expr {
-            let def_id = self.index.tcx.hir.body_owner_def_id(discr);
-            self.index.record(def_id, IsolatedEncoder::encode_info_for_embedded_const, def_id);
+        if let Some(ref discr) = v.node.disr_expr {
+            let def_id = self.index.tcx.hir.local_def_id(discr.id);
+            self.index.record(def_id, IsolatedEncoder::encode_info_for_anon_const, def_id);
         }
     }
     fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
@@ -1668,9 +1668,9 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
                 let def_id = self.tcx.hir.local_def_id(ty.id);
                 self.record(def_id, IsolatedEncoder::encode_info_for_anon_ty, def_id);
             }
-            hir::TyArray(_, len) => {
-                let def_id = self.tcx.hir.body_owner_def_id(len);
-                self.record(def_id, IsolatedEncoder::encode_info_for_embedded_const, def_id);
+            hir::TyArray(_, ref length) => {
+                let def_id = self.tcx.hir.local_def_id(length.id);
+                self.record(def_id, IsolatedEncoder::encode_info_for_anon_const, def_id);
             }
             _ => {}
         }

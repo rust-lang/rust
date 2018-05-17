@@ -1076,16 +1076,16 @@ impl<'a> State<'a> {
             ast::TyKind::ImplTrait(ref bounds) => {
                 self.print_bounds("impl", &bounds[..])?;
             }
-            ast::TyKind::Array(ref ty, ref v) => {
+            ast::TyKind::Array(ref ty, ref length) => {
                 self.s.word("[")?;
                 self.print_type(ty)?;
                 self.s.word("; ")?;
-                self.print_expr(v)?;
+                self.print_expr(&length.value)?;
                 self.s.word("]")?;
             }
             ast::TyKind::Typeof(ref e) => {
                 self.s.word("typeof(")?;
-                self.print_expr(e)?;
+                self.print_expr(&e.value)?;
                 self.s.word(")")?;
             }
             ast::TyKind::Infer => {
@@ -1552,7 +1552,7 @@ impl<'a> State<'a> {
             Some(ref d) => {
                 self.s.space()?;
                 self.word_space("=")?;
-                self.print_expr(d)
+                self.print_expr(&d.value)
             }
             _ => Ok(())
         }
@@ -1905,14 +1905,14 @@ impl<'a> State<'a> {
 
     fn print_expr_repeat(&mut self,
                          element: &ast::Expr,
-                         count: &ast::Expr,
+                         count: &ast::AnonConst,
                          attrs: &[Attribute]) -> io::Result<()> {
         self.ibox(INDENT_UNIT)?;
         self.s.word("[")?;
         self.print_inner_attributes_inline(attrs)?;
         self.print_expr(element)?;
         self.word_space(";")?;
-        self.print_expr(count)?;
+        self.print_expr(&count.value)?;
         self.s.word("]")?;
         self.end()
     }
