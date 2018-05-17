@@ -13,6 +13,9 @@
 // borrows in `&v[0]` and `&v[1]` each (in theory) have to outlive R3,
 // but only at a particular point, and hence they wind up including
 // distinct regions.
+//
+// FIXME(#43234) -- Well, this used to be true, but we modified NLL
+// for the time being to not take location into account.
 
 // compile-flags:-Zborrowck=mir -Zverbose
 //                              ^^^^^^^^^ force compiler to dump more region information
@@ -36,9 +39,9 @@ fn main() {
 
 // END RUST SOURCE
 // START rustc.main.nll.0.mir
-// | '_#2r    | {bb2[0..=1], bb3[0..=1]}
+// | '_#2r    | {bb2[0..=1], bb3[0..=1], bb8[2..=4]}
 // ...
-// | '_#4r    | {bb8[1..=4]}
+// | '_#4r    | {bb2[1], bb3[0..=1], bb8[1..=4]}
 // | '_#5r    | {bb2[1], bb3[0..=1], bb8[2..=4]}
 // ...
 // let mut _2: &'_#5r usize;

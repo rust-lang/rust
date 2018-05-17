@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::BTreeMap;
-use std::collections::btree_map::Entry;
-use std::marker::PhantomData;
-use std::iter::FromIterator;
 use indexed_vec::{Idx, IndexVec};
+use std::collections::btree_map::Entry;
+use std::collections::BTreeMap;
+use std::iter::FromIterator;
+use std::marker::PhantomData;
 
 type Word = u128;
 const WORD_BITS: usize = 128;
@@ -317,12 +317,23 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         if read != write {
             let (bit_set_read, bit_set_write) = self.vector.pick2_mut(read, write);
 
-            for read_val in bit_set_read.iter() {
-                changed = changed | bit_set_write.insert(read_val);
+            for read_chunk in bit_set_read.chunks() {
+                changed = changed | bit_set_write.insert_chunk(read_chunk).any();
             }
         }
 
         changed
+    }
+
+    /// True if `sub` is a subset of `sup`
+    pub fn is_subset(&self, sub: R, sup: R) -> bool {
+        sub == sup || {
+            let bit_set_sub = &self.vector[sub];
+            let bit_set_sup = &self.vector[sup];
+            bit_set_sub
+                .chunks()
+                .all(|read_chunk| read_chunk.bits_eq(bit_set_sup.contains_chunk(read_chunk)))
+        }
     }
 
     /// Iterates through all the columns set to true in a given row of
@@ -346,6 +357,7 @@ pub struct SparseChunk<I> {
 }
 
 impl<I: Idx> SparseChunk<I> {
+    #[inline]
     pub fn one(index: I) -> Self {
         let index = index.index();
         let key_usize = index / 128;
@@ -358,8 +370,14 @@ impl<I: Idx> SparseChunk<I> {
         }
     }
 
+    #[inline]
     pub fn any(&self) -> bool {
         self.bits != 0
+    }
+
+    #[inline]
+    pub fn bits_eq(&self, other: SparseChunk<I>) -> bool {
+        self.bits == other.bits
     }
 
     pub fn iter(&self) -> impl Iterator<Item = I> {
@@ -394,6 +412,10 @@ impl<I: Idx> SparseBitSet<I> {
         self.chunk_bits.len() * 128
     }
 
+    /// Returns a chunk containing only those bits that are already
+    /// present. You can test therefore if `self` contains all the
+    /// bits in chunk already by doing `chunk ==
+    /// self.contains_chunk(chunk)`.
     pub fn contains_chunk(&self, chunk: SparseChunk<I>) -> SparseChunk<I> {
         SparseChunk {
             bits: self.chunk_bits
@@ -403,6 +425,11 @@ impl<I: Idx> SparseBitSet<I> {
         }
     }
 
+    /// Modifies `self` to contain all the bits from `chunk` (in
+    /// addition to any pre-existing bits); returns a new chunk that
+    /// contains only those bits that were newly added. You can test
+    /// if anything was inserted by invoking `any()` on the returned
+    /// value.
     pub fn insert_chunk(&mut self, chunk: SparseChunk<I>) -> SparseChunk<I> {
         if chunk.bits == 0 {
             return chunk;
