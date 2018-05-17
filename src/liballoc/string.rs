@@ -59,6 +59,7 @@
 use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use core::fmt;
 use core::hash;
+use core::mem;
 use core::iter::{FromIterator, FusedIterator};
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeBounds};
@@ -1452,6 +1453,20 @@ impl String {
         self.vec.clear()
     }
 
+    /// Converts the `String` into an iterator of `char`s.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let s = String::from("easy as α β γ");
+    /// assert_eq!(s.into_chars().count(), 13);
+    /// ```
+    #[unstable(feature = "into_chars", reason = "new API", issue="0")]
+    pub fn into_chars(self) -> IntoChars {
+        let chars = unsafe { mem::transmute(self.chars()) };
+        IntoChars { _s: self, chars }
+    }
+
     /// Creates a draining iterator that removes the specified range in the string
     /// and yields the removed chars.
     ///
@@ -2360,3 +2375,40 @@ impl<'a> DoubleEndedIterator for Drain<'a> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<'a> FusedIterator for Drain<'a> {}
+
+// This struct is safe because the `String` is heap-allocated (stable
+// address) and will never be modified (stable address). `chars` will
+// not outlive the struct, so lying about the lifetime should be
+// fine. `Chars` does not have a destructor.
+#[unstable(feature = "into_chars", reason = "new API", issue="0")]
+pub struct IntoChars {
+    _s: String,
+    chars: Chars<'static>,
+}
+
+#[unstable(feature = "into_chars", reason = "new API", issue="0")]
+impl fmt::Debug for IntoChars {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.chars.fmt(f)
+    }
+}
+#[unstable(feature = "into_chars", reason = "new API", issue="0")]
+impl Iterator for IntoChars {
+    type Item = char;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.chars.next()
+    }
+}
+
+#[unstable(feature = "into_chars", reason = "new API", issue="0")]
+impl DoubleEndedIterator for IntoChars {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.chars.next_back()
+    }
+}
+
+#[unstable(feature = "into_chars", reason = "new API", issue="0")]
+impl FusedIterator for IntoChars {}
