@@ -1007,9 +1007,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                   name,
                   Vec::new(),
                   ast::ItemKind::Fn(self.fn_decl(inputs, ast::FunctionRetTy::Ty(output)),
-                              ast::Unsafety::Normal,
-                              dummy_spanned(ast::Constness::NotConst),
-                              Abi::Rust,
+                              ast::FnHeader {
+                                  unsafety: ast::Unsafety::Normal,
+                                  asyncness: ast::IsAsync::NotAsync,
+                                  constness: dummy_spanned(ast::Constness::NotConst),
+                                  abi: Abi::Rust,
+                              },
                               generics,
                               body))
     }

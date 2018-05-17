@@ -19,8 +19,8 @@ pub use self::SelfTy::*;
 pub use self::FunctionRetTy::*;
 pub use self::Visibility::{Public, Inherited};
 
-use syntax;
 use rustc_target::spec::abi::Abi;
+use syntax;
 use syntax::ast::{self, AttrStyle, Ident};
 use syntax::attr;
 use syntax::codemap::{dummy_spanned, Spanned};
@@ -1901,10 +1901,8 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Method {
     pub generics: Generics,
-    pub unsafety: hir::Unsafety,
-    pub constness: hir::Constness,
     pub decl: FnDecl,
-    pub abi: Abi,
+    pub header: hir::FnHeader,
 }
 
 impl<'a> Clean<Method> for (&'a hir::MethodSig, &'a hir::Generics, hir::BodyId) {
@@ -1915,28 +1913,23 @@ impl<'a> Clean<Method> for (&'a hir::MethodSig, &'a hir::Generics, hir::BodyId) 
         Method {
             decl,
             generics,
-            unsafety: self.0.unsafety,
-            constness: self.0.constness,
-            abi: self.0.abi
+            header: self.0.header,
         }
     }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TyMethod {
-    pub unsafety: hir::Unsafety,
+    pub header: hir::FnHeader,
     pub decl: FnDecl,
     pub generics: Generics,
-    pub abi: Abi,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Function {
     pub decl: FnDecl,
     pub generics: Generics,
-    pub unsafety: hir::Unsafety,
-    pub constness: hir::Constness,
-    pub abi: Abi,
+    pub header: hir::FnHeader,
 }
 
 impl Clean<Item> for doctree::Function {
@@ -1955,9 +1948,7 @@ impl Clean<Item> for doctree::Function {
             inner: FunctionItem(Function {
                 decl,
                 generics,
-                unsafety: self.unsafety,
-                constness: self.constness,
-                abi: self.abi,
+                header: self.header,
             }),
         }
     }
@@ -2186,10 +2177,9 @@ impl Clean<Item> for hir::TraitItem {
                     (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
                 });
                 TyMethodItem(TyMethod {
-                    unsafety: sig.unsafety.clone(),
+                    header: sig.header,
                     decl,
                     generics,
-                    abi: sig.abi
                 })
             }
             hir::TraitItemKind::Type(ref bounds, ref default) => {
@@ -2288,18 +2278,24 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                         hir::Constness::NotConst
                     };
                     MethodItem(Method {
-                        unsafety: sig.unsafety(),
                         generics,
                         decl,
-                        abi: sig.abi(),
-                        constness,
+                        header: hir::FnHeader {
+                            unsafety: sig.unsafety(),
+                            abi: sig.abi(),
+                            constness,
+                            ..hir::FnHeader::default()
+                        }
                     })
                 } else {
                     TyMethodItem(TyMethod {
-                        unsafety: sig.unsafety(),
                         generics,
                         decl,
-                        abi: sig.abi(),
+                        header: hir::FnHeader {
+                            unsafety: sig.unsafety(),
+                            abi: sig.abi(),
+                            ..hir::FnHeader::default()
+                        }
                     })
                 }
             }
@@ -3485,9 +3481,9 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy {
         });
         BareFunctionDecl {
             unsafety: self.unsafety,
+            abi: self.abi,
             decl,
             generic_params,
-            abi: self.abi,
         }
     }
 }
@@ -3775,7 +3771,7 @@ impl Clean<Vec<Item>> for hir::ForeignMod {
         let mut items = self.items.clean(cx);
         for item in &mut items {
             if let ForeignFunctionItem(ref mut f) = item.inner {
-                f.abi = self.abi;
+                f.header.abi = self.abi;
             }
         }
         items
@@ -3792,9 +3788,7 @@ impl Clean<Item> for hir::ForeignItem {
                 ForeignFunctionItem(Function {
                     decl,
                     generics,
-                    unsafety: hir::Unsafety::Unsafe,
-                    abi: Abi::Rust,
-                    constness: hir::Constness::NotConst,
+                    header: hir::FnHeader::default(),
                 })
             }
             hir::ForeignItemStatic(ref ty, mutbl) => {

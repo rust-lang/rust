@@ -124,9 +124,15 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 
         if is_test_fn(&self.cx, &i) || is_bench_fn(&self.cx, &i) {
             match i.node {
-                ast::ItemKind::Fn(_, ast::Unsafety::Unsafe, _, _, _, _) => {
-                    let diag = self.cx.span_diagnostic;
-                    diag.span_fatal(i.span, "unsafe functions cannot be used for tests").raise();
+                ast::ItemKind::Fn(_, header, _, _) => {
+                    if header.unsafety == ast::Unsafety::Unsafe {
+                        let diag = self.cx.span_diagnostic;
+                        diag.span_fatal(i.span, "unsafe functions cannot be used for tests").raise();
+                    }
+                    if header.asyncness == ast::IsAsync::Async {
+                        let diag = self.cx.span_diagnostic;
+                        diag.span_fatal(i.span, "async functions cannot be used for tests").raise();
+                    }
                 }
                 _ => {
                     debug!("this is a test function");
@@ -338,7 +344,7 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
     fn has_test_signature(cx: &TestCtxt, i: &ast::Item) -> HasTestSignature {
         let has_should_panic_attr = attr::contains_name(&i.attrs, "should_panic");
         match i.node {
-            ast::ItemKind::Fn(ref decl, _, _, _, ref generics, _) => {
+            ast::ItemKind::Fn(ref decl, _, ref generics, _) => {
                 // If the termination trait is active, the compiler will check that the output
                 // type implements the `Termination` trait as `libtest` enforces that.
                 let has_output = match decl.output {
@@ -397,7 +403,7 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
 
     fn has_bench_signature(cx: &TestCtxt, i: &ast::Item) -> bool {
         match i.node {
-            ast::ItemKind::Fn(ref decl, _, _, _, ref generics, _) => {
+            ast::ItemKind::Fn(ref decl, _, ref generics, _) => {
                 let input_cnt = decl.inputs.len();
 
                 // If the termination trait is active, the compiler will check that the output
@@ -562,9 +568,7 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
     let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(vec![]));
     let main_body = ecx.block(sp, vec![call_test_main]);
     let main = ast::ItemKind::Fn(ecx.fn_decl(vec![], ast::FunctionRetTy::Ty(main_ret_ty)),
-                           ast::Unsafety::Normal,
-                           dummy_spanned(ast::Constness::NotConst),
-                           ::rustc_target::spec::abi::Abi::Rust,
+                           ast::FnHeader::default(),
                            ast::Generics::default(),
                            main_body);
     P(ast::Item {
