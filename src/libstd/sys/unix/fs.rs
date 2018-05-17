@@ -781,6 +781,11 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use fs::{File, set_permissions};
+    use sync::atomic::{AtomicBool, Ordering};
+
+    // Kernel prior to 4.5 don't have copy_file_range
+    // We store the availability in a global to avoid unneccessary syscalls
+    static HAS_COPY_FILE_RANGE: AtomicBool = AtomicBool::new(true);
 
     unsafe fn copy_file_range(
         fd_in: libc::c_int,
@@ -820,16 +825,26 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         } else {
             (len - written) as usize
         };
-        let copy_result = unsafe {
-            // We actually don't have to adjust the offsets,
-            // because copy_file_range adjusts the file offset automatically
-            cvt(copy_file_range(reader.as_raw_fd(),
-                                ptr::null_mut(),
-                                writer.as_raw_fd(),
-                                ptr::null_mut(),
-                                bytes_to_copy,
-                                0)
-                )
+        let copy_result = if HAS_COPY_FILE_RANGE.load(Ordering::Relaxed) {
+            let copy_result = unsafe {
+                // We actually don't have to adjust the offsets,
+                // because copy_file_range adjusts the file offset automatically
+                cvt(copy_file_range(reader.as_raw_fd(),
+                                    ptr::null_mut(),
+                                    writer.as_raw_fd(),
+                                    ptr::null_mut(),
+                                    bytes_to_copy,
+                                    0)
+                    )
+            };
+            if let Err(ref copy_err) = copy_result {
+                if let Some(libc::ENOSYS) = copy_err.raw_os_error() {
+                    HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
+                }
+            }
+            copy_result
+        } else {
+            Err(io::Error::from_raw_os_error(libc::ENOSYS))
         };
         match copy_result {
             Ok(ret) => written += ret as u64,
