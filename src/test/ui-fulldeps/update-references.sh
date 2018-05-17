@@ -31,18 +31,18 @@ MYDIR=$(dirname $0)
 BUILD_DIR="$1"
 shift
 
+shopt -s nullglob
+
 while [[ "$1" != "" ]]; do
-    STDERR_NAME="${1/%.rs/.stderr}"
-    STDOUT_NAME="${1/%.rs/.stdout}"
+    for EXT in "stderr" "stdout"; do
+        for OUT_NAME in $BUILD_DIR/${1%.rs}*/*$EXT; do
+            OUT_DIR=`dirname "$1"`
+            OUT_BASE=`basename "$OUT_NAME"`
+            if ! (diff $OUT_NAME $MYDIR/$OUT_DIR/$OUT_BASE >& /dev/null); then
+                echo updating $MYDIR/$OUT_DIR/$OUT_BASE
+                cp $OUT_NAME $MYDIR/$OUT_DIR
+            fi
+        done
+    done
     shift
-    if [ -f $BUILD_DIR/$STDOUT_NAME ] && \
-           ! (diff $BUILD_DIR/$STDOUT_NAME $MYDIR/$STDOUT_NAME >& /dev/null); then
-        echo updating $MYDIR/$STDOUT_NAME
-        cp $BUILD_DIR/$STDOUT_NAME $MYDIR/$STDOUT_NAME
-    fi
-    if [ -f $BUILD_DIR/$STDERR_NAME ] && \
-           ! (diff $BUILD_DIR/$STDERR_NAME $MYDIR/$STDERR_NAME >& /dev/null); then
-        echo updating $MYDIR/$STDERR_NAME
-        cp $BUILD_DIR/$STDERR_NAME $MYDIR/$STDERR_NAME
-    fi
 done

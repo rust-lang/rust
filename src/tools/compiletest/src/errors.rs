@@ -11,8 +11,8 @@ use self::WhichLine::*;
 
 use std::fmt;
 use std::fs::File;
-use std::io::BufReader;
 use std::io::prelude::*;
+use std::io::BufReader;
 use std::path::Path;
 use std::str::FromStr;
 
@@ -35,8 +35,7 @@ impl FromStr for ErrorKind {
             "ERROR" => Ok(ErrorKind::Error),
             "NOTE" => Ok(ErrorKind::Note),
             "SUGGESTION" => Ok(ErrorKind::Suggestion),
-            "WARN" |
-            "WARNING" => Ok(ErrorKind::Warning),
+            "WARN" | "WARNING" => Ok(ErrorKind::Warning),
             _ => Err(()),
         }
     }
@@ -101,23 +100,25 @@ pub fn load_errors(testfile: &Path, cfg: Option<&str>) -> Vec<Error> {
     rdr.lines()
         .enumerate()
         .filter_map(|(line_num, line)| {
-            parse_expected(last_nonfollow_error, line_num + 1, &line.unwrap(), &tag)
-                .map(|(which, error)| {
+            parse_expected(last_nonfollow_error, line_num + 1, &line.unwrap(), &tag).map(
+                |(which, error)| {
                     match which {
                         FollowPrevious(_) => {}
                         _ => last_nonfollow_error = Some(error.line_num),
                     }
                     error
-                })
+                },
+            )
         })
         .collect()
 }
 
-fn parse_expected(last_nonfollow_error: Option<usize>,
-                  line_num: usize,
-                  line: &str,
-                  tag: &str)
-                  -> Option<(WhichLine, Error)> {
+fn parse_expected(
+    last_nonfollow_error: Option<usize>,
+    line_num: usize,
+    line: &str,
+    tag: &str,
+) -> Option<(WhichLine, Error)> {
     let start = match line.find(tag) {
         Some(i) => i,
         None => return None,
@@ -125,7 +126,13 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
     let (follow, adjusts) = if line[start + tag.len()..].chars().next().unwrap() == '|' {
         (true, 0)
     } else {
-        (false, line[start + tag.len()..].chars().take_while(|c| *c == '^').count())
+        (
+            false,
+            line[start + tag.len()..]
+                .chars()
+                .take_while(|c| *c == '^')
+                .count(),
+        )
     };
     let kind_start = start + tag.len() + adjusts + (follow as usize);
     let (kind, msg);
@@ -133,12 +140,14 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
         .split_whitespace()
         .next()
         .expect("Encountered unexpected empty comment")
-        .parse::<ErrorKind>() {
+        .parse::<ErrorKind>()
+    {
         Ok(k) => {
             // If we find `//~ ERROR foo` or something like that:
             kind = Some(k);
             let letters = line[kind_start..].chars();
-            msg = letters.skip_while(|c| c.is_whitespace())
+            msg = letters
+                .skip_while(|c| c.is_whitespace())
                 .skip_while(|c| !c.is_whitespace())
                 .collect::<String>();
         }
@@ -146,7 +155,8 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
             // Otherwise we found `//~ foo`:
             kind = None;
             let letters = line[kind_start..].chars();
-            msg = letters.skip_while(|c| c.is_whitespace())
+            msg = letters
+                .skip_while(|c| c.is_whitespace())
                 .collect::<String>();
         }
     }
@@ -154,8 +164,10 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
 
     let (which, line_num) = if follow {
         assert_eq!(adjusts, 0, "use either //~| or //~^, not both.");
-        let line_num = last_nonfollow_error.expect("encountered //~| without \
-                                                    preceding //~^ line.");
+        let line_num = last_nonfollow_error.expect(
+            "encountered //~| without \
+             preceding //~^ line.",
+        );
         (FollowPrevious(line_num), line_num)
     } else {
         let which = if adjusts > 0 {
@@ -167,16 +179,16 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
         (which, line_num)
     };
 
-    debug!("line={} tag={:?} which={:?} kind={:?} msg={:?}",
-           line_num,
-           tag,
-           which,
-           kind,
-           msg);
-    Some((which,
-          Error {
-        line_num,
-        kind,
-        msg,
-    }))
+    debug!(
+        "line={} tag={:?} which={:?} kind={:?} msg={:?}",
+        line_num, tag, which, kind, msg
+    );
+    Some((
+        which,
+        Error {
+            line_num,
+            kind,
+            msg,
+        },
+    ))
 }
