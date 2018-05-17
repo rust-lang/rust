@@ -21,7 +21,7 @@ use ext::placeholders::{placeholder, PlaceholderExpander};
 use feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
 use fold;
 use fold::*;
-use parse::{DirectoryOwnership, PResult};
+use parse::{DirectoryOwnership, PResult, ParseSess};
 use parse::token::{self, Token};
 use parse::parser::Parser;
 use ptr::P;
@@ -532,7 +532,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 })).into();
                 let input = self.extract_proc_macro_attr_input(attr.tokens, attr.span);
                 let tok_result = mac.expand(self.cx, attr.span, input, item_tok);
-                self.parse_expansion(tok_result, kind, &attr.path, attr.span)
+                let res = self.parse_expansion(tok_result, kind, &attr.path, attr.span);
+                self.gate_proc_macro_expansion(attr.span, &res);
+                res
             }
             ProcMacroDerive(..) | BuiltinDerive(..) => {
                 self.cx.span_err(attr.span, &format!("`{}` is a derive mode", attr.path));
@@ -589,6 +591,46 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             GateIssue::Language,
             &format!("custom attributes cannot be applied to {}", kind),
         );
+    }
+
+    fn gate_proc_macro_expansion(&self, span: Span, expansion: &Option<Expansion>) {
+        if self.cx.ecfg.proc_macro_mod() {
+            return
+        }
+        let expansion = match expansion {
+            Some(expansion) => expansion,
+            None => return,
+        };
+
+        expansion.visit_with(&mut DisallowModules {
+            span,
+            parse_sess: self.cx.parse_sess,
+        });
+
+        struct DisallowModules<'a> {
+            span: Span,
+            parse_sess: &'a ParseSess,
+        }
+
+        impl<'ast, 'a> Visitor<'ast> for DisallowModules<'a> {
+            fn visit_mod(&mut self,
+                         _m: &'ast ast::Mod,
+                         _s: Span,
+                         _attrs: &[ast::Attribute],
+                         _n: NodeId) {
+                emit_feature_err(
+                    self.parse_sess,
+                    "proc_macro_mod",
+                    self.span,
+                    GateIssue::Language,
+                    "procedural macros cannot expand to modules",
+                );
+            }
+
+            fn visit_mac(&mut self, _mac: &'ast ast::Mac) {
+                // ...
+            }
+        }
     }
 
     /// Expand a macro invocation. Returns the result of expansion.
@@ -732,7 +774,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     });
 
                     let tok_result = expandfun.expand(self.cx, span, mac.node.stream());
-                    self.parse_expansion(tok_result, kind, path, span)
+                    let result = self.parse_expansion(tok_result, kind, path, span);
+                    self.gate_proc_macro_expansion(span, &result);
+                    result
                 }
             }
         };
@@ -814,7 +858,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     span: DUMMY_SP,
                     node: ast::MetaItemKind::Word,
                 };
-                Some(kind.expect_from_annotatables(ext.expand(self.cx, span, &dummy, item)))
+                let items = ext.expand(self.cx, span, &dummy, item);
+                let res = Some(kind.expect_from_annotatables(items));
+                self.gate_proc_macro_expansion(span, &res);
+                res
             }
             BuiltinDerive(func) => {
                 expn_info.callee.allow_internal_unstable = true;
