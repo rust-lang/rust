@@ -45,17 +45,6 @@ impl State {
     }
 }
 
-macro_rules! span_err_if_not_stage0 {
-    ($cx:expr, $sp:expr, $code:ident, $text:tt) => {
-        #[cfg(not(stage0))] {
-            span_err!($cx, $sp, $code, $text)
-        }
-        #[cfg(stage0)] {
-            $cx.span_err($sp, $text)
-        }
-    }
-}
-
 const OPTIONS: &'static [&'static str] = &["volatile", "alignstack", "intel"];
 
 pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,

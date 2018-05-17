@@ -32,8 +32,12 @@ extern crate rustc_target;
 #[cfg(not(stage0))]
 mod diagnostics;
 
-mod assert;
+#[macro_use]
+// for custom_derive
+pub mod deriving;
+
 mod asm;
+mod assert;
 mod cfg;
 mod compile_error;
 mod concat;
@@ -47,8 +51,6 @@ mod trace_macros;
 
 pub mod proc_macro_registrar;
 
-// for custom_derive
-pub mod deriving;
 
 pub mod proc_macro_impl;
 

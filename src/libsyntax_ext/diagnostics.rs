@@ -82,7 +82,7 @@ A clobber was surrounded by braces in the `asm` macro.
 
 Erroneous code example:
 
-```compile_fail,E0663
+```compile_fail,E0664
 asm!("mov $$0x200, %eax"
      :
      :
@@ -93,5 +93,39 @@ asm!("mov $$0x200, %eax"
 Considering that this would be a long explanation, we instead recommend you to
 take a look at the unstable book:
 https://doc.rust-lang.org/unstable-book/language-features/asm.html
+"##,
+
+E0665: r##"
+The `Default` trait was derived on an enum.
+
+Erroneous code example:
+
+```compile_fail,E0665
+#[derive(Default)]
+enum Food {
+    Sweet,
+    Salty,
+}
+```
+
+The `Default` cannot be derived on an enum for the simple reason that the
+compiler doesn't know which value to pick by default whereas it can for a
+struct as long as all its fields implement the `Default` trait as well.
+
+If you still want to implement `Default` on your enum, you'll have to do it "by
+hand":
+
+```
+enum Food {
+    Sweet,
+    Salty,
+}
+
+impl Default for Food {
+    fn default() -> Food {
+        Food::Sweet
+    }
+}
+```
 "##,
 }
