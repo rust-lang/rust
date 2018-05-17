@@ -962,122 +962,59 @@ extern "rust-intrinsic" {
     /// value is not necessarily valid to be used to actually access memory.
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
-    /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
-    /// and destination must *not* overlap.
+    /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
+    /// and destination may *not* overlap.
     ///
-    /// For regions of memory which might overlap, use [`copy`] instead.
-    ///
-    /// `copy_nonoverlapping` is semantically equivalent to C's [`memcpy`].
-    ///
-    /// [`copy`]: ./fn.copy.html
-    /// [`memcpy`]: https://www.gnu.org/software/libc/manual/html_node/Copying-Strings-and-Arrays.html#index-memcpy
+    /// `copy_nonoverlapping` is semantically equivalent to C's `memcpy`.
     ///
     /// # Safety
     ///
-    /// Behavior is undefined if any of the following conditions are violated:
-    ///
-    /// * The region of memory which begins at `src` and has a length of
-    ///   `count * size_of::<T>()` bytes must be *both* valid and initialized.
-    ///
-    /// * The region of memory which begins at `dst` and has a length of
-    ///   `count * size_of::<T>()` bytes must be valid (but may or may not be
-    ///   initialized).
-    ///
-    /// * The two regions of memory must *not* overlap.
-    ///
-    /// * `src` must be properly aligned.
-    ///
-    /// * `dst` must be properly aligned.
-    ///
-    /// Additionally, if `T` is not [`Copy`], only the region at `src` *or* the
-    /// region at `dst` can be used or dropped after calling
-    /// `copy_nonoverlapping`.  `copy_nonoverlapping` creates bitwise copies of
-    /// `T`, regardless of whether `T: Copy`, which can result in undefined
-    /// behavior if both copies are used.
-    ///
-    /// [`Copy`]: ../marker/trait.Copy.html
+    /// Beyond requiring that the program must be allowed to access both regions
+    /// of memory, it is Undefined Behavior for source and destination to
+    /// overlap. Care must also be taken with the ownership of `src` and
+    /// `dst`. This method semantically moves the values of `src` into `dst`.
+    /// However it does not drop the contents of `dst`, or prevent the contents
+    /// of `src` from being dropped or used.
     ///
     /// # Examples
     ///
-    /// Manually implement [`Vec::append`]:
+    /// A safe swap function:
     ///
     /// ```
+    /// use std::mem;
     /// use std::ptr;
     ///
-    /// /// Moves all the elements of `src` into `dst`, leaving `src` empty.
-    /// fn append<T>(dst: &mut Vec<T>, src: &mut Vec<T>) {
-    ///     let src_len = src.len();
-    ///     let dst_len = dst.len();
-    ///
-    ///     // Ensure that `dst` has enough capacity to hold all of `src`.
-    ///     dst.reserve(src_len);
-    ///
+    /// # #[allow(dead_code)]
+    /// fn swap<T>(x: &mut T, y: &mut T) {
     ///     unsafe {
-    ///         // The call to offset is always safe because `Vec` will never
-    ///         // allocate more than `isize::MAX` bytes.
-    ///         let dst = dst.as_mut_ptr().offset(dst_len as isize);
-    ///         let src = src.as_ptr();
+    ///         // Give ourselves some scratch space to work with
+    ///         let mut t: T = mem::uninitialized();
     ///
-    ///         // The two regions cannot overlap becuase mutable references do
-    ///         // not alias, and two different vectors cannot own the same
-    ///         // memory.
-    ///         ptr::copy_nonoverlapping(src, dst, src_len);
-    ///     }
+    ///         // Perform the swap, `&mut` pointers never alias
+    ///         ptr::copy_nonoverlapping(x, &mut t, 1);
+    ///         ptr::copy_nonoverlapping(y, x, 1);
+    ///         ptr::copy_nonoverlapping(&t, y, 1);
     ///
-    ///     unsafe {
-    ///         // Truncate `src` without dropping its contents.
-    ///         src.set_len(0);
-    ///
-    ///         // Notify `dst` that it now holds the contents of `src`.
-    ///         dst.set_len(dst_len + src_len);
+    ///         // y and t now point to the same thing, but we need to completely forget `t`
+    ///         // because it's no longer relevant.
+    ///         mem::forget(t);
     ///     }
     /// }
-    ///
-    /// let mut a = vec!['r'];
-    /// let mut b = vec!['u', 's', 't'];
-    ///
-    /// append(&mut a, &mut b);
-    ///
-    /// assert_eq!(a, &['r', 'u', 's', 't']);
-    /// assert!(b.is_empty());
     /// ```
-    ///
-    /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
-    /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
+    /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
     /// and destination may overlap.
     ///
-    /// If the source and destination will *never* overlap,
-    /// [`copy_nonoverlapping`] can be used instead.
-    ///
-    /// `copy` is semantically equivalent to C's [`memmove`].
-    ///
-    /// [`copy_nonoverlapping`]: ./fn.copy_nonoverlapping.html
-    /// [`memmove`]: https://www.gnu.org/software/libc/manual/html_node/Copying-Strings-and-Arrays.html#index-memmove
+    /// `copy` is semantically equivalent to C's `memmove`.
     ///
     /// # Safety
     ///
-    /// Behavior is undefined if any of the following conditions are violated:
-    ///
-    /// * The region of memory which begins at `src` and has a length of
-    ///   `count * size_of::<T>()` bytes must be *both* valid and initialized.
-    ///
-    /// * The region of memory which begins at `dst` and has a length of
-    ///   `count * size_of::<T>()` bytes must be valid (but may or may not be
-    ///   initialized).
-    ///
-    /// * `src` must be properly aligned.
-    ///
-    /// * `dst` must be properly aligned.
-    ///
-    /// Additionally, if `T` is not [`Copy`], only the region at `src` *or* the
-    /// region at `dst` can be used or dropped after calling `copy`. `copy`
-    /// creates bitwise copies of `T`, regardless of whether `T: Copy`, which
-    /// can result in undefined behavior if both copies are used.
-    ///
-    /// [`Copy`]: ../marker/trait.Copy.html
+    /// Care must be taken with the ownership of `src` and `dst`.
+    /// This method semantically moves the values of `src` into `dst`.
+    /// However it does not drop the contents of `dst`, or prevent the contents of `src`
+    /// from being dropped or used.
     ///
     /// # Examples
     ///
@@ -1094,33 +1031,14 @@ extern "rust-intrinsic" {
     ///     dst
     /// }
     /// ```
+    ///
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
 
-    /// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
-    /// `val`.
-    ///
-    /// `write_bytes` is semantically equivalent to C's [`memset`].
-    ///
-    /// [`memset`]: https://www.gnu.org/software/libc/manual/html_node/Copying-Strings-and-Arrays.html#index-memset
-    ///
-    /// # Safety
-    ///
-    /// Behavior is undefined if any of the following conditions are violated:
-    ///
-    /// * The region of memory which begins at `dst` and has a length of
-    ///   `count` bytes must be valid.
-    ///
-    /// * `dst` must be properly aligned.
-    ///
-    /// Additionally, the caller must ensure that writing `count` bytes to the
-    /// given region of memory results in a valid value of `T`. Creating an
-    /// invalid value of `T` can result in undefined behavior. An example is
-    /// provided below.
+    /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
+    /// bytes of memory starting at `dst` to `val`.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::ptr;
@@ -1131,23 +1049,6 @@ extern "rust-intrinsic" {
     ///     ptr::write_bytes(vec_ptr, b'a', 2);
     /// }
     /// assert_eq!(vec, [b'a', b'a', 0, 0]);
-    /// ```
-    ///
-    /// Creating an invalid value:
-    ///
-    /// ```no_run
-    /// use std::{mem, ptr};
-    ///
-    /// let mut v = Box::new(0i32);
-    ///
-    /// unsafe {
-    ///     // Leaks the previously held value by overwriting the `Box<T>` with
-    ///     // a null pointer.
-    ///     ptr::write_bytes(&mut v, 0, mem::size_of::<Box<i32>>());
-    /// }
-    ///
-    /// // At this point, using or dropping `v` results in undefined behavior.
-    /// // v = Box::new(0i32); // ERROR
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
