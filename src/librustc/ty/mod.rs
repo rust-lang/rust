@@ -39,7 +39,7 @@ use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 
 use serialize::{self, Encodable, Encoder};
 use std::cell::RefCell;
-use std::cmp;
+use std::cmp::{self, Ordering};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
@@ -491,6 +491,18 @@ pub struct TyS<'tcx> {
     region_depth: u32,
 }
 
+impl<'tcx> Ord for TyS<'tcx> {
+    fn cmp(&self, other: &TyS<'tcx>) -> Ordering {
+        self.sty.cmp(&other.sty)
+    }
+}
+
+impl<'tcx> PartialOrd for TyS<'tcx> {
+    fn partial_cmp(&self, other: &TyS<'tcx>) -> Option<Ordering> {
+        Some(self.sty.cmp(&other.sty))
+    }
+}
+
 impl<'tcx> PartialEq for TyS<'tcx> {
     #[inline]
     fn eq(&self, other: &TyS<'tcx>) -> bool {
@@ -577,6 +589,22 @@ impl <'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for Ty<'tcx> {
 /// equality comparisons and hashing.
 #[derive(Debug, RustcEncodable)]
 pub struct Slice<T>([T]);
+
+impl<T> Ord for Slice<T> where T: Ord {
+    fn cmp(&self, other: &Slice<T>) -> Ordering {
+        if self == other { Ordering::Equal } else {
+            <[T] as Ord>::cmp(&self.0, &other.0)
+        }
+    }
+}
+
+impl<T> PartialOrd for Slice<T> where T: PartialOrd {
+    fn partial_cmp(&self, other: &Slice<T>) -> Option<Ordering> {
+        if self == other { Some(Ordering::Equal) } else {
+            <[T] as PartialOrd>::partial_cmp(&self.0, &other.0)
+        }
+    }
+}
 
 impl<T> PartialEq for Slice<T> {
     #[inline]
@@ -1104,7 +1132,7 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct OutlivesPredicate<A,B>(pub A, pub B); // `A : B`
 pub type PolyOutlivesPredicate<A,B> = ty::Binder<OutlivesPredicate<A,B>>;
 pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<ty::Region<'tcx>,
@@ -1604,6 +1632,20 @@ pub struct AdtDef {
     pub variants: Vec<VariantDef>,
     flags: AdtFlags,
     pub repr: ReprOptions,
+}
+
+impl PartialOrd for AdtDef {
+    fn partial_cmp(&self, other: &AdtDef) -> Option<Ordering> {
+        Some(self.cmp(&other))
+    }
+}
+
+/// There should be only one AdtDef for each `did`, therefore
+/// it is fine to implement `Ord` only based on `did`.
+impl Ord for AdtDef {
+    fn cmp(&self, other: &AdtDef) -> Ordering {
+        self.did.cmp(&other.did)
+    }
 }
 
 impl PartialEq for AdtDef {
