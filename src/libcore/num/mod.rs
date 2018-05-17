@@ -16,15 +16,14 @@ use convert::TryFrom;
 use fmt;
 use intrinsics;
 use mem;
-#[allow(deprecated)] use nonzero::NonZero;
+use nonzero::NonZero;
 use ops;
 use str::FromStr;
 
 macro_rules! impl_nonzero_fmt {
-    ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
+    ( ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
         $(
-            #[$stability]
-            #[allow(deprecated)]
+            #[stable(feature = "nonzero", since = "1.28.0")]
             impl fmt::$Trait for $Ty {
                 #[inline]
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -36,7 +35,7 @@ macro_rules! impl_nonzero_fmt {
 }
 
 macro_rules! nonzero_integers {
-    ( #[$stability: meta] #[$deprecation: meta] $( $Ty: ident($Int: ty); )+ ) => {
+    ( $( $Ty: ident($Int: ty); )+ ) => {
         $(
             /// An integer that is known not to equal zero.
             ///
@@ -47,27 +46,24 @@ macro_rules! nonzero_integers {
             /// use std::mem::size_of;
             /// assert_eq!(size_of::<Option<std::num::NonZeroU32>>(), size_of::<u32>());
             /// ```
-            #[$stability]
-            #[$deprecation]
-            #[allow(deprecated)]
+            #[stable(feature = "nonzero", since = "1.28.0")]
             #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
             pub struct $Ty(NonZero<$Int>);
 
-            #[allow(deprecated)]
             impl $Ty {
                 /// Create a non-zero without checking the value.
                 ///
                 /// # Safety
                 ///
                 /// The value must not be zero.
-                #[$stability]
+                #[stable(feature = "nonzero", since = "1.28.0")]
                 #[inline]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
                     $Ty(NonZero(n))
                 }
 
                 /// Create a non-zero if the given value is not zero.
-                #[$stability]
+                #[stable(feature = "nonzero", since = "1.28.0")]
                 #[inline]
                 pub fn new(n: $Int) -> Option<Self> {
                     if n != 0 {
@@ -78,7 +74,7 @@ macro_rules! nonzero_integers {
                 }
 
                 /// Returns the value as a primitive type.
-                #[$stability]
+                #[stable(feature = "nonzero", since = "1.28.0")]
                 #[inline]
                 pub fn get(self) -> $Int {
                     self.0 .0
@@ -87,7 +83,6 @@ macro_rules! nonzero_integers {
             }
 
             impl_nonzero_fmt! {
-                #[$stability]
                 (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
             }
         )+
@@ -95,27 +90,12 @@ macro_rules! nonzero_integers {
 }
 
 nonzero_integers! {
-    #[unstable(feature = "nonzero", issue = "49137")]
-    #[allow(deprecated)]  // Redundant, works around "error: inconsistent lockstep iteration"
     NonZeroU8(u8);
     NonZeroU16(u16);
     NonZeroU32(u32);
     NonZeroU64(u64);
     NonZeroU128(u128);
     NonZeroUsize(usize);
-}
-
-nonzero_integers! {
-    #[unstable(feature = "nonzero", issue = "49137")]
-    #[rustc_deprecated(since = "1.26.0", reason = "\
-        signed non-zero integers are considered for removal due to lack of known use cases. \
-        If you’re using them, please comment on https://github.com/rust-lang/rust/issues/49137")]
-    NonZeroI8(i8);
-    NonZeroI16(i16);
-    NonZeroI32(i32);
-    NonZeroI64(i64);
-    NonZeroI128(i128);
-    NonZeroIsize(isize);
 }
 
 /// Provides intentionally-wrapped arithmetic on `T`.
@@ -252,7 +232,7 @@ depending on `radix`:
 
  * `0-9`
  * `a-z`
- * `a-z`
+ * `A-Z`
 
 # Panics
 

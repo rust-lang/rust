@@ -1754,16 +1754,39 @@ pub struct Generics {
 
 impl Clean<Generics> for hir::Generics {
     fn clean(&self, cx: &DocContext) -> Generics {
-        let mut params = Vec::with_capacity(self.params.len());
-        for p in &self.params {
-            let p = p.clean(cx);
-            if let GenericParamDef::Type(ref tp) = p {
-                if tp.synthetic == Some(hir::SyntheticTyParamKind::ImplTrait) {
-                    cx.impl_trait_bounds.borrow_mut().insert(tp.did, tp.bounds.clone());
-                }
+        // Synthetic type-parameters are inserted after normal ones.
+        // In order for normal parameters to be able to refer to synthetic ones,
+        // scans them first.
+        fn is_impl_trait(param: &hir::GenericParam) -> bool {
+            if let hir::GenericParam::Type(ref tp) = param {
+                tp.synthetic == Some(hir::SyntheticTyParamKind::ImplTrait)
+            } else {
+                false
             }
+        }
+        let impl_trait_params = self.params
+            .iter()
+            .filter(|p| is_impl_trait(p))
+            .map(|p| {
+                let p = p.clean(cx);
+                if let GenericParamDef::Type(ref tp) = p {
+                    cx.impl_trait_bounds
+                        .borrow_mut()
+                        .insert(tp.did, tp.bounds.clone());
+                } else {
+                    unreachable!()
+                }
+                p
+            })
+            .collect::<Vec<_>>();
+
+        let mut params = Vec::with_capacity(self.params.len());
+        for p in self.params.iter().filter(|p| !is_impl_trait(p)) {
+            let p = p.clean(cx);
             params.push(p);
         }
+        params.extend(impl_trait_params);
+
         let mut g = Generics {
             params,
             where_predicates: self.where_clause.predicates.clean(cx)

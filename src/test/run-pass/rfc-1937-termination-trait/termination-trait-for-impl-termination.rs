@@ -8,11 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// https://github.com/rust-lang/rust/issues/41898
+#![feature(termination_trait_lib)]
 
-use std::num::NonZeroU64;
-
-fn main() {
-    const FOO: NonZeroU64 = unsafe { NonZeroU64::new_unchecked(2) };
-    if let FOO = FOO {}
-}
+fn main() -> impl std::process::Termination { }

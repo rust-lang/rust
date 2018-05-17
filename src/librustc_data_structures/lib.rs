@@ -21,7 +21,6 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(collections_range)]
-#![feature(nonzero)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
 #![feature(unsize)]
@@ -61,7 +60,6 @@ pub mod bitvec;
 pub mod graph;
 pub mod indexed_set;
 pub mod indexed_vec;
-pub mod lazy_btree_map;
 pub mod obligation_forest;
 pub mod sip128;
 pub mod snapshot_map;

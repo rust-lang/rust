@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// https://github.com/rust-lang/rust/issues/41898
-
-use std::num::NonZeroU64;
-
 fn main() {
-    const FOO: NonZeroU64 = unsafe { NonZeroU64::new_unchecked(2) };
-    if let FOO = FOO {}
+    const N: u32 = 1_000;
+    const M: usize = (f64::from(N) * std::f64::LOG10_2) as usize; //~ ERROR cannot find value
+    let mut digits = [0u32; M];
 }

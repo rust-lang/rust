@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// https://github.com/rust-lang/rust/issues/41898
+// compile-pass
 
-use std::num::NonZeroU64;
+#![doc(no_default_passes, passes = "collapse-docs unindent-comments")]
 
-fn main() {
-    const FOO: NonZeroU64 = unsafe { NonZeroU64::new_unchecked(2) };
-    if let FOO = FOO {}
-}
+struct SomeStruct;
+
+pub struct OtherStruct;

@@ -592,7 +592,15 @@ impl<'a> Builder<'a> {
 
         // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
         // Force cargo to output binaries with disambiguating hashes in the name
-        cargo.env("__CARGO_DEFAULT_LIB_METADATA", &self.config.channel);
+        let metadata = if compiler.stage == 0 {
+            // Treat stage0 like special channel, whether it's a normal prior-
+            // release rustc or a local rebuild with the same version, so we
+            // never mix these libraries by accident.
+            "bootstrap"
+        } else {
+            &self.config.channel
+        };
+        cargo.env("__CARGO_DEFAULT_LIB_METADATA", &metadata);
 
         let stage;
         if compiler.stage == 0 && self.local_rebuild {

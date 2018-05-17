@@ -8,11 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// https://github.com/rust-lang/rust/issues/41898
-
-use std::num::NonZeroU64;
-
-fn main() {
-    const FOO: NonZeroU64 = unsafe { NonZeroU64::new_unchecked(2) };
-    if let FOO = FOO {}
-}
+// Tests that an `impl Trait` that is not `impl Termination` will not work.
+fn main() -> impl Copy { }
+//~^ ERROR `main` has invalid return type `impl std::marker::Copy`

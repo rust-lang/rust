@@ -8,11 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// https://github.com/rust-lang/rust/issues/41898
+// ignore-stage1
 
-use std::num::NonZeroU64;
+#![feature(asm)]
 
 fn main() {
-    const FOO: NonZeroU64 = unsafe { NonZeroU64::new_unchecked(2) };
-    if let FOO = FOO {}
+    asm!("mov $$0x200, %eax"
+         :
+         :
+         : "{eax}" //~ ERROR E0664
+        );
 }

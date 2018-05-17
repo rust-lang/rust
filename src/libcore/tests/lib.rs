@@ -26,7 +26,6 @@
 #![feature(iterator_step_by)]
 #![feature(iterator_flatten)]
 #![feature(iterator_repeat_with)]
-#![feature(nonzero)]
 #![feature(pattern)]
 #![feature(range_is_empty)]
 #![feature(raw)]

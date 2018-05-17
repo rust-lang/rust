@@ -2,7 +2,7 @@
 # min-llvm-version 4.0
 # ignore-mingw
 
--include ../../run-make-fulldeps/tools.mk
+-include ../tools.mk
 
 # This test makes sure that the expected .llvmbc sections for use by
 # linker-based LTO are available in object files when compiling with

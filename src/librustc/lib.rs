@@ -56,7 +56,6 @@
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]
 #![feature(non_exhaustive)]
-#![feature(nonzero)]
 #![feature(proc_macro_internals)]
 #![feature(quote)]
 #![feature(optin_builtin_traits)]

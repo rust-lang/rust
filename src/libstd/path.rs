@@ -1504,6 +1504,22 @@ impl<'a> From<PathBuf> for Cow<'a, Path> {
     }
 }
 
+#[stable(feature = "cow_from_pathbuf_ref", since = "1.28.0")]
+impl<'a> From<&'a PathBuf> for Cow<'a, Path> {
+    #[inline]
+    fn from(p: &'a PathBuf) -> Cow<'a, Path> {
+        Cow::Borrowed(p.as_path())
+    }
+}
+
+#[stable(feature = "pathbuf_from_cow_path", since = "1.28.0")]
+impl<'a> From<Cow<'a, Path>> for PathBuf {
+    #[inline]
+    fn from(p: Cow<'a, Path>) -> Self {
+        p.into_owned()
+    }
+}
+
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<PathBuf> for Arc<Path> {
     #[inline]
