@@ -75,7 +75,7 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
         } else {
             false
         },
-        Expr_::ExprBlock(ref block) => {
+        Expr_::ExprBlock(ref block, _) => {
             block.stmts.is_empty() && if let Some(ref expr) = block.expr {
                 has_no_effect(cx, expr)
             } else {
@@ -169,7 +169,7 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
         } else {
             None
         },
-        Expr_::ExprBlock(ref block) => {
+        Expr_::ExprBlock(ref block, _) => {
             if block.stmts.is_empty() {
                 block.expr.as_ref().and_then(|e| {
                     match block.rules {

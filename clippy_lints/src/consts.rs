@@ -202,7 +202,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     pub fn expr(&mut self, e: &Expr) -> Option<Constant> {
         match e.node {
             ExprPath(ref qpath) => self.fetch_path(qpath, e.hir_id),
-            ExprBlock(ref block) => self.block(block),
+            ExprBlock(ref block, _) => self.block(block),
             ExprIf(ref cond, ref then, ref otherwise) => self.ifthenelse(cond, then, otherwise),
             ExprLit(ref lit) => Some(lit_to_constant(&lit.node, self.tables.expr_ty(e))),
             ExprArray(ref vec) => self.multi(vec).map(Constant::Vec),

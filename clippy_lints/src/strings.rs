@@ -123,7 +123,7 @@ fn is_string(cx: &LateContext, e: &Expr) -> bool {
 fn is_add(cx: &LateContext, src: &Expr, target: &Expr) -> bool {
     match src.node {
         ExprBinary(Spanned { node: BiAdd, .. }, ref left, _) => SpanlessEq::new(cx).eq_expr(target, left),
-        ExprBlock(ref block) => {
+        ExprBlock(ref block, _) => {
             block.stmts.is_empty()
                 && block
                     .expr

@@ -173,7 +173,7 @@ impl EarlyLintPass for NeedlessContinue {
 ///
 fn needless_continue_in_else(else_expr: &ast::Expr) -> bool {
     match else_expr.node {
-        ast::ExprKind::Block(ref else_block) => is_first_block_stmt_continue(else_block),
+        ast::ExprKind::Block(ref else_block, _) => is_first_block_stmt_continue(else_block),
         ast::ExprKind::Continue(_) => true,
         _ => false,
     }

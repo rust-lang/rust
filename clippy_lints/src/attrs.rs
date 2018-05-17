@@ -243,7 +243,7 @@ fn is_relevant_block(tcx: TyCtxt, tables: &ty::TypeckTables, block: &Block) -> b
 
 fn is_relevant_expr(tcx: TyCtxt, tables: &ty::TypeckTables, expr: &Expr) -> bool {
     match expr.node {
-        ExprBlock(ref block) => is_relevant_block(tcx, tables, block),
+        ExprBlock(ref block, _) => is_relevant_block(tcx, tables, block),
         ExprRet(Some(ref e)) => is_relevant_expr(tcx, tables, e),
         ExprRet(None) | ExprBreak(_, None) => false,
         ExprCall(ref path_expr, _) => if let ExprPath(ref qpath) = path_expr.node {

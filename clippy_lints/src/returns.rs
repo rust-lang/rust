@@ -69,7 +69,7 @@ impl ReturnPass {
                 }
             },
             // a whole block? check it!
-            ast::ExprKind::Block(ref block) => {
+            ast::ExprKind::Block(ref block, _) => {
                 self.check_block_return(cx, block);
             },
             // an if/if let expr, check both exprs

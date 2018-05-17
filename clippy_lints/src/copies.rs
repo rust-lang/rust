@@ -238,7 +238,7 @@ fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
 
     while let ExprIf(ref cond, ref then_expr, ref else_expr) = expr.node {
         conds.push(&**cond);
-        if let ExprBlock(ref block) = then_expr.node {
+        if let ExprBlock(ref block, _) = then_expr.node {
             blocks.push(block);
         } else {
             panic!("ExprIf node is not an ExprBlock");
@@ -253,7 +253,7 @@ fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
 
     // final `else {..}`
     if !blocks.is_empty() {
-        if let ExprBlock(ref block) = expr.node {
+        if let ExprBlock(ref block, _) = expr.node {
             blocks.push(&**block);
         }
     }

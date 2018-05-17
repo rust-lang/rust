@@ -71,14 +71,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                 if let hir::StmtExpr(ref if_, _) = expr.node;
                 if let hir::ExprIf(ref cond, ref then, ref else_) = if_.node;
                 if !used_in_expr(cx, canonical_id, cond);
-                if let hir::ExprBlock(ref then) = then.node;
+                if let hir::ExprBlock(ref then, _) = then.node;
                 if let Some(value) = check_assign(cx, canonical_id, &*then);
                 if !used_in_expr(cx, canonical_id, value);
                 then {
                     let span = stmt.span.to(if_.span);
 
                     let (default_multi_stmts, default) = if let Some(ref else_) = *else_ {
-                        if let hir::ExprBlock(ref else_) = else_.node {
+                        if let hir::ExprBlock(ref else_, _) = else_.node {
                             if let Some(default) = check_assign(cx, canonical_id, else_) {
                                 (else_.stmts.len() > 1, default)
                             } else if let Some(ref default) = decl.init {

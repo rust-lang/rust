@@ -101,7 +101,7 @@ fn check_if(cx: &EarlyContext, expr: &ast::Expr) {
 
 fn check_collapsible_maybe_if_let(cx: &EarlyContext, else_: &ast::Expr) {
     if_chain! {
-        if let ast::ExprKind::Block(ref block) = else_.node;
+        if let ast::ExprKind::Block(ref block, _) = else_.node;
         if let Some(else_) = expr_block(block);
         if !in_macro(else_.span);
         then {
