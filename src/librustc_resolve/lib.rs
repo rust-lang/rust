@@ -3232,6 +3232,7 @@ impl<'a> Resolver<'a> {
                     -> PathResult<'a> {
         let mut module = None;
         let mut allow_super = true;
+        let mut second_binding = None;
 
         for (i, &ident) in path.iter().enumerate() {
             debug!("resolve_path ident {} {:?}", i, ident);
@@ -3321,7 +3322,9 @@ impl<'a> Resolver<'a> {
                     .map(MacroBinding::binding)
             } else {
                 match self.resolve_ident_in_lexical_scope(ident, ns, record_used, path_span) {
+                    // we found a locally-imported or available item/module
                     Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
+                    // we found a local variable or type param
                     Some(LexicalScopeBinding::Def(def))
                             if opt_ns == Some(TypeNS) || opt_ns == Some(ValueNS) => {
                         return PathResult::NonModule(PathResolution::with_unresolved_segments(
@@ -3334,6 +3337,9 @@ impl<'a> Resolver<'a> {
 
             match binding {
                 Ok(binding) => {
+                    if i == 1 {
+                        second_binding = Some(binding);
+                    }
                     let def = binding.def();
                     let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(def);
                     if let Some(next_module) = binding.module() {
@@ -3341,6 +3347,12 @@ impl<'a> Resolver<'a> {
                     } else if def == Def::Err {
                         return PathResult::NonModule(err_path_resolution());
                     } else if opt_ns.is_some() && (is_last || maybe_assoc) {
+                        self.lint_if_path_starts_with_module(
+                            node_id,
+                            path,
+                            path_span,
+                            second_binding,
+                        );
                         return PathResult::NonModule(PathResolution::with_unresolved_segments(
                             def, path.len() - i - 1
                         ));
@@ -3348,33 +3360,6 @@ impl<'a> Resolver<'a> {
                         return PathResult::Failed(ident.span,
                                                   format!("Not a module `{}`", ident),
                                                   is_last);
-                    }
-
-                    if let Some(id) = node_id {
-                        if i == 1 && self.session.features_untracked().crate_in_paths
-                                  && !self.session.rust_2018() {
-                            let prev_name = path[0].name;
-                            if prev_name == keywords::Extern.name() ||
-                               prev_name == keywords::CrateRoot.name() {
-                                let mut is_crate = false;
-                                if let NameBindingKind::Import { directive: d, .. } = binding.kind {
-                                    if let ImportDirectiveSubclass::ExternCrate(..) = d.subclass {
-                                        is_crate = true;
-                                    }
-                                }
-
-                                if !is_crate {
-                                    let diag = lint::builtin::BuiltinLintDiagnostics
-                                                   ::AbsPathWithModule(path_span);
-                                    self.session.buffer_lint_with_diagnostic(
-                                        lint::builtin::ABSOLUTE_PATH_STARTING_WITH_MODULE,
-                                        id, path_span,
-                                        "Absolute paths must start with `self`, `super`, \
-                                        `crate`, or an external crate name in the 2018 edition",
-                                        diag);
-                                }
-                            }
-                        }
                     }
                 }
                 Err(Undetermined) => return PathResult::Indeterminate,
@@ -3408,7 +3393,75 @@ impl<'a> Resolver<'a> {
             }
         }
 
+        self.lint_if_path_starts_with_module(node_id, path, path_span, second_binding);
+
         PathResult::Module(module.unwrap_or(self.graph_root))
+    }
+
+    fn lint_if_path_starts_with_module(&self,
+                                       id: Option<NodeId>,
+                                       path: &[Ident],
+                                       path_span: Span,
+                                       second_binding: Option<&NameBinding>) {
+        let id = match id {
+            Some(id) => id,
+            None => return,
+        };
+
+        let first_name = match path.get(0) {
+            Some(ident) => ident.name,
+            None => return,
+        };
+
+        // We're only interested in `use` paths which should start with
+        // `{{root}}` or `extern` currently.
+        if first_name != keywords::Extern.name() && first_name != keywords::CrateRoot.name() {
+            return
+        }
+
+        match path.get(1) {
+            // If this import looks like `crate::...` it's already good
+            Some(name) if name.name == keywords::Crate.name() => return,
+            // Otherwise go below to see if it's an extern crate
+            Some(_) => {}
+            // If the path has length one (and it's `CrateRoot` most likely)
+            // then we don't know whether we're gonna be importing a crate or an
+            // item in our crate. Defer this lint to elsewhere
+            None => return,
+        }
+
+        // If the first element of our path was actually resolved to an
+        // `ExternCrate` (also used for `crate::...`) then no need to issue a
+        // warning, this looks all good!
+        if let Some(binding) = second_binding {
+            if let NameBindingKind::Import { directive: d, .. } = binding.kind {
+                if let ImportDirectiveSubclass::ExternCrate(..) = d.subclass {
+                    return
+                }
+            }
+        }
+
+        self.lint_path_starts_with_module(id, path_span);
+    }
+
+    fn lint_path_starts_with_module(&self, id: NodeId, span: Span) {
+        // In the 2018 edition this lint is a hard error, so nothing to do
+        if self.session.rust_2018() {
+            return
+        }
+        // In the 2015 edition there's no use in emitting lints unless the
+        // crate's already enabled the feature that we're going to suggest
+        if !self.session.features_untracked().crate_in_paths {
+            return
+        }
+        let diag = lint::builtin::BuiltinLintDiagnostics
+            ::AbsPathWithModule(span);
+        self.session.buffer_lint_with_diagnostic(
+            lint::builtin::ABSOLUTE_PATH_NOT_STARTING_WITH_CRATE,
+            id, span,
+            "absolute paths must start with `self`, `super`, \
+            `crate`, or an external crate name in the 2018 edition",
+            diag);
     }
 
     // Resolve a local definition, potentially adjusting for closures.

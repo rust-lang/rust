@@ -640,6 +640,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     fn finalize_import(&mut self, directive: &'b ImportDirective<'b>) -> Option<(Span, String)> {
         self.current_module = directive.parent;
         let ImportDirective { ref module_path, span, .. } = *directive;
+        let mut warn_if_binding_comes_from_local_crate = false;
 
         // FIXME: Last path segment is treated specially in import resolution, so extern crate
         // mode for absolute paths needs some special support for single-segment imports.
@@ -652,6 +653,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 GlobImport { .. } if is_extern => {
                     return Some((directive.span,
                                  "cannot glob-import all possible crates".to_string()));
+                }
+                GlobImport { .. } if self.session.features_untracked().extern_absolute_paths => {
+                    self.lint_path_starts_with_module(directive.id, span);
                 }
                 SingleImport { source, target, .. } => {
                     let crate_root = if source.name == keywords::Crate.name() &&
@@ -676,6 +680,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         self.populate_module_if_necessary(crate_root);
                         Some(crate_root)
                     } else {
+                        warn_if_binding_comes_from_local_crate = true;
                         None
                     };
 
@@ -868,6 +873,26 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     .span_note(directive.span, &note_msg)
                     .emit();
             }
+        }
+
+        if warn_if_binding_comes_from_local_crate {
+            let mut warned = false;
+            self.per_ns(|this, ns| {
+                let binding = match result[ns].get().ok() {
+                    Some(b) => b,
+                    None => return
+                };
+                if let NameBindingKind::Import { directive: d, .. } = binding.kind {
+                    if let ImportDirectiveSubclass::ExternCrate(..) = d.subclass {
+                        return
+                    }
+                }
+                if warned {
+                    return
+                }
+                warned = true;
+                this.lint_path_starts_with_module(directive.id, span);
+            });
         }
 
         // Record what this import resolves to for later uses in documentation,

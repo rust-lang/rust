@@ -40,7 +40,7 @@ extern crate rustc_target;
 extern crate syntax_pos;
 
 use rustc::lint;
-use rustc::lint::builtin::{BARE_TRAIT_OBJECT, ABSOLUTE_PATH_STARTING_WITH_MODULE};
+use rustc::lint::builtin::{BARE_TRAIT_OBJECT, ABSOLUTE_PATH_NOT_STARTING_WITH_CRATE};
 use rustc::session;
 use rustc::util;
 
@@ -283,7 +283,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             //       standard library, and thus should never be removed or changed to an error.
         },
         FutureIncompatibleInfo {
-            id: LintId::of(ABSOLUTE_PATH_STARTING_WITH_MODULE),
+            id: LintId::of(ABSOLUTE_PATH_NOT_STARTING_WITH_CRATE),
             reference: "issue TBD",
             edition: Some(Edition::Edition2018),
         },
@@ -322,4 +322,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/48950");
     store.register_removed("resolve_trait_on_defaulted_unit",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/48950");
+    store.register_removed("absolute_path_starting_with_module",
+        "renamed to `absolute_path_not_starting_with_crate`");
 }
