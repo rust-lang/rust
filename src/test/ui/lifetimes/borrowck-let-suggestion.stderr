@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-let-suggestion.rs:12:13
+  --> $DIR/borrowck-let-suggestion.rs:12:13: in fn f
    |
 LL |     let x = vec![1].iter();
    |             ^^^^^^^       - temporary value dropped here while still borrowed

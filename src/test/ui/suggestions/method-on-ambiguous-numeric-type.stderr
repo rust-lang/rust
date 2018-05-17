@@ -1,5 +1,5 @@
 error[E0689]: can't call method `recip` on ambiguous numeric type `{float}`
-  --> $DIR/method-on-ambiguous-numeric-type.rs:12:17
+  --> $DIR/method-on-ambiguous-numeric-type.rs:12:17: in fn main
    |
 LL |     let x = 2.0.recip();
    |                 ^^^^^
@@ -9,7 +9,7 @@ LL |     let x = 2.0_f32.recip();
    |             ^^^^^^^
 
 error[E0689]: can't call method `recip` on ambiguous numeric type `{float}`
-  --> $DIR/method-on-ambiguous-numeric-type.rs:15:15
+  --> $DIR/method-on-ambiguous-numeric-type.rs:15:15: in fn main
    |
 LL |     let x = y.recip();
    |               ^^^^^

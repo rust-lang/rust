@@ -1,5 +1,5 @@
 error: unreachable pattern
-  --> $DIR/issue-31221.rs:28:9
+  --> $DIR/issue-31221.rs:28:9: in fn main
    |
 LL |         Var3 => (),
    |         ---- matches any value
@@ -13,7 +13,7 @@ LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/issue-31221.rs:34:9
+  --> $DIR/issue-31221.rs:34:9: in fn main
    |
 LL |         &Var3 => (),
    |         ----- matches any value
@@ -21,7 +21,7 @@ LL |         &Var2 => (),
    |         ^^^^^ unreachable pattern
 
 error: unreachable pattern
-  --> $DIR/issue-31221.rs:41:9
+  --> $DIR/issue-31221.rs:41:9: in fn main
    |
 LL |         (c, d) => (),
    |         ------ matches any value

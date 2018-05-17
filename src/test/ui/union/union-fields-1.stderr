@@ -1,5 +1,5 @@
 error: field is never used: `c`
-  --> $DIR/union-fields-1.rs:16:5
+  --> $DIR/union-fields-1.rs:16:5: in union U1
    |
 LL |     c: u8, //~ ERROR field is never used
    |     ^^^^^
@@ -11,19 +11,19 @@ LL | #![deny(dead_code)]
    |         ^^^^^^^^^
 
 error: field is never used: `a`
-  --> $DIR/union-fields-1.rs:19:5
+  --> $DIR/union-fields-1.rs:19:5: in union U2
    |
 LL |     a: u8, //~ ERROR field is never used
    |     ^^^^^
 
 error: field is never used: `a`
-  --> $DIR/union-fields-1.rs:23:20
+  --> $DIR/union-fields-1.rs:23:20: in union NoDropLike
    |
 LL | union NoDropLike { a: u8 } //~ ERROR field is never used
    |                    ^^^^^
 
 error: field is never used: `c`
-  --> $DIR/union-fields-1.rs:28:5
+  --> $DIR/union-fields-1.rs:28:5: in union U
    |
 LL |     c: u8, //~ ERROR field is never used
    |     ^^^^^

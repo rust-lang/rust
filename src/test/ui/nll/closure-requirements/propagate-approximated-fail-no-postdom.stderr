@@ -1,17 +1,17 @@
 warning: not reporting region error due to nll
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:55:21
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:55:21: in fn supply
    |
 LL |             let p = x.get();
    |                     ^^^^^^^
 
 error: free region `ReFree(DefId(0/1:20 ~ propagate_approximated_fail_no_postdom[317d]::supply[0]::{{closure}}[0]), BrAnon(1))` does not outlive free region `ReFree(DefId(0/1:20 ~ propagate_approximated_fail_no_postdom[317d]::supply[0]::{{closure}}[0]), BrAnon(2))`
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:55:17
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:55:17: in fn supply
    |
 LL |             let p = x.get();
    |                 ^
 
 note: No external requirements
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:53:9
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:53:9: in fn supply
    |
 LL | /         |_outlives1, _outlives2, _outlives3, x, y| {
 LL | |             // Only works if 'x: 'y:

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-20862.rs:12:5
+  --> $DIR/issue-20862.rs:12:5: in fn foo
    |
 LL | fn foo(x: i32) {
    |                - possibly return type missing here?
@@ -10,7 +10,7 @@ LL |     |y| x + y
               found type `[closure@$DIR/issue-20862.rs:12:5: 12:14 x:_]`
 
 error[E0618]: expected function, found `()`
-  --> $DIR/issue-20862.rs:17:13
+  --> $DIR/issue-20862.rs:17:13: in fn main
    |
 LL |     let x = foo(5)(2);
    |             ^^^^^^^^^ not a function

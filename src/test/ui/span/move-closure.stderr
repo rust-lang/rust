@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/move-closure.rs:15:17
+  --> $DIR/move-closure.rs:15:17: in fn main
    |
 LL |     let x: () = move || (); //~ ERROR mismatched types
    |                 ^^^^^^^^^^ expected (), found closure

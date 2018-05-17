@@ -1,17 +1,17 @@
 warning: not reporting region error due to nll
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:44:9
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:44:9: in fn no_region
    |
 LL |         require(&x, &y)
    |         ^^^^^^^
 
 warning: not reporting region error due to nll
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:78:9
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:78:9: in fn wrong_region
    |
 LL |         require(&x, &y)
    |         ^^^^^^^
 
 note: External requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:37:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:37:26: in fn no_region
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
@@ -32,7 +32,7 @@ LL | |     })
    = note: where T: '_#1r
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:37:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:37:26: in fn no_region
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
@@ -63,7 +63,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:54:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:54:26: in fn correct_region
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
@@ -102,7 +102,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:75:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:75:26: in fn wrong_region
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
@@ -123,7 +123,7 @@ LL | |     })
    = note: where T: '_#2r
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:75:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:75:26: in fn wrong_region
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^
@@ -154,7 +154,7 @@ LL | | }
            ]
 
 note: External requirements
-  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:89:26
+  --> $DIR/ty-param-closure-outlives-from-where-clause.rs:89:26: in fn outlives_region
    |
 LL |       with_signature(a, b, |x, y| {
    |  __________________________^

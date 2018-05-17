@@ -1,5 +1,5 @@
 error[E0277]: `std::sync::mpsc::Receiver<()>` cannot be shared between threads safely
-  --> $DIR/closure-move-sync.rs:16:13
+  --> $DIR/closure-move-sync.rs:16:13: in fn bar
    |
 LL |     let t = thread::spawn(|| {
    |             ^^^^^^^^^^^^^ `std::sync::mpsc::Receiver<()>` cannot be shared between threads safely
@@ -10,7 +10,7 @@ LL |     let t = thread::spawn(|| {
    = note: required by `std::thread::spawn`
 
 error[E0277]: `std::sync::mpsc::Sender<()>` cannot be shared between threads safely
-  --> $DIR/closure-move-sync.rs:28:5
+  --> $DIR/closure-move-sync.rs:28:5: in fn foo
    |
 LL |     thread::spawn(|| tx.send(()).unwrap());
    |     ^^^^^^^^^^^^^ `std::sync::mpsc::Sender<()>` cannot be shared between threads safely

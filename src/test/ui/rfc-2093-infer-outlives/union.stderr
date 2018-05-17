@@ -1,5 +1,5 @@
 error[E0309]: the parameter type `U` may not live long enough
-  --> $DIR/union.rs:25:5
+  --> $DIR/union.rs:25:5: in union Bar
    |
 LL | union Bar<'b, U> {
    |               - help: consider adding an explicit lifetime bound `U: 'b`...
@@ -7,13 +7,13 @@ LL |     field2: &'b U //~ ERROR 25:5: 25:18: the parameter type `U` may not liv
    |     ^^^^^^^^^^^^^
    |
 note: ...so that the reference type `&'b U` does not outlive the data it points at
-  --> $DIR/union.rs:25:5
+  --> $DIR/union.rs:25:5: in union Bar
    |
 LL |     field2: &'b U //~ ERROR 25:5: 25:18: the parameter type `U` may not live long enough [E0309]
    |     ^^^^^^^^^^^^^
 
 error[E0309]: the parameter type `K` may not live long enough
-  --> $DIR/union.rs:31:5
+  --> $DIR/union.rs:31:5: in union Ying
    |
 LL | union Ying<'c, K> {
    |                - help: consider adding an explicit lifetime bound `K: 'c`...
@@ -21,7 +21,7 @@ LL |     field1: &'c Yang<K> //~ ERROR 31:5: 31:24: the parameter type `K` may n
    |     ^^^^^^^^^^^^^^^^^^^
    |
 note: ...so that the reference type `&'c Yang<K>` does not outlive the data it points at
-  --> $DIR/union.rs:31:5
+  --> $DIR/union.rs:31:5: in union Ying
    |
 LL |     field1: &'c Yang<K> //~ ERROR 31:5: 31:24: the parameter type `K` may not live long enough [E0309]
    |     ^^^^^^^^^^^^^^^^^^^

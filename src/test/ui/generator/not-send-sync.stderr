@@ -1,5 +1,5 @@
 error[E0277]: `std::cell::Cell<i32>` cannot be shared between threads safely
-  --> $DIR/not-send-sync.rs:26:5
+  --> $DIR/not-send-sync.rs:26:5: in fn main
    |
 LL |     assert_send(|| {
    |     ^^^^^^^^^^^ `std::cell::Cell<i32>` cannot be shared between threads safely
@@ -8,13 +8,13 @@ LL |     assert_send(|| {
    = note: required because of the requirements on the impl of `std::marker::Send` for `&std::cell::Cell<i32>`
    = note: required because it appears within the type `[generator@$DIR/not-send-sync.rs:26:17: 30:6 a:&std::cell::Cell<i32> _]`
 note: required by `main::assert_send`
-  --> $DIR/not-send-sync.rs:17:5
+  --> $DIR/not-send-sync.rs:17:5: in fn main
    |
 LL |     fn assert_send<T: Send>(_: T) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `std::cell::Cell<i32>` cannot be shared between threads safely
-  --> $DIR/not-send-sync.rs:19:5
+  --> $DIR/not-send-sync.rs:19:5: in fn main
    |
 LL |     assert_sync(|| {
    |     ^^^^^^^^^^^ `std::cell::Cell<i32>` cannot be shared between threads safely
@@ -23,7 +23,7 @@ LL |     assert_sync(|| {
    = note: required because it appears within the type `{std::cell::Cell<i32>, ()}`
    = note: required because it appears within the type `[generator@$DIR/not-send-sync.rs:19:17: 23:6 {std::cell::Cell<i32>, ()}]`
 note: required by `main::assert_sync`
-  --> $DIR/not-send-sync.rs:16:5
+  --> $DIR/not-send-sync.rs:16:5: in fn main
    |
 LL |     fn assert_sync<T: Sync>(_: T) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

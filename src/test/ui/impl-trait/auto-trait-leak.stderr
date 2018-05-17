@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` is not satisfied in `impl std::ops::Fn<(i32,)>`
-  --> $DIR/auto-trait-leak.rs:25:5
+  --> $DIR/auto-trait-leak.rs:25:5: in fn main
    |
 LL |     send(before());
    |     ^^^^ `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
@@ -14,7 +14,7 @@ LL | fn send<T: Send>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` is not satisfied in `impl std::ops::Fn<(i32,)>`
-  --> $DIR/auto-trait-leak.rs:28:5
+  --> $DIR/auto-trait-leak.rs:28:5: in fn main
    |
 LL |     send(after());
    |     ^^^^ `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
@@ -36,7 +36,7 @@ LL | fn cycle1() -> impl Clone {
    |
 note: ...which requires evaluating trait selection obligation `impl std::clone::Clone: std::marker::Send`...
 note: ...which requires processing `cycle2::{{impl-Trait}}`...
-  --> $DIR/auto-trait-leak.rs:49:16
+  --> $DIR/auto-trait-leak.rs:49:16: in fn cycle2
    |
 LL | fn cycle2() -> impl Clone {
    |                ^^^^^^^^^^
@@ -47,7 +47,7 @@ LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires evaluating trait selection obligation `impl std::clone::Clone: std::marker::Send`...
 note: ...which requires processing `cycle1::{{impl-Trait}}`...
-  --> $DIR/auto-trait-leak.rs:42:16
+  --> $DIR/auto-trait-leak.rs:42:16: in fn cycle1
    |
 LL | fn cycle1() -> impl Clone {
    |                ^^^^^^^^^^

@@ -18,13 +18,13 @@ LL | extern crate core;
    | ^^^^^^^^^^^^^^^^^^ help: remove it
 
 warning: `extern crate` is unnecessary in the new edition
-  --> $DIR/removing-extern-crate.rs:23:5
+  --> $DIR/removing-extern-crate.rs:23:5: in mod another
    |
 LL |     extern crate std as foo;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: use `use`: `use std as foo;`
 
 warning: `extern crate` is unnecessary in the new edition
-  --> $DIR/removing-extern-crate.rs:24:5
+  --> $DIR/removing-extern-crate.rs:24:5: in mod another
    |
 LL |     extern crate std;
    |     ^^^^^^^^^^^^^^^^^ help: use `use`: `use std;`

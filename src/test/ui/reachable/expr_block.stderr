@@ -1,5 +1,5 @@
 error: unreachable expression
-  --> $DIR/expr_block.rs:20:9
+  --> $DIR/expr_block.rs:20:9: in fn a
    |
 LL |         22 //~ ERROR unreachable
    |         ^^
@@ -11,7 +11,7 @@ LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unreachable statement
-  --> $DIR/expr_block.rs:35:9
+  --> $DIR/expr_block.rs:35:9: in fn c
    |
 LL |         println!("foo");
    |         ^^^^^^^^^^^^^^^^

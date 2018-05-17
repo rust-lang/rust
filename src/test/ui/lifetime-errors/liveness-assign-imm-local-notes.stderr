@@ -1,5 +1,5 @@
 error[E0384]: cannot assign twice to immutable variable `x` (Ast)
-  --> $DIR/liveness-assign-imm-local-notes.rs:23:9
+  --> $DIR/liveness-assign-imm-local-notes.rs:23:9: in fn test
    |
 LL |         x = 2;
    |         ----- first assignment to `x`
@@ -7,7 +7,7 @@ LL |         x = 3;      //~ ERROR (Ast) [E0384]
    |         ^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x` (Ast)
-  --> $DIR/liveness-assign-imm-local-notes.rs:35:13
+  --> $DIR/liveness-assign-imm-local-notes.rs:35:13: in fn test_in_loop
    |
 LL |             x = 2;
    |             ----- first assignment to `x`
@@ -15,13 +15,13 @@ LL |             x = 3;      //~ ERROR (Ast) [E0384]
    |             ^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x` (Ast)
-  --> $DIR/liveness-assign-imm-local-notes.rs:45:13
+  --> $DIR/liveness-assign-imm-local-notes.rs:45:13: in fn test_using_loop
    |
 LL |             x = 1;      //~ ERROR (Ast) [E0384]
    |             ^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x` (Ast)
-  --> $DIR/liveness-assign-imm-local-notes.rs:48:13
+  --> $DIR/liveness-assign-imm-local-notes.rs:48:13: in fn test_using_loop
    |
 LL |             x = 1;      //~ ERROR (Ast) [E0384]
    |             ----- first assignment to `x`
@@ -30,7 +30,7 @@ LL |             x = 2;      //~ ERROR (Ast) [E0384]
    |             ^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x` (Mir)
-  --> $DIR/liveness-assign-imm-local-notes.rs:23:9
+  --> $DIR/liveness-assign-imm-local-notes.rs:23:9: in fn test
    |
 LL |         x = 2;
    |         ----- first assignment to `x`
@@ -38,7 +38,7 @@ LL |         x = 3;      //~ ERROR (Ast) [E0384]
    |         ^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x` (Mir)
-  --> $DIR/liveness-assign-imm-local-notes.rs:35:13
+  --> $DIR/liveness-assign-imm-local-notes.rs:35:13: in fn test_in_loop
    |
 LL |             x = 2;
    |             ----- first assignment to `x`
@@ -46,13 +46,13 @@ LL |             x = 3;      //~ ERROR (Ast) [E0384]
    |             ^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x` (Mir)
-  --> $DIR/liveness-assign-imm-local-notes.rs:45:13
+  --> $DIR/liveness-assign-imm-local-notes.rs:45:13: in fn test_using_loop
    |
 LL |             x = 1;      //~ ERROR (Ast) [E0384]
    |             ^^^^^ cannot assign twice to immutable variable
 
 error[E0384]: cannot assign twice to immutable variable `x` (Mir)
-  --> $DIR/liveness-assign-imm-local-notes.rs:48:13
+  --> $DIR/liveness-assign-imm-local-notes.rs:48:13: in fn test_using_loop
    |
 LL |             x = 1;      //~ ERROR (Ast) [E0384]
    |             ----- first assignment to `x`

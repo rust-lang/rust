@@ -1,17 +1,17 @@
 warning: not reporting region error due to nll
-  --> $DIR/escape-argument-callee.rs:36:50
+  --> $DIR/escape-argument-callee.rs:36:50: in fn test
    |
 LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                                  ^
 
 error: free region `ReFree(DefId(0/1:9 ~ escape_argument_callee[317d]::test[0]::{{closure}}[0]), BrAnon(3))` does not outlive free region `ReFree(DefId(0/1:9 ~ escape_argument_callee[317d]::test[0]::{{closure}}[0]), BrAnon(2))`
-  --> $DIR/escape-argument-callee.rs:36:45
+  --> $DIR/escape-argument-callee.rs:36:45: in fn test
    |
 LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                             ^^^^^^
 
 note: No external requirements
-  --> $DIR/escape-argument-callee.rs:36:38
+  --> $DIR/escape-argument-callee.rs:36:38: in fn test
    |
 LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                      ^^^^^^^^^^^^^

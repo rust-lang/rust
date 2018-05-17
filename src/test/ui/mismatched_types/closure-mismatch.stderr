@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `for<'r> <[closure@$DIR/closure-mismatch.rs:18:9: 18:15] as std::ops::FnOnce<(&'r (),)>>::Output == ()`
-  --> $DIR/closure-mismatch.rs:18:5
+  --> $DIR/closure-mismatch.rs:18:5: in fn main
    |
 LL |     baz(|_| ()); //~ ERROR type mismatch
    |     ^^^ expected bound lifetime parameter, found concrete lifetime
@@ -12,7 +12,7 @@ LL | fn baz<T: Foo>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^
 
 error[E0631]: type mismatch in closure arguments
-  --> $DIR/closure-mismatch.rs:18:5
+  --> $DIR/closure-mismatch.rs:18:5: in fn main
    |
 LL |     baz(|_| ()); //~ ERROR type mismatch
    |     ^^^ ------ found signature of `fn(_) -> _`

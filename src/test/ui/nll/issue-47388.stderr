@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to data in a `&` reference
-  --> $DIR/issue-47388.rs:18:5
+  --> $DIR/issue-47388.rs:18:5: in fn main
    |
 LL |     let fancy_ref = &(&mut fancy);
    |                     ------------- help: consider changing this to be a mutable reference: `&mut (&mut fancy)`

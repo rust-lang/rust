@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/block-must-not-have-result-res.rs:15:9
+  --> $DIR/block-must-not-have-result-res.rs:15:9: in fn drop::drop
    |
 LL |     fn drop(&mut self) {
    |                        - expected `()` because of default return type

@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/region-lbr-named-does-not-outlive-static.rs:19:5
+  --> $DIR/region-lbr-named-does-not-outlive-static.rs:19:5: in fn foo
    |
 LL |     &*x
    |     ^^^
 
 error: free region `ReFree(DefId(0/0:3 ~ region_lbr_named_does_not_outlive_static[317d]::foo[0]), BrNamed(crate0:DefIndex(1:9), 'a))` does not outlive free region `ReStatic`
-  --> $DIR/region-lbr-named-does-not-outlive-static.rs:19:5
+  --> $DIR/region-lbr-named-does-not-outlive-static.rs:19:5: in fn foo
    |
 LL |     &*x
    |     ^^^

@@ -1,5 +1,5 @@
 error[E0275]: overflow evaluating the requirement `K: std::marker::Send`
-  --> $DIR/recursion_limit.rs:44:5
+  --> $DIR/recursion_limit.rs:44:5: in fn main
    |
 LL |     is_send::<A>(); //~ ERROR overflow evaluating the requirement
    |     ^^^^^^^^^^^^

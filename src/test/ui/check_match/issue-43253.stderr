@@ -1,5 +1,5 @@
 warning: unreachable pattern
-  --> $DIR/issue-43253.rs:39:9
+  --> $DIR/issue-43253.rs:39:9: in fn main
    |
 LL |         9 => {},
    |         ^
@@ -11,13 +11,13 @@ LL | #![warn(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 warning: unreachable pattern
-  --> $DIR/issue-43253.rs:45:9
+  --> $DIR/issue-43253.rs:45:9: in fn main
    |
 LL |         8...9 => {},
    |         ^^^^^
 
 warning: unreachable pattern
-  --> $DIR/issue-43253.rs:51:9
+  --> $DIR/issue-43253.rs:51:9: in fn main
    |
 LL |         9...9 => {},
    |         ^^^^^

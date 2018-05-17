@@ -1,17 +1,17 @@
 warning: not reporting region error due to nll
-  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:47:9
+  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:47:9: in fn supply
    |
 LL |         demand_y(x, y, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: free region `ReFree(DefId(0/1:18 ~ propagate_fail_to_approximate_longer_no_bounds[317d]::supply[0]::{{closure}}[0]), BrAnon(4))` does not outlive free region `ReFree(DefId(0/1:18 ~ propagate_fail_to_approximate_longer_no_bounds[317d]::supply[0]::{{closure}}[0]), BrAnon(2))`
-  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:47:18
+  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:47:18: in fn supply
    |
 LL |         demand_y(x, y, x.get())
    |                  ^
 
 note: No external requirements
-  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:45:47
+  --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:45:47: in fn supply
    |
 LL |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
    |  _______________________________________________^

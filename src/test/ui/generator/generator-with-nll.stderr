@@ -1,5 +1,5 @@
 error[E0626]: borrow may still be in use when generator yields (Ast)
-  --> $DIR/generator-with-nll.rs:19:23
+  --> $DIR/generator-with-nll.rs:19:23: in fn main
    |
 LL |         let _a = &mut true; //~ ERROR borrow may still be in use when generator yields (Ast)
    |                       ^^^^
@@ -8,7 +8,7 @@ LL |         yield ();
    |         -------- possible yield occurs here
 
 error[E0626]: borrow may still be in use when generator yields (Ast)
-  --> $DIR/generator-with-nll.rs:20:22
+  --> $DIR/generator-with-nll.rs:20:22: in fn main
    |
 LL |         let b = &mut true; //~ ERROR borrow may still be in use when generator yields (Ast)
    |                      ^^^^
@@ -17,7 +17,7 @@ LL |         yield ();
    |         -------- possible yield occurs here
 
 error[E0626]: borrow may still be in use when generator yields (Mir)
-  --> $DIR/generator-with-nll.rs:20:17
+  --> $DIR/generator-with-nll.rs:20:17: in fn main
    |
 LL |         let b = &mut true; //~ ERROR borrow may still be in use when generator yields (Ast)
    |                 ^^^^^^^^^

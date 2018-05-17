@@ -11,7 +11,7 @@ LL |     let _: &'static Copy + 'static; //~ ERROR expected a path
    |            ^^^^^^^^^^^^^^^^^^^^^^^ help: try adding parentheses: `&'static (Copy + 'static)`
 
 error[E0038]: the trait `std::marker::Copy` cannot be made into an object
-  --> $DIR/trait-object-reference-without-parens-suggestion.rs:12:12
+  --> $DIR/trait-object-reference-without-parens-suggestion.rs:12:12: in fn main
    |
 LL |     let _: &Copy + 'static; //~ ERROR expected a path
    |            ^^^^^ the trait `std::marker::Copy` cannot be made into an object

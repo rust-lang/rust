@@ -1,5 +1,5 @@
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/return-ref-mut-issue-46557.rs:17:21
+  --> $DIR/return-ref-mut-issue-46557.rs:17:21: in fn gimme_static_mut
    |
 LL |   fn gimme_static_mut() -> &'static mut u32 {
    |  ___________________________________________-

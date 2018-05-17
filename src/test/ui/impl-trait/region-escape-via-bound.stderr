@@ -1,5 +1,5 @@
 error[E0909]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/region-escape-via-bound.rs:26:29
+  --> $DIR/region-escape-via-bound.rs:26:29: in fn foo
    |
 LL | fn foo(x: Cell<&'x u32>) -> impl Trait<'y>
    |                             ^^^^^^^^^^^^^^

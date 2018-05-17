@@ -1,5 +1,5 @@
 warning: constant evaluation error
-  --> $DIR/promoted_errors.rs:14:20
+  --> $DIR/promoted_errors.rs:14:20: in fn main
    |
 LL |     println!("{}", 0u32 - 1);
    |                    ^^^^^^^^ attempt to subtract with overflow
@@ -7,43 +7,43 @@ LL |     println!("{}", 0u32 - 1);
    = note: #[warn(const_err)] on by default
 
 warning: constant evaluation error
-  --> $DIR/promoted_errors.rs:14:20
+  --> $DIR/promoted_errors.rs:14:20: in fn main
    |
 LL |     println!("{}", 0u32 - 1);
    |                    ^^^^^^^^ attempt to subtract with overflow
 
 warning: constant evaluation error
-  --> $DIR/promoted_errors.rs:17:14
+  --> $DIR/promoted_errors.rs:17:14: in fn main
    |
 LL |     let _x = 0u32 - 1;
    |              ^^^^^^^^ attempt to subtract with overflow
 
 warning: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:19:20
+  --> $DIR/promoted_errors.rs:19:20: in fn main
    |
 LL |     println!("{}", 1/(1-1));
    |                    ^^^^^^^
 
 warning: constant evaluation error
-  --> $DIR/promoted_errors.rs:19:20
+  --> $DIR/promoted_errors.rs:19:20: in fn main
    |
 LL |     println!("{}", 1/(1-1));
    |                    ^^^^^^^ attempt to divide by zero
 
 warning: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:22:14
+  --> $DIR/promoted_errors.rs:22:14: in fn main
    |
 LL |     let _x = 1/(1-1);
    |              ^^^^^^^
 
 warning: constant evaluation error
-  --> $DIR/promoted_errors.rs:22:14
+  --> $DIR/promoted_errors.rs:22:14: in fn main
    |
 LL |     let _x = 1/(1-1);
    |              ^^^^^^^ attempt to divide by zero
 
 warning: constant evaluation error
-  --> $DIR/promoted_errors.rs:25:20
+  --> $DIR/promoted_errors.rs:25:20: in fn main
    |
 LL |     println!("{}", 1/(false as u32));
    |                    ^^^^^^^^^^^^^^^^ attempt to divide by zero

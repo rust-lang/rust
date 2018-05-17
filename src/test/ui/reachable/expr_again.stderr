@@ -1,5 +1,5 @@
 error: unreachable statement
-  --> $DIR/expr_again.rs:18:9
+  --> $DIR/expr_again.rs:18:9: in fn main
    |
 LL |         println!("hi");
    |         ^^^^^^^^^^^^^^^

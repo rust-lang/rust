@@ -1,5 +1,5 @@
 error[E0495]: cannot infer an appropriate lifetime for autoref due to conflicting requirements
-  --> $DIR/dyn-trait-underscore.rs:18:20
+  --> $DIR/dyn-trait-underscore.rs:18:20: in fn a
    |
 LL |     Box::new(items.iter()) //~ ERROR cannot infer an appropriate lifetime
    |                    ^^^^
@@ -13,7 +13,7 @@ LL | |     Box::new(items.iter()) //~ ERROR cannot infer an appropriate lifetime
 LL | | }
    | |_^
 note: ...so that reference does not outlive borrowed content
-  --> $DIR/dyn-trait-underscore.rs:18:14
+  --> $DIR/dyn-trait-underscore.rs:18:14: in fn a
    |
 LL |     Box::new(items.iter()) //~ ERROR cannot infer an appropriate lifetime
    |              ^^^^^

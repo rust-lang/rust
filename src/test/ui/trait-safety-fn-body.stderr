@@ -1,5 +1,5 @@
 error[E0133]: dereference of raw pointer requires unsafe function or block
-  --> $DIR/trait-safety-fn-body.rs:21:9
+  --> $DIR/trait-safety-fn-body.rs:21:9: in fn foo::foo
    |
 LL |         *self += 1;
    |         ^^^^^^^^^^ dereference of raw pointer

@@ -1,5 +1,5 @@
 error[E0593]: function is expected to take 1 argument, but it takes 2 arguments
-  --> $DIR/issue-47706.rs:21:18
+  --> $DIR/issue-47706.rs:21:18: in fn map::map
    |
 LL |     pub fn new(foo: Option<i32>, _: ()) -> Foo {
    |     ------------------------------------------ takes 2 arguments
@@ -8,7 +8,7 @@ LL |         self.foo.map(Foo::new)
    |                  ^^^ expected function that takes 1 argument
 
 error[E0593]: function is expected to take 0 arguments, but it takes 1 argument
-  --> $DIR/issue-47706.rs:37:5
+  --> $DIR/issue-47706.rs:37:5: in fn main
    |
 LL |     Bar(i32),
    |     -------- takes 1 argument

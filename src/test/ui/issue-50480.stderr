@@ -5,7 +5,7 @@ LL | struct Foo(NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |            ^^^^^^^^^^ not found in this scope
 
 error[E0277]: the trait bound `i32: std::iter::Iterator` is not satisfied
-  --> $DIR/issue-50480.rs:13:24
+  --> $DIR/issue-50480.rs:13:24: in struct Foo
    |
 LL | struct Foo(NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |                        ^^^^^^^^^^^^^^^^^^^^^^^ `i32` is not an iterator; maybe try calling `.iter()` or a similar method

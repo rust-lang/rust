@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `&T: std::cmp::PartialEq<T>` is not satisfied
-  --> $DIR/partialeq_help.rs:12:7
+  --> $DIR/partialeq_help.rs:12:7: in fn foo
    |
 LL |     a == b; //~ ERROR E0277
    |       ^^ can't compare `&T` with `T`

@@ -1,11 +1,11 @@
 error[E0637]: invalid lifetime bound name: `'_`
-  --> $DIR/E0637.rs:11:16
+  --> $DIR/E0637.rs:11:16: in struct Foo
    |
 LL | struct Foo<'a: '_>(&'a u8); //~ ERROR invalid lifetime bound name: `'_`
    |                ^^ `'_` is a reserved lifetime name
 
 error[E0637]: invalid lifetime bound name: `'_`
-  --> $DIR/E0637.rs:12:12
+  --> $DIR/E0637.rs:12:12: in fn foo
    |
 LL | fn foo<'a: '_>(_: &'a u8) {} //~ ERROR invalid lifetime bound name: `'_`
    |            ^^ `'_` is a reserved lifetime name

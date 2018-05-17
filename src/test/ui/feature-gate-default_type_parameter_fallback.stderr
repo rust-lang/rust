@@ -1,5 +1,5 @@
 error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions.
-  --> $DIR/feature-gate-default_type_parameter_fallback.rs:13:8
+  --> $DIR/feature-gate-default_type_parameter_fallback.rs:13:8: in fn avg
    |
 LL | fn avg<T=i32>(_: T) {}
    |        ^

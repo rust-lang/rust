@@ -5,13 +5,13 @@ LL |     a; //~ ERROR cannot find value `a`
    |     ^ not found in this scope
 
 error[E0609]: no field `lorem` on type `&'static str`
-  --> $DIR/issue-33525.rs:13:8
+  --> $DIR/issue-33525.rs:13:8: in fn main
    |
 LL |     "".lorem; //~ ERROR no field
    |        ^^^^^
 
 error[E0609]: no field `ipsum` on type `&'static str`
-  --> $DIR/issue-33525.rs:14:8
+  --> $DIR/issue-33525.rs:14:8: in fn main
    |
 LL |     "".ipsum; //~ ERROR no field
    |        ^^^^^

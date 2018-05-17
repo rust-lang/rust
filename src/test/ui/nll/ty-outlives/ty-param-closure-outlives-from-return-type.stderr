@@ -1,17 +1,17 @@
 warning: not reporting region error due to nll
-  --> $DIR/ty-param-closure-outlives-from-return-type.rs:36:27
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:36:27: in fn no_region
    |
 LL |     with_signature(x, |y| y)
    |                           ^
 
 warning: not reporting region error due to nll
-  --> $DIR/ty-param-closure-outlives-from-return-type.rs:52:5
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:52:5: in fn wrong_region
    |
 LL |     x
    |     ^
 
 note: External requirements
-  --> $DIR/ty-param-closure-outlives-from-return-type.rs:36:23
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:36:23: in fn no_region
    |
 LL |     with_signature(x, |y| y)
    |                       ^^^^^
@@ -26,7 +26,7 @@ LL |     with_signature(x, |y| y)
    = note: where T: '_#2r
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-closure-outlives-from-return-type.rs:36:23
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:36:23: in fn no_region
    |
 LL |     with_signature(x, |y| y)
    |                       ^^^^^
@@ -51,7 +51,7 @@ LL | | }
            ]
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-closure-outlives-from-return-type.rs:52:5
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:52:5: in fn wrong_region
    |
 LL |     x
    |     ^

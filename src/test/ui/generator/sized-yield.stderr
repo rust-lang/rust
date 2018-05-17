@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
-  --> $DIR/sized-yield.rs:17:26
+  --> $DIR/sized-yield.rs:17:26: in fn main
    |
 LL |      let mut gen = move || { //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
    |  __________________________^
@@ -11,7 +11,7 @@ LL | |    };
    = note: the yield type of a generator must have a statically known size
 
 error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
-  --> $DIR/sized-yield.rs:20:17
+  --> $DIR/sized-yield.rs:20:17: in fn main
    |
 LL |    unsafe { gen.resume(); } //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
    |                 ^^^^^^ `str` does not have a constant size known at compile-time

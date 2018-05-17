@@ -1,5 +1,5 @@
 error: unreachable expression
-  --> $DIR/expr_repeat.rs:19:25
+  --> $DIR/expr_repeat.rs:19:25: in fn a
    |
 LL |     let x: [usize; 2] = [return; 2]; //~ ERROR unreachable
    |                         ^^^^^^^^^^^

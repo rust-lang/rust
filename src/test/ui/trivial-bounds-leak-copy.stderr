@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/trivial-bounds-leak-copy.rs:19:5
+  --> $DIR/trivial-bounds-leak-copy.rs:19:5: in fn move_out_string
    |
 LL |     *t //~ ERROR
    |     ^^ cannot move out of borrowed content

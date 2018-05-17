@@ -1,5 +1,5 @@
 error[E0491]: in type `&'a &'b T`, reference has a longer lifetime than the data it references
-  --> $DIR/multiple-regions.rs:15:5
+  --> $DIR/multiple-regions.rs:15:5: in struct Foo
    |
 LL |     x: &'a &'b T //~ ERROR reference has a longer lifetime than the data it references [E0491]
    |     ^^^^^^^^^^^^

@@ -1,29 +1,29 @@
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/parameter_number_and_kind.rs:26:36
+  --> $DIR/parameter_number_and_kind.rs:26:36: in trait Foo::FOk
    |
 LL |     type FOk<T> = Self::E<'static, T>;
    |                                    ^ type parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/parameter_number_and_kind.rs:26:27
+  --> $DIR/parameter_number_and_kind.rs:26:27: in trait Foo::FOk
    |
 LL |     type FOk<T> = Self::E<'static, T>;
    |                           ^^^^^^^ lifetime parameter not allowed on this type
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/parameter_number_and_kind.rs:29:26
+  --> $DIR/parameter_number_and_kind.rs:29:26: in trait Foo::FErr1
    |
 LL |     type FErr1 = Self::E<'static, 'static>; // Error
    |                          ^^^^^^^ lifetime parameter not allowed on this type
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/parameter_number_and_kind.rs:31:38
+  --> $DIR/parameter_number_and_kind.rs:31:38: in trait Foo::FErr2
    |
 LL |     type FErr2<T> = Self::E<'static, T, u32>; // Error
    |                                      ^ type parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
-  --> $DIR/parameter_number_and_kind.rs:31:29
+  --> $DIR/parameter_number_and_kind.rs:31:29: in trait Foo::FErr2
    |
 LL |     type FErr2<T> = Self::E<'static, T, u32>; // Error
    |                             ^^^^^^^ lifetime parameter not allowed on this type

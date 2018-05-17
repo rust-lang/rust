@@ -1,5 +1,5 @@
 error: unreachable expression
-  --> $DIR/expr_array.rs:19:34
+  --> $DIR/expr_array.rs:19:34: in fn a
    |
 LL |     let x: [usize; 2] = [return, 22]; //~ ERROR unreachable
    |                                  ^^
@@ -11,7 +11,7 @@ LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unreachable expression
-  --> $DIR/expr_array.rs:24:25
+  --> $DIR/expr_array.rs:24:25: in fn b
    |
 LL |     let x: [usize; 2] = [22, return]; //~ ERROR unreachable
    |                         ^^^^^^^^^^^^

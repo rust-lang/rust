@@ -1,5 +1,5 @@
 error[E0131]: main function is not allowed to have type parameters
-  --> $DIR/E0131.rs:11:8
+  --> $DIR/E0131.rs:11:8: in fn main
    |
 LL | fn main<T>() {
    |        ^^^ main cannot have type parameters

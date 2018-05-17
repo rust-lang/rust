@@ -13,7 +13,7 @@ LL | const LEN: usize = ONE - TWO;
    |                    ^^^^^^^^^ attempt to subtract with overflow
 
 error[E0080]: constant evaluation error
-  --> $DIR/const-len-underflow-separate-spans.rs:22:17
+  --> $DIR/const-len-underflow-separate-spans.rs:22:17: in fn main
    |
 LL |     let a: [i8; LEN] = unimplemented!();
    |                 ^^^ referenced constant has errors

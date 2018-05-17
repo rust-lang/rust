@@ -1,5 +1,5 @@
 error: borrowed data cannot be stored outside of its closure
-  --> $DIR/issue-45983.rs:17:27
+  --> $DIR/issue-45983.rs:17:27: in fn main
    |
 LL |     let x = None;
    |         - borrowed data cannot be stored into here...

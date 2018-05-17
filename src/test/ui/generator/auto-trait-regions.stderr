@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `No: Foo` is not satisfied in `[generator@$DIR/auto-trait-regions.rs:35:15: 39:6 x:&&OnlyFooIfStaticRef for<'r> {&'r OnlyFooIfStaticRef, ()}]`
-  --> $DIR/auto-trait-regions.rs:40:5
+  --> $DIR/auto-trait-regions.rs:40:5: in fn main
    |
 LL |     assert_foo(gen); //~ ERROR the trait bound `No: Foo` is not satisfied
    |     ^^^^^^^^^^ within `[generator@$DIR/auto-trait-regions.rs:35:15: 39:6 x:&&OnlyFooIfStaticRef for<'r> {&'r OnlyFooIfStaticRef, ()}]`, the trait `Foo` is not implemented for `No`
@@ -17,7 +17,7 @@ LL | fn assert_foo<T: Foo>(f: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0279]: the requirement `for<'r, 's> 'r : 's` is not satisfied (`expected bound lifetime parameter, found concrete lifetime`)
-  --> $DIR/auto-trait-regions.rs:57:5
+  --> $DIR/auto-trait-regions.rs:57:5: in fn main
    |
 LL |     assert_foo(gen); //~ ERROR the requirement `for<'r, 's> 'r : 's` is not satisfied
    |     ^^^^^^^^^^

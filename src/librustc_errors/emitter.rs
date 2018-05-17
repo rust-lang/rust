@@ -26,6 +26,10 @@ use std::cmp::min;
 use termcolor::{StandardStream, ColorChoice, ColorSpec, BufferWriter};
 use termcolor::{WriteColor, Color, Buffer};
 use unicode_width;
+use SpanContextResolver;
+use SpanContextKind;
+use SpanContext;
+use std::cell::RefCell;
 
 const ANONYMIZED_LINE_NUM: &str = "LL";
 
@@ -81,6 +85,7 @@ impl Emitter for EmitterWriter {
         self.emit_messages_default(&db.level,
                                    &db.styled_message(),
                                    &db.code,
+                                   &db.handler.context_resolver,
                                    &primary_span,
                                    &children,
                                    &suggestions);
@@ -958,6 +963,7 @@ impl EmitterWriter {
                             msp: &MultiSpan,
                             msg: &Vec<(String, Style)>,
                             code: &Option<DiagnosticId>,
+                            cr: &RefCell<Option<Box<SpanContextResolver>>>,
                             level: &Level,
                             max_line_num_len: usize,
                             is_secondary: bool)
@@ -1042,6 +1048,18 @@ impl EmitterWriter {
                                            cm.doctest_offset_line(loc.line),
                                            loc.col.0 + 1),
                                   Style::LineAndColumn);
+                    if let Some(ref primary_span) = msp.primary_span().as_ref() {
+                        if primary_span != &&DUMMY_SP {
+                            if let &Some(ref rc) = &*cr.borrow() {
+                                let context = rc.span_to_context(**primary_span);
+                                if let Some(context) = context {
+                                    repr_styled_context(buffer_msg_line_offset,
+                                                        &mut buffer, context);
+                                }
+                            }
+                        }
+                    }
+
                     for _ in 0..max_line_num_len {
                         buffer.prepend(buffer_msg_line_offset, " ", Style::NoStyle);
                     }
@@ -1282,6 +1300,7 @@ impl EmitterWriter {
                              level: &Level,
                              message: &Vec<(String, Style)>,
                              code: &Option<DiagnosticId>,
+                             cr: &RefCell<Option<Box<SpanContextResolver>>>,
                              span: &MultiSpan,
                              children: &Vec<SubDiagnostic>,
                              suggestions: &[CodeSuggestion]) {
@@ -1294,6 +1313,7 @@ impl EmitterWriter {
         match self.emit_message_default(span,
                                         message,
                                         code,
+                                        cr,
                                         level,
                                         max_line_num_len,
                                         false) {
@@ -1315,6 +1335,7 @@ impl EmitterWriter {
                         match self.emit_message_default(&span,
                                                         &child.styled_message(),
                                                         &None,
+                                                        cr,
                                                         &child.level,
                                                         max_line_num_len,
                                                         true) {
@@ -1394,6 +1415,23 @@ fn num_overlap(a_start: usize, a_end: usize, b_start: usize, b_end:usize, inclus
 }
 fn overlaps(a1: &Annotation, a2: &Annotation, padding: usize) -> bool {
     num_overlap(a1.start_col, a1.end_col + padding, a2.start_col, a2.end_col, false)
+}
+
+fn repr_styled_context(line_offset: usize, buffer: &mut StyledBuffer, context: SpanContext)
+{
+    let kind_str = match context.kind {
+        SpanContextKind::Enum => "enum",
+        SpanContextKind::Module => "mod",
+        SpanContextKind::Function => "fn",
+        SpanContextKind::Impl => "impl",
+        SpanContextKind::Method => "fn",
+        SpanContextKind::Struct => "struct",
+        SpanContextKind::Trait => "trait",
+        SpanContextKind::Union => "union",
+    };
+
+    buffer.append(line_offset, &format!(": in {}", kind_str), Style::NoStyle);
+    buffer.append(line_offset, &format!(" {}", context.path), Style::HeaderMsg);
 }
 
 fn emit_to_destination(rendered_buffer: &Vec<Vec<StyledString>>,

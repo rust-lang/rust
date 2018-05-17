@@ -1,5 +1,5 @@
 error[E0369]: binary operation `+` cannot be applied to type `&std::string::String`
-  --> $DIR/str-concat-on-double-ref.rs:14:13
+  --> $DIR/str-concat-on-double-ref.rs:14:13: in fn main
    |
 LL |     let c = a + b;
    |             ^^^^^

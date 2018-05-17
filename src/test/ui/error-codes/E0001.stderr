@@ -1,5 +1,5 @@
 error: unreachable pattern
-  --> $DIR/E0001.rs:18:9
+  --> $DIR/E0001.rs:18:9: in fn main
    |
 LL |         _ => {/* ... */} //~ ERROR unreachable pattern
    |         ^

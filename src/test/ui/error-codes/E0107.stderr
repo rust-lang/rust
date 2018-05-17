@@ -1,17 +1,17 @@
 error[E0107]: wrong number of lifetime parameters: expected 2, found 1
-  --> $DIR/E0107.rs:21:11
+  --> $DIR/E0107.rs:21:11: in struct Baz
    |
 LL |     buzz: Buzz<'a>,
    |           ^^^^^^^^ expected 2 lifetime parameters
 
 error[E0107]: wrong number of lifetime parameters: expected 0, found 1
-  --> $DIR/E0107.rs:24:10
+  --> $DIR/E0107.rs:24:10: in struct Baz
    |
 LL |     bar: Bar<'a>,
    |          ^^^^^^^ unexpected lifetime parameter
 
 error[E0107]: wrong number of lifetime parameters: expected 1, found 3
-  --> $DIR/E0107.rs:27:11
+  --> $DIR/E0107.rs:27:11: in struct Baz
    |
 LL |     foo2: Foo<'a, 'b, 'c>,
    |           ^^^^^^^^^^^^^^^ 2 unexpected lifetime parameters

@@ -1,5 +1,5 @@
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:18:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:18:5: in struct List
    |
 LL | struct List<'a, T: ListItem<'a>> {
    |                 -- help: consider adding an explicit lifetime bound `T: 'a`...
@@ -7,13 +7,13 @@ LL |     slice: &'a [T]
    |     ^^^^^^^^^^^^^^
    |
 note: ...so that the reference type `&'a [T]` does not outlive the data it points at
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:18:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:18:5: in struct List
    |
 LL |     slice: &'a [T]
    |     ^^^^^^^^^^^^^^
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:29:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:29:5: in struct Foo
    |
 LL | struct Foo<T> {
    |            - help: consider adding an explicit lifetime bound `T: 'static`...
@@ -21,13 +21,13 @@ LL |     foo: &'static T
    |     ^^^^^^^^^^^^^^^
    |
 note: ...so that the reference type `&'static T` does not outlive the data it points at
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:29:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:29:5: in struct Foo
    |
 LL |     foo: &'static T
    |     ^^^^^^^^^^^^^^^
 
 error[E0309]: the parameter type `K` may not live long enough
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:34:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:34:5: in trait X
    |
 LL | trait X<K>: Sized {
    |         - help: consider adding an explicit lifetime bound `K: 'a`...
@@ -35,26 +35,26 @@ LL |     fn foo<'a, L: X<&'a Nested<K>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: ...so that the reference type `&'a Nested<K>` does not outlive the data it points at
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:34:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:34:5: in trait X
    |
 LL |     fn foo<'a, L: X<&'a Nested<K>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0309]: the parameter type `Self` may not live long enough
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:38:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:38:5: in trait X
    |
 LL |     fn bar<'a, L: X<&'a Nested<Self>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding an explicit lifetime bound `Self: 'a`...
 note: ...so that the reference type `&'a Nested<Self>` does not outlive the data it points at
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:38:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:38:5: in trait X
    |
 LL |     fn bar<'a, L: X<&'a Nested<Self>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0309]: the parameter type `L` may not live long enough
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:42:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:42:5: in trait X
    |
 LL |       fn baz<'a, L, M: X<&'a Nested<L>>>() {
    |       ^          - help: consider adding an explicit lifetime bound `L: 'a`...
@@ -65,7 +65,7 @@ LL | |     }
    | |_____^
    |
 note: ...so that the reference type `&'a Nested<L>` does not outlive the data it points at
-  --> $DIR/lifetime-doesnt-live-long-enough.rs:42:5
+  --> $DIR/lifetime-doesnt-live-long-enough.rs:42:5: in trait X
    |
 LL | /     fn baz<'a, L, M: X<&'a Nested<L>>>() {
 LL | |         //~^ ERROR may not live long enough

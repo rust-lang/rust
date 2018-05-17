@@ -42,7 +42,7 @@ LL |         loop { quz(); }
    = help: a `loop` may express intention better if this is on purpose
 
 error: function cannot return without recurring
-  --> $DIR/lint-unconditional-recursion.rs:47:5
+  --> $DIR/lint-unconditional-recursion.rs:47:5: in trait Foo
    |
 LL |     fn bar(&self) { //~ ERROR function cannot return without recurring
    |     ^^^^^^^^^^^^^ cannot return without recurring
@@ -73,7 +73,7 @@ LL |         0.bar()
    = help: a `loop` may express intention better if this is on purpose
 
 error: function cannot return without recurring
-  --> $DIR/lint-unconditional-recursion.rs:75:5
+  --> $DIR/lint-unconditional-recursion.rs:75:5: in trait Foo2
    |
 LL |     fn bar(&self) { //~ ERROR function cannot return without recurring
    |     ^^^^^^^^^^^^^ cannot return without recurring

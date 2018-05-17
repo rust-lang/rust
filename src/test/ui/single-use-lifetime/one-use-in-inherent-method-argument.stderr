@@ -1,5 +1,5 @@
 error: lifetime parameter `'a` only used once
-  --> $DIR/one-use-in-inherent-method-argument.rs:22:19
+  --> $DIR/one-use-in-inherent-method-argument.rs:22:19: in fn inherent_a::inherent_a
    |
 LL |     fn inherent_a<'a>(&self, data: &'a u32) { //~ ERROR `'a` only used once
    |                   ^^
