@@ -29,6 +29,7 @@
 #![feature(nll)]
 #![feature(allow_internal_unstable)]
 #![feature(vec_resize_with)]
+#![feature(hash_raw_entry)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
@@ -66,6 +67,7 @@ pub mod flock;
 pub mod fx;
 pub mod graph;
 pub mod indexed_vec;
+pub mod interner;
 pub mod obligation_forest;
 pub mod owning_ref;
 pub mod ptr_key;

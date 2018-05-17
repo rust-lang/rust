@@ -53,6 +53,7 @@ use ty::CanonicalTy;
 use ty::CanonicalPolyFnSig;
 use util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap};
 use util::nodemap::{FxHashMap, FxHashSet};
+use rustc_data_structures::interner::HashInterner;
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
@@ -113,7 +114,7 @@ pub struct GlobalArenas<'tcx> {
     const_allocs: TypedArena<interpret::Allocation>,
 }
 
-type InternedSet<'tcx, T> = Lock<FxHashSet<Interned<'tcx, T>>>;
+type InternedSet<'tcx, T> = Lock<FxHashMap<Interned<'tcx, T>, ()>>;
 
 pub struct CtxtInterners<'tcx> {
     /// The arena that types, regions, etc are allocated from
@@ -166,51 +167,39 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
         // determine that all contents are in the global tcx.
         // See comments on Lift for why we can't use that.
         if flags.flags.intersects(ty::TypeFlags::KEEP_IN_LOCAL_TCX) {
-            let mut interner = local.type_.borrow_mut();
-            if let Some(&Interned(ty)) = interner.get(&st) {
-                return ty;
-            }
+            local.type_.borrow_mut().intern(st, |st| {
+                let ty_struct = TyS {
+                    sty: st,
+                    flags: flags.flags,
+                    outer_exclusive_binder: flags.outer_exclusive_binder,
+                };
 
-            let ty_struct = TyS {
-                sty: st,
-                flags: flags.flags,
-                outer_exclusive_binder: flags.outer_exclusive_binder,
-            };
+                // Make sure we don't end up with inference
+                // types/regions in the global interner
+                if local as *const _ as usize == global as *const _ as usize {
+                    bug!("Attempted to intern `{:?}` which contains \
+                        inference types/regions in the global type context",
+                        &ty_struct);
+                }
 
-            // Make sure we don't end up with inference
-            // types/regions in the global interner
-            if local as *const _ as usize == global as *const _ as usize {
-                bug!("Attempted to intern `{:?}` which contains \
-                      inference types/regions in the global type context",
-                     &ty_struct);
-            }
-
-            // Don't be &mut TyS.
-            let ty: Ty<'tcx> = local.arena.alloc(ty_struct);
-            interner.insert(Interned(ty));
-            ty
+                Interned(local.arena.alloc(ty_struct))
+            }).0
         } else {
-            let mut interner = global.type_.borrow_mut();
-            if let Some(&Interned(ty)) = interner.get(&st) {
-                return ty;
-            }
+            global.type_.borrow_mut().intern(st, |st| {
+                let ty_struct = TyS {
+                    sty: st,
+                    flags: flags.flags,
+                    outer_exclusive_binder: flags.outer_exclusive_binder,
+                };
 
-            let ty_struct = TyS {
-                sty: st,
-                flags: flags.flags,
-                outer_exclusive_binder: flags.outer_exclusive_binder,
-            };
+                // This is safe because all the types the ty_struct can point to
+                // already is in the global arena
+                let ty_struct: TyS<'gcx> = unsafe {
+                    mem::transmute(ty_struct)
+                };
 
-            // This is safe because all the types the ty_struct can point to
-            // already is in the global arena
-            let ty_struct: TyS<'gcx> = unsafe {
-                mem::transmute(ty_struct)
-            };
-
-            // Don't be &mut TyS.
-            let ty: Ty<'gcx> = global.arena.alloc(ty_struct);
-            interner.insert(Interned(ty));
-            ty
+                Interned(global.arena.alloc(ty_struct))
+            }).0
         }
     }
 }
@@ -825,12 +814,9 @@ impl<'tcx> CommonTypes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
         let mk = |sty| CtxtInterners::intern_ty(interners, interners, sty);
         let mk_region = |r| {
-            if let Some(r) = interners.region.borrow().get(&r) {
-                return r.0;
-            }
-            let r = interners.arena.alloc(r);
-            interners.region.borrow_mut().insert(Interned(r));
-            &*r
+            interners.region.borrow_mut().intern(r, |r| {
+                Interned(interners.arena.alloc(r))
+            }).0
         };
         CommonTypes {
             bool: mk(Bool),
@@ -950,14 +936,14 @@ pub struct GlobalCtxt<'tcx> {
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
 
-    stability_interner: Lock<FxHashSet<&'tcx attr::Stability>>,
+    stability_interner: Lock<FxHashMap<&'tcx attr::Stability, ()>>,
 
     /// Stores the value of constants (and deduplicates the actual memory)
-    allocation_interner: Lock<FxHashSet<&'tcx Allocation>>,
+    allocation_interner: Lock<FxHashMap<&'tcx Allocation, ()>>,
 
     pub alloc_map: Lock<interpret::AllocMap<'tcx, &'tcx Allocation>>,
 
-    layout_interner: Lock<FxHashSet<&'tcx LayoutDetails>>,
+    layout_interner: Lock<FxHashMap<&'tcx LayoutDetails, ()>>,
 
     /// A general purpose channel to throw data out the back towards LLVM worker
     /// threads.
@@ -1040,16 +1026,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self,
         alloc: Allocation,
     ) -> &'gcx Allocation {
-        let allocs = &mut self.allocation_interner.borrow_mut();
-        if let Some(alloc) = allocs.get(&alloc) {
-            return alloc;
-        }
-
-        let interned = self.global_arenas.const_allocs.alloc(alloc);
-        if let Some(prev) = allocs.replace(interned) { // insert into interner
-            bug!("Tried to overwrite interned Allocation: {:#?}", prev)
-        }
-        interned
+        self.allocation_interner.borrow_mut().intern(alloc, |alloc| {
+            self.global_arenas.const_allocs.alloc(alloc)
+        })
     }
 
     /// Allocates a byte or string literal for `mir::interpret`, read-only
@@ -1061,29 +1040,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn intern_stability(self, stab: attr::Stability) -> &'gcx attr::Stability {
-        let mut stability_interner = self.stability_interner.borrow_mut();
-        if let Some(st) = stability_interner.get(&stab) {
-            return st;
-        }
-
-        let interned = self.global_interners.arena.alloc(stab);
-        if let Some(prev) = stability_interner.replace(interned) {
-            bug!("Tried to overwrite interned Stability: {:?}", prev)
-        }
-        interned
+        self.stability_interner.borrow_mut().intern(stab, |stab| {
+            self.global_interners.arena.alloc(stab)
+        })
     }
 
     pub fn intern_layout(self, layout: LayoutDetails) -> &'gcx LayoutDetails {
-        let mut layout_interner = self.layout_interner.borrow_mut();
-        if let Some(layout) = layout_interner.get(&layout) {
-            return layout;
-        }
-
-        let interned = self.global_arenas.layout.alloc(layout);
-        if let Some(prev) = layout_interner.replace(interned) {
-            bug!("Tried to overwrite interned Layout: {:?}", prev)
-        }
-        interned
+        self.layout_interner.borrow_mut().intern(layout, |layout| {
+            self.global_arenas.layout.alloc(layout)
+        })
     }
 
     /// Returns a range of the start/end indices specified with the
@@ -2193,7 +2158,7 @@ macro_rules! sty_debug_print {
                 };
                 $(let mut $variant = total;)*
 
-                for &Interned(t) in tcx.interners.type_.borrow().iter() {
+                for &Interned(t) in tcx.interners.type_.borrow().keys() {
                     let variant = match t.sty {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
                             ty::Float(..) | ty::Str | ty::Never => continue,
@@ -2251,6 +2216,13 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
 /// An entry in an interner.
 struct Interned<'tcx, T: 'tcx+?Sized>(&'tcx T);
+
+impl<'tcx, T: 'tcx+?Sized> Clone for Interned<'tcx, T> {
+    fn clone(&self) -> Self {
+        Interned(self.0)
+    }
+}
+impl<'tcx, T: 'tcx+?Sized> Copy for Interned<'tcx, T> {}
 
 // NB: An Interned<Ty> compares and hashes as a sty.
 impl<'tcx> PartialEq for Interned<'tcx, TyS<'tcx>> {
@@ -2372,37 +2344,28 @@ macro_rules! intern_method {
                 // determine that all contents are in the global tcx.
                 // See comments on Lift for why we can't use that.
                 if ($keep_in_local_tcx)(&v) {
-                    let mut interner = self.interners.$name.borrow_mut();
-                    if let Some(&Interned(v)) = interner.get(key) {
-                        return v;
-                    }
+                    self.interners.$name.borrow_mut().intern_ref(key, || {
+                        // Make sure we don't end up with inference
+                        // types/regions in the global tcx.
+                        if self.is_global() {
+                            bug!("Attempted to intern `{:?}` which contains \
+                                inference types/regions in the global type context",
+                                v);
+                        }
 
-                    // Make sure we don't end up with inference
-                    // types/regions in the global tcx.
-                    if self.is_global() {
-                        bug!("Attempted to intern `{:?}` which contains \
-                              inference types/regions in the global type context",
-                             v);
-                    }
-
-                    let i = $alloc_method(&self.interners.arena, v);
-                    interner.insert(Interned(i));
-                    i
+                        Interned($alloc_method(&self.interners.arena, v))
+                    }).0
                 } else {
-                    let mut interner = self.global_interners.$name.borrow_mut();
-                    if let Some(&Interned(v)) = interner.get(key) {
-                        return v;
-                    }
-
-                    // This transmutes $alloc<'tcx> to $alloc<'gcx>
-                    let v = unsafe {
-                        mem::transmute(v)
-                    };
-                    let i: &$lt_tcx $ty = $alloc_method(&self.global_interners.arena, v);
-                    // Cast to 'gcx
-                    let i = unsafe { mem::transmute(i) };
-                    interner.insert(Interned(i));
-                    i
+                    self.global_interners.$name.borrow_mut().intern_ref(key, || {
+                        // This transmutes $alloc<'tcx> to $alloc<'gcx>
+                        let v = unsafe {
+                            mem::transmute(v)
+                        };
+                        let i: &$lt_tcx $ty = $alloc_method(&self.global_interners.arena, v);
+                        // Cast to 'gcx
+                        let i = unsafe { mem::transmute(i) };
+                        Interned(i)
+                    }).0
                 }
             }
         }
