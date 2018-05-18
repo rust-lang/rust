@@ -110,11 +110,11 @@ create_config! {
 
     // Options that can change the source code beyond whitespace/blocks (somewhat linty things)
     merge_derives: bool, true, true, "Merge multiple `#[derive(...)]` into a single one";
-    use_try_shorthand: bool, false, false, "Replace uses of the try! macro by the ? shorthand";
+    use_try_shorthand: bool, false, true, "Replace uses of the try! macro by the ? shorthand";
+    use_field_init_shorthand: bool, false, true, "Use field initialization shorthand if possible";
+    force_explicit_abi: bool, true, true, "Always print the abi for extern items";
     condense_wildcard_suffixes: bool, false, false, "Replace strings of _ wildcards by a single .. \
                                               in tuple patterns";
-    force_explicit_abi: bool, true, true, "Always print the abi for extern items";
-    use_field_init_shorthand: bool, false, false, "Use field initialization shorthand if possible";
 
     // Control options (changes the operation of rustfmt, rather than the formatting)
     write_mode: WriteMode, WriteMode::Overwrite, false,
