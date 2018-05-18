@@ -59,9 +59,16 @@ mod rotate;
 mod sort;
 
 #[repr(C)]
-struct Repr<T> {
-    pub data: *const T,
-    pub len: usize,
+union Repr<'a, T: 'a> {
+    rust: &'a [T],
+    rust_mut: &'a mut [T],
+    raw: FatPtr<T>,
+}
+
+#[repr(C)]
+struct FatPtr<T> {
+    data: *const T,
+    len: usize,
 }
 
 //
@@ -119,9 +126,10 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn len(&self) -> usize {
+    #[rustc_const_unstable(feature = "const_slice_len")]
+    pub const fn len(&self) -> usize {
         unsafe {
-            mem::transmute::<&[T], Repr<T>>(self).len
+            Repr { rust: self }.raw.len
         }
     }
 
@@ -135,7 +143,8 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_empty(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_slice_len")]
+    pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
@@ -418,7 +427,8 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn as_ptr(&self) -> *const T {
+    #[rustc_const_unstable(feature = "const_slice_as_ptr")]
+    pub const fn as_ptr(&self) -> *const T {
         self as *const [T] as *const T
     }
 
@@ -3856,8 +3866,8 @@ unsafe impl<'a, T> TrustedRandomAccess for ExactChunksMut<'a, T> {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn from_raw_parts<'a, T>(p: *const T, len: usize) -> &'a [T] {
-    mem::transmute(Repr { data: p, len: len })
+pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
+    Repr { raw: FatPtr { data, len } }.rust
 }
 
 /// Performs the same functionality as `from_raw_parts`, except that a mutable
@@ -3869,8 +3879,8 @@ pub unsafe fn from_raw_parts<'a, T>(p: *const T, len: usize) -> &'a [T] {
 /// `from_raw_parts`.
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
-    mem::transmute(Repr { data: p, len: len })
+pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
+    Repr { raw: FatPtr { data, len} }.rust_mut
 }
 
 /// Converts a reference to T into a slice of length 1 (without copying).
