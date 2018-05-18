@@ -97,6 +97,7 @@ use tokenstream::TokenStream;
 use util::small_vector::SmallVector;
 
 use std::mem;
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -186,7 +187,7 @@ struct MatcherPos<'a> {
     sep: Option<Token>,
     /// The "parent" matcher position if we are in a repetition. That is, the matcher position just
     /// before we enter the sequence.
-    up: Option<Box<MatcherPos<'a>>>,
+    up: Option<MatcherPosHandle<'a>>,
 
     // Specifically used to "unzip" token trees. By "unzip", we mean to unwrap the delimiters from
     // a delimited token tree (e.g. something wrapped in `(` `)`) or to get the contents of a doc
@@ -203,6 +204,49 @@ impl<'a> MatcherPos<'a> {
     fn push_match(&mut self, idx: usize, m: NamedMatch) {
         let matches = Rc::make_mut(&mut self.matches[idx]);
         matches.push(m);
+    }
+}
+
+// Lots of MatcherPos instances are created at runtime. Allocating them on the
+// heap is slow. Furthermore, using SmallVec<MatcherPos> to allocate them all
+// on the stack is also slow, because MatcherPos is quite a large type and
+// instances get moved around a lot between vectors, which requires lots of
+// slow memcpy calls.
+//
+// Therefore, the initial MatcherPos is always allocated on the stack,
+// subsequent ones (of which there aren't that many) are allocated on the heap,
+// and this type is used to encapsulate both cases.
+enum MatcherPosHandle<'a> {
+    Ref(&'a mut MatcherPos<'a>),
+    Box(Box<MatcherPos<'a>>),
+}
+
+impl<'a> Clone for MatcherPosHandle<'a> {
+    // This always produces a new Box.
+    fn clone(&self) -> Self {
+        MatcherPosHandle::Box(match *self {
+            MatcherPosHandle::Ref(ref r) => Box::new((**r).clone()),
+            MatcherPosHandle::Box(ref b) => b.clone(),
+        })
+    }
+}
+
+impl<'a> Deref for MatcherPosHandle<'a> {
+    type Target = MatcherPos<'a>;
+    fn deref(&self) -> &Self::Target {
+        match *self {
+            MatcherPosHandle::Ref(ref r) => r,
+            MatcherPosHandle::Box(ref b) => b,
+        }
+    }
+}
+
+impl<'a> DerefMut for MatcherPosHandle<'a> {
+    fn deref_mut(&mut self) -> &mut MatcherPos<'a> {
+        match *self {
+            MatcherPosHandle::Ref(ref mut r) => r,
+            MatcherPosHandle::Box(ref mut b) => b,
+        }
     }
 }
 
@@ -241,10 +285,10 @@ fn create_matches(len: usize) -> Vec<Rc<Vec<NamedMatch>>> {
 
 /// Generate the top-level matcher position in which the "dot" is before the first token of the
 /// matcher `ms` and we are going to start matching at position `lo` in the source.
-fn initial_matcher_pos(ms: &[TokenTree], lo: BytePos) -> Box<MatcherPos> {
+fn initial_matcher_pos(ms: &[TokenTree], lo: BytePos) -> MatcherPos {
     let match_idx_hi = count_names(ms);
     let matches = create_matches(match_idx_hi);
-    Box::new(MatcherPos {
+    MatcherPos {
         // Start with the top level matcher given to us
         top_elts: TtSeq(ms), // "elts" is an abbr. for "elements"
         // The "dot" is before the first token of the matcher
@@ -267,7 +311,7 @@ fn initial_matcher_pos(ms: &[TokenTree], lo: BytePos) -> Box<MatcherPos> {
         seq_op: None,
         sep: None,
         up: None,
-    })
+    }
 }
 
 /// `NamedMatch` is a pattern-match result for a single `token::MATCH_NONTERMINAL`:
@@ -396,10 +440,10 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 /// A `ParseResult`. Note that matches are kept track of through the items generated.
 fn inner_parse_loop<'a>(
     sess: &ParseSess,
-    cur_items: &mut SmallVector<Box<MatcherPos<'a>>>,
-    next_items: &mut Vec<Box<MatcherPos<'a>>>,
-    eof_items: &mut SmallVector<Box<MatcherPos<'a>>>,
-    bb_items: &mut SmallVector<Box<MatcherPos<'a>>>,
+    cur_items: &mut SmallVector<MatcherPosHandle<'a>>,
+    next_items: &mut Vec<MatcherPosHandle<'a>>,
+    eof_items: &mut SmallVector<MatcherPosHandle<'a>>,
+    bb_items: &mut SmallVector<MatcherPosHandle<'a>>,
     token: &Token,
     span: syntax_pos::Span,
 ) -> ParseResult<()> {
@@ -502,7 +546,7 @@ fn inner_parse_loop<'a>(
                     }
 
                     let matches = create_matches(item.matches.len());
-                    cur_items.push(Box::new(MatcherPos {
+                    cur_items.push(MatcherPosHandle::Box(Box::new(MatcherPos {
                         stack: vec![],
                         sep: seq.separator.clone(),
                         seq_op: Some(seq.op),
@@ -514,7 +558,7 @@ fn inner_parse_loop<'a>(
                         up: Some(item),
                         sp_lo: sp.lo(),
                         top_elts: Tt(TokenTree::Sequence(sp, seq)),
-                    }));
+                    })));
                 }
 
                 // We need to match a metavar (but the identifier is invalid)... this is an error
@@ -596,7 +640,11 @@ pub fn parse(
     // processes all of these possible matcher positions and produces posible next positions into
     // `next_items`. After some post-processing, the contents of `next_items` replenish `cur_items`
     // and we start over again.
-    let mut cur_items = SmallVector::one(initial_matcher_pos(ms, parser.span.lo()));
+    //
+    // This MatcherPos instance is allocated on the stack. All others -- and
+    // there are frequently *no* others! -- are allocated on the heap.
+    let mut initial = initial_matcher_pos(ms, parser.span.lo());
+    let mut cur_items = SmallVector::one(MatcherPosHandle::Ref(&mut initial));
     let mut next_items = Vec::new();
 
     loop {
