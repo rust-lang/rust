@@ -20,6 +20,11 @@ struct SoulHistory {
     endless_and_singing: bool
 }
 
+struct LovelyAmbition {
+    lips: usize,
+    fire: usize
+}
+
 #[derive(Clone, Copy)]
 enum Large {
     Suit { case: () }
@@ -44,6 +49,10 @@ fn main() {
                          endless_and_singing: true } = who_from_the_womb_remembered {
         hours_are_suns = false;
     }
+
+    let the_spirit = LovelyAmbition { lips: 1, fire: 2 };
+    let LovelyAmbition { lips, fire } = the_spirit;
+    println!("{}", lips);
 
     let bag = Large::Suit {
         case: ()
