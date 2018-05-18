@@ -118,7 +118,8 @@ pub fn format_expr(
         | ast::ExprKind::While(..)
         | ast::ExprKind::WhileLet(..) => to_control_flow(expr, expr_type)
             .and_then(|control_flow| control_flow.rewrite(context, shape)),
-        ast::ExprKind::Block(ref block) => {
+        // FIXME(topecongiro): Handle label on a block (#2722).
+        ast::ExprKind::Block(ref block, _) => {
             match expr_type {
                 ExprType::Statement => {
                     if is_unsafe_block(block) {
@@ -880,7 +881,7 @@ impl<'a> ControlFlow<'a> {
         let else_block = self.else_block?;
         let fixed_cost = self.keyword.len() + "  {  } else {  }".len();
 
-        if let ast::ExprKind::Block(ref else_node) = else_block.node {
+        if let ast::ExprKind::Block(ref else_node, _) = else_block.node {
             if !is_simple_block(self.block, None, context.codemap)
                 || !is_simple_block(else_node, None, context.codemap)
                 || pat_expr_str.contains('\n')
