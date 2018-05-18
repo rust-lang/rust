@@ -126,7 +126,7 @@ completed without error (whether or not changes were made).
 ## Checking style on a CI server
 
 To keep your code base consistently formatted, it can be helpful to fail the CI build
-when a pull request contains unformatted code. Using `--write-mode=check` instructs
+when a pull request contains unformatted code. Using `--check` instructs
 rustfmt to exit with an error code if the input is not formatted correctly.
 It will also print any found differences.
 
