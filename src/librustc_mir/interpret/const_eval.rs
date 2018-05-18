@@ -526,9 +526,18 @@ pub fn const_eval_provider<'a, 'tcx>(
     let def_id = cid.instance.def.def_id();
 
     if let Some(id) = tcx.hir.as_local_node_id(def_id) {
-        let tables = tcx.typeck_tables_of(def_id);
         let span = tcx.def_span(def_id);
+        
+        // Closures in constant position can hit this in type collection.
+        if !tcx.has_typeck_tables(def_id) {
+            return Err(ConstEvalErr {
+                kind: Lrc::new(TypeckError),
+                span,
+            });
+        }
 
+        let tables = tcx.typeck_tables_of(def_id);
+    
         // Do match-check before building MIR
         if tcx.check_match(def_id).is_err() {
             return Err(ConstEvalErr {
