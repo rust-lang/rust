@@ -11,6 +11,10 @@
 // ignore-emscripten
 // ignore-android
 
+// FIXME: this test fails on arm-android because the NDK version 14 is too old.
+// It needs at least version 18. We disable it on all android build bots because
+// there is no way in compile-test to disable it for an (arch,os) pair.
+
 // Test that the simd floating-point math intrinsics produce correct results.
 
 #![feature(repr_simd, platform_intrinsics)]
