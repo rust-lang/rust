@@ -47,7 +47,7 @@ mod printing;
 pub mod gnu;
 
 pub use self::printing::{foreach_symbol_fileline, resolve_symname};
-use self::printing::{load_printing_fns_ex, load_printing_fns_64};
+use self::printing::{load_printing_fns_64, load_printing_fns_ex};
 
 pub fn unwind_backtrace(frames: &mut [Frame]) -> io::Result<(usize, BacktraceContext)> {
     let dbghelp = DynamicLibrary::open("dbghelp.dll")?;
@@ -56,20 +56,15 @@ pub fn unwind_backtrace(frames: &mut [Frame]) -> io::Result<(usize, BacktraceCon
     let SymInitialize = sym!(dbghelp, "SymInitialize", SymInitializeFn)?;
     let SymCleanup = sym!(dbghelp, "SymCleanup", SymCleanupFn)?;
 
-
     // StackWalkEx might not be present and we'll fall back to StackWalk64
     let sw_var = match sym!(dbghelp, "StackWalkEx", StackWalkExFn) {
-         Ok(StackWalkEx) =>
-            StackWalkVariant::StackWalkEx(
-                StackWalkEx,
-                load_printing_fns_ex(&dbghelp)?,
-            ),
+        Ok(StackWalkEx) => {
+            StackWalkVariant::StackWalkEx(StackWalkEx, load_printing_fns_ex(&dbghelp)?)
+        }
         Err(e) => match sym!(dbghelp, "StackWalk64", StackWalk64Fn) {
-            Ok(StackWalk64) =>
-                StackWalkVariant::StackWalk64(
-                    StackWalk64,
-                    load_printing_fns_64(&dbghelp)?,
-                ),
+            Ok(StackWalk64) => {
+                StackWalkVariant::StackWalk64(StackWalk64, load_printing_fns_64(&dbghelp)?)
+            }
             Err(..) => return Err(e),
         },
     };
@@ -92,101 +87,38 @@ pub fn unwind_backtrace(frames: &mut [Frame]) -> io::Result<(usize, BacktraceCon
 
     // And now that we're done with all the setup, do the stack walking!
     match backtrace_context.StackWalkVariant {
-        StackWalkVariant::StackWalkEx(f, _) => set_frames_ex(f, frames, backtrace_context, process),
-        StackWalkVariant::StackWalk64(f, _) => set_frames_64(f, frames, backtrace_context, process),
+        StackWalkVariant::StackWalkEx(StackWalkEx, _) => {
+            set_frames(StackWalkEx, frames).map(|i| (i, backtrace_context))
+        }
+
+        StackWalkVariant::StackWalk64(StackWalk64, _) => {
+            set_frames(StackWalk64, frames).map(|i| (i, backtrace_context))
+        }
     }
 }
 
-fn set_frames_ex(
-    StackWalkEx: StackWalkExFn,
-    frames: &mut [Frame],
-    backtrace_context: BacktraceContext,
-    process: c::HANDLE,
-) -> io::Result<(usize, BacktraceContext)> {
+fn set_frames<W: StackWalker>(StackWalk: W, frames: &mut [Frame]) -> io::Result<usize> {
+    let process = unsafe { c::GetCurrentProcess() };
     let thread = unsafe { c::GetCurrentProcess() };
     let mut context: c::CONTEXT = unsafe { mem::zeroed() };
     unsafe { c::RtlCaptureContext(&mut context) };
-
-    let mut frame: c::STACKFRAME_EX = unsafe { mem::zeroed() };
-    frame.StackFrameSize = mem::size_of_val(&frame) as c::DWORD;
-    let image = init_frame_ex(&mut frame, &context);
+    let mut frame = W::Item::new();
+    let image = frame.init(&context);
 
     let mut i = 0;
-    unsafe {
-        while i < frames.len()
-            && StackWalkEx(
-                image,
-                process,
-                thread,
-                &mut frame,
-                &mut context,
-                ptr::null_mut(),
-                ptr::null_mut(),
-                ptr::null_mut(),
-                ptr::null_mut(),
-                0,
-            ) == c::TRUE
-        {
-            let addr = (frame.AddrPC.Offset - 1) as *const u8;
+    while i < frames.len()
+        && StackWalk.walk(image, process, thread, &mut frame, &mut context) == c::TRUE
+    {
+        let addr = frame.get_addr();
+        frames[i] = Frame {
+            symbol_addr: addr,
+            exact_position: addr,
+            inline_context: 0,
+        };
 
-            frames[i] = Frame {
-                symbol_addr: addr,
-                exact_position: addr,
-                inline_context: frame.InlineFrameContext,
-            };
-            i += 1;
-        }
+        i += 1
     }
-
-    Ok((i, backtrace_context))
-}
-
-fn set_frames_64(
-    StackWalk64: StackWalk64Fn,
-    frames: &mut [Frame],
-    backtrace_context: BacktraceContext,
-    process: c::HANDLE,
-) -> io::Result<(usize, BacktraceContext)> {
-    let thread = unsafe { c::GetCurrentProcess() };
-    let mut context: c::CONTEXT = unsafe { mem::zeroed() };
-    unsafe { c::RtlCaptureContext(&mut context) };
-
-    let mut frame: c::STACKFRAME64 = unsafe { mem::zeroed() };
-    let image = init_frame_64(&mut frame, &context);
-
-    // Start from -1 to avoid printing this stack frame, which will
-    // always be exactly the same.
-    let mut i = 0;
-    unsafe {
-        while i < frames.len()
-            && StackWalk64(
-                image,
-                process,
-                thread,
-                &mut frame,
-                &mut context,
-                ptr::null_mut(),
-                ptr::null_mut(),
-                ptr::null_mut(),
-                ptr::null_mut(),
-            ) == c::TRUE
-        {
-            let addr = frame.AddrPC.Offset;
-            if addr == frame.AddrReturn.Offset || addr == 0 || frame.AddrReturn.Offset == 0
-            {
-                break;
-            }
-
-            frames[i] = Frame {
-                symbol_addr: (addr - 1) as *const u8,
-                exact_position: (addr - 1) as *const u8,
-                inline_context: 0,
-            };
-            i += 1;
-        }
-    }
-
-    Ok((i, backtrace_context))
+    Ok(i)
 }
 
 type SymInitializeFn = unsafe extern "system" fn(c::HANDLE, *mut c_void, c::BOOL) -> c::BOOL;
@@ -217,55 +149,137 @@ type StackWalk64Fn = unsafe extern "system" fn(
     *mut c_void,
 ) -> c::BOOL;
 
-#[cfg(target_arch = "x86")]
-fn init_frame_ex(frame: &mut c::STACKFRAME_EX, ctx: &c::CONTEXT) -> c::DWORD {
-    frame.AddrPC.Offset = ctx.Eip as u64;
-    frame.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    frame.AddrStack.Offset = ctx.Esp as u64;
-    frame.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    frame.AddrFrame.Offset = ctx.Ebp as u64;
-    frame.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    c::IMAGE_FILE_MACHINE_I386
+trait StackWalker {
+    type Item: StackFrame;
+
+    fn walk(&self, c::DWORD, c::HANDLE, c::HANDLE, &mut Self::Item, &mut c::CONTEXT) -> c::BOOL;
 }
 
-#[cfg(target_arch = "x86_64")]
-fn init_frame_ex(frame: &mut c::STACKFRAME_EX, ctx: &c::CONTEXT) -> c::DWORD {
-    frame.AddrPC.Offset = ctx.Rip as u64;
-    frame.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    frame.AddrStack.Offset = ctx.Rsp as u64;
-    frame.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    frame.AddrFrame.Offset = ctx.Rbp as u64;
-    frame.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    c::IMAGE_FILE_MACHINE_AMD64
+impl StackWalker for StackWalkExFn {
+    type Item = c::STACKFRAME_EX;
+    fn walk(
+        &self,
+        image: c::DWORD,
+        process: c::HANDLE,
+        thread: c::HANDLE,
+        frame: &mut Self::Item,
+        context: &mut c::CONTEXT,
+    ) -> c::BOOL {
+        unsafe {
+            self(
+                image,
+                process,
+                thread,
+                frame,
+                context,
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                0,
+            )
+        }
+    }
 }
 
-#[cfg(target_arch = "x86")]
-fn init_frame_64(frame: &mut c::STACKFRAME64, ctx: &c::CONTEXT) -> c::DWORD {
-    frame.AddrPC.Offset = ctx.Eip as u64;
-    frame.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    frame.AddrStack.Offset = ctx.Esp as u64;
-    frame.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    frame.AddrFrame.Offset = ctx.Ebp as u64;
-    frame.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    c::IMAGE_FILE_MACHINE_I386
+impl StackWalker for StackWalk64Fn {
+    type Item = c::STACKFRAME64;
+    fn walk(
+        &self,
+        image: c::DWORD,
+        process: c::HANDLE,
+        thread: c::HANDLE,
+        frame: &mut Self::Item,
+        context: &mut c::CONTEXT,
+    ) -> c::BOOL {
+        unsafe {
+            self(
+                image,
+                process,
+                thread,
+                frame,
+                context,
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+            )
+        }
+    }
 }
 
-#[cfg(target_arch = "x86_64")]
-fn init_frame_64(frame: &mut c::STACKFRAME64, ctx: &c::CONTEXT) -> c::DWORD {
-    frame.AddrPC.Offset = ctx.Rip as u64;
-    frame.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    frame.AddrStack.Offset = ctx.Rsp as u64;
-    frame.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    frame.AddrFrame.Offset = ctx.Rbp as u64;
-    frame.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    c::IMAGE_FILE_MACHINE_AMD64
+trait StackFrame {
+    fn new() -> Self;
+    fn init(&mut self, ctx: &c::CONTEXT) -> c::DWORD;
+    fn get_addr(&self) -> *const u8;
+}
+
+impl StackFrame for c::STACKFRAME_EX {
+    fn new() -> c::STACKFRAME_EX {
+        unsafe { mem::zeroed() }
+    }
+
+    #[cfg(target_arch = "x86")]
+    fn init(&mut self, ctx: &c::CONTEXT) -> c::DWORD {
+        self.AddrPC.Offset = ctx.Eip as u64;
+        self.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrStack.Offset = ctx.Esp as u64;
+        self.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrFrame.Offset = ctx.Ebp as u64;
+        self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        c::IMAGE_FILE_MACHINE_I386
+    }
+    #[cfg(target_arch = "x86_64")]
+    fn init(&mut self, ctx: &c::CONTEXT) -> c::DWORD {
+        self.AddrPC.Offset = ctx.Rip as u64;
+        self.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrStack.Offset = ctx.Rsp as u64;
+        self.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrFrame.Offset = ctx.Rbp as u64;
+        self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        c::IMAGE_FILE_MACHINE_AMD64
+    }
+
+    fn get_addr(&self) -> *const u8 {
+        (self.AddrPC.Offset - 1) as *const u8
+    }
+}
+
+impl StackFrame for c::STACKFRAME64 {
+    fn new() -> c::STACKFRAME64 {
+        unsafe { mem::zeroed() }
+    }
+
+    #[cfg(target_arch = "x86")]
+    fn init(&mut self, ctx: &c::CONTEXT) -> c::DWORD {
+        self.AddrPC.Offset = ctx.Eip as u64;
+        self.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrStack.Offset = ctx.Esp as u64;
+        self.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrFrame.Offset = ctx.Ebp as u64;
+        self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        c::IMAGE_FILE_MACHINE_I386
+    }
+    #[cfg(target_arch = "x86_64")]
+    fn init(&mut self, ctx: &c::CONTEXT) -> c::DWORD {
+        self.AddrPC.Offset = ctx.Rip as u64;
+        self.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrStack.Offset = ctx.Rsp as u64;
+        self.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        self.AddrFrame.Offset = ctx.Rbp as u64;
+        self.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
+        c::IMAGE_FILE_MACHINE_AMD64
+    }
+
+    fn get_addr(&self) -> *const u8 {
+        (self.AddrPC.Offset - 1) as *const u8
+    }
 }
 
 enum StackWalkVariant {
     StackWalkEx(StackWalkExFn, printing::PrintingFnsEx),
     StackWalk64(StackWalk64Fn, printing::PrintingFns64),
 }
-
 
 pub struct BacktraceContext {
     handle: c::HANDLE,
