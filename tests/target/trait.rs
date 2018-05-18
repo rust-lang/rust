@@ -133,3 +133,5 @@ trait FooBar = Foo
 
 // #2637
 auto trait Example {}
+pub auto trait PubExample {}
+pub unsafe auto trait PubUnsafeExample {}

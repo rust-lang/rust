@@ -963,9 +963,9 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         let mut result = String::with_capacity(128);
         let header = format!(
             "{}{}{}trait ",
-            format_auto(is_auto),
             format_visibility(&item.vis),
             format_unsafety(unsafety),
+            format_auto(is_auto),
         );
         result.push_str(&header);
 
