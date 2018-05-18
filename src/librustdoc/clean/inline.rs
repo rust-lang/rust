@@ -302,6 +302,14 @@ pub fn build_impls(cx: &DocContext, did: DefId, auto_traits: bool) -> Vec<clean:
     for def_id in primitive_impls.iter().filter_map(|&def_id| def_id) {
         if !def_id.is_local() {
             build_impl(cx, def_id, &mut impls);
+
+            let auto_impls = get_auto_traits_with_def_id(cx, def_id);
+            let mut renderinfo = cx.renderinfo.borrow_mut();
+
+            let new_impls: Vec<clean::Item> = auto_impls.into_iter()
+                .filter(|i| renderinfo.inlined.insert(i.def_id)).collect();
+
+            impls.extend(new_impls);
         }
     }
 

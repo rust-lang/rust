@@ -35,10 +35,29 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                 AdtKind::Enum => Def::Enum,
                 AdtKind::Union => Def::Union,
             }
-            _ => panic!("Unexpected type {:?}", def_id),
+            ty::TyInt(_) |
+            ty::TyUint(_) |
+            ty::TyFloat(_) |
+            ty::TyStr |
+            ty::TyBool |
+            ty::TyChar => return self.get_auto_trait_impls(def_id, &move |_: DefId| {
+                match ty.sty {
+                    ty::TyInt(x) => Def::PrimTy(hir::TyInt(x)),
+                    ty::TyUint(x) => Def::PrimTy(hir::TyUint(x)),
+                    ty::TyFloat(x) => Def::PrimTy(hir::TyFloat(x)),
+                    ty::TyStr => Def::PrimTy(hir::TyStr),
+                    ty::TyBool => Def::PrimTy(hir::TyBool),
+                    ty::TyChar => Def::PrimTy(hir::TyChar),
+                    _ => unreachable!(),
+                }
+            }, None),
+            _ => {
+                debug!("Unexpected type {:?}", def_id);
+                return Vec::new()
+            }
         };
 
-        self.get_auto_trait_impls(def_id, def_ctor, None)
+        self.get_auto_trait_impls(def_id, &def_ctor, None)
     }
 
     pub fn get_with_node_id(&self, id: ast::NodeId, name: String) -> Vec<Item> {
@@ -52,15 +71,16 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             _ => panic!("Unexpected type {:?} {:?}", item, id),
         };
 
-        self.get_auto_trait_impls(did, def_ctor, Some(name))
+        self.get_auto_trait_impls(did, &def_ctor, Some(name))
     }
 
-    pub fn get_auto_trait_impls(
+    pub fn get_auto_trait_impls<F>(
         &self,
         def_id: DefId,
-        def_ctor: fn(DefId) -> Def,
+        def_ctor: &F,
         name: Option<String>,
-    ) -> Vec<Item> {
+    ) -> Vec<Item>
+    where F: Fn(DefId) -> Def {
         if self.cx
             .tcx
             .get_attrs(def_id)
@@ -68,9 +88,9 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             .has_word("hidden")
         {
             debug!(
-                "get_auto_trait_impls(def_id={:?}, def_ctor={:?}): item has doc('hidden'), \
+                "get_auto_trait_impls(def_id={:?}, def_ctor=...): item has doc('hidden'), \
                  aborting",
-                def_id, def_ctor
+                def_id
             );
             return Vec::new();
         }
@@ -79,8 +99,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         let generics = self.cx.tcx.generics_of(def_id);
 
         debug!(
-            "get_auto_trait_impls(def_id={:?}, def_ctor={:?}, generics={:?}",
-            def_id, def_ctor, generics
+            "get_auto_trait_impls(def_id={:?}, def_ctor=..., generics={:?}",
+            def_id, generics
         );
         let auto_traits: Vec<_> = self.cx
             .send_trait
@@ -110,23 +130,24 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         auto_traits
     }
 
-    fn get_auto_trait_impl_for(
+    fn get_auto_trait_impl_for<F>(
         &self,
         def_id: DefId,
         name: Option<String>,
         generics: ty::Generics,
-        def_ctor: fn(DefId) -> Def,
+        def_ctor: &F,
         trait_def_id: DefId,
-    ) -> Option<Item> {
+    ) -> Option<Item>
+    where F: Fn(DefId) -> Def {
         if !self.cx
             .generated_synthetics
             .borrow_mut()
             .insert((def_id, trait_def_id))
         {
             debug!(
-                "get_auto_trait_impl_for(def_id={:?}, generics={:?}, def_ctor={:?}, \
+                "get_auto_trait_impl_for(def_id={:?}, generics={:?}, def_ctor=..., \
                  trait_def_id={:?}): already generated, aborting",
-                def_id, generics, def_ctor, trait_def_id
+                def_id, generics, trait_def_id
             );
             return None;
         }
