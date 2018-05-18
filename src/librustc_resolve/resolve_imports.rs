@@ -55,12 +55,36 @@ pub enum ImportDirectiveSubclass<'a> {
 /// One import directive.
 #[derive(Debug,Clone)]
 pub struct ImportDirective<'a> {
+    /// The id of the `extern crate`, `UseTree` etc that imported this `ImportDirective`.
+    ///
+    /// In the case where the `ImportDirective` was expanded from a "nested" use tree,
+    /// this id is the id of the leaf tree. For example:
+    ///
+    /// ```rust,ignore
+    /// use foo::bar::{a, b}
+    /// ```
+    ///
+    /// If this is the import directive for `foo::bar::a`, we would have the id of the `UseTree`
+    /// for `a` in this field.
     pub id: NodeId,
+
+    /// The `id` of the "root" use-kind -- this is always the same as
+    /// `id` except in the case of "nested" use trees, in which case
+    /// it will be the `id` of the root use tree. e.g., in the example
+    /// from `id`, this would be the id of the `use foo::bar`
+    /// `UseTree` node.
+    pub root_id: NodeId,
+
+    /// Span of this use tree.
+    pub span: Span,
+
+    /// Span of the *root* use tree (see `root_id`).
+    pub root_span: Span,
+
     pub parent: Module<'a>,
     pub module_path: Vec<Ident>,
     pub imported_module: Cell<Option<Module<'a>>>, // the resolution of `module_path`
     pub subclass: ImportDirectiveSubclass<'a>,
-    pub span: Span,
     pub vis: Cell<ty::Visibility>,
     pub expansion: Mark,
     pub used: Cell<bool>,
@@ -296,6 +320,8 @@ impl<'a> Resolver<'a> {
                                 subclass: ImportDirectiveSubclass<'a>,
                                 span: Span,
                                 id: NodeId,
+                                root_span: Span,
+                                root_id: NodeId,
                                 vis: ty::Visibility,
                                 expansion: Mark) {
         let current_module = self.current_module;
@@ -306,6 +332,8 @@ impl<'a> Resolver<'a> {
             subclass,
             span,
             id,
+            root_span,
+            root_id,
             vis: Cell::new(vis),
             expansion,
             used: Cell::new(false),
