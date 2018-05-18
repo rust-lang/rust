@@ -498,12 +498,7 @@ fn rewrite_method_call(
             .map(|ty| ty.rewrite(context, shape))
             .collect::<Option<Vec<_>>>()?;
 
-        let type_str =
-            if context.config.spaces_within_parens_and_brackets() && !type_list.is_empty() {
-                format!("::< {} >", type_list.join(", "))
-            } else {
-                format!("::<{}>", type_list.join(", "))
-            };
+        let type_str = format!("::<{}>", type_list.join(", "));
 
         (types.last().unwrap().span.hi(), type_str)
     };

@@ -23,9 +23,7 @@ use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListIte
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;
-use utils::{
-    count_newlines, extra_offset, first_line_width, last_line_width, mk_sp, paren_overhead,
-};
+use utils::{count_newlines, extra_offset, first_line_width, last_line_width, mk_sp};
 
 use std::cmp::min;
 
@@ -140,26 +138,16 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         force_separator_tactic: Option<SeparatorTactic>,
         custom_delims: Option<(&'a str, &'a str)>,
     ) -> Context<'a, T> {
-        // 2 = `( `, 1 = `(`
-        let paren_overhead = if context.config.spaces_within_parens_and_brackets() {
-            2
-        } else {
-            1
-        };
         let used_width = extra_offset(ident, shape);
-        let one_line_width = shape.width.saturating_sub(used_width + 2 * paren_overhead);
+        // 1 = `()`
+        let one_line_width = shape.width.saturating_sub(used_width + 2);
 
         // 1 = "(" or ")"
         let one_line_shape = shape
             .offset_left(last_line_width(ident) + 1)
             .and_then(|shape| shape.sub_width(1))
             .unwrap_or(Shape { width: 0, ..shape });
-        let nested_shape = shape_from_indent_style(
-            context,
-            shape,
-            used_width + 2 * paren_overhead,
-            used_width + paren_overhead,
-        );
+        let nested_shape = shape_from_indent_style(context, shape, used_width + 2, used_width + 1);
         Context {
             context,
             items,
@@ -417,12 +405,13 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
             Some((lhs, rhs)) => (lhs, rhs),
             _ => (self.prefix, self.suffix),
         };
-        let paren_overhead = paren_overhead(self.context);
-        let fits_one_line = items_str.len() + paren_overhead <= shape.width;
+
+        // 2 = `()`
+        let fits_one_line = items_str.len() + 2 <= shape.width;
         let extend_width = if items_str.is_empty() {
-            paren_overhead
+            2
         } else {
-            first_line_width(items_str) + (paren_overhead / 2)
+            first_line_width(items_str) + 1
         };
         let nested_indent_str = self
             .nested_shape
@@ -441,13 +430,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
             || (self.context.inside_macro() && !items_str.contains('\n') && fits_one_line)
             || (is_extendable && extend_width <= shape.width)
         {
-            if self.context.config.spaces_within_parens_and_brackets() && !items_str.is_empty() {
-                result.push(' ');
-                result.push_str(items_str);
-                result.push(' ');
-            } else {
-                result.push_str(items_str);
-            }
+            result.push_str(items_str);
         } else {
             if !items_str.is_empty() {
                 result.push_str(&nested_indent_str);

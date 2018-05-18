@@ -156,12 +156,7 @@ impl Rewrite for Pat {
                 let pats = pats?;
 
                 // Unwrap all the sub-strings and join them with commas.
-                let result = if context.config.spaces_within_parens_and_brackets() {
-                    format!("[ {} ]", pats.join(", "))
-                } else {
-                    format!("[{}]", pats.join(", "))
-                };
-                Some(result)
+                Some(format!("[{}]", pats.join(", ")))
             }
             PatKind::Struct(ref path, ref fields, ellipsis) => {
                 rewrite_struct_pat(path, fields, ellipsis, self.span, context, shape)

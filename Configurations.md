@@ -1589,52 +1589,6 @@ fn main() {
 }
 ```
 
-## `spaces_within_parens_and_brackets`
-
-Put spaces within non-empty generic arguments, parentheses, and square brackets
-
-- **Default value**: `false`
-- **Possible values**: `true`, `false`
-- **Stable**: No
-
-#### `false` (default):
-
-```rust
-// generic arguments
-fn lorem<T: Eq>(t: T) {
-    // body
-}
-
-// non-empty parentheses
-fn lorem<T: Eq>(t: T) {
-    let lorem = (ipsum, dolor);
-}
-
-// non-empty square brackets
-fn lorem<T: Eq>(t: T) {
-    let lorem: [usize; 2] = [ipsum, dolor];
-}
-```
-
-#### `true`:
-
-```rust
-// generic arguments
-fn lorem< T: Eq >( t: T ) {
-    // body
-}
-
-// non-empty parentheses
-fn lorem< T: Eq >( t: T ) {
-    let lorem = ( ipsum, dolor );
-}
-
-// non-empty square brackets
-fn lorem< T: Eq >( t: T ) {
-    let lorem: [ usize; 2 ] = [ ipsum, dolor ];
-}
-```
-
 ## `struct_lit_single_line`
 
 Put small struct literals on a single line

@@ -39,8 +39,8 @@ use string::{rewrite_string, StringFormat};
 use types::{can_be_overflowed_type, rewrite_path, PathContext};
 use utils::{
     colon_spaces, contains_skip, count_newlines, first_line_width, inner_attributes,
-    last_line_extendable, last_line_width, mk_sp, outer_attributes, paren_overhead,
-    ptr_vec_to_ref_vec, semicolon_for_stmt, wrap_str,
+    last_line_extendable, last_line_width, mk_sp, outer_attributes, ptr_vec_to_ref_vec,
+    semicolon_for_stmt, wrap_str,
 };
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
@@ -223,21 +223,14 @@ pub fn format_expr(
         ast::ExprKind::Index(ref expr, ref index) => {
             rewrite_index(&**expr, &**index, context, shape)
         }
-        ast::ExprKind::Repeat(ref expr, ref repeats) => {
-            let (lbr, rbr) = if context.config.spaces_within_parens_and_brackets() {
-                ("[ ", " ]")
-            } else {
-                ("[", "]")
-            };
-            rewrite_pair(
-                &**expr,
-                &**repeats,
-                PairParts::new(lbr, "; ", rbr),
-                context,
-                shape,
-                SeparatorPlace::Back,
-            )
-        }
+        ast::ExprKind::Repeat(ref expr, ref repeats) => rewrite_pair(
+            &**expr,
+            &**repeats,
+            PairParts::new("[", "; ", "]"),
+            context,
+            shape,
+            SeparatorPlace::Back,
+        ),
         ast::ExprKind::Range(ref lhs, ref rhs, limits) => {
             let delim = match limits {
                 ast::RangeLimits::HalfOpen => "..",
@@ -1581,27 +1574,15 @@ fn rewrite_paren(
         break;
     }
 
-    let total_paren_overhead = paren_overhead(context);
-    let paren_overhead = total_paren_overhead / 2;
-    let sub_shape = shape
-        .offset_left(paren_overhead)
-        .and_then(|s| s.sub_width(paren_overhead))?;
-
-    let paren_wrapper = |s: &str| {
-        if context.config.spaces_within_parens_and_brackets() && !s.is_empty() {
-            format!("( {}{}{} )", pre_comment, s, post_comment)
-        } else {
-            format!("({}{}{})", pre_comment, s, post_comment)
-        }
-    };
+    // 1 `(`
+    let sub_shape = shape.offset_left(1).and_then(|s| s.sub_width(1))?;
 
     let subexpr_str = subexpr.rewrite(context, sub_shape)?;
     debug!("rewrite_paren, subexpr_str: `{:?}`", subexpr_str);
 
-    if subexpr_str.contains('\n')
-        || first_line_width(&subexpr_str) + total_paren_overhead <= shape.width
-    {
-        Some(paren_wrapper(&subexpr_str))
+    // 2 = `()`
+    if subexpr_str.contains('\n') || first_line_width(&subexpr_str) + 2 <= shape.width {
+        Some(format!("({}{}{})", pre_comment, &subexpr_str, post_comment))
     } else {
         None
     }
@@ -1615,54 +1596,44 @@ fn rewrite_index(
 ) -> Option<String> {
     let expr_str = expr.rewrite(context, shape)?;
 
-    let (lbr, rbr) = if context.config.spaces_within_parens_and_brackets() {
-        ("[ ", " ]")
-    } else {
-        ("[", "]")
-    };
-
-    let offset = last_line_width(&expr_str) + lbr.len();
+    let offset = last_line_width(&expr_str) + 1;
     let rhs_overhead = shape.rhs_overhead(context.config);
     let index_shape = if expr_str.contains('\n') {
         Shape::legacy(context.config.max_width(), shape.indent)
             .offset_left(offset)
-            .and_then(|shape| shape.sub_width(rbr.len() + rhs_overhead))
+            .and_then(|shape| shape.sub_width(1 + rhs_overhead))
     } else {
-        shape.visual_indent(offset).sub_width(offset + rbr.len())
+        shape.visual_indent(offset).sub_width(offset + 1)
     };
     let orig_index_rw = index_shape.and_then(|s| index.rewrite(context, s));
 
     // Return if index fits in a single line.
     match orig_index_rw {
         Some(ref index_str) if !index_str.contains('\n') => {
-            return Some(format!("{}{}{}{}", expr_str, lbr, index_str, rbr));
+            return Some(format!("{}[{}]", expr_str, index_str));
         }
         _ => (),
     }
 
     // Try putting index on the next line and see if it fits in a single line.
     let indent = shape.indent.block_indent(context.config);
-    let index_shape = Shape::indented(indent, context.config).offset_left(lbr.len())?;
-    let index_shape = index_shape.sub_width(rbr.len() + rhs_overhead)?;
+    let index_shape = Shape::indented(indent, context.config).offset_left(1)?;
+    let index_shape = index_shape.sub_width(1 + rhs_overhead)?;
     let new_index_rw = index.rewrite(context, index_shape);
     match (orig_index_rw, new_index_rw) {
         (_, Some(ref new_index_str)) if !new_index_str.contains('\n') => Some(format!(
-            "{}{}{}{}{}",
+            "{}{}[{}]",
             expr_str,
             indent.to_string_with_newline(context.config),
-            lbr,
             new_index_str,
-            rbr
         )),
         (None, Some(ref new_index_str)) => Some(format!(
-            "{}{}{}{}{}",
+            "{}{}[{}]",
             expr_str,
             indent.to_string_with_newline(context.config),
-            lbr,
             new_index_str,
-            rbr
         )),
-        (Some(ref index_str), _) => Some(format!("{}{}{}{}", expr_str, lbr, index_str, rbr)),
+        (Some(ref index_str), _) => Some(format!("{}[{}]", expr_str, index_str)),
         _ => None,
     }
 }
@@ -1877,13 +1848,7 @@ where
             .next()
             .unwrap()
             .rewrite(context, nested_shape)
-            .map(|s| {
-                if context.config.spaces_within_parens_and_brackets() {
-                    format!("( {}, )", s)
-                } else {
-                    format!("({},)", s)
-                }
-            });
+            .map(|s| format!("({},)", s));
     }
 
     let list_lo = context.snippet_provider.span_after(span, "(");
@@ -1919,11 +1884,7 @@ where
     };
     let list_str = write_list(&item_vec, &fmt)?;
 
-    if context.config.spaces_within_parens_and_brackets() && !list_str.is_empty() {
-        Some(format!("( {} )", list_str))
-    } else {
-        Some(format!("({})", list_str))
-    }
+    Some(format!("({})", list_str))
 }
 
 pub fn rewrite_tuple<'a, T>(
