@@ -407,10 +407,10 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     .unwrap_or_else(|err| {
                         match constant.literal {
                             mir::Literal::Promoted { .. } => {
-                                // don't report errors inside promoteds, just warnings.
+                                // FIXME: generate a panic here
                             },
                             mir::Literal::Value { .. } => {
-                                err.report(bx.tcx(), constant.span, "const operand")
+                                err.report(bx.tcx(), constant.span, "const operand");
                             },
                         }
                         // We've errored, so we don't have to produce working code.
