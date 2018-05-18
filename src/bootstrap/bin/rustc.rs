@@ -296,6 +296,9 @@ fn main() {
         cmd.arg("-Dwarnings");
     }
 
+    // Always disabling sharing of generic code for build compiler artifacts
+    cmd.arg("-Zshare-generics=off");
+
     if verbose > 1 {
         eprintln!(
             "rustc command: {:?}={:?} {:?}",
