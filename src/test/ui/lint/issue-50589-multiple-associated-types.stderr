@@ -1,0 +1,14 @@
+warning: duplicate associated type binding
+  --> $DIR/issue-50589-multiple-associated-types.rs:17:28
+   |
+LL | fn test() ->  Box<Iterator<Item = (), Item = Unit>> {
+   |                            ^^^^^^^^^  ^^^^^^^^^^^
+   |
+   = note: #[warn(duplicate_associated_type_binding)] on by default
+
+warning: duplicate associated type binding
+  --> $DIR/issue-50589-multiple-associated-types.rs:17:28
+   |
+LL | fn test() ->  Box<Iterator<Item = (), Item = Unit>> {
+   |                            ^^^^^^^^^  ^^^^^^^^^^^
+

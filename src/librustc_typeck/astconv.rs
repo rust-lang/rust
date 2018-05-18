@@ -27,7 +27,7 @@ use rustc_target::spec::abi;
 use std::slice;
 use require_c_abi_if_variadic;
 use util::common::ErrorReported;
-use util::nodemap::FxHashSet;
+use util::nodemap::{FxHashSet, FxHashMap};
 use errors::FatalError;
 
 use std::iter;
@@ -398,13 +398,24 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                  trait_ref.path.segments.last().unwrap());
         let poly_trait_ref = ty::Binder::bind(ty::TraitRef::new(trait_def_id, substs));
 
+        let mut dup_bindings = FxHashMap::default();
         poly_projections.extend(assoc_bindings.iter().filter_map(|binding| {
             // specify type to assert that error was already reported in Err case:
             let predicate: Result<_, ErrorReported> =
-                self.ast_type_binding_to_poly_projection_predicate(trait_ref.ref_id, poly_trait_ref,
-                                                                   binding, speculative);
+                self.ast_type_binding_to_poly_projection_predicate(
+                    trait_ref.ref_id, poly_trait_ref, binding, speculative, &mut dup_bindings);
             predicate.ok() // ok to ignore Err() because ErrorReported (see above)
         }));
+        for (_id, spans) in dup_bindings {
+            if spans.len() > 1 {
+                self.tcx().struct_span_lint_node(
+                        ::rustc::lint::builtin::DUPLICATE_ASSOCIATED_TYPE_BINDING,
+                        trait_ref.ref_id,
+                        spans,
+                        "duplicate associated type binding"
+                    ).emit();
+            }
+        }
 
         debug!("ast_path_to_poly_trait_ref({:?}, projections={:?}) -> {:?}",
                trait_ref, poly_projections, poly_trait_ref);
@@ -487,7 +498,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         ref_id: ast::NodeId,
         trait_ref: ty::PolyTraitRef<'tcx>,
         binding: &ConvertedBinding<'tcx>,
-        speculative: bool)
+        speculative: bool,
+        dup_bindings: &mut FxHashMap<DefId, Vec<Span>>)
         -> Result<ty::PolyProjectionPredicate<'tcx>, ErrorReported>
     {
         let tcx = self.tcx();
@@ -565,6 +577,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             tcx.sess.span_err(binding.span, &msg);
         }
         tcx.check_stability(assoc_ty.def_id, Some(ref_id), binding.span);
+        dup_bindings.entry(assoc_ty.def_id).or_insert(Vec::new()).push(binding.span);
 
         Ok(candidate.map_bound(|trait_ref| {
             ty::ProjectionPredicate {
