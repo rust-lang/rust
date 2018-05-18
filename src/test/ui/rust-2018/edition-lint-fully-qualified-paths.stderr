@@ -7,8 +7,8 @@ LL |     let _: <foo::Baz as ::foo::Foo>::Bar = ();
 note: lint level defined here
   --> $DIR/edition-lint-fully-qualified-paths.rs:14:9
    |
-LL | #![deny(absolute_path_not_starting_with_crate)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(absolute_paths_not_starting_with_crate)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
    = note: for more information, see issue TBD
 

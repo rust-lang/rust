@@ -694,7 +694,7 @@ impl EarlyLintPass for DeprecatedAttr {
 }
 
 declare_lint! {
-    pub UNUSED_DOC_COMMENT,
+    pub UNUSED_DOC_COMMENTS,
     Warn,
     "detects doc comments that aren't used by rustdoc"
 }
@@ -704,7 +704,7 @@ pub struct UnusedDocComment;
 
 impl LintPass for UnusedDocComment {
     fn get_lints(&self) -> LintArray {
-        lint_array![UNUSED_DOC_COMMENT]
+        lint_array![UNUSED_DOC_COMMENTS]
     }
 }
 
@@ -713,7 +713,7 @@ impl UnusedDocComment {
                    I: Iterator<Item=&'a ast::Attribute>,
                    C: LintContext<'tcx>>(&self, mut attrs: I, cx: &C) {
         if let Some(attr) = attrs.find(|a| a.is_value_str() && a.check_name("doc")) {
-            cx.struct_span_lint(UNUSED_DOC_COMMENT, attr.span, "doc comment not used by rustdoc")
+            cx.struct_span_lint(UNUSED_DOC_COMMENTS, attr.span, "doc comment not used by rustdoc")
               .emit();
         }
     }
@@ -1527,7 +1527,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedBrokenConst {
 }
 
 declare_lint! {
-    pub UNNECESSARY_EXTERN_CRATE,
+    pub UNNECESSARY_EXTERN_CRATES,
     Allow,
     "suggest removing `extern crate` for the 2018 edition"
 }
@@ -1542,7 +1542,7 @@ impl ExternCrate {
 
 impl LintPass for ExternCrate {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNNECESSARY_EXTERN_CRATE)
+        lint_array!(UNNECESSARY_EXTERN_CRATES)
     }
 }
 
@@ -1555,7 +1555,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExternCrate {
             if it.attrs.iter().any(|a| a.check_name("macro_use")) {
                 return
             }
-            let mut err = cx.struct_span_lint(UNNECESSARY_EXTERN_CRATE,
+            let mut err = cx.struct_span_lint(UNNECESSARY_EXTERN_CRATES,
                 it.span, "`extern crate` is unnecessary in the new edition");
             if it.vis == hir::Visibility::Public || self.0 > 1 || orig.is_some() {
                 let pub_ = if it.vis == hir::Visibility::Public {

@@ -9,7 +9,7 @@
 // except according to those terms.
 #![allow(warnings)]
 #![allow(unused_variables, dead_code, unused, bad_style)]
-#![deny(elided_lifetime_in_path)]
+#![deny(elided_lifetimes_in_paths)]
 
 struct Foo<'a> { x: &'a u32 }
 fn foo(x: &Foo) {

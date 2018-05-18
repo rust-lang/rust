@@ -11,7 +11,7 @@
 // run-rustfix
 
 #![feature(rust_2018_preview)]
-#![deny(absolute_path_not_starting_with_crate)]
+#![deny(absolute_paths_not_starting_with_crate)]
 
 use crate::foo::{a, b};
 //~^ ERROR absolute paths must start with

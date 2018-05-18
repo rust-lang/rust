@@ -1344,7 +1344,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                         self.tcx
                             .struct_span_lint_node(
-                                lint::builtin::SINGLE_USE_LIFETIME,
+                                lint::builtin::SINGLE_USE_LIFETIMES,
                                 id,
                                 span,
                                 &format!(
@@ -1366,7 +1366,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                         self.tcx
                             .struct_span_lint_node(
-                                lint::builtin::UNUSED_LIFETIME,
+                                lint::builtin::UNUSED_LIFETIMES,
                                 id,
                                 span,
                                 &format!(
@@ -1981,7 +1981,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         if deprecated {
             self.tcx
                 .struct_span_lint_node(
-                    lint::builtin::ELIDED_LIFETIME_IN_PATH,
+                    lint::builtin::ELIDED_LIFETIMES_IN_PATHS,
                     id,
                     span,
                     &format!("hidden lifetime parameters are deprecated, try `Foo<'_>`"),

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![feature(in_band_lifetimes)]
-#![deny(single_use_lifetime)]
+#![deny(single_use_lifetimes)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
 

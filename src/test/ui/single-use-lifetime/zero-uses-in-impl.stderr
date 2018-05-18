@@ -7,8 +7,8 @@ LL | impl<'a> Foo { } //~ ERROR `'a` never used
 note: lint level defined here
   --> $DIR/zero-uses-in-impl.rs:13:9
    |
-LL | #![deny(unused_lifetime)]
-   |         ^^^^^^^^^^^^^^^
+LL | #![deny(unused_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
