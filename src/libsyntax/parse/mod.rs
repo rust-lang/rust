@@ -23,6 +23,7 @@ use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree};
 use diagnostics::plugin::ErrorMap;
 
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::iter;
 use std::path::{Path, PathBuf};
@@ -89,8 +90,8 @@ impl ParseSess {
 }
 
 #[derive(Clone)]
-pub struct Directory {
-    pub path: PathBuf,
+pub struct Directory<'a> {
+    pub path: Cow<'a, Path>,
     pub ownership: DirectoryOwnership,
 }
 

@@ -26,6 +26,7 @@ use parse::token::Token::*;
 use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree};
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
@@ -141,7 +142,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                 }
 
                 let directory = Directory {
-                    path: cx.current_expansion.module.directory.clone(),
+                    path: Cow::from(cx.current_expansion.module.directory.as_path()),
                     ownership: cx.current_expansion.directory_ownership,
                 };
                 let mut p = Parser::new(cx.parse_sess(), tts, Some(directory), true, false);
