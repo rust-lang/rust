@@ -18,6 +18,7 @@
 // discussed here:
 // https://internals.rust-lang.org/t/psa-rejecting-duplicate-loop-labels/1833
 
+#[allow(unused_labels)]
 pub fn foo() {
     { 'fl: for _ in 0..10 { break; } }
     { 'fl: loop { break; } }             //~ WARN label name `'fl` shadows a label name that is already in scope

@@ -1,0 +1,53 @@
+warning: unused label
+  --> $DIR/unused_labels.rs:18:5
+   |
+LL |     'unused_while_label: while 0 == 0 {
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(unused_labels)] on by default
+
+warning: unused label
+  --> $DIR/unused_labels.rs:23:5
+   |
+LL |     'unused_while_let_label: while let Some(_) = opt {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused label
+  --> $DIR/unused_labels.rs:27:5
+   |
+LL |     'unused_for_label: for _ in 0..10 {
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: unused label
+  --> $DIR/unused_labels.rs:43:9
+   |
+LL |         'unused_loop_label_inner_2: for _ in 0..10 {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused label
+  --> $DIR/unused_labels.rs:49:5
+   |
+LL |     'unused_loop_label_outer_3: for _ in 0..10 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused label
+  --> $DIR/unused_labels.rs:58:5
+   |
+LL |     'many_used_shadowed: for _ in 0..10 {
+   |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused label
+  --> $DIR/unused_labels.rs:72:5
+   |
+LL |     'unused_loop_label: loop {
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: label name `'many_used_shadowed` shadows a label name that is already in scope
+  --> $DIR/unused_labels.rs:60:9
+   |
+LL |     'many_used_shadowed: for _ in 0..10 {
+   |     ------------------- first declared here
+LL |         //~^ WARN unused label
+LL |         'many_used_shadowed: for _ in 0..10 {
+   |         ^^^^^^^^^^^^^^^^^^^ lifetime 'many_used_shadowed already in scope
+

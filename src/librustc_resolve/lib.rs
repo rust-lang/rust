@@ -1473,6 +1473,10 @@ pub struct Resolver<'a> {
     pub maybe_unused_trait_imports: NodeSet,
     pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
 
+    /// A list of labels as of yet unused. Labels will be removed from this map when
+    /// they are used (in a `break` or `continue` statement)
+    pub unused_labels: FxHashMap<NodeId, Span>,
+
     /// privacy errors are delayed until the end in order to deduplicate them
     privacy_errors: Vec<PrivacyError<'a>>,
     /// ambiguity errors are delayed for deduplication
@@ -1751,6 +1755,8 @@ impl<'a> Resolver<'a> {
             used_imports: FxHashSet(),
             maybe_unused_trait_imports: NodeSet(),
             maybe_unused_extern_crates: Vec::new(),
+
+            unused_labels: FxHashMap(),
 
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),
@@ -3694,6 +3700,7 @@ impl<'a> Resolver<'a> {
         where F: FnOnce(&mut Resolver)
     {
         if let Some(label) = label {
+            self.unused_labels.insert(id, label.ident.span);
             let def = Def::Label(id);
             self.with_label_rib(|this| {
                 this.label_ribs.last_mut().unwrap().bindings.insert(label.ident, def);
@@ -3742,9 +3749,10 @@ impl<'a> Resolver<'a> {
                                       ResolutionError::UndeclaredLabel(&label.ident.name.as_str(),
                                                                        close_match));
                     }
-                    Some(def @ Def::Label(_)) => {
+                    Some(Def::Label(id)) => {
                         // Since this def is a label, it is never read.
-                        self.record_def(expr.id, PathResolution::new(def));
+                        self.record_def(expr.id, PathResolution::new(Def::Label(id)));
+                        self.unused_labels.remove(&id);
                     }
                     Some(_) => {
                         span_bug!(expr.span, "label wasn't mapped to a label def!");
