@@ -137,7 +137,7 @@ language: rust
 before_script:
 - rustup component add rustfmt-preview
 script:
-- cargo fmt --all -- --write-mode=check
+- cargo fmt --all -- --check
 - cargo build
 - cargo test
 ```
