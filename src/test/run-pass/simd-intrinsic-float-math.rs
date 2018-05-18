@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-emscripten
-// ignore-arm-android
+// ignore-android
 
 // Test that the simd floating-point math intrinsics produce correct results.
 
