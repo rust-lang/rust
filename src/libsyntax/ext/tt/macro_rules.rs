@@ -10,6 +10,7 @@
 
 use {ast, attr};
 use syntax_pos::{Span, DUMMY_SP};
+use edition::Edition;
 use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
 use ext::expand::{Expansion, ExpansionKind};
@@ -183,7 +184,8 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
 // Holy self-referential!
 
 /// Converts a `macro_rules!` invocation into a syntax extension.
-pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item) -> SyntaxExtension {
+pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: Edition)
+               -> SyntaxExtension {
     let lhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("lhs"));
     let rhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("rhs"));
 
@@ -298,10 +300,11 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item) -> Syntax
             def_info: Some((def.id, def.span)),
             allow_internal_unstable,
             allow_internal_unsafe,
-            unstable_feature
+            unstable_feature,
+            edition,
         }
     } else {
-        SyntaxExtension::DeclMacro(expander, Some((def.id, def.span)))
+        SyntaxExtension::DeclMacro(expander, Some((def.id, def.span)), edition)
     }
 }
 

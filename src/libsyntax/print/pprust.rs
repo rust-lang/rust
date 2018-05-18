@@ -2374,7 +2374,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_ident(&mut self, ident: ast::Ident) -> io::Result<()> {
-        if token::is_raw_guess(ident) {
+        if ident.is_raw_guess() {
             self.s.word(&format!("r#{}", ident))?;
         } else {
             self.s.word(&ident.name.as_str())?;

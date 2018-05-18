@@ -1128,7 +1128,7 @@ impl<'a> StringReader<'a> {
                 return Ok(self.with_str_from(start, |string| {
                     // FIXME: perform NFKC normalization here. (Issue #2253)
                     let ident = self.mk_ident(string);
-                    if is_raw_ident && (token::is_path_segment_keyword(ident) ||
+                    if is_raw_ident && (ident.is_path_segment_keyword() ||
                                         ident.name == keywords::Underscore.name()) {
                         self.fatal_span_(raw_start, self.pos,
                             &format!("`r#{}` is not currently supported.", ident.name)

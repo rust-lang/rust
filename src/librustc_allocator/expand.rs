@@ -21,7 +21,7 @@ use syntax::ext::base::ExtCtxt;
 use syntax::ext::base::Resolver;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
-use syntax::ext::hygiene::{Mark, SyntaxContext};
+use syntax::ext::hygiene::{self, Mark, SyntaxContext};
 use syntax::fold::{self, Folder};
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
@@ -86,6 +86,7 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
                 span: None,
                 allow_internal_unstable: true,
                 allow_internal_unsafe: false,
+                edition: hygiene::default_edition(),
             },
         });
         let span = item.span.with_ctxt(SyntaxContext::empty().apply_mark(mark));

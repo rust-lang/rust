@@ -23,6 +23,7 @@ use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use rustc_serialize as serialize;
 use syntax::{ast, attr};
+use syntax::edition::Edition;
 use syntax::symbol::Symbol;
 use syntax_pos::{self, Span};
 
@@ -189,6 +190,7 @@ pub struct CrateRoot {
     pub hash: hir::svh::Svh,
     pub disambiguator: CrateDisambiguator,
     pub panic_strategy: PanicStrategy,
+    pub edition: Edition,
     pub has_global_allocator: bool,
     pub has_default_lib_allocator: bool,
     pub plugin_registrar_fn: Option<DefIndex>,

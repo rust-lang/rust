@@ -24,6 +24,7 @@ use rustc::util::nodemap::{FxHashMap, NodeMap};
 
 use rustc_data_structures::sync::{Lrc, RwLock, Lock};
 use syntax::{ast, attr};
+use syntax::edition::Edition;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos;
@@ -233,5 +234,9 @@ impl CrateMetadata {
 
     pub fn panic_strategy(&self) -> PanicStrategy {
         self.root.panic_strategy.clone()
+    }
+
+    pub fn edition(&self) -> Edition {
+        self.root.edition
     }
 }

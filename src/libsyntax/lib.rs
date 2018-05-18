@@ -22,7 +22,6 @@
 #![feature(unicode_internals)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
-#![feature(non_exhaustive)]
 #![feature(const_atomic_usize_new)]
 #![feature(rustc_attrs)]
 #![feature(str_escape)]
@@ -142,7 +141,6 @@ pub mod codemap;
 #[macro_use]
 pub mod config;
 pub mod entry;
-pub mod edition;
 pub mod feature_gate;
 pub mod fold;
 pub mod parse;
@@ -150,6 +148,7 @@ pub mod ptr;
 pub mod show_span;
 pub mod std_inject;
 pub mod str;
+pub use syntax_pos::edition;
 pub use syntax_pos::symbol;
 pub mod test;
 pub mod tokenstream;

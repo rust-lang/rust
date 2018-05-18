@@ -14,9 +14,10 @@ use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
 use codemap::{self, CodeMap, Spanned, respan};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
+use edition::Edition;
 use errors::{DiagnosticBuilder, DiagnosticId};
 use ext::expand::{self, Expansion, Invocation};
-use ext::hygiene::{Mark, SyntaxContext};
+use ext::hygiene::{self, Mark, SyntaxContext};
 use fold::{self, Folder};
 use parse::{self, parser, DirectoryOwnership};
 use parse::token;
@@ -586,13 +587,13 @@ pub enum SyntaxExtension {
     MultiModifier(Box<MultiItemModifier + sync::Sync + sync::Send>),
 
     /// A function-like procedural macro. TokenStream -> TokenStream.
-    ProcMacro(Box<ProcMacro + sync::Sync + sync::Send>),
+    ProcMacro(Box<ProcMacro + sync::Sync + sync::Send>, Edition),
 
     /// An attribute-like procedural macro. TokenStream, TokenStream -> TokenStream.
     /// The first TokenSteam is the attribute, the second is the annotated item.
     /// Allows modification of the input items and adding new items, similar to
     /// MultiModifier, but uses TokenStreams, rather than AST nodes.
-    AttrProcMacro(Box<AttrProcMacro + sync::Sync + sync::Send>),
+    AttrProcMacro(Box<AttrProcMacro + sync::Sync + sync::Send>, Edition),
 
     /// A normal, function-like syntax extension.
     ///
@@ -608,6 +609,8 @@ pub enum SyntaxExtension {
         allow_internal_unsafe: bool,
         /// The macro's feature name if it is unstable, and the stability feature
         unstable_feature: Option<(Symbol, u32)>,
+        /// Edition of the crate in which the macro is defined
+        edition: Edition,
     },
 
     /// A function-like syntax extension that has an extra ident before
@@ -619,9 +622,8 @@ pub enum SyntaxExtension {
     /// The input is the annotated item.
     /// Allows generating code to implement a Trait for a given struct
     /// or enum item.
-    ProcMacroDerive(Box<MultiItemModifier +
-                        sync::Sync +
-                        sync::Send>, Vec<Symbol> /* inert attribute names */),
+    ProcMacroDerive(Box<MultiItemModifier + sync::Sync + sync::Send>,
+                    Vec<Symbol> /* inert attribute names */, Edition),
 
     /// An attribute-like procedural macro that derives a builtin trait.
     BuiltinDerive(BuiltinDeriveFn),
@@ -629,7 +631,7 @@ pub enum SyntaxExtension {
     /// A declarative macro, e.g. `macro m() {}`.
     ///
     /// The second element is the definition site span.
-    DeclMacro(Box<TTMacroExpander + sync::Sync + sync::Send>, Option<(ast::NodeId, Span)>),
+    DeclMacro(Box<TTMacroExpander + sync::Sync + sync::Send>, Option<(ast::NodeId, Span)>, Edition),
 }
 
 impl SyntaxExtension {
@@ -658,6 +660,21 @@ impl SyntaxExtension {
             SyntaxExtension::AttrProcMacro(..) |
             SyntaxExtension::ProcMacroDerive(..) => true,
             _ => false,
+        }
+    }
+
+    pub fn edition(&self) -> Edition {
+        match *self {
+            SyntaxExtension::NormalTT { edition, .. } |
+            SyntaxExtension::DeclMacro(.., edition) |
+            SyntaxExtension::ProcMacro(.., edition) |
+            SyntaxExtension::AttrProcMacro(.., edition) |
+            SyntaxExtension::ProcMacroDerive(.., edition) => edition,
+            // Unstable legacy stuff
+            SyntaxExtension::IdentTT(..) |
+            SyntaxExtension::MultiDecorator(..) |
+            SyntaxExtension::MultiModifier(..) |
+            SyntaxExtension::BuiltinDerive(..) => hygiene::default_edition(),
         }
     }
 }

@@ -38,6 +38,7 @@ use std::sync::Arc;
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap;
+use syntax::edition::Edition;
 use syntax::ext::base::SyntaxExtension;
 use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
@@ -464,6 +465,11 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(cnum).hash()
     }
 
+    fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition
+    {
+        self.get_crate_data(cnum).edition()
+    }
+
     /// Returns the `DefKey` for a given `DefId`. This indicates the
     /// parent `DefId` as well as some idea of what kind of data the
     /// `DefId` refers to.
@@ -512,7 +518,8 @@ impl CrateStore for cstore::CStore {
             return LoadedMacro::ProcMacro(proc_macros[id.index.to_proc_macro_index()].1.clone());
         } else if data.name == "proc_macro" &&
                   self.get_crate_data(id.krate).item_name(id.index) == "quote" {
-            let ext = SyntaxExtension::ProcMacro(Box::new(::proc_macro::__internal::Quoter));
+            let ext = SyntaxExtension::ProcMacro(Box::new(::proc_macro::__internal::Quoter),
+                                                 data.edition());
             return LoadedMacro::ProcMacro(Lrc::new(ext));
         }
 

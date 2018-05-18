@@ -17,6 +17,7 @@
 
 use GLOBALS;
 use Span;
+use edition::Edition;
 use symbol::{Ident, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -151,6 +152,7 @@ pub struct HygieneData {
     syntax_contexts: Vec<SyntaxContextData>,
     markings: HashMap<(SyntaxContext, Mark), SyntaxContext>,
     gensym_to_ctxt: HashMap<Symbol, Span>,
+    default_edition: Edition,
 }
 
 impl HygieneData {
@@ -168,12 +170,21 @@ impl HygieneData {
             }],
             markings: HashMap::new(),
             gensym_to_ctxt: HashMap::new(),
+            default_edition: Edition::Edition2015,
         }
     }
 
     fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
         GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
     }
+}
+
+pub fn default_edition() -> Edition {
+    HygieneData::with(|data| data.default_edition)
+}
+
+pub fn set_default_edition(edition: Edition) {
+    HygieneData::with(|data| data.default_edition = edition);
 }
 
 pub fn clear_markings() {
@@ -443,6 +454,8 @@ pub struct NameAndSpan {
     /// Whether the macro is allowed to use `unsafe` internally
     /// even if the user crate has `#![forbid(unsafe_code)]`.
     pub allow_internal_unsafe: bool,
+    /// Edition of the crate in which the macro is defined.
+    pub edition: Edition,
     /// The span of the macro definition itself. The macro may not
     /// have a sensible definition span (e.g. something defined
     /// completely inside libsyntax) in which case this is None.

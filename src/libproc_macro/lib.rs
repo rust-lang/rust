@@ -818,7 +818,7 @@ impl Ident {
     pub fn new_raw(string: &str, span: Span) -> Ident {
         let mut ident = Ident::new(string, span);
         if ident.sym == keywords::Underscore.name() ||
-           token::is_path_segment_keyword(ast::Ident::with_empty_ctxt(ident.sym)) {
+           ast::Ident::with_empty_ctxt(ident.sym).is_path_segment_keyword() {
             panic!("`{:?}` is not a valid raw identifier", string)
         }
         ident.is_raw = true;

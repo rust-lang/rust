@@ -593,6 +593,7 @@ impl<'a> LoweringContext<'a> {
                 span: Some(span),
                 allow_internal_unstable: true,
                 allow_internal_unsafe: false,
+                edition: codemap::hygiene::default_edition(),
             },
         });
         span.with_ctxt(SyntaxContext::empty().apply_mark(mark))

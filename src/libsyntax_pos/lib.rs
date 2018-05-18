@@ -20,6 +20,7 @@
 
 #![feature(const_fn)]
 #![feature(custom_attribute)]
+#![feature(non_exhaustive)]
 #![feature(optin_builtin_traits)]
 #![allow(unused_attributes)]
 #![feature(specialization)]
@@ -48,6 +49,7 @@ extern crate serialize as rustc_serialize; // used by deriving
 
 extern crate unicode_width;
 
+pub mod edition;
 pub mod hygiene;
 pub use hygiene::{Mark, SyntaxContext, ExpnInfo, ExpnFormat, NameAndSpan, CompilerDesugaringKind};
 
@@ -296,6 +298,12 @@ impl Span {
     /// if any
     pub fn parent(self) -> Option<Span> {
         self.ctxt().outer().expn_info().map(|i| i.call_site)
+    }
+
+    /// Edition of the crate from which this span came.
+    pub fn edition(self) -> edition::Edition {
+        self.ctxt().outer().expn_info().map_or_else(|| hygiene::default_edition(),
+                                                    |einfo| einfo.callee.edition)
     }
 
     /// Return the source callee.

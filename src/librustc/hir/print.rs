@@ -13,7 +13,7 @@ pub use self::AnnNode::*;
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::codemap::{CodeMap, Spanned};
-use syntax::parse::{token, ParseSess};
+use syntax::parse::ParseSess;
 use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, Breaks};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
@@ -1559,7 +1559,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_name(&mut self, name: ast::Name) -> io::Result<()> {
-        if token::is_raw_guess(ast::Ident::with_empty_ctxt(name)) {
+        if name.to_ident().is_raw_guess() {
             self.s.word(&format!("r#{}", name))?;
         } else {
             self.s.word(&name.as_str())?;

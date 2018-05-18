@@ -588,7 +588,8 @@ impl<'a> Resolver<'a> {
 
         let ext = Lrc::new(macro_rules::compile(&self.session.parse_sess,
                                                &self.session.features_untracked(),
-                                               &macro_def));
+                                               &macro_def,
+                                               self.cstore.crate_edition_untracked(def_id.krate)));
         self.macro_map.insert(def_id, ext.clone());
         ext
     }

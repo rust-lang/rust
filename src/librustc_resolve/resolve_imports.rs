@@ -27,7 +27,6 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use syntax::ast::{Ident, Name, NodeId};
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::hygiene::Mark;
-use syntax::parse::token;
 use syntax::symbol::keywords;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
@@ -667,7 +666,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         } else {
                             Some(self.resolve_crate_root(source.span.ctxt().modern(), false))
                         }
-                    } else if is_extern && !token::is_path_segment_keyword(source) {
+                    } else if is_extern && !source.is_path_segment_keyword() {
                         let crate_id =
                             self.resolver.crate_loader.process_use_extern(
                                 source.name,
@@ -715,8 +714,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
             PathResult::Failed(span, msg, true) => {
                 let (mut self_path, mut self_result) = (module_path.clone(), None);
-                let is_special = |ident| token::is_path_segment_keyword(ident) &&
-                                         ident.name != keywords::CrateRoot.name();
+                let is_special = |ident: Ident| ident.is_path_segment_keyword() &&
+                                                ident.name != keywords::CrateRoot.name();
                 if !self_path.is_empty() && !is_special(self_path[0]) &&
                    !(self_path.len() > 1 && is_special(self_path[1])) {
                     self_path[0].name = keywords::SelfValue.name();
