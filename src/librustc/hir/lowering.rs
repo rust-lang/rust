@@ -4122,7 +4122,7 @@ impl<'a> LoweringContext<'a> {
 
     fn maybe_lint_bare_trait(&self, span: Span, id: NodeId, is_global: bool) {
         self.sess.buffer_lint_with_diagnostic(
-            builtin::BARE_TRAIT_OBJECT,
+            builtin::BARE_TRAIT_OBJECTS,
             id,
             span,
             "trait objects without an explicit `dyn` are deprecated",

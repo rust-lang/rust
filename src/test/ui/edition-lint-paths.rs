@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![feature(crate_in_paths)]
-#![deny(absolute_path_starting_with_module)]
+#![deny(absolute_paths_not_starting_with_crate)]
 #![allow(unused)]
 
 pub mod foo {

@@ -7,7 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![deny(single_use_lifetime)]
+#![deny(single_use_lifetimes)]
 
 fn deref<'x>(v: &'x u32) -> u32 { //~ ERROR lifetime name `'x` only used once
     *v

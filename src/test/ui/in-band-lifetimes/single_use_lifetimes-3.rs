@@ -7,7 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![deny(single_use_lifetime)]
+#![deny(single_use_lifetimes)]
 struct Foo<'x> { //~ ERROR lifetime name `'x` only used once
     x: &'x u32 // no warning!
 }

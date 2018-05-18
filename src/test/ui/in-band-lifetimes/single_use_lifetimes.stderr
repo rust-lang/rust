@@ -7,8 +7,8 @@ LL | fn deref<'x>(v: &'x u32) -> u32 { //~ ERROR lifetime name `'x` only used on
 note: lint level defined here
   --> $DIR/single_use_lifetimes.rs:10:9
    |
-LL | #![deny(single_use_lifetime)]
-   |         ^^^^^^^^^^^^^^^^^^^
+LL | #![deny(single_use_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
