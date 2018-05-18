@@ -308,7 +308,7 @@ impl Any+Send {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn modify_if_u32(s: &mut (Any+ Send)) {
+    /// fn modify_if_u32(s: &mut (Any + Send)) {
     ///     if let Some(num) = s.downcast_mut::<u32>() {
     ///         *num = 42;
     ///     }
@@ -366,7 +366,7 @@ impl Any+Send+Sync {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn print_if_string(s: &(Any + Send)) {
+    /// fn print_if_string(s: &(Any + Send + Sync)) {
     ///     if let Some(string) = s.downcast_ref::<String>() {
     ///         println!("It's a string({}): '{}'", string.len(), string);
     ///     } else {
@@ -392,7 +392,7 @@ impl Any+Send+Sync {
     /// ```
     /// use std::any::Any;
     ///
-    /// fn modify_if_u32(s: &mut (Any+ Send)) {
+    /// fn modify_if_u32(s: &mut (Any + Send + Sync)) {
     ///     if let Some(num) = s.downcast_mut::<u32>() {
     ///         *num = 42;
     ///     }
