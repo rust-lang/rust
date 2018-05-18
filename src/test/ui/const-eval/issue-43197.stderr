@@ -1,37 +1,41 @@
 warning: attempt to subtract with overflow
-  --> $DIR/issue-43197.rs:20:20
+  --> $DIR/issue-43197.rs:21:20
    |
 LL |     const X: u32 = 0-1;
    |                    ^^^
    |
-   = note: #[warn(const_err)] on by default
+note: lint level defined here
+  --> $DIR/issue-43197.rs:12:9
+   |
+LL | #![warn(const_err)]
+   |         ^^^^^^^^^
 
 warning: this constant cannot be used
-  --> $DIR/issue-43197.rs:20:5
+  --> $DIR/issue-43197.rs:21:5
    |
 LL |     const X: u32 = 0-1;
    |     ^^^^^^^^^^^^^^^^^^^ attempt to subtract with overflow
 
 warning: attempt to subtract with overflow
-  --> $DIR/issue-43197.rs:23:24
+  --> $DIR/issue-43197.rs:24:24
    |
 LL |     const Y: u32 = foo(0-1);
    |                        ^^^
 
 warning: this constant cannot be used
-  --> $DIR/issue-43197.rs:23:5
+  --> $DIR/issue-43197.rs:24:5
    |
 LL |     const Y: u32 = foo(0-1);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ attempt to subtract with overflow
 
 warning: constant evaluation error
-  --> $DIR/issue-43197.rs:26:23
+  --> $DIR/issue-43197.rs:27:23
    |
 LL |     println!("{} {}", X, Y);
    |                       ^ referenced constant has errors
 
 warning: constant evaluation error
-  --> $DIR/issue-43197.rs:26:26
+  --> $DIR/issue-43197.rs:27:26
    |
 LL |     println!("{} {}", X, Y);
    |                          ^ referenced constant has errors

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-pass
+#![warn(const_err)]
 
 const X: u32 = 5;
 const Y: u32 = 6;

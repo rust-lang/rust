@@ -12,11 +12,11 @@ enum Test {
     DivZero = 1/0,
     //~^ attempt to divide by zero
     //~| ERROR constant evaluation error
-    //~| WARN constant evaluation error
+    //~| ERROR constant evaluation error
     RemZero = 1%0,
     //~^ attempt to calculate the remainder with a divisor of zero
     //~| ERROR constant evaluation error
-    //~| WARN constant evaluation error
+    //~| ERROR constant evaluation error
 }
 
 fn main() {}

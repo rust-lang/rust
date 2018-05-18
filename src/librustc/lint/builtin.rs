@@ -27,7 +27,7 @@ declare_lint! {
 
 declare_lint! {
     pub CONST_ERR,
-    Warn,
+    Deny,
     "constant evaluation detected erroneous expression"
 }
 

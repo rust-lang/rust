@@ -12,9 +12,8 @@
 
 const FOO: &'static[u32] = &[1, 2, 3];
 const BAR: u32 = FOO[5];
-//~^ ERROR constant evaluation error [E0080]
-//~| index out of bounds: the len is 3 but the index is 5
-//~| WARN this constant cannot be used
+//~^ index out of bounds: the len is 3 but the index is 5
+//~| ERROR this constant cannot be used
 
 fn main() {
     let _ = BAR;
