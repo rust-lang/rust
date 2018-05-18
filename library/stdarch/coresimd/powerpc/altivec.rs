@@ -362,6 +362,8 @@ impl_from_bits_!(
 extern "C" {
 #[ link_name = "llvm.ppc.altivec.vperm" ]
 fn vperm(a: vector_signed_int, b: vector_signed_int, c: vector_unsigned_char) -> vector_signed_int;
+#[ link_name = "llvm.ppc.altivec.vmhaddshs" ]
+fn vmhaddshs(a: vector_signed_short, b: vector_signed_short, c: vector_signed_short) -> vector_signed_short;
 }
 
 mod sealed {
@@ -723,6 +725,15 @@ mod endian {
         b.vec_vperm(a, c)
     }
 }
+
+/// Vector Multiply Add Saturated
+#[inline]
+#[target_feature(enable = "altivec")]
+#[cfg_attr(test, assert_instr(vmhaddshs))]
+pub unsafe fn vec_madds(a: vector_signed_short, b: vector_signed_short, c: vector_signed_short) -> vector_signed_short {
+    vmhaddshs(a, b, c)
+}
+
 #[cfg(target_endian = "big")]
 mod endian {
     use super::*;
@@ -836,6 +847,17 @@ mod tests {
                    [0x00, 0x01, 0x02, 0x03, 0x10, 0x11, 0x12, 0x13,
                     0x04, 0x05, 0x06, 0x07, 0x14, 0x15, 0x16, 0x17],
                    [0.0, 1.0, 1.0, 1.1]}
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_madds() {
+        let a: vector_signed_short = i16x8::new(0 * 256, 1 * 256, 2 * 256, 3 * 256, 4 * 256, 5 * 256, 6 * 256, 7 * 256).into_bits();
+        let b: vector_signed_short = i16x8::new(256, 256, 256, 256, 256, 256, 256, 256).into_bits();
+        let c: vector_signed_short = i16x8::new(0, 1, 2, 3, 4, 5, 6, 7).into_bits();
+
+        let d = i16x8::new(0, 3, 6, 9, 12, 15, 18, 21);
+
+        assert_eq!(d, vec_madds(a, b, c).into_bits());
+    }
 
     #[simd_test(enable = "altivec")]
     unsafe fn vec_add_i32x4_i32x4() {
