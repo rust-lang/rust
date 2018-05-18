@@ -2062,7 +2062,7 @@ Enable unstable features on stable channel.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: Yes
+- **Stable**: No
 
 ## `license_template_path`
 

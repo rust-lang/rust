@@ -123,7 +123,7 @@ create_config! {
         "What Color option to use when none is supplied: Always, Never, Auto";
     required_version: String, env!("CARGO_PKG_VERSION").to_owned(), false,
         "Require a specific version of rustfmt.";
-    unstable_features: bool, false, true,
+    unstable_features: bool, false, false,
             "Enables unstable features. Only available on nightly channel";
     disable_all_formatting: bool, false, false, "Don't reformat anything";
     skip_children: bool, false, false, "Don't reformat out of line modules";
