@@ -20,8 +20,7 @@ use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FxHashMap, NodeMap};
 
 use rustc_data_structures::sync::{Lrc, RwLock, Lock};
-use syntax::{ast, attr};
-use syntax::edition::Edition;
+use syntax::ast;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos;
