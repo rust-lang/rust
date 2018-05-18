@@ -128,45 +128,43 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.block_indent = self.block_indent.block_indent(self.config);
         self.push_str("{");
 
-        if self.config.remove_blank_lines_at_start_or_end_of_block() {
-            if let Some(first_stmt) = b.stmts.first() {
-                let attr_lo = inner_attrs
-                    .and_then(|attrs| inner_attributes(attrs).first().map(|attr| attr.span.lo()))
-                    .or_else(|| {
-                        // Attributes for an item in a statement position
-                        // do not belong to the statement. (rust-lang/rust#34459)
-                        if let ast::StmtKind::Item(ref item) = first_stmt.node {
-                            item.attrs.first()
-                        } else {
-                            first_stmt.attrs().first()
-                        }.and_then(|attr| {
-                            // Some stmts can have embedded attributes.
-                            // e.g. `match { #![attr] ... }`
-                            let attr_lo = attr.span.lo();
-                            if attr_lo < first_stmt.span.lo() {
-                                Some(attr_lo)
-                            } else {
-                                None
-                            }
-                        })
-                    });
-
-                let snippet = self.snippet(mk_sp(
-                    self.last_pos,
-                    attr_lo.unwrap_or_else(|| first_stmt.span.lo()),
-                ));
-                let len = CommentCodeSlices::new(snippet)
-                    .nth(0)
-                    .and_then(|(kind, _, s)| {
-                        if kind == CodeCharKind::Normal {
-                            s.rfind('\n')
+        if let Some(first_stmt) = b.stmts.first() {
+            let attr_lo = inner_attrs
+                .and_then(|attrs| inner_attributes(attrs).first().map(|attr| attr.span.lo()))
+                .or_else(|| {
+                    // Attributes for an item in a statement position
+                    // do not belong to the statement. (rust-lang/rust#34459)
+                    if let ast::StmtKind::Item(ref item) = first_stmt.node {
+                        item.attrs.first()
+                    } else {
+                        first_stmt.attrs().first()
+                    }.and_then(|attr| {
+                        // Some stmts can have embedded attributes.
+                        // e.g. `match { #![attr] ... }`
+                        let attr_lo = attr.span.lo();
+                        if attr_lo < first_stmt.span.lo() {
+                            Some(attr_lo)
                         } else {
                             None
                         }
-                    });
-                if let Some(len) = len {
-                    self.last_pos = self.last_pos + BytePos::from_usize(len);
-                }
+                    })
+                });
+
+            let snippet = self.snippet(mk_sp(
+                self.last_pos,
+                attr_lo.unwrap_or_else(|| first_stmt.span.lo()),
+            ));
+            let len = CommentCodeSlices::new(snippet)
+                .nth(0)
+                .and_then(|(kind, _, s)| {
+                    if kind == CodeCharKind::Normal {
+                        s.rfind('\n')
+                    } else {
+                        None
+                    }
+                });
+            if let Some(len) = len {
+                self.last_pos = self.last_pos + BytePos::from_usize(len);
             }
         }
 
@@ -195,24 +193,22 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         }
 
         let mut remove_len = BytePos(0);
-        if self.config.remove_blank_lines_at_start_or_end_of_block() {
-            if let Some(stmt) = b.stmts.last() {
-                let snippet = self.snippet(mk_sp(
-                    stmt.span.hi(),
-                    source!(self, b.span).hi() - brace_compensation,
-                ));
-                let len = CommentCodeSlices::new(snippet)
-                    .last()
-                    .and_then(|(kind, _, s)| {
-                        if kind == CodeCharKind::Normal && s.trim().is_empty() {
-                            Some(s.len())
-                        } else {
-                            None
-                        }
-                    });
-                if let Some(len) = len {
-                    remove_len = BytePos::from_usize(len);
-                }
+        if let Some(stmt) = b.stmts.last() {
+            let snippet = self.snippet(mk_sp(
+                stmt.span.hi(),
+                source!(self, b.span).hi() - brace_compensation,
+            ));
+            let len = CommentCodeSlices::new(snippet)
+                .last()
+                .and_then(|(kind, _, s)| {
+                    if kind == CodeCharKind::Normal && s.trim().is_empty() {
+                        Some(s.len())
+                    } else {
+                        None
+                    }
+                });
+            if let Some(len) = len {
+                remove_len = BytePos::from_usize(len);
             }
         }
 

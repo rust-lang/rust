@@ -83,8 +83,6 @@ create_config! {
 
     // Misc.
     remove_nested_parens: bool, true, true, "Remove nested parens.";
-    remove_blank_lines_at_start_or_end_of_block: bool, true, false,
-        "Remove blank lines at start or end of a block";
     combine_control_expr: bool, true, false, "Combine control expressions with function calls.";
     struct_field_align_threshold: usize, 0, false, "Align struct fields if their diffs fits within \
                                              threshold.";

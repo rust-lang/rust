@@ -1991,45 +1991,6 @@ fn bar() {
 }
 ```
 
-## `remove_blank_lines_at_start_or_end_of_block`
-
-Remove blank lines at the start or the end of a block.
-
-- **Default value**: `true`
-- **Possible values**: `true`, `false`
-- **Stable**: No
-
-#### `true`
-
-```rust
-fn foo() {
-    let msg = {
-        let mut str = String::new();
-        str.push_str("hello, ");
-        str.push_str("world!");
-        str
-    };
-    println!("{}", msg);
-}
-```
-
-#### `false`
-
-```rust
-fn foo() {
-
-    let msg = {
-
-        let mut str = String::new();
-        str.push_str("hello, ");
-        str.push_str("world!");
-        str
-
-    };
-    println!("{}", msg);
-
-}
-```
 
 ## `required_version`
 
