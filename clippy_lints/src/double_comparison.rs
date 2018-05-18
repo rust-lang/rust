@@ -52,7 +52,7 @@ impl<'a, 'tcx> DoubleComparisonPass {
             }
             _ => return,
         };
-        let spanless_eq = SpanlessEq::new(cx).ignore_fn();
+        let mut spanless_eq = SpanlessEq::new(cx).ignore_fn();
         if !(spanless_eq.eq_expr(&llhs, &rlhs) && spanless_eq.eq_expr(&lrhs, &rrhs)) {
             return;
         }

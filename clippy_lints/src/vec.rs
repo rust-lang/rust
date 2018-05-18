@@ -66,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 fn check_vec_macro<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, vec_args: &higher::VecArgs<'tcx>, span: Span) {
     let snippet = match *vec_args {
         higher::VecArgs::Repeat(elem, len) => {
-            if constant(cx, len).is_some() {
+            if constant(cx, cx.tables, len).is_some() {
                 format!("&[{}; {}]", snippet(cx, elem.span, "elem"), snippet(cx, len.span, "len"))
             } else {
                 return;

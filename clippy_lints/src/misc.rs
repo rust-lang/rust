@@ -446,7 +446,7 @@ fn check_nan(cx: &LateContext, path: &Path, expr: &Expr) {
 }
 
 fn is_named_constant<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> bool {
-    if let Some((_, res)) = constant(cx, expr) {
+    if let Some((_, res)) = constant(cx, cx.tables, expr) {
         res
     } else {
        false
@@ -454,7 +454,7 @@ fn is_named_constant<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> 
 }
 
 fn is_allowed<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> bool {
-    match constant(cx, expr) {
+    match constant(cx, cx.tables, expr) {
         Some((Constant::F32(f), _)) => f == 0.0 || f.is_infinite(),
         Some((Constant::F64(f), _)) => f == 0.0 || f.is_infinite(),
         _ => false,

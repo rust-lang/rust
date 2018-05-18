@@ -81,14 +81,14 @@ fn fetch_const<'a>(cx: &LateContext, args: &'a [Expr], m: MinMax) -> Option<(Min
     if args.len() != 2 {
         return None;
     }
-    if let Some(c) = constant_simple(cx, &args[0]) {
-        if constant_simple(cx, &args[1]).is_none() {
+    if let Some(c) = constant_simple(cx, cx.tables, &args[0]) {
+        if constant_simple(cx, cx.tables, &args[1]).is_none() {
             // otherwise ignore
             Some((m, c, &args[1]))
         } else {
             None
         }
-    } else if let Some(c) = constant_simple(cx, &args[1]) {
+    } else if let Some(c) = constant_simple(cx, cx.tables, &args[1]) {
         Some((m, c, &args[0]))
     } else {
         None

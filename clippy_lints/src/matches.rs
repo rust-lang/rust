@@ -470,8 +470,8 @@ fn all_ranges<'a, 'tcx>(
                 [].iter()
             }.filter_map(|pat| {
                 if let PatKind::Range(ref lhs, ref rhs, ref range_end) = pat.node {
-                    let lhs = constant(cx, lhs)?.0;
-                    let rhs = constant(cx, rhs)?.0;
+                    let lhs = constant(cx, cx.tables, lhs)?.0;
+                    let rhs = constant(cx, cx.tables, rhs)?.0;
                     let rhs = match *range_end {
                         RangeEnd::Included => Bound::Included(rhs),
                         RangeEnd::Excluded => Bound::Excluded(rhs),
@@ -480,7 +480,7 @@ fn all_ranges<'a, 'tcx>(
                 }
 
                 if let PatKind::Lit(ref value) = pat.node {
-                    let value = constant(cx, value)?.0;
+                    let value = constant(cx, cx.tables, value)?.0;
                     return Some(SpannedRange { span: pat.span, node: (value.clone(), Bound::Included(value)) });
                 }
 

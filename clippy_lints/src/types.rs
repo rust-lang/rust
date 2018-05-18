@@ -1341,7 +1341,7 @@ fn detect_extreme_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -
 
     let ty = cx.tables.expr_ty(expr);
 
-    let cv = constant(cx, expr)?.0;
+    let cv = constant(cx, cx.tables, expr)?.0;
 
     let which = match (&ty.sty, cv) {
         (&ty::TyBool, Constant::Bool(false)) |
@@ -1526,7 +1526,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
 }
 
 fn node_as_const_fullint<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<FullInt> {
-    let val = constant(cx, expr)?.0;
+    let val = constant(cx, cx.tables, expr)?.0;
     if let Constant::Int(const_int) = val {
         match cx.tables.expr_ty(expr).sty {
             ty::TyInt(ity) => Some(FullInt::S(sext(cx.tcx, const_int, ity))),

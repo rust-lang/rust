@@ -94,7 +94,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             // Range with step_by(0).
             if name == "step_by" && args.len() == 2 && has_step_by(cx, &args[0]) {
                 use consts::{constant, Constant};
-                if let Some((Constant::Int(0), _)) = constant(cx, &args[1]) {
+                if let Some((Constant::Int(0), _)) = constant(cx, cx.tables, &args[1]) {
                     span_lint(
                         cx,
                         ITERATOR_STEP_BY_ZERO,
