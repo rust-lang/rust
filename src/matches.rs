@@ -155,7 +155,7 @@ fn arm_comma(config: &Config, body: &ast::Expr, is_last: bool) -> &'static str {
         ""
     } else if config.match_block_trailing_comma() {
         ","
-    } else if let ast::ExprKind::Block(ref block) = body.node {
+    } else if let ast::ExprKind::Block(ref block, _) = body.node {
         if let ast::BlockCheckMode::Default = block.rules {
             ""
         } else {
@@ -308,7 +308,7 @@ fn rewrite_match_pattern(
 // @body: flattened body, if the body is block with a single expression
 fn flatten_arm_body<'a>(context: &'a RewriteContext, body: &'a ast::Expr) -> (bool, &'a ast::Expr) {
     match body.node {
-        ast::ExprKind::Block(ref block)
+        ast::ExprKind::Block(ref block, _)
             if !is_unsafe_block(block)
                 && is_simple_block(block, Some(&body.attrs), context.codemap) =>
         {
@@ -337,7 +337,7 @@ fn rewrite_match_body(
     is_last: bool,
 ) -> Option<String> {
     let (extend, body) = flatten_arm_body(context, body);
-    let (is_block, is_empty_block) = if let ast::ExprKind::Block(ref block) = body.node {
+    let (is_block, is_empty_block) = if let ast::ExprKind::Block(ref block, _) = body.node {
         (
             true,
             is_empty_block(block, Some(&body.attrs), context.codemap),

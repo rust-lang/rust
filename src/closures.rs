@@ -47,7 +47,7 @@ pub fn rewrite_closure(
     // 1 = space between `|...|` and body.
     let body_shape = shape.offset_left(extra_offset)?;
 
-    if let ast::ExprKind::Block(ref block) = body.node {
+    if let ast::ExprKind::Block(ref block, _) = body.node {
         // The body of the closure is an empty block.
         if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) {
             return body
@@ -96,7 +96,7 @@ fn get_inner_expr<'a>(
     prefix: &str,
     context: &RewriteContext,
 ) -> &'a ast::Expr {
-    if let ast::ExprKind::Block(ref block) = expr.node {
+    if let ast::ExprKind::Block(ref block, _) = expr.node {
         if !needs_block(block, prefix, context) {
             // block.stmts.len() == 1
             if let Some(expr) = stmt_expr(&block.stmts[0]) {
@@ -289,7 +289,7 @@ pub fn rewrite_last_closure(
 ) -> Option<String> {
     if let ast::ExprKind::Closure(capture, movability, ref fn_decl, ref body, _) = expr.node {
         let body = match body.node {
-            ast::ExprKind::Block(ref block)
+            ast::ExprKind::Block(ref block, _)
                 if !is_unsafe_block(block)
                     && is_simple_block(block, Some(&body.attrs), context.codemap) =>
             {
