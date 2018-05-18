@@ -57,7 +57,7 @@ matrix:
         CI_JOB_NAME=x86_64-apple
       os: osx
       osx_image: xcode9.3-moar
-      #if: branch = auto
+      if: branch = auto
 
     - env: >
         RUST_CHECK_TARGET=check
@@ -71,7 +71,7 @@ matrix:
         CI_JOB_NAME=i686-apple
       os: osx
       osx_image: xcode9.3-moar
-      #if: branch = auto
+      if: branch = auto
 
     # OSX builders producing releases. These do not run the full test suite and
     # just produce a bunch of artifacts.
@@ -109,7 +109,7 @@ matrix:
 
     # Linux builders, remaining docker images
     - env: IMAGE=arm-android
-      #if: branch = auto
+      if: branch = auto
     - env: IMAGE=armhf-gnu
       if: branch = auto
     - env: IMAGE=dist-various-1 DEPLOY=1
@@ -117,17 +117,17 @@ matrix:
     - env: IMAGE=dist-various-2 DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-aarch64-linux DEPLOY=1
-      #if: branch = auto
+      if: branch = auto
     - env: IMAGE=dist-android DEPLOY=1
-      #if: branch = auto
+      if: branch = auto
     - env: IMAGE=dist-arm-linux DEPLOY=1
-      #if: branch = auto
+      if: branch = auto
     - env: IMAGE=dist-armhf-linux DEPLOY=1
-      #if: branch = auto
+      if: branch = auto
     - env: IMAGE=dist-armv7-linux DEPLOY=1
-      #if: branch = auto
+      if: branch = auto
     - env: IMAGE=dist-i586-gnu-i586-i686-musl DEPLOY=1
-      #if: branch = auto
+      if: branch = auto
     - env: IMAGE=dist-i686-freebsd DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-i686-linux DEPLOY=1
@@ -137,17 +137,17 @@ matrix:
     - env: IMAGE=dist-mips64-linux DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-mips64el-linux DEPLOY=1
-      #if: branch = auto
+      if: branch = auto
     - env: IMAGE=dist-mipsel-linux DEPLOY=1
-      #if: branch = auto
+      if: branch = auto
     - env: IMAGE=dist-powerpc-linux DEPLOY=1
-      #if: branch = auto
+      if: branch = auto
     - env: IMAGE=dist-powerpc64-linux DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-powerpc64le-linux DEPLOY=1
-      #if: branch = auto
+      if: branch = auto
     - env: IMAGE=dist-s390x-linux DEPLOY=1
-      #if: branch = auto
+      if: branch = auto
     - env: IMAGE=dist-x86_64-freebsd DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-x86_64-musl DEPLOY=1
@@ -157,13 +157,13 @@ matrix:
     - env: IMAGE=asmjs
       if: branch = auto
     - env: IMAGE=i686-gnu
-      #if: branch = auto
+      if: branch = auto
     - env: IMAGE=i686-gnu-nopt
-      #if: branch = auto
+      if: branch = auto
     - env: IMAGE=wasm32-unknown
       if: branch = auto
     - env: IMAGE=x86_64-gnu
-      #if: branch = auto
+      if: branch = auto
     - env: IMAGE=x86_64-gnu-full-bootstrap
       if: branch = auto
     - env: IMAGE=x86_64-gnu-aux
