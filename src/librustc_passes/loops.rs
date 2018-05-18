@@ -215,6 +215,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
         }
         return false;
     }
+
     fn emit_unlabled_cf_in_while_condition(&mut self, span: Span, cf_type: &str) {
         struct_span_err!(self.sess, span, E0590,
                          "`break` or `continue` with no label in the condition of a `while` loop")

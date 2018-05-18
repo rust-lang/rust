@@ -1097,7 +1097,7 @@ loop {
 }
 ```
 
-Please verify you spelt or declare the label correctly. Example:
+Please verify you spelt and declared the label correctly. Example:
 
 ```
 'a: loop {
