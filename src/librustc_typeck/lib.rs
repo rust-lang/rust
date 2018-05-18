@@ -196,6 +196,12 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     .emit();
                                 return;
                             }
+                            if !generics.where_clause.predicates.is_empty() {
+                                struct_span_err!(tcx.sess, main_span, E0646,
+                                         "main function is not allowed to have a where clause")
+                                         .emit();
+                                return;
+                            }
                         }
                         _ => ()
                     }
@@ -247,14 +253,21 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             match tcx.hir.find(start_id) {
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
-                        hir::ItemFn(..,ref ps,_)
-                        if !ps.params.is_empty() => {
-                            struct_span_err!(tcx.sess, ps.span, E0132,
-                                "start function is not allowed to have type parameters")
-                                .span_label(ps.span,
-                                            "start function cannot have type parameters")
-                                .emit();
-                            return;
+                        hir::ItemFn(..,ref ps,_) => {
+                            if !ps.params.is_empty() {
+                                struct_span_err!(tcx.sess, ps.span, E0132,
+                                    "start function is not allowed to have type parameters")
+                                    .span_label(ps.span,
+                                                "start function cannot have type parameters")
+                                    .emit();
+                                return;
+                            }
+                            if !ps.where_clause.predicates.is_empty() {
+                                struct_span_err!(tcx.sess, start_span, E0647,
+                                            "start function is not allowed to have a where clause")
+                                            .emit();
+                                return;
+                            }
                         }
                         _ => ()
                     }

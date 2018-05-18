@@ -4519,6 +4519,32 @@ impl Foo for () {
 ```
 "##,
 
+E0646: r##"
+It is not possible to define `main` with a where clause.
+Erroneous code example:
+
+```compile_fail,E0646
+fn main() where i32: Copy { // error: main function is not allowed to have
+                            // a where clause
+}
+```
+"##,
+
+E0647: r##"
+It is not possible to define `start` with a where clause.
+Erroneous code example:
+
+```compile_fail,E0647
+#![feature(start)]
+
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize where (): Copy {
+    //^ error: start function is not allowed to have a where clause
+    0
+}
+```
+"##,
+
 E0689: r##"
 This error indicates that the numeric value for the method being passed exists
 but the type of the numeric value or binding could not be identified.
