@@ -43,6 +43,7 @@ matrix:
     - env: INTEGRATION=chronotope/chrono
     - env: INTEGRATION=serde-rs/serde
     - env: INTEGRATION=Geal/nom
+    - env: INTEGRATION=hyperium/hyper
   allow_failures:
     - env: INTEGRATION=rust-lang/cargo
     - env: INTEGRATION=rust-lang-nursery/rand
@@ -55,6 +56,7 @@ matrix:
     - env: INTEGRATION=chronotope/chrono
     - env: INTEGRATION=serde-rs/serde
     - env: INTEGRATION=Geal/nom
+    - env: INTEGRATION=hyperium/hyper
 
 script:
   - |
