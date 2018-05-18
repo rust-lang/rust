@@ -89,6 +89,7 @@ It will render like this:
 ```rust
 /// Some documentation.
 # fn foo() {}
+println!("Hello, World!");
 ```
 
 Yes, that's right: you can add lines that start with `# `, and they will
