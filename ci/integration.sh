@@ -21,7 +21,7 @@ cargo install --force
 echo "Integration tests for: ${INTEGRATION}"
 
 function check_fmt {
-    cargo fmt --all -v -- --error-on-unformatted &> rustfmt_output
+    cargo fmt --all -v &> rustfmt_output
     if [[ $? != 0 ]]; then
         cat rustfmt_output
         return 1
