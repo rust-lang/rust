@@ -14,6 +14,8 @@
 
 // compile-pass
 
+#![feature(label_break_value)]
+
 fn main() {
     'unused_while_label: while 0 == 0 {
         //~^ WARN unused label
@@ -67,9 +69,18 @@ fn main() {
         }
     }
 
-    // This is diverging, so put it at the end so we don't get
-    // unreachable_code errors everywhere else
     'unused_loop_label: loop {
         //~^ WARN unused label
+        break;
+    }
+
+    // Make sure unused block labels give warnings...
+    'unused_block_label: {
+        //~^ WARN unused label
+    }
+
+    // ...and that used ones don't:
+    'used_block_label: {
+        break 'used_block_label;
     }
 }
