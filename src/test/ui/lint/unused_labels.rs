@@ -15,6 +15,7 @@
 // compile-pass
 
 #![feature(label_break_value)]
+#![warn(unused_labels)]
 
 fn main() {
     'unused_while_label: while 0 == 0 {
@@ -52,6 +53,15 @@ fn main() {
         //~^ WARN unused label
         'used_loop_label_inner_3: for _ in 0..10 {
             break 'used_loop_label_inner_3;
+        }
+    }
+
+    // You should be able to break the same label many times
+    'many_used: loop {
+        if true {
+            break 'many_used;
+        } else {
+            break 'many_used;
         }
     }
 

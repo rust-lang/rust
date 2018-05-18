@@ -281,7 +281,7 @@ declare_lint! {
 
 declare_lint! {
     pub UNUSED_LABELS,
-    Warn,
+    Allow,
     "detects labels that are never used"
 }
 
