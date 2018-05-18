@@ -218,12 +218,16 @@ E0590: r##"
 Example of erroneous code:
 
 ```compile_fail
-while break {}
+loop {
+    while break {}
+}
 ```
 
 To fix this, add a label specifying which loop is being broken out of:
 ```
-'foo: while break 'foo {}
+'foo: loop {
+    while break 'foo {}
+}
 ```
 "##,
 
