@@ -4,8 +4,7 @@ set -ex
 
 : ${INTEGRATION?"The INTEGRATION environment variable must be set."}
 
-# FIXME: this is causing the build to fail when rustfmt is found in .cargo/bin
-# but cargo-fmt is not found.
+# FIXME: this means we can get a stale cargo-fmt from a previous run.
 #
 # `which rustfmt` fails if rustfmt is not found. Since we don't install
 # `rustfmt` via `rustup`, this is the case unless we manually install it. Once
@@ -15,12 +14,14 @@ set -ex
 # here after the first installation will find `rustfmt` and won't need to build
 # it again.
 #
-# which rustfmt || cargo install --force
+#which cargo-fmt || cargo install --force
 cargo install --force
 
 echo "Integration tests for: ${INTEGRATION}"
+cargo fmt -- --version
 
 function check_fmt {
+    touch rustfmt.toml
     cargo fmt --all -v 2>&1 | tee rustfmt_output
     if [[ $? != 0 ]]; then
         cat rustfmt_output
@@ -45,35 +46,24 @@ function check_fmt {
     fi
 }
 
-function check {
-    cargo test --all
-    if [[ $? != 0 ]]; then
-        return 1
-    fi
-    check_fmt
-    if [[ $? != 0 ]]; then
-        return 1
-    fi
-}
-
 case ${INTEGRATION} in
     cargo)
         git clone --depth=1 https://github.com/rust-lang/${INTEGRATION}.git
         cd ${INTEGRATION}
         export CFG_DISABLE_CROSS_TESTS=1
-        check
+        check_fmt
         cd -
         ;;
     failure)
         git clone --depth=1 https://github.com/rust-lang-nursery/${INTEGRATION}.git
         cd ${INTEGRATION}/failure-1.X
-        check
+        check_fmt
         cd -
         ;;
     *)
         git clone --depth=1 https://github.com/rust-lang-nursery/${INTEGRATION}.git
         cd ${INTEGRATION}
-        check
+        check_fmt
         cd -
         ;;
 esac
