@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unreachable_code)]
+
 fn main() {
     'a: while break 'a {} //~ ERROR: use of undeclared label
+    'b: while break 'b {}; //~ ERROR: use of undeclared label
 }
