@@ -389,18 +389,6 @@ pub fn codegen_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
             args[0].deref(bx.cx).codegen_get_discr(bx, ret_ty)
         }
 
-        "align_offset" => {
-            // `ptr as usize`
-            let ptr_val = bx.ptrtoint(args[0].immediate(), bx.cx.isize_ty);
-            // `ptr_val % align`
-            let align = args[1].immediate();
-            let offset = bx.urem(ptr_val, align);
-            let zero = C_null(bx.cx.isize_ty);
-            // `offset == 0`
-            let is_zero = bx.icmp(llvm::IntPredicate::IntEQ, offset, zero);
-            // `if offset == 0 { 0 } else { align - offset }`
-            bx.select(is_zero, zero, bx.sub(align, offset))
-        }
         name if name.starts_with("simd_") => {
             match generic_simd_intrinsic(bx, name,
                                          callee_ty,

@@ -1203,15 +1203,22 @@ impl<T: ?Sized> *const T {
         copy_nonoverlapping(self, dest, count)
     }
 
-    /// Computes the byte offset that needs to be applied in order to
-    /// make the pointer aligned to `align`.
+    /// Computes the offset that needs to be applied to the pointer in order to make it aligned to
+    /// `align`.
+    ///
     /// If it is not possible to align the pointer, the implementation returns
     /// `usize::max_value()`.
     ///
-    /// There are no guarantees whatsover that offsetting the pointer will not
-    /// overflow or go beyond the allocation that the pointer points into.
-    /// It is up to the caller to ensure that the returned offset is correct
-    /// in all terms other than alignment.
+    /// The offset is expressed in number of `T` elements, and not bytes. The value returned can be
+    /// used with the `offset` or `offset_to` methods.
+    ///
+    /// There are no guarantees whatsover that offsetting the pointer will not overflow or go
+    /// beyond the allocation that the pointer points into. It is up to the caller to ensure that
+    /// the returned offset is correct in all terms other than alignment.
+    ///
+    /// # Panics
+    ///
+    /// The function panics if `align` is not a power-of-two.
     ///
     /// # Examples
     ///
@@ -1235,12 +1242,29 @@ impl<T: ?Sized> *const T {
     /// # } }
     /// ```
     #[unstable(feature = "align_offset", issue = "44488")]
-    pub fn align_offset(self, align: usize) -> usize {
+    #[cfg(not(stage0))]
+    pub fn align_offset(self, align: usize) -> usize where T: Sized {
+        if !align.is_power_of_two() {
+            panic!("align_offset: align is not a power-of-two");
+        }
         unsafe {
-            intrinsics::align_offset(self as *const _, align)
+            align_offset(self, align)
+        }
+    }
+
+    /// definitely docs.
+    #[unstable(feature = "align_offset", issue = "44488")]
+    #[cfg(stage0)]
+    pub fn align_offset(self, align: usize) -> usize where T: Sized {
+        if !align.is_power_of_two() {
+            panic!("align_offset: align is not a power-of-two");
+        }
+        unsafe {
+            intrinsics::align_offset(self as *const (), align)
         }
     }
 }
+
 
 #[lang = "mut_ptr"]
 impl<T: ?Sized> *mut T {
@@ -1572,44 +1596,6 @@ impl<T: ?Sized> *mut T {
     #[inline]
     pub fn wrapping_offset_from(self, origin: *const T) -> isize where T: Sized {
         (self as *const T).wrapping_offset_from(origin)
-    }
-
-    /// Computes the byte offset that needs to be applied in order to
-    /// make the pointer aligned to `align`.
-    /// If it is not possible to align the pointer, the implementation returns
-    /// `usize::max_value()`.
-    ///
-    /// There are no guarantees whatsover that offsetting the pointer will not
-    /// overflow or go beyond the allocation that the pointer points into.
-    /// It is up to the caller to ensure that the returned offset is correct
-    /// in all terms other than alignment.
-    ///
-    /// # Examples
-    ///
-    /// Accessing adjacent `u8` as `u16`
-    ///
-    /// ```
-    /// # #![feature(align_offset)]
-    /// # fn foo(n: usize) {
-    /// # use std::mem::align_of;
-    /// # unsafe {
-    /// let x = [5u8, 6u8, 7u8, 8u8, 9u8];
-    /// let ptr = &x[n] as *const u8;
-    /// let offset = ptr.align_offset(align_of::<u16>());
-    /// if offset < x.len() - n - 1 {
-    ///     let u16_ptr = ptr.offset(offset as isize) as *const u16;
-    ///     assert_ne!(*u16_ptr, 500);
-    /// } else {
-    ///     // while the pointer can be aligned via `offset`, it would point
-    ///     // outside the allocation
-    /// }
-    /// # } }
-    /// ```
-    #[unstable(feature = "align_offset", issue = "44488")]
-    pub fn align_offset(self, align: usize) -> usize {
-        unsafe {
-            intrinsics::align_offset(self as *const _, align)
-        }
     }
 
     /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).
@@ -2281,7 +2267,199 @@ impl<T: ?Sized> *mut T {
     {
         swap(self, with)
     }
+
+    /// Computes the offset that needs to be applied to the pointer in order to make it aligned to
+    /// `align`.
+    ///
+    /// If it is not possible to align the pointer, the implementation returns
+    /// `usize::max_value()`.
+    ///
+    /// The offset is expressed in number of `T` elements, and not bytes. The value returned can be
+    /// used with the `offset` or `offset_to` methods.
+    ///
+    /// There are no guarantees whatsover that offsetting the pointer will not overflow or go
+    /// beyond the allocation that the pointer points into. It is up to the caller to ensure that
+    /// the returned offset is correct in all terms other than alignment.
+    ///
+    /// # Panics
+    ///
+    /// The function panics if `align` is not a power-of-two.
+    ///
+    /// # Examples
+    ///
+    /// Accessing adjacent `u8` as `u16`
+    ///
+    /// ```
+    /// # #![feature(align_offset)]
+    /// # fn foo(n: usize) {
+    /// # use std::mem::align_of;
+    /// # unsafe {
+    /// let x = [5u8, 6u8, 7u8, 8u8, 9u8];
+    /// let ptr = &x[n] as *const u8;
+    /// let offset = ptr.align_offset(align_of::<u16>());
+    /// if offset < x.len() - n - 1 {
+    ///     let u16_ptr = ptr.offset(offset as isize) as *const u16;
+    ///     assert_ne!(*u16_ptr, 500);
+    /// } else {
+    ///     // while the pointer can be aligned via `offset`, it would point
+    ///     // outside the allocation
+    /// }
+    /// # } }
+    /// ```
+    #[unstable(feature = "align_offset", issue = "44488")]
+    #[cfg(not(stage0))]
+    pub fn align_offset(self, align: usize) -> usize where T: Sized {
+        if !align.is_power_of_two() {
+            panic!("align_offset: align is not a power-of-two");
+        }
+        unsafe {
+            align_offset(self, align)
+        }
+    }
+
+    /// definitely docs.
+    #[unstable(feature = "align_offset", issue = "44488")]
+    #[cfg(stage0)]
+    pub fn align_offset(self, align: usize) -> usize where T: Sized {
+        if !align.is_power_of_two() {
+            panic!("align_offset: align is not a power-of-two");
+        }
+        unsafe {
+            intrinsics::align_offset(self as *const (), align)
+        }
+    }
 }
+
+/// Align pointer `p`.
+///
+/// Calculate offset (in terms of elements of `stride` stride) that has to be applied
+/// to pointer `p` so that pointer `p` would get aligned to `a`.
+///
+/// Note: This implementation has been carefully tailored to not panic. It is UB for this to panic.
+/// The only real change that can be made here is change of `INV_TABLE_MOD_16` and associated
+/// constants.
+///
+/// If we ever decide to make it possible to call the intrinsic with `a` that is not a
+/// power-of-two, it will probably be more prudent to just change to a naive implementation rather
+/// than trying to adapt this to accomodate that change.
+///
+/// Any questions go to @nagisa.
+#[lang="align_offset"]
+#[cfg(not(stage0))]
+pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
+    /// Calculate multiplicative modular inverse of `x` modulo `m`.
+    ///
+    /// This implementation is tailored for align_offset and has following preconditions:
+    ///
+    /// * `m` is a power-of-two;
+    /// * `x < m`; (if `x ≥ m`, pass in `x % m` instead)
+    ///
+    /// Implementation of this function shall not panic. Ever.
+    #[inline]
+    fn mod_inv(x: usize, m: usize) -> usize {
+        /// Multiplicative modular inverse table modulo 2⁴ = 16.
+        ///
+        /// Note, that this table does not contain values where inverse does not exist (i.e. for
+        /// `0⁻¹ mod 16`, `2⁻¹ mod 16`, etc.)
+        const INV_TABLE_MOD_16: [usize; 8] = [1, 11, 13, 7, 9, 3, 5, 15];
+        /// Modulo for which the `INV_TABLE_MOD_16` is intended.
+        const INV_TABLE_MOD: usize = 16;
+        /// INV_TABLE_MOD²
+        const INV_TABLE_MOD_SQUARED: usize = INV_TABLE_MOD * INV_TABLE_MOD;
+
+        let table_inverse = INV_TABLE_MOD_16[(x & (INV_TABLE_MOD - 1)) >> 1];
+        if m <= INV_TABLE_MOD {
+            return table_inverse & (m - 1);
+        } else {
+            // We iterate "up" using the following formula:
+            //
+            // $$ xy ≡ 1 (mod 2ⁿ) → xy (2 - xy) ≡ 1 (mod 2²ⁿ) $$
+            //
+            // until 2²ⁿ ≥ m. Then we can reduce to our desired `m` by taking the result `mod m`.
+            let mut inverse = table_inverse;
+            let mut going_mod = INV_TABLE_MOD_SQUARED;
+            loop {
+                // y = y * (2 - xy) mod n
+                //
+                // Note, that we use wrapping operations here intentionally – the original formula
+                // uses e.g. subtraction `mod n`. It is entirely fine to do them `mod
+                // usize::max_value()` instead, because we take the result `mod n` at the end
+                // anyway.
+                inverse = inverse.wrapping_mul(
+                    2usize.wrapping_sub(x.wrapping_mul(inverse))
+                ) & (going_mod - 1);
+                if going_mod > m {
+                    return inverse & (m - 1);
+                }
+                going_mod = going_mod.wrapping_mul(going_mod);
+            }
+        }
+    }
+
+    let stride = ::mem::size_of::<T>();
+    let a_minus_one = a.wrapping_sub(1);
+    let pmoda = p as usize & a_minus_one;
+
+    if pmoda == 0 {
+        // Already aligned. Yay!
+        return 0;
+    }
+
+    if stride <= 1 {
+        return if stride == 0 {
+            // If the pointer is not aligned, and the element is zero-sized, then no amount of
+            // elements will ever align the pointer.
+            !0
+        } else {
+            a.wrapping_sub(pmoda)
+        };
+    }
+
+    let smoda = stride & a_minus_one;
+    // a is power-of-two so cannot be 0. stride = 0 is handled above.
+    let gcdpow = intrinsics::cttz_nonzero(stride).min(intrinsics::cttz_nonzero(a));
+    let gcd = 1usize << gcdpow;
+
+    if gcd == 1 {
+        // This branch solves for the variable $o$ in following linear congruence equation:
+        //
+        // ⎰ p + o ≡ 0 (mod a)   # $p + o$ must be aligned to specified alignment $a$
+        // ⎱     o ≡ 0 (mod s)   # offset $o$ must be a multiple of stride $s$
+        //
+        // where
+        //
+        // * a, s are co-prime
+        //
+        // This gives us the formula below:
+        //
+        // o = (a - (p mod a)) * (s⁻¹ mod a) * s
+        //
+        // The first term is “the relative alignment of p to a”, the second term is “how does
+        // incrementing p by one s change the relative alignment of p”, the third term is
+        // translating change in units of s to a byte count.
+        //
+        // Furthermore, the result produced by this solution is not “minimal”, so it is necessary
+        // to take the result $o mod lcm(s, a)$. Since $s$ and $a$ are co-prime (i.e. $gcd(s, a) =
+        // 1$) and $lcm(s, a) = s * a / gcd(s, a)$, we can replace $lcm(s, a)$ with just a $s * a$.
+        //
+        // (Author note: we decided later on to express the offset in "elements" rather than bytes,
+        // which drops the multiplication by `s` on both sides of the modulo.)
+        return intrinsics::unchecked_rem(a.wrapping_sub(pmoda).wrapping_mul(mod_inv(smoda, a)), a);
+    }
+
+    if p as usize & (gcd - 1) == 0 {
+        // This can be aligned, but `a` and `stride` are not co-prime, so a somewhat adapted
+        // formula is used.
+        let j = a.wrapping_sub(pmoda) >> gcdpow;
+        let k = smoda >> gcdpow;
+        return intrinsics::unchecked_rem(j.wrapping_mul(mod_inv(k, a)), a >> gcdpow);
+    }
+
+    // Cannot be aligned at all.
+    return usize::max_value();
+}
+
+
 
 // Equality for pointers
 #[stable(feature = "rust1", since = "1.0.0")]
