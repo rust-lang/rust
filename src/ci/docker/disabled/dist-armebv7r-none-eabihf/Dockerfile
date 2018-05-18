@@ -29,7 +29,7 @@ ENV PATH=$PATH:/$GCC_LINARO/bin
 ENV TARGET=armebv7r-none-eabihf
 
 ENV CC_armebv7r_none_eabihf=armeb-eabi-gcc \
-    CFLAGS_armebv7r_none_eabihf="-mthumb -march=armv7-r"
+    CFLAGS_armebv7r_none_eabihf="-march=armv7-r"
 
 ENV RUST_CONFIGURE_ARGS --disable-docs
 
