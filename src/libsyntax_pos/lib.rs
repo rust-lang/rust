@@ -428,6 +428,13 @@ impl Span {
         )
     }
 
+    pub fn from_inner_byte_pos(self, start: usize, end: usize) -> Span {
+        let span = self.data();
+        Span::new(span.lo + BytePos::from_usize(start),
+                  span.lo + BytePos::from_usize(end),
+                  span.ctxt)
+    }
+
     #[inline]
     pub fn apply_mark(self, mark: Mark) -> Span {
         let span = self.data();

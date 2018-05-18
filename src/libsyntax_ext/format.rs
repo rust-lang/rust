@@ -767,9 +767,12 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     }
 
     if !parser.errors.is_empty() {
-        let (err, note) = parser.errors.remove(0);
-        let mut e = cx.ecx.struct_span_err(cx.fmtsp, &format!("invalid format string: {}", err));
-        if let Some(note) = note {
+        let err = parser.errors.remove(0);
+        let sp = cx.fmtsp.from_inner_byte_pos(err.start, err.end);
+        let mut e = cx.ecx.struct_span_err(sp, &format!("invalid format string: {}",
+                                                        err.description));
+        e.span_label(sp, err.label + " in format string");
+        if let Some(note) = err.note {
             e.note(&note);
         }
         e.emit();

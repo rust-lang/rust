@@ -168,6 +168,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "verbose", "run tests verbosely, showing all output")
         .optflag(
             "",
+            "bless",
+            "overwrite stderr/stdout files instead of complaining about a mismatch",
+        )
+        .optflag(
+            "",
             "quiet",
             "print one character per test instead of one line",
         )
@@ -290,6 +295,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
     Config {
+        bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),

@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use rustc::infer::canonical::{Canonical, QueryResult};
-use rustc::traits::{self, FulfillmentContext, Normalized, ObligationCause,
-                    SelectionContext};
+use rustc::traits::{self, FulfillmentContext, ObligationCause, SelectionContext};
 use rustc::traits::query::{CanonicalProjectionGoal, NoSolution, normalize::NormalizationResult};
 use rustc::ty::{ParamEnvAnd, TyCtxt};
 use rustc_data_structures::sync::Lrc;
@@ -37,10 +36,9 @@ crate fn normalize_projection_ty<'tcx>(
         let fulfill_cx = &mut FulfillmentContext::new();
         let selcx = &mut SelectionContext::new(infcx);
         let cause = ObligationCause::misc(DUMMY_SP, DUMMY_NODE_ID);
-        let Normalized {
-            value: answer,
-            obligations,
-        } = traits::normalize_projection_type(selcx, param_env, goal, cause, 0);
+        let mut obligations = vec![];
+        let answer =
+            traits::normalize_projection_type(selcx, param_env, goal, cause, 0, &mut obligations);
         fulfill_cx.register_predicate_obligations(infcx, obligations);
 
         // Now that we have fulfilled as much as we can, create a solution

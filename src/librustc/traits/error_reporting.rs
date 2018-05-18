@@ -203,17 +203,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     obligation.cause.span,
                     infer::LateBoundRegionConversionTime::HigherRankedType,
                     data);
-                let normalized = super::normalize_projection_type(
+                let mut obligations = vec![];
+                let normalized_ty = super::normalize_projection_type(
                     &mut selcx,
                     obligation.param_env,
                     data.projection_ty,
                     obligation.cause.clone(),
-                    0
+                    0,
+                    &mut obligations
                 );
                 if let Err(error) = self.at(&obligation.cause, obligation.param_env)
-                                        .eq(normalized.value, data.ty) {
+                                        .eq(normalized_ty, data.ty) {
                     values = Some(infer::ValuePairs::Types(ExpectedFound {
-                        expected: normalized.value,
+                        expected: normalized_ty,
                         found: data.ty,
                     }));
                     err_buf = error;
