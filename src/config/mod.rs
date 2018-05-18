@@ -46,10 +46,10 @@ create_config! {
     indent_style: IndentStyle, IndentStyle::Block, false, "How do we indent expressions or items.";
 
     // Comments and strings
-    wrap_comments: bool, false, true, "Break comments to fit on the line";
+    wrap_comments: bool, false, false, "Break comments to fit on the line";
     comment_width: usize, 80, false,
         "Maximum length of comments. No effect unless wrap_comments = true";
-    normalize_comments: bool, false, true, "Convert /* */ comments to // comments where possible";
+    normalize_comments: bool, false, false, "Convert /* */ comments to // comments where possible";
     license_template_path: String, String::default(), false,
         "Beginning of file must match license template";
     format_strings: bool, false, false, "Format string literals where necessary";
