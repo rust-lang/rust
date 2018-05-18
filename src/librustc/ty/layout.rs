@@ -18,6 +18,7 @@ use syntax_pos::DUMMY_SP;
 use std::cmp;
 use std::fmt;
 use std::i128;
+use std::iter;
 use std::mem;
 
 use ich::StableHashingContext;
@@ -813,11 +814,15 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     if let Some(i) = dataful_variant {
                         let count = (niche_variants.end() - niche_variants.start() + 1) as u128;
                         for (field_index, &field) in variants[i].iter().enumerate() {
-                            let (offset, niche, niche_start) =
-                                match self.find_niche(field, count)? {
-                                    Some(niche) => niche,
-                                    None => continue
-                                };
+                            let niche = match self.find_niche(field)? {
+                                Some(niche) => niche,
+                                _ => continue,
+                            };
+                            let (niche_start, niche_scalar) = match niche.reserve(self, count) {
+                                Some(pair) => pair,
+                                None => continue,
+                            };
+
                             let mut align = dl.aggregate_align;
                             let st = variants.iter().enumerate().map(|(j, v)| {
                                 let mut st = univariant_uninterned(v,
@@ -829,11 +834,11 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                                 Ok(st)
                             }).collect::<Result<Vec<_>, _>>()?;
 
-                            let offset = st[i].fields.offset(field_index) + offset;
+                            let offset = st[i].fields.offset(field_index) + niche.offset;
                             let size = st[i].size;
 
                             let mut abi = match st[i].abi {
-                                Abi::Scalar(_) => Abi::Scalar(niche.clone()),
+                                Abi::Scalar(_) => Abi::Scalar(niche_scalar.clone()),
                                 Abi::ScalarPair(ref first, ref second) => {
                                     // We need to use scalar_unit to reset the
                                     // valid range to the maximal one for that
@@ -841,9 +846,15 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                                     // guaranteed to be initialised, not the
                                     // other primitive.
                                     if offset.bytes() == 0 {
-                                        Abi::ScalarPair(niche.clone(), scalar_unit(second.value))
+                                        Abi::ScalarPair(
+                                            niche_scalar.clone(),
+                                            scalar_unit(second.value),
+                                        )
                                     } else {
-                                        Abi::ScalarPair(scalar_unit(first.value), niche.clone())
+                                        Abi::ScalarPair(
+                                            scalar_unit(first.value),
+                                            niche_scalar.clone(),
+                                        )
                                     }
                                 }
                                 _ => Abi::Aggregate { sized: true },
@@ -857,7 +868,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                                 variants: Variants::NicheFilling {
                                     dataful_variant: i,
                                     niche_variants,
-                                    niche,
+                                    niche: niche_scalar,
                                     niche_start,
                                     variants: st,
                                 },
@@ -1674,16 +1685,37 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
     }
 }
 
+struct Niche {
+    offset: Size,
+    scalar: Scalar,
+    available: u128,
+}
+
+impl Niche {
+    fn reserve<'a, 'tcx>(
+        &self,
+        cx: LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>>,
+        count: u128,
+    ) -> Option<(u128, Scalar)> {
+        if count > self.available {
+            return None;
+        }
+        let Scalar { value, valid_range: ref v } = self.scalar;
+        let bits = value.size(cx).bits();
+        assert!(bits <= 128);
+        let max_value = !0u128 >> (128 - bits);
+        let start = v.end().wrapping_add(1) & max_value;
+        let end = v.end().wrapping_add(count) & max_value;
+        Some((start, Scalar { value, valid_range: *v.start()..=end }))
+    }
+}
+
 impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
     /// Find the offset of a niche leaf field, starting from
-    /// the given type and recursing through aggregates, which
-    /// has at least `count` consecutive invalid values.
-    /// The tuple is `(offset, scalar, niche_value)`.
+    /// the given type and recursing through aggregates.
     // FIXME(eddyb) traverse already optimized enums.
-    fn find_niche(self, layout: TyLayout<'tcx>, count: u128)
-        -> Result<Option<(Size, Scalar, u128)>, LayoutError<'tcx>>
-    {
-        let scalar_component = |scalar: &Scalar, offset| {
+    fn find_niche(self, layout: TyLayout<'tcx>) -> Result<Option<Niche>, LayoutError<'tcx>> {
+        let scalar_niche = |scalar: &Scalar, offset| {
             let Scalar { value, valid_range: ref v } = *scalar;
 
             let bits = value.size(self).bits();
@@ -1691,23 +1723,18 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             let max_value = !0u128 >> (128 - bits);
 
             // Find out how many values are outside the valid range.
-            let niches = if v.start() <= v.end() {
+            let available = if v.start() <= v.end() {
                 v.start() + (max_value - v.end())
             } else {
                 v.start() - v.end() - 1
             };
 
-            // Give up if we can't fit `count` consecutive niches.
-            if count > niches {
+            // Give up if there is no niche value available.
+            if available == 0 {
                 return None;
             }
 
-            let niche_start = v.end().wrapping_add(1) & max_value;
-            let niche_end = v.end().wrapping_add(count) & max_value;
-            Some((offset, Scalar {
-                value,
-                valid_range: *v.start()..=niche_end
-            }, niche_start))
+            Some(Niche { offset, scalar: scalar.clone(), available })
         };
 
         // Locals variables which live across yields are stored
@@ -1719,15 +1746,19 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
         match layout.abi {
             Abi::Scalar(ref scalar) => {
-                return Ok(scalar_component(scalar, Size::from_bytes(0)));
+                return Ok(scalar_niche(scalar, Size::from_bytes(0)));
             }
             Abi::ScalarPair(ref a, ref b) => {
-                return Ok(scalar_component(a, Size::from_bytes(0)).or_else(|| {
-                    scalar_component(b, a.value.size(self).abi_align(b.value.align(self)))
-                }));
+                // HACK(nox): We iter on `b` and then `a` because `max_by_key`
+                // returns the last maximum.
+                let niche = iter::once((b, a.value.size(self).abi_align(b.value.align(self))))
+                    .chain(iter::once((a, Size::from_bytes(0))))
+                    .filter_map(|(scalar, offset)| scalar_niche(scalar, offset))
+                    .max_by_key(|niche| niche.available);
+                return Ok(niche);
             }
             Abi::Vector { ref element, .. } => {
-                return Ok(scalar_component(element, Size::from_bytes(0)));
+                return Ok(scalar_niche(element, Size::from_bytes(0)));
             }
             _ => {}
         }
@@ -1742,17 +1773,23 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         }
         if let FieldPlacement::Array { .. } = layout.fields {
             if layout.fields.count() > 0 {
-                return self.find_niche(layout.field(self, 0)?, count);
+                return self.find_niche(layout.field(self, 0)?);
+            } else {
+                return Ok(None);
             }
         }
+        let mut niche = None;
+        let mut available = 0;
         for i in 0..layout.fields.count() {
-            let r = self.find_niche(layout.field(self, i)?, count)?;
-            if let Some((offset, scalar, niche_value)) = r {
-                let offset = layout.fields.offset(i) + offset;
-                return Ok(Some((offset, scalar, niche_value)));
+            if let Some(mut c) = self.find_niche(layout.field(self, i)?)? {
+                if c.available > available {
+                    available = c.available;
+                    c.offset += layout.fields.offset(i);
+                    niche = Some(c);
+                }
             }
         }
-        Ok(None)
+        Ok(niche)
     }
 }
 
