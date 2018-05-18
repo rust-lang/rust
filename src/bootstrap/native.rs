@@ -596,6 +596,7 @@ impl Step for Openssl {
             "arm-linux-androideabi" => "android",
             "arm-unknown-linux-gnueabi" => "linux-armv4",
             "arm-unknown-linux-gnueabihf" => "linux-armv4",
+            "armv6-unknown-netbsd-eabihf" => "BSD-generic32",
             "armv7-linux-androideabi" => "android-armv7",
             "armv7-unknown-linux-gnueabihf" => "linux-armv4",
             "armv7-unknown-netbsd-eabihf" => "BSD-generic32",
