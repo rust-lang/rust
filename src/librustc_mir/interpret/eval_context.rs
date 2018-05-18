@@ -1705,7 +1705,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             let mut trace_text = "\n\nAn error occurred in miri:\n".to_string();
             backtrace.resolve();
             write!(trace_text, "backtrace frames: {}\n", backtrace.frames().len()).unwrap();
-            for (i, frame) in backtrace.frames().iter().enumerate() {
+            'frames: for (i, frame) in backtrace.frames().iter().enumerate() {
                 if frame.symbols().is_empty() {
                     write!(trace_text, "{}: no symbols\n", i).unwrap();
                 }
