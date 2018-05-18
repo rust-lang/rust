@@ -82,6 +82,7 @@ create_config! {
         "Where to put a binary operator when a binary expression goes multiline.";
 
     // Misc.
+    remove_nested_parens: bool, true, true, "Remove nested parens.";
     remove_blank_lines_at_start_or_end_of_block: bool, true, false,
         "Remove blank lines at start or end of a block";
     combine_control_expr: bool, true, false, "Combine control expressions with function calls.";
@@ -105,8 +106,6 @@ create_config! {
         "Maximum number of blank lines which can be put between items.";
     blank_lines_lower_bound: usize, 0, false,
         "Minimum number of blank lines which must be put between items.";
-    remove_nested_parens: bool, false, false,
-        "Remove nested parens.";
 
     // Options that can change the source code beyond whitespace/blocks (somewhat linty things)
     merge_derives: bool, true, true, "Merge multiple `#[derive(...)]` into a single one";

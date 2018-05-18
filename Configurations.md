@@ -1260,7 +1260,7 @@ Convert /* */ comments to // comments where possible
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: Yes
+- **Stable**: No
 
 #### `false` (default):
 
@@ -1286,21 +1286,22 @@ fn adipiscing() -> usize {}
 
 Remove nested parens.
 
-- **Defalut value**: `false`,
+- **Default value**: `true`,
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: Yes
 
-#### `false` (default):
-```rust
-fn main() {
-    ((((foo()))));
-}
-```
 
-#### `true`:
+#### `true` (default):
 ```rust
 fn main() {
     (foo());
+}
+```
+
+#### `false`:
+```rust
+fn main() {
+    ((((foo()))));
 }
 ```
 
@@ -1312,7 +1313,7 @@ separated by a newline).
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: Yes
 
 #### `true` (default):
 
@@ -1339,7 +1340,7 @@ Reorder `mod` declarations alphabetically in group.
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: Yes
 
 #### `true` (default)
 
@@ -1764,7 +1765,7 @@ Use field initialize shorthand if possible.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: Yes
 
 #### `false` (default):
 
@@ -1806,7 +1807,7 @@ Replace uses of the try! macro by the ? shorthand
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No
+- **Stable**: Yes
 
 #### `false` (default):
 
@@ -1831,7 +1832,7 @@ Break comments to fit on the line
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: Yes
+- **Stable**: No
 
 #### `false` (default):
 
