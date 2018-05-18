@@ -9,10 +9,7 @@
 // except according to those terms.
 
 macro_rules! foo {
-    ($e: expr) => {
-        #[allow(unused_labels)]
-        'x: loop { $e }
-    }
+    ($e: expr) => { 'x: loop { $e } }
 }
 
 pub fn main() {

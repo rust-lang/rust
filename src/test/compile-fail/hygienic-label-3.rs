@@ -13,7 +13,6 @@ macro_rules! foo {
 }
 
 pub fn main() {
-    #[allow(unused_labels)]
     'x: for _ in 0..1 {
         foo!()
     };

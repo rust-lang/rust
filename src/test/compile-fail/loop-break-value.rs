@@ -77,7 +77,6 @@ fn main() {
     }
 
     let _: i32 = 'a: loop {
-        #[allow(unused_labels)]
         let _: () = 'b: loop {
             break ('c: loop {
                 break;

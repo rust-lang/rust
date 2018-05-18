@@ -9,7 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    #[allow(unused_labels)]
     'break: loop { //~ ERROR invalid label name `'break`
     }
 }
