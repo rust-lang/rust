@@ -35,9 +35,9 @@ fn main() {
 
     let exit_code = match execute(&opts) {
         Ok((write_mode, summary)) => {
-            if summary.has_operational_errors()
-                || summary.has_parsing_errors()
-                || (summary.has_diff && write_mode == WriteMode::Check)
+            if summary.has_operational_errors() || summary.has_parsing_errors()
+                || ((summary.has_diff || summary.has_check_errors())
+                    && write_mode == WriteMode::Check)
             {
                 1
             } else {

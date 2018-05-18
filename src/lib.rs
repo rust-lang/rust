@@ -200,27 +200,58 @@ impl FormattingError {
 #[derive(Clone)]
 pub struct FormatReport {
     // Maps stringified file paths to their associated formatting errors.
-    file_error_map: Rc<RefCell<HashMap<FileName, Vec<FormattingError>>>>,
+    internal: Rc<RefCell<(FormatErrorMap, ReportedErrors)>>,
+}
+
+type FormatErrorMap = HashMap<FileName, Vec<FormattingError>>;
+
+#[derive(Default, Debug)]
+struct ReportedErrors {
+    has_operational_errors: bool,
+    has_check_errors: bool,
 }
 
 impl FormatReport {
     fn new() -> FormatReport {
         FormatReport {
-            file_error_map: Rc::new(RefCell::new(HashMap::new())),
+            internal: Rc::new(RefCell::new((HashMap::new(), ReportedErrors::default()))),
         }
     }
 
     fn append(&self, f: FileName, mut v: Vec<FormattingError>) {
-        self.file_error_map
+        self.track_errors(&v);
+        self.internal
             .borrow_mut()
+            .0
             .entry(f)
             .and_modify(|fe| fe.append(&mut v))
             .or_insert(v);
     }
 
+    fn track_errors(&self, new_errors: &[FormattingError]) {
+        let errs = &mut self.internal.borrow_mut().1;
+        if errs.has_operational_errors && errs.has_check_errors {
+            return;
+        }
+        for err in new_errors {
+            match err.kind {
+                ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace => {
+                    errs.has_operational_errors = true;
+                }
+                ErrorKind::BadIssue(_)
+                | ErrorKind::LicenseCheck
+                | ErrorKind::DeprecatedAttr
+                | ErrorKind::BadAttr => {
+                    errs.has_check_errors = true;
+                }
+            }
+        }
+    }
+
     fn warning_count(&self) -> usize {
-        self.file_error_map
+        self.internal
             .borrow()
+            .0
             .iter()
             .map(|(_, errors)| errors.len())
             .sum()
@@ -234,7 +265,7 @@ impl FormatReport {
         &self,
         mut t: Box<term::Terminal<Output = io::Stderr>>,
     ) -> Result<(), term::Error> {
-        for (file, errors) in &*self.file_error_map.borrow() {
+        for (file, errors) in &self.internal.borrow().0 {
             for error in errors {
                 let prefix_space_len = error.line.to_string().len();
                 let prefix_spaces = " ".repeat(1 + prefix_space_len);
@@ -280,7 +311,7 @@ impl FormatReport {
             }
         }
 
-        if !self.file_error_map.borrow().is_empty() {
+        if !self.internal.borrow().0.is_empty() {
             t.attr(term::Attr::Bold)?;
             write!(t, "warning: ")?;
             t.reset()?;
@@ -304,7 +335,7 @@ fn target_str(space_len: usize, target_len: usize) -> String {
 impl fmt::Display for FormatReport {
     // Prints all the formatting errors.
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        for (file, errors) in &*self.file_error_map.borrow() {
+        for (file, errors) in &self.internal.borrow().0 {
             for error in errors {
                 let prefix_space_len = error.line.to_string().len();
                 let prefix_spaces = " ".repeat(1 + prefix_space_len);
@@ -343,7 +374,7 @@ impl fmt::Display for FormatReport {
                 )?;
             }
         }
-        if !self.file_error_map.borrow().is_empty() {
+        if !self.internal.borrow().0.is_empty() {
             writeln!(
                 fmt,
                 "warning: rustfmt may have failed to format. See previous {} errors.",
@@ -826,6 +857,16 @@ fn format_input_inner<T: Write>(
             duration_to_f32(summary.get_format_time().unwrap()),
         )
     });
+
+    {
+        let report_errs = &report.internal.borrow().1;
+        if report_errs.has_check_errors {
+            summary.add_check_error();
+        }
+        if report_errs.has_operational_errors {
+            summary.add_operational_error();
+        }
+    }
 
     match format_result {
         Ok((file_map, has_diff)) => {

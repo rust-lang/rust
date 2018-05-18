@@ -23,6 +23,9 @@ pub struct Summary {
     // Code is valid, but it is impossible to format it properly.
     has_formatting_errors: bool,
 
+    // Failed a check, such as the license check or other opt-in checking.
+    has_check_errors: bool,
+
     // Formatted code differs from existing code (--check only).
     pub has_diff: bool,
 
@@ -73,6 +76,10 @@ impl Summary {
         self.has_formatting_errors
     }
 
+    pub fn has_check_errors(&self) -> bool {
+        self.has_check_errors
+    }
+
     pub fn add_operational_error(&mut self) {
         self.has_operational_errors = true;
     }
@@ -83,6 +90,10 @@ impl Summary {
 
     pub(crate) fn add_formatting_error(&mut self) {
         self.has_formatting_errors = true;
+    }
+
+    pub(crate) fn add_check_error(&mut self) {
+        self.has_check_errors = true;
     }
 
     pub(crate) fn add_diff(&mut self) {
@@ -100,6 +111,7 @@ impl Summary {
         self.has_operational_errors |= other.has_operational_errors;
         self.has_formatting_errors |= other.has_formatting_errors;
         self.has_parsing_errors |= other.has_parsing_errors;
+        self.has_check_errors |= other.has_check_errors;
         self.has_diff |= other.has_diff;
     }
 }
