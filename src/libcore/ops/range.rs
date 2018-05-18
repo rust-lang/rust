@@ -318,8 +318,6 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// # Examples
 ///
 /// ```
-/// #![feature(inclusive_range_methods)]
-///
 /// assert_eq!((3..=5), std::ops::RangeInclusive::new(3, 5));
 /// assert_eq!(3 + 4 + 5, (3..=5).sum());
 ///
@@ -345,12 +343,11 @@ impl<Idx> RangeInclusive<Idx> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(inclusive_range_methods)]
     /// use std::ops::RangeInclusive;
     ///
     /// assert_eq!(3..=5, RangeInclusive::new(3, 5));
     /// ```
-    #[unstable(feature = "inclusive_range_methods", issue = "49022")]
+    #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
     #[inline]
     pub const fn new(start: Idx, end: Idx) -> Self {
         Self { start, end }
@@ -363,17 +360,18 @@ impl<Idx> RangeInclusive<Idx> {
     /// whether the inclusive range is empty, use the [`is_empty()`] method
     /// instead of comparing `start() > end()`.
     ///
+    /// Note: the value returned by this method is unspecified after the range
+    /// has been iterated to exhaustion.
+    ///
     /// [`end()`]: #method.end
     /// [`is_empty()`]: #method.is_empty
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(inclusive_range_methods)]
-    ///
     /// assert_eq!((3..=5).start(), &3);
     /// ```
-    #[unstable(feature = "inclusive_range_methods", issue = "49022")]
+    #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
     #[inline]
     pub fn start(&self) -> &Idx {
         &self.start
@@ -386,32 +384,34 @@ impl<Idx> RangeInclusive<Idx> {
     /// whether the inclusive range is empty, use the [`is_empty()`] method
     /// instead of comparing `start() > end()`.
     ///
+    /// Note: the value returned by this method is unspecified after the range
+    /// has been iterated to exhaustion.
+    ///
     /// [`start()`]: #method.start
     /// [`is_empty()`]: #method.is_empty
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(inclusive_range_methods)]
-    ///
     /// assert_eq!((3..=5).end(), &5);
     /// ```
-    #[unstable(feature = "inclusive_range_methods", issue = "49022")]
+    #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
     #[inline]
     pub fn end(&self) -> &Idx {
         &self.end
     }
 
-    /// Destructures the RangeInclusive into (lower bound, upper (inclusive) bound).
+    /// Destructures the `RangeInclusive` into (lower bound, upper (inclusive) bound).
+    ///
+    /// Note: the value returned by this method is unspecified after the range
+    /// has been iterated to exhaustion.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(inclusive_range_methods)]
-    ///
     /// assert_eq!((3..=5).into_inner(), (3, 5));
     /// ```
-    #[unstable(feature = "inclusive_range_methods", issue = "49022")]
+    #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
     #[inline]
     pub fn into_inner(self) -> (Idx, Idx) {
         (self.start, self.end)
