@@ -2112,11 +2112,9 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// Searches the current set of local scopes for labels. Returns the first non-None label that
-    /// is returned by the given predicate function
-    ///
-    /// Stops after meeting a closure.
-    fn search_label<P, R>(&self, mut ident: Ident, pred: P) -> Option<R>
+    /// Searches the current set of local scopes for labels. Returns the first non-`None` label
+    /// that is returned by the given predicate function. Stops after meeting a closure.
+    fn search_label<P, R: std::fmt::Debug>(&self, mut ident: Ident, pred: P) -> Option<R>
         where P: Fn(&Rib, Ident) -> Option<R>
     {
         for rib in self.label_ribs.iter().rev() {
@@ -2130,7 +2128,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 _ => {
-                    // Do not resolve labels across function boundary
+                    // Do not resolve labels across function boundary.
                     return None;
                 }
             }
@@ -3731,8 +3729,8 @@ impl<'a> Resolver<'a> {
                 match self.search_label(label.ident, |rib, id| rib.bindings.get(&id).cloned()) {
                     None => {
                         // Search again for close matches...
-                        // Picks the first label that is "close enough", which is not necessarily
-                        // the closest match
+                        // Picks the first label that is "close enough", which is not
+                        // necessarily the closest match.
                         let close_match = self.search_label(label.ident, |rib, ident| {
                             let names = rib.bindings.iter().map(|(id, _)| &id.name);
                             find_best_match_for_name(names, &*ident.name.as_str(), None)
@@ -3775,15 +3773,15 @@ impl<'a> Resolver<'a> {
             ExprKind::Loop(ref block, label) => self.resolve_labeled_block(label, expr.id, &block),
 
             ExprKind::While(ref subexpression, ref block, label) => {
+                self.visit_expr(subexpression);
                 self.with_resolved_label(label, expr.id, |this| {
-                    this.visit_expr(subexpression);
                     this.visit_block(block);
                 });
             }
 
             ExprKind::WhileLet(ref pats, ref subexpression, ref block, label) => {
+                self.visit_expr(subexpression);
                 self.with_resolved_label(label, expr.id, |this| {
-                    this.visit_expr(subexpression);
                     this.ribs[ValueNS].push(Rib::new(NormalRibKind));
                     let mut bindings_list = FxHashMap();
                     for pat in pats {
