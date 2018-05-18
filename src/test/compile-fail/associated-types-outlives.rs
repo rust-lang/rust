@@ -27,6 +27,7 @@ fn denormalise<'a, T>(t: &'a T) -> <T as Foo<'a>>::Bar {
 pub fn free_and_use<T: for<'a> Foo<'a>,
                     F: for<'a> FnOnce(<T as Foo<'a>>::Bar)>(x: T, f: F) {
     let y;
+    #[allow(unused_labels)]
     'body: loop { // lifetime annotations added for clarity
         's: loop { y = denormalise(&x); break }
         drop(x); //~ ERROR cannot move out of `x` because it is borrowed

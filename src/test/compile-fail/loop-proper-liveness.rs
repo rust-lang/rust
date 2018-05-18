@@ -32,6 +32,7 @@ fn test2() {
 fn test3() {
     let x: i32;
     // Similarly, the use of variable `x` is unreachable.
+    #[allow(unused_labels)]
     'a: loop {
         x = loop { return };
     }

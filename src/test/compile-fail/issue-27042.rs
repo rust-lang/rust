@@ -10,6 +10,7 @@
 
 // Regression test for #27042. Test that a loop's label is included in its span.
 
+#[allow(unused_labels)]
 fn main() {
     let _: i32 =
         'a: // in this case, the citation is just the `break`:
