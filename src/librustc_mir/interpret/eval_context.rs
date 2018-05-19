@@ -207,8 +207,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         let layout = self.layout_of(ty)?;
         assert!(!layout.is_unsized(), "cannot alloc memory for unsized type");
 
-        let size = layout.size.bytes();
-        self.memory.allocate(size, layout.align, Some(MemoryKind::Stack))
+        self.memory.allocate(layout.size, layout.align, Some(MemoryKind::Stack))
     }
 
     pub fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M> {
@@ -598,14 +597,14 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                         )
                     }
                 };
-                let elem_size = self.layout_of(elem_ty)?.size.bytes();
+                let elem_size = self.layout_of(elem_ty)?.size;
                 let value = self.eval_operand(operand)?.value;
 
                 let (dest, dest_align) = self.force_allocation(dest)?.to_ptr_align();
 
                 // FIXME: speed up repeat filling
                 for i in 0..length {
-                    let elem_dest = dest.offset(i * elem_size, &self)?;
+                    let elem_dest = dest.offset(elem_size * i as u64, &self)?;
                     self.write_value_to_ptr(value, elem_dest, dest_align, elem_ty)?;
                 }
             }
@@ -1027,7 +1026,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 .interpret_interner
                 .cache_static(gid.instance.def_id());
             let layout = self.layout_of(ty)?;
-            let ptr = MemoryPointer::new(alloc_id, 0);
+            let ptr = MemoryPointer::new(alloc_id, Size::from_bytes(0));
             return Ok(Value::ByRef(ptr.into(), layout.align))
         }
         let cv = self.const_eval(gid)?;
@@ -1195,7 +1194,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             } else {
                 let dest_ptr = self.alloc_ptr(dest_ty)?.into();
                 let layout = self.layout_of(dest_ty)?;
-                self.memory.copy(src_ptr, align.min(layout.align), dest_ptr, layout.align, layout.size.bytes(), false)?;
+                self.memory.copy(src_ptr, align.min(layout.align), dest_ptr, layout.align, layout.size, false)?;
                 write_dest(self, Value::ByRef(dest_ptr, layout.align))?;
             }
         } else {
@@ -1217,7 +1216,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         trace!("write_value_to_ptr: {:#?}, {}, {:#?}", value, dest_ty, layout);
         match value {
             Value::ByRef(ptr, align) => {
-                self.memory.copy(ptr, align.min(layout.align), dest, dest_align.min(layout.align), layout.size.bytes(), false)
+                self.memory.copy(ptr, align.min(layout.align), dest, dest_align.min(layout.align), layout.size, false)
             }
             Value::ByVal(primval) => {
                 let signed = match layout.abi {
@@ -1228,7 +1227,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     _ if primval.is_undef() => false,
                     _ => bug!("write_value_to_ptr: invalid ByVal layout: {:#?}", layout)
                 };
-                self.memory.write_primval(dest, dest_align, primval, layout.size.bytes(), signed)
+                self.memory.write_primval(dest, dest_align, primval, layout.size, signed)
             }
             Value::ByValPair(a_val, b_val) => {
                 trace!("write_value_to_ptr valpair: {:#?}", layout);
@@ -1239,10 +1238,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let (a_size, b_size) = (a.size(&self), b.size(&self));
                 let a_ptr = dest;
                 let b_offset = a_size.abi_align(b.align(&self));
-                let b_ptr = dest.offset(b_offset.bytes(), &self)?.into();
+                let b_ptr = dest.offset(b_offset, &self)?.into();
                 // TODO: What about signedess?
-                self.memory.write_primval(a_ptr, dest_align, a_val, a_size.bytes(), false)?;
-                self.memory.write_primval(b_ptr, dest_align, b_val, b_size.bytes(), false)
+                self.memory.write_primval(a_ptr, dest_align, a_val, a_size, false)?;
+                self.memory.write_primval(b_ptr, dest_align, b_val, b_size, false)
             }
         }
     }
@@ -1257,11 +1256,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             ty::TyInt(int_ty) => {
                 use syntax::ast::IntTy::*;
                 let size = match int_ty {
-                    I8 => 1,
-                    I16 => 2,
-                    I32 => 4,
-                    I64 => 8,
-                    I128 => 16,
+                    I8 => Size::from_bytes(1),
+                    I16 => Size::from_bytes(2),
+                    I32 => Size::from_bytes(4),
+                    I64 => Size::from_bytes(8),
+                    I128 => Size::from_bytes(16),
                     Isize => self.memory.pointer_size(),
                 };
                 PrimValKind::from_int_size(size)
@@ -1270,11 +1269,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             ty::TyUint(uint_ty) => {
                 use syntax::ast::UintTy::*;
                 let size = match uint_ty {
-                    U8 => 1,
-                    U16 => 2,
-                    U32 => 4,
-                    U64 => 8,
-                    U128 => 16,
+                    U8 => Size::from_bytes(1),
+                    U16 => Size::from_bytes(2),
+                    U32 => Size::from_bytes(4),
+                    U64 => Size::from_bytes(8),
+                    U128 => Size::from_bytes(16),
                     Usize => self.memory.pointer_size(),
                 };
                 PrimValKind::from_uint_size(size)
@@ -1297,8 +1296,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     layout::Abi::Scalar(ref scalar) => {
                         use rustc::ty::layout::Primitive::*;
                         match scalar.value {
-                            Int(i, false) => PrimValKind::from_uint_size(i.size().bytes()),
-                            Int(i, true) => PrimValKind::from_int_size(i.size().bytes()),
+                            Int(i, false) => PrimValKind::from_uint_size(i.size()),
+                            Int(i, true) => PrimValKind::from_int_size(i.size()),
                             F32 => PrimValKind::F32,
                             F64 => PrimValKind::F64,
                             Pointer => PrimValKind::Ptr,
@@ -1372,7 +1371,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     ) -> EvalResult<'tcx> {
         match ty.sty {
             ty::TyBool => {
-                let val = self.memory.read_primval(ptr, ptr_align, 1)?;
+                let val = self.memory.read_primval(ptr, ptr_align, Size::from_bytes(1))?;
                 match val {
                     PrimVal::Bytes(0) | PrimVal::Bytes(1) => (),
                     // TODO: This seems a little overeager, should reading at bool type already be insta-UB?
@@ -1380,7 +1379,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 }
             }
             ty::TyChar => {
-                let c = self.memory.read_primval(ptr, ptr_align, 4)?.to_bytes()? as u32;
+                let c = self.memory.read_primval(ptr, ptr_align, Size::from_bytes(4))?.to_bytes()? as u32;
                 match ::std::char::from_u32(c) {
                     Some(..) => (),
                     None => return err!(InvalidChar(c as u128)),
@@ -1402,7 +1401,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 }
 
                 if let layout::Abi::Scalar(ref scalar) = self.layout_of(ty)?.abi {
-                    let size = scalar.value.size(self).bytes();
+                    let size = scalar.value.size(self);
                     self.memory.read_primval(ptr, ptr_align, size)?;
                 }
             }
@@ -1437,7 +1436,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
         match layout.abi {
             layout::Abi::Scalar(..) => {
-                let primval = self.memory.read_primval(ptr, ptr_align, layout.size.bytes())?;
+                let primval = self.memory.read_primval(ptr, ptr_align, layout.size)?;
                 Ok(Some(Value::ByVal(primval)))
             }
             layout::Abi::ScalarPair(ref a, ref b) => {
@@ -1445,9 +1444,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let (a_size, b_size) = (a.size(self), b.size(self));
                 let a_ptr = ptr;
                 let b_offset = a_size.abi_align(b.align(self));
-                let b_ptr = ptr.offset(b_offset.bytes(), self)?.into();
-                let a_val = self.memory.read_primval(a_ptr, ptr_align, a_size.bytes())?;
-                let b_val = self.memory.read_primval(b_ptr, ptr_align, b_size.bytes())?;
+                let b_ptr = ptr.offset(b_offset, self)?.into();
+                let a_val = self.memory.read_primval(a_ptr, ptr_align, a_size)?;
+                let b_val = self.memory.read_primval(b_ptr, ptr_align, b_size)?;
                 Ok(Some(Value::ByValPair(a_val, b_val)))
             }
             _ => Ok(None),

@@ -1,6 +1,6 @@
 #![allow(unknown_lints)]
 
-use ty::layout::{Align, HasDataLayout};
+use ty::layout::{Align, HasDataLayout, Size};
 use ty;
 
 use super::{EvalResult, MemoryPointer, PointerArithmetic, Allocation};
@@ -14,7 +14,7 @@ pub enum ConstValue<'tcx> {
     /// Used only for types with layout::abi::ScalarPair
     ByValPair(PrimVal, PrimVal),
     /// Used only for the remaining cases. An allocation + offset into the allocation
-    ByRef(&'tcx Allocation, u64),
+    ByRef(&'tcx Allocation, Size),
 }
 
 impl<'tcx> ConstValue<'tcx> {
@@ -129,13 +129,13 @@ impl<'tcx> Pointer {
         }
     }
 
-    pub fn offset<C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
+    pub fn offset<C: HasDataLayout>(self, i: Size, cx: C) -> EvalResult<'tcx, Self> {
         let layout = cx.data_layout();
         match self.primval {
             PrimVal::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);
                 Ok(Pointer::from(
-                    PrimVal::Bytes(layout.offset(b as u64, i)? as u128),
+                    PrimVal::Bytes(layout.offset(b as u64, i.bytes())? as u128),
                 ))
             }
             PrimVal::Ptr(ptr) => ptr.offset(i, layout).map(Pointer::from),
@@ -336,25 +336,25 @@ impl PrimValKind {
         }
     }
 
-    pub fn from_uint_size(size: u64) -> Self {
-        match size {
+    pub fn from_uint_size(size: Size) -> Self {
+        match size.bytes() {
             1 => PrimValKind::U8,
             2 => PrimValKind::U16,
             4 => PrimValKind::U32,
             8 => PrimValKind::U64,
             16 => PrimValKind::U128,
-            _ => bug!("can't make uint with size {}", size),
+            _ => bug!("can't make uint with size {}", size.bytes()),
         }
     }
 
-    pub fn from_int_size(size: u64) -> Self {
-        match size {
+    pub fn from_int_size(size: Size) -> Self {
+        match size.bytes() {
             1 => PrimValKind::I8,
             2 => PrimValKind::I16,
             4 => PrimValKind::I32,
             8 => PrimValKind::I64,
             16 => PrimValKind::I128,
-            _ => bug!("can't make int with size {}", size),
+            _ => bug!("can't make int with size {}", size.bytes()),
         }
     }
 

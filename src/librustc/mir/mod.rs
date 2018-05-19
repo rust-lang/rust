@@ -1913,7 +1913,7 @@ pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Resul
                     .get_alloc(ptr.alloc_id);
                 if let Some(alloc) = alloc {
                     assert_eq!(len as usize as u128, len);
-                    let slice = &alloc.bytes[(ptr.offset as usize)..][..(len as usize)];
+                    let slice = &alloc.bytes[(ptr.offset.bytes() as usize)..][..(len as usize)];
                     let s = ::std::str::from_utf8(slice)
                         .expect("non utf8 str from miri");
                     write!(f, "{:?}", s)

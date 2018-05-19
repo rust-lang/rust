@@ -21,7 +21,7 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::region;
 use rustc::infer::InferCtxt;
-use rustc::ty::layout::IntegerExt;
+use rustc::ty::layout::{IntegerExt, Size};
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt, layout};
 use rustc::ty::subst::Substs;
@@ -182,7 +182,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             LitKind::Str(ref s, _) => {
                 let s = s.as_str();
                 let id = self.tcx.allocate_cached(s.as_bytes());
-                let ptr = MemoryPointer::new(id, 0);
+                let ptr = MemoryPointer::new(id, Size::from_bytes(0));
                 ConstValue::ByValPair(
                     PrimVal::Ptr(ptr),
                     PrimVal::from_u128(s.len() as u128),
@@ -190,7 +190,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             },
             LitKind::ByteStr(ref data) => {
                 let id = self.tcx.allocate_cached(data);
-                let ptr = MemoryPointer::new(id, 0);
+                let ptr = MemoryPointer::new(id, Size::from_bytes(0));
                 ConstValue::ByVal(PrimVal::Ptr(ptr))
             },
             LitKind::Byte(n) => ConstValue::ByVal(PrimVal::Bytes(n as u128)),

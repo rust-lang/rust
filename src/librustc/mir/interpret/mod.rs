@@ -17,7 +17,7 @@ use std::fmt;
 use mir;
 use hir::def_id::DefId;
 use ty::{self, TyCtxt};
-use ty::layout::{self, Align, HasDataLayout};
+use ty::layout::{self, Align, HasDataLayout, Size};
 use middle::region;
 use std::iter;
 use std::io;
@@ -109,42 +109,42 @@ impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 #[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
 pub struct MemoryPointer {
     pub alloc_id: AllocId,
-    pub offset: u64,
+    pub offset: Size,
 }
 
 impl<'tcx> MemoryPointer {
-    pub fn new(alloc_id: AllocId, offset: u64) -> Self {
+    pub fn new(alloc_id: AllocId, offset: Size) -> Self {
         MemoryPointer { alloc_id, offset }
     }
 
     pub(crate) fn wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> Self {
         MemoryPointer::new(
             self.alloc_id,
-            cx.data_layout().wrapping_signed_offset(self.offset, i),
+            Size::from_bytes(cx.data_layout().wrapping_signed_offset(self.offset.bytes(), i)),
         )
     }
 
     pub fn overflowing_signed_offset<C: HasDataLayout>(self, i: i128, cx: C) -> (Self, bool) {
-        let (res, over) = cx.data_layout().overflowing_signed_offset(self.offset, i);
-        (MemoryPointer::new(self.alloc_id, res), over)
+        let (res, over) = cx.data_layout().overflowing_signed_offset(self.offset.bytes(), i);
+        (MemoryPointer::new(self.alloc_id, Size::from_bytes(res)), over)
     }
 
     pub(crate) fn signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
         Ok(MemoryPointer::new(
             self.alloc_id,
-            cx.data_layout().signed_offset(self.offset, i)?,
+            Size::from_bytes(cx.data_layout().signed_offset(self.offset.bytes(), i)?),
         ))
     }
 
-    pub fn overflowing_offset<C: HasDataLayout>(self, i: u64, cx: C) -> (Self, bool) {
-        let (res, over) = cx.data_layout().overflowing_offset(self.offset, i);
-        (MemoryPointer::new(self.alloc_id, res), over)
+    pub fn overflowing_offset<C: HasDataLayout>(self, i: Size, cx: C) -> (Self, bool) {
+        let (res, over) = cx.data_layout().overflowing_offset(self.offset.bytes(), i.bytes());
+        (MemoryPointer::new(self.alloc_id, Size::from_bytes(res)), over)
     }
 
-    pub fn offset<C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
+    pub fn offset<C: HasDataLayout>(self, i: Size, cx: C) -> EvalResult<'tcx, Self> {
         Ok(MemoryPointer::new(
             self.alloc_id,
-            cx.data_layout().offset(self.offset, i)?,
+            Size::from_bytes(cx.data_layout().offset(self.offset.bytes(), i.bytes())?),
         ))
     }
 }
@@ -244,7 +244,7 @@ pub struct Allocation {
     pub bytes: Vec<u8>,
     /// Maps from byte addresses to allocations.
     /// Only the first byte of a pointer is inserted into the map.
-    pub relocations: BTreeMap<u64, AllocId>,
+    pub relocations: BTreeMap<Size, AllocId>,
     /// Denotes undefined memory. Reading from undefined memory is forbidden in miri
     pub undef_mask: UndefMask,
     /// The alignment of the allocation to detect unaligned reads.
@@ -257,8 +257,8 @@ pub struct Allocation {
 
 impl Allocation {
     pub fn from_bytes(slice: &[u8], align: Align) -> Self {
-        let mut undef_mask = UndefMask::new(0);
-        undef_mask.grow(slice.len() as u64, true);
+        let mut undef_mask = UndefMask::new(Size::from_bytes(0));
+        undef_mask.grow(Size::from_bytes(slice.len() as u64), true);
         Self {
             bytes: slice.to_owned(),
             relocations: BTreeMap::new(),
@@ -272,10 +272,10 @@ impl Allocation {
         Allocation::from_bytes(slice, Align::from_bytes(1, 1).unwrap())
     }
 
-    pub fn undef(size: u64, align: Align) -> Self {
-        assert_eq!(size as usize as u64, size);
+    pub fn undef(size: Size, align: Align) -> Self {
+        assert_eq!(size.bytes() as usize as u64, size.bytes());
         Allocation {
-            bytes: vec![0; size as usize],
+            bytes: vec![0; size.bytes() as usize],
             relocations: BTreeMap::new(),
             undef_mask: UndefMask::new(size),
             align,
@@ -331,35 +331,35 @@ const BLOCK_SIZE: u64 = 64;
 #[derive(Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UndefMask {
     blocks: Vec<Block>,
-    len: u64,
+    len: Size,
 }
 
 impl_stable_hash_for!(struct mir::interpret::UndefMask{blocks, len});
 
 impl UndefMask {
-    pub fn new(size: u64) -> Self {
+    pub fn new(size: Size) -> Self {
         let mut m = UndefMask {
             blocks: vec![],
-            len: 0,
+            len: Size::from_bytes(0),
         };
         m.grow(size, false);
         m
     }
 
     /// Check whether the range `start..end` (end-exclusive) is entirely defined.
-    pub fn is_range_defined(&self, start: u64, end: u64) -> bool {
+    pub fn is_range_defined(&self, start: Size, end: Size) -> bool {
         if end > self.len {
             return false;
         }
-        for i in start..end {
-            if !self.get(i) {
+        for i in start.bytes()..end.bytes() {
+            if !self.get(Size::from_bytes(i)) {
                 return false;
             }
         }
         true
     }
 
-    pub fn set_range(&mut self, start: u64, end: u64, new_state: bool) {
+    pub fn set_range(&mut self, start: Size, end: Size, new_state: bool) {
         let len = self.len;
         if end > len {
             self.grow(end - len, new_state);
@@ -367,18 +367,18 @@ impl UndefMask {
         self.set_range_inbounds(start, end, new_state);
     }
 
-    pub fn set_range_inbounds(&mut self, start: u64, end: u64, new_state: bool) {
-        for i in start..end {
-            self.set(i, new_state);
+    pub fn set_range_inbounds(&mut self, start: Size, end: Size, new_state: bool) {
+        for i in start.bytes()..end.bytes() {
+            self.set(Size::from_bytes(i), new_state);
         }
     }
 
-    pub fn get(&self, i: u64) -> bool {
+    pub fn get(&self, i: Size) -> bool {
         let (block, bit) = bit_index(i);
         (self.blocks[block] & 1 << bit) != 0
     }
 
-    pub fn set(&mut self, i: u64, new_state: bool) {
+    pub fn set(&mut self, i: Size, new_state: bool) {
         let (block, bit) = bit_index(i);
         if new_state {
             self.blocks[block] |= 1 << bit;
@@ -387,10 +387,10 @@ impl UndefMask {
         }
     }
 
-    pub fn grow(&mut self, amount: u64, new_state: bool) {
-        let unused_trailing_bits = self.blocks.len() as u64 * BLOCK_SIZE - self.len;
-        if amount > unused_trailing_bits {
-            let additional_blocks = amount / BLOCK_SIZE + 1;
+    pub fn grow(&mut self, amount: Size, new_state: bool) {
+        let unused_trailing_bits = self.blocks.len() as u64 * BLOCK_SIZE - self.len.bytes();
+        if amount.bytes() > unused_trailing_bits {
+            let additional_blocks = amount.bytes() / BLOCK_SIZE + 1;
             assert_eq!(additional_blocks as usize as u64, additional_blocks);
             self.blocks.extend(
                 iter::repeat(0).take(additional_blocks as usize),
@@ -402,7 +402,8 @@ impl UndefMask {
     }
 }
 
-fn bit_index(bits: u64) -> (usize, usize) {
+fn bit_index(bits: Size) -> (usize, usize) {
+    let bits = bits.bytes();
     let a = bits / BLOCK_SIZE;
     let b = bits % BLOCK_SIZE;
     assert_eq!(a as usize as u64, a);

@@ -143,7 +143,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
                 let llval = unsafe { LLVMConstInBoundsGEP(
                     consts::bitcast(base_addr, Type::i8p(bx.cx)),
-                    &C_usize(bx.cx, offset),
+                    &C_usize(bx.cx, offset.bytes()),
                     1,
                 )};
                 let llval = consts::bitcast(llval, layout.llvm_type(bx.cx).ptr_to());

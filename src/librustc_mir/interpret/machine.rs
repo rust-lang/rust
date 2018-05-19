@@ -7,6 +7,7 @@ use super::{EvalContext, Place, ValTy, Memory};
 
 use rustc::mir;
 use rustc::ty::{self, Ty};
+use rustc::ty::layout::Size;
 use syntax::codemap::Span;
 use syntax::ast::Mutability;
 
@@ -92,7 +93,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn check_locks<'a>(
         _mem: &Memory<'a, 'mir, 'tcx, Self>,
         _ptr: MemoryPointer,
-        _size: u64,
+        _size: Size,
         _access: AccessKind,
     ) -> EvalResult<'tcx> {
         Ok(())

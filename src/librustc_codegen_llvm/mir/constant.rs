@@ -16,7 +16,7 @@ use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::mir::interpret::{GlobalId, MemoryPointer, PrimVal, Allocation, ConstValue};
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Scalar};
+use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Scalar, Size};
 use builder::Builder;
 use common::{CodegenCx};
 use common::{C_bytes, C_struct, C_uint_big, C_undef, C_usize};
@@ -68,7 +68,7 @@ pub fn primval_to_llvm(cx: &CodegenCx,
 
                 let llval = unsafe { llvm::LLVMConstInBoundsGEP(
                     consts::bitcast(base_addr, Type::i8p(cx)),
-                    &C_usize(cx, ptr.offset),
+                    &C_usize(cx, ptr.offset.bytes()),
                     1,
                 ) };
                 if scalar.value != layout::Pointer {
@@ -88,6 +88,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
 
     let mut next_offset = 0;
     for (&offset, &alloc_id) in &alloc.relocations {
+        let offset = offset.bytes();
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
         if offset > next_offset {
@@ -99,7 +100,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
         ).expect("const_alloc_to_llvm: could not read relocation pointer") as u64;
         llvals.push(primval_to_llvm(
             cx,
-            PrimVal::Ptr(MemoryPointer { alloc_id, offset: ptr_offset }),
+            PrimVal::Ptr(MemoryPointer { alloc_id, offset: Size::from_bytes(ptr_offset) }),
             &Scalar {
                 value: layout::Primitive::Pointer,
                 valid_range: 0..=!0
@@ -129,7 +130,7 @@ pub fn codegen_static_initializer<'a, 'tcx>(
     let static_ = cx.tcx.const_eval(param_env.and(cid))?;
 
     let alloc = match static_.val {
-        ConstVal::Value(ConstValue::ByRef(alloc, 0)) => alloc,
+        ConstVal::Value(ConstValue::ByRef(alloc, n)) if n.bytes() == 0 => alloc,
         _ => bug!("static const eval returned {:#?}", static_),
     };
     Ok(const_alloc_to_llvm(cx, alloc))

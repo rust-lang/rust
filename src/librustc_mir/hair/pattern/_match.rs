@@ -191,7 +191,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
                             .interpret_interner
                             .get_alloc(ptr.alloc_id)
                             .unwrap();
-                        assert_eq!(ptr.offset, 0);
+                        assert_eq!(ptr.offset.bytes(), 0);
                         // FIXME: check length
                         alloc.bytes.iter().map(|b| {
                             &*pattern_arena.alloc(Pattern {

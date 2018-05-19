@@ -114,7 +114,7 @@ pub fn value_to_const_value<'tcx>(
                 let ptr = ptr.primval.to_ptr().unwrap();
                 let alloc = ecx.memory.get(ptr.alloc_id)?;
                 assert!(alloc.align.abi() >= align.abi());
-                assert!(alloc.bytes.len() as u64 - ptr.offset >= layout.size.bytes());
+                assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= layout.size.bytes());
                 let mut alloc = alloc.clone();
                 alloc.align = align;
                 let alloc = ecx.tcx.intern_const_alloc(alloc);
@@ -165,7 +165,7 @@ fn eval_body_using_ecx<'a, 'mir, 'tcx>(
     let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
     let ptr = ecx.memory.allocate(
-        layout.size.bytes(),
+        layout.size,
         layout.align,
         None,
     )?;
@@ -470,7 +470,7 @@ pub fn const_variant_index<'a, 'tcx>(
     let (ptr, align) = match value {
         Value::ByValPair(..) | Value::ByVal(_) => {
             let layout = ecx.layout_of(ty)?;
-            let ptr = ecx.memory.allocate(layout.size.bytes(), layout.align, Some(MemoryKind::Stack))?;
+            let ptr = ecx.memory.allocate(layout.size, layout.align, Some(MemoryKind::Stack))?;
             let ptr: Pointer = ptr.into();
             ecx.write_value_to_ptr(value, ptr, layout.align, ty)?;
             (ptr, layout.align)
@@ -487,7 +487,7 @@ pub fn const_value_to_allocation_provider<'a, 'tcx>(
 ) -> &'tcx Allocation {
     match val {
         ConstValue::ByRef(alloc, offset) => {
-            assert_eq!(offset, 0);
+            assert_eq!(offset.bytes(), 0);
             return alloc;
         },
         _ => ()
@@ -500,7 +500,7 @@ pub fn const_value_to_allocation_provider<'a, 'tcx>(
             ());
         let value = ecx.const_value_to_value(val, ty)?;
         let layout = ecx.layout_of(ty)?;
-        let ptr = ecx.memory.allocate(layout.size.bytes(), layout.align, Some(MemoryKind::Stack))?;
+        let ptr = ecx.memory.allocate(layout.size, layout.align, Some(MemoryKind::Stack))?;
         ecx.write_value_to_ptr(value, ptr.into(), layout.align, ty)?;
         let alloc = ecx.memory.get(ptr.alloc_id)?;
         Ok(tcx.intern_const_alloc(alloc.clone()))
