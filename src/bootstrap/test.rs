@@ -222,7 +222,7 @@ impl Step for Cargo {
             compiler,
             target: self.host,
         });
-        let mut cargo = builder.cargo(compiler, Mode::Tool, self.host, "test");
+        let mut cargo = builder.cargo(compiler, Mode::ToolRustc, self.host, "test");
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join("src/tools/cargo/Cargo.toml"));
@@ -383,7 +383,7 @@ impl Step for Miri {
             extra_features: Vec::new(),
         });
         if let Some(miri) = miri {
-            let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
+            let mut cargo = builder.cargo(compiler, Mode::ToolRustc, host, "test");
             cargo
                 .arg("--manifest-path")
                 .arg(builder.src.join("src/tools/miri/Cargo.toml"));
@@ -441,7 +441,7 @@ impl Step for Clippy {
             extra_features: Vec::new(),
         });
         if let Some(clippy) = clippy {
-            let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
+            let mut cargo = builder.cargo(compiler, Mode::ToolRustc, host, "test");
             cargo
                 .arg("--manifest-path")
                 .arg(builder.src.join("src/tools/clippy/Cargo.toml"));
@@ -453,7 +453,7 @@ impl Step for Clippy {
             cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
             cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
             let host_libs = builder
-                .stage_out(compiler, Mode::Tool)
+                .stage_out(compiler, Mode::ToolRustc)
                 .join(builder.cargo_dir());
             cargo.env("HOST_LIBS", host_libs);
             // clippy tests need to find the driver
@@ -1434,7 +1434,7 @@ impl Step for CrateLibrustc {
         builder.ensure(Crate {
             compiler: self.compiler,
             target: self.target,
-            mode: Mode::Librustc,
+            mode: Mode::Rustc,
             test_kind: self.test_kind,
             krate: self.krate,
         });
@@ -1485,7 +1485,7 @@ impl Step for CrateNotDefault {
         builder.ensure(Crate {
             compiler: self.compiler,
             target: self.target,
-            mode: Mode::Libstd,
+            mode: Mode::Std,
             test_kind: self.test_kind,
             krate: INTERNER.intern_str(self.krate),
         });
@@ -1538,12 +1538,12 @@ impl Step for Crate {
 
         for krate in builder.in_tree_crates("std") {
             if run.path.ends_with(&krate.local_path(&builder)) {
-                make(Mode::Libstd, krate);
+                make(Mode::Std, krate);
             }
         }
         for krate in builder.in_tree_crates("test") {
             if run.path.ends_with(&krate.local_path(&builder)) {
-                make(Mode::Libtest, krate);
+                make(Mode::Test, krate);
             }
         }
     }
@@ -1578,13 +1578,13 @@ impl Step for Crate {
 
         let mut cargo = builder.cargo(compiler, mode, target, test_kind.subcommand());
         match mode {
-            Mode::Libstd => {
+            Mode::Std => {
                 compile::std_cargo(builder, &compiler, target, &mut cargo);
             }
-            Mode::Libtest => {
+            Mode::Test => {
                 compile::test_cargo(builder, &compiler, target, &mut cargo);
             }
-            Mode::Librustc => {
+            Mode::Rustc => {
                 builder.ensure(compile::Rustc { compiler, target });
                 compile::rustc_cargo(builder, &mut cargo);
             }

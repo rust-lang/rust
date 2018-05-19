@@ -307,16 +307,20 @@ impl Crate {
 #[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Mode {
     /// Build the standard library, placing output in the "stageN-std" directory.
-    Libstd,
+    Std,
 
     /// Build libtest, placing output in the "stageN-test" directory.
-    Libtest,
+    Test,
 
-    /// Build librustc and compiler libraries, placing output in the "stageN-rustc" directory.
-    Librustc,
+    /// Build librustc, codegen and compiler libraries, placing output
+    /// in the "stageN-rustc" directory.
+    Rustc,
+    Codegen,
 
-    /// Build some tool, placing output in the "stageN-tools" directory.
-    Tool,
+    /// Build some tools, placing output in the "stageN-tools" directory.
+    ToolStd,
+    ToolTest,
+    ToolRustc,
 }
 
 impl Build {
@@ -517,10 +521,13 @@ impl Build {
     /// The mode indicates what the root directory is for.
     fn stage_out(&self, compiler: Compiler, mode: Mode) -> PathBuf {
         let suffix = match mode {
-            Mode::Libstd => "-std",
-            Mode::Libtest => "-test",
-            Mode::Tool => "-tools",
-            Mode::Librustc => "-rustc",
+            Mode::Std => "-std",
+            Mode::ToolStd => "-tools",
+            Mode::Test => "-test",
+            Mode::ToolTest => "-tools",
+            Mode::Codegen => "-rustc",
+            Mode::Rustc => "-rustc",
+            Mode::ToolRustc => "-tools",
         };
         self.out.join(&*compiler.host)
                 .join(format!("stage{}{}", compiler.stage, suffix))

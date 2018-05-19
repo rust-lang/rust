@@ -98,9 +98,9 @@ impl Step for Std {
             copy_musl_third_party_objects(builder, target, &libdir);
         }
 
-        let out_dir = builder.cargo_out(compiler, Mode::Libstd, target);
+        let out_dir = builder.cargo_out(compiler, Mode::Std, target);
         builder.clear_if_dirty(&out_dir, &builder.rustc(compiler));
-        let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "build");
+        let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
         std_cargo(builder, &compiler, target, &mut cargo);
 
         let _folder = builder.fold_output(|| format!("stage{}-std", compiler.stage));
@@ -240,7 +240,7 @@ impl Step for StdLink {
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
             target,
-            mode: Mode::Libstd,
+            mode: Mode::Std,
         });
     }
 }
@@ -368,9 +368,9 @@ impl Step for Test {
             return;
         }
 
-        let out_dir = builder.cargo_out(compiler, Mode::Libtest, target);
+        let out_dir = builder.cargo_out(compiler, Mode::Test, target);
         builder.clear_if_dirty(&out_dir, &libstd_stamp(builder, compiler, target));
-        let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "build");
+        let mut cargo = builder.cargo(compiler, Mode::Test, target, "build");
         test_cargo(builder, &compiler, target, &mut cargo);
 
         let _folder = builder.fold_output(|| format!("stage{}-test", compiler.stage));
@@ -431,7 +431,7 @@ impl Step for TestLink {
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
             target,
-            mode: Mode::Libtest,
+            mode: Mode::Test,
         });
     }
 }
@@ -489,11 +489,11 @@ impl Step for Rustc {
             compiler: builder.compiler(self.compiler.stage, builder.config.build),
             target: builder.config.build,
         });
-        let cargo_out = builder.cargo_out(compiler, Mode::Librustc, target);
+        let cargo_out = builder.cargo_out(compiler, Mode::Rustc, target);
         builder.clear_if_dirty(&cargo_out, &libstd_stamp(builder, compiler, target));
         builder.clear_if_dirty(&cargo_out, &libtest_stamp(builder, compiler, target));
 
-        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
+        let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "build");
         rustc_cargo(builder, &mut cargo);
 
         let _folder = builder.fold_output(|| format!("stage{}-rustc", compiler.stage));
@@ -585,7 +585,7 @@ impl Step for RustcLink {
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
             target,
-            mode: Mode::Librustc,
+            mode: Mode::Rustc,
         });
     }
 }
@@ -634,7 +634,7 @@ impl Step for CodegenBackend {
             return;
         }
 
-        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
+        let mut cargo = builder.cargo(compiler, Mode::Codegen, target, "build");
         let mut features = builder.rustc_features().to_string();
         cargo.arg("--manifest-path")
             .arg(builder.src.join("src/librustc_codegen_llvm/Cargo.toml"));
@@ -642,7 +642,7 @@ impl Step for CodegenBackend {
 
         features += &build_codegen_backend(&builder, &mut cargo, &compiler, target, backend);
 
-        let tmp_stamp = builder.cargo_out(compiler, Mode::Librustc, target)
+        let tmp_stamp = builder.cargo_out(compiler, Mode::Codegen, target)
             .join(".tmp.stamp");
 
         let _folder = builder.fold_output(|| format!("stage{}-rustc_codegen_llvm", compiler.stage));
@@ -793,19 +793,19 @@ fn copy_lld_to_sysroot(builder: &Builder,
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
 pub fn libstd_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Libstd, target).join(".libstd.stamp")
+    builder.cargo_out(compiler, Mode::Std, target).join(".libstd.stamp")
 }
 
 /// Cargo's output path for libtest in a given stage, compiled by a particular
 /// compiler for the specified target.
 pub fn libtest_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Libtest, target).join(".libtest.stamp")
+    builder.cargo_out(compiler, Mode::Test, target).join(".libtest.stamp")
 }
 
 /// Cargo's output path for librustc in a given stage, compiled by a particular
 /// compiler for the specified target.
 pub fn librustc_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Librustc, target).join(".librustc.stamp")
+    builder.cargo_out(compiler, Mode::Rustc, target).join(".librustc.stamp")
 }
 
 /// Cargo's output path for librustc_codegen_llvm in a given stage, compiled by a particular
@@ -814,7 +814,7 @@ fn codegen_backend_stamp(builder: &Builder,
                          compiler: Compiler,
                          target: Interned<String>,
                          backend: Interned<String>) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Librustc, target)
+    builder.cargo_out(compiler, Mode::Codegen, target)
         .join(format!(".librustc_codegen_llvm-{}.stamp", backend))
 }
 
@@ -971,7 +971,7 @@ impl Step for Assemble {
         }
 
         // Link the compiler binary itself into place
-        let out_dir = builder.cargo_out(build_compiler, Mode::Librustc, host);
+        let out_dir = builder.cargo_out(build_compiler, Mode::Rustc, host);
         let rustc = out_dir.join(exe("rustc_binary", &*host));
         let bindir = sysroot.join("bin");
         t!(fs::create_dir_all(&bindir));
