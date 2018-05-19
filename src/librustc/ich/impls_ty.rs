@@ -132,7 +132,7 @@ for ty::RegionKind {
             ty::ReLateBound(..) |
             ty::ReVar(..) |
             ty::ReSkolemized(..) => {
-                bug!("TypeIdHasher: unexpected region {:?}", *self)
+                bug!("StableHasher: unexpected region {:?}", *self)
             }
         }
     }

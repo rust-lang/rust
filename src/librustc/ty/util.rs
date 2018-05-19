@@ -15,10 +15,8 @@ use hir::def_id::DefId;
 use hir::map::{DefPathData, Node};
 use hir;
 use ich::NodeIdHashingMode;
-use middle::const_val::ConstVal;
 use traits::{self, ObligationCause};
 use ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
-use ty::fold::TypeVisitor;
 use ty::subst::{Substs, UnpackedKind};
 use ty::maps::TyCtxtAt;
 use ty::TypeVariants::*;
@@ -26,12 +24,9 @@ use ty::layout::{Integer, IntegerExt};
 use util::common::ErrorReported;
 use middle::lang_items;
 
-use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
-                                           HashStable};
+use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use rustc_data_structures::fx::FxHashMap;
 use std::{cmp, fmt};
-use std::hash::Hash;
-use std::intrinsics;
 use syntax::ast;
 use syntax::attr::{self, SignedInt, UnsignedInt};
 use syntax_pos::{Span, DUMMY_SP};
@@ -612,150 +607,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 _ => None
             }
         }
-    }
-}
-
-pub struct TypeIdHasher<'a, 'gcx: 'a+'tcx, 'tcx: 'a, W> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    state: StableHasher<W>,
-}
-
-impl<'a, 'gcx, 'tcx, W> TypeIdHasher<'a, 'gcx, 'tcx, W>
-    where W: StableHasherResult
-{
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
-        TypeIdHasher { tcx: tcx, state: StableHasher::new() }
-    }
-
-    pub fn finish(self) -> W {
-        self.state.finish()
-    }
-
-    pub fn hash<T: Hash>(&mut self, x: T) {
-        x.hash(&mut self.state);
-    }
-
-    fn hash_discriminant_u8<T>(&mut self, x: &T) {
-        let v = unsafe {
-            intrinsics::discriminant_value(x)
-        };
-        let b = v as u8;
-        assert_eq!(v, b as u64);
-        self.hash(b)
-    }
-
-    fn def_id(&mut self, did: DefId) {
-        // Hash the DefPath corresponding to the DefId, which is independent
-        // of compiler internal state. We already have a stable hash value of
-        // all DefPaths available via tcx.def_path_hash(), so we just feed that
-        // into the hasher.
-        let hash = self.tcx.def_path_hash(did);
-        self.hash(hash);
-    }
-}
-
-impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
-    where W: StableHasherResult
-{
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
-        // Distinguish between the Ty variants uniformly.
-        self.hash_discriminant_u8(&ty.sty);
-
-        match ty.sty {
-            TyInt(i) => self.hash(i),
-            TyUint(u) => self.hash(u),
-            TyFloat(f) => self.hash(f),
-            TyArray(_, n) => {
-                self.hash_discriminant_u8(&n.val);
-                match n.val {
-                    ConstVal::Value(alloc) => self.hash(alloc),
-                    ConstVal::Unevaluated(def_id, _) => self.def_id(def_id),
-                }
-            }
-            TyRawPtr(m) => self.hash(m.mutbl),
-            TyRef(_, _, mutbl) => self.hash(mutbl),
-            TyClosure(def_id, _) |
-            TyGenerator(def_id, _, _) |
-            TyAnon(def_id, _) |
-            TyFnDef(def_id, _) => self.def_id(def_id),
-            TyAdt(d, _) => self.def_id(d.did),
-            TyForeign(def_id) => self.def_id(def_id),
-            TyFnPtr(f) => {
-                self.hash(f.unsafety());
-                self.hash(f.abi());
-                self.hash(f.variadic());
-                self.hash(f.inputs().skip_binder().len());
-            }
-            TyDynamic(ref data, ..) => {
-                if let Some(p) = data.principal() {
-                    self.def_id(p.def_id());
-                }
-                for d in data.auto_traits() {
-                    self.def_id(d);
-                }
-            }
-            TyGeneratorWitness(tys) => {
-                self.hash(tys.skip_binder().len());
-            }
-            TyTuple(tys) => {
-                self.hash(tys.len());
-            }
-            TyParam(p) => {
-                self.hash(p.idx);
-                self.hash(p.name);
-            }
-            TyProjection(ref data) => {
-                self.def_id(data.item_def_id);
-            }
-            TyNever |
-            TyBool |
-            TyChar |
-            TyStr |
-            TySlice(_) => {}
-
-            TyError |
-            TyInfer(_) => bug!("TypeIdHasher: unexpected type {}", ty)
-        }
-
-        ty.super_visit_with(self)
-    }
-
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
-        self.hash_discriminant_u8(r);
-        match *r {
-            ty::ReErased |
-            ty::ReStatic |
-            ty::ReEmpty => {
-                // No variant fields to hash for these ...
-            }
-            ty::ReCanonical(c) => {
-                self.hash(c);
-            }
-            ty::ReLateBound(db, ty::BrAnon(i)) => {
-                self.hash(db.depth);
-                self.hash(i);
-            }
-            ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, .. }) => {
-                self.def_id(def_id);
-            }
-
-            ty::ReClosureBound(..) |
-            ty::ReLateBound(..) |
-            ty::ReFree(..) |
-            ty::ReScope(..) |
-            ty::ReVar(..) |
-            ty::ReSkolemized(..) => {
-                bug!("TypeIdHasher: unexpected region {:?}", r)
-            }
-        }
-        false
-    }
-
-    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, x: &ty::Binder<T>) -> bool {
-        // Anonymize late-bound regions so that, for example:
-        // `for<'a, b> fn(&'a &'b T)` and `for<'a, b> fn(&'b &'a T)`
-        // result in the same TypeId (the two types are equivalent).
-        self.tcx.anonymize_late_bound_regions(x).super_visit_with(self)
     }
 }
 
