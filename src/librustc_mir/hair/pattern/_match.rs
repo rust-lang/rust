@@ -457,12 +457,51 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 .map(|v| Variant(v.did))
                 .collect()
         }
-        ty::TyUint(ast::UintTy::Usize) => {
+        ty::TyChar => {
+            let (min, max) = (0u128, char::MAX as u128);
             return (vec![
-                ConstantRange(ty::Const::from_usize(cx.tcx, 0),
-                              ty::Const::from_usize(cx.tcx, 100),
-                              RangeEnd::Excluded),
+                ConstantRange(ty::Const::from_bits(cx.tcx, min, cx.tcx.types.char),
+                              ty::Const::from_bits(cx.tcx, max, cx.tcx.types.char),
+                              RangeEnd::Included),
             ], true)
+        }
+        ty::TyInt(int_ty) => {
+            use syntax::ast::IntTy::*;
+            let (min, max, ty) = match int_ty {
+                Isize => (isize::MIN as i128, isize::MAX as i128, cx.tcx.types.isize),
+                I8    => (   i8::MIN as i128,    i8::MAX as i128, cx.tcx.types.i8),
+                I16   => (  i16::MIN as i128,   i16::MAX as i128, cx.tcx.types.i16),
+                I32   => (  i32::MIN as i128,   i32::MAX as i128, cx.tcx.types.i32),
+                I64   => (  i64::MIN as i128,   i64::MAX as i128, cx.tcx.types.i64),
+                I128  => ( i128::MIN as i128,  i128::MAX as i128, cx.tcx.types.i128),
+            };
+            return (vec![
+                ConstantRange(
+                    ty::Const::from_bits(cx.tcx, unsafe {
+                        transmute::<i128, u128>(min)
+                    }, ty),
+                    ty::Const::from_bits(cx.tcx, unsafe {
+                        transmute::<i128, u128>(max)
+                    }, ty),
+                    RangeEnd::Included
+                ),
+            ], true);
+        }
+        ty::TyUint(uint_ty) => {
+            use syntax::ast::UintTy::*;
+            let (min, (max, ty)) = (0u128, match uint_ty {
+                Usize => (usize::MAX as u128, cx.tcx.types.usize),
+                U8    => (   u8::MAX as u128, cx.tcx.types.u8),
+                U16   => (  u16::MAX as u128, cx.tcx.types.u16),
+                U32   => (  u32::MAX as u128, cx.tcx.types.u32),
+                U64   => (  u64::MAX as u128, cx.tcx.types.u64),
+                U128  => ( u128::MAX as u128, cx.tcx.types.u128),
+            });
+            return (vec![
+                ConstantRange(ty::Const::from_bits(cx.tcx, min, ty),
+                              ty::Const::from_bits(cx.tcx, max, ty),
+                              RangeEnd::Included),
+            ], true);
         }
         _ => {
             if cx.is_uninhabited(pcx.ty) {
@@ -666,26 +705,27 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         let (all_ctors, _ranged) = all_constructors(cx, pcx);
         debug!("all_ctors = {:#?}", all_ctors);
 
-        fn to_inc_range_pair<'tcx>(tcx: TyCtxt<'_, '_, '_>, ctor: &Constructor<'tcx>) -> Option<(u64, u64)> {
+        fn to_inc_range_pair<'tcx>(_tcx: TyCtxt<'_, '_, '_>, ctor: &Constructor<'tcx>) -> Option<(u128, u128, Ty<'tcx>)> {
             match ctor {
                 Single | Variant(_) | Slice(_) => {
                     None
                 }
                 ConstantValue(const_) => {
-                    if let Some(val) = const_.assert_usize(tcx) {
-                        return Some((val, val));
+                    if let Some(val) = const_.assert_bits(const_.ty) {
+                        return Some((val, val, const_.ty));
                     }
                     None
                 }
                 ConstantRange(lo, hi, end) => {
-                    if let Some(lo) = lo.assert_usize(tcx) {
-                        if let Some(hi) = hi.assert_usize(tcx) {
+                    let ty = lo.ty;
+                    if let Some(lo) = lo.assert_bits(lo.ty) {
+                        if let Some(hi) = hi.assert_bits(hi.ty) {
                             if lo > hi || lo == hi && end == &RangeEnd::Excluded {
                                 return None;
                             } else if end == &RangeEnd::Included {
-                                return Some((lo, hi));
+                                return Some((lo, hi, ty));
                             } else {
-                                return Some((lo, hi - 1));
+                                return Some((lo, hi - 1, ty));
                             }
                         }
                     }
@@ -700,12 +740,14 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                     ranges: Vec<Constructor<'tcx>>,
                      ctor: &Constructor<'tcx>)
                      -> (Vec<Constructor<'tcx>>, bool) {
-            if let Some((lo1, hi1)) = to_inc_range_pair(cx.tcx, ctor) {
+            if let Some((lo1, hi1, ty)) = to_inc_range_pair(cx.tcx, ctor) {
                 let mut ctor_was_useful = false;
                 // values only consists of ranges
                 let mut new_ranges = vec![];
                 let mut ranges: Vec<_> =
-                    ranges.into_iter().filter_map(|r| to_inc_range_pair(cx.tcx, &r)).collect();
+                    ranges.into_iter().filter_map(|r| {
+                        to_inc_range_pair(cx.tcx, &r).map(|(lo, hi, _)| (lo, hi))
+                    }).collect();
                 while let Some((lo2, hi2)) = ranges.pop() {
                     // eprintln!("{:?} {:?}", (lo2, hi2), (lo1, hi1));
                     if lo1 <= lo2 && hi1 >= hi2 {
@@ -745,9 +787,9 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 }
                 // transform ranges to proper format
                 (new_ranges.into_iter().map(|(lo, hi)| {
-                    ConstantRange(ty::Const::from_usize(cx.tcx, lo),
-                                ty::Const::from_usize(cx.tcx, hi),
-                                RangeEnd::Included)
+                    ConstantRange(ty::Const::from_bits(cx.tcx, lo, ty),
+                                  ty::Const::from_bits(cx.tcx, hi, ty),
+                                  RangeEnd::Included)
                 }).collect(), ctor_was_useful)
             } else {
                 (ranges, false)
