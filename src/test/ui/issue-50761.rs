@@ -12,8 +12,6 @@
 
 // compile-pass
 
-#![feature(test)]
-
 mod a {
     pub trait A {}
 }
