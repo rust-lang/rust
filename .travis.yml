@@ -40,6 +40,7 @@ matrix:
     - env: INTEGRATION=rust-lang-nursery/failure
     - env: INTEGRATION=rust-lang-nursery/log
     - env: INTEGRATION=rust-lang-nursery/chalk
+    - env: INTEGRATION=rust-lang-nursery/rls
     - env: INTEGRATION=chronotope/chrono
     - env: INTEGRATION=serde-rs/serde
     - env: INTEGRATION=Geal/nom
@@ -52,6 +53,7 @@ matrix:
     - env: INTEGRATION=rust-lang-nursery/failure
     - env: INTEGRATION=rust-lang-nursery/log
     - env: INTEGRATION=rust-lang-nursery/chalk
+    - env: INTEGRATION=rust-lang-nursery/rls
     - env: INTEGRATION=chronotope/chrono
     - env: INTEGRATION=serde-rs/serde
     - env: INTEGRATION=Geal/nom
