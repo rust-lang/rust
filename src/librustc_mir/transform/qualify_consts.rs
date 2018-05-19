@@ -229,12 +229,12 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     }
 
     /// Check if a Local with the current qualifications is promotable.
-    fn can_promote(&mut self) -> bool {
+    fn can_promote(&self, qualif: Qualif) -> bool {
         // References to statics are allowed, but only in other statics.
         if self.mode == Mode::Static || self.mode == Mode::StaticMut {
-            (self.qualif - Qualif::STATIC_REF).is_empty()
+            (qualif - Qualif::STATIC_REF).is_empty()
         } else {
-            self.qualif.is_empty()
+            qualif.is_empty()
         }
     }
 
@@ -679,24 +679,31 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
 
                 let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
+
+                // Default to forbidding the borrow and/or its promotion,
+                // due to the potential for direct or interior mutability,
+                // and only proceed by setting `forbidden_mut` to `false`.
+                let mut forbidden_mut = true;
+
                 if let BorrowKind::Mut { .. } = kind {
                     // In theory, any zero-sized value could be borrowed
                     // mutably without consequences. However, only &mut []
                     // is allowed right now, and only in functions.
-                    let allow = if self.mode == Mode::StaticMut {
+                    if self.mode == Mode::StaticMut {
                         // Inside a `static mut`, &mut [...] is also allowed.
                         match ty.sty {
-                            ty::TyArray(..) | ty::TySlice(_) => true,
-                            _ => false
+                            ty::TyArray(..) | ty::TySlice(_) => forbidden_mut = false,
+                            _ => {}
                         }
                     } else if let ty::TyArray(_, len) = ty.sty {
-                        len.unwrap_usize(self.tcx) == 0 &&
-                            self.mode == Mode::Fn
-                    } else {
-                        false
-                    };
+                        // FIXME(eddyb) the `self.mode == Mode::Fn` condition
+                        // seems unnecessary, given that this is merely a ZST.
+                        if len.unwrap_usize(self.tcx) == 0 && self.mode == Mode::Fn {
+                            forbidden_mut = false;
+                        }
+                    }
 
-                    if !allow {
+                    if forbidden_mut {
                         self.add(Qualif::NOT_CONST);
                         if self.mode != Mode::Fn {
                             let mut err = struct_span_err!(self.tcx.sess,  self.span, E0017,
@@ -722,25 +729,46 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     // it means that our "silent insertion of statics" could change
                     // initializer values (very bad).
                     if self.qualif.intersects(Qualif::MUTABLE_INTERIOR) {
-                        // Replace MUTABLE_INTERIOR with NOT_CONST to avoid
+                        // A reference of a MUTABLE_INTERIOR place is instead
+                        // NOT_CONST (see `if forbidden_mut` below), to avoid
                         // duplicate errors (from reborrowing, for example).
                         self.qualif = self.qualif - Qualif::MUTABLE_INTERIOR;
-                        self.add(Qualif::NOT_CONST);
                         if self.mode != Mode::Fn {
                             span_err!(self.tcx.sess, self.span, E0492,
                                       "cannot borrow a constant which may contain \
                                        interior mutability, create a static instead");
                         }
+                    } else {
+                        // We allow immutable borrows of frozen data.
+                        forbidden_mut = false;
                     }
                 }
 
-                // We might have a candidate for promotion.
-                let candidate = Candidate::Ref(location);
-                if self.can_promote() {
-                    // We can only promote direct borrows of temps.
+                if forbidden_mut {
+                    self.add(Qualif::NOT_CONST);
+                } else {
+                    // We might have a candidate for promotion.
+                    let candidate = Candidate::Ref(location);
+                    // We can only promote interior borrows of promotable temps.
+                    let mut place = place;
+                    while let Place::Projection(ref proj) = *place {
+                        if proj.elem == ProjectionElem::Deref {
+                            break;
+                        }
+                        place = &proj.base;
+                    }
                     if let Place::Local(local) = *place {
                         if self.mir.local_kind(local) == LocalKind::Temp {
-                            self.promotion_candidates.push(candidate);
+                            if let Some(qualif) = self.temp_qualif[local] {
+                                // `forbidden_mut` is false, so we can safely ignore
+                                // `MUTABLE_INTERIOR` from the local's qualifications.
+                                // This allows borrowing fields which don't have
+                                // `MUTABLE_INTERIOR`, from a type that does, e.g.:
+                                // `let _: &'static _ = &(Cell::new(1), 2).1;`
+                                if self.can_promote(qualif - Qualif::MUTABLE_INTERIOR) {
+                                    self.promotion_candidates.push(candidate);
+                                }
+                            }
                         }
                     }
                 }
@@ -897,7 +925,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                     }
                     let candidate = Candidate::Argument { bb, index: i };
                     if is_shuffle && i == 2 {
-                        if this.can_promote() {
+                        if this.can_promote(this.qualif) {
                             this.promotion_candidates.push(candidate);
                         } else {
                             span_err!(this.tcx.sess, this.span, E0526,
@@ -913,7 +941,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                     if !constant_arguments.contains(&i) {
                         return
                     }
-                    if this.can_promote() {
+                    if this.can_promote(this.qualif) {
                         this.promotion_candidates.push(candidate);
                     } else {
                         this.tcx.sess.span_err(this.span,
