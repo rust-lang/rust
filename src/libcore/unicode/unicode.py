@@ -227,7 +227,7 @@ def to_combines(combs):
 def format_table_content(f, content, indent):
     line = " "*indent
     first = True
-    for chunk in content.split(","):
+    for chunk in content:
         if len(line) + len(chunk) < 98:
             if first:
                 line += chunk
@@ -281,18 +281,16 @@ def escape_char(c):
 
 def emit_table(f, name, t_data):
     f.write("    const %s: &[(char, [char; 3])] = &[\n" % (name,))
-    data = ""
-    first = True
-    for dat in t_data:
-        if not first:
-            data += ","
-        first = False
-        data += "(%s,[%s,%s,%s])" % (
-            escape_char(dat[0]),
-            escape_char(dat[1][0]),
-            escape_char(dat[1][1]),
-            escape_char(dat[1][2])
+    data = (
+        part
+        for dat in t_data
+        for part in (
+            '({}'.format(escape_char(dat[0])),
+            '[{}'.format(escape_char(dat[1][0])),
+            '{}'.format(escape_char(dat[1][1])),
+            '{}])'.format(escape_char(dat[1][2])),
         )
+    )
     format_table_content(f, data, 8)
     f.write("\n    ];\n\n")
 
@@ -327,18 +325,18 @@ def emit_bool_trie(f, name, t_data):
 
     f.write("    pub const %s: &super::BoolTrie = &super::BoolTrie {\n" % (name,))
     f.write("        r1: [\n")
-    data = ','.join('0x%016x' % chunk for chunk in chunks[0:0x800 // CHUNK])
+    data = ('0x%016x' % chunk for chunk in chunks[0:0x800 // CHUNK])
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
 
     # 0x800..0x10000 trie
     (r2, r3) = compute_trie(chunks[0x800 // CHUNK : 0x10000 // CHUNK], 64 // CHUNK)
     f.write("        r2: [\n")
-    data = ','.join(str(node) for node in r2)
+    data = (str(node) for node in r2)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
     f.write("        r3: &[\n")
-    data = ','.join('0x%016x' % chunk for chunk in r3)
+    data = ('0x%016x' % chunk for chunk in r3)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
 
@@ -346,15 +344,15 @@ def emit_bool_trie(f, name, t_data):
     (mid, r6) = compute_trie(chunks[0x10000 // CHUNK : 0x110000 // CHUNK], 64 // CHUNK)
     (r4, r5) = compute_trie(mid, 64)
     f.write("        r4: [\n")
-    data = ','.join(str(node) for node in r4)
+    data = (str(node) for node in r4)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
     f.write("        r5: &[\n")
-    data = ','.join(str(node) for node in r5)
+    data = (str(node) for node in r5)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
     f.write("        r6: &[\n")
-    data = ','.join('0x%016x' % chunk for chunk in r6)
+    data = ('0x%016x' % chunk for chunk in r6)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
 
@@ -376,12 +374,12 @@ def emit_small_bool_trie(f, name, t_data):
     (r1, r2) = compute_trie(chunks, 1)
 
     f.write("        r1: &[\n")
-    data = ','.join(str(node) for node in r1)
+    data = (str(node) for node in r1)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
 
     f.write("        r2: &[\n")
-    data = ','.join('0x%016x' % node for node in r2)
+    data = ('0x%016x' % node for node in r2)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
 
