@@ -17,6 +17,7 @@ use super::{Flatten, FlatMap, flatten_compat};
 use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
 use super::{Zip, Sum, Product};
 use super::{ChainState, FromIterator, ZipImpl};
+use super::sources::once;
 
 fn _assert_is_object_safe(_: &Iterator<Item=()>) {}
 
@@ -2265,6 +2266,37 @@ pub trait Iterator {
         Sum::sum(self)
     }
 
+    /// Iterates over the entire iterator, adding all the elements
+    ///
+    /// An empty iterator returns `None`, otherwise `Some(sum)`.
+    ///
+    /// # Panics
+    ///
+    /// When calling `sum_nonempty()` and a primitive integer type is being returned, this
+    /// method will panic if the computation overflows and debug assertions are
+    /// enabled.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(nonempty_iter_arith)]
+    /// let empty_sum = (1..1).sum_nonempty::<i32>();
+    /// assert_eq!(empty_sum, None);
+    ///
+    /// let nonempty_sum = (1..=10).sum_nonempty::<i32>();
+    /// assert_eq!(nonempty_sum, Some(55));
+    /// ```
+    #[unstable(feature = "nonempty_iter_arith",
+               reason = "recently added unstable API",
+               issue = "0")]
+    fn sum_nonempty<S>(mut self) -> Option<S>
+        where Self: Sized,
+              S: Sum<Self::Item>,
+    {
+        self.next()
+            .map(|first| once(first).chain(self).sum())
+    }
+
     /// Iterates over the entire iterator, multiplying all the elements
     ///
     /// An empty iterator returns the one value of the type.
@@ -2291,6 +2323,36 @@ pub trait Iterator {
               P: Product<Self::Item>,
     {
         Product::product(self)
+    }
+
+    /// Iterates over the entire iterator, multiplying all the elements
+    ///
+    /// An empty iterator returns `None`, otherwise `Some(product)`.
+    ///
+    /// # Panics
+    ///
+    /// When calling `product_nonempty()` and a primitive integer type is being returned,
+    /// method will panic if the computation overflows and debug assertions are
+    /// enabled.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(nonempty_iter_arith)]
+    /// let empty_product = (1..1).product_nonempty::<i32>();
+    /// assert_eq!(empty_product, None);
+    ///
+    /// let nonempty_product = (1..=10).product_nonempty::<i32>();
+    /// assert_eq!(nonempty_product, Some(3628800));
+    /// ```
+    #[unstable(feature = "nonempty_iter_arith",
+               reason = "recently added unstable API",
+               issue = "0")]
+    fn product_nonempty<P>(mut self) -> Option<P>
+        where Self: Sized,
+              P: Product<Self::Item>,
+    {
+        self.next()
+            .map(|first| once(first).chain(self).product())
     }
 
     /// Lexicographically compares the elements of this `Iterator` with those
