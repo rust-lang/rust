@@ -10,6 +10,7 @@
 
 use abi::{FnType, FnTypeExt};
 use common::*;
+use llvm;
 use rustc::hir;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
@@ -428,8 +429,13 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                         PointerKind::Shared
                     },
                     hir::MutMutable => {
-                        if cx.tcx.sess.opts.debugging_opts.mutable_noalias ||
-                           cx.tcx.sess.panic_strategy() == PanicStrategy::Abort {
+                        // Only emit noalias annotations for LLVM >= 6 or in panic=abort
+                        // mode, as prior versions had many bugs in conjunction with
+                        // unwinding. See also issue #31681.
+                        let mutable_noalias = cx.tcx.sess.opts.debugging_opts.mutable_noalias
+                            .unwrap_or(unsafe { llvm::LLVMRustVersionMajor() >= 6 }
+                                || cx.tcx.sess.panic_strategy() == PanicStrategy::Abort);
+                        if mutable_noalias {
                             PointerKind::UniqueBorrowed
                         } else {
                             PointerKind::Shared
