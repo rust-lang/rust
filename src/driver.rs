@@ -9,11 +9,11 @@ extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_plugin;
-extern crate rustc_trans_utils;
+extern crate rustc_codegen_utils;
 extern crate syntax;
 
 use rustc_driver::{driver, Compilation, CompilerCalls, RustcDefaultCalls};
-use rustc_trans_utils::trans_crate::TransCrate;
+use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc::session::{config, Session};
 use rustc::session::config::{ErrorOutputType, Input};
 use std::path::PathBuf;
@@ -60,7 +60,7 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
     }
     fn late_callback(
         &mut self,
-        trans_crate: &TransCrate,
+        trans_crate: &CodegenBackend,
         matches: &getopts::Matches,
         sess: &Session,
         crate_stores: &rustc::middle::cstore::CrateStore,
