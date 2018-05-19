@@ -117,6 +117,7 @@ use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
 use syntax::ast::{self, NodeId};
+use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 
@@ -398,72 +399,65 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
     lsets.warn_about_unused_args(body, entry_ln);
 }
 
-fn visit_local<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, local: &'tcx hir::Local) {
-    local.pat.each_binding(|_, p_id, sp, path1| {
-        debug!("adding local variable {}", p_id);
+fn add_from_pat<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, pat: &P<hir::Pat>) {
+    // For struct patterns, take note of which fields used shorthand
+    // (`x` rather than `x: x`).
+    //
+    // FIXME: according to the rust-lang-nursery/rustc-guide book, `NodeId`s are to be
+    // phased out in favor of `HirId`s; however, we need to match the signature of
+    // `each_binding`, which uses `NodeIds`.
+    let mut shorthand_field_ids = NodeSet();
+    let mut pats = VecDeque::new();
+    pats.push_back(pat);
+    while let Some(pat) = pats.pop_front() {
+        use hir::PatKind::*;
+        match pat.node {
+            Binding(_, _, _, ref inner_pat) => {
+                pats.extend(inner_pat.iter());
+            }
+            Struct(_, ref fields, _) => {
+                for field in fields {
+                    if field.node.is_shorthand {
+                        shorthand_field_ids.insert(field.node.pat.id);
+                    }
+                }
+            }
+            Ref(ref inner_pat, _) |
+            Box(ref inner_pat) => {
+                pats.push_back(inner_pat);
+            }
+            TupleStruct(_, ref inner_pats, _) |
+            Tuple(ref inner_pats, _) => {
+                pats.extend(inner_pats.iter());
+            }
+            Slice(ref pre_pats, ref inner_pat, ref post_pats) => {
+                pats.extend(pre_pats.iter());
+                pats.extend(inner_pat.iter());
+                pats.extend(post_pats.iter());
+            }
+            _ => {}
+        }
+    }
+
+    pat.each_binding(|_bm, p_id, _sp, path1| {
         let name = path1.node;
-        ir.add_live_node_for_node(p_id, VarDefNode(sp));
+        ir.add_live_node_for_node(p_id, VarDefNode(path1.span));
         ir.add_variable(Local(LocalInfo {
             id: p_id,
             name,
-            is_shorthand: false,
+            is_shorthand: shorthand_field_ids.contains(&p_id)
         }));
     });
+}
+
+fn visit_local<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, local: &'tcx hir::Local) {
+    add_from_pat(ir, &local.pat);
     intravisit::walk_local(ir, local);
 }
 
 fn visit_arm<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, arm: &'tcx hir::Arm) {
-    for mut pat in &arm.pats {
-        // For struct patterns, take note of which fields used shorthand
-        // (`x` rather than `x: x`).
-        //
-        // FIXME: according to the rust-lang-nursery/rustc-guide book, `NodeId`s are to be
-        // phased out in favor of `HirId`s; however, we need to match the signature of
-        // `each_binding`, which uses `NodeIds`.
-        let mut shorthand_field_ids = NodeSet();
-        let mut pats = VecDeque::new();
-        pats.push_back(pat);
-        while let Some(pat) = pats.pop_front() {
-            use hir::PatKind::*;
-            match pat.node {
-                Binding(_, _, _, ref inner_pat) => {
-                    pats.extend(inner_pat.iter());
-                }
-                Struct(_, ref fields, _) => {
-                    for field in fields {
-                        if field.node.is_shorthand {
-                            shorthand_field_ids.insert(field.node.pat.id);
-                        }
-                    }
-                }
-                Ref(ref inner_pat, _) |
-                Box(ref inner_pat) => {
-                    pats.push_back(inner_pat);
-                }
-                TupleStruct(_, ref inner_pats, _) |
-                Tuple(ref inner_pats, _) => {
-                    pats.extend(inner_pats.iter());
-                }
-                Slice(ref pre_pats, ref inner_pat, ref post_pats) => {
-                    pats.extend(pre_pats.iter());
-                    pats.extend(inner_pat.iter());
-                    pats.extend(post_pats.iter());
-                }
-                _ => {}
-            }
-        }
-
-        pat.each_binding(|bm, p_id, _sp, path1| {
-            debug!("adding local variable {} from match with bm {:?}",
-                   p_id, bm);
-            let name = path1.node;
-            ir.add_live_node_for_node(p_id, VarDefNode(path1.span));
-            ir.add_variable(Local(LocalInfo {
-                id: p_id,
-                name: name,
-                is_shorthand: shorthand_field_ids.contains(&p_id)
-            }));
-        })
+    for pat in &arm.pats {
+        add_from_pat(ir, pat);
     }
     intravisit::walk_arm(ir, arm);
 }
