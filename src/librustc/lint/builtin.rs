@@ -273,6 +273,12 @@ declare_lint! {
     "detects name collision with an existing but unstable method"
 }
 
+declare_lint! {
+    pub UNUSED_LABELS,
+    Allow,
+    "detects labels that are never used"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -318,6 +324,7 @@ impl LintPass for HardwiredLints {
             UNUSED_MUT,
             SINGLE_USE_LIFETIME,
             UNUSED_LIFETIME,
+            UNUSED_LABELS,
             TYVAR_BEHIND_RAW_POINTER,
             ELIDED_LIFETIME_IN_PATH,
             BARE_TRAIT_OBJECT,
