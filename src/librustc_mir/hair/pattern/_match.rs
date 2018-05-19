@@ -428,7 +428,9 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                   -> (Vec<Constructor<'tcx>>, bool)
 {
     debug!("all_constructors({:?})", pcx.ty);
-    (match pcx.ty.sty {
+    let exhaustive_integer_patterns = cx.tcx.features().exhaustive_integer_patterns;
+    let mut value_constructors = false;
+    let ctors = match pcx.ty.sty {
         ty::TyBool => {
             [true, false].iter().map(|&b| {
                 ConstantValue(ty::Const::from_bool(cx.tcx, b))
@@ -457,15 +459,14 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 .map(|v| Variant(v.did))
                 .collect()
         }
-        ty::TyChar => {
+        ty::TyChar if exhaustive_integer_patterns => {
             let (min, max) = (0u128, char::MAX as u128);
-            return (vec![
-                ConstantRange(ty::Const::from_bits(cx.tcx, min, cx.tcx.types.char),
-                              ty::Const::from_bits(cx.tcx, max, cx.tcx.types.char),
-                              RangeEnd::Included),
-            ], true)
+            value_constructors = true;
+            vec![ConstantRange(ty::Const::from_bits(cx.tcx, min, cx.tcx.types.char),
+                               ty::Const::from_bits(cx.tcx, max, cx.tcx.types.char),
+                               RangeEnd::Included)]
         }
-        ty::TyInt(int_ty) => {
+        ty::TyInt(int_ty) if exhaustive_integer_patterns => {
             use syntax::ast::IntTy::*;
             let (min, max, ty) = match int_ty {
                 Isize => (isize::MIN as i128, isize::MAX as i128, cx.tcx.types.isize),
@@ -475,19 +476,16 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 I64   => (  i64::MIN as i128,   i64::MAX as i128, cx.tcx.types.i64),
                 I128  => ( i128::MIN as i128,  i128::MAX as i128, cx.tcx.types.i128),
             };
-            return (vec![
-                ConstantRange(
-                    ty::Const::from_bits(cx.tcx, unsafe {
-                        transmute::<i128, u128>(min)
-                    }, ty),
-                    ty::Const::from_bits(cx.tcx, unsafe {
-                        transmute::<i128, u128>(max)
-                    }, ty),
-                    RangeEnd::Included
-                ),
-            ], true);
+            value_constructors = true;
+            vec![ConstantRange(ty::Const::from_bits(cx.tcx, unsafe {
+                                   transmute::<i128, u128>(min)
+                               }, ty),
+                               ty::Const::from_bits(cx.tcx, unsafe {
+                                   transmute::<i128, u128>(max)
+                               }, ty),
+                               RangeEnd::Included)]
         }
-        ty::TyUint(uint_ty) => {
+        ty::TyUint(uint_ty) if exhaustive_integer_patterns => {
             use syntax::ast::UintTy::*;
             let (min, (max, ty)) = (0u128, match uint_ty {
                 Usize => (usize::MAX as u128, cx.tcx.types.usize),
@@ -497,11 +495,10 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 U64   => (  u64::MAX as u128, cx.tcx.types.u64),
                 U128  => ( u128::MAX as u128, cx.tcx.types.u128),
             });
-            return (vec![
-                ConstantRange(ty::Const::from_bits(cx.tcx, min, ty),
-                              ty::Const::from_bits(cx.tcx, max, ty),
-                              RangeEnd::Included),
-            ], true);
+            value_constructors = true;
+            vec![ConstantRange(ty::Const::from_bits(cx.tcx, min, ty),
+                               ty::Const::from_bits(cx.tcx, max, ty),
+                               RangeEnd::Included)]
         }
         _ => {
             if cx.is_uninhabited(pcx.ty) {
@@ -510,7 +507,8 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 vec![Single]
             }
         }
-    }, false)
+    };
+    (ctors, value_constructors)
 }
 
 fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
@@ -615,6 +613,94 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
     cmp::max(max_fixed_len + 1, max_prefix_len + max_suffix_len)
 }
 
+/// An inclusive interval, used for precise integer exhaustiveness checking.
+struct Interval<'tcx> {
+    pub lo: u128,
+    pub hi: u128,
+    pub ty: Ty<'tcx>,
+}
+
+impl<'tcx> Interval<'tcx> {
+    fn from_ctor(ctor: &Constructor<'tcx>) -> Option<Interval<'tcx>> {
+        match ctor {
+            ConstantRange(lo, hi, end) => {
+                assert_eq!(lo.ty, hi.ty);
+                let ty = lo.ty;
+                if let Some(lo) = lo.assert_bits(ty) {
+                    if let Some(hi) = hi.assert_bits(ty) {
+                        // Make sure the interval is well-formed.
+                        return if lo > hi || lo == hi && *end == RangeEnd::Excluded {
+                            None
+                        } else {
+                            let offset = (*end == RangeEnd::Excluded) as u128;
+                            Some(Interval { lo, hi: hi - offset, ty })
+                        };
+                    }
+                }
+                None
+            }
+            ConstantValue(val) => {
+                let ty = val.ty;
+                val.assert_bits(ty).map(|val| Interval { lo: val, hi: val, ty })
+            }
+            Single | Variant(_) | Slice(_) => {
+                None
+            }
+        }
+    }
+
+    fn into_inner(self) -> (u128, u128) {
+        (self.lo, self.hi)
+    }
+}
+
+/// Given a pattern in a `match` and a collection of ranges corresponding to the
+/// domain of values of a type (say, an integer), return a new collection of ranges
+/// corresponding to those ranges minus the ranges covered by the pattern.
+fn ranges_subtract_pattern<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
+                                     pat_ctor: &Constructor<'tcx>,
+                                     ranges: Vec<Constructor<'tcx>>)
+                                     -> Vec<Constructor<'tcx>> {
+    if let Some(pat_interval) = Interval::from_ctor(pat_ctor) {
+        let mut remaining_ranges = vec![];
+        let mut ranges: Vec<_> = ranges.into_iter().filter_map(|r| {
+            Interval::from_ctor(&r).map(|i| i.into_inner())
+        }).collect();
+        for (subrange_lo, subrange_hi) in ranges {
+            if pat_interval.lo > subrange_hi || pat_interval.hi < subrange_lo {
+                // The pattern doesn't intersect with the subrange at all,
+                // so the subrange remains untouched.
+                remaining_ranges.push((subrange_lo, subrange_hi));
+            } else if pat_interval.lo <= subrange_lo && pat_interval.hi >= subrange_hi {
+                // The pattern entirely covers the subrange of values,
+                // so we no longer have to consider this subrange_
+            } else if pat_interval.lo <= subrange_lo {
+                // The pattern intersects a lower section of the subrange,
+                // so only the upper section will remain.
+                remaining_ranges.push((pat_interval.hi + 1, subrange_hi));
+            } else if pat_interval.hi >= subrange_hi {
+                // The pattern intersects an upper section of the subrange,
+                // so only the lower section will remain.
+                remaining_ranges.push((subrange_lo, pat_interval.lo - 1));
+            } else {
+                // The pattern intersects the middle of the subrange,
+                // so we create two ranges either side of the intersection.)
+                remaining_ranges.push((subrange_lo, pat_interval.lo));
+                remaining_ranges.push((pat_interval.hi, subrange_hi));
+            }
+        }
+        // Convert the remaining ranges from pairs to inclusive `ConstantRange`s.
+        let ty = pat_interval.ty;
+        remaining_ranges.into_iter().map(|(lo, hi)| {
+            ConstantRange(ty::Const::from_bits(cx.tcx, lo, ty),
+                          ty::Const::from_bits(cx.tcx, hi, ty),
+                          RangeEnd::Included)
+        }).collect()
+    } else {
+        ranges
+    }
+}
+
 /// Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html
 /// The algorithm from the paper has been modified to correctly handle empty
 /// types. The changes are:
@@ -702,162 +788,49 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             pat_constructors(cx, row[0], pcx).unwrap_or(vec![])
         }).collect();
         debug!("used_ctors = {:#?}", used_ctors);
-        let (all_ctors, _ranged) = all_constructors(cx, pcx);
+        // `all_ctors` are all the constructors for the given type, which
+        // should all be represented (or caught with the wild pattern `_`).
+        // `value_constructors` is true if we may exhaustively consider all
+        // the possible values (e.g. integers) of a type as its constructors.
+        let (all_ctors, value_constructors) = all_constructors(cx, pcx);
         debug!("all_ctors = {:#?}", all_ctors);
 
-        fn to_inc_range_pair<'tcx>(_tcx: TyCtxt<'_, '_, '_>, ctor: &Constructor<'tcx>) -> Option<(u128, u128, Ty<'tcx>)> {
-            match ctor {
-                Single | Variant(_) | Slice(_) => {
-                    None
-                }
-                ConstantValue(const_) => {
-                    if let Some(val) = const_.assert_bits(const_.ty) {
-                        return Some((val, val, const_.ty));
-                    }
-                    None
-                }
-                ConstantRange(lo, hi, end) => {
-                    let ty = lo.ty;
-                    if let Some(lo) = lo.assert_bits(lo.ty) {
-                        if let Some(hi) = hi.assert_bits(hi.ty) {
-                            if lo > hi || lo == hi && end == &RangeEnd::Excluded {
-                                return None;
-                            } else if end == &RangeEnd::Included {
-                                return Some((lo, hi, ty));
-                            } else {
-                                return Some((lo, hi - 1, ty));
-                            }
-                        }
-                    }
-                    None
-                }
-            }
-        }
-
-        fn intersect<'a, 'tcx>(
-                    _deb: bool,
-                    cx: &mut MatchCheckCtxt<'a, 'tcx>,
-                    ranges: Vec<Constructor<'tcx>>,
-                     ctor: &Constructor<'tcx>)
-                     -> (Vec<Constructor<'tcx>>, bool) {
-            if let Some((lo1, hi1, ty)) = to_inc_range_pair(cx.tcx, ctor) {
-                let mut ctor_was_useful = false;
-                // values only consists of ranges
-                let mut new_ranges = vec![];
-                let mut ranges: Vec<_> =
-                    ranges.into_iter().filter_map(|r| {
-                        to_inc_range_pair(cx.tcx, &r).map(|(lo, hi, _)| (lo, hi))
-                    }).collect();
-                while let Some((lo2, hi2)) = ranges.pop() {
-                    // eprintln!("{:?} {:?}", (lo2, hi2), (lo1, hi1));
-                    if lo1 <= lo2 && hi1 >= hi2 {
-                        if _deb { eprintln!("case 1"); }
-                        ctor_was_useful = true;
-                        continue;
-                    }
-                    if lo1 > hi2 || hi1 < lo2 {
-                        if _deb { eprintln!("case 2"); }
-                        new_ranges.push((lo2, hi2));
-                        continue;
-                    }
-                    if lo1 <= lo2 {
-                        if _deb { eprintln!("case 3"); }
-                        ctor_was_useful = true;
-                        if (hi1 + 1, hi2) == (lo2, hi2) {
-                            new_ranges.push((hi1 + 1, hi2));
-                        } else {
-                            ranges.push((hi1 + 1, hi2));
-                        }
-                        continue;
-                    }
-                    if hi1 >= hi2 {
-                        if _deb { eprintln!("case 4"); }
-                        ctor_was_useful = true;
-                        if (lo2, lo1 - 1) == (lo2, hi2) {
-                            new_ranges.push((lo2, lo1 - 1));
-                        } else {
-                            ranges.push((lo2, lo1 - 1));
-                        }
-                        continue;
-                    }
-                    ctor_was_useful = true;
-                    ranges.push((lo2, lo1));
-                    ranges.push((hi1, hi2));
-                    if _deb { eprintln!("case 5"); }
-                }
-                // transform ranges to proper format
-                (new_ranges.into_iter().map(|(lo, hi)| {
-                    ConstantRange(ty::Const::from_bits(cx.tcx, lo, ty),
-                                  ty::Const::from_bits(cx.tcx, hi, ty),
-                                  RangeEnd::Included)
-                }).collect(), ctor_was_useful)
-            } else {
-                (ranges, false)
-            }
-        }
-
-        // `used_ctors` are all the constructors that appear in patterns (must check if guards)
-        // `all_ctors` are all the necessary constructors
+        // `missing_ctors` are those that should have appeared
+        // as patterns in the `match` expression, but did not.
         let mut missing_ctors = vec![];
-        let mut all_actual_ctors = vec![];
         'req: for req_ctor in all_ctors.clone() {
-            if _deb {
-                eprintln!("req_ctor before {:?}", req_ctor);
-            }
-            let mut cur = vec![req_ctor.clone()];
+            let mut sub_ctors = vec![req_ctor.clone()];
+            // The only constructor patterns for which it is valid to
+            // treat the values as constructors are ranges (see
+            // `all_constructors` for details).
+            let consider_value_constructors = value_constructors && match req_ctor {
+                ConstantRange(..) => true,
+                _ => false,
+            };
             for used_ctor in &used_ctors {
-                if _deb {
-                    eprintln!("cut {:?}", used_ctor);
-                }
-                if cur.iter().all(|ctor| {
-                    match ctor {
-                        ConstantRange(..) => true,
-                        _ => false,
-                    }
-                }) {
-                    let (cur2, ctor_was_useful) = intersect(_deb, cx, cur, used_ctor);
-                    cur = cur2;
-                    if ctor_was_useful {
-                        all_actual_ctors.push(used_ctor.clone());
-                    }
-                    if cur.is_empty() {
+                if consider_value_constructors {
+                    sub_ctors = ranges_subtract_pattern(cx, used_ctor, sub_ctors);
+                    // If the constructor patterns that have been considered so far
+                    // already cover the entire range of values, then we the
+                    // constructor is not missing, and we can move on to the next one.
+                    if sub_ctors.is_empty() {
                         continue 'req;
                     }
                 } else {
-                    if used_ctor == &req_ctor {
+                    // If the pattern for the required constructor
+                    // appears in the `match`, then it is not missing,
+                    // and we can move on to the next one.
+                    if *used_ctor == req_ctor {
                         continue 'req;
                     }
                 }
             }
-            if _deb {
-                eprintln!("req_ctor after {:?}", cur);
-            }
-            missing_ctors.extend(cur);
+            // If a constructor has not been matched, then it is missing.
+            // We add `sub_ctors` instead of `req_ctor`, because then we can
+            // provide more detailed error information about precisely which
+            // ranges have been omitted.
+            missing_ctors.extend(sub_ctors);
         }
-
-        // if _ranged {
-        //     missing_ctors = missing_ctors.into_iter().map(|ctor| {
-        //         match ctor {
-        //             ConstantRange(lo, hi, RangeEnd::Included) if lo == hi => {
-        //                 ConstantValue(lo)
-        //             }
-        //             _ => ctor,
-        //         }
-        //     }).collect();
-        // }
-
-        // let missing_ctors: Vec<Constructor> = all_ctors.iter().filter(|c| {
-        //     !used_ctors.contains(*c)
-        // }).cloned().collect();
-
-        if _deb {
-            eprintln!("used_ctors {:?}", used_ctors);
-            eprintln!("missing_ctors {:?}", missing_ctors);
-        }
-
-        // if !all_actual_ctors.is_empty() {
-        //     all_ctors = all_actual_ctors;
-        // }
 
         // `missing_ctors` is the set of constructors from the same type as the
         // first column of `matrix` that are matched only by wildcard patterns
@@ -890,16 +863,16 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         let is_non_exhaustive = is_privately_empty || is_declared_nonexhaustive;
 
         if missing_ctors.is_empty() && !is_non_exhaustive {
-            if _ranged && _deb {
-                return NotUseful;
+            if value_constructors {
+                // If we've successfully matched every value
+                // of the type, then we're done.
+                NotUseful
+            } else {
+                all_ctors.into_iter().map(|c| {
+                    is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
+                }).find(|result| result.is_useful()).unwrap_or(NotUseful)
             }
-            let z = all_ctors.into_iter().map(|c| {
-                is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
-            }).find(|result| result.is_useful()).unwrap_or(NotUseful);
-            if _deb { eprintln!("ABC 1 {:?}", z); }
-            z
         } else {
-            if _deb { eprintln!("ABC 2"); }
             let matrix = rows.iter().filter_map(|r| {
                 if r[0].is_wildcard() {
                     Some(r[1..].to_vec())
@@ -909,7 +882,6 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             }).collect();
             match is_useful(cx, &matrix, &v[1..], witness) {
                 UsefulWithWitness(pats) => {
-                    if _deb { eprintln!("ABC 3"); }
                     let cx = &*cx;
                     // In this case, there's at least one "free"
                     // constructor that is only matched against by
@@ -956,7 +928,6 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                     // satisfied with `(_, _, true)`. In this case,
                     // `used_ctors` is empty.
                     let new_witnesses = if is_non_exhaustive || used_ctors.is_empty() {
-                        if _deb { eprintln!("ABC 4"); }
                         // All constructors are unused. Add wild patterns
                         // rather than each individual constructor
                         pats.into_iter().map(|mut witness| {
@@ -968,10 +939,15 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                             witness
                         }).collect()
                     } else {
-                        if _deb { eprintln!("ABC 5"); }
-                        if _ranged {
+                        if value_constructors {
+                            // If we've been trying to exhaustively match
+                            // over the domain of values for a type,
+                            // then we can provide better diagnostics
+                            // regarding which values were missing.
                             missing_ctors.into_iter().map(|ctor| {
                                 match ctor {
+                                    // A constant range of length 1 is simply
+                                    // a constant value.
                                     ConstantRange(lo, hi, _) if lo == hi => {
                                         Witness(vec![Pattern {
                                             ty: pcx.ty,
@@ -979,6 +955,8 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                             kind: box PatternKind::Constant { value: lo },
                                         }])
                                     }
+                                    // We always report missing intervals
+                                    // in terms of inclusive ranges.
                                     ConstantRange(lo, hi, end) => {
                                         Witness(vec![Pattern {
                                             ty: pcx.ty,
@@ -986,7 +964,8 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                             kind: box PatternKind::Range { lo, hi, end },
                                         }])
                                     },
-                                    _ => bug!("this shouldn't be happening"),
+                                    _ => bug!("`ranges_subtract_pattern` should only produce \
+                                               `ConstantRange`s"),
                                 }
                             }).collect()
                         } else {
