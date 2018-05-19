@@ -46,6 +46,7 @@ use ty::steal::Steal;
 use ty::subst::Substs;
 use util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
 use util::common::{ErrorReported};
+use util::profiling::ProfileCategory::*;
 
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_target::spec::PanicStrategy;

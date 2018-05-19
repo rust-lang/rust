@@ -65,7 +65,7 @@ pub enum Sanitizer {
     Thread,
 }
 
-#[derive(Clone, Copy, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum OptLevel {
     No,         // -O0
     Less,       // -O1
@@ -1367,6 +1367,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "disables the 'leak check' for subtyping; unsound, but useful for tests"),
     crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
         "inject the given attribute in the crate"),
+    self_profile: bool = (false, parse_bool, [UNTRACKED],
+          "run the self profiler"),
 }
 
 pub fn default_lib_output() -> CrateType {

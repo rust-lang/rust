@@ -25,6 +25,7 @@ use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, AllArenas, Resolutions, TyCtxt};
 use rustc::traits;
 use rustc::util::common::{install_panic_hook, time, ErrorReported};
+use rustc::util::profiling::ProfileCategory;
 use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
 use rustc_incremental;
@@ -352,6 +353,10 @@ pub fn compile_input(
         sess.print_perf_stats();
     }
 
+    if sess.opts.debugging_opts.self_profile {
+        sess.print_profiler_results();
+    }
+
     controller_entry_point!(
         compilation_done,
         sess,
@@ -667,6 +672,7 @@ pub fn phase_1_parse_input<'a>(
         profile::begin(sess);
     }
 
+    sess.profiler(|p| p.start_activity(ProfileCategory::Parsing));
     let krate = time(sess, "parsing", || match *input {
         Input::File(ref file) => parse::parse_crate_from_file(file, &sess.parse_sess),
         Input::Str {
@@ -674,6 +680,7 @@ pub fn phase_1_parse_input<'a>(
             ref name,
         } => parse::parse_crate_from_source_str(name.clone(), input.clone(), &sess.parse_sess),
     })?;
+    sess.profiler(|p| p.end_activity(ProfileCategory::Parsing));
 
     sess.diagnostic().set_continue_after_error(true);
 
@@ -944,6 +951,7 @@ where
     syntax_ext::register_builtins(&mut resolver, syntax_exts, sess.features_untracked().quote);
 
     // Expand all macros
+    sess.profiler(|p| p.start_activity(ProfileCategory::Expansion));
     krate = time(sess, "expansion", || {
         // Windows dlls do not have rpaths, so they don't know how to find their
         // dependencies. It's up to us to tell the system where to find all the
@@ -1021,6 +1029,7 @@ where
         }
         krate
     });
+    sess.profiler(|p| p.end_activity(ProfileCategory::Expansion));
 
     krate = time(sess, "maybe building test harness", || {
         syntax::test::modify_for_testing(
@@ -1350,7 +1359,9 @@ pub fn phase_4_codegen<'a, 'tcx>(
         ::rustc::middle::dependency_format::calculate(tcx)
     });
 
+    tcx.sess.profiler(|p| p.start_activity(ProfileCategory::Codegen));
     let codegen = time(tcx.sess, "codegen", move || codegen_backend.codegen_crate(tcx, rx));
+    tcx.sess.profiler(|p| p.end_activity(ProfileCategory::Codegen));
     if tcx.sess.profile_queries() {
         profile::dump(&tcx.sess, "profile_queries".to_string())
     }

@@ -379,6 +379,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         if dep_node.kind.is_anon() {
             profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
+            self.sess.profiler(|p| p.start_activity(Q::CATEGORY));
 
             let res = job.start(self, |tcx| {
                 tcx.dep_graph.with_anon_task(dep_node.kind, || {
@@ -386,6 +387,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 })
             });
 
+            self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
             profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
             let ((result, dep_node_index), diagnostics) = res;
 
@@ -523,6 +525,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 key, dep_node);
 
         profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
+        self.sess.profiler(|p| p.start_activity(Q::CATEGORY));
+
         let res = job.start(self, |tcx| {
             if dep_node.kind.is_eval_always() {
                 tcx.dep_graph.with_eval_always_task(dep_node,
@@ -536,6 +540,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                         Q::compute)
             }
         });
+
+        self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
         profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
 
         let ((result, dep_node_index), diagnostics) = res;
@@ -655,6 +661,7 @@ macro_rules! define_queries_inner {
             rustc_data_structures::stable_hasher::StableHasher,
             ich::StableHashingContext
         };
+        use util::profiling::ProfileCategory;
 
         define_queries_struct! {
             tcx: $tcx,
@@ -768,6 +775,7 @@ macro_rules! define_queries_inner {
             type Value = $V;
 
             const NAME: &'static str = stringify!($name);
+            const CATEGORY: ProfileCategory = $category;
         }
 
         impl<$tcx> QueryAccessors<$tcx> for queries::$name<$tcx> {

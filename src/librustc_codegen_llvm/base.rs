@@ -45,6 +45,7 @@ use rustc::dep_graph::{DepNode, DepConstructor};
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
 use rustc::middle::exported_symbols;
 use rustc::util::common::{time, print_time_passes_entry};
+use rustc::util::profiling::ProfileCategory;
 use rustc::session::config::{self, NoDebugInfo};
 use rustc::session::Session;
 use rustc_incremental;
@@ -741,11 +742,13 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let link_meta = link::build_link_meta(crate_hash);
 
     // Codegen the metadata.
+    tcx.sess.profiler(|p| p.start_activity(ProfileCategory::Codegen));
     let llmod_id = "metadata";
     let metadata_llvm_module = ModuleLlvm::new(tcx.sess, llmod_id);
     let metadata = time(tcx.sess, "write metadata", || {
         write_metadata(tcx, &metadata_llvm_module, &link_meta)
     });
+    tcx.sess.profiler(|p| p.end_activity(ProfileCategory::Codegen));
 
     let metadata_module = ModuleCodegen {
         name: link::METADATA_MODULE_NAME.to_string(),
