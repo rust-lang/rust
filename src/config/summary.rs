@@ -11,7 +11,6 @@
 use std::default::Default;
 use std::time::{Duration, Instant};
 
-#[must_use]
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Summary {
     // Encountered e.g. an IO error.

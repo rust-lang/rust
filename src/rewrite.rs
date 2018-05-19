@@ -39,7 +39,7 @@ pub struct RewriteContext<'a> {
     // When rewriting chain, veto going multi line except the last element
     pub force_one_line_chain: RefCell<bool>,
     pub snippet_provider: &'a SnippetProvider<'a>,
-    pub report: FormatReport,
+    pub(crate) report: FormatReport,
 }
 
 impl<'a> RewriteContext<'a> {

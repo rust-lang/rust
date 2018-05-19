@@ -70,7 +70,7 @@ pub struct FmtVisitor<'a> {
     pub snippet_provider: &'a SnippetProvider<'a>,
     pub line_number: usize,
     pub skipped_range: Vec<(usize, usize)>,
-    pub report: FormatReport,
+    pub(crate) report: FormatReport,
 }
 
 impl<'b, 'a: 'b> FmtVisitor<'a> {
@@ -561,7 +561,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         )
     }
 
-    pub fn from_codemap(
+    pub(crate) fn from_codemap(
         parse_session: &'a ParseSess,
         config: &'a Config,
         snippet_provider: &'a SnippetProvider,

@@ -206,7 +206,7 @@ impl FormattingError {
 }
 
 #[derive(Clone)]
-pub struct FormatReport {
+struct FormatReport {
     // Maps stringified file paths to their associated formatting errors.
     internal: Rc<RefCell<(FormatErrorMap, ReportedErrors)>>,
 }
@@ -756,21 +756,21 @@ pub fn format_input<T: Write>(
     input: Input,
     config: &Config,
     out: Option<&mut T>,
-) -> Result<(Summary, FileMap, FormatReport), (io::Error, Summary)> {
-    syntax::with_globals(|| format_input_inner(input, config, out))
+) -> Result<Summary, (ErrorKind, Summary)> {
+    syntax::with_globals(|| format_input_inner(input, config, out)).map(|tup| tup.0)
 }
 
 fn format_input_inner<T: Write>(
     input: Input,
     config: &Config,
     mut out: Option<&mut T>,
-) -> Result<(Summary, FileMap, FormatReport), (io::Error, Summary)> {
+) -> Result<(Summary, FileMap, FormatReport), (ErrorKind, Summary)> {
     let mut summary = Summary::default();
     if config.disable_all_formatting() {
         // When the input is from stdin, echo back the input.
         if let Input::Text(ref buf) = input {
             if let Err(e) = io::stdout().write_all(buf.as_bytes()) {
-                return Err((e, summary));
+                return Err((From::from(e), summary));
             }
         }
         return Ok((summary, FileMap::new(), FormatReport::new()));
@@ -890,7 +890,7 @@ fn format_input_inner<T: Write>(
 
             Ok((summary, file_map, report))
         }
-        Err(e) => Err((e, summary)),
+        Err(e) => Err((From::from(e), summary)),
     }
 }
 
@@ -913,33 +913,20 @@ struct ModifiedLines {
     pub chunks: Vec<ModifiedChunk>,
 }
 
-/// The successful result of formatting via `get_modified_lines()`.
-#[cfg(test)]
-struct ModifiedLinesResult {
-    /// The high level summary details
-    pub summary: Summary,
-    /// The result Filemap
-    pub filemap: FileMap,
-    /// Map of formatting errors
-    pub report: FormatReport,
-    /// The sets of updated lines.
-    pub modified_lines: ModifiedLines,
-}
-
 /// Format a file and return a `ModifiedLines` data structure describing
 /// the changed ranges of lines.
 #[cfg(test)]
 fn get_modified_lines(
     input: Input,
     config: &Config,
-) -> Result<ModifiedLinesResult, (io::Error, Summary)> {
+) -> Result<ModifiedLines, (ErrorKind, Summary)> {
     use std::io::BufRead;
 
     let mut data = Vec::new();
 
     let mut config = config.clone();
     config.set().write_mode(config::WriteMode::Modified);
-    let (summary, filemap, report) = format_input(input, &config, Some(&mut data))?;
+    format_input(input, &config, Some(&mut data))?;
 
     let mut lines = data.lines();
     let mut chunks = Vec::new();
@@ -963,12 +950,7 @@ fn get_modified_lines(
             lines: added_lines,
         });
     }
-    Ok(ModifiedLinesResult {
-        summary,
-        filemap,
-        report,
-        modified_lines: ModifiedLines { chunks },
-    })
+    Ok(ModifiedLines { chunks })
 }
 
 #[derive(Debug)]
@@ -982,7 +964,7 @@ pub fn format_and_emit_report(input: Input, config: &Config) -> Result<Summary, 
         return Err(format_err!("Version mismatch"));
     }
     let out = &mut stdout();
-    match format_input(input, config, Some(out)) {
+    match syntax::with_globals(|| format_input_inner(input, config, Some(out))) {
         Ok((summary, _, report)) => {
             if report.has_warnings() {
                 match term::stderr() {
