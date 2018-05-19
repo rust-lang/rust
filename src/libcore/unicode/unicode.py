@@ -23,7 +23,7 @@
 # Since this should not require frequent updates, we just store this
 # out-of-line and check the unicode.rs file into git.
 
-import fileinput, re, os, sys, operator, math
+import re, os, sys, operator, math
 
 preamble = '''// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -69,11 +69,13 @@ def fetch(f):
         sys.stderr.write("cannot load %s" % f)
         exit(1)
 
+    return open(f)
+
 def is_surrogate(n):
     return surrogate_codepoints[0] <= n <= surrogate_codepoints[1]
 
-def load_unicode_data(f):
-    fetch(f)
+def load_unicode_data():
+    uni_data = fetch("UnicodeData.txt")
     gencats = {}
     to_lower = {}
     to_upper = {}
@@ -84,7 +86,7 @@ def load_unicode_data(f):
 
     udict = {}
     range_start = -1
-    for line in fileinput.input(f):
+    for line in uni_data:
         data = line.split(';')
         if len(data) != 15:
             continue
@@ -154,9 +156,9 @@ def load_unicode_data(f):
 
     return (canon_decomp, compat_decomp, gencats, combines, to_upper, to_lower, to_title)
 
-def load_special_casing(f, to_upper, to_lower, to_title):
-    fetch(f)
-    for line in fileinput.input(f):
+def load_special_casing(to_upper, to_lower, to_title):
+    casing_data = fetch("SpecialCasing.txt")
+    for line in casing_data:
         data = line.split('#')[0].split(';')
         if len(data) == 5:
             code, lower, title, upper, _comment = data
@@ -237,13 +239,13 @@ def format_table_content(f, content, indent):
             line = " "*indent + chunk
     f.write(line)
 
-def load_properties(f, interestingprops):
-    fetch(f)
+def load_properties(fname, interestingprops):
+    f = fetch(fname)
     props = {}
     re1 = re.compile(r"^ *([0-9A-F]+) *; *(\w+)")
     re2 = re.compile(r"^ *([0-9A-F]+)\.\.([0-9A-F]+) *; *(\w+)")
 
-    for line in fileinput.input(os.path.basename(f)):
+    for line in f:
         prop = None
         d_lo = 0
         d_hi = 0
@@ -277,19 +279,20 @@ def load_properties(f, interestingprops):
 def escape_char(c):
     return "'\\u{%x}'" % c if c != 0 else "'\\0'"
 
-def emit_table(f, name, t_data, t_type = "&[(char, char)]", is_pub=True,
-        pfun=lambda x: "(%s,%s)" % (escape_char(x[0]), escape_char(x[1]))):
-    pub_string = ""
-    if is_pub:
-        pub_string = "pub "
-    f.write("    %sconst %s: %s = &[\n" % (pub_string, name, t_type))
+def emit_table(f, name, t_data):
+    f.write("    const %s: &[(char, [char; 3])] = &[\n" % (name,))
     data = ""
     first = True
     for dat in t_data:
         if not first:
             data += ","
         first = False
-        data += pfun(dat)
+        data += "(%s,[%s,%s,%s])" % (
+            escape_char(dat[0]),
+            escape_char(dat[1][0]),
+            escape_char(dat[1][1]),
+            escape_char(dat[1][2])
+        )
     format_table_content(f, data, 8)
     f.write("\n    ];\n\n")
 
@@ -306,7 +309,7 @@ def compute_trie(rawdata, chunksize):
         root.append(childmap[child])
     return (root, child_data)
 
-def emit_bool_trie(f, name, t_data, is_pub=True):
+def emit_bool_trie(f, name, t_data):
     CHUNK = 64
     rawdata = [False] * 0x110000
     for (lo, hi) in t_data:
@@ -322,10 +325,7 @@ def emit_bool_trie(f, name, t_data, is_pub=True):
                 chunk |= 1 << j
         chunks.append(chunk)
 
-    pub_string = ""
-    if is_pub:
-        pub_string = "pub "
-    f.write("    %sconst %s: &super::BoolTrie = &super::BoolTrie {\n" % (pub_string, name))
+    f.write("    pub const %s: &super::BoolTrie = &super::BoolTrie {\n" % (name,))
     f.write("        r1: [\n")
     data = ','.join('0x%016x' % chunk for chunk in chunks[0:0x800 // CHUNK])
     format_table_content(f, data, 12)
@@ -360,7 +360,7 @@ def emit_bool_trie(f, name, t_data, is_pub=True):
 
     f.write("    };\n\n")
 
-def emit_small_bool_trie(f, name, t_data, is_pub=True):
+def emit_small_bool_trie(f, name, t_data):
     last_chunk = max(hi // 64 for (lo, hi) in t_data)
     n_chunks = last_chunk + 1
     chunks = [0] * n_chunks
@@ -370,11 +370,8 @@ def emit_small_bool_trie(f, name, t_data, is_pub=True):
                 print(cp, cp // 64, len(chunks), lo, hi)
             chunks[cp // 64] |= 1 << (cp & 63)
 
-    pub_string = ""
-    if is_pub:
-        pub_string = "pub "
-    f.write("    %sconst %s: &super::SmallBoolTrie = &super::SmallBoolTrie {\n"
-            % (pub_string, name))
+    f.write("    pub const %s: &super::SmallBoolTrie = &super::SmallBoolTrie {\n"
+            % (name,))
 
     (r1, r2) = compute_trie(chunks, 1)
 
@@ -427,15 +424,10 @@ def emit_conversions_module(f, to_upper, to_lower, to_title):
     }
 
 """)
-    t_type = "&[(char, [char; 3])]"
-    pfun = lambda x: "(%s,[%s,%s,%s])" % (
-        escape_char(x[0]), escape_char(x[1][0]), escape_char(x[1][1]), escape_char(x[1][2]))
     emit_table(f, "to_lowercase_table",
-        sorted(to_lower.items(), key=operator.itemgetter(0)),
-        is_pub=False, t_type = t_type, pfun=pfun)
+        sorted(to_lower.items(), key=operator.itemgetter(0)))
     emit_table(f, "to_uppercase_table",
-        sorted(to_upper.items(), key=operator.itemgetter(0)),
-        is_pub=False, t_type = t_type, pfun=pfun)
+        sorted(to_upper.items(), key=operator.itemgetter(0)))
     f.write("}\n\n")
 
 def emit_norm_module(f, canon, compat, combine, norm_props):
@@ -464,8 +456,7 @@ if __name__ == "__main__":
         rf.write(preamble)
 
         # download and parse all the data
-        fetch("ReadMe.txt")
-        with open("ReadMe.txt") as readme:
+        with fetch("ReadMe.txt") as readme:
             pattern = r"for Version (\d+)\.(\d+)\.(\d+) of the Unicode"
             unicode_version = re.search(pattern, readme.read()).groups()
         rf.write("""
@@ -480,8 +471,8 @@ pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
 };
 """ % unicode_version)
         (canon_decomp, compat_decomp, gencats, combines,
-                to_upper, to_lower, to_title) = load_unicode_data("UnicodeData.txt")
-        load_special_casing("SpecialCasing.txt", to_upper, to_lower, to_title)
+                to_upper, to_lower, to_title) = load_unicode_data()
+        load_special_casing(to_upper, to_lower, to_title)
         want_derived = ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase",
                         "Cased", "Case_Ignorable"]
         derived = load_properties("DerivedCoreProperties.txt", want_derived)
