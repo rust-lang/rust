@@ -134,6 +134,8 @@ A minimal Travis setup could look like this (requires Rust 1.24.0 or greater):
 
 ```yaml
 language: rust
+rust:
+- nightly
 before_script:
 - rustup component add rustfmt-preview
 script:
