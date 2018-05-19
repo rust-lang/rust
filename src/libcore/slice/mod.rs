@@ -1698,6 +1698,7 @@ impl<T> [T] {
     }
 
     /// Function to calculate lenghts of the middle and trailing slice for `align_to{,_mut}`.
+    #[cfg(not(stage0))]
     fn align_to_offsets<U>(&self) -> (usize, usize) {
         // What we gonna do about `rest` is figure out what multiple of `U`s we can put in a
         // lowest number of `T`s. And how many `T`s we need for each such "multiple".
