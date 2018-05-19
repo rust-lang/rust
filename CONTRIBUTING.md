@@ -80,12 +80,8 @@ First, create a new UI test file in the `tests/ui/` directory with the pattern y
 
 ```rust
 // ./tests/ui/my_lint.rs
-
-// The custom_attribute needs to be enabled for the author lint to work
-#![feature(plugin, custom_attribute)]
-
 fn main() {
-    #[clippy(author)]
+    #[clippy::author]
     let arr: [i32; 1] = [7]; // Replace line with the code you want to match
 }
 ```

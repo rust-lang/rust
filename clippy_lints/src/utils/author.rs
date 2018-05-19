@@ -7,8 +7,9 @@ use rustc::lint::*;
 use rustc::hir;
 use rustc::hir::{Expr, Expr_, QPath, Ty_, Pat, PatKind, BindingAnnotation, StmtSemi, StmtExpr, StmtDecl, Decl_, Stmt};
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
-use syntax::ast::{self, Attribute, LitKind, DUMMY_NODE_ID};
+use syntax::ast::{Attribute, LitKind, DUMMY_NODE_ID};
 use std::collections::HashMap;
+use utils::get_attr;
 
 /// **What it does:** Generates clippy code that detects the offending pattern
 ///
@@ -17,10 +18,10 @@ use std::collections::HashMap;
 /// // ./tests/ui/my_lint.rs
 /// fn foo() {
 ///     // detect the following pattern
-///     #[clippy(author)]
+///     #[clippy::author]
 ///     if x == 42 {
 ///         // but ignore everything from here on
-///         #![clippy(author = "ignore")]
+///         #![clippy::author = "ignore"]
 ///     }
 /// }
 /// ```
@@ -633,14 +634,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
 }
 
 fn has_attr(attrs: &[Attribute]) -> bool {
-    attrs.iter().any(|attr| {
-        attr.check_name("clippy") && attr.meta_item_list().map_or(false, |list| {
-            list.len() == 1 && match list[0].node {
-                ast::NestedMetaItemKind::MetaItem(ref it) => it.name() == "author",
-                ast::NestedMetaItemKind::Literal(_) => false,
-            }
-        })
-    })
+    get_attr(attrs, "author").count() > 0
 }
 
 fn desugaring_name(des: hir::MatchSource) -> String {

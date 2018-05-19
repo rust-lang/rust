@@ -735,20 +735,26 @@ impl LimitStack {
     }
 }
 
-fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'static str, mut f: F) {
-    for attr in attrs {
-        if attr.is_sugared_doc {
-            continue;
+pub fn get_attr<'a>(attrs: &'a [ast::Attribute], name: &'static str) -> impl Iterator<Item = &'a ast::Attribute> {
+    attrs.iter().filter_map(move |attr| {
+        if attr.path.segments.len() == 2 && attr.path.segments[0].ident.to_string() == "clippy" && attr.path.segments[1].ident.to_string() == name {
+            Some(attr)
+        } else {
+            None
         }
+    })
+}
+
+fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'static str, mut f: F) {
+    for attr in get_attr(attrs, name) {
         if let Some(ref value) = attr.value_str() {
-            if attr.name() == name {
-                if let Ok(value) = FromStr::from_str(&value.as_str()) {
-                    attr::mark_used(attr);
-                    f(value)
-                } else {
-                    sess.span_err(attr.span, "not a number");
-                }
+            if let Ok(value) = FromStr::from_str(&value.as_str()) {
+                f(value)
+            } else {
+                sess.span_err(attr.span, "not a number");
             }
+        } else {
+            sess.span_err(attr.span, "bad clippy attribute");
         }
     }
 }

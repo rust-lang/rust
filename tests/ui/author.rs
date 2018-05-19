@@ -1,7 +1,7 @@
-#![feature(plugin, custom_attribute)]
+#![feature(tool_attributes)]
 
 fn main() {
 
-    #[clippy(author)]
+    #[clippy::author]
     let x: char = 0x45 as char;
 }
