@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::ValueRef;
+use llvm::{ValueRef, LLVMConstInBoundsGEP};
 use rustc::middle::const_val::ConstEvalErr;
 use rustc::mir;
 use rustc::mir::interpret::ConstValue;
@@ -137,9 +137,15 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                 );
                 OperandValue::Pair(a_llval, b_llval)
             },
-            ConstValue::ByRef(alloc) => {
+            ConstValue::ByRef(alloc, offset) => {
                 let init = const_alloc_to_llvm(bx.cx, alloc);
-                let llval = consts::addr_of(bx.cx, init, layout.align, "byte_str");
+                let base_addr = consts::addr_of(bx.cx, init, layout.align, "byte_str");
+
+                let llval = unsafe { LLVMConstInBoundsGEP(
+                    consts::bitcast(base_addr, Type::i8p(bx.cx)),
+                    &C_usize(bx.cx, offset.bytes()),
+                    1,
+                )};
                 let llval = consts::bitcast(llval, layout.llvm_type(bx.cx).ptr_to());
                 return Ok(PlaceRef::new_sized(llval, layout, alloc.align).load(bx));
             },

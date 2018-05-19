@@ -73,7 +73,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         match dest_ty.sty {
             // float -> uint
             TyUint(t) => {
-                let width = t.bit_width().unwrap_or(self.memory.pointer_size() as usize * 8);
+                let width = t.bit_width().unwrap_or(self.memory.pointer_size().bytes() as usize * 8);
                 match fty {
                     FloatTy::F32 => Ok(PrimVal::Bytes(Single::from_bits(bits).to_u128(width).value)),
                     FloatTy::F64 => Ok(PrimVal::Bytes(Double::from_bits(bits).to_u128(width).value)),
@@ -81,7 +81,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             },
             // float -> int
             TyInt(t) => {
-                let width = t.bit_width().unwrap_or(self.memory.pointer_size() as usize * 8);
+                let width = t.bit_width().unwrap_or(self.memory.pointer_size().bytes() as usize * 8);
                 match fty {
                     FloatTy::F32 => Ok(PrimVal::from_i128(Single::from_bits(bits).to_i128(width).value)),
                     FloatTy::F64 => Ok(PrimVal::from_i128(Double::from_bits(bits).to_i128(width).value)),

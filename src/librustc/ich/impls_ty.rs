@@ -401,8 +401,9 @@ for ::mir::interpret::ConstValue<'gcx> {
                 a.hash_stable(hcx, hasher);
                 b.hash_stable(hcx, hasher);
             }
-            ByRef(alloc) => {
+            ByRef(alloc, offset) => {
                 alloc.hash_stable(hcx, hasher);
+                offset.hash_stable(hcx, hasher);
             }
         }
     }

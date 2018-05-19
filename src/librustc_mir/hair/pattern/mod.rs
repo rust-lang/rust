@@ -22,6 +22,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::interpret::{PrimVal, GlobalId, ConstValue};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
+use rustc::ty::layout::Size;
 use rustc::ty::subst::{Substs, Kind};
 use rustc::hir::{self, PatKind, RangeEnd};
 use rustc::hir::def::{Def, CtorKind};
@@ -1083,7 +1084,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
         LitKind::Str(ref s, _) => {
             let s = s.as_str();
             let id = tcx.allocate_cached(s.as_bytes());
-            let ptr = MemoryPointer::new(id, 0);
+            let ptr = MemoryPointer::new(id, Size::from_bytes(0));
             ConstValue::ByValPair(
                 PrimVal::Ptr(ptr),
                 PrimVal::from_u128(s.len() as u128),
@@ -1091,7 +1092,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
         },
         LitKind::ByteStr(ref data) => {
             let id = tcx.allocate_cached(data);
-            let ptr = MemoryPointer::new(id, 0);
+            let ptr = MemoryPointer::new(id, Size::from_bytes(0));
             ConstValue::ByVal(PrimVal::Ptr(ptr))
         },
         LitKind::Byte(n) => ConstValue::ByVal(PrimVal::Bytes(n as u128)),

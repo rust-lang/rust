@@ -16,7 +16,7 @@ use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::mir::interpret::{GlobalId, MemoryPointer, PrimVal, Allocation, ConstValue};
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Scalar};
+use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Scalar, Size};
 use builder::Builder;
 use common::{CodegenCx};
 use common::{C_bytes, C_struct, C_uint_big, C_undef, C_usize};
@@ -68,7 +68,7 @@ pub fn primval_to_llvm(cx: &CodegenCx,
 
                 let llval = unsafe { llvm::LLVMConstInBoundsGEP(
                     consts::bitcast(base_addr, Type::i8p(cx)),
-                    &C_usize(cx, ptr.offset),
+                    &C_usize(cx, ptr.offset.bytes()),
                     1,
                 ) };
                 if scalar.value != layout::Pointer {
@@ -81,49 +81,6 @@ pub fn primval_to_llvm(cx: &CodegenCx,
     }
 }
 
-fn const_value_to_llvm<'tcx>(cx: &CodegenCx<'_, 'tcx>, val: ConstValue, ty: Ty<'tcx>) -> ValueRef {
-    let layout = cx.layout_of(ty);
-
-    if layout.is_zst() {
-        return C_undef(layout.immediate_llvm_type(cx));
-    }
-
-    match val {
-        ConstValue::ByVal(x) => {
-            let scalar = match layout.abi {
-                layout::Abi::Scalar(ref x) => x,
-                _ => bug!("const_value_to_llvm: invalid ByVal layout: {:#?}", layout)
-            };
-            primval_to_llvm(
-                cx,
-                x,
-                scalar,
-                layout.immediate_llvm_type(cx),
-            )
-        },
-        ConstValue::ByValPair(a, b) => {
-            let (a_scalar, b_scalar) = match layout.abi {
-                layout::Abi::ScalarPair(ref a, ref b) => (a, b),
-                _ => bug!("const_value_to_llvm: invalid ByValPair layout: {:#?}", layout)
-            };
-            let a_llval = primval_to_llvm(
-                cx,
-                a,
-                a_scalar,
-                layout.scalar_pair_element_llvm_type(cx, 0),
-            );
-            let b_llval = primval_to_llvm(
-                cx,
-                b,
-                b_scalar,
-                layout.scalar_pair_element_llvm_type(cx, 1),
-            );
-            C_struct(cx, &[a_llval, b_llval], false)
-        },
-        ConstValue::ByRef(alloc) => const_alloc_to_llvm(cx, alloc),
-    }
-}
-
 pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
     let mut llvals = Vec::with_capacity(alloc.relocations.len() + 1);
     let layout = cx.data_layout();
@@ -131,6 +88,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
 
     let mut next_offset = 0;
     for (&offset, &alloc_id) in &alloc.relocations {
+        let offset = offset.bytes();
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
         if offset > next_offset {
@@ -142,7 +100,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
         ).expect("const_alloc_to_llvm: could not read relocation pointer") as u64;
         llvals.push(primval_to_llvm(
             cx,
-            PrimVal::Ptr(MemoryPointer { alloc_id, offset: ptr_offset }),
+            PrimVal::Ptr(MemoryPointer { alloc_id, offset: Size::from_bytes(ptr_offset) }),
             &Scalar {
                 value: layout::Primitive::Pointer,
                 valid_range: 0..=!0
@@ -171,11 +129,11 @@ pub fn codegen_static_initializer<'a, 'tcx>(
     let param_env = ty::ParamEnv::reveal_all();
     let static_ = cx.tcx.const_eval(param_env.and(cid))?;
 
-    let val = match static_.val {
-        ConstVal::Value(val) => val,
+    let alloc = match static_.val {
+        ConstVal::Value(ConstValue::ByRef(alloc, n)) if n.bytes() == 0 => alloc,
         _ => bug!("static const eval returned {:#?}", static_),
     };
-    Ok(const_value_to_llvm(cx, val, static_.ty))
+    Ok(const_alloc_to_llvm(cx, alloc))
 }
 
 impl<'a, 'tcx> FunctionCx<'a, 'tcx> {

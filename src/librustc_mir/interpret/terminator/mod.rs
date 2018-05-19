@@ -341,7 +341,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                     Value::ByRef(ptr, align) => {
                                         for (i, arg_local) in arg_locals.enumerate() {
                                             let field = layout.field(&self, i)?;
-                                            let offset = layout.fields.offset(i).bytes();
+                                            let offset = layout.fields.offset(i);
                                             let arg = Value::ByRef(ptr.offset(offset, &self)?,
                                                                    align.min(field.align));
                                             let dest =

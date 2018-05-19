@@ -95,62 +95,35 @@ pub fn eval_body<'a, 'tcx>(
 
 pub fn value_to_const_value<'tcx>(
     ecx: &EvalContext<'_, '_, 'tcx, CompileTimeEvaluator>,
-    mut val: Value,
+    val: Value,
     ty: Ty<'tcx>,
 ) -> &'tcx ty::Const<'tcx> {
-    let result = (|| {
-        // Convert to ByVal or ByValPair if possible
-        if let Value::ByRef(ptr, align) = val {
-            if let Some(read_val) = ecx.try_read_value(ptr, align, ty)? {
-                val = read_val;
+    let layout = ecx.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap();
+    match (val, &layout.abi) {
+        (Value::ByVal(PrimVal::Undef), _) if layout.is_zst() => {},
+        (Value::ByRef(..), _) |
+        (Value::ByVal(_), &layout::Abi::Scalar(_)) |
+        (Value::ByValPair(..), &layout::Abi::ScalarPair(..)) => {},
+        _ => bug!("bad value/layout combo: {:#?}, {:#?}", val, layout),
+    }
+    let val = (|| {
+        match val {
+            Value::ByVal(val) => Ok(ConstValue::ByVal(val)),
+            Value::ByValPair(a, b) => Ok(ConstValue::ByValPair(a, b)),
+            Value::ByRef(ptr, align) => {
+                let ptr = ptr.primval.to_ptr().unwrap();
+                let alloc = ecx.memory.get(ptr.alloc_id)?;
+                assert!(alloc.align.abi() >= align.abi());
+                assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= layout.size.bytes());
+                let mut alloc = alloc.clone();
+                alloc.align = align;
+                let alloc = ecx.tcx.intern_const_alloc(alloc);
+                Ok(ConstValue::ByRef(alloc, ptr.offset))
             }
         }
-
-        let layout = ecx.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap();
-
-        if layout.is_zst() {
-            return Ok(ty::Const::from_const_value(
-                ecx.tcx.tcx,
-                ConstValue::ByVal(PrimVal::Undef),
-                ty));
-        }
-
-        let val = match layout.abi {
-            layout::Abi::Scalar(..) => {
-                if let Value::ByVal(val) = val {
-                    ConstValue::ByVal(val)
-                } else {
-                    bug!("expected ByVal value, got {:?}", val);
-                }
-            }
-            layout::Abi::ScalarPair(..) => {
-                if let Value::ByValPair(a, b) = val {
-                    ConstValue::ByValPair(a, b)
-                } else {
-                    bug!("expected ByValPair value, got {:?}", val);
-                }
-            }
-            _ => {
-                if let Value::ByRef(ptr, _) = val {
-                    let ptr = ptr.primval.to_ptr().unwrap();
-                    assert_eq!(ptr.offset, 0);
-                    let alloc = ecx.memory.get(ptr.alloc_id)?;
-                    assert!(alloc.align.abi() >= layout.align.abi());
-                    assert!(alloc.bytes.len() as u64 == layout.size.bytes());
-                    let mut alloc = alloc.clone();
-                    // The align field is meaningless for values, so just use the layout's align
-                    alloc.align = layout.align;
-                    let alloc = ecx.tcx.intern_const_alloc(alloc);
-                    ConstValue::ByRef(alloc)
-                } else {
-                    bug!("expected ByRef value, got {:?}", val);
-                }
-            },
-        };
-        Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, ty))
     })();
-    match result {
-        Ok(v) => v,
+    match val {
+        Ok(val) => ty::Const::from_const_value(ecx.tcx.tcx, val, ty),
         Err(mut err) => {
             ecx.report(&mut err, true, None);
             bug!("miri error occured when converting Value to ConstValue")
@@ -182,49 +155,49 @@ fn eval_body_using_ecx<'a, 'mir, 'tcx>(
 ) -> EvalResult<'tcx, (Value, Pointer, Ty<'tcx>)> {
     debug!("eval_body: {:?}, {:?}", cid, param_env);
     let tcx = ecx.tcx.tcx;
-        let mut mir = match mir {
-            Some(mir) => mir,
-            None => ecx.load_mir(cid.instance.def)?,
-        };
-        if let Some(index) = cid.promoted {
-            mir = &mir.promoted[index];
-        }
-        let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
-        assert!(!layout.is_unsized());
-        let ptr = ecx.memory.allocate(
-            layout.size.bytes(),
-            layout.align,
-            None,
-        )?;
-        let internally_mutable = !layout.ty.is_freeze(tcx, param_env, mir.span);
-        let mutability = tcx.is_static(cid.instance.def_id());
-        let mutability = if mutability == Some(hir::Mutability::MutMutable) || internally_mutable {
-            Mutability::Mutable
-        } else {
-            Mutability::Immutable
-        };
-        let cleanup = StackPopCleanup::MarkStatic(mutability);
-        let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
-        let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
-        trace!("const_eval: pushing stack frame for global: {}{}", name, prom);
-        assert!(mir.arg_count == 0);
-        ecx.push_stack_frame(
-            cid.instance,
-            mir.span,
-            mir,
-            Place::from_ptr(ptr, layout.align),
-            cleanup,
-        )?;
+    let mut mir = match mir {
+        Some(mir) => mir,
+        None => ecx.load_mir(cid.instance.def)?,
+    };
+    if let Some(index) = cid.promoted {
+        mir = &mir.promoted[index];
+    }
+    let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
+    assert!(!layout.is_unsized());
+    let ptr = ecx.memory.allocate(
+        layout.size,
+        layout.align,
+        None,
+    )?;
+    let internally_mutable = !layout.ty.is_freeze(tcx, param_env, mir.span);
+    let is_static = tcx.is_static(cid.instance.def_id());
+    let mutability = if is_static == Some(hir::Mutability::MutMutable) || internally_mutable {
+        Mutability::Mutable
+    } else {
+        Mutability::Immutable
+    };
+    let cleanup = StackPopCleanup::MarkStatic(mutability);
+    let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
+    let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
+    trace!("const_eval: pushing stack frame for global: {}{}", name, prom);
+    assert!(mir.arg_count == 0);
+    ecx.push_stack_frame(
+        cid.instance,
+        mir.span,
+        mir,
+        Place::from_ptr(ptr, layout.align),
+        cleanup,
+    )?;
 
-        while ecx.step()? {}
-        let ptr = ptr.into();
-        // always try to read the value and report errors
-        let value = match ecx.try_read_value(ptr, layout.align, layout.ty)? {
-            Some(val) => val,
-            // point at the allocation
-            _ => Value::ByRef(ptr, layout.align),
-        };
-        Ok((value, ptr, layout.ty))
+    while ecx.step()? {}
+    let ptr = ptr.into();
+    // always try to read the value and report errors
+    let value = match ecx.try_read_value(ptr, layout.align, layout.ty)? {
+        Some(val) if is_static.is_none() => val,
+        // point at the allocation
+        _ => Value::ByRef(ptr, layout.align),
+    };
+    Ok((value, ptr, layout.ty))
 }
 
 pub struct CompileTimeEvaluator;
@@ -442,22 +415,37 @@ pub fn const_val_field<'a, 'tcx>(
     let mut ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let result = (|| {
         let value = ecx.const_value_to_value(value, ty)?;
-        let (field, ty) = match value {
-            Value::ByValPair(..) | Value::ByVal(_) => 
-                ecx.read_field(value, variant, field, ty)?.expect("const_val_field on non-field"),
-            Value::ByRef(ptr, align) => {
-                let place = Place::Ptr {
-                    ptr,
-                    align,
-                    extra: variant.map_or(PlaceExtra::None, PlaceExtra::DowncastVariant),
-                };
-                let layout = ecx.layout_of(ty)?;
-                let (place, layout) = ecx.place_field(place, field, layout)?;
-                let (ptr, align) = place.to_ptr_align();
-                (Value::ByRef(ptr, align), layout.ty)
-            }
+        let layout = ecx.layout_of(ty)?;
+        let (ptr, align) = match value {
+            Value::ByRef(ptr, align) => (ptr, align),
+            Value::ByValPair(..) | Value::ByVal(_) => {
+                let ptr = ecx.alloc_ptr(ty)?.into();
+                ecx.write_value_to_ptr(value, ptr, layout.align, ty)?;
+                (ptr, layout.align)
+            },
         };
-        Ok(value_to_const_value(&ecx, field, ty))
+        let place = Place::Ptr {
+            ptr,
+            align,
+            extra: variant.map_or(PlaceExtra::None, PlaceExtra::DowncastVariant),
+        };
+        let (place, layout) = ecx.place_field(place, field, layout)?;
+        let (ptr, align) = place.to_ptr_align();
+        let mut new_value = Value::ByRef(ptr, align);
+        new_value = ecx.try_read_by_ref(new_value, layout.ty)?;
+        use rustc_data_structures::indexed_vec::Idx;
+        match (value, new_value) {
+            (Value::ByVal(_), Value::ByRef(..)) |
+            (Value::ByValPair(..), Value::ByRef(..)) |
+            (Value::ByVal(_), Value::ByValPair(..)) => bug!(
+                "field {} of {:?} yielded {:?}",
+                field.index(),
+                value,
+                new_value,
+            ),
+            _ => {},
+        }
+        Ok(value_to_const_value(&ecx, new_value, layout.ty))
     })();
     result.map_err(|err| {
         let (trace, span) = ecx.generate_stacktrace(None);
@@ -482,7 +470,7 @@ pub fn const_variant_index<'a, 'tcx>(
     let (ptr, align) = match value {
         Value::ByValPair(..) | Value::ByVal(_) => {
             let layout = ecx.layout_of(ty)?;
-            let ptr = ecx.memory.allocate(layout.size.bytes(), layout.align, Some(MemoryKind::Stack))?;
+            let ptr = ecx.memory.allocate(layout.size, layout.align, Some(MemoryKind::Stack))?;
             let ptr: Pointer = ptr.into();
             ecx.write_value_to_ptr(value, ptr, layout.align, ty)?;
             (ptr, layout.align)
@@ -498,7 +486,10 @@ pub fn const_value_to_allocation_provider<'a, 'tcx>(
     (val, ty): (ConstValue<'tcx>, Ty<'tcx>),
 ) -> &'tcx Allocation {
     match val {
-        ConstValue::ByRef(alloc) => return alloc,
+        ConstValue::ByRef(alloc, offset) => {
+            assert_eq!(offset.bytes(), 0);
+            return alloc;
+        },
         _ => ()
     }
     let result = || -> EvalResult<'tcx, &'tcx Allocation> {
@@ -509,7 +500,7 @@ pub fn const_value_to_allocation_provider<'a, 'tcx>(
             ());
         let value = ecx.const_value_to_value(val, ty)?;
         let layout = ecx.layout_of(ty)?;
-        let ptr = ecx.memory.allocate(layout.size.bytes(), layout.align, Some(MemoryKind::Stack))?;
+        let ptr = ecx.memory.allocate(layout.size, layout.align, Some(MemoryKind::Stack))?;
         ecx.write_value_to_ptr(value, ptr.into(), layout.align, ty)?;
         let alloc = ecx.memory.get(ptr.alloc_id)?;
         Ok(tcx.intern_const_alloc(alloc.clone()))
@@ -551,8 +542,11 @@ pub fn const_eval_provider<'a, 'tcx>(
     };
 
     let (res, ecx) = eval_body_and_ecx(tcx, cid, None, key.param_env);
-    res.map(|(val, _, miri_ty)| {
-        value_to_const_value(&ecx, val, miri_ty)
+    res.and_then(|(mut val, _, miri_ty)| {
+        if tcx.is_static(def_id).is_none() {
+            val = ecx.try_read_by_ref(val, miri_ty)?;
+        }
+        Ok(value_to_const_value(&ecx, val, miri_ty))
     }).map_err(|mut err| {
         if tcx.is_static(def_id).is_some() {
             ecx.report(&mut err, true, None);
