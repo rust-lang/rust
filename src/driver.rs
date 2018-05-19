@@ -118,6 +118,8 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
                 }
                 old(state);
             });
+            
+            control.compilation_done.stop = Compilation::Stop;
         }
 
         control
