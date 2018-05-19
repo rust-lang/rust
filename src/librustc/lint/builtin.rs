@@ -280,7 +280,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub DUPLICATE_ASSOCIATED_TYPE_BINDING,
+    pub DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
     Warn,
     "warns about duplicate associated type bindings in generics"
 }
@@ -336,7 +336,7 @@ impl LintPass for HardwiredLints {
             BARE_TRAIT_OBJECT,
             ABSOLUTE_PATH_NOT_STARTING_WITH_CRATE,
             UNSTABLE_NAME_COLLISION,
-            DUPLICATE_ASSOCIATED_TYPE_BINDING,
+            DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
         )
     }
 }

@@ -406,16 +406,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     trait_ref.ref_id, poly_trait_ref, binding, speculative, &mut dup_bindings);
             predicate.ok() // ok to ignore Err() because ErrorReported (see above)
         }));
-        for (_id, spans) in dup_bindings {
-            if spans.len() > 1 {
-                self.tcx().struct_span_lint_node(
-                        ::rustc::lint::builtin::DUPLICATE_ASSOCIATED_TYPE_BINDING,
-                        trait_ref.ref_id,
-                        spans,
-                        "duplicate associated type binding"
-                    ).emit();
-            }
-        }
 
         debug!("ast_path_to_poly_trait_ref({:?}, projections={:?}) -> {:?}",
                trait_ref, poly_projections, poly_trait_ref);
@@ -499,7 +489,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         trait_ref: ty::PolyTraitRef<'tcx>,
         binding: &ConvertedBinding<'tcx>,
         speculative: bool,
-        dup_bindings: &mut FxHashMap<DefId, Vec<Span>>)
+        dup_bindings: &mut FxHashMap<DefId, Span>)
         -> Result<ty::PolyProjectionPredicate<'tcx>, ErrorReported>
     {
         let tcx = self.tcx();
@@ -577,7 +567,21 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             tcx.sess.span_err(binding.span, &msg);
         }
         tcx.check_stability(assoc_ty.def_id, Some(ref_id), binding.span);
-        dup_bindings.entry(assoc_ty.def_id).or_insert(Vec::new()).push(binding.span);
+
+        dup_bindings.entry(assoc_ty.def_id)
+            .and_modify(|prev_span| {
+                let mut err = self.tcx().struct_span_lint_node(
+                    ::rustc::lint::builtin::DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
+                    ref_id,
+                    binding.span,
+                    &format!("associated type binding `{}` specified more than once",
+                            binding.item_name)
+                );
+                err.span_label(binding.span, "used more than once");
+                err.span_label(*prev_span, format!("first use of `{}`", binding.item_name));
+                err.emit();
+            })
+            .or_insert(binding.span);
 
         Ok(candidate.map_bound(|trait_ref| {
             ty::ProjectionPredicate {
