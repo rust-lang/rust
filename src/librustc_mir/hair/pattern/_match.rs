@@ -707,7 +707,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 let mut ranges: Vec<_> =
                     ranges.into_iter().filter_map(|r| to_inc_range_pair(cx.tcx, &r)).collect();
                 while let Some((lo2, hi2)) = ranges.pop() {
-                    eprintln!("{:?} {:?}", (lo2, hi2), (lo1, hi1));
+                    // eprintln!("{:?} {:?}", (lo2, hi2), (lo1, hi1));
                     if lo1 <= lo2 && hi1 >= hi2 {
                         if _deb { eprintln!("case 1"); }
                         ctor_was_useful = true;
@@ -792,6 +792,17 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             }
             missing_ctors.extend(cur);
         }
+
+        // if _ranged {
+        //     missing_ctors = missing_ctors.into_iter().map(|ctor| {
+        //         match ctor {
+        //             ConstantRange(lo, hi, RangeEnd::Included) if lo == hi => {
+        //                 ConstantValue(lo)
+        //             }
+        //             _ => ctor,
+        //         }
+        //     }).collect();
+        // }
 
         // let missing_ctors: Vec<Constructor> = all_ctors.iter().filter(|c| {
         //     !used_ctors.contains(*c)
@@ -916,11 +927,33 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                         }).collect()
                     } else {
                         if _deb { eprintln!("ABC 5"); }
-                        pats.into_iter().flat_map(|witness| {
-                            missing_ctors.iter().map(move |ctor| {
-                                witness.clone().push_wild_constructor(cx, ctor, pcx.ty)
-                            })
-                        }).collect()
+                        if _ranged {
+                            missing_ctors.into_iter().map(|ctor| {
+                                match ctor {
+                                    ConstantRange(lo, hi, _) if lo == hi => {
+                                        Witness(vec![Pattern {
+                                            ty: pcx.ty,
+                                            span: DUMMY_SP,
+                                            kind: box PatternKind::Constant { value: lo },
+                                        }])
+                                    }
+                                    ConstantRange(lo, hi, end) => {
+                                        Witness(vec![Pattern {
+                                            ty: pcx.ty,
+                                            span: DUMMY_SP,
+                                            kind: box PatternKind::Range { lo, hi, end },
+                                        }])
+                                    },
+                                    _ => bug!("this shouldn't be happening"),
+                                }
+                            }).collect()
+                        } else {
+                            pats.into_iter().flat_map(|witness| {
+                                missing_ctors.iter().map(move |ctor| {
+                                    witness.clone().push_wild_constructor(cx, ctor, pcx.ty)
+                                })
+                            }).collect()
+                        }
                     };
                     UsefulWithWitness(new_witnesses)
                 }
