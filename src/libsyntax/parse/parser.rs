@@ -43,7 +43,7 @@ use ast::{RangeEnd, RangeSyntax};
 use {ast, attr};
 use codemap::{self, CodeMap, Spanned, respan};
 use syntax_pos::{self, Span, MultiSpan, BytePos, FileName, DUMMY_SP};
-use errors::{self, DiagnosticBuilder};
+use errors::{self, Applicability, DiagnosticBuilder};
 use parse::{self, classify, token};
 use parse::common::SeqSep;
 use parse::lexer::TokenAndSpan;
@@ -1648,8 +1648,12 @@ impl<'a> Parser<'a> {
         if !allow_plus && impl_dyn_multi {
             let sum_with_parens = format!("({})", pprust::ty_to_string(&ty));
             self.struct_span_err(ty.span, "ambiguous `+` in a type")
-                .span_suggestion(ty.span, "use parentheses to disambiguate", sum_with_parens)
-                .emit();
+                .span_suggestion_with_applicability(
+                    ty.span,
+                    "use parentheses to disambiguate",
+                    sum_with_parens,
+                    Applicability::MachineApplicable
+                ).emit();
         }
     }
 
@@ -1679,7 +1683,12 @@ impl<'a> Parser<'a> {
                     s.print_bounds(" +", &bounds)?;
                     s.pclose()
                 });
-                err.span_suggestion(sum_span, "try adding parentheses", sum_with_parens);
+                err.span_suggestion_with_applicability(
+                    sum_span,
+                    "try adding parentheses",
+                    sum_with_parens,
+                    Applicability::MachineApplicable
+                );
             }
             TyKind::Ptr(..) | TyKind::BareFn(..) => {
                 err.span_label(sum_span, "perhaps you forgot parentheses?");
@@ -1714,7 +1723,9 @@ impl<'a> Parser<'a> {
 
         self.diagnostic()
             .struct_span_err(span, "missing angle brackets in associated item path")
-            .span_suggestion(span, "try", recovered.to_string()).emit();
+            .span_suggestion_with_applicability( // this is a best-effort recovery
+                span, "try", recovered.to_string(), Applicability::MaybeIncorrect
+            ).emit();
 
         Ok(recovered)
     }
@@ -2465,7 +2476,12 @@ impl<'a> Parser<'a> {
                         exp_span.to(self.prev_span),
                         "cannot use a comma after the base struct",
                     );
-                    err.span_suggestion_short(self.span, "remove this comma", "".to_owned());
+                    err.span_suggestion_short_with_applicability(
+                        self.span,
+                        "remove this comma",
+                        "".to_owned(),
+                        Applicability::MachineApplicable
+                    );
                     err.note("the base struct must always be the last field");
                     err.emit();
                     self.recover_stmt();
@@ -2638,10 +2654,12 @@ impl<'a> Parser<'a> {
                             s.s.word(".")?;
                             s.s.word(fstr.splitn(2, ".").last().unwrap())
                         });
-                        err.span_suggestion(
+                        err.span_suggestion_with_applicability(
                             lo.to(self.prev_span),
                             "try parenthesizing the first index",
-                            sugg);
+                            sugg,
+                            Applicability::MachineApplicable
+                        );
                     }
                     return Err(err);
 
@@ -2781,9 +2799,12 @@ impl<'a> Parser<'a> {
                 let span_of_tilde = lo;
                 let mut err = self.diagnostic().struct_span_err(span_of_tilde,
                         "`~` cannot be used as a unary operator");
-                err.span_suggestion_short(span_of_tilde,
-                                          "use `!` to perform bitwise negation",
-                                          "!".to_owned());
+                err.span_suggestion_short_with_applicability(
+                    span_of_tilde,
+                    "use `!` to perform bitwise negation",
+                    "!".to_owned(),
+                    Applicability::MachineApplicable
+                );
                 err.emit();
                 (lo.to(span), self.mk_unary(UnOp::Not, e))
             }
@@ -2840,9 +2861,12 @@ impl<'a> Parser<'a> {
                     // trailing whitespace after the `!` in our suggestion
                     let to_replace = self.sess.codemap()
                         .span_until_non_whitespace(lo.to(self.span));
-                    err.span_suggestion_short(to_replace,
-                                              "use `!` to perform logical negation",
-                                              "!".to_owned());
+                    err.span_suggestion_short_with_applicability(
+                        to_replace,
+                        "use `!` to perform logical negation",
+                        "!".to_owned(),
+                        Applicability::MachineApplicable
+                    );
                     err.emit();
                     // —and recover! (just as if we were in the block
                     // for the `token::Not` arm)
@@ -2937,9 +2961,12 @@ impl<'a> Parser<'a> {
                         let cur_pos = cm.lookup_char_pos(self.span.lo());
                         let op_pos = cm.lookup_char_pos(cur_op_span.hi());
                         if cur_pos.line != op_pos.line {
-                            err.span_suggestion_short(cur_op_span,
-                                                      "did you mean to use `;` here?",
-                                                      ";".to_string());
+                            err.span_suggestion_with_applicability(
+                                cur_op_span,
+                                "try using a semicolon",
+                                ";".to_string(),
+                                Applicability::MaybeIncorrect // speculative
+                            );
                         }
                         return Err(err);
                     }
@@ -3091,9 +3118,12 @@ impl<'a> Parser<'a> {
 
                         let expr_str = self.sess.codemap().span_to_snippet(expr.span)
                                                 .unwrap_or(pprust::expr_to_string(&expr));
-                        err.span_suggestion(expr.span,
-                                            &format!("try {} the cast value", op_verb),
-                                            format!("({})", expr_str));
+                        err.span_suggestion_with_applicability(
+                            expr.span,
+                            &format!("try {} the cast value", op_verb),
+                            format!("({})", expr_str),
+                            Applicability::MachineApplicable
+                        );
                         err.emit();
 
                         Ok(expr)
@@ -3301,7 +3331,11 @@ impl<'a> Parser<'a> {
             let in_span = self.prev_span.between(self.span);
             let mut err = self.sess.span_diagnostic
                 .struct_span_err(in_span, "missing `in` in `for` loop");
-            err.span_suggestion_short(in_span, "try adding `in` here", " in ".into());
+            err.span_suggestion_short_with_applicability(
+                in_span, "try adding `in` here", " in ".into(),
+                // has been misleading, at least in the past (closed Issue #48492)
+                Applicability::MaybeIncorrect
+            );
             err.emit();
         }
         let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
@@ -3367,7 +3401,12 @@ impl<'a> Parser<'a> {
                                                None)?;
         if let Err(mut e) = self.expect(&token::OpenDelim(token::Brace)) {
             if self.token == token::Token::Semi {
-                e.span_suggestion_short(match_span, "try removing this `match`", "".to_owned());
+                e.span_suggestion_short_with_applicability(
+                    match_span,
+                    "try removing this `match`",
+                    "".to_owned(),
+                    Applicability::MaybeIncorrect // speculative
+                );
             }
             return Err(e)
         }
@@ -3439,10 +3478,11 @@ impl<'a> Parser<'a> {
                             //   |      - ^^ self.span
                             //   |      |
                             //   |      parsed until here as `"y" & X`
-                            err.span_suggestion_short(
+                            err.span_suggestion_short_with_applicability(
                                 cm.next_point(arm_start_span),
                                 "missing a comma here to end this `match` arm",
-                                ",".to_owned()
+                                ",".to_owned(),
+                                Applicability::MachineApplicable
                             );
                         }
                         _ => {
@@ -3511,9 +3551,12 @@ impl<'a> Parser<'a> {
             if self.token == token::OrOr {
                 let mut err = self.struct_span_err(self.span,
                                                    "unexpected token `||` after pattern");
-                err.span_suggestion(self.span,
-                                    "use a single `|` to specify multiple patterns",
-                                    "|".to_owned());
+                err.span_suggestion_with_applicability(
+                    self.span,
+                    "use a single `|` to specify multiple patterns",
+                    "|".to_owned(),
+                    Applicability::MachineApplicable
+                );
                 err.emit();
                 self.bump();
             } else if self.check(&token::BinOp(token::Or)) {
@@ -3643,9 +3686,12 @@ impl<'a> Parser<'a> {
                 if self.token == token::DotDotDot { // Issue #46718
                     let mut err = self.struct_span_err(self.span,
                                                        "expected field pattern, found `...`");
-                    err.span_suggestion(self.span,
-                                        "to omit remaining fields, use one fewer `.`",
-                                        "..".to_owned());
+                    err.span_suggestion_with_applicability(
+                        self.span,
+                        "to omit remaining fields, use one fewer `.`",
+                        "..".to_owned(),
+                        Applicability::MachineApplicable
+                    );
                     err.emit();
                 }
 
@@ -3776,8 +3822,12 @@ impl<'a> Parser<'a> {
             let mut err = self.struct_span_err(comma_span,
                                                "unexpected `,` in pattern");
             if let Ok(seq_snippet) = self.sess.codemap().span_to_snippet(seq_span) {
-                err.span_suggestion(seq_span, "try adding parentheses",
-                                    format!("({})", seq_snippet));
+                err.span_suggestion_with_applicability(
+                    seq_span,
+                    "try adding parentheses",
+                    format!("({})", seq_snippet),
+                    Applicability::MachineApplicable
+                );
             }
             return Err(err);
         }
@@ -3836,8 +3886,12 @@ impl<'a> Parser<'a> {
                 let binding_mode = if self.eat_keyword(keywords::Ref) {
                     self.diagnostic()
                         .struct_span_err(mutref_span, "the order of `mut` and `ref` is incorrect")
-                        .span_suggestion(mutref_span, "try switching the order", "ref mut".into())
-                        .emit();
+                        .span_suggestion_with_applicability(
+                            mutref_span,
+                            "try switching the order",
+                            "ref mut".into(),
+                            Applicability::MachineApplicable
+                        ).emit();
                     BindingMode::ByRef(Mutability::Mutable)
                 } else {
                     BindingMode::ByValue(Mutability::Mutable)
@@ -3962,10 +4016,12 @@ impl<'a> Parser<'a> {
                         pat.span,
                         "the range pattern here has ambiguous interpretation",
                     );
-                    err.span_suggestion(
+                    err.span_suggestion_with_applicability(
                         pat.span,
                         "add parentheses to clarify the precedence",
                         format!("({})", pprust::pat_to_string(&pat)),
+                        // "ambiguous interpretation" implies that we have to be guessing
+                        Applicability::MaybeIncorrect
                     );
                     return Err(err);
                 }
@@ -4036,9 +4092,12 @@ impl<'a> Parser<'a> {
             (Ok(init), Some((_, colon_sp, mut err))) => {  // init parsed, ty error
                 // Could parse the type as if it were the initializer, it is likely there was a
                 // typo in the code: `:` instead of `=`. Add suggestion and emit the error.
-                err.span_suggestion_short(colon_sp,
-                                          "use `=` if you meant to assign",
-                                          "=".to_string());
+                err.span_suggestion_short_with_applicability(
+                    colon_sp,
+                    "use `=` if you meant to assign",
+                    "=".to_string(),
+                    Applicability::MachineApplicable
+                );
                 err.emit();
                 // As this was parsed successfully, continue as if the code has been fixed for the
                 // rest of the file. It will still fail due to the emitted error, but we avoid
@@ -4526,7 +4585,13 @@ impl<'a> Parser<'a> {
                         s.print_stmt(&stmt)?;
                         s.bclose_maybe_open(stmt.span, INDENT_UNIT, false)
                     });
-                    e.span_suggestion(stmt_span, "try placing this code inside a block", sugg);
+                    e.span_suggestion_with_applicability(
+                        stmt_span,
+                        "try placing this code inside a block",
+                        sugg,
+                        // speculative, has been misleading in the past (closed Issue #46836)
+                        Applicability::MaybeIncorrect
+                    );
                 }
                 Err(mut e) => {
                     self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
@@ -5370,9 +5435,12 @@ impl<'a> Parser<'a> {
                 if is_macro_rules {
                     let mut err = self.diagnostic()
                         .struct_span_err(sp, "can't qualify macro_rules invocation with `pub`");
-                    err.span_suggestion(sp,
-                                        "try exporting the macro",
-                                        "#[macro_export]".to_owned());
+                    err.span_suggestion_with_applicability(
+                        sp,
+                        "try exporting the macro",
+                        "#[macro_export]".to_owned(),
+                        Applicability::MaybeIncorrect // speculative
+                    );
                     Err(err)
                 } else {
                     let mut err = self.diagnostic()
@@ -5793,7 +5861,12 @@ impl<'a> Parser<'a> {
                 } else {
                     if seen_comma == false {
                         let sp = self.sess.codemap().next_point(previous_span);
-                        err.span_suggestion(sp, "missing comma here", ",".into());
+                        err.span_suggestion_with_applicability(
+                            sp,
+                            "missing comma here",
+                            ",".into(),
+                            Applicability::MachineApplicable
+                        );
                     }
                     return Err(err);
                 }
@@ -5883,7 +5956,9 @@ impl<'a> Parser<'a> {
                 let help_msg = format!("make this visible only to module `{}` with `in`", path);
                 self.expect(&token::CloseDelim(token::Paren))?;  // `)`
                 let mut err = self.span_fatal_help(path_span, msg, suggestion);
-                err.span_suggestion(path_span, &help_msg, format!("in {}", path));
+                err.span_suggestion_with_applicability(
+                    path_span, &help_msg, format!("in {}", path), Applicability::MachineApplicable
+                );
                 err.emit();  // emit diagnostic, but continue with public visibility
             }
         }
@@ -5921,7 +5996,9 @@ impl<'a> Parser<'a> {
             let mut err = self.fatal(&format!("expected item, found `{}`", token_str));
             if token_str == ";" {
                 let msg = "consider removing this semicolon";
-                err.span_suggestion_short(self.span, msg, "".to_string());
+                err.span_suggestion_short_with_applicability(
+                    self.span, msg, "".to_string(), Applicability::MachineApplicable
+                );
             } else {
                 err.span_label(self.span, "expected item");
             }
@@ -6735,7 +6812,9 @@ impl<'a> Parser<'a> {
                                   ident);
                 let mut err = self.diagnostic()
                     .struct_span_err(sp, "missing `struct` for struct definition");
-                err.span_suggestion_short(sp, &msg, " struct ".into());
+                err.span_suggestion_short_with_applicability(
+                    sp, &msg, " struct ".into(), Applicability::MaybeIncorrect // speculative
+                );
                 return Err(err);
             } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
                 let ident = self.parse_ident().unwrap();
@@ -6758,13 +6837,18 @@ impl<'a> Parser<'a> {
                                              kw,
                                              ident,
                                              kw_name);
-                    err.span_suggestion_short(sp, &suggestion, format!(" {} ", kw));
+                    err.span_suggestion_short_with_applicability(
+                        sp, &suggestion, format!(" {} ", kw), Applicability::MachineApplicable
+                    );
                 } else {
                     if let Ok(snippet) = self.sess.codemap().span_to_snippet(ident_sp) {
-                        err.span_suggestion(
+                        err.span_suggestion_with_applicability(
                             full_sp,
-                            "if you meant to call a macro, write instead",
-                            format!("{}!", snippet));
+                            "if you meant to call a macro, try",
+                            format!("{}!", snippet),
+                            // this is the `ambiguous` conditional branch
+                            Applicability::MaybeIncorrect
+                        );
                     } else {
                         err.help("if you meant to call a macro, remove the `pub` \
                                   and add a trailing `!` after the identifier");
@@ -6790,8 +6874,12 @@ impl<'a> Parser<'a> {
             if self.token.is_keyword(keywords::Const) {
                 self.diagnostic()
                     .struct_span_err(self.span, "extern items cannot be `const`")
-                    .span_suggestion(self.span, "instead try using", "static".to_owned())
-                    .emit();
+                    .span_suggestion_with_applicability(
+                        self.span,
+                        "try using a static value",
+                        "static".to_owned(),
+                        Applicability::MachineApplicable
+                    ).emit();
             }
             self.bump(); // `static` or `const`
             return Ok(Some(self.parse_item_foreign_static(visibility, lo, attrs)?));

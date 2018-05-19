@@ -10,7 +10,7 @@
 
 use std::cmp;
 
-use errors::DiagnosticBuilder;
+use errors::{Applicability, DiagnosticBuilder};
 use hir::HirId;
 use ich::StableHashingContext;
 use lint::builtin;
@@ -265,10 +265,11 @@ impl<'a> LintLevelsBuilder<'a> {
                                     store.check_lint_name(&name_lower) {
                                 db.emit();
                             } else {
-                                db.span_suggestion(
+                                db.span_suggestion_with_applicability(
                                     li.span,
                                     "lowercase the lint name",
-                                    name_lower
+                                    name_lower,
+                                    Applicability::MachineApplicable
                                 ).emit();
                             }
                         } else {

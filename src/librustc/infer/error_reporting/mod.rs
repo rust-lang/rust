@@ -70,7 +70,7 @@ use ty::{self, Region, Ty, TyCtxt, TypeFoldable, TypeVariants};
 use ty::error::TypeError;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
-use errors::{DiagnosticBuilder, DiagnosticStyledString};
+use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -1097,7 +1097,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             if let Some((sp, has_lifetimes)) = type_param_span {
                 let tail = if has_lifetimes { " + " } else { "" };
                 let suggestion = format!("{}: {}{}", bound_kind, sub, tail);
-                err.span_suggestion_short(sp, consider, suggestion);
+                err.span_suggestion_short_with_applicability(
+                    sp, consider, suggestion,
+                    Applicability::MaybeIncorrect // Issue #41966
+                );
             } else {
                 err.help(consider);
             }

@@ -13,7 +13,7 @@ use ast::{MacStmtStyle, StmtKind, ItemKind};
 use attr::{self, HasAttrs};
 use codemap::{ExpnInfo, NameAndSpan, MacroBang, MacroAttribute, dummy_spanned, respan};
 use config::{is_test_or_bench, StripUnconfigured};
-use errors::FatalError;
+use errors::{Applicability, FatalError};
 use ext::base::*;
 use ext::derive::{add_derived_markers, collect_derives};
 use ext::hygiene::{self, Mark, SyntaxContext};
@@ -331,7 +331,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             let trait_list = traits.iter()
                                 .map(|t| format!("{}", t)).collect::<Vec<_>>();
                             let suggestion = format!("#[derive({})]", trait_list.join(", "));
-                            err.span_suggestion(span, "try an outer attribute", suggestion);
+                            err.span_suggestion_with_applicability(
+                                span, "try an outer attribute", suggestion,
+                                // We don't 𝑘𝑛𝑜𝑤 that the following item is an ADT
+                                Applicability::MaybeIncorrect
+                            );
                         }
                         err.emit();
                     }

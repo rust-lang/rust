@@ -13,7 +13,7 @@
 #![allow(dead_code)]
 
 struct S {
-    x: u8
+    x: u8,
     /// The id of the parent core
     y: u8,
 }

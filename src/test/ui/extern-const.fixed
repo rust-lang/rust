@@ -12,7 +12,7 @@
 // compile-flags: -Z continue-parse-after-error
 
 extern "C" {
-    const C: u8; //~ ERROR extern items cannot be `const`
+    static C: u8; //~ ERROR extern items cannot be `const`
 }
 
 fn main() {

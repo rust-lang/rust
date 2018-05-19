@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub   foo(s: usize) -> bool { true }
+// run-rustfix
+
+pub   foo(_s: usize) -> bool { true }
 //~^ ERROR missing `fn` for method definition
 
 fn main() {

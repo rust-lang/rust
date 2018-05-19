@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-rustfix
+
+#![allow(unused_imports)]
+
 pub mod extension1 {
     pub trait ConstructorExtension {}
 }

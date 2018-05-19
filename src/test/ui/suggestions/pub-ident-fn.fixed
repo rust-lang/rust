@@ -1,4 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,12 +10,9 @@
 
 // run-rustfix
 
-#![allow(dead_code)]
+pub fn foo(_s: usize) -> bool { true }
+//~^ ERROR missing `fn` for method definition
 
-struct S {
-    x: u8
-    /// The id of the parent core
-    y: u8,
+fn main() {
+    foo(2);
 }
-//~^^^ ERROR found a documentation comment that doesn't document anything
-fn main() {}
