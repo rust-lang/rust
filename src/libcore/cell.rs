@@ -1231,25 +1231,26 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
 ///
 /// If you have a reference `&SomeStruct`, then normally in Rust all fields of `SomeStruct` are
 /// immutable. The compiler makes optimizations based on the knowledge that `&T` is not mutably
-/// aliased or mutated, and that `&mut T` is unique. `UnsafeCel<T>` is the only core language
+/// aliased or mutated, and that `&mut T` is unique. `UnsafeCell<T>` is the only core language
 /// feature to work around this restriction. All other types that allow internal mutability, such as
-/// `Cell<T>` and `RefCell<T>` use `UnsafeCell` to wrap their internal data.
+/// `Cell<T>` and `RefCell<T>`, use `UnsafeCell` to wrap their internal data.
 ///
 /// The `UnsafeCell` API itself is technically very simple: it gives you a raw pointer `*mut T` to
 /// its contents. It is up to _you_ as the abstraction designer to use that raw pointer correctly.
 ///
 /// The precise Rust aliasing rules are somewhat in flux, but the main points are not contentious:
 ///
-/// - If you create a safe reference with lifetime `'a` (either a `&T` or `&mut T` reference) that
-/// is accessible by safe code (for example, because you returned it), then you must not access
-/// the data in any way that contradicts that reference for the remainder of `'a`. For example, that
-/// means that if you take the `*mut T` from an `UnsafeCell<T>` and case it to an `&T`, then until
-/// that reference's lifetime expires, the data in `T` must remain immutable (modulo any
-/// `UnsafeCell` data found within `T`, of course). Similarly, if you create an `&mut T` reference
-/// that is released to safe code, then you must not access the data within the `UnsafeCell` until
-/// that reference expires.
+/// - If you create a safe reference with lifetime `'a` (either a `&T` or `&mut T`
+/// reference) that is accessible by safe code (for example, because you returned it),
+/// then you must not access the data in any way that contradicts that reference for the
+/// remainder of `'a`. For example, this means that if you take the `*mut T` from an
+/// `UnsafeCell<T>` and cast it to an `&T`, then the data in `T` must remain immutable
+/// (modulo any `UnsafeCell` data found within `T`, of course) until that reference's
+/// lifetime expires. Similarly, if you create a `&mut T` reference that is released to
+/// safe code, then you must not access the data within the `UnsafeCell` until that
+/// reference expires.
 ///
-/// - At all times, you must avoid data races, meaning that if multiple threads have access to
+/// - At all times, you must avoid data races. If multiple threads have access to
 /// the same `UnsafeCell`, then any writes must have a proper happens-before relation to all other
 /// accesses (or use atomics).
 ///
@@ -1259,10 +1260,10 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
 /// 1. A `&T` reference can be released to safe code and there it can co-exit with other `&T`
 /// references, but not with a `&mut T`
 ///
-/// 2. A `&mut T` reference may be released to safe code, provided neither other `&mut T` nor `&T`
+/// 2. A `&mut T` reference may be released to safe code provided neither other `&mut T` nor `&T`
 /// co-exist with it. A `&mut T` must always be unique.
 ///
-/// Note that while mutating or mutably aliasing the contents of an `& UnsafeCell<T>` is
+/// Note that while mutating or mutably aliasing the contents of an `&UnsafeCell<T>` is
 /// okay (provided you enforce the invariants some other way), it is still undefined behavior
 /// to have multiple `&mut UnsafeCell<T>` aliases.
 ///
