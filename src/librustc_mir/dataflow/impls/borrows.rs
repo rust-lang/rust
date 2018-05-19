@@ -150,8 +150,6 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
             panic!("could not find statement at location {:?}");
         });
 
-        self.kill_loans_out_of_scope_at_location(sets, location);
-
         match stmt.kind {
             mir::StatementKind::EndRegion(_) => {
             }
@@ -253,9 +251,6 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
         });
 
         let term = block.terminator();
-        self.kill_loans_out_of_scope_at_location(sets, location);
-
-
         match term.kind {
             mir::TerminatorKind::Resume |
             mir::TerminatorKind::Return |
