@@ -656,7 +656,7 @@ enum ParseError<'sess> {
 
 /// Format the given snippet. The snippet is expected to be *complete* code.
 /// When we cannot parse the given snippet, this function returns `None`.
-pub fn format_snippet(snippet: &str, config: &Config) -> Option<String> {
+fn format_snippet(snippet: &str, config: &Config) -> Option<String> {
     let mut out: Vec<u8> = Vec::with_capacity(snippet.len() * 2);
     let input = Input::Text(snippet.into());
     let mut config = config.clone();
@@ -694,7 +694,7 @@ fn enclose_in_main_block(s: &str, config: &Config) -> String {
 /// The code block may be incomplete (i.e. parser may be unable to parse it).
 /// To avoid panic in parser, we wrap the code block with a dummy function.
 /// The returned code block does *not* end with newline.
-pub fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> {
+fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> {
     // Wrap the given code block with `fn main()` if it does not have one.
     let snippet = enclose_in_main_block(code_snippet, config);
     let mut result = String::with_capacity(snippet.len());
