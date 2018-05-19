@@ -2502,7 +2502,7 @@ impl<'test> TestCx<'test> {
                 .env("IS_WINDOWS", "1")
                 .env("MSVC_LIB", format!("'{}' -nologo", lib.display()))
                 .env("CC", format!("'{}' {}", self.config.cc, cflags))
-                .env("CXX", format!("'{}'", &self.config.cxx));
+                .env("CXX", &self.config.cxx);
         } else {
             cmd.env("CC", format!("{} {}", self.config.cc, self.config.cflags))
                 .env("CXX", format!("{} {}", self.config.cxx, self.config.cflags))
