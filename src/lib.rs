@@ -64,8 +64,6 @@ pub use config::options::CliOptions;
 pub use config::summary::Summary;
 pub use config::{file_lines, load_config, Config, Verbosity, WriteMode};
 
-pub type FmtResult<T> = std::result::Result<T, failure::Error>;
-
 #[macro_use]
 mod utils;
 
@@ -107,7 +105,7 @@ pub(crate) type FileMap = Vec<FileRecord>;
 
 pub(crate) type FileRecord = (FileName, String);
 
-#[derive(Fail, Debug, Clone, Copy)]
+#[derive(Fail, Debug)]
 pub enum ErrorKind {
     // Line has exceeded character limit (found, maximum)
     #[fail(
@@ -132,6 +130,14 @@ pub enum ErrorKind {
     // Used a rustfmt:: attribute other than skip
     #[fail(display = "invalid attribute")]
     BadAttr,
+    #[fail(display = "io error: {}", _0)]
+    IoError(io::Error),
+}
+
+impl From<io::Error> for ErrorKind {
+    fn from(e: io::Error) -> ErrorKind {
+        ErrorKind::IoError(e)
+    }
 }
 
 struct FormattingError {
@@ -162,7 +168,9 @@ impl FormattingError {
     }
     fn msg_prefix(&self) -> &str {
         match self.kind {
-            ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace => "internal error:",
+            ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace | ErrorKind::IoError(_) => {
+                "internal error:"
+            }
             ErrorKind::LicenseCheck | ErrorKind::BadAttr => "error:",
             ErrorKind::BadIssue(_) | ErrorKind::DeprecatedAttr => "warning:",
         }
@@ -244,6 +252,7 @@ impl FormatReport {
                 | ErrorKind::BadAttr => {
                     errs.has_check_errors = true;
                 }
+                _ => {}
             }
         }
     }
@@ -469,7 +478,7 @@ fn should_report_error(
     config: &Config,
     char_kind: FullCodeCharKind,
     is_string: bool,
-    error_kind: ErrorKind,
+    error_kind: &ErrorKind,
 ) -> bool {
     let allow_error_report = if char_kind.is_comment() || is_string {
         config.error_on_unformatted()
@@ -541,7 +550,8 @@ fn format_lines(
             if format_line {
                 // Check for (and record) trailing whitespace.
                 if let Some(..) = last_wspace {
-                    if should_report_error(config, kind, is_string, ErrorKind::TrailingWhitespace) {
+                    if should_report_error(config, kind, is_string, &ErrorKind::TrailingWhitespace)
+                    {
                         trims.push((cur_line, kind, line_buffer.clone()));
                     }
                     line_len -= 1;
@@ -551,7 +561,7 @@ fn format_lines(
                 let error_kind = ErrorKind::LineOverflow(line_len, config.max_width());
                 if line_len > config.max_width()
                     && !is_skipped_line(cur_line, skipped_range)
-                    && should_report_error(config, kind, is_string, error_kind)
+                    && should_report_error(config, kind, is_string, &error_kind)
                 {
                     errors.push(FormattingError {
                         line: cur_line,
@@ -967,7 +977,7 @@ pub enum Input {
     Text(String),
 }
 
-pub fn format_and_emit_report(input: Input, config: &Config) -> FmtResult<Summary> {
+pub fn format_and_emit_report(input: Input, config: &Config) -> Result<Summary, failure::Error> {
     if !config.version_meets_requirement() {
         return Err(format_err!("Version mismatch"));
     }
@@ -1000,7 +1010,7 @@ pub fn format_and_emit_report(input: Input, config: &Config) -> FmtResult<Summar
     }
 }
 
-pub fn emit_pre_matter(config: &Config) -> FmtResult<()> {
+pub fn emit_pre_matter(config: &Config) -> Result<(), ErrorKind> {
     if config.write_mode() == WriteMode::Checkstyle {
         let mut out = &mut stdout();
         checkstyle::output_header(&mut out)?;
@@ -1008,7 +1018,7 @@ pub fn emit_pre_matter(config: &Config) -> FmtResult<()> {
     Ok(())
 }
 
-pub fn emit_post_matter(config: &Config) -> FmtResult<()> {
+pub fn emit_post_matter(config: &Config) -> Result<(), ErrorKind> {
     if config.write_mode() == WriteMode::Checkstyle {
         let mut out = &mut stdout();
         checkstyle::output_footer(&mut out)?;

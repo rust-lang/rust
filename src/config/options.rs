@@ -14,9 +14,8 @@ use config::config_type::ConfigType;
 use config::file_lines::FileLines;
 use config::lists::*;
 use config::Config;
-use FmtResult;
 
-use failure::err_msg;
+use failure::{self, err_msg};
 
 use getopts::Matches;
 use std::collections::HashSet;
@@ -345,7 +344,7 @@ pub struct CliOptions {
 }
 
 impl CliOptions {
-    pub fn from_matches(matches: &Matches) -> FmtResult<CliOptions> {
+    pub fn from_matches(matches: &Matches) -> Result<CliOptions, failure::Error> {
         let mut options = CliOptions::default();
         options.verbose = matches.opt_present("verbose");
         options.quiet = matches.opt_present("quiet");
@@ -448,7 +447,7 @@ impl CliOptions {
     }
 }
 
-fn write_mode_from_emit_str(emit_str: &str) -> FmtResult<WriteMode> {
+fn write_mode_from_emit_str(emit_str: &str) -> Result<WriteMode, failure::Error> {
     match emit_str {
         "files" => Ok(WriteMode::Overwrite),
         "stdout" => Ok(WriteMode::Display),

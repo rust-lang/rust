@@ -26,7 +26,7 @@ use getopts::{Matches, Options};
 
 use rustfmt::{
     emit_post_matter, emit_pre_matter, format_and_emit_report, load_config, CliOptions, Config,
-    FileName, FmtResult, Input, Summary, Verbosity, WriteMode,
+    ErrorKind, FileName, Input, Summary, Verbosity, WriteMode,
 };
 
 fn main() {
@@ -170,7 +170,7 @@ fn is_nightly() -> bool {
         .unwrap_or(false)
 }
 
-fn execute(opts: &Options) -> FmtResult<(WriteMode, Summary)> {
+fn execute(opts: &Options) -> Result<(WriteMode, Summary), failure::Error> {
     let matches = opts.parse(env::args().skip(1))?;
     let options = CliOptions::from_matches(&matches)?;
 
@@ -239,7 +239,7 @@ fn format(
     files: Vec<PathBuf>,
     minimal_config_path: Option<String>,
     options: CliOptions,
-) -> FmtResult<(WriteMode, Summary)> {
+) -> Result<(WriteMode, Summary), failure::Error> {
     options.verify_file_lines(&files);
     let (config, config_path) = load_config(None, Some(&options))?;
 
@@ -347,7 +347,7 @@ fn print_version() {
     println!("rustfmt {}", version_info);
 }
 
-fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
+fn determine_operation(matches: &Matches) -> Result<Operation, ErrorKind> {
     if matches.opt_present("h") {
         let topic = matches.opt_str("h");
         if topic == None {
