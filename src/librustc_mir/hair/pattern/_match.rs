@@ -273,7 +273,7 @@ impl<'tcx> Constructor<'tcx> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Usefulness<'tcx> {
     Useful,
     UsefulWithWitness(Vec<Witness<'tcx>>),
@@ -425,10 +425,10 @@ impl<'tcx> Witness<'tcx> {
 /// Option<!> we do not include Some(_) in the returned list of constructors.
 fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                   pcx: PatternContext<'tcx>)
-                                  -> Vec<Constructor<'tcx>>
+                                  -> (Vec<Constructor<'tcx>>, bool)
 {
     debug!("all_constructors({:?})", pcx.ty);
-    match pcx.ty.sty {
+    (match pcx.ty.sty {
         ty::TyBool => {
             [true, false].iter().map(|&b| {
                 ConstantValue(ty::Const::from_bool(cx.tcx, b))
@@ -457,6 +457,13 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 .map(|v| Variant(v.did))
                 .collect()
         }
+        ty::TyUint(ast::UintTy::Usize) => {
+            return (vec![
+                ConstantRange(ty::Const::from_usize(cx.tcx, 0),
+                              ty::Const::from_usize(cx.tcx, 100),
+                              RangeEnd::Excluded),
+            ], true)
+        }
         _ => {
             if cx.is_uninhabited(pcx.ty) {
                 vec![]
@@ -464,7 +471,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 vec![Single]
             }
         }
-    }
+    }, false)
 }
 
 fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
@@ -656,11 +663,148 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             pat_constructors(cx, row[0], pcx).unwrap_or(vec![])
         }).collect();
         debug!("used_ctors = {:#?}", used_ctors);
-        let all_ctors = all_constructors(cx, pcx);
+        let (all_ctors, _ranged) = all_constructors(cx, pcx);
         debug!("all_ctors = {:#?}", all_ctors);
-        let missing_ctors: Vec<Constructor> = all_ctors.iter().filter(|c| {
-            !used_ctors.contains(*c)
-        }).cloned().collect();
+
+        fn to_inc_range_pair<'tcx>(tcx: TyCtxt<'_, '_, '_>, ctor: &Constructor<'tcx>) -> Option<(u64, u64)> {
+            match ctor {
+                Single | Variant(_) | Slice(_) => {
+                    None
+                }
+                ConstantValue(const_) => {
+                    if let Some(val) = const_.assert_usize(tcx) {
+                        return Some((val, val));
+                    }
+                    None
+                }
+                ConstantRange(lo, hi, end) => {
+                    if let Some(lo) = lo.assert_usize(tcx) {
+                        if let Some(hi) = hi.assert_usize(tcx) {
+                            if lo > hi || lo == hi && end == &RangeEnd::Excluded {
+                                return None;
+                            } else if end == &RangeEnd::Included {
+                                return Some((lo, hi));
+                            } else {
+                                return Some((lo, hi - 1));
+                            }
+                        }
+                    }
+                    None
+                }
+            }
+        }
+
+        fn intersect<'a, 'tcx>(
+                    _deb: bool,
+                    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+                    ranges: Vec<Constructor<'tcx>>,
+                     ctor: &Constructor<'tcx>)
+                     -> (Vec<Constructor<'tcx>>, bool) {
+            if let Some((lo1, hi1)) = to_inc_range_pair(cx.tcx, ctor) {
+                let mut ctor_was_useful = false;
+                // values only consists of ranges
+                let mut new_ranges = vec![];
+                let mut ranges: Vec<_> =
+                    ranges.into_iter().filter_map(|r| to_inc_range_pair(cx.tcx, &r)).collect();
+                while let Some((lo2, hi2)) = ranges.pop() {
+                    eprintln!("{:?} {:?}", (lo2, hi2), (lo1, hi1));
+                    if lo1 <= lo2 && hi1 >= hi2 {
+                        if _deb { eprintln!("case 1"); }
+                        ctor_was_useful = true;
+                        continue;
+                    }
+                    if lo1 > hi2 || hi1 < lo2 {
+                        if _deb { eprintln!("case 2"); }
+                        new_ranges.push((lo2, hi2));
+                        continue;
+                    }
+                    if lo1 <= lo2 {
+                        if _deb { eprintln!("case 3"); }
+                        ctor_was_useful = true;
+                        if (hi1 + 1, hi2) == (lo2, hi2) {
+                            new_ranges.push((hi1 + 1, hi2));
+                        } else {
+                            ranges.push((hi1 + 1, hi2));
+                        }
+                        continue;
+                    }
+                    if hi1 >= hi2 {
+                        if _deb { eprintln!("case 4"); }
+                        ctor_was_useful = true;
+                        if (lo2, lo1 - 1) == (lo2, hi2) {
+                            new_ranges.push((lo2, lo1 - 1));
+                        } else {
+                            ranges.push((lo2, lo1 - 1));
+                        }
+                        continue;
+                    }
+                    ctor_was_useful = true;
+                    ranges.push((lo2, lo1));
+                    ranges.push((hi1, hi2));
+                    if _deb { eprintln!("case 5"); }
+                }
+                // transform ranges to proper format
+                (new_ranges.into_iter().map(|(lo, hi)| {
+                    ConstantRange(ty::Const::from_usize(cx.tcx, lo),
+                                ty::Const::from_usize(cx.tcx, hi),
+                                RangeEnd::Included)
+                }).collect(), ctor_was_useful)
+            } else {
+                (ranges, false)
+            }
+        }
+
+        // `used_ctors` are all the constructors that appear in patterns (must check if guards)
+        // `all_ctors` are all the necessary constructors
+        let mut missing_ctors = vec![];
+        let mut all_actual_ctors = vec![];
+        'req: for req_ctor in all_ctors.clone() {
+            if _deb {
+                eprintln!("req_ctor before {:?}", req_ctor);
+            }
+            let mut cur = vec![req_ctor.clone()];
+            for used_ctor in &used_ctors {
+                if _deb {
+                    eprintln!("cut {:?}", used_ctor);
+                }
+                if cur.iter().all(|ctor| {
+                    match ctor {
+                        ConstantRange(..) => true,
+                        _ => false,
+                    }
+                }) {
+                    let (cur2, ctor_was_useful) = intersect(_deb, cx, cur, used_ctor);
+                    cur = cur2;
+                    if ctor_was_useful {
+                        all_actual_ctors.push(used_ctor.clone());
+                    }
+                    if cur.is_empty() {
+                        continue 'req;
+                    }
+                } else {
+                    if used_ctor == &req_ctor {
+                        continue 'req;
+                    }
+                }
+            }
+            if _deb {
+                eprintln!("req_ctor after {:?}", cur);
+            }
+            missing_ctors.extend(cur);
+        }
+
+        // let missing_ctors: Vec<Constructor> = all_ctors.iter().filter(|c| {
+        //     !used_ctors.contains(*c)
+        // }).cloned().collect();
+
+        if _deb {
+            eprintln!("used_ctors {:?}", used_ctors);
+            eprintln!("missing_ctors {:?}", missing_ctors);
+        }
+
+        // if !all_actual_ctors.is_empty() {
+        //     all_ctors = all_actual_ctors;
+        // }
 
         // `missing_ctors` is the set of constructors from the same type as the
         // first column of `matrix` that are matched only by wildcard patterns
@@ -693,10 +837,16 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         let is_non_exhaustive = is_privately_empty || is_declared_nonexhaustive;
 
         if missing_ctors.is_empty() && !is_non_exhaustive {
-            all_ctors.into_iter().map(|c| {
+            if _ranged && _deb {
+                return NotUseful;
+            }
+            let z = all_ctors.into_iter().map(|c| {
                 is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
-            }).find(|result| result.is_useful()).unwrap_or(NotUseful)
+            }).find(|result| result.is_useful()).unwrap_or(NotUseful);
+            if _deb { eprintln!("ABC 1 {:?}", z); }
+            z
         } else {
+            if _deb { eprintln!("ABC 2"); }
             let matrix = rows.iter().filter_map(|r| {
                 if r[0].is_wildcard() {
                     Some(r[1..].to_vec())
@@ -706,6 +856,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             }).collect();
             match is_useful(cx, &matrix, &v[1..], witness) {
                 UsefulWithWitness(pats) => {
+                    if _deb { eprintln!("ABC 3"); }
                     let cx = &*cx;
                     // In this case, there's at least one "free"
                     // constructor that is only matched against by
@@ -752,6 +903,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                     // satisfied with `(_, _, true)`. In this case,
                     // `used_ctors` is empty.
                     let new_witnesses = if is_non_exhaustive || used_ctors.is_empty() {
+                        if _deb { eprintln!("ABC 4"); }
                         // All constructors are unused. Add wild patterns
                         // rather than each individual constructor
                         pats.into_iter().map(|mut witness| {
@@ -763,6 +915,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                             witness
                         }).collect()
                     } else {
+                        if _deb { eprintln!("ABC 5"); }
                         pats.into_iter().flat_map(|witness| {
                             missing_ctors.iter().map(move |ctor| {
                                 witness.clone().push_wild_constructor(cx, ctor, pcx.ty)
@@ -1062,6 +1215,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
         PatternKind::Leaf { ref subpatterns } => {
             Some(patterns_for_variant(subpatterns, wild_patterns))
         }
+
         PatternKind::Deref { ref subpattern } => {
             Some(vec![subpattern])
         }
