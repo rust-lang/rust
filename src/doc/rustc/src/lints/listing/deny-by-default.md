@@ -91,43 +91,6 @@ The legacy_directory_ownership warning is issued when
 The warning can be fixed by renaming the parent module to "mod.rs" and moving
 it into its own directory if appropriate.
 
-## legacy-imports
-
-This lint detects names that resolve to ambiguous glob imports. Some example
-code that triggers this lint:
-
-```rust,ignore
-pub struct Foo;
-
-mod bar {
-    struct Foo;
-
-    mod baz {
-        use *;
-        use bar::*;
-        fn f(_: Foo) {}
-    }
-}
-```
-
-This will produce:
-
-```text
-error: `Foo` is ambiguous
- --> src/main.rs:9:17
-  |
-7 |         use *;
-  |             - `Foo` could refer to the name imported here
-8 |         use bar::*;
-  |             ------ `Foo` could also refer to the name imported here
-9 |         fn f(_: Foo) {}
-  |                 ^^^
-  |
-  = note: #[deny(legacy_imports)] on by default
-  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-  = note: for more information, see issue #38260 <https://github.com/rust-lang/rust/issues/38260>
-```
-
 
 ## missing-fragment-specifier
 

@@ -178,7 +178,6 @@ impl<'a> Resolver<'a> {
                             lexical: false,
                             b1: binding,
                             b2: shadowed_glob,
-                            legacy: false,
                         });
                     }
                 }
@@ -350,7 +349,6 @@ impl<'a> Resolver<'a> {
                 binding,
                 directive,
                 used: Cell::new(false),
-                legacy_self_import: false,
             },
             span: directive.span,
             vis,
@@ -399,7 +397,7 @@ impl<'a> Resolver<'a> {
     pub fn ambiguity(&self, b1: &'a NameBinding<'a>, b2: &'a NameBinding<'a>)
                      -> &'a NameBinding<'a> {
         self.arenas.alloc_name_binding(NameBinding {
-            kind: NameBindingKind::Ambiguity { b1: b1, b2: b2, legacy: false },
+            kind: NameBindingKind::Ambiguity { b1, b2 },
             vis: if b1.vis.is_at_least(b2.vis, self) { b1.vis } else { b2.vis },
             span: b1.span,
             expansion: Mark::root(),
@@ -691,7 +689,6 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                 binding,
                                 directive,
                                 used: Cell::new(false),
-                                legacy_self_import: false,
                             },
                             vis: directive.vis.get(),
                             span: directive.span,
@@ -751,7 +748,6 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         };
 
         let mut all_ns_err = true;
-        let mut legacy_self_import = None;
         self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
             if let Ok(binding) = result[ns].get() {
                 all_ns_err = false;
@@ -760,30 +756,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         Some(this.dummy_binding);
                 }
             }
-        } else if let Ok(binding) = this.resolve_ident_in_module(module,
-                                                                 ident,
-                                                                 ns,
-                                                                 false,
-                                                                 false,
-                                                                 directive.span) {
-            legacy_self_import = Some(directive);
-            let binding = this.arenas.alloc_name_binding(NameBinding {
-                kind: NameBindingKind::Import {
-                    binding,
-                    directive,
-                    used: Cell::new(false),
-                    legacy_self_import: true,
-                },
-                ..*binding
-            });
-            let _ = this.try_define(directive.parent, ident, ns, binding);
         });
 
         if all_ns_err {
-            if let Some(directive) = legacy_self_import {
-                self.warn_legacy_self_import(directive);
-                return None;
-            }
             let mut all_ns_failed = true;
             self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
                 match this.resolve_ident_in_module(module, ident, ns, false, true, span) {
@@ -1049,23 +1024,6 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                                            suggestion);
                             err.emit();
                     }
-                }
-                NameBindingKind::Ambiguity { b1, b2, .. }
-                        if b1.is_glob_import() && b2.is_glob_import() => {
-                    let (orig_b1, orig_b2) = match (&b1.kind, &b2.kind) {
-                        (&NameBindingKind::Import { binding: b1, .. },
-                         &NameBindingKind::Import { binding: b2, .. }) => (b1, b2),
-                        _ => continue,
-                    };
-                    let (b1, b2) = match (orig_b1.vis, orig_b2.vis) {
-                        (ty::Visibility::Public, ty::Visibility::Public) => continue,
-                        (ty::Visibility::Public, _) => (b1, b2),
-                        (_, ty::Visibility::Public) => (b2, b1),
-                        _ => continue,
-                    };
-                    resolution.binding = Some(self.arenas.alloc_name_binding(NameBinding {
-                        kind: NameBindingKind::Ambiguity { b1: b1, b2: b2, legacy: true }, ..*b1
-                    }));
                 }
                 _ => {}
             }

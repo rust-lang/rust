@@ -1224,12 +1224,10 @@ enum NameBindingKind<'a> {
         binding: &'a NameBinding<'a>,
         directive: &'a ImportDirective<'a>,
         used: Cell<bool>,
-        legacy_self_import: bool,
     },
     Ambiguity {
         b1: &'a NameBinding<'a>,
         b2: &'a NameBinding<'a>,
-        legacy: bool,
     }
 }
 
@@ -1251,7 +1249,6 @@ struct AmbiguityError<'a> {
     lexical: bool,
     b1: &'a NameBinding<'a>,
     b2: &'a NameBinding<'a>,
-    legacy: bool,
 }
 
 impl<'a> NameBinding<'a> {
@@ -1259,7 +1256,6 @@ impl<'a> NameBinding<'a> {
         match self.kind {
             NameBindingKind::Module(module) => Some(module),
             NameBindingKind::Import { binding, .. } => binding.module(),
-            NameBindingKind::Ambiguity { legacy: true, b1, .. } => b1.module(),
             _ => None,
         }
     }
@@ -1269,7 +1265,6 @@ impl<'a> NameBinding<'a> {
             NameBindingKind::Def(def) => def,
             NameBindingKind::Module(module) => module.def().unwrap(),
             NameBindingKind::Import { binding, .. } => binding.def(),
-            NameBindingKind::Ambiguity { legacy: true, b1, .. } => b1.def(),
             NameBindingKind::Ambiguity { .. } => Def::Err,
         }
     }
@@ -1852,27 +1847,20 @@ impl<'a> Resolver<'a> {
     fn record_use(&mut self, ident: Ident, ns: Namespace, binding: &'a NameBinding<'a>, span: Span)
                   -> bool /* true if an error was reported */ {
         match binding.kind {
-            NameBindingKind::Import { directive, binding, ref used, legacy_self_import }
+            NameBindingKind::Import { directive, binding, ref used }
                     if !used.get() => {
                 used.set(true);
                 directive.used.set(true);
-                if legacy_self_import {
-                    self.warn_legacy_self_import(directive);
-                    return false;
-                }
                 self.used_imports.insert((directive.id, ns));
                 self.add_to_glob_map(directive.id, ident);
                 self.record_use(ident, ns, binding, span)
             }
             NameBindingKind::Import { .. } => false,
-            NameBindingKind::Ambiguity { b1, b2, legacy } => {
+            NameBindingKind::Ambiguity { b1, b2 } => {
                 self.ambiguity_errors.push(AmbiguityError {
-                    span: span, name: ident.name, lexical: false, b1: b1, b2: b2, legacy,
+                    span, name: ident.name, lexical: false, b1, b2,
                 });
-                if legacy {
-                    self.record_use(ident, ns, b1, span);
-                }
-                !legacy
+                true
             }
             _ => false
         }
@@ -4128,7 +4116,7 @@ impl<'a> Resolver<'a> {
         self.report_proc_macro_import(krate);
         let mut reported_spans = FxHashSet();
 
-        for &AmbiguityError { span, name, b1, b2, lexical, legacy } in &self.ambiguity_errors {
+        for &AmbiguityError { span, name, b1, b2, lexical } in &self.ambiguity_errors {
             if !reported_spans.insert(span) { continue }
             let participle = |binding: &NameBinding| {
                 if binding.is_import() { "imported" } else { "defined" }
@@ -4144,27 +4132,15 @@ impl<'a> Resolver<'a> {
                 format!("macro-expanded {} do not shadow when used in a macro invocation path",
                         if b1.is_import() { "imports" } else { "items" })
             };
-            if legacy {
-                let id = match b2.kind {
-                    NameBindingKind::Import { directive, .. } => directive.id,
-                    _ => unreachable!(),
-                };
-                let mut span = MultiSpan::from_span(span);
-                span.push_span_label(b1.span, msg1);
-                span.push_span_label(b2.span, msg2);
-                let msg = format!("`{}` is ambiguous", name);
-                self.session.buffer_lint(lint::builtin::LEGACY_IMPORTS, id, span, &msg);
-            } else {
-                let mut err =
-                    struct_span_err!(self.session, span, E0659, "`{}` is ambiguous", name);
-                err.span_note(b1.span, &msg1);
-                match b2.def() {
-                    Def::Macro(..) if b2.span == DUMMY_SP =>
-                        err.note(&format!("`{}` is also a builtin macro", name)),
-                    _ => err.span_note(b2.span, &msg2),
-                };
-                err.note(&note).emit();
-            }
+
+            let mut err = struct_span_err!(self.session, span, E0659, "`{}` is ambiguous", name);
+            err.span_note(b1.span, &msg1);
+            match b2.def() {
+                Def::Macro(..) if b2.span == DUMMY_SP =>
+                    err.note(&format!("`{}` is also a builtin macro", name)),
+                _ => err.span_note(b2.span, &msg2),
+            };
+            err.note(&note).emit();
         }
 
         for &PrivacyError(span, name, binding) in &self.privacy_errors {
@@ -4313,12 +4289,6 @@ impl<'a> Resolver<'a> {
 
         err.emit();
         self.name_already_seen.insert(name, span);
-    }
-
-    fn warn_legacy_self_import(&self, directive: &'a ImportDirective<'a>) {
-        let (id, span) = (directive.id, directive.span);
-        let msg = "`self` no longer imports values";
-        self.session.buffer_lint(lint::builtin::LEGACY_IMPORTS, id, span, msg);
     }
 
     fn check_proc_macro_attrs(&mut self, attrs: &[ast::Attribute]) {
