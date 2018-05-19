@@ -67,7 +67,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
     }
     fn late_callback(
         &mut self,
-        trans: &CodegenBackend,
+        codegen_backend: &CodegenBackend,
         matches: &getopts::Matches,
         sess: &Session,
         cstore: &CrateStore,
@@ -75,7 +75,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,
     ) -> Compilation {
-        self.default.late_callback(trans, matches, sess, cstore, input, odir, ofile)
+        self.default.late_callback(codegen_backend, matches, sess, cstore, input, odir, ofile)
     }
     fn build_controller(
         &mut self,
