@@ -568,20 +568,22 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
         tcx.check_stability(assoc_ty.def_id, Some(ref_id), binding.span);
 
-        dup_bindings.entry(assoc_ty.def_id)
-            .and_modify(|prev_span| {
-                let mut err = self.tcx().struct_span_lint_node(
-                    ::rustc::lint::builtin::DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
-                    ref_id,
-                    binding.span,
-                    &format!("associated type binding `{}` specified more than once",
-                            binding.item_name)
-                );
-                err.span_label(binding.span, "used more than once");
-                err.span_label(*prev_span, format!("first use of `{}`", binding.item_name));
-                err.emit();
-            })
-            .or_insert(binding.span);
+        if speculative {
+            dup_bindings.entry(assoc_ty.def_id)
+                .and_modify(|prev_span| {
+                    let mut err = self.tcx().struct_span_lint_node(
+                        ::rustc::lint::builtin::DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
+                        ref_id,
+                        binding.span,
+                        &format!("associated type binding `{}` specified more than once",
+                                binding.item_name)
+                    );
+                    err.span_label(binding.span, "used more than once");
+                    err.span_label(*prev_span, format!("first use of `{}`", binding.item_name));
+                    err.emit();
+                })
+                .or_insert(binding.span);
+        }
 
         Ok(candidate.map_bound(|trait_ref| {
             ty::ProjectionPredicate {
