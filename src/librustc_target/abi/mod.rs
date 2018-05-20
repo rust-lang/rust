@@ -232,10 +232,7 @@ impl Size {
         Size::from_bytes(bits / 8 + ((bits % 8) + 7) / 8)
     }
 
-    pub fn from_bytes(bytes: u64) -> Size {
-        if bytes >= (1 << 61) {
-            panic!("Size::from_bytes: {} bytes in bits doesn't fit in u64", bytes)
-        }
+    pub const fn from_bytes(bytes: u64) -> Size {
         Size {
             raw: bytes
         }
@@ -246,7 +243,9 @@ impl Size {
     }
 
     pub fn bits(self) -> u64 {
-        self.bytes() * 8
+        self.bytes().checked_mul(8).unwrap_or_else(|| {
+            panic!("Size::bits: {} bytes in bits doesn't fit in u64", self.bytes())
+        })
     }
 
     pub fn abi_align(self, align: Align) -> Size {
@@ -262,9 +261,7 @@ impl Size {
     pub fn checked_add<C: HasDataLayout>(self, offset: Size, cx: C) -> Option<Size> {
         let dl = cx.data_layout();
 
-        // Each Size is less than dl.obj_size_bound(), so the sum is
-        // also less than 1 << 62 (and therefore can't overflow).
-        let bytes = self.bytes() + offset.bytes();
+        let bytes = self.bytes().checked_add(offset.bytes())?;
 
         if bytes < dl.obj_size_bound() {
             Some(Size::from_bytes(bytes))
@@ -276,11 +273,11 @@ impl Size {
     pub fn checked_mul<C: HasDataLayout>(self, count: u64, cx: C) -> Option<Size> {
         let dl = cx.data_layout();
 
-        match self.bytes().checked_mul(count) {
-            Some(bytes) if bytes < dl.obj_size_bound() => {
-                Some(Size::from_bytes(bytes))
-            }
-            _ => None
+        let bytes = self.bytes().checked_mul(count)?;
+        if bytes < dl.obj_size_bound() {
+            Some(Size::from_bytes(bytes))
+        } else {
+            None
         }
     }
 }
@@ -291,19 +288,25 @@ impl Size {
 impl Add for Size {
     type Output = Size;
     fn add(self, other: Size) -> Size {
-        // Each Size is less than 1 << 61, so the sum is
-        // less than 1 << 62 (and therefore can't overflow).
-        Size::from_bytes(self.bytes() + other.bytes())
+        Size::from_bytes(self.bytes().checked_add(other.bytes()).unwrap_or_else(|| {
+            panic!("Size::add: {} + {} doesn't fit in u64", self.bytes(), other.bytes())
+        }))
     }
 }
 
 impl Sub for Size {
     type Output = Size;
     fn sub(self, other: Size) -> Size {
-        // Each Size is less than 1 << 61, so an underflow
-        // would result in a value larger than 1 << 61,
-        // which Size::from_bytes will catch for us.
-        Size::from_bytes(self.bytes() - other.bytes())
+        Size::from_bytes(self.bytes().checked_sub(other.bytes()).unwrap_or_else(|| {
+            panic!("Size::sub: {} - {} would result in negative size", self.bytes(), other.bytes())
+        }))
+    }
+}
+
+impl Mul<Size> for u64 {
+    type Output = Size;
+    fn mul(self, size: Size) -> Size {
+        size * self
     }
 }
 
