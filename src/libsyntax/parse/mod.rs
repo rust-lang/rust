@@ -229,8 +229,7 @@ fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 /// Given a filemap, produce a sequence of token-trees
 pub fn filemap_to_stream(sess: &ParseSess, filemap: Lrc<FileMap>, override_span: Option<Span>)
                          -> TokenStream {
-    let mut srdr = lexer::StringReader::new(sess, filemap);
-    srdr.override_span = override_span;
+    let mut srdr = lexer::StringReader::new(sess, filemap, override_span);
     srdr.real_token();
     panictry!(srdr.parse_all_token_trees())
 }

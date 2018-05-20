@@ -155,13 +155,15 @@ impl<'a> StringReader<'a> {
 
 impl<'a> StringReader<'a> {
     /// For comments.rs, which hackily pokes into next_pos and ch
-    pub fn new_raw(sess: &'a ParseSess, filemap: Lrc<syntax_pos::FileMap>) -> Self {
-        let mut sr = StringReader::new_raw_internal(sess, filemap);
+    pub fn new_raw(sess: &'a ParseSess, filemap: Lrc<syntax_pos::FileMap>,
+                   override_span: Option<Span>) -> Self {
+        let mut sr = StringReader::new_raw_internal(sess, filemap, override_span);
         sr.bump();
         sr
     }
 
-    fn new_raw_internal(sess: &'a ParseSess, filemap: Lrc<syntax_pos::FileMap>) -> Self {
+    fn new_raw_internal(sess: &'a ParseSess, filemap: Lrc<syntax_pos::FileMap>,
+                        override_span: Option<Span>) -> Self {
         if filemap.src.is_none() {
             sess.span_diagnostic.bug(&format!("Cannot lex filemap without source: {}",
                                               filemap.name));
@@ -185,12 +187,13 @@ impl<'a> StringReader<'a> {
             token: token::Eof,
             span: syntax_pos::DUMMY_SP,
             open_braces: Vec::new(),
-            override_span: None,
+            override_span,
         }
     }
 
-    pub fn new(sess: &'a ParseSess, filemap: Lrc<syntax_pos::FileMap>) -> Self {
-        let mut sr = StringReader::new_raw(sess, filemap);
+    pub fn new(sess: &'a ParseSess, filemap: Lrc<syntax_pos::FileMap>, override_span: Option<Span>)
+               -> Self {
+        let mut sr = StringReader::new_raw(sess, filemap, override_span);
         if sr.advance_token().is_err() {
             sr.emit_fatal_errors();
             FatalError.raise();
@@ -207,7 +210,7 @@ impl<'a> StringReader<'a> {
             span = span.shrink_to_lo();
         }
 
-        let mut sr = StringReader::new_raw_internal(sess, begin.fm);
+        let mut sr = StringReader::new_raw_internal(sess, begin.fm, None);
 
         // Seek the lexer to the right byte range.
         sr.save_new_lines_and_multibyte = false;
@@ -1795,7 +1798,7 @@ mod tests {
                  teststr: String)
                  -> StringReader<'a> {
         let fm = cm.new_filemap(PathBuf::from("zebra.rs").into(), teststr);
-        StringReader::new(sess, fm)
+        StringReader::new(sess, fm, None)
     }
 
     #[test]
