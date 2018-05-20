@@ -312,8 +312,8 @@ impl<'a> Resolver<'a> {
 
         self.indeterminate_imports.push(directive);
         match directive.subclass {
-            SingleImport { target, .. } => {
-                self.per_ns(|this, ns| {
+            SingleImport { target, type_ns_only, .. } => {
+                self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
                     let mut resolution = this.resolution(current_module, target, ns).borrow_mut();
                     resolution.single_imports.add_directive(directive, this.use_extern_macros);
                 });
