@@ -16,7 +16,7 @@ use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::mir::interpret::{GlobalId, MemoryPointer, Scalar, Allocation, ConstValue, AllocType};
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Scalar, Size};
+use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Size};
 use builder::Builder;
 use common::{CodegenCx};
 use common::{C_bytes, C_struct, C_uint_big, C_undef, C_usize};
@@ -30,14 +30,14 @@ use super::FunctionCx;
 
 pub fn primval_to_llvm(cx: &CodegenCx,
                        cv: Scalar,
-                       scalar: &Scalar,
+                       layout: &layout::Scalar,
                        llty: Type) -> ValueRef {
-    let bits = if scalar.is_bool() { 1 } else { scalar.value.size(cx).bits() };
+    let bits = if layout.is_bool() { 1 } else { layout.value.size(cx).bits() };
     match cv {
         Scalar::Undef => C_undef(Type::ix(cx, bits)),
         Scalar::Bytes(b) => {
             let llval = C_uint_big(Type::ix(cx, bits), b);
-            if scalar.value == layout::Pointer {
+            if layout.value == layout::Pointer {
                 unsafe { llvm::LLVMConstIntToPtr(llval, llty.to_ref()) }
             } else {
                 consts::bitcast(llval, llty)
@@ -68,7 +68,7 @@ pub fn primval_to_llvm(cx: &CodegenCx,
                 &C_usize(cx, ptr.offset.bytes()),
                 1,
             ) };
-            if scalar.value != layout::Pointer {
+            if layout.value != layout::Pointer {
                 unsafe { llvm::LLVMConstPtrToInt(llval, llty.to_ref()) }
             } else {
                 consts::bitcast(llval, llty)
@@ -97,7 +97,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
         llvals.push(primval_to_llvm(
             cx,
             Scalar::Ptr(MemoryPointer { alloc_id, offset: Size::from_bytes(ptr_offset) }),
-            &Scalar {
+            &layout::Scalar {
                 value: layout::Primitive::Pointer,
                 valid_range: 0..=!0
             },
