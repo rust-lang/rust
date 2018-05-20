@@ -1,5 +1,6 @@
 use super::*;
 use rustc::middle::region;
+use rustc::ty::layout::Size;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Locks
@@ -116,7 +117,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
         };
         let frame = self.cur_frame;
         locks
-            .check(Some(frame), ptr.offset, len, access)
+            .check(Some(frame), ptr.offset.bytes(), len, access)
             .map_err(|lock| {
                 EvalErrorKind::MemoryLockViolation {
                     ptr,
@@ -146,7 +147,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
             len,
             region
         );
-        self.check_bounds(ptr.offset(len, &*self)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        self.check_bounds(ptr.offset(Size::from_bytes(len), &*self)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
 
         let locks = match self.data.locks.get_mut(&ptr.alloc_id) {
             Some(locks) => locks,
@@ -157,7 +158,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
         // Iterate over our range and acquire the lock.  If the range is already split into pieces,
         // we have to manipulate all of them.
         let lifetime = DynamicLifetime { frame, region };
-        for lock in locks.iter_mut(ptr.offset, len) {
+        for lock in locks.iter_mut(ptr.offset.bytes(), len) {
             if !lock.access_permitted(None, kind) {
                 return err!(MemoryAcquireConflict {
                     ptr,
@@ -203,7 +204,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
             None => return Ok(()),
         };
 
-        'locks: for lock in locks.iter_mut(ptr.offset, len) {
+        'locks: for lock in locks.iter_mut(ptr.offset.bytes(), len) {
             let is_our_lock = match lock.active {
                 WriteLock(lft) =>
                     // Double-check that we are holding the lock.
@@ -281,7 +282,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
             None => return Ok(()),
         };
 
-        for lock in locks.iter_mut(ptr.offset, len) {
+        for lock in locks.iter_mut(ptr.offset.bytes(), len) {
             // Check if we have a suspension here
             let (got_the_lock, remove_suspension) = match lock.suspended.get_mut(&lock_id) {
                 None => {

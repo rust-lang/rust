@@ -1,5 +1,5 @@
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Align, LayoutOf};
+use rustc::ty::layout::{self, Align, LayoutOf, Size};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
@@ -187,7 +187,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     self.write_null(dest, dest_ty)?;
                 } else {
                     let align = self.tcx.data_layout.pointer_align;
-                    let ptr = self.memory.allocate(size, align, Some(MemoryKind::C.into()))?;
+                    let ptr = self.memory.allocate(Size::from_bytes(size), align, Some(MemoryKind::C.into()))?;
                     self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
                 }
             }
@@ -281,7 +281,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             "memcmp" => {
                 let left = self.into_ptr(args[0].value)?;
                 let right = self.into_ptr(args[1].value)?;
-                let n = self.value_to_primval(args[2])?.to_u64()?;
+                let n = Size::from_bytes(self.value_to_primval(args[2])?.to_u64()?);
 
                 let result = {
                     let left_bytes = self.memory.read_bytes(left, n)?;
@@ -306,11 +306,11 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 let ptr = self.into_ptr(args[0].value)?;
                 let val = self.value_to_primval(args[1])?.to_u64()? as u8;
                 let num = self.value_to_primval(args[2])?.to_u64()?;
-                if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().rev().position(
+                if let Some(idx) = self.memory.read_bytes(ptr, Size::from_bytes(num))?.iter().rev().position(
                     |&c| c == val,
                 )
                 {
-                    let new_ptr = ptr.offset(num - idx as u64 - 1, &self)?;
+                    let new_ptr = ptr.offset(Size::from_bytes(num - idx as u64 - 1), &self)?;
                     self.write_ptr(dest, new_ptr, dest_ty)?;
                 } else {
                     self.write_null(dest, dest_ty)?;
@@ -321,11 +321,11 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 let ptr = self.into_ptr(args[0].value)?;
                 let val = self.value_to_primval(args[1])?.to_u64()? as u8;
                 let num = self.value_to_primval(args[2])?.to_u64()?;
-                if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().position(
+                if let Some(idx) = self.memory.read_bytes(ptr, Size::from_bytes(num))?.iter().position(
                     |&c| c == val,
                 )
                 {
-                    let new_ptr = ptr.offset(idx as u64, &self)?;
+                    let new_ptr = ptr.offset(Size::from_bytes(idx as u64), &self)?;
                     self.write_ptr(dest, new_ptr, dest_ty)?;
                 } else {
                     self.write_null(dest, dest_ty)?;
@@ -381,12 +381,12 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 if let Some((name, value)) = new {
                     // +1 for the null terminator
                     let value_copy = self.memory.allocate(
-                        (value.len() + 1) as u64,
+                        Size::from_bytes((value.len() + 1) as u64),
                         Align::from_bytes(1, 1).unwrap(),
                         Some(MemoryKind::Env.into()),
                     )?;
                     self.memory.write_bytes(value_copy.into(), &value)?;
-                    let trailing_zero_ptr = value_copy.offset(value.len() as u64, &self)?.into();
+                    let trailing_zero_ptr = value_copy.offset(Size::from_bytes(value.len() as u64), &self)?.into();
                     self.memory.write_bytes(trailing_zero_ptr, &[0])?;
                     if let Some(var) = self.machine.env_vars.insert(
                         name.to_owned(),
@@ -410,7 +410,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     // stdout/stderr
                     use std::io::{self, Write};
 
-                    let buf_cont = self.memory.read_bytes(buf, n)?;
+                    let buf_cont = self.memory.read_bytes(buf, Size::from_bytes(n))?;
                     let res = if fd == 1 {
                         io::stdout().write(buf_cont)
                     } else {
@@ -502,7 +502,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     key_ptr,
                     key_align,
                     PrimVal::Bytes(key),
-                    key_size.bytes(),
+                    key_size,
                     false,
                 )?;
 
@@ -643,7 +643,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory.allocate(size,
+                let ptr = self.memory.allocate(Size::from_bytes(size),
                                                Align::from_bytes(align, align).unwrap(),
                                                Some(MemoryKind::Rust.into()))?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
@@ -657,10 +657,10 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory.allocate(size,
+                let ptr = self.memory.allocate(Size::from_bytes(size),
                                                Align::from_bytes(align, align).unwrap(),
                                                Some(MemoryKind::Rust.into()))?;
-                self.memory.write_repeat(ptr.into(), 0, size)?;
+                self.memory.write_repeat(ptr.into(), 0, Size::from_bytes(size))?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
             "alloc::alloc::::__rust_dealloc" => {
@@ -675,7 +675,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 }
                 self.memory.deallocate(
                     ptr,
-                    Some((old_size, Align::from_bytes(align, align).unwrap())),
+                    Some((Size::from_bytes(old_size), Align::from_bytes(align, align).unwrap())),
                     MemoryKind::Rust.into(),
                 )?;
             }
@@ -692,9 +692,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 }
                 let new_ptr = self.memory.reallocate(
                     ptr,
-                    old_size,
+                    Size::from_bytes(old_size),
                     Align::from_bytes(align, align).unwrap(),
-                    new_size,
+                    Size::from_bytes(new_size),
                     Align::from_bytes(align, align).unwrap(),
                     MemoryKind::Rust.into(),
                 )?;
