@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright 2011-2013 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
