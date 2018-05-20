@@ -112,6 +112,10 @@ pub trait Folder : Sized {
         noop_fold_pat(p, self)
     }
 
+    fn fold_anon_const(&mut self, c: AnonConst) -> AnonConst {
+        noop_fold_anon_const(c, self)
+    }
+
     fn fold_expr(&mut self, e: P<Expr>) -> P<Expr> {
         e.map(|e| noop_fold_expr(e, self))
     }
@@ -394,11 +398,11 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
                 });
                 TyKind::Path(qself, fld.fold_path(path))
             }
-            TyKind::Array(ty, e) => {
-                TyKind::Array(fld.fold_ty(ty), fld.fold_expr(e))
+            TyKind::Array(ty, length) => {
+                TyKind::Array(fld.fold_ty(ty), fld.fold_anon_const(length))
             }
             TyKind::Typeof(expr) => {
-                TyKind::Typeof(fld.fold_expr(expr))
+                TyKind::Typeof(fld.fold_anon_const(expr))
             }
             TyKind::TraitObject(bounds, syntax) => {
                 TyKind::TraitObject(bounds.move_map(|b| fld.fold_ty_param_bound(b)), syntax)
@@ -433,7 +437,7 @@ pub fn noop_fold_variant<T: Folder>(v: Variant, fld: &mut T) -> Variant {
             ident: fld.fold_ident(v.node.ident),
             attrs: fold_attrs(v.node.attrs, fld),
             data: fld.fold_variant_data(v.node.data),
-            disr_expr: v.node.disr_expr.map(|e| fld.fold_expr(e)),
+            disr_expr: v.node.disr_expr.map(|e| fld.fold_anon_const(e)),
         },
         span: fld.new_span(v.span),
     }
@@ -1170,6 +1174,14 @@ pub fn noop_fold_range_end<T: Folder>(end: RangeEnd, _folder: &mut T) -> RangeEn
     end
 }
 
+pub fn noop_fold_anon_const<T: Folder>(constant: AnonConst, folder: &mut T) -> AnonConst {
+    let AnonConst {id, value} = constant;
+    AnonConst {
+        id: folder.new_id(id),
+        value: folder.fold_expr(value),
+    }
+}
+
 pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mut T) -> Expr {
     Expr {
         node: match node {
@@ -1180,7 +1192,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 ExprKind::Array(folder.fold_exprs(exprs))
             }
             ExprKind::Repeat(expr, count) => {
-                ExprKind::Repeat(folder.fold_expr(expr), folder.fold_expr(count))
+                ExprKind::Repeat(folder.fold_expr(expr), folder.fold_anon_const(count))
             }
             ExprKind::Tup(exprs) => ExprKind::Tup(folder.fold_exprs(exprs)),
             ExprKind::Call(f, args) => {

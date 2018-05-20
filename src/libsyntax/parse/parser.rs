@@ -12,7 +12,7 @@ use rustc_target::spec::abi::{self, Abi};
 use ast::{AngleBracketedParameterData, ParenthesizedParameterData, AttrStyle, BareFnTy};
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Unsafety;
-use ast::{Mod, Arg, Arm, Attribute, BindingMode, TraitItemKind};
+use ast::{Mod, AnonConst, Arg, Arm, Attribute, BindingMode, TraitItemKind};
 use ast::Block;
 use ast::{BlockCheckMode, CaptureBy, Movability};
 use ast::{Constness, Crate};
@@ -1544,7 +1544,10 @@ impl<'a> Parser<'a> {
             // Parse optional `; EXPR` in `[TYPE; EXPR]`
             let t = match self.maybe_parse_fixed_length_of_vec()? {
                 None => TyKind::Slice(t),
-                Some(suffix) => TyKind::Array(t, suffix),
+                Some(length) => TyKind::Array(t, AnonConst {
+                    id: ast::DUMMY_NODE_ID,
+                    value: length,
+                }),
             };
             self.expect(&token::CloseDelim(token::Bracket))?;
             t
@@ -1556,7 +1559,10 @@ impl<'a> Parser<'a> {
             // `typeof(EXPR)`
             // In order to not be ambiguous, the type must be surrounded by parens.
             self.expect(&token::OpenDelim(token::Paren))?;
-            let e = self.parse_expr()?;
+            let e = AnonConst {
+                id: ast::DUMMY_NODE_ID,
+                value: self.parse_expr()?,
+            };
             self.expect(&token::CloseDelim(token::Paren))?;
             TyKind::Typeof(e)
         } else if self.eat_keyword(keywords::Underscore) {
@@ -2265,7 +2271,10 @@ impl<'a> Parser<'a> {
                     if self.check(&token::Semi) {
                         // Repeating array syntax: [ 0; 512 ]
                         self.bump();
-                        let count = self.parse_expr()?;
+                        let count = AnonConst {
+                            id: ast::DUMMY_NODE_ID,
+                            value: self.parse_expr()?,
+                        };
                         self.expect(&token::CloseDelim(token::Bracket))?;
                         ex = ExprKind::Repeat(first_expr, count);
                     } else if self.check(&token::Comma) {
@@ -6354,8 +6363,11 @@ impl<'a> Parser<'a> {
                 struct_def = VariantData::Tuple(self.parse_tuple_struct_body()?,
                                                 ast::DUMMY_NODE_ID);
             } else if self.eat(&token::Eq) {
-                disr_expr = Some(self.parse_expr()?);
-                any_disr = disr_expr.as_ref().map(|expr| expr.span);
+                disr_expr = Some(AnonConst {
+                    id: ast::DUMMY_NODE_ID,
+                    value: self.parse_expr()?,
+                });
+                any_disr = disr_expr.as_ref().map(|c| c.value.span);
                 struct_def = VariantData::Unit(ast::DUMMY_NODE_ID);
             } else {
                 struct_def = VariantData::Unit(ast::DUMMY_NODE_ID);

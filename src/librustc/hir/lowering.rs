@@ -1080,12 +1080,10 @@ impl<'a> LoweringContext<'a> {
                 }),
             )),
             TyKind::Array(ref ty, ref length) => {
-                let length = self.lower_body(None, |this| this.lower_expr(length));
-                hir::TyArray(self.lower_ty(ty, itctx), length)
+                hir::TyArray(self.lower_ty(ty, itctx), self.lower_anon_const(length))
             }
             TyKind::Typeof(ref expr) => {
-                let expr = self.lower_body(None, |this| this.lower_expr(expr));
-                hir::TyTypeof(expr)
+                hir::TyTypeof(self.lower_anon_const(expr))
             }
             TyKind::TraitObject(ref bounds, kind) => {
                 let mut lifetime_bound = None;
@@ -1365,10 +1363,7 @@ impl<'a> LoweringContext<'a> {
                 name: v.node.ident.name,
                 attrs: self.lower_attrs(&v.node.attrs),
                 data: self.lower_variant_data(&v.node.data),
-                disr_expr: v.node
-                    .disr_expr
-                    .as_ref()
-                    .map(|e| self.lower_body(None, |this| this.lower_expr(e))),
+                disr_expr: v.node.disr_expr.as_ref().map(|e| self.lower_anon_const(e)),
             },
             span: v.span,
         }
@@ -2927,6 +2922,16 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
+    fn lower_anon_const(&mut self, c: &AnonConst) -> hir::AnonConst {
+        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(c.id);
+
+        hir::AnonConst {
+            id: node_id,
+            hir_id,
+            body: self.lower_body(None, |this| this.lower_expr(&c.value)),
+        }
+    }
+
     fn lower_expr(&mut self, e: &Expr) -> hir::Expr {
         let kind = match e.node {
             ExprKind::Box(ref inner) => hir::ExprBox(P(self.lower_expr(inner))),
@@ -2936,7 +2941,7 @@ impl<'a> LoweringContext<'a> {
             }
             ExprKind::Repeat(ref expr, ref count) => {
                 let expr = P(self.lower_expr(expr));
-                let count = self.lower_body(None, |this| this.lower_expr(count));
+                let count = self.lower_anon_const(count);
                 hir::ExprRepeat(expr, count)
             }
             ExprKind::Tup(ref elts) => {

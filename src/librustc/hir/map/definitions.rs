@@ -231,9 +231,8 @@ impl DefKey {
             DefPathData::Misc |
             DefPathData::ClosureExpr |
             DefPathData::StructCtor |
-            DefPathData::Initializer |
-            DefPathData::ImplTrait |
-            DefPathData::Typeof => {}
+            DefPathData::AnonConst |
+            DefPathData::ImplTrait => {}
         };
 
         disambiguator.hash(&mut hasher);
@@ -389,12 +388,10 @@ pub enum DefPathData {
     Field(InternedString),
     /// Implicit ctor for a tuple-like struct
     StructCtor,
-    /// Initializer for a const
-    Initializer,
+    /// A constant expression (see {ast,hir}::AnonConst).
+    AnonConst,
     /// An `impl Trait` type node.
     ImplTrait,
-    /// A `typeof` type node.
-    Typeof,
 
     /// GlobalMetaData identifies a piece of crate metadata that is global to
     /// a whole crate (as opposed to just one item). GlobalMetaData components
@@ -665,9 +662,8 @@ impl DefPathData {
             Misc |
             ClosureExpr |
             StructCtor |
-            Initializer |
-            ImplTrait |
-            Typeof => None
+            AnonConst |
+            ImplTrait => None
         }
     }
 
@@ -696,9 +692,8 @@ impl DefPathData {
             Misc => "{{?}}",
             ClosureExpr => "{{closure}}",
             StructCtor => "{{constructor}}",
-            Initializer => "{{initializer}}",
+            AnonConst => "{{constant}}",
             ImplTrait => "{{impl-Trait}}",
-            Typeof => "{{typeof}}",
         };
 
         Symbol::intern(s).as_interned_str()

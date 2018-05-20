@@ -202,6 +202,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             NodeImplItem(n) => EntryImplItem(parent, dep_node_index, n),
             NodeVariant(n) => EntryVariant(parent, dep_node_index, n),
             NodeField(n) => EntryField(parent, dep_node_index, n),
+            NodeAnonConst(n) => EntryAnonConst(parent, dep_node_index, n),
             NodeExpr(n) => EntryExpr(parent, dep_node_index, n),
             NodeStmt(n) => EntryStmt(parent, dep_node_index, n),
             NodeTy(n) => EntryTy(parent, dep_node_index, n),
@@ -387,6 +388,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
         self.with_parent(pat.id, |this| {
             intravisit::walk_pat(this, pat);
+        });
+    }
+
+    fn visit_anon_const(&mut self, constant: &'hir AnonConst) {
+        self.insert(constant.id, NodeAnonConst(constant));
+
+        self.with_parent(constant.id, |this| {
+            intravisit::walk_anon_const(this, constant);
         });
     }
 

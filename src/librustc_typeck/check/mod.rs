@@ -787,20 +787,7 @@ fn primary_body_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     None,
             }
         }
-        hir::map::NodeExpr(expr) => {
-            // FIXME(eddyb) Closures should have separate
-            // function definition IDs and expression IDs.
-            // Type-checking should not let closures get
-            // this far in a constant position.
-            // Assume that everything other than closures
-            // is a constant "initializer" expression.
-            match expr.node {
-                hir::ExprClosure(..) =>
-                    None,
-                _ =>
-                    Some((hir::BodyId { node_id: expr.id }, None)),
-            }
-        }
+        hir::map::NodeAnonConst(constant) => Some((constant.body, None)),
         _ => None,
     }
 }
@@ -1674,8 +1661,8 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     for v in vs {
-        if let Some(e) = v.node.disr_expr {
-            tcx.typeck_tables_of(tcx.hir.local_def_id(e.node_id));
+        if let Some(ref e) = v.node.disr_expr {
+            tcx.typeck_tables_of(tcx.hir.local_def_id(e.id));
         }
     }
 
@@ -1686,11 +1673,11 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let variant_i_node_id = tcx.hir.as_local_node_id(def.variants[i].did).unwrap();
             let variant_i = tcx.hir.expect_variant(variant_i_node_id);
             let i_span = match variant_i.node.disr_expr {
-                Some(expr) => tcx.hir.span(expr.node_id),
+                Some(ref expr) => tcx.hir.span(expr.id),
                 None => tcx.hir.span(variant_i_node_id)
             };
             let span = match v.node.disr_expr {
-                Some(expr) => tcx.hir.span(expr.node_id),
+                Some(ref expr) => tcx.hir.span(expr.id),
                 None => v.span
             };
             struct_span_err!(tcx.sess, span, E0081,
@@ -3975,8 +3962,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               };
               tcx.mk_array(element_ty, args.len() as u64)
           }
-          hir::ExprRepeat(ref element, count) => {
-            let count_def_id = tcx.hir.body_owner_def_id(count);
+          hir::ExprRepeat(ref element, ref count) => {
+            let count_def_id = tcx.hir.local_def_id(count.id);
             let param_env = ty::ParamEnv::empty();
             let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
             let instance = ty::Instance::resolve(

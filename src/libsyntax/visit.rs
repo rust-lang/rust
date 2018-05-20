@@ -69,6 +69,7 @@ pub trait Visitor<'ast>: Sized {
     fn visit_stmt(&mut self, s: &'ast Stmt) { walk_stmt(self, s) }
     fn visit_arm(&mut self, a: &'ast Arm) { walk_arm(self, a) }
     fn visit_pat(&mut self, p: &'ast Pat) { walk_pat(self, p) }
+    fn visit_anon_const(&mut self, c: &'ast AnonConst) { walk_anon_const(self, c) }
     fn visit_expr(&mut self, ex: &'ast Expr) { walk_expr(self, ex) }
     fn visit_expr_post(&mut self, _ex: &'ast Expr) { }
     fn visit_ty(&mut self, t: &'ast Ty) { walk_ty(self, t) }
@@ -296,7 +297,7 @@ pub fn walk_variant<'a, V>(visitor: &mut V,
     visitor.visit_ident(variant.node.ident);
     visitor.visit_variant_data(&variant.node.data, variant.node.ident,
                              generics, item_id, variant.span);
-    walk_list!(visitor, visit_expr, &variant.node.disr_expr);
+    walk_list!(visitor, visit_anon_const, &variant.node.disr_expr);
     walk_list!(visitor, visit_attribute, &variant.node.attrs);
 }
 
@@ -326,16 +327,16 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
             }
             visitor.visit_path(path, typ.id);
         }
-        TyKind::Array(ref ty, ref expression) => {
+        TyKind::Array(ref ty, ref length) => {
             visitor.visit_ty(ty);
-            visitor.visit_expr(expression)
+            visitor.visit_anon_const(length)
         }
         TyKind::TraitObject(ref bounds, ..) |
         TyKind::ImplTrait(ref bounds) => {
             walk_list!(visitor, visit_ty_param_bound, bounds);
         }
         TyKind::Typeof(ref expression) => {
-            visitor.visit_expr(expression)
+            visitor.visit_anon_const(expression)
         }
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err => {}
         TyKind::Mac(ref mac) => {
@@ -647,6 +648,10 @@ pub fn walk_mac<'a, V: Visitor<'a>>(_: &mut V, _: &Mac) {
     // Empty!
 }
 
+pub fn walk_anon_const<'a, V: Visitor<'a>>(visitor: &mut V, constant: &'a AnonConst) {
+    visitor.visit_expr(&constant.value);
+}
+
 pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
     for attr in expression.attrs.iter() {
         visitor.visit_attribute(attr);
@@ -660,7 +665,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         }
         ExprKind::Repeat(ref element, ref count) => {
             visitor.visit_expr(element);
-            visitor.visit_expr(count)
+            visitor.visit_anon_const(count)
         }
         ExprKind::Struct(ref path, ref fields, ref optional_base) => {
             visitor.visit_path(path, expression.id);

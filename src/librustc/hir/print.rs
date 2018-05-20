@@ -416,16 +416,16 @@ impl<'a> State<'a> {
             hir::TyImplTraitExistential(ref existty, ref _lifetimes) => {
                 self.print_bounds("impl", &existty.bounds[..])?;
             }
-            hir::TyArray(ref ty, v) => {
+            hir::TyArray(ref ty, ref length) => {
                 self.s.word("[")?;
                 self.print_type(&ty)?;
                 self.s.word("; ")?;
-                self.ann.nested(self, Nested::Body(v))?;
+                self.print_anon_const(length)?;
                 self.s.word("]")?;
             }
-            hir::TyTypeof(e) => {
+            hir::TyTypeof(ref e) => {
                 self.s.word("typeof(")?;
-                self.ann.nested(self, Nested::Body(e))?;
+                self.print_anon_const(e)?;
                 self.s.word(")")?;
             }
             hir::TyInfer => {
@@ -871,10 +871,10 @@ impl<'a> State<'a> {
         self.head("")?;
         let generics = hir::Generics::empty();
         self.print_struct(&v.node.data, &generics, v.node.name, v.span, false)?;
-        if let Some(d) = v.node.disr_expr {
+        if let Some(ref d) = v.node.disr_expr {
             self.s.space()?;
             self.word_space("=")?;
-            self.ann.nested(self, Nested::Body(d))?;
+            self.print_anon_const(d)?;
         }
         Ok(())
     }
@@ -1091,6 +1091,9 @@ impl<'a> State<'a> {
         self.print_else(elseopt)
     }
 
+    pub fn print_anon_const(&mut self, constant: &hir::AnonConst) -> io::Result<()> {
+        self.ann.nested(self, Nested::Body(constant.body))
+    }
 
     fn print_call_post(&mut self, args: &[hir::Expr]) -> io::Result<()> {
         self.popen()?;
@@ -1141,12 +1144,12 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    fn print_expr_repeat(&mut self, element: &hir::Expr, count: hir::BodyId) -> io::Result<()> {
+    fn print_expr_repeat(&mut self, element: &hir::Expr, count: &hir::AnonConst) -> io::Result<()> {
         self.ibox(indent_unit)?;
         self.s.word("[")?;
         self.print_expr(element)?;
         self.word_space(";")?;
-        self.ann.nested(self, Nested::Body(count))?;
+        self.print_anon_const(count)?;
         self.s.word("]")?;
         self.end()
     }
@@ -1288,7 +1291,7 @@ impl<'a> State<'a> {
             hir::ExprArray(ref exprs) => {
                 self.print_expr_vec(exprs)?;
             }
-            hir::ExprRepeat(ref element, count) => {
+            hir::ExprRepeat(ref element, ref count) => {
                 self.print_expr_repeat(&element, count)?;
             }
             hir::ExprStruct(ref qpath, ref fields, ref wth) => {

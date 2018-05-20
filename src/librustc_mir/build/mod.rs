@@ -42,46 +42,15 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
 
     // Figure out what primary body this item has.
     let body_id = match tcx.hir.get(id) {
-        hir::map::NodeItem(item) => {
-            match item.node {
-                hir::ItemConst(_, body) |
-                hir::ItemStatic(_, _, body) |
-                hir::ItemFn(.., body) => body,
-                _ => unsupported()
-            }
-        }
-        hir::map::NodeTraitItem(item) => {
-            match item.node {
-                hir::TraitItemKind::Const(_, Some(body)) |
-                hir::TraitItemKind::Method(_,
-                    hir::TraitMethod::Provided(body)) => body,
-                _ => unsupported()
-            }
-        }
-        hir::map::NodeImplItem(item) => {
-            match item.node {
-                hir::ImplItemKind::Const(_, body) |
-                hir::ImplItemKind::Method(_, body) => body,
-                _ => unsupported()
-            }
-        }
-        hir::map::NodeExpr(expr) => {
-            // FIXME(eddyb) Closures should have separate
-            // function definition IDs and expression IDs.
-            // Type-checking should not let closures get
-            // this far in a constant position.
-            // Assume that everything other than closures
-            // is a constant "initializer" expression.
-            match expr.node {
-                hir::ExprClosure(_, _, body, _, _) => body,
-                _ => hir::BodyId { node_id: expr.id },
-            }
-        }
         hir::map::NodeVariant(variant) =>
             return create_constructor_shim(tcx, id, &variant.node.data),
         hir::map::NodeStructCtor(ctor) =>
             return create_constructor_shim(tcx, id, ctor),
-        _ => unsupported(),
+
+        _ => match tcx.hir.maybe_body_owned_by(id) {
+            Some(body) => body,
+            None => unsupported(),
+        },
     };
 
     tcx.infer_ctxt().enter(|infcx| {

@@ -553,6 +553,12 @@ impl_stable_hash_for!(enum hir::UnsafeSource {
     UserProvided
 });
 
+impl_stable_hash_for!(struct hir::AnonConst {
+    id,
+    hir_id,
+    body
+});
+
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Expr {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,

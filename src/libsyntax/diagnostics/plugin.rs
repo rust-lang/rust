@@ -207,7 +207,10 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
                 span,
                 ast::TyKind::Tup(vec![ty_str.clone(), ty_str])
             ),
-            ecx.expr_usize(span, count),
+            ast::AnonConst {
+                id: ast::DUMMY_NODE_ID,
+                value: ecx.expr_usize(span, count),
+            },
         ),
     );
 
