@@ -273,7 +273,7 @@ impl<'tcx> Constructor<'tcx> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum Usefulness<'tcx> {
     Useful,
     UsefulWithWitness(Vec<Witness<'tcx>>),
@@ -468,13 +468,18 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         }
         ty::TyInt(int_ty) if exhaustive_integer_patterns => {
             use syntax::ast::IntTy::*;
+            macro_rules! min_max_ty {
+                ($ity:ident, $uty:ty, $sty:expr) => {
+                    ($ity::MIN as $uty as u128, $ity::MAX as $uty as u128, $sty)
+                }
+            }
             let (min, max, ty) = match int_ty {
-                Isize => (isize::MIN as usize as u128, isize::MAX as usize as u128, cx.tcx.types.isize),
-                I8    => (   i8::MIN as u8 as u128,    i8::MAX as u8 as u128, cx.tcx.types.i8),
-                I16   => (  i16::MIN as u16 as u128,   i16::MAX as u16 as u128, cx.tcx.types.i16),
-                I32   => (  i32::MIN as u32 as u128,   i32::MAX as u32 as u128, cx.tcx.types.i32),
-                I64   => (  i64::MIN as u64 as u128,   i64::MAX as u64 as u128, cx.tcx.types.i64),
-                I128  => ( i128::MIN as u128 as u128,  i128::MAX as u128 as u128, cx.tcx.types.i128),
+                Isize => min_max_ty!(isize, usize, cx.tcx.types.isize),
+                I8    => min_max_ty!(i8, u8, cx.tcx.types.i8),
+                I16   => min_max_ty!(i16, u16, cx.tcx.types.i16),
+                I32   => min_max_ty!(i32, u32, cx.tcx.types.i32),
+                I64   => min_max_ty!(i64, u64, cx.tcx.types.i64),
+                I128  => min_max_ty!(i128, u128, cx.tcx.types.i128),
             };
             value_constructors = true;
             vec![ConstantRange(ty::Const::from_bits(cx.tcx, min, ty),
@@ -653,8 +658,8 @@ impl<'tcx> Interval<'tcx> {
         match ty.sty {
             ty::TyInt(int_ty) => {
                 macro_rules! offset_sign_for_ty {
-                    ($ity:ty, $uty:ty, $min:expr) => {{
-                        let min = Wrapping($min as $uty);
+                    ($ity:ident, $uty:ty) => {{
+                        let min = Wrapping($ity::MIN as $uty);
                         if forwards {
                             ((Wrapping(lo as $uty) + min).0 as u128,
                              (Wrapping(hi as $uty) + min).0 as u128)
@@ -665,12 +670,12 @@ impl<'tcx> Interval<'tcx> {
                     }}
                 }
                 match int_ty {
-                    Isize => offset_sign_for_ty!(isize, usize, isize::MIN),
-                    I8    => offset_sign_for_ty!(i8, u8, i8::MIN),
-                    I16   => offset_sign_for_ty!(i16, u16, i16::MIN),
-                    I32   => offset_sign_for_ty!(i32, u32, i32::MIN),
-                    I64   => offset_sign_for_ty!(i64, u64, i64::MIN),
-                    I128  => offset_sign_for_ty!(i128, u128, i128::MIN),
+                    Isize => offset_sign_for_ty!(isize, usize),
+                    I8    => offset_sign_for_ty!(i8, u8),
+                    I16   => offset_sign_for_ty!(i16, u16),
+                    I32   => offset_sign_for_ty!(i32, u32),
+                    I64   => offset_sign_for_ty!(i64, u64),
+                    I128  => offset_sign_for_ty!(i128, u128),
                 }
             }
             ty::TyUint(_) | ty::TyChar => {
