@@ -12,7 +12,7 @@ use syntax::codemap::DUMMY_SP;
 
 use rustc::mir::interpret::{
     EvalResult, EvalError, EvalErrorKind, GlobalId,
-    Value, Pointer, PrimVal, AllocId, Allocation, ConstValue,
+    Value, Pointer, Scalar, AllocId, Allocation, ConstValue,
 };
 use super::{Place, EvalContext, StackPopCleanup, ValTy, PlaceExtra, Memory, MemoryKind};
 
@@ -100,7 +100,7 @@ pub fn value_to_const_value<'tcx>(
 ) -> &'tcx ty::Const<'tcx> {
     let layout = ecx.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap();
     match (val, &layout.abi) {
-        (Value::ByVal(PrimVal::Undef), _) if layout.is_zst() => {},
+        (Value::ByVal(Scalar::Undef), _) if layout.is_zst() => {},
         (Value::ByRef(..), _) |
         (Value::ByVal(_), &layout::Abi::Scalar(_)) |
         (Value::ByValPair(..), &layout::Abi::ScalarPair(..)) => {},
@@ -319,20 +319,20 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
             "min_align_of" => {
                 let elem_ty = substs.type_at(0);
                 let elem_align = ecx.layout_of(elem_ty)?.align.abi();
-                let align_val = PrimVal::from_u128(elem_align as u128);
+                let align_val = Scalar::from_u128(elem_align as u128);
                 ecx.write_primval(dest, align_val, dest_layout.ty)?;
             }
 
             "size_of" => {
                 let ty = substs.type_at(0);
                 let size = ecx.layout_of(ty)?.size.bytes() as u128;
-                ecx.write_primval(dest, PrimVal::from_u128(size), dest_layout.ty)?;
+                ecx.write_primval(dest, Scalar::from_u128(size), dest_layout.ty)?;
             }
 
             "type_id" => {
                 let ty = substs.type_at(0);
                 let type_id = ecx.tcx.type_id_hash(ty) as u128;
-                ecx.write_primval(dest, PrimVal::from_u128(type_id), dest_layout.ty)?;
+                ecx.write_primval(dest, Scalar::from_u128(type_id), dest_layout.ty)?;
             }
 
             name => return Err(ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", name)).into()),
@@ -349,11 +349,11 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
     fn try_ptr_op<'a>(
         _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         _bin_op: mir::BinOp,
-        left: PrimVal,
+        left: Scalar,
         _left_ty: Ty<'tcx>,
-        right: PrimVal,
+        right: Scalar,
         _right_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, Option<(PrimVal, bool)>> {
+    ) -> EvalResult<'tcx, Option<(Scalar, bool)>> {
         if left.is_bytes() && right.is_bytes() {
             Ok(None)
         } else {

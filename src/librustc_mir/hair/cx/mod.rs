@@ -184,23 +184,23 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 let id = self.tcx.allocate_bytes(s.as_bytes());
                 let ptr = MemoryPointer::zero(id);
                 ConstValue::ByValPair(
-                    PrimVal::Ptr(ptr),
-                    PrimVal::from_u128(s.len() as u128),
+                    Scalar::Ptr(ptr),
+                    Scalar::from_u128(s.len() as u128),
                 )
             },
             LitKind::ByteStr(ref data) => {
                 let id = self.tcx.allocate_bytes(data);
                 let ptr = MemoryPointer::zero(id);
-                ConstValue::ByVal(PrimVal::Ptr(ptr))
+                ConstValue::ByVal(Scalar::Ptr(ptr))
             },
-            LitKind::Byte(n) => ConstValue::ByVal(PrimVal::Bytes(n as u128)),
+            LitKind::Byte(n) => ConstValue::ByVal(Scalar::Bytes(n as u128)),
             LitKind::Int(n, _) if neg => {
                 let n = n as i128;
                 let n = n.overflowing_neg().0;
                 let n = clamp(n as u128);
-                ConstValue::ByVal(PrimVal::Bytes(n))
+                ConstValue::ByVal(Scalar::Bytes(n))
             },
-            LitKind::Int(n, _) => ConstValue::ByVal(PrimVal::Bytes(clamp(n))),
+            LitKind::Int(n, _) => ConstValue::ByVal(Scalar::Bytes(clamp(n))),
             LitKind::Float(n, fty) => {
                 parse_float(n, fty)
             }
@@ -211,8 +211,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 };
                 parse_float(n, fty)
             }
-            LitKind::Bool(b) => ConstValue::ByVal(PrimVal::Bytes(b as u128)),
-            LitKind::Char(c) => ConstValue::ByVal(PrimVal::Bytes(c as u128)),
+            LitKind::Bool(b) => ConstValue::ByVal(Scalar::Bytes(b as u128)),
+            LitKind::Char(c) => ConstValue::ByVal(Scalar::Bytes(c as u128)),
         };
         Literal::Value {
             value: ty::Const::from_const_value(self.tcx, lit, ty)

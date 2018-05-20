@@ -14,7 +14,7 @@ use rustc_mir::interpret::{read_target_uint, const_val_field};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc::mir::interpret::{GlobalId, MemoryPointer, PrimVal, Allocation, ConstValue, AllocType};
+use rustc::mir::interpret::{GlobalId, MemoryPointer, Scalar, Allocation, ConstValue, AllocType};
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Scalar, Size};
 use builder::Builder;
@@ -29,13 +29,13 @@ use super::super::callee;
 use super::FunctionCx;
 
 pub fn primval_to_llvm(cx: &CodegenCx,
-                       cv: PrimVal,
+                       cv: Scalar,
                        scalar: &Scalar,
                        llty: Type) -> ValueRef {
     let bits = if scalar.is_bool() { 1 } else { scalar.value.size(cx).bits() };
     match cv {
-        PrimVal::Undef => C_undef(Type::ix(cx, bits)),
-        PrimVal::Bytes(b) => {
+        Scalar::Undef => C_undef(Type::ix(cx, bits)),
+        Scalar::Bytes(b) => {
             let llval = C_uint_big(Type::ix(cx, bits), b);
             if scalar.value == layout::Pointer {
                 unsafe { llvm::LLVMConstIntToPtr(llval, llty.to_ref()) }
@@ -43,7 +43,7 @@ pub fn primval_to_llvm(cx: &CodegenCx,
                 consts::bitcast(llval, llty)
             }
         },
-        PrimVal::Ptr(ptr) => {
+        Scalar::Ptr(ptr) => {
             let alloc_type = cx.tcx.alloc_map.lock().get(ptr.alloc_id);
             let base_addr = match alloc_type {
                 Some(AllocType::Memory(alloc)) => {
@@ -96,7 +96,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
         ).expect("const_alloc_to_llvm: could not read relocation pointer") as u64;
         llvals.push(primval_to_llvm(
             cx,
-            PrimVal::Ptr(MemoryPointer { alloc_id, offset: Size::from_bytes(ptr_offset) }),
+            Scalar::Ptr(MemoryPointer { alloc_id, offset: Size::from_bytes(ptr_offset) }),
             &Scalar {
                 value: layout::Primitive::Pointer,
                 valid_range: 0..=!0

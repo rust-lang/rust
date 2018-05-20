@@ -19,7 +19,7 @@ use ty::subst::{Substs, Subst, Kind, UnpackedKind};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use ty::{Slice, TyS};
 use util::captures::Captures;
-use mir::interpret::{PrimVal, MemoryPointer, Value, ConstValue};
+use mir::interpret::{Scalar, MemoryPointer, Value, ConstValue};
 
 use std::iter;
 use std::cmp::Ordering;
@@ -1811,7 +1811,7 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     pub fn from_primval(
         tcx: TyCtxt<'_, '_, 'tcx>,
-        val: PrimVal,
+        val: Scalar,
         ty: Ty<'tcx>,
     ) -> &'tcx Self {
         Self::from_const_value(tcx, ConstValue::from_primval(val), ty)
@@ -1823,12 +1823,12 @@ impl<'tcx> Const<'tcx> {
         val: u128,
         ty: Ty<'tcx>,
     ) -> &'tcx Self {
-        Self::from_primval(tcx, PrimVal::Bytes(val), ty)
+        Self::from_primval(tcx, Scalar::Bytes(val), ty)
     }
 
     #[inline]
     pub fn zero_sized(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
-        Self::from_primval(tcx, PrimVal::Undef, ty)
+        Self::from_primval(tcx, Scalar::Undef, ty)
     }
 
     #[inline]
@@ -1869,7 +1869,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn to_primval(&self) -> Option<PrimVal> {
+    pub fn to_primval(&self) -> Option<Scalar> {
         match self.val {
             ConstVal::Value(val) => val.to_primval(),
             _ => None,

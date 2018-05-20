@@ -19,7 +19,7 @@ use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionE
 use rustc::mir::visit::{Visitor, PlaceContext};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{TyCtxt, self, Instance};
-use rustc::mir::interpret::{Value, PrimVal, GlobalId, EvalResult};
+use rustc::mir::interpret::{Value, Scalar, GlobalId, EvalResult};
 use interpret::EvalContext;
 use interpret::CompileTimeEvaluator;
 use interpret::{eval_promoted, mk_borrowck_eval_cx, ValTy};
@@ -283,7 +283,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
             Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                 let param_env = self.tcx.param_env(self.source.def_id);
                 type_size_of(self.tcx, param_env, ty).map(|n| (
-                    Value::ByVal(PrimVal::Bytes(n as u128)),
+                    Value::ByVal(Scalar::Bytes(n as u128)),
                     self.tcx.types.usize,
                     span,
                 ))
@@ -359,7 +359,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 let val = if let Rvalue::CheckedBinaryOp(..) = *rvalue {
                     Value::ByValPair(
                         val,
-                        PrimVal::from_bool(overflow),
+                        Scalar::from_bool(overflow),
                     )
                 } else {
                     if overflow {
@@ -485,7 +485,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
         if let TerminatorKind::Assert { expected, msg, cond, .. } = kind {
             if let Some(value) = self.eval_operand(cond) {
                 trace!("assertion on {:?} should be {:?}", value, expected);
-                if Value::ByVal(PrimVal::from_bool(*expected)) != value.0 {
+                if Value::ByVal(Scalar::from_bool(*expected)) != value.0 {
                     // poison all places this operand references so that further code
                     // doesn't use the invalid value
                     match cond {
@@ -520,14 +520,14 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                         BoundsCheck { ref len, ref index } => {
                             let len = self.eval_operand(len).expect("len must be const");
                             let len = match len.0 {
-                                Value::ByVal(PrimVal::Bytes(n)) => n,
+                                Value::ByVal(Scalar::Bytes(n)) => n,
                                 _ => bug!("const len not primitive: {:?}", len),
                             };
                             let index = self
                                 .eval_operand(index)
                                 .expect("index must be const");
                             let index = match index.0 {
-                                Value::ByVal(PrimVal::Bytes(n)) => n,
+                                Value::ByVal(Scalar::Bytes(n)) => n,
                                 _ => bug!("const index not primitive: {:?}", index),
                             };
                             format!(

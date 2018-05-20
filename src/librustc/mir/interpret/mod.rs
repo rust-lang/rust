@@ -10,7 +10,7 @@ mod value;
 
 pub use self::error::{EvalError, EvalResult, EvalErrorKind, AssertMessage};
 
-pub use self::value::{PrimVal, PrimValKind, Value, Pointer, ConstValue};
+pub use self::value::{Scalar, ScalarKind, Value, Pointer, ConstValue};
 
 use std::fmt;
 use mir;

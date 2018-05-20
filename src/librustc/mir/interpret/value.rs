@@ -9,10 +9,10 @@ use super::{EvalResult, MemoryPointer, PointerArithmetic, Allocation};
 /// matches Value's optimizations for easy conversions between these two types
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
 pub enum ConstValue<'tcx> {
-    /// Used only for types with layout::abi::Scalar ABI and ZSTs which use PrimVal::Undef
-    ByVal(PrimVal),
+    /// Used only for types with layout::abi::Scalar ABI and ZSTs which use Scalar::Undef
+    ByVal(Scalar),
     /// Used only for types with layout::abi::ScalarPair
-    ByValPair(PrimVal, PrimVal),
+    ByValPair(Scalar, Scalar),
     /// Used only for the remaining cases. An allocation + offset into the allocation
     ByRef(&'tcx Allocation, Size),
 }
@@ -37,12 +37,12 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     #[inline]
-    pub fn from_primval(val: PrimVal) -> Self {
+    pub fn from_primval(val: Scalar) -> Self {
         ConstValue::ByVal(val)
     }
 
     #[inline]
-    pub fn to_primval(&self) -> Option<PrimVal> {
+    pub fn to_primval(&self) -> Option<Scalar> {
         match *self {
             ConstValue::ByRef(..) => None,
             ConstValue::ByValPair(..) => None,
@@ -53,7 +53,7 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn to_bits(&self) -> Option<u128> {
         match self.to_primval() {
-            Some(PrimVal::Bytes(val)) => Some(val),
+            Some(Scalar::Bytes(val)) => Some(val),
             _ => None,
         }
     }
@@ -61,7 +61,7 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn to_ptr(&self) -> Option<MemoryPointer> {
         match self.to_primval() {
-            Some(PrimVal::Ptr(ptr)) => Some(ptr),
+            Some(Scalar::Ptr(ptr)) => Some(ptr),
             _ => None,
         }
     }
@@ -79,8 +79,8 @@ impl<'tcx> ConstValue<'tcx> {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
 pub enum Value {
     ByRef(Pointer, Align),
-    ByVal(PrimVal),
-    ByValPair(PrimVal, PrimVal),
+    ByVal(Scalar),
+    ByValPair(Scalar, Scalar),
 }
 
 impl<'tcx> ty::TypeFoldable<'tcx> for Value {
@@ -92,8 +92,8 @@ impl<'tcx> ty::TypeFoldable<'tcx> for Value {
     }
 }
 
-/// A wrapper type around `PrimVal` that cannot be turned back into a `PrimVal` accidentally.
-/// This type clears up a few APIs where having a `PrimVal` argument for something that is
+/// A wrapper type around `Scalar` that cannot be turned back into a `Scalar` accidentally.
+/// This type clears up a few APIs where having a `Scalar` argument for something that is
 /// potentially an integer pointer or a pointer to an allocation was unclear.
 ///
 /// I (@oli-obk) believe it is less easy to mix up generic primvals and primvals that are just
@@ -101,76 +101,76 @@ impl<'tcx> ty::TypeFoldable<'tcx> for Value {
 /// are explicit now (and rare!)
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
 pub struct Pointer {
-    pub primval: PrimVal,
+    pub primval: Scalar,
 }
 
 impl<'tcx> Pointer {
     pub fn null() -> Self {
-        PrimVal::Bytes(0).into()
+        Scalar::Bytes(0).into()
     }
     pub fn to_ptr(self) -> EvalResult<'tcx, MemoryPointer> {
         self.primval.to_ptr()
     }
-    pub fn into_inner_primval(self) -> PrimVal {
+    pub fn into_inner_primval(self) -> Scalar {
         self.primval
     }
 
     pub fn signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
         let layout = cx.data_layout();
         match self.primval {
-            PrimVal::Bytes(b) => {
+            Scalar::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);
                 Ok(Pointer::from(
-                    PrimVal::Bytes(layout.signed_offset(b as u64, i)? as u128),
+                    Scalar::Bytes(layout.signed_offset(b as u64, i)? as u128),
                 ))
             }
-            PrimVal::Ptr(ptr) => ptr.signed_offset(i, layout).map(Pointer::from),
-            PrimVal::Undef => err!(ReadUndefBytes),
+            Scalar::Ptr(ptr) => ptr.signed_offset(i, layout).map(Pointer::from),
+            Scalar::Undef => err!(ReadUndefBytes),
         }
     }
 
     pub fn offset<C: HasDataLayout>(self, i: Size, cx: C) -> EvalResult<'tcx, Self> {
         let layout = cx.data_layout();
         match self.primval {
-            PrimVal::Bytes(b) => {
+            Scalar::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);
                 Ok(Pointer::from(
-                    PrimVal::Bytes(layout.offset(b as u64, i.bytes())? as u128),
+                    Scalar::Bytes(layout.offset(b as u64, i.bytes())? as u128),
                 ))
             }
-            PrimVal::Ptr(ptr) => ptr.offset(i, layout).map(Pointer::from),
-            PrimVal::Undef => err!(ReadUndefBytes),
+            Scalar::Ptr(ptr) => ptr.offset(i, layout).map(Pointer::from),
+            Scalar::Undef => err!(ReadUndefBytes),
         }
     }
 
     pub fn wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
         let layout = cx.data_layout();
         match self.primval {
-            PrimVal::Bytes(b) => {
+            Scalar::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);
-                Ok(Pointer::from(PrimVal::Bytes(
+                Ok(Pointer::from(Scalar::Bytes(
                     layout.wrapping_signed_offset(b as u64, i) as u128,
                 )))
             }
-            PrimVal::Ptr(ptr) => Ok(Pointer::from(ptr.wrapping_signed_offset(i, layout))),
-            PrimVal::Undef => err!(ReadUndefBytes),
+            Scalar::Ptr(ptr) => Ok(Pointer::from(ptr.wrapping_signed_offset(i, layout))),
+            Scalar::Undef => err!(ReadUndefBytes),
         }
     }
 
     pub fn is_null(self) -> EvalResult<'tcx, bool> {
         match self.primval {
-            PrimVal::Bytes(b) => Ok(b == 0),
-            PrimVal::Ptr(_) => Ok(false),
-            PrimVal::Undef => err!(ReadUndefBytes),
+            Scalar::Bytes(b) => Ok(b == 0),
+            Scalar::Ptr(_) => Ok(false),
+            Scalar::Undef => err!(ReadUndefBytes),
         }
     }
 
     pub fn to_value_with_len(self, len: u64) -> Value {
-        Value::ByValPair(self.primval, PrimVal::from_u128(len as u128))
+        Value::ByValPair(self.primval, Scalar::from_u128(len as u128))
     }
 
     pub fn to_value_with_vtable(self, vtable: MemoryPointer) -> Value {
-        Value::ByValPair(self.primval, PrimVal::Ptr(vtable))
+        Value::ByValPair(self.primval, Scalar::Ptr(vtable))
     }
 
     pub fn to_value(self) -> Value {
@@ -178,39 +178,39 @@ impl<'tcx> Pointer {
     }
 }
 
-impl ::std::convert::From<PrimVal> for Pointer {
-    fn from(primval: PrimVal) -> Self {
+impl ::std::convert::From<Scalar> for Pointer {
+    fn from(primval: Scalar) -> Self {
         Pointer { primval }
     }
 }
 
 impl ::std::convert::From<MemoryPointer> for Pointer {
     fn from(ptr: MemoryPointer) -> Self {
-        PrimVal::Ptr(ptr).into()
+        Scalar::Ptr(ptr).into()
     }
 }
 
-/// A `PrimVal` represents an immediate, primitive value existing outside of a
+/// A `Scalar` represents an immediate, primitive value existing outside of a
 /// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 8 bytes in
-/// size. Like a range of bytes in an `Allocation`, a `PrimVal` can either represent the raw bytes
+/// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
 /// of a simple value, a pointer into another `Allocation`, or be undefined.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub enum PrimVal {
+pub enum Scalar {
     /// The raw bytes of a simple value.
     Bytes(u128),
 
     /// A pointer into an `Allocation`. An `Allocation` in the `memory` module has a list of
-    /// relocations, but a `PrimVal` is only large enough to contain one, so we just represent the
+    /// relocations, but a `Scalar` is only large enough to contain one, so we just represent the
     /// relocation and its associated offset together as a `MemoryPointer` here.
     Ptr(MemoryPointer),
 
-    /// An undefined `PrimVal`, for representing values that aren't safe to examine, but are safe
+    /// An undefined `Scalar`, for representing values that aren't safe to examine, but are safe
     /// to copy around, just like undefined bytes in an `Allocation`.
     Undef,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum PrimValKind {
+pub enum ScalarKind {
     I8, I16, I32, I64, I128,
     U8, U16, U32, U64, U128,
     F32, F64,
@@ -219,56 +219,56 @@ pub enum PrimValKind {
     Char,
 }
 
-impl<'tcx> PrimVal {
+impl<'tcx> Scalar {
     pub fn from_u128(n: u128) -> Self {
-        PrimVal::Bytes(n)
+        Scalar::Bytes(n)
     }
 
     pub fn from_i128(n: i128) -> Self {
-        PrimVal::Bytes(n as u128)
+        Scalar::Bytes(n as u128)
     }
 
     pub fn from_bool(b: bool) -> Self {
-        PrimVal::Bytes(b as u128)
+        Scalar::Bytes(b as u128)
     }
 
     pub fn from_char(c: char) -> Self {
-        PrimVal::Bytes(c as u128)
+        Scalar::Bytes(c as u128)
     }
 
     pub fn to_bytes(self) -> EvalResult<'tcx, u128> {
         match self {
-            PrimVal::Bytes(b) => Ok(b),
-            PrimVal::Ptr(_) => err!(ReadPointerAsBytes),
-            PrimVal::Undef => err!(ReadUndefBytes),
+            Scalar::Bytes(b) => Ok(b),
+            Scalar::Ptr(_) => err!(ReadPointerAsBytes),
+            Scalar::Undef => err!(ReadUndefBytes),
         }
     }
 
     pub fn to_ptr(self) -> EvalResult<'tcx, MemoryPointer> {
         match self {
-            PrimVal::Bytes(_) => err!(ReadBytesAsPointer),
-            PrimVal::Ptr(p) => Ok(p),
-            PrimVal::Undef => err!(ReadUndefBytes),
+            Scalar::Bytes(_) => err!(ReadBytesAsPointer),
+            Scalar::Ptr(p) => Ok(p),
+            Scalar::Undef => err!(ReadUndefBytes),
         }
     }
 
     pub fn is_bytes(self) -> bool {
         match self {
-            PrimVal::Bytes(_) => true,
+            Scalar::Bytes(_) => true,
             _ => false,
         }
     }
 
     pub fn is_ptr(self) -> bool {
         match self {
-            PrimVal::Ptr(_) => true,
+            Scalar::Ptr(_) => true,
             _ => false,
         }
     }
 
     pub fn is_undef(self) -> bool {
         match self {
-            PrimVal::Undef => true,
+            Scalar::Undef => true,
             _ => false,
         }
     }
@@ -311,9 +311,9 @@ impl<'tcx> PrimVal {
     }
 }
 
-impl PrimValKind {
+impl ScalarKind {
     pub fn is_int(self) -> bool {
-        use self::PrimValKind::*;
+        use self::ScalarKind::*;
         match self {
             I8 | I16 | I32 | I64 | I128 | U8 | U16 | U32 | U64 | U128 => true,
             _ => false,
@@ -321,7 +321,7 @@ impl PrimValKind {
     }
 
     pub fn is_signed_int(self) -> bool {
-        use self::PrimValKind::*;
+        use self::ScalarKind::*;
         match self {
             I8 | I16 | I32 | I64 | I128 => true,
             _ => false,
@@ -329,7 +329,7 @@ impl PrimValKind {
     }
 
     pub fn is_float(self) -> bool {
-        use self::PrimValKind::*;
+        use self::ScalarKind::*;
         match self {
             F32 | F64 => true,
             _ => false,
@@ -338,28 +338,28 @@ impl PrimValKind {
 
     pub fn from_uint_size(size: Size) -> Self {
         match size.bytes() {
-            1 => PrimValKind::U8,
-            2 => PrimValKind::U16,
-            4 => PrimValKind::U32,
-            8 => PrimValKind::U64,
-            16 => PrimValKind::U128,
+            1 => ScalarKind::U8,
+            2 => ScalarKind::U16,
+            4 => ScalarKind::U32,
+            8 => ScalarKind::U64,
+            16 => ScalarKind::U128,
             _ => bug!("can't make uint with size {}", size.bytes()),
         }
     }
 
     pub fn from_int_size(size: Size) -> Self {
         match size.bytes() {
-            1 => PrimValKind::I8,
-            2 => PrimValKind::I16,
-            4 => PrimValKind::I32,
-            8 => PrimValKind::I64,
-            16 => PrimValKind::I128,
+            1 => ScalarKind::I8,
+            2 => ScalarKind::I16,
+            4 => ScalarKind::I32,
+            8 => ScalarKind::I64,
+            16 => ScalarKind::I128,
             _ => bug!("can't make int with size {}", size.bytes()),
         }
     }
 
     pub fn is_ptr(self) -> bool {
-        use self::PrimValKind::*;
+        use self::ScalarKind::*;
         match self {
             Ptr | FnPtr => true,
             _ => false,

@@ -4,7 +4,7 @@ use rustc::ty::layout::LayoutOf;
 use syntax::codemap::Span;
 use rustc_target::spec::abi::Abi;
 
-use rustc::mir::interpret::{EvalResult, PrimVal, Value};
+use rustc::mir::interpret::{EvalResult, Scalar, Value};
 use super::{EvalContext, Place, Machine, ValTy};
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -359,7 +359,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                             self.write_value(valty, dest)?;
                                         }
                                     }
-                                    Value::ByVal(PrimVal::Undef) => {}
+                                    Value::ByVal(Scalar::Undef) => {}
                                     other => {
                                         trace!("{:#?}, {:#?}", other, layout);
                                         let mut layout = layout;

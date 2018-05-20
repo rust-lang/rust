@@ -203,7 +203,7 @@ use rustc::session::config;
 use rustc::mir::{self, Location, Promoted};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::MonoItem;
-use rustc::mir::interpret::{PrimVal, GlobalId, AllocType};
+use rustc::mir::interpret::{Scalar, GlobalId, AllocType};
 
 use monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
@@ -1245,13 +1245,13 @@ fn collect_const<'a, 'tcx>(
     };
     match val {
         ConstVal::Unevaluated(..) => bug!("const eval yielded unevaluated const"),
-        ConstVal::Value(ConstValue::ByValPair(PrimVal::Ptr(a), PrimVal::Ptr(b))) => {
+        ConstVal::Value(ConstValue::ByValPair(Scalar::Ptr(a), Scalar::Ptr(b))) => {
             collect_miri(tcx, a.alloc_id, output);
             collect_miri(tcx, b.alloc_id, output);
         }
-        ConstVal::Value(ConstValue::ByValPair(_, PrimVal::Ptr(ptr))) |
-        ConstVal::Value(ConstValue::ByValPair(PrimVal::Ptr(ptr), _)) |
-        ConstVal::Value(ConstValue::ByVal(PrimVal::Ptr(ptr))) =>
+        ConstVal::Value(ConstValue::ByValPair(_, Scalar::Ptr(ptr))) |
+        ConstVal::Value(ConstValue::ByValPair(Scalar::Ptr(ptr), _)) |
+        ConstVal::Value(ConstValue::ByVal(Scalar::Ptr(ptr))) =>
             collect_miri(tcx, ptr.alloc_id, output),
         ConstVal::Value(ConstValue::ByRef(alloc, _offset)) => {
             for &id in alloc.relocations.values() {

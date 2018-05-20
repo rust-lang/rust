@@ -20,7 +20,7 @@ use interpret::{const_val_field, const_variant_index, self};
 
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
-use rustc::mir::interpret::{PrimVal, GlobalId, ConstValue, Value};
+use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, Value};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::hir::{self, PatKind, RangeEnd};
@@ -1084,13 +1084,19 @@ pub fn compare_const_vals<'a, 'tcx>(
             match (a.to_byval_value(), b.to_byval_value()) {
                 (
                     Some(Value::ByValPair(
-                        PrimVal::Ptr(ptr_a),
-                        PrimVal::Bytes(size_a))
-                    ),
+                        Scalar::Ptr(ptr_a),
+                        Scalar::Bits {
+                            bits: size_a,
+                            defined: tcx.data_layout.pointer_size.bits() as u8,
+                        },
+                    )),
                     Some(Value::ByValPair(
-                        PrimVal::Ptr(ptr_b),
-                        PrimVal::Bytes(size_b))
-                    )
+                        Scalar::Ptr(ptr_b),
+                        Scalar::Bits {
+                            bits: size_b,
+                            defined: tcx.data_layout.pointer_size.bits() as u8,
+                        },
+                    ))
                 ) if size_a == size_b => {
                     if ptr_a.offset == Size::from_bytes(0) && ptr_b.offset == Size::from_bytes(0) {
                         let map = tcx.alloc_map.lock();
@@ -1124,16 +1130,16 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
             let id = tcx.allocate_bytes(s.as_bytes());
             let ptr = MemoryPointer::zero(id);
             ConstValue::ByValPair(
-                PrimVal::Ptr(ptr),
-                PrimVal::from_u128(s.len() as u128),
+                Scalar::Ptr(ptr),
+                Scalar::from_u128(s.len() as u128),
             )
         },
         LitKind::ByteStr(ref data) => {
             let id = tcx.allocate_bytes(data);
             let ptr = MemoryPointer::zero(id);
-            ConstValue::ByVal(PrimVal::Ptr(ptr))
+            ConstValue::ByVal(Scalar::Ptr(ptr))
         },
-        LitKind::Byte(n) => ConstValue::ByVal(PrimVal::Bytes(n as u128)),
+        LitKind::Byte(n) => ConstValue::ByVal(Scalar::Bytes(n as u128)),
         LitKind::Int(n, _) => {
             enum Int {
                 Signed(IntTy),
@@ -1147,7 +1153,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
                 _ => bug!(),
             };
             // This converts from LitKind::Int (which is sign extended) to
-            // PrimVal::Bytes (which is zero extended)
+            // Scalar::Bytes (which is zero extended)
             let n = match ty {
                 // FIXME(oli-obk): are these casts correct?
                 Int::Signed(IntTy::I8) if neg =>
@@ -1167,7 +1173,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
                 Int::Signed(IntTy::I128)| Int::Unsigned(UintTy::U128) => n,
                 _ => bug!(),
             };
-            ConstValue::ByVal(PrimVal::Bytes(n))
+            ConstValue::ByVal(Scalar::Bytes(n))
         },
         LitKind::Float(n, fty) => {
             parse_float(n, fty, neg)?
@@ -1179,8 +1185,8 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
             };
             parse_float(n, fty, neg)?
         }
-        LitKind::Bool(b) => ConstValue::ByVal(PrimVal::Bytes(b as u128)),
-        LitKind::Char(c) => ConstValue::ByVal(PrimVal::Bytes(c as u128)),
+        LitKind::Bool(b) => ConstValue::ByVal(Scalar::Bytes(b as u128)),
+        LitKind::Char(c) => ConstValue::ByVal(Scalar::Bytes(c as u128)),
     };
     Ok(ty::Const::from_const_value(tcx, lit, ty))
 }
@@ -1216,5 +1222,5 @@ pub fn parse_float<'tcx>(
         }
     };
 
-    Ok(ConstValue::ByVal(PrimVal::Bytes(bits)))
+    Ok(ConstValue::ByVal(Scalar::Bytes(bits)))
 }

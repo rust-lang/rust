@@ -2,7 +2,7 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{Size, Align, LayoutOf};
 use syntax::ast::Mutability;
 
-use rustc::mir::interpret::{PrimVal, Value, MemoryPointer, EvalResult};
+use rustc::mir::interpret::{Scalar, Value, MemoryPointer, EvalResult};
 use super::{EvalContext, Machine};
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
@@ -35,19 +35,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
         let drop = ::monomorphize::resolve_drop_in_place(*self.tcx, ty);
         let drop = self.memory.create_fn_alloc(drop);
-        self.memory.write_ptr_sized_unsigned(vtable, ptr_align, PrimVal::Ptr(drop))?;
+        self.memory.write_ptr_sized_unsigned(vtable, ptr_align, Scalar::Ptr(drop))?;
 
         let size_ptr = vtable.offset(ptr_size, &self)?;
-        self.memory.write_ptr_sized_unsigned(size_ptr, ptr_align, PrimVal::Bytes(size as u128))?;
+        self.memory.write_ptr_sized_unsigned(size_ptr, ptr_align, Scalar::Bytes(size as u128))?;
         let align_ptr = vtable.offset(ptr_size * 2, &self)?;
-        self.memory.write_ptr_sized_unsigned(align_ptr, ptr_align, PrimVal::Bytes(align as u128))?;
+        self.memory.write_ptr_sized_unsigned(align_ptr, ptr_align, Scalar::Bytes(align as u128))?;
 
         for (i, method) in methods.iter().enumerate() {
             if let Some((def_id, substs)) = *method {
                 let instance = self.resolve(def_id, substs)?;
                 let fn_ptr = self.memory.create_fn_alloc(instance);
                 let method_ptr = vtable.offset(ptr_size * (3 + i as u64), &self)?;
-                self.memory.write_ptr_sized_unsigned(method_ptr, ptr_align, PrimVal::Ptr(fn_ptr))?;
+                self.memory.write_ptr_sized_unsigned(method_ptr, ptr_align, Scalar::Ptr(fn_ptr))?;
             }
         }
 
@@ -67,8 +67,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let pointer_align = self.tcx.data_layout.pointer_align;
         match self.read_ptr(vtable, pointer_align, self.tcx.mk_nil_ptr())? {
             // some values don't need to call a drop impl, so the value is null
-            Value::ByVal(PrimVal::Bytes(0)) => Ok(None),
-            Value::ByVal(PrimVal::Ptr(drop_fn)) => self.memory.get_fn(drop_fn).map(Some),
+            Value::ByVal(Scalar::Bytes(0)) => Ok(None),
+            Value::ByVal(Scalar::Ptr(drop_fn)) => self.memory.get_fn(drop_fn).map(Some),
             _ => err!(ReadBytesAsPointer),
         }
     }

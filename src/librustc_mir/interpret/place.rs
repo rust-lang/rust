@@ -3,7 +3,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
 
-use rustc::mir::interpret::{GlobalId, Value, PrimVal, EvalResult, Pointer, MemoryPointer};
+use rustc::mir::interpret::{GlobalId, Value, Scalar, EvalResult, Pointer, MemoryPointer};
 use super::{EvalContext, Machine, ValTy};
 use interpret::memory::HasMemory;
 
@@ -35,7 +35,7 @@ pub enum PlaceExtra {
 impl<'tcx> Place {
     /// Produces a Place that will error if attempted to be read from
     pub fn undef() -> Self {
-        Self::from_primval_ptr(PrimVal::Undef.into(), Align::from_bytes(1, 1).unwrap())
+        Self::from_primval_ptr(Scalar::Undef.into(), Align::from_bytes(1, 1).unwrap())
     }
 
     pub fn from_primval_ptr(ptr: Pointer, align: Align) -> Self {
@@ -128,7 +128,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let field_index = field.index();
         let field = base_layout.field(self, field_index)?;
         if field.size.bytes() == 0 {
-            return Ok(Some((Value::ByVal(PrimVal::Undef), field.ty)))
+            return Ok(Some((Value::ByVal(Scalar::Undef), field.ty)))
         }
         let offset = base_layout.fields.offset(field_index);
         match base {

@@ -11,7 +11,7 @@ use rustc::middle::const_val::{ConstVal, ErrKind};
 
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc::mir::interpret::{MemoryPointer, AllocId, Allocation, AccessKind, Value, Pointer,
-                            EvalResult, PrimVal, EvalErrorKind, GlobalId, AllocType};
+                            EvalResult, Scalar, EvalErrorKind, GlobalId, AllocType};
 pub use rustc::mir::interpret::{write_target_uint, write_target_int, read_target_uint};
 
 use super::{EvalContext, Machine};
@@ -231,11 +231,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn check_align(&self, ptr: Pointer, required_align: Align) -> EvalResult<'tcx> {
         // Check non-NULL/Undef, extract offset
         let (offset, alloc_align) = match ptr.into_inner_primval() {
-            PrimVal::Ptr(ptr) => {
+            Scalar::Ptr(ptr) => {
                 let alloc = self.get(ptr.alloc_id)?;
                 (ptr.offset.bytes(), alloc.align)
             }
-            PrimVal::Bytes(bytes) => {
+            Scalar::Bytes(bytes) => {
                 let v = ((bytes as u128) % (1 << self.pointer_size().bytes())) as u64;
                 if v == 0 {
                     return err!(InvalidNullPointerUsage);
@@ -243,7 +243,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 // the base address if the "integer allocation" is 0 and hence always aligned
                 (v, required_align)
             }
-            PrimVal::Undef => return err!(ReadUndefBytes),
+            Scalar::Undef => return err!(ReadUndefBytes),
         };
         // Check alignment
         if alloc_align.abi() < required_align.abi() {
@@ -707,14 +707,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub fn read_primval(&self, ptr: MemoryPointer, ptr_align: Align, size: Size) -> EvalResult<'tcx, PrimVal> {
+    pub fn read_primval(&self, ptr: MemoryPointer, ptr_align: Align, size: Size) -> EvalResult<'tcx, Scalar> {
         self.check_relocation_edges(ptr, size)?; // Make sure we don't read part of a pointer as a pointer
         let endianness = self.endianness();
         let bytes = self.get_bytes_unchecked(ptr, size, ptr_align.min(self.int_align(size)))?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
         if self.check_defined(ptr, size).is_err() {
-            return Ok(PrimVal::Undef.into());
+            return Ok(Scalar::Undef.into());
         }
         // Now we do the actual reading
         let bytes = read_target_uint(endianness, bytes).unwrap();
@@ -726,30 +726,30 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         } else {
             let alloc = self.get(ptr.alloc_id)?;
             match alloc.relocations.get(&ptr.offset) {
-                Some(&alloc_id) => return Ok(PrimVal::Ptr(MemoryPointer::new(alloc_id, Size::from_bytes(bytes as u64)))),
+                Some(&alloc_id) => return Ok(Scalar::Ptr(MemoryPointer::new(alloc_id, Size::from_bytes(bytes as u64)))),
                 None => {},
             }
         }
         // We don't. Just return the bytes.
-        Ok(PrimVal::Bytes(bytes))
+        Ok(Scalar::Bytes(bytes))
     }
 
-    pub fn read_ptr_sized(&self, ptr: MemoryPointer, ptr_align: Align) -> EvalResult<'tcx, PrimVal> {
+    pub fn read_ptr_sized(&self, ptr: MemoryPointer, ptr_align: Align) -> EvalResult<'tcx, Scalar> {
         self.read_primval(ptr, ptr_align, self.pointer_size())
     }
 
-    pub fn write_primval(&mut self, ptr: Pointer, ptr_align: Align, val: PrimVal, size: Size, signed: bool) -> EvalResult<'tcx> {
+    pub fn write_primval(&mut self, ptr: Pointer, ptr_align: Align, val: Scalar, size: Size, signed: bool) -> EvalResult<'tcx> {
         let endianness = self.endianness();
 
         let bytes = match val {
-            PrimVal::Ptr(val) => {
+            Scalar::Ptr(val) => {
                 assert_eq!(size, self.pointer_size());
                 val.offset.bytes() as u128
             }
 
-            PrimVal::Bytes(bytes) => bytes,
+            Scalar::Bytes(bytes) => bytes,
 
-            PrimVal::Undef => {
+            Scalar::Undef => {
                 self.check_align(ptr.into(), ptr_align)?;
                 self.mark_definedness(ptr, size, false)?;
                 return Ok(());
@@ -770,7 +770,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         // See if we have to also write a relocation
         match val {
-            PrimVal::Ptr(val) => {
+            Scalar::Ptr(val) => {
                 self.get_mut(ptr.alloc_id)?.relocations.insert(
                     ptr.offset,
                     val.alloc_id,
@@ -782,7 +782,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub fn write_ptr_sized_unsigned(&mut self, ptr: MemoryPointer, ptr_align: Align, val: PrimVal) -> EvalResult<'tcx> {
+    pub fn write_ptr_sized_unsigned(&mut self, ptr: MemoryPointer, ptr_align: Align, val: Scalar) -> EvalResult<'tcx> {
         let ptr_size = self.pointer_size();
         self.write_primval(ptr.into(), ptr_align, val, ptr_size, false)
     }
@@ -954,7 +954,7 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
 
             Value::ByValPair(ptr, vtable) => Ok((ptr.into(), vtable.to_ptr()?)),
 
-            Value::ByVal(PrimVal::Undef) => err!(ReadUndefBytes),
+            Value::ByVal(Scalar::Undef) => err!(ReadUndefBytes),
             _ => bug!("expected ptr and vtable, got {:?}", value),
         }
     }
@@ -978,7 +978,7 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
                 assert_eq!(len as u64 as u128, len);
                 Ok((ptr.into(), len as u64))
             }
-            Value::ByVal(PrimVal::Undef) => err!(ReadUndefBytes),
+            Value::ByVal(Scalar::Undef) => err!(ReadUndefBytes),
             Value::ByVal(_) => bug!("expected ptr and length, got {:?}", value),
         }
     }
