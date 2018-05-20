@@ -8,28 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unused_imports, unused_variables, dead_code)]
-
 use rustc::middle::allocator::AllocatorKind;
 use rustc_errors;
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{Attribute, Crate, LitKind, StrStyle};
-use syntax::ast::{Arg, Constness, Generics, Mac, Mutability, Ty, Unsafety};
-use syntax::ast::{self, Expr, Ident, Item, ItemKind, TyKind, VisibilityKind};
-use syntax::attr;
-use syntax::codemap::{dummy_spanned, respan};
-use syntax::codemap::{ExpnInfo, MacroAttribute, NameAndSpan};
-use syntax::ext::base::ExtCtxt;
-use syntax::ext::base::Resolver;
-use syntax::ext::build::AstBuilder;
-use syntax::ext::expand::ExpansionConfig;
-use syntax::ext::hygiene::{self, Mark, SyntaxContext};
-use syntax::fold::{self, Folder};
-use syntax::parse::ParseSess;
-use syntax::ptr::P;
-use syntax::symbol::Symbol;
-use syntax::util::small_vector::SmallVector;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax::{
+    ast::{
+        self, Arg, Attribute, Constness, Crate, Expr, Generics, Ident, Item, ItemKind,
+        LitKind, Mac, Mod, Mutability, StrStyle, Ty, TyKind, Unsafety, VisibilityKind,
+    },
+    attr,
+    codemap::{
+        dummy_spanned, respan, ExpnInfo, MacroAttribute, NameAndSpan,
+    },
+    ext::{
+        base::{ExtCtxt, Resolver},
+        build::AstBuilder,
+        expand::ExpansionConfig,
+        hygiene::{self, Mark, SyntaxContext},
+    },
+    fold::{self, Folder},
+    parse::ParseSess,
+    ptr::P,
+    symbol::Symbol,
+    util::small_vector::SmallVector,
+};
+use syntax_pos::Span;
 
 use {AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
 
@@ -46,6 +49,7 @@ pub fn modify(
         resolver,
         found: false,
         crate_name: Some(crate_name),
+        in_submod: -1, // -1 to account for the "root" module
     }.fold_crate(krate)
 }
 
@@ -55,10 +59,16 @@ struct ExpandAllocatorDirectives<'a> {
     sess: &'a ParseSess,
     resolver: &'a mut Resolver,
     crate_name: Option<String>,
+
+    // For now, we disallow `global_allocator` in submodules because hygiene is hard. Keep track of
+    // whether we are in a submodule or not. If `in_submod > 0` we are in a submodule.
+    in_submod: isize,
 }
 
 impl<'a> Folder for ExpandAllocatorDirectives<'a> {
     fn fold_item(&mut self, item: P<Item>) -> SmallVector<P<Item>> {
+        info!("in submodule {}", self.in_submod);
+
         let name = if attr::contains_name(&item.attrs, "global_allocator") {
             "global_allocator"
         } else {
@@ -73,12 +83,15 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
             }
         }
 
+        if self.in_submod > 0 {
+            self.handler
+                .span_err(item.span, "`global_allocator` cannot be used in submodules");
+            return SmallVector::one(item);
+        }
+
         if self.found {
-            self.handler.span_err(
-                item.span,
-                "cannot define more than one \
-                 #[global_allocator]",
-            );
+            self.handler
+                .span_err(item.span, "cannot define more than one #[global_allocator]");
             return SmallVector::one(item);
         }
         self.found = true;
@@ -86,7 +99,7 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
         // Create a fresh Mark for the new macro expansion we are about to do
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(ExpnInfo {
-            call_site: item.span,
+            call_site: item.span, // use the call site of the static
             callee: NameAndSpan {
                 format: MacroAttribute(Symbol::intern(name)),
                 span: None,
@@ -107,27 +120,55 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
             span,
             kind: AllocatorKind::Global,
             global: item.ident,
-            core: Ident::with_empty_ctxt(Symbol::gensym("core")),
+            core: Ident::from_str("core"),
             cx: ExtCtxt::new(self.sess, ecfg, self.resolver),
         };
 
-        let extcore = {
-            let extcore = f.cx.item_extern_crate(item.span, f.core);
-            f.cx.monotonic_expander().fold_item(extcore).pop().unwrap()
-        };
+        // We will generate a new submodule. To `use` the static from that module, we need to get
+        // the `super::...` path.
+        let super_path = f.cx.path(f.span, vec![Ident::from_str("super"), f.global]);
 
-        let mut ret = SmallVector::new();
+        // Generate the items in the submodule
+        let mut items = vec![
+            // import `core` to use allocators
+            f.cx.item_extern_crate(f.span, f.core),
+            // `use` the `global_allocator` in `super`
+            f.cx.item_use_simple(
+                f.span,
+                respan(f.span.shrink_to_lo(), VisibilityKind::Inherited),
+                super_path,
+            ),
+        ];
+
+        // Add the allocator methods to the submodule
+        items.extend(
+            ALLOCATOR_METHODS
+                .iter()
+                .map(|method| f.allocator_fn(method)),
+        );
+
+        // Generate the submodule itself
+        let name = f.kind.fn_name("allocator_abi");
+        let allocator_abi = Ident::with_empty_ctxt(Symbol::gensym(&name));
+        let module = f.cx.item_mod(span, span, allocator_abi, Vec::new(), items);
+        let module = f.cx.monotonic_expander().fold_item(module).pop().unwrap();
+
+        // Return the item and new submodule
+        let mut ret = SmallVector::with_capacity(2);
         ret.push(item);
-        ret.push(extcore);
-        ret.extend(ALLOCATOR_METHODS.iter().map(|method| {
-            let method = f.allocator_fn(method);
-            f.cx.monotonic_expander().fold_item(method).pop().unwrap()
-        }));
+        ret.push(module);
+
         return ret;
     }
 
-    fn fold_mac(&mut self, mac: Mac) -> Mac {
-        fold::noop_fold_mac(mac, self)
+    // If we enter a submodule, take note.
+    fn fold_mod(&mut self, m: Mod) -> Mod {
+        info!("enter submodule");
+        self.in_submod += 1;
+        let ret = fold::noop_fold_mod(m, self);
+        self.in_submod -= 1;
+        info!("exit submodule");
+        ret
     }
 }
 
@@ -175,7 +216,6 @@ impl<'a> AllocFnFactory<'a> {
         let method = self.cx.path(
             self.span,
             vec![
-                Ident::from_str("self"),
                 self.core,
                 Ident::from_str("alloc"),
                 Ident::from_str("GlobalAlloc"),
@@ -226,7 +266,6 @@ impl<'a> AllocFnFactory<'a> {
                 let layout_new = self.cx.path(
                     self.span,
                     vec![
-                        Ident::from_str("self"),
                         self.core,
                         Ident::from_str("alloc"),
                         Ident::from_str("Layout"),
