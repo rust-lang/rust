@@ -1256,7 +1256,7 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
 /// To assist with proper design, the following scenarios are explicitly declared legal
 /// for single-threaded code:
 ///
-/// 1. A `&T` reference can be released to safe code and there it can co-exit with other `&T`
+/// 1. A `&T` reference can be released to safe code and there it can co-exist with other `&T`
 /// references, but not with a `&mut T`
 ///
 /// 2. A `&mut T` reference may be released to safe code, provided neither other `&mut T` nor `&T`
