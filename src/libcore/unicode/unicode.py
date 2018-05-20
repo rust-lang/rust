@@ -62,11 +62,10 @@ surrogate_codepoints = (0xd800, 0xdfff)
 
 def fetch(f):
     if not os.path.exists(os.path.basename(f)):
-        os.system("curl -O http://www.unicode.org/Public/UNIDATA/%s"
-                  % f)
+        os.system("curl -O http://www.unicode.org/Public/UNIDATA/{}".format(f))
 
     if not os.path.exists(os.path.basename(f)):
-        sys.stderr.write("cannot load %s" % f)
+        sys.stderr.write("cannot load {}".format(f))
         exit(1)
 
     return open(f)
@@ -194,7 +193,7 @@ def group_cat(cat):
     cur_end = cur_start
     for letter in letters:
         assert letter > cur_end, \
-            "cur_end: %s, letter: %s" % (hex(cur_end), hex(letter))
+            "cur_end: {:#x}, letter: {:#x}".format(cur_end, letter)
         if letter == cur_end + 1:
             cur_end = letter
         else:
@@ -277,10 +276,10 @@ def load_properties(fname, interestingprops):
     return props
 
 def escape_char(c):
-    return "'\\u{%x}'" % c if c != 0 else "'\\0'"
+    return "'\\u{{{:x}}}'".format(c) if c != 0 else "'\\0'"
 
 def emit_table(f, name, t_data):
-    f.write("    const %s: &[(char, [char; 3])] = &[\n" % (name,))
+    f.write("    const {}: &[(char, [char; 3])] = &[\n".format(name))
     data = (
         part
         for dat in t_data
@@ -323,7 +322,7 @@ def emit_bool_trie(f, name, t_data):
                 chunk |= 1 << j
         chunks.append(chunk)
 
-    f.write("    pub const %s: &super::BoolTrie = &super::BoolTrie {\n" % (name,))
+    f.write("    pub const {}: &super::BoolTrie = &super::BoolTrie {{\n".format(name))
     f.write("        r1: [\n")
     data = ('0x%016x' % chunk for chunk in chunks[0:0x800 // CHUNK])
     format_table_content(f, data, 12)
@@ -368,8 +367,7 @@ def emit_small_bool_trie(f, name, t_data):
                 print(cp, cp // 64, len(chunks), lo, hi)
             chunks[cp // 64] |= 1 << (cp & 63)
 
-    f.write("    pub const %s: &super::SmallBoolTrie = &super::SmallBoolTrie {\n"
-            % (name,))
+    f.write("    pub const {}: &super::SmallBoolTrie = &super::SmallBoolTrie {{\n".format(name))
 
     (r1, r2) = compute_trie(chunks, 1)
 
@@ -386,17 +384,17 @@ def emit_small_bool_trie(f, name, t_data):
     f.write("    };\n\n")
 
 def emit_property_module(f, mod, tbl, emit):
-    f.write("pub mod %s {\n" % mod)
+    f.write("pub mod {} {{\n".format(mod))
     for cat in sorted(emit):
         if cat in ["Cc", "White_Space", "Pattern_White_Space"]:
-            emit_small_bool_trie(f, "%s_table" % cat, tbl[cat])
-            f.write("    pub fn %s(c: char) -> bool {\n" % cat)
-            f.write("        %s_table.lookup(c)\n" % cat)
+            emit_small_bool_trie(f, "{}_table".format(cat), tbl[cat])
+            f.write("    pub fn {}(c: char) -> bool {{\n".format(cat))
+            f.write("        {}_table.lookup(c)\n".format(cat))
             f.write("    }\n\n")
         else:
-            emit_bool_trie(f, "%s_table" % cat, tbl[cat])
-            f.write("    pub fn %s(c: char) -> bool {\n" % cat)
-            f.write("        %s_table.lookup(c)\n" % cat)
+            emit_bool_trie(f, "{}_table".format(cat), tbl[cat])
+            f.write("    pub fn {}(c: char) -> bool {{\n".format(cat))
+            f.write("        {}_table.lookup(c)\n".format(cat))
             f.write("    }\n\n")
     f.write("}\n\n")
 
@@ -461,13 +459,13 @@ if __name__ == "__main__":
 /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
 /// `char` and `str` methods are based on.
 #[unstable(feature = "unicode_version", issue = "49726")]
-pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
-    major: %s,
-    minor: %s,
-    micro: %s,
+pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {{
+    major: {},
+    minor: {},
+    micro: {},
     _priv: (),
-};
-""" % unicode_version)
+}};
+""".format(*unicode_version))
         (canon_decomp, compat_decomp, gencats, combines,
                 to_upper, to_lower, to_title) = load_unicode_data()
         load_special_casing(to_upper, to_lower, to_title)
