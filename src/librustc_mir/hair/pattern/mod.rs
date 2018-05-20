@@ -1128,7 +1128,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
         LitKind::Str(ref s, _) => {
             let s = s.as_str();
             let id = tcx.allocate_bytes(s.as_bytes());
-            let ptr = MemoryPointer::zero(id);
+            let ptr = Pointer::zero(id);
             ConstValue::ScalarPair(
                 Scalar::Ptr(ptr),
                 Scalar::from_u128(s.len() as u128),
@@ -1136,7 +1136,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
         },
         LitKind::ByteStr(ref data) => {
             let id = tcx.allocate_bytes(data);
-            let ptr = MemoryPointer::zero(id);
+            let ptr = Pointer::zero(id);
             ConstValue::Scalar(ptr.into())
         },
         LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bytes(n as u128)),

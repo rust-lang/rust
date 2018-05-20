@@ -2,7 +2,7 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{Size, Align, LayoutOf};
 use syntax::ast::Mutability;
 
-use rustc::mir::interpret::{Scalar, Value, MemoryPointer, EvalResult};
+use rustc::mir::interpret::{Scalar, Value, Pointer, EvalResult};
 use super::{EvalContext, Machine};
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
@@ -16,7 +16,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         &mut self,
         ty: Ty<'tcx>,
         trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> EvalResult<'tcx, MemoryPointer> {
+    ) -> EvalResult<'tcx, Pointer> {
         debug!("get_vtable(trait_ref={:?})", trait_ref);
 
         let layout = self.layout_of(trait_ref.self_ty())?;
@@ -61,7 +61,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
     pub fn read_drop_type_from_vtable(
         &self,
-        vtable: MemoryPointer,
+        vtable: Pointer,
     ) -> EvalResult<'tcx, Option<ty::Instance<'tcx>>> {
         // we don't care about the pointee type, we just want a pointer
         let pointer_align = self.tcx.data_layout.pointer_align;
@@ -75,7 +75,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
     pub fn read_size_and_align_from_vtable(
         &self,
-        vtable: MemoryPointer,
+        vtable: Pointer,
     ) -> EvalResult<'tcx, (Size, Align)> {
         let pointer_size = self.memory.pointer_size();
         let pointer_align = self.tcx.data_layout.pointer_align;

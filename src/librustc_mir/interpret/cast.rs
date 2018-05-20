@@ -4,7 +4,7 @@ use syntax::ast::{FloatTy, IntTy, UintTy};
 
 use rustc_apfloat::ieee::{Single, Double};
 use super::{EvalContext, Machine};
-use rustc::mir::interpret::{Scalar, EvalResult, MemoryPointer, PointerArithmetic};
+use rustc::mir::interpret::{Scalar, EvalResult, Pointer, PointerArithmetic};
 use rustc_apfloat::Float;
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
@@ -101,7 +101,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         }
     }
 
-    fn cast_from_ptr(&self, ptr: MemoryPointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Scalar> {
+    fn cast_from_ptr(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Scalar> {
         use rustc::ty::TypeVariants::*;
         match ty.sty {
             // Casting to a reference or fn pointer is not permitted by rustc, no need to support it here.

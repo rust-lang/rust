@@ -110,22 +110,22 @@ impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub struct MemoryPointer {
+pub struct Pointer {
     pub alloc_id: AllocId,
     pub offset: Size,
 }
 
-impl<'tcx> MemoryPointer {
+impl<'tcx> Pointer {
     pub fn new(alloc_id: AllocId, offset: Size) -> Self {
-        MemoryPointer { alloc_id, offset }
+        Pointer { alloc_id, offset }
     }
 
     pub fn zero(alloc_id: AllocId) -> Self {
-        MemoryPointer::new(alloc_id, Size::ZERO)
+        Pointer::new(alloc_id, Size::ZERO)
     }
 
     pub(crate) fn wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> Self {
-        MemoryPointer::new(
+        Pointer::new(
             self.alloc_id,
             Size::from_bytes(cx.data_layout().wrapping_signed_offset(self.offset.bytes(), i)),
         )
@@ -133,11 +133,11 @@ impl<'tcx> MemoryPointer {
 
     pub fn overflowing_signed_offset<C: HasDataLayout>(self, i: i128, cx: C) -> (Self, bool) {
         let (res, over) = cx.data_layout().overflowing_signed_offset(self.offset.bytes(), i);
-        (MemoryPointer::new(self.alloc_id, Size::from_bytes(res)), over)
+        (Pointer::new(self.alloc_id, Size::from_bytes(res)), over)
     }
 
     pub(crate) fn signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
-        Ok(MemoryPointer::new(
+        Ok(Pointer::new(
             self.alloc_id,
             Size::from_bytes(cx.data_layout().signed_offset(self.offset.bytes(), i)?),
         ))
@@ -145,11 +145,11 @@ impl<'tcx> MemoryPointer {
 
     pub fn overflowing_offset<C: HasDataLayout>(self, i: Size, cx: C) -> (Self, bool) {
         let (res, over) = cx.data_layout().overflowing_offset(self.offset.bytes(), i.bytes());
-        (MemoryPointer::new(self.alloc_id, Size::from_bytes(res)), over)
+        (Pointer::new(self.alloc_id, Size::from_bytes(res)), over)
     }
 
     pub fn offset<C: HasDataLayout>(self, i: Size, cx: C) -> EvalResult<'tcx, Self> {
-        Ok(MemoryPointer::new(
+        Ok(Pointer::new(
             self.alloc_id,
             Size::from_bytes(cx.data_layout().offset(self.offset.bytes(), i.bytes())?),
         ))

@@ -15,7 +15,7 @@ use syntax::codemap::{self, Span};
 use syntax::ast::Mutability;
 use rustc::mir::interpret::{
     GlobalId, Value, Scalar, ScalarKind,
-    EvalError, EvalResult, EvalErrorKind, MemoryPointer, ConstValue,
+    EvalError, EvalResult, EvalErrorKind, Pointer, ConstValue,
 };
 use std::mem;
 
@@ -203,7 +203,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         r
     }
 
-    pub fn alloc_ptr(&mut self, ty: Ty<'tcx>) -> EvalResult<'tcx, MemoryPointer> {
+    pub fn alloc_ptr(&mut self, ty: Ty<'tcx>) -> EvalResult<'tcx, Pointer> {
         let layout = self.layout_of(ty)?;
         assert!(!layout.is_unsized(), "cannot alloc memory for unsized type");
 
@@ -245,7 +245,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             ConstValue::ByRef(alloc, offset) => {
                 // FIXME: Allocate new AllocId for all constants inside
                 let id = self.memory.allocate_value(alloc.clone(), Some(MemoryKind::Stack))?;
-                Ok(Value::ByRef(MemoryPointer::new(id, offset).into(), alloc.align))
+                Ok(Value::ByRef(Pointer::new(id, offset).into(), alloc.align))
             },
             ConstValue::ScalarPair(a, b) => Ok(Value::ScalarPair(a, b)),
             ConstValue::Scalar(val) => Ok(Value::Scalar(val)),
@@ -1019,7 +1019,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 .lock()
                 .intern_static(gid.instance.def_id());
             let layout = self.layout_of(ty)?;
-            let ptr = MemoryPointer::zero(alloc_id);
+            let ptr = Pointer::zero(alloc_id);
             return Ok(Value::ByRef(ptr.into(), layout.align))
         }
         let cv = self.const_eval(gid)?;
@@ -1329,7 +1329,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     pub(crate) fn read_ptr(
         &self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         ptr_align: Align,
         pointee_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Value> {
@@ -1358,7 +1358,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     pub fn validate_ptr_target(
         &self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         ptr_align: Align,
         ty: Ty<'tcx>
     ) -> EvalResult<'tcx> {

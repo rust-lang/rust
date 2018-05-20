@@ -19,7 +19,7 @@ use ty::subst::{Substs, Subst, Kind, UnpackedKind};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use ty::{Slice, TyS};
 use util::captures::Captures;
-use mir::interpret::{Scalar, MemoryPointer, Value, ConstValue};
+use mir::interpret::{Scalar, Pointer, Value, ConstValue};
 
 use std::iter;
 use std::cmp::Ordering;
@@ -1853,7 +1853,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn to_ptr(&self) -> Option<MemoryPointer> {
+    pub fn to_ptr(&self) -> Option<Pointer> {
         match self.val {
             ConstVal::Value(val) => val.to_ptr(),
             _ => None,

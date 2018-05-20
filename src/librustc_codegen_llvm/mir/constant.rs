@@ -14,7 +14,7 @@ use rustc_mir::interpret::{read_target_uint, const_val_field};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc::mir::interpret::{GlobalId, MemoryPointer, Scalar, Allocation, ConstValue, AllocType};
+use rustc::mir::interpret::{GlobalId, Pointer, Scalar, Allocation, ConstValue, AllocType};
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Size};
 use builder::Builder;
@@ -96,7 +96,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
         ).expect("const_alloc_to_llvm: could not read relocation pointer") as u64;
         llvals.push(primval_to_llvm(
             cx,
-            MemoryPointer { alloc_id, offset: Size::from_bytes(ptr_offset) }.into(),
+            Pointer { alloc_id, offset: Size::from_bytes(ptr_offset) }.into(),
             &layout::Scalar {
                 value: layout::Primitive::Pointer,
                 valid_range: 0..=!0

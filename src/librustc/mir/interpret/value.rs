@@ -3,7 +3,7 @@
 use ty::layout::{Align, HasDataLayout, Size};
 use ty;
 
-use super::{EvalResult, MemoryPointer, PointerArithmetic, Allocation};
+use super::{EvalResult, Pointer, PointerArithmetic, Allocation};
 
 /// Represents a constant value in Rust. ByVal and ScalarPair are optimizations which
 /// matches Value's optimizations for easy conversions between these two types
@@ -59,7 +59,7 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     #[inline]
-    pub fn to_ptr(&self) -> Option<MemoryPointer> {
+    pub fn to_ptr(&self) -> Option<Pointer> {
         match self.to_primval() {
             Some(Scalar::Ptr(ptr)) => Some(ptr),
             _ => None,
@@ -145,7 +145,7 @@ impl<'tcx> Scalar {
         Value::ScalarPair(self, Scalar::from_u128(len as u128))
     }
 
-    pub fn to_value_with_vtable(self, vtable: MemoryPointer) -> Value {
+    pub fn to_value_with_vtable(self, vtable: Pointer) -> Value {
         Value::ScalarPair(self, Scalar::Ptr(vtable))
     }
 
@@ -154,8 +154,8 @@ impl<'tcx> Scalar {
     }
 }
 
-impl From<MemoryPointer> for Scalar {
-    fn from(ptr: MemoryPointer) -> Self {
+impl From<Pointer> for Scalar {
+    fn from(ptr: Pointer) -> Self {
         Scalar::Ptr(ptr)
     }
 }
@@ -171,8 +171,8 @@ pub enum Scalar {
 
     /// A pointer into an `Allocation`. An `Allocation` in the `memory` module has a list of
     /// relocations, but a `Scalar` is only large enough to contain one, so we just represent the
-    /// relocation and its associated offset together as a `MemoryPointer` here.
-    Ptr(MemoryPointer),
+    /// relocation and its associated offset together as a `Pointer` here.
+    Ptr(Pointer),
 
     /// An undefined `Scalar`, for representing values that aren't safe to examine, but are safe
     /// to copy around, just like undefined bytes in an `Allocation`.
@@ -214,7 +214,7 @@ impl<'tcx> Scalar {
         }
     }
 
-    pub fn to_ptr(self) -> EvalResult<'tcx, MemoryPointer> {
+    pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
         match self {
             Scalar::Bytes(_) => err!(ReadBytesAsPointer),
             Scalar::Ptr(p) => Ok(p),

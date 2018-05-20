@@ -415,7 +415,7 @@ impl_stable_hash_for!(enum mir::interpret::Value {
     ByRef(ptr, align)
 });
 
-impl_stable_hash_for!(struct mir::interpret::MemoryPointer {
+impl_stable_hash_for!(struct mir::interpret::Pointer {
     alloc_id,
     offset
 });

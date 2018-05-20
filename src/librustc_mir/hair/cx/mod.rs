@@ -182,7 +182,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             LitKind::Str(ref s, _) => {
                 let s = s.as_str();
                 let id = self.tcx.allocate_bytes(s.as_bytes());
-                let ptr = MemoryPointer::zero(id);
+                let ptr = Pointer::zero(id);
                 ConstValue::ScalarPair(
                     Scalar::Ptr(ptr),
                     Scalar::from_u128(s.len() as u128),
@@ -190,7 +190,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             },
             LitKind::ByteStr(ref data) => {
                 let id = self.tcx.allocate_bytes(data);
-                let ptr = MemoryPointer::zero(id);
+                let ptr = Pointer::zero(id);
                 ConstValue::Scalar(ptr.into())
             },
             LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bytes(n as u128)),

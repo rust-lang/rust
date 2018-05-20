@@ -3,7 +3,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
 
-use rustc::mir::interpret::{GlobalId, Value, Scalar, EvalResult, MemoryPointer};
+use rustc::mir::interpret::{GlobalId, Value, Scalar, EvalResult, Pointer};
 use super::{EvalContext, Machine, ValTy};
 use interpret::memory::HasMemory;
 
@@ -28,7 +28,7 @@ pub enum Place {
 pub enum PlaceExtra {
     None,
     Length(u64),
-    Vtable(MemoryPointer),
+    Vtable(Pointer),
     DowncastVariant(usize),
 }
 
@@ -46,7 +46,7 @@ impl<'tcx> Place {
         }
     }
 
-    pub fn from_ptr(ptr: MemoryPointer, align: Align) -> Self {
+    pub fn from_ptr(ptr: Pointer, align: Align) -> Self {
         Self::from_primval_ptr(ptr.into(), align)
     }
 
@@ -63,7 +63,7 @@ impl<'tcx> Place {
         (ptr, align)
     }
 
-    pub fn to_ptr(self) -> EvalResult<'tcx, MemoryPointer> {
+    pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
         // At this point, we forget about the alignment information -- the place has been turned into a reference,
         // and no matter where it came from, it now must be aligned.
         self.to_ptr_align().0.to_ptr()
@@ -210,7 +210,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 };
                 let alloc = Machine::init_static(self, cid)?;
                 Place::Ptr {
-                    ptr: MemoryPointer::zero(alloc).into(),
+                    ptr: Pointer::zero(alloc).into(),
                     align: layout.align,
                     extra: PlaceExtra::None,
                 }
