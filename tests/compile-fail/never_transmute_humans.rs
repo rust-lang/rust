@@ -1,5 +1,4 @@
 // This should fail even without validation
-// ignore-test causes rustc ICE: rust-lang/rust#50570
 // compile-flags: -Zmir-emit-validate=0
 
 #![feature(never_type)]
@@ -10,7 +9,8 @@ struct Human;
 
 fn main() {
     let x: ! = unsafe {
-        std::mem::transmute::<Human, !>(Human) //~ ERROR entered unreachable code
+        std::mem::transmute::<Human, !>(Human) //~ ERROR constant evaluation error [E0080]
+        //^~ NOTE entered unreachable code
     };
     f(x)
 }
