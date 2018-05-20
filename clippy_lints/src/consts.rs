@@ -432,7 +432,7 @@ pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'
                         .interpret_interner
                         .get_alloc(ptr.alloc_id)
                         .unwrap();
-                    let offset = ptr.offset as usize;
+                    let offset = ptr.offset.bytes() as usize;
                     let n = n as usize;
                     String::from_utf8(alloc.bytes[offset..(offset + n)].to_owned()).ok().map(Constant::Str)
                 },
