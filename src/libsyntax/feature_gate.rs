@@ -451,6 +451,7 @@ declare_features! (
     (active, proc_macro_mod, "1.27.0", None, None),
     (active, proc_macro_expr, "1.27.0", None, None),
     (active, proc_macro_non_items, "1.27.0", None, None),
+    (active, proc_macro_gen, "1.27.0", None, None),
 
     // #[doc(alias = "...")]
     (active, doc_alias, "1.27.0", Some(50146), None),
