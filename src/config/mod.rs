@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use config::config_type::ConfigType;
-use config::file_lines::FileLines;
+pub use config::file_lines::FileLines;
 pub use config::lists::*;
 pub use config::options::*;
 
@@ -146,12 +146,12 @@ create_config! {
         "'small' heuristic values";
 }
 
-pub fn load_config(
+pub fn load_config<O: CliOptions>(
     file_path: Option<&Path>,
-    options: Option<&CliOptions>,
+    options: Option<O>,
 ) -> Result<(Config, Option<PathBuf>), Error> {
     let over_ride = match options {
-        Some(opts) => config_path(opts)?,
+        Some(ref opts) => config_path(opts)?,
         None => None,
     };
 
@@ -165,7 +165,7 @@ pub fn load_config(
 
     result.map(|(mut c, p)| {
         if let Some(options) = options {
-            options.clone().apply_to(&mut c);
+            options.apply_to(&mut c);
         }
         (c, p)
     })
@@ -208,9 +208,9 @@ fn config_path(options: &CliOptions) -> Result<Option<PathBuf>, Error> {
 
     // Read the config_path and convert to parent dir if a file is provided.
     // If a config file cannot be found from the given path, return error.
-    match options.config_path {
-        Some(ref path) if !path.exists() => config_path_not_found(path.to_str().unwrap()),
-        Some(ref path) if path.is_dir() => {
+    match options.config_path() {
+        Some(path) if !path.exists() => config_path_not_found(path.to_str().unwrap()),
+        Some(path) if path.is_dir() => {
             let config_file_path = get_toml_path(path)?;
             if config_file_path.is_some() {
                 Ok(config_file_path)
@@ -218,7 +218,7 @@ fn config_path(options: &CliOptions) -> Result<Option<PathBuf>, Error> {
                 config_path_not_found(path.to_str().unwrap())
             }
         }
-        ref path => Ok(path.to_owned()),
+        path => Ok(path.map(|p| p.to_owned())),
     }
 }
 

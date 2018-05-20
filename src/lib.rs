@@ -19,7 +19,6 @@ extern crate derive_new;
 extern crate diff;
 #[macro_use]
 extern crate failure;
-extern crate getopts;
 extern crate itertools;
 #[cfg(test)]
 #[macro_use]
@@ -62,7 +61,7 @@ use visitor::{FmtVisitor, SnippetProvider};
 
 pub use config::options::CliOptions;
 pub use config::summary::Summary;
-pub use config::{file_lines, load_config, Config, Verbosity, WriteMode};
+pub use config::{load_config, Color, Config, FileLines, Verbosity, WriteMode};
 
 #[macro_use]
 mod utils;

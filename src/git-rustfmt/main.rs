@@ -21,7 +21,7 @@ use std::str::FromStr;
 
 use getopts::{Matches, Options};
 
-use rustfmt::{format_and_emit_report, load_config, Input};
+use rustfmt::{format_and_emit_report, load_config, CliOptions, Input};
 
 fn prune_files(files: Vec<&str>) -> Vec<&str> {
     let prefixes: Vec<_> = files
@@ -68,7 +68,8 @@ fn get_files(input: &str) -> Vec<&str> {
 }
 
 fn fmt_files(files: &[&str]) -> i32 {
-    let (config, _) = load_config(Some(Path::new(".")), None).expect("couldn't load config");
+    let (config, _) =
+        load_config::<NullOptions>(Some(Path::new(".")), None).expect("couldn't load config");
 
     let mut exit_code = 0;
     for file in files {
@@ -78,6 +79,17 @@ fn fmt_files(files: &[&str]) -> i32 {
         }
     }
     exit_code
+}
+
+struct NullOptions;
+
+impl CliOptions for NullOptions {
+    fn apply_to(self, _: &mut rustfmt::Config) {
+        unreachable!();
+    }
+    fn config_path(&self) -> Option<&Path> {
+        unreachable!();
+    }
 }
 
 fn uncommitted_files() -> Vec<String> {

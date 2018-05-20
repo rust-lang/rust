@@ -380,12 +380,12 @@ fn format_file<P: Into<PathBuf>>(filepath: P, config: &Config) -> (Summary, File
     syntax::with_globals(|| format_input_inner::<io::Stdout>(input, config, None)).unwrap()
 }
 
-pub enum IdempotentCheckError {
+enum IdempotentCheckError {
     Mismatch(HashMap<PathBuf, Vec<Mismatch>>),
     Parse,
 }
 
-pub fn idempotent_check(
+fn idempotent_check(
     filename: &PathBuf,
     opt_config: &Option<PathBuf>,
 ) -> Result<FormatReport, IdempotentCheckError> {
