@@ -982,13 +982,8 @@ This does not pose a problem by itself because they can't be accessed directly."
                         // this doesn't come from a macro that has #[allow_internal_unstable]
                         !self.span.allows_unstable()
                     {
-                        if self.mode == Mode::Fn {
-                            // We are in a normal function
-                            // with a turned off feature gate. We can still call the function
-                            // but we can't promote it
-                            self.qualif = Qualif::NOT_CONST;
-                            debug!("unstable const fn");
-                        } else {
+                        self.qualif = Qualif::NOT_CONST;
+                        if self.mode != Mode::Fn {
                             // inside a constant environment, not having the feature gate is
                             // an error
                             let mut err = self.tcx.sess.struct_span_err(self.span,
