@@ -31,7 +31,7 @@ mod submod {
     use super::MyAlloc;
 
     #[global_allocator]
-    static MY_HEAP: MyAlloc = MyAlloc;
+    static MY_HEAP: MyAlloc = MyAlloc; //~ ERROR global_allocator
 }
 
 fn main() {}
