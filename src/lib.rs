@@ -20,7 +20,7 @@ extern crate regex;
 extern crate lazy_static;
 
 use rustc::ty::{self, TyCtxt};
-use rustc::ty::layout::{TyLayout, LayoutOf};
+use rustc::ty::layout::{TyLayout, LayoutOf, Size};
 use rustc::ty::subst::Subst;
 use rustc::hir::def_id::DefId;
 use rustc::mir;
@@ -93,7 +93,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             }
 
             // Return value
-            let size = ecx.tcx.data_layout.pointer_size.bytes();
+            let size = ecx.tcx.data_layout.pointer_size;
             let align = ecx.tcx.data_layout.pointer_align;
             let ret_ptr = ecx.memory_mut().allocate(size, align, Some(MemoryKind::Stack))?;
             cleanup_ptr = Some(ret_ptr);
@@ -299,7 +299,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
         assert!(!layout.is_unsized());
         let ptr = ecx.memory.allocate(
-            layout.size.bytes(),
+            layout.size,
             layout.align,
             None,
         )?;
@@ -373,8 +373,8 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx.write_value(
             ValTy {
                 value: Value::ByVal(PrimVal::Bytes(match layout.size.bytes() {
-                    0 => 1,
-                    size => size,
+                    0 => 1 as u128,
+                    size => size as u128,
                 }.into())),
                 ty: usize,
             },
@@ -407,10 +407,10 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     fn check_locks<'a>(
         mem: &Memory<'a, 'mir, 'tcx, Self>,
         ptr: MemoryPointer,
-        size: u64,
+        size: Size,
         access: AccessKind,
     ) -> EvalResult<'tcx> {
-        mem.check_locks(ptr, size, access)
+        mem.check_locks(ptr, size.bytes(), access)
     }
 
     fn add_lock<'a>(
@@ -439,7 +439,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
                     //ptr, FIXME
                     ptr: MemoryPointer {
                         alloc_id: AllocId(0),
-                        offset: 0,
+                        offset: Size::from_bytes(0),
                     },
                     lock: lock.active,
                 }.into()

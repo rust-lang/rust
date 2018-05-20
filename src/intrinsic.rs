@@ -1,5 +1,5 @@
 use rustc::mir;
-use rustc::ty::layout::{TyLayout, LayoutOf};
+use rustc::ty::layout::{TyLayout, LayoutOf, Size};
 use rustc::ty;
 
 use rustc::mir::interpret::{EvalResult, PrimVal, PrimValKind, Value, Pointer};
@@ -35,7 +35,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 // FIXME: return a real value in case the target allocation has an
                 // alignment bigger than the one requested
                 let n = u128::max_value();
-                let amt = 128 - self.memory.pointer_size() * 8;
+                let amt = 128 - self.memory.pointer_size().bytes() * 8;
                 self.write_primval(dest, PrimVal::Bytes((n << amt) >> amt), dest_layout.ty)?;
             },
 
@@ -225,7 +225,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                         elem_align,
                         dest,
                         elem_align,
-                        count * elem_size,
+                        Size::from_bytes(count * elem_size),
                         intrinsic_name.ends_with("_nonoverlapping"),
                     )?;
                 }
@@ -332,7 +332,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "likely" | "unlikely" | "forget" => {}
 
             "init" => {
-                let size = dest_layout.size.bytes();
+                let size = dest_layout.size;
                 let init = |this: &mut Self, val: Value| {
                     let zero_val = match val {
                         Value::ByRef(ptr, _) => {
@@ -631,7 +631,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "uninit" => {
-                let size = dest_layout.size.bytes();
+                let size = dest_layout.size;
                 let uninit = |this: &mut Self, val: Value| match val {
                     Value::ByRef(ptr, _) => {
                         this.memory.mark_definedness(ptr, size, false)?;
@@ -662,7 +662,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     // HashMap relies on write_bytes on a NULL ptr with count == 0 to work
                     // TODO: Should we, at least, validate the alignment? (Also see the copy intrinsic)
                     self.memory.check_align(ptr, ty_layout.align)?;
-                    self.memory.write_repeat(ptr, val_byte, ty_layout.size.bytes() * count)?;
+                    self.memory.write_repeat(ptr, val_byte, ty_layout.size * count)?;
                 }
             }
 

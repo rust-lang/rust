@@ -89,9 +89,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                         Sub => {
                             return self.binary_op(
                                 Sub,
-                                PrimVal::Bytes(left.offset as u128),
+                                PrimVal::Bytes(left.offset.bytes() as u128),
                                 self.tcx.types.usize,
-                                PrimVal::Bytes(right.offset as u128),
+                                PrimVal::Bytes(right.offset.bytes() as u128),
                                 self.tcx.types.usize,
                             ).map(Some)
                         }
@@ -150,17 +150,17 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             Add if signed =>
                 map_to_primval(left.overflowing_signed_offset(right, self)),
             Add if !signed =>
-                map_to_primval(left.overflowing_offset(right as u64, self)),
+                map_to_primval(left.overflowing_offset(Size::from_bytes(right as u64), self)),
 
             BitAnd if !signed => {
                 let base_mask : u64 = !(self.memory.get(left.alloc_id)?.align.abi() - 1);
                 let right = right as u64;
                 if right & base_mask == base_mask {
                     // Case 1: The base address bits are all preserved, i.e., right is all-1 there
-                    (PrimVal::Ptr(MemoryPointer::new(left.alloc_id, left.offset & right)), false)
+                    (PrimVal::Ptr(MemoryPointer::new(left.alloc_id, Size::from_bytes(left.offset.bytes() & right))), false)
                 } else if right & base_mask == 0 {
                     // Case 2: The base address bits are all taken away, i.e., right is all-0 there
-                    (PrimVal::from_u128((left.offset & right) as u128), false)
+                    (PrimVal::from_u128((left.offset.bytes() & right) as u128), false)
                 } else {
                     return err!(ReadPointerAsBytes);
                 }
