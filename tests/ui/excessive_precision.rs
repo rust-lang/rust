@@ -1,4 +1,4 @@
-#![feature(custom_attribute)]
+
 #![warn(excessive_precision)]
 #![allow(print_literal)]
 

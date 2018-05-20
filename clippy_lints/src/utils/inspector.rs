@@ -6,7 +6,7 @@ use rustc::lint::*;
 use rustc::hir;
 use rustc::hir::print;
 use syntax::ast::Attribute;
-use syntax::attr;
+use utils::get_attr;
 
 /// **What it does:** Dumps every ast/hir node which has the `#[clippy_dump]`
 /// attribute
@@ -136,7 +136,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 }
 
 fn has_attr(attrs: &[Attribute]) -> bool {
-    attr::contains_name(attrs, "clippy_dump")
+    get_attr(attrs, "dump").count() > 0
 }
 
 fn print_decl(cx: &LateContext, decl: &hir::Decl) {

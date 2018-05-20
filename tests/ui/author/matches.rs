@@ -1,7 +1,7 @@
-#![feature(custom_attribute)]
+#![feature(tool_attributes)]
 
 fn main() {
-    #[clippy(author)]
+    #[clippy::author]
     let a = match 42 {
         16 => 5,
         17 => {
