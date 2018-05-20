@@ -134,6 +134,15 @@ fn test_infallible_try_from_int_error() {
 }
 
 macro_rules! test_impl_from {
+    ($fn_name:ident, bool, $target: ty) => {
+        #[test]
+        fn $fn_name() {
+            let one: $target = 1;
+            let zero: $target = 0;
+            assert_eq!(one, <$target>::from(true));
+            assert_eq!(zero, <$target>::from(false));
+        }
+    };
     ($fn_name: ident, $Small: ty, $Large: ty) => {
         #[test]
         fn $fn_name() {
@@ -172,6 +181,18 @@ test_impl_from! { test_u8i64, u8, i64 }
 test_impl_from! { test_u16i32, u16, i32 }
 test_impl_from! { test_u16i64, u16, i64 }
 test_impl_from! { test_u32i64, u32, i64 }
+
+// Bool -> Integer
+test_impl_from! { test_boolu8, bool, u8 }
+test_impl_from! { test_boolu16, bool, u16 }
+test_impl_from! { test_boolu32, bool, u32 }
+test_impl_from! { test_boolu64, bool, u64 }
+test_impl_from! { test_boolu128, bool, u128 }
+test_impl_from! { test_booli8, bool, i8 }
+test_impl_from! { test_booli16, bool, i16 }
+test_impl_from! { test_booli32, bool, i32 }
+test_impl_from! { test_booli64, bool, i64 }
+test_impl_from! { test_booli128, bool, i128 }
 
 // Signed -> Float
 test_impl_from! { test_i8f32, i8, f32 }
