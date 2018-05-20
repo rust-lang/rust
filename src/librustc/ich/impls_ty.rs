@@ -394,10 +394,10 @@ for ::mir::interpret::ConstValue<'gcx> {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
-            ByVal(val) => {
+            Scalar(val) => {
                 val.hash_stable(hcx, hasher);
             }
-            ByValPair(a, b) => {
+            ScalarPair(a, b) => {
                 a.hash_stable(hcx, hasher);
                 b.hash_stable(hcx, hasher);
             }
@@ -410,8 +410,8 @@ for ::mir::interpret::ConstValue<'gcx> {
 }
 
 impl_stable_hash_for!(enum mir::interpret::Value {
-    ByVal(v),
-    ByValPair(a, b),
+    Scalar(v),
+    ScalarPair(a, b),
     ByRef(ptr, align)
 });
 

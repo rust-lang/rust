@@ -76,7 +76,7 @@ pub struct Frame<'mir, 'tcx: 'mir> {
     /// `None` represents a local that is currently dead, while a live local
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
     ///
-    /// Before being initialized, arguments are `Value::ByVal(Scalar::Undef)` and other locals are `None`.
+    /// Before being initialized, arguments are `Value::Scalar(Scalar::Undef)` and other locals are `None`.
     pub locals: IndexVec<mir::Local, Option<Value>>,
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -230,7 +230,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
         let ptr = self.memory.allocate_bytes(s.as_bytes());
-        Ok(Value::ByValPair(
+        Ok(Value::ScalarPair(
             Scalar::Ptr(ptr),
             Scalar::from_u128(s.len() as u128),
         ))
@@ -247,8 +247,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let id = self.memory.allocate_value(alloc.clone(), Some(MemoryKind::Stack))?;
                 Ok(Value::ByRef(MemoryPointer::new(id, offset).into(), alloc.align))
             },
-            ConstValue::ByValPair(a, b) => Ok(Value::ByValPair(a, b)),
-            ConstValue::ByVal(val) => Ok(Value::ByVal(val)),
+            ConstValue::ScalarPair(a, b) => Ok(Value::ScalarPair(a, b)),
+            ConstValue::Scalar(val) => Ok(Value::Scalar(val)),
         }
     }
 
@@ -408,7 +408,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         ::log_settings::settings().indentation += 1;
 
         let locals = if mir.local_decls.len() > 1 {
-            let mut locals = IndexVec::from_elem(Some(Value::ByVal(Scalar::Undef)), &mir.local_decls);
+            let mut locals = IndexVec::from_elem(Some(Value::Scalar(Scalar::Undef)), &mir.local_decls);
             match self.tcx.describe_def(instance.def_id()) {
                 // statics and constants don't have `Storage*` statements, no need to look for them
                 Some(Def::Static(..)) | Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => {},
@@ -668,9 +668,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                             match (src.value, self.type_is_fat_ptr(dest_ty)) {
                                 (Value::ByRef { .. }, _) |
                                 // pointers to extern types
-                                (Value::ByVal(_),_) |
+                                (Value::Scalar(_),_) |
                                 // slices and trait objects to other slices/trait objects
-                                (Value::ByValPair(..), true) => {
+                                (Value::ScalarPair(..), true) => {
                                     let valty = ValTy {
                                         value: src.value,
                                         ty: dest_ty,
@@ -678,9 +678,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                     self.write_value(valty, dest)?;
                                 }
                                 // slices and trait objects to thin pointers (dropping the metadata)
-                                (Value::ByValPair(data, _), false) => {
+                                (Value::ScalarPair(data, _), false) => {
                                     let valty = ValTy {
-                                        value: Value::ByVal(data),
+                                        value: Value::Scalar(data),
                                         ty: dest_ty,
                                     };
                                     self.write_value(valty, dest)?;
@@ -707,7 +707,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                             let src_val = self.value_to_primval(src)?;
                             let dest_val = self.cast_primval(src_val, src.ty, dest_ty)?;
                             let valty = ValTy {
-                                value: Value::ByVal(dest_val),
+                                value: Value::Scalar(dest_val),
                                 ty: dest_ty,
                             };
                             self.write_value(valty, dest)?;
@@ -729,7 +729,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                 ).ok_or_else(|| EvalErrorKind::TypeckError.into());
                                 let fn_ptr = self.memory.create_fn_alloc(instance?);
                                 let valty = ValTy {
-                                    value: Value::ByVal(Scalar::Ptr(fn_ptr)),
+                                    value: Value::Scalar(Scalar::Ptr(fn_ptr)),
                                     ty: dest_ty,
                                 };
                                 self.write_value(valty, dest)?;
@@ -765,7 +765,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                 );
                                 let fn_ptr = self.memory.create_fn_alloc(instance);
                                 let valty = ValTy {
-                                    value: Value::ByVal(Scalar::Ptr(fn_ptr)),
+                                    value: Value::Scalar(Scalar::Ptr(fn_ptr)),
                                     ty: dest_ty,
                                 };
                                 self.write_value(valty, dest)?;
@@ -1094,13 +1094,13 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         match self.follow_by_ref_value(value, ty)? {
             Value::ByRef { .. } => bug!("follow_by_ref_value can't result in `ByRef`"),
 
-            Value::ByVal(primval) => {
+            Value::Scalar(primval) => {
                 // TODO: Do we really want insta-UB here?
                 self.ensure_valid_value(primval, ty)?;
                 Ok(primval)
             }
 
-            Value::ByValPair(..) => bug!("value_to_primval can't work with fat pointers"),
+            Value::ScalarPair(..) => bug!("value_to_primval can't work with fat pointers"),
         }
     }
 
@@ -1119,7 +1119,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
         let valty = ValTy {
-            value: Value::ByVal(val),
+            value: Value::Scalar(val),
             ty: dest_ty,
         };
         self.write_value(valty, dest)
@@ -1132,7 +1132,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     ) -> EvalResult<'tcx> {
         //trace!("Writing {:?} to {:?} at type {:?}", src_val, dest, dest_ty);
         // Note that it is really important that the type here is the right one, and matches the type things are read at.
-        // In case `src_val` is a `ByValPair`, we don't do any magic here to handle padding properly, which is only
+        // In case `src_val` is a `ScalarPair`, we don't do any magic here to handle padding properly, which is only
         // correct if we never look at this data with the wrong type.
 
         match dest {
@@ -1211,7 +1211,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             Value::ByRef(ptr, align) => {
                 self.memory.copy(ptr, align.min(layout.align), dest, dest_align.min(layout.align), layout.size, false)
             }
-            Value::ByVal(primval) => {
+            Value::Scalar(primval) => {
                 let signed = match layout.abi {
                     layout::Abi::Scalar(ref scal) => match scal.value {
                         layout::Primitive::Int(_, signed) => signed,
@@ -1222,11 +1222,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 };
                 self.memory.write_primval(dest, dest_align, primval, layout.size, signed)
             }
-            Value::ByValPair(a_val, b_val) => {
+            Value::ScalarPair(a_val, b_val) => {
                 trace!("write_value_to_ptr valpair: {:#?}", layout);
                 let (a, b) = match layout.abi {
                     layout::Abi::ScalarPair(ref a, ref b) => (&a.value, &b.value),
-                    _ => bug!("write_value_to_ptr: invalid ByValPair layout: {:#?}", layout)
+                    _ => bug!("write_value_to_ptr: invalid ScalarPair layout: {:#?}", layout)
                 };
                 let (a_size, b_size) = (a.size(&self), b.size(&self));
                 let a_ptr = dest;
@@ -1405,7 +1405,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub fn try_read_by_ref(&self, mut val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
-        // Convert to ByVal or ByValPair if possible
+        // Convert to ByVal or ScalarPair if possible
         if let Value::ByRef(ptr, align) = val {
             if let Some(read_val) = self.try_read_value(ptr, align, ty)? {
                 val = read_val;
@@ -1419,7 +1419,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         self.memory.check_align(ptr, ptr_align)?;
 
         if layout.size.bytes() == 0 {
-            return Ok(Some(Value::ByVal(Scalar::Undef)));
+            return Ok(Some(Value::Scalar(Scalar::Undef)));
         }
 
         let ptr = ptr.to_ptr()?;
@@ -1430,7 +1430,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         match layout.abi {
             layout::Abi::Scalar(..) => {
                 let primval = self.memory.read_primval(ptr, ptr_align, layout.size)?;
-                Ok(Some(Value::ByVal(primval)))
+                Ok(Some(Value::Scalar(primval)))
             }
             layout::Abi::ScalarPair(ref a, ref b) => {
                 let (a, b) = (&a.value, &b.value);
@@ -1440,7 +1440,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let b_ptr = ptr.offset(b_offset, self)?.into();
                 let a_val = self.memory.read_primval(a_ptr, ptr_align, a_size)?;
                 let b_val = self.memory.read_primval(b_ptr, ptr_align, b_size)?;
-                Ok(Some(Value::ByValPair(a_val, b_val)))
+                Ok(Some(Value::ScalarPair(a_val, b_val)))
             }
             _ => Ok(None),
         }
@@ -1563,7 +1563,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                 self.place_field(src_place, mir::Field::new(i), src_layout)?;
                             (self.read_place(src_f_place)?, src_field)
                         }
-                        Value::ByVal(_) | Value::ByValPair(..) => {
+                        Value::Scalar(_) | Value::ScalarPair(..) => {
                             let src_field = src_layout.field(&self, i)?;
                             assert_eq!(src_layout.fields.offset(i).bytes(), 0);
                             assert_eq!(src_field.size, src_layout.size);
@@ -1622,13 +1622,13 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                             ptr => write!(msg, " integral by ref: {:?}", ptr).unwrap(),
                         }
                     }
-                    Ok(Value::ByVal(val)) => {
+                    Ok(Value::Scalar(val)) => {
                         write!(msg, " {:?}", val).unwrap();
                         if let Scalar::Ptr(ptr) = val {
                             allocs.push(ptr.alloc_id);
                         }
                     }
-                    Ok(Value::ByValPair(val1, val2)) => {
+                    Ok(Value::ScalarPair(val1, val2)) => {
                         write!(msg, " ({:?}, {:?})", val1, val2).unwrap();
                         if let Scalar::Ptr(ptr) = val1 {
                             allocs.push(ptr.alloc_id);
@@ -1797,7 +1797,7 @@ impl<'mir, 'tcx> Frame<'mir, 'tcx> {
         trace!("{:?} is now live", local);
 
         // StorageLive *always* kills the value that's currently stored
-        mem::replace(&mut self.locals[local], Some(Value::ByVal(Scalar::Undef)))
+        mem::replace(&mut self.locals[local], Some(Value::Scalar(Scalar::Undef)))
     }
 
     /// Returns the old value of the local

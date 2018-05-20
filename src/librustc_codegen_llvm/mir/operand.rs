@@ -105,7 +105,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         }
 
         let val = match val {
-            ConstValue::ByVal(x) => {
+            ConstValue::Scalar(x) => {
                 let scalar = match layout.abi {
                     layout::Abi::Scalar(ref x) => x,
                     _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
@@ -118,10 +118,10 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                 );
                 OperandValue::Immediate(llval)
             },
-            ConstValue::ByValPair(a, b) => {
+            ConstValue::ScalarPair(a, b) => {
                 let (a_scalar, b_scalar) = match layout.abi {
                     layout::Abi::ScalarPair(ref a, ref b) => (a, b),
-                    _ => bug!("from_const: invalid ByValPair layout: {:#?}", layout)
+                    _ => bug!("from_const: invalid ScalarPair layout: {:#?}", layout)
                 };
                 let a_llval = primval_to_llvm(
                     bx.cx,

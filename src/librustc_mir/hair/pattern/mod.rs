@@ -1083,14 +1083,14 @@ pub fn compare_const_vals<'a, 'tcx>(
         if let ty::TyStr = rty.sty {
             match (a.to_byval_value(), b.to_byval_value()) {
                 (
-                    Some(Value::ByValPair(
+                    Some(Value::ScalarPair(
                         Scalar::Ptr(ptr_a),
                         Scalar::Bits {
                             bits: size_a,
                             defined: tcx.data_layout.pointer_size.bits() as u8,
                         },
                     )),
-                    Some(Value::ByValPair(
+                    Some(Value::ScalarPair(
                         Scalar::Ptr(ptr_b),
                         Scalar::Bits {
                             bits: size_b,
@@ -1129,7 +1129,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
             let s = s.as_str();
             let id = tcx.allocate_bytes(s.as_bytes());
             let ptr = MemoryPointer::zero(id);
-            ConstValue::ByValPair(
+            ConstValue::ScalarPair(
                 Scalar::Ptr(ptr),
                 Scalar::from_u128(s.len() as u128),
             )
@@ -1137,9 +1137,9 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
         LitKind::ByteStr(ref data) => {
             let id = tcx.allocate_bytes(data);
             let ptr = MemoryPointer::zero(id);
-            ConstValue::ByVal(Scalar::Ptr(ptr))
+            ConstValue::Scalar(Scalar::Ptr(ptr))
         },
-        LitKind::Byte(n) => ConstValue::ByVal(Scalar::Bytes(n as u128)),
+        LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bytes(n as u128)),
         LitKind::Int(n, _) => {
             enum Int {
                 Signed(IntTy),
@@ -1173,7 +1173,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
                 Int::Signed(IntTy::I128)| Int::Unsigned(UintTy::U128) => n,
                 _ => bug!(),
             };
-            ConstValue::ByVal(Scalar::Bytes(n))
+            ConstValue::Scalar(Scalar::Bytes(n))
         },
         LitKind::Float(n, fty) => {
             parse_float(n, fty, neg)?
@@ -1185,8 +1185,8 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
             };
             parse_float(n, fty, neg)?
         }
-        LitKind::Bool(b) => ConstValue::ByVal(Scalar::Bytes(b as u128)),
-        LitKind::Char(c) => ConstValue::ByVal(Scalar::Bytes(c as u128)),
+        LitKind::Bool(b) => ConstValue::Scalar(Scalar::Bytes(b as u128)),
+        LitKind::Char(c) => ConstValue::Scalar(Scalar::Bytes(c as u128)),
     };
     Ok(ty::Const::from_const_value(tcx, lit, ty))
 }
@@ -1222,5 +1222,5 @@ pub fn parse_float<'tcx>(
         }
     };
 
-    Ok(ConstValue::ByVal(Scalar::Bytes(bits)))
+    Ok(ConstValue::Scalar(Scalar::Bytes(bits)))
 }

@@ -100,16 +100,16 @@ pub fn value_to_const_value<'tcx>(
 ) -> &'tcx ty::Const<'tcx> {
     let layout = ecx.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap();
     match (val, &layout.abi) {
-        (Value::ByVal(Scalar::Undef), _) if layout.is_zst() => {},
+        (Value::Scalar(Scalar::Undef), _) if layout.is_zst() => {},
         (Value::ByRef(..), _) |
-        (Value::ByVal(_), &layout::Abi::Scalar(_)) |
-        (Value::ByValPair(..), &layout::Abi::ScalarPair(..)) => {},
+        (Value::Scalar(_), &layout::Abi::Scalar(_)) |
+        (Value::ScalarPair(..), &layout::Abi::ScalarPair(..)) => {},
         _ => bug!("bad value/layout combo: {:#?}, {:#?}", val, layout),
     }
     let val = (|| {
         match val {
-            Value::ByVal(val) => Ok(ConstValue::ByVal(val)),
-            Value::ByValPair(a, b) => Ok(ConstValue::ByValPair(a, b)),
+            Value::Scalar(val) => Ok(ConstValue::Scalar(val)),
+            Value::ScalarPair(a, b) => Ok(ConstValue::ScalarPair(a, b)),
             Value::ByRef(ptr, align) => {
                 let ptr = ptr.primval.to_ptr().unwrap();
                 let alloc = ecx.memory.get(ptr.alloc_id)?;
@@ -419,7 +419,7 @@ pub fn const_val_field<'a, 'tcx>(
         let layout = ecx.layout_of(ty)?;
         let (ptr, align) = match value {
             Value::ByRef(ptr, align) => (ptr, align),
-            Value::ByValPair(..) | Value::ByVal(_) => {
+            Value::ScalarPair(..) | Value::Scalar(_) => {
                 let ptr = ecx.alloc_ptr(ty)?.into();
                 ecx.write_value_to_ptr(value, ptr, layout.align, ty)?;
                 (ptr, layout.align)
@@ -436,9 +436,9 @@ pub fn const_val_field<'a, 'tcx>(
         new_value = ecx.try_read_by_ref(new_value, layout.ty)?;
         use rustc_data_structures::indexed_vec::Idx;
         match (value, new_value) {
-            (Value::ByVal(_), Value::ByRef(..)) |
-            (Value::ByValPair(..), Value::ByRef(..)) |
-            (Value::ByVal(_), Value::ByValPair(..)) => bug!(
+            (Value::Scalar(_), Value::ByRef(..)) |
+            (Value::ScalarPair(..), Value::ByRef(..)) |
+            (Value::Scalar(_), Value::ScalarPair(..)) => bug!(
                 "field {} of {:?} yielded {:?}",
                 field.index(),
                 value,
@@ -469,7 +469,7 @@ pub fn const_variant_index<'a, 'tcx>(
     let mut ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let value = ecx.const_value_to_value(val, ty)?;
     let (ptr, align) = match value {
-        Value::ByValPair(..) | Value::ByVal(_) => {
+        Value::ScalarPair(..) | Value::Scalar(_) => {
             let layout = ecx.layout_of(ty)?;
             let ptr = ecx.memory.allocate(layout.size, layout.align, Some(MemoryKind::Stack))?;
             let ptr: Pointer = ptr.into();

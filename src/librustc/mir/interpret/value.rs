@@ -5,14 +5,14 @@ use ty;
 
 use super::{EvalResult, MemoryPointer, PointerArithmetic, Allocation};
 
-/// Represents a constant value in Rust. ByVal and ByValPair are optimizations which
+/// Represents a constant value in Rust. ByVal and ScalarPair are optimizations which
 /// matches Value's optimizations for easy conversions between these two types
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
 pub enum ConstValue<'tcx> {
     /// Used only for types with layout::abi::Scalar ABI and ZSTs which use Scalar::Undef
-    ByVal(Scalar),
+    Scalar(Scalar),
     /// Used only for types with layout::abi::ScalarPair
-    ByValPair(Scalar, Scalar),
+    ScalarPair(Scalar, Scalar),
     /// Used only for the remaining cases. An allocation + offset into the allocation
     ByRef(&'tcx Allocation, Size),
 }
@@ -22,8 +22,8 @@ impl<'tcx> ConstValue<'tcx> {
     pub fn from_byval_value(val: Value) -> Self {
         match val {
             Value::ByRef(..) => bug!(),
-            Value::ByValPair(a, b) => ConstValue::ByValPair(a, b),
-            Value::ByVal(val) => ConstValue::ByVal(val),
+            Value::ScalarPair(a, b) => ConstValue::ScalarPair(a, b),
+            Value::Scalar(val) => ConstValue::Scalar(val),
         }
     }
 
@@ -31,22 +31,22 @@ impl<'tcx> ConstValue<'tcx> {
     pub fn to_byval_value(&self) -> Option<Value> {
         match *self {
             ConstValue::ByRef(..) => None,
-            ConstValue::ByValPair(a, b) => Some(Value::ByValPair(a, b)),
-            ConstValue::ByVal(val) => Some(Value::ByVal(val)),
+            ConstValue::ScalarPair(a, b) => Some(Value::ScalarPair(a, b)),
+            ConstValue::Scalar(val) => Some(Value::Scalar(val)),
         }
     }
 
     #[inline]
     pub fn from_primval(val: Scalar) -> Self {
-        ConstValue::ByVal(val)
+        ConstValue::Scalar(val)
     }
 
     #[inline]
     pub fn to_primval(&self) -> Option<Scalar> {
         match *self {
             ConstValue::ByRef(..) => None,
-            ConstValue::ByValPair(..) => None,
-            ConstValue::ByVal(val) => Some(val),
+            ConstValue::ScalarPair(..) => None,
+            ConstValue::Scalar(val) => Some(val),
         }
     }
 
@@ -74,13 +74,13 @@ impl<'tcx> ConstValue<'tcx> {
 /// whether the pointer is supposed to be aligned or not (also see Place).
 ///
 /// For optimization of a few very common cases, there is also a representation for a pair of
-/// primitive values (`ByValPair`). It allows Miri to avoid making allocations for checked binary
+/// primitive values (`ScalarPair`). It allows Miri to avoid making allocations for checked binary
 /// operations and fat pointers. This idea was taken from rustc's codegen.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
 pub enum Value {
     ByRef(Pointer, Align),
-    ByVal(Scalar),
-    ByValPair(Scalar, Scalar),
+    Scalar(Scalar),
+    ScalarPair(Scalar, Scalar),
 }
 
 impl<'tcx> ty::TypeFoldable<'tcx> for Value {
@@ -166,15 +166,15 @@ impl<'tcx> Pointer {
     }
 
     pub fn to_value_with_len(self, len: u64) -> Value {
-        Value::ByValPair(self.primval, Scalar::from_u128(len as u128))
+        Value::ScalarPair(self.primval, Scalar::from_u128(len as u128))
     }
 
     pub fn to_value_with_vtable(self, vtable: MemoryPointer) -> Value {
-        Value::ByValPair(self.primval, Scalar::Ptr(vtable))
+        Value::ScalarPair(self.primval, Scalar::Ptr(vtable))
     }
 
     pub fn to_value(self) -> Value {
-        Value::ByVal(self.primval)
+        Value::Scalar(self.primval)
     }
 }
 

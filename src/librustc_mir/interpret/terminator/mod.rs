@@ -359,7 +359,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                             self.write_value(valty, dest)?;
                                         }
                                     }
-                                    Value::ByVal(Scalar::Undef) => {}
+                                    Value::Scalar(Scalar::Undef) => {}
                                     other => {
                                         trace!("{:#?}, {:#?}", other, layout);
                                         let mut layout = layout;

@@ -1245,13 +1245,13 @@ fn collect_const<'a, 'tcx>(
     };
     match val {
         ConstVal::Unevaluated(..) => bug!("const eval yielded unevaluated const"),
-        ConstVal::Value(ConstValue::ByValPair(Scalar::Ptr(a), Scalar::Ptr(b))) => {
+        ConstVal::Value(ConstValue::ScalarPair(Scalar::Ptr(a), Scalar::Ptr(b))) => {
             collect_miri(tcx, a.alloc_id, output);
             collect_miri(tcx, b.alloc_id, output);
         }
-        ConstVal::Value(ConstValue::ByValPair(_, Scalar::Ptr(ptr))) |
-        ConstVal::Value(ConstValue::ByValPair(Scalar::Ptr(ptr), _)) |
-        ConstVal::Value(ConstValue::ByVal(Scalar::Ptr(ptr))) =>
+        ConstVal::Value(ConstValue::ScalarPair(_, Scalar::Ptr(ptr))) |
+        ConstVal::Value(ConstValue::ScalarPair(Scalar::Ptr(ptr), _)) |
+        ConstVal::Value(ConstValue::Scalar(Scalar::Ptr(ptr))) =>
             collect_miri(tcx, ptr.alloc_id, output),
         ConstVal::Value(ConstValue::ByRef(alloc, _offset)) => {
             for &id in alloc.relocations.values() {

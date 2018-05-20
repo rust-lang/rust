@@ -67,8 +67,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let pointer_align = self.tcx.data_layout.pointer_align;
         match self.read_ptr(vtable, pointer_align, self.tcx.mk_nil_ptr())? {
             // some values don't need to call a drop impl, so the value is null
-            Value::ByVal(Scalar::Bytes(0)) => Ok(None),
-            Value::ByVal(Scalar::Ptr(drop_fn)) => self.memory.get_fn(drop_fn).map(Some),
+            Value::Scalar(Scalar::Bytes(0)) => Ok(None),
+            Value::Scalar(Scalar::Ptr(drop_fn)) => self.memory.get_fn(drop_fn).map(Some),
             _ => err!(ReadBytesAsPointer),
         }
     }

@@ -215,7 +215,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     trace!("field proj on {:?}", proj.base);
                     let (base, ty, span) = self.eval_place(&proj.base)?;
                     match base {
-                        Value::ByValPair(a, b) => {
+                        Value::ScalarPair(a, b) => {
                             trace!("by val pair: {:?}, {:?}", a, b);
                             let base_layout = self.tcx.layout_of(self.param_env.and(ty)).ok()?;
                             trace!("layout computed");
@@ -228,7 +228,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                             };
                             let field = base_layout.field(cx, field_index).ok()?;
                             trace!("projection resulted in: {:?}", val);
-                            Some((Value::ByVal(val), field.ty, span))
+                            Some((Value::Scalar(val), field.ty, span))
                         },
                         _ => None,
                     }
@@ -283,7 +283,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
             Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                 let param_env = self.tcx.param_env(self.source.def_id);
                 type_size_of(self.tcx, param_env, ty).map(|n| (
-                    Value::ByVal(Scalar::Bytes(n as u128)),
+                    Value::Scalar(Scalar::Bytes(n as u128)),
                     self.tcx.types.usize,
                     span,
                 ))
@@ -305,7 +305,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     this.ecx.value_to_primval(ValTy { value: val.0, ty: val.1 })
                 })?;
                 let val = self.use_ecx(span, |this| this.ecx.unary_op(op, prim, val.1))?;
-                Some((Value::ByVal(val), place_ty, span))
+                Some((Value::Scalar(val), place_ty, span))
             }
             Rvalue::CheckedBinaryOp(op, ref left, ref right) |
             Rvalue::BinaryOp(op, ref left, ref right) => {
@@ -357,7 +357,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     this.ecx.binary_op(op, l, left.1, r, right.1)
                 })?;
                 let val = if let Rvalue::CheckedBinaryOp(..) = *rvalue {
-                    Value::ByValPair(
+                    Value::ScalarPair(
                         val,
                         Scalar::from_bool(overflow),
                     )
@@ -371,7 +371,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                         });
                         return None;
                     }
-                    Value::ByVal(val)
+                    Value::Scalar(val)
                 };
                 Some((val, place_ty, span))
             },
@@ -485,7 +485,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
         if let TerminatorKind::Assert { expected, msg, cond, .. } = kind {
             if let Some(value) = self.eval_operand(cond) {
                 trace!("assertion on {:?} should be {:?}", value, expected);
-                if Value::ByVal(Scalar::from_bool(*expected)) != value.0 {
+                if Value::Scalar(Scalar::from_bool(*expected)) != value.0 {
                     // poison all places this operand references so that further code
                     // doesn't use the invalid value
                     match cond {
@@ -520,14 +520,14 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                         BoundsCheck { ref len, ref index } => {
                             let len = self.eval_operand(len).expect("len must be const");
                             let len = match len.0 {
-                                Value::ByVal(Scalar::Bytes(n)) => n,
+                                Value::Scalar(Scalar::Bytes(n)) => n,
                                 _ => bug!("const len not primitive: {:?}", len),
                             };
                             let index = self
                                 .eval_operand(index)
                                 .expect("index must be const");
                             let index = match index.0 {
-                                Value::ByVal(Scalar::Bytes(n)) => n,
+                                Value::Scalar(Scalar::Bytes(n)) => n,
                                 _ => bug!("const index not primitive: {:?}", index),
                             };
                             format!(

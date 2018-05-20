@@ -128,17 +128,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let field_index = field.index();
         let field = base_layout.field(self, field_index)?;
         if field.size.bytes() == 0 {
-            return Ok(Some((Value::ByVal(Scalar::Undef), field.ty)))
+            return Ok(Some((Value::Scalar(Scalar::Undef), field.ty)))
         }
         let offset = base_layout.fields.offset(field_index);
         match base {
             // the field covers the entire type
-            Value::ByValPair(..) |
-            Value::ByVal(_) if offset.bytes() == 0 && field.size == base_layout.size => Ok(Some((base, field.ty))),
+            Value::ScalarPair(..) |
+            Value::Scalar(_) if offset.bytes() == 0 && field.size == base_layout.size => Ok(Some((base, field.ty))),
             // split fat pointers, 2 element tuples, ...
-            Value::ByValPair(a, b) if base_layout.fields.count() == 2 => {
+            Value::ScalarPair(a, b) if base_layout.fields.count() == 2 => {
                 let val = [a, b][field_index];
-                Ok(Some((Value::ByVal(val), field.ty)))
+                Ok(Some((Value::Scalar(val), field.ty)))
             },
             // FIXME(oli-obk): figure out whether we should be calling `try_read_value` here
             _ => Ok(None),
@@ -173,7 +173,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         place: &mir::Place<'tcx>,
     ) -> EvalResult<'tcx, Value> {
         // Shortcut for things like accessing a fat pointer's field,
-        // which would otherwise (in the `eval_place` path) require moving a `ByValPair` to memory
+        // which would otherwise (in the `eval_place` path) require moving a `ScalarPair` to memory
         // and returning an `Place::Ptr` to it
         if let Some(val) = self.try_read_place(place)? {
             return Ok(val);
@@ -250,8 +250,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Place::Local { frame, local } => {
                 match (&self.stack[frame].get_local(local)?, &base_layout.abi) {
                     // in case the field covers the entire type, just return the value
-                    (&Value::ByVal(_), &layout::Abi::Scalar(_)) |
-                    (&Value::ByValPair(..), &layout::Abi::ScalarPair(..))
+                    (&Value::Scalar(_), &layout::Abi::Scalar(_)) |
+                    (&Value::ScalarPair(..), &layout::Abi::ScalarPair(..))
                         if offset.bytes() == 0 && field.size == base_layout.size =>
                     {
                         return Ok((base, field));

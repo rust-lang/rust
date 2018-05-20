@@ -932,8 +932,8 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
             Value::ByRef(ptr, align) => {
                 self.memory().read_ptr_sized(ptr.to_ptr()?, align)?
             }
-            Value::ByVal(ptr) |
-            Value::ByValPair(ptr, _) => ptr,
+            Value::Scalar(ptr) |
+            Value::ScalarPair(ptr, _) => ptr,
         }.into())
     }
 
@@ -952,9 +952,9 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
                 Ok((ptr, vtable))
             }
 
-            Value::ByValPair(ptr, vtable) => Ok((ptr.into(), vtable.to_ptr()?)),
+            Value::ScalarPair(ptr, vtable) => Ok((ptr.into(), vtable.to_ptr()?)),
 
-            Value::ByVal(Scalar::Undef) => err!(ReadUndefBytes),
+            Value::Scalar(Scalar::Undef) => err!(ReadUndefBytes),
             _ => bug!("expected ptr and vtable, got {:?}", value),
         }
     }
@@ -973,13 +973,13 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
                 )?.to_bytes()? as u64;
                 Ok((ptr, len))
             }
-            Value::ByValPair(ptr, val) => {
+            Value::ScalarPair(ptr, val) => {
                 let len = val.to_u128()?;
                 assert_eq!(len as u64 as u128, len);
                 Ok((ptr.into(), len as u64))
             }
-            Value::ByVal(Scalar::Undef) => err!(ReadUndefBytes),
-            Value::ByVal(_) => bug!("expected ptr and length, got {:?}", value),
+            Value::Scalar(Scalar::Undef) => err!(ReadUndefBytes),
+            Value::Scalar(_) => bug!("expected ptr and length, got {:?}", value),
         }
     }
 }

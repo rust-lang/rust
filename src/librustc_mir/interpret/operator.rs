@@ -32,7 +32,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
         let (val, overflowed) = self.binop_with_overflow(op, left, right)?;
-        let val = Value::ByValPair(val, Scalar::from_bool(overflowed));
+        let val = Value::ScalarPair(val, Scalar::from_bool(overflowed));
         let valty = ValTy {
             value: val,
             ty: dest_ty,
