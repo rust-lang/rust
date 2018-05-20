@@ -33,7 +33,11 @@ pub const MANTISSA_DIGITS: u32 = 53;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const DIGITS: u32 = 15;
 
-/// Difference between `1.0` and the next largest representable number.
+/// [Machine epsilon] value for `f64`.
+///
+/// This is the difference between `1.0` and the next largest representable number.
+///
+/// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
 
