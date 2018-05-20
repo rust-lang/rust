@@ -1019,8 +1019,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 .lock()
                 .intern_static(gid.instance.def_id());
             let layout = self.layout_of(ty)?;
-            let ptr = Pointer::zero(alloc_id);
-            return Ok(Value::ByRef(ptr.into(), layout.align))
+            return Ok(Value::ByRef(Scalar::Ptr(alloc_id.into()), layout.align))
         }
         let cv = self.const_eval(gid)?;
         self.const_to_value(&cv.val, ty)

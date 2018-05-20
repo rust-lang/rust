@@ -115,13 +115,16 @@ pub struct Pointer {
     pub offset: Size,
 }
 
+/// Produces a `Pointer` which points to the beginning of the Allocation
+impl From<AllocId> for Pointer {
+    fn from(alloc_id: AllocId) -> Self {
+        Pointer::new(alloc_id, Size::ZERO)
+    }
+}
+
 impl<'tcx> Pointer {
     pub fn new(alloc_id: AllocId, offset: Size) -> Self {
         Pointer { alloc_id, offset }
-    }
-
-    pub fn zero(alloc_id: AllocId) -> Self {
-        Pointer::new(alloc_id, Size::ZERO)
     }
 
     pub(crate) fn wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> Self {

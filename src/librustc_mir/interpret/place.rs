@@ -210,7 +210,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 };
                 let alloc = Machine::init_static(self, cid)?;
                 Place::Ptr {
-                    ptr: Pointer::zero(alloc).into(),
+                    ptr: Scalar::Ptr(alloc.into()),
                     align: layout.align,
                     extra: PlaceExtra::None,
                 }

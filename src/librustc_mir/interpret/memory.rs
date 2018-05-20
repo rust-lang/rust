@@ -72,13 +72,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> Pointer {
-        let id = self.tcx.alloc_map.lock().create_fn_alloc(instance);
-        Pointer::zero(id)
+        self.tcx.alloc_map.lock().create_fn_alloc(instance).into()
     }
 
     pub fn allocate_bytes(&mut self, bytes: &[u8]) -> Pointer {
-        let id = self.tcx.allocate_bytes(bytes);
-        Pointer::zero(id)
+        self.tcx.allocate_bytes(bytes).into()
     }
 
     /// kind is `None` for statics
@@ -109,8 +107,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         align: Align,
         kind: Option<MemoryKind<M::MemoryKinds>>,
     ) -> EvalResult<'tcx, Pointer> {
-        let id = self.allocate_value(Allocation::undef(size, align), kind)?;
-        Ok(Pointer::zero(id))
+        self.allocate_value(Allocation::undef(size, align), kind).map(Pointer::from)
     }
 
     pub fn reallocate(
