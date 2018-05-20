@@ -3,7 +3,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
 
-use rustc::mir::interpret::{GlobalId, Value, Scalar, EvalResult, Pointer, MemoryPointer};
+use rustc::mir::interpret::{GlobalId, Value, Scalar, EvalResult, MemoryPointer};
 use super::{EvalContext, Machine, ValTy};
 use interpret::memory::HasMemory;
 
@@ -14,7 +14,7 @@ pub enum Place {
         /// A place may have an invalid (integral or undef) pointer,
         /// since it might be turned back into a reference
         /// before ever being dereferenced.
-        ptr: Pointer,
+        ptr: Scalar,
         align: Align,
         extra: PlaceExtra,
     },
@@ -38,7 +38,7 @@ impl<'tcx> Place {
         Self::from_primval_ptr(Scalar::Undef.into(), Align::from_bytes(1, 1).unwrap())
     }
 
-    pub fn from_primval_ptr(ptr: Pointer, align: Align) -> Self {
+    pub fn from_primval_ptr(ptr: Scalar, align: Align) -> Self {
         Place::Ptr {
             ptr,
             align,
@@ -50,7 +50,7 @@ impl<'tcx> Place {
         Self::from_primval_ptr(ptr.into(), align)
     }
 
-    pub fn to_ptr_align_extra(self) -> (Pointer, Align, PlaceExtra) {
+    pub fn to_ptr_align_extra(self) -> (Scalar, Align, PlaceExtra) {
         match self {
             Place::Ptr { ptr, align, extra } => (ptr, align, extra),
             _ => bug!("to_ptr_and_extra: expected Place::Ptr, got {:?}", self),
@@ -58,7 +58,7 @@ impl<'tcx> Place {
         }
     }
 
-    pub fn to_ptr_align(self) -> (Pointer, Align) {
+    pub fn to_ptr_align(self) -> (Scalar, Align) {
         let (ptr, align, _extra) = self.to_ptr_align_extra();
         (ptr, align)
     }
@@ -272,7 +272,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             _ => offset,
         };
 
-        let ptr = base_ptr.offset(offset, &self)?;
+        let ptr = base_ptr.ptr_offset(offset, &self)?;
         let align = base_align.min(base_layout.align).min(field.align);
         let extra = if !field.is_unsized() {
             PlaceExtra::None
@@ -332,7 +332,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             n,
             len
         );
-        let ptr = base_ptr.offset(elem_size * n, &*self)?;
+        let ptr = base_ptr.ptr_offset(elem_size * n, &*self)?;
         Ok(Place::Ptr {
             ptr,
             align,
@@ -410,7 +410,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     u64::from(offset)
                 };
 
-                let ptr = base_ptr.offset(elem_size * index, &self)?;
+                let ptr = base_ptr.ptr_offset(elem_size * index, &self)?;
                 Ok(Place::Ptr { ptr, align, extra: PlaceExtra::None })
             }
 
@@ -422,7 +422,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty, self.tcx.tcx);
                 let elem_size = self.layout_of(elem_ty)?.size;
                 assert!(u64::from(from) <= n - u64::from(to));
-                let ptr = base_ptr.offset(elem_size * u64::from(from), &self)?;
+                let ptr = base_ptr.ptr_offset(elem_size * u64::from(from), &self)?;
                 // sublicing arrays produces arrays
                 let extra = if self.type_is_sized(base_ty) {
                     PlaceExtra::None

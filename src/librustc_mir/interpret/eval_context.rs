@@ -14,7 +14,7 @@ use rustc::middle::const_val::FrameInfo;
 use syntax::codemap::{self, Span};
 use syntax::ast::Mutability;
 use rustc::mir::interpret::{
-    GlobalId, Value, Pointer, Scalar, ScalarKind,
+    GlobalId, Value, Scalar, ScalarKind,
     EvalError, EvalResult, EvalErrorKind, MemoryPointer, ConstValue,
 };
 use std::mem;
@@ -596,7 +596,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
                 // FIXME: speed up repeat filling
                 for i in 0..length {
-                    let elem_dest = dest.offset(elem_size * i as u64, &self)?;
+                    let elem_dest = dest.ptr_offset(elem_size * i as u64, &self)?;
                     self.write_value_to_ptr(value, elem_dest, dest_align, elem_ty)?;
                 }
             }
@@ -729,7 +729,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                 ).ok_or_else(|| EvalErrorKind::TypeckError.into());
                                 let fn_ptr = self.memory.create_fn_alloc(instance?);
                                 let valty = ValTy {
-                                    value: Value::Scalar(Scalar::Ptr(fn_ptr)),
+                                    value: Value::Scalar(fn_ptr.into()),
                                     ty: dest_ty,
                                 };
                                 self.write_value(valty, dest)?;
@@ -765,7 +765,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                 );
                                 let fn_ptr = self.memory.create_fn_alloc(instance);
                                 let valty = ValTy {
-                                    value: Value::Scalar(Scalar::Ptr(fn_ptr)),
+                                    value: Value::Scalar(fn_ptr.into()),
                                     ty: dest_ty,
                                 };
                                 self.write_value(valty, dest)?;
@@ -1104,7 +1104,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
     }
 
-    pub fn write_ptr(&mut self, dest: Place, val: Pointer, dest_ty: Ty<'tcx>) -> EvalResult<'tcx> {
+    pub fn write_ptr(&mut self, dest: Place, val: Scalar, dest_ty: Ty<'tcx>) -> EvalResult<'tcx> {
         let valty = ValTy {
             value: val.to_value(),
             ty: dest_ty,
@@ -1201,7 +1201,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     pub fn write_value_to_ptr(
         &mut self,
         value: Value,
-        dest: Pointer,
+        dest: Scalar,
         dest_align: Align,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
@@ -1231,7 +1231,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let (a_size, b_size) = (a.size(&self), b.size(&self));
                 let a_ptr = dest;
                 let b_offset = a_size.abi_align(b.align(&self));
-                let b_ptr = dest.offset(b_offset, &self)?.into();
+                let b_ptr = dest.ptr_offset(b_offset, &self)?.into();
                 // TODO: What about signedess?
                 self.memory.write_primval(a_ptr, dest_align, a_val, a_size, false)?;
                 self.memory.write_primval(b_ptr, dest_align, b_val, b_size, false)
@@ -1319,7 +1319,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
     }
 
-    pub fn read_value(&self, ptr: Pointer, align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub fn read_value(&self, ptr: Scalar, align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         if let Some(val) = self.try_read_value(ptr, align, ty)? {
             Ok(val)
         } else {
@@ -1334,7 +1334,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         pointee_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Value> {
         let ptr_size = self.memory.pointer_size();
-        let p: Pointer = self.memory.read_ptr_sized(ptr, ptr_align)?.into();
+        let p: Scalar = self.memory.read_ptr_sized(ptr, ptr_align)?.into();
         if self.type_is_sized(pointee_ty) {
             Ok(p.to_value())
         } else {
@@ -1414,7 +1414,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         Ok(val)
     }
 
-    pub fn try_read_value(&self, ptr: Pointer, ptr_align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
+    pub fn try_read_value(&self, ptr: Scalar, ptr_align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
         let layout = self.layout_of(ty)?;
         self.memory.check_align(ptr, ptr_align)?;
 
@@ -1614,7 +1614,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                         }
                     }
                     Ok(Value::ByRef(ptr, align)) => {
-                        match ptr.into_inner_primval() {
+                        match ptr {
                             Scalar::Ptr(ptr) => {
                                 write!(msg, " by align({}) ref:", align.abi()).unwrap();
                                 allocs.push(ptr.alloc_id);
@@ -1643,7 +1643,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 self.memory.dump_allocs(allocs);
             }
             Place::Ptr { ptr, align, .. } => {
-                match ptr.into_inner_primval() {
+                match ptr {
                     Scalar::Ptr(ptr) => {
                         trace!("by align({}) ref:", align.abi());
                         self.memory.dump_alloc(ptr.alloc_id);

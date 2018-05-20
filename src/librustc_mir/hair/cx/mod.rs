@@ -191,7 +191,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             LitKind::ByteStr(ref data) => {
                 let id = self.tcx.allocate_bytes(data);
                 let ptr = MemoryPointer::zero(id);
-                ConstValue::Scalar(Scalar::Ptr(ptr))
+                ConstValue::Scalar(ptr.into())
             },
             LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bytes(n as u128)),
             LitKind::Int(n, _) if neg => {

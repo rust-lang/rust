@@ -10,7 +10,7 @@ use syntax::ast::Mutability;
 use rustc::middle::const_val::{ConstVal, ErrKind};
 
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
-use rustc::mir::interpret::{MemoryPointer, AllocId, Allocation, AccessKind, Value, Pointer,
+use rustc::mir::interpret::{MemoryPointer, AllocId, Allocation, AccessKind, Value,
                             EvalResult, Scalar, EvalErrorKind, GlobalId, AllocType};
 pub use rustc::mir::interpret::{write_target_uint, write_target_int, read_target_uint};
 
@@ -228,9 +228,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     /// Check that the pointer is aligned AND non-NULL.
-    pub fn check_align(&self, ptr: Pointer, required_align: Align) -> EvalResult<'tcx> {
+    pub fn check_align(&self, ptr: Scalar, required_align: Align) -> EvalResult<'tcx> {
         // Check non-NULL/Undef, extract offset
-        let (offset, alloc_align) = match ptr.into_inner_primval() {
+        let (offset, alloc_align) = match ptr {
             Scalar::Ptr(ptr) => {
                 let alloc = self.get(ptr.alloc_id)?;
                 (ptr.offset.bytes(), alloc.align)
@@ -594,9 +594,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     pub fn copy(
         &mut self,
-        src: Pointer,
+        src: Scalar,
         src_align: Align,
-        dest: Pointer,
+        dest: Scalar,
         dest_align: Align,
         size: Size,
         nonoverlapping: bool,
@@ -671,7 +671,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
     }
 
-    pub fn read_bytes(&self, ptr: Pointer, size: Size) -> EvalResult<'tcx, &[u8]> {
+    pub fn read_bytes(&self, ptr: Scalar, size: Size) -> EvalResult<'tcx, &[u8]> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
         let align = Align::from_bytes(1, 1).unwrap();
         self.check_align(ptr, align)?;
@@ -681,7 +681,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.get_bytes(ptr.to_ptr()?, size, align)
     }
 
-    pub fn write_bytes(&mut self, ptr: Pointer, src: &[u8]) -> EvalResult<'tcx> {
+    pub fn write_bytes(&mut self, ptr: Scalar, src: &[u8]) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
         let align = Align::from_bytes(1, 1).unwrap();
         self.check_align(ptr, align)?;
@@ -693,7 +693,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub fn write_repeat(&mut self, ptr: Pointer, val: u8, count: Size) -> EvalResult<'tcx> {
+    pub fn write_repeat(&mut self, ptr: Scalar, val: u8, count: Size) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
         let align = Align::from_bytes(1, 1).unwrap();
         self.check_align(ptr, align)?;
@@ -726,7 +726,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         } else {
             let alloc = self.get(ptr.alloc_id)?;
             match alloc.relocations.get(&ptr.offset) {
-                Some(&alloc_id) => return Ok(Scalar::Ptr(MemoryPointer::new(alloc_id, Size::from_bytes(bytes as u64)))),
+                Some(&alloc_id) => return Ok(MemoryPointer::new(alloc_id, Size::from_bytes(bytes as u64)).into()),
                 None => {},
             }
         }
@@ -738,7 +738,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.read_primval(ptr, ptr_align, self.pointer_size())
     }
 
-    pub fn write_primval(&mut self, ptr: Pointer, ptr_align: Align, val: Scalar, size: Size, signed: bool) -> EvalResult<'tcx> {
+    pub fn write_primval(&mut self, ptr: Scalar, ptr_align: Align, val: Scalar, size: Size, signed: bool) -> EvalResult<'tcx> {
         let endianness = self.endianness();
 
         let bytes = match val {
@@ -896,7 +896,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     pub fn mark_definedness(
         &mut self,
-        ptr: Pointer,
+        ptr: Scalar,
         size: Size,
         new_state: bool,
     ) -> EvalResult<'tcx> {
@@ -927,7 +927,7 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     fn into_ptr(
         &self,
         value: Value,
-    ) -> EvalResult<'tcx, Pointer> {
+    ) -> EvalResult<'tcx, Scalar> {
         Ok(match value {
             Value::ByRef(ptr, align) => {
                 self.memory().read_ptr_sized(ptr.to_ptr()?, align)?
@@ -940,13 +940,13 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     fn into_ptr_vtable_pair(
         &self,
         value: Value,
-    ) -> EvalResult<'tcx, (Pointer, MemoryPointer)> {
+    ) -> EvalResult<'tcx, (Scalar, MemoryPointer)> {
         match value {
             Value::ByRef(ref_ptr, align) => {
                 let mem = self.memory();
                 let ptr = mem.read_ptr_sized(ref_ptr.to_ptr()?, align)?.into();
                 let vtable = mem.read_ptr_sized(
-                    ref_ptr.offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
+                    ref_ptr.ptr_offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
                     align
                 )?.to_ptr()?;
                 Ok((ptr, vtable))
@@ -962,13 +962,13 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     fn into_slice(
         &self,
         value: Value,
-    ) -> EvalResult<'tcx, (Pointer, u64)> {
+    ) -> EvalResult<'tcx, (Scalar, u64)> {
         match value {
             Value::ByRef(ref_ptr, align) => {
                 let mem = self.memory();
                 let ptr = mem.read_ptr_sized(ref_ptr.to_ptr()?, align)?.into();
                 let len = mem.read_ptr_sized(
-                    ref_ptr.offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
+                    ref_ptr.ptr_offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
                     align
                 )?.to_bytes()? as u64;
                 Ok((ptr, len))

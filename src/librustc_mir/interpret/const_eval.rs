@@ -12,7 +12,7 @@ use syntax::codemap::DUMMY_SP;
 
 use rustc::mir::interpret::{
     EvalResult, EvalError, EvalErrorKind, GlobalId,
-    Value, Pointer, Scalar, AllocId, Allocation, ConstValue,
+    Value, Scalar, AllocId, Allocation, ConstValue,
 };
 use super::{Place, EvalContext, StackPopCleanup, ValTy, PlaceExtra, Memory, MemoryKind};
 
@@ -65,7 +65,7 @@ pub fn eval_promoted<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: &'mir mir::Mir<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> Option<(Value, Pointer, Ty<'tcx>)> {
+) -> Option<(Value, Scalar, Ty<'tcx>)> {
     ecx.with_fresh_body(|ecx| {
         let res = eval_body_using_ecx(ecx, cid, Some(mir), param_env);
         match res {
@@ -82,7 +82,7 @@ pub fn eval_body<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cid: GlobalId<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> Option<(Value, Pointer, Ty<'tcx>)> {
+) -> Option<(Value, Scalar, Ty<'tcx>)> {
     let (res, ecx) = eval_body_and_ecx(tcx, cid, None, param_env);
     match res {
         Ok(val) => Some(val),
@@ -111,7 +111,7 @@ pub fn value_to_const_value<'tcx>(
             Value::Scalar(val) => Ok(ConstValue::Scalar(val)),
             Value::ScalarPair(a, b) => Ok(ConstValue::ScalarPair(a, b)),
             Value::ByRef(ptr, align) => {
-                let ptr = ptr.primval.to_ptr().unwrap();
+                let ptr = ptr.to_ptr().unwrap();
                 let alloc = ecx.memory.get(ptr.alloc_id)?;
                 assert!(alloc.align.abi() >= align.abi());
                 assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= layout.size.bytes());
@@ -136,7 +136,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-) -> (EvalResult<'tcx, (Value, Pointer, Ty<'tcx>)>, EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>) {
+) -> (EvalResult<'tcx, (Value, Scalar, Ty<'tcx>)>, EvalContext<'a, 'mir, 'tcx, CompileTimeEvaluator>) {
     debug!("eval_body_and_ecx: {:?}, {:?}", cid, param_env);
     // we start out with the best span we have
     // and try improving it down the road when more information is available
@@ -152,7 +152,7 @@ fn eval_body_using_ecx<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, (Value, Pointer, Ty<'tcx>)> {
+) -> EvalResult<'tcx, (Value, Scalar, Ty<'tcx>)> {
     debug!("eval_body: {:?}, {:?}", cid, param_env);
     let tcx = ecx.tcx.tcx;
     let mut mir = match mir {
@@ -471,8 +471,7 @@ pub fn const_variant_index<'a, 'tcx>(
     let (ptr, align) = match value {
         Value::ScalarPair(..) | Value::Scalar(_) => {
             let layout = ecx.layout_of(ty)?;
-            let ptr = ecx.memory.allocate(layout.size, layout.align, Some(MemoryKind::Stack))?;
-            let ptr: Pointer = ptr.into();
+            let ptr = ecx.memory.allocate(layout.size, layout.align, Some(MemoryKind::Stack))?.into();
             ecx.write_value_to_ptr(value, ptr, layout.align, ty)?;
             (ptr, layout.align)
         },

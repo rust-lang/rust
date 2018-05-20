@@ -96,7 +96,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
         ).expect("const_alloc_to_llvm: could not read relocation pointer") as u64;
         llvals.push(primval_to_llvm(
             cx,
-            Scalar::Ptr(MemoryPointer { alloc_id, offset: Size::from_bytes(ptr_offset) }),
+            MemoryPointer { alloc_id, offset: Size::from_bytes(ptr_offset) }.into(),
             &layout::Scalar {
                 value: layout::Primitive::Pointer,
                 valid_range: 0..=!0

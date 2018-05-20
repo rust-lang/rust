@@ -107,7 +107,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             // Casting to a reference or fn pointer is not permitted by rustc, no need to support it here.
             TyRawPtr(_) |
             TyInt(IntTy::Isize) |
-            TyUint(UintTy::Usize) => Ok(Scalar::Ptr(ptr)),
+            TyUint(UintTy::Usize) => Ok(ptr.into()),
             TyInt(_) | TyUint(_) => err!(ReadPointerAsBytes),
             _ => err!(Unimplemented(format!("ptr to {:?} cast", ty))),
         }

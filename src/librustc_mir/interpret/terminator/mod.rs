@@ -342,7 +342,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                         for (i, arg_local) in arg_locals.enumerate() {
                                             let field = layout.field(&self, i)?;
                                             let offset = layout.fields.offset(i);
-                                            let arg = Value::ByRef(ptr.offset(offset, &self)?,
+                                            let arg = Value::ByRef(ptr.ptr_offset(offset, &self)?,
                                                                    align.min(field.align));
                                             let dest =
                                                 self.eval_place(&mir::Place::Local(arg_local))?;

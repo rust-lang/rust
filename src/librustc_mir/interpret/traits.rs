@@ -35,7 +35,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
         let drop = ::monomorphize::resolve_drop_in_place(*self.tcx, ty);
         let drop = self.memory.create_fn_alloc(drop);
-        self.memory.write_ptr_sized_unsigned(vtable, ptr_align, Scalar::Ptr(drop))?;
+        self.memory.write_ptr_sized_unsigned(vtable, ptr_align, drop.into())?;
 
         let size_ptr = vtable.offset(ptr_size, &self)?;
         self.memory.write_ptr_sized_unsigned(size_ptr, ptr_align, Scalar::Bytes(size as u128))?;
@@ -47,7 +47,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let instance = self.resolve(def_id, substs)?;
                 let fn_ptr = self.memory.create_fn_alloc(instance);
                 let method_ptr = vtable.offset(ptr_size * (3 + i as u64), &self)?;
-                self.memory.write_ptr_sized_unsigned(method_ptr, ptr_align, Scalar::Ptr(fn_ptr))?;
+                self.memory.write_ptr_sized_unsigned(method_ptr, ptr_align, fn_ptr.into())?;
             }
         }
 

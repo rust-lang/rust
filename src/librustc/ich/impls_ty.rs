@@ -473,8 +473,6 @@ impl_stable_hash_for!(enum ::syntax::ast::Mutability {
     Mutable
 });
 
-impl_stable_hash_for!(struct mir::interpret::Pointer{primval});
-
 impl_stable_hash_for!(enum mir::interpret::Scalar {
     Bytes(b),
     Ptr(p),
