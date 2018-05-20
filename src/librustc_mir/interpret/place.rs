@@ -1,6 +1,6 @@
 use rustc::mir;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{self, Align, LayoutOf, TyLayout, Size};
+use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
 
 use rustc::mir::interpret::{GlobalId, Value, PrimVal, EvalResult, Pointer, MemoryPointer};
@@ -210,7 +210,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 };
                 let alloc = Machine::init_static(self, cid)?;
                 Place::Ptr {
-                    ptr: MemoryPointer::new(alloc, Size::from_bytes(0)).into(),
+                    ptr: MemoryPointer::zero(alloc).into(),
                     align: layout.align,
                     extra: PlaceExtra::None,
                 }

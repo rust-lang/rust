@@ -120,6 +120,10 @@ impl<'tcx> MemoryPointer {
         MemoryPointer { alloc_id, offset }
     }
 
+    pub fn zero(alloc_id: AllocId) -> Self {
+        MemoryPointer::new(alloc_id, Size::ZERO)
+    }
+
     pub(crate) fn wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> Self {
         MemoryPointer::new(
             self.alloc_id,
@@ -355,7 +359,7 @@ pub struct Allocation {
 
 impl Allocation {
     pub fn from_bytes(slice: &[u8], align: Align) -> Self {
-        let mut undef_mask = UndefMask::new(Size::from_bytes(0));
+        let mut undef_mask = UndefMask::new(Size::ZERO);
         undef_mask.grow(Size::from_bytes(slice.len() as u64), true);
         Self {
             bytes: slice.to_owned(),
@@ -467,7 +471,7 @@ impl UndefMask {
     pub fn new(size: Size) -> Self {
         let mut m = UndefMask {
             blocks: vec![],
-            len: Size::from_bytes(0),
+            len: Size::ZERO,
         };
         m.grow(size, false);
         m

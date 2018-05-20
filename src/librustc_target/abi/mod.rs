@@ -227,6 +227,8 @@ pub struct Size {
 }
 
 impl Size {
+    pub const ZERO: Size = Self::from_bytes(0);
+
     pub fn from_bits(bits: u64) -> Size {
         // Avoid potential overflow from `bits + 7`.
         Size::from_bytes(bits / 8 + ((bits % 8) + 7) / 8)
@@ -614,7 +616,7 @@ impl FieldPlacement {
 
     pub fn offset(&self, i: usize) -> Size {
         match *self {
-            FieldPlacement::Union(_) => Size::from_bytes(0),
+            FieldPlacement::Union(_) => Size::ZERO,
             FieldPlacement::Array { stride, count } => {
                 let i = i as u64;
                 assert!(i < count);

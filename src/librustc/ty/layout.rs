@@ -231,7 +231,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             LayoutDetails {
                 variants: Variants::Single { index: 0 },
                 fields: FieldPlacement::Arbitrary {
-                    offsets: vec![Size::from_bytes(0), b_offset],
+                    offsets: vec![Size::ZERO, b_offset],
                     memory_index: vec![0, 1]
                 },
                 abi: Abi::ScalarPair(a, b),
@@ -267,7 +267,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             };
 
             let mut sized = true;
-            let mut offsets = vec![Size::from_bytes(0); fields.len()];
+            let mut offsets = vec![Size::ZERO; fields.len()];
             let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
             let mut optimize = !repr.inhibit_struct_field_reordering_opt();
@@ -307,7 +307,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             // field 5 with offset 0 puts 0 in offsets[5].
             // At the bottom of this function, we use inverse_memory_index to produce memory_index.
 
-            let mut offset = Size::from_bytes(0);
+            let mut offset = Size::ZERO;
 
             if let StructKind::Prefixed(prefix_size, prefix_align) = kind {
                 if packed {
@@ -503,7 +503,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     fields: FieldPlacement::Union(0),
                     abi: Abi::Uninhabited,
                     align: dl.i8_align,
-                    size: Size::from_bytes(0)
+                    size: Size::ZERO
                 })
             }
 
@@ -575,7 +575,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     },
                     abi: Abi::Aggregate { sized: false },
                     align: element.align,
-                    size: Size::from_bytes(0)
+                    size: Size::ZERO
                 })
             }
             ty::TyStr => {
@@ -587,7 +587,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     },
                     abi: Abi::Aggregate { sized: false },
                     align: dl.i8_align,
-                    size: Size::from_bytes(0)
+                    size: Size::ZERO
                 })
             }
 
@@ -696,7 +696,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                             Align::from_bytes(repr_align, repr_align).unwrap());
                     }
 
-                    let mut size = Size::from_bytes(0);
+                    let mut size = Size::ZERO;
                     for field in &variants[0] {
                         assert!(!field.is_unsized());
 
@@ -908,7 +908,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 let (min_ity, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
 
                 let mut align = dl.aggregate_align;
-                let mut size = Size::from_bytes(0);
+                let mut size = Size::ZERO;
 
                 // We're interested in the smallest alignment, so start large.
                 let mut start_align = Align::from_bytes(256, 256).unwrap();
@@ -1078,7 +1078,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                             }
                             _ => bug!()
                         };
-                        if pair_offsets[0] == Size::from_bytes(0) &&
+                        if pair_offsets[0] == Size::ZERO &&
                             pair_offsets[1] == *offset &&
                             align == pair.align &&
                             size == pair.size {
@@ -1099,7 +1099,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                         variants: layout_variants,
                     },
                     fields: FieldPlacement::Arbitrary {
-                        offsets: vec![Size::from_bytes(0)],
+                        offsets: vec![Size::ZERO],
                         memory_index: vec![0]
                     },
                     abi,
@@ -1182,7 +1182,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         let build_variant_info = |n: Option<ast::Name>,
                                   flds: &[ast::Name],
                                   layout: TyLayout<'tcx>| {
-            let mut min_size = Size::from_bytes(0);
+            let mut min_size = Size::ZERO;
             let field_info: Vec<_> = flds.iter().enumerate().map(|(i, &name)| {
                 match layout.field(self, i) {
                     Err(err) => {
@@ -1567,7 +1567,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                     fields: FieldPlacement::Union(fields),
                     abi: Abi::Uninhabited,
                     align: tcx.data_layout.i8_align,
-                    size: Size::from_bytes(0)
+                    size: Size::ZERO
                 })
             }
 
@@ -1746,19 +1746,19 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
         match layout.abi {
             Abi::Scalar(ref scalar) => {
-                return Ok(scalar_niche(scalar, Size::from_bytes(0)));
+                return Ok(scalar_niche(scalar, Size::ZERO));
             }
             Abi::ScalarPair(ref a, ref b) => {
                 // HACK(nox): We iter on `b` and then `a` because `max_by_key`
                 // returns the last maximum.
                 let niche = iter::once((b, a.value.size(self).abi_align(b.value.align(self))))
-                    .chain(iter::once((a, Size::from_bytes(0))))
+                    .chain(iter::once((a, Size::ZERO)))
                     .filter_map(|(scalar, offset)| scalar_niche(scalar, offset))
                     .max_by_key(|niche| niche.available);
                 return Ok(niche);
             }
             Abi::Vector { ref element, .. } => {
-                return Ok(scalar_niche(element, Size::from_bytes(0)));
+                return Ok(scalar_niche(element, Size::ZERO));
             }
             _ => {}
         }

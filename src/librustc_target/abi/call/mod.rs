@@ -83,7 +83,7 @@ impl ArgAttributes {
     pub fn new() -> Self {
         ArgAttributes {
             regular: ArgAttribute::default(),
-            pointee_size: Size::from_bytes(0),
+            pointee_size: Size::ZERO,
             pointee_align: None,
         }
     }
@@ -206,7 +206,7 @@ impl From<Uniform> for CastTarget {
     fn from(uniform: Uniform) -> CastTarget {
         CastTarget {
             prefix: [None; 8],
-            prefix_chunk: Size::from_bytes(0),
+            prefix_chunk: Size::ZERO,
             rest: uniform
         }
     }
@@ -274,7 +274,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
 
             Abi::ScalarPair(..) |
             Abi::Aggregate { .. } => {
-                let mut total = Size::from_bytes(0);
+                let mut total = Size::ZERO;
                 let mut result = None;
 
                 let is_union = match self.fields {

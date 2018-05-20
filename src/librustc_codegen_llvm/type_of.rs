@@ -40,7 +40,7 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             if use_x86_mmx {
                 return Type::x86_mmx(cx)
             } else {
-                let element = layout.scalar_llvm_type_at(cx, element, Size::from_bytes(0));
+                let element = layout.scalar_llvm_type_at(cx, element, Size::ZERO);
                 return Type::vector(&element, count);
             }
         }
@@ -120,7 +120,7 @@ fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     let field_count = layout.fields.count();
 
     let mut packed = false;
-    let mut offset = Size::from_bytes(0);
+    let mut offset = Size::ZERO;
     let mut prev_align = layout.align;
     let mut result: Vec<Type> = Vec::with_capacity(1 + field_count * 2);
     for i in layout.fields.index_by_increasing_offset() {
@@ -265,7 +265,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                     );
                     FnType::new(cx, sig, &[]).llvm_type(cx).ptr_to()
                 }
-                _ => self.scalar_llvm_type_at(cx, scalar, Size::from_bytes(0))
+                _ => self.scalar_llvm_type_at(cx, scalar, Size::ZERO)
             };
             cx.scalar_lltypes.borrow_mut().insert(self.ty, llty);
             return llty;
@@ -372,7 +372,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         }
 
         let offset = if index == 0 {
-            Size::from_bytes(0)
+            Size::ZERO
         } else {
             a.value.size(cx).abi_align(b.value.align(cx))
         };

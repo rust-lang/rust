@@ -73,12 +73,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> MemoryPointer {
         let id = self.tcx.alloc_map.lock().create_fn_alloc(instance);
-        MemoryPointer::new(id, Size::from_bytes(0))
+        MemoryPointer::zero(id)
     }
 
     pub fn allocate_bytes(&mut self, bytes: &[u8]) -> MemoryPointer {
         let id = self.tcx.allocate_bytes(bytes);
-        MemoryPointer::new(id, Size::from_bytes(0))
+        MemoryPointer::zero(id)
     }
 
     /// kind is `None` for statics
@@ -110,7 +110,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         kind: Option<MemoryKind<M::MemoryKinds>>,
     ) -> EvalResult<'tcx, MemoryPointer> {
         let id = self.allocate_value(Allocation::undef(size, align), kind)?;
-        Ok(MemoryPointer::new(id, Size::from_bytes(0)))
+        Ok(MemoryPointer::zero(id))
     }
 
     pub fn reallocate(
@@ -448,7 +448,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             if !relocations.is_empty() {
                 msg.clear();
                 write!(msg, "{:1$}", "", prefix_len).unwrap(); // Print spaces.
-                let mut pos = Size::from_bytes(0);
+                let mut pos = Size::ZERO;
                 let relocation_width = (self.pointer_size().bytes() - 1) * 3;
                 for (i, target_id) in relocations {
                     // this `as usize` is fine, since we can't print more chars than `usize::MAX`
@@ -847,8 +847,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     fn check_relocation_edges(&self, ptr: MemoryPointer, size: Size) -> EvalResult<'tcx> {
-        let overlapping_start = self.relocations(ptr, Size::from_bytes(0))?.len();
-        let overlapping_end = self.relocations(ptr.offset(size, self)?, Size::from_bytes(0))?.len();
+        let overlapping_start = self.relocations(ptr, Size::ZERO)?.len();
+        let overlapping_end = self.relocations(ptr.offset(size, self)?, Size::ZERO)?.len();
         if overlapping_start + overlapping_end != 0 {
             return err!(ReadPointerAsBytes);
         }

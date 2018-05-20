@@ -109,7 +109,7 @@ fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>)
         abi::FieldPlacement::Arbitrary { .. } => {
             // Structures are split up into a series of 64-bit integer chunks, but any aligned
             // doubles not part of another aggregate are passed as floats.
-            let mut last_offset = Size::from_bytes(0);
+            let mut last_offset = Size::ZERO;
 
             for i in 0..arg.layout.fields.count() {
                 let field = arg.layout.field(cx, i);

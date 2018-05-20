@@ -1019,7 +1019,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 .lock()
                 .intern_static(gid.instance.def_id());
             let layout = self.layout_of(ty)?;
-            let ptr = MemoryPointer::new(alloc_id, Size::from_bytes(0));
+            let ptr = MemoryPointer::zero(alloc_id);
             return Ok(Value::ByRef(ptr.into(), layout.align))
         }
         let cv = self.const_eval(gid)?;
