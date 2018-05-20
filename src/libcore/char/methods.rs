@@ -779,7 +779,7 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_lowercase(self) -> ToLowercase {
-        ToLowercase(CaseMappingIter::new(conversions::to_lower(self)))
+        ToLowercase(conversions::Lowercase.lookup(self))
     }
 
     /// Returns an iterator that yields the uppercase equivalent of a `char`
@@ -865,7 +865,7 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_uppercase(self) -> ToUppercase {
-        ToUppercase(CaseMappingIter::new(conversions::to_upper(self)))
+        ToUppercase(conversions::Uppercase.lookup(self))
     }
 
     /// Checks if the value is within the ASCII range.

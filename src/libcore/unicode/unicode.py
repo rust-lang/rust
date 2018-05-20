@@ -41,6 +41,7 @@ preamble = '''// Copyright 2012-2016 The Rust Project Developers. See the COPYRI
 
 use unicode::version::UnicodeVersion;
 use unicode::bool_trie::{BoolTrie, SmallBoolTrie};
+use unicode::mapping_table::MappingTable;
 '''
 
 # Mapping taken from Table 12 from:
@@ -279,7 +280,10 @@ def escape_char(c):
     return "'\\u{{{:x}}}'".format(c) if c != 0 else "'\\0'"
 
 def emit_table(f, name, t_data):
-    f.write("    const {}: &[(char, [char; 3])] = &[\n".format(name))
+    f.write("""
+    pub const {}: super::MappingTable = super::MappingTable {{
+        table: &[
+""".format(name))
     data = (
         part
         for dat in t_data
@@ -290,8 +294,11 @@ def emit_table(f, name, t_data):
             '{}])'.format(escape_char(dat[1][2])),
         )
     )
-    format_table_content(f, data, 8)
-    f.write("\n    ];\n\n")
+    format_table_content(f, data, 12)
+    f.write("""
+        ],
+    };
+""")
 
 def compute_trie(rawdata, chunksize):
     root = []
@@ -400,29 +407,9 @@ def emit_property_module(f, mod, tbl, emit):
 
 def emit_conversions_module(f, to_upper, to_lower, to_title):
     f.write("pub mod conversions {")
-    f.write("""
-    pub fn to_lower(c: char) -> [char; 3] {
-        match bsearch_case_table(c, to_lowercase_table) {
-            None        => [c, '\\0', '\\0'],
-            Some(index) => to_lowercase_table[index].1,
-        }
-    }
-
-    pub fn to_upper(c: char) -> [char; 3] {
-        match bsearch_case_table(c, to_uppercase_table) {
-            None        => [c, '\\0', '\\0'],
-            Some(index) => to_uppercase_table[index].1,
-        }
-    }
-
-    fn bsearch_case_table(c: char, table: &[(char, [char; 3])]) -> Option<usize> {
-        table.binary_search_by(|&(key, _)| key.cmp(&c)).ok()
-    }
-
-""")
-    emit_table(f, "to_lowercase_table",
+    emit_table(f, "Lowercase",
         sorted(to_lower.items(), key=operator.itemgetter(0)))
-    emit_table(f, "to_uppercase_table",
+    emit_table(f, "Uppercase",
         sorted(to_upper.items(), key=operator.itemgetter(0)))
     f.write("}\n\n")
 
