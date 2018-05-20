@@ -57,6 +57,7 @@ use tokenstream::{self, Delimited, ThinTokenStream, TokenTree, TokenStream};
 use symbol::{Symbol, keywords};
 use util::ThinVec;
 
+use std::borrow::Cow;
 use std::cmp;
 use std::mem;
 use std::path::{self, Path, PathBuf};
@@ -228,7 +229,7 @@ pub struct Parser<'a> {
     prev_token_kind: PrevTokenKind,
     pub restrictions: Restrictions,
     /// Used to determine the path to externally loaded source files
-    pub directory: Directory,
+    pub directory: Directory<'a>,
     /// Whether to parse sub-modules in other files.
     pub recurse_into_file_modules: bool,
     /// Name of the root module this parser originated from. If `None`, then the
@@ -535,7 +536,7 @@ enum TokenExpectType {
 impl<'a> Parser<'a> {
     pub fn new(sess: &'a ParseSess,
                tokens: TokenStream,
-               directory: Option<Directory>,
+               directory: Option<Directory<'a>>,
                recurse_into_file_modules: bool,
                desugar_doc_comments: bool)
                -> Self {
@@ -549,7 +550,7 @@ impl<'a> Parser<'a> {
             restrictions: Restrictions::empty(),
             recurse_into_file_modules,
             directory: Directory {
-                path: PathBuf::new(),
+                path: Cow::from(PathBuf::new()),
                 ownership: DirectoryOwnership::Owned { relative: None }
             },
             root_module_name: None,
@@ -572,9 +573,9 @@ impl<'a> Parser<'a> {
         if let Some(directory) = directory {
             parser.directory = directory;
         } else if !parser.span.source_equal(&DUMMY_SP) {
-            if let FileName::Real(path) = sess.codemap().span_to_unmapped_path(parser.span) {
-                parser.directory.path = path;
-                parser.directory.path.pop();
+            if let FileName::Real(mut path) = sess.codemap().span_to_unmapped_path(parser.span) {
+                path.pop();
+                parser.directory.path = Cow::from(path);
             }
         }
 
@@ -6008,10 +6009,10 @@ impl<'a> Parser<'a> {
 
     fn push_directory(&mut self, id: Ident, attrs: &[Attribute]) {
         if let Some(path) = attr::first_attr_value_str_by_name(attrs, "path") {
-            self.directory.path.push(&path.as_str());
+            self.directory.path.to_mut().push(&path.as_str());
             self.directory.ownership = DirectoryOwnership::Owned { relative: None };
         } else {
-            self.directory.path.push(&id.name.as_str());
+            self.directory.path.to_mut().push(&id.name.as_str());
         }
     }
 
