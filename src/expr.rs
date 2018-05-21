@@ -118,8 +118,7 @@ pub fn format_expr(
         | ast::ExprKind::While(..)
         | ast::ExprKind::WhileLet(..) => to_control_flow(expr, expr_type)
             .and_then(|control_flow| control_flow.rewrite(context, shape)),
-        // FIXME(topecongiro): Handle label on a block (#2722).
-        ast::ExprKind::Block(ref block, _) => {
+        ast::ExprKind::Block(ref block, opt_label) => {
             match expr_type {
                 ExprType::Statement => {
                     if is_unsafe_block(block) {
@@ -131,9 +130,11 @@ pub fn format_expr(
                         rw
                     } else {
                         let prefix = block_prefix(context, block, shape)?;
+                        let label_string = rewrite_label(opt_label);
+
                         rewrite_block_with_visitor(
                             context,
-                            &prefix,
+                            &format!("{}{}", &prefix, &label_string),
                             block,
                             Some(&expr.attrs),
                             shape,
