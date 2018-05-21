@@ -837,7 +837,7 @@ impl<T> Vec<T> {
 
         // space for the new element
         if len == self.buf.cap() {
-            self.buf.double();
+            self.reserve(1);
         }
 
         unsafe {
@@ -1057,7 +1057,7 @@ impl<T> Vec<T> {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
         if self.len == self.buf.cap() {
-            self.buf.double();
+            self.reserve(1);
         }
         unsafe {
             let end = self.as_mut_ptr().offset(self.len as isize);
