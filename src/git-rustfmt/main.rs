@@ -15,13 +15,14 @@ extern crate log;
 extern crate rustfmt_nightly as rustfmt;
 
 use std::env;
+use std::io::stdout;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 
 use getopts::{Matches, Options};
 
-use rustfmt::{format_and_emit_report, load_config, CliOptions, Input};
+use rustfmt::{format_input, load_config, CliOptions, Input};
 
 fn prune_files(files: Vec<&str>) -> Vec<&str> {
     let prefixes: Vec<_> = files
@@ -73,7 +74,14 @@ fn fmt_files(files: &[&str]) -> i32 {
 
     let mut exit_code = 0;
     for file in files {
-        let summary = format_and_emit_report(Input::File(PathBuf::from(file)), &config).unwrap();
+        let (summary, report) = format_input(
+            Input::File(PathBuf::from(file)),
+            &config,
+            Some(&mut stdout()),
+        ).unwrap();
+        if report.has_warnings() {
+            eprintln!("{}", report);
+        }
         if !summary.has_no_errors() {
             exit_code = 1;
         }

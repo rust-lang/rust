@@ -36,13 +36,13 @@ where
     T: Write,
 {
     if config.emit_mode() == EmitMode::Checkstyle {
-        ::checkstyle::output_header(out)?;
+        write!(out, "{}", ::checkstyle::header())?;
     }
     for &(ref filename, ref text) in file_map {
         write_file(text, filename, out, config)?;
     }
     if config.emit_mode() == EmitMode::Checkstyle {
-        ::checkstyle::output_footer(out)?;
+        write!(out, "{}", ::checkstyle::footer())?;
     }
 
     Ok(())

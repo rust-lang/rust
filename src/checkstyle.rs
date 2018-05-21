@@ -13,24 +13,16 @@ use std::path::Path;
 
 use rustfmt_diff::{DiffLine, Mismatch};
 
-pub fn output_header<T>(out: &mut T) -> Result<(), io::Error>
-where
-    T: Write,
-{
+pub fn header() -> String {
     let mut xml_heading = String::new();
     xml_heading.push_str("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
     xml_heading.push_str("\n");
     xml_heading.push_str("<checkstyle version=\"4.3\">");
-    write!(out, "{}", xml_heading)
+    xml_heading
 }
 
-pub fn output_footer<T>(out: &mut T) -> Result<(), io::Error>
-where
-    T: Write,
-{
-    let mut xml_tail = String::new();
-    xml_tail.push_str("</checkstyle>\n");
-    write!(out, "{}", xml_tail)
+pub fn footer() -> String {
+    "</checkstyle>\n".to_owned()
 }
 
 pub fn output_checkstyle_file<T>(

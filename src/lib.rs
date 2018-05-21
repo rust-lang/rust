@@ -13,11 +13,11 @@
 #![allow(unused_attributes)]
 #![feature(type_ascription)]
 #![feature(unicode_internals)]
+#![feature(extern_prelude)]
 
 #[macro_use]
 extern crate derive_new;
 extern crate diff;
-#[macro_use]
 extern crate failure;
 extern crate itertools;
 #[cfg(test)]
@@ -32,14 +32,13 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate syntax;
-extern crate term;
 extern crate toml;
 extern crate unicode_segmentation;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
-use std::io::{self, stdout, Write};
+use std::io::{self, Write};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -55,13 +54,14 @@ use comment::{CharClasses, FullCodeCharKind, LineClasses};
 use failure::Fail;
 use issues::{BadIssueSeeker, Issue};
 use shape::Indent;
-use utils::use_colored_tty;
 use visitor::{FmtVisitor, SnippetProvider};
 
+pub use checkstyle::{footer as checkstyle_footer, header as checkstyle_header};
 pub use config::summary::Summary;
 pub use config::{
     load_config, CliOptions, Color, Config, EmitMode, FileLines, FileName, Verbosity,
 };
+pub use utils::use_colored_tty;
 
 #[macro_use]
 mod utils;
@@ -129,6 +129,8 @@ pub enum ErrorKind {
     BadAttr,
     #[fail(display = "io error: {}", _0)]
     IoError(io::Error),
+    #[fail(display = "Version mismatch")]
+    VersionMismatch,
 }
 
 impl From<io::Error> for ErrorKind {
@@ -168,7 +170,7 @@ impl FormattingError {
             ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace | ErrorKind::IoError(_) => {
                 "internal error:"
             }
-            ErrorKind::LicenseCheck | ErrorKind::BadAttr => "error:",
+            ErrorKind::LicenseCheck | ErrorKind::BadAttr | ErrorKind::VersionMismatch => "error:",
             ErrorKind::BadIssue(_) | ErrorKind::DeprecatedAttr => "warning:",
         }
     }
@@ -203,7 +205,7 @@ impl FormattingError {
 }
 
 #[derive(Clone)]
-struct FormatReport {
+pub struct FormatReport {
     // Maps stringified file paths to their associated formatting errors.
     internal: Rc<RefCell<(FormatErrorMap, ReportedErrors)>>,
 }
@@ -246,7 +248,8 @@ impl FormatReport {
                 ErrorKind::BadIssue(_)
                 | ErrorKind::LicenseCheck
                 | ErrorKind::DeprecatedAttr
-                | ErrorKind::BadAttr => {
+                | ErrorKind::BadAttr
+                | ErrorKind::VersionMismatch => {
                     errs.has_check_errors = true;
                 }
                 _ => {}
@@ -263,11 +266,11 @@ impl FormatReport {
             .sum()
     }
 
-    fn has_warnings(&self) -> bool {
+    pub fn has_warnings(&self) -> bool {
         self.warning_count() > 0
     }
 
-    fn print_warnings_fancy(
+    pub fn fancy_print(
         &self,
         mut t: Box<term::Terminal<Output = io::Stderr>>,
     ) -> Result<(), term::Error> {
@@ -749,12 +752,22 @@ fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> {
     Some(result)
 }
 
+#[derive(Debug)]
+pub enum Input {
+    File(PathBuf),
+    Text(String),
+}
+
 pub fn format_input<T: Write>(
     input: Input,
     config: &Config,
     out: Option<&mut T>,
-) -> Result<Summary, (ErrorKind, Summary)> {
-    syntax::with_globals(|| format_input_inner(input, config, out)).map(|tup| tup.0)
+) -> Result<(Summary, FormatReport), (ErrorKind, Summary)> {
+    if !config.version_meets_requirement() {
+        return Err((ErrorKind::VersionMismatch, Summary::default()));
+    }
+
+    syntax::with_globals(|| format_input_inner(input, config, out)).map(|tup| (tup.0, tup.2))
 }
 
 fn format_input_inner<T: Write>(
@@ -948,61 +961,6 @@ fn get_modified_lines(
         });
     }
     Ok(ModifiedLines { chunks })
-}
-
-#[derive(Debug)]
-pub enum Input {
-    File(PathBuf),
-    Text(String),
-}
-
-pub fn format_and_emit_report(input: Input, config: &Config) -> Result<Summary, failure::Error> {
-    if !config.version_meets_requirement() {
-        return Err(format_err!("Version mismatch"));
-    }
-    let out = &mut stdout();
-    match syntax::with_globals(|| format_input_inner(input, config, Some(out))) {
-        Ok((summary, _, report)) => {
-            if report.has_warnings() {
-                match term::stderr() {
-                    Some(ref t)
-                        if use_colored_tty(config.color())
-                            && t.supports_color()
-                            && t.supports_attr(term::Attr::Bold) =>
-                    {
-                        match report.print_warnings_fancy(term::stderr().unwrap()) {
-                            Ok(..) => (),
-                            Err(..) => panic!("Unable to write to stderr: {}", report),
-                        }
-                    }
-                    _ => eprintln!("{}", report),
-                }
-            }
-
-            Ok(summary)
-        }
-        Err((msg, mut summary)) => {
-            eprintln!("Error writing files: {}", msg);
-            summary.add_operational_error();
-            Ok(summary)
-        }
-    }
-}
-
-pub fn emit_pre_matter(config: &Config) -> Result<(), ErrorKind> {
-    if config.emit_mode() == EmitMode::Checkstyle {
-        let mut out = &mut stdout();
-        checkstyle::output_header(&mut out)?;
-    }
-    Ok(())
-}
-
-pub fn emit_post_matter(config: &Config) -> Result<(), ErrorKind> {
-    if config.emit_mode() == EmitMode::Checkstyle {
-        let mut out = &mut stdout();
-        checkstyle::output_footer(&mut out)?;
-    }
-    Ok(())
 }
 
 #[cfg(test)]

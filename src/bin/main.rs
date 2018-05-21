@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![cfg(not(test))]
+#![feature(extern_prelude)]
 
 extern crate env_logger;
 #[macro_use]
@@ -27,8 +28,8 @@ use failure::err_msg;
 use getopts::{Matches, Options};
 
 use rustfmt::{
-    emit_post_matter, emit_pre_matter, format_and_emit_report, load_config, CliOptions, Color,
-    Config, EmitMode, ErrorKind, FileLines, FileName, Input, Summary, Verbosity,
+    checkstyle_footer, checkstyle_header, format_input, load_config, use_colored_tty, CliOptions,
+    Color, Config, EmitMode, ErrorKind, FileLines, FileName, Input, Summary, Verbosity,
 };
 
 fn main() {
@@ -221,12 +222,12 @@ fn execute(opts: &Options) -> Result<(ExitCodeMode, Summary), failure::Error> {
             }
 
             let mut error_summary = Summary::default();
-            emit_pre_matter(&config)?;
+            emit_pre_matter(&config);
             match format_and_emit_report(Input::Text(input), &config) {
                 Ok(summary) => error_summary.add(summary),
                 Err(_) => error_summary.add_operational_error(),
             }
-            emit_post_matter(&config)?;
+            emit_post_matter(&config);
 
             Ok((ExitCodeMode::Normal, error_summary))
         }
@@ -251,7 +252,7 @@ fn format(
         }
     }
 
-    emit_pre_matter(&config)?;
+    emit_pre_matter(&config);
     let mut error_summary = Summary::default();
 
     for file in files {
@@ -289,7 +290,7 @@ fn format(
             }
         }
     }
-    emit_post_matter(&config)?;
+    emit_post_matter(&config);
 
     // If we were given a path via dump-minimal-config, output any options
     // that were used during formatting as TOML.
@@ -305,6 +306,49 @@ fn format(
         ExitCodeMode::Normal
     };
     Ok((exit_mode, error_summary))
+}
+
+fn format_and_emit_report(input: Input, config: &Config) -> Result<Summary, failure::Error> {
+    let out = &mut stdout();
+
+    match format_input(input, config, Some(out)) {
+        Ok((summary, report)) => {
+            if report.has_warnings() {
+                match term::stderr() {
+                    Some(ref t)
+                        if use_colored_tty(config.color())
+                            && t.supports_color()
+                            && t.supports_attr(term::Attr::Bold) =>
+                    {
+                        match report.fancy_print(term::stderr().unwrap()) {
+                            Ok(..) => (),
+                            Err(..) => panic!("Unable to write to stderr: {}", report),
+                        }
+                    }
+                    _ => eprintln!("{}", report),
+                }
+            }
+
+            Ok(summary)
+        }
+        Err((msg, mut summary)) => {
+            eprintln!("Error writing files: {}", msg);
+            summary.add_operational_error();
+            Ok(summary)
+        }
+    }
+}
+
+fn emit_pre_matter(config: &Config) {
+    if config.emit_mode() == EmitMode::Checkstyle {
+        println!("{}", checkstyle_header());
+    }
+}
+
+fn emit_post_matter(config: &Config) {
+    if config.emit_mode() == EmitMode::Checkstyle {
+        println!("{}", checkstyle_footer());
+    }
 }
 
 fn print_usage_to_stdout(opts: &Options, reason: &str) {

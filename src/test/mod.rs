@@ -245,7 +245,7 @@ fn stdin_formatting_smoke_test() {
     let mut config = Config::default();
     config.set().emit_mode(EmitMode::Stdout);
     let mut buf: Vec<u8> = vec![];
-    let error_summary = format_input(input, &config, Some(&mut buf)).unwrap();
+    let (error_summary, _) = format_input(input, &config, Some(&mut buf)).unwrap();
     assert!(error_summary.has_no_errors());
     //eprintln!("{:?}", );
     assert_eq!(buf, "fn main() {}\n".as_bytes());
@@ -280,7 +280,7 @@ fn format_lines_errors_are_reported() {
     let input = Input::Text(format!("fn {}() {{}}", long_identifier));
     let mut config = Config::default();
     config.set().error_on_line_overflow(true);
-    let error_summary = format_input::<io::Stdout>(input, &config, None).unwrap();
+    let (error_summary, _) = format_input::<io::Stdout>(input, &config, None).unwrap();
     assert!(error_summary.has_formatting_errors());
 }
 
@@ -291,7 +291,7 @@ fn format_lines_errors_are_reported_with_tabs() {
     let mut config = Config::default();
     config.set().error_on_line_overflow(true);
     config.set().hard_tabs(true);
-    let error_summary = format_input::<io::Stdout>(input, &config, None).unwrap();
+    let (error_summary, _) = format_input::<io::Stdout>(input, &config, None).unwrap();
     assert!(error_summary.has_formatting_errors());
 }
 
@@ -776,7 +776,7 @@ impl ConfigCodeBlock {
         config.set().emit_mode(EmitMode::Stdout);
         let mut buf: Vec<u8> = vec![];
 
-        let error_summary = format_input(input, &config, Some(&mut buf)).unwrap();
+        let (error_summary, _) = format_input(input, &config, Some(&mut buf)).unwrap();
 
         !self.has_parsing_errors(error_summary)
             && !self.formatted_has_diff(&String::from_utf8(buf).unwrap())

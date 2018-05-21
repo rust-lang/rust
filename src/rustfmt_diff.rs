@@ -13,7 +13,6 @@ use diff;
 use std::collections::VecDeque;
 use std::io;
 use std::io::Write;
-use term;
 use utils::use_colored_tty;
 
 #[derive(Debug, PartialEq)]
