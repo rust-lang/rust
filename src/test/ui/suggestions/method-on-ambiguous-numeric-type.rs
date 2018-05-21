@@ -9,10 +9,10 @@
 // except according to those terms.
 
 fn main() {
-    let x = 2.0.recip();
-    //~^ ERROR can't call method `recip` on ambiguous numeric type `{float}`
+    let x = 2.0.neg();
+    //~^ ERROR can't call method `neg` on ambiguous numeric type `{float}`
     let y = 2.0;
-    let x = y.recip();
-    //~^ ERROR can't call method `recip` on ambiguous numeric type `{float}`
+    let x = y.neg();
+    //~^ ERROR can't call method `neg` on ambiguous numeric type `{float}`
     println!("{:?}", x);
 }

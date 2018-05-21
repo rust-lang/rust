@@ -4080,61 +4080,6 @@ pub enum FpCategory {
     Normal,
 }
 
-// Technically private and only exposed for coretests:
-#[doc(hidden)]
-#[unstable(feature = "float_internals",
-           reason = "internal routines only exposed for testing",
-           issue = "0")]
-pub trait Float: Sized {
-    /// Type used by `to_bits` and `from_bits`.
-    type Bits;
-
-    /// Returns `true` if this value is NaN and false otherwise.
-    fn is_nan(self) -> bool;
-
-    /// Returns `true` if this value is positive infinity or negative infinity and
-    /// false otherwise.
-    fn is_infinite(self) -> bool;
-
-    /// Returns `true` if this number is neither infinite nor NaN.
-    fn is_finite(self) -> bool;
-
-    /// Returns `true` if this number is neither zero, infinite, denormal, or NaN.
-    fn is_normal(self) -> bool;
-
-    /// Returns the category that this number falls into.
-    fn classify(self) -> FpCategory;
-
-    /// Returns `true` if `self` is positive, including `+0.0` and
-    /// `Float::infinity()`.
-    fn is_sign_positive(self) -> bool;
-
-    /// Returns `true` if `self` is negative, including `-0.0` and
-    /// `Float::neg_infinity()`.
-    fn is_sign_negative(self) -> bool;
-
-    /// Take the reciprocal (inverse) of a number, `1/x`.
-    fn recip(self) -> Self;
-
-    /// Convert radians to degrees.
-    fn to_degrees(self) -> Self;
-
-    /// Convert degrees to radians.
-    fn to_radians(self) -> Self;
-
-    /// Returns the maximum of the two numbers.
-    fn max(self, other: Self) -> Self;
-
-    /// Returns the minimum of the two numbers.
-    fn min(self, other: Self) -> Self;
-
-    /// Raw transmutation to integer.
-    fn to_bits(self) -> Self::Bits;
-
-    /// Raw transmutation from integer.
-    fn from_bits(v: Self::Bits) -> Self;
-}
-
 macro_rules! from_str_radix_int_impl {
     ($($t:ty)*) => {$(
         #[stable(feature = "rust1", since = "1.0.0")]

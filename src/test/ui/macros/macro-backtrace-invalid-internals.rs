@@ -48,13 +48,13 @@ macro_rules! fake_anon_field_expr {
 
 macro_rules! real_method_stmt {
      () => {
-          2.0.recip() //~ ERROR can't call method `recip` on ambiguous numeric type `{float}`
+          2.0.neg() //~ ERROR can't call method `neg` on ambiguous numeric type `{float}`
      }
 }
 
 macro_rules! real_method_expr {
      () => {
-          2.0.recip() //~ ERROR can't call method `recip` on ambiguous numeric type `{float}`
+          2.0.neg() //~ ERROR can't call method `neg` on ambiguous numeric type `{float}`
      }
 }
 
