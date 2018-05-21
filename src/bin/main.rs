@@ -28,7 +28,7 @@ use getopts::{Matches, Options};
 
 use rustfmt::{
     emit_post_matter, emit_pre_matter, format_and_emit_report, load_config, CliOptions, Color,
-    Config, ErrorKind, FileLines, FileName, Input, Summary, Verbosity, WriteMode,
+    Config, EmitMode, ErrorKind, FileLines, FileName, Input, Summary, Verbosity,
 };
 
 fn main() {
@@ -36,10 +36,10 @@ fn main() {
     let opts = make_opts();
 
     let exit_code = match execute(&opts) {
-        Ok((write_mode, summary)) => {
+        Ok((exit_mode, summary)) => {
             if summary.has_operational_errors() || summary.has_parsing_errors()
                 || ((summary.has_diff || summary.has_check_errors())
-                    && write_mode == WriteMode::Check)
+                    && exit_mode == ExitCodeMode::Check)
             {
                 1
             } else {
@@ -172,26 +172,26 @@ fn is_nightly() -> bool {
         .unwrap_or(false)
 }
 
-fn execute(opts: &Options) -> Result<(WriteMode, Summary), failure::Error> {
+fn execute(opts: &Options) -> Result<(ExitCodeMode, Summary), failure::Error> {
     let matches = opts.parse(env::args().skip(1))?;
     let options = GetOptsOptions::from_matches(&matches)?;
 
     match determine_operation(&matches)? {
         Operation::Help(HelpOp::None) => {
             print_usage_to_stdout(opts, "");
-            Ok((WriteMode::None, Summary::default()))
+            Ok((ExitCodeMode::Normal, Summary::default()))
         }
         Operation::Help(HelpOp::Config) => {
             Config::print_docs(&mut stdout(), options.unstable_features);
-            Ok((WriteMode::None, Summary::default()))
+            Ok((ExitCodeMode::Normal, Summary::default()))
         }
         Operation::Help(HelpOp::FileLines) => {
             print_help_file_lines();
-            Ok((WriteMode::None, Summary::default()))
+            Ok((ExitCodeMode::Normal, Summary::default()))
         }
         Operation::Version => {
             print_version();
-            Ok((WriteMode::None, Summary::default()))
+            Ok((ExitCodeMode::Normal, Summary::default()))
         }
         Operation::ConfigOutputDefault { path } => {
             let toml = Config::default().all_options().to_toml().map_err(err_msg)?;
@@ -201,14 +201,14 @@ fn execute(opts: &Options) -> Result<(WriteMode, Summary), failure::Error> {
             } else {
                 io::stdout().write_all(toml.as_bytes())?;
             }
-            Ok((WriteMode::None, Summary::default()))
+            Ok((ExitCodeMode::Normal, Summary::default()))
         }
         Operation::Stdin { input } => {
             // try to read config from local directory
             let (mut config, _) = load_config(Some(Path::new(".")), Some(options.clone()))?;
 
-            // write_mode is always Display for Stdin.
-            config.set().write_mode(WriteMode::Display);
+            // emit mode is always Stdout for Stdin.
+            config.set().emit_mode(EmitMode::Stdout);
             config.set().verbose(Verbosity::Quiet);
 
             // parse file_lines
@@ -228,7 +228,7 @@ fn execute(opts: &Options) -> Result<(WriteMode, Summary), failure::Error> {
             }
             emit_post_matter(&config)?;
 
-            Ok((WriteMode::Display, error_summary))
+            Ok((ExitCodeMode::Normal, error_summary))
         }
         Operation::Format {
             files,
@@ -241,7 +241,7 @@ fn format(
     files: Vec<PathBuf>,
     minimal_config_path: Option<String>,
     options: GetOptsOptions,
-) -> Result<(WriteMode, Summary), failure::Error> {
+) -> Result<(ExitCodeMode, Summary), failure::Error> {
     options.verify_file_lines(&files);
     let (config, config_path) = load_config(None, Some(options.clone()))?;
 
@@ -299,7 +299,12 @@ fn format(
         file.write_all(toml.as_bytes())?;
     }
 
-    Ok((config.write_mode(), error_summary))
+    let exit_mode = if options.check {
+        ExitCodeMode::Check
+    } else {
+        ExitCodeMode::Normal
+    };
+    Ok((exit_mode, error_summary))
 }
 
 fn print_usage_to_stdout(opts: &Options, reason: &str) {
@@ -406,12 +411,13 @@ fn determine_operation(matches: &Matches) -> Result<Operation, ErrorKind> {
     })
 }
 
-const STABLE_WRITE_MODES: [WriteMode; 4] = [
-    WriteMode::Replace,
-    WriteMode::Overwrite,
-    WriteMode::Display,
-    WriteMode::Check,
-];
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+enum ExitCodeMode {
+    Normal,
+    Check,
+}
+
+const STABLE_EMIT_MODES: [EmitMode; 3] = [EmitMode::Files, EmitMode::Stdout, EmitMode::Diff];
 
 /// Parsed command line options.
 #[derive(Clone, Debug, Default)]
@@ -420,7 +426,8 @@ struct GetOptsOptions {
     quiet: bool,
     verbose: bool,
     config_path: Option<PathBuf>,
-    write_mode: WriteMode,
+    emit_mode: EmitMode,
+    backup: bool,
     check: bool,
     color: Option<Color>,
     file_lines: FileLines, // Default is all lines in all files.
@@ -463,19 +470,19 @@ impl GetOptsOptions {
             if options.check {
                 return Err(format_err!("Invalid to use `--emit` and `--check`"));
             }
-            if let Ok(write_mode) = write_mode_from_emit_str(emit_str) {
-                options.write_mode = write_mode;
+            if let Ok(emit_mode) = emit_mode_from_emit_str(emit_str) {
+                options.emit_mode = emit_mode;
             } else {
                 return Err(format_err!("Invalid value for `--emit`"));
             }
         }
 
-        if options.write_mode == WriteMode::Overwrite && matches.opt_present("backup") {
-            options.write_mode = WriteMode::Replace;
+        if matches.opt_present("backup") {
+            options.backup = true;
         }
 
         if !rust_nightly {
-            if !STABLE_WRITE_MODES.contains(&options.write_mode) {
+            if !STABLE_EMIT_MODES.contains(&options.emit_mode) {
                 return Err(format_err!(
                     "Invalid value for `--emit` - using an unstable \
                      value without `--unstable-features`",
@@ -524,9 +531,12 @@ impl CliOptions for GetOptsOptions {
             config.set().error_on_unformatted(error_on_unformatted);
         }
         if self.check {
-            config.set().write_mode(WriteMode::Check);
+            config.set().emit_mode(EmitMode::Diff);
         } else {
-            config.set().write_mode(self.write_mode);
+            config.set().emit_mode(self.emit_mode);
+        }
+        if self.backup {
+            config.set().make_backup(true);
         }
         if let Some(color) = self.color {
             config.set().color(color);
@@ -538,12 +548,12 @@ impl CliOptions for GetOptsOptions {
     }
 }
 
-fn write_mode_from_emit_str(emit_str: &str) -> Result<WriteMode, failure::Error> {
+fn emit_mode_from_emit_str(emit_str: &str) -> Result<EmitMode, failure::Error> {
     match emit_str {
-        "files" => Ok(WriteMode::Overwrite),
-        "stdout" => Ok(WriteMode::Display),
-        "coverage" => Ok(WriteMode::Coverage),
-        "checkstyle" => Ok(WriteMode::Checkstyle),
+        "files" => Ok(EmitMode::Files),
+        "stdout" => Ok(EmitMode::Stdout),
+        "coverage" => Ok(EmitMode::Coverage),
+        "checkstyle" => Ok(EmitMode::Checkstyle),
         _ => Err(format_err!("Invalid value for `--emit`")),
     }
 }

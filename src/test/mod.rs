@@ -243,7 +243,7 @@ fn self_tests() {
 fn stdin_formatting_smoke_test() {
     let input = Input::Text("fn main () {}".to_owned());
     let mut config = Config::default();
-    config.set().write_mode(WriteMode::Display);
+    config.set().emit_mode(EmitMode::Stdout);
     let mut buf: Vec<u8> = vec![];
     let error_summary = format_input(input, &config, Some(&mut buf)).unwrap();
     assert!(error_summary.has_no_errors());
@@ -773,7 +773,7 @@ impl ConfigCodeBlock {
 
         let input = Input::Text(self.code_block.as_ref().unwrap().to_owned());
         let mut config = self.get_block_config();
-        config.set().write_mode(WriteMode::Display);
+        config.set().emit_mode(EmitMode::Stdout);
         let mut buf: Vec<u8> = vec![];
 
         let error_summary = format_input(input, &config, Some(&mut buf)).unwrap();

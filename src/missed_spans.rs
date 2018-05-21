@@ -14,7 +14,7 @@ use syntax::codemap::{BytePos, Pos, Span};
 
 use codemap::LineRangeUtils;
 use comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
-use config::{FileName, WriteMode};
+use config::{EmitMode, FileName};
 use shape::{Indent, Shape};
 use utils::{count_newlines, last_line_width, mk_sp};
 use visitor::FmtVisitor;
@@ -180,8 +180,8 @@ impl<'a> FmtVisitor<'a> {
         let file_name = &char_pos.file.name.clone().into();
         let mut status = SnippetStatus::new(char_pos.line);
 
-        let snippet = &*match self.config.write_mode() {
-            WriteMode::Coverage => Cow::from(replace_chars(old_snippet)),
+        let snippet = &*match self.config.emit_mode() {
+            EmitMode::Coverage => Cow::from(replace_chars(old_snippet)),
             _ => Cow::from(old_snippet),
         };
 

@@ -114,9 +114,6 @@ create_config! {
                                               in tuple patterns";
 
     // Control options (changes the operation of rustfmt, rather than the formatting)
-    write_mode: WriteMode, WriteMode::Overwrite, false,
-        "What Write Mode to use when none is supplied: \
-         Replace, Overwrite, Display, Plain, Diff, Coverage, Check";
     color: Color, Color::Auto, false,
         "What Color option to use when none is supplied: Always, Never, Auto";
     required_version: String, env!("CARGO_PKG_VERSION").to_owned(), false,
@@ -144,6 +141,9 @@ create_config! {
          via the --file-lines option";
     width_heuristics: WidthHeuristics, WidthHeuristics::scaled(100), false,
         "'small' heuristic values";
+    emit_mode: EmitMode, EmitMode::Files, false,
+        "What emit Mode to use when none is supplied";
+    make_backup: bool, false, false, "Backup changed files";
 }
 
 pub fn load_config<O: CliOptions>(

@@ -1,5 +1,5 @@
 // rustfmt-fn_single_line: true
-// rustfmt-write_mode: checkstyle
+// rustfmt-emit_mode: checkstyle
 // Test single-line functions.
 
 fn foo_expr() {

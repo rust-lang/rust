@@ -1885,13 +1885,6 @@ fn main() {
 
 See also: [`match_block_trailing_comma`](#match_block_trailing_comma).
 
-## `write_mode`
-
-What Write Mode to use when none is supplied: Replace, Overwrite, Display, Diff, Coverage
-
-- **Default value**: `"Overwrite"`
-- **Possible values**: `"Checkstyle"`, `"Coverage"`, `"Diff"`, `"Display"`, `"Overwrite"`, `"Plain"`, `"Replace"`
-- **Stable**: No
 
 ## `blank_lines_upper_bound`
 
@@ -2071,3 +2064,11 @@ ignore [
     "examples",
 ]
 ```
+
+## `emit_mode`
+
+Internal option
+
+## `make_backup`
+
+Internal option, use `--backup`

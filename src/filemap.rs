@@ -15,7 +15,7 @@ use std::io::{self, BufWriter, Read, Write};
 use std::path::Path;
 
 use checkstyle::output_checkstyle_file;
-use config::{Config, FileName, NewlineStyle, Verbosity, WriteMode};
+use config::{Config, EmitMode, FileName, NewlineStyle, Verbosity};
 use rustfmt_diff::{make_diff, output_modified, print_diff, Mismatch};
 
 #[cfg(test)]
@@ -35,13 +35,13 @@ pub(crate) fn write_all_files<T>(
 where
     T: Write,
 {
-    if config.write_mode() == WriteMode::Checkstyle {
+    if config.emit_mode() == EmitMode::Checkstyle {
         ::checkstyle::output_header(out)?;
     }
     for &(ref filename, ref text) in file_map {
         write_file(text, filename, out, config)?;
     }
-    if config.write_mode() == WriteMode::Checkstyle {
+    if config.emit_mode() == EmitMode::Checkstyle {
         ::checkstyle::output_footer(out)?;
     }
 
@@ -116,11 +116,11 @@ where
 
     let filename_to_path = || match *filename {
         FileName::Real(ref path) => path,
-        _ => panic!("cannot format `{}` with WriteMode::Replace", filename),
+        _ => panic!("cannot format `{}` and emit to files", filename),
     };
 
-    match config.write_mode() {
-        WriteMode::Replace => {
+    match config.emit_mode() {
+        EmitMode::Files if config.make_backup() => {
             let filename = filename_to_path();
             if let Ok((ori, fmt)) = source_and_formatted_text(text, filename, config) {
                 if fmt != ori {
@@ -140,7 +140,7 @@ where
                 }
             }
         }
-        WriteMode::Overwrite => {
+        EmitMode::Files => {
             // Write text directly over original file if there is a diff.
             let filename = filename_to_path();
             let (source, formatted) = source_and_formatted_text(text, filename, config)?;
@@ -149,13 +149,13 @@ where
                 write_system_newlines(file, text, config)?;
             }
         }
-        WriteMode::Display | WriteMode::Coverage => {
+        EmitMode::Stdout | EmitMode::Coverage => {
             if config.verbose() != Verbosity::Quiet {
                 println!("{}:\n", filename);
             }
             write_system_newlines(out, text, config)?;
         }
-        WriteMode::Modified => {
+        EmitMode::ModifiedLines => {
             let filename = filename_to_path();
             if let Ok((ori, fmt)) = source_and_formatted_text(text, filename, config) {
                 let mismatch = make_diff(&ori, &fmt, 0);
@@ -164,12 +164,12 @@ where
                 return Ok(has_diff);
             }
         }
-        WriteMode::Checkstyle => {
+        EmitMode::Checkstyle => {
             let filename = filename_to_path();
             let diff = create_diff(filename, text, config)?;
             output_checkstyle_file(out, filename, diff)?;
         }
-        WriteMode::Check => {
+        EmitMode::Diff => {
             let filename = filename_to_path();
             if let Ok((ori, fmt)) = source_and_formatted_text(text, filename, config) {
                 let mismatch = make_diff(&ori, &fmt, 3);
@@ -182,7 +182,6 @@ where
                 return Ok(has_diff);
             }
         }
-        WriteMode::None => {}
     }
 
     // when we are not in diff mode, don't indicate differing files

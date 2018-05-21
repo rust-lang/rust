@@ -60,7 +60,7 @@ use visitor::{FmtVisitor, SnippetProvider};
 
 pub use config::summary::Summary;
 pub use config::{
-    load_config, CliOptions, Color, Config, FileLines, FileName, Verbosity, WriteMode,
+    load_config, CliOptions, Color, Config, EmitMode, FileLines, FileName, Verbosity,
 };
 
 #[macro_use]
@@ -667,7 +667,7 @@ fn format_snippet(snippet: &str, config: &Config) -> Option<String> {
     let mut out: Vec<u8> = Vec::with_capacity(snippet.len() * 2);
     let input = Input::Text(snippet.into());
     let mut config = config.clone();
-    config.set().write_mode(config::WriteMode::Display);
+    config.set().emit_mode(config::EmitMode::Stdout);
     config.set().verbose(Verbosity::Quiet);
     config.set().hide_parse_errors(true);
     match format_input(input, &config, Some(&mut out)) {
@@ -922,7 +922,7 @@ fn get_modified_lines(
     let mut data = Vec::new();
 
     let mut config = config.clone();
-    config.set().write_mode(config::WriteMode::Modified);
+    config.set().emit_mode(config::EmitMode::ModifiedLines);
     format_input(input, &config, Some(&mut data))?;
 
     let mut lines = data.lines();
@@ -990,7 +990,7 @@ pub fn format_and_emit_report(input: Input, config: &Config) -> Result<Summary, 
 }
 
 pub fn emit_pre_matter(config: &Config) -> Result<(), ErrorKind> {
-    if config.write_mode() == WriteMode::Checkstyle {
+    if config.emit_mode() == EmitMode::Checkstyle {
         let mut out = &mut stdout();
         checkstyle::output_header(&mut out)?;
     }
@@ -998,7 +998,7 @@ pub fn emit_pre_matter(config: &Config) -> Result<(), ErrorKind> {
 }
 
 pub fn emit_post_matter(config: &Config) -> Result<(), ErrorKind> {
-    if config.write_mode() == WriteMode::Checkstyle {
+    if config.emit_mode() == EmitMode::Checkstyle {
         let mut out = &mut stdout();
         checkstyle::output_footer(&mut out)?;
     }
