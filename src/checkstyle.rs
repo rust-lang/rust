@@ -13,6 +13,10 @@ use std::path::Path;
 
 use rustfmt_diff::{DiffLine, Mismatch};
 
+/// The checkstyle header - should be emitted before the output of Rustfmt.
+///
+/// Note that emitting checkstyle output is not stable and may removed in a
+/// future version of Rustfmt.
 pub fn header() -> String {
     let mut xml_heading = String::new();
     xml_heading.push_str("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
@@ -21,6 +25,10 @@ pub fn header() -> String {
     xml_heading
 }
 
+/// The checkstyle footer - should be emitted after the output of Rustfmt.
+///
+/// Note that emitting checkstyle output is not stable and may removed in a
+/// future version of Rustfmt.
 pub fn footer() -> String {
     "</checkstyle>\n".to_owned()
 }

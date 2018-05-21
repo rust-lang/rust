@@ -11,6 +11,7 @@
 use std::default::Default;
 use std::time::{Duration, Instant};
 
+/// A summary of a Rustfmt run.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Summary {
     // Encountered e.g. an IO error.
@@ -25,7 +26,7 @@ pub struct Summary {
     // Failed a check, such as the license check or other opt-in checking.
     has_check_errors: bool,
 
-    // Formatted code differs from existing code (--check only).
+    /// Formatted code differs from existing code (--check only).
     pub has_diff: bool,
 
     // Keeps track of time spent in parsing and formatting steps.
@@ -106,6 +107,7 @@ impl Summary {
             || self.has_diff)
     }
 
+    /// Combine two summaries together.
     pub fn add(&mut self, other: Summary) {
         self.has_operational_errors |= other.has_operational_errors;
         self.has_formatting_errors |= other.has_formatting_errors;

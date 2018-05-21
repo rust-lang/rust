@@ -102,9 +102,11 @@ pub(crate) type FileMap = Vec<FileRecord>;
 
 pub(crate) type FileRecord = (FileName, String);
 
+/// The various errors that can occur during formatting. Note that not all of
+/// these can currently be propagated to clients.
 #[derive(Fail, Debug)]
 pub enum ErrorKind {
-    // Line has exceeded character limit (found, maximum)
+    /// Line has exceeded character limit (found, maximum).
     #[fail(
         display = "line formatted, but exceeded maximum width \
                    (maximum: {} (see `max_width` option), found: {})",
@@ -112,23 +114,26 @@ pub enum ErrorKind {
         _1
     )]
     LineOverflow(usize, usize),
-    // Line ends in whitespace
+    /// Line ends in whitespace.
     #[fail(display = "left behind trailing whitespace")]
     TrailingWhitespace,
-    // TODO or FIXME item without an issue number
+    /// TODO or FIXME item without an issue number.
     #[fail(display = "found {}", _0)]
     BadIssue(Issue),
-    // License check has failed
+    /// License check has failed.
     #[fail(display = "license check failed")]
     LicenseCheck,
-    // Used deprecated skip attribute
+    /// Used deprecated skip attribute.
     #[fail(display = "`rustfmt_skip` is deprecated; use `rustfmt::skip`")]
     DeprecatedAttr,
-    // Used a rustfmt:: attribute other than skip
+    /// Used a rustfmt:: attribute other than skip.
     #[fail(display = "invalid attribute")]
     BadAttr,
+    /// An io error during reading or writing.
     #[fail(display = "io error: {}", _0)]
     IoError(io::Error),
+    /// The user mandated a version and the current version of Rustfmt does not
+    /// satisfy that requirement.
     #[fail(display = "Version mismatch")]
     VersionMismatch,
 }
@@ -204,6 +209,9 @@ impl FormattingError {
     }
 }
 
+/// Reports on any issues that occurred during a run of Rustfmt.
+///
+/// Can be reported to the user via its `Display` implementation of `print_fancy`.
 #[derive(Clone)]
 pub struct FormatReport {
     // Maps stringified file paths to their associated formatting errors.
@@ -266,10 +274,13 @@ impl FormatReport {
             .sum()
     }
 
+    /// Whether any warnings or errors are present in the report.
     pub fn has_warnings(&self) -> bool {
         self.warning_count() > 0
     }
 
+    /// Print the report to a terminal using colours and potentially other
+    /// fancy output.
     pub fn fancy_print(
         &self,
         mut t: Box<term::Terminal<Output = io::Stderr>>,
@@ -758,6 +769,8 @@ pub enum Input {
     Text(String),
 }
 
+/// The main entry point for Rustfmt. Formats the given input according to the
+/// given config. `out` is only necessary if required by the configuration.
 pub fn format_input<T: Write>(
     input: Input,
     config: &Config,

@@ -27,6 +27,7 @@ pub struct LineRange {
     pub hi: usize,
 }
 
+/// Defines the name of an input - either a file or stdin.
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub enum FileName {
     Real(PathBuf),

@@ -146,6 +146,8 @@ create_config! {
     make_backup: bool, false, false, "Backup changed files";
 }
 
+/// Load a config by checking the client-supplied options and if appropriate, the
+/// file system (including searching the file system for overrides).
 pub fn load_config<O: CliOptions>(
     file_path: Option<&Path>,
     options: Option<O>,

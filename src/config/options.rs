@@ -167,6 +167,8 @@ configuration_option_enum! { ReportTactic:
     Never,
 }
 
+// What Rustfmt should emit. Mostly corresponds to the `--emit` command line
+// option.
 configuration_option_enum! { EmitMode:
     // Emits to files.
     Files,
@@ -180,10 +182,11 @@ configuration_option_enum! { EmitMode:
     ModifiedLines,
     // Checks if a diff can be generated. If so, rustfmt outputs a diff and quits with exit code 1.
     // This option is designed to be run in CI where a non-zero exit signifies non-standard code
-    // formatting.
+    // formatting. Used for `--check`.
     Diff,
 }
 
+// Client-preference for coloured output.
 configuration_option_enum! { Color:
     // Always use color, whether it is a piped or terminal output
     Always,
@@ -194,6 +197,7 @@ configuration_option_enum! { Color:
 }
 
 impl Color {
+    /// Whether we should use a coloured terminal.
     pub fn use_colored_tty(&self) -> bool {
         match self {
             Color::Always => true,
@@ -203,6 +207,7 @@ impl Color {
     }
 }
 
+// How chatty should Rustfmt be?
 configuration_option_enum! { Verbosity:
     // Emit more.
     Verbose,
@@ -322,6 +327,8 @@ impl ::std::str::FromStr for IgnoreList {
     }
 }
 
+/// Maps client-supplied options to Rustfmt's internals, mostly overriding
+/// values in a config with values from the command line.
 pub trait CliOptions {
     fn apply_to(self, config: &mut Config);
     fn config_path(&self) -> Option<&Path>;
