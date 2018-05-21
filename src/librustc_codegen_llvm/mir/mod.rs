@@ -634,7 +634,7 @@ fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                     ty,
                     scope,
                     variable_access,
-                    VariableKind::CapturedVariable,
+                    VariableKind::LocalVariable,
                     DUMMY_SP
                 );
             }

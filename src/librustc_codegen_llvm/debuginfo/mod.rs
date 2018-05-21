@@ -147,7 +147,6 @@ pub enum VariableAccess<'a> {
 pub enum VariableKind {
     ArgumentVariable(usize /*index*/),
     LocalVariable,
-    CapturedVariable,
 }
 
 /// Create any deferred debug metadata nodes
@@ -478,6 +477,7 @@ pub fn declare_local<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                                variable_access: VariableAccess,
                                variable_kind: VariableKind,
                                span: Span) {
+    assert!(!dbg_context.get_ref(span).source_locations_enabled.get());
     let cx = bx.cx;
 
     let file = span_start(cx, span).file;
@@ -490,8 +490,7 @@ pub fn declare_local<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
 
     let (argument_index, dwarf_tag) = match variable_kind {
         ArgumentVariable(index) => (index as c_uint, DW_TAG_arg_variable),
-        LocalVariable    |
-        CapturedVariable => (0, DW_TAG_auto_variable)
+        LocalVariable => (0, DW_TAG_auto_variable)
     };
     let align = cx.align_of(variable_type);
 
@@ -529,14 +528,7 @@ pub fn declare_local<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
 
                 llvm::LLVMSetInstDebugLocation(bx.llbuilder, instr);
             }
-        }
-    }
-
-    match variable_kind {
-        ArgumentVariable(_) | CapturedVariable => {
-            assert!(!dbg_context.get_ref(span).source_locations_enabled.get());
             source_loc::set_debug_location(bx, UnknownLocation);
         }
-        _ => { /* nothing to do */ }
     }
 }
