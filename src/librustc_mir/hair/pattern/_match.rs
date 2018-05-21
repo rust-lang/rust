@@ -472,18 +472,20 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         }
         ty::TyInt(int_ty) if exhaustive_integer_patterns => {
             use syntax::ast::IntTy::*;
-            macro_rules! min_max_ty {
-                ($ity:ident, $uty:ty, $sty:expr) => {
-                    ($ity::MIN as $uty as u128, $ity::MAX as $uty as u128, $sty)
-                }
-            }
+            let min_max_ty = |sty| {
+                let size = cx.tcx.layout_of(ty::ParamEnv::reveal_all().and(sty))
+                                  .unwrap().size.bits() as i128;
+                let min = -(1 << (size - 1));
+                let max = (1 << (size - 1)) - 1;
+                (min as u128, max as u128, sty)
+            };
             let (min, max, ty) = match int_ty {
-                Isize => min_max_ty!(isize, usize, cx.tcx.types.isize),
-                I8    => min_max_ty!(i8, u8, cx.tcx.types.i8),
-                I16   => min_max_ty!(i16, u16, cx.tcx.types.i16),
-                I32   => min_max_ty!(i32, u32, cx.tcx.types.i32),
-                I64   => min_max_ty!(i64, u64, cx.tcx.types.i64),
-                I128  => min_max_ty!(i128, u128, cx.tcx.types.i128),
+                Isize => min_max_ty(cx.tcx.types.isize),
+                I8    => min_max_ty(cx.tcx.types.i8),
+                I16   => min_max_ty(cx.tcx.types.i16),
+                I32   => min_max_ty(cx.tcx.types.i32),
+                I64   => min_max_ty(cx.tcx.types.i64),
+                I128  => min_max_ty(cx.tcx.types.i128),
             };
             value_constructors = true;
             vec![ConstantRange(ty::Const::from_bits(cx.tcx, min, ty),
@@ -492,14 +494,20 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         }
         ty::TyUint(uint_ty) if exhaustive_integer_patterns => {
             use syntax::ast::UintTy::*;
-            let (min, (max, ty)) = (0u128, match uint_ty {
-                Usize => (usize::MAX as u128, cx.tcx.types.usize),
-                U8    => (   u8::MAX as u128, cx.tcx.types.u8),
-                U16   => (  u16::MAX as u128, cx.tcx.types.u16),
-                U32   => (  u32::MAX as u128, cx.tcx.types.u32),
-                U64   => (  u64::MAX as u128, cx.tcx.types.u64),
-                U128  => ( u128::MAX as u128, cx.tcx.types.u128),
-            });
+            let min_max_ty = |sty| {
+                let size = cx.tcx.layout_of(ty::ParamEnv::reveal_all().and(sty))
+                                  .unwrap().size.bits() as i128;
+                let max = (1 << size) - 1;
+                (0u128, max as u128, sty)
+            };
+            let (min, max, ty) = match uint_ty {
+                Usize => min_max_ty(cx.tcx.types.usize),
+                U8    => min_max_ty(cx.tcx.types.u8),
+                U16   => min_max_ty(cx.tcx.types.u16),
+                U32   => min_max_ty(cx.tcx.types.u32),
+                U64   => min_max_ty(cx.tcx.types.u64),
+                U128  => min_max_ty(cx.tcx.types.u128),
+            };
             value_constructors = true;
             vec![ConstantRange(ty::Const::from_bits(cx.tcx, min, ty),
                                ty::Const::from_bits(cx.tcx, max, ty),
