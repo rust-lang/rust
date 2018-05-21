@@ -116,4 +116,7 @@ pub fn main() {
     assert_eq!(size_of::<EnumWithMaybeUninhabitedVariant<!>>(),
                size_of::<EnumWithMaybeUninhabitedVariant<()>>());
     assert_eq!(size_of::<NicheFilledEnumWithAbsentVariant>(), size_of::<&'static ()>());
+
+    assert_eq!(size_of::<Option<Option<(bool, &())>>>(), size_of::<(bool, &())>());
+    assert_eq!(size_of::<Option<Option<(&(), bool)>>>(), size_of::<(bool, &())>());
 }
