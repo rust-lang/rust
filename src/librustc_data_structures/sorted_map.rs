@@ -142,14 +142,6 @@ impl<K: Ord, V> SortedMap<K, V> {
     }
 
     #[inline]
-    pub fn range_mut<R>(&mut self, range: R) -> &mut [(K, V)]
-        where R: RangeBounds<K>
-    {
-        let (start, end) = self.range_slice_indices(range);
-        (&mut self.data[start .. end])
-    }
-
-    #[inline]
     pub fn remove_range<R>(&mut self, range: R)
         where R: RangeBounds<K>
     {
