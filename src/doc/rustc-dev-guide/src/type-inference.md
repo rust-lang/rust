@@ -13,8 +13,8 @@ fn main() {
 }
 ```
 
-Here, `things` is *inferenced* to be `&str` because that's the value we push
-into `things`.
+Here, the type of `things` is *inferenced* to be `&str` because that's the value
+we push into `things`.
 
 The type inference is based on the standard Hindley-Milner (HM) type inference
 algorithm, but extended in various way to accommodate subtyping, region
