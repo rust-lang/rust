@@ -989,6 +989,12 @@ fn test_escape_unicode() {
 
 #[test]
 fn test_escape_debug() {
+    // Note that there are subtleties with the number of backslashes
+    // on the left- and right-hand sides. In particular, Unicode code points
+    // are usually escaped with two backslashes on the right-hand side, as
+    // they are escaped. However, when the character is unescaped (e.g. for
+    // printable characters), only a single backslash appears (as the character
+    // itself appears in the debug string).
     assert_eq!("abc".escape_debug(), "abc");
     assert_eq!("a c".escape_debug(), "a c");
     assert_eq!("éèê".escape_debug(), "éèê");

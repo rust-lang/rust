@@ -21,7 +21,7 @@
 # - UnicodeData.txt
 #
 # Since this should not require frequent updates, we just store this
-# out-of-line and check the unicode.py file into git.
+# out-of-line and check the tables.rs file into git.
 
 import fileinput, re, os, sys, operator, math, datetime
 

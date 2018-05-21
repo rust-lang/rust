@@ -380,7 +380,13 @@ impl str {
                reason = "return type may change to be an iterator",
                issue = "27791")]
     pub fn escape_debug(&self) -> String {
-        self.chars().enumerate().flat_map(|(i, c)| c.escape_debug_ext(i == 0)).collect()
+        let mut string = String::with_capacity(self.len());
+        let mut chars = self.chars();
+        if let Some(first) = chars.next() {
+            string.extend(first.escape_debug_ext(true))
+        }
+        string.extend(chars.flat_map(|c| c.escape_debug_ext(false)));
+        string
     }
 
     /// Escapes each char in `s` with [`char::escape_default`].
