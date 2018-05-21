@@ -10,11 +10,11 @@
 
 use std::borrow::Cow;
 
-use syntax::codemap::{BytePos, FileName, Pos, Span};
+use syntax::codemap::{BytePos, Pos, Span};
 
 use codemap::LineRangeUtils;
 use comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
-use config::WriteMode;
+use config::{FileName, WriteMode};
 use shape::{Indent, Shape};
 use utils::{count_newlines, last_line_width, mk_sp};
 use visitor::FmtVisitor;
@@ -177,7 +177,7 @@ impl<'a> FmtVisitor<'a> {
         // Annoyingly, the library functions for splitting by lines etc. are not
         // quite right, so we must do it ourselves.
         let char_pos = self.codemap.lookup_char_pos(span.lo());
-        let file_name = &char_pos.file.name;
+        let file_name = &char_pos.file.name.clone().into();
         let mut status = SnippetStatus::new(char_pos.line);
 
         let snippet = &*match self.config.write_mode() {

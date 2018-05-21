@@ -15,9 +15,8 @@ use std::io::{self, BufWriter, Read, Write};
 use std::path::Path;
 
 use checkstyle::output_checkstyle_file;
-use config::{Config, NewlineStyle, Verbosity, WriteMode};
+use config::{Config, FileName, NewlineStyle, Verbosity, WriteMode};
 use rustfmt_diff::{make_diff, output_modified, print_diff, Mismatch};
-use syntax::codemap::FileName;
 
 #[cfg(test)]
 use FileRecord;

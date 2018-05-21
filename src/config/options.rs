@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::codemap::FileName;
-
 use config::config_type::ConfigType;
 use config::lists::*;
-use config::Config;
+use config::{Config, FileName};
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};

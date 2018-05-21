@@ -11,13 +11,14 @@
 //! This module contains types and functions to support formatting specific line ranges.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::rc::Rc;
-use std::{cmp, iter, str};
+use std::{cmp, fmt, iter, str};
 
 use serde::de::{Deserialize, Deserializer};
 use serde_json as json;
 
-use syntax::codemap::{FileMap, FileName};
+use syntax::codemap::{self, FileMap};
 
 /// A range of lines in a file, inclusive of both ends.
 pub struct LineRange {
@@ -26,9 +27,34 @@ pub struct LineRange {
     pub hi: usize,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
+pub enum FileName {
+    Real(PathBuf),
+    Stdin,
+}
+
+impl From<codemap::FileName> for FileName {
+    fn from(name: codemap::FileName) -> FileName {
+        match name {
+            codemap::FileName::Real(p) => FileName::Real(p),
+            codemap::FileName::Custom(ref f) if f == "stdin" => FileName::Stdin,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl fmt::Display for FileName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            FileName::Real(p) => write!(f, "{}", p.to_str().unwrap()),
+            FileName::Stdin => write!(f, "stdin"),
+        }
+    }
+}
+
 impl LineRange {
-    pub fn file_name(&self) -> &FileName {
-        &self.file.name
+    pub fn file_name(&self) -> FileName {
+        self.file.name.clone().into()
     }
 }
 
@@ -169,12 +195,12 @@ impl FileLines {
     /// Returns true if `range` is fully contained in `self`.
     #[allow(dead_code)]
     pub(crate) fn contains(&self, range: &LineRange) -> bool {
-        self.file_range_matches(range.file_name(), |r| r.contains(Range::from(range)))
+        self.file_range_matches(&range.file_name(), |r| r.contains(Range::from(range)))
     }
 
     /// Returns true if any lines in `range` are in `self`.
     pub(crate) fn intersects(&self, range: &LineRange) -> bool {
-        self.file_range_matches(range.file_name(), |r| r.intersects(Range::from(range)))
+        self.file_range_matches(&range.file_name(), |r| r.intersects(Range::from(range)))
     }
 
     /// Returns true if `line` from `file_name` is in `self`.
@@ -232,7 +258,7 @@ struct JsonSpan {
 fn deserialize_filename<'de, D: Deserializer<'de>>(d: D) -> Result<FileName, D::Error> {
     let s = String::deserialize(d)?;
     if s == "stdin" {
-        Ok(FileName::Custom(s))
+        Ok(FileName::Stdin)
     } else {
         Ok(FileName::Real(s.into()))
     }

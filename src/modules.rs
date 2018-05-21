@@ -13,9 +13,10 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use syntax::ast;
-use syntax::codemap::{self, FileName};
+use syntax::codemap;
 use syntax::parse::{parser, DirectoryOwnership};
 
+use config::FileName;
 use utils::contains_skip;
 
 /// List all the files containing modules of a crate.
@@ -28,12 +29,12 @@ pub fn list_files<'a>(
     let root_filename = codemap.span_to_filename(krate.span);
     {
         let parent = match root_filename {
-            FileName::Real(ref path) => path.parent().unwrap(),
+            codemap::FileName::Real(ref path) => path.parent().unwrap(),
             _ => Path::new(""),
         };
         list_submodules(&krate.module, parent, None, codemap, &mut result)?;
     }
-    result.insert(root_filename, &krate.module);
+    result.insert(root_filename.into(), &krate.module);
     Ok(result)
 }
 

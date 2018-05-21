@@ -215,7 +215,7 @@ fn execute(opts: &Options) -> Result<(WriteMode, Summary), failure::Error> {
             config.set().file_lines(options.file_lines);
             for f in config.file_lines().files() {
                 match *f {
-                    FileName::Custom(ref f) if f == "stdin" => {}
+                    FileName::Stdin => {}
                     _ => eprintln!("Warning: Extra file listed in file_lines option '{}'", f),
                 }
             }
@@ -500,7 +500,7 @@ impl GetOptsOptions {
                 FileName::Real(_) => {
                     eprintln!("Warning: Extra file listed in file_lines option '{}'", f)
                 }
-                _ => eprintln!("Warning: Not a file '{}'", f),
+                FileName::Stdin => eprintln!("Warning: Not a file '{}'", f),
             }
         }
     }

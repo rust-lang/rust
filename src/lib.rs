@@ -46,7 +46,6 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use syntax::ast;
-pub use syntax::codemap::FileName;
 use syntax::codemap::{CodeMap, FilePathMapping, Span};
 use syntax::errors::emitter::{ColorConfig, EmitterWriter};
 use syntax::errors::{DiagnosticBuilder, Handler};
@@ -59,9 +58,10 @@ use shape::Indent;
 use utils::use_colored_tty;
 use visitor::{FmtVisitor, SnippetProvider};
 
-pub use config::options::CliOptions;
 pub use config::summary::Summary;
-pub use config::{load_config, Color, Config, FileLines, Verbosity, WriteMode};
+pub use config::{
+    load_config, CliOptions, Color, Config, FileLines, FileName, Verbosity, WriteMode,
+};
 
 #[macro_use]
 mod utils;
@@ -96,8 +96,6 @@ mod test;
 mod types;
 mod vertical;
 pub(crate) mod visitor;
-
-const STDIN: &str = "<stdin>";
 
 // A map of the files of a crate, with their new content
 pub(crate) type FileMap = Vec<FileRecord>;
@@ -397,7 +395,7 @@ fn should_emit_verbose<F>(path: &FileName, config: &Config, f: F)
 where
     F: Fn(),
 {
-    if config.verbose() == Verbosity::Verbose && path.to_string() != STDIN {
+    if config.verbose() == Verbosity::Verbose && path != &FileName::Stdin {
         f();
     }
 }
@@ -626,7 +624,7 @@ fn parse_input<'sess>(
         Input::File(file) => parse::new_parser_from_file(parse_session, &file),
         Input::Text(text) => parse::new_parser_from_source_str(
             parse_session,
-            FileName::Custom("stdin".to_owned()),
+            syntax::codemap::FileName::Custom("stdin".to_owned()),
             text,
         ),
     };
@@ -797,7 +795,7 @@ fn format_input_inner<T: Write>(
 
     let main_file = match input {
         Input::File(ref file) => FileName::Real(file.clone()),
-        Input::Text(..) => FileName::Custom("stdin".to_owned()),
+        Input::Text(..) => FileName::Stdin,
     };
 
     let krate = match parse_input(input, &parse_session, config) {

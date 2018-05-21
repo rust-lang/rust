@@ -594,7 +594,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     pub fn visit_attrs(&mut self, attrs: &[ast::Attribute], style: ast::AttrStyle) -> bool {
         for attr in attrs {
             if attr.name() == DEPR_SKIP_ANNOTATION {
-                let file_name = self.codemap.span_to_filename(attr.span);
+                let file_name = self.codemap.span_to_filename(attr.span).into();
                 self.report.append(
                     file_name,
                     vec![FormattingError::from_span(
@@ -607,7 +607,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 if attr.path.segments.len() == 1
                     || attr.path.segments[1].ident.to_string() != "skip"
                 {
-                    let file_name = self.codemap.span_to_filename(attr.span);
+                    let file_name = self.codemap.span_to_filename(attr.span).into();
                     self.report.append(
                         file_name,
                         vec![FormattingError::from_span(
