@@ -10,7 +10,7 @@
 
 #![feature(allocator_api, nonnull)]
 
-use std::alloc::{Alloc, Global, oom};
+use std::alloc::{Alloc, AllocExt, Global, oom};
 
 fn main() {
     unsafe {

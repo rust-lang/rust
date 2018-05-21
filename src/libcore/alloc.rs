@@ -899,8 +899,10 @@ pub unsafe trait Alloc {
             return Err(CannotReallocInPlace);
         }
     }
+}
 
-
+/// Extension methods for allocators.
+pub trait AllocExt: Alloc {
     // == COMMON USAGE PATTERNS ==
     // alloc_one, dealloc_one, alloc_array, realloc_array. dealloc_array
 
@@ -932,7 +934,6 @@ pub unsafe trait Alloc {
     /// allocation error are encouraged to call the allocator's `oom`
     /// method, rather than directly invoking `panic!` or similar.
     fn alloc_one<T>(&mut self) -> Result<NonNull<T>, AllocErr>
-        where Self: Sized
     {
         let k = Layout::new::<T>();
         if k.size() > 0 {
@@ -960,7 +961,6 @@ pub unsafe trait Alloc {
     ///
     /// * the layout of `T` must *fit* that block of memory.
     unsafe fn dealloc_one<T>(&mut self, ptr: NonNull<T>)
-        where Self: Sized
     {
         let k = Layout::new::<T>();
         if k.size() > 0 {
@@ -999,7 +999,6 @@ pub unsafe trait Alloc {
     /// allocation error are encouraged to call the allocator's `oom`
     /// method, rather than directly invoking `panic!` or similar.
     fn alloc_array<T>(&mut self, n: usize) -> Result<NonNull<T>, AllocErr>
-        where Self: Sized
     {
         match Layout::array::<T>(n) {
             Ok(ref layout) if layout.size() > 0 => {
@@ -1047,7 +1046,6 @@ pub unsafe trait Alloc {
                                ptr: NonNull<T>,
                                n_old: usize,
                                n_new: usize) -> Result<NonNull<T>, AllocErr>
-        where Self: Sized
     {
         match (Layout::array::<T>(n_old), Layout::array::<T>(n_new)) {
             (Ok(ref k_old), Ok(ref k_new)) if k_old.size() > 0 && k_new.size() > 0 => {
@@ -1081,7 +1079,6 @@ pub unsafe trait Alloc {
     ///
     /// Always returns `Err` on arithmetic overflow.
     unsafe fn dealloc_array<T>(&mut self, ptr: NonNull<T>, n: usize) -> Result<(), AllocErr>
-        where Self: Sized
     {
         match Layout::array::<T>(n) {
             Ok(ref k) if k.size() > 0 => {
@@ -1093,3 +1090,5 @@ pub unsafe trait Alloc {
         }
     }
 }
+
+impl<A: Alloc> AllocExt for A {}
