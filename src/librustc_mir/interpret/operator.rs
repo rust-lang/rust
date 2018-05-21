@@ -1,7 +1,6 @@
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use syntax::ast::FloatTy;
-use std::cmp::Ordering;
 use rustc::ty::layout::LayoutOf;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
@@ -181,12 +180,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     let l = <$ty>::from_bits(l);
                     let r = <$ty>::from_bits(r);
                     let val = match bin_op {
-                        Eq => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) == Ordering::Equal),
-                        Ne => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) != Ordering::Equal),
-                        Lt => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) == Ordering::Less),
-                        Le => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) != Ordering::Greater),
-                        Gt => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) == Ordering::Greater),
-                        Ge => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) != Ordering::Less),
+                        Eq => PrimVal::from_bool(l == r),
+                        Ne => PrimVal::from_bool(l != r),
+                        Lt => PrimVal::from_bool(l < r),
+                        Le => PrimVal::from_bool(l <= r),
+                        Gt => PrimVal::from_bool(l > r),
+                        Ge => PrimVal::from_bool(l >= r),
                         Add => PrimVal::Bytes((l + r).value.to_bits()),
                         Sub => PrimVal::Bytes((l - r).value.to_bits()),
                         Mul => PrimVal::Bytes((l * r).value.to_bits()),
