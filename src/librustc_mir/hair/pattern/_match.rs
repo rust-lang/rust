@@ -620,8 +620,7 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
 
 /// An inclusive interval, used for precise integer exhaustiveness checking.
 struct Interval<'tcx> {
-    pub lo: u128,
-    pub hi: u128,
+    pub range: RangeInclusive<u128>,
     pub ty: Ty<'tcx>,
 }
 
@@ -641,7 +640,7 @@ impl<'tcx> Interval<'tcx> {
                             None
                         } else {
                             let offset = (*end == RangeEnd::Excluded) as u128;
-                            Some(Interval { lo, hi: hi - offset, ty })
+                            Some(Interval { range: lo..=(hi - offset), ty })
                         };
                     }
                 }
@@ -649,7 +648,7 @@ impl<'tcx> Interval<'tcx> {
             }
             ConstantValue(val) => {
                 let ty = val.ty;
-                val.assert_bits(ty).map(|val| Interval { lo: val, hi: val, ty })
+                val.assert_bits(ty).map(|val| Interval { range: val..=val, ty })
             }
             Single | Variant(_) | Slice(_) => {
                 None
@@ -690,7 +689,7 @@ impl<'tcx> Interval<'tcx> {
     }
 
     fn into_inner(self) -> (u128, u128) {
-        (self.lo, self.hi)
+        self.range.into_inner()
     }
 }
 
@@ -706,31 +705,27 @@ fn ranges_subtract_pattern<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         let mut ranges: Vec<_> = ranges.into_iter().filter_map(|r| {
             Interval::from_ctor(&r).map(|i| i.into_inner())
         }).collect();
+        let ty = pat_interval.ty;
+        let (pat_interval_lo, pat_interval_hi) = pat_interval.into_inner();
         for (subrange_lo, subrange_hi) in ranges {
-            if pat_interval.lo > subrange_hi || pat_interval.hi < subrange_lo {
+            if pat_interval_lo > subrange_hi || subrange_lo > pat_interval_hi  {
                 // The pattern doesn't intersect with the subrange at all,
                 // so the subrange remains untouched.
                 remaining_ranges.push((subrange_lo, subrange_hi));
-            } else if pat_interval.lo <= subrange_lo && pat_interval.hi >= subrange_hi {
-                // The pattern entirely covers the subrange of values,
-                // so we no longer have to consider this subrange_
-            } else if pat_interval.lo <= subrange_lo {
-                // The pattern intersects a lower section of the subrange,
-                // so only the upper section will remain.
-                remaining_ranges.push((pat_interval.hi + 1, subrange_hi));
-            } else if pat_interval.hi >= subrange_hi {
-                // The pattern intersects an upper section of the subrange,
-                // so only the lower section will remain.
-                remaining_ranges.push((subrange_lo, pat_interval.lo - 1));
             } else {
-                // The pattern intersects the middle of the subrange,
-                // so we create two ranges either side of the intersection.)
-                remaining_ranges.push((subrange_lo, pat_interval.lo - 1));
-                remaining_ranges.push((pat_interval.hi + 1, subrange_hi));
+                if pat_interval_lo > subrange_lo {
+                    // The pattern intersects an upper section of the
+                    // subrange, so a lower section will remain.
+                    remaining_ranges.push((subrange_lo, pat_interval_lo - 1));
+                }
+                if pat_interval_hi < subrange_hi {
+                    // The pattern intersects a lower section of the
+                    // subrange, so an upper section will remain.
+                    remaining_ranges.push((pat_interval_hi + 1, subrange_hi));
+                }
             }
         }
         // Convert the remaining ranges from pairs to inclusive `ConstantRange`s.
-        let ty = pat_interval.ty;
         remaining_ranges.into_iter().map(|(lo, hi)| {
             let (lo, hi) = Interval::offset_sign(ty, (lo, hi), false);
             ConstantRange(ty::Const::from_bits(cx.tcx, lo, ty),
@@ -839,7 +834,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         // `missing_ctors` are those that should have appeared
         // as patterns in the `match` expression, but did not.
         let mut missing_ctors = vec![];
-        'req: for req_ctor in all_ctors.clone() {
+        'req: for req_ctor in &all_ctors {
             let mut sub_ctors = vec![req_ctor.clone()];
             // The only constructor patterns for which it is valid to
             // treat the values as constructors are ranges (see
@@ -861,7 +856,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                     // If the pattern for the required constructor
                     // appears in the `match`, then it is not missing,
                     // and we can move on to the next one.
-                    if *used_ctor == req_ctor {
+                    if used_ctor == req_ctor {
                         continue 'req;
                     }
                 }
