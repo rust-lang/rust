@@ -55,8 +55,17 @@ fn main() {
     }
 
     // Let's test other types too!
-    match '\u{0}' {
+    let c: char = '\u{0}';
+    match c {
         '\u{0}' ..= char::MAX => {} // ok
+    }
+
+    // We can actually get away with just covering the
+    // following two ranges, which correspond to all
+    // valid Unicode Scalar Values.
+    match c {
+        '\u{0000}' ..= '\u{D7FF}' => {}
+        '\u{E000}' ..= '\u{10_FFFF}' => {}
     }
 
     match 0usize {
@@ -84,7 +93,7 @@ fn main() {
     }
 
     match 0i8 {
-        -128..=127 => {} // ok
+        -128 ..= 127 => {} // ok
     }
 
     match 0i16 {

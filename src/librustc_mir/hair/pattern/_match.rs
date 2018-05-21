@@ -460,11 +460,15 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 .collect()
         }
         ty::TyChar if exhaustive_integer_patterns => {
-            let (min, max) = (0u128, char::MAX as u128);
+            let endpoint = |c: char| {
+                ty::Const::from_bits(cx.tcx, c as u128, cx.tcx.types.char)
+            };
             value_constructors = true;
-            vec![ConstantRange(ty::Const::from_bits(cx.tcx, min, cx.tcx.types.char),
-                               ty::Const::from_bits(cx.tcx, max, cx.tcx.types.char),
-                               RangeEnd::Included)]
+            vec![
+                // The valid Unicode Scalar Value ranges.
+                ConstantRange(endpoint('\u{0000}'), endpoint('\u{D7FF}'), RangeEnd::Included),
+                ConstantRange(endpoint('\u{E000}'), endpoint('\u{10FFFF}'), RangeEnd::Included),
+            ]
         }
         ty::TyInt(int_ty) if exhaustive_integer_patterns => {
             use syntax::ast::IntTy::*;
