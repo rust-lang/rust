@@ -771,7 +771,7 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 
 .toggle-wrapper {
 	position: relative;
-	margin-top: 5px;
+	margin-top: 0;
 }
 
 .toggle-wrapper.collapsed {
@@ -854,10 +854,19 @@ span.since {
 
 .attributes {
 	display: block;
-	margin: 0px 0px 0px 30px !important;
+	margin-top: 0px !important;
+	margin-right: 0px;
+	margin-bottom: 0px !important;
+	margin-left: 30px;
 }
 .toggle-attributes.collapsed {
-	margin-bottom: 5px;
+	margin-bottom: 0;
+}
+.impl-items > .toggle-attributes {
+	margin-left: 20px;
+}
+.impl-items .attributes {
+	font-weight: 500;
 }
 
 :target > code {

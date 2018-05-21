@@ -3055,6 +3055,7 @@ fn render_assoc_item(w: &mut fmt::Formatter,
         } else {
             (0, true)
         };
+        render_attributes(w, meth)?;
         write!(w, "{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
                VisSpace(&meth.visibility),

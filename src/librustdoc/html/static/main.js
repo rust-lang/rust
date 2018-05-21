@@ -2041,16 +2041,16 @@
 
     autoCollapseAllImpls(getPageId());
 
-    function createToggleWrapper() {
+    function createToggleWrapper(tog) {
         var span = document.createElement('span');
         span.className = 'toggle-label';
         span.style.display = 'none';
         span.innerHTML = '&nbsp;Expand&nbsp;attributes';
-        toggle.appendChild(span);
+        tog.appendChild(span);
 
         var wrapper = document.createElement('div');
         wrapper.className = 'toggle-wrapper toggle-attributes';
-        wrapper.appendChild(toggle);
+        wrapper.appendChild(tog);
         return wrapper;
     }
 
@@ -2078,13 +2078,11 @@
         });
     }
 
-    onEach(document.getElementById('main').getElementsByTagName('pre'), function(e) {
-        onEach(e.getElementsByClassName('attributes'), function(i_e) {
-            i_e.parentNode.insertBefore(createToggleWrapper(), i_e);
-            if (getCurrentValue("rustdoc-item-attributes") !== "false") {
-                collapseDocs(i_e.previousSibling.childNodes[0], "toggle");
-            }
-        });
+    onEach(document.getElementById('main').getElementsByClassName('attributes'), function(i_e) {
+        i_e.parentNode.insertBefore(createToggleWrapper(toggle.cloneNode(true)), i_e);
+        if (getCurrentValue("rustdoc-item-attributes") !== "false") {
+            collapseDocs(i_e.previousSibling.childNodes[0], "toggle");
+        }
     });
 
     onEach(document.getElementsByClassName('rust-example-rendered'), function(e) {
