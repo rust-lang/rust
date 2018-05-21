@@ -105,6 +105,10 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     /// start executing the query, or it returns with the result of the query.
     /// If the query is executing elsewhere, this will wait for it.
     /// If the query panicked, this will silently panic.
+    ///
+    /// This function is inlined because that results in a noticeable speedup
+    /// for some compile-time benchmarks.
+    #[inline(always)]
     pub(super) fn try_get(
         tcx: TyCtxt<'a, 'tcx, '_>,
         span: Span,
