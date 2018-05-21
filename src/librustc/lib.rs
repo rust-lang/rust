@@ -69,7 +69,6 @@
 #![feature(trusted_len)]
 #![feature(catch_expr)]
 #![feature(test)]
-#![feature(inclusive_range_methods)]
 
 #![recursion_limit="512"]
 
