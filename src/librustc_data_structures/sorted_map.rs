@@ -285,7 +285,6 @@ impl<K: Ord, V, I: Iterator<Item=(K, V)>> From<I> for SortedMap<K, V> {
 #[cfg(test)]
 mod tests {
     use super::SortedMap;
-    use test::{self, Bencher};
 
     #[test]
     fn test_insert_and_iter() {
@@ -473,29 +472,15 @@ mod tests {
         assert_eq!(elements(map), expected);
     }
 
-    macro_rules! mk_bench {
-        ($name:ident, $size:expr) => (
-            #[bench]
-            fn $name(b: &mut Bencher) {
-                let mut map = SortedMap::new();
-                for x in 0 .. $size {
-                    map.insert(x * 3, 0);
-                }
+    #[test]
+    fn test_insert_presorted_at_end() {
+        let mut map = SortedMap::new();
+        map.insert(1, 1);
+        map.insert(2, 2);
 
-                b.iter(|| {
-                    test::black_box(map.range(..));
-                    test::black_box(map.range( $size / 2.. $size ));
-                    test::black_box(map.range( 0 .. $size / 3 ));
-                    test::black_box(map.range( $size / 4 .. $size / 3 ));
-                })
-            }
-        )
+        map.insert_presorted(vec![(3, 3), (8, 8)]);
+
+        let expected = vec![(1, 1), (2, 2), (3, 3), (8, 8)];
+        assert_eq!(elements(map), expected);
     }
-
-    mk_bench!(bench_range_1, 1);
-    mk_bench!(bench_range_2, 2);
-    mk_bench!(bench_range_5, 5);
-    mk_bench!(bench_range_10, 10);
-    mk_bench!(bench_range_32, 32);
-    mk_bench!(bench_range_1000, 1000);
 }
