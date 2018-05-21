@@ -725,8 +725,8 @@ fn ranges_subtract_pattern<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             } else {
                 // The pattern intersects the middle of the subrange,
                 // so we create two ranges either side of the intersection.)
-                remaining_ranges.push((subrange_lo, pat_interval.lo));
-                remaining_ranges.push((pat_interval.hi, subrange_hi));
+                remaining_ranges.push((subrange_lo, pat_interval.lo - 1));
+                remaining_ranges.push((pat_interval.hi + 1, subrange_hi));
             }
         }
         // Convert the remaining ranges from pairs to inclusive `ConstantRange`s.
