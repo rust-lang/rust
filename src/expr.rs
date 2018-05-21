@@ -122,7 +122,7 @@ pub fn format_expr(
             match expr_type {
                 ExprType::Statement => {
                     if is_unsafe_block(block) {
-                        rewrite_block(block, Some(&expr.attrs), context, shape)
+                        rewrite_block(block, Some(&expr.attrs), opt_label, context, shape)
                     } else if let rw @ Some(_) =
                         rewrite_empty_block(context, block, Some(&expr.attrs), "", shape)
                     {
@@ -130,11 +130,10 @@ pub fn format_expr(
                         rw
                     } else {
                         let prefix = block_prefix(context, block, shape)?;
-                        let label_string = rewrite_label(opt_label);
 
                         rewrite_block_with_visitor(
                             context,
-                            &format!("{}{}", &prefix, &label_string),
+                            &prefix,
                             block,
                             Some(&expr.attrs),
                             shape,
@@ -142,7 +141,9 @@ pub fn format_expr(
                         )
                     }
                 }
-                ExprType::SubExpression => rewrite_block(block, Some(&expr.attrs), context, shape),
+                ExprType::SubExpression => {
+                    rewrite_block(block, Some(&expr.attrs), opt_label, context, shape)
+                }
             }
         }
         ast::ExprKind::Match(ref cond, ref arms) => {
@@ -328,6 +329,7 @@ pub fn format_expr(
                     rewrite_block(
                         block,
                         Some(&expr.attrs),
+                        None,
                         context,
                         Shape::legacy(budget, shape.indent)
                     )?
@@ -645,17 +647,20 @@ pub fn rewrite_block_with_visitor(
 
 impl Rewrite for ast::Block {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        rewrite_block(self, None, context, shape)
+        rewrite_block(self, None, None, context, shape)
     }
 }
 
 fn rewrite_block(
     block: &ast::Block,
     attrs: Option<&[ast::Attribute]>,
+    label: Option<ast::Label>,
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
-    let prefix = block_prefix(context, block, shape)?;
+    let unsafe_string = block_prefix(context, block, shape)?;
+    let label_string = rewrite_label(label);
+    let prefix = format!("{}{}", unsafe_string, label_string);
 
     // shape.width is used only for the single line case: either the empty block `{}`,
     // or an unsafe expression `unsafe { e }`.
