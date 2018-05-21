@@ -13,7 +13,7 @@ use middle::const_val::ConstVal;
 use infer::InferCtxt;
 use ty::subst::Substs;
 use traits;
-use ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use std::iter::once;
 use syntax::ast;
 use syntax_pos::Span;
@@ -59,7 +59,7 @@ pub fn trait_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                          -> Vec<traits::PredicateObligation<'tcx>>
 {
     let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![] };
-    wf.compute_trait_ref(trait_ref, Elaborate::All);
+    wf.compute_trait_ref(&trait_ref.to_poly_trait_ref(), Elaborate::All);
     wf.normalize()
 }
 
@@ -73,19 +73,18 @@ pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![] };
 
     // (*) ok to skip binders, because wf code is prepared for it
-    match *predicate {
-        ty::Predicate::Trait(ref t) => {
-            wf.compute_trait_ref(&t.skip_binder().trait_ref, Elaborate::None); // (*)
+    match predicate {
+        ty::Predicate::Trait(t) => {
+            wf.compute_trait_ref(&t.to_poly_trait_ref(), Elaborate::None);
         }
         ty::Predicate::RegionOutlives(..) => {
         }
-        ty::Predicate::TypeOutlives(ref t) => {
+        ty::Predicate::TypeOutlives(t) => {
             wf.compute(t.skip_binder().0);
         }
-        ty::Predicate::Projection(ref t) => {
-            let t = t.skip_binder(); // (*)
-            wf.compute_projection(t.projection_ty);
-            wf.compute(t.ty);
+        ty::Predicate::Projection(t) => {
+            wf.compute_projection(t.map_bound(|t| t.projection_ty));
+            wf.compute(t.skip_binder().ty); // (*)
         }
         ty::Predicate::WellFormed(t) => {
             wf.compute(t);
@@ -94,12 +93,12 @@ pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         }
         ty::Predicate::ClosureKind(..) => {
         }
-        ty::Predicate::Subtype(ref data) => {
+        ty::Predicate::Subtype(data) => {
             wf.compute(data.skip_binder().a); // (*)
             wf.compute(data.skip_binder().b); // (*)
         }
         ty::Predicate::ConstEvaluatable(def_id, substs) => {
-            let obligations = wf.nominal_obligations(def_id, substs);
+            let obligations = wf.nominal_obligations(*def_id, substs);
             wf.out.extend(obligations);
 
             for ty in substs.types() {
@@ -169,8 +168,8 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
     /// Pushes the obligations required for `trait_ref` to be WF into
     /// `self.out`.
-    fn compute_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>, elaborate: Elaborate) {
-        let obligations = self.nominal_obligations(trait_ref.def_id, trait_ref.substs);
+    fn compute_trait_ref(&mut self, poly_trait_ref: &ty::PolyTraitRef<'tcx>, elaborate: Elaborate) {
+        let obligations = self.nominal_trait_ref_obligations(poly_trait_ref);
 
         let cause = self.cause(traits::MiscObligation);
         let param_env = self.param_env;
@@ -189,7 +188,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         self.out.extend(obligations);
 
         self.out.extend(
-            trait_ref.substs.types()
+            poly_trait_ref.skip_binder().substs.types()
                             .filter(|ty| !ty.has_escaping_regions())
                             .map(|ty| traits::Obligation::new(cause.clone(),
                                                               param_env,
@@ -198,16 +197,18 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
     /// Pushes the obligations required for `trait_ref::Item` to be WF
     /// into `self.out`.
-    fn compute_projection(&mut self, data: ty::ProjectionTy<'tcx>) {
+    fn compute_projection(&mut self, poly_proj: ty::Binder<ty::ProjectionTy<'tcx>>) {
         // A projection is well-formed if (a) the trait ref itself is
         // WF and (b) the trait-ref holds.  (It may also be
         // normalizable and be WF that way.)
-        let trait_ref = data.trait_ref(self.infcx.tcx);
-        self.compute_trait_ref(&trait_ref, Elaborate::None);
+        let poly_trait_ref = poly_proj.map_bound(|proj| proj.trait_ref(self.infcx.tcx));
+        self.compute_trait_ref(&poly_trait_ref, Elaborate::None);
 
-        if !data.has_escaping_regions() {
-            let predicate = trait_ref.to_predicate();
-            let cause = self.cause(traits::ProjectionWf(data));
+        // FIXME(leodasvacas): Should be straightforward to remove
+        // this condition and use the `poly_proj` directly.
+        if let Some(proj) = poly_proj.no_late_bound_regions() {
+            let predicate = poly_trait_ref.to_predicate();
+            let cause = self.cause(traits::ProjectionWf(proj));
             self.out.push(traits::Obligation::new(cause, self.param_env, predicate));
         }
     }
@@ -289,7 +290,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
                 ty::TyProjection(data) => {
                     subtys.skip_current_subtree(); // subtree handled by compute_projection
-                    self.compute_projection(data);
+                    self.compute_projection(ty::Binder::bind(data));
                 }
 
                 ty::TyAdt(def, substs) => {
@@ -429,6 +430,23 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
         // if we made it through that loop above, we made progress!
         return true;
+    }
+
+    fn nominal_trait_ref_obligations(&mut self,
+                                    poly_trait_ref: &ty::PolyTraitRef<'tcx>)
+                                    -> Vec<traits::PredicateObligation<'tcx>> {
+        let cause = self.cause(traits::ItemObligation(poly_trait_ref.def_id()));
+        poly_trait_ref
+            .unfold(|trait_ref| {
+                self.infcx
+                    .tcx
+                    .predicates_of(trait_ref.def_id)
+                    .instantiate(self.infcx.tcx, trait_ref.substs)
+                    .predicates
+            })
+            .map(|poly_pred| poly_pred.flatten(self.infcx.tcx))
+            .map(|pred| traits::Obligation::new(cause.clone(), self.param_env, pred))
+            .collect()
     }
 
     fn nominal_obligations(&mut self,

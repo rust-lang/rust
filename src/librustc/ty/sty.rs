@@ -797,6 +797,34 @@ impl<T> Binder<T> {
         let (u, v) = f(self.0);
         (Binder(u), Binder(v))
     }
+
+    pub fn unfold<U,F>(self, f: F) -> impl Iterator<Item = Binder<U>>
+        where F: FnOnce(T) -> Vec<U>
+    {
+        f(self.0).into_iter().map(|u| Binder(u))
+    }
+}
+
+impl<'tcx> Binder<ty::Predicate<'tcx>> {
+    pub fn flatten<'a, 'gcx>(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> ty::Predicate<'tcx> {
+        // We will rebind inside the predicate.
+        match self.0 {
+            ty::Predicate::Trait(b) =>
+                ty::Predicate::Trait(tcx.flatten_late_bound_regions(&Binder::bind(b))),
+            ty::Predicate::Subtype(b) =>
+                ty::Predicate::Subtype(tcx.flatten_late_bound_regions(&Binder::bind(b))),
+            ty::Predicate::RegionOutlives(b) =>
+                ty::Predicate::RegionOutlives(tcx.flatten_late_bound_regions(&Binder::bind(b))),
+            ty::Predicate::TypeOutlives(b) =>
+                ty::Predicate::TypeOutlives(tcx.flatten_late_bound_regions(&Binder::bind(b))),
+            ty::Predicate::Projection(b) =>
+                ty::Predicate::Projection(tcx.flatten_late_bound_regions(&Binder::bind(b))),
+            ty::Predicate::WellFormed(_) |
+            ty::Predicate::ObjectSafe(_) |
+            ty::Predicate::ClosureKind(_, _, _) |
+            ty::Predicate::ConstEvaluatable(_, _) => self.no_late_bound_regions().unwrap()
+        }
+    }
 }
 
 /// Represents the projection of an associated type. In explicit UFCS
