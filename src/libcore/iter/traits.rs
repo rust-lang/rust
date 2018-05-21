@@ -10,7 +10,7 @@
 use ops::{Mul, Add, Try};
 use num::Wrapping;
 
-use super::{AlwaysOk, LoopState};
+use super::LoopState;
 
 /// Conversion from an `Iterator`.
 ///
@@ -524,7 +524,7 @@ pub trait DoubleEndedIterator: Iterator {
     fn rfold<B, F>(mut self, accum: B, mut f: F) -> B where
         Self: Sized, F: FnMut(B, Self::Item) -> B,
     {
-        self.try_rfold(accum, move |acc, x| AlwaysOk(f(acc, x))).0
+        self.try_rfold(accum, move |acc, x| Ok::<B, !>(f(acc, x))).unwrap()
     }
 
     /// Searches for an element of an iterator from the back that satisfies a predicate.

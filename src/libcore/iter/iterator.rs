@@ -11,7 +11,7 @@
 use cmp::Ordering;
 use ops::Try;
 
-use super::{AlwaysOk, LoopState};
+use super::LoopState;
 use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, Fuse};
 use super::{Flatten, FlatMap, flatten_compat};
 use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
@@ -1614,7 +1614,7 @@ pub trait Iterator {
     fn fold<B, F>(mut self, init: B, mut f: F) -> B where
         Self: Sized, F: FnMut(B, Self::Item) -> B,
     {
-        self.try_fold(init, move |acc, x| AlwaysOk(f(acc, x))).0
+        self.try_fold(init, move |acc, x| Ok::<B, !>(f(acc, x))).unwrap()
     }
 
     /// Tests if every element of the iterator matches a predicate.

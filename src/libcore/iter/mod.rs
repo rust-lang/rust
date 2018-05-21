@@ -354,21 +354,6 @@ mod range;
 mod sources;
 mod traits;
 
-/// Transparent newtype used to implement foo methods in terms of try_foo.
-/// Important until #43278 is fixed; might be better as `Result<T, !>` later.
-struct AlwaysOk<T>(pub T);
-
-impl<T> Try for AlwaysOk<T> {
-    type Ok = T;
-    type Error = !;
-    #[inline]
-    fn into_result(self) -> Result<Self::Ok, Self::Error> { Ok(self.0) }
-    #[inline]
-    fn from_error(v: Self::Error) -> Self { v }
-    #[inline]
-    fn from_ok(v: Self::Ok) -> Self { AlwaysOk(v) }
-}
-
 /// Used to make try_fold closures more like normal loops
 #[derive(PartialEq)]
 enum LoopState<C, B> {
