@@ -42,9 +42,7 @@ impl<K: Ord, V> SortedMap<K, V> {
 
     #[inline]
     pub fn insert(&mut self, key: K, mut value: V) -> Option<V> {
-        let index = self.data.binary_search_by(|&(ref x, _)| x.cmp(&key));
-
-        match index {
+        match self.lookup_index_for(&key) {
             Ok(index) => {
                 let mut slot = unsafe {
                     self.data.get_unchecked_mut(index)
@@ -61,9 +59,7 @@ impl<K: Ord, V> SortedMap<K, V> {
 
     #[inline]
     pub fn remove(&mut self, key: &K) -> Option<V> {
-        let index = self.data.binary_search_by(|&(ref x, _)| x.cmp(key));
-
-        match index {
+        match self.lookup_index_for(key) {
             Ok(index) => {
                 Some(self.data.remove(index).1)
             }
@@ -75,9 +71,7 @@ impl<K: Ord, V> SortedMap<K, V> {
 
     #[inline]
     pub fn get(&self, key: &K) -> Option<&V> {
-        let index = self.data.binary_search_by(|&(ref x, _)| x.cmp(key));
-
-        match index {
+        match self.lookup_index_for(key) {
             Ok(index) => {
                 unsafe {
                     Some(&self.data.get_unchecked(index).1)
@@ -91,9 +85,7 @@ impl<K: Ord, V> SortedMap<K, V> {
 
     #[inline]
     pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
-        let index = self.data.binary_search_by(|&(ref x, _)| x.cmp(key));
-
-        match index {
+        match self.lookup_index_for(key) {
             Ok(index) => {
                 unsafe {
                     Some(&mut self.data.get_unchecked_mut(index).1)
@@ -168,12 +160,9 @@ impl<K: Ord, V> SortedMap<K, V> {
 
         debug_assert!(elements.windows(2).all(|w| w[0].0 < w[1].0));
 
-        let index = {
-            let first_element = &elements[0].0;
-            self.data.binary_search_by(|&(ref x, _)| x.cmp(first_element))
-        };
+        let start_index = self.lookup_index_for(&elements[0].0);
 
-        let drain = match index {
+        let drain = match start_index {
             Ok(index) => {
                 let mut drain = elements.drain(..);
                 self.data[index] = drain.next().unwrap();
@@ -200,18 +189,24 @@ impl<K: Ord, V> SortedMap<K, V> {
         }
     }
 
+    /// Looks up the key in `self.data` via `slice::binary_search()`.
+    #[inline(always)]
+    fn lookup_index_for(&self, key: &K) -> Result<usize, usize> {
+        self.data.binary_search_by(|&(ref x, _)| x.cmp(key))
+    }
+
     #[inline]
     fn range_slice_indices<R>(&self, range: R) -> (usize, usize)
         where R: RangeBounds<K>
     {
         let start = match range.start() {
             Bound::Included(ref k) => {
-                match self.data.binary_search_by(|&(ref x, _)| x.cmp(k)) {
+                match self.lookup_index_for(k) {
                     Ok(index) | Err(index) => index
                 }
             }
             Bound::Excluded(ref k) => {
-                match self.data.binary_search_by(|&(ref x, _)| x.cmp(k)) {
+                match self.lookup_index_for(k) {
                     Ok(index) => index + 1,
                     Err(index) => index,
                 }
@@ -221,13 +216,13 @@ impl<K: Ord, V> SortedMap<K, V> {
 
         let end = match range.end() {
             Bound::Included(ref k) => {
-                match self.data.binary_search_by(|&(ref x, _)| x.cmp(k)) {
+                match self.lookup_index_for(k) {
                     Ok(index) => index + 1,
                     Err(index) => index,
                 }
             }
             Bound::Excluded(ref k) => {
-                match self.data.binary_search_by(|&(ref x, _)| x.cmp(k)) {
+                match self.lookup_index_for(k) {
                     Ok(index) | Err(index) => index,
                 }
             }
