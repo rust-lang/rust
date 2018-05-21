@@ -1,0 +1,32 @@
+error[E0643]: method `foo` has incompatible signature for trait
+  --> $DIR/impl-generic-mismatch.rs:18:12
+   |
+LL |     fn foo(&self, _: &impl Debug);
+   |                       ---------- annotation in trait
+...
+LL |     fn foo<U: Debug>(&self, _: &U) { }
+   |            ^ annotation in impl
+
+error[E0643]: method `bar` has incompatible signature for trait
+  --> $DIR/impl-generic-mismatch.rs:27:23
+   |
+LL |     fn bar<U: Debug>(&self, _: &U);
+   |            - annotation in trait
+...
+LL |     fn bar(&self, _: &impl Debug) { }
+   |                       ^^^^^^^^^^ annotation in impl
+
+error[E0643]: method `hash` has incompatible signature for trait
+  --> $DIR/impl-generic-mismatch.rs:38:33
+   |
+LL |     fn hash(&self, hasher: &mut impl Hasher) {}
+   |                                 ^^^^^^^^^^^ annotation in impl
+   | 
+  ::: /home/oliver/Projects/rust/rust3/src/libcore/hash/mod.rs:185:13
+   |
+LL |     fn hash<H: Hasher>(&self, state: &mut H);
+   |             - annotation in trait
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0643`.
