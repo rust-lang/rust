@@ -53,6 +53,10 @@ impl<'a> Iterator for SplitPaths<'a> {
     fn next(&mut self) -> Option<PathBuf> {
         match *self.0 {}
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(0))
+    }
 }
 
 #[derive(Debug)]

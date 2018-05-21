@@ -192,6 +192,15 @@ impl<'a> Iterator for SplitPaths<'a> {
             Some(super::os2path(&in_progress))
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // There will be at most N + 1 entries, where N is the number of
+        // remaining semicolons.
+        let data = self.data.clone();
+        let semicolons = data.filter(|&b| b == (';' as u16)).count();
+
+        (0, Some(semicolons + 1))
+    }
 }
 
 #[derive(Debug)]
