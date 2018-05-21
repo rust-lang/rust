@@ -12,6 +12,8 @@ use config::config_type::ConfigType;
 use config::lists::*;
 use config::{Config, FileName};
 
+use isatty::stdout_isatty;
+
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
@@ -189,6 +191,16 @@ configuration_option_enum! { Color:
     Never,
     // Automatically use color, if supported by terminal
     Auto,
+}
+
+impl Color {
+    pub fn use_colored_tty(&self) -> bool {
+        match self {
+            Color::Always => true,
+            Color::Never => false,
+            Color::Auto => stdout_isatty(),
+        }
+    }
 }
 
 configuration_option_enum! { Verbosity:

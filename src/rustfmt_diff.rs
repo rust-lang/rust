@@ -13,7 +13,6 @@ use diff;
 use std::collections::VecDeque;
 use std::io;
 use std::io::Write;
-use utils::use_colored_tty;
 
 #[derive(Debug, PartialEq)]
 pub enum DiffLine {
@@ -53,7 +52,7 @@ impl OutputWriter {
     // for colorized output and the capabilities of the terminal.
     pub fn new(color: Color) -> Self {
         if let Some(t) = term::stdout() {
-            if use_colored_tty(color) && t.supports_color() {
+            if color.use_colored_tty() && t.supports_color() {
                 return OutputWriter { terminal: Some(t) };
             }
         }

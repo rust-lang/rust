@@ -28,8 +28,8 @@ use failure::err_msg;
 use getopts::{Matches, Options};
 
 use rustfmt::{
-    checkstyle_footer, checkstyle_header, format_input, load_config, use_colored_tty, CliOptions,
-    Color, Config, EmitMode, ErrorKind, FileLines, FileName, Input, Summary, Verbosity,
+    checkstyle_footer, checkstyle_header, format_input, load_config, CliOptions, Color, Config,
+    EmitMode, ErrorKind, FileLines, FileName, Input, Summary, Verbosity,
 };
 
 fn main() {
@@ -316,7 +316,7 @@ fn format_and_emit_report(input: Input, config: &Config) -> Result<Summary, fail
             if report.has_warnings() {
                 match term::stderr() {
                     Some(ref t)
-                        if use_colored_tty(config.color())
+                        if config.color().use_colored_tty()
                             && t.supports_color()
                             && t.supports_attr(term::Attr::Bold) =>
                     {

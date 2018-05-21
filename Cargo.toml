@@ -32,6 +32,7 @@ cargo-fmt = []
 rustfmt-format-diff = []
 
 [dependencies]
+isatty = "0.1"
 itertools = "0.7"
 toml = "0.4"
 serde = "1.0"
@@ -53,9 +54,3 @@ failure = "0.1.1"
 [dev-dependencies]
 assert_cli = "0.6"
 lazy_static = "1.0.0"
-
-[target.'cfg(unix)'.dependencies]
-libc = "0.2.11"
-
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3" }

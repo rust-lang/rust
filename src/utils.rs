@@ -18,7 +18,6 @@ use syntax::ast::{
 use syntax::codemap::{BytePos, Span, NO_EXPANSION};
 use syntax::ptr;
 
-use config::Color;
 use rewrite::RewriteContext;
 use shape::Shape;
 
@@ -373,32 +372,6 @@ pub fn left_most_sub_expr(e: &ast::Expr) -> &ast::Expr {
         | ast::ExprKind::Range(Some(ref e), _, _)
         | ast::ExprKind::Try(ref e) => left_most_sub_expr(e),
         _ => e,
-    }
-}
-
-// isatty shamelessly adapted from cargo.
-#[cfg(unix)]
-pub fn isatty() -> bool {
-    extern crate libc;
-
-    unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
-}
-#[cfg(windows)]
-pub fn isatty() -> bool {
-    extern crate winapi;
-
-    unsafe {
-        let handle = winapi::um::processenv::GetStdHandle(winapi::um::winbase::STD_OUTPUT_HANDLE);
-        let mut out = 0;
-        winapi::um::consoleapi::GetConsoleMode(handle, &mut out) != 0
-    }
-}
-
-pub fn use_colored_tty(color: Color) -> bool {
-    match color {
-        Color::Always => true,
-        Color::Never => false,
-        Color::Auto => isatty(),
     }
 }
 

@@ -19,6 +19,7 @@
 extern crate derive_new;
 extern crate diff;
 extern crate failure;
+extern crate isatty;
 extern crate itertools;
 #[cfg(test)]
 #[macro_use]
@@ -61,7 +62,6 @@ pub use config::summary::Summary;
 pub use config::{
     load_config, CliOptions, Color, Config, EmitMode, FileLines, FileName, Verbosity,
 };
-pub use utils::use_colored_tty;
 
 #[macro_use]
 mod utils;
