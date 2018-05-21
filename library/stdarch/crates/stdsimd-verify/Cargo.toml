@@ -4,9 +4,9 @@ version = "0.1.0"
 authors = ["Alex Crichton <alex@alexcrichton.com>"]
 
 [dependencies]
-proc-macro2 = { version = "0.3", features = ["nightly"] }
-quote = "0.5"
-syn = { version = "0.13", features = ["full"] }
+proc-macro2 = "0.4"
+quote = "0.6"
+syn = { version = "0.14", features = ["full"] }
 
 [lib]
 proc-macro = true

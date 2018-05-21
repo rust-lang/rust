@@ -405,3 +405,6 @@ pub fn assert_skip_test_ok(name: &str) {
         name
     );
 }
+
+// See comment in `assert-instr-macro` crate for why this exists
+pub static mut _DONT_DEDUP: &'static str = "";

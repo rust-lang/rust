@@ -7,7 +7,7 @@ set -ex
 # Tests are all super fast anyway, and they fault often enough on travis that
 # having only one thread increases debuggability to be worth it.
 export RUST_TEST_THREADS=1
-export RUST_BACKTRACE=full
+#export RUST_BACKTRACE=full
 #export RUST_TEST_NOCAPTURE=1
 
 RUSTFLAGS="$RUSTFLAGS --cfg stdsimd_strict"
@@ -27,6 +27,15 @@ case ${TARGET} in
         ;;
     powerpc64-*)
         export STDSIMD_DISABLE_ASSERT_INSTR=1
+        ;;
+
+    # On 32-bit use a static relocation model which avoids some extra
+    # instructions when dealing with static data, notably allowing some
+    # instruction assertion checks to pass below the 20 instruction limit. If
+    # this is the default, dynamic, then too many instructions are generated
+    # when we assert the instruction for a function and it causes tests to fail.
+    i686-* | i586-*)
+        export RUSTFLAGS="${RUSTFLAGS} -C relocation-model=static"
         ;;
     *)
         ;;

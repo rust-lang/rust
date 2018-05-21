@@ -12,11 +12,6 @@ use std::io::Read;
 use std::path::Path;
 
 use proc_macro::TokenStream;
-use quote::Tokens;
-
-macro_rules! my_quote {
-    ($($t:tt)*) => (quote_spanned!(proc_macro2::Span::call_site() => $($t)*))
-}
 
 #[proc_macro]
 pub fn x86_functions(input: TokenStream) -> TokenStream {
@@ -56,7 +51,7 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
     let functions = functions
         .iter()
         .map(|&(ref f, path)| {
-            let name = f.ident;
+            let name = &f.ident;
             // println!("{}", name);
             let mut arguments = Vec::new();
             for input in f.decl.inputs.iter() {
@@ -67,19 +62,19 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
                 arguments.push(to_type(ty));
             }
             let ret = match f.decl.output {
-                syn::ReturnType::Default => my_quote! { None },
+                syn::ReturnType::Default => quote! { None },
                 syn::ReturnType::Type(_, ref t) => {
                     let ty = to_type(t);
-                    my_quote! { Some(#ty) }
+                    quote! { Some(#ty) }
                 }
             };
             let instrs = find_instrs(&f.attrs);
             let target_feature = match find_target_feature(&f.attrs) {
-                Some(i) => my_quote! { Some(#i) },
-                None => my_quote! { None },
+                Some(i) => quote! { Some(#i) },
+                None => quote! { None },
             };
             let required_const = find_required_const(&f.attrs);
-            my_quote! {
+            quote! {
                 Function {
                     name: stringify!(#name),
                     arguments: &[#(#arguments),*],
@@ -93,43 +88,43 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
         })
         .collect::<Vec<_>>();
 
-    let ret = my_quote! { #input: &[Function] = &[#(#functions),*]; };
+    let ret = quote! { #input: &[Function] = &[#(#functions),*]; };
     // println!("{}", ret);
     ret.into()
 }
 
-fn to_type(t: &syn::Type) -> Tokens {
+fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
     match *t {
-        syn::Type::Path(ref p) => match extract_path_ident(&p.path).as_ref() {
-            "__m128" => my_quote! { &M128 },
-            "__m128d" => my_quote! { &M128D },
-            "__m128i" => my_quote! { &M128I },
-            "__m256" => my_quote! { &M256 },
-            "__m256d" => my_quote! { &M256D },
-            "__m256i" => my_quote! { &M256I },
-            "__m64" => my_quote! { &M64 },
-            "bool" => my_quote! { &BOOL },
-            "f32" => my_quote! { &F32 },
-            "f64" => my_quote! { &F64 },
-            "i16" => my_quote! { &I16 },
-            "i32" => my_quote! { &I32 },
-            "i64" => my_quote! { &I64 },
-            "i8" => my_quote! { &I8 },
-            "u16" => my_quote! { &U16 },
-            "u32" => my_quote! { &U32 },
-            "u64" => my_quote! { &U64 },
-            "u8" => my_quote! { &U8 },
-            "CpuidResult" => my_quote! { &CPUID },
+        syn::Type::Path(ref p) => match extract_path_ident(&p.path).to_string().as_ref() {
+            "__m128" => quote! { &M128 },
+            "__m128d" => quote! { &M128D },
+            "__m128i" => quote! { &M128I },
+            "__m256" => quote! { &M256 },
+            "__m256d" => quote! { &M256D },
+            "__m256i" => quote! { &M256I },
+            "__m64" => quote! { &M64 },
+            "bool" => quote! { &BOOL },
+            "f32" => quote! { &F32 },
+            "f64" => quote! { &F64 },
+            "i16" => quote! { &I16 },
+            "i32" => quote! { &I32 },
+            "i64" => quote! { &I64 },
+            "i8" => quote! { &I8 },
+            "u16" => quote! { &U16 },
+            "u32" => quote! { &U32 },
+            "u64" => quote! { &U64 },
+            "u8" => quote! { &U8 },
+            "CpuidResult" => quote! { &CPUID },
             s => panic!("unspported type: {}", s),
         },
         syn::Type::Ptr(syn::TypePtr { ref elem, .. })
         | syn::Type::Reference(syn::TypeReference { ref elem, .. }) => {
             let tokens = to_type(&elem);
-            my_quote! { &Type::Ptr(#tokens) }
+            quote! { &Type::Ptr(#tokens) }
         }
         syn::Type::Slice(_) => panic!("unsupported slice"),
         syn::Type::Array(_) => panic!("unsupported array"),
-        syn::Type::Tuple(_) => my_quote! { &TUPLE },
+        syn::Type::Tuple(_) => quote! { &TUPLE },
         _ => panic!("unsupported type"),
     }
 }
@@ -145,7 +140,7 @@ fn extract_path_ident(path: &syn::Path) -> syn::Ident {
         syn::PathArguments::None => {}
         _ => panic!("unsupported path that has path arguments"),
     }
-    path.segments.first().unwrap().value().ident
+    path.segments.first().unwrap().value().ident.clone()
 }
 
 fn walk(root: &Path, files: &mut Vec<(syn::File, String)>) {

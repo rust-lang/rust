@@ -10,7 +10,7 @@
 #![allow(dead_code)]
 #![allow(unused_features)]
 #![feature(const_fn, link_llvm_intrinsics, platform_intrinsics, repr_simd,
-           simd_ffi, asm,
+           simd_ffi, asm, proc_macro_gen,
            integer_atomics, stmt_expr_attributes, core_intrinsics,
            crate_in_paths, no_core, attr_literals, rustc_attrs, stdsimd,
            staged_api, core_float, core_slice_ext, align_offset,

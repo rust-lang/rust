@@ -12,7 +12,7 @@ extern crate quote;
 
 use std::env;
 
-use proc_macro2::{Literal, Span, Term, TokenStream, TokenTree};
+use proc_macro2::{Literal, Span, Ident, TokenStream, TokenTree};
 
 fn string(s: &str) -> TokenTree {
     Literal::string(s).into()
@@ -29,11 +29,11 @@ pub fn simd_test(
         panic!("expected #[simd_test(enable = \"feature\")]");
     }
     match &tokens[0] {
-        TokenTree::Term(tt) if tt.to_string() == "enable" => {}
+        TokenTree::Ident(tt) if tt.to_string() == "enable" => {}
         _ => panic!("expected #[simd_test(enable = \"feature\")]"),
     }
     match &tokens[1] {
-        TokenTree::Op(tt) if tt.op() == '=' => {}
+        TokenTree::Punct(tt) if tt.as_char() == '=' => {}
         _ => panic!("expected #[simd_test(enable = \"feature\")]"),
     }
     let enable_feature = match &tokens[2] {
@@ -53,9 +53,9 @@ pub fn simd_test(
     let item = TokenStream::from(item);
     let name = find_name(item.clone());
 
-    let name: TokenStream = name.as_str().parse().expect(&format!(
+    let name: TokenStream = name.to_string().parse().expect(&format!(
         "failed to parse name: {}",
-        name.clone().as_str()
+        name.to_string()
     ));
 
     let target = env::var("TARGET")
@@ -87,9 +87,9 @@ pub fn simd_test(
         }
         t => panic!("unknown target: {}", t),
     };
-    let macro_test = proc_macro2::Term::new(macro_test, Span::call_site());
+    let macro_test = Ident::new(macro_test, Span::call_site());
 
-    let mut cfg_target_features = quote::Tokens::new();
+    let mut cfg_target_features = TokenStream::empty();
     use quote::ToTokens;
     for feature in target_features {
         let q = quote_spanned! {
@@ -119,18 +119,18 @@ pub fn simd_test(
     ret.into()
 }
 
-fn find_name(item: TokenStream) -> Term {
+fn find_name(item: TokenStream) -> Ident {
     let mut tokens = item.into_iter();
     while let Some(tok) = tokens.next() {
-        if let TokenTree::Term(word) = tok {
-            if word.as_str() == "fn" {
+        if let TokenTree::Ident(word) = tok {
+            if word == "fn" {
                 break;
             }
         }
     }
 
     match tokens.next() {
-        Some(TokenTree::Term(word)) => word,
+        Some(TokenTree::Ident(word)) => word,
         _ => panic!("failed to find function name"),
     }
 }
