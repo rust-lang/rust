@@ -1375,9 +1375,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
 
                 CastKind::Unsize => {
+                    let &ty = ty;
                     let trait_ref = ty::TraitRef {
                         def_id: tcx.lang_items().coerce_unsized_trait().unwrap(),
-                        substs: tcx.mk_substs_trait(op.ty(mir, tcx), &[ty]),
+                        substs: tcx.mk_substs_trait(op.ty(mir, tcx), &[ty.into()]),
                     };
 
                     self.prove_trait_ref(trait_ref, location);

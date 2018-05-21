@@ -1340,7 +1340,7 @@ impl<'tcx> Clean<TyParam> for ty::GenericParamDef {
     fn clean(&self, cx: &DocContext) -> TyParam {
         cx.renderinfo.borrow_mut().external_typarams.insert(self.def_id, self.name.clean(cx));
         let has_default = match self.kind {
-            ty::GenericParamDefKind::Type(ty) => ty.has_default,
+            ty::GenericParamDefKind::Type { has_default, .. } => has_default,
             _ => panic!("tried to convert a non-type GenericParamDef as a type")
         };
         TyParam {
@@ -1827,7 +1827,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
         // predicates field (see rustc_typeck::collect::ty_generics), so remove
         // them.
         let stripped_typarams = gens.params.iter().filter_map(|param| {
-            if let ty::GenericParamDefKind::Type(_) = param.kind {
+            if let ty::GenericParamDefKind::Type {..} = param.kind {
                 if param.name == keywords::SelfType.name().as_str() {
                     assert_eq!(param.index, 0);
                     None

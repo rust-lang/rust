@@ -331,7 +331,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                                 self.fcx, lifetime, Some(param)).into();
                         }
                     }
-                    GenericParamDefKind::Type(_) => {
+                    GenericParamDefKind::Type {..} => {
                         if let Some(ast_ty) = provided.as_ref().and_then(|p| {
                             p.types.get(i - parent_substs.len() - own_counts.lifetimes)
                         }) {

@@ -312,7 +312,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         },
                     }
                     let eq_def_id = self.hir.tcx().lang_items().eq_trait().unwrap();
-                    let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, &[ty]);
+                    let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, &[ty.into()]);
 
                     // take the argument by reference
                     let region_scope = self.topmost_scope();

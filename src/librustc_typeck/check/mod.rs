@@ -94,7 +94,7 @@ use rustc::infer::anon_types::AnonTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
 use rustc::mir::interpret::{GlobalId};
-use rustc::ty::subst::{Kind, UnpackedKind, Subst, Substs};
+use rustc::ty::subst::{UnpackedKind, Subst, Substs};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
@@ -116,7 +116,6 @@ use std::collections::hash_map::Entry;
 use std::cmp;
 use std::fmt::Display;
 use std::mem::replace;
-use std::iter;
 use std::ops::{self, Deref};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
@@ -1114,7 +1113,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
             if id == fn_id {
                 match entry_type {
                     config::EntryMain => {
-                        let substs = fcx.tcx.mk_substs(iter::once(Kind::from(declared_ret_ty)));
+                        let substs = fcx.tcx.mk_substs_trait(declared_ret_ty, &[]);
                         let trait_ref = ty::TraitRef::new(term_id, substs);
                         let return_ty_span = decl.output.span();
                         let cause = traits::ObligationCause::new(
@@ -4752,10 +4751,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let mut i = param.index as usize;
 
             let segment = if i < fn_start {
-                if let GenericParamDefKind::Type(_) = param.kind {
+                if let GenericParamDefKind::Type {..} = param.kind {
                     // Handle Self first, so we can adjust the index to match the AST.
                     if has_self && i == 0 {
-                        return opt_self_ty.map(|ty| Kind::from(ty)).unwrap_or_else(|| {
+                        return opt_self_ty.map(|ty| ty.into()).unwrap_or_else(|| {
                             self.var_for_def(span, param)
                         });
                     }
@@ -4779,7 +4778,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.re_infer(span, Some(param)).unwrap().into()
                     }
                 }
-                GenericParamDefKind::Type(_) => {
+                GenericParamDefKind::Type {..} => {
                     let (types, infer_types) = segment.map_or((&[][..], true), |(s, _)| {
                         (s.parameters.as_ref().map_or(&[][..], |p| &p.types[..]), s.infer_types)
                     });
@@ -4790,7 +4789,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
 
                     let has_default = match param.kind {
-                        GenericParamDefKind::Type(ty) => ty.has_default,
+                        GenericParamDefKind::Type { has_default, .. } => has_default,
                         _ => unreachable!()
                     };
 
@@ -4926,9 +4925,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         GenericParamDefKind::Lifetime => {
                             lt_accepted += 1;
                         }
-                        GenericParamDefKind::Type(ty) => {
+                        GenericParamDefKind::Type { has_default, .. } => {
                             ty_params.accepted += 1;
-                            if !ty.has_default {
+                            if !has_default {
                                 ty_params.required += 1;
                             }
                         }
@@ -5025,12 +5024,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let segment = segment.map(|(path_segment, generics)| {
             let explicit = !path_segment.infer_types;
             let impl_trait = generics.params.iter().any(|param| {
-                if let ty::GenericParamDefKind::Type(ty) = param.kind {
-                    if let Some(hir::SyntheticTyParamKind::ImplTrait) = ty.synthetic {
-                        return true;
-                    }
+                match param.kind {
+                    ty::GenericParamDefKind::Type {
+                        synthetic: Some(hir::SyntheticTyParamKind::ImplTrait), ..
+                    } => true,
+                    _ => false,
                 }
-                false
             });
 
             if explicit && impl_trait {

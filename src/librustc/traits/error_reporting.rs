@@ -383,7 +383,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         for param in generics.params.iter() {
             let value = match param.kind {
-                GenericParamDefKind::Type(_) => {
+                GenericParamDefKind::Type {..} => {
                     trait_ref.substs[param.index as usize].to_string()
                 },
                 GenericParamDefKind::Lifetime => continue,
@@ -652,14 +652,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             && fallback_has_occurred
                         {
                             let predicate = trait_predicate.map_bound(|mut trait_pred| {
-                                {
-                                    let trait_ref = &mut trait_pred.trait_ref;
-                                    let never_substs = trait_ref.substs;
-                                    let mut unit_substs = Vec::with_capacity(never_substs.len());
-                                    unit_substs.push(self.tcx.mk_nil().into());
-                                    unit_substs.extend(&never_substs[1..]);
-                                    trait_ref.substs = self.tcx.intern_substs(&unit_substs);
-                                }
+                                trait_pred.trait_ref.substs = self.tcx.mk_substs_trait(
+                                    self.tcx.mk_nil(),
+                                    &trait_pred.trait_ref.substs[1..],
+                                );
                                 trait_pred
                             });
                             let unit_obligation = Obligation {

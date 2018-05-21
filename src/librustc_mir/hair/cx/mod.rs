@@ -24,7 +24,7 @@ use rustc::infer::InferCtxt;
 use rustc::ty::layout::{IntegerExt, Size};
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt, layout};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Kind, Substs};
 use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::symbol::Symbol;
@@ -235,7 +235,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                         trait_def_id: DefId,
                         method_name: &str,
                         self_ty: Ty<'tcx>,
-                        params: &[Ty<'tcx>])
+                        params: &[Kind<'tcx>])
                         -> (Ty<'tcx>, Literal<'tcx>) {
         let method_name = Symbol::intern(method_name);
         let substs = self.tcx.mk_substs_trait(self_ty, params);

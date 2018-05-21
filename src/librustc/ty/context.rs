@@ -2329,11 +2329,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let substs = Substs::for_item(self, def_id, |param, substs| {
             match param.kind {
                 GenericParamDefKind::Lifetime => bug!(),
-                GenericParamDefKind::Type(ty_param) => {
+                GenericParamDefKind::Type { has_default, .. } => {
                     if param.index == 0 {
                         ty.into()
                     } else {
-                        assert!(ty_param.has_default);
+                        assert!(has_default);
                         self.type_of(param.def_id).subst(self, substs).into()
                     }
                 }
@@ -2477,7 +2477,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             GenericParamDefKind::Lifetime => {
                 self.mk_region(ty::ReEarlyBound(param.to_early_bound_region_data())).into()
             }
-            GenericParamDefKind::Type(_) => self.mk_ty_param(param.index, param.name).into(),
+            GenericParamDefKind::Type {..} => self.mk_ty_param(param.index, param.name).into(),
         }
     }
 
@@ -2584,11 +2584,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_substs_trait(self,
-                     s: Ty<'tcx>,
-                     t: &[Ty<'tcx>])
+                     self_ty: Ty<'tcx>,
+                     rest: &[Kind<'tcx>])
                     -> &'tcx Substs<'tcx>
     {
-        self.mk_substs(iter::once(s).chain(t.into_iter().cloned()).map(Kind::from))
+        self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
     }
 
     pub fn mk_clauses<I: InternAs<[Clause<'tcx>], Clauses<'tcx>>>(self, iter: I) -> I::Output {
@@ -2600,7 +2600,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_goal(self, goal: Goal<'tcx>) -> &'tcx Goal {
-        &self.mk_goals(iter::once(goal))[0]
+        &self.intern_goals(&[goal])[0]
     }
 
     pub fn lint_node<S: Into<MultiSpan>>(self,

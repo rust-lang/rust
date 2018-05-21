@@ -14,12 +14,12 @@ use rustc::mir::*;
 use rustc::middle::lang_items;
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::subst::{Kind, Substs};
+use rustc::ty::subst::Substs;
 use rustc::ty::util::IntTypeExt;
 use rustc_data_structures::indexed_vec::Idx;
 use util::patch::MirPatch;
 
-use std::{iter, u32};
+use std::u32;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum DropFlagState {
@@ -520,7 +520,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let drop_trait = tcx.lang_items().drop_trait().unwrap();
         let drop_fn = tcx.associated_items(drop_trait).next().unwrap();
         let ty = self.place_ty(self.place);
-        let substs = tcx.mk_substs(iter::once(Kind::from(ty)));
+        let substs = tcx.mk_substs_trait(ty, &[]);
 
         let ref_ty = tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
             ty,

@@ -263,7 +263,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                         name,
                     });
                 }
-                ty::GenericParamDefKind::Type(_) => {
+                ty::GenericParamDefKind::Type {..} => {
                     types.push(P(self.ty_param_to_ty(param.clone())));
                 }
             }

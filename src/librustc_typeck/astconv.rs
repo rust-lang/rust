@@ -18,9 +18,9 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use namespace::Namespace;
-use rustc::ty::subst::{Kind, UnpackedKind, Subst, Substs};
+use rustc::ty::subst::{Subst, Substs};
 use rustc::traits;
-use rustc::ty::{self, RegionKind, Ty, TyCtxt, ToPredicate, TypeFoldable};
+use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::GenericParamDefKind;
 use rustc::ty::wf::object_region_bounds;
 use rustc_target::spec::abi;
@@ -224,9 +224,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 GenericParamDefKind::Lifetime => {
                     lt_accepted += 1;
                 }
-                GenericParamDefKind::Type(ty) => {
+                GenericParamDefKind::Type { has_default, .. } => {
                     ty_params.accepted += 1;
-                    if !ty.has_default {
+                    if !has_default {
                         ty_params.required += 1;
                     }
                 }
@@ -251,8 +251,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
         let default_needs_object_self = |param: &ty::GenericParamDef| {
-            if let GenericParamDefKind::Type(ty) = param.kind {
-                if is_object && ty.has_default {
+            if let GenericParamDefKind::Type { has_default, .. } = param.kind {
+                if is_object && has_default {
                     if tcx.at(span).type_of(param.def_id).has_self_ty() {
                         // There is no suitable inference default for a type parameter
                         // that references self, in an object type.
@@ -275,7 +275,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         tcx.types.re_static.into()
                     }
                 }
-                GenericParamDefKind::Type(ty) => {
+                GenericParamDefKind::Type { has_default, .. } => {
                     let i = param.index as usize;
 
                     // Handle Self first, so we can adjust the index to match the AST.
@@ -294,7 +294,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         } else {
                             self.ty_infer(span).into()
                         }
-                    } else if ty.has_default {
+                    } else if has_default {
                         // No type parameter provided, but a default exists.
 
                         // If we are converting an object type, then the
@@ -1152,32 +1152,29 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let tcx = self.tcx();
         let generics = tcx.generics_of(def_id);
 
-        // Fill in the substs of the parent generics
         debug!("impl_trait_ty_to_ty: generics={:?}", generics);
-        let mut substs = Vec::with_capacity(generics.count());
-        if let Some(parent_id) = generics.parent {
-            let parent_generics = tcx.generics_of(parent_id);
-            Substs::fill_item(&mut substs, tcx, parent_generics, &mut |param, _| {
-                tcx.mk_param_from_def(param)
-            });
-
-            // Replace all lifetimes with 'static
-            for subst in &mut substs {
-                if let UnpackedKind::Lifetime(_) = subst.unpack() {
-                    *subst = Kind::from(&RegionKind::ReStatic);
+        let substs = Substs::for_item(tcx, def_id, |param, _| {
+            if let Some(i) = (param.index as usize).checked_sub(generics.parent_count) {
+                // Our own parameters are the resolved lifetimes.
+                match param.kind {
+                    GenericParamDefKind::Lifetime => {
+                        self.ast_region_to_region(&lifetimes[i], None).into()
+                    }
+                    _ => bug!()
+                }
+            } else {
+                // Replace all parent lifetimes with 'static.
+                match param.kind {
+                    GenericParamDefKind::Lifetime => {
+                        tcx.types.re_static.into()
+                    }
+                    _ => tcx.mk_param_from_def(param)
                 }
             }
-            debug!("impl_trait_ty_to_ty: substs from parent = {:?}", substs);
-        }
-        assert_eq!(substs.len(), generics.parent_count);
-
-        // Fill in our own generics with the resolved lifetimes
-        assert_eq!(lifetimes.len(), generics.params.len());
-        substs.extend(lifetimes.iter().map(|lt| Kind::from(self.ast_region_to_region(lt, None))));
-
+        });
         debug!("impl_trait_ty_to_ty: final substs = {:?}", substs);
 
-        tcx.mk_anon(def_id, tcx.intern_substs(&substs))
+        tcx.mk_anon(def_id, substs)
     }
 
     pub fn ty_of_arg(&self,

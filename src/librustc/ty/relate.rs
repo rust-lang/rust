@@ -24,7 +24,6 @@ use std::rc::Rc;
 use std::iter;
 use rustc_target::spec::abi;
 use hir as ast;
-use rustc_data_structures::accumulate_vec::AccumulateVec;
 
 pub type RelateResult<'tcx, T> = Result<T, TypeError<'tcx>>;
 
@@ -154,6 +153,8 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
                            -> RelateResult<'tcx, ty::FnSig<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
+        let tcx = relation.tcx();
+
         if a.variadic != b.variadic {
             return Err(TypeError::VariadicMismatch(
                 expected_found(relation, &a.variadic, &b.variadic)));
@@ -175,9 +176,9 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
                 } else {
                     relation.relate_with_variance(ty::Contravariant, &a, &b)
                 }
-            }).collect::<Result<AccumulateVec<[_; 8]>, _>>()?;
+            });
         Ok(ty::FnSig {
-            inputs_and_output: relation.tcx().intern_type_list(&inputs_and_output),
+            inputs_and_output: tcx.mk_type_list(inputs_and_output)?,
             variadic: a.variadic,
             unsafety,
             abi,

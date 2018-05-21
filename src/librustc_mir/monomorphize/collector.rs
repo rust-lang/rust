@@ -196,7 +196,7 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
-use rustc::ty::subst::{Substs, Kind};
+use rustc::ty::subst::Substs;
 use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::session::config;
@@ -1067,7 +1067,7 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
             self.tcx,
             ty::ParamEnv::reveal_all(),
             start_def_id,
-            self.tcx.intern_substs(&[Kind::from(main_ret_ty)])
+            self.tcx.intern_substs(&[main_ret_ty.into()])
         ).unwrap();
 
         self.output.push(create_fn_mono_item(start_instance));
@@ -1115,7 +1115,7 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     let substs = Substs::for_item(tcx, method.def_id, |param, _| {
                         match param.kind {
                             GenericParamDefKind::Lifetime => tcx.types.re_erased.into(),
-                            GenericParamDefKind::Type(_) => {
+                            GenericParamDefKind::Type {..} => {
                                 trait_ref.substs[param.index as usize]
                             }
                         }

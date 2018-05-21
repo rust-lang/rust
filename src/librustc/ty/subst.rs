@@ -11,16 +11,16 @@
 // Type substitutions.
 
 use hir::def_id::DefId;
-use ty::{self, Lift, Slice, Region, Ty, TyCtxt};
+use ty::{self, Lift, Slice, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
+use rustc_data_structures::array_vec::ArrayVec;
 
 use core::intrinsics;
 use std::fmt;
-use std::iter;
 use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZeroUsize;
@@ -40,7 +40,7 @@ const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 
-#[derive(Debug)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub enum UnpackedKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
@@ -143,34 +143,13 @@ impl<'tcx> TypeFoldable<'tcx> for Kind<'tcx> {
 
 impl<'tcx> Encodable for Kind<'tcx> {
     fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
-        e.emit_enum("Kind", |e| {
-            match self.unpack() {
-                UnpackedKind::Lifetime(lt) => {
-                    e.emit_enum_variant("Region", REGION_TAG, 1, |e| {
-                        e.emit_enum_variant_arg(0, |e| lt.encode(e))
-                    })
-                }
-                UnpackedKind::Type(ty) => {
-                    e.emit_enum_variant("Ty", TYPE_TAG, 1, |e| {
-                        e.emit_enum_variant_arg(0, |e| ty.encode(e))
-                    })
-                }
-            }
-        })
+        self.unpack().encode(e)
     }
 }
 
 impl<'tcx> Decodable for Kind<'tcx> {
     fn decode<D: Decoder>(d: &mut D) -> Result<Kind<'tcx>, D::Error> {
-        d.read_enum("Kind", |d| {
-            d.read_enum_variant(&["Ty", "Region"], |d, tag| {
-                match tag {
-                    TYPE_TAG => Ty::decode(d).map(Kind::from),
-                    REGION_TAG => Region::decode(d).map(Kind::from),
-                    _ => Err(d.error("invalid Kind tag"))
-                }
-            })
-        })
+        Ok(UnpackedKind::decode(d)?.pack())
     }
 }
 
@@ -198,7 +177,12 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
         let defs = tcx.generics_of(def_id);
-        let mut substs = Vec::with_capacity(defs.count());
+        let count = defs.count();
+        let mut substs = if count <= 8 {
+            AccumulateVec::Array(ArrayVec::new())
+        } else {
+            AccumulateVec::Heap(Vec::with_capacity(count))
+        };
         Substs::fill_item(&mut substs, tcx, defs, &mut mk_kind);
         tcx.intern_substs(&substs)
     }
@@ -210,17 +194,18 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                         -> &'tcx Substs<'tcx>
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
-        let defs = tcx.generics_of(def_id);
-        let mut result = Vec::with_capacity(defs.count());
-        result.extend(self[..].iter().cloned());
-        Substs::fill_single(&mut result, defs, &mut mk_kind);
-        tcx.intern_substs(&result)
+        Substs::for_item(tcx, def_id, |param, substs| {
+            match self.get(param.index as usize) {
+                Some(&kind) => kind,
+                None => mk_kind(param, substs),
+            }
+        })
     }
 
-    pub fn fill_item<F>(substs: &mut Vec<Kind<'tcx>>,
-                             tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                             defs: &ty::Generics,
-                             mk_kind: &mut F)
+    fn fill_item<F>(substs: &mut AccumulateVec<[Kind<'tcx>; 8]>,
+                    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                    defs: &ty::Generics,
+                    mk_kind: &mut F)
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
 
@@ -231,15 +216,18 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         Substs::fill_single(substs, defs, mk_kind)
     }
 
-    fn fill_single<F>(substs: &mut Vec<Kind<'tcx>>,
-                           defs: &ty::Generics,
-                           mk_kind: &mut F)
+    fn fill_single<F>(substs: &mut AccumulateVec<[Kind<'tcx>; 8]>,
+                      defs: &ty::Generics,
+                      mk_kind: &mut F)
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
         for param in &defs.params {
             let kind = mk_kind(param, substs);
             assert_eq!(param.index as usize, substs.len());
-            substs.push(kind);
+            match *substs {
+                AccumulateVec::Array(ref mut arr) => arr.push(kind),
+                AccumulateVec::Heap(ref mut vec) => vec.push(kind),
+            }
         }
     }
 
@@ -541,56 +529,5 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
             return region;
         }
         self.tcx().mk_region(ty::fold::shift_region(*region, self.region_binders_passed))
-    }
-}
-
-// Helper methods that modify substitutions.
-
-impl<'a, 'gcx, 'tcx> ty::TraitRef<'tcx> {
-    pub fn from_method(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                       trait_id: DefId,
-                       substs: &Substs<'tcx>)
-                       -> ty::TraitRef<'tcx> {
-        let defs = tcx.generics_of(trait_id);
-
-        ty::TraitRef {
-            def_id: trait_id,
-            substs: tcx.intern_substs(&substs[..defs.params.len()])
-        }
-    }
-}
-
-impl<'a, 'gcx, 'tcx> ty::ExistentialTraitRef<'tcx> {
-    pub fn erase_self_ty(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                         trait_ref: ty::TraitRef<'tcx>)
-                         -> ty::ExistentialTraitRef<'tcx> {
-        // Assert there is a Self.
-        trait_ref.substs.type_at(0);
-
-        ty::ExistentialTraitRef {
-            def_id: trait_ref.def_id,
-            substs: tcx.intern_substs(&trait_ref.substs[1..])
-        }
-    }
-}
-
-impl<'a, 'gcx, 'tcx> ty::PolyExistentialTraitRef<'tcx> {
-    /// Object types don't have a self-type specified. Therefore, when
-    /// we convert the principal trait-ref into a normal trait-ref,
-    /// you must give *some* self-type. A common choice is `mk_err()`
-    /// or some skolemized type.
-    pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                        self_ty: Ty<'tcx>)
-                        -> ty::PolyTraitRef<'tcx>  {
-        // otherwise the escaping regions would be captured by the binder
-        assert!(!self_ty.has_escaping_regions());
-
-        self.map_bound(|trait_ref| {
-            ty::TraitRef {
-                def_id: trait_ref.def_id,
-                substs: tcx.mk_substs(
-                    iter::once(self_ty.into()).chain(trait_ref.substs.iter().cloned()))
-            }
-        })
     }
 }

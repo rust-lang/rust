@@ -622,6 +622,18 @@ impl<'tcx> TraitRef<'tcx> {
         // associated types.
         self.substs.types()
     }
+
+    pub fn from_method(tcx: TyCtxt<'_, '_, 'tcx>,
+                       trait_id: DefId,
+                       substs: &Substs<'tcx>)
+                       -> ty::TraitRef<'tcx> {
+        let defs = tcx.generics_of(trait_id);
+
+        ty::TraitRef {
+            def_id: trait_id,
+            substs: tcx.intern_substs(&substs[..defs.params.len()])
+        }
+    }
 }
 
 pub type PolyTraitRef<'tcx> = Binder<TraitRef<'tcx>>;
@@ -663,6 +675,18 @@ impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
         self.substs.types()
     }
 
+    pub fn erase_self_ty(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                         trait_ref: ty::TraitRef<'tcx>)
+                         -> ty::ExistentialTraitRef<'tcx> {
+        // Assert there is a Self.
+        trait_ref.substs.type_at(0);
+
+        ty::ExistentialTraitRef {
+            def_id: trait_ref.def_id,
+            substs: tcx.intern_substs(&trait_ref.substs[1..])
+        }
+    }
+
     /// Object types don't have a self-type specified. Therefore, when
     /// we convert the principal trait-ref into a normal trait-ref,
     /// you must give *some* self-type. A common choice is `mk_err()`
@@ -674,8 +698,7 @@ impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
 
         ty::TraitRef {
             def_id: self.def_id,
-            substs: tcx.mk_substs(
-                iter::once(self_ty.into()).chain(self.substs.iter().cloned()))
+            substs: tcx.mk_substs_trait(self_ty, self.substs)
         }
     }
 }
@@ -685,6 +708,16 @@ pub type PolyExistentialTraitRef<'tcx> = Binder<ExistentialTraitRef<'tcx>>;
 impl<'tcx> PolyExistentialTraitRef<'tcx> {
     pub fn def_id(&self) -> DefId {
         self.skip_binder().def_id
+    }
+
+    /// Object types don't have a self-type specified. Therefore, when
+    /// we convert the principal trait-ref into a normal trait-ref,
+    /// you must give *some* self-type. A common choice is `mk_err()`
+    /// or some skolemized type.
+    pub fn with_self_ty(&self, tcx: TyCtxt<'_, '_, 'tcx>,
+                        self_ty: Ty<'tcx>)
+                        -> ty::PolyTraitRef<'tcx>  {
+        self.map_bound(|trait_ref| trait_ref.with_self_ty(tcx, self_ty))
     }
 }
 
@@ -1188,8 +1221,7 @@ impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
         ty::ProjectionPredicate {
             projection_ty: ty::ProjectionTy {
                 item_def_id: self.item_def_id,
-                substs: tcx.mk_substs(
-                iter::once(self_ty.into()).chain(self.substs.iter().cloned())),
+                substs: tcx.mk_substs_trait(self_ty, self.substs),
             },
             ty: self.ty,
         }

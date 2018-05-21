@@ -387,7 +387,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
                                                     trait_def_id,
                                                     0,
                                                     source,
-                                                    &[target]);
+                                                    &[target.into()]);
         fulfill_cx.register_predicate_obligation(&infcx, predicate);
 
         // Check that all transitive obligations are satisfied.

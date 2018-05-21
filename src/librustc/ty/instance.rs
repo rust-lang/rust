@@ -10,7 +10,6 @@
 
 use hir::def_id::DefId;
 use ty::{self, Ty, TypeFoldable, Substs, TyCtxt};
-use ty::subst::Kind;
 use traits;
 use rustc_target::spec::abi::Abi;
 use util::ppaux;
@@ -361,7 +360,7 @@ fn fn_once_adapter_instance<'a, 'tcx>(
     let sig = substs.closure_sig(closure_did, tcx);
     let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
     assert_eq!(sig.inputs().len(), 1);
-    let substs = tcx.mk_substs([Kind::from(self_ty), sig.inputs()[0].into()].iter().cloned());
+    let substs = tcx.mk_substs_trait(self_ty, &[sig.inputs()[0].into()]);
 
     debug!("fn_once_adapter_shim: self_ty={:?} sig={:?}", self_ty, sig);
     Instance { def, substs }

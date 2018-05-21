@@ -13,7 +13,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer;
 use rustc::mir::*;
 use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind};
-use rustc::ty::subst::{Kind, Subst, Substs};
+use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::maps::Providers;
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -170,7 +170,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let substs = if let Some(ty) = ty {
-        tcx.mk_substs(iter::once(Kind::from(ty)))
+        tcx.intern_substs(&[ty.into()])
     } else {
         Substs::identity_for_item(tcx, def_id)
     };
@@ -430,7 +430,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let substs = Substs::for_item(tcx, self.def_id, |param, _| {
             match param.kind {
                 GenericParamDefKind::Lifetime => tcx.types.re_erased.into(),
-                GenericParamDefKind::Type(_) => ty.into(),
+                GenericParamDefKind::Type {..} => ty.into(),
             }
         });
 

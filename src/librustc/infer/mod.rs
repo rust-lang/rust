@@ -915,7 +915,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // region parameter definition.
                 self.next_region_var(EarlyBoundRegion(span, param.name)).into()
             }
-            GenericParamDefKind::Type(_) => {
+            GenericParamDefKind::Type {..} => {
                 // Create a type inference variable for the given
                 // type parameter definition. The substitutions are
                 // for actual parameters that may be referred to by

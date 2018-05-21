@@ -12,7 +12,6 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::DropInPlaceFnLangItem;
 use rustc::traits;
 use rustc::ty::adjustment::CustomCoerceUnsized;
-use rustc::ty::subst::Kind;
 use rustc::ty::{self, Ty, TyCtxt};
 
 pub use rustc::ty::Instance;
@@ -89,10 +88,7 @@ fn fn_once_adapter_instance<'a, 'tcx>(
     let sig = substs.closure_sig(closure_did, tcx);
     let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
     assert_eq!(sig.inputs().len(), 1);
-    let substs = tcx.mk_substs([
-        Kind::from(self_ty),
-        sig.inputs()[0].into(),
-    ].iter().cloned());
+    let substs = tcx.mk_substs_trait(self_ty, &[sig.inputs()[0].into()]);
 
     debug!("fn_once_adapter_shim: self_ty={:?} sig={:?}", self_ty, sig);
     Instance { def, substs }
@@ -164,7 +160,7 @@ pub fn custom_coerce_unsize_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let trait_ref = ty::Binder::bind(ty::TraitRef {
         def_id: def_id,
-        substs: tcx.mk_substs_trait(source_ty, &[target_ty])
+        substs: tcx.mk_substs_trait(source_ty, &[target_ty.into()])
     });
 
     match tcx.codegen_fulfill_obligation( (ty::ParamEnv::reveal_all(), trait_ref)) {
