@@ -31,8 +31,9 @@ pub type ItemLocalSet = FxHashSet<ItemLocalId>;
 
 pub fn NodeMap<T>() -> NodeMap<T> { FxHashMap() }
 pub fn DefIdMap<T>() -> DefIdMap<T> { FxHashMap() }
+pub fn HirIdMap<T>() -> HirIdMap<T> { FxHashMap() }
 pub fn ItemLocalMap<T>() -> ItemLocalMap<T> { FxHashMap() }
 pub fn NodeSet() -> NodeSet { FxHashSet() }
 pub fn DefIdSet() -> DefIdSet { FxHashSet() }
+pub fn HirIdSet() -> HirIdSet { FxHashSet() }
 pub fn ItemLocalSet() -> ItemLocalSet { FxHashSet() }
-

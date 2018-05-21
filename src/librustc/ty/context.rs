@@ -2544,12 +2544,31 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         &self.intern_goals(&[goal])[0]
     }
 
+    pub fn lint_hir<S: Into<MultiSpan>>(self,
+                                        lint: &'static Lint,
+                                        hir_id: HirId,
+                                        span: S,
+                                        msg: &str) {
+        self.struct_span_lint_hir(lint, hir_id, span.into(), msg).emit()
+    }
+
     pub fn lint_node<S: Into<MultiSpan>>(self,
                                          lint: &'static Lint,
                                          id: NodeId,
                                          span: S,
                                          msg: &str) {
         self.struct_span_lint_node(lint, id, span.into(), msg).emit()
+    }
+
+    pub fn lint_hir_note<S: Into<MultiSpan>>(self,
+                                              lint: &'static Lint,
+                                              hir_id: HirId,
+                                              span: S,
+                                              msg: &str,
+                                              note: &str) {
+        let mut err = self.struct_span_lint_hir(lint, hir_id, span.into(), msg);
+        err.note(note);
+        err.emit()
     }
 
     pub fn lint_node_note<S: Into<MultiSpan>>(self,
@@ -2588,6 +2607,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 id = next;
             }
         })
+    }
+
+    pub fn struct_span_lint_hir<S: Into<MultiSpan>>(self,
+                                                    lint: &'static Lint,
+                                                    hir_id: HirId,
+                                                    span: S,
+                                                    msg: &str)
+        -> DiagnosticBuilder<'tcx>
+    {
+        // FIXME: converting HirId → NodeId is said to be relatively expensive
+        let node_id = self.hir.definitions().find_node_for_hir_id(hir_id);
+        let (level, src) = self.lint_level_at_node(lint, node_id);
+        lint::struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
     }
 
     pub fn struct_span_lint_node<S: Into<MultiSpan>>(self,
