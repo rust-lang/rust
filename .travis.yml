@@ -47,18 +47,7 @@ matrix:
     - env: INTEGRATION=hyperium/hyper
   allow_failures:
     - env: INTEGRATION=rust-lang/cargo
-    - env: INTEGRATION=rust-lang-nursery/rand
-    - env: INTEGRATION=rust-lang-nursery/stdsimd
-    - env: INTEGRATION=rust-lang-nursery/rustfmt
-    - env: INTEGRATION=rust-lang-nursery/futures-rs
-    - env: INTEGRATION=rust-lang-nursery/failure
-    - env: INTEGRATION=rust-lang-nursery/log
-    - env: INTEGRATION=rust-lang-nursery/chalk
     - env: INTEGRATION=rust-lang-nursery/rls
-    - env: INTEGRATION=chronotope/chrono
-    - env: INTEGRATION=serde-rs/serde
-    - env: INTEGRATION=Geal/nom
-    - env: INTEGRATION=hyperium/hyper
 
 script:
   - |
