@@ -14,7 +14,15 @@ use std::convert::From;
 use std::mem;
 use std::ops::{RangeBounds, Bound, Index, IndexMut};
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+/// `SortedMap` is a data structure with similar characteristics as BTreeMap but
+/// slightly different trade-offs: lookup, inseration, and removal are O(log(N))
+/// and elements can be iterated in order cheaply.
+///
+/// `SortedMap` can be faster than a `BTreeMap` for small sizes (<50) since it
+/// stores data in a more compact way. It also supports accessing contiguous
+/// ranges of elements as a slice, and slices of already sorted elements can be
+/// inserted efficiently.
+#[derive(Clone, PartialEq, Eq, Hash, Default, Debug, RustcEncodable, RustcDecodable)]
 pub struct SortedMap<K: Ord, V> {
     data: Vec<(K,V)>
 }
@@ -28,8 +36,11 @@ impl<K: Ord, V> SortedMap<K, V> {
         }
     }
 
-    // It is up to the caller to make sure that the elements are sorted by key
-    // and that there are no duplicates.
+    /// Construct a `SortedMap` from a presorted set of elements. This is faster
+    /// than creating an empty map and then inserting the elements individually.
+    ///
+    /// It is up to the caller to make sure that the elements are sorted by key
+    /// and that there are no duplicates.
     #[inline]
     pub fn from_presorted_elements(elements: Vec<(K, V)>) -> SortedMap<K, V>
     {
@@ -150,8 +161,12 @@ impl<K: Ord, V> SortedMap<K, V> {
         self.data.iter_mut().map(|&mut (ref mut k, _)| k).for_each(f);
     }
 
-    // It is up to the caller to make sure that the elements are sorted by key
-    // and that there are no duplicates.
+    /// Inserts a presorted range of elements into the map. If the range can be
+    /// inserted as a whole in between to existing elements of the map, this
+    /// will be faster than inserting the elements individually.
+    ///
+    /// It is up to the caller to make sure that the elements are sorted by key
+    /// and that there are no duplicates.
     #[inline]
     pub fn insert_presorted(&mut self, mut elements: Vec<(K, V)>) {
         if elements.is_empty() {
