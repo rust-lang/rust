@@ -720,7 +720,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         _trait_item_span: Option<Span>) // FIXME necessary?
                                         -> Result<(), ErrorReported> {
     // FIXME(chrisvittal) Clean up this function, list of FIXME items:
-    //     1. Better messages for the span lables
+    //     1. Better messages for the span labels
     //     2. Explanation as to what is going on
     //     3. Correct the function signature for what we actually use
     // If we get here, we already have the same number of generics, so the zip will
@@ -751,8 +751,131 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            E0643,
                                            "method `{}` has incompatible signature for trait",
                                            trait_m.name);
-            err.span_label(trait_span, "annotation in trait");
-            err.span_label(impl_span, "annotation in impl");
+            err.span_label(trait_span, "declaration in trait here");
+            match (impl_synthetic, trait_synthetic) {
+                // The case where the impl method uses `impl Trait` but the trait method uses
+                // explicit generics
+                (Some(hir::SyntheticTyParamKind::ImplTrait), None) => {
+                    err.span_label(impl_span, "expected generic parameter, found `impl Trait`");
+                    (|| {
+                        // try taking the name from the trait impl
+                        // FIXME: this is obviously suboptimal since the name can already be used
+                        // as another generic argument
+                        let new_name = tcx
+                            .sess
+                            .codemap()
+                            .span_to_snippet(trait_span)
+                            .ok()?;
+                        let trait_m = tcx.hir.as_local_node_id(trait_m.def_id)?;
+                        let trait_m = tcx.hir.trait_item(hir::TraitItemId { node_id: trait_m });
+
+                        let impl_m = tcx.hir.as_local_node_id(impl_m.def_id)?;
+                        let impl_m = tcx.hir.impl_item(hir::ImplItemId { node_id: impl_m });
+
+                        // in case there are no generics, take the spot between the function name
+                        // and the opening paren of the argument list
+                        let new_generics_span = tcx
+                            .sess
+                            .codemap()
+                            .generate_fn_name_span(impl_m.span)?
+                            .shrink_to_hi();
+                        // in case there are generics, just replace them
+                        let generics_span = impl_m
+                            .generics
+                            .span
+                            .substitute_dummy(new_generics_span);
+                        // replace with the generics from the trait
+                        let new_generics = tcx
+                            .sess
+                            .codemap()
+                            .span_to_snippet(trait_m.generics.span)
+                            .ok()?;
+
+                        err.multipart_suggestion(
+                            "try changing the `impl Trait` argument to a generic parameter",
+                            vec![
+                                // replace `impl Trait` with `T`
+                                (impl_span, new_name),
+                                // replace impl method generics with trait method generics
+                                // This isn't quite right, as users might have changed the names
+                                // of the generics, but it works for the common case
+                                (generics_span, new_generics),
+                            ],
+                        );
+                        Some(())
+                    })();
+                },
+                // The case where the trait method uses `impl Trait`, but the impl method uses
+                // explicit generics.
+                (None, Some(hir::SyntheticTyParamKind::ImplTrait)) => {
+                    err.span_label(impl_span, "expected `impl Trait`, found generic parameter");
+                    (|| {
+                        let impl_m = tcx.hir.as_local_node_id(impl_m.def_id)?;
+                        let impl_m = tcx.hir.impl_item(hir::ImplItemId { node_id: impl_m });
+                        let input_tys = match impl_m.node {
+                            hir::ImplItemKind::Method(ref sig, _) => &sig.decl.inputs,
+                            _ => unreachable!(),
+                        };
+                        struct Visitor(Option<Span>, hir::def_id::DefId);
+                        impl<'v> hir::intravisit::Visitor<'v> for Visitor {
+                            fn visit_ty(&mut self, ty: &'v hir::Ty) {
+                                hir::intravisit::walk_ty(self, ty);
+                                match ty.node {
+                                    hir::TyPath(hir::QPath::Resolved(None, ref path)) => {
+                                        if let hir::def::Def::TyParam(def_id) = path.def {
+                                            if def_id == self.1 {
+                                                self.0 = Some(ty.span);
+                                            }
+                                        }
+                                    },
+                                    _ => {}
+                                }
+                            }
+                            fn nested_visit_map<'this>(
+                                &'this mut self
+                            ) -> hir::intravisit::NestedVisitorMap<'this, 'v> {
+                                hir::intravisit::NestedVisitorMap::None
+                            }
+                        }
+                        let mut visitor = Visitor(None, impl_def_id);
+                        for ty in input_tys {
+                            hir::intravisit::Visitor::visit_ty(&mut visitor, ty);
+                        }
+                        let span = visitor.0?;
+
+                        let param = impl_m.generics.params.iter().filter_map(|param| {
+                            match param {
+                                hir::GenericParam::Type(param) => {
+                                    if param.id == impl_node_id {
+                                        Some(param)
+                                    } else {
+                                        None
+                                    }
+                                },
+                                hir::GenericParam::Lifetime(..) => None,
+                            }
+                        }).next()?;
+                        let bounds = param.bounds.first()?.span().to(param.bounds.last()?.span());
+                        let bounds = tcx
+                            .sess
+                            .codemap()
+                            .span_to_snippet(bounds)
+                            .ok()?;
+
+                        err.multipart_suggestion(
+                            "try removing the generic parameter and using `impl Trait` instead",
+                            vec![
+                                // delete generic parameters
+                                (impl_m.generics.span, String::new()),
+                                // replace param usage with `impl Trait`
+                                (span, format!("impl {}", bounds)),
+                            ],
+                        );
+                        Some(())
+                    })();
+                },
+                _ => unreachable!(),
+            }
             err.emit();
             error_found = true;
         }
