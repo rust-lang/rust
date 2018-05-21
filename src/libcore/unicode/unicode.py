@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright 2011-2013 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
@@ -23,7 +23,7 @@
 # Since this should not require frequent updates, we just store this
 # out-of-line and check the unicode.rs file into git.
 
-import fileinput, re, os, sys, operator, math
+import re, os, sys, operator, math
 
 preamble = '''// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -41,6 +41,7 @@ preamble = '''// Copyright 2012-2016 The Rust Project Developers. See the COPYRI
 
 use unicode::version::UnicodeVersion;
 use unicode::bool_trie::{BoolTrie, SmallBoolTrie};
+use unicode::mapping_table::MappingTable;
 '''
 
 # Mapping taken from Table 12 from:
@@ -62,18 +63,19 @@ surrogate_codepoints = (0xd800, 0xdfff)
 
 def fetch(f):
     if not os.path.exists(os.path.basename(f)):
-        os.system("curl -O http://www.unicode.org/Public/UNIDATA/%s"
-                  % f)
+        os.system("curl -O http://www.unicode.org/Public/UNIDATA/{}".format(f))
 
     if not os.path.exists(os.path.basename(f)):
-        sys.stderr.write("cannot load %s" % f)
+        sys.stderr.write("cannot load {}".format(f))
         exit(1)
+
+    return open(f)
 
 def is_surrogate(n):
     return surrogate_codepoints[0] <= n <= surrogate_codepoints[1]
 
-def load_unicode_data(f):
-    fetch(f)
+def load_unicode_data():
+    uni_data = fetch("UnicodeData.txt")
     gencats = {}
     to_lower = {}
     to_upper = {}
@@ -84,7 +86,7 @@ def load_unicode_data(f):
 
     udict = {}
     range_start = -1
-    for line in fileinput.input(f):
+    for line in uni_data:
         data = line.split(';')
         if len(data) != 15:
             continue
@@ -154,9 +156,9 @@ def load_unicode_data(f):
 
     return (canon_decomp, compat_decomp, gencats, combines, to_upper, to_lower, to_title)
 
-def load_special_casing(f, to_upper, to_lower, to_title):
-    fetch(f)
-    for line in fileinput.input(f):
+def load_special_casing(to_upper, to_lower, to_title):
+    casing_data = fetch("SpecialCasing.txt")
+    for line in casing_data:
         data = line.split('#')[0].split(';')
         if len(data) == 5:
             code, lower, title, upper, _comment = data
@@ -192,7 +194,7 @@ def group_cat(cat):
     cur_end = cur_start
     for letter in letters:
         assert letter > cur_end, \
-            "cur_end: %s, letter: %s" % (hex(cur_end), hex(letter))
+            "cur_end: {:#x}, letter: {:#x}".format(cur_end, letter)
         if letter == cur_end + 1:
             cur_end = letter
         else:
@@ -225,7 +227,7 @@ def to_combines(combs):
 def format_table_content(f, content, indent):
     line = " "*indent
     first = True
-    for chunk in content.split(","):
+    for chunk in content:
         if len(line) + len(chunk) < 98:
             if first:
                 line += chunk
@@ -237,13 +239,13 @@ def format_table_content(f, content, indent):
             line = " "*indent + chunk
     f.write(line)
 
-def load_properties(f, interestingprops):
-    fetch(f)
+def load_properties(fname, interestingprops):
+    f = fetch(fname)
     props = {}
-    re1 = re.compile("^ *([0-9A-F]+) *; *(\w+)")
-    re2 = re.compile("^ *([0-9A-F]+)\.\.([0-9A-F]+) *; *(\w+)")
+    re1 = re.compile(r"^ *([0-9A-F]+) *; *(\w+)")
+    re2 = re.compile(r"^ *([0-9A-F]+)\.\.([0-9A-F]+) *; *(\w+)")
 
-    for line in fileinput.input(os.path.basename(f)):
+    for line in f:
         prop = None
         d_lo = 0
         d_hi = 0
@@ -275,23 +277,28 @@ def load_properties(f, interestingprops):
     return props
 
 def escape_char(c):
-    return "'\\u{%x}'" % c if c != 0 else "'\\0'"
+    return "'\\u{{{:x}}}'".format(c) if c != 0 else "'\\0'"
 
-def emit_table(f, name, t_data, t_type = "&[(char, char)]", is_pub=True,
-        pfun=lambda x: "(%s,%s)" % (escape_char(x[0]), escape_char(x[1]))):
-    pub_string = ""
-    if is_pub:
-        pub_string = "pub "
-    f.write("    %sconst %s: %s = &[\n" % (pub_string, name, t_type))
-    data = ""
-    first = True
-    for dat in t_data:
-        if not first:
-            data += ","
-        first = False
-        data += pfun(dat)
-    format_table_content(f, data, 8)
-    f.write("\n    ];\n\n")
+def emit_table(f, name, t_data):
+    f.write("""
+    pub const {}: super::MappingTable = super::MappingTable {{
+        table: &[
+""".format(name))
+    data = (
+        part
+        for dat in t_data
+        for part in (
+            '({}'.format(escape_char(dat[0])),
+            '[{}'.format(escape_char(dat[1][0])),
+            '{}'.format(escape_char(dat[1][1])),
+            '{}])'.format(escape_char(dat[1][2])),
+        )
+    )
+    format_table_content(f, data, 12)
+    f.write("""
+        ],
+    };
+""")
 
 def compute_trie(rawdata, chunksize):
     root = []
@@ -306,7 +313,7 @@ def compute_trie(rawdata, chunksize):
         root.append(childmap[child])
     return (root, child_data)
 
-def emit_bool_trie(f, name, t_data, is_pub=True):
+def emit_bool_trie(f, name, t_data):
     CHUNK = 64
     rawdata = [False] * 0x110000
     for (lo, hi) in t_data:
@@ -322,23 +329,20 @@ def emit_bool_trie(f, name, t_data, is_pub=True):
                 chunk |= 1 << j
         chunks.append(chunk)
 
-    pub_string = ""
-    if is_pub:
-        pub_string = "pub "
-    f.write("    %sconst %s: &super::BoolTrie = &super::BoolTrie {\n" % (pub_string, name))
+    f.write("    pub const {}: &super::BoolTrie = &super::BoolTrie {{\n".format(name))
     f.write("        r1: [\n")
-    data = ','.join('0x%016x' % chunk for chunk in chunks[0:0x800 // CHUNK])
+    data = ('0x%016x' % chunk for chunk in chunks[0:0x800 // CHUNK])
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
 
     # 0x800..0x10000 trie
     (r2, r3) = compute_trie(chunks[0x800 // CHUNK : 0x10000 // CHUNK], 64 // CHUNK)
     f.write("        r2: [\n")
-    data = ','.join(str(node) for node in r2)
+    data = (str(node) for node in r2)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
     f.write("        r3: &[\n")
-    data = ','.join('0x%016x' % chunk for chunk in r3)
+    data = ('0x%016x' % chunk for chunk in r3)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
 
@@ -346,21 +350,21 @@ def emit_bool_trie(f, name, t_data, is_pub=True):
     (mid, r6) = compute_trie(chunks[0x10000 // CHUNK : 0x110000 // CHUNK], 64 // CHUNK)
     (r4, r5) = compute_trie(mid, 64)
     f.write("        r4: [\n")
-    data = ','.join(str(node) for node in r4)
+    data = (str(node) for node in r4)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
     f.write("        r5: &[\n")
-    data = ','.join(str(node) for node in r5)
+    data = (str(node) for node in r5)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
     f.write("        r6: &[\n")
-    data = ','.join('0x%016x' % chunk for chunk in r6)
+    data = ('0x%016x' % chunk for chunk in r6)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
 
     f.write("    };\n\n")
 
-def emit_small_bool_trie(f, name, t_data, is_pub=True):
+def emit_small_bool_trie(f, name, t_data):
     last_chunk = max(hi // 64 for (lo, hi) in t_data)
     n_chunks = last_chunk + 1
     chunks = [0] * n_chunks
@@ -370,72 +374,43 @@ def emit_small_bool_trie(f, name, t_data, is_pub=True):
                 print(cp, cp // 64, len(chunks), lo, hi)
             chunks[cp // 64] |= 1 << (cp & 63)
 
-    pub_string = ""
-    if is_pub:
-        pub_string = "pub "
-    f.write("    %sconst %s: &super::SmallBoolTrie = &super::SmallBoolTrie {\n"
-            % (pub_string, name))
+    f.write("    pub const {}: &super::SmallBoolTrie = &super::SmallBoolTrie {{\n".format(name))
 
     (r1, r2) = compute_trie(chunks, 1)
 
     f.write("        r1: &[\n")
-    data = ','.join(str(node) for node in r1)
+    data = (str(node) for node in r1)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
 
     f.write("        r2: &[\n")
-    data = ','.join('0x%016x' % node for node in r2)
+    data = ('0x%016x' % node for node in r2)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
 
     f.write("    };\n\n")
 
 def emit_property_module(f, mod, tbl, emit):
-    f.write("pub mod %s {\n" % mod)
+    f.write("pub mod {} {{\n".format(mod))
     for cat in sorted(emit):
         if cat in ["Cc", "White_Space", "Pattern_White_Space"]:
-            emit_small_bool_trie(f, "%s_table" % cat, tbl[cat])
-            f.write("    pub fn %s(c: char) -> bool {\n" % cat)
-            f.write("        %s_table.lookup(c)\n" % cat)
+            emit_small_bool_trie(f, "{}_table".format(cat), tbl[cat])
+            f.write("    pub fn {}(c: char) -> bool {{\n".format(cat))
+            f.write("        {}_table.lookup(c)\n".format(cat))
             f.write("    }\n\n")
         else:
-            emit_bool_trie(f, "%s_table" % cat, tbl[cat])
-            f.write("    pub fn %s(c: char) -> bool {\n" % cat)
-            f.write("        %s_table.lookup(c)\n" % cat)
+            emit_bool_trie(f, "{}_table".format(cat), tbl[cat])
+            f.write("    pub fn {}(c: char) -> bool {{\n".format(cat))
+            f.write("        {}_table.lookup(c)\n".format(cat))
             f.write("    }\n\n")
     f.write("}\n\n")
 
 def emit_conversions_module(f, to_upper, to_lower, to_title):
     f.write("pub mod conversions {")
-    f.write("""
-    pub fn to_lower(c: char) -> [char; 3] {
-        match bsearch_case_table(c, to_lowercase_table) {
-            None        => [c, '\\0', '\\0'],
-            Some(index) => to_lowercase_table[index].1,
-        }
-    }
-
-    pub fn to_upper(c: char) -> [char; 3] {
-        match bsearch_case_table(c, to_uppercase_table) {
-            None        => [c, '\\0', '\\0'],
-            Some(index) => to_uppercase_table[index].1,
-        }
-    }
-
-    fn bsearch_case_table(c: char, table: &[(char, [char; 3])]) -> Option<usize> {
-        table.binary_search_by(|&(key, _)| key.cmp(&c)).ok()
-    }
-
-""")
-    t_type = "&[(char, [char; 3])]"
-    pfun = lambda x: "(%s,[%s,%s,%s])" % (
-        escape_char(x[0]), escape_char(x[1][0]), escape_char(x[1][1]), escape_char(x[1][2]))
-    emit_table(f, "to_lowercase_table",
-        sorted(to_lower.items(), key=operator.itemgetter(0)),
-        is_pub=False, t_type = t_type, pfun=pfun)
-    emit_table(f, "to_uppercase_table",
-        sorted(to_upper.items(), key=operator.itemgetter(0)),
-        is_pub=False, t_type = t_type, pfun=pfun)
+    emit_table(f, "Lowercase",
+        sorted(to_lower.items(), key=operator.itemgetter(0)))
+    emit_table(f, "Uppercase",
+        sorted(to_upper.items(), key=operator.itemgetter(0)))
     f.write("}\n\n")
 
 def emit_norm_module(f, canon, compat, combine, norm_props):
@@ -464,24 +439,23 @@ if __name__ == "__main__":
         rf.write(preamble)
 
         # download and parse all the data
-        fetch("ReadMe.txt")
-        with open("ReadMe.txt") as readme:
-            pattern = "for Version (\d+)\.(\d+)\.(\d+) of the Unicode"
+        with fetch("ReadMe.txt") as readme:
+            pattern = r"for Version (\d+)\.(\d+)\.(\d+) of the Unicode"
             unicode_version = re.search(pattern, readme.read()).groups()
         rf.write("""
 /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
 /// `char` and `str` methods are based on.
 #[unstable(feature = "unicode_version", issue = "49726")]
-pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
-    major: %s,
-    minor: %s,
-    micro: %s,
+pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {{
+    major: {},
+    minor: {},
+    micro: {},
     _priv: (),
-};
-""" % unicode_version)
+}};
+""".format(*unicode_version))
         (canon_decomp, compat_decomp, gencats, combines,
-                to_upper, to_lower, to_title) = load_unicode_data("UnicodeData.txt")
-        load_special_casing("SpecialCasing.txt", to_upper, to_lower, to_title)
+                to_upper, to_lower, to_title) = load_unicode_data()
+        load_special_casing(to_upper, to_lower, to_title)
         want_derived = ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase",
                         "Cased", "Case_Ignorable"]
         derived = load_properties("DerivedCoreProperties.txt", want_derived)

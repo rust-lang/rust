@@ -58,6 +58,7 @@ pub use self::decode::{decode_utf8, DecodeUtf8, InvalidSequence};
 
 use fmt::{self, Write};
 use iter::FusedIterator;
+use unicode::mapping_table::Lookup;
 
 // UTF-8 ranges and tags for encoding characters
 const TAG_CONT: u8    = 0b1000_0000;
@@ -396,18 +397,32 @@ impl fmt::Display for EscapeDebug {
 /// [`char`]: ../../std/primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug, Clone)]
-pub struct ToLowercase(CaseMappingIter);
+pub struct ToLowercase(Lookup);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for ToLowercase {
     type Item = char;
+
+    #[inline]
     fn next(&mut self) -> Option<char> {
         self.0.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for ToLowercase {}
+
+#[stable(feature = "char_struct_display", since = "1.16.0")]
+impl fmt::Display for ToLowercase {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
 
 /// Returns an iterator that yields the uppercase equivalent of a `char`.
 ///
@@ -418,88 +433,25 @@ impl FusedIterator for ToLowercase {}
 /// [`char`]: ../../std/primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug, Clone)]
-pub struct ToUppercase(CaseMappingIter);
+pub struct ToUppercase(Lookup);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for ToUppercase {
     type Item = char;
+
+    #[inline]
     fn next(&mut self) -> Option<char> {
         self.0.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for ToUppercase {}
-
-#[derive(Debug, Clone)]
-enum CaseMappingIter {
-    Three(char, char, char),
-    Two(char, char),
-    One(char),
-    Zero,
-}
-
-impl CaseMappingIter {
-    fn new(chars: [char; 3]) -> CaseMappingIter {
-        if chars[2] == '\0' {
-            if chars[1] == '\0' {
-                CaseMappingIter::One(chars[0])  // Including if chars[0] == '\0'
-            } else {
-                CaseMappingIter::Two(chars[0], chars[1])
-            }
-        } else {
-            CaseMappingIter::Three(chars[0], chars[1], chars[2])
-        }
-    }
-}
-
-impl Iterator for CaseMappingIter {
-    type Item = char;
-    fn next(&mut self) -> Option<char> {
-        match *self {
-            CaseMappingIter::Three(a, b, c) => {
-                *self = CaseMappingIter::Two(b, c);
-                Some(a)
-            }
-            CaseMappingIter::Two(b, c) => {
-                *self = CaseMappingIter::One(c);
-                Some(b)
-            }
-            CaseMappingIter::One(c) => {
-                *self = CaseMappingIter::Zero;
-                Some(c)
-            }
-            CaseMappingIter::Zero => None,
-        }
-    }
-}
-
-impl fmt::Display for CaseMappingIter {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            CaseMappingIter::Three(a, b, c) => {
-                f.write_char(a)?;
-                f.write_char(b)?;
-                f.write_char(c)
-            }
-            CaseMappingIter::Two(b, c) => {
-                f.write_char(b)?;
-                f.write_char(c)
-            }
-            CaseMappingIter::One(c) => {
-                f.write_char(c)
-            }
-            CaseMappingIter::Zero => Ok(()),
-        }
-    }
-}
-
-#[stable(feature = "char_struct_display", since = "1.16.0")]
-impl fmt::Display for ToLowercase {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
-    }
-}
 
 #[stable(feature = "char_struct_display", since = "1.16.0")]
 impl fmt::Display for ToUppercase {
