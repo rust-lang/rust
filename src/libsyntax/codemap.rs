@@ -886,8 +886,8 @@ impl CodeMap {
     }
 
     /// Take the span of a type parameter in a function signature and try to generate a span for the
-    /// function name (with generics) and a new snippet for this span with the pointed type parameter as
-    /// a new local type parameter.
+    /// function name (with generics) and a new snippet for this span with the pointed type
+    /// parameter as a new local type parameter.
     ///
     /// For instance:
     /// ```rust,ignore (pseudo-Rust)
