@@ -1,5 +1,21 @@
 # Type inference
 
+Type inference is the process of automatic detection of the type of an
+expression.
+
+It is what allows Rust to work with fewer or no type annotations,
+making things easier for users:
+
+```rust,ignore
+fn main() {
+    let mut things = vec![];
+    things.push("thing")
+}
+```
+
+Here, `things` is *inferenced* to be `&str` because that's the value we push
+into `things`.
+
 The type inference is based on the standard Hindley-Milner (HM) type inference
 algorithm, but extended in various way to accommodate subtyping, region
 inference, and higher-ranked types.
@@ -173,7 +189,7 @@ mechanism. You'll have to try again when more details about `?T` or
 
 ## Region constraints
 
-Regions are inferred somewhat differently from types. Rather than
+Regions are inferenced somewhat differently from types. Rather than
 eagerly unifying things, we simply collect constraints as we go, but
 make (almost) no attempt to solve regions. These constraints have the
 form of an "outlives" constraint:
@@ -189,7 +205,7 @@ idea:
 'b <= 'a
 ```
 
-(There are various other kinds of constriants, such as "verifys"; see
+(There are various other kinds of constraints, such as "verifys"; see
 the `region_constraints` module for details.)
 
 There is one case where we do some amount of eager unification. If you have an
