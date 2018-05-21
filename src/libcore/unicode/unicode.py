@@ -66,7 +66,7 @@ surrogate_codepoints = (0xd800, 0xdfff)
 def fetch(f):
     path = fdir + os.path.basename(f)
     if not os.path.exists(path):
-        os.system("curl -o {0}{1} http://www.unicode.org/Public/UNIDATA/{1}".format(fdir, f))
+        os.system("curl -o {0}{1} ftp://ftp.unicode.org/Public/UNIDATA/{1}".format(fdir, f))
 
     if not os.path.exists(path):
         sys.stderr.write("cannot load %s" % f)
