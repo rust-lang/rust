@@ -1853,6 +1853,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     for index in ii {
                         if flow_state.ever_inits.contains(index) {
                             self.used_mut.insert(*local);
+                            break;
                         }
                     }
                 }

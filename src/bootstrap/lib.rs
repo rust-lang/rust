@@ -592,12 +592,20 @@ impl Build {
             Path::new(llvm_bindir.trim()).join(exe("FileCheck", &*target))
         } else {
             let base = self.llvm_out(self.config.build).join("build");
-            let exe = exe("FileCheck", &*target);
-            if !self.config.ninja && self.config.build.contains("msvc") {
-                base.join("Release/bin").join(exe)
+            let base = if !self.config.ninja && self.config.build.contains("msvc") {
+                if self.config.llvm_optimize {
+                    if self.config.llvm_release_debuginfo {
+                        base.join("RelWithDebInfo")
+                    } else {
+                        base.join("Release")
+                    }
+                } else {
+                    base.join("Debug")
+                }
             } else {
-                base.join("bin").join(exe)
-            }
+                base
+            };
+            base.join("bin").join(exe("FileCheck", &*target))
         }
     }
 

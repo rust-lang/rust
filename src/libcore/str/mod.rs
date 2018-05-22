@@ -2166,7 +2166,8 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn len(&self) -> usize {
+    #[rustc_const_unstable(feature = "const_str_len")]
+    pub const fn len(&self) -> usize {
         self.as_bytes().len()
     }
 
@@ -2185,7 +2186,8 @@ impl str {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
+    #[rustc_const_unstable(feature = "const_str_len")]
+    pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
@@ -2242,8 +2244,15 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline(always)]
-    pub fn as_bytes(&self) -> &[u8] {
-        unsafe { &*(self as *const str as *const [u8]) }
+    #[rustc_const_unstable(feature="const_str_as_bytes")]
+    pub const fn as_bytes(&self) -> &[u8] {
+        unsafe {
+            union Slices<'a> {
+                str: &'a str,
+                slice: &'a [u8],
+            }
+            Slices { str: self }.slice
+        }
     }
 
     /// Converts a mutable string slice to a mutable byte slice. To convert the
@@ -2303,7 +2312,8 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn as_ptr(&self) -> *const u8 {
+    #[rustc_const_unstable(feature = "const_str_as_ptr")]
+    pub const fn as_ptr(&self) -> *const u8 {
         self as *const str as *const u8
     }
 
