@@ -231,8 +231,8 @@ declare_lint! {
 This makes the `ANONYMOUS_PARAMETERS` lint allow-by-default in the 2015 edition
 but warn-by-default in the 2018 edition.
 
-Lints that represent an incompatibility (i.e. error) in the upcoming edition should
-also be registered as `FutureIncompatibilityLint`s in
+Lints that represent an incompatibility (i.e. error) in the upcoming edition
+should also be registered as `FutureIncompatibilityLint`s in
 [`register_builtins`][rbuiltins] function in [`rustc_lint::lib`][builtin].
 
 ### Lint Groups
