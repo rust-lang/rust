@@ -131,23 +131,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         // This should ensure that you cannot change
                         // the variant for an enum while you are in
                         // the midst of matching on it.
-                        //
-                        // FIXME: I originally had put this at the
-                        // start of each elem of arm_blocks (see
-                        // ArmBlocks construction above). But this was
-                        // broken; for example, when you had a trivial
-                        // match like `match "foo".to_string() { _s =>
-                        // {} }`, it would inject a ReadForMatch
-                        // *after* the move of the input into `_s`,
-                        // and that then does not pass the borrow
-                        // check.
-                        //
-                        // * So: I need to fine tune exactly *where*
-                        //   the ReadForMatch belongs. Should it come
-                        //   at the beginning of each pattern match,
-                        //   or the end? And, should there be one
-                        //   ReadForMatch per arm, or one per
-                        //   candidate (aka pattern)?
 
                         self.cfg.push(*pre_binding_block, Statement {
                             source_info,
