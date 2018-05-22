@@ -95,24 +95,28 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                 MISREFACTORED_ASSIGN_OP,
                                 expr.span,
                                 "variable appears on both sides of an assignment operation",
-                                |db| if let (Some(snip_a), Some(snip_r)) =
-                                    (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs_other.span))
-                                {
-                                    let a = &sugg::Sugg::hir(cx, assignee, "..");
-                                    let r = &sugg::Sugg::hir(cx, rhs, "..");
-                                    let long = format!("{} = {}", snip_a, sugg::make_binop(higher::binop(op.node), a, r));
-                                    db.span_suggestion(
-                                        expr.span,
-                                        &format!("Did you mean {} = {} {} {} or {}? Consider replacing it with",
-                                                 snip_a, snip_a, op.node.as_str(), snip_r,
-                                                 long),
-                                        format!("{} {}= {}", snip_a, op.node.as_str(), snip_r)
-                                    );
-                                    db.span_suggestion(
-                                        expr.span,
-                                        "or",
-                                        long
-                                    );
+                                |db| {
+                                    if let (Some(snip_a), Some(snip_r)) =
+                                        (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs_other.span))
+                                    {
+                                        let a = &sugg::Sugg::hir(cx, assignee, "..");
+                                        let r = &sugg::Sugg::hir(cx, rhs, "..");
+                                        let long =
+                                            format!("{} = {}", snip_a, sugg::make_binop(higher::binop(op.node), a, r));
+                                        db.span_suggestion(
+                                            expr.span,
+                                            &format!(
+                                                "Did you mean {} = {} {} {} or {}? Consider replacing it with",
+                                                snip_a,
+                                                snip_a,
+                                                op.node.as_str(),
+                                                snip_r,
+                                                long
+                                            ),
+                                            format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
+                                        );
+                                        db.span_suggestion(expr.span, "or", long);
+                                    }
                                 },
                             );
                         };
@@ -189,14 +193,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                 ASSIGN_OP_PATTERN,
                                 expr.span,
                                 "manual implementation of an assign operation",
-                                |db| if let (Some(snip_a), Some(snip_r)) =
-                                    (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span))
-                                {
-                                    db.span_suggestion(
-                                        expr.span,
-                                        "replace it with",
-                                        format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
-                                    );
+                                |db| {
+                                    if let (Some(snip_a), Some(snip_r)) =
+                                        (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span))
+                                    {
+                                        db.span_suggestion(
+                                            expr.span,
+                                            "replace it with",
+                                            format!("{} {}= {}", snip_a, op.node.as_str(), snip_r),
+                                        );
+                                    }
                                 },
                             );
                         }
@@ -205,7 +211,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                     let mut visitor = ExprVisitor {
                         assignee,
                         counter: 0,
-                        cx
+                        cx,
                     };
 
                     walk_expr(&mut visitor, e);
@@ -218,13 +224,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                         // a = b commutative_op a
                         if SpanlessEq::new(cx).ignore_fn().eq_expr(assignee, r) {
                             match op.node {
-                                hir::BiAdd |
-                                hir::BiMul |
-                                hir::BiAnd |
-                                hir::BiOr |
-                                hir::BiBitXor |
-                                hir::BiBitAnd |
-                                hir::BiBitOr => {
+                                hir::BiAdd
+                                | hir::BiMul
+                                | hir::BiAnd
+                                | hir::BiOr
+                                | hir::BiBitXor
+                                | hir::BiBitAnd
+                                | hir::BiBitOr => {
                                     lint(assignee, l);
                                 },
                                 _ => {},

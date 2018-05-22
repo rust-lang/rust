@@ -1,13 +1,16 @@
 //! checks for attributes
 
 use reexport::*;
-use rustc::lint::*;
 use rustc::hir::*;
+use rustc::lint::*;
 use rustc::ty::{self, TyCtxt};
 use semver::Version;
-use syntax::ast::{Attribute, AttrStyle, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
+use syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use syntax::codemap::Span;
-use utils::{in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_then, without_block_comments};
+use utils::{
+    in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_then,
+    without_block_comments,
+};
 
 /// **What it does:** Checks for items annotated with `#[inline(always)]`,
 /// unless the annotated function is empty or simply panics.
@@ -118,7 +121,12 @@ pub struct AttrPass;
 
 impl LintPass for AttrPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(INLINE_ALWAYS, DEPRECATED_SEMVER, USELESS_ATTRIBUTE, EMPTY_LINE_AFTER_OUTER_ATTR)
+        lint_array!(
+            INLINE_ALWAYS,
+            DEPRECATED_SEMVER,
+            USELESS_ATTRIBUTE,
+            EMPTY_LINE_AFTER_OUTER_ATTR
+        )
     }
 }
 
@@ -170,11 +178,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                                             "useless lint attribute",
                                             |db| {
                                                 sugg = sugg.replacen("#[", "#![", 1);
-                                                db.span_suggestion(
-                                                    line_span,
-                                                    "if you just forgot a `!`, use",
-                                                    sugg,
-                                                );
+                                                db.span_suggestion(line_span, "if you just forgot a `!`, use", sugg);
                                             },
                                         );
                                     }
@@ -234,10 +238,7 @@ fn is_relevant_block(tcx: TyCtxt, tables: &ty::TypeckTables, block: &Block) -> b
             StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => is_relevant_expr(tcx, tables, expr),
         }
     } else {
-        block
-            .expr
-            .as_ref()
-            .map_or(false, |e| is_relevant_expr(tcx, tables, e))
+        block.expr.as_ref().map_or(false, |e| is_relevant_expr(tcx, tables, e))
     }
 }
 

@@ -1,10 +1,10 @@
+use consts::{constant, Constant};
+use rustc::hir;
 use rustc::lint::*;
 use rustc::ty;
-use rustc::hir;
 use syntax::ast::RangeLimits;
-use utils::{self, higher};
 use utils::higher::Range;
-use consts::{constant, Constant};
+use utils::{self, higher};
 
 /// **What it does:** Checks for out of bounds array indexing with a constant
 /// index.
