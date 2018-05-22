@@ -475,8 +475,8 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             let min_max_ty = |sty| {
                 let size = cx.tcx.layout_of(ty::ParamEnv::reveal_all().and(sty))
                                   .unwrap().size.bits() as i128;
-                let min = -(1 << (size - 1));
-                let max = (1 << (size - 1)) - 1;
+                let min = (1i128 << (size - 1)).wrapping_neg();
+                let max = (1i128 << (size - 1)).wrapping_sub(1);
                 (min as u128, max as u128, sty)
             };
             let (min, max, ty) = match int_ty {
@@ -496,8 +496,9 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             use syntax::ast::UintTy::*;
             let min_max_ty = |sty| {
                 let size = cx.tcx.layout_of(ty::ParamEnv::reveal_all().and(sty))
-                                  .unwrap().size.bits() as i128;
-                let max = (1 << size) - 1;
+                                  .unwrap().size.bits() as u32;
+                let shift = 1u128.overflowing_shl(size);
+                let max = shift.0.wrapping_sub(1 + (shift.1 as u128));
                 (0u128, max as u128, sty)
             };
             let (min, max, ty) = match uint_ty {
