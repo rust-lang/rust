@@ -1660,7 +1660,13 @@ impl<'a> Resolver<'a> {
             PathResult::Module(module) => *def = module.def().unwrap(),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 =>
                 *def = path_res.base_def(),
-            PathResult::NonModule(..) => match self.resolve_path(&path, None, true, span, CrateLint::No) {
+            PathResult::NonModule(..) => match self.resolve_path(
+                &path,
+                None,
+                true,
+                span,
+                CrateLint::No,
+            ) {
                 PathResult::Failed(span, msg, _) => {
                     error_callback(self, span, ResolutionError::FailedToResolve(&msg));
                 }
@@ -3175,7 +3181,13 @@ impl<'a> Resolver<'a> {
             ));
         }
 
-        let result = match self.resolve_path(&path, Some(ns), true, span, CrateLint::SimplePath(id)) {
+        let result = match self.resolve_path(
+            &path,
+            Some(ns),
+            true,
+            span,
+            CrateLint::SimplePath(id),
+        ) {
             PathResult::NonModule(path_res) => path_res,
             PathResult::Module(module) if !module.is_normal() => {
                 PathResolution::new(module.def().unwrap())
@@ -3212,7 +3224,13 @@ impl<'a> Resolver<'a> {
            path[0].name != keywords::CrateRoot.name() &&
            path[0].name != keywords::DollarCrate.name() {
             let unqualified_result = {
-                match self.resolve_path(&[*path.last().unwrap()], Some(ns), false, span, CrateLint::No) {
+                match self.resolve_path(
+                    &[*path.last().unwrap()],
+                    Some(ns),
+                    false,
+                    span,
+                    CrateLint::No,
+                ) {
                     PathResult::NonModule(path_res) => path_res.base_def(),
                     PathResult::Module(module) => module.def().unwrap(),
                     _ => return Some(result),

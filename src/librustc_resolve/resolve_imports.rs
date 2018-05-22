@@ -60,7 +60,7 @@ pub struct ImportDirective<'a> {
     /// In the case where the `ImportDirective` was expanded from a "nested" use tree,
     /// this id is the id of the leaf tree. For example:
     ///
-    /// ```rust,ignore
+    /// ```ignore (pacify the mercilous tidy)
     /// use foo::bar::{a, b}
     /// ```
     ///
@@ -737,7 +737,13 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
         }
 
-        let module_result = self.resolve_path(&module_path, None, true, span, directive.crate_lint());
+        let module_result = self.resolve_path(
+            &module_path,
+            None,
+            true,
+            span,
+            directive.crate_lint(),
+        );
         let module = match module_result {
             PathResult::Module(module) => module,
             PathResult::Failed(span, msg, false) => {
