@@ -2587,7 +2587,9 @@ impl<'test> TestCx<'test> {
             let unfixed_code = self.load_expected_output_from_path(&self.testpaths.file)
                 .unwrap();
             let suggestions = get_suggestions_from_json(&proc_res.stderr, &HashSet::new()).unwrap();
-            let fixed_code = apply_suggestions(&unfixed_code, &suggestions);
+            let fixed_code = apply_suggestions(&unfixed_code, &suggestions).expect(
+                &format!("failed to apply suggestions for {:?} with rustfix", self.testpaths.file)
+            );
 
             errors += self.compare_output("fixed", &fixed_code, &expected_fixed);
         } else if !expected_fixed.is_empty() {
