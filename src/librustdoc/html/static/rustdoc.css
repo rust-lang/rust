@@ -1010,6 +1010,8 @@ span.since {
 
 pre.rust {
 	position: relative;
+	tab-width: 4;
+	-moz-tab-width: 4;
 }
 
 .search-failed {
