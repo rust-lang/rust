@@ -47,6 +47,9 @@ let ty = tcx.type_of(some_def_id);
 
 ### Cycles between queries
 
+A cycle is when a query becomes stuck in a loop e.g. query A generates query B
+which generates query A again.
+
 Currently, cycles during query execution should always result in a
 compilation error. Typically, they arise because of illegal programs
 that contain cyclic references they shouldn't (though sometimes they
