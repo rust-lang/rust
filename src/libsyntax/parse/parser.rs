@@ -26,7 +26,7 @@ use ast::{Ident, ImplItem, IsAuto, Item, ItemKind};
 use ast::{Label, Lifetime, LifetimeDef, Lit, LitKind, UintTy};
 use ast::Local;
 use ast::MacStmtStyle;
-use ast::{Mac, Mac_};
+use ast::{Mac, Mac_, MacDelimiter};
 use ast::{MutTy, Mutability};
 use ast::{Pat, PatKind, PathSegment};
 use ast::{PolyTraitRef, QSelf};
@@ -1611,8 +1611,9 @@ impl<'a> Parser<'a> {
             let path = self.parse_path(PathStyle::Type)?;
             if self.eat(&token::Not) {
                 // Macro invocation in type position
-                let (_, tts) = self.expect_delimited_token_tree()?;
-                TyKind::Mac(respan(lo.to(self.prev_span), Mac_ { path: path, tts: tts }))
+                let (delim, tts) = self.expect_delimited_token_tree()?;
+                let node = Mac_ { path, tts, delim };
+                TyKind::Mac(respan(lo.to(self.prev_span), node))
             } else {
                 // Just a type path or bound list (trait object type) starting with a trait.
                 //   `Type`
@@ -2181,19 +2182,27 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn expect_delimited_token_tree(&mut self) -> PResult<'a, (token::DelimToken, ThinTokenStream)> {
-        match self.token {
-            token::OpenDelim(delim) => match self.parse_token_tree() {
-                TokenTree::Delimited(_, delimited) => Ok((delim, delimited.stream().into())),
-                _ => unreachable!(),
-            },
+    fn expect_delimited_token_tree(&mut self) -> PResult<'a, (MacDelimiter, ThinTokenStream)> {
+        let delim = match self.token {
+            token::OpenDelim(delim) => delim,
             _ => {
                 let msg = "expected open delimiter";
                 let mut err = self.fatal(msg);
                 err.span_label(self.span, msg);
-                Err(err)
+                return Err(err)
             }
-        }
+        };
+        let delimited = match self.parse_token_tree() {
+            TokenTree::Delimited(_, delimited) => delimited,
+            _ => unreachable!(),
+        };
+        let delim = match delim {
+            token::Paren => MacDelimiter::Parenthesis,
+            token::Bracket => MacDelimiter::Bracket,
+            token::Brace => MacDelimiter::Brace,
+            token::NoDelim => self.bug("unexpected no delimiter"),
+        };
+        Ok((delim, delimited.stream().into()))
     }
 
     /// At the bottom (top?) of the precedence hierarchy,
@@ -2406,9 +2415,10 @@ impl<'a> Parser<'a> {
                     // `!`, as an operator, is prefix, so we know this isn't that
                     if self.eat(&token::Not) {
                         // MACRO INVOCATION expression
-                        let (_, tts) = self.expect_delimited_token_tree()?;
+                        let (delim, tts) = self.expect_delimited_token_tree()?;
                         let hi = self.prev_span;
-                        return Ok(self.mk_mac_expr(lo.to(hi), Mac_ { path: pth, tts: tts }, attrs));
+                        let node = Mac_ { path: pth, tts, delim };
+                        return Ok(self.mk_mac_expr(lo.to(hi), node, attrs))
                     }
                     if self.check(&token::OpenDelim(token::Brace)) {
                         // This is a struct literal, unless we're prohibited
@@ -3881,8 +3891,8 @@ impl<'a> Parser<'a> {
                     token::Not if qself.is_none() => {
                         // Parse macro invocation
                         self.bump();
-                        let (_, tts) = self.expect_delimited_token_tree()?;
-                        let mac = respan(lo.to(self.prev_span), Mac_ { path: path, tts: tts });
+                        let (delim, tts) = self.expect_delimited_token_tree()?;
+                        let mac = respan(lo.to(self.prev_span), Mac_ { path, tts, delim });
                         pat = PatKind::Mac(mac);
                     }
                     token::DotDotDot | token::DotDotEq | token::DotDot => {
@@ -4275,7 +4285,7 @@ impl<'a> Parser<'a> {
 
                 let ident = self.parse_ident()?;
                 let (delim, tokens) = self.expect_delimited_token_tree()?;
-                if delim != token::Brace {
+                if delim != MacDelimiter::Brace {
                     if !self.eat(&token::Semi) {
                         let msg = "macros that expand to items must either \
                                    be surrounded with braces or followed by a semicolon";
@@ -4360,8 +4370,8 @@ impl<'a> Parser<'a> {
             // check that we're pointing at delimiters (need to check
             // again after the `if`, because of `parse_ident`
             // consuming more tokens).
-            let delim = match self.token {
-                token::OpenDelim(delim) => delim,
+            match self.token {
+                token::OpenDelim(_) => {}
                 _ => {
                     // we only expect an ident if we didn't parse one
                     // above.
@@ -4377,20 +4387,20 @@ impl<'a> Parser<'a> {
                     err.span_label(self.span, format!("expected {}`(` or `{{`", ident_str));
                     return Err(err)
                 },
-            };
+            }
 
-            let (_, tts) = self.expect_delimited_token_tree()?;
+            let (delim, tts) = self.expect_delimited_token_tree()?;
             let hi = self.prev_span;
 
-            let style = if delim == token::Brace {
+            let style = if delim == MacDelimiter::Brace {
                 MacStmtStyle::Braces
             } else {
                 MacStmtStyle::NoBraces
             };
 
             if id.name == keywords::Invalid.name() {
-                let mac = respan(lo.to(hi), Mac_ { path: pth, tts: tts });
-                let node = if delim == token::Brace ||
+                let mac = respan(lo.to(hi), Mac_ { path: pth, tts, delim });
+                let node = if delim == MacDelimiter::Brace ||
                               self.token == token::Semi || self.token == token::Eof {
                     StmtKind::Mac(P((mac, style, attrs.into())))
                 }
@@ -4438,7 +4448,7 @@ impl<'a> Parser<'a> {
                     node: StmtKind::Item({
                         self.mk_item(
                             span, id /*id is good here*/,
-                            ItemKind::Mac(respan(span, Mac_ { path: pth, tts: tts })),
+                            ItemKind::Mac(respan(span, Mac_ { path: pth, tts, delim })),
                             respan(lo, VisibilityKind::Inherited),
                             attrs)
                     }),
@@ -6871,7 +6881,7 @@ impl<'a> Parser<'a> {
             };
             // eat a matched-delimiter token tree:
             let (delim, tts) = self.expect_delimited_token_tree()?;
-            if delim != token::Brace {
+            if delim != MacDelimiter::Brace {
                 if !self.eat(&token::Semi) {
                     self.span_err(self.prev_span,
                                   "macros that expand to items must either \
@@ -6881,7 +6891,7 @@ impl<'a> Parser<'a> {
             }
 
             let hi = self.prev_span;
-            let mac = respan(mac_lo.to(hi), Mac_ { path: pth, tts: tts });
+            let mac = respan(mac_lo.to(hi), Mac_ { path: pth, tts, delim });
             let item = self.mk_item(lo.to(hi), id, ItemKind::Mac(mac), visibility, attrs);
             return Ok(Some(item));
         }
@@ -6925,11 +6935,11 @@ impl<'a> Parser<'a> {
 
             // eat a matched-delimiter token tree:
             let (delim, tts) = self.expect_delimited_token_tree()?;
-            if delim != token::Brace {
+            if delim != MacDelimiter::Brace {
                 self.expect(&token::Semi)?
             }
 
-            Ok(Some(respan(lo.to(self.prev_span), Mac_ { path: pth, tts: tts })))
+            Ok(Some(respan(lo.to(self.prev_span), Mac_ { path: pth, tts, delim })))
         } else {
             Ok(None)
         }

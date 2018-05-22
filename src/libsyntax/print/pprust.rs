@@ -13,7 +13,7 @@ pub use self::AnnNode::*;
 use rustc_target::spec::abi::{self, Abi};
 use ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use ast::{SelfKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
-use ast::Attribute;
+use ast::{Attribute, MacDelimiter};
 use util::parser::{self, AssocOp, Fixity};
 use attr;
 use codemap::{self, CodeMap};
@@ -422,7 +422,7 @@ pub fn arg_to_string(arg: &ast::Arg) -> String {
 }
 
 pub fn mac_to_string(arg: &ast::Mac) -> String {
-    to_string(|s| s.print_mac(arg, ::parse::token::Paren))
+    to_string(|s| s.print_mac(arg))
 }
 
 pub fn foreign_item_to_string(arg: &ast::ForeignItem) -> String {
@@ -1098,7 +1098,7 @@ impl<'a> State<'a> {
                 self.s.word("Self")?;
             }
             ast::TyKind::Mac(ref m) => {
-                self.print_mac(m, token::Paren)?;
+                self.print_mac(m)?;
             }
         }
         self.end()
@@ -1140,8 +1140,11 @@ impl<'a> State<'a> {
                 self.end() // end the outer cbox
             }
             ast::ForeignItemKind::Macro(ref m) => {
-                self.print_mac(m, token::Paren)?;
-                self.s.word(";")
+                self.print_mac(m)?;
+                match m.node.delim {
+                    MacDelimiter::Brace => Ok(()),
+                    _ => self.s.word(";")
+                }
             }
         }
     }
@@ -1394,16 +1397,24 @@ impl<'a> State<'a> {
                 self.print_where_clause(&generics.where_clause)?;
                 self.s.word(";")?;
             }
-            ast::ItemKind::Mac(codemap::Spanned { ref node, .. }) => {
-                self.print_path(&node.path, false, 0)?;
-                self.s.word("! ")?;
-                self.print_ident(item.ident)?;
-                self.cbox(INDENT_UNIT)?;
-                self.popen()?;
-                self.print_tts(node.stream())?;
-                self.pclose()?;
-                self.s.word(";")?;
-                self.end()?;
+            ast::ItemKind::Mac(ref mac) => {
+                if item.ident.name == keywords::Invalid.name() {
+                    self.print_mac(mac)?;
+                    match mac.node.delim {
+                        MacDelimiter::Brace => {}
+                        _ => self.s.word(";")?,
+                    }
+                } else {
+                    self.print_path(&mac.node.path, false, 0)?;
+                    self.s.word("! ")?;
+                    self.print_ident(item.ident)?;
+                    self.cbox(INDENT_UNIT)?;
+                    self.popen()?;
+                    self.print_tts(mac.node.stream())?;
+                    self.pclose()?;
+                    self.s.word(";")?;
+                    self.end()?;
+                }
             }
             ast::ItemKind::MacroDef(ref tts) => {
                 self.s.word("macro_rules! ")?;
@@ -1609,16 +1620,12 @@ impl<'a> State<'a> {
                 self.print_associated_type(ti.ident, Some(bounds),
                                            default.as_ref().map(|ty| &**ty))?;
             }
-            ast::TraitItemKind::Macro(codemap::Spanned { ref node, .. }) => {
-                // code copied from ItemKind::Mac:
-                self.print_path(&node.path, false, 0)?;
-                self.s.word("! ")?;
-                self.cbox(INDENT_UNIT)?;
-                self.popen()?;
-                self.print_tts(node.stream())?;
-                self.pclose()?;
-                self.s.word(";")?;
-                self.end()?
+            ast::TraitItemKind::Macro(ref mac) => {
+                self.print_mac(mac)?;
+                match mac.node.delim {
+                    MacDelimiter::Brace => {}
+                    _ => self.s.word(";")?,
+                }
             }
         }
         self.ann.post(self, NodeSubItem(ti.id))
@@ -1643,16 +1650,12 @@ impl<'a> State<'a> {
             ast::ImplItemKind::Type(ref ty) => {
                 self.print_associated_type(ii.ident, None, Some(ty))?;
             }
-            ast::ImplItemKind::Macro(codemap::Spanned { ref node, .. }) => {
-                // code copied from ItemKind::Mac:
-                self.print_path(&node.path, false, 0)?;
-                self.s.word("! ")?;
-                self.cbox(INDENT_UNIT)?;
-                self.popen()?;
-                self.print_tts(node.stream())?;
-                self.pclose()?;
-                self.s.word(";")?;
-                self.end()?
+            ast::ImplItemKind::Macro(ref mac) => {
+                self.print_mac(mac)?;
+                match mac.node.delim {
+                    MacDelimiter::Brace => {}
+                    _ => self.s.word(";")?,
+                }
             }
         }
         self.ann.post(self, NodeSubItem(ii.id))
@@ -1695,11 +1698,7 @@ impl<'a> State<'a> {
                 let (ref mac, style, ref attrs) = **mac;
                 self.space_if_not_bol()?;
                 self.print_outer_attributes(attrs)?;
-                let delim = match style {
-                    ast::MacStmtStyle::Braces => token::Brace,
-                    _ => token::Paren
-                };
-                self.print_mac(mac, delim)?;
+                self.print_mac(mac)?;
                 if style == ast::MacStmtStyle::Semicolon {
                     self.s.word(";")?;
                 }
@@ -1829,25 +1828,22 @@ impl<'a> State<'a> {
         self.print_else(elseopt)
     }
 
-    pub fn print_mac(&mut self, m: &ast::Mac, delim: token::DelimToken)
-                     -> io::Result<()> {
+    pub fn print_mac(&mut self, m: &ast::Mac) -> io::Result<()> {
         self.print_path(&m.node.path, false, 0)?;
         self.s.word("!")?;
-        match delim {
-            token::Paren => self.popen()?,
-            token::Bracket => self.s.word("[")?,
-            token::Brace => {
+        match m.node.delim {
+            MacDelimiter::Parenthesis => self.popen()?,
+            MacDelimiter::Bracket => self.s.word("[")?,
+            MacDelimiter::Brace => {
                 self.head("")?;
                 self.bopen()?;
             }
-            token::NoDelim => {}
         }
         self.print_tts(m.node.stream())?;
-        match delim {
-            token::Paren => self.pclose(),
-            token::Bracket => self.s.word("]"),
-            token::Brace => self.bclose(m.span),
-            token::NoDelim => Ok(()),
+        match m.node.delim {
+            MacDelimiter::Parenthesis => self.pclose(),
+            MacDelimiter::Bracket => self.s.word("]"),
+            MacDelimiter::Brace => self.bclose(m.span),
         }
     }
 
@@ -2333,7 +2329,7 @@ impl<'a> State<'a> {
 
                 self.pclose()?;
             }
-            ast::ExprKind::Mac(ref m) => self.print_mac(m, token::Paren)?,
+            ast::ExprKind::Mac(ref m) => self.print_mac(m)?,
             ast::ExprKind::Paren(ref e) => {
                 self.popen()?;
                 self.print_inner_attributes_inline(attrs)?;
@@ -2660,7 +2656,7 @@ impl<'a> State<'a> {
                 self.print_pat(inner)?;
                 self.pclose()?;
             }
-            PatKind::Mac(ref m) => self.print_mac(m, token::Paren)?,
+            PatKind::Mac(ref m) => self.print_mac(m)?,
         }
         self.ann.post(self, NodePat(pat))
     }
