@@ -54,7 +54,7 @@ impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
 }
 
 /// Every two-phase borrow has *exactly one* use (or else it is not a
-/// proper two-phase borrow under our current definition. However, not
+/// proper two-phase borrow under our current definition). However, not
 /// all uses are actually ones that activate the reservation.. In
 /// particular, a shared borrow of a `&mut` does not activate the
 /// reservation.
