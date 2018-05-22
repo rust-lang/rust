@@ -138,7 +138,6 @@ impl<'a, 'tcx> FromIterator<Vec<&'a Pattern<'tcx>>> for Matrix<'a, 'tcx> {
     }
 }
 
-//NOTE: appears to be the only place other then InferCtxt to contain a ParamEnv
 pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     /// The module in which the match occurs. This is necessary for
@@ -470,48 +469,24 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 ConstantRange(endpoint('\u{E000}'), endpoint('\u{10FFFF}'), RangeEnd::Included),
             ]
         }
-        ty::TyInt(int_ty) if exhaustive_integer_patterns => {
-            use syntax::ast::IntTy::*;
-            let min_max_ty = |sty| {
-                let size = cx.tcx.layout_of(ty::ParamEnv::reveal_all().and(sty))
-                                  .unwrap().size.bits() as i128;
-                let min = (1i128 << (size - 1)).wrapping_neg();
-                let max = (1i128 << (size - 1)).wrapping_sub(1);
-                (min as u128, max as u128, sty)
-            };
-            let (min, max, ty) = match int_ty {
-                Isize => min_max_ty(cx.tcx.types.isize),
-                I8    => min_max_ty(cx.tcx.types.i8),
-                I16   => min_max_ty(cx.tcx.types.i16),
-                I32   => min_max_ty(cx.tcx.types.i32),
-                I64   => min_max_ty(cx.tcx.types.i64),
-                I128  => min_max_ty(cx.tcx.types.i128),
-            };
+        ty::TyInt(_) if exhaustive_integer_patterns => {
+            let size = cx.tcx.layout_of(ty::ParamEnv::reveal_all().and(pcx.ty))
+                             .unwrap().size.bits() as i128;
+            let min = (1i128 << (size - 1)).wrapping_neg();
+            let max = (1i128 << (size - 1)).wrapping_sub(1);
             value_constructors = true;
-            vec![ConstantRange(ty::Const::from_bits(cx.tcx, min, ty),
-                               ty::Const::from_bits(cx.tcx, max, ty),
+            vec![ConstantRange(ty::Const::from_bits(cx.tcx, min as u128, pcx.ty),
+                               ty::Const::from_bits(cx.tcx, max as u128, pcx.ty),
                                RangeEnd::Included)]
         }
-        ty::TyUint(uint_ty) if exhaustive_integer_patterns => {
-            use syntax::ast::UintTy::*;
-            let min_max_ty = |sty| {
-                let size = cx.tcx.layout_of(ty::ParamEnv::reveal_all().and(sty))
-                                  .unwrap().size.bits() as u32;
-                let shift = 1u128.overflowing_shl(size);
-                let max = shift.0.wrapping_sub(1 + (shift.1 as u128));
-                (0u128, max as u128, sty)
-            };
-            let (min, max, ty) = match uint_ty {
-                Usize => min_max_ty(cx.tcx.types.usize),
-                U8    => min_max_ty(cx.tcx.types.u8),
-                U16   => min_max_ty(cx.tcx.types.u16),
-                U32   => min_max_ty(cx.tcx.types.u32),
-                U64   => min_max_ty(cx.tcx.types.u64),
-                U128  => min_max_ty(cx.tcx.types.u128),
-            };
+        ty::TyUint(_) if exhaustive_integer_patterns => {
+            let size = cx.tcx.layout_of(ty::ParamEnv::reveal_all().and(pcx.ty))
+                             .unwrap().size.bits() as u32;
+            let shift = 1u128.overflowing_shl(size);
+            let max = shift.0.wrapping_sub(1 + (shift.1 as u128));
             value_constructors = true;
-            vec![ConstantRange(ty::Const::from_bits(cx.tcx, min, ty),
-                               ty::Const::from_bits(cx.tcx, max, ty),
+            vec![ConstantRange(ty::Const::from_bits(cx.tcx, 0u128, pcx.ty),
+                               ty::Const::from_bits(cx.tcx, max as u128, pcx.ty),
                                RangeEnd::Included)]
         }
         _ => {
@@ -643,7 +618,7 @@ impl<'tcx> Interval<'tcx> {
                     if let Some(hi) = hi.assert_bits(ty) {
                         // Perform a shift if the underlying types are signed,
                         // which makes the interval arithmetic simpler.
-                        let (lo, hi) = Interval::offset_sign(ty, (lo, hi), true);
+                        let (lo, hi) = Interval::offset_sign(ty, lo..=hi, true);
                         // Make sure the interval is well-formed.
                         return if lo > hi || lo == hi && *end == RangeEnd::Excluded {
                             None
@@ -665,7 +640,8 @@ impl<'tcx> Interval<'tcx> {
         }
     }
 
-    fn offset_sign(ty: Ty<'tcx>, (lo, hi): (u128, u128), forwards: bool) -> (u128, u128) {
+    fn offset_sign(ty: Ty<'tcx>, range: RangeInclusive<u128>, forwards: bool) -> (u128, u128) {
+        let (lo, hi) = range.into_inner();
         use syntax::ast::IntTy::*;
         match ty.sty {
             ty::TyInt(int_ty) => {
@@ -720,23 +696,23 @@ fn ranges_subtract_pattern<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             if pat_interval_lo > subrange_hi || subrange_lo > pat_interval_hi  {
                 // The pattern doesn't intersect with the subrange at all,
                 // so the subrange remains untouched.
-                remaining_ranges.push((subrange_lo, subrange_hi));
+                remaining_ranges.push(subrange_lo..=subrange_hi);
             } else {
                 if pat_interval_lo > subrange_lo {
                     // The pattern intersects an upper section of the
                     // subrange, so a lower section will remain.
-                    remaining_ranges.push((subrange_lo, pat_interval_lo - 1));
+                    remaining_ranges.push(subrange_lo..=(pat_interval_lo - 1));
                 }
                 if pat_interval_hi < subrange_hi {
                     // The pattern intersects a lower section of the
                     // subrange, so an upper section will remain.
-                    remaining_ranges.push((pat_interval_hi + 1, subrange_hi));
+                    remaining_ranges.push((pat_interval_hi + 1)..=subrange_hi);
                 }
             }
         }
         // Convert the remaining ranges from pairs to inclusive `ConstantRange`s.
-        remaining_ranges.into_iter().map(|(lo, hi)| {
-            let (lo, hi) = Interval::offset_sign(ty, (lo, hi), false);
+        remaining_ranges.into_iter().map(|r| {
+            let (lo, hi) = Interval::offset_sign(ty, r, false);
             ConstantRange(ty::Const::from_bits(cx.tcx, lo, ty),
                           ty::Const::from_bits(cx.tcx, hi, ty),
                           RangeEnd::Included)
