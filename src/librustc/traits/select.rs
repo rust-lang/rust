@@ -3356,13 +3356,28 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     predicate: predicate.value
                 }))
         }).collect();
+
         // We are performing deduplication here to avoid exponential blowups
         // (#38528) from happening, but the real cause of the duplication is
         // unknown. What we know is that the deduplication avoids exponential
-        // amount of predicates being propogated when processing deeply nested
+        // amount of predicates being propagated when processing deeply nested
         // types.
-        let mut seen = FxHashSet();
-        predicates.retain(|i| seen.insert(i.clone()));
+        //
+        // This code is hot enough that it's worth avoiding the allocation
+        // required for the FxHashSet when possible. Special-casing lengths 0,
+        // 1 and 2 covers roughly 75--80% of the cases.
+        if predicates.len() <= 1 {
+            // No possibility of duplicates.
+        } else if predicates.len() == 2 {
+            // Only two elements. Drop the second if they are equal.
+            if predicates[0] == predicates[1] {
+                predicates.truncate(1);
+            }
+        } else {
+            // Three or more elements. Use a general deduplication process.
+            let mut seen = FxHashSet();
+            predicates.retain(|i| seen.insert(i.clone()));
+        }
         self.infcx().plug_leaks(skol_map, snapshot, predicates)
     }
 }
