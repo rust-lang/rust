@@ -19,18 +19,18 @@ extern crate edition_lint_paths;
 
 pub mod foo {
     use edition_lint_paths;
-    use crate::bar::Bar;
+    use ::bar::Bar;
     //~^ ERROR absolute
     //~| WARN this was previously accepted
     use super::bar::Bar2;
     use crate::bar::Bar3;
 
-    use crate::bar;
+    use bar;
     //~^ ERROR absolute
     //~| WARN this was previously accepted
     use crate::{bar as something_else};
 
-    use {crate::Bar as SomethingElse, crate::main};
+    use {Bar as SomethingElse, main};
     //~^ ERROR absolute
     //~| WARN this was previously accepted
     //~| ERROR absolute
@@ -40,9 +40,11 @@ pub mod foo {
 
     pub fn test() {
     }
+
+    pub trait SomeTrait { }
 }
 
-use crate::bar::Bar;
+use bar::Bar;
 //~^ ERROR absolute
 //~| WARN this was previously accepted
 
@@ -54,13 +56,17 @@ pub mod bar {
 }
 
 mod baz {
-    use crate::*;
+    use *;
     //~^ ERROR absolute
     //~| WARN this was previously accepted
 }
 
+impl ::foo::SomeTrait for u32 { }
+//~^ ERROR absolute
+//~| WARN this was previously accepted
+
 fn main() {
-    let x = crate::bar::Bar;
+    let x = ::bar::Bar;
     //~^ ERROR absolute
     //~| WARN this was previously accepted
     let x = bar::Bar;

@@ -100,6 +100,8 @@ impl<'a> Resolver<'a> {
     }
 
     fn build_reduced_graph_for_use_tree(&mut self,
+                                        root_use_tree: &ast::UseTree,
+                                        root_id: NodeId,
                                         use_tree: &ast::UseTree,
                                         id: NodeId,
                                         vis: ty::Visibility,
@@ -182,7 +184,14 @@ impl<'a> Resolver<'a> {
                     type_ns_only,
                 };
                 self.add_import_directive(
-                    module_path, subclass, use_tree.span, id, vis, expansion,
+                    module_path,
+                    subclass,
+                    use_tree.span,
+                    id,
+                    root_use_tree.span,
+                    root_id,
+                    vis,
+                    expansion,
                 );
             }
             ast::UseTreeKind::Glob => {
@@ -191,7 +200,14 @@ impl<'a> Resolver<'a> {
                     max_vis: Cell::new(ty::Visibility::Invisible),
                 };
                 self.add_import_directive(
-                    module_path, subclass, use_tree.span, id, vis, expansion,
+                    module_path,
+                    subclass,
+                    use_tree.span,
+                    id,
+                    root_use_tree.span,
+                    root_id,
+                    vis,
+                    expansion,
                 );
             }
             ast::UseTreeKind::Nested(ref items) => {
@@ -226,7 +242,7 @@ impl<'a> Resolver<'a> {
 
                 for &(ref tree, id) in items {
                     self.build_reduced_graph_for_use_tree(
-                        tree, id, vis, &prefix, true, item, expansion
+                        root_use_tree, root_id, tree, id, vis, &prefix, true, item, expansion
                     );
                 }
             }
@@ -249,7 +265,7 @@ impl<'a> Resolver<'a> {
                 };
 
                 self.build_reduced_graph_for_use_tree(
-                    use_tree, item.id, vis, &prefix, false, item, expansion,
+                    use_tree, item.id, use_tree, item.id, vis, &prefix, false, item, expansion,
                 );
             }
 
@@ -266,10 +282,12 @@ impl<'a> Resolver<'a> {
                 let binding =
                     (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.arenas);
                 let directive = self.arenas.alloc_import_directive(ImportDirective {
+                    root_id: item.id,
                     id: item.id,
                     parent,
                     imported_module: Cell::new(Some(module)),
                     subclass: ImportDirectiveSubclass::ExternCrate(orig_name),
+                    root_span: item.span,
                     span: item.span,
                     module_path: Vec::new(),
                     vis: Cell::new(vis),
@@ -640,10 +658,12 @@ impl<'a> Resolver<'a> {
 
         let (graph_root, arenas) = (self.graph_root, self.arenas);
         let macro_use_directive = |span| arenas.alloc_import_directive(ImportDirective {
+            root_id: item.id,
             id: item.id,
             parent: graph_root,
             imported_module: Cell::new(Some(module)),
             subclass: ImportDirectiveSubclass::MacroUse,
+            root_span: span,
             span,
             module_path: Vec::new(),
             vis: Cell::new(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))),

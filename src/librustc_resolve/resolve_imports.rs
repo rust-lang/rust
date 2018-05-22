@@ -10,7 +10,7 @@
 
 use self::ImportDirectiveSubclass::*;
 
-use {AmbiguityError, Module, PerNS};
+use {AmbiguityError, CrateLint, Module, PerNS};
 use Namespace::{self, TypeNS, MacroNS};
 use {NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
 use Resolver;
@@ -55,12 +55,36 @@ pub enum ImportDirectiveSubclass<'a> {
 /// One import directive.
 #[derive(Debug,Clone)]
 pub struct ImportDirective<'a> {
+    /// The id of the `extern crate`, `UseTree` etc that imported this `ImportDirective`.
+    ///
+    /// In the case where the `ImportDirective` was expanded from a "nested" use tree,
+    /// this id is the id of the leaf tree. For example:
+    ///
+    /// ```ignore (pacify the mercilous tidy)
+    /// use foo::bar::{a, b}
+    /// ```
+    ///
+    /// If this is the import directive for `foo::bar::a`, we would have the id of the `UseTree`
+    /// for `a` in this field.
     pub id: NodeId,
+
+    /// The `id` of the "root" use-kind -- this is always the same as
+    /// `id` except in the case of "nested" use trees, in which case
+    /// it will be the `id` of the root use tree. e.g., in the example
+    /// from `id`, this would be the id of the `use foo::bar`
+    /// `UseTree` node.
+    pub root_id: NodeId,
+
+    /// Span of this use tree.
+    pub span: Span,
+
+    /// Span of the *root* use tree (see `root_id`).
+    pub root_span: Span,
+
     pub parent: Module<'a>,
     pub module_path: Vec<Ident>,
     pub imported_module: Cell<Option<Module<'a>>>, // the resolution of `module_path`
     pub subclass: ImportDirectiveSubclass<'a>,
-    pub span: Span,
     pub vis: Cell<ty::Visibility>,
     pub expansion: Mark,
     pub used: Cell<bool>,
@@ -69,6 +93,10 @@ pub struct ImportDirective<'a> {
 impl<'a> ImportDirective<'a> {
     pub fn is_glob(&self) -> bool {
         match self.subclass { ImportDirectiveSubclass::GlobImport { .. } => true, _ => false }
+    }
+
+    crate fn crate_lint(&self) -> CrateLint {
+        CrateLint::UsePath { root_id: self.root_id, root_span: self.root_span }
     }
 }
 
@@ -295,6 +323,8 @@ impl<'a> Resolver<'a> {
                                 subclass: ImportDirectiveSubclass<'a>,
                                 span: Span,
                                 id: NodeId,
+                                root_span: Span,
+                                root_id: NodeId,
                                 vis: ty::Visibility,
                                 expansion: Mark) {
         let current_module = self.current_module;
@@ -305,6 +335,8 @@ impl<'a> Resolver<'a> {
             subclass,
             span,
             id,
+            root_span,
+            root_id,
             vis: Cell::new(vis),
             expansion,
             used: Cell::new(false),
@@ -569,7 +601,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             // while resolving its module path.
             directive.vis.set(ty::Visibility::Invisible);
             let result = self.resolve_path(&directive.module_path[..], None, false,
-                                           directive.span, Some(directive.id));
+                                           directive.span, directive.crate_lint());
             directive.vis.set(vis);
 
             match result {
@@ -702,7 +734,13 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
         }
 
-        let module_result = self.resolve_path(&module_path, None, true, span, Some(directive.id));
+        let module_result = self.resolve_path(
+            &module_path,
+            None,
+            true,
+            span,
+            directive.crate_lint(),
+        );
         let module = match module_result {
             PathResult::Module(module) => module,
             PathResult::Failed(span, msg, false) => {
@@ -717,7 +755,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                    !(self_path.len() > 1 && is_special(self_path[1])) {
                     self_path[0].name = keywords::SelfValue.name();
                     self_result = Some(self.resolve_path(&self_path, None, false,
-                                                         span, None));
+                                                         span, CrateLint::No));
                 }
                 return if let Some(PathResult::Module(..)) = self_result {
                     Some((span, format!("Did you mean `{}`?", names_to_string(&self_path[..]))))
