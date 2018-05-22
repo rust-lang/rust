@@ -21,7 +21,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Scalar::Bits { defined: 0, .. } => Ok(val),
             Scalar::Ptr(ptr) => self.cast_from_ptr(ptr, dest_ty),
             Scalar::Bits { bits, .. } => {
-                // TODO(oli-obk): impl scalar_size for floats and check defined bits here
+                // TODO(oli-obk): check defined bits here
                 match src_ty.sty {
                     TyFloat(fty) => self.cast_from_float(bits, fty, dest_ty),
                     _ => self.cast_from_int(bits, src_ty, dest_ty),
