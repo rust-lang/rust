@@ -1,3 +1,13 @@
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use std::marker::PhantomData;
 use std::hash::Hash;
 use std::hash::Hasher;
@@ -7,6 +17,7 @@ use std::ptr::{Unique, NonNull};
 use std::alloc::{Global, Alloc};
 use std::collections::hash_map::RandomState;
 use std::borrow::Borrow;
+use std::fmt;
 
 const ENTRIES_PER_GROUP: usize = 5;
 
@@ -88,7 +99,7 @@ impl Drop for Table {
 }
 
 impl Table {
-    unsafe fn new_uninitialized(group_count: usize) -> Table {
+    fn new(group_count: usize) -> Table {
         assert!(size_of::<Group>() == 64);
         let groups: NonNull<Group> = Global.alloc_array(group_count).unwrap();
         let capacity2 = group_count * ENTRIES_PER_GROUP;
@@ -110,7 +121,7 @@ impl Table {
             group_mask: group_count.wrapping_sub(1),
             size: 0,
             capacity,
-            groups: Unique::new_unchecked(groups.as_ptr()),
+            groups: unsafe { Unique::new_unchecked(groups.as_ptr()) },
         }
     }
 
@@ -126,7 +137,7 @@ impl Table {
             let group = unsafe {
                 &(*group_ptr)
             };
-            match unsafe { group.search_for_empty() } {
+            match group.search_for_empty() {
                 Some(pos) => return RawEntry {
                     group: group_ptr,
                     pos,
@@ -150,7 +161,7 @@ impl Table {
             let group = unsafe {
                 &(*group_ptr)
             };
-            let r = unsafe { group.search_with(&mut eq, hash as u32) } ;
+            let r = group.search_with(&mut eq, hash as u32);
             match r {
                 Some((pos, empty)) => return RawEntry {
                     group: group_ptr,
@@ -182,6 +193,12 @@ pub struct Interner<K: Eq + Hash, S = RandomState> {
     marker: PhantomData<K>,
 }
 
+impl<K: Eq + Hash, S> fmt::Debug for Interner<K, S> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        "Interner".fmt(f)
+    }
+}
+
 impl<K: Eq + Hash, S: Default> Default for Interner<K, S> {
     fn default() -> Self {
         assert!(size_of::<K>() == 8);
@@ -211,9 +228,7 @@ impl<K: Eq + Hash, S: BuildHasher> Interner<K, S> {
     #[inline(never)]
     #[cold]
     fn expand(&mut self) {
-        let mut new_table = unsafe {
-            Table::new_uninitialized((self.table.group_mask + 1) << 1)
-        };
+        let mut new_table = Table::new((self.table.group_mask + 1) << 1);
         new_table.size = self.table.size;
         self.table.iter(|h, v| {
             let spot = new_table.search_for_empty(h as u64);
@@ -234,6 +249,25 @@ impl<K: Eq + Hash, S: BuildHasher> Interner<K, S> {
 
     pub fn len(&self) -> usize {
         self.table.size
+    }
+
+    #[inline]
+    pub fn intern_ref<Q: ?Sized, F: FnOnce() -> K>(&mut self, value: &Q, make: F) -> &K
+        where K: Borrow<Q>,
+              Q: Hash + Eq
+    {
+        self.incr();
+        let hash = make_hash(&self.hash_builder, value);
+        let spot = self.table.search_with::<K, _>(|k| value.eq(k.borrow()), hash);
+        unsafe {
+            if spot.empty {
+                self.table.size += 1;
+                (*spot.group).size += 1;
+                let key = make();
+                (*spot.group).set(spot.pos, hash as u32, *(&key as *const _ as *const u64));
+            }
+            &*((*spot.group).values.get_unchecked(spot.pos) as *const _ as *const K)
+        }
     }
 
     #[inline]
