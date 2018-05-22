@@ -8,28 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test FIXME(#50825)
 // run-pass
-// Check tautalogically false `Sized` bounds
-#![feature(trivial_bounds)]
-#![allow(unused)]
+// regression test for issue #50825
+// Make sure that the `impl` bound (): X<T = ()> is prefered over
+// the (): X bound in the where clause.
 
-trait A {}
-
-impl A for i32 {}
-
-struct T<X: ?Sized> {
-    x: X,
+trait X {
+    type T;
 }
 
-struct S(str, str) where str: Sized;
-
-fn unsized_local() where for<'a> T<A + 'a>: Sized {
-    let x: T<A> = *(Box::new(T { x: 1 }) as Box<T<A>>);
+trait Y<U>: X {
+    fn foo(x: &Self::T);
 }
 
-fn return_str() -> str where str: Sized {
-    *"Sized".to_string().into_boxed_str()
+impl X for () {
+    type T = ();
 }
 
-fn main() {}
+impl<T> Y<Vec<T>> for () where (): Y<T> {
+    fn foo(_x: &()) {}
+}
+
+fn main () {}

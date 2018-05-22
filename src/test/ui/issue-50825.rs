@@ -8,28 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test FIXME(#50825)
 // run-pass
-// Check tautalogically false `Sized` bounds
-#![feature(trivial_bounds)]
-#![allow(unused)]
+// regression test for issue #50825
+// Make sure that the built-in bound {integer}: Sized is prefered over
+// the u64: Sized bound in the where clause.
 
-trait A {}
-
-impl A for i32 {}
-
-struct T<X: ?Sized> {
-    x: X,
+fn foo(y: &[()])
+where
+    u64: Sized,
+{
+    y[0]
 }
 
-struct S(str, str) where str: Sized;
-
-fn unsized_local() where for<'a> T<A + 'a>: Sized {
-    let x: T<A> = *(Box::new(T { x: 1 }) as Box<T<A>>);
+fn main () {
+    foo(&[()]);
 }
-
-fn return_str() -> str where str: Sized {
-    *"Sized".to_string().into_boxed_str()
-}
-
-fn main() {}
