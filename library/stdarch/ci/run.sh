@@ -27,6 +27,7 @@ case ${TARGET} in
         ;;
     powerpc64-*)
         export STDSIMD_DISABLE_ASSERT_INSTR=1
+        export STDSIMD_TEST_NORUN=1
         ;;
 
     # On 32-bit use a static relocation model which avoids some extra
