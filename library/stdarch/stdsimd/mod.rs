@@ -143,12 +143,10 @@
 /// expression evaluating to whether the local CPU has the AVX2 feature or
 /// not.
 ///
-///   Note that this macro, like the `arch` module, is platform-specific. The
-///   name of the macro is the same across platforms, but the arguments to the
-///   macro are only the features for the current platform. For example calling
-///   `is_x86_feature_detected!("avx2")` on ARM will be a compile time
-///   error. To ensure we don't hit this error a statement level `#[cfg]` is
-///   used to only compile usage of the macro on `x86`/`x86_64`.
+///   Note that this macro, like the `arch` module, is platform-specific. For
+///   example calling `is_x86_feature_detected!("avx2")` on ARM will be a
+///   compile time error. To ensure we don't hit this error a statement level
+///   `#[cfg]` is used to only compile usage of the macro on `x86`/`x86_64`.
 ///
 /// * Next up we see our AVX2-enabled function, `foo_avx2`. This function is
 ///   decorated with the `#[target_feature]` attribute which enables a CPU
