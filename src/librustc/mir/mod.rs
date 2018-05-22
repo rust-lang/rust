@@ -948,7 +948,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             Drop { target: ref mut t, unwind: Some(ref mut u), .. } |
             Assert { target: ref mut t, cleanup: Some(ref mut u), .. } |
             FalseUnwind { real_target: ref mut t, unwind: Some(ref mut u) } => {
-                Some(t).into_iter().chain(slice::from_ref_mut(u))
+                Some(t).into_iter().chain(slice::from_mut(u))
             }
             SwitchInt { ref mut targets, .. } => {
                 None.into_iter().chain(&mut targets[..])
