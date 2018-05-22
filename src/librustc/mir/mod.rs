@@ -1908,17 +1908,15 @@ pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Resul
         (Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(len)),
          &TyRef(_, &ty::TyS { sty: TyStr, .. }, _)) => {
             ty::tls::with(|tcx| {
-                let alloc = tcx
-                    .interpret_interner
-                    .get_alloc(ptr.alloc_id);
-                if let Some(alloc) = alloc {
-                    assert_eq!(len as usize as u128, len);
-                    let slice = &alloc.bytes[(ptr.offset.bytes() as usize)..][..(len as usize)];
-                    let s = ::std::str::from_utf8(slice)
-                        .expect("non utf8 str from miri");
-                    write!(f, "{:?}", s)
-                } else {
-                    write!(f, "pointer to erroneous constant {:?}, {:?}", ptr, len)
+                match tcx.alloc_map.lock().get(ptr.alloc_id) {
+                    Some(interpret::AllocType::Memory(alloc)) => {
+                        assert_eq!(len as usize as u128, len);
+                        let slice = &alloc.bytes[(ptr.offset.bytes() as usize)..][..(len as usize)];
+                        let s = ::std::str::from_utf8(slice)
+                            .expect("non utf8 str from miri");
+                        write!(f, "{:?}", s)
+                    }
+                    _ => write!(f, "pointer to erroneous constant {:?}, {:?}", ptr, len),
                 }
             })
         },

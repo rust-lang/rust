@@ -229,7 +229,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
-        let ptr = self.memory.allocate_cached(s.as_bytes());
+        let ptr = self.memory.allocate_bytes(s.as_bytes());
         Ok(Value::ByValPair(
             PrimVal::Ptr(ptr),
             PrimVal::from_u128(s.len() as u128),
@@ -1015,8 +1015,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         if self.tcx.is_static(gid.instance.def_id()).is_some() {
             let alloc_id = self
                 .tcx
-                .interpret_interner
-                .cache_static(gid.instance.def_id());
+                .alloc_map
+                .lock()
+                .intern_static(gid.instance.def_id());
             let layout = self.layout_of(ty)?;
             let ptr = MemoryPointer::new(alloc_id, Size::from_bytes(0));
             return Ok(Value::ByRef(ptr.into(), layout.align))

@@ -14,7 +14,7 @@ use rustc_mir::interpret::{read_target_uint, const_val_field};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc::mir::interpret::{GlobalId, MemoryPointer, PrimVal, Allocation, ConstValue};
+use rustc::mir::interpret::{GlobalId, MemoryPointer, PrimVal, Allocation, ConstValue, AllocType};
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Scalar, Size};
 use builder::Builder;
@@ -44,38 +44,34 @@ pub fn primval_to_llvm(cx: &CodegenCx,
             }
         },
         PrimVal::Ptr(ptr) => {
-            if let Some(fn_instance) = cx.tcx.interpret_interner.get_fn(ptr.alloc_id) {
-                callee::get_fn(cx, fn_instance)
-            } else {
-                let static_ = cx
-                    .tcx
-                    .interpret_interner
-                    .get_static(ptr.alloc_id);
-                let base_addr = if let Some(def_id) = static_ {
-                    assert!(cx.tcx.is_static(def_id).is_some());
-                    consts::get_static(cx, def_id)
-                } else if let Some(alloc) = cx.tcx.interpret_interner
-                                              .get_alloc(ptr.alloc_id) {
+            let alloc_type = cx.tcx.alloc_map.lock().get(ptr.alloc_id);
+            let base_addr = match alloc_type {
+                Some(AllocType::Memory(alloc)) => {
                     let init = const_alloc_to_llvm(cx, alloc);
                     if alloc.runtime_mutability == Mutability::Mutable {
                         consts::addr_of_mut(cx, init, alloc.align, "byte_str")
                     } else {
                         consts::addr_of(cx, init, alloc.align, "byte_str")
                     }
-                } else {
-                    bug!("missing allocation {:?}", ptr.alloc_id);
-                };
-
-                let llval = unsafe { llvm::LLVMConstInBoundsGEP(
-                    consts::bitcast(base_addr, Type::i8p(cx)),
-                    &C_usize(cx, ptr.offset.bytes()),
-                    1,
-                ) };
-                if scalar.value != layout::Pointer {
-                    unsafe { llvm::LLVMConstPtrToInt(llval, llty.to_ref()) }
-                } else {
-                    consts::bitcast(llval, llty)
                 }
+                Some(AllocType::Function(fn_instance)) => {
+                    callee::get_fn(cx, fn_instance)
+                }
+                Some(AllocType::Static(def_id)) => {
+                    assert!(cx.tcx.is_static(def_id).is_some());
+                    consts::get_static(cx, def_id)
+                }
+                None => bug!("missing allocation {:?}", ptr.alloc_id),
+            };
+            let llval = unsafe { llvm::LLVMConstInBoundsGEP(
+                consts::bitcast(base_addr, Type::i8p(cx)),
+                &C_usize(cx, ptr.offset.bytes()),
+                1,
+            ) };
+            if scalar.value != layout::Pointer {
+                unsafe { llvm::LLVMConstPtrToInt(llval, llty.to_ref()) }
+            } else {
+                consts::bitcast(llval, llty)
             }
         }
     }

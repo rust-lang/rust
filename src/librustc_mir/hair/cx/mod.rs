@@ -181,7 +181,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         let lit = match *lit {
             LitKind::Str(ref s, _) => {
                 let s = s.as_str();
-                let id = self.tcx.allocate_cached(s.as_bytes());
+                let id = self.tcx.allocate_bytes(s.as_bytes());
                 let ptr = MemoryPointer::new(id, Size::from_bytes(0));
                 ConstValue::ByValPair(
                     PrimVal::Ptr(ptr),
@@ -189,7 +189,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 )
             },
             LitKind::ByteStr(ref data) => {
-                let id = self.tcx.allocate_cached(data);
+                let id = self.tcx.allocate_bytes(data);
                 let ptr = MemoryPointer::new(id, Size::from_bytes(0));
                 ConstValue::ByVal(PrimVal::Ptr(ptr))
             },
