@@ -92,29 +92,29 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         match dest_ty.sty {
             // float -> uint
             TyUint(t) => {
-                let width = t.bit_width().unwrap_or(self.memory.pointer_size().bytes() as usize * 8);
+                let width = t.bit_width().unwrap_or(self.memory.pointer_size().bits() as usize);
                 match fty {
                     FloatTy::F32 => Ok(Scalar::Bits {
                         bits: Single::from_bits(bits).to_u128(width).value,
-                        defined: 32,
+                        defined: width as u8,
                     }),
                     FloatTy::F64 => Ok(Scalar::Bits {
                         bits: Double::from_bits(bits).to_u128(width).value,
-                        defined: 64,
+                        defined: width as u8,
                     }),
                 }
             },
             // float -> int
             TyInt(t) => {
-                let width = t.bit_width().unwrap_or(self.memory.pointer_size().bytes() as usize * 8);
+                let width = t.bit_width().unwrap_or(self.memory.pointer_size().bits() as usize);
                 match fty {
                     FloatTy::F32 => Ok(Scalar::Bits {
                         bits: Single::from_bits(bits).to_i128(width).value as u128,
-                        defined: 32,
+                        defined: width as u8,
                     }),
                     FloatTy::F64 => Ok(Scalar::Bits {
                         bits: Double::from_bits(bits).to_i128(width).value as u128,
-                        defined: 64,
+                        defined: width as u8,
                     }),
                 }
             },
