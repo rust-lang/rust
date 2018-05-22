@@ -2247,7 +2247,13 @@ impl<'a> Resolver<'a> {
 
                 if items.len() == 0 {
                     // Resolve prefix of an import with empty braces (issue #28388).
-                    self.smart_resolve_path(id, None, &path, PathSource::ImportPrefix);
+                    self.smart_resolve_path_with_crate_lint(
+                        id,
+                        None,
+                        &path,
+                        PathSource::ImportPrefix,
+                        CrateLint::SimplePath(id), // TODO seems wrong
+                    );
                 } else {
                     for &(ref tree, nested_id) in items {
                         self.resolve_use_tree(nested_id, tree, &path);
@@ -2354,7 +2360,8 @@ impl<'a> Resolver<'a> {
                 None,
                 &path,
                 trait_ref.path.span,
-                PathSource::Trait(AliasPossibility::No)
+                PathSource::Trait(AliasPossibility::No),
+                CrateLint::SimplePath(trait_ref.ref_id),
             ).base_def();
             if def != Def::Err {
                 new_id = Some(def.def_id());
@@ -2787,10 +2794,29 @@ impl<'a> Resolver<'a> {
                           path: &Path,
                           source: PathSource)
                           -> PathResolution {
+        self.smart_resolve_path_with_crate_lint(id, qself, path, source, CrateLint::SimplePath(id))
+    }
+
+    /// A variant of `smart_resolve_path` where you also specify extra
+    /// information about where the path came from; this extra info is
+    /// sometimes needed for the lint that recommends rewriting
+    /// absoluate paths to `crate`, so that it knows how to frame the
+    /// suggestion. If you are just resolving a path like `foo::bar`
+    /// that appears...somewhere, though, then you just want
+    /// `CrateLint::SimplePath`, which is what `smart_resolve_path`
+    /// already provides.
+    fn smart_resolve_path_with_crate_lint(
+        &mut self,
+        id: NodeId,
+        qself: Option<&QSelf>,
+        path: &Path,
+        source: PathSource,
+        crate_lint: CrateLint
+    ) -> PathResolution {
         let segments = &path.segments.iter()
             .map(|seg| seg.ident)
             .collect::<Vec<_>>();
-        self.smart_resolve_path_fragment(id, qself, segments, path.span, source)
+        self.smart_resolve_path_fragment(id, qself, segments, path.span, source, crate_lint)
     }
 
     fn smart_resolve_path_fragment(&mut self,
@@ -2798,7 +2824,8 @@ impl<'a> Resolver<'a> {
                                    qself: Option<&QSelf>,
                                    path: &[Ident],
                                    span: Span,
-                                   source: PathSource)
+                                   source: PathSource,
+                                   crate_lint: CrateLint)
                                    -> PathResolution {
         let ident_span = path.last().map_or(span, |ident| ident.span);
         let ns = source.namespace();
@@ -2999,9 +3026,16 @@ impl<'a> Resolver<'a> {
             err_path_resolution()
         };
 
-        let resolution = match self.resolve_qpath_anywhere(id, qself, path, ns, span,
-                                                           source.defer_to_typeck(),
-                                                           source.global_by_default()) {
+        let resolution = match self.resolve_qpath_anywhere(
+            id,
+            qself,
+            path,
+            ns,
+            span,
+            source.defer_to_typeck(),
+            source.global_by_default(),
+            crate_lint,
+        ) {
             Some(resolution) if resolution.unresolved_segments() == 0 => {
                 if is_expected(resolution.base_def()) || resolution.base_def() == Def::Err {
                     resolution
@@ -3102,14 +3136,15 @@ impl<'a> Resolver<'a> {
                               primary_ns: Namespace,
                               span: Span,
                               defer_to_typeck: bool,
-                              global_by_default: bool)
+                              global_by_default: bool,
+                              crate_lint: CrateLint)
                               -> Option<PathResolution> {
         let mut fin_res = None;
         // FIXME: can't resolve paths in macro namespace yet, macros are
         // processed by the little special hack below.
         for (i, ns) in [primary_ns, TypeNS, ValueNS, /*MacroNS*/].iter().cloned().enumerate() {
             if i == 0 || ns != primary_ns {
-                match self.resolve_qpath(id, qself, path, ns, span, global_by_default) {
+                match self.resolve_qpath(id, qself, path, ns, span, global_by_default, crate_lint) {
                     // If defer_to_typeck, then resolution > no resolution,
                     // otherwise full resolution > partial resolution > no resolution.
                     Some(res) if res.unresolved_segments() == 0 || defer_to_typeck =>
@@ -3137,7 +3172,8 @@ impl<'a> Resolver<'a> {
                      path: &[Ident],
                      ns: Namespace,
                      span: Span,
-                     global_by_default: bool)
+                     global_by_default: bool,
+                     crate_lint: CrateLint)
                      -> Option<PathResolution> {
         debug!(
             "resolve_qpath(id={:?}, qself={:?}, path={:?}, \
@@ -3159,8 +3195,14 @@ impl<'a> Resolver<'a> {
             }
             // Make sure `A::B` in `<T as A>::B::C` is a trait item.
             let ns = if qself.position + 1 == path.len() { ns } else { TypeNS };
-            let res = self.smart_resolve_path_fragment(id, None, &path[..qself.position + 1],
-                                                       span, PathSource::TraitItem(ns));
+            let res = self.smart_resolve_path_fragment(
+                id,
+                None,
+                &path[..qself.position + 1],
+                span,
+                PathSource::TraitItem(ns),
+                crate_lint, // TODO wrong
+            );
             return Some(PathResolution::with_unresolved_segments(
                 res.base_def(), res.unresolved_segments() + path.len() - qself.position - 1
             ));
@@ -4113,8 +4155,14 @@ impl<'a> Resolver<'a> {
                 let segments = path.make_root().iter().chain(path.segments.iter())
                     .map(|seg| seg.ident)
                     .collect::<Vec<_>>();
-                let def = self.smart_resolve_path_fragment(id, None, &segments, path.span,
-                                                           PathSource::Visibility).base_def();
+                let def = self.smart_resolve_path_fragment(
+                    id,
+                    None,
+                    &segments,
+                    path.span,
+                    PathSource::Visibility,
+                    CrateLint::SimplePath(id),
+                ).base_def();
                 if def == Def::Err {
                     ty::Visibility::Public
                 } else {
@@ -4474,7 +4522,7 @@ pub enum MakeGlobMap {
     No,
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 enum CrateLint {
     /// Do not issue the lint
     No,
