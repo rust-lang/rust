@@ -1060,6 +1060,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             hir::ItemForeignMod(_) => EntryKind::ForeignMod,
             hir::ItemGlobalAsm(..) => EntryKind::GlobalAsm,
             hir::ItemTy(..) => EntryKind::Type,
+            hir::ItemExistential(..) => EntryKind::Existential,
             hir::ItemEnum(..) => EntryKind::Enum(get_repr_options(&tcx, def_id)),
             hir::ItemStruct(ref struct_def, _) => {
                 let variant = tcx.adt_def(def_id).non_enum_variant();
@@ -1187,6 +1188,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ItemConst(..) |
                 hir::ItemFn(..) |
                 hir::ItemTy(..) |
+                hir::ItemExistential(..) |
                 hir::ItemEnum(..) |
                 hir::ItemStruct(..) |
                 hir::ItemUnion(..) |
@@ -1210,6 +1212,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ItemStruct(..) |
                 hir::ItemUnion(..) |
                 hir::ItemImpl(..) |
+                hir::ItemExistential(..) |
                 hir::ItemTrait(..) => Some(self.encode_generics(def_id)),
                 _ => None,
             },
@@ -1222,6 +1225,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ItemStruct(..) |
                 hir::ItemUnion(..) |
                 hir::ItemImpl(..) |
+                hir::ItemExistential(..) |
                 hir::ItemTrait(..) => Some(self.encode_predicates(def_id)),
                 _ => None,
             },
@@ -1296,28 +1300,6 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             variances: LazySeq::empty(),
             generics: None,
             predicates: None,
-
-            mir: None,
-        }
-    }
-
-    fn encode_info_for_anon_ty(&mut self, def_id: DefId) -> Entry<'tcx> {
-        debug!("IsolatedEncoder::encode_info_for_anon_ty({:?})", def_id);
-        let tcx = self.tcx;
-        Entry {
-            kind: EntryKind::Type,
-            visibility: self.lazy(&ty::Visibility::Public),
-            span: self.lazy(&tcx.def_span(def_id)),
-            attributes: LazySeq::empty(),
-            children: LazySeq::empty(),
-            stability: None,
-            deprecation: None,
-
-            ty: Some(self.encode_item_type(def_id)),
-            inherent_impls: LazySeq::empty(),
-            variances: LazySeq::empty(),
-            generics: Some(self.encode_generics(def_id)),
-            predicates: Some(self.encode_predicates(def_id)),
 
             mir: None,
         }
@@ -1672,10 +1654,6 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
 
     fn encode_info_for_ty(&mut self, ty: &hir::Ty) {
         match ty.node {
-            hir::TyImplTraitExistential(..) => {
-                let def_id = self.tcx.hir.local_def_id(ty.id);
-                self.record(def_id, IsolatedEncoder::encode_info_for_anon_ty, def_id);
-            }
             hir::TyArray(_, ref length) => {
                 let def_id = self.tcx.hir.local_def_id(length.id);
                 self.record(def_id, IsolatedEncoder::encode_info_for_anon_const, def_id);
@@ -1710,6 +1688,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
             hir::ItemExternCrate(..) |
             hir::ItemUse(..) |
             hir::ItemTy(..) |
+            hir::ItemExistential(..) |
             hir::ItemTraitAlias(..) => {
                 // no sub-item recording needed in these cases
             }

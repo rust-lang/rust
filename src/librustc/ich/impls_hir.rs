@@ -310,6 +310,7 @@ impl_stable_hash_for!(struct hir::BareFnTy {
 
 impl_stable_hash_for!(struct hir::ExistTy {
     generics,
+    impl_trait_fn,
     bounds
 });
 
@@ -323,7 +324,7 @@ impl_stable_hash_for!(enum hir::Ty_ {
     TyTup(ts),
     TyPath(qpath),
     TyTraitObject(trait_refs, lifetime),
-    TyImplTraitExistential(existty, lifetimes),
+    TyImplTraitExistential(existty, def_id, lifetimes),
     TyTypeof(body_id),
     TyErr,
     TyInfer
@@ -889,6 +890,7 @@ impl_stable_hash_for!(enum hir::Item_ {
     ItemForeignMod(foreign_mod),
     ItemGlobalAsm(global_asm),
     ItemTy(ty, generics),
+    ItemExistential(exist),
     ItemEnum(enum_def, generics),
     ItemStruct(variant_data, generics),
     ItemUnion(variant_data, generics),
@@ -1046,6 +1048,7 @@ impl_stable_hash_for!(enum hir::def::Def {
     Struct(def_id),
     Union(def_id),
     Enum(def_id),
+    Existential(def_id),
     Variant(def_id),
     Trait(def_id),
     TyAlias(def_id),

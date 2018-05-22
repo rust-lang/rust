@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
+use hir;
 use infer::{self, InferCtxt, InferOk, TypeVariableOrigin};
 use infer::outlives::free_region_map::FreeRegionRelations;
 use rustc_data_structures::fx::FxHashMap;
@@ -689,8 +690,16 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                     // }
                     // ```
                     if let Some(anon_node_id) = tcx.hir.as_local_node_id(def_id) {
-                        let anon_parent_node_id = tcx.hir.get_parent(anon_node_id);
-                        let anon_parent_def_id = tcx.hir.local_def_id(anon_parent_node_id);
+                        let anon_parent_def_id = match tcx.hir.expect_item(anon_node_id).node {
+                            hir::ItemExistential(hir::ExistTy {
+                                impl_trait_fn: Some(parent),
+                                ..
+                            }) => parent,
+                            _ => {
+                                let anon_parent_node_id = tcx.hir.get_parent(anon_node_id);
+                                tcx.hir.local_def_id(anon_parent_node_id)
+                            },
+                        };
                         if self.parent_def_id == anon_parent_def_id {
                             return self.fold_anon_ty(ty, def_id, substs);
                         }

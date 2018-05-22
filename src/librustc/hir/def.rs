@@ -35,6 +35,7 @@ pub enum Def {
     Enum(DefId),
     Variant(DefId),
     Trait(DefId),
+    Existential(DefId),
     TyAlias(DefId),
     TyForeign(DefId),
     TraitAlias(DefId),
@@ -162,6 +163,7 @@ impl Def {
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
             Def::AssociatedConst(id) | Def::Macro(id, ..) |
+            Def::Existential(id) |
             Def::GlobalAsm(id) | Def::TyForeign(id) => {
                 id
             }
@@ -188,6 +190,7 @@ impl Def {
             Def::VariantCtor(.., CtorKind::Const) => "unit variant",
             Def::VariantCtor(.., CtorKind::Fictive) => "struct variant",
             Def::Enum(..) => "enum",
+            Def::Existential(..) => "existential type",
             Def::TyAlias(..) => "type alias",
             Def::TraitAlias(..) => "trait alias",
             Def::AssociatedTy(..) => "associated type",

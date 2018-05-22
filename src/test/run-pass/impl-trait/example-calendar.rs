@@ -14,8 +14,6 @@
 #![feature(fn_traits,
            step_trait,
            unboxed_closures,
-           copy_closures,
-           clone_closures
 )]
 
 //! Derived from: <https://raw.githubusercontent.com/quickfur/dcal/master/dcal.d>.

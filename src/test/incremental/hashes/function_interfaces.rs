@@ -284,7 +284,7 @@ pub fn change_return_impl_trait() -> impl Clone {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg = "cfail2", except = "Hir, HirBody")]
+#[rustc_clean(cfg = "cfail2")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn change_return_impl_trait() -> impl Copy {
     0u32

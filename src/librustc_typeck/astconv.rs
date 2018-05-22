@@ -1114,8 +1114,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             hir::TyTraitObject(ref bounds, ref lifetime) => {
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime)
             }
-            hir::TyImplTraitExistential(_, ref lifetimes) => {
-                let def_id = tcx.hir.local_def_id(ast_ty.id);
+            hir::TyImplTraitExistential(_, def_id, ref lifetimes) => {
                 self.impl_trait_ty_to_ty(def_id, lifetimes)
             }
             hir::TyPath(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
@@ -1167,9 +1166,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         result_ty
     }
 
-    pub fn impl_trait_ty_to_ty(&self, def_id: DefId, lifetimes: &[hir::Lifetime]) -> Ty<'tcx> {
+    pub fn impl_trait_ty_to_ty(
+        &self,
+        def_id: DefId,
+        lifetimes: &[hir::Lifetime],
+    ) -> Ty<'tcx> {
         debug!("impl_trait_ty_to_ty(def_id={:?}, lifetimes={:?})", def_id, lifetimes);
         let tcx = self.tcx();
+
         let generics = tcx.generics_of(def_id);
 
         debug!("impl_trait_ty_to_ty: generics={:?}", generics);
@@ -1194,7 +1198,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         });
         debug!("impl_trait_ty_to_ty: final substs = {:?}", substs);
 
-        tcx.mk_anon(def_id, substs)
+        let ty = tcx.mk_anon(def_id, substs);
+        debug!("impl_trait_ty_to_ty: {}", ty);
+        ty
     }
 
     pub fn ty_of_arg(&self,

@@ -131,15 +131,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
         intravisit::walk_expr(self, expr);
     }
 
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        if let hir::TyImplTraitExistential(..) = ty.node {
-            let def_id = self.tcx.hir.local_def_id(ty.id);
-            self.tcx.generics_of(def_id);
-            self.tcx.predicates_of(def_id);
-        }
-        intravisit::walk_ty(self, ty);
-    }
-
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         convert_trait_item(self.tcx, trait_item.id);
         intravisit::walk_trait_item(self, trait_item);
@@ -420,6 +411,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
                 convert_variant_ctor(tcx, struct_def.id());
             }
         },
+        hir::ItemExistential(..) |
         hir::ItemTy(..) | hir::ItemStatic(..) | hir::ItemConst(..) | hir::ItemFn(..) => {
             tcx.generics_of(def_id);
             tcx.type_of(def_id);
@@ -803,18 +795,12 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) => {
             Some(tcx.closure_base_def_id(def_id))
         }
-        NodeTy(&hir::Ty { node: hir::TyImplTraitExistential(..), .. }) => {
-            let mut parent_id = node_id;
-            loop {
-                match tcx.hir.get(parent_id) {
-                    NodeItem(_) | NodeImplItem(_) | NodeTraitItem(_) => break,
-                    _ => {
-                        parent_id = tcx.hir.get_parent_node(parent_id);
-                    }
-                }
+        NodeItem(item) => {
+            match item.node {
+                ItemExistential(hir::ExistTy { impl_trait_fn: parent_did, .. }) => parent_did,
+                _ => None,
             }
-            Some(tcx.hir.local_def_id(parent_id))
-        }
+        },
         _ => None
     };
 
@@ -835,6 +821,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ItemTy(_, ref generics) |
                 ItemEnum(_, ref generics) |
                 ItemStruct(_, ref generics) |
+                ItemExistential(hir::ExistTy { ref generics, .. }) |
                 ItemUnion(_, ref generics) => {
                     allow_defaults = true;
                     generics
@@ -875,8 +862,8 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
 
-        NodeTy(&hir::Ty { node: hir::TyImplTraitExistential(ref exist_ty, _), .. }) => {
-            &exist_ty.generics
+        NodeTy(&hir::Ty { node: hir::TyImplTraitExistential(..), .. }) => {
+            bug!("impl Trait is desugared to existential type items");
         }
 
         _ => &no_generics,
@@ -1056,6 +1043,12 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     let substs = Substs::identity_for_item(tcx, def_id);
                     tcx.mk_adt(def, substs)
                 }
+                // this is only reachable once we have named existential types
+                ItemExistential(hir::ExistTy { impl_trait_fn: None, .. }) => unimplemented!(),
+                // existential types desugared from impl Trait
+                ItemExistential(hir::ExistTy { impl_trait_fn: Some(owner), .. }) => {
+                    tcx.typeck_tables_of(owner).concrete_existential_types[&def_id]
+                },
                 ItemTrait(..) | ItemTraitAlias(..) |
                 ItemMod(..) |
                 ItemForeignMod(..) |
@@ -1128,12 +1121,6 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeTyParam(&hir::TyParam { default: Some(ref ty), .. }) => {
             icx.to_ty(ty)
-        }
-
-        NodeTy(&hir::Ty { node: TyImplTraitExistential(..), .. }) => {
-            let owner = tcx.hir.get_parent_did(node_id);
-            let hir_id = tcx.hir.node_to_hir_id(node_id);
-            tcx.typeck_tables_of(owner).node_id_to_type(hir_id)
         }
 
         x => {
@@ -1353,6 +1340,26 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     }, items));
                     generics
                 }
+                ItemExistential(ref exist_ty) => {
+                    let substs = Substs::identity_for_item(tcx, def_id);
+                    let anon_ty = tcx.mk_anon(def_id, substs);
+
+                    // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
+                    let bounds = compute_bounds(&icx,
+                                                anon_ty,
+                                                &exist_ty.bounds,
+                                                SizedByDefault::Yes,
+                                                tcx.def_span(def_id));
+
+                    let predicates = bounds.predicates(tcx, anon_ty);
+
+                    debug!("explicit_predicates_of: predicates={:?}", predicates);
+
+                    return ty::GenericPredicates {
+                        parent: None,
+                        predicates: predicates
+                    };
+                }
 
                 _ => &no_generics,
             }
@@ -1364,31 +1371,6 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ForeignItemFn(_, _, ref generics) => generics,
                 ForeignItemType => &no_generics,
             }
-        }
-
-        NodeTy(&Ty { node: TyImplTraitExistential(ref exist_ty, _), span, .. }) => {
-            let substs = Substs::identity_for_item(tcx, def_id);
-            let anon_ty = tcx.mk_anon(def_id, substs);
-
-            debug!("explicit_predicates_of: anon_ty={:?}", anon_ty);
-
-            // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
-            let bounds = compute_bounds(&icx,
-                                        anon_ty,
-                                        &exist_ty.bounds,
-                                        SizedByDefault::Yes,
-                                        span);
-
-            debug!("explicit_predicates_of: bounds={:?}", bounds);
-
-            let predicates = bounds.predicates(tcx, anon_ty);
-
-            debug!("explicit_predicates_of: predicates={:?}", predicates);
-
-            return ty::GenericPredicates {
-                parent: None,
-                predicates: predicates
-            };
         }
 
         _ => &no_generics,

@@ -1693,6 +1693,7 @@ pub struct BareFnTy {
 pub struct ExistTy {
     pub generics: Generics,
     pub bounds: TyParamBounds,
+    pub impl_trait_fn: Option<DefId>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1723,15 +1724,15 @@ pub enum Ty_ {
     /// An existentially quantified (there exists a type satisfying) `impl
     /// Bound1 + Bound2 + Bound3` type where `Bound` is a trait or a lifetime.
     ///
-    /// The `ExistTy` structure emulates an
-    /// `abstract type Foo<'a, 'b>: MyTrait<'a, 'b>;`.
+    /// The `Item` is the generated
+    /// `existential type Foo<'a, 'b>: MyTrait<'a, 'b>;`.
     ///
     /// The `HirVec<Lifetime>` is the list of lifetimes applied as parameters
     /// to the `abstract type`, e.g. the `'c` and `'d` in `-> Foo<'c, 'd>`.
     /// This list is only a list of lifetimes and not type parameters
     /// because all in-scope type parameters are captured by `impl Trait`,
     /// so they are resolved directly through the parent `Generics`.
-    TyImplTraitExistential(ExistTy, HirVec<Lifetime>),
+    TyImplTraitExistential(ItemId, DefId, HirVec<Lifetime>),
     /// Unused for now
     TyTypeof(AnonConst),
     /// TyInfer means the type should be inferred instead of it having been
@@ -2091,6 +2092,8 @@ pub enum Item_ {
     ItemGlobalAsm(P<GlobalAsm>),
     /// A type alias, e.g. `type Foo = Bar<u8>`
     ItemTy(P<Ty>, Generics),
+    /// A type alias, e.g. `type Foo = Bar<u8>`
+    ItemExistential(ExistTy),
     /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
     ItemEnum(EnumDef, Generics),
     /// A struct definition, e.g. `struct Foo<A> {x: A}`
@@ -2124,6 +2127,7 @@ impl Item_ {
             ItemForeignMod(..) => "foreign module",
             ItemGlobalAsm(..) => "global asm",
             ItemTy(..) => "type alias",
+            ItemExistential(..) => "existential type",
             ItemEnum(..) => "enum",
             ItemStruct(..) => "struct",
             ItemUnion(..) => "union",

@@ -499,7 +499,13 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |_, this| intravisit::walk_item(this, item));
             }
+            hir::ItemExistential(hir::ExistTy { impl_trait_fn: Some(_), .. }) => {
+                // currently existential type declarations are just generated from impl Trait
+                // items. doing anything on this node is irrelevant, as we currently don't need
+                // it.
+            }
             hir::ItemTy(_, ref generics)
+            | hir::ItemExistential(hir::ExistTy { impl_trait_fn: None, ref generics, .. })
             | hir::ItemEnum(_, ref generics)
             | hir::ItemStruct(_, ref generics)
             | hir::ItemUnion(_, ref generics)
@@ -613,7 +619,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |_, this| this.visit_ty(&mt.ty));
             }
-            hir::TyImplTraitExistential(ref exist_ty, ref lifetimes) => {
+            hir::TyImplTraitExistential(item_id, _, ref lifetimes) => {
                 // Resolve the lifetimes that are applied to the existential type.
                 // These are resolved in the current scope.
                 // `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
@@ -655,10 +661,13 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // `abstract type MyAnonTy<'b>: MyTrait<'b>;`
                 //                          ^            ^ this gets resolved in the scope of
                 //                                         the exist_ty generics
-                let hir::ExistTy {
-                    ref generics,
-                    ref bounds,
-                } = *exist_ty;
+                let (generics, bounds) = match self.tcx.hir.expect_item(item_id.id).node {
+                    hir::ItemExistential(hir::ExistTy{ ref generics, ref bounds, .. }) => (
+                        generics,
+                        bounds,
+                    ),
+                    ref i => bug!("impl Trait pointed to non-existential type?? {:#?}", i),
+                };
 
                 // We want to start our early-bound indices at the end of the parent scope,
                 // not including any parent `impl Trait`s.

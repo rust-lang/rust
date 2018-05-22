@@ -18,24 +18,6 @@ fn hide<T: Foo>(x: T) -> impl Foo {
     x
 }
 
-fn two(x: bool) -> impl Foo {
-    if x {
-        return 1_i32;
-    }
-    0_u32
-    //~^ ERROR mismatched types
-    //~| expected i32, found u32
-}
-
-fn sum_to(n: u32) -> impl Foo {
-    if n == 0 {
-        0
-    } else {
-        n + sum_to(n - 1)
-        //~^ ERROR cannot add `impl Foo` to `u32`
-    }
-}
-
 trait Leak: Sized {
     type T;
     fn leak(self) -> Self::T;
@@ -50,4 +32,23 @@ impl Leak for i32 {
 }
 
 fn main() {
+    let _: u32 = hide(0_u32);
+    //~^ ERROR mismatched types
+    //~| expected type `u32`
+    //~| found type `impl Foo`
+    //~| expected u32, found anonymized type
+
+    let _: i32 = Leak::leak(hide(0_i32));
+    //~^ ERROR mismatched types
+    //~| expected type `i32`
+    //~| found type `<impl Foo as Leak>::T`
+    //~| expected i32, found associated type
+
+    let mut x = (hide(0_u32), hide(0_i32));
+    x = (x.1,
+    //~^ ERROR mismatched types
+    //~| expected u32, found i32
+         x.0);
+    //~^ ERROR mismatched types
+    //~| expected i32, found u32
 }

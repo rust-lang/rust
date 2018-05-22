@@ -398,6 +398,7 @@ impl<'hir> Map<'hir> {
                     ItemFn(..) => Some(Def::Fn(def_id())),
                     ItemMod(..) => Some(Def::Mod(def_id())),
                     ItemGlobalAsm(..) => Some(Def::GlobalAsm(def_id())),
+                    ItemExistential(..) => Some(Def::Existential(def_id())),
                     ItemTy(..) => Some(Def::TyAlias(def_id())),
                     ItemEnum(..) => Some(Def::Enum(def_id())),
                     ItemStruct(..) => Some(Def::Struct(def_id())),
@@ -557,6 +558,12 @@ impl<'hir> Map<'hir> {
     pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
         match self.get(id) {
             NodeItem(&Item { node: ItemTrait(..), .. }) => id,
+            NodeItem(&Item {
+                node: ItemExistential(ExistTy {
+                    impl_trait_fn: Some(did),
+                    ..
+                }), ..
+            }) => self.def_index_to_node_id(did.index),
             NodeTyParam(_) => self.get_parent_node(id),
             _ => {
                 bug!("ty_param_owner: {} not a type parameter",
@@ -1250,6 +1257,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemForeignMod(..) => "foreign mod",
                 ItemGlobalAsm(..) => "global asm",
                 ItemTy(..) => "ty",
+                ItemExistential(..) => "existential",
                 ItemEnum(..) => "enum",
                 ItemStruct(..) => "struct",
                 ItemUnion(..) => "union",
