@@ -1211,6 +1211,11 @@ pub enum ExprKind {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct QSelf {
     pub ty: P<Ty>,
+
+    /// The span of `a::b::Trait` in a path like `<Vec<T> as
+    /// a::b::Trait>::AssociatedItem`; in the case where `position ==
+    /// 0`, this is an empty span.
+    pub path_span: Span,
     pub position: usize
 }
 

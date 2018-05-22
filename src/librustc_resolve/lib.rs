@@ -3139,6 +3139,17 @@ impl<'a> Resolver<'a> {
                      span: Span,
                      global_by_default: bool)
                      -> Option<PathResolution> {
+        debug!(
+            "resolve_qpath(id={:?}, qself={:?}, path={:?}, \
+             ns={:?}, span={:?}, global_by_default={:?})",
+            id,
+            qself,
+            path,
+            ns,
+            span,
+            global_by_default,
+        );
+
         if let Some(qself) = qself {
             if qself.position == 0 {
                 // FIXME: Create some fake resolution that can't possibly be a type.
@@ -3230,6 +3241,15 @@ impl<'a> Resolver<'a> {
         let mut module = None;
         let mut allow_super = true;
         let mut second_binding = None;
+
+        debug!(
+            "resolve_path(path={:?}, opt_ns={:?}, record_used={:?}, path_span={:?}, crate_lint={:?})",
+            path,
+            opt_ns,
+            record_used,
+            path_span,
+            crate_lint,
+        );
 
         for (i, &ident) in path.iter().enumerate() {
             debug!("resolve_path ident {} {:?}", i, ident);
@@ -4454,6 +4474,7 @@ pub enum MakeGlobMap {
     No,
 }
 
+#[derive(Debug)]
 enum CrateLint {
     /// Do not issue the lint
     No,
