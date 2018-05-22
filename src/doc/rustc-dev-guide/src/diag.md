@@ -134,6 +134,18 @@ error: aborting due to previous error
 For more information about this error, try `rustc --explain E0999`.
 ```
 
+There are a few other [`Applicability`][appl] possibilities:
+
+- `MachineApplicable`: Can be applied mechanically.
+- `HasPlaceholders`: Cannot be applied mechanically and has placeholder text in
+  the suggestions. For example, "Try adding a type: \`let x: <type>\`".
+- `MaybeIncorrect`: Cannot be applied mechanically because the suggestion may
+  or may not be a good one.
+- `Unspecified`: Cannot be applied mechanically because we don't know which
+  of the above cases it falls into.
+
+[appl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/enum.Applicability.html
+
 ## Lints
 
 The compiler linting infrastructure is defined in the [`rustc::lint`][rlint]
