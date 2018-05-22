@@ -30,16 +30,6 @@ mod simplify;
 mod test;
 mod util;
 
-/// Injects a borrow of `place`. The region is unknown at this point; we rely on NLL
-/// inference to find an appropriate one. Therefore you can only call this when NLL
-/// is turned on.
-fn inject_borrow<'a, 'gcx, 'tcx>(tcx: ty::TyCtxt<'a, 'gcx, 'tcx>,
-                                 place: Place<'tcx>)
-                                 -> Rvalue<'tcx> {
-    assert!(tcx.use_mir_borrowck());
-    Rvalue::Ref(tcx.types.re_empty, BorrowKind::Shared, place)
-}
-
 /// ArmHasGuard is isomorphic to a boolean flag. It indicates whether
 /// a match arm has a guard expression attached to it.
 #[derive(Copy, Clone, Debug)]
@@ -67,8 +57,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // of `discriminant_place`, specifically by applying `Rvalue::Discriminant`
         // (which will work regardless of type) and storing the result in a temp.
         //
-        // FIXME: would just the borrow into `borrowed_input_temp`
-        // also achieve the desired effect here? TBD.
+        // NOTE: Under NLL, the above issue should no longer occur because it
+        // injects a borrow of the matched input, which should have the same effect
+        // as eddyb's hack. Once NLL is the default, we can remove the hack.
+
         let dummy_source_info = self.source_info(span);
         let dummy_access = Rvalue::Discriminant(discriminant_place.clone());
         let dummy_ty = dummy_access.ty(&self.local_decls, tcx);
@@ -77,7 +69,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         let source_info = self.source_info(span);
         let borrowed_input_temp = if tcx.generate_borrow_of_any_match_input() {
-            let borrowed_input = inject_borrow(tcx, discriminant_place.clone());
+            // The region is unknown at this point; we rely on NLL
+            // inference to find an appropriate one. Therefore you can
+            // only use this when NLL is turned on.
+            assert!(tcx.use_mir_borrowck());
+            let borrowed_input =
+                Rvalue::Ref(tcx.types.re_empty, BorrowKind::Shared, discriminant_place.clone());
             let borrowed_input_ty = borrowed_input.ty(&self.local_decls, tcx);
             let borrowed_input_temp = self.temp(borrowed_input_ty, span);
             self.cfg.push_assign(block, source_info, &borrowed_input_temp, borrowed_input);
