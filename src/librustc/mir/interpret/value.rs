@@ -91,7 +91,7 @@ impl<'tcx> Scalar {
         Scalar::Bits {
             bits: 0,
             defined: cx.data_layout().pointer_size.bits() as u8,
-    }
+        }
     }
 
     pub fn ptr_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
