@@ -272,6 +272,12 @@ impl Step for TheBook {
             name: INTERNER.intern_string(format!("{}/second-edition", name)),
         });
 
+        // build book 2018 edition
+        builder.ensure(Rustbook {
+            target,
+            name: INTERNER.intern_string(format!("{}/2018-edition", name)),
+        });
+
         // build the version info page and CSS
         builder.ensure(Standalone {
             compiler,
