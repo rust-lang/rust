@@ -1164,6 +1164,14 @@ impl<'a, T: ?Sized> PinMut<'a, T> {
     {
         PinMut { inner: f(this.inner) }
     }
+
+    /// Assign a new value to the memory behind the pinned reference.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub fn set(this: PinMut<'a, T>, value: T)
+        where T: Sized,
+    {
+        *this.inner = value;
+    }
 }
 
 #[unstable(feature = "pin", issue = "49150")]
