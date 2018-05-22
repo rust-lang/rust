@@ -581,6 +581,8 @@ impl Token {
             if tokens.probably_equal_for_proc_macro(&tokens_for_real) {
                 return tokens
             }
+            info!("cached tokens found, but they're not \"probably equal\", \
+                   going with stringified version");
         }
         return tokens_for_real
     }

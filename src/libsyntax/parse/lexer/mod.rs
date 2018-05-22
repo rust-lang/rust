@@ -34,7 +34,10 @@ pub struct TokenAndSpan {
 
 impl Default for TokenAndSpan {
     fn default() -> Self {
-        TokenAndSpan { tok: token::Whitespace, sp: syntax_pos::DUMMY_SP }
+        TokenAndSpan {
+            tok: token::Whitespace,
+            sp: syntax_pos::DUMMY_SP,
+        }
     }
 }
 
@@ -54,8 +57,9 @@ pub struct StringReader<'a> {
     /// If part of a filemap is being re-lexed, this should be set to false.
     pub save_new_lines_and_multibyte: bool,
     // cached:
-    pub peek_tok: token::Token,
-    pub peek_span: Span,
+    peek_tok: token::Token,
+    peek_span: Span,
+    peek_span_src_raw: Span,
     pub fatal_errs: Vec<DiagnosticBuilder<'a>>,
     // cache a direct reference to the source text, so that we don't have to
     // retrieve it via `self.filemap.src.as_ref().unwrap()` all the time.
@@ -63,13 +67,20 @@ pub struct StringReader<'a> {
     /// Stack of open delimiters and their spans. Used for error message.
     token: token::Token,
     span: Span,
+    /// The raw source span which *does not* take `override_span` into account
+    span_src_raw: Span,
     open_braces: Vec<(token::DelimToken, Span)>,
     pub override_span: Option<Span>,
 }
 
 impl<'a> StringReader<'a> {
     fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
-        unwrap_or!(self.override_span, Span::new(lo, hi, NO_EXPANSION))
+        self.mk_sp_and_raw(lo, hi).0
+    }
+    fn mk_sp_and_raw(&self, lo: BytePos, hi: BytePos) -> (Span, Span) {
+        let raw = Span::new(lo, hi, NO_EXPANSION);
+        let real = unwrap_or!(self.override_span, raw);
+        (real, raw)
     }
     fn mk_ident(&self, string: &str) -> Ident {
         let mut ident = Ident::from_str(string);
@@ -121,6 +132,7 @@ impl<'a> StringReader<'a> {
             sp: self.peek_span,
         };
         self.advance_token()?;
+        self.span_src_raw = self.peek_span_src_raw;
         Ok(ret_val)
     }
 
@@ -182,10 +194,12 @@ impl<'a> StringReader<'a> {
             // dummy values; not read
             peek_tok: token::Eof,
             peek_span: syntax_pos::DUMMY_SP,
+            peek_span_src_raw: syntax_pos::DUMMY_SP,
             src,
             fatal_errs: Vec::new(),
             token: token::Eof,
             span: syntax_pos::DUMMY_SP,
+            span_src_raw: syntax_pos::DUMMY_SP,
             open_braces: Vec::new(),
             override_span,
         }
@@ -328,17 +342,25 @@ impl<'a> StringReader<'a> {
     fn advance_token(&mut self) -> Result<(), ()> {
         match self.scan_whitespace_or_comment() {
             Some(comment) => {
+                self.peek_span_src_raw = comment.sp;
                 self.peek_span = comment.sp;
                 self.peek_tok = comment.tok;
             }
             None => {
                 if self.is_eof() {
                     self.peek_tok = token::Eof;
-                    self.peek_span = self.mk_sp(self.filemap.end_pos, self.filemap.end_pos);
+                    let (real, raw) = self.mk_sp_and_raw(
+                        self.filemap.end_pos,
+                        self.filemap.end_pos,
+                    );
+                    self.peek_span = real;
+                    self.peek_span_src_raw = raw;
                 } else {
                     let start_bytepos = self.pos;
                     self.peek_tok = self.next_token_inner()?;
-                    self.peek_span = self.mk_sp(start_bytepos, self.pos);
+                    let (real, raw) = self.mk_sp_and_raw(start_bytepos, self.pos);
+                    self.peek_span = real;
+                    self.peek_span_src_raw = raw;
                 };
             }
         }
