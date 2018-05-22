@@ -1087,24 +1087,24 @@ pub fn compare_const_vals<'a, 'tcx>(
                         Scalar::Ptr(ptr_a),
                         Scalar::Bits {
                             bits: size_a,
-                            defined: tcx.data_layout.pointer_size.bits() as u8,
+                            defined: defined_a,
                         },
                     )),
                     Some(Value::ScalarPair(
                         Scalar::Ptr(ptr_b),
                         Scalar::Bits {
                             bits: size_b,
-                            defined: tcx.data_layout.pointer_size.bits() as u8,
+                            defined: defined_b,
                         },
                     ))
-                ) if size_a == size_b => {
-                    if ptr_a.offset == Size::from_bytes(0) && ptr_b.offset == Size::from_bytes(0) {
-                        let map = tcx.alloc_map.lock();
-                        let alloc_a = map.unwrap_memory(ptr_a.alloc_id);
-                        let alloc_b = map.unwrap_memory(ptr_b.alloc_id);
-                        if alloc_a.bytes.len() as u64 == size_a as u64 {
-                            return from_bool(alloc_a == alloc_b);
-                        }
+                ) if size_a == size_b && defined_a == defined_b &&
+                     ptr_a.offset.bytes() == 0 && ptr_b.offset.bytes() == 0 &&
+                     tcx.data_layout.pointer_size.bits() == defined_a.into() => {
+                    let map = tcx.alloc_map.lock();
+                    let alloc_a = map.unwrap_memory(ptr_a.alloc_id);
+                    let alloc_b = map.unwrap_memory(ptr_b.alloc_id);
+                    if alloc_a.bytes.len() as u64 == size_a as u64 {
+                        return from_bool(alloc_a == alloc_b);
                     }
                 }
                 _ => (),
