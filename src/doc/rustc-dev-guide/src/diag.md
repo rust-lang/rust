@@ -138,7 +138,7 @@ There are a few other [`Applicability`][appl] possibilities:
 
 - `MachineApplicable`: Can be applied mechanically.
 - `HasPlaceholders`: Cannot be applied mechanically and has placeholder text in
-  the suggestions. For example, "Try adding a type: \`let x: <type>\`".
+  the suggestions. For example, "Try adding a type: \`let x: \<type\>\`".
 - `MaybeIncorrect`: Cannot be applied mechanically because the suggestion may
   or may not be a good one.
 - `Unspecified`: Cannot be applied mechanically because we don't know which
