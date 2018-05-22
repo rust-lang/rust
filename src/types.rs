@@ -656,7 +656,7 @@ impl Rewrite for ast::Ty {
             }
             ast::TyKind::Array(ref ty, ref repeats) => rewrite_pair(
                 &**ty,
-                &**repeats,
+                &*repeats.value,
                 PairParts::new("[", "; ", "]"),
                 context,
                 shape,

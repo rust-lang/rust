@@ -572,7 +572,7 @@ impl<'a> FmtVisitor<'a> {
             ast::VariantData::Unit(..) => {
                 if let Some(ref expr) = field.node.disr_expr {
                     let lhs = format!("{} =", field.node.ident.name);
-                    rewrite_assign_rhs(&context, lhs, &**expr, shape)?
+                    rewrite_assign_rhs(&context, lhs, &*expr.value, shape)?
                 } else {
                     field.node.ident.name.to_string()
                 }
