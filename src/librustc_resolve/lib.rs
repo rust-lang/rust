@@ -2222,7 +2222,7 @@ impl<'a> Resolver<'a> {
                     segments: use_tree.prefix.make_root().into_iter().collect(),
                     span: use_tree.span,
                 };
-                self.resolve_use_tree(item.id, use_tree, &path);
+                self.resolve_use_tree(item.id, use_tree.span, item.id, use_tree, &path);
             }
 
             ItemKind::ExternCrate(_) | ItemKind::MacroDef(..) | ItemKind::GlobalAsm(_) => {
@@ -2233,7 +2233,18 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn resolve_use_tree(&mut self, id: NodeId, use_tree: &ast::UseTree, prefix: &Path) {
+    /// For the most part, use trees are desugared into `ImportDirective` instances
+    /// when building the reduced graph (see `build_reduced_graph_for_use_tree`). But
+    /// there is one special case we handle here: an empty nested import like
+    /// `a::{b::{}}`, which desugares into...no import directives.
+    fn resolve_use_tree(
+        &mut self,
+        root_id: NodeId,
+        root_span: Span,
+        id: NodeId,
+        use_tree: &ast::UseTree,
+        prefix: &Path,
+    ) {
         match use_tree.kind {
             ast::UseTreeKind::Nested(ref items) => {
                 let path = Path {
@@ -2252,11 +2263,11 @@ impl<'a> Resolver<'a> {
                         None,
                         &path,
                         PathSource::ImportPrefix,
-                        CrateLint::SimplePath(id), // TODO seems wrong
+                        CrateLint::UsePath { root_id, root_span },
                     );
                 } else {
                     for &(ref tree, nested_id) in items {
-                        self.resolve_use_tree(nested_id, tree, &path);
+                        self.resolve_use_tree(root_id, root_span, nested_id, tree, &path);
                     }
                 }
             }
@@ -3188,12 +3199,28 @@ impl<'a> Resolver<'a> {
 
         if let Some(qself) = qself {
             if qself.position == 0 {
-                // FIXME: Create some fake resolution that can't possibly be a type.
+                // This is a case like `<T>::B`, where there is no
+                // trait to resolve.  In that case, we leave the `B`
+                // segment to be resolved by type-check.
                 return Some(PathResolution::with_unresolved_segments(
                     Def::Mod(DefId::local(CRATE_DEF_INDEX)), path.len()
                 ));
             }
-            // Make sure `A::B` in `<T as A>::B::C` is a trait item.
+
+            // Make sure `A::B` in `<T as A::B>::C` is a trait item.
+            //
+            // Currently, `path` names the full item (`A::B::C`, in
+            // our example).  so we extract the prefix of that that is
+            // the trait (the slice upto and including
+            // `qself.position`). And then we recursively resolve that,
+            // but with `qself` set to `None`.
+            //
+            // However, setting `qself` to none (but not changing the
+            // span) loses the information about where this path
+            // *actually* appears, so for the purposes of the crate
+            // lint we pass along information that this is the trait
+            // name from a fully qualified path, and this also
+            // contains the full span (the `CrateLint::QPathTrait`).
             let ns = if qself.position + 1 == path.len() { ns } else { TypeNS };
             let res = self.smart_resolve_path_fragment(
                 id,
@@ -3201,8 +3228,15 @@ impl<'a> Resolver<'a> {
                 &path[..qself.position + 1],
                 span,
                 PathSource::TraitItem(ns),
-                crate_lint, // TODO wrong
+                CrateLint::QPathTrait {
+                    qpath_id: id,
+                    qpath_span: qself.path_span,
+                },
             );
+
+            // The remaining segments (the `C` in our example) will
+            // have to be resolved by type-check, since that requires doing
+            // trait resolution.
             return Some(PathResolution::with_unresolved_segments(
                 res.base_def(), res.unresolved_segments() + path.len() - qself.position - 1
             ));
@@ -3213,7 +3247,7 @@ impl<'a> Resolver<'a> {
             Some(ns),
             true,
             span,
-            CrateLint::SimplePath(id),
+            crate_lint,
         ) {
             PathResult::NonModule(path_res) => path_res,
             PathResult::Module(module) if !module.is_normal() => {
@@ -3468,6 +3502,7 @@ impl<'a> Resolver<'a> {
             CrateLint::No => return,
             CrateLint::SimplePath(id) => (id, path_span),
             CrateLint::UsePath { root_id, root_span } => (root_id, root_span),
+            CrateLint::QPathTrait { qpath_id, qpath_span } => (qpath_id, qpath_span),
         };
 
         let first_name = match path.get(0) {
@@ -4536,6 +4571,11 @@ enum CrateLint {
     /// have nested things like `use a::{b, c}`, we care about the
     /// `use a` part.
     UsePath { root_id: NodeId, root_span: Span },
+
+    /// This is the "trait item" from a fully qualified path. For example,
+    /// we might be resolving  `X::Y::Z` from a path like `<T as X::Y>::Z`.
+    /// The `path_span` is the span of the to the trait itself (`X::Y`).
+    QPathTrait { qpath_id: NodeId, qpath_span: Span },
 }
 
 __build_diagnostic_array! { librustc_resolve, DIAGNOSTICS }
