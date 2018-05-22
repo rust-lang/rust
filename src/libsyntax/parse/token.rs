@@ -22,6 +22,7 @@ use serialize::{Decodable, Decoder, Encodable, Encoder};
 use symbol::keywords;
 use syntax::parse::parse_stream_from_source_str;
 use syntax_pos::{self, Span, FileName};
+use syntax_pos::symbol::{self, Symbol};
 use tokenstream::{TokenStream, TokenTree};
 use tokenstream;
 
@@ -478,7 +479,13 @@ impl Token {
                 _ => return None,
             },
             SingleQuote => match joint {
-                Ident(ident, false) => Lifetime(ident),
+                Ident(ident, false) => {
+                    let name = Symbol::intern(&format!("'{}", ident));
+                    Lifetime(symbol::Ident {
+                        name,
+                        span: ident.span,
+                    })
+                }
                 _ => return None,
             },
 
