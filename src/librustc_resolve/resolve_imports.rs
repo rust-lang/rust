@@ -10,7 +10,7 @@
 
 use self::ImportDirectiveSubclass::*;
 
-use {AmbiguityError, Module, PerNS};
+use {AmbiguityError, CrateLint, Module, PerNS};
 use Namespace::{self, TypeNS, MacroNS};
 use {NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
 use Resolver;
@@ -93,6 +93,10 @@ pub struct ImportDirective<'a> {
 impl<'a> ImportDirective<'a> {
     pub fn is_glob(&self) -> bool {
         match self.subclass { ImportDirectiveSubclass::GlobImport { .. } => true, _ => false }
+    }
+
+    crate fn crate_lint(&self) -> CrateLint {
+        CrateLint::UsePath { root_id: self.root_id, root_span: self.root_span }
     }
 }
 
@@ -599,7 +603,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             // while resolving its module path.
             directive.vis.set(ty::Visibility::Invisible);
             let result = self.resolve_path(&directive.module_path[..], None, false,
-                                           directive.span, Some(directive.id));
+                                           directive.span, directive.crate_lint());
             directive.vis.set(vis);
 
             match result {
@@ -733,7 +737,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
         }
 
-        let module_result = self.resolve_path(&module_path, None, true, span, Some(directive.id));
+        let module_result = self.resolve_path(&module_path, None, true, span, directive.crate_lint());
         let module = match module_result {
             PathResult::Module(module) => module,
             PathResult::Failed(span, msg, false) => {
@@ -748,7 +752,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                    !(self_path.len() > 1 && is_special(self_path[1])) {
                     self_path[0].name = keywords::SelfValue.name();
                     self_result = Some(self.resolve_path(&self_path, None, false,
-                                                         span, None));
+                                                         span, CrateLint::No));
                 }
                 return if let Some(PathResult::Module(..)) = self_result {
                     Some((span, format!("Did you mean `{}`?", names_to_string(&self_path[..]))))

@@ -12,6 +12,7 @@
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![feature(crate_visibility_modifier)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
 
@@ -1655,11 +1656,11 @@ impl<'a> Resolver<'a> {
             .map(|seg| Ident::new(seg.name, span))
             .collect();
         // FIXME (Manishearth): Intra doc links won't get warned of epoch changes
-        match self.resolve_path(&path, Some(namespace), true, span, None) {
+        match self.resolve_path(&path, Some(namespace), true, span, CrateLint::No) {
             PathResult::Module(module) => *def = module.def().unwrap(),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 =>
                 *def = path_res.base_def(),
-            PathResult::NonModule(..) => match self.resolve_path(&path, None, true, span, None) {
+            PathResult::NonModule(..) => match self.resolve_path(&path, None, true, span, CrateLint::No) {
                 PathResult::Failed(span, msg, _) => {
                     error_callback(self, span, ResolutionError::FailedToResolve(&msg));
                 }
@@ -2378,8 +2379,13 @@ impl<'a> Resolver<'a> {
             if def != Def::Err {
                 new_id = Some(def.def_id());
                 let span = trait_ref.path.span;
-                if let PathResult::Module(module) = self.resolve_path(&path, None, false, span,
-                                                                      Some(trait_ref.ref_id)) {
+                if let PathResult::Module(module) = self.resolve_path(
+                    &path,
+                    None,
+                    false,
+                    span,
+                    CrateLint::SimplePath(trait_ref.ref_id),
+                ) {
                     new_val = Some((module, trait_ref.clone()));
                 }
             }
@@ -2839,7 +2845,7 @@ impl<'a> Resolver<'a> {
                 } else {
                     let mod_path = &path[..path.len() - 1];
                     let mod_prefix = match this.resolve_path(mod_path, Some(TypeNS),
-                                                             false, span, None) {
+                                                             false, span, CrateLint::No) {
                         PathResult::Module(module) => module.def(),
                         _ => None,
                     }.map_or(format!(""), |def| format!("{} ", def.kind_name()));
@@ -3169,7 +3175,7 @@ impl<'a> Resolver<'a> {
             ));
         }
 
-        let result = match self.resolve_path(&path, Some(ns), true, span, Some(id)) {
+        let result = match self.resolve_path(&path, Some(ns), true, span, CrateLint::SimplePath(id)) {
             PathResult::NonModule(path_res) => path_res,
             PathResult::Module(module) if !module.is_normal() => {
                 PathResolution::new(module.def().unwrap())
@@ -3206,7 +3212,7 @@ impl<'a> Resolver<'a> {
            path[0].name != keywords::CrateRoot.name() &&
            path[0].name != keywords::DollarCrate.name() {
             let unqualified_result = {
-                match self.resolve_path(&[*path.last().unwrap()], Some(ns), false, span, None) {
+                match self.resolve_path(&[*path.last().unwrap()], Some(ns), false, span, CrateLint::No) {
                     PathResult::NonModule(path_res) => path_res.base_def(),
                     PathResult::Module(module) => module.def().unwrap(),
                     _ => return Some(result),
@@ -3221,14 +3227,14 @@ impl<'a> Resolver<'a> {
         Some(result)
     }
 
-    fn resolve_path(&mut self,
-                    path: &[Ident],
-                    opt_ns: Option<Namespace>, // `None` indicates a module path
-                    record_used: bool,
-                    path_span: Span,
-                    node_id: Option<NodeId>) // None indicates that we don't care about linting
-                                             // `::module` paths
-                    -> PathResult<'a> {
+    fn resolve_path(
+        &mut self,
+        path: &[Ident],
+        opt_ns: Option<Namespace>, // `None` indicates a module path
+        record_used: bool,
+        path_span: Span,
+        crate_lint: CrateLint,
+    ) -> PathResult<'a> {
         let mut module = None;
         let mut allow_super = true;
         let mut second_binding = None;
@@ -3347,7 +3353,7 @@ impl<'a> Resolver<'a> {
                         return PathResult::NonModule(err_path_resolution());
                     } else if opt_ns.is_some() && (is_last || maybe_assoc) {
                         self.lint_if_path_starts_with_module(
-                            node_id,
+                            crate_lint,
                             path,
                             path_span,
                             second_binding,
@@ -3392,19 +3398,22 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        self.lint_if_path_starts_with_module(node_id, path, path_span, second_binding);
+        self.lint_if_path_starts_with_module(crate_lint, path, path_span, second_binding);
 
         PathResult::Module(module.unwrap_or(self.graph_root))
     }
 
-    fn lint_if_path_starts_with_module(&self,
-                                       id: Option<NodeId>,
-                                       path: &[Ident],
-                                       path_span: Span,
-                                       second_binding: Option<&NameBinding>) {
-        let id = match id {
-            Some(id) => id,
-            None => return,
+    fn lint_if_path_starts_with_module(
+        &self,
+        crate_lint: CrateLint,
+        path: &[Ident],
+        path_span: Span,
+        second_binding: Option<&NameBinding>,
+    ) {
+        let (diag_id, diag_span) = match crate_lint {
+            CrateLint::No => return,
+            CrateLint::SimplePath(id) => (id, path_span),
+            CrateLint::UsePath { root_id, root_span } => (root_id, root_span),
         };
 
         let first_name = match path.get(0) {
@@ -3440,7 +3449,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        self.lint_path_starts_with_module(id, path_span);
+        self.lint_path_starts_with_module(diag_id, diag_span);
     }
 
     fn lint_path_starts_with_module(&self, id: NodeId, span: Span) {
@@ -3676,7 +3685,7 @@ impl<'a> Resolver<'a> {
             // Search in module.
             let mod_path = &path[..path.len() - 1];
             if let PathResult::Module(module) = self.resolve_path(mod_path, Some(TypeNS),
-                                                                  false, span, None) {
+                                                                  false, span, CrateLint::No) {
                 add_module_candidates(module, &mut names);
             }
         }
@@ -4473,6 +4482,21 @@ fn err_path_resolution() -> PathResolution {
 pub enum MakeGlobMap {
     Yes,
     No,
+}
+
+enum CrateLint {
+    /// Do not issue the lint
+    No,
+
+    /// This lint applies to some random path like `impl ::foo::Bar`
+    /// or whatever. In this case, we can take the span of that path.
+    SimplePath(NodeId),
+
+    /// This lint comes from a `use` statement. In this case, what we
+    /// care about really is the *root* `use` statement; e.g., if we
+    /// have nested things like `use a::{b, c}`, we care about the
+    /// `use a` part.
+    UsePath { root_id: NodeId, root_span: Span },
 }
 
 __build_diagnostic_array! { librustc_resolve, DIAGNOSTICS }
