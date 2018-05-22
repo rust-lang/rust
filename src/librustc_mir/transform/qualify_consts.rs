@@ -293,13 +293,10 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 debug!("store to var {:?}", index);
                 self.local_qualif[index] = Some(self.qualif);
             }
-            Place::Local(index) if self.mir.local_kind(index) == LocalKind::Temp => {
-                debug!("store to temp {:?}", index);
+            Place::Local(index) if self.mir.local_kind(index) == LocalKind::Temp ||
+                                   self.mir.local_kind(index) == LocalKind::ReturnPointer => {
+                debug!("store to {:?} (temp or return pointer)", index);
                 store(&mut self.local_qualif[index])
-            }
-            Place::Local(index) if self.mir.local_kind(index) == LocalKind::ReturnPointer => {
-                debug!("store to return place {:?}", index);
-                store(&mut self.local_qualif[RETURN_PLACE])
             }
 
             Place::Projection(box Projection {
@@ -772,7 +769,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     }
                     if let Place::Local(local) = *place {
                         if self.mir.local_kind(local) == LocalKind::Temp {
-                            if let Some(qualif) = self.temp_qualif[local] {
+                            if let Some(qualif) = self.local_qualif[local] {
                                 // `forbidden_mut` is false, so we can safely ignore
                                 // `MUTABLE_INTERIOR` from the local's qualifications.
                                 // This allows borrowing fields which don't have
