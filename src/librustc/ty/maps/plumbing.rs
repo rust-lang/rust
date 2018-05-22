@@ -697,6 +697,16 @@ macro_rules! define_maps {
             })*
         }
 
+        // This module and the functions in it exist only to provide a
+        // predictable symbol name prefix for query providers. This is helpful
+        // for analyzing queries in profilers.
+        pub(super) mod __query_compute {
+            $(#[inline(never)]
+            pub fn $name<F: FnOnce() -> R, R>(f: F) -> R {
+                f()
+            })*
+        }
+
         $(impl<$tcx> QueryConfig<$tcx> for queries::$name<$tcx> {
             type Key = $K;
             type Value = $V;
@@ -718,9 +728,12 @@ macro_rules! define_maps {
                 DepNode::new(tcx, $node(*key))
             }
 
+            #[inline]
             fn compute(tcx: TyCtxt<'_, 'tcx, '_>, key: Self::Key) -> Self::Value {
-                let provider = tcx.maps.providers[key.map_crate()].$name;
-                provider(tcx.global_tcx(), key)
+                __query_compute::$name(move || {
+                    let provider = tcx.maps.providers[key.map_crate()].$name;
+                    provider(tcx.global_tcx(), key)
+                })
             }
 
             fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>) -> Self::Value {
