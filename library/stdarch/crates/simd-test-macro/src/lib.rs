@@ -101,10 +101,18 @@ pub fn simd_test(
     let q = quote!{ true };
     q.to_tokens(&mut cfg_target_features);
 
+    let test_norun = std::env::var("STDSIMD_TEST_NORUN").is_ok();
+    let maybe_ignore = if !test_norun {
+        TokenStream::empty()
+    } else {
+        (quote! { #[ignore] }).into()
+    };
+
     let ret: TokenStream = quote_spanned! {
         proc_macro2::Span::call_site() =>
         #[allow(non_snake_case)]
         #[test]
+        #maybe_ignore
         fn #name() {
             if #force_test | (#cfg_target_features) {
                 return unsafe { #name() };
