@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(const_fn)]
+#![feature(const_fn, const_let)]
 
 const fn x() {
     let t = true;
-    //~^ ERROR let bindings in constant functions are unstable
-    //~| ERROR statements in constant functions are unstable
     let x = || t;
-    //~^ ERROR let bindings in constant functions are unstable
-    //~| ERROR statements in constant functions are unstable
 }
 
 fn main() {}

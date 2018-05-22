@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test use of const let without feature gate.
+
 #![feature(const_fn)]
 
-const fn x() {
-    let t = true;
-    //~^ ERROR let bindings in constant functions are unstable
-    //~| ERROR statements in constant functions are unstable
-    let x = || t;
-    //~^ ERROR let bindings in constant functions are unstable
-    //~| ERROR statements in constant functions are unstable
+const fn foo() -> usize {
+    let x = 42;
+    //~^ ERROR statements in constant functions are unstable
+    //~| ERROR: let bindings in constant functions are unstable
+    42
 }
 
 fn main() {}

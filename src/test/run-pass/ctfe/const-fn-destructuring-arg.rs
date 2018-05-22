@@ -8,24 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(const_fn)]
+// test that certain things are disallowed in constant functions
 
-const X : usize = 2;
+#![feature(const_fn, const_let)]
 
-const fn f(x: usize) -> usize {
-    let mut sum = 0;
-    //~^ let bindings in constant functions are unstable
-    //~| statements in constant functions are unstable
-    for i in 0..x {
-        //~^ ERROR E0015
-        //~| ERROR E0019
-        //~| ERROR E0080
-        sum += i;
-    }
-    sum
+// no destructuring
+const fn i((
+            a,
+            b
+           ): (u32, u32)) -> u32 {
+    a + b
 }
 
-#[allow(unused_variables)]
-fn main() {
-    let a : [i32; f(X)];
-}
+fn main() {}

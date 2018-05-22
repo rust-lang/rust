@@ -8,14 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn main() {
-    const z: &'static isize = {
-        //~^ ERROR let bindings in constants are unstable
-        //~| ERROR statements in constants are unstable
-        let p = 3;
-        //~^ ERROR let bindings in constants are unstable
-        //~| ERROR statements in constants are unstable
-        &p //~ ERROR `p` does not live long enough
-        //~^ ERROR let bindings in constants are unstable
-    };
-}
+#![feature(const_let)]
+
+type Array = [u32; {  let x = 2; 5 }];
+
+pub fn main() {}
