@@ -40,6 +40,8 @@ pub mod foo {
 
     pub fn test() {
     }
+
+    pub trait SomeTrait { }
 }
 
 use bar::Bar;
@@ -58,6 +60,10 @@ mod baz {
     //~^ ERROR absolute
     //~| WARN this was previously accepted
 }
+
+impl ::foo::SomeTrait for u32 { }
+//~^ ERROR absolute
+//~| WARN this was previously accepted
 
 fn main() {
     let x = ::bar::Bar;
