@@ -100,7 +100,7 @@ pub fn value_to_const_value<'tcx>(
 ) -> &'tcx ty::Const<'tcx> {
     let layout = ecx.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap();
     match (val, &layout.abi) {
-        (Value::Scalar(Scalar::Undef), _) if layout.is_zst() => {},
+        (Value::Scalar(Scalar::Bits { defined: 0, ..}), _) if layout.is_zst() => {},
         (Value::ByRef(..), _) |
         (Value::Scalar(_), &layout::Abi::Scalar(_)) |
         (Value::ScalarPair(..), &layout::Abi::ScalarPair(..)) => {},
@@ -319,20 +319,31 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
             "min_align_of" => {
                 let elem_ty = substs.type_at(0);
                 let elem_align = ecx.layout_of(elem_ty)?.align.abi();
-                let align_val = Scalar::from_u128(elem_align as u128);
+                let align_val = Scalar::Bits {
+                    bits: elem_align as u128,
+                    defined: dest_layout.size.bits() as u8,
+                };
                 ecx.write_primval(dest, align_val, dest_layout.ty)?;
             }
 
             "size_of" => {
                 let ty = substs.type_at(0);
                 let size = ecx.layout_of(ty)?.size.bytes() as u128;
-                ecx.write_primval(dest, Scalar::from_u128(size), dest_layout.ty)?;
+                let size_val = Scalar::Bits {
+                    bits: size,
+                    defined: dest_layout.size.bits() as u8,
+                };
+                ecx.write_primval(dest, size_val, dest_layout.ty)?;
             }
 
             "type_id" => {
                 let ty = substs.type_at(0);
                 let type_id = ecx.tcx.type_id_hash(ty) as u128;
-                ecx.write_primval(dest, Scalar::from_u128(type_id), dest_layout.ty)?;
+                let id_val = Scalar::Bits {
+                    bits: type_id,
+                    defined: dest_layout.size.bits() as u8,
+                };
+                ecx.write_primval(dest, id_val, dest_layout.ty)?;
             }
 
             name => return Err(ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", name)).into()),
@@ -354,7 +365,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         right: Scalar,
         _right_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Option<(Scalar, bool)>> {
-        if left.is_bytes() && right.is_bytes() {
+        if left.is_bits() && right.is_bits() {
             Ok(None)
         } else {
             Err(

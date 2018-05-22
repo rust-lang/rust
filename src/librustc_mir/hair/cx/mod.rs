@@ -21,9 +21,8 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::region;
 use rustc::infer::InferCtxt;
-use rustc::ty::layout::IntegerExt;
 use rustc::ty::subst::Subst;
-use rustc::ty::{self, Ty, TyCtxt, layout};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Substs};
 use syntax::ast::{self, LitKind};
 use syntax::attr;
@@ -139,18 +138,6 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn integer_bit_width(
-        &self,
-        ty: Ty,
-    ) -> u64 {
-        let ty = match ty.sty {
-            ty::TyInt(ity) => attr::IntType::SignedInt(ity),
-            ty::TyUint(uty) => attr::IntType::UnsignedInt(uty),
-            _ => bug!("{} is not an integer", ty),
-        };
-        layout::Integer::from_attr(self.tcx, ty).size().bits()
-    }
-
     // FIXME: Combine with rustc_mir::hair::pattern::lit_to_const
     pub fn const_eval_literal(
         &mut self,
@@ -169,12 +156,15 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         };
 
         let clamp = |n| {
-            let size = self.integer_bit_width(ty);
+            let size = ty.scalar_size(self.tcx).expect("const_eval_lit::clamp expects ints").bits();
             trace!("clamp {} with size {} and amt {}", n, size, 128 - size);
             let amt = 128 - size;
             let result = (n << amt) >> amt;
             trace!("clamp result: {}", result);
-            result
+            ConstValue::Scalar(Scalar::Bits {
+                bits: result,
+                defined: size as u8,
+            })
         };
 
         use rustc::mir::interpret::*;
@@ -184,21 +174,26 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 let id = self.tcx.allocate_bytes(s.as_bytes());
                 ConstValue::ScalarPair(
                     Scalar::Ptr(id.into()),
-                    Scalar::from_u128(s.len() as u128),
+                    Scalar::Bits {
+                        bits: s.len() as u128,
+                        defined: self.tcx.data_layout.pointer_size.bits() as u8,
+                    }
                 )
             },
             LitKind::ByteStr(ref data) => {
                 let id = self.tcx.allocate_bytes(data);
                 ConstValue::Scalar(Scalar::Ptr(id.into()))
             },
-            LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bytes(n as u128)),
+            LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bits {
+                bits: n as u128,
+                defined: 8,
+            }),
             LitKind::Int(n, _) if neg => {
                 let n = n as i128;
                 let n = n.overflowing_neg().0;
-                let n = clamp(n as u128);
-                ConstValue::Scalar(Scalar::Bytes(n))
+                clamp(n as u128)
             },
-            LitKind::Int(n, _) => ConstValue::Scalar(Scalar::Bytes(clamp(n))),
+            LitKind::Int(n, _) => clamp(n),
             LitKind::Float(n, fty) => {
                 parse_float(n, fty)
             }
@@ -209,8 +204,14 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 };
                 parse_float(n, fty)
             }
-            LitKind::Bool(b) => ConstValue::Scalar(Scalar::Bytes(b as u128)),
-            LitKind::Char(c) => ConstValue::Scalar(Scalar::Bytes(c as u128)),
+            LitKind::Bool(b) => ConstValue::Scalar(Scalar::Bits {
+                bits: b as u128,
+                defined: 8,
+            }),
+            LitKind::Char(c) => ConstValue::Scalar(Scalar::Bits {
+                bits: c as u128,
+                defined: 32,
+            }),
         };
         Literal::Value {
             value: ty::Const::from_const_value(self.tcx, lit, ty)

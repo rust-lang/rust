@@ -17,15 +17,17 @@ use middle::region;
 use rustc_data_structures::indexed_vec::Idx;
 use ty::subst::{Substs, Subst, Kind, UnpackedKind};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
-use ty::{Slice, TyS};
+use ty::{Slice, TyS, layout};
 use util::captures::Captures;
 use mir::interpret::{Scalar, Pointer, Value, ConstValue};
+use rustc_target::abi::{Size, HasDataLayout};
 
 use std::iter;
 use std::cmp::Ordering;
 use rustc_target::spec::abi;
 use syntax::ast::{self, Name};
 use syntax::symbol::{keywords, InternedString};
+use syntax::attr;
 
 use serialize;
 
@@ -1755,6 +1757,23 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             _ => bug!("cannot convert type `{:?}` to a closure kind", self),
         }
     }
+
+    /// If this type is a scalar, compute its size without
+    /// going through `tcx.layout_of`
+    pub fn scalar_size<C: HasDataLayout>(
+        &self,
+        cx: C,
+    ) -> Option<Size> {
+        let ty = match self.sty {
+            ty::TyBool => return Some(Size::from_bytes(1)),
+            ty::TyChar => return Some(Size::from_bytes(4)),
+            ty::TyInt(ity) => attr::IntType::SignedInt(ity),
+            ty::TyUint(uty) => attr::IntType::UnsignedInt(uty),
+            _ => return None,
+        };
+        use ty::layout::IntegerExt;
+        Some(layout::Integer::from_attr(cx, ty).size())
+    }
 }
 
 /// Typed constant value.
@@ -1820,15 +1839,18 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     pub fn from_bits(
         tcx: TyCtxt<'_, '_, 'tcx>,
-        val: u128,
+        bits: u128,
         ty: Ty<'tcx>,
     ) -> &'tcx Self {
-        Self::from_primval(tcx, Scalar::Bytes(val), ty)
+        let defined = ty.scalar_size(tcx).unwrap_or_else(|| {
+            panic!("non-scalar type in from_bits: {:?}", ty)
+        }).bits() as u8;
+        Self::from_primval(tcx, Scalar::Bits { bits, defined }, ty)
     }
 
     #[inline]
     pub fn zero_sized(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
-        Self::from_primval(tcx, Scalar::Undef, ty)
+        Self::from_primval(tcx, Scalar::undef(), ty)
     }
 
     #[inline]
@@ -1842,12 +1864,13 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn to_bits(&self, ty: Ty<'_>) -> Option<u128> {
+    pub fn to_bits<C: HasDataLayout>(&self, cx: C, ty: Ty<'tcx>) -> Option<u128> {
         if self.ty != ty {
             return None;
         }
+        let size = ty.scalar_size(cx)?;
         match self.val {
-            ConstVal::Value(val) => val.to_bits(),
+            ConstVal::Value(val) => val.to_bits(size),
             _ => None,
         }
     }
@@ -1877,17 +1900,18 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn assert_bits(&self, ty: Ty<'_>) -> Option<u128> {
+    pub fn assert_bits<C: HasDataLayout>(&self, cx: C, ty: Ty<'tcx>) -> Option<u128> {
         assert_eq!(self.ty, ty);
+        let size = ty.scalar_size(cx)?;
         match self.val {
-            ConstVal::Value(val) => val.to_bits(),
+            ConstVal::Value(val) => val.to_bits(size),
             _ => None,
         }
     }
 
     #[inline]
     pub fn assert_bool(&self, tcx: TyCtxt<'_, '_, '_>) -> Option<bool> {
-        self.assert_bits(tcx.types.bool).and_then(|v| match v {
+        self.assert_bits(tcx, tcx.types.bool).and_then(|v| match v {
             0 => Some(false),
             1 => Some(true),
             _ => None,
@@ -1896,12 +1920,12 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn assert_usize(&self, tcx: TyCtxt<'_, '_, '_>) -> Option<u64> {
-        self.assert_bits(tcx.types.usize).map(|v| v as u64)
+        self.assert_bits(tcx, tcx.types.usize).map(|v| v as u64)
     }
 
     #[inline]
-    pub fn unwrap_bits(&self, ty: Ty<'_>) -> u128 {
-        match self.assert_bits(ty) {
+    pub fn unwrap_bits(&self, tcx: TyCtxt<'_, '_, '_>, ty: Ty<'tcx>) -> u128 {
+        match self.assert_bits(tcx, ty) {
             Some(val) => val,
             None => bug!("expected bits of {}, got {:#?}", ty, self),
         }

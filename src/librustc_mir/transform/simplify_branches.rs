@@ -39,7 +39,7 @@ impl MirPass for SimplifyBranches {
                 TerminatorKind::SwitchInt { discr: Operand::Constant(box Constant {
                     literal: Literal::Value { ref value }, ..
                 }), switch_ty, ref values, ref targets, .. } => {
-                    if let Some(constint) = value.assert_bits(switch_ty) {
+                    if let Some(constint) = value.assert_bits(tcx, switch_ty) {
                         let (otherwise, targets) = targets.split_last().unwrap();
                         let mut ret = TerminatorKind::Goto { target: *otherwise };
                         for (&v, t) in values.iter().zip(targets.iter()) {

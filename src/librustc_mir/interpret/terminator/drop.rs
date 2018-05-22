@@ -28,7 +28,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 ptr,
                 align: _,
                 extra: PlaceExtra::Length(len),
-            } => ptr.to_value_with_len(len),
+            } => ptr.to_value_with_len(len, self.tcx.tcx),
             Place::Ptr {
                 ptr,
                 align: _,

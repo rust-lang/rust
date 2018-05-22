@@ -35,7 +35,7 @@ pub enum PlaceExtra {
 impl<'tcx> Place {
     /// Produces a Place that will error if attempted to be read from
     pub fn undef() -> Self {
-        Self::from_primval_ptr(Scalar::Undef.into(), Align::from_bytes(1, 1).unwrap())
+        Self::from_primval_ptr(Scalar::undef().into(), Align::from_bytes(1, 1).unwrap())
     }
 
     pub fn from_primval_ptr(ptr: Scalar, align: Align) -> Self {
@@ -128,7 +128,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let field_index = field.index();
         let field = base_layout.field(self, field_index)?;
         if field.size.bytes() == 0 {
-            return Ok(Some((Value::Scalar(Scalar::Undef), field.ty)))
+            return Ok(Some((Value::Scalar(Scalar::undef()), field.ty)))
         }
         let offset = base_layout.fields.offset(field_index);
         match base {
@@ -387,8 +387,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Index(local) => {
                 let value = self.frame().get_local(local)?;
                 let ty = self.tcx.types.usize;
-                let n = self.value_to_primval(ValTy { value, ty })?.to_u64()?;
-                self.place_index(base, base_ty, n)
+                let n = self
+                    .value_to_primval(ValTy { value, ty })?
+                    .to_bits(self.tcx.data_layout.pointer_size)?;
+                self.place_index(base, base_ty, n as u64)
             }
 
             ConstantIndex {

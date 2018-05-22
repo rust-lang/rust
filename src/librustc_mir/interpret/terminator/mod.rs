@@ -44,7 +44,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let mut target_block = targets[targets.len() - 1];
 
                 for (index, &const_int) in values.iter().enumerate() {
-                    if discr_prim.to_bytes()? == const_int {
+                    if discr_prim.to_bits(discr_val.ty.scalar_size(self.tcx.tcx).expect("discr must be scalar"))? == const_int {
                         target_block = targets[index];
                         break;
                     }
@@ -153,10 +153,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         BoundsCheck { ref len, ref index } => {
                             let len = self.eval_operand_to_primval(len)
                                 .expect("can't eval len")
-                                .to_u64()?;
+                                .to_bits(self.memory().pointer_size())? as u64;
                             let index = self.eval_operand_to_primval(index)
                                 .expect("can't eval index")
-                                .to_u64()?;
+                                .to_bits(self.memory().pointer_size())? as u64;
                             err!(BoundsCheck { len, index })
                         }
                         Overflow(op) => Err(Overflow(op).into()),
@@ -359,7 +359,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                             self.write_value(valty, dest)?;
                                         }
                                     }
-                                    Value::Scalar(Scalar::Undef) => {}
+                                    Value::Scalar(Scalar::Bits { defined: 0, .. }) => {}
                                     other => {
                                         trace!("{:#?}, {:#?}", other, layout);
                                         let mut layout = layout;

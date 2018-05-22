@@ -1149,11 +1149,13 @@ impl<'tcx> TerminatorKind<'tcx> {
             Return | Resume | Abort | Unreachable | GeneratorDrop => vec![],
             Goto { .. } => vec!["".into()],
             SwitchInt { ref values, switch_ty, .. } => {
+                let size = ty::tls::with(|tcx| switch_ty.scalar_size(tcx));
+                let size = size.map_or(0, |size| size.bytes()) as u8;
                 values.iter()
                       .map(|&u| {
                           let mut s = String::new();
                           print_miri_value(
-                              Value::Scalar(Scalar::Bytes(u)),
+                              Value::Scalar(Scalar::Bits { bits: u, defined: size }),
                               switch_ty,
                               &mut s,
                           ).unwrap();
@@ -1893,19 +1895,22 @@ pub fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ty::Const) -> fmt::Resul
 pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Result {
     use ty::TypeVariants::*;
     match (value, &ty.sty) {
-        (Value::Scalar(Scalar::Bytes(0)), &TyBool) => write!(f, "false"),
-        (Value::Scalar(Scalar::Bytes(1)), &TyBool) => write!(f, "true"),
-        (Value::Scalar(Scalar::Bytes(bits)), &TyFloat(ast::FloatTy::F32)) =>
+        (Value::Scalar(Scalar::Bits { bits: 0, defined: 8 }), &TyBool) => write!(f, "false"),
+        (Value::Scalar(Scalar::Bits { bits: 1, defined: 8 }), &TyBool) => write!(f, "true"),
+        (Value::Scalar(Scalar::Bits { bits, defined: 32 }), &TyFloat(ast::FloatTy::F32)) =>
             write!(f, "{}f32", Single::from_bits(bits)),
-        (Value::Scalar(Scalar::Bytes(bits)), &TyFloat(ast::FloatTy::F64)) =>
+        (Value::Scalar(Scalar::Bits { bits, defined: 64 }), &TyFloat(ast::FloatTy::F64)) =>
             write!(f, "{}f64", Double::from_bits(bits)),
-        (Value::Scalar(Scalar::Bytes(n)), &TyUint(ui)) => write!(f, "{:?}{}", n, ui),
-        (Value::Scalar(Scalar::Bytes(n)), &TyInt(i)) => write!(f, "{:?}{}", n as i128, i),
-        (Value::Scalar(Scalar::Bytes(n)), &TyChar) =>
-            write!(f, "{:?}", ::std::char::from_u32(n as u32).unwrap()),
-        (Value::Scalar(Scalar::Undef), &TyFnDef(did, _)) =>
+        (Value::Scalar(Scalar::Bits { bits, .. }), &TyUint(ui)) => write!(f, "{:?}{}", bits, ui),
+        (Value::Scalar(Scalar::Bits { bits, defined }), &TyInt(i)) => {
+            let amt = 128 - defined;
+            write!(f, "{:?}{}", ((bits as i128) << amt) >> amt, i)
+        },
+        (Value::Scalar(Scalar::Bits { bits, defined: 32 }), &TyChar) =>
+            write!(f, "{:?}", ::std::char::from_u32(bits as u32).unwrap()),
+        (Value::Scalar(Scalar::Bits { defined: 0, .. }), &TyFnDef(did, _)) =>
             write!(f, "{}", item_path_str(did)),
-        (Value::ScalarPair(Scalar::Ptr(ptr), Scalar::Bytes(len)),
+        (Value::ScalarPair(Scalar::Ptr(ptr), Scalar::Bits { bits: len, .. }),
          &TyRef(_, &ty::TyS { sty: TyStr, .. }, _)) => {
             ty::tls::with(|tcx| {
                 match tcx.alloc_map.lock().get(ptr.alloc_id) {

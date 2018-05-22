@@ -38,9 +38,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         self.memory.write_ptr_sized_unsigned(vtable, ptr_align, drop.into())?;
 
         let size_ptr = vtable.offset(ptr_size, &self)?;
-        self.memory.write_ptr_sized_unsigned(size_ptr, ptr_align, Scalar::Bytes(size as u128))?;
+        self.memory.write_ptr_sized_unsigned(size_ptr, ptr_align, Scalar::Bits {
+            bits: size as u128,
+            defined: ptr_size.bits() as u8,
+        })?;
         let align_ptr = vtable.offset(ptr_size * 2, &self)?;
-        self.memory.write_ptr_sized_unsigned(align_ptr, ptr_align, Scalar::Bytes(align as u128))?;
+        self.memory.write_ptr_sized_unsigned(align_ptr, ptr_align, Scalar::Bits {
+            bits: align as u128,
+            defined: ptr_size.bits() as u8,
+        })?;
 
         for (i, method) in methods.iter().enumerate() {
             if let Some((def_id, substs)) = *method {
@@ -65,9 +71,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, Option<ty::Instance<'tcx>>> {
         // we don't care about the pointee type, we just want a pointer
         let pointer_align = self.tcx.data_layout.pointer_align;
+        let pointer_size = self.tcx.data_layout.pointer_size.bits() as u8;
         match self.read_ptr(vtable, pointer_align, self.tcx.mk_nil_ptr())? {
             // some values don't need to call a drop impl, so the value is null
-            Value::Scalar(Scalar::Bytes(0)) => Ok(None),
+            Value::Scalar(Scalar::Bits { bits: 0, defined} ) if defined == pointer_size => Ok(None),
             Value::Scalar(Scalar::Ptr(drop_fn)) => self.memory.get_fn(drop_fn).map(Some),
             _ => err!(ReadBytesAsPointer),
         }
@@ -79,11 +86,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, (Size, Align)> {
         let pointer_size = self.memory.pointer_size();
         let pointer_align = self.tcx.data_layout.pointer_align;
-        let size = self.memory.read_ptr_sized(vtable.offset(pointer_size, self)?, pointer_align)?.to_bytes()? as u64;
+        let size = self.memory.read_ptr_sized(vtable.offset(pointer_size, self)?, pointer_align)?.to_bits(pointer_size)? as u64;
         let align = self.memory.read_ptr_sized(
             vtable.offset(pointer_size * 2, self)?,
             pointer_align
-        )?.to_bytes()? as u64;
+        )?.to_bits(pointer_size)? as u64;
         Ok((Size::from_bytes(size), Align::from_bytes(align, align).unwrap()))
     }
 }

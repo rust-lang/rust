@@ -283,7 +283,10 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
             Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                 let param_env = self.tcx.param_env(self.source.def_id);
                 type_size_of(self.tcx, param_env, ty).map(|n| (
-                    Value::Scalar(Scalar::Bytes(n as u128)),
+                    Value::Scalar(Scalar::Bits {
+                        bits: n as u128,
+                        defined: self.tcx.data_layout.pointer_size.bits() as u8,
+                    }),
                     self.tcx.types.usize,
                     span,
                 ))
@@ -326,10 +329,10 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     this.ecx.value_to_primval(ValTy { value: right.0, ty: right.1 })
                 })?;
                 if op == BinOp::Shr || op == BinOp::Shl {
-                    let param_env = self.tcx.param_env(self.source.def_id);
                     let left_ty = left.ty(self.mir, self.tcx);
-                    let bits = self.tcx.layout_of(param_env.and(left_ty)).unwrap().size.bits();
-                    if r.to_bytes().ok().map_or(false, |b| b >= bits as u128) {
+                    let left_bits = left_ty.scalar_size(self.tcx).unwrap().bits();
+                    let right_size = right.1.scalar_size(self.tcx).unwrap();
+                    if r.to_bits(right_size).ok().map_or(false, |b| b >= left_bits as u128) {
                         let scope_info = match self.mir.visibility_scope_info {
                             ClearCrossCrate::Set(ref data) => data,
                             ClearCrossCrate::Clear => return None,
@@ -520,14 +523,14 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                         BoundsCheck { ref len, ref index } => {
                             let len = self.eval_operand(len).expect("len must be const");
                             let len = match len.0 {
-                                Value::Scalar(Scalar::Bytes(n)) => n,
+                                Value::Scalar(Scalar::Bits { bits, ..}) => bits,
                                 _ => bug!("const len not primitive: {:?}", len),
                             };
                             let index = self
                                 .eval_operand(index)
                                 .expect("index must be const");
                             let index = match index.0 {
-                                Value::Scalar(Scalar::Bytes(n)) => n,
+                                Value::Scalar(Scalar::Bits { bits, .. }) => bits,
                                 _ => bug!("const index not primitive: {:?}", index),
                             };
                             format!(

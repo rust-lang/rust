@@ -1057,7 +1057,7 @@ pub fn compare_const_vals<'a, 'tcx>(
 
     // FIXME: This should use assert_bits(ty) instead of use_bits
     // but triggers possibly bugs due to mismatching of arrays and slices
-    if let (Some(a), Some(b)) = (a.to_bits(ty), b.to_bits(ty)) {
+    if let (Some(a), Some(b)) = (a.to_bits(tcx, ty), b.to_bits(tcx, ty)) {
         use ::rustc_apfloat::Float;
         return match ty.sty {
             ty::TyFloat(ast::FloatTy::F32) => {
@@ -1130,20 +1130,26 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
             let id = tcx.allocate_bytes(s.as_bytes());
             ConstValue::ScalarPair(
                 Scalar::Ptr(id.into()),
-                Scalar::from_u128(s.len() as u128),
+                Scalar::Bits {
+                    bits: s.len() as u128,
+                    defined: tcx.data_layout.pointer_size.bits() as u8,
+                },
             )
         },
         LitKind::ByteStr(ref data) => {
             let id = tcx.allocate_bytes(data);
             ConstValue::Scalar(Scalar::Ptr(id.into()))
         },
-        LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bytes(n as u128)),
+        LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bits {
+            bits: n as u128,
+            defined: 8,
+        }),
         LitKind::Int(n, _) => {
             enum Int {
                 Signed(IntTy),
                 Unsigned(UintTy),
             }
-            let ty = match ty.sty {
+            let ity = match ty.sty {
                 ty::TyInt(IntTy::Isize) => Int::Signed(tcx.sess.target.isize_ty),
                 ty::TyInt(other) => Int::Signed(other),
                 ty::TyUint(UintTy::Usize) => Int::Unsigned(tcx.sess.target.usize_ty),
@@ -1152,7 +1158,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
             };
             // This converts from LitKind::Int (which is sign extended) to
             // Scalar::Bytes (which is zero extended)
-            let n = match ty {
+            let n = match ity {
                 // FIXME(oli-obk): are these casts correct?
                 Int::Signed(IntTy::I8) if neg =>
                     (n as i8).overflowing_neg().0 as u8 as u128,
@@ -1171,7 +1177,10 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
                 Int::Signed(IntTy::I128)| Int::Unsigned(UintTy::U128) => n,
                 _ => bug!(),
             };
-            ConstValue::Scalar(Scalar::Bytes(n))
+            ConstValue::Scalar(Scalar::Bits {
+                bits: n,
+                defined: ty.scalar_size(tcx).unwrap().bits() as u8,
+            })
         },
         LitKind::Float(n, fty) => {
             parse_float(n, fty, neg)?
@@ -1183,8 +1192,14 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
             };
             parse_float(n, fty, neg)?
         }
-        LitKind::Bool(b) => ConstValue::Scalar(Scalar::Bytes(b as u128)),
-        LitKind::Char(c) => ConstValue::Scalar(Scalar::Bytes(c as u128)),
+        LitKind::Bool(b) => ConstValue::Scalar(Scalar::Bits {
+            bits: b as u128,
+            defined: 8,
+        }),
+        LitKind::Char(c) => ConstValue::Scalar(Scalar::Bits {
+            bits: c as u128,
+            defined: 32,
+        }),
     };
     Ok(ty::Const::from_const_value(tcx, lit, ty))
 }
@@ -1197,7 +1212,7 @@ pub fn parse_float<'tcx>(
     let num = num.as_str();
     use rustc_apfloat::ieee::{Single, Double};
     use rustc_apfloat::Float;
-    let bits = match fty {
+    let (bits, defined) = match fty {
         ast::FloatTy::F32 => {
             num.parse::<f32>().map_err(|_| ())?;
             let mut f = num.parse::<Single>().unwrap_or_else(|e| {
@@ -1206,7 +1221,7 @@ pub fn parse_float<'tcx>(
             if neg {
                 f = -f;
             }
-            f.to_bits()
+            (f.to_bits(), 32)
         }
         ast::FloatTy::F64 => {
             num.parse::<f64>().map_err(|_| ())?;
@@ -1216,9 +1231,9 @@ pub fn parse_float<'tcx>(
             if neg {
                 f = -f;
             }
-            f.to_bits()
+            (f.to_bits(), 64)
         }
     };
 
-    Ok(ConstValue::Scalar(Scalar::Bytes(bits)))
+    Ok(ConstValue::Scalar(Scalar::Bits { bits, defined }))
 }

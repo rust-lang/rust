@@ -958,7 +958,7 @@ fn slice_pat_covered_by_constructor<'tcx>(
     {
         match pat.kind {
             box PatternKind::Constant { value } => {
-                let b = value.unwrap_bits(pat.ty);
+                let b = value.unwrap_bits(tcx, pat.ty);
                 assert_eq!(b as u8 as u128, b);
                 if b as u8 != *ch {
                     return Ok(false);

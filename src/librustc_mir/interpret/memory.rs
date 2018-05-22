@@ -232,15 +232,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 let alloc = self.get(ptr.alloc_id)?;
                 (ptr.offset.bytes(), alloc.align)
             }
-            Scalar::Bytes(bytes) => {
-                let v = ((bytes as u128) % (1 << self.pointer_size().bytes())) as u64;
+            Scalar::Bits { bits, defined } => {
+                if defined <= self.pointer_size().bits() as u8 {
+                    return err!(ReadUndefBytes);
+                }
+                // FIXME: what on earth does this line do? docs or fix needed!
+                let v = ((bits as u128) % (1 << self.pointer_size().bytes())) as u64;
                 if v == 0 {
                     return err!(InvalidNullPointerUsage);
                 }
                 // the base address if the "integer allocation" is 0 and hence always aligned
                 (v, required_align)
             }
-            Scalar::Undef => return err!(ReadUndefBytes),
         };
         // Check alignment
         if alloc_align.abi() < required_align.abi() {
@@ -711,10 +714,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
         if self.check_defined(ptr, size).is_err() {
-            return Ok(Scalar::Undef.into());
+            return Ok(Scalar::undef().into());
         }
         // Now we do the actual reading
-        let bytes = read_target_uint(endianness, bytes).unwrap();
+        let bits = read_target_uint(endianness, bytes).unwrap();
         // See if we got a pointer
         if size != self.pointer_size() {
             if self.relocations(ptr, size)?.len() != 0 {
@@ -723,12 +726,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         } else {
             let alloc = self.get(ptr.alloc_id)?;
             match alloc.relocations.get(&ptr.offset) {
-                Some(&alloc_id) => return Ok(Pointer::new(alloc_id, Size::from_bytes(bytes as u64)).into()),
+                Some(&alloc_id) => return Ok(Pointer::new(alloc_id, Size::from_bytes(bits as u64)).into()),
                 None => {},
             }
         }
-        // We don't. Just return the bytes.
-        Ok(Scalar::Bytes(bytes))
+        // We don't. Just return the bits.
+        Ok(Scalar::Bits {
+            bits,
+            defined: size.bits() as u8,
+        })
     }
 
     pub fn read_ptr_sized(&self, ptr: Pointer, ptr_align: Align) -> EvalResult<'tcx, Scalar> {
@@ -744,9 +750,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 val.offset.bytes() as u128
             }
 
-            Scalar::Bytes(bytes) => bytes,
+            Scalar::Bits { bits, defined } if defined >= size.bits() as u8 && defined != 0 => bits,
 
-            Scalar::Undef => {
+            Scalar::Bits { .. } => {
                 self.check_align(ptr.into(), ptr_align)?;
                 self.mark_definedness(ptr, size, false)?;
                 return Ok(());
@@ -951,7 +957,7 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
 
             Value::ScalarPair(ptr, vtable) => Ok((ptr.into(), vtable.to_ptr()?)),
 
-            Value::Scalar(Scalar::Undef) => err!(ReadUndefBytes),
+            Value::Scalar(Scalar::Bits { defined: 0, .. }) => err!(ReadUndefBytes),
             _ => bug!("expected ptr and vtable, got {:?}", value),
         }
     }
@@ -967,15 +973,14 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
                 let len = mem.read_ptr_sized(
                     ref_ptr.ptr_offset(mem.pointer_size(), &mem.tcx.data_layout)?.to_ptr()?,
                     align
-                )?.to_bytes()? as u64;
+                )?.to_bits(mem.pointer_size())? as u64;
                 Ok((ptr, len))
             }
             Value::ScalarPair(ptr, val) => {
-                let len = val.to_u128()?;
-                assert_eq!(len as u64 as u128, len);
+                let len = val.to_bits(self.memory().pointer_size())?;
                 Ok((ptr.into(), len as u64))
             }
-            Value::Scalar(Scalar::Undef) => err!(ReadUndefBytes),
+            Value::Scalar(Scalar::Bits { defined: 0, .. }) => err!(ReadUndefBytes),
             Value::Scalar(_) => bug!("expected ptr and length, got {:?}", value),
         }
     }

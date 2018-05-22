@@ -51,19 +51,13 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     #[inline]
-    pub fn to_bits(&self) -> Option<u128> {
-        match self.to_primval() {
-            Some(Scalar::Bytes(val)) => Some(val),
-            _ => None,
-        }
+    pub fn to_bits(&self, size: Size) -> Option<u128> {
+        self.to_primval()?.to_bits(size).ok()
     }
 
     #[inline]
     pub fn to_ptr(&self) -> Option<Pointer> {
-        match self.to_primval() {
-            Some(Scalar::Ptr(ptr)) => Some(ptr),
-            _ => None,
-        }
+        self.to_primval()?.to_ptr().ok()
     }
 }
 
@@ -93,56 +87,85 @@ impl<'tcx> ty::TypeFoldable<'tcx> for Value {
 }
 
 impl<'tcx> Scalar {
-    pub fn ptr_null() -> Self {
-        Scalar::Bytes(0)
+    pub fn ptr_null<C: HasDataLayout>(cx: C) -> Self {
+        Scalar::Bits {
+            bits: 0,
+            defined: cx.data_layout().pointer_size.bits() as u8,
+    }
     }
 
     pub fn ptr_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
         let layout = cx.data_layout();
         match self {
-            Scalar::Bytes(b) => {
-                assert_eq!(b as u64 as u128, b);
-                Ok(Scalar::Bytes(layout.signed_offset(b as u64, i)? as u128))
+            Scalar::Bits { bits, defined } => {
+                let pointer_size = layout.pointer_size.bits() as u8;
+                if defined < pointer_size {
+                    err!(ReadUndefBytes)
+                } else {
+                    Ok(Scalar::Bits {
+                        bits: layout.signed_offset(bits as u64, i)? as u128,
+                        defined: pointer_size,
+                    })
+            }
             }
             Scalar::Ptr(ptr) => ptr.signed_offset(i, layout).map(Scalar::Ptr),
-            Scalar::Undef => err!(ReadUndefBytes),
         }
     }
 
     pub fn ptr_offset<C: HasDataLayout>(self, i: Size, cx: C) -> EvalResult<'tcx, Self> {
         let layout = cx.data_layout();
         match self {
-            Scalar::Bytes(b) => {
-                assert_eq!(b as u64 as u128, b);
-                Ok(Scalar::Bytes(layout.offset(b as u64, i.bytes())? as u128))
+            Scalar::Bits { bits, defined } => {
+                let pointer_size = layout.pointer_size.bits() as u8;
+                if defined < pointer_size {
+                    err!(ReadUndefBytes)
+                } else {
+                    Ok(Scalar::Bits {
+                        bits: layout.offset(bits as u64, i.bytes())? as u128,
+                        defined: pointer_size,
+                    })
+            }
             }
             Scalar::Ptr(ptr) => ptr.offset(i, layout).map(Scalar::Ptr),
-            Scalar::Undef => err!(ReadUndefBytes),
         }
     }
 
     pub fn ptr_wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
         let layout = cx.data_layout();
         match self {
-            Scalar::Bytes(b) => {
-                assert_eq!(b as u64 as u128, b);
-                Ok(Scalar::Bytes(layout.wrapping_signed_offset(b as u64, i) as u128))
+            Scalar::Bits { bits, defined } => {
+                let pointer_size = layout.pointer_size.bits() as u8;
+                if defined < pointer_size {
+                    err!(ReadUndefBytes)
+                } else {
+                    Ok(Scalar::Bits {
+                        bits: layout.wrapping_signed_offset(bits as u64, i) as u128,
+                        defined: pointer_size,
+                    })
+            }
             }
             Scalar::Ptr(ptr) => Ok(Scalar::Ptr(ptr.wrapping_signed_offset(i, layout))),
-            Scalar::Undef => err!(ReadUndefBytes),
         }
     }
 
-    pub fn is_null(self) -> EvalResult<'tcx, bool> {
+    pub fn is_null_ptr<C: HasDataLayout>(self, cx: C) -> EvalResult<'tcx, bool> {
         match self {
-            Scalar::Bytes(b) => Ok(b == 0),
+            Scalar::Bits {
+                bits, defined,
+            } => if defined < cx.data_layout().pointer_size.bits() as u8 {
+                err!(ReadUndefBytes)
+            } else {
+                Ok(bits == 0)
+            },
             Scalar::Ptr(_) => Ok(false),
-            Scalar::Undef => err!(ReadUndefBytes),
         }
     }
 
-    pub fn to_value_with_len(self, len: u64) -> Value {
-        Value::ScalarPair(self, Scalar::from_u128(len as u128))
+    pub fn to_value_with_len<C: HasDataLayout>(self, len: u64, cx: C) -> Value {
+        Value::ScalarPair(self, Scalar::Bits {
+            bits: len as u128,
+            defined: cx.data_layout().pointer_size.bits() as u8,
+        })
     }
 
     pub fn to_value_with_vtable(self, vtable: Pointer) -> Value {
@@ -163,20 +186,20 @@ impl From<Pointer> for Scalar {
 /// A `Scalar` represents an immediate, primitive value existing outside of a
 /// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 8 bytes in
 /// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
-/// of a simple value, a pointer into another `Allocation`, or be undefined.
+/// of a simple value or a pointer into another `Allocation`
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
 pub enum Scalar {
     /// The raw bytes of a simple value.
-    Bytes(u128),
+    Bits {
+        /// number of bits that are valid and may be read
+        defined: u8,
+        bits: u128,
+    },
 
     /// A pointer into an `Allocation`. An `Allocation` in the `memory` module has a list of
     /// relocations, but a `Scalar` is only large enough to contain one, so we just represent the
     /// relocation and its associated offset together as a `Pointer` here.
     Ptr(Pointer),
-
-    /// An undefined `Scalar`, for representing values that aren't safe to examine, but are safe
-    /// to copy around, just like undefined bytes in an `Allocation`.
-    Undef,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -190,41 +213,38 @@ pub enum ScalarKind {
 }
 
 impl<'tcx> Scalar {
-    pub fn from_u128(n: u128) -> Self {
-        Scalar::Bytes(n)
-    }
-
-    pub fn from_i128(n: i128) -> Self {
-        Scalar::Bytes(n as u128)
+    pub fn undef() -> Self {
+        Scalar::Bits { bits: 0, defined: 0 }
     }
 
     pub fn from_bool(b: bool) -> Self {
-        Scalar::Bytes(b as u128)
+        // FIXME: can we make defined `1`?
+        Scalar::Bits { bits: b as u128, defined: 8 }
     }
 
     pub fn from_char(c: char) -> Self {
-        Scalar::Bytes(c as u128)
+        Scalar::Bits { bits: c as u128, defined: 32 }
     }
 
-    pub fn to_bytes(self) -> EvalResult<'tcx, u128> {
+    pub fn to_bits(self, size: Size) -> EvalResult<'tcx, u128> {
         match self {
-            Scalar::Bytes(b) => Ok(b),
+            Scalar::Bits { defined: 0, .. } => err!(ReadUndefBytes),
+            Scalar::Bits { bits, defined } if size.bits() <= defined as u64 => Ok(bits),
+            Scalar::Bits { .. } => err!(ReadUndefBytes),
             Scalar::Ptr(_) => err!(ReadPointerAsBytes),
-            Scalar::Undef => err!(ReadUndefBytes),
         }
     }
 
     pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
         match self {
-            Scalar::Bytes(_) => err!(ReadBytesAsPointer),
+            Scalar::Bits {..} => err!(ReadBytesAsPointer),
             Scalar::Ptr(p) => Ok(p),
-            Scalar::Undef => err!(ReadUndefBytes),
         }
     }
 
-    pub fn is_bytes(self) -> bool {
+    pub fn is_bits(self) -> bool {
         match self {
-            Scalar::Bytes(_) => true,
+            Scalar::Bits { .. } => true,
             _ => false,
         }
     }
@@ -236,46 +256,10 @@ impl<'tcx> Scalar {
         }
     }
 
-    pub fn is_undef(self) -> bool {
-        match self {
-            Scalar::Undef => true,
-            _ => false,
-        }
-    }
-
-    pub fn to_u128(self) -> EvalResult<'tcx, u128> {
-        self.to_bytes()
-    }
-
-    pub fn to_u64(self) -> EvalResult<'tcx, u64> {
-        self.to_bytes().map(|b| {
-            assert_eq!(b as u64 as u128, b);
-            b as u64
-        })
-    }
-
-    pub fn to_i32(self) -> EvalResult<'tcx, i32> {
-        self.to_bytes().map(|b| {
-            assert_eq!(b as i32 as u128, b);
-            b as i32
-        })
-    }
-
-    pub fn to_i128(self) -> EvalResult<'tcx, i128> {
-        self.to_bytes().map(|b| b as i128)
-    }
-
-    pub fn to_i64(self) -> EvalResult<'tcx, i64> {
-        self.to_bytes().map(|b| {
-            assert_eq!(b as i64 as u128, b);
-            b as i64
-        })
-    }
-
     pub fn to_bool(self) -> EvalResult<'tcx, bool> {
-        match self.to_bytes()? {
-            0 => Ok(false),
-            1 => Ok(true),
+        match self {
+            Scalar::Bits { bits: 0, defined: 8 } => Ok(false),
+            Scalar::Bits { bits: 1, defined: 8 } => Ok(true),
             _ => err!(InvalidBool),
         }
     }

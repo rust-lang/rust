@@ -32,11 +32,13 @@ pub fn primval_to_llvm(cx: &CodegenCx,
                        cv: Scalar,
                        layout: &layout::Scalar,
                        llty: Type) -> ValueRef {
-    let bits = if layout.is_bool() { 1 } else { layout.value.size(cx).bits() };
+    let bitsize = if layout.is_bool() { 1 } else { layout.value.size(cx).bits() };
     match cv {
-        Scalar::Undef => C_undef(Type::ix(cx, bits)),
-        Scalar::Bytes(b) => {
-            let llval = C_uint_big(Type::ix(cx, bits), b);
+        Scalar::Bits { defined, .. } if (defined as u64) < bitsize || defined == 0 => {
+            C_undef(Type::ix(cx, bitsize))
+        },
+        Scalar::Bits { bits, .. } => {
+            let llval = C_uint_big(Type::ix(cx, bitsize), bits);
             if layout.value == layout::Pointer {
                 unsafe { llvm::LLVMConstIntToPtr(llval, llty.to_ref()) }
             } else {

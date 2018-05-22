@@ -473,11 +473,24 @@ impl_stable_hash_for!(enum ::syntax::ast::Mutability {
     Mutable
 });
 
-impl_stable_hash_for!(enum mir::interpret::Scalar {
-    Bytes(b),
-    Ptr(p),
-    Undef
-});
+
+impl<'a> HashStable<StableHashingContext<'a>>
+for ::mir::interpret::Scalar {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        use mir::interpret::Scalar::*;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            Bits { bits, defined } => {
+                bits.hash_stable(hcx, hasher);
+                defined.hash_stable(hcx, hasher);
+            },
+            Ptr(ptr) => ptr.hash_stable(hcx, hasher),
+        }
+    }
+}
 
 impl_stable_hash_for!(struct ty::Const<'tcx> {
     ty,

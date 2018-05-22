@@ -79,11 +79,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
         }
 
-        // II: From now on, everything must be bytes, no pointers
-        let l = left.to_bytes()?;
-        let r = right.to_bytes()?;
-
         let left_layout = self.layout_of(left_ty)?;
+        let right_layout = self.layout_of(right_ty)?;
+
+        // II: From now on, everything must be bytes, no pointers
+        let l = left.to_bits(left_layout.size)?;
+        let r = right.to_bits(right_layout.size)?;
 
         // These ops can have an RHS with a different numeric type.
         if right_kind.is_int() && (bin_op == Shl || bin_op == Shr) {
@@ -110,7 +111,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 }
             };
             let truncated = self.truncate(result, left_ty)?;
-            return Ok((Scalar::Bytes(truncated), oflo));
+            return Ok((Scalar::Bits {
+                bits: truncated,
+                defined: size as u8,
+            }, oflo));
         }
 
         if left_kind != right_kind {
@@ -156,7 +160,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     Rem | Div => {
                         // int_min / -1
                         if r == -1 && l == (1 << (size - 1)) {
-                            return Ok((Scalar::Bytes(l), true));
+                            return Ok((Scalar::Bits { bits: l, defined: size as u8 }, true));
                         }
                     },
                     _ => {},
@@ -170,15 +174,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 }
                 let result = result as u128;
                 let truncated = self.truncate(result, left_ty)?;
-                return Ok((Scalar::Bytes(truncated), oflo));
+                return Ok((Scalar::Bits {
+                    bits: truncated,
+                    defined: size as u8,
+                }, oflo));
             }
         }
 
         if let ty::TyFloat(fty) = left_ty.sty {
             macro_rules! float_math {
-                ($ty:path) => {{
+                ($ty:path, $bitsize:expr) => {{
                     let l = <$ty>::from_bits(l);
                     let r = <$ty>::from_bits(r);
+                    let bitify = |res: ::rustc_apfloat::StatusAnd<$ty>| Scalar::Bits {
+                        bits: res.value.to_bits(),
+                        defined: $bitsize,
+                    };
                     let val = match bin_op {
                         Eq => Scalar::from_bool(l == r),
                         Ne => Scalar::from_bool(l != r),
@@ -186,21 +197,23 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         Le => Scalar::from_bool(l <= r),
                         Gt => Scalar::from_bool(l > r),
                         Ge => Scalar::from_bool(l >= r),
-                        Add => Scalar::Bytes((l + r).value.to_bits()),
-                        Sub => Scalar::Bytes((l - r).value.to_bits()),
-                        Mul => Scalar::Bytes((l * r).value.to_bits()),
-                        Div => Scalar::Bytes((l / r).value.to_bits()),
-                        Rem => Scalar::Bytes((l % r).value.to_bits()),
+                        Add => bitify(l + r),
+                        Sub => bitify(l - r),
+                        Mul => bitify(l * r),
+                        Div => bitify(l / r),
+                        Rem => bitify(l % r),
                         _ => bug!("invalid float op: `{:?}`", bin_op),
                     };
                     return Ok((val, false));
                 }};
             }
             match fty {
-                FloatTy::F32 => float_math!(Single),
-                FloatTy::F64 => float_math!(Double),
+                FloatTy::F32 => float_math!(Single, 32),
+                FloatTy::F64 => float_math!(Double, 64),
             }
         }
+
+        let bitsize = left_ty.scalar_size(self).expect("operator type must be scalar").bits() as u8;
 
         // only ints left
         let val = match bin_op {
@@ -212,9 +225,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Gt => Scalar::from_bool(l > r),
             Ge => Scalar::from_bool(l >= r),
 
-            BitOr => Scalar::Bytes(l | r),
-            BitAnd => Scalar::Bytes(l & r),
-            BitXor => Scalar::Bytes(l ^ r),
+            BitOr => Scalar::Bits { bits: l | r, defined: bitsize },
+            BitAnd => Scalar::Bits { bits: l & r, defined: bitsize },
+            BitXor => Scalar::Bits { bits: l ^ r, defined: bitsize },
 
             Add | Sub | Mul | Rem | Div => {
                 let op: fn(u128, u128) -> (u128, bool) = match bin_op {
@@ -229,7 +242,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 };
                 let (result, oflo) = op(l, r);
                 let truncated = self.truncate(result, left_ty)?;
-                return Ok((Scalar::Bytes(truncated), oflo || truncated != result));
+                return Ok((Scalar::Bits {
+                    bits: truncated,
+                    defined: bitsize,
+                }, oflo || truncated != result));
             }
 
             _ => {
@@ -258,8 +274,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         use rustc_apfloat::ieee::{Single, Double};
         use rustc_apfloat::Float;
 
-        let bytes = val.to_bytes()?;
-        let size = self.layout_of(ty)?.size.bits();
+        let size = self.layout_of(ty)?.size;
+        let bytes = val.to_bits(size)?;
+        let size = size.bits();
 
         let result_bytes = match (un_op, &ty.sty) {
 
@@ -274,6 +291,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             (Neg, _) => (-(bytes as i128)) as u128,
         };
 
-        Ok(Scalar::Bytes(self.truncate(result_bytes, ty)?))
+        Ok(Scalar::Bits {
+            bits: self.truncate(result_bytes, ty)?,
+            defined: size as u8,
+        })
     }
 }
