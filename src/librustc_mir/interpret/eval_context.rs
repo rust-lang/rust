@@ -76,7 +76,7 @@ pub struct Frame<'mir, 'tcx: 'mir> {
     /// `None` represents a local that is currently dead, while a live local
     /// can either directly contain `Scalar` or refer to some part of an `Allocation`.
     ///
-    /// Before being initialized, arguments are `Value::Scalar(Scalar::Undef)` and other locals are `None`.
+    /// Before being initialized, arguments are `Value::Scalar(Scalar::undef())` and other locals are `None`.
     pub locals: IndexVec<mir::Local, Option<Value>>,
 
     ////////////////////////////////////////////////////////////////////////////////
