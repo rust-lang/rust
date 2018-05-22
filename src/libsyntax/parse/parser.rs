@@ -5807,9 +5807,18 @@ impl<'a> Parser<'a> {
                     return Err(err);
                 }
             }
-            _ => return Err(self.span_fatal_help(self.span,
-                    &format!("expected `,`, or `}}`, found `{}`", self.this_token_to_string()),
-                    "struct fields should be separated by commas")),
+            _ => {
+                let sp = self.sess.codemap().next_point(self.prev_span);
+                let mut err = self.struct_span_err(sp, &format!("expected `,`, or `}}`, found `{}`",
+                                                                self.this_token_to_string()));
+                if self.token.is_ident() {
+                    // This is likely another field; emit the diagnostic and keep going
+                    err.span_suggestion(sp, "try adding a comma", ",".into());
+                    err.emit();
+                } else {
+                    return Err(err)
+                }
+            }
         }
         Ok(a_var)
     }
