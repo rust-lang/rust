@@ -34,7 +34,7 @@ fn main() {
     }
 
     // An incomplete set of values.
-    match x { //~ ERROR non-exhaustive patterns: `128u8...255u8` not covered
+    match x { //~ ERROR non-exhaustive patterns
         0 .. 128 => {}
     }
 
@@ -96,8 +96,17 @@ fn main() {
         -128 ..= 127 => {} // ok
     }
 
+    match 0i8 { //~ ERROR non-exhaustive patterns
+        -127 ..= 127 => {}
+    }
+
     match 0i16 {
         i16::MIN ..= i16::MAX => {} // ok
+    }
+
+    match 0i16 { //~ ERROR non-exhaustive patterns
+        i16::MIN ..= -1 => {}
+        1 ..= i16::MAX => {}
     }
 
     match 0i32 {
