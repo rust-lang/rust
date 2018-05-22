@@ -8,7 +8,7 @@ use rustc::hir::map::Node;
 use rustc::lint::{LateContext, Level, Lint, LintContext};
 use rustc::session::Session;
 use rustc::traits;
-use rustc::ty::{self, Ty, TyCtxt, layout::{self, IntegerExt}};
+use rustc::ty::{self, Ty, TyCtxt, layout::{self, IntegerExt}, subst::Kind};
 use rustc_errors::{Applicability, CodeSuggestion, Substitution, SubstitutionPart};
 use std::borrow::Cow;
 use std::env;
@@ -295,7 +295,7 @@ pub fn implements_trait<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     ty: Ty<'tcx>,
     trait_id: DefId,
-    ty_params: &[Ty<'tcx>],
+    ty_params: &[Kind<'tcx>],
 ) -> bool {
     let ty = cx.tcx.erase_regions(&ty);
     let obligation =

@@ -330,12 +330,12 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
                 print_expr(cx, base, indent + 1);
             }
         },
-        hir::ExprRepeat(ref val, body_id) => {
+        hir::ExprRepeat(ref val, ref anon_const) => {
             println!("{}Repeat", ind);
             println!("{}value:", ind);
             print_expr(cx, val, indent + 1);
             println!("{}repeat count:", ind);
-            print_expr(cx, &cx.tcx.hir.body(body_id).value, indent + 1);
+            print_expr(cx, &cx.tcx.hir.body(anon_const.body).value, indent + 1);
         },
     }
 }

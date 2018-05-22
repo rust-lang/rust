@@ -174,7 +174,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                             op.node,
                             cx,
                             ty,
-                            rty,
+                            rty.into(),
                             Add: BiAdd,
                             Sub: BiSub,
                             Mul: BiMul,
