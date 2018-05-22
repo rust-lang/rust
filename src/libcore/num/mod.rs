@@ -4316,6 +4316,44 @@ mod ptr_try_from_impls {
     rev!(try_from_both_bounded, usize, i128);
 }
 
+/// The error type returned when a checked float type conversion fails.
+#[unstable(feature = "try_from_float", issue = "0")]
+#[derive(Debug, Copy, Clone)]
+pub struct TryFromFloatError(());
+
+impl TryFromFloatError {
+    #[unstable(feature = "float_error_internals",
+               reason = "available through Error trait and this method should \
+                         not be exposed publicly",
+               issue = "0")]
+    #[doc(hidden)]
+    pub fn __description(&self) -> &str {
+        "lossy float type conversion attempted"
+    }
+}
+
+#[unstable(feature = "try_from_float", issue = "0")]
+impl fmt::Display for TryFromFloatError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        self.__description().fmt(fmt)
+    }
+}
+
+#[stable(feature = "try_from_float_impl", since = "1.28.0")]
+impl TryFrom<f64> for f32 {
+    type Error = TryFromFloatError;
+
+    #[inline]
+    fn try_from(x: f64) -> Result<f32, TryFromFloatError> {
+        let y = x as f32;
+        if y as f64 == x {
+            Ok(y)
+        } else {
+            Err(TryFromFloatError(()))
+        }
+    }
+}
+
 #[doc(hidden)]
 trait FromStrRadixHelper: PartialOrd + Copy {
     fn min_value() -> Self;
