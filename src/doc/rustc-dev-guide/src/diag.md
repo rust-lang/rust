@@ -33,7 +33,8 @@ warnings, errors, fatal errors, suggestions, etc.
 In general, there are two class of such methods: ones that emit an error
 directly and ones that allow finer control over what to emit. For example,
 [`span_err`][spanerr] emits the given error message at the given `Span`, but
-[`struct_span_err`][strspanerr] instead returns a [`DiagnosticBuilder`][diagbuild].
+[`struct_span_err`][strspanerr] instead returns a
+[`DiagnosticBuilder`][diagbuild].
 
 `DiagnosticBuilder` allows you to add related notes and suggestions to an error
 before emitting it by calling the [`emit`][emit] method. See the
@@ -172,5 +173,5 @@ For example,
                     NON_UPPER_CASE_GLOBALS);
 ```
 
-This defines the `nonstandard_style` group which turns on the listed lints. A user
-can turn on these lints by using `!#[warn(nonstandard_style)]`.
+This defines the `nonstandard_style` group which turns on the listed lints. A
+user can turn on these lints by using `!#[warn(nonstandard_style)]`.
