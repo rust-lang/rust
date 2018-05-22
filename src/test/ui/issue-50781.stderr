@@ -1,0 +1,11 @@
+error[E0038]: the trait `X` cannot be made into an object
+  --> $DIR/issue-50781.rs:21:6
+   |
+LL | impl Trait for dyn X {}
+   |      ^^^^^ the trait `X` cannot be made into an object
+   |
+   = note: method `foo` references the `Self` type in its arguments or return type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0038`.

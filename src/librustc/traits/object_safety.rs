@@ -288,6 +288,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return Some(MethodViolationCode::Generic);
         }
 
+        if self.predicates_of(method.def_id).predicates.into_iter()
+                // A trait object can't claim to live more than the concrete type,
+                // so outlives predicates will always hold.
+                .filter(|p| p.to_opt_type_outlives().is_none())
+                .collect::<Vec<_>>()
+                // Do a shallow visit so that `contains_illegal_self_type_reference`
+                // may apply it's custom visiting.
+                .visit_tys_shallow(|t| self.contains_illegal_self_type_reference(trait_def_id, t)) {
+            return Some(MethodViolationCode::ReferencesSelf);
+        }
+
         None
     }
 

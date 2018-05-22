@@ -136,6 +136,20 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn has_late_bound_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND)
     }
+
+    /// A visitor that does not recurse into types, works like `fn walk_shallow` in `Ty`.
+    fn visit_tys_shallow(&self, visit: impl FnMut(Ty<'tcx>) -> bool) -> bool {
+
+        pub struct Visitor<F>(F);
+
+        impl<'tcx, F: FnMut(Ty<'tcx>) -> bool> TypeVisitor<'tcx> for Visitor<F> {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+                self.0(ty)
+            }
+        }
+
+        self.visit_with(&mut Visitor(visit))
+    }
 }
 
 /// The TypeFolder trait defines the actual *folding*. There is a
