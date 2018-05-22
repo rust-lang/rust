@@ -1149,8 +1149,12 @@ impl<'tcx> TerminatorKind<'tcx> {
             Return | Resume | Abort | Unreachable | GeneratorDrop => vec![],
             Goto { .. } => vec!["".into()],
             SwitchInt { ref values, switch_ty, .. } => {
-                let size = ty::tls::with(|tcx| switch_ty.scalar_size(tcx));
-                let size = size.map_or(0, |size| size.bits()) as u8;
+                let size = ty::tls::with(|tcx| {
+                    let param_env = ty::ParamEnv::empty();
+                    let tcx = tcx.global_tcx();
+                    let switch_ty = tcx.lift(&switch_ty).unwrap();
+                    tcx.layout_of(param_env.and(switch_ty)).unwrap().size.bits() as u8
+                });
                 values.iter()
                       .map(|&u| {
                           let mut s = String::new();
