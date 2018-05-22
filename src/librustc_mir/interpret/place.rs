@@ -35,10 +35,10 @@ pub enum PlaceExtra {
 impl<'tcx> Place {
     /// Produces a Place that will error if attempted to be read from
     pub fn undef() -> Self {
-        Self::from_primval_ptr(Scalar::undef().into(), Align::from_bytes(1, 1).unwrap())
+        Self::from_scalar_ptr(Scalar::undef().into(), Align::from_bytes(1, 1).unwrap())
     }
 
-    pub fn from_primval_ptr(ptr: Scalar, align: Align) -> Self {
+    pub fn from_scalar_ptr(ptr: Scalar, align: Align) -> Self {
         Place::Ptr {
             ptr,
             align,
@@ -47,7 +47,7 @@ impl<'tcx> Place {
     }
 
     pub fn from_ptr(ptr: Pointer, align: Align) -> Self {
-        Self::from_primval_ptr(ptr.into(), align)
+        Self::from_scalar_ptr(ptr.into(), align)
     }
 
     pub fn to_ptr_align_extra(self) -> (Scalar, Align, PlaceExtra) {
@@ -310,7 +310,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     extra: PlaceExtra::Length(len),
                 }
             }
-            _ => Place::from_primval_ptr(self.into_ptr(val)?, layout.align),
+            _ => Place::from_scalar_ptr(self.into_ptr(val)?, layout.align),
         })
     }
 
@@ -388,7 +388,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let value = self.frame().get_local(local)?;
                 let ty = self.tcx.types.usize;
                 let n = self
-                    .value_to_primval(ValTy { value, ty })?
+                    .value_to_scalar(ValTy { value, ty })?
                     .to_bits(self.tcx.data_layout.pointer_size)?;
                 self.place_index(base, base_ty, n as u64)
             }

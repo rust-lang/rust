@@ -305,7 +305,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
 
                 let val = self.eval_operand(arg)?;
                 let prim = self.use_ecx(span, |this| {
-                    this.ecx.value_to_primval(ValTy { value: val.0, ty: val.1 })
+                    this.ecx.value_to_scalar(ValTy { value: val.0, ty: val.1 })
                 })?;
                 let val = self.use_ecx(span, |this| this.ecx.unary_op(op, prim, val.1))?;
                 Some((Value::Scalar(val), place_ty, span))
@@ -326,7 +326,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 }
 
                 let r = self.use_ecx(span, |this| {
-                    this.ecx.value_to_primval(ValTy { value: right.0, ty: right.1 })
+                    this.ecx.value_to_scalar(ValTy { value: right.0, ty: right.1 })
                 })?;
                 if op == BinOp::Shr || op == BinOp::Shl {
                     let left_ty = left.ty(self.mir, self.tcx);
@@ -353,7 +353,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 }
                 let left = self.eval_operand(left)?;
                 let l = self.use_ecx(span, |this| {
-                    this.ecx.value_to_primval(ValTy { value: left.0, ty: left.1 })
+                    this.ecx.value_to_scalar(ValTy { value: left.0, ty: left.1 })
                 })?;
                 trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
                 let (val, overflow) = self.use_ecx(span, |this| {

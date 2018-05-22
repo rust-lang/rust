@@ -38,7 +38,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 ..
             } => {
                 let discr_val = self.eval_operand(discr)?;
-                let discr_prim = self.value_to_primval(discr_val)?;
+                let discr_prim = self.value_to_scalar(discr_val)?;
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 let mut target_block = targets[targets.len() - 1];
@@ -67,7 +67,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let func = self.eval_operand(func)?;
                 let (fn_def, sig) = match func.ty.sty {
                     ty::TyFnPtr(sig) => {
-                        let fn_ptr = self.value_to_primval(func)?.to_ptr()?;
+                        let fn_ptr = self.value_to_scalar(func)?.to_ptr()?;
                         let instance = self.memory.get_fn(fn_ptr)?;
                         let instance_ty = instance.ty(*self.tcx);
                         match instance_ty.sty {
@@ -144,17 +144,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 target,
                 ..
             } => {
-                let cond_val = self.eval_operand_to_primval(cond)?.to_bool()?;
+                let cond_val = self.eval_operand_to_scalar(cond)?.to_bool()?;
                 if expected == cond_val {
                     self.goto_block(target);
                 } else {
                     use rustc::mir::interpret::EvalErrorKind::*;
                     return match *msg {
                         BoundsCheck { ref len, ref index } => {
-                            let len = self.eval_operand_to_primval(len)
+                            let len = self.eval_operand_to_scalar(len)
                                 .expect("can't eval len")
                                 .to_bits(self.memory().pointer_size())? as u64;
-                            let index = self.eval_operand_to_primval(index)
+                            let index = self.eval_operand_to_scalar(index)
                                 .expect("can't eval index")
                                 .to_bits(self.memory().pointer_size())? as u64;
                             err!(BoundsCheck { len, index })

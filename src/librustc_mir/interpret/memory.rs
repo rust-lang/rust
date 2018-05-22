@@ -707,7 +707,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub fn read_primval(&self, ptr: Pointer, ptr_align: Align, size: Size) -> EvalResult<'tcx, Scalar> {
+    pub fn read_scalar(&self, ptr: Pointer, ptr_align: Align, size: Size) -> EvalResult<'tcx, Scalar> {
         self.check_relocation_edges(ptr, size)?; // Make sure we don't read part of a pointer as a pointer
         let endianness = self.endianness();
         let bytes = self.get_bytes_unchecked(ptr, size, ptr_align.min(self.int_align(size)))?;
@@ -738,10 +738,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     pub fn read_ptr_sized(&self, ptr: Pointer, ptr_align: Align) -> EvalResult<'tcx, Scalar> {
-        self.read_primval(ptr, ptr_align, self.pointer_size())
+        self.read_scalar(ptr, ptr_align, self.pointer_size())
     }
 
-    pub fn write_primval(&mut self, ptr: Scalar, ptr_align: Align, val: Scalar, size: Size, signed: bool) -> EvalResult<'tcx> {
+    pub fn write_scalar(&mut self, ptr: Scalar, ptr_align: Align, val: Scalar, size: Size, signed: bool) -> EvalResult<'tcx> {
         let endianness = self.endianness();
 
         let bytes = match val {
@@ -787,7 +787,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     pub fn write_ptr_sized_unsigned(&mut self, ptr: Pointer, ptr_align: Align, val: Scalar) -> EvalResult<'tcx> {
         let ptr_size = self.pointer_size();
-        self.write_primval(ptr.into(), ptr_align, val, ptr_size, false)
+        self.write_scalar(ptr.into(), ptr_align, val, ptr_size, false)
     }
 
     fn int_align(&self, size: Size) -> Align {

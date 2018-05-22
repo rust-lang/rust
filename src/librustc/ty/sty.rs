@@ -1830,12 +1830,12 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn from_primval(
+    pub fn from_scalar(
         tcx: TyCtxt<'_, '_, 'tcx>,
         val: Scalar,
         ty: Ty<'tcx>,
     ) -> &'tcx Self {
-        Self::from_const_value(tcx, ConstValue::from_primval(val), ty)
+        Self::from_const_value(tcx, ConstValue::from_scalar(val), ty)
     }
 
     #[inline]
@@ -1847,12 +1847,12 @@ impl<'tcx> Const<'tcx> {
         let defined = ty.scalar_size(tcx).unwrap_or_else(|| {
             panic!("non-scalar type in from_bits: {:?}", ty)
         }).bits() as u8;
-        Self::from_primval(tcx, Scalar::Bits { bits, defined }, ty)
+        Self::from_scalar(tcx, Scalar::Bits { bits, defined }, ty)
     }
 
     #[inline]
     pub fn zero_sized(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
-        Self::from_primval(tcx, Scalar::undef(), ty)
+        Self::from_scalar(tcx, Scalar::undef(), ty)
     }
 
     #[inline]
@@ -1894,9 +1894,9 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn to_primval(&self) -> Option<Scalar> {
+    pub fn to_scalar(&self) -> Option<Scalar> {
         match self.val {
-            ConstVal::Value(val) => val.to_primval(),
+            ConstVal::Value(val) => val.to_scalar(),
             _ => None,
         }
     }

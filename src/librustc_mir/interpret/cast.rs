@@ -8,7 +8,7 @@ use rustc::mir::interpret::{Scalar, EvalResult, Pointer, PointerArithmetic};
 use rustc_apfloat::Float;
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
-    pub(super) fn cast_primval(
+    pub(super) fn cast_scalar(
         &self,
         val: Scalar,
         src_ty: Ty<'tcx>,

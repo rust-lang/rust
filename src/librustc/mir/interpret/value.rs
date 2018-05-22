@@ -37,12 +37,12 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     #[inline]
-    pub fn from_primval(val: Scalar) -> Self {
+    pub fn from_scalar(val: Scalar) -> Self {
         ConstValue::Scalar(val)
     }
 
     #[inline]
-    pub fn to_primval(&self) -> Option<Scalar> {
+    pub fn to_scalar(&self) -> Option<Scalar> {
         match *self {
             ConstValue::ByRef(..) => None,
             ConstValue::ScalarPair(..) => None,
@@ -52,12 +52,12 @@ impl<'tcx> ConstValue<'tcx> {
 
     #[inline]
     pub fn to_bits(&self, size: Size) -> Option<u128> {
-        self.to_primval()?.to_bits(size).ok()
+        self.to_scalar()?.to_bits(size).ok()
     }
 
     #[inline]
     pub fn to_ptr(&self) -> Option<Pointer> {
-        self.to_primval()?.to_ptr().ok()
+        self.to_scalar()?.to_ptr().ok()
     }
 }
 

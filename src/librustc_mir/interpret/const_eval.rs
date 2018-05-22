@@ -323,7 +323,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
                     bits: elem_align as u128,
                     defined: dest_layout.size.bits() as u8,
                 };
-                ecx.write_primval(dest, align_val, dest_layout.ty)?;
+                ecx.write_scalar(dest, align_val, dest_layout.ty)?;
             }
 
             "size_of" => {
@@ -333,7 +333,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
                     bits: size,
                     defined: dest_layout.size.bits() as u8,
                 };
-                ecx.write_primval(dest, size_val, dest_layout.ty)?;
+                ecx.write_scalar(dest, size_val, dest_layout.ty)?;
             }
 
             "type_id" => {
@@ -343,7 +343,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
                     bits: type_id,
                     defined: dest_layout.size.bits() as u8,
                 };
-                ecx.write_primval(dest, id_val, dest_layout.ty)?;
+                ecx.write_scalar(dest, id_val, dest_layout.ty)?;
             }
 
             name => return Err(ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", name)).into()),
@@ -488,7 +488,7 @@ pub fn const_variant_index<'a, 'tcx>(
         },
         Value::ByRef(ptr, align) => (ptr, align),
     };
-    let place = Place::from_primval_ptr(ptr, align);
+    let place = Place::from_scalar_ptr(ptr, align);
     ecx.read_discriminant_as_variant_index(place, ty)
 }
 

@@ -546,9 +546,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
 
             UnaryOp(un_op, ref operand) => {
-                let val = self.eval_operand_to_primval(operand)?;
+                let val = self.eval_operand_to_scalar(operand)?;
                 let val = self.unary_op(un_op, val, dest_ty)?;
-                self.write_primval(
+                self.write_scalar(
                     dest,
                     val,
                     dest_ty,
@@ -610,7 +610,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let ty = self.place_ty(place);
                 let (_, len) = src.elem_ty_and_len(ty, self.tcx.tcx);
                 let defined = self.memory.pointer_size().bits() as u8;
-                self.write_primval(
+                self.write_scalar(
                     dest,
                     Scalar::Bits {
                         bits: len as u128,
@@ -652,7 +652,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 assert!(!layout.is_unsized(),
                         "SizeOf nullary MIR operator called for unsized type");
                 let defined = self.memory.pointer_size().bits() as u8;
-                self.write_primval(
+                self.write_scalar(
                     dest,
                     Scalar::Bits {
                         bits: layout.size.bytes() as u128,
@@ -709,7 +709,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                                     .scalar_size(self.tcx.tcx)
                                                     .expect("can only cast variants to ints")
                                                     .bits() as u8;
-                                        return self.write_primval(
+                                        return self.write_scalar(
                                             dest,
                                             Scalar::Bits {
                                                 bits: discr_val,
@@ -722,8 +722,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                 layout::Variants::NicheFilling { .. } => {},
                             }
 
-                            let src_val = self.value_to_primval(src)?;
-                            let dest_val = self.cast_primval(src_val, src.ty, dest_ty)?;
+                            let src_val = self.value_to_scalar(src)?;
+                            let dest_val = self.cast_scalar(src_val, src.ty, dest_ty)?;
                             let valty = ValTy {
                                 value: Value::Scalar(dest_val),
                                 ty: dest_ty,
@@ -799,7 +799,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let place = self.eval_place(place)?;
                 let discr_val = self.read_discriminant_value(place, ty)?;
                 let defined = ty.scalar_size(self.tcx.tcx).expect("discriminant must be scalar").bits() as u8;
-                self.write_primval(dest, Scalar::Bits {
+                self.write_scalar(dest, Scalar::Bits {
                     bits: discr_val,
                     defined,
                 }, dest_ty)?;
@@ -820,12 +820,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
     }
 
-    pub(super) fn eval_operand_to_primval(
+    pub(super) fn eval_operand_to_scalar(
         &mut self,
         op: &mir::Operand<'tcx>,
     ) -> EvalResult<'tcx, Scalar> {
         let valty = self.eval_operand(op)?;
-        self.value_to_primval(valty)
+        self.value_to_scalar(valty)
     }
 
     pub(crate) fn operands_to_args(
@@ -923,7 +923,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
         let (discr_place, discr) = self.place_field(place, mir::Field::new(0), layout)?;
         trace!("discr place: {:?}, {:?}", discr_place, discr);
-        let raw_discr = self.value_to_primval(ValTy {
+        let raw_discr = self.value_to_scalar(ValTy {
             value: self.read_place(discr_place)?,
             ty: discr.ty
         })?;
@@ -1014,7 +1014,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let discr_val = (discr_val << amt) >> amt;
 
                 let (discr_dest, tag) = self.place_field(dest, mir::Field::new(0), layout)?;
-                self.write_primval(discr_dest, Scalar::Bits {
+                self.write_scalar(discr_dest, Scalar::Bits {
                     bits: discr_val,
                     defined: size as u8,
                 }, tag.ty)?;
@@ -1030,7 +1030,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                         self.place_field(dest, mir::Field::new(0), layout)?;
                     let niche_value = ((variant_index - niche_variants.start()) as u128)
                         .wrapping_add(niche_start);
-                    self.write_primval(niche_dest, Scalar::Bits {
+                    self.write_scalar(niche_dest, Scalar::Bits {
                         bits: niche_value,
                         defined: niche.size.bits() as u8,
                     }, niche.ty)?;
@@ -1116,20 +1116,20 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
     }
 
-    pub fn value_to_primval(
+    pub fn value_to_scalar(
         &self,
         ValTy { value, ty } : ValTy<'tcx>,
     ) -> EvalResult<'tcx, Scalar> {
         match self.follow_by_ref_value(value, ty)? {
             Value::ByRef { .. } => bug!("follow_by_ref_value can't result in `ByRef`"),
 
-            Value::Scalar(primval) => {
+            Value::Scalar(scalar) => {
                 // TODO: Do we really want insta-UB here?
-                self.ensure_valid_value(primval, ty)?;
-                Ok(primval)
+                self.ensure_valid_value(scalar, ty)?;
+                Ok(scalar)
             }
 
-            Value::ScalarPair(..) => bug!("value_to_primval can't work with fat pointers"),
+            Value::ScalarPair(..) => bug!("value_to_scalar can't work with fat pointers"),
         }
     }
 
@@ -1141,7 +1141,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         self.write_value(valty, dest)
     }
 
-    pub fn write_primval(
+    pub fn write_scalar(
         &mut self,
         dest: Place,
         val: Scalar,
@@ -1240,18 +1240,18 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             Value::ByRef(ptr, align) => {
                 self.memory.copy(ptr, align.min(layout.align), dest, dest_align.min(layout.align), layout.size, false)
             }
-            Value::Scalar(primval) => {
+            Value::Scalar(scalar) => {
                 let signed = match layout.abi {
                     layout::Abi::Scalar(ref scal) => match scal.value {
                         layout::Primitive::Int(_, signed) => signed,
                         _ => false,
                     },
-                    _ => match primval {
+                    _ => match scalar {
                         Scalar::Bits { defined: 0, .. } => false,
                         _ => bug!("write_value_to_ptr: invalid ByVal layout: {:#?}", layout),
                     }
                 };
-                self.memory.write_primval(dest, dest_align, primval, layout.size, signed)
+                self.memory.write_scalar(dest, dest_align, scalar, layout.size, signed)
             }
             Value::ScalarPair(a_val, b_val) => {
                 trace!("write_value_to_ptr valpair: {:#?}", layout);
@@ -1264,13 +1264,13 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let b_offset = a_size.abi_align(b.align(&self));
                 let b_ptr = dest.ptr_offset(b_offset, &self)?.into();
                 // TODO: What about signedess?
-                self.memory.write_primval(a_ptr, dest_align, a_val, a_size, false)?;
-                self.memory.write_primval(b_ptr, dest_align, b_val, b_size, false)
+                self.memory.write_scalar(a_ptr, dest_align, a_val, a_size, false)?;
+                self.memory.write_scalar(b_ptr, dest_align, b_val, b_size, false)
             }
         }
     }
 
-    pub fn ty_to_primval_kind(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, ScalarKind> {
+    pub fn ty_to_scalar_kind(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, ScalarKind> {
         use syntax::ast::FloatTy;
 
         let kind = match ty.sty {
@@ -1382,7 +1382,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                         .to_bits(ptr_size)?;
                     Ok(p.to_value_with_len(len as u64, self.tcx.tcx))
                 },
-                _ => bug!("unsized primval ptr read from {:?}", pointee_ty),
+                _ => bug!("unsized scalar ptr read from {:?}", pointee_ty),
             }
         }
     }
@@ -1395,10 +1395,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     ) -> EvalResult<'tcx> {
         match ty.sty {
             ty::TyBool => {
-                self.memory.read_primval(ptr, ptr_align, Size::from_bytes(1))?.to_bool()?;
+                self.memory.read_scalar(ptr, ptr_align, Size::from_bytes(1))?.to_bool()?;
             }
             ty::TyChar => {
-                let c = self.memory.read_primval(ptr, ptr_align, Size::from_bytes(4))?.to_bits(Size::from_bytes(4))? as u32;
+                let c = self.memory.read_scalar(ptr, ptr_align, Size::from_bytes(4))?.to_bits(Size::from_bytes(4))? as u32;
                 match ::std::char::from_u32(c) {
                     Some(..) => (),
                     None => return err!(InvalidChar(c as u128)),
@@ -1421,7 +1421,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
                 if let layout::Abi::Scalar(ref scalar) = self.layout_of(ty)?.abi {
                     let size = scalar.value.size(self);
-                    self.memory.read_primval(ptr, ptr_align, size)?;
+                    self.memory.read_scalar(ptr, ptr_align, size)?;
                 }
             }
 
@@ -1455,8 +1455,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
         match layout.abi {
             layout::Abi::Scalar(..) => {
-                let primval = self.memory.read_primval(ptr, ptr_align, layout.size)?;
-                Ok(Some(Value::Scalar(primval)))
+                let scalar = self.memory.read_scalar(ptr, ptr_align, layout.size)?;
+                Ok(Some(Value::Scalar(scalar)))
             }
             layout::Abi::ScalarPair(ref a, ref b) => {
                 let (a, b) = (&a.value, &b.value);
@@ -1464,8 +1464,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let a_ptr = ptr;
                 let b_offset = a_size.abi_align(b.align(self));
                 let b_ptr = ptr.offset(b_offset, self)?.into();
-                let a_val = self.memory.read_primval(a_ptr, ptr_align, a_size)?;
-                let b_val = self.memory.read_primval(b_ptr, ptr_align, b_size)?;
+                let a_val = self.memory.read_scalar(a_ptr, ptr_align, a_size)?;
+                let b_val = self.memory.read_scalar(b_ptr, ptr_align, b_size)?;
                 Ok(Some(Value::ScalarPair(a_val, b_val)))
             }
             _ => Ok(None),
@@ -1584,7 +1584,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     }
                     let (src_f_value, src_field) = match src {
                         Value::ByRef(ptr, align) => {
-                            let src_place = Place::from_primval_ptr(ptr, align);
+                            let src_place = Place::from_scalar_ptr(ptr, align);
                             let (src_f_place, src_field) =
                                 self.place_field(src_place, mir::Field::new(i), src_layout)?;
                             (self.read_place(src_f_place)?, src_field)

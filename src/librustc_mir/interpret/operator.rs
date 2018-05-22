@@ -16,8 +16,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         left: ValTy<'tcx>,
         right: ValTy<'tcx>,
     ) -> EvalResult<'tcx, (Scalar, bool)> {
-        let left_val = self.value_to_primval(left)?;
-        let right_val = self.value_to_primval(right)?;
+        let left_val = self.value_to_scalar(left)?;
+        let right_val = self.value_to_scalar(right)?;
         self.binary_op(op, left_val, left.ty, right_val, right.ty)
     }
 
@@ -51,7 +51,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, bool> {
         let (val, overflowed) = self.binop_with_overflow(op, left, right)?;
-        self.write_primval(dest, val, dest_ty)?;
+        self.write_scalar(dest, val, dest_ty)?;
         Ok(overflowed)
     }
 }
@@ -68,8 +68,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, (Scalar, bool)> {
         use rustc::mir::BinOp::*;
 
-        let left_kind = self.ty_to_primval_kind(left_ty)?;
-        let right_kind = self.ty_to_primval_kind(right_ty)?;
+        let left_kind = self.ty_to_scalar_kind(left_ty)?;
+        let right_kind = self.ty_to_scalar_kind(right_ty)?;
         trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})", bin_op, left, left_kind, right, right_kind);
 
         // I: Handle operations that support pointers

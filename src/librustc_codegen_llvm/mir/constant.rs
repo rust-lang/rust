@@ -28,7 +28,7 @@ use syntax::ast::Mutability;
 use super::super::callee;
 use super::FunctionCx;
 
-pub fn primval_to_llvm(cx: &CodegenCx,
+pub fn scalar_to_llvm(cx: &CodegenCx,
                        cv: Scalar,
                        layout: &layout::Scalar,
                        llty: Type) -> ValueRef {
@@ -96,7 +96,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
             layout.endian,
             &alloc.bytes[offset..(offset + pointer_size)],
         ).expect("const_alloc_to_llvm: could not read relocation pointer") as u64;
-        llvals.push(primval_to_llvm(
+        llvals.push(scalar_to_llvm(
             cx,
             Pointer { alloc_id, offset: Size::from_bytes(ptr_offset) }.into(),
             &layout::Scalar {
@@ -199,13 +199,13 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                         c,
                         constant.ty,
                     )?;
-                    if let Some(prim) = field.to_primval() {
+                    if let Some(prim) = field.to_scalar() {
                         let layout = bx.cx.layout_of(field_ty);
                         let scalar = match layout.abi {
                             layout::Abi::Scalar(ref x) => x,
                             _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
                         };
-                        Ok(primval_to_llvm(
+                        Ok(scalar_to_llvm(
                             bx.cx, prim, scalar,
                             layout.immediate_llvm_type(bx.cx),
                         ))
