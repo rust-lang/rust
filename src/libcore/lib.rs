@@ -119,6 +119,9 @@
 #![feature(powerpc_target_feature)]
 #![feature(mips_target_feature)]
 #![feature(aarch64_target_feature)]
+#![feature(const_slice_len)]
+#![feature(const_str_as_bytes)]
+#![feature(const_str_len)]
 
 #[prelude_import]
 #[allow(unused)]
