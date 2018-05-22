@@ -2861,6 +2861,15 @@ impl<'test> TestCx<'test> {
 
         let mut normalized = output.replace(&parent_dir_str, "$DIR");
 
+        // Paths into the libstd/libcore
+        let src_dir = self.config.src_base.parent().unwrap().parent().unwrap();
+        let src_dir_str = if json {
+            src_dir.display().to_string().replace("\\", "\\\\")
+        } else {
+            src_dir.display().to_string()
+        };
+        normalized = normalized.replace(&src_dir_str, "$SRC_DIR");
+
         if json {
             // escaped newlines in json strings should be readable
             // in the stderr files. There's no point int being correct,

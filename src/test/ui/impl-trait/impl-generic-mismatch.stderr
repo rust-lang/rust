@@ -34,7 +34,7 @@ error[E0643]: method `hash` has incompatible signature for trait
 LL |     fn hash(&self, hasher: &mut impl Hasher) {}
    |                                 ^^^^^^^^^^^ expected generic parameter, found `impl Trait`
    | 
-  ::: /home/oliver/Projects/rust/rust3/src/libcore/hash/mod.rs:185:13
+  ::: $SRC_DIR/libcore/hash/mod.rs:185:13
    |
 LL |     fn hash<H: Hasher>(&self, state: &mut H);
    |             - declaration in trait here
