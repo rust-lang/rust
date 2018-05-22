@@ -1698,9 +1698,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let mut error_reported = false;
         match kind {
             Reservation(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Unique))
-                | Reservation(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Mut { .. }))
-                | Write(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Unique))
-                | Write(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Mut { .. })) =>
+            | Reservation(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Mut { .. }))
+            | Write(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Unique))
+            | Write(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Mut { .. })) =>
             {
                 let is_local_mutation_allowed = match borrow_kind {
                     BorrowKind::Unique => LocalMutationIsAllowed::Yes,
