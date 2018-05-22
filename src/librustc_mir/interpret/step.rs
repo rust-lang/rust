@@ -79,9 +79,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 self.deallocate_local(old_val)?;
             }
 
-            // FIXME: is there some dynamic semantics we should attach to
-            // these? Or am I correct in thinking that the inerpreter
-            // is solely intended for borrowck'ed code?
+            // No dynamic semantics attached to `ReadForMatch`; MIR
+            // interpreter is solely intended for borrowck'ed code.
             ReadForMatch(..) => {}
 
             // Validity checks.
