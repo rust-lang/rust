@@ -1769,6 +1769,8 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             ty::TyChar => return Some(Size::from_bytes(4)),
             ty::TyInt(ity) => attr::IntType::SignedInt(ity),
             ty::TyUint(uty) => attr::IntType::UnsignedInt(uty),
+            ty::TyFloat(ast::FloatTy::F32) => return Some(Size::from_bytes(4)),
+            ty::TyFloat(ast::FloatTy::F64) => return Some(Size::from_bytes(8)),
             _ => return None,
         };
         use ty::layout::IntegerExt;
