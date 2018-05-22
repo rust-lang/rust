@@ -684,7 +684,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                  "cannot glob-import all possible crates".to_string()));
                 }
                 GlobImport { .. } if self.session.features_untracked().extern_absolute_paths => {
-                    self.lint_path_starts_with_module(directive.id, span);
+                    self.lint_path_starts_with_module(
+                        directive.root_id,
+                        directive.root_span,
+                    );
                 }
                 SingleImport { source, target, .. } => {
                     let crate_root = if source.name == keywords::Crate.name() &&
@@ -903,7 +906,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     return
                 }
                 warned = true;
-                this.lint_path_starts_with_module(directive.id, span);
+                this.lint_path_starts_with_module(
+                    directive.root_id,
+                    directive.root_span,
+                );
             });
         }
 

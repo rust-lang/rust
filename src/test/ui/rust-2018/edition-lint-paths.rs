@@ -33,8 +33,6 @@ pub mod foo {
     use {Bar as SomethingElse, main};
     //~^ ERROR absolute
     //~| WARN this was previously accepted
-    //~| ERROR absolute
-    //~| WARN this was previously accepted
 
     use crate::{Bar as SomethingElse2, main as another_main};
 
