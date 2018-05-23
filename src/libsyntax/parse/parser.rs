@@ -1715,8 +1715,11 @@ impl<'a> Parser<'a> {
         self.parse_path_segments(&mut segments, T::PATH_STYLE, true)?;
 
         let span = ty.span.to(self.prev_span);
-        let recovered =
-            base.to_recovered(Some(QSelf { ty, position: 0 }), ast::Path { segments, span });
+        let path_span = span.to(span); // use an empty path since `position` == 0
+        let recovered = base.to_recovered(
+            Some(QSelf { ty, path_span, position: 0 }),
+            ast::Path { segments, span },
+        );
 
         self.diagnostic()
             .struct_span_err(span, "missing angle brackets in associated item path")
@@ -1905,21 +1908,32 @@ impl<'a> Parser<'a> {
     /// `qualified_path = <type [as trait_ref]>::path`
     ///
     /// # Examples
+    /// `<T>::default`
     /// `<T as U>::a`
     /// `<T as U>::F::a<S>` (without disambiguator)
     /// `<T as U>::F::a::<S>` (with disambiguator)
     fn parse_qpath(&mut self, style: PathStyle) -> PResult<'a, (QSelf, ast::Path)> {
         let lo = self.prev_span;
         let ty = self.parse_ty()?;
-        let mut path = if self.eat_keyword(keywords::As) {
-            self.parse_path(PathStyle::Type)?
+
+        // `path` will contain the prefix of the path up to the `>`,
+        // if any (e.g., `U` in the `<T as U>::*` examples
+        // above). `path_span` has the span of that path, or an empty
+        // span in the case of something like `<T>::Bar`.
+        let (mut path, path_span);
+        if self.eat_keyword(keywords::As) {
+            let path_lo = self.span;
+            path = self.parse_path(PathStyle::Type)?;
+            path_span = path_lo.to(self.prev_span);
         } else {
-            ast::Path { segments: Vec::new(), span: syntax_pos::DUMMY_SP }
-        };
+            path = ast::Path { segments: Vec::new(), span: syntax_pos::DUMMY_SP };
+            path_span = self.span.to(self.span);
+        }
+
         self.expect(&token::Gt)?;
         self.expect(&token::ModSep)?;
 
-        let qself = QSelf { ty, position: path.segments.len() };
+        let qself = QSelf { ty, path_span, position: path.segments.len() };
         self.parse_path_segments(&mut path.segments, style, true)?;
 
         Ok((qself, ast::Path { segments: path.segments, span: lo.to(self.prev_span) }))

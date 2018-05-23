@@ -2222,7 +2222,7 @@ impl<'a> Resolver<'a> {
                     segments: use_tree.prefix.make_root().into_iter().collect(),
                     span: use_tree.span,
                 };
-                self.resolve_use_tree(item.id, use_tree, &path);
+                self.resolve_use_tree(item.id, use_tree.span, item.id, use_tree, &path);
             }
 
             ItemKind::ExternCrate(_) | ItemKind::MacroDef(..) | ItemKind::GlobalAsm(_) => {
@@ -2233,7 +2233,18 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn resolve_use_tree(&mut self, id: NodeId, use_tree: &ast::UseTree, prefix: &Path) {
+    /// For the most part, use trees are desugared into `ImportDirective` instances
+    /// when building the reduced graph (see `build_reduced_graph_for_use_tree`). But
+    /// there is one special case we handle here: an empty nested import like
+    /// `a::{b::{}}`, which desugares into...no import directives.
+    fn resolve_use_tree(
+        &mut self,
+        root_id: NodeId,
+        root_span: Span,
+        id: NodeId,
+        use_tree: &ast::UseTree,
+        prefix: &Path,
+    ) {
         match use_tree.kind {
             ast::UseTreeKind::Nested(ref items) => {
                 let path = Path {
@@ -2247,10 +2258,16 @@ impl<'a> Resolver<'a> {
 
                 if items.len() == 0 {
                     // Resolve prefix of an import with empty braces (issue #28388).
-                    self.smart_resolve_path(id, None, &path, PathSource::ImportPrefix);
+                    self.smart_resolve_path_with_crate_lint(
+                        id,
+                        None,
+                        &path,
+                        PathSource::ImportPrefix,
+                        CrateLint::UsePath { root_id, root_span },
+                    );
                 } else {
                     for &(ref tree, nested_id) in items {
-                        self.resolve_use_tree(nested_id, tree, &path);
+                        self.resolve_use_tree(root_id, root_span, nested_id, tree, &path);
                     }
                 }
             }
@@ -2354,7 +2371,8 @@ impl<'a> Resolver<'a> {
                 None,
                 &path,
                 trait_ref.path.span,
-                PathSource::Trait(AliasPossibility::No)
+                PathSource::Trait(AliasPossibility::No),
+                CrateLint::SimplePath(trait_ref.ref_id),
             ).base_def();
             if def != Def::Err {
                 new_id = Some(def.def_id());
@@ -2787,10 +2805,29 @@ impl<'a> Resolver<'a> {
                           path: &Path,
                           source: PathSource)
                           -> PathResolution {
+        self.smart_resolve_path_with_crate_lint(id, qself, path, source, CrateLint::SimplePath(id))
+    }
+
+    /// A variant of `smart_resolve_path` where you also specify extra
+    /// information about where the path came from; this extra info is
+    /// sometimes needed for the lint that recommends rewriting
+    /// absoluate paths to `crate`, so that it knows how to frame the
+    /// suggestion. If you are just resolving a path like `foo::bar`
+    /// that appears...somewhere, though, then you just want
+    /// `CrateLint::SimplePath`, which is what `smart_resolve_path`
+    /// already provides.
+    fn smart_resolve_path_with_crate_lint(
+        &mut self,
+        id: NodeId,
+        qself: Option<&QSelf>,
+        path: &Path,
+        source: PathSource,
+        crate_lint: CrateLint
+    ) -> PathResolution {
         let segments = &path.segments.iter()
             .map(|seg| seg.ident)
             .collect::<Vec<_>>();
-        self.smart_resolve_path_fragment(id, qself, segments, path.span, source)
+        self.smart_resolve_path_fragment(id, qself, segments, path.span, source, crate_lint)
     }
 
     fn smart_resolve_path_fragment(&mut self,
@@ -2798,7 +2835,8 @@ impl<'a> Resolver<'a> {
                                    qself: Option<&QSelf>,
                                    path: &[Ident],
                                    span: Span,
-                                   source: PathSource)
+                                   source: PathSource,
+                                   crate_lint: CrateLint)
                                    -> PathResolution {
         let ident_span = path.last().map_or(span, |ident| ident.span);
         let ns = source.namespace();
@@ -2999,9 +3037,16 @@ impl<'a> Resolver<'a> {
             err_path_resolution()
         };
 
-        let resolution = match self.resolve_qpath_anywhere(id, qself, path, ns, span,
-                                                           source.defer_to_typeck(),
-                                                           source.global_by_default()) {
+        let resolution = match self.resolve_qpath_anywhere(
+            id,
+            qself,
+            path,
+            ns,
+            span,
+            source.defer_to_typeck(),
+            source.global_by_default(),
+            crate_lint,
+        ) {
             Some(resolution) if resolution.unresolved_segments() == 0 => {
                 if is_expected(resolution.base_def()) || resolution.base_def() == Def::Err {
                     resolution
@@ -3102,14 +3147,15 @@ impl<'a> Resolver<'a> {
                               primary_ns: Namespace,
                               span: Span,
                               defer_to_typeck: bool,
-                              global_by_default: bool)
+                              global_by_default: bool,
+                              crate_lint: CrateLint)
                               -> Option<PathResolution> {
         let mut fin_res = None;
         // FIXME: can't resolve paths in macro namespace yet, macros are
         // processed by the little special hack below.
         for (i, ns) in [primary_ns, TypeNS, ValueNS, /*MacroNS*/].iter().cloned().enumerate() {
             if i == 0 || ns != primary_ns {
-                match self.resolve_qpath(id, qself, path, ns, span, global_by_default) {
+                match self.resolve_qpath(id, qself, path, ns, span, global_by_default, crate_lint) {
                     // If defer_to_typeck, then resolution > no resolution,
                     // otherwise full resolution > partial resolution > no resolution.
                     Some(res) if res.unresolved_segments() == 0 || defer_to_typeck =>
@@ -3137,19 +3183,60 @@ impl<'a> Resolver<'a> {
                      path: &[Ident],
                      ns: Namespace,
                      span: Span,
-                     global_by_default: bool)
+                     global_by_default: bool,
+                     crate_lint: CrateLint)
                      -> Option<PathResolution> {
+        debug!(
+            "resolve_qpath(id={:?}, qself={:?}, path={:?}, \
+             ns={:?}, span={:?}, global_by_default={:?})",
+            id,
+            qself,
+            path,
+            ns,
+            span,
+            global_by_default,
+        );
+
         if let Some(qself) = qself {
             if qself.position == 0 {
-                // FIXME: Create some fake resolution that can't possibly be a type.
+                // This is a case like `<T>::B`, where there is no
+                // trait to resolve.  In that case, we leave the `B`
+                // segment to be resolved by type-check.
                 return Some(PathResolution::with_unresolved_segments(
                     Def::Mod(DefId::local(CRATE_DEF_INDEX)), path.len()
                 ));
             }
-            // Make sure `A::B` in `<T as A>::B::C` is a trait item.
+
+            // Make sure `A::B` in `<T as A::B>::C` is a trait item.
+            //
+            // Currently, `path` names the full item (`A::B::C`, in
+            // our example).  so we extract the prefix of that that is
+            // the trait (the slice upto and including
+            // `qself.position`). And then we recursively resolve that,
+            // but with `qself` set to `None`.
+            //
+            // However, setting `qself` to none (but not changing the
+            // span) loses the information about where this path
+            // *actually* appears, so for the purposes of the crate
+            // lint we pass along information that this is the trait
+            // name from a fully qualified path, and this also
+            // contains the full span (the `CrateLint::QPathTrait`).
             let ns = if qself.position + 1 == path.len() { ns } else { TypeNS };
-            let res = self.smart_resolve_path_fragment(id, None, &path[..qself.position + 1],
-                                                       span, PathSource::TraitItem(ns));
+            let res = self.smart_resolve_path_fragment(
+                id,
+                None,
+                &path[..qself.position + 1],
+                span,
+                PathSource::TraitItem(ns),
+                CrateLint::QPathTrait {
+                    qpath_id: id,
+                    qpath_span: qself.path_span,
+                },
+            );
+
+            // The remaining segments (the `C` in our example) will
+            // have to be resolved by type-check, since that requires doing
+            // trait resolution.
             return Some(PathResolution::with_unresolved_segments(
                 res.base_def(), res.unresolved_segments() + path.len() - qself.position - 1
             ));
@@ -3160,7 +3247,7 @@ impl<'a> Resolver<'a> {
             Some(ns),
             true,
             span,
-            CrateLint::SimplePath(id),
+            crate_lint,
         ) {
             PathResult::NonModule(path_res) => path_res,
             PathResult::Module(module) if !module.is_normal() => {
@@ -3230,6 +3317,16 @@ impl<'a> Resolver<'a> {
         let mut module = None;
         let mut allow_super = true;
         let mut second_binding = None;
+
+        debug!(
+            "resolve_path(path={:?}, opt_ns={:?}, record_used={:?}, \
+             path_span={:?}, crate_lint={:?})",
+            path,
+            opt_ns,
+            record_used,
+            path_span,
+            crate_lint,
+        );
 
         for (i, &ident) in path.iter().enumerate() {
             debug!("resolve_path ident {} {:?}", i, ident);
@@ -3406,6 +3503,7 @@ impl<'a> Resolver<'a> {
             CrateLint::No => return,
             CrateLint::SimplePath(id) => (id, path_span),
             CrateLint::UsePath { root_id, root_span } => (root_id, root_span),
+            CrateLint::QPathTrait { qpath_id, qpath_span } => (qpath_id, qpath_span),
         };
 
         let first_name = match path.get(0) {
@@ -4093,8 +4191,14 @@ impl<'a> Resolver<'a> {
                 let segments = path.make_root().iter().chain(path.segments.iter())
                     .map(|seg| seg.ident)
                     .collect::<Vec<_>>();
-                let def = self.smart_resolve_path_fragment(id, None, &segments, path.span,
-                                                           PathSource::Visibility).base_def();
+                let def = self.smart_resolve_path_fragment(
+                    id,
+                    None,
+                    &segments,
+                    path.span,
+                    PathSource::Visibility,
+                    CrateLint::SimplePath(id),
+                ).base_def();
                 if def == Def::Err {
                     ty::Visibility::Public
                 } else {
@@ -4454,6 +4558,7 @@ pub enum MakeGlobMap {
     No,
 }
 
+#[derive(Copy, Clone, Debug)]
 enum CrateLint {
     /// Do not issue the lint
     No,
@@ -4467,6 +4572,11 @@ enum CrateLint {
     /// have nested things like `use a::{b, c}`, we care about the
     /// `use a` part.
     UsePath { root_id: NodeId, root_span: Span },
+
+    /// This is the "trait item" from a fully qualified path. For example,
+    /// we might be resolving  `X::Y::Z` from a path like `<T as X::Y>::Z`.
+    /// The `path_span` is the span of the to the trait itself (`X::Y`).
+    QPathTrait { qpath_id: NodeId, qpath_span: Span },
 }
 
 __build_diagnostic_array! { librustc_resolve, DIAGNOSTICS }

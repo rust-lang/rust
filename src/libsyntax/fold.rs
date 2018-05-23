@@ -390,9 +390,10 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             TyKind::Tup(tys) => TyKind::Tup(tys.move_map(|ty| fld.fold_ty(ty))),
             TyKind::Paren(ty) => TyKind::Paren(fld.fold_ty(ty)),
             TyKind::Path(qself, path) => {
-                let qself = qself.map(|QSelf { ty, position }| {
+                let qself = qself.map(|QSelf { ty, path_span, position }| {
                     QSelf {
                         ty: fld.fold_ty(ty),
+                        path_span: fld.new_span(path_span),
                         position,
                     }
                 });
@@ -1131,7 +1132,11 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
             }
             PatKind::Path(opt_qself, pth) => {
                 let opt_qself = opt_qself.map(|qself| {
-                    QSelf { ty: folder.fold_ty(qself.ty), position: qself.position }
+                    QSelf {
+                        ty: folder.fold_ty(qself.ty),
+                        path_span: folder.new_span(qself.path_span),
+                        position: qself.position,
+                    }
                 });
                 PatKind::Path(opt_qself, folder.fold_path(pth))
             }
@@ -1292,9 +1297,10 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                                 lim)
             }
             ExprKind::Path(qself, path) => {
-                let qself = qself.map(|QSelf { ty, position }| {
+                let qself = qself.map(|QSelf { ty, path_span, position }| {
                     QSelf {
                         ty: folder.fold_ty(ty),
+                        path_span: folder.new_span(path_span),
                         position,
                     }
                 });
