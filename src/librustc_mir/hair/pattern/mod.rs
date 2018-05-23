@@ -391,7 +391,12 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                 err.emit();
                                 PatternKind::Wild
                             },
-                            (RangeEnd::Included, Some(_)) => PatternKind::Range { lo, hi, end },
+                            (RangeEnd::Included, Some(Ordering::Equal)) => {
+                                PatternKind::Constant { value: lo }
+                            }
+                            (RangeEnd::Included, Some(Ordering::Less)) => {
+                                PatternKind::Range { lo, hi, end }
+                            }
                         }
                     }
                     _ => PatternKind::Wild
