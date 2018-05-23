@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::borrow_set::{BorrowSet, BorrowData};
+use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
 use borrow_check::{JustWrite, WriteAndRead};
 use borrow_check::{ShallowOrDeep, Deep, Shallow};
@@ -496,7 +496,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cg, 'cx, 'tcx, 'gcx> {
             (sd, place),
             &borrow_set.clone(),
             indices,
-            |this: &mut Self, borrow_index: BorrowIndex, borrow: &BorrowData<'tcx>| {
+            |this, borrow_index, borrow| {
                 match (rw, borrow.kind) {
                     // Obviously an activation is compatible with its own
                     // reservation (or even prior activating uses of same
