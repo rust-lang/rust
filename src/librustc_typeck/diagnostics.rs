@@ -4552,23 +4552,25 @@ but the type of the numeric value or binding could not be identified.
 The error happens on numeric literals:
 
 ```compile_fail,E0689
-2.0.recip();
+2.0.neg();
 ```
 
 and on numeric bindings without an identified concrete type:
 
 ```compile_fail,E0689
 let x = 2.0;
-x.recip();  // same error as above
+x.neg();  // same error as above
 ```
 
 Because of this, you must give the numeric literal or binding a type:
 
 ```
-let _ = 2.0_f32.recip();
+use std::ops::Neg;
+
+let _ = 2.0_f32.neg();
 let x: f32 = 2.0;
-let _ = x.recip();
-let _ = (2.0 as f32).recip();
+let _ = x.neg();
+let _ = (2.0 as f32).neg();
 ```
 "##,
 

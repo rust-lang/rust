@@ -508,51 +508,50 @@ assume_usize_width! {
 
 macro_rules! test_float {
     ($modname: ident, $fty: ty, $inf: expr, $neginf: expr, $nan: expr) => { mod $modname {
-        use core::num::Float;
         // FIXME(nagisa): these tests should test for sign of -0.0
         #[test]
         fn min() {
-            assert_eq!(0.0.min(0.0), 0.0);
-            assert_eq!((-0.0).min(-0.0), -0.0);
-            assert_eq!(9.0.min(9.0), 9.0);
-            assert_eq!((-9.0).min(0.0), -9.0);
-            assert_eq!(0.0.min(9.0), 0.0);
-            assert_eq!((-0.0).min(-9.0), -9.0);
-            assert_eq!($inf.min(9.0), 9.0);
-            assert_eq!(9.0.min($inf), 9.0);
-            assert_eq!($inf.min(-9.0), -9.0);
-            assert_eq!((-9.0).min($inf), -9.0);
-            assert_eq!($neginf.min(9.0), $neginf);
-            assert_eq!(9.0.min($neginf), $neginf);
-            assert_eq!($neginf.min(-9.0), $neginf);
-            assert_eq!((-9.0).min($neginf), $neginf);
-            assert_eq!($nan.min(9.0), 9.0);
-            assert_eq!($nan.min(-9.0), -9.0);
-            assert_eq!(9.0.min($nan), 9.0);
-            assert_eq!((-9.0).min($nan), -9.0);
-            assert!($nan.min($nan).is_nan());
+            assert_eq!((0.0 as $fty).min(0.0), 0.0);
+            assert_eq!((-0.0 as $fty).min(-0.0), -0.0);
+            assert_eq!((9.0 as $fty).min(9.0), 9.0);
+            assert_eq!((-9.0 as $fty).min(0.0), -9.0);
+            assert_eq!((0.0 as $fty).min(9.0), 0.0);
+            assert_eq!((-0.0 as $fty).min(-9.0), -9.0);
+            assert_eq!(($inf as $fty).min(9.0), 9.0);
+            assert_eq!((9.0 as $fty).min($inf), 9.0);
+            assert_eq!(($inf as $fty).min(-9.0), -9.0);
+            assert_eq!((-9.0 as $fty).min($inf), -9.0);
+            assert_eq!(($neginf as $fty).min(9.0), $neginf);
+            assert_eq!((9.0 as $fty).min($neginf), $neginf);
+            assert_eq!(($neginf as $fty).min(-9.0), $neginf);
+            assert_eq!((-9.0 as $fty).min($neginf), $neginf);
+            assert_eq!(($nan as $fty).min(9.0), 9.0);
+            assert_eq!(($nan as $fty).min(-9.0), -9.0);
+            assert_eq!((9.0 as $fty).min($nan), 9.0);
+            assert_eq!((-9.0 as $fty).min($nan), -9.0);
+            assert!(($nan as $fty).min($nan).is_nan());
         }
         #[test]
         fn max() {
-            assert_eq!(0.0.max(0.0), 0.0);
-            assert_eq!((-0.0).max(-0.0), -0.0);
-            assert_eq!(9.0.max(9.0), 9.0);
-            assert_eq!((-9.0).max(0.0), 0.0);
-            assert_eq!(0.0.max(9.0), 9.0);
-            assert_eq!((-0.0).max(-9.0), -0.0);
-            assert_eq!($inf.max(9.0), $inf);
-            assert_eq!(9.0.max($inf), $inf);
-            assert_eq!($inf.max(-9.0), $inf);
-            assert_eq!((-9.0).max($inf), $inf);
-            assert_eq!($neginf.max(9.0), 9.0);
-            assert_eq!(9.0.max($neginf), 9.0);
-            assert_eq!($neginf.max(-9.0), -9.0);
-            assert_eq!((-9.0).max($neginf), -9.0);
-            assert_eq!($nan.max(9.0), 9.0);
-            assert_eq!($nan.max(-9.0), -9.0);
-            assert_eq!(9.0.max($nan), 9.0);
-            assert_eq!((-9.0).max($nan), -9.0);
-            assert!($nan.max($nan).is_nan());
+            assert_eq!((0.0 as $fty).max(0.0), 0.0);
+            assert_eq!((-0.0 as $fty).max(-0.0), -0.0);
+            assert_eq!((9.0 as $fty).max(9.0), 9.0);
+            assert_eq!((-9.0 as $fty).max(0.0), 0.0);
+            assert_eq!((0.0 as $fty).max(9.0), 9.0);
+            assert_eq!((-0.0 as $fty).max(-9.0), -0.0);
+            assert_eq!(($inf as $fty).max(9.0), $inf);
+            assert_eq!((9.0 as $fty).max($inf), $inf);
+            assert_eq!(($inf as $fty).max(-9.0), $inf);
+            assert_eq!((-9.0 as $fty).max($inf), $inf);
+            assert_eq!(($neginf as $fty).max(9.0), 9.0);
+            assert_eq!((9.0 as $fty).max($neginf), 9.0);
+            assert_eq!(($neginf as $fty).max(-9.0), -9.0);
+            assert_eq!((-9.0 as $fty).max($neginf), -9.0);
+            assert_eq!(($nan as $fty).max(9.0), 9.0);
+            assert_eq!(($nan as $fty).max(-9.0), -9.0);
+            assert_eq!((9.0 as $fty).max($nan), 9.0);
+            assert_eq!((-9.0 as $fty).max($nan), -9.0);
+            assert!(($nan as $fty).max($nan).is_nan());
         }
     } }
 }
