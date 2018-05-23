@@ -109,6 +109,8 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         let id = tcx.hir.hir_to_node_id(hir_id);
         let lint = lint::builtin::UNUSED_EXTERN_CRATES;
         let msg = "unused extern crate";
-        tcx.lint_node(lint, id, span, msg);
+        tcx.struct_span_lint_node(lint, id, span, msg)
+            .span_suggestion_short(span, "remove it", "".to_string())
+            .emit();
     }
 }

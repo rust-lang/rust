@@ -1,0 +1,14 @@
+error: unused extern crate
+  --> $DIR/extern-crate-idiomatic-in-2018.rs:23:1
+   |
+LL | extern crate edition_lint_paths;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
+   |
+note: lint level defined here
+  --> $DIR/extern-crate-idiomatic-in-2018.rs:20:9
+   |
+LL | #![deny(unused_extern_crates)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
