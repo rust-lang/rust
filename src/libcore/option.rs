@@ -147,6 +147,7 @@
 
 use iter::{FromIterator, FusedIterator, TrustedLen};
 use {mem, ops};
+use mem::PinMut;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -266,6 +267,15 @@ impl<T> Option<T> {
         match *self {
             Some(ref mut x) => Some(x),
             None => None,
+        }
+    }
+
+    /// Converts from `Option<T>` to `Option<PinMut<'_, T>>`
+    #[inline]
+    #[unstable(feature = "pin", issue = "49150")]
+    pub fn as_pin_mut<'a>(self: PinMut<'a, Self>) -> Option<PinMut<'a, T>> {
+        unsafe {
+            PinMut::get_mut(self).as_mut().map(|x| PinMut::new_unchecked(x))
         }
     }
 
