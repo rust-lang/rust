@@ -285,14 +285,23 @@ mod tests {
     use simd::*;
     use stdsimd_test::simd_test;
 
-    #[simd_test(enable = "vsx")]
-    unsafe fn vec_xxpermdi_u62x2() {
-        let a: vector_unsigned_long = u64x2::new(0, 1).into_bits();
-        let b = u64x2::new(2, 3).into_bits();
+    macro_rules! test_vec_xxpermdi {
+        {$name:ident, $shorttype:ident, $longtype:ident, [$($a:expr),+], [$($b:expr),+], [$($c:expr),+], [$($d:expr),+]} => {
+            #[simd_test(enable = "vsx")]
+            unsafe fn $name() {
+                let a: $longtype = $shorttype::new($($a),+, $($b),+).into_bits();
+                let b = $shorttype::new($($c),+, $($d),+).into_bits();
 
-        assert_eq!(u64x2::new(0, 2), vec_xxpermdi(a, b, 0).into_bits());
-        assert_eq!(u64x2::new(1, 2), vec_xxpermdi(a, b, 1).into_bits());
-        assert_eq!(u64x2::new(0, 3), vec_xxpermdi(a, b, 2).into_bits());
-        assert_eq!(u64x2::new(1, 3), vec_xxpermdi(a, b, 3).into_bits());
+                assert_eq!($shorttype::new($($a),+, $($c),+), vec_xxpermdi(a, b, 0).into_bits());
+                assert_eq!($shorttype::new($($b),+, $($c),+), vec_xxpermdi(a, b, 1).into_bits());
+                assert_eq!($shorttype::new($($a),+, $($d),+), vec_xxpermdi(a, b, 2).into_bits());
+                assert_eq!($shorttype::new($($b),+, $($d),+), vec_xxpermdi(a, b, 3).into_bits());
+            }
+        }
     }
+
+    test_vec_xxpermdi!{test_vec_xxpermdi_u64x2, u64x2, vector_unsigned_long, [0], [1], [2], [3]}
+    test_vec_xxpermdi!{test_vec_xxpermdi_i64x2, i64x2, vector_signed_long, [0], [-1], [2], [-3]}
+    test_vec_xxpermdi!{test_vec_xxpermdi_m64x2, m64x2, vector_bool_long, [false], [true], [false], [true]}
+    test_vec_xxpermdi!{test_vec_xxpermdi_f64x2, f64x2, vector_double, [0.0], [1.0], [2.0], [3.0]}
 }
