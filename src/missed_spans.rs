@@ -46,6 +46,13 @@ impl<'a> FmtVisitor<'a> {
     // TODO these format_missing methods are ugly. Refactor and add unit tests
     // for the central whitespace stripping loop.
     pub fn format_missing(&mut self, end: BytePos) {
+        // HACK
+        let missing_snippet = self.snippet(mk_sp(self.last_pos, end));
+        if missing_snippet.trim() == ";" {
+            self.push_str(";");
+            self.last_pos = end;
+            return;
+        }
         self.format_missing_inner(end, |this, last_snippet, _| this.push_str(last_snippet))
     }
 
