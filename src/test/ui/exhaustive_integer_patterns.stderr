@@ -28,11 +28,11 @@ error: unreachable pattern
 LL |         -2..=20 => {} //~ ERROR unreachable pattern
    |         ^^^^^^^
 
-error[E0004]: non-exhaustive patterns: `-128i8...-6i8` and `122i8...127i8` not covered
+error[E0004]: non-exhaustive patterns: `-128i8...-8i8`, `-6i8`, `121i8...124i8` and 1 more not covered
   --> $DIR/exhaustive_integer_patterns.rs:50:11
    |
 LL |     match x { //~ ERROR non-exhaustive patterns
-   |           ^ patterns `-128i8...-6i8` and `122i8...127i8` not covered
+   |           ^ patterns `-128i8...-8i8`, `-6i8`, `121i8...124i8` and 1 more not covered
 
 error[E0004]: non-exhaustive patterns: `-128i8` not covered
   --> $DIR/exhaustive_integer_patterns.rs:99:11
