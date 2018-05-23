@@ -68,6 +68,11 @@ impl Edition {
             Edition::Edition2018 => false,
         }
     }
+
+    /// Is this at least 2018?
+    pub fn rust_2018(self) -> bool {
+        self >= Edition::Edition2018
+    }
 }
 
 impl FromStr for Edition {
