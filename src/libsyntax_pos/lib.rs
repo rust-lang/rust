@@ -779,11 +779,11 @@ pub struct FileMap {
     /// The end position of this source in the CodeMap
     pub end_pos: BytePos,
     /// Locations of lines beginnings in the source code
-    pub lines: Lock<Vec<BytePos>>,
+    pub lines: Vec<BytePos>,
     /// Locations of multi-byte characters in the source code
-    pub multibyte_chars: Lock<Vec<MultiByteChar>>,
+    pub multibyte_chars: Vec<MultiByteChar>,
     /// Width of characters that are not narrow in the source code
-    pub non_narrow_chars: Lock<Vec<NonNarrowChar>>,
+    pub non_narrow_chars: Vec<NonNarrowChar>,
     /// A hash of the filename, used for speeding up the incr. comp. hashing.
     pub name_hash: u128,
 }
@@ -797,7 +797,7 @@ impl Encodable for FileMap {
             s.emit_struct_field("start_pos", 4, |s| self.start_pos.encode(s))?;
             s.emit_struct_field("end_pos", 5, |s| self.end_pos.encode(s))?;
             s.emit_struct_field("lines", 6, |s| {
-                let lines = self.lines.borrow();
+                let lines = &self.lines[..];
                 // store the length
                 s.emit_u32(lines.len() as u32)?;
 
@@ -843,10 +843,10 @@ impl Encodable for FileMap {
                 Ok(())
             })?;
             s.emit_struct_field("multibyte_chars", 7, |s| {
-                (*self.multibyte_chars.borrow()).encode(s)
+                self.multibyte_chars.encode(s)
             })?;
             s.emit_struct_field("non_narrow_chars", 8, |s| {
-                (*self.non_narrow_chars.borrow()).encode(s)
+                self.non_narrow_chars.encode(s)
             })?;
             s.emit_struct_field("name_hash", 9, |s| {
                 self.name_hash.encode(s)
@@ -914,9 +914,9 @@ impl Decodable for FileMap {
                 src: None,
                 src_hash,
                 external_src: Lock::new(ExternalSource::AbsentOk),
-                lines: Lock::new(lines),
-                multibyte_chars: Lock::new(multibyte_chars),
-                non_narrow_chars: Lock::new(non_narrow_chars),
+                lines,
+                multibyte_chars,
+                non_narrow_chars,
                 name_hash,
             })
         })
@@ -949,6 +949,9 @@ impl FileMap {
         };
         let end_pos = start_pos.to_usize() + src.len();
 
+        let (lines, multibyte_chars, non_narrow_chars) =
+            Self::find_newlines_and_special_chars(&src[..], start_pos);
+
         FileMap {
             name,
             name_was_remapped,
@@ -959,34 +962,81 @@ impl FileMap {
             external_src: Lock::new(ExternalSource::Unneeded),
             start_pos,
             end_pos: Pos::from_usize(end_pos),
-            lines: Lock::new(Vec::new()),
-            multibyte_chars: Lock::new(Vec::new()),
-            non_narrow_chars: Lock::new(Vec::new()),
+            lines,
+            multibyte_chars,
+            non_narrow_chars,
             name_hash,
         }
     }
 
-    /// EFFECT: register a start-of-line offset in the
-    /// table of line-beginnings.
-    /// UNCHECKED INVARIANT: these offsets must be added in the right
-    /// order and must be in the right places; there is shared knowledge
-    /// about what ends a line between this file and parse.rs
-    /// WARNING: pos param here is the offset relative to start of CodeMap,
-    /// and CodeMap will append a newline when adding a filemap without a newline at the end,
-    /// so the safe way to call this is with value calculated as
-    /// filemap.start_pos + newline_offset_relative_to_the_start_of_filemap.
-    pub fn next_line(&self, pos: BytePos) {
-        // the new charpos must be > the last one (or it's the first one).
-        let mut lines = self.lines.borrow_mut();
-        let line_len = lines.len();
-        assert!(line_len == 0 || ((*lines)[line_len - 1] < pos));
-        lines.push(pos);
+    fn find_newlines_and_special_chars(src: &str, filemap_start_pos: BytePos)
+        -> (Vec<BytePos>, Vec<MultiByteChar>, Vec<NonNarrowChar>) {
+
+        let mut index = 0;
+        let mut lines = vec![filemap_start_pos];
+        let mut multibyte_chars = vec![];
+        let mut non_narrow_chars = vec![];
+
+        while index < src.len() {
+            let byte_pos = BytePos::from_usize(index) + filemap_start_pos;
+            let byte = src.as_bytes()[index];
+
+            if byte.is_ascii() {
+                match byte {
+                    b'\n' => {
+                        lines.push(byte_pos + BytePos(1));
+                    }
+                    b'\t' => {
+                        // Tabs will consume 4 columns.
+                        non_narrow_chars.push(NonNarrowChar::new(byte_pos, 4));
+                    }
+                    c => if c.is_ascii_control() {
+                        // Assume control characters are zero width.
+                        non_narrow_chars.push(NonNarrowChar::new(byte_pos, 0));
+                    }
+                }
+
+                index += 1;
+            } else {
+                let c = (&src[index..]).chars().next().unwrap();
+                let c_len = c.len_utf8();
+
+                if c_len > 1 {
+                    assert!(c_len >=2 && c_len <= 4);
+                    let mbc = MultiByteChar {
+                        pos: byte_pos,
+                        bytes: c_len,
+                    };
+                    multibyte_chars.push(mbc);
+                }
+
+                // Assume control characters are zero width.
+                // FIXME: How can we decide between `width` and `width_cjk`?
+                let c_width = unicode_width::UnicodeWidthChar::width(c).unwrap_or(0);
+
+                if c_width != 1 {
+                    non_narrow_chars.push(NonNarrowChar::new(byte_pos, c_width));
+                }
+
+                index += c_len;
+            }
+        }
+
+        // The loop above optimistically registers a new line *after* each of \n
+        // it encounters. If that point is already outside the filemap, remove
+        // it again.
+        if let Some(&last_line_start) = lines.last() {
+            if last_line_start == filemap_start_pos + BytePos::from_usize(src.len()) {
+                lines.pop();
+            }
+        }
+
+        (lines, multibyte_chars, non_narrow_chars)
     }
 
     /// Return the BytePos of the beginning of the current line.
     pub fn line_begin_pos(&self) -> BytePos {
-        let lines = self.lines.borrow();
-        match lines.last() {
+        match self.lines.last() {
             Some(&line_pos) => line_pos,
             None => self.start_pos,
         }
@@ -1040,8 +1090,7 @@ impl FileMap {
         }
 
         let begin = {
-            let lines = self.lines.borrow();
-            let line = if let Some(line) = lines.get(line_number) {
+            let line = if let Some(line) = self.lines.get(line_number) {
                 line
             } else {
                 return None;
@@ -1059,35 +1108,6 @@ impl FileMap {
         }
     }
 
-    pub fn record_multibyte_char(&self, pos: BytePos, bytes: usize) {
-        assert!(bytes >=2 && bytes <= 4);
-        let mbc = MultiByteChar {
-            pos,
-            bytes,
-        };
-        self.multibyte_chars.borrow_mut().push(mbc);
-    }
-
-    #[inline]
-    pub fn record_width(&self, pos: BytePos, ch: char) {
-        let width = match ch {
-            '\t' =>
-                // Tabs will consume 4 columns.
-                4,
-            '\n' =>
-                // Make newlines take one column so that displayed spans can point them.
-                1,
-            ch =>
-                // Assume control characters are zero width.
-                // FIXME: How can we decide between `width` and `width_cjk`?
-                unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0),
-        };
-        // Only record non-narrow characters.
-        if width != 1 {
-            self.non_narrow_chars.borrow_mut().push(NonNarrowChar::new(pos, width));
-        }
-    }
-
     pub fn is_real_file(&self) -> bool {
         self.name.is_real()
     }
@@ -1100,7 +1120,7 @@ impl FileMap {
         self.end_pos.0 - self.start_pos.0
     }
     pub fn count_lines(&self) -> usize {
-        self.lines.borrow().len()
+        self.lines.len()
     }
 
     /// Find the line containing the given position. The return value is the
@@ -1108,13 +1128,12 @@ impl FileMap {
     /// number. If the filemap is empty or the position is located before the
     /// first line, None is returned.
     pub fn lookup_line(&self, pos: BytePos) -> Option<usize> {
-        let lines = self.lines.borrow();
-        if lines.len() == 0 {
+        if self.lines.len() == 0 {
             return None;
         }
 
-        let line_index = lookup_line(&lines[..], pos);
-        assert!(line_index < lines.len() as isize);
+        let line_index = lookup_line(&self.lines[..], pos);
+        assert!(line_index < self.lines.len() as isize);
         if line_index >= 0 {
             Some(line_index as usize)
         } else {
@@ -1127,12 +1146,11 @@ impl FileMap {
             return (self.start_pos, self.end_pos);
         }
 
-        let lines = self.lines.borrow();
-        assert!(line_index < lines.len());
-        if line_index == (lines.len() - 1) {
-            (lines[line_index], self.end_pos)
+        assert!(line_index < self.lines.len());
+        if line_index == (self.lines.len() - 1) {
+            (self.lines[line_index], self.end_pos)
         } else {
-            (lines[line_index], lines[line_index + 1])
+            (self.lines[line_index], self.lines[line_index + 1])
         }
     }
 

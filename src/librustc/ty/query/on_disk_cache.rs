@@ -623,7 +623,7 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx, 'x> {
         let len = BytePos::decode(self)?;
 
         let file_lo = self.file_index_to_file(file_lo_index);
-        let lo = file_lo.lines.borrow()[line_lo - 1] + col_lo;
+        let lo = file_lo.lines[line_lo - 1] + col_lo;
         let hi = lo + len;
 
         let expn_info_tag = u8::decode(self)?;

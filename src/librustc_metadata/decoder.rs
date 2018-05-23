@@ -1138,9 +1138,9 @@ impl<'a, 'tcx> CrateMetadata {
                                       src_hash,
                                       start_pos,
                                       end_pos,
-                                      lines,
-                                      multibyte_chars,
-                                      non_narrow_chars,
+                                      mut lines,
+                                      mut multibyte_chars,
+                                      mut non_narrow_chars,
                                       name_hash,
                                       .. } = filemap_to_import;
 
@@ -1151,15 +1151,12 @@ impl<'a, 'tcx> CrateMetadata {
             // `CodeMap::new_imported_filemap()` will then translate those
             // coordinates to their new global frame of reference when the
             // offset of the FileMap is known.
-            let mut lines = lines.into_inner();
             for pos in &mut lines {
                 *pos = *pos - start_pos;
             }
-            let mut multibyte_chars = multibyte_chars.into_inner();
             for mbc in &mut multibyte_chars {
                 mbc.pos = mbc.pos - start_pos;
             }
-            let mut non_narrow_chars = non_narrow_chars.into_inner();
             for swc in &mut non_narrow_chars {
                 *swc = *swc - start_pos;
             }
