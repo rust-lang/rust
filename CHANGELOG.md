@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.204
+* Rustup to *rustc 1.28.0-nightly (71e87be38 2018-05-22)*
+
 ## 0.0.203
 * Rustup to *rustc 1.28.0-nightly (a3085756e 2018-05-19)*
 * clippy attributes are now of the form `clippy::cyclomatic_complexity` instead of `clippy(cyclomatic_complexity)`
