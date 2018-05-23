@@ -355,8 +355,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     );
     reg.register_late_lint_pass(box escape::Pass{too_large_for_stack: conf.too_large_for_stack});
     reg.register_early_lint_pass(box misc_early::MiscEarly);
-    reg.register_late_lint_pass(box array_indexing::ArrayIndexing);
-    reg.register_late_lint_pass(box panic_unimplemented::Pass);
+    reg.register_late_lint_pass(box array_indexing::IndexingSlicingPass);
+    reg.register_late_lint_pass(box panic::Pass);
     reg.register_late_lint_pass(box strings::StringLitAsBytes);
     reg.register_late_lint_pass(box derive::Derive);
     reg.register_late_lint_pass(box types::CharLitAsU8);
