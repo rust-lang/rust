@@ -568,7 +568,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
         tcx.check_stability(assoc_ty.def_id, Some(ref_id), binding.span);
 
-        if speculative {
+        if !speculative {
             dup_bindings.entry(assoc_ty.def_id)
                 .and_modify(|prev_span| {
                     let mut err = self.tcx().struct_span_lint_node(
