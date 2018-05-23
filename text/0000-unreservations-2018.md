@@ -44,7 +44,7 @@ The keywords to unreserve are:
 [drawbacks]: #drawbacks
 
 The only drawback is that we're not able to use each listed word as a keyword
-in the future, witld ofut a reservation in a new edition, if we realize that we
+in the future, without a reservation in a new edition, if we realize that we
 made a mistake.
 
 See the rationale for potential risks with each keyword.
