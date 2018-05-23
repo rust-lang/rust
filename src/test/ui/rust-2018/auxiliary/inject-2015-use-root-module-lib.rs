@@ -27,3 +27,13 @@ macro_rules! inject_me_at_the_root {
         }
     }
 }
+
+#[macro_export]
+macro_rules! print_me {
+    ($p:path) => {
+        {
+            use $p as V;
+            println!("{}", V);
+        }
+    }
+}

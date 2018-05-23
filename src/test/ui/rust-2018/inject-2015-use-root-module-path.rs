@@ -10,7 +10,6 @@
 
 // compile-flags:--edition 2018
 // aux-build:inject-2015-use-root-module-lib.rs
-// run-pass
 
 // The macro `inject_me_at_the_root!` generates some code that uses
 // `use x::y` to name the global item `x`. In Rust 2018, that should
@@ -25,5 +24,6 @@ inject_me_at_the_root!(x, y);
 fn main() {
     println!("Hello, world: {}", y());
 
-    print_me!(crate::x::y);
+    // This path comes out as an error, because `x::y` comes from Rust 2018
+    print_me!(x::y); //~ ERROR unresolved import `x::y`
 }
