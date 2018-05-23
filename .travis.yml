@@ -18,32 +18,34 @@ matrix:
     - env: DEPLOY=LINUX
     - env: CFG_RELEASE_CHANNEL=beta
     - os: osx
+    - env: INTEGRATION=bitflags
     - env: INTEGRATION=cargo
     - env: INTEGRATION=chalk
-    - env: INTEGRATION=rust-clippy
-    - env: INTEGRATION=mdbook
-    - env: INTEGRATION=stdsimd
     - env: INTEGRATION=crater
-    - env: INTEGRATION=futures-rs
-    - env: INTEGRATION=rand
-    - env: INTEGRATION=failure
     - env: INTEGRATION=error-chain
-    - env: INTEGRATION=bitflags
-    - env: INTEGRATION=log
+    - env: INTEGRATION=failure
+    - env: INTEGRATION=futures-rs
     - env: INTEGRATION=glob
-    - env: INTEGRATION=tempdir
+    - env: INTEGRATION=log
+    - env: INTEGRATION=mdbook
+    - env: INTEGRATION=rand
+    - env: INTEGRATION=rust-clippy
     - env: INTEGRATION=rust-semverver
+    - env: INTEGRATION=stdsimd
+    - env: INTEGRATION=tempdir
   allow_failures:
+    # Need to run an lalrpop build step before testing?
+    - env: INTEGRATION=chalk
     # PR sent
     - env: INTEGRATION=crater
     # #2721
     - env: INTEGRATION=rand
-    # dues to a test failure (fails before Rustfmt'ing too)
-    - env: INTEGRATION=stdsimd
-    # Need to run an lalrpop build step before testing?
-    - env: INTEGRATION=chalk
+    # Doesn't build
+    - env: INTEGRATION=rust-clippy
     # Doesn't build
     - env: INTEGRATION=rust-semverver
+    # dues to a test failure (fails before Rustfmt'ing too)
+    - env: INTEGRATION=stdsimd
 
 before_script:
 - |
