@@ -53,7 +53,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     // bool, char and integers.
     pub fn zero_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let literal = Literal::Value {
-            value: ty::Const::from_bits(self.hir.tcx(), 0, ty)
+            value: ty::Const::from_bits(self.hir.tcx(), 0, ty::ParamEnv::empty().and(ty))
         };
 
         self.literal_operand(span, ty, literal)

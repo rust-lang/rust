@@ -156,14 +156,16 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         };
 
         let clamp = |n| {
-            let size = ty.scalar_size(self.tcx).expect("const_eval_lit::clamp expects ints").bits();
-            trace!("clamp {} with size {} and amt {}", n, size, 128 - size);
-            let amt = 128 - size;
+            let gcx = self.tcx.global_tcx();
+            let param_ty = self.param_env.and(gcx.lift(&ty).unwrap());
+            let bit_width = gcx.layout_of(param_ty).unwrap().size.bits();
+            trace!("clamp {} with size {} and amt {}", n, bit_width, 128 - bit_width);
+            let amt = 128 - bit_width;
             let result = (n << amt) >> amt;
             trace!("clamp result: {}", result);
             ConstValue::Scalar(Scalar::Bits {
                 bits: result,
-                defined: size as u8,
+                defined: bit_width as u8,
             })
         };
 

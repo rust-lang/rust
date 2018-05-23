@@ -44,7 +44,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let mut target_block = targets[targets.len() - 1];
 
                 for (index, &const_int) in values.iter().enumerate() {
-                    if discr_prim.to_bits(discr_val.ty.scalar_size(self.tcx.tcx).expect("discr must be scalar"))? == const_int {
+                    if discr_prim.to_bits(self.layout_of(discr_val.ty).unwrap().size)? == const_int {
                         target_block = targets[index];
                         break;
                     }

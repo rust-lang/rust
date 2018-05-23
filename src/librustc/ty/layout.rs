@@ -1514,28 +1514,28 @@ impl<'a, 'tcx> LayoutOf for LayoutCx<'tcx, ty::maps::TyCtxtAt<'a, 'tcx, 'tcx>> {
 }
 
 // Helper (inherent) `layout_of` methods to avoid pushing `LayoutCx` to users.
-impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'tcx, 'empty> TyCtxt<'a, 'tcx, 'empty> {
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode.
     #[inline]
     pub fn layout_of(self, param_env_and_ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                      -> Result<TyLayout<'tcx>, LayoutError<'tcx>> {
         let cx = LayoutCx {
-            tcx: self,
+            tcx: self.global_tcx(),
             param_env: param_env_and_ty.param_env
         };
         cx.layout_of(param_env_and_ty.value)
     }
 }
 
-impl<'a, 'tcx> ty::maps::TyCtxtAt<'a, 'tcx, 'tcx> {
+impl<'a, 'tcx, 'empty> ty::maps::TyCtxtAt<'a, 'tcx, 'empty> {
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode.
     #[inline]
     pub fn layout_of(self, param_env_and_ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                      -> Result<TyLayout<'tcx>, LayoutError<'tcx>> {
         let cx = LayoutCx {
-            tcx: self,
+            tcx: self.global_tcx().at(self.span),
             param_env: param_env_and_ty.param_env
         };
         cx.layout_of(param_env_and_ty.value)

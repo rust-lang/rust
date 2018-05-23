@@ -1906,8 +1906,12 @@ pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Resul
         (Value::Scalar(Scalar::Bits { bits, defined: 64 }), &TyFloat(ast::FloatTy::F64)) =>
             write!(f, "{}f64", Double::from_bits(bits)),
         (Value::Scalar(Scalar::Bits { bits, .. }), &TyUint(ui)) => write!(f, "{:?}{}", bits, ui),
-        (Value::Scalar(Scalar::Bits { bits, defined }), &TyInt(i)) => {
-            let amt = 128 - defined;
+        (Value::Scalar(Scalar::Bits { bits, .. }), &TyInt(i)) => {
+            let bit_width = ty::tls::with(|tcx| {
+                 let ty = tcx.global_tcx().lift(&ty).unwrap();
+                 tcx.global_tcx().layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size.bits()
+            });
+            let amt = 128 - bit_width;
             write!(f, "{:?}{}", ((bits as i128) << amt) >> amt, i)
         },
         (Value::Scalar(Scalar::Bits { bits, defined: 32 }), &TyChar) =>

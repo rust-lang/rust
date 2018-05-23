@@ -705,10 +705,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                         let discr_val = def
                                             .discriminant_for_variant(*self.tcx, index)
                                             .val;
-                                        let defined = dest_ty
-                                                    .scalar_size(self.tcx.tcx)
-                                                    .expect("can only cast variants to ints")
-                                                    .bits() as u8;
+                                        let defined = self
+                                            .layout_of(dest_ty)
+                                            .unwrap()
+                                            .size
+                                            .bits() as u8;
                                         return self.write_scalar(
                                             dest,
                                             Scalar::Bits {
@@ -798,7 +799,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let ty = self.place_ty(place);
                 let place = self.eval_place(place)?;
                 let discr_val = self.read_discriminant_value(place, ty)?;
-                let defined = ty.scalar_size(self.tcx.tcx).expect("discriminant must be scalar").bits() as u8;
+                let defined = self.layout_of(ty).unwrap().size.bits() as u8;
                 self.write_scalar(dest, Scalar::Bits {
                     bits: discr_val,
                     defined,

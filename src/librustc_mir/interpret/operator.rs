@@ -213,7 +213,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
         }
 
-        let bitsize = left_ty.scalar_size(self).expect("operator type must be scalar").bits() as u8;
+        let bit_width = self.layout_of(left_ty).unwrap().size.bits() as u8;
 
         // only ints left
         let val = match bin_op {
@@ -225,9 +225,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Gt => Scalar::from_bool(l > r),
             Ge => Scalar::from_bool(l >= r),
 
-            BitOr => Scalar::Bits { bits: l | r, defined: bitsize },
-            BitAnd => Scalar::Bits { bits: l & r, defined: bitsize },
-            BitXor => Scalar::Bits { bits: l ^ r, defined: bitsize },
+            BitOr => Scalar::Bits { bits: l | r, defined: bit_width },
+            BitAnd => Scalar::Bits { bits: l & r, defined: bit_width },
+            BitXor => Scalar::Bits { bits: l ^ r, defined: bit_width },
 
             Add | Sub | Mul | Rem | Div => {
                 let op: fn(u128, u128) -> (u128, bool) = match bin_op {
@@ -244,7 +244,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let truncated = self.truncate(result, left_ty)?;
                 return Ok((Scalar::Bits {
                     bits: truncated,
-                    defined: bitsize,
+                    defined: bit_width,
                 }, oflo || truncated != result));
             }
 

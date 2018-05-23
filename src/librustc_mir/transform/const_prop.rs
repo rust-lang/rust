@@ -330,8 +330,13 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 })?;
                 if op == BinOp::Shr || op == BinOp::Shl {
                     let left_ty = left.ty(self.mir, self.tcx);
-                    let left_bits = left_ty.scalar_size(self.tcx).unwrap().bits();
-                    let right_size = right.1.scalar_size(self.tcx).unwrap();
+                    let left_bits = self
+                        .tcx
+                        .layout_of(self.param_env.and(left_ty))
+                        .unwrap()
+                        .size
+                        .bits();
+                    let right_size = self.tcx.layout_of(self.param_env.and(right.1)).unwrap().size;
                     if r.to_bits(right_size).ok().map_or(false, |b| b >= left_bits as u128) {
                         let scope_info = match self.mir.visibility_scope_info {
                             ClearCrossCrate::Set(ref data) => data,

@@ -635,7 +635,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             },
                         },
                     }.to_ref();
-                    let offset = mk_const(ty::Const::from_bits(cx.tcx, offset as u128, ty));
+                    let offset = mk_const(ty::Const::from_bits(
+                        cx.tcx,
+                        offset as u128,
+                        cx.param_env.and(ty),
+                    ));
                     match did {
                         Some(did) => {
                             // in case we are offsetting from a computed discriminant

@@ -359,7 +359,13 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     (PatternKind::Constant { value: lo },
                      PatternKind::Constant { value: hi }) => {
                         use std::cmp::Ordering;
-                        match (end, compare_const_vals(self.tcx, lo, hi, ty).unwrap()) {
+                        let cmp = compare_const_vals(
+                            self.tcx,
+                            lo,
+                            hi,
+                            self.param_env.and(ty),
+                        ).unwrap();
+                        match (end, cmp) {
                             (RangeEnd::Excluded, Ordering::Less) =>
                                 PatternKind::Range { lo, hi, end },
                             (RangeEnd::Excluded, _) => {
@@ -1036,7 +1042,7 @@ pub fn compare_const_vals<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     a: &'tcx ty::Const<'tcx>,
     b: &'tcx ty::Const<'tcx>,
-    ty: Ty<'tcx>,
+    ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Option<Ordering> {
     trace!("compare_const_vals: {:?}, {:?}", a, b);
 
@@ -1051,7 +1057,7 @@ pub fn compare_const_vals<'a, 'tcx>(
     let fallback = || from_bool(a == b);
 
     // Use the fallback if any type differs
-    if a.ty != b.ty || a.ty != ty {
+    if a.ty != b.ty || a.ty != ty.value {
         return fallback();
     }
 
@@ -1059,7 +1065,7 @@ pub fn compare_const_vals<'a, 'tcx>(
     // but triggers possibly bugs due to mismatching of arrays and slices
     if let (Some(a), Some(b)) = (a.to_bits(tcx, ty), b.to_bits(tcx, ty)) {
         use ::rustc_apfloat::Float;
-        return match ty.sty {
+        return match ty.value.sty {
             ty::TyFloat(ast::FloatTy::F32) => {
                 let l = ::rustc_apfloat::ieee::Single::from_bits(a);
                 let r = ::rustc_apfloat::ieee::Single::from_bits(b);
@@ -1071,15 +1077,15 @@ pub fn compare_const_vals<'a, 'tcx>(
                 l.partial_cmp(&r)
             },
             ty::TyInt(_) => {
-                let a = interpret::sign_extend(tcx, a, ty).expect("layout error for TyInt");
-                let b = interpret::sign_extend(tcx, b, ty).expect("layout error for TyInt");
+                let a = interpret::sign_extend(tcx, a, ty.value).expect("layout error for TyInt");
+                let b = interpret::sign_extend(tcx, b, ty.value).expect("layout error for TyInt");
                 Some((a as i128).cmp(&(b as i128)))
             },
             _ => Some(a.cmp(&b)),
         }
     }
 
-    if let ty::TyRef(_, rty, _) = ty.sty {
+    if let ty::TyRef(_, rty, _) = ty.value.sty {
         if let ty::TyStr = rty.sty {
             match (a.to_byval_value(), b.to_byval_value()) {
                 (
@@ -1177,9 +1183,10 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
                 Int::Signed(IntTy::I128)| Int::Unsigned(UintTy::U128) => n,
                 _ => bug!(),
             };
+            let defined = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size.bits() as u8;
             ConstValue::Scalar(Scalar::Bits {
                 bits: n,
-                defined: ty.scalar_size(tcx).unwrap().bits() as u8,
+                defined,
             })
         },
         LitKind::Float(n, fty) => {

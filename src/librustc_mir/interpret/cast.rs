@@ -49,7 +49,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let v = self.truncate(v, dest_ty)?;
                 Ok(Scalar::Bits {
                     bits: v,
-                    defined: dest_ty.scalar_size(self.tcx.tcx).unwrap().bits() as u8,
+                    defined: self.layout_of(dest_ty).unwrap().size.bits() as u8,
                 })
             }
 
