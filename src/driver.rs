@@ -6,16 +6,16 @@
 extern crate clippy_lints;
 extern crate getopts;
 extern crate rustc;
+extern crate rustc_codegen_utils;
 extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_plugin;
-extern crate rustc_codegen_utils;
 extern crate syntax;
 
-use rustc_driver::{driver, Compilation, CompilerCalls, RustcDefaultCalls};
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc::session::{config, Session};
 use rustc::session::config::{ErrorOutputType, Input};
+use rustc::session::{config, Session};
+use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_driver::{driver, Compilation, CompilerCalls, RustcDefaultCalls};
 use std::path::PathBuf;
 use std::process::Command;
 use syntax::ast;
@@ -43,8 +43,7 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
         descriptions: &rustc_errors::registry::Registry,
         output: ErrorOutputType,
     ) -> Compilation {
-        self.default
-            .early_callback(matches, sopts, cfg, descriptions, output)
+        self.default.early_callback(matches, sopts, cfg, descriptions, output)
     }
     fn no_input(
         &mut self,
@@ -55,8 +54,7 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
         ofile: &Option<PathBuf>,
         descriptions: &rustc_errors::registry::Registry,
     ) -> Option<(Input, Option<PathBuf>)> {
-        self.default
-            .no_input(matches, sopts, cfg, odir, ofile, descriptions)
+        self.default.no_input(matches, sopts, cfg, odir, ofile, descriptions)
     }
     fn late_callback(
         &mut self,
@@ -118,7 +116,7 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
                 }
                 old(state);
             });
-            
+
             control.compilation_done.stop = Compilation::Stop;
         }
 
@@ -185,15 +183,18 @@ pub fn main() {
     // this check ensures that dependencies are built but not linted and the final
     // crate is
     // linted but not built
-    let clippy_enabled = env::var("CLIPPY_TESTS")
-        .ok()
-        .map_or(false, |val| val == "true")
+    let clippy_enabled = env::var("CLIPPY_TESTS").ok().map_or(false, |val| val == "true")
         || orig_args.iter().any(|s| s == "--emit=dep-info,metadata");
 
     if clippy_enabled {
         args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);
         if let Ok(extra_args) = env::var("CLIPPY_ARGS") {
-            args.extend(extra_args.split("__CLIPPY_HACKERY__").filter(|s| !s.is_empty()).map(str::to_owned));
+            args.extend(
+                extra_args
+                    .split("__CLIPPY_HACKERY__")
+                    .filter(|s| !s.is_empty())
+                    .map(str::to_owned),
+            );
         }
     }
 

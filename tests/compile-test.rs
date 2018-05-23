@@ -3,8 +3,8 @@
 extern crate compiletest_rs as compiletest;
 extern crate test;
 
-use std::path::{Path, PathBuf};
 use std::env::{set_var, var};
+use std::path::{Path, PathBuf};
 
 fn clippy_driver_path() -> PathBuf {
     if let Some(path) = option_env!("CLIPPY_DRIVER_PATH") {
@@ -43,10 +43,7 @@ fn config(dir: &'static str, mode: &'static str) -> compiletest::Config {
         config.run_lib_path = rustc_lib_path();
         config.compile_lib_path = rustc_lib_path();
     }
-    config.target_rustcflags = Some(format!(
-        "-L {0} -L {0}/deps -Dwarnings",
-        host_libs().display()
-    ));
+    config.target_rustcflags = Some(format!("-L {0} -L {0}/deps -Dwarnings", host_libs().display()));
 
     config.mode = cfg_mode;
     config.build_base = if rustc_test_suite().is_some() {

@@ -429,9 +429,9 @@ pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'
             ty::TyRef(_, tam, _) => match tam.sty {
                 ty::TyStr => {
                     let alloc = tcx
-                        .interpret_interner
-                        .get_alloc(ptr.alloc_id)
-                        .unwrap();
+                        .alloc_map
+                        .lock()
+                        .unwrap_memory(ptr.alloc_id);
                     let offset = ptr.offset.bytes() as usize;
                     let n = n as usize;
                     String::from_utf8(alloc.bytes[offset..(offset + n)].to_owned()).ok().map(Constant::Str)

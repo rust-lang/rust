@@ -50,9 +50,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
         if let ItemEnum(ref def, _) = item.node {
             for var in &def.variants {
                 let variant = &var.node;
-                if let Some(body_id) = variant.disr_expr {
+                if let Some(ref anon_const) = variant.disr_expr {
                     let param_env = ty::ParamEnv::empty();
-                    let did = cx.tcx.hir.body_owner_def_id(body_id);
+                    let did = cx.tcx.hir.body_owner_def_id(anon_const.body);
                     let substs = Substs::identity_for_item(cx.tcx.global_tcx(), did);
                     let instance = ty::Instance::new(did, substs);
                     let cid = GlobalId {

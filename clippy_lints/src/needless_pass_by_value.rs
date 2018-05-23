@@ -175,7 +175,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                             cx,
                             cx.tcx.mk_imm_ref(&RegionKind::ReErased, ty),
                             t.def_id(),
-                            &t.skip_binder().input_types().skip(1).collect::<Vec<_>>(),
+                            &t.skip_binder()
+                                .input_types()
+                                .skip(1)
+                                .map(|ty| ty.into())
+                                .collect::<Vec<_>>(),
                         )
                     }),
                 )

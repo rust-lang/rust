@@ -120,11 +120,11 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&ExprMethodCall(ref l_path, _, ref l_args), &ExprMethodCall(ref r_path, _, ref r_args)) => {
                 !self.ignore_fn && l_path == r_path && self.eq_exprs(l_args, r_args)
             },
-            (&ExprRepeat(ref le, ll_id), &ExprRepeat(ref re, rl_id)) => {
-                let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(ll_id));
-                let ll = celcx.expr(&self.cx.tcx.hir.body(ll_id).value);
-                let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(rl_id));
-                let rl = celcx.expr(&self.cx.tcx.hir.body(rl_id).value);
+            (&ExprRepeat(ref le, ref ll_id), &ExprRepeat(ref re, ref rl_id)) => {
+                let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(ll_id.body));
+                let ll = celcx.expr(&self.cx.tcx.hir.body(ll_id.body).value);
+                let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(rl_id.body));
+                let rl = celcx.expr(&self.cx.tcx.hir.body(rl_id.body).value);
 
                 self.eq_expr(le, re) && ll == rl
             },
@@ -234,16 +234,16 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     fn eq_ty(&mut self, left: &Ty, right: &Ty) -> bool {
         match (&left.node, &right.node) {
             (&TySlice(ref l_vec), &TySlice(ref r_vec)) => self.eq_ty(l_vec, r_vec),
-            (&TyArray(ref lt, ll_id), &TyArray(ref rt, rl_id)) => {
+            (&TyArray(ref lt, ref ll_id), &TyArray(ref rt, ref rl_id)) => {
                 let full_table = self.tables;
 
-                let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(ll_id));
-                self.tables = self.cx.tcx.body_tables(ll_id);
-                let ll = celcx.expr(&self.cx.tcx.hir.body(ll_id).value);
+                let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(ll_id.body));
+                self.tables = self.cx.tcx.body_tables(ll_id.body);
+                let ll = celcx.expr(&self.cx.tcx.hir.body(ll_id.body).value);
 
-                let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(rl_id));
-                self.tables = self.cx.tcx.body_tables(rl_id);
-                let rl = celcx.expr(&self.cx.tcx.hir.body(rl_id).value);
+                let mut celcx = constant_context(self.cx, self.cx.tcx.body_tables(rl_id.body));
+                self.tables = self.cx.tcx.body_tables(rl_id.body);
+                let rl = celcx.expr(&self.cx.tcx.hir.body(rl_id.body).value);
 
                 let eq_ty = self.eq_ty(lt, rt);
                 self.tables = full_table;
@@ -474,13 +474,13 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_name(&path.name);
                 self.hash_exprs(args);
             },
-            ExprRepeat(ref e, l_id) => {
+            ExprRepeat(ref e, ref l_id) => {
                 let c: fn(_, _) -> _ = ExprRepeat;
                 c.hash(&mut self.s);
                 self.hash_expr(e);
                 let full_table = self.tables;
-                self.tables = self.cx.tcx.body_tables(l_id);
-                self.hash_expr(&self.cx.tcx.hir.body(l_id).value);
+                self.tables = self.cx.tcx.body_tables(l_id.body);
+                self.hash_expr(&self.cx.tcx.hir.body(l_id.body).value);
                 self.tables = full_table;
             },
             ExprRet(ref e) => {

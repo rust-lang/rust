@@ -495,13 +495,13 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr) {
     // *arg impls PartialEq<other>
     if !arg_ty
         .builtin_deref(true)
-        .map_or(false, |tam| implements_trait(cx, tam.ty, partial_eq_trait_id, &[other_ty]))
+        .map_or(false, |tam| implements_trait(cx, tam.ty, partial_eq_trait_id, &[other_ty.into()]))
         // arg impls PartialEq<*other>
         && !other_ty
         .builtin_deref(true)
-        .map_or(false, |tam| implements_trait(cx, arg_ty, partial_eq_trait_id, &[tam.ty]))
+        .map_or(false, |tam| implements_trait(cx, arg_ty, partial_eq_trait_id, &[tam.ty.into()]))
         // arg impls PartialEq<other>
-        && !implements_trait(cx, arg_ty, partial_eq_trait_id, &[other_ty])
+        && !implements_trait(cx, arg_ty, partial_eq_trait_id, &[other_ty.into()])
     {
         return;
     }
