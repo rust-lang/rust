@@ -470,20 +470,21 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             ]
         }
         ty::TyInt(_) if exhaustive_integer_patterns => {
-            let size = cx.tcx.layout_of(ty::ParamEnv::reveal_all().and(pcx.ty))
+            // FIXME(49937): refactor these bit manipulations into interpret.
+            let bits = cx.tcx.layout_of(ty::ParamEnv::reveal_all().and(pcx.ty))
                              .unwrap().size.bits() as u128;
-            let min = (1u128 << (size - 1)).wrapping_neg();
-            let max = (1u128 << (size - 1)).wrapping_sub(1);
+            let min = 1u128 << (bits - 1);
+            let max = (1u128 << (bits - 1)) - 1;
             value_constructors = true;
             vec![ConstantRange(ty::Const::from_bits(cx.tcx, min as u128, pcx.ty),
                                ty::Const::from_bits(cx.tcx, max as u128, pcx.ty),
                                RangeEnd::Included)]
         }
         ty::TyUint(_) if exhaustive_integer_patterns => {
-            let size = cx.tcx.layout_of(ty::ParamEnv::reveal_all().and(pcx.ty))
+            // FIXME(49937): refactor these bit manipulations into interpret.
+            let bits = cx.tcx.layout_of(ty::ParamEnv::reveal_all().and(pcx.ty))
                              .unwrap().size.bits() as u32;
-            let shift = 1u128.overflowing_shl(size);
-            let max = shift.0.wrapping_sub(1 + (shift.1 as u128));
+            let max = (!0u128).wrapping_shr(128 - bits);
             value_constructors = true;
             vec![ConstantRange(ty::Const::from_bits(cx.tcx, 0u128, pcx.ty),
                                ty::Const::from_bits(cx.tcx, max as u128, pcx.ty),
@@ -603,8 +604,12 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
 }
 
 /// An inclusive interval, used for precise integer exhaustiveness checking.
-/// `Interval`s always store a contiguous range of integers. That means that
-/// signed integers are offset (see `offset_sign`) by their minimum value.
+/// `Interval`s always store a contiguous range of integers. This means that
+/// signed values are encoded by offsetting them such that `0` represents the
+/// minimum value for the integer, regardless of sign.
+/// For example, the range `-128...127` is encoded as `0...255`.
+/// This makes comparisons and arithmetic on interval endpoints much more
+/// straightforward. See `offset_sign` for the conversion technique.
 struct Interval<'tcx> {
     pub range: RangeInclusive<u128>,
     pub ty: Ty<'tcx>,
@@ -661,10 +666,11 @@ impl<'tcx> Interval<'tcx> {
         let (lo, hi) = range.into_inner();
         match ty.sty {
             ty::TyInt(_) => {
-                let size = tcx.layout_of(ty::ParamEnv::reveal_all().and(ty))
+                // FIXME(49937): refactor these bit manipulations into interpret.
+                let bits = tcx.layout_of(ty::ParamEnv::reveal_all().and(ty))
                                  .unwrap().size.bits() as u128;
-                let min = (1u128 << (size - 1)).wrapping_neg();
-                let shift = 1u128.overflowing_shl(size as u32);
+                let min = 1u128 << (bits - 1);
+                let shift = 1u128.overflowing_shl(bits as u32);
                 let mask = shift.0.wrapping_sub(1 + (shift.1 as u128));
                 if encode {
                     let offset = |x: u128| x.wrapping_sub(min) & mask;
