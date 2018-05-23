@@ -15,6 +15,7 @@
 extern crate macros;
 
 // @has pub_use_extern_macros/macro.bar.html
+// @!has pub_use_extern_macros/index.html 'pub use macros::bar;'
 pub use macros::bar;
 
 // @has pub_use_extern_macros/macro.baz.html
