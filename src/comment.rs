@@ -409,7 +409,7 @@ fn rewrite_comment_inner(
 
             continue;
         } else {
-            inside_code_block = line.starts_with("```rust");
+            inside_code_block = line.starts_with("```");
 
             if result == opener {
                 let force_leading_whitespace = opener == "/* " && count_newlines(orig) == 0;
