@@ -13,18 +13,14 @@
 
 use schema;
 
-use rustc::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex};
+use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
-use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
-use rustc::session::{Session, CrateDisambiguator};
-use rustc_target::spec::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FxHashMap, NodeMap};
 
 use rustc_data_structures::sync::{Lrc, RwLock, Lock};
-use syntax::{ast, attr};
-use syntax::edition::Edition;
+use syntax::ast;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos;
@@ -69,7 +65,6 @@ pub struct CrateMetadata {
     pub cnum: CrateNum,
     pub dependencies: Lock<Vec<CrateNum>>,
     pub codemap_import_info: RwLock<Vec<ImportedFileMap>>,
-    pub attribute_cache: Lock<[Vec<Option<Lrc<[ast::Attribute]>>>; 2]>,
 
     pub root: schema::CrateRoot,
 
@@ -175,68 +170,5 @@ impl CStore {
 
     pub(super) fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> {
         self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
-    }
-}
-
-impl CrateMetadata {
-    pub fn name(&self) -> Symbol {
-        self.root.name
-    }
-    pub fn hash(&self) -> Svh {
-        self.root.hash
-    }
-    pub fn disambiguator(&self) -> CrateDisambiguator {
-        self.root.disambiguator
-    }
-
-    pub fn needs_allocator(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "needs_allocator")
-    }
-
-    pub fn has_global_allocator(&self) -> bool {
-        self.root.has_global_allocator.clone()
-    }
-
-    pub fn has_default_lib_allocator(&self) -> bool {
-        self.root.has_default_lib_allocator.clone()
-    }
-
-    pub fn is_panic_runtime(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "panic_runtime")
-    }
-
-    pub fn needs_panic_runtime(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "needs_panic_runtime")
-    }
-
-    pub fn is_compiler_builtins(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "compiler_builtins")
-    }
-
-    pub fn is_sanitizer_runtime(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "sanitizer_runtime")
-    }
-
-    pub fn is_profiler_runtime(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "profiler_runtime")
-    }
-
-    pub fn is_no_builtins(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "no_builtins")
-    }
-
-    pub fn panic_strategy(&self) -> PanicStrategy {
-        self.root.panic_strategy.clone()
-    }
-
-    pub fn edition(&self) -> Edition {
-        self.root.edition
     }
 }

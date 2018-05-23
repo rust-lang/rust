@@ -170,17 +170,17 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 
     dylib_dependency_formats => { Lrc::new(cdata.get_dylib_dependency_formats()) }
-    is_panic_runtime => { cdata.is_panic_runtime(tcx.sess) }
-    is_compiler_builtins => { cdata.is_compiler_builtins(tcx.sess) }
-    has_global_allocator => { cdata.has_global_allocator() }
-    is_sanitizer_runtime => { cdata.is_sanitizer_runtime(tcx.sess) }
-    is_profiler_runtime => { cdata.is_profiler_runtime(tcx.sess) }
-    panic_strategy => { cdata.panic_strategy() }
+    is_panic_runtime => { cdata.root.panic_runtime }
+    is_compiler_builtins => { cdata.root.compiler_builtins }
+    has_global_allocator => { cdata.root.has_global_allocator }
+    is_sanitizer_runtime => { cdata.root.sanitizer_runtime }
+    is_profiler_runtime => { cdata.root.profiler_runtime }
+    panic_strategy => { cdata.root.panic_strategy }
     extern_crate => {
         let r = Lrc::new(*cdata.extern_crate.lock());
         r
     }
-    is_no_builtins => { cdata.is_no_builtins(tcx.sess) }
+    is_no_builtins => { cdata.root.no_builtins }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
     reachable_non_generics => {
         let reachable_non_generics = tcx
@@ -209,9 +209,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             DefId { krate: def_id.krate, index }
         })
     }
-    crate_disambiguator => { cdata.disambiguator() }
-    crate_hash => { cdata.hash() }
-    original_crate_name => { cdata.name() }
+    crate_disambiguator => { cdata.root.disambiguator }
+    crate_hash => { cdata.root.hash }
+    original_crate_name => { cdata.root.name }
 
     extra_filename => { cdata.root.extra_filename.clone() }
 
@@ -457,17 +457,17 @@ impl CrateStore for cstore::CStore {
 
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator
     {
-        self.get_crate_data(cnum).disambiguator()
+        self.get_crate_data(cnum).root.disambiguator
     }
 
     fn crate_hash_untracked(&self, cnum: CrateNum) -> hir::svh::Svh
     {
-        self.get_crate_data(cnum).hash()
+        self.get_crate_data(cnum).root.hash
     }
 
     fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition
     {
-        self.get_crate_data(cnum).edition()
+        self.get_crate_data(cnum).root.edition
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the
@@ -519,7 +519,7 @@ impl CrateStore for cstore::CStore {
         } else if data.name == "proc_macro" &&
                   self.get_crate_data(id.krate).item_name(id.index) == "quote" {
             let ext = SyntaxExtension::ProcMacro(Box::new(::proc_macro::__internal::Quoter),
-                                                 data.edition());
+                                                 data.root.edition);
             return LoadedMacro::ProcMacro(Lrc::new(ext));
         }
 
