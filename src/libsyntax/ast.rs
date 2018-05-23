@@ -33,6 +33,8 @@ use std::fmt;
 use rustc_data_structures::sync::Lrc;
 use std::u32;
 
+pub use rustc_target::abi::FloatTy;
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Label {
     pub ident: Ident,
@@ -1516,41 +1518,6 @@ impl fmt::Debug for UintTy {
 impl fmt::Display for UintTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.ty_to_string())
-    }
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy,
-         PartialOrd, Ord)]
-pub enum FloatTy {
-    F32,
-    F64,
-}
-
-impl fmt::Debug for FloatTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self, f)
-    }
-}
-
-impl fmt::Display for FloatTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.ty_to_string())
-    }
-}
-
-impl FloatTy {
-    pub fn ty_to_string(&self) -> &'static str {
-        match *self {
-            FloatTy::F32 => "f32",
-            FloatTy::F64 => "f64",
-        }
-    }
-
-    pub fn bit_width(&self) -> usize {
-        match *self {
-            FloatTy::F32 => 32,
-            FloatTy::F64 => 64,
-        }
     }
 }
 

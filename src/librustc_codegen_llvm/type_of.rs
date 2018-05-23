@@ -15,6 +15,7 @@ use rustc::hir;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
 use rustc_target::spec::PanicStrategy;
+use rustc_target::abi::FloatTy;
 use mono_item::DefPathBasedNames;
 use type_::Type;
 
@@ -324,8 +325,8 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                                scalar: &layout::Scalar, offset: Size) -> Type {
         match scalar.value {
             layout::Int(i, _) => Type::from_integer(cx, i),
-            layout::F32 => Type::f32(cx),
-            layout::F64 => Type::f64(cx),
+            layout::Float(FloatTy::F32) => Type::f32(cx),
+            layout::Float(FloatTy::F64) => Type::f64(cx),
             layout::Pointer => {
                 // If we know the alignment, pick something better than i8.
                 let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset) {

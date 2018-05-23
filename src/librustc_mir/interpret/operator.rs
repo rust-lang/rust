@@ -68,8 +68,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, (Scalar, bool)> {
         use rustc::mir::BinOp::*;
 
-        let left_kind = self.ty_to_scalar_kind(left_ty)?;
-        let right_kind = self.ty_to_scalar_kind(right_ty)?;
+        let left_kind = self.ty_to_primitive(left_ty)?;
+        let right_kind = self.ty_to_primitive(right_ty)?;
         trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})", bin_op, left, left_kind, right, right_kind);
 
         // I: Handle operations that support pointers

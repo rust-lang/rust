@@ -14,7 +14,7 @@ use rustc::middle::const_val::FrameInfo;
 use syntax::codemap::{self, Span};
 use syntax::ast::Mutability;
 use rustc::mir::interpret::{
-    GlobalId, Value, Scalar, ScalarKind,
+    GlobalId, Value, Scalar,
     EvalError, EvalResult, EvalErrorKind, Pointer, ConstValue,
 };
 use std::mem;
@@ -230,13 +230,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
         let ptr = self.memory.allocate_bytes(s.as_bytes());
-        Ok(Value::ScalarPair(
-            Scalar::Ptr(ptr),
-            Scalar::Bits {
-                bits: s.len() as u128,
-                defined: self.tcx.data_layout.pointer_size.bits() as u8,
-            },
-        ))
+        Ok(Scalar::Ptr(ptr).to_value_with_len(s.len() as u64, self.tcx.tcx))
     }
 
     pub fn const_value_to_value(
@@ -1271,72 +1265,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
     }
 
-    pub fn ty_to_scalar_kind(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, ScalarKind> {
-        use syntax::ast::FloatTy;
-
-        let kind = match ty.sty {
-            ty::TyBool => ScalarKind::Bool,
-            ty::TyChar => ScalarKind::Char,
-
-            ty::TyInt(int_ty) => {
-                use syntax::ast::IntTy::*;
-                let size = match int_ty {
-                    I8 => Size::from_bytes(1),
-                    I16 => Size::from_bytes(2),
-                    I32 => Size::from_bytes(4),
-                    I64 => Size::from_bytes(8),
-                    I128 => Size::from_bytes(16),
-                    Isize => self.memory.pointer_size(),
-                };
-                ScalarKind::from_int_size(size)
-            }
-
-            ty::TyUint(uint_ty) => {
-                use syntax::ast::UintTy::*;
-                let size = match uint_ty {
-                    U8 => Size::from_bytes(1),
-                    U16 => Size::from_bytes(2),
-                    U32 => Size::from_bytes(4),
-                    U64 => Size::from_bytes(8),
-                    U128 => Size::from_bytes(16),
-                    Usize => self.memory.pointer_size(),
-                };
-                ScalarKind::from_uint_size(size)
-            }
-
-            ty::TyFloat(FloatTy::F32) => ScalarKind::F32,
-            ty::TyFloat(FloatTy::F64) => ScalarKind::F64,
-
-            ty::TyFnPtr(_) => ScalarKind::FnPtr,
-
-            ty::TyRef(_, ty, _) |
-            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) if self.type_is_sized(ty) => {
-                ScalarKind::Ptr
-            }
-
-            ty::TyAdt(def, _) if def.is_box() => ScalarKind::Ptr,
-
-            ty::TyAdt(..) => {
-                match self.layout_of(ty)?.abi {
-                    layout::Abi::Scalar(ref scalar) => {
-                        use rustc::ty::layout::Primitive::*;
-                        match scalar.value {
-                            Int(i, false) => ScalarKind::from_uint_size(i.size()),
-                            Int(i, true) => ScalarKind::from_int_size(i.size()),
-                            F32 => ScalarKind::F32,
-                            F64 => ScalarKind::F64,
-                            Pointer => ScalarKind::Ptr,
-                        }
-                    }
-
-                    _ => return err!(TypeNotPrimitive(ty)),
-                }
-            }
-
-            _ => return err!(TypeNotPrimitive(ty)),
-        };
-
-        Ok(kind)
+    pub fn ty_to_primitive(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, layout::Primitive> {
+        match self.layout_of(ty)?.abi {
+            layout::Abi::Scalar(ref scalar) => Ok(scalar.value),
+            _ => err!(TypeNotPrimitive(ty)),
+        }
     }
 
     fn ensure_valid_value(&self, val: Scalar, ty: Ty<'tcx>) -> EvalResult<'tcx> {

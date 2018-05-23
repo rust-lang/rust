@@ -55,8 +55,7 @@ fn classify_arg<'a, Ty, C>(cx: C, arg: &ArgType<'a, Ty>)
                 match scalar.value {
                     abi::Int(..) |
                     abi::Pointer => Class::Int,
-                    abi::F32 |
-                    abi::F64 => Class::Sse
+                    abi::Float(_) => Class::Sse
                 }
             }
 

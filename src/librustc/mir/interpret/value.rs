@@ -202,16 +202,6 @@ pub enum Scalar {
     Ptr(Pointer),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum ScalarKind {
-    I8, I16, I32, I64, I128,
-    U8, U16, U32, U64, U128,
-    F32, F64,
-    Ptr, FnPtr,
-    Bool,
-    Char,
-}
-
 impl<'tcx> Scalar {
     pub fn undef() -> Self {
         Scalar::Bits { bits: 0, defined: 0 }
@@ -261,62 +251,6 @@ impl<'tcx> Scalar {
             Scalar::Bits { bits: 0, defined: 8 } => Ok(false),
             Scalar::Bits { bits: 1, defined: 8 } => Ok(true),
             _ => err!(InvalidBool),
-        }
-    }
-}
-
-impl ScalarKind {
-    pub fn is_int(self) -> bool {
-        use self::ScalarKind::*;
-        match self {
-            I8 | I16 | I32 | I64 | I128 | U8 | U16 | U32 | U64 | U128 => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_signed_int(self) -> bool {
-        use self::ScalarKind::*;
-        match self {
-            I8 | I16 | I32 | I64 | I128 => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_float(self) -> bool {
-        use self::ScalarKind::*;
-        match self {
-            F32 | F64 => true,
-            _ => false,
-        }
-    }
-
-    pub fn from_uint_size(size: Size) -> Self {
-        match size.bytes() {
-            1 => ScalarKind::U8,
-            2 => ScalarKind::U16,
-            4 => ScalarKind::U32,
-            8 => ScalarKind::U64,
-            16 => ScalarKind::U128,
-            _ => bug!("can't make uint with size {}", size.bytes()),
-        }
-    }
-
-    pub fn from_int_size(size: Size) -> Self {
-        match size.bytes() {
-            1 => ScalarKind::I8,
-            2 => ScalarKind::I16,
-            4 => ScalarKind::I32,
-            8 => ScalarKind::I64,
-            16 => ScalarKind::I128,
-            _ => bug!("can't make int with size {}", size.bytes()),
-        }
-    }
-
-    pub fn is_ptr(self) -> bool {
-        use self::ScalarKind::*;
-        match self {
-            Ptr | FnPtr => true,
-            _ => false,
         }
     }
 }

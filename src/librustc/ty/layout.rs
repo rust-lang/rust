@@ -11,7 +11,7 @@
 use session::{self, DataTypeKind};
 use ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions};
 
-use syntax::ast::{self, FloatTy, IntTy, UintTy};
+use syntax::ast::{self, IntTy, UintTy};
 use syntax::attr;
 use syntax_pos::DUMMY_SP;
 
@@ -130,8 +130,8 @@ impl PrimitiveExt for Primitive {
     fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
-            F32 => tcx.types.f32,
-            F64 => tcx.types.f64,
+            Float(FloatTy::F32) => tcx.types.f32,
+            Float(FloatTy::F64) => tcx.types.f64,
             Pointer => tcx.mk_mut_ptr(tcx.mk_nil()),
         }
     }
@@ -488,8 +488,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             ty::TyUint(ity) => {
                 scalar(Int(Integer::from_attr(dl, attr::UnsignedInt(ity)), false))
             }
-            ty::TyFloat(FloatTy::F32) => scalar(F32),
-            ty::TyFloat(FloatTy::F64) => scalar(F64),
+            ty::TyFloat(fty) => scalar(Float(fty)),
             ty::TyFnPtr(_) => {
                 let mut ptr = scalar_unit(Pointer);
                 ptr.valid_range = 1..=*ptr.valid_range.end();
@@ -1908,8 +1907,7 @@ impl_stable_hash_for!(enum ::ty::layout::Integer {
 
 impl_stable_hash_for!(enum ::ty::layout::Primitive {
     Int(integer, signed),
-    F32,
-    F64,
+    Float(fty),
     Pointer
 });
 

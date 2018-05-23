@@ -256,8 +256,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                 let kind = match scalar.value {
                     abi::Int(..) |
                     abi::Pointer => RegKind::Integer,
-                    abi::F32 |
-                    abi::F64 => RegKind::Float
+                    abi::Float(_) => RegKind::Float,
                 };
                 Some(Reg {
                     kind,

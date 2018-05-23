@@ -10,7 +10,7 @@ mod value;
 
 pub use self::error::{EvalError, EvalResult, EvalErrorKind, AssertMessage};
 
-pub use self::value::{Scalar, ScalarKind, Value, ConstValue};
+pub use self::value::{Scalar, Value, ConstValue};
 
 use std::fmt;
 use mir;
