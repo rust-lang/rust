@@ -97,6 +97,10 @@ fn main() {
 
     // #1092
     chain!(input, a:take!(max_size), || []);
+
+    // #2727
+    foo!("bar")
+;
 }
 
 impl X {
