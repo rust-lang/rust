@@ -37,6 +37,7 @@ mod renumber;
 mod subtype_constraint_generation;
 crate mod type_check;
 mod universal_regions;
+mod invalidation;
 
 use self::facts::AllFacts;
 use self::region_infer::RegionInferenceContext;
@@ -129,6 +130,14 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         location_table,
         &mir,
         borrow_set,
+    );
+    invalidation::generate_invalidates(
+        infcx,
+        &mut all_facts,
+        location_table,
+        &mir,
+        def_id,
+        borrow_set
     );
 
     // Dump facts if requested.
