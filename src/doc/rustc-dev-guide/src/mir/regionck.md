@@ -35,7 +35,7 @@ The MIR-based region analysis consists of two major functions:
   - More details to come, though the [NLL RFC] also includes fairly thorough
     (and hopefully readable) coverage.
 
-[fvb]: appendix-background.html#free-vs-bound
+[fvb]: appendix/background.html#free-vs-bound
 [NLL RFC]: http://rust-lang.github.io/rfcs/2094-nll.html
 
 ## Universal regions
@@ -131,7 +131,7 @@ the type of `foo`   the type `bar` expects
 We handle this sort of subtyping by taking the variables that are
 bound in the supertype and **skolemizing** them: this means that we
 replace them with
-[universally quantified](appendix-background.html#quantified)
+[universally quantified](appendix/background.html#quantified)
 representatives, written like `!1`. We call these regions "skolemized
 regions" -- they represent, basically, "some unknown region".
 
@@ -148,7 +148,7 @@ what we wanted.
 
 So let's work through what happens next. To check if two functions are
 subtypes, we check if their arguments have the desired relationship
-(fn arguments are [contravariant](./appendix-background.html#variance), so
+(fn arguments are [contravariant](./appendix/background.html#variance), so
 we swap the left and right here):
 
 ```text
@@ -187,7 +187,7 @@ Here, the root universe would consist of the lifetimes `'static` and
 the same concept to types, in which case the types `Foo` and `T` would
 be in the root universe (along with other global types, like `i32`).
 Basically, the root universe contains all the names that
-[appear free](./appendix-background.html#free-vs-bound) in the body of `bar`.
+[appear free](./appendix/background.html#free-vs-bound) in the body of `bar`.
 
 Now let's extend `bar` a bit by adding a variable `x`:
 

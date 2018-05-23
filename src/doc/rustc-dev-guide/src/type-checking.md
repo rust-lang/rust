@@ -6,7 +6,7 @@ draws heavily on the [type inference] and [trait solving].)
 
 [typeck]: https://github.com/rust-lang/rust/tree/master/src/librustc_typeck
 [type inference]: type-inference.html
-[trait solving]: trait-resolution.html
+[trait solving]: traits/resolution.html
 
 ## Type collection
 

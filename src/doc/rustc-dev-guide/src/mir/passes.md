@@ -174,4 +174,4 @@ alternatives in [rust-lang/rust#41710].
 [rust-lang/rust#41710]: https://github.com/rust-lang/rust/issues/41710
 [mirtransform]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/
 [`NoLandingPads`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/no_landing_pads/struct.NoLandingPads.html
-[MIR visitor]: mir-visitor.html
+[MIR visitor]: mir/visitor.html

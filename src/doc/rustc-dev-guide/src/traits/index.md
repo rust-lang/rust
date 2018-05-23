@@ -4,7 +4,7 @@
 [process of being implemented][wg]; this chapter serves as a kind of
 in-progress design document. If you would prefer to read about how the
 current trait solver works, check out
-[this other chapter](./trait-resolution.html). (By the way, if you
+[this other chapter](./traits/resolution.html). (By the way, if you
 would like to help in hacking on the new solver, you will find
 instructions for getting involved in the
 [Traits Working Group tracking issue][wg].) 🚧

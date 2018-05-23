@@ -2,7 +2,7 @@
 
 For a more general background on variance, see the [background] appendix.
 
-[background]: ./appendix-background.html
+[background]: ./appendix/background.html
 
 During type checking we must infer the variance of type and lifetime
 parameters. The algorithm is taken from Section 4 of the paper ["Taming the

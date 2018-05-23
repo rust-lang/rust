@@ -41,7 +41,7 @@ trait query: `?A: Foo<'static, ?B>`, where `?A` and `?B` are unbound.
 This query contains two unbound variables, but it also contains the
 lifetime `'static`. The trait system generally ignores all lifetimes
 and treats them equally, so when canonicalizing, we will *also*
-replace any [free lifetime](./appendix-background.html#free-vs-bound) with a
+replace any [free lifetime](./appendix/background.html#free-vs-bound) with a
 canonical variable. Therefore, we get the following result:
 
 ```text

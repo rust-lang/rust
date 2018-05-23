@@ -21,7 +21,7 @@ Doing borrow checking on MIR has two key advantages:
   can see
   [a list of bugs that the MIR-based borrow checker fixes here][47366].)
 - Even more importantly, using the MIR enables ["non-lexical lifetimes"][nll],
-  which are regions derived from the control-flow graph. 
+  which are regions derived from the control-flow graph.
 
 [47366]: https://github.com/rust-lang/rust/issues/47366
 [nll]: http://rust-lang.github.io/rfcs/2094-nll.html
@@ -43,17 +43,17 @@ The overall flow of the borrow checker is as follows:
   include references to the new regions that we are computing.
 - We then invoke `nll::replace_regions_in_mir` to modify this copy C.
   Among other things, this function will replace all of the regions in
-  the MIR with fresh [inference variables](./appendix-glossary.html).
-  - (More details can be found in [the regionck section](./mir-regionck.html).)
+  the MIR with fresh [inference variables](./appendix/glossary.html).
+  - (More details can be found in [the regionck section](./mir/regionck.html).)
 - Next, we perform a number of [dataflow
-  analyses](./appendix-background.html#dataflow)
+  analyses](./appendix/background.html#dataflow)
   that compute what data is moved and when. The results of these analyses
   are needed to do both borrow checking and region inference.
 - Using the move data, we can then compute the values of all the regions in the
   MIR.
-  - (More details can be found in [the NLL section](./mir-regionck.html).)
+  - (More details can be found in [the NLL section](./mir/regionck.html).)
 - Finally, the borrow checker itself runs, taking as input (a) the
   results of move analysis and (b) the regions computed by the region
   checker. This allows us to figure out which loans are still in scope
   at any particular point.
-  
+

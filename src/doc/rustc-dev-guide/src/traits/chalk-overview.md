@@ -131,18 +131,18 @@ See [The SLG Solver][slg].
 
 [rustc-issues]: https://github.com/rust-lang-nursery/rustc-guide/issues
 [chalk]: https://github.com/rust-lang-nursery/chalk
-[lowering-to-logic]: traits-lowering-to-logic.html
-[lowering-rules]: traits-lowering-rules.html
+[lowering-to-logic]: traits/lowering-to-logic.html
+[lowering-rules]: traits/lowering-rules.html
 [ast]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
 [chalk-ast]: https://github.com/rust-lang-nursery/chalk/blob/master/chalk-parse/src/ast.rs
 [universal quantification]: https://en.wikipedia.org/wiki/Universal_quantification
-[lowering-forall]: https://rust-lang-nursery.github.io/rustc-guide/traits-lowering-to-logic.html#type-checking-generic-functions-beyond-horn-clauses
+[lowering-forall]: ./traits/lowering-to-logic.html#type-checking-generic-functions-beyond-horn-clauses
 [programclause]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/ir.rs#L721
 [clause]: https://github.com/rust-lang-nursery/chalk/blob/master/GLOSSARY.md#clause
-[goals-and-clauses]: traits-goals-and-clauses.html
+[goals-and-clauses]: ./traits/goals-and-clauses.html
 [well-formedness-checks]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/ir/lowering.rs#L230-L232
 [ir-code]: https://github.com/rust-lang-nursery/chalk/blob/master/src/ir.rs
 [HIR]: hir.html
 [binders-struct]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/ir.rs#L661
 [rules-environment]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/rules.rs#L9
-[slg]: traits-slg.html
+[slg]: ./traits/slg.html
