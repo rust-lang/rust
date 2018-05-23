@@ -18,7 +18,7 @@ use syntax::parse::token::DelimToken;
 
 use closures;
 use codemap::SpanUtils;
-use expr::{is_every_expr_simple, is_nested_call, maybe_get_args_offset, ToExpr};
+use expr::{is_every_expr_simple, is_method_call, is_nested_call, maybe_get_args_offset, ToExpr};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
@@ -231,8 +231,8 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         let placeholder = if overflow_last {
             let old_value = *self.context.force_one_line_chain.borrow();
             if !combine_arg_with_callee {
-                if let Some(expr) = self.last_item().and_then(|item| item.to_expr()) {
-                    if let ast::ExprKind::MethodCall(..) = expr.node {
+                if let Some(ref expr) = self.last_item().and_then(|item| item.to_expr()) {
+                    if is_method_call(expr) {
                         self.context.force_one_line_chain.replace(true);
                     }
                 }

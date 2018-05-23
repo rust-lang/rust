@@ -2173,3 +2173,15 @@ impl ToExpr for ast::GenericParam {
         false
     }
 }
+
+pub fn is_method_call(expr: &ast::Expr) -> bool {
+    match expr.node {
+        ast::ExprKind::MethodCall(..) => true,
+        ast::ExprKind::AddrOf(_, ref expr)
+        | ast::ExprKind::Box(ref expr)
+        | ast::ExprKind::Cast(ref expr, _)
+        | ast::ExprKind::Try(ref expr)
+        | ast::ExprKind::Unary(_, ref expr) => is_method_call(expr),
+        _ => false,
+    }
+}

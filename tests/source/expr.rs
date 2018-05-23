@@ -398,3 +398,41 @@ fn foo() {
     let my_var =
         Mutex::new(RpcClientType::connect(server_iddd).chain_err(|| "Unable to create RPC client")?);
 }
+
+// #2704
+// Method call with prefix and suffix.
+fn issue2704() {
+    // We should not combine the callee with a multi-lined method call.
+    let requires = requires.set(&requires0
+                                .concat(&requires1)
+                                .concat(&requires2)
+                                .distinct_total());
+    let requires = requires.set(box requires0
+                                .concat(&requires1)
+                                .concat(&requires2)
+                                .distinct_total());
+    let requires = requires.set(requires0
+                                .concat(&requires1)
+                                .concat(&requires2)
+                                .distinct_total() as u32);
+    let requires = requires.set(requires0
+                                .concat(&requires1)
+                                .concat(&requires2)
+                                .distinct_total()?);
+    let requires = requires.set(!requires0
+                                .concat(&requires1)
+                                .concat(&requires2)
+                                .distinct_total());
+    // We should combine a small callee with an argument.
+    bar(vec![22]
+        .into_iter()
+        .map(|x| x * 2)
+        .filter(|_| true)
+        .collect());
+    // But we should not combine a long callee with an argument.
+    barrrr(vec![22]
+        .into_iter()
+        .map(|x| x * 2)
+        .filter(|_| true)
+        .collect());
+}
