@@ -20,9 +20,18 @@ use crate::foo::{a, b};
 mod foo {
     crate fn a() {}
     crate fn b() {}
+    crate fn c() {}
 }
 
 fn main() {
     a();
     b();
+
+    {
+        use crate::foo::{self as x, c};
+        //~^ ERROR absolute paths must start with
+        //~| this was previously accepted
+        x::a();
+        c();
+    }
 }
