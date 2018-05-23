@@ -44,7 +44,7 @@ The keywords to unreserve are:
 [drawbacks]: #drawbacks
 
 The only drawback is that we're not able to use each listed word as a keyword
-in the future, without a reservation in a new edition, if we realize that we
+in the future, witld ofut a reservation in a new edition, if we realize that we
 made a mistake.
 
 See the rationale for potential risks with each keyword.
@@ -225,7 +225,7 @@ could have `T: !Sized` so there seems to be no need for keeping `unsized`.
 
 However, `unsized type` or `unsized struct` might be a desirable syntax for
 declaring a *dynamically sized type (DST)* or completely unsized type.
-Therefore, we will hold of on unreserving `unsized` until we have a better
+Therefore, we will hold off on unreserving `unsized` until we have a better
 ideas of how custom DSTs will work and it's clear we don't need `unsized`
 as a keyword.
 
