@@ -39,6 +39,7 @@ rustc_msan = { path = "../librustc_msan" }
 rustc_tsan = { path = "../librustc_tsan" }
 
 [build-dependencies]
+cc = "1.0"
 build_helper = { path = "../build_helper" }
 
 [features]
