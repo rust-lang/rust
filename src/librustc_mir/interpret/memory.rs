@@ -1,4 +1,4 @@
-use std::collections::{btree_map, VecDeque};
+use std::collections::VecDeque;
 use std::ptr;
 
 use rustc::hir::def_id::DefId;
@@ -519,7 +519,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     fn get_bytes(&self, ptr: MemoryPointer, size: Size, align: Align) -> EvalResult<'tcx, &[u8]> {
         assert_ne!(size.bytes(), 0);
-        if self.relocations(ptr, size)?.count() != 0 {
+        if self.relocations(ptr, size)?.len() != 0 {
             return err!(ReadPointerAsBytes);
         }
         self.check_defined(ptr, size)?;
@@ -614,9 +614,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // first copy the relocations to a temporary buffer, because
         // `get_bytes_mut` will clear the relocations, which is correct,
         // since we don't want to keep any relocations at the target.
-
         let relocations: Vec<_> = self.relocations(src, size)?
-            .map(|(&offset, &alloc_id)| {
+            .iter()
+            .map(|&(offset, alloc_id)| {
                 // Update relocation offsets for the new positions in the destination allocation.
                 (offset + dest.offset - src.offset, alloc_id)
             })
@@ -648,7 +648,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         self.copy_undef_mask(src, dest, size)?;
         // copy back the relocations
-        self.get_mut(dest.alloc_id)?.relocations.extend(relocations);
+        self.get_mut(dest.alloc_id)?.relocations.insert_presorted(relocations);
 
         Ok(())
     }
@@ -660,7 +660,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         match alloc.bytes[offset..].iter().position(|&c| c == 0) {
             Some(size) => {
                 let p1 = Size::from_bytes((size + 1) as u64);
-                if self.relocations(ptr, p1)?.count() != 0 {
+                if self.relocations(ptr, p1)?.len() != 0 {
                     return err!(ReadPointerAsBytes);
                 }
                 self.check_defined(ptr, p1)?;
@@ -720,7 +720,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         let bytes = read_target_uint(endianness, bytes).unwrap();
         // See if we got a pointer
         if size != self.pointer_size() {
-            if self.relocations(ptr, size)?.count() != 0 {
+            if self.relocations(ptr, size)?.len() != 0 {
                 return err!(ReadPointerAsBytes);
             }
         } else {
@@ -808,24 +808,26 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         &self,
         ptr: MemoryPointer,
         size: Size,
-    ) -> EvalResult<'tcx, btree_map::Range<Size, AllocId>> {
+    ) -> EvalResult<'tcx, &[(Size, AllocId)]> {
         let start = ptr.offset.bytes().saturating_sub(self.pointer_size().bytes() - 1);
         let end = ptr.offset + size;
         Ok(self.get(ptr.alloc_id)?.relocations.range(Size::from_bytes(start)..end))
     }
 
     fn clear_relocations(&mut self, ptr: MemoryPointer, size: Size) -> EvalResult<'tcx> {
-        // Find all relocations overlapping the given range.
-        let keys: Vec<_> = self.relocations(ptr, size)?.map(|(&k, _)| k).collect();
-        if keys.is_empty() {
-            return Ok(());
-        }
-
         // Find the start and end of the given range and its outermost relocations.
+        let (first, last) = {
+            // Find all relocations overlapping the given range.
+            let relocations = self.relocations(ptr, size)?;
+            if relocations.is_empty() {
+                return Ok(());
+            }
+
+            (relocations.first().unwrap().0,
+             relocations.last().unwrap().0 + self.pointer_size())
+        };
         let start = ptr.offset;
         let end = start + size;
-        let first = *keys.first().unwrap();
-        let last = *keys.last().unwrap() + self.pointer_size();
 
         let alloc = self.get_mut(ptr.alloc_id)?;
 
@@ -839,16 +841,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
 
         // Forget all the relocations.
-        for k in keys {
-            alloc.relocations.remove(&k);
-        }
+        alloc.relocations.remove_range(first ..= last);
 
         Ok(())
     }
 
     fn check_relocation_edges(&self, ptr: MemoryPointer, size: Size) -> EvalResult<'tcx> {
-        let overlapping_start = self.relocations(ptr, Size::from_bytes(0))?.count();
-        let overlapping_end = self.relocations(ptr.offset(size, self)?, Size::from_bytes(0))?.count();
+        let overlapping_start = self.relocations(ptr, Size::from_bytes(0))?.len();
+        let overlapping_end = self.relocations(ptr.offset(size, self)?, Size::from_bytes(0))?.len();
         if overlapping_start + overlapping_end != 0 {
             return err!(ReadPointerAsBytes);
         }
