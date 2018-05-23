@@ -279,6 +279,12 @@ declare_lint! {
     "detects labels that are never used"
 }
 
+declare_lint! {
+    pub DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
+    Warn,
+    "warns about duplicate associated type bindings in generics"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -330,6 +336,7 @@ impl LintPass for HardwiredLints {
             BARE_TRAIT_OBJECT,
             ABSOLUTE_PATH_NOT_STARTING_WITH_CRATE,
             UNSTABLE_NAME_COLLISION,
+            DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
         )
     }
 }

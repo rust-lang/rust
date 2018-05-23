@@ -27,7 +27,7 @@ use rustc_target::spec::abi;
 use std::slice;
 use require_c_abi_if_variadic;
 use util::common::ErrorReported;
-use util::nodemap::FxHashSet;
+use util::nodemap::{FxHashSet, FxHashMap};
 use errors::FatalError;
 
 use std::iter;
@@ -398,11 +398,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                  trait_ref.path.segments.last().unwrap());
         let poly_trait_ref = ty::Binder::bind(ty::TraitRef::new(trait_def_id, substs));
 
+        let mut dup_bindings = FxHashMap::default();
         poly_projections.extend(assoc_bindings.iter().filter_map(|binding| {
             // specify type to assert that error was already reported in Err case:
             let predicate: Result<_, ErrorReported> =
-                self.ast_type_binding_to_poly_projection_predicate(trait_ref.ref_id, poly_trait_ref,
-                                                                   binding, speculative);
+                self.ast_type_binding_to_poly_projection_predicate(
+                    trait_ref.ref_id, poly_trait_ref, binding, speculative, &mut dup_bindings);
             predicate.ok() // ok to ignore Err() because ErrorReported (see above)
         }));
 
@@ -487,7 +488,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         ref_id: ast::NodeId,
         trait_ref: ty::PolyTraitRef<'tcx>,
         binding: &ConvertedBinding<'tcx>,
-        speculative: bool)
+        speculative: bool,
+        dup_bindings: &mut FxHashMap<DefId, Span>)
         -> Result<ty::PolyProjectionPredicate<'tcx>, ErrorReported>
     {
         let tcx = self.tcx();
@@ -565,6 +567,23 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             tcx.sess.span_err(binding.span, &msg);
         }
         tcx.check_stability(assoc_ty.def_id, Some(ref_id), binding.span);
+
+        if !speculative {
+            dup_bindings.entry(assoc_ty.def_id)
+                .and_modify(|prev_span| {
+                    let mut err = self.tcx().struct_span_lint_node(
+                        ::rustc::lint::builtin::DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
+                        ref_id,
+                        binding.span,
+                        &format!("associated type binding `{}` specified more than once",
+                                binding.item_name)
+                    );
+                    err.span_label(binding.span, "used more than once");
+                    err.span_label(*prev_span, format!("first use of `{}`", binding.item_name));
+                    err.emit();
+                })
+                .or_insert(binding.span);
+        }
 
         Ok(candidate.map_bound(|trait_ref| {
             ty::ProjectionPredicate {

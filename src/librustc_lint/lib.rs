@@ -283,6 +283,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             reference: "issue TBD",
             edition: Some(Edition::Edition2018),
         },
+        FutureIncompatibleInfo {
+            id: LintId::of(DUPLICATE_ASSOCIATED_TYPE_BINDINGS),
+            reference: "issue #50589 <https://github.com/rust-lang/rust/issues/50589>",
+            edition: None,
+        },
         ]);
 
     // Register renamed and removed lints
