@@ -3319,7 +3319,8 @@ impl<'a> Resolver<'a> {
         let mut second_binding = None;
 
         debug!(
-            "resolve_path(path={:?}, opt_ns={:?}, record_used={:?}, path_span={:?}, crate_lint={:?})",
+            "resolve_path(path={:?}, opt_ns={:?}, record_used={:?}, \
+             path_span={:?}, crate_lint={:?})",
             path,
             opt_ns,
             record_used,
