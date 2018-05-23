@@ -387,14 +387,18 @@ fn rewrite_comment_inner(
             if line.starts_with("```") {
                 inside_code_block = false;
                 result.push_str(&comment_line_separator);
-                let code_block = ::format_code_block(&code_block_buffer, config)
-                    .unwrap_or_else(|| code_block_buffer.to_owned());
+                let code_block = {
+                    let mut config = config.clone();
+                    config.set().wrap_comments(false);
+                    ::format_code_block(&code_block_buffer, &config)
+                        .map_or_else(|| code_block_buffer.to_owned(), trim_custom_comment_prefix)
+                };
                 result.push_str(&join_code_block_with_comment_line_separator(&code_block));
                 code_block_buffer.clear();
                 result.push_str(&comment_line_separator);
                 result.push_str(line);
             } else {
-                code_block_buffer.push_str(line);
+                code_block_buffer.push_str(&hide_sharp_behind_comment(line));
                 code_block_buffer.push('\n');
 
                 if is_last {
@@ -489,6 +493,23 @@ fn rewrite_comment_inner(
     }
 
     Some(result)
+}
+
+const RUSTFMT_CUSTOM_COMMENT_PREFIX: &str = "//#### ";
+
+fn hide_sharp_behind_comment<'a>(s: &'a str) -> Cow<'a, str> {
+    if s.trim_left().starts_with('#') {
+        Cow::from(format!("{}{}", RUSTFMT_CUSTOM_COMMENT_PREFIX, s))
+    } else {
+        Cow::from(s)
+    }
+}
+
+fn trim_custom_comment_prefix(s: String) -> String {
+    s.lines()
+        .map(|line| line.trim_left_matches(RUSTFMT_CUSTOM_COMMENT_PREFIX))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Returns true if the given string MAY include URLs or alike.
