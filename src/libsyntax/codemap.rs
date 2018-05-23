@@ -211,8 +211,7 @@ impl CodeMap {
         }
     }
 
-    /// Creates a new filemap without setting its line information. If you don't
-    /// intend to set the line information yourself, you should use new_filemap_and_lines.
+    /// Creates a new filemap.
     /// This does not ensure that only one FileMap exists per file name.
     pub fn new_filemap(&self, filename: FileName, src: String) -> Lrc<FileMap> {
         let start_pos = self.next_start_pos();
@@ -246,13 +245,6 @@ impl CodeMap {
 
         filemap
     }
-
-    /// Creates a new filemap and sets its line information.
-    /// This does not ensure that only one FileMap exists per file name.
-    pub fn new_filemap_and_lines(&self, filename: &Path, src: &str) -> Lrc<FileMap> {
-        self.new_filemap(filename.to_owned().into(), src.to_owned())
-    }
-
 
     /// Allocates a new FileMap representing a source file from an external
     /// crate. The source code of such an "imported filemap" is not available,
@@ -1188,7 +1180,7 @@ mod tests {
         let cm = CodeMap::new(FilePathMapping::empty());
         let inputtext = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
         let selection = "     \n    ~~\n~~~\n~~~~~     \n   \n";
-        cm.new_filemap_and_lines(Path::new("blork.rs"), inputtext);
+        cm.new_filemap(Path::new("blork.rs").to_owned().into(), inputtext.to_string());
         let span = span_from_selection(inputtext, selection);
 
         // check that we are extracting the text we thought we were extracting
@@ -1231,7 +1223,7 @@ mod tests {
         let inputtext  = "bbbb BB\ncc CCC\n";
         let selection1 = "     ~~\n      \n";
         let selection2 = "       \n   ~~~\n";
-        cm.new_filemap_and_lines(Path::new("blork.rs"), inputtext);
+        cm.new_filemap(Path::new("blork.rs").to_owned().into(), inputtext.to_owned());
         let span1 = span_from_selection(inputtext, selection1);
         let span2 = span_from_selection(inputtext, selection2);
 

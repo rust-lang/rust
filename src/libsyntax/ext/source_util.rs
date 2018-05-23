@@ -150,11 +150,13 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenT
     };
     match String::from_utf8(bytes) {
         Ok(src) => {
+            let interned_src = Symbol::intern(&src);
+
             // Add this input file to the code map to make it available as
             // dependency information
-            cx.codemap().new_filemap_and_lines(&file, &src);
+            cx.codemap().new_filemap(file.into(), src);
 
-            base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&src)))
+            base::MacEager::expr(cx.expr_str(sp, interned_src))
         }
         Err(_) => {
             cx.span_err(sp,
@@ -182,7 +184,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Toke
         Ok(..) => {
             // Add this input file to the code map to make it available as
             // dependency information, but don't enter it's contents
-            cx.codemap().new_filemap_and_lines(&file, "");
+            cx.codemap().new_filemap(file.into(), "".to_string());
 
             base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Lrc::new(bytes))))
         }
