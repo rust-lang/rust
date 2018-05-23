@@ -125,7 +125,7 @@ actual return type is not `()`, but rather `InferOk<()>`. The
 to ensure that these are fulfilled (typically by enrolling them in a
 fulfillment context). See the [trait chapter] for more background on that.
 
-[trait chapter]: trait-resolution.html
+[trait chapter]: traits/resolution.html
 
 You can similarly enforce subtyping through `infcx.at(..).sub(..)`. The same
 basic concepts as above apply.

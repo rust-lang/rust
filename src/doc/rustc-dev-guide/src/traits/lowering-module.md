@@ -1,7 +1,7 @@
 # The lowering module in rustc
 
 The program clauses described in the
-[lowering rules](./traits-lowering-rules.html) section are actually
+[lowering rules](./traits/lowering-rules.html) section are actually
 created in the [`rustc_traits::lowering`][lowering] module.
 
 [lowering]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_traits/lowering/

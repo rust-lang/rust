@@ -13,20 +13,20 @@ instructions for getting involved in the
 
 Trait solving is based around a few key ideas:
 
-- [Lowering to logic](./traits-lowering-to-logic.html), which expresses
+- [Lowering to logic](./traits/lowering-to-logic.html), which expresses
   Rust traits in terms of standard logical terms.
-  - The [goals and clauses](./traits-goals-and-clauses.html) chapter
+  - The [goals and clauses](./traits/goals-and-clauses.html) chapter
     describes the precise form of rules we use, and
-    [lowering rules](./traits-lowering-rules.html) gives the complete set of
+    [lowering rules](./traits/lowering-rules.html) gives the complete set of
     lowering rules in a more reference-like form.
-- [Canonical queries](./traits-canonical-queries.html), which allow us
+- [Canonical queries](./traits/canonical-queries.html), which allow us
   to solve trait problems (like "is `Foo` implemented for the type
   `Bar`?") once, and then apply that same result independently in many
   different inference contexts.
-- [Lazy normalization](./traits-associated-types.html), which is the
+- [Lazy normalization](./traits/associated-types.html), which is the
   technique we use to accommodate associated types when figuring out
   whether types are equal.
-- [Region constraints](./traits-regions.html), which are accumulated
+- [Region constraints](./traits/regions.html), which are accumulated
   during trait solving but mostly ignored. This means that trait
   solving effectively ignores the precise regions involved, always --
   but we still remember the constraints on them so that those

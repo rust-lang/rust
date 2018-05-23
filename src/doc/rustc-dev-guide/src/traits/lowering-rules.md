@@ -4,8 +4,8 @@ This section gives the complete lowering rules for Rust traits into
 [program clauses][pc]. It is a kind of reference. These rules
 reference the [domain goals][dg] defined in an earlier section.
 
-[pc]: ./traits-goals-and-clauses.html
-[dg]: ./traits-goals-and-clauses.html#domain-goals
+[pc]: ./traits/goals-and-clauses.html
+[dg]: ./traits/goals-and-clauses.html#domain-goals
 
 ## Notation
 
@@ -16,7 +16,7 @@ The nonterminal `Ai` is used to mean some generic *argument*, which
 might be a lifetime like `'a` or a type like `Vec<A>`.
 
 When defining the lowering rules, we will give goals and clauses in
-the [notation given in this section](./traits-goals-and-clauses.html).
+the [notation given in this section](./traits/goals-and-clauses.html).
 We sometimes insert "macros" like `LowerWhereClause!` into these
 definitions; these macros reference other sections within this chapter.
 
@@ -141,7 +141,7 @@ This `WellFormed` rule states that `T: Trait` is well-formed if (a)
 `T: Trait` is implemented and (b) all the where-clauses declared on
 `Trait` are well-formed (and hence they are implemented). Remember
 that the `WellFormed` predicate is
-[coinductive](./traits-goals-and-clauses.html#coinductive); in this
+[coinductive](./traits/goals-and-clauses.html#coinductive); in this
 case, it is serving as a kind of "carrier" that allows us to enumerate
 all the where clauses that are transitively implied by `T: Trait`.
 
@@ -192,7 +192,7 @@ where WC
 
 We will produce a number of program clauses. The first two define
 the rules by which `ProjectionEq` can succeed; these two clauses are discussed
-in detail in the [section on associated types](./traits-associated-types.html),
+in detail in the [section on associated types](./traits/associated-types.html),
 but reproduced here for reference:
 
 ```text

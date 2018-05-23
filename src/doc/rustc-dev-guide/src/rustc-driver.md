@@ -20,14 +20,14 @@ of each phase.
 From `rustc_driver`'s perspective, the main phases of the compiler are:
 
 1. *Parse Input:* Initial crate parsing
-2. *Configure and Expand:* Resolve `#[cfg]` attributes, name resolution, and 
+2. *Configure and Expand:* Resolve `#[cfg]` attributes, name resolution, and
    expand macros
 3. *Run Analysis Passes:* Run trait resolution, typechecking, region checking
    and other miscellaneous analysis passes on the crate
-4. *Translate to LLVM:* Translate to the in-memory form of LLVM IR and turn it 
+4. *Translate to LLVM:* Translate to the in-memory form of LLVM IR and turn it
    into an executable/object files
 
-The `CompileController` then gives users the ability to inspect the ongoing 
+The `CompileController` then gives users the ability to inspect the ongoing
 compilation process
 
 - after parsing
@@ -39,7 +39,7 @@ compilation process
 The `CompileState`'s various `state_after_*()` constructors can be inspected to
 determine what bits of information are available to which callback.
 
-For a more detailed explanation on using `rustc_driver`, check out the 
+For a more detailed explanation on using `rustc_driver`, check out the
 [stupid-stats] guide by `@nrc` (attached as [Appendix A]).
 
 > **Warning:** By its very nature, the internal compiler APIs are always going
@@ -47,23 +47,23 @@ For a more detailed explanation on using `rustc_driver`, check out the
 
 ## A Note On Lifetimes
 
-The Rust compiler is a fairly large program containing lots of big data 
+The Rust compiler is a fairly large program containing lots of big data
 structures (e.g. the AST, HIR, and the type system) and as such, arenas and
-references are heavily relied upon to minimize unnecessary memory use. This 
+references are heavily relied upon to minimize unnecessary memory use. This
 manifests itself in the way people can plug into the compiler, preferring a
 "push"-style API (callbacks) instead of the more Rust-ic "pull" style (think
 the `Iterator` trait).
 
-For example the [`CompileState`], the state passed to callbacks after each 
+For example the [`CompileState`], the state passed to callbacks after each
 phase, is essentially just a box of optional references to pieces inside the
 compiler. The lifetime bound on the `CompilerCalls` trait then helps to ensure
-compiler internals don't "escape" the compiler (e.g. if you tried to keep a 
+compiler internals don't "escape" the compiler (e.g. if you tried to keep a
 reference to the AST after the compiler is finished), while still letting users
 record *some* state for use after the `run_compiler()` function finishes.
 
 Thread-local storage and interning are used a lot through the compiler to reduce
-duplication while also preventing a lot of the ergonomic issues due to many 
-pervasive lifetimes. The `rustc::ty::tls` module is used to access these 
+duplication while also preventing a lot of the ergonomic issues due to many
+pervasive lifetimes. The `rustc::ty::tls` module is used to access these
 thread-locals, although you should rarely need to touch it.
 
 
@@ -73,4 +73,4 @@ thread-locals, although you should rarely need to touch it.
 [`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyCtxt.html
 [`CodeMap`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/codemap/struct.CodeMap.html
 [stupid-stats]: https://github.com/nrc/stupid-stats
-[Appendix A]: appendix-stupid-stats.html
+[Appendix A]: appendix/stupid-stats.html

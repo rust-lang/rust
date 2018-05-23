@@ -170,8 +170,8 @@ example Gopalan Nadathur's excellent
 ["A Proof Procedure for the Logic of Hereditary Harrop Formulas"][pphhf]
 in [the bibliography].
 
-[the bibliography]: ./traits-bibliography.html
-[pphhf]: ./traits-bibliography.html#pphhf
+[the bibliography]: ./traits/bibliography.html
+[pphhf]: ./traits/bibliography.html#pphhf
 
 It turns out that supporting FOHH is not really all that hard. And
 once we are able to do that, we can easily describe the type-checking

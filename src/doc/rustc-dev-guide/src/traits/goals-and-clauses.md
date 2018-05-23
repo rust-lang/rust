@@ -2,7 +2,7 @@
 
 In logic programming terms, a **goal** is something that you must
 prove and a **clause** is something that you know is true. As
-described in the [lowering to logic](./traits-lowering-to-logic.html)
+described in the [lowering to logic](./traits/lowering-to-logic.html)
 chapter, Rust's trait solver is based on an extension of hereditary
 harrop (HH) clauses, which extend traditional Prolog Horn clauses with
 a few new superpowers.
@@ -37,7 +37,7 @@ paper
 ["A Proof Procedure for the Logic of Hereditary Harrop Formulas"][pphhf]
 gives the details.
 
-[pphhf]: ./traits-bibliography.html#pphhf
+[pphhf]: ./traits/bibliography.html#pphhf
 
 <a name="domain-goals"></a>
 
@@ -94,7 +94,7 @@ e.g. `ProjectionEq<T as Iterator>::Item = u8`
 
 The given associated type `Projection` is equal to `Type`; this can be proved
 with either normalization or using skolemized types. See [the section
-on associated types](./traits-associated-types.html).
+on associated types](./traits/associated-types.html).
 
 #### Normalize(Projection -> Type)
 e.g. `ProjectionEq<T as Iterator>::Item -> u8`
@@ -102,11 +102,12 @@ e.g. `ProjectionEq<T as Iterator>::Item -> u8`
 The given associated type `Projection` can be [normalized][n] to `Type`.
 
 As discussed in [the section on associated
-types](./traits-associated-types.html), `Normalize` implies `ProjectionEq`,
+types](./traits/associated-types.html), `Normalize` implies `ProjectionEq`,
 but not vice versa. In general, proving `Normalize(<T as Trait>::Item -> U)`
 also requires proving `Implemented(T: Trait)`.
 
-[n]: ./traits-associated-types.html#normalize
+[n]: ./traits/associated-types.html#normalize
+[at]: ./traits/associated-types.html
 
 #### FromEnv(TraitRef), FromEnv(Projection = Type)
 e.g. `FromEnv(Self: Add<i32>)`
@@ -211,7 +212,7 @@ In addition to auto traits, `WellFormed` predicates are co-inductive.
 These are used to achieve a similar "enumerate all the cases" pattern,
 as described in the section on [implied bounds].
 
-[implied bounds]: ./traits-lowering-rules.html#implied-bounds
+[implied bounds]: ./traits/lowering-rules.html#implied-bounds
 
 ## Incomplete chapter
 

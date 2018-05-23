@@ -24,7 +24,7 @@ On the other hand, if there is no hit, we need to go through the [selection
 process] from scratch. Suppose, we come to the conclusion that the only
 possible impl is this one, with def-id 22:
 
-[selection process]: ./trait-resolution.html#selection
+[selection process]: ./traits/resolution.html#selection
 
 ```rust,ignore
 impl Foo<isize> for usize { ... } // Impl #22
@@ -34,7 +34,7 @@ We would then record in the cache `usize : Foo<$0> => ImplCandidate(22)`. Next
 we would [confirm] `ImplCandidate(22)`, which would (as a side-effect) unify
 `$t` with `isize`.
 
-[confirm]: ./trait-resolution.html#confirmation
+[confirm]: ./traits/resolution.html#confirmation
 
 Now, at some later time, we might come along and see a `usize :
 Foo<$u>`. When skolemized, this would yield `usize : Foo<$0>`, just as
