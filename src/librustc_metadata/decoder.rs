@@ -30,7 +30,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::codec::TyDecoder;
 use rustc::mir::Mir;
 use rustc::util::captures::Captures;
-use rustc::util::nodemap::FxHashMap;
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
 use std::io;
 use std::mem;
@@ -56,7 +56,8 @@ pub struct DecodeContext<'a, 'tcx: 'a> {
     lazy_state: LazyState,
 
     // interpreter allocation cache
-    interpret_alloc_cache: Lock<FxHashMap<usize, interpret::AllocId>>,
+    interpret_alloc_cache: Lock<FxHashMap<usize, (interpret::AllocId, bool)>>,
+    interpret_alloc_local_cache: FxHashSet<interpret::AllocId>,
 }
 
 /// Abstract over the various ways one can create metadata decoders.
@@ -76,6 +77,7 @@ pub trait Metadata<'a, 'tcx>: Copy {
             last_filemap_index: 0,
             lazy_state: LazyState::NoNode,
             interpret_alloc_cache: Lock::new(FxHashMap::default()),
+            interpret_alloc_local_cache: FxHashSet::default(),
         }
     }
 }
@@ -288,7 +290,8 @@ impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx
         interpret::specialized_decode_alloc_id(
             self,
             tcx,
-            |this| this.interpret_alloc_cache.lock()
+            |this| this.interpret_alloc_cache.lock(),
+            |this| &mut this.interpret_alloc_local_cache,
         )
     }
 }

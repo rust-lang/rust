@@ -16,7 +16,7 @@ use hir::def_id::{CrateNum, DefIndex, DefId, LocalDefId,
 use hir::map::definitions::DefPathHash;
 use ich::{CachingCodemapView, Fingerprint};
 use mir::{self, interpret};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{Lrc, Lock, HashMapExt, Once};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
@@ -77,7 +77,7 @@ pub struct OnDiskCache<'sess> {
     prev_diagnostics_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
 
     /// Deserialization: A cache to ensure we don't read allocations twice
-    interpret_alloc_cache: Lock<FxHashMap<usize, interpret::AllocId>>,
+    interpret_alloc_cache: Lock<FxHashMap<usize, (interpret::AllocId, bool)>>,
 }
 
 // This type is used only for (de-)serialization.
@@ -390,6 +390,7 @@ impl<'sess> OnDiskCache<'sess> {
             file_index_to_stable_id: &self.file_index_to_stable_id,
             synthetic_expansion_infos: &self.synthetic_expansion_infos,
             interpret_alloc_cache: &self.interpret_alloc_cache,
+            interpret_alloc_local_cache: FxHashSet::default(),
         };
 
         match decode_tagged(&mut decoder, dep_node_index) {
@@ -451,7 +452,8 @@ struct CacheDecoder<'a, 'tcx: 'a, 'x> {
     synthetic_expansion_infos: &'x Lock<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
     file_index_to_file: &'x Lock<FxHashMap<FileMapIndex, Lrc<FileMap>>>,
     file_index_to_stable_id: &'x FxHashMap<FileMapIndex, StableFilemapId>,
-    interpret_alloc_cache: &'x Lock<FxHashMap<usize, interpret::AllocId>>,
+    interpret_alloc_cache: &'x Lock<FxHashMap<usize, (interpret::AllocId, bool)>>,
+    interpret_alloc_local_cache: FxHashSet<interpret::AllocId>,
 }
 
 impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
@@ -579,6 +581,7 @@ impl<'a, 'tcx, 'x> SpecializedDecoder<interpret::AllocId> for CacheDecoder<'a, '
             self,
             tcx,
             |this| this.interpret_alloc_cache.lock(),
+            |this| &mut this.interpret_alloc_local_cache,
         )
     }
 }

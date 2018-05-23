@@ -12,6 +12,7 @@ pub use self::error::{EvalError, EvalResult, EvalErrorKind, AssertMessage};
 
 pub use self::value::{PrimVal, PrimValKind, Value, Pointer, ConstValue};
 
+use std::collections::hash_map::Entry;
 use std::fmt;
 use mir;
 use hir::def_id::DefId;
@@ -26,7 +27,7 @@ use std::hash::Hash;
 use syntax::ast::Mutability;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{HashMapExt, LockGuard};
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
 
@@ -191,10 +192,10 @@ where
                 return encoder.emit_usize(alloc_pos);
             }
             let pos = encoder.position();
+            assert!(cache(encoder).insert(alloc_id, pos).is_none());
             trace!("encoding {:?} with {:#?}", alloc_id, alloc);
             AllocKind::Alloc.encode(encoder)?;
             alloc.encode(encoder)?;
-            cache(encoder).insert_same(alloc_id, pos);
         }
         AllocType::Function(fn_instance) => {
             trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
@@ -214,31 +215,64 @@ where
 pub fn specialized_decode_alloc_id<
     'a, 'tcx,
     D: TyDecoder<'a, 'tcx>,
-    CACHE: FnOnce(&mut D) -> LockGuard<'_, FxHashMap<usize, AllocId>>,
+    GlobalCache: FnMut(&mut D) -> LockGuard<'_, FxHashMap<usize, (AllocId, bool)>>,
+    LocalCache: FnOnce(&mut D) -> &mut FxHashSet<AllocId>,
 >(
     decoder: &mut D,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    cache: CACHE,
+    mut global_cache: GlobalCache,
+    local_cache: LocalCache,
 ) -> Result<AllocId, D::Error> {
+    let pos = decoder.position();
     match AllocKind::decode(decoder)? {
         AllocKind::AllocAtPos => {
-            let pos = decoder.read_usize()?;
-            if let Some(alloc_id) = cache(decoder).get(&pos).cloned() {
-                return Ok(alloc_id);
-            }
-            decoder.with_position(pos, AllocId::decode)
+            let real_pos = decoder.read_usize()?;
+            decoder.with_position(real_pos, AllocId::decode)
         },
         AllocKind::Alloc => {
-            let pos = decoder.position();
-            // insert early to allow recursive allocs
-            let alloc_id = *cache(decoder).entry(pos)
-                                          .or_insert_with(|| tcx.alloc_map.lock().reserve());
-            trace!("creating alloc id {:?}", alloc_id);
+            let alloc_id = {
+                let mut cache = global_cache(decoder);
+                let entry = cache.entry(pos);
+                match entry {
+                    Entry::Occupied(occupied) => {
+                        let id = occupied.get().0;
+
+                        // If the alloc id is fully loaded we just return here.
+                        if occupied.get().1 {
+                            return Ok(id)
+                        }
+
+                        // It was only partially loaded.
+                        // This may be loading further up the stack
+                        // or concurrently in another thread.
+                        id
+                    }
+                    Entry::Vacant(vacant) => {
+                        // Insert early to allow recursive allocs
+                        let id = tcx.alloc_map.lock().reserve();
+                        vacant.insert((id, false));
+                        id
+                    }
+                }
+            };
+
+            // Insert early to allow recursive allocs and ot indicate that the current
+            // session will eventually fully load this alloc id
+            if !local_cache(decoder).insert(alloc_id) {
+                // We have started decoding this alloc id already, so just return it.
+                // Its content is already filled in or will be filled in by functions
+                // further up the stack.
+                return Ok(alloc_id);
+                
+            }
 
             let allocation = <&'tcx Allocation as Decodable>::decode(decoder)?;
             trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
             // This may overwrite with the same allocation
             tcx.alloc_map.lock().set_id_same_memory(alloc_id, allocation);
+
+            // Mark the alloc id as fully loaded
+            global_cache(decoder).insert(pos, (alloc_id, true));
 
             Ok(alloc_id)
         },
