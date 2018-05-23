@@ -140,6 +140,21 @@ fn bytes_to_str(b: &[u8], mb: &mut [u8]) {
     let _: &mut str = unsafe { std::mem::transmute(mb) };
 }
 
+// Make sure we can modify lifetimes, which is one of the recommended uses
+// of transmute
+
+// Make sure we can do static lifetime transmutes
+#[warn(transmute_ptr_to_ptr)]
+unsafe fn transmute_lifetime_to_static<'a, T>(t: &'a T) -> &'static T {
+    std::mem::transmute::<&'a T, &'static T>(t)
+}
+
+// Make sure we can do non-static lifetime transmutes
+#[warn(transmute_ptr_to_ptr)]
+unsafe fn transmute_lifetime<'a, 'b, T>(t: &'a T, u: &'b T) -> &'b T {
+    std::mem::transmute::<&'a T, &'b T>(t)
+}
+
 #[warn(transmute_ptr_to_ptr)]
 fn transmute_ptr_to_ptr() {
     let ptr = &1u32 as *const u32;
@@ -159,10 +174,6 @@ fn transmute_ptr_to_ptr() {
     let _ = mut_ptr as *mut f32;
     let _ = unsafe { &*(&1u32 as *const u32 as *const f32) };
     let _ = unsafe { &mut *(&mut 1u32 as *mut u32 as *mut f32) };
-    // This is just modifying the lifetime, and is one of the recommended uses
-    // of transmute
-    let n = 1u32;
-    let _ = unsafe { std::mem::transmute::<&'_ u32, &'static u32>(&n) };
 }
 
 fn main() { }
