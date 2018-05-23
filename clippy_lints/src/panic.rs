@@ -1,7 +1,8 @@
 use rustc::hir::*;
 use rustc::lint::*;
 use syntax::ast::LitKind;
-use utils::{is_direct_expn_of, match_def_path, opt_def_id, paths, resolve_node, span_lint};
+use syntax::ptr::P;
+use utils::{is_direct_expn_of, is_expn_of, match_def_path, opt_def_id, paths, resolve_node, span_lint};
 
 /// **What it does:** Checks for missing parameters in `panic!`.
 ///
@@ -22,12 +23,28 @@ declare_clippy_lint! {
     "missing parameters in `panic!` calls"
 }
 
+/// **What it does:** Checks for usage of `unimplemented!`.
+///
+/// **Why is this bad?** This macro should not be present in production code
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// unimplemented!();
+/// ```
+declare_clippy_lint! {
+    pub UNIMPLEMENTED,
+    style,
+    "`unimplemented!` should not be present in production code"
+}
+
 #[allow(missing_copy_implementations)]
 pub struct Pass;
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(PANIC_PARAMS)
+        lint_array!(PANIC_PARAMS, UNIMPLEMENTED)
     }
 }
 
@@ -37,22 +54,35 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let ExprBlock(ref block, _) = expr.node;
             if let Some(ref ex) = block.expr;
             if let ExprCall(ref fun, ref params) = ex.node;
-            if params.len() == 2;
             if let ExprPath(ref qpath) = fun.node;
             if let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, fun.hir_id));
             if match_def_path(cx.tcx, fun_def_id, &paths::BEGIN_PANIC);
-            if let ExprLit(ref lit) = params[0].node;
-            if is_direct_expn_of(expr.span, "panic").is_some();
-            if let LitKind::Str(ref string, _) = lit.node;
-            let string = string.as_str().replace("{{", "").replace("}}", "");
-            if let Some(par) = string.find('{');
-            if string[par..].contains('}');
-            if params[0].span.source_callee().is_none();
-            if params[0].span.lo() != params[0].span.hi();
+            if params.len() == 2;
             then {
-                span_lint(cx, PANIC_PARAMS, params[0].span,
-                          "you probably are missing some parameter in your format string");
+                if is_expn_of(expr.span, "unimplemented").is_some() {
+                    span_lint(cx, UNIMPLEMENTED, expr.span,
+                              "`unimplemented` should not be present in production code");
+                } else {
+                    match_panic(params, expr, cx);
+                }
             }
+        }
+    }
+}
+
+fn match_panic(params: &P<[Expr]>, expr: &Expr, cx: &LateContext) {
+    if_chain! {
+        if let ExprLit(ref lit) = params[0].node;
+        if is_direct_expn_of(expr.span, "panic").is_some();
+        if let LitKind::Str(ref string, _) = lit.node;
+        let string = string.as_str().replace("{{", "").replace("}}", "");
+        if let Some(par) = string.find('{');
+        if string[par..].contains('}');
+        if params[0].span.source_callee().is_none();
+        if params[0].span.lo() != params[0].span.hi();
+        then {
+            span_lint(cx, PANIC_PARAMS, params[0].span,
+                      "you probably are missing some parameter in your format string");
         }
     }
 }
