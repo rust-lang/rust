@@ -3,7 +3,7 @@
 use crate::consts::{constant, Constant};
 use crate::utils::higher::Range;
 use crate::utils::{self, higher};
-use rustc::hir;
+use rustc::hir::*;
 use rustc::lint::*;
 use rustc::ty;
 use syntax::ast::RangeLimits;

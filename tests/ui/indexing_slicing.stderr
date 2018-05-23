@@ -1,5 +1,5 @@
 error: indexing may panic. Consider using `.get(n)` or `.get_mut(n)` instead
-  --> $DIR/array_indexing.rs:11:5
+  --> $DIR/indexing_slicing.rs:11:5
    |
 11 |     x[index];
    |     ^^^^^^^^
@@ -7,37 +7,37 @@ error: indexing may panic. Consider using `.get(n)` or `.get_mut(n)` instead
    = note: `-D indexing-slicing` implied by `-D warnings`
 
 error: slicing may panic. Consider using `.get(n..m)` or `.get_mut(n..m)` instead
-  --> $DIR/array_indexing.rs:12:6
+  --> $DIR/indexing_slicing.rs:12:6
    |
 12 |     &x[index_from..index_to];
    |      ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slicing may panic. Consider using `.get(..n)`or `.get_mut(..n)` instead
-  --> $DIR/array_indexing.rs:13:6
+  --> $DIR/indexing_slicing.rs:13:6
    |
 13 |     &x[index_from..][..index_to];
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slicing may panic. Consider using `.get(n..)` or .get_mut(n..)` instead
-  --> $DIR/array_indexing.rs:13:6
+  --> $DIR/indexing_slicing.rs:13:6
    |
 13 |     &x[index_from..][..index_to];
    |      ^^^^^^^^^^^^^^^
 
 error: slicing may panic. Consider using `.get(n..)` or .get_mut(n..)` instead
-  --> $DIR/array_indexing.rs:14:6
+  --> $DIR/indexing_slicing.rs:14:6
    |
 14 |     &x[index..];
    |      ^^^^^^^^^^
 
 error: slicing may panic. Consider using `.get(..n)`or `.get_mut(..n)` instead
-  --> $DIR/array_indexing.rs:15:6
+  --> $DIR/indexing_slicing.rs:15:6
    |
 15 |     &x[..index];
    |      ^^^^^^^^^^
 
 error: const index is out of bounds
-  --> $DIR/array_indexing.rs:18:5
+  --> $DIR/indexing_slicing.rs:18:5
    |
 18 |     x[4];
    |     ^^^^
@@ -45,175 +45,175 @@ error: const index is out of bounds
    = note: `-D out-of-bounds-indexing` implied by `-D warnings`
 
 error: range is out of bounds
-  --> $DIR/array_indexing.rs:20:6
+  --> $DIR/indexing_slicing.rs:20:6
    |
 20 |     &x[1..5];
    |      ^^^^^^^
 
 error: slicing may panic. Consider using `.get(n..m)` or `.get_mut(n..m)` instead
-  --> $DIR/array_indexing.rs:20:6
+  --> $DIR/indexing_slicing.rs:20:6
    |
 20 |     &x[1..5];
    |      ^^^^^^^
 
 error: slicing may panic. Consider using `.get(..n)`or `.get_mut(..n)` instead
-  --> $DIR/array_indexing.rs:21:6
+  --> $DIR/indexing_slicing.rs:21:6
    |
 21 |     &x[1..][..5];
    |      ^^^^^^^^^^^
 
 error: slicing may panic. Consider using `.get(..n)`or `.get_mut(..n)` instead
-  --> $DIR/array_indexing.rs:23:6
+  --> $DIR/indexing_slicing.rs:23:6
    |
 23 |     &x[0..][..3];
    |      ^^^^^^^^^^^
 
 error: range is out of bounds
-  --> $DIR/array_indexing.rs:25:6
+  --> $DIR/indexing_slicing.rs:25:6
    |
 25 |     &x[..=4];
    |      ^^^^^^^
 
 error: slicing may panic. Consider using `.get(..n)`or `.get_mut(..n)` instead
-  --> $DIR/array_indexing.rs:25:6
+  --> $DIR/indexing_slicing.rs:25:6
    |
 25 |     &x[..=4];
    |      ^^^^^^^
 
 error: range is out of bounds
-  --> $DIR/array_indexing.rs:29:6
+  --> $DIR/indexing_slicing.rs:29:6
    |
 29 |     &x[5..];
    |      ^^^^^^
 
 error: slicing may panic. Consider using `.get(n..)` or .get_mut(n..)` instead
-  --> $DIR/array_indexing.rs:29:6
+  --> $DIR/indexing_slicing.rs:29:6
    |
 29 |     &x[5..];
    |      ^^^^^^
 
 error: range is out of bounds
-  --> $DIR/array_indexing.rs:31:6
+  --> $DIR/indexing_slicing.rs:31:6
    |
 31 |     &x[..5];
    |      ^^^^^^
 
 error: slicing may panic. Consider using `.get(..n)`or `.get_mut(..n)` instead
-  --> $DIR/array_indexing.rs:31:6
+  --> $DIR/indexing_slicing.rs:31:6
    |
 31 |     &x[..5];
    |      ^^^^^^
 
 error: indexing may panic. Consider using `.get(n)` or `.get_mut(n)` instead
-  --> $DIR/array_indexing.rs:34:5
+  --> $DIR/indexing_slicing.rs:34:5
    |
 34 |     y[0];
    |     ^^^^
 
 error: slicing may panic. Consider using `.get(n..m)` or `.get_mut(n..m)` instead
-  --> $DIR/array_indexing.rs:35:6
+  --> $DIR/indexing_slicing.rs:35:6
    |
 35 |     &y[1..2];
    |      ^^^^^^^
 
 error: slicing may panic. Consider using `.get(..n)`or `.get_mut(..n)` instead
-  --> $DIR/array_indexing.rs:38:6
+  --> $DIR/indexing_slicing.rs:38:6
    |
 38 |     &y[..=4];
    |      ^^^^^^^
 
 error: const index is out of bounds
-  --> $DIR/array_indexing.rs:41:5
+  --> $DIR/indexing_slicing.rs:41:5
    |
 41 |     empty[0];
    |     ^^^^^^^^
 
 error: range is out of bounds
-  --> $DIR/array_indexing.rs:42:6
+  --> $DIR/indexing_slicing.rs:42:6
    |
 42 |     &empty[1..5];
    |      ^^^^^^^^^^^
 
 error: slicing may panic. Consider using `.get(n..m)` or `.get_mut(n..m)` instead
-  --> $DIR/array_indexing.rs:42:6
+  --> $DIR/indexing_slicing.rs:42:6
    |
 42 |     &empty[1..5];
    |      ^^^^^^^^^^^
 
 error: range is out of bounds
-  --> $DIR/array_indexing.rs:44:6
+  --> $DIR/indexing_slicing.rs:44:6
    |
 44 |     &empty[..=4];
    |      ^^^^^^^^^^^
 
 error: slicing may panic. Consider using `.get(..n)`or `.get_mut(..n)` instead
-  --> $DIR/array_indexing.rs:44:6
+  --> $DIR/indexing_slicing.rs:44:6
    |
 44 |     &empty[..=4];
    |      ^^^^^^^^^^^
 
 error: range is out of bounds
-  --> $DIR/array_indexing.rs:49:6
+  --> $DIR/indexing_slicing.rs:49:6
    |
 49 |     &empty[..=0];
    |      ^^^^^^^^^^^
 
 error: slicing may panic. Consider using `.get(..n)`or `.get_mut(..n)` instead
-  --> $DIR/array_indexing.rs:49:6
+  --> $DIR/indexing_slicing.rs:49:6
    |
 49 |     &empty[..=0];
    |      ^^^^^^^^^^^
 
 error: range is out of bounds
-  --> $DIR/array_indexing.rs:51:6
+  --> $DIR/indexing_slicing.rs:51:6
    |
 51 |     &empty[1..];
    |      ^^^^^^^^^^
 
 error: slicing may panic. Consider using `.get(n..)` or .get_mut(n..)` instead
-  --> $DIR/array_indexing.rs:51:6
+  --> $DIR/indexing_slicing.rs:51:6
    |
 51 |     &empty[1..];
    |      ^^^^^^^^^^
 
 error: range is out of bounds
-  --> $DIR/array_indexing.rs:52:6
+  --> $DIR/indexing_slicing.rs:52:6
    |
 52 |     &empty[..4];
    |      ^^^^^^^^^^
 
 error: slicing may panic. Consider using `.get(..n)`or `.get_mut(..n)` instead
-  --> $DIR/array_indexing.rs:52:6
+  --> $DIR/indexing_slicing.rs:52:6
    |
 52 |     &empty[..4];
    |      ^^^^^^^^^^
 
 error: indexing may panic. Consider using `.get(n)` or `.get_mut(n)` instead
-  --> $DIR/array_indexing.rs:55:5
+  --> $DIR/indexing_slicing.rs:55:5
    |
 55 |     v[0];
    |     ^^^^
 
 error: indexing may panic. Consider using `.get(n)` or `.get_mut(n)` instead
-  --> $DIR/array_indexing.rs:56:5
+  --> $DIR/indexing_slicing.rs:56:5
    |
 56 |     v[10];
    |     ^^^^^
 
 error: slicing may panic. Consider using `.get(n..m)` or `.get_mut(n..m)` instead
-  --> $DIR/array_indexing.rs:57:6
+  --> $DIR/indexing_slicing.rs:57:6
    |
 57 |     &v[10..100];
    |      ^^^^^^^^^^
 
 error: slicing may panic. Consider using `.get(n..)` or .get_mut(n..)` instead
-  --> $DIR/array_indexing.rs:58:6
+  --> $DIR/indexing_slicing.rs:58:6
    |
 58 |     &v[10..];
    |      ^^^^^^^
 
 error: slicing may panic. Consider using `.get(..n)`or `.get_mut(..n)` instead
-  --> $DIR/array_indexing.rs:59:6
+  --> $DIR/indexing_slicing.rs:59:6
    |
 59 |     &v[..100];
    |      ^^^^^^^^
