@@ -1133,7 +1133,7 @@ pub enum ExprKind {
     /// A closure (for example, `move |a, b, c| a + b + c`)
     ///
     /// The final span is the span of the argument block `|...|`
-    Closure(CaptureBy, Movability, P<FnDecl>, P<Expr>, Span),
+    Closure(CaptureBy, IsAsync, Movability, P<FnDecl>, P<Expr>, Span),
     /// A block (`'label: { ... }`)
     Block(P<Block>, Option<Label>),
     /// A catch block (`catch { ... }`)

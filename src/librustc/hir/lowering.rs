@@ -296,6 +296,14 @@ enum AnonymousLifetimeMode {
     PassThrough,
 }
 
+trait FnRetTransform {
+    fn lower(&self, ctx: &mut LoweringContext, output: &FunctionRetTy, impl_trait_context: ImplTraitContext) -> hir::FunctionRetTy;
+}
+
+struct NonAsyncRet;
+struct AsyncClosureRet;
+struct AsyncFunctionRet;
+
 impl<'a> LoweringContext<'a> {
     fn lower_crate(mut self, c: &Crate) -> hir::Crate {
         /// Full-crate AST visitor that inserts into a fresh
@@ -1050,7 +1058,7 @@ impl<'a> LoweringContext<'a> {
                         ),
                         unsafety: this.lower_unsafety(f.unsafety),
                         abi: f.abi,
-                        decl: this.lower_fn_decl(&f.decl, None, false),
+                        decl: this.lower_fn_decl(&f.decl, None, false, &NonAsyncRet),
                         arg_names: this.lower_fn_args_to_names(&f.decl),
                     }))
                 },
@@ -1729,7 +1737,121 @@ impl<'a> LoweringContext<'a> {
         decl: &FnDecl,
         fn_def_id: Option<DefId>,
         impl_trait_return_allow: bool,
+        fn_ret_transform: &FnRetTransform,
     ) -> P<hir::FnDecl> {
+        // For non async functions, the return type is lowered in a straightforward way
+        impl FnRetTransform for NonAsyncRet {
+            fn lower(&self, ctx: &mut LoweringContext, output: &FunctionRetTy, impl_trait_context: ImplTraitContext) -> hir::FunctionRetTy {
+                match output {
+                    FunctionRetTy::Ty(ty) => hir::Return(ctx.lower_ty(ty, impl_trait_context)),
+                    FunctionRetTy::Default(span) => hir::DefaultReturn(*span),
+                }
+            }
+        }
+
+        // For async closures:
+        //  - If the return type is omitted, a straightforward lowering is performed
+        //  - If the return type is explicit, given a return type T, it is lowered to
+        //          ::std::raw::GenFuture<_, T>
+        impl FnRetTransform for AsyncClosureRet {
+            fn lower(&self, ctx: &mut LoweringContext, output: &FunctionRetTy, impl_trait_context: ImplTraitContext) -> hir::FunctionRetTy {
+                match output {
+                    FunctionRetTy::Ty(ty) => {
+                        let inner_ty = ctx.lower_ty(ty, impl_trait_context);
+                        let span = inner_ty.span;
+                        let hir::Path { def, segments, .. } = ctx.std_path(span, &["raw", "GenFuture"], false);
+                        let LoweredNodeId { node_id, hir_id } = ctx.next_id();
+                        let gen_future_path = hir::Path {
+                            segments: segments.map_slice(|mut v| {
+                                v.last_mut().unwrap().parameters = Some(P(hir::PathParameters {
+                                    lifetimes: hir_vec![],
+                                    bindings: hir_vec![],
+                                    types: hir_vec![
+                                        P(hir::Ty {
+                                            id: node_id,
+                                            node: hir::TyInfer,
+                                            hir_id, span,
+                                        }),
+                                        inner_ty,
+                                    ],
+                                    parenthesized: false,
+                                }));
+                                v
+                            }),
+                            def, span
+                        };
+
+                        let LoweredNodeId { node_id, hir_id } = ctx.next_id();
+                        hir::Return(P(hir::Ty {
+                            id: node_id,
+                            node: hir::TyPath(hir::QPath::Resolved(None, P(gen_future_path))),
+                            hir_id, span,
+                        }))
+                    }
+                    FunctionRetTy::Default(span) => hir::DefaultReturn(*span),
+                }
+            }
+        }
+
+        // For async functions the return type is lowered to impl ::std::future::Future<Output = T>
+        impl FnRetTransform for AsyncFunctionRet {
+            fn lower(&self, ctx: &mut LoweringContext, output: &FunctionRetTy, impl_trait_context: ImplTraitContext) -> hir::FunctionRetTy {
+                let inner_ty = match output {
+                    FunctionRetTy::Ty(ty) => ctx.lower_ty(ty, impl_trait_context),
+                    FunctionRetTy::Default(span) => {
+                        let LoweredNodeId { node_id, hir_id } = ctx.next_id();
+                        P(hir::Ty {
+                            id: node_id,
+                            hir_id: hir_id,
+                            node: hir::TyTup(hir_vec![]),
+                            span: *span,
+                        })
+                    }
+                };
+                let span = inner_ty.span;
+                let hir::Path { def, segments, .. }  = ctx.std_path(span, &["future", "Future"], false);
+                let future_path = hir::Path {
+                    segments: segments.map_slice(|mut v| {
+                        v.last_mut().unwrap().parameters = Some(P(hir::PathParameters {
+                            lifetimes: hir_vec![],
+                            types: hir_vec![],
+                            bindings: hir_vec![hir::TypeBinding {
+                                name: ctx.str_to_ident("Output"),
+                                ty: inner_ty,
+                                id: ctx.next_id().node_id,
+                                span,
+                            }],
+                            parenthesized: false,
+                        }));
+                        v
+                    }),
+                    def, span
+                };
+                let LoweredNodeId { hir_id, node_id } = ctx.next_id();
+                hir::Return(P(hir::Ty {
+                    id: node_id,
+                    node: hir::TyImplTraitExistential(hir::ExistTy {
+                        generics: hir::Generics::empty(),
+                        bounds: hir_vec![hir::TyParamBound::TraitTyParamBound(hir::PolyTraitRef {
+                            trait_ref: hir::TraitRef {
+                                path: future_path,
+                                ref_id: ctx.next_id().node_id,
+                            },
+                            bound_generic_params: hir_vec![],
+                            span,
+                        }, hir::TraitBoundModifier::None)],
+                    }, hir_vec![]),
+                    hir_id, span,
+                }))
+            }
+        }
+
+        let output_impl_trait_context = if fn_def_id.is_some() && impl_trait_return_allow {
+            ImplTraitContext::Existential
+        } else {
+            ImplTraitContext::Disallowed
+        };
+
         // NOTE: The two last parameters here have to do with impl Trait. If fn_def_id is Some,
         //       then impl Trait arguments are lowered into generic parameters on the given
         //       fn_def_id, otherwise impl Trait is disallowed. (for now)
@@ -1748,15 +1870,7 @@ impl<'a> LoweringContext<'a> {
                     }
                 })
                 .collect(),
-            output: match decl.output {
-                FunctionRetTy::Ty(ref ty) => match fn_def_id {
-                    Some(_) if impl_trait_return_allow => {
-                        hir::Return(self.lower_ty(ty, ImplTraitContext::Existential))
-                    }
-                    _ => hir::Return(self.lower_ty(ty, ImplTraitContext::Disallowed)),
-                },
-                FunctionRetTy::Default(span) => hir::DefaultReturn(span),
-            },
+            output: fn_ret_transform.lower(self, &decl.output, output_impl_trait_context),
             variadic: decl.variadic,
             has_implicit_self: decl.inputs.get(0).map_or(false, |arg| match arg.ty.node {
                 TyKind::ImplicitSelf => true,
@@ -2201,11 +2315,15 @@ impl<'a> LoweringContext<'a> {
                         let body = this.lower_block(body, false);
                         this.expr_block(body, ThinVec::new())
                     });
+                    let fn_ret_transform: &FnRetTransform = match header.asyncness {
+                        IsAsync::Async => &AsyncFunctionRet,
+                        IsAsync::NotAsync => &NonAsyncRet,
+                    };
                     let (generics, fn_decl) = this.add_in_band_defs(
                         generics,
                         fn_def_id,
                         AnonymousLifetimeMode::PassThrough,
-                        |this| this.lower_fn_decl(decl, Some(fn_def_id), true),
+                        |this| this.lower_fn_decl(decl, Some(fn_def_id), true, fn_ret_transform),
                     );
 
                     hir::ItemFn(
@@ -2721,7 +2839,7 @@ impl<'a> LoweringContext<'a> {
                             |this| {
                                 (
                                     // Disallow impl Trait in foreign items
-                                    this.lower_fn_decl(fdec, None, false),
+                                    this.lower_fn_decl(fdec, None, false, &NonAsyncRet),
                                     this.lower_fn_args_to_names(fdec),
                                 )
                             },
@@ -2747,9 +2865,13 @@ impl<'a> LoweringContext<'a> {
         fn_def_id: DefId,
         impl_trait_return_allow: bool,
     ) -> hir::MethodSig {
+        let fn_ret_transform: &FnRetTransform = match sig.header.asyncness {
+            IsAsync::Async => &AsyncFunctionRet,
+            IsAsync::NotAsync => &NonAsyncRet,
+        };
         hir::MethodSig {
             header: self.lower_fn_header(sig.header),
-            decl: self.lower_fn_decl(&sig.decl, Some(fn_def_id), impl_trait_return_allow),
+            decl: self.lower_fn_decl(&sig.decl, Some(fn_def_id), impl_trait_return_allow, fn_ret_transform),
         }
     }
 
@@ -3074,7 +3196,7 @@ impl<'a> LoweringContext<'a> {
                 arms.iter().map(|x| self.lower_arm(x)).collect(),
                 hir::MatchSource::Normal,
             ),
-            ExprKind::Closure(capture_clause, movability, ref decl, ref body, fn_decl_span) => {
+            ExprKind::Closure(capture_clause, asyncness, movability, ref decl, ref body, fn_decl_span) => {
                 self.with_new_scopes(|this| {
                     this.with_parent_def(e.id, |this| {
                         let mut is_generator = false;
@@ -3108,9 +3230,13 @@ impl<'a> LoweringContext<'a> {
                             }
                             None
                         };
+                        let fn_ret_transform: &FnRetTransform = match asyncness {
+                            IsAsync::Async => &AsyncClosureRet,
+                            IsAsync::NotAsync => &NonAsyncRet,
+                        };
                         hir::ExprClosure(
                             this.lower_capture_clause(capture_clause),
-                            this.lower_fn_decl(decl, None, false),
+                            this.lower_fn_decl(decl, None, false, fn_ret_transform),
                             body_id,
                             fn_decl_span,
                             generator_option,

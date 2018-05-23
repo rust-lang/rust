@@ -790,7 +790,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
             FnKind::Method(_, _, _, _) => {
                 TraitOrImplItemRibKind
             }
-            FnKind::Closure(_) => ClosureRibKind(node_id),
+            FnKind::Closure(..) => ClosureRibKind(node_id),
         };
 
         // Create a value rib for the function.
@@ -816,7 +816,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
             FnKind::Method(.., body) => {
                 self.visit_block(body);
             }
-            FnKind::Closure(body) => {
+            FnKind::Closure(_, body) => {
                 self.visit_expr(body);
             }
         };

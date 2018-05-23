@@ -3312,7 +3312,7 @@ impl<'a> Parser<'a> {
 
         Ok(self.mk_expr(
             lo.to(body.span),
-            ExprKind::Closure(capture_clause, movability, decl, body, lo.to(decl_hi)),
+            ExprKind::Closure(capture_clause, IsAsync::NotAsync, movability, decl, body, lo.to(decl_hi)),
             attrs))
     }
 

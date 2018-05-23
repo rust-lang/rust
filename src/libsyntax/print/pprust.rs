@@ -2158,8 +2158,9 @@ impl<'a> State<'a> {
                 }
                 self.bclose_(expr.span, INDENT_UNIT)?;
             }
-            ast::ExprKind::Closure(capture_clause, movability, ref decl, ref body, _) => {
+            ast::ExprKind::Closure(capture_clause, asyncness, movability, ref decl, ref body, _) => {
                 self.print_movability(movability)?;
+                self.print_asyncness(asyncness)?;
                 self.print_capture_clause(capture_clause)?;
 
                 self.print_fn_block_args(decl)?;
@@ -2790,6 +2791,14 @@ impl<'a> State<'a> {
         match movability {
             ast::Movability::Static => self.word_space("static"),
             ast::Movability::Movable => Ok(()),
+        }
+    }
+
+    pub fn print_asyncness(&mut self, asyncness: ast::IsAsync)
+                                -> io::Result<()> {
+        match asyncness {
+            ast::IsAsync::Async => self.word_space("async"),
+            ast::IsAsync::NotAsync => Ok(()),
         }
     }
 

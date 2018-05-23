@@ -37,7 +37,7 @@ pub enum FnKind<'a> {
     Method(Ident, &'a MethodSig, Option<&'a Visibility>, &'a Block),
 
     /// |x, y| body
-    Closure(&'a Expr),
+    Closure(IsAsync, &'a Expr),
 }
 
 /// Each method of the Visitor trait is a hook to be potentially
@@ -552,7 +552,7 @@ pub fn walk_fn<'a, V>(visitor: &mut V, kind: FnKind<'a>, declaration: &'a FnDecl
             walk_fn_decl(visitor, declaration);
             visitor.visit_block(body);
         }
-        FnKind::Closure(body) => {
+        FnKind::Closure(_, body) => {
             walk_fn_decl(visitor, declaration);
             visitor.visit_expr(body);
         }
@@ -733,8 +733,8 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             walk_list!(visitor, visit_arm, arms);
         }
-        ExprKind::Closure(_, _, ref function_declaration, ref body, _decl_span) => {
-            visitor.visit_fn(FnKind::Closure(body),
+        ExprKind::Closure(_, is_async, _, ref function_declaration, ref body, _decl_span) => {
+            visitor.visit_fn(FnKind::Closure(is_async, body),
                              function_declaration,
                              expression.span,
                              expression.id)
