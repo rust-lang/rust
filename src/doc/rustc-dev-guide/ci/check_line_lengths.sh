@@ -30,7 +30,7 @@ for file in "$@" ; do
       (( inside_block = !$inside_block ))
       continue
     fi
-    if ! (( $inside_block )) && ! [[ "$line" =~ " | "|"-|-"|"://"|\[\^[^\ ]+\]: ]] && (( "${#line}" > $MAX_LINE_LENGTH )) ; then
+    if ! (( $inside_block )) && ! [[ "$line" =~ " | "|"-|-"|"://"|"]:"|\[\^[^\ ]+\]: ]] && (( "${#line}" > $MAX_LINE_LENGTH )) ; then
       (( bad_lines++ ))
       echo -e "\t$line_no : $line"
     fi
