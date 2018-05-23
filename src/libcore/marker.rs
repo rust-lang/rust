@@ -605,7 +605,7 @@ unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 ///
 /// [`PinMut`]: ../mem/struct.PinMut.html
 #[unstable(feature = "pin", issue = "49150")]
-pub unsafe auto trait Unpin {}
+pub auto trait Unpin {}
 
 /// Implementations of `Copy` for primitive types.
 ///

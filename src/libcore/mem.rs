@@ -1207,4 +1207,4 @@ impl<'a, T: ?Sized> fmt::Pointer for PinMut<'a, T> {
 impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<PinMut<'a, U>> for PinMut<'a, T> {}
 
 #[unstable(feature = "pin", issue = "49150")]
-unsafe impl<'a, T: ?Sized> Unpin for PinMut<'a, T> {}
+impl<'a, T: ?Sized> Unpin for PinMut<'a, T> {}
