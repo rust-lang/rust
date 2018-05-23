@@ -12,6 +12,7 @@
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
+#include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/ObjectFile.h"
@@ -114,6 +115,15 @@ extern "C" LLVMValueRef LLVMRustGetOrInsertFunction(LLVMModuleRef M,
 extern "C" LLVMValueRef
 LLVMRustGetOrInsertGlobal(LLVMModuleRef M, const char *Name, LLVMTypeRef Ty) {
   return wrap(unwrap(M)->getOrInsertGlobal(Name, unwrap(Ty)));
+}
+
+extern "C" LLVMValueRef
+LLVMRustInsertPrivateGlobal(LLVMModuleRef M, LLVMTypeRef Ty) {
+  return wrap(new GlobalVariable(*unwrap(M),
+                                 unwrap(Ty),
+                                 false,
+                                 GlobalValue::PrivateLinkage,
+                                 nullptr));
 }
 
 extern "C" LLVMTypeRef LLVMRustMetadataTypeInContext(LLVMContextRef C) {

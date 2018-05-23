@@ -106,7 +106,7 @@ pub fn get_vtable(
 
     let vtable_const = C_struct(cx, &components, false);
     let align = cx.data_layout().pointer_align;
-    let vtable = consts::addr_of(cx, vtable_const, align, "vtable");
+    let vtable = consts::addr_of(cx, vtable_const, align, Some("vtable"));
 
     debuginfo::create_vtable_metadata(cx, ty, vtable);
 

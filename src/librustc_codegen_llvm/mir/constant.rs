@@ -56,9 +56,9 @@ pub fn scalar_to_llvm(
                 Some(AllocType::Memory(alloc)) => {
                     let init = const_alloc_to_llvm(cx, alloc);
                     if alloc.runtime_mutability == Mutability::Mutable {
-                        consts::addr_of_mut(cx, init, alloc.align, "byte_str")
+                        consts::addr_of_mut(cx, init, alloc.align, None)
                     } else {
-                        consts::addr_of(cx, init, alloc.align, "byte_str")
+                        consts::addr_of(cx, init, alloc.align, None)
                     }
                 }
                 Some(AllocType::Function(fn_instance)) => {

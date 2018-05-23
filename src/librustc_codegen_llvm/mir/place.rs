@@ -63,7 +63,7 @@ impl PlaceRef<'ll, 'tcx> {
         offset: Size,
     ) -> PlaceRef<'ll, 'tcx> {
         let init = const_alloc_to_llvm(bx.cx, alloc);
-        let base_addr = consts::addr_of(bx.cx, init, layout.align, "byte_str");
+        let base_addr = consts::addr_of(bx.cx, init, layout.align, None);
 
         let llval = unsafe { LLVMConstInBoundsGEP(
             consts::bitcast(base_addr, Type::i8p(bx.cx)),

@@ -66,16 +66,22 @@ pub fn addr_of_mut(
     cx: &CodegenCx<'ll, '_>,
     cv: &'ll Value,
     align: Align,
-    kind: &str,
+    kind: Option<&str>,
 ) -> &'ll Value {
     unsafe {
-        let name = cx.generate_local_symbol_name(kind);
-        let gv = declare::define_global(cx, &name[..], val_ty(cv)).unwrap_or_else(||{
-            bug!("symbol `{}` is already defined", name);
-        });
+        let gv = match kind {
+            Some(kind) if !cx.tcx.sess.fewer_names() => {
+                let name = cx.generate_local_symbol_name(kind);
+                let gv = declare::define_global(cx, &name[..], val_ty(cv)).unwrap_or_else(||{
+                    bug!("symbol `{}` is already defined", name);
+                });
+                llvm::LLVMRustSetLinkage(gv, llvm::Linkage::PrivateLinkage);
+                gv
+            },
+            _ => declare::define_private_global(cx, val_ty(cv)),
+        };
         llvm::LLVMSetInitializer(gv, cv);
         set_global_alignment(cx, gv, align);
-        llvm::LLVMRustSetLinkage(gv, llvm::Linkage::PrivateLinkage);
         SetUnnamedAddr(gv, true);
         gv
     }
@@ -85,7 +91,7 @@ pub fn addr_of(
     cx: &CodegenCx<'ll, '_>,
     cv: &'ll Value,
     align: Align,
-    kind: &str,
+    kind: Option<&str>,
 ) -> &'ll Value {
     if let Some(&gv) = cx.const_globals.borrow().get(&cv) {
         unsafe {

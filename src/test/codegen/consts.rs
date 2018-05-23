@@ -21,11 +21,11 @@
 // CHECK: @STATIC = {{.*}}, align 4
 
 // This checks the constants from inline_enum_const
-// CHECK: @byte_str.{{[0-9]+}} = {{.*}}, align 2
+// CHECK: @{{[0-9]+}} = {{.*}}, align 2
 
 // This checks the constants from {low,high}_align_const, they share the same
 // constant, but the alignment differs, so the higher one should be used
-// CHECK: [[LOW_HIGH:@byte_str.[0-9]+]] = {{.*}}, align 4
+// CHECK: [[LOW_HIGH:@[0-9]+]] = {{.*}}, align 4
 
 #[derive(Copy, Clone)]
 

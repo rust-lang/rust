@@ -377,7 +377,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         let file_line_col = consts::addr_of(bx.cx,
                                                             file_line_col,
                                                             align,
-                                                            "panic_bounds_check_loc");
+                                                            Some("panic_bounds_check_loc"));
                         (lang_items::PanicBoundsCheckFnLangItem,
                          vec![file_line_col, index, len])
                     }
@@ -391,7 +391,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         let msg_file_line_col = consts::addr_of(bx.cx,
                                                                 msg_file_line_col,
                                                                 align,
-                                                                "panic_loc");
+                                                                Some("panic_loc"));
                         (lang_items::PanicFnLangItem,
                          vec![msg_file_line_col])
                     }

@@ -622,6 +622,7 @@ extern "C" {
     pub fn LLVMAddGlobal(M: &'a Module, Ty: &'a Type, Name: *const c_char) -> &'a Value;
     pub fn LLVMGetNamedGlobal(M: &Module, Name: *const c_char) -> Option<&Value>;
     pub fn LLVMRustGetOrInsertGlobal(M: &'a Module, Name: *const c_char, T: &'a Type) -> &'a Value;
+    pub fn LLVMRustInsertPrivateGlobal(M: &'a Module, T: &'a Type) -> &'a Value;
     pub fn LLVMGetFirstGlobal(M: &Module) -> Option<&Value>;
     pub fn LLVMGetNextGlobal(GlobalVar: &Value) -> Option<&Value>;
     pub fn LLVMDeleteGlobal(GlobalVar: &Value);
