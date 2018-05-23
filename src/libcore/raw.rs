@@ -97,3 +97,30 @@ pub struct TraitObject {
     pub data: *mut (),
     pub vtable: *mut (),
 }
+
+/// An adapter from a generator to a future.
+///
+/// This is a permanently unstable API used by the compiler. You should not
+/// depend on it.
+#[allow(missing_debug_implementations, dead_code)]
+#[unstable(feature = "gen_future", issue = "50547")]
+pub struct GenFuture<G, R> {
+    gen: G,
+    marker: ::marker::PhantomData<R>,
+}
+
+/// Construct a future from a generator (used in lowering async functions).
+///
+/// This is a permanently unstable API used by the compiler. You should not
+/// depend on it.
+#[unstable(feature = "gen_future", issue = "50547")]
+pub fn gen_future<G>(gen: G) -> GenFuture<G, G::Return> where
+    G: ::ops::Generator<Yield = ()>
+{
+    GenFuture { gen, marker: ::marker::PhantomData }
+}
+
+#[unstable(feature = "gen_future", issue = "50547")]
+impl<G> ::future::Future for GenFuture<G, G::Return> where
+    G: ::ops::Generator<Yield = ()>
+{ }

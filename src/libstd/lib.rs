@@ -242,6 +242,7 @@
 #![feature(array_error_internals)]
 #![feature(ascii_ctype)]
 #![feature(asm)]
+#![feature(async_await)]
 #![feature(attr_literals)]
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
@@ -390,6 +391,8 @@ pub use core::cmp;
 pub use core::convert;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::default;
+#[unstable(feature = "async_await", issue = "50547")]
+pub use core::future;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::hash;
 #[stable(feature = "rust1", since = "1.0.0")]
