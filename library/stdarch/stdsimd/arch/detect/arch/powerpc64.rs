@@ -1,7 +1,7 @@
 //! Run-time feature detection on PowerPC64.
 
 #[macro_export]
-#[unstable(feature = "stdsimd", issue = "0")]
+#[unstable(feature = "stdsimd", issue = "27731")]
 #[allow_internal_unstable]
 macro_rules! is_powerpc64_feature_detected {
     ("altivec") => {

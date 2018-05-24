@@ -353,35 +353,35 @@ pub mod arch {
     pub use coresimd::arch::x86_64;
 
     #[cfg(all(not(dox), target_arch = "arm"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub use coresimd::arch::arm;
 
     #[cfg(all(not(dox), target_arch = "aarch64"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub use coresimd::arch::aarch64;
 
     #[cfg(target_arch = "wasm32")]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub use coresimd::arch::wasm32;
 
     #[cfg(all(not(dox), target_arch = "mips"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub use coresimd::arch::mips;
 
     #[cfg(all(not(dox), target_arch = "mips64"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub use coresimd::arch::mips64;
 
     #[cfg(all(not(dox), target_arch = "powerpc"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub use coresimd::arch::powerpc;
 
     #[cfg(all(not(dox), target_arch = "powerpc64"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub use coresimd::arch::powerpc64;
 
     #[doc(hidden)] // unstable implementation detail
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod detect;
 
     /// Platform-specific intrinsics for the `x86` platform.
@@ -417,7 +417,7 @@ pub mod arch {
     /// [libcore]: ../../../core/arch/arm/index.html
     #[cfg(dox)]
     #[doc(cfg(target_arch = "arm"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod arm {}
 
     /// Platform-specific intrinsics for the `aarch64` platform.
@@ -429,7 +429,7 @@ pub mod arch {
     /// [libcore]: ../../../core/arch/aarch64/index.html
     #[cfg(dox)]
     #[doc(cfg(target_arch = "aarch64"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod aarch64 {}
 
     /// Platform-specific intrinsics for the `mips` platform.
@@ -441,7 +441,7 @@ pub mod arch {
     /// [libcore]: ../../../core/arch/mips/index.html
     #[cfg(dox)]
     #[doc(cfg(target_arch = "mips"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod mips {}
 
     /// Platform-specific intrinsics for the `mips64` platform.
@@ -453,7 +453,7 @@ pub mod arch {
     /// [libcore]: ../../../core/arch/mips64/index.html
     #[cfg(dox)]
     #[doc(cfg(target_arch = "mips64"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod mips64 {}
 
     /// Platform-specific intrinsics for the `powerpc` platform.
@@ -465,7 +465,7 @@ pub mod arch {
     /// [libcore]: ../../../core/arch/powerpc/index.html
     #[cfg(dox)]
     #[doc(cfg(target_arch = "powerpc"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod powerpc {}
 
     /// Platform-specific intrinsics for the `powerpc64` platform.
@@ -477,9 +477,9 @@ pub mod arch {
     /// [libcore]: ../../../core/arch/powerpc64/index.html
     #[cfg(dox)]
     #[doc(cfg(target_arch = "powerpc64"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod powerpc64 {}
 }
 
-#[unstable(feature = "stdsimd", issue = "0")]
+#[unstable(feature = "stdsimd", issue = "27731")]
 pub use coresimd::simd;

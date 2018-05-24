@@ -28,7 +28,7 @@
                   many_single_char_names))]
 #![cfg_attr(test, allow(unused_imports))]
 #![no_core]
-#![unstable(feature = "stdsimd", issue = "0")]
+#![unstable(feature = "stdsimd", issue = "27731")]
 #![doc(test(attr(deny(warnings))),
        test(attr(allow(dead_code, deprecated, unused_variables,
                        unused_mut))))]

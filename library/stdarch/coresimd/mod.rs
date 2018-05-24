@@ -11,7 +11,7 @@ mod ppsv;
 /// This is an **unstable** module for portable SIMD operations. This module
 /// has not yet gone through an RFC and is likely to change, but feedback is
 /// always welcome!
-#[unstable(feature = "stdsimd", issue = "0")]
+#[unstable(feature = "stdsimd", issue = "27731")]
 pub mod simd {
     pub use coresimd::ppsv::*;
 }
@@ -76,7 +76,7 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "arm", dox))]
     #[doc(cfg(target_arch = "arm"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod arm {
         pub use coresimd::arm::*;
     }
@@ -86,7 +86,7 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "aarch64", dox))]
     #[doc(cfg(target_arch = "aarch64"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod aarch64 {
         pub use coresimd::aarch64::*;
         pub use coresimd::arm::*;
@@ -96,7 +96,7 @@ pub mod arch {
     ///
     /// See the [module documentation](../index.html) for more details.
     #[cfg(target_arch = "wasm32")]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod wasm32 {
         pub use coresimd::wasm32::*;
     }
@@ -106,7 +106,7 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "mips", dox))]
     #[doc(cfg(target_arch = "mips"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod mips {
         pub use coresimd::mips::*;
     }
@@ -116,7 +116,7 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "mips64", dox))]
     #[doc(cfg(target_arch = "mips64"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod mips64 {
         pub use coresimd::mips::*;
     }
@@ -126,7 +126,7 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "powerpc", dox))]
     #[doc(cfg(target_arch = "powerpc"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod powerpc {
         pub use coresimd::powerpc::*;
     }
@@ -137,7 +137,7 @@ pub mod arch {
     #[cfg(target_arch = "powerpc64")]
     #[cfg(any(target_arch = "powerpc64", dox))]
     #[doc(cfg(target_arch = "powerpc64"))]
-    #[unstable(feature = "stdsimd", issue = "0")]
+    #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod powerpc64 {
         pub use coresimd::powerpc64::*;
     }

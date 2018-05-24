@@ -1,7 +1,7 @@
 //! Run-time feature detection on MIPS64.
 
 #[macro_export]
-#[unstable(feature = "stdsimd", issue = "0")]
+#[unstable(feature = "stdsimd", issue = "27731")]
 #[allow_internal_unstable]
 macro_rules! is_mips64_feature_detected {
     ("msa") => {

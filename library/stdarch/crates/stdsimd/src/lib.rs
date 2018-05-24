@@ -12,7 +12,7 @@
 #![cfg_attr(feature = "cargo-clippy", allow(shadow_reuse))]
 #![cfg_attr(target_os = "linux", feature(linkage))]
 #![no_std]
-#![unstable(feature = "stdsimd", issue = "0")]
+#![unstable(feature = "stdsimd", issue = "27731")]
 
 #[macro_use]
 extern crate cfg_if;
