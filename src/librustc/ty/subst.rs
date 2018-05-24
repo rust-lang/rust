@@ -20,6 +20,7 @@ use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::array_vec::ArrayVec;
 
 use core::intrinsics;
+use std::cmp::Ordering;
 use std::fmt;
 use std::marker::PhantomData;
 use std::mem;
@@ -67,6 +68,28 @@ impl<'tcx> UnpackedKind<'tcx> {
             },
             marker: PhantomData
         }
+    }
+}
+
+impl<'tcx> Ord for Kind<'tcx> {
+    fn cmp(&self, other: &Kind) -> Ordering {
+        match (self.unpack(), other.unpack()) {
+            (UnpackedKind::Type(_), UnpackedKind::Lifetime(_)) => Ordering::Greater,
+
+            (UnpackedKind::Type(ty1), UnpackedKind::Type(ty2)) => {
+                ty1.sty.cmp(&ty2.sty)
+            }
+
+            (UnpackedKind::Lifetime(reg1), UnpackedKind::Lifetime(reg2)) => reg1.cmp(reg2),
+
+            (UnpackedKind::Lifetime(_), UnpackedKind::Type(_))  => Ordering::Less,
+        }
+    }
+}
+
+impl<'tcx> PartialOrd for Kind<'tcx> {
+    fn partial_cmp(&self, other: &Kind) -> Option<Ordering> {
+        Some(self.cmp(&other))
     }
 }
 

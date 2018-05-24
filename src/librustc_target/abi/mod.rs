@@ -332,7 +332,7 @@ impl AddAssign for Size {
 /// Each field is a power of two, giving the alignment a maximum value
 /// of 2<sup>(2<sup>8</sup> - 1)</sup>, which is limited by LLVM to a
 /// maximum capacity of 2<sup>29</sup> or 536870912.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Ord, PartialOrd, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Align {
     abi_pow2: u8,
     pref_pow2: u8,
