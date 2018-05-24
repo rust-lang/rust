@@ -1151,8 +1151,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             SwitchInt { ref values, switch_ty, .. } => {
                 let size = ty::tls::with(|tcx| {
                     let param_env = ty::ParamEnv::empty();
-                    let tcx = tcx.global_tcx();
-                    let switch_ty = tcx.lift(&switch_ty).unwrap();
+                    let switch_ty = tcx.lift_to_global(&switch_ty).unwrap();
                     tcx.layout_of(param_env.and(switch_ty)).unwrap().size
                 });
                 values.iter()
@@ -1908,8 +1907,8 @@ pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Resul
         (Value::Scalar(Scalar::Bits { bits, .. }), &TyUint(ui)) => write!(f, "{:?}{}", bits, ui),
         (Value::Scalar(Scalar::Bits { bits, .. }), &TyInt(i)) => {
             let bit_width = ty::tls::with(|tcx| {
-                 let ty = tcx.global_tcx().lift(&ty).unwrap();
-                 tcx.global_tcx().layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size.bits()
+                 let ty = tcx.lift_to_global(&ty).unwrap();
+                 tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size.bits()
             });
             let amt = 128 - bit_width;
             write!(f, "{:?}{}", ((bits as i128) << amt) >> amt, i)

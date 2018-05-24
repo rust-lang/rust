@@ -156,9 +156,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         };
 
         let trunc = |n| {
-            let gcx = self.tcx.global_tcx();
-            let param_ty = self.param_env.and(gcx.lift(&ty).unwrap());
-            let bit_width = gcx.layout_of(param_ty).unwrap().size.bits();
+            let param_ty = self.param_env.and(self.tcx.lift_to_global(&ty).unwrap());
+            let bit_width = self.tcx.layout_of(param_ty).unwrap().size.bits();
             trace!("trunc {} with size {} and amt {}", n, bit_width, 128 - bit_width);
             let amt = 128 - bit_width;
             let result = (n << amt) >> amt;

@@ -1823,8 +1823,8 @@ impl<'tcx> Const<'tcx> {
         bits: u128,
         ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
     ) -> &'tcx Self {
-        let ty = tcx.global_tcx().lift(&ty).unwrap();
-        let size = tcx.global_tcx().layout_of(ty).unwrap_or_else(|e| {
+        let ty = tcx.lift_to_global(&ty).unwrap();
+        let size = tcx.layout_of(ty).unwrap_or_else(|e| {
             panic!("could not compute layout for {:?}: {:?}", ty, e)
         }).size;
         let amt = 128 - size.bits();
@@ -1857,8 +1857,8 @@ impl<'tcx> Const<'tcx> {
         if self.ty != ty.value {
             return None;
         }
-        let ty = tcx.global_tcx().lift(&ty).unwrap();
-        let size = tcx.global_tcx().layout_of(ty).ok()?.size;
+        let ty = tcx.lift_to_global(&ty).unwrap();
+        let size = tcx.layout_of(ty).ok()?.size;
         match self.val {
             ConstVal::Value(val) => val.to_bits(size),
             _ => None,
@@ -1896,8 +1896,8 @@ impl<'tcx> Const<'tcx> {
         ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
     ) -> Option<u128> {
         assert_eq!(self.ty, ty.value);
-        let ty = tcx.global_tcx().lift(&ty).unwrap();
-        let size = tcx.global_tcx().layout_of(ty).ok()?.size;
+        let ty = tcx.lift_to_global(&ty).unwrap();
+        let size = tcx.layout_of(ty).ok()?.size;
         match self.val {
             ConstVal::Value(val) => val.to_bits(size),
             _ => None,

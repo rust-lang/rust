@@ -374,9 +374,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     // Helper to get a `-1` value of the appropriate type
     fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let gcx = self.hir.tcx().global_tcx();
-        let param_ty = ty::ParamEnv::empty().and(gcx.lift(&ty).unwrap());
-        let bits = gcx.layout_of(param_ty).unwrap().size.bits();
+        let param_ty = ty::ParamEnv::empty().and(self.hir.tcx().lift_to_global(&ty).unwrap());
+        let bits = self.hir.tcx().layout_of(param_ty).unwrap().size.bits();
         let n = (!0u128) >> (128 - bits);
         let literal = Literal::Value {
             value: ty::Const::from_bits(self.hir.tcx(), n, param_ty)
@@ -387,10 +386,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     // Helper to get the minimum value of the appropriate type
     fn minval_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let gcx = self.hir.tcx().global_tcx();
         assert!(ty.is_signed());
-        let param_ty = ty::ParamEnv::empty().and(gcx.lift(&ty).unwrap());
-        let bits = gcx.layout_of(param_ty).unwrap().size.bits();
+        let param_ty = ty::ParamEnv::empty().and(self.hir.tcx().lift_to_global(&ty).unwrap());
+        let bits = self.hir.tcx().layout_of(param_ty).unwrap().size.bits();
         let n = 1 << (bits - 1);
         let literal = Literal::Value {
             value: ty::Const::from_bits(self.hir.tcx(), n, param_ty)
