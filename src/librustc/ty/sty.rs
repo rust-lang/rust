@@ -1824,10 +1824,13 @@ impl<'tcx> Const<'tcx> {
         ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
     ) -> &'tcx Self {
         let ty = tcx.global_tcx().lift(&ty).unwrap();
-        let defined = tcx.global_tcx().layout_of(ty).unwrap_or_else(|e| {
+        let size = tcx.global_tcx().layout_of(ty).unwrap_or_else(|e| {
             panic!("could not compute layout for {:?}: {:?}", ty, e)
-        }).size.bits() as u8;
-        Self::from_scalar(tcx, Scalar::Bits { bits, defined }, ty.value)
+        }).size;
+        let amt = 128 - size.bits();
+        let truncated = (bits << amt) >> amt;
+        assert_eq!(truncated, bits, "from_bits called with untruncated value");
+        Self::from_scalar(tcx, Scalar::Bits { bits, defined: size.bits() as u8 }, ty.value)
     }
 
     #[inline]
