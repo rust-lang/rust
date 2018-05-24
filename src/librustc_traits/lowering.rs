@@ -22,7 +22,7 @@ use syntax::ast;
 
 use std::iter;
 
-trait Lower<T> {
+crate trait Lower<T> {
     /// Lower a rustc construction (e.g. `ty::TraitPredicate`) to a chalk-like type.
     fn lower(&self) -> T;
 }

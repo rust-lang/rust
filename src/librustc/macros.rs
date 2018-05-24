@@ -250,10 +250,7 @@ macro_rules! BraceStructLiftImpl {
 macro_rules! EnumLiftImpl {
     (impl<$($p:tt),*> Lift<$tcx:tt> for $s:path {
         type Lifted = $lifted:ty;
-        $(
-            ($variant:path) ( $( $variant_arg:ident),* )
-        ),*
-        $(,)*
+        $($variants:tt)*
     } $(where $($wc:tt)*)*) => {
         impl<$($p),*> $crate::ty::Lift<$tcx> for $s
             $(where $($wc)*)*
@@ -261,13 +258,43 @@ macro_rules! EnumLiftImpl {
             type Lifted = $lifted;
 
             fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<$lifted> {
-                match self {
-                    $($variant ( $($variant_arg),* ) => {
-                        Some($variant ( $(tcx.lift($variant_arg)?),* ))
-                    })*
-                }
+                EnumLiftImpl!(@Variants(self, tcx) input($($variants)*) output())
             }
         }
+    };
+
+    (@Variants($this:expr, $tcx:expr) input() output($($output:tt)*)) => {
+        match $this {
+            $($output)*
+        }
+    };
+
+    (@Variants($this:expr, $tcx:expr)
+     input( ($variant:path) ( $($variant_arg:ident),* ) , $($input:tt)*)
+     output( $($output:tt)*) ) => {
+        EnumLiftImpl!(
+            @Variants($this, $tcx)
+                input($($input)*)
+                output(
+                    $variant ( $($variant_arg),* ) => {
+                        Some($variant ( $($tcx.lift($variant_arg)?),* ))
+                    }
+                    $($output)*
+                )
+        )
+    };
+
+    (@Variants($this:expr, $tcx:expr)
+     input( ($variant:path), $($input:tt)*)
+     output( $($output:tt)*) ) => {
+        EnumLiftImpl!(
+            @Variants($this, $tcx)
+                input($($input)*)
+                output(
+                    $variant => { Some($variant) }
+                    $($output)*
+                )
+        )
     };
 }
 
