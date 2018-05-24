@@ -3533,7 +3533,9 @@ impl<'a> Resolver<'a> {
         // warning, this looks all good!
         if let Some(binding) = second_binding {
             if let NameBindingKind::Import { directive: d, .. } = binding.kind {
-                if let ImportDirectiveSubclass::ExternCrate(..) = d.subclass {
+                // Careful: we still want to rewrite paths from
+                // renamed extern crates.
+                if let ImportDirectiveSubclass::ExternCrate(None) = d.subclass {
                     return
                 }
             }
