@@ -158,9 +158,9 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         let trunc = |n| {
             let param_ty = self.param_env.and(self.tcx.lift_to_global(&ty).unwrap());
             let bit_width = self.tcx.layout_of(param_ty).unwrap().size.bits();
-            trace!("trunc {} with size {} and amt {}", n, bit_width, 128 - bit_width);
-            let amt = 128 - bit_width;
-            let result = (n << amt) >> amt;
+            trace!("trunc {} with size {} and shift {}", n, bit_width, 128 - bit_width);
+            let shift = 128 - bit_width;
+            let result = (n << shift) >> shift;
             trace!("trunc result: {}", result);
             ConstValue::Scalar(Scalar::Bits {
                 bits: result,

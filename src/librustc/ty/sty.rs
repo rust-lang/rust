@@ -1827,8 +1827,8 @@ impl<'tcx> Const<'tcx> {
         let size = tcx.layout_of(ty).unwrap_or_else(|e| {
             panic!("could not compute layout for {:?}: {:?}", ty, e)
         }).size;
-        let amt = 128 - size.bits();
-        let truncated = (bits << amt) >> amt;
+        let shift = 128 - size.bits();
+        let truncated = (bits << shift) >> shift;
         assert_eq!(truncated, bits, "from_bits called with untruncated value");
         Self::from_scalar(tcx, Scalar::Bits { bits, defined: size.bits() as u8 }, ty.value)
     }

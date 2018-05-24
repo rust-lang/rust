@@ -930,17 +930,17 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     let i = raw_discr.to_bits(discr.size)? as i128;
                     // going from layout tag type to typeck discriminant type
                     // requires first sign extending with the layout discriminant
-                    let amt = 128 - discr.size.bits();
-                    let sexted = (i << amt) >> amt;
+                    let shift = 128 - discr.size.bits();
+                    let sexted = (i << shift) >> shift;
                     // and then zeroing with the typeck discriminant type
                     let discr_ty = ty
                         .ty_adt_def().expect("tagged layout corresponds to adt")
                         .repr
                         .discr_type();
                     let discr_ty = layout::Integer::from_attr(self.tcx.tcx, discr_ty);
-                    let amt = 128 - discr_ty.size().bits();
+                    let shift = 128 - discr_ty.size().bits();
                     let truncatee = sexted as u128;
-                    (truncatee << amt) >> amt
+                    (truncatee << shift) >> shift
                 } else {
                     raw_discr.to_bits(discr.size)?
                 }
@@ -1005,8 +1005,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 // their computation, but the in-memory tag is the smallest possible
                 // representation
                 let size = tag.value.size(self.tcx.tcx).bits();
-                let amt = 128 - size;
-                let discr_val = (discr_val << amt) >> amt;
+                let shift = 128 - size;
+                let discr_val = (discr_val << shift) >> shift;
 
                 let (discr_dest, tag) = self.place_field(dest, mir::Field::new(0), layout)?;
                 self.write_scalar(discr_dest, Scalar::Bits {

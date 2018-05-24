@@ -1910,8 +1910,8 @@ pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Resul
                  let ty = tcx.lift_to_global(&ty).unwrap();
                  tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size.bits()
             });
-            let amt = 128 - bit_width;
-            write!(f, "{:?}{}", ((bits as i128) << amt) >> amt, i)
+            let shift = 128 - bit_width;
+            write!(f, "{:?}{}", ((bits as i128) << shift) >> shift, i)
         },
         (Value::Scalar(Scalar::Bits { bits, .. }), &TyChar) =>
             write!(f, "{:?}", ::std::char::from_u32(bits as u32).unwrap()),
