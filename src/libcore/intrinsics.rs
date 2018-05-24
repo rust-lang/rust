@@ -1149,7 +1149,7 @@ extern "rust-intrinsic" {
     /// Creating an invalid value:
     ///
     /// ```no_run
-    /// use std::{mem, ptr};
+    /// use std::ptr;
     ///
     /// let mut v = Box::new(0i32);
     ///
