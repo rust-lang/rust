@@ -1,3 +1,27 @@
+Version 1.26.1 (2018-05-29)
+==========================
+
+Tools
+-----
+
+- [RLS now works on Windows][50646]
+- [Rustfmt stopped badly formatting text in some cases][rustfmt/2695]
+
+Compatibility Notes
+--------
+
+- [`fn main() -> impl Trait` no longer works for non-Termination
+  trait][50656]
+  This reverts an accidental stabilization.
+- [`NaN > NaN` no longer returns true in const-fn contexts][50812]
+- [Prohibit using turbofish for `impl Trait` in method arguments][50950]
+
+[50646]: https://github.com/rust-lang/rust/issues/50646
+[50656]: https://github.com/rust-lang/rust/pull/50656
+[50812]: https://github.com/rust-lang/rust/pull/50812
+[50950]: https://github.com/rust-lang/rust/issues/50950
+[rustfmt/2695]: https://github.com/rust-lang-nursery/rustfmt/issues/2695
+
 Version 1.26.0 (2018-05-10)
 ==========================
 
