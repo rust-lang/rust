@@ -51,8 +51,8 @@
 //! enclosing function.  On the way down the tree, it identifies those AST
 //! nodes and variable IDs that will be needed for the liveness analysis
 //! and assigns them contiguous IDs.  The liveness id for an AST node is
-//! called a `live_node` (it's a newtype'd usize) and the id for a variable
-//! is called a `variable` (another newtype'd usize).
+//! called a `live_node` (it's a newtype'd u32) and the id for a variable
+//! is called a `variable` (another newtype'd u32).
 //!
 //! On the way back up the tree, as we are about to exit from a function
 //! declaration we allocate a `liveness` instance.  Now that we know
@@ -112,7 +112,7 @@ use lint;
 use util::nodemap::{NodeMap, NodeSet};
 
 use std::collections::VecDeque;
-use std::{fmt, usize};
+use std::{fmt, u32};
 use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
@@ -134,23 +134,17 @@ enum LoopKind<'a> {
 }
 
 #[derive(Copy, Clone, PartialEq)]
-struct Variable(usize);
+struct Variable(u32);
 
-#[derive(Copy, PartialEq)]
-struct LiveNode(usize);
+#[derive(Copy, Clone, PartialEq)]
+struct LiveNode(u32);
 
 impl Variable {
-    fn get(&self) -> usize { let Variable(v) = *self; v }
+    fn get(&self) -> usize { self.0 as usize }
 }
 
 impl LiveNode {
-    fn get(&self) -> usize { let LiveNode(v) = *self; v }
-}
-
-impl Clone for LiveNode {
-    fn clone(&self) -> LiveNode {
-        LiveNode(self.get())
-    }
+    fn get(&self) -> usize { self.0 as usize }
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -233,11 +227,11 @@ impl fmt::Debug for Variable {
 
 impl LiveNode {
     fn is_valid(&self) -> bool {
-        self.get() != usize::MAX
+        self.0 != u32::MAX
     }
 }
 
-fn invalid_node() -> LiveNode { LiveNode(usize::MAX) }
+fn invalid_node() -> LiveNode { LiveNode(u32::MAX) }
 
 struct CaptureInfo {
     ln: LiveNode,
@@ -285,7 +279,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
     }
 
     fn add_live_node(&mut self, lnk: LiveNodeKind) -> LiveNode {
-        let ln = LiveNode(self.num_live_nodes);
+        let ln = LiveNode(self.num_live_nodes as u32);
         self.lnks.push(lnk);
         self.num_live_nodes += 1;
 
@@ -303,7 +297,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
     }
 
     fn add_variable(&mut self, vk: VarKind) -> Variable {
-        let v = Variable(self.num_vars);
+        let v = Variable(self.num_vars as u32);
         self.var_kinds.push(vk);
         self.num_vars += 1;
 
@@ -708,7 +702,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         for var_idx in 0..self.ir.num_vars {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
-                write!(wr, " {:?}", Variable(var_idx))?;
+                write!(wr, " {:?}", Variable(var_idx as u32))?;
             }
         }
         Ok(())
@@ -848,7 +842,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         debug!("^^ liveness computation results for body {} (entry={:?})",
                {
                    for ln_idx in 0..self.ir.num_live_nodes {
-                       debug!("{:?}", self.ln_str(LiveNode(ln_idx)));
+                       debug!("{:?}", self.ln_str(LiveNode(ln_idx as u32)));
                    }
                    body.id
                },
