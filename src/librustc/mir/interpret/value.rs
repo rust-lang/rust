@@ -9,7 +9,7 @@ use super::{EvalResult, Pointer, PointerArithmetic, Allocation};
 /// matches Value's optimizations for easy conversions between these two types
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
 pub enum ConstValue<'tcx> {
-    /// Used only for types with layout::abi::Scalar ABI and ZSTs which use Scalar::Undef
+    /// Used only for types with layout::abi::Scalar ABI and ZSTs which use Scalar::undef()
     Scalar(Scalar),
     /// Used only for types with layout::abi::ScalarPair
     ScalarPair(Scalar, Scalar),
