@@ -1677,6 +1677,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, type_ascription, e.span,
                                   "type ascription is experimental");
             }
+            ast::ExprKind::ObsoleteInPlace(..) => {
+                // these get a hard error in ast-validation
+            }
             ast::ExprKind::Yield(..) => {
                 gate_feature_post!(&self, generators,
                                   e.span,

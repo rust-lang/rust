@@ -655,6 +655,10 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Box(ref subexpression) => {
             visitor.visit_expr(subexpression)
         }
+        ExprKind::ObsoleteInPlace(ref place, ref subexpression) => {
+            visitor.visit_expr(place);
+            visitor.visit_expr(subexpression)
+        }
         ExprKind::Array(ref subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
