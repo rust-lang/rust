@@ -173,13 +173,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             LitKind::Str(ref s, _) => {
                 let s = s.as_str();
                 let id = self.tcx.allocate_bytes(s.as_bytes());
-                ConstValue::ScalarPair(
-                    Scalar::Ptr(id.into()),
-                    Scalar::Bits {
-                        bits: s.len() as u128,
-                        defined: self.tcx.data_layout.pointer_size.bits() as u8,
-                    }
-                )
+                let value = Scalar::Ptr(id.into()).to_value_with_len(s.len() as u64, self.tcx);
+                ConstValue::from_byval_value(value)
             },
             LitKind::ByteStr(ref data) => {
                 let id = self.tcx.allocate_bytes(data);
