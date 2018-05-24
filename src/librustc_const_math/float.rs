@@ -38,19 +38,18 @@ impl ConstFloat {
     }
 
     /// Compares the values if they are of the same type
-    pub fn try_cmp(self, rhs: Self) -> Result<Ordering, ConstMathErr> {
+    pub fn try_cmp(self, rhs: Self) -> Result<Option<Ordering>, ConstMathErr> {
         match (self.ty, rhs.ty) {
             (ast::FloatTy::F64, ast::FloatTy::F64)  => {
                 let a = Double::from_bits(self.bits);
                 let b = Double::from_bits(rhs.bits);
-                // This is pretty bad but it is the existing behavior.
-                Ok(a.partial_cmp(&b).unwrap_or(Ordering::Greater))
+                Ok(a.partial_cmp(&b))
             }
 
             (ast::FloatTy::F32, ast::FloatTy::F32) => {
                 let a = Single::from_bits(self.bits);
                 let b = Single::from_bits(rhs.bits);
-                Ok(a.partial_cmp(&b).unwrap_or(Ordering::Greater))
+                Ok(a.partial_cmp(&b))
             }
 
             _ => Err(CmpBetweenUnequalTypes),
