@@ -1337,6 +1337,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "enable the experimental Chalk-based trait solving engine"),
     cross_lang_lto: CrossLangLto = (CrossLangLto::Disabled, parse_cross_lang_lto, [TRACKED],
           "generate build artifacts that are compatible with linker-based LTO."),
+    no_parallel_llvm: bool = (false, parse_bool, [UNTRACKED],
+          "don't run LLVM in parallel (while keeping codegen-units and ThinLTO)"),
 }
 
 pub fn default_lib_output() -> CrateType {
