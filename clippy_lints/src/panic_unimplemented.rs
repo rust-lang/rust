@@ -2,6 +2,7 @@ use rustc::hir::*;
 use rustc::lint::*;
 use syntax::ast::LitKind;
 use syntax::ptr::P;
+use syntax::ext::quote::rt::Span;
 use utils::{is_direct_expn_of, is_expn_of, match_def_path, opt_def_id, paths, resolve_node, span_lint};
 
 /// **What it does:** Checks for missing parameters in `panic!`.
@@ -35,7 +36,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub UNIMPLEMENTED,
-    style,
+    restriction,
     "`unimplemented!` should not be present in production code"
 }
 
@@ -60,12 +61,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if params.len() == 2;
             then {
                 if is_expn_of(expr.span, "unimplemented").is_some() {
-                    span_lint(cx, UNIMPLEMENTED, expr.span,
+                    let span = get_outer_span(expr);
+                    span_lint(cx, UNIMPLEMENTED, span,
                               "`unimplemented` should not be present in production code");
                 } else {
                     match_panic(params, expr, cx);
                 }
             }
+        }
+    }
+}
+
+fn get_outer_span(expr: &Expr) -> Span {
+    if_chain! {
+        if let Some(first) = expr.span.ctxt().outer().expn_info();
+        if let Some(second) = first.call_site.ctxt().outer().expn_info();
+        then {
+            second.call_site
+        } else {
+            expr.span
         }
     }
 }

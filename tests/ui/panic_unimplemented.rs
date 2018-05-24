@@ -54,7 +54,9 @@ fn ok_escaped() {
 }
 
 fn unimplemented() {
+    let a = 2;
     unimplemented!();
+    let b = a + 2;
 }
 
 fn main() {
