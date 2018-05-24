@@ -1265,13 +1265,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
     }
 
-    pub fn ty_to_primitive(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, layout::Primitive> {
-        match self.layout_of(ty)?.abi {
-            layout::Abi::Scalar(ref scalar) => Ok(scalar.value),
-            _ => err!(TypeNotPrimitive(ty)),
-        }
-    }
-
     fn ensure_valid_value(&self, val: Scalar, ty: Ty<'tcx>) -> EvalResult<'tcx> {
         match ty.sty {
             ty::TyBool => val.to_bool().map(|_| ()),

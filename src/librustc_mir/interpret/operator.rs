@@ -1,5 +1,5 @@
 use rustc::mir;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, layout};
 use syntax::ast::FloatTy;
 use rustc::ty::layout::LayoutOf;
 use rustc_apfloat::ieee::{Double, Single};
@@ -68,8 +68,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, (Scalar, bool)> {
         use rustc::mir::BinOp::*;
 
-        let left_kind = self.ty_to_primitive(left_ty)?;
-        let right_kind = self.ty_to_primitive(right_ty)?;
+        let left_layout = self.layout_of(left_ty)?;
+        let right_layout = self.layout_of(right_ty)?;
+
+        let left_kind = match left_layout.abi {
+            layout::Abi::Scalar(ref scalar) => scalar.value,
+            _ => return err!(TypeNotPrimitive(left_ty)),
+        };
+        let right_kind = match right_layout.abi {
+            layout::Abi::Scalar(ref scalar) => scalar.value,
+            _ => return err!(TypeNotPrimitive(right_ty)),
+        };
         trace!("Running binary op {:?}: {:?} ({:?}), {:?} ({:?})", bin_op, left, left_kind, right, right_kind);
 
         // I: Handle operations that support pointers
@@ -78,9 +87,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 return Ok(handled);
             }
         }
-
-        let left_layout = self.layout_of(left_ty)?;
-        let right_layout = self.layout_of(right_ty)?;
 
         // II: From now on, everything must be bytes, no pointers
         let l = left.to_bits(left_layout.size)?;
