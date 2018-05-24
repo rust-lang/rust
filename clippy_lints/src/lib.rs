@@ -177,7 +177,7 @@ pub mod non_expressive_names;
 pub mod ok_if_let;
 pub mod open_options;
 pub mod overflow_check_conditional;
-pub mod panic;
+pub mod panic_unimplemented;
 pub mod partialeq_ne_impl;
 pub mod precedence;
 pub mod ptr;
@@ -352,7 +352,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box escape::Pass{too_large_for_stack: conf.too_large_for_stack});
     reg.register_early_lint_pass(box misc_early::MiscEarly);
     reg.register_late_lint_pass(box array_indexing::ArrayIndexing);
-    reg.register_late_lint_pass(box panic::Pass);
+    reg.register_late_lint_pass(box panic_unimplemented::Pass);
     reg.register_late_lint_pass(box strings::StringLitAsBytes);
     reg.register_late_lint_pass(box derive::Derive);
     reg.register_late_lint_pass(box types::CharLitAsU8);
@@ -626,8 +626,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         ok_if_let::IF_LET_SOME_RESULT,
         open_options::NONSENSICAL_OPEN_OPTIONS,
         overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL,
-        panic::PANIC_PARAMS,
-        panic::UNIMPLEMENTED,
+        panic_unimplemented::PANIC_PARAMS,
+        panic_unimplemented::UNIMPLEMENTED,
         partialeq_ne_impl::PARTIALEQ_NE_IMPL,
         precedence::PRECEDENCE,
         ptr::CMP_NULL,
@@ -749,8 +749,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         non_expressive_names::JUST_UNDERSCORES_AND_DIGITS,
         non_expressive_names::MANY_SINGLE_CHAR_NAMES,
         ok_if_let::IF_LET_SOME_RESULT,
-        panic::PANIC_PARAMS,
-        panic::UNIMPLEMENTED,
+        panic_unimplemented::PANIC_PARAMS,
+        panic_unimplemented::UNIMPLEMENTED,
         ptr::CMP_NULL,
         ptr::PTR_ARG,
         question_mark::QUESTION_MARK,

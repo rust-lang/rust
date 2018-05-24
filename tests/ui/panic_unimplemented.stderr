@@ -1,5 +1,5 @@
 error: you probably are missing some parameter in your format string
- --> $DIR/panic.rs:8:16
+ --> $DIR/panic_unimplemented.rs:8:16
   |
 8 |         panic!("{}");
   |                ^^^^
@@ -7,25 +7,25 @@ error: you probably are missing some parameter in your format string
   = note: `-D panic-params` implied by `-D warnings`
 
 error: you probably are missing some parameter in your format string
-  --> $DIR/panic.rs:10:16
+  --> $DIR/panic_unimplemented.rs:10:16
    |
 10 |         panic!("{:?}");
    |                ^^^^^^
 
 error: you probably are missing some parameter in your format string
-  --> $DIR/panic.rs:12:23
+  --> $DIR/panic_unimplemented.rs:12:23
    |
 12 |         assert!(true, "here be missing values: {}");
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you probably are missing some parameter in your format string
-  --> $DIR/panic.rs:15:12
+  --> $DIR/panic_unimplemented.rs:15:12
    |
 15 |     panic!("{{{this}}}");
    |            ^^^^^^^^^^^^
 
 error: `unimplemented` should not be present in production code
-  --> $DIR/panic.rs:57:5
+  --> $DIR/panic_unimplemented.rs:57:5
    |
 57 |     unimplemented!();
    |     ^^^^^^^^^^^^^^^^^
