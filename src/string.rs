@@ -56,7 +56,6 @@ pub fn rewrite_string<'a>(
     let graphemes = UnicodeSegmentation::graphemes(&*stripped_str, false).collect::<Vec<&str>>();
     let shape = fmt.shape;
     let indent = shape.indent.to_string_with_newline(fmt.config);
-    let punctuation = ":,;.";
 
     // `cur_start` is the position in `orig` of the start of the current line.
     let mut cur_start = 0;
@@ -90,20 +89,20 @@ pub fn rewrite_string<'a>(
         }
 
         // Push cur_end left until we reach whitespace (or the line is too small).
-        while !graphemes[cur_end - 1].trim().is_empty() {
+        while !is_whitespace(graphemes[cur_end - 1]) {
             cur_end -= 1;
             if cur_end < cur_start + MIN_STRING {
                 // We couldn't find whitespace before the string got too small.
                 // So start again at the max length and look for punctuation.
                 cur_end = cur_start + max_chars;
-                while !punctuation.contains(graphemes[cur_end - 1]) {
+                while !is_punctuation(graphemes[cur_end - 1]) {
                     cur_end -= 1;
 
                     // If we can't break at whitespace or punctuation, grow the string instead.
                     if cur_end < cur_start + MIN_STRING {
                         cur_end = cur_start + max_chars;
-                        while !(punctuation.contains(graphemes[cur_end - 1])
-                            || graphemes[cur_end - 1].trim().is_empty())
+                        while !(is_punctuation(graphemes[cur_end - 1])
+                            || is_whitespace(graphemes[cur_end - 1]))
                         {
                             cur_end += 1;
                             if cur_end == graphemes.len() {
@@ -119,7 +118,7 @@ pub fn rewrite_string<'a>(
             }
         }
         // Make sure there is no whitespace to the right of the break.
-        while cur_end < stripped_str.len() && graphemes[cur_end].trim().is_empty() {
+        while cur_end < stripped_str.len() && is_whitespace(graphemes[cur_end]) {
             cur_end += 1;
         }
 
@@ -146,6 +145,17 @@ pub fn rewrite_string<'a>(
 
     result.push_str(fmt.closer);
     wrap_str(result, fmt.config.max_width(), fmt.shape)
+}
+
+fn is_whitespace(grapheme: &str) -> bool {
+    grapheme.chars().all(|c| c.is_whitespace())
+}
+
+fn is_punctuation(grapheme: &str) -> bool {
+    match grapheme.as_bytes()[0] {
+        b':' | b',' | b';' | b'.' => true,
+        _ => false,
+    }
 }
 
 #[cfg(test)]
