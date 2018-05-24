@@ -178,12 +178,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         self.tcx.check_stability(pick.item.def_id, Some(call_expr.id), span);
 
-        let result = self.confirm_method(span,
-                                         self_expr,
-                                         call_expr,
-                                         self_ty,
-                                         pick.clone(),
-                                         segment);
+        let result = self.confirm_method(
+            span,
+            self_expr,
+            call_expr,
+            self_ty,
+            pick.clone(),
+            segment,
+        );
 
         if result.illegal_sized_bound {
             // We probe again, taking all traits into account (not only those in scope).

@@ -4754,7 +4754,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // variables. If the user provided some types, we may still need
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
-        let supress_mismatch = self.check_impl_trait(span, &mut fn_segment);
+        let supress_mismatch = self.check_impl_trait(span, fn_segment);
         self.check_path_parameter_count(span, &mut type_segment, false, supress_mismatch);
         self.check_path_parameter_count(span, &mut fn_segment, false, supress_mismatch);
 
@@ -5017,7 +5017,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Report error if there is an explicit type parameter when using `impl Trait`.
     fn check_impl_trait(&self,
                         span: Span,
-                        segment: &mut Option<(&hir::PathSegment, &ty::Generics)>)
+                        segment: Option<(&hir::PathSegment, &ty::Generics)>)
                         -> bool {
         use hir::SyntheticTyParamKind::*;
 
