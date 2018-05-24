@@ -312,9 +312,10 @@ pub enum Mode {
     /// Build libtest, placing output in the "stageN-test" directory.
     Test,
 
-    /// Build librustc, codegen and compiler libraries, placing output
-    /// in the "stageN-rustc" directory.
+    /// Build librustc, and compiler libraries, placing output in the "stageN-rustc" directory.
     Rustc,
+
+    /// Build codegen libraries, placing output in the "stageN-codegen" directory
     Codegen,
 
     /// Build some tools, placing output in the "stageN-tools" directory.
@@ -522,12 +523,10 @@ impl Build {
     fn stage_out(&self, compiler: Compiler, mode: Mode) -> PathBuf {
         let suffix = match mode {
             Mode::Std => "-std",
-            Mode::ToolStd => "-tools",
             Mode::Test => "-test",
-            Mode::ToolTest => "-tools",
             Mode::Codegen => "-rustc",
             Mode::Rustc => "-rustc",
-            Mode::ToolRustc => "-tools",
+            Mode::ToolStd | Mode::ToolTest | Mode::ToolRustc => "-tools",
         };
         self.out.join(&*compiler.host)
                 .join(format!("stage{}{}", compiler.stage, suffix))

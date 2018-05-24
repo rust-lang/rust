@@ -236,7 +236,7 @@ impl Step for Rustdoc {
         builder.ensure(tool::CleanTools {
             compiler,
             target,
-            mode: Mode::ToolRustc,
+            cause: Mode::Rustc,
         });
     }
 }

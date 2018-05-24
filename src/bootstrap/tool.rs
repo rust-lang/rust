@@ -28,7 +28,7 @@ use toolstate::ToolState;
 pub struct CleanTools {
     pub compiler: Compiler,
     pub target: Interned<String>,
-    pub mode: Mode,
+    pub cause: Mode,
 }
 
 impl Step for CleanTools {
@@ -41,7 +41,7 @@ impl Step for CleanTools {
     fn run(self, builder: &Builder) {
         let compiler = self.compiler;
         let target = self.target;
-        let mode = self.mode;
+        let cause = self.cause;
 
         // This is for the original compiler, but if we're forced to use stage 1, then
         // std/test/rustc stamps won't exist in stage 2, so we need to get those from stage 1, since
@@ -53,11 +53,11 @@ impl Step for CleanTools {
             compiler
         };
 
-        for &cur_mode in &[Mode::ToolStd, Mode::ToolTest, Mode::ToolRustc] {
+        for &cur_mode in &[Mode::Std, Mode::Test, Mode::Rustc] {
             let stamp = match cur_mode {
-                Mode::ToolStd => libstd_stamp(builder, compiler, target),
-                Mode::ToolTest => libtest_stamp(builder, compiler, target),
-                Mode::ToolRustc => librustc_stamp(builder, compiler, target),
+                Mode::Std => libstd_stamp(builder, compiler, target),
+                Mode::Test => libtest_stamp(builder, compiler, target),
+                Mode::Rustc => librustc_stamp(builder, compiler, target),
                 _ => panic!(),
             };
 
@@ -67,7 +67,7 @@ impl Step for CleanTools {
 
             // If we are a rustc tool, and std changed, we also need to clear ourselves out -- our
             // dependencies depend on std. Therefore, we iterate up until our own mode.
-            if mode == cur_mode {
+            if cause == cur_mode {
                 break;
             }
         }

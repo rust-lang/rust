@@ -240,7 +240,7 @@ impl Step for StdLink {
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
             target,
-            mode: Mode::Std,
+            cause: Mode::Std,
         });
     }
 }
@@ -431,7 +431,7 @@ impl Step for TestLink {
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
             target,
-            mode: Mode::Test,
+            cause: Mode::Test,
         });
     }
 }
@@ -585,7 +585,7 @@ impl Step for RustcLink {
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
             target,
-            mode: Mode::Rustc,
+            cause: Mode::Rustc,
         });
     }
 }
