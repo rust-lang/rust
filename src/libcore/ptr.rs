@@ -16,18 +16,23 @@
 //!
 //! # Safety
 //!
-//! Most functions in this module [dereference raw pointers].
-//!
-//! In order for a pointer dereference to be safe, the pointer must be "valid".
-//! A valid pointer is one that satisfies **all** of the following conditions:
+//! Many functions in this module take raw pointers as arguments and dereference
+//! them. For this to be safe, these pointers must be valid. A valid pointer
+//! is one that satisfies **all** of the following conditions:
 //!
 //! * The pointer is not null.
 //! * The pointer is not dangling (it does not point to memory which has been
 //!   freed).
 //! * The pointer satisfies [LLVM's pointer aliasing rules].
 //!
-//! [dereference raw pointers]: https://doc.rust-lang.org/book/second-edition/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
+//! Valid pointers are not necessarily properly aligned. However, except for
+//! [`read_unaligned`] and [`write_unaligned`], most functions require their
+//! arguments to be aligned. Any alignment requirements will be explicitly
+//! stated in the function's documentation.
+//!
 //! [LLVM's pointer aliasing rules]: https://llvm.org/docs/LangRef.html#pointer-aliasing-rules
+//! [`read_unaligned`]: ./fn.read_unaligned.html
+//! [`write_unaligned`]: ./fn.write_unaligned.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -654,6 +659,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// // Accessing unaligned values directly is safe.
 /// assert!(x.unaligned == v);
+/// ```
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
