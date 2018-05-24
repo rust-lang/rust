@@ -20,7 +20,9 @@ use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_target::spec::PanicStrategy;
 
+use attributes;
 use llvm::{self, Attribute, ValueRef};
 use llvm::AttributePlace::Function;
 use llvm_util;
@@ -135,11 +137,28 @@ pub fn from_fn_attrs(cx: &CodegenCx, llfn: ValueRef, id: DefId) {
         Attribute::NoAlias.apply_llfn(
             llvm::AttributePlace::ReturnValue, llfn);
     }
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::UNWIND) {
-        unwind(llfn, true);
-    }
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
-        unwind(llfn, false);
+
+    let can_unwind = if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::UNWIND) {
+        Some(true)
+    } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
+        Some(false)
+
+    // Perhaps questionable, but we assume that anything defined
+    // *in Rust code* may unwind. Foreign items like `extern "C" {
+    // fn foo(); }` are assumed not to unwind **unless** they have
+    // a `#[unwind]` attribute.
+    } else if !cx.tcx.is_foreign_item(id) {
+        Some(true)
+    } else {
+        None
+    };
+
+    match can_unwind {
+        Some(false) => attributes::unwind(llfn, false),
+        Some(true) if cx.tcx.sess.panic_strategy() == PanicStrategy::Unwind => {
+            attributes::unwind(llfn, true);
+        }
+        Some(true) | None => {}
     }
 
     let features = llvm_target_features(cx.tcx.sess)

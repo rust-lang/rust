@@ -26,7 +26,6 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TypeFoldable};
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::subst::Substs;
-use rustc_target::spec::PanicStrategy;
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -101,16 +100,6 @@ pub fn get_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         attributes::from_fn_attrs(cx, llfn, instance.def.def_id());
 
         let instance_def_id = instance.def_id();
-
-        // Perhaps questionable, but we assume that anything defined
-        // *in Rust code* may unwind. Foreign items like `extern "C" {
-        // fn foo(); }` are assumed not to unwind **unless** they have
-        // a `#[unwind]` attribute.
-        if tcx.sess.panic_strategy() == PanicStrategy::Unwind {
-            if !tcx.is_foreign_item(instance_def_id) {
-                attributes::unwind(llfn, true);
-            }
-        }
 
         // Apply an appropriate linkage/visibility value to our item that we
         // just declared.
