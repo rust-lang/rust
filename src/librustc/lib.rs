@@ -80,6 +80,7 @@ extern crate graphviz;
 #[macro_use] extern crate lazy_static;
 #[cfg(windows)]
 extern crate libc;
+extern crate polonius_engine;
 extern crate rustc_target;
 #[macro_use] extern crate rustc_data_structures;
 extern crate serialize;

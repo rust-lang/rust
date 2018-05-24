@@ -94,6 +94,7 @@ static WHITELIST: &'static [Crate] = &[
     Crate("owning_ref"),
     Crate("parking_lot"),
     Crate("parking_lot_core"),
+    Crate("polonius-engine"),
     Crate("quick-error"),
     Crate("rand"),
     Crate("redox_syscall"),
