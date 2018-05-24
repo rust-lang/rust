@@ -1104,9 +1104,10 @@ pub fn compare_const_vals<'a, 'tcx>(
                             defined: defined_b,
                         },
                     ))
-                ) if size_a == size_b && defined_a == defined_b &&
+                ) if size_a == size_b &&
                      ptr_a.offset.bytes() == 0 && ptr_b.offset.bytes() == 0 &&
-                     tcx.data_layout.pointer_size.bits() == defined_a.into() => {
+                     tcx.data_layout.pointer_size.bits() <= defined_a.into() &&
+                     tcx.data_layout.pointer_size.bits() <= defined_b.into() => {
                     let map = tcx.alloc_map.lock();
                     let alloc_a = map.unwrap_memory(ptr_a.alloc_id);
                     let alloc_b = map.unwrap_memory(ptr_b.alloc_id);
