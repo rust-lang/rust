@@ -25,4 +25,4 @@ type Float = f64;
 #[cfg(target_pointer_width="32")]
 type Float = f32;
 
-static BAR: Float = unsafe { Foo { r: &FOO }.f }; 
+static BAR: Float = unsafe { Foo { r: &FOO }.f };

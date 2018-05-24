@@ -27,4 +27,4 @@ type Int = u64;
 #[cfg(target_pointer_width="32")]
 type Int = u32;
 
-const BAR: Int = unsafe { Foo { r: &42 }.f }; 
+const BAR: Int = unsafe { Foo { r: &42 }.f };
