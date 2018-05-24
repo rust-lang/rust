@@ -383,7 +383,7 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 /// ```
 /// use std::ptr;
 ///
-/// let mut s = String::new("foo");
+/// let mut s = String::from("foo");
 /// unsafe {
 ///     // `s2` now points to the same underlying memory as `s1`.
 ///     let mut s2 = ptr::read(&s);
@@ -397,10 +397,10 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 ///
 ///     // Assigning to `s` would cause the old value to be dropped again,
 ///     // resulting in undefined behavior.
-///     // s = String::new("bar"); // ERROR
+///     // s = String::from("bar"); // ERROR
 ///
 ///     // `ptr::write` can be used to overwrite a value without dropping it.
-///     ptr::write(&s, String::new("bar"));
+///     ptr::write(&mut s, String::from("bar"));
 /// }
 ///
 /// assert_eq!(s, "bar");
