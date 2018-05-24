@@ -70,8 +70,11 @@ pub fn scalar_to_llvm(cx: &CodegenCx,
                 &C_usize(cx, ptr.offset.bytes()),
                 1,
             ) };
-            let llval = unsafe { llvm::LLVMConstPtrToInt(llval, llty.to_ref()) };
-            consts::bitcast(llval, llty)
+            if layout.value != layout::Pointer {
+                unsafe { llvm::LLVMConstPtrToInt(llval, llty.to_ref()) }
+            } else {
+                consts::bitcast(llval, llty)
+            }
         }
     }
 }
