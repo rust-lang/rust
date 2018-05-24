@@ -1529,7 +1529,10 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Goal<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Goal<'a>> {
     type Lifted = &'tcx Slice<Goal<'tcx>>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx Slice<Goal<'tcx>>> {
+    fn lift_to_tcx<'b, 'gcx>(
+        &self,
+        tcx: TyCtxt<'b, 'gcx, 'tcx>,
+    ) -> Option<&'tcx Slice<Goal<'tcx>>> {
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
         }
@@ -1544,7 +1547,10 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Goal<'a>> {
 
 impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Clause<'a>> {
     type Lifted = &'tcx Slice<Clause<'tcx>>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx Slice<Clause<'tcx>>> {
+    fn lift_to_tcx<'b, 'gcx>(
+        &self,
+        tcx: TyCtxt<'b, 'gcx, 'tcx>,
+    ) -> Option<&'tcx Slice<Clause<'tcx>>> {
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
         }
