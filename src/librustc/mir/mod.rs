@@ -1153,13 +1153,13 @@ impl<'tcx> TerminatorKind<'tcx> {
                     let param_env = ty::ParamEnv::empty();
                     let tcx = tcx.global_tcx();
                     let switch_ty = tcx.lift(&switch_ty).unwrap();
-                    tcx.layout_of(param_env.and(switch_ty)).unwrap().size.bits() as u8
+                    tcx.layout_of(param_env.and(switch_ty)).unwrap().size
                 });
                 values.iter()
                       .map(|&u| {
                           let mut s = String::new();
                           print_miri_value(
-                              Value::Scalar(Scalar::Bits { bits: u, defined: size }),
+                              Value::Scalar(Scalar::Bits { bits: u, defined: size.bits() as u8 }),
                               switch_ty,
                               &mut s,
                           ).unwrap();
