@@ -627,7 +627,7 @@ impl<'tcx> IntRange<'tcx> {
                     if let Some(hi) = hi.assert_bits(ty) {
                         // Perform a shift if the underlying types are signed,
                         // which makes the interval arithmetic simpler.
-                        let (lo, hi) = Self::encode(tcx, ty, lo..=hi);
+                        let (lo, hi) = Self::encode(tcx, ty, (lo, hi));
                         // Make sure the interval is well-formed.
                         return if lo > hi || lo == hi && *end == RangeEnd::Excluded {
                             None
@@ -642,7 +642,7 @@ impl<'tcx> IntRange<'tcx> {
             ConstantValue(val) => {
                 let ty = val.ty;
                 if let Some(val) = val.assert_bits(ty) {
-                    let (lo, hi) = Self::encode(tcx, ty, val..=val);
+                    let (lo, hi) = Self::encode(tcx, ty, (val, val));
                     Some(IntRange { range: lo..=hi, ty })
                 } else {
                     None
@@ -654,16 +654,10 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
-    fn convert(tcx: TyCtxt<'_, 'tcx, 'tcx>,
-               ty: Ty<'tcx>,
-               range: RangeInclusive<u128>,
-               encode: bool)
-               -> (u128, u128) {
-        // We ensure that all integer values are contiguous: that is, that their
-        // minimum value is represented by 0, so that comparisons and increments/
-        // decrements on interval endpoints work consistently whether the endpoints
-        // are signed or unsigned.
-        let (lo, hi) = range.into_inner();
+    fn encode(tcx: TyCtxt<'_, 'tcx, 'tcx>,
+              ty: Ty<'tcx>,
+              (lo, hi): (u128, u128))
+              -> (u128, u128) {
         match ty.sty {
             ty::TyInt(_) => {
                 // FIXME(49937): refactor these bit manipulations into interpret.
@@ -671,33 +665,33 @@ impl<'tcx> IntRange<'tcx> {
                               .unwrap().size.bits() as u128;
                 let min = 1u128 << (bits - 1);
                 let mask = !0u128 >> (128 - bits);
-                if encode {
-                    let offset = |x: u128| x.wrapping_sub(min) & mask;
-                    (offset(lo), offset(hi))
-                } else {
-                    let offset = |x: u128| x.wrapping_add(min) & mask;
-                    (offset(lo), offset(hi))
-                }
+                let offset = |x: u128| x.wrapping_sub(min) & mask;
+                (offset(lo), offset(hi))
             }
-            ty::TyUint(_) | ty::TyChar => {
-                (lo, hi)
-            }
-            _ => bug!("`IntRange` should only contain integer types")
+            _ => (lo, hi)
         }
-    }
-
-    fn encode(tcx: TyCtxt<'_, 'tcx, 'tcx>,
-              ty: Ty<'tcx>,
-              range: RangeInclusive<u128>)
-              -> (u128, u128) {
-        Self::convert(tcx, ty, range, true)
     }
 
     fn decode(tcx: TyCtxt<'_, 'tcx, 'tcx>,
               ty: Ty<'tcx>,
               range: RangeInclusive<u128>)
-              -> (u128, u128) {
-        Self::convert(tcx, ty, range, false)
+              -> Constructor<'tcx> {
+        let (lo, hi) = range.into_inner();
+        let (lo, hi) = match ty.sty {
+            ty::TyInt(_) => {
+                // FIXME(49937): refactor these bit manipulations into interpret.
+                let bits = tcx.layout_of(ty::ParamEnv::reveal_all().and(ty))
+                              .unwrap().size.bits() as u128;
+                let min = 1u128 << (bits - 1);
+                let mask = !0u128 >> (128 - bits);
+                let offset = |x: u128| x.wrapping_add(min) & mask;
+                (offset(lo), offset(hi))
+            }
+            _ => (lo, hi)
+        };
+        ConstantRange(ty::Const::from_bits(tcx, lo, ty),
+                      ty::Const::from_bits(tcx, hi, ty),
+                      RangeEnd::Included)
     }
 
     fn into_inner(self) -> (u128, u128) {
@@ -739,10 +733,7 @@ fn ranges_subtract_pattern<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         }
         // Convert the remaining ranges from pairs to inclusive `ConstantRange`s.
         remaining_ranges.into_iter().map(|r| {
-            let (lo, hi) = IntRange::decode(cx.tcx, ty, r);
-            ConstantRange(ty::Const::from_bits(cx.tcx, lo, ty),
-                          ty::Const::from_bits(cx.tcx, hi, ty),
-                          RangeEnd::Included)
+            IntRange::decode(cx.tcx, ty, r)
         }).collect()
     } else {
         ranges
