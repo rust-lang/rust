@@ -777,7 +777,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         let new_generics_span = tcx
                             .sess
                             .codemap()
-                            .generate_fn_name_span(impl_m.span)?
+                            .generate_fn_name_span(impl_span)?
                             .shrink_to_hi();
                         // in case there are generics, just replace them
                         let generics_span = impl_m

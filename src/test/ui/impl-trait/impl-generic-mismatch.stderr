@@ -21,12 +21,8 @@ LL |     fn bar(&self, _: &impl Debug) { }
    |                       ^^^^^^^^^^ expected generic parameter, found `impl Trait`
 help: try changing the `impl Trait` argument to a generic parameter
    |
-LL |     fn bar<U: Debug><U: Debug>(&self, _: &U);
-LL | }
-LL | 
-LL | impl Bar for () {
-LL |     fn bar(&self, _: &U) { }
-   |
+LL |     fn bar<U: Debug>(&self, _: &U) { }
+   |           ^^^^^^^^^^            ^
 
 error[E0643]: method `hash` has incompatible signature for trait
   --> $DIR/impl-generic-mismatch.rs:38:33
