@@ -178,6 +178,11 @@ impl<'a> DiagnosticBuilder<'a> {
                                           msg: &str,
                                           suggestion: String)
                                           -> &mut Self);
+    forward!(pub fn multipart_suggestion(
+        &mut self,
+        msg: &str,
+        suggestion: Vec<(Span, String)>
+    ) -> &mut Self);
     forward!(pub fn span_suggestion(&mut self,
                                     sp: Span,
                                     msg: &str,

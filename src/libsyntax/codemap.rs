@@ -874,6 +874,78 @@ impl CodeMap {
     pub fn count_lines(&self) -> usize {
         self.files().iter().fold(0, |a, f| a + f.count_lines())
     }
+
+
+    pub fn generate_fn_name_span(&self, span: Span) -> Option<Span> {
+        let prev_span = self.span_extend_to_prev_str(span, "fn", true);
+        self.span_to_snippet(prev_span).map(|snippet| {
+            let len = snippet.find(|c: char| !c.is_alphanumeric() && c != '_')
+                .expect("no label after fn");
+            prev_span.with_hi(BytePos(prev_span.lo().0 + len as u32))
+        }).ok()
+    }
+
+    /// Take the span of a type parameter in a function signature and try to generate a span for the
+    /// function name (with generics) and a new snippet for this span with the pointed type
+    /// parameter as a new local type parameter.
+    ///
+    /// For instance:
+    /// ```rust,ignore (pseudo-Rust)
+    /// // Given span
+    /// fn my_function(param: T)
+    /// //                    ^ Original span
+    ///
+    /// // Result
+    /// fn my_function(param: T)
+    /// // ^^^^^^^^^^^ Generated span with snippet `my_function<T>`
+    /// ```
+    ///
+    /// Attention: The method used is very fragile since it essentially duplicates the work of the
+    /// parser. If you need to use this function or something similar, please consider updating the
+    /// codemap functions and this function to something more robust.
+    pub fn generate_local_type_param_snippet(&self, span: Span) -> Option<(Span, String)> {
+        // Try to extend the span to the previous "fn" keyword to retrieve the function
+        // signature
+        let sugg_span = self.span_extend_to_prev_str(span, "fn", false);
+        if sugg_span != span {
+            if let Ok(snippet) = self.span_to_snippet(sugg_span) {
+                // Consume the function name
+                let mut offset = snippet.find(|c: char| !c.is_alphanumeric() && c != '_')
+                    .expect("no label after fn");
+
+                // Consume the generics part of the function signature
+                let mut bracket_counter = 0;
+                let mut last_char = None;
+                for c in snippet[offset..].chars() {
+                    match c {
+                        '<' => bracket_counter += 1,
+                        '>' => bracket_counter -= 1,
+                        '(' => if bracket_counter == 0 { break; }
+                        _ => {}
+                    }
+                    offset += c.len_utf8();
+                    last_char = Some(c);
+                }
+
+                // Adjust the suggestion span to encompass the function name with its generics
+                let sugg_span = sugg_span.with_hi(BytePos(sugg_span.lo().0 + offset as u32));
+
+                // Prepare the new suggested snippet to append the type parameter that triggered
+                // the error in the generics of the function signature
+                let mut new_snippet = if last_char == Some('>') {
+                    format!("{}, ", &snippet[..(offset - '>'.len_utf8())])
+                } else {
+                    format!("{}<", &snippet[..offset])
+                };
+                new_snippet.push_str(&self.span_to_snippet(span).unwrap_or("T".to_string()));
+                new_snippet.push('>');
+
+                return Some((sugg_span, new_snippet));
+            }
+        }
+
+        None
+    }
 }
 
 impl CodeMapper for CodeMap {
