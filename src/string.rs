@@ -105,12 +105,12 @@ pub fn rewrite_string<'a>(
                         while !(punctuation.contains(graphemes[cur_end - 1])
                             || graphemes[cur_end - 1].trim().is_empty())
                         {
-                            if cur_end >= graphemes.len() {
+                            cur_end += 1;
+                            if cur_end == graphemes.len() {
                                 let line = &graphemes[cur_start..].join("");
                                 result.push_str(line);
                                 break 'outer;
                             }
-                            cur_end += 1;
                         }
                         break;
                     }
