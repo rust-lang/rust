@@ -1012,51 +1012,16 @@ impl FilePathMapping {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::borrow::Cow;
     use rustc_data_structures::sync::Lrc;
-
-    #[test]
-    fn t1 () {
-        let cm = CodeMap::new(FilePathMapping::empty());
-        let fm = cm.new_filemap(PathBuf::from("blork.rs").into(),
-                                "first line.\nsecond line".to_string());
-        fm.next_line(BytePos(0));
-        // Test we can get lines with partial line info.
-        assert_eq!(fm.get_line(0), Some(Cow::from("first line.")));
-        // TESTING BROKEN BEHAVIOR: line break declared before actual line break.
-        fm.next_line(BytePos(10));
-        assert_eq!(fm.get_line(1), Some(Cow::from(".")));
-        fm.next_line(BytePos(12));
-        assert_eq!(fm.get_line(2), Some(Cow::from("second line")));
-    }
-
-    #[test]
-    #[should_panic]
-    fn t2 () {
-        let cm = CodeMap::new(FilePathMapping::empty());
-        let fm = cm.new_filemap(PathBuf::from("blork.rs").into(),
-                                "first line.\nsecond line".to_string());
-        // TESTING *REALLY* BROKEN BEHAVIOR:
-        fm.next_line(BytePos(0));
-        fm.next_line(BytePos(10));
-        fm.next_line(BytePos(2));
-    }
 
     fn init_code_map() -> CodeMap {
         let cm = CodeMap::new(FilePathMapping::empty());
-        let fm1 = cm.new_filemap(PathBuf::from("blork.rs").into(),
-                                 "first line.\nsecond line".to_string());
-        let fm2 = cm.new_filemap(PathBuf::from("empty.rs").into(),
-                                 "".to_string());
-        let fm3 = cm.new_filemap(PathBuf::from("blork2.rs").into(),
-                                 "first line.\nsecond line".to_string());
-
-        fm1.next_line(BytePos(0));
-        fm1.next_line(BytePos(12));
-        fm2.next_line(fm2.start_pos);
-        fm3.next_line(fm3.start_pos);
-        fm3.next_line(fm3.start_pos + BytePos(12));
-
+        cm.new_filemap(PathBuf::from("blork.rs").into(),
+                       "first line.\nsecond line".to_string());
+        cm.new_filemap(PathBuf::from("empty.rs").into(),
+                       "".to_string());
+        cm.new_filemap(PathBuf::from("blork2.rs").into(),
+                       "first line.\nsecond line".to_string());
         cm
     }
 
@@ -1109,26 +1074,10 @@ mod tests {
     fn init_code_map_mbc() -> CodeMap {
         let cm = CodeMap::new(FilePathMapping::empty());
         // € is a three byte utf8 char.
-        let fm1 =
-            cm.new_filemap(PathBuf::from("blork.rs").into(),
-                           "fir€st €€€€ line.\nsecond line".to_string());
-        let fm2 = cm.new_filemap(PathBuf::from("blork2.rs").into(),
-                                 "first line€€.\n€ second line".to_string());
-
-        fm1.next_line(BytePos(0));
-        fm1.next_line(BytePos(28));
-        fm2.next_line(fm2.start_pos);
-        fm2.next_line(fm2.start_pos + BytePos(20));
-
-        fm1.record_multibyte_char(BytePos(3), 3);
-        fm1.record_multibyte_char(BytePos(9), 3);
-        fm1.record_multibyte_char(BytePos(12), 3);
-        fm1.record_multibyte_char(BytePos(15), 3);
-        fm1.record_multibyte_char(BytePos(18), 3);
-        fm2.record_multibyte_char(fm2.start_pos + BytePos(10), 3);
-        fm2.record_multibyte_char(fm2.start_pos + BytePos(13), 3);
-        fm2.record_multibyte_char(fm2.start_pos + BytePos(18), 3);
-
+        cm.new_filemap(PathBuf::from("blork.rs").into(),
+                       "fir€st €€€€ line.\nsecond line".to_string());
+        cm.new_filemap(PathBuf::from("blork2.rs").into(),
+                       "first line€€.\n€ second line".to_string());
         cm
     }
 
