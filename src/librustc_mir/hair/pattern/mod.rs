@@ -364,9 +364,9 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                             lo,
                             hi,
                             self.param_env.and(ty),
-                        ).unwrap();
+                        );
                         match (end, cmp) {
-                            (RangeEnd::Excluded, Ordering::Less) =>
+                            (RangeEnd::Excluded, Some(Ordering::Less)) =>
                                 PatternKind::Range { lo, hi, end },
                             (RangeEnd::Excluded, _) => {
                                 span_err!(
@@ -377,7 +377,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                 );
                                 PatternKind::Wild
                             },
-                            (RangeEnd::Included, Ordering::Greater) => {
+                            (RangeEnd::Included, None) |
+                            (RangeEnd::Included, Some(Ordering::Greater)) => {
                                 let mut err = struct_span_err!(
                                     self.tcx.sess,
                                     lo_expr.span,
@@ -398,7 +399,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                 err.emit();
                                 PatternKind::Wild
                             },
-                            (RangeEnd::Included, _) => PatternKind::Range { lo, hi, end },
+                            (RangeEnd::Included, Some(_)) => PatternKind::Range { lo, hi, end },
                         }
                     }
                     _ => PatternKind::Wild
