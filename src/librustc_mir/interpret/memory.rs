@@ -233,7 +233,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 (ptr.offset.bytes(), alloc.align)
             }
             Scalar::Bits { bits, defined } => {
-                if defined <= self.pointer_size().bits() as u8 {
+                if (defined as u64) < self.pointer_size().bits() {
                     return err!(ReadUndefBytes);
                 }
                 // FIXME: what on earth does this line do? docs or fix needed!
@@ -750,7 +750,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 val.offset.bytes() as u128
             }
 
-            Scalar::Bits { bits, defined } if defined >= size.bits() as u8 && defined != 0 => bits,
+            Scalar::Bits { bits, defined } if defined as u64 >= size.bits() && size.bits() != 0 => bits,
 
             Scalar::Bits { .. } => {
                 self.check_align(ptr.into(), ptr_align)?;
