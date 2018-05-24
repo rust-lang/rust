@@ -1,7 +1,7 @@
 
 
 
-#![warn(panic_params)]
+#![warn(panic_params, unimplemented)]
 
 fn missing() {
     if true {
@@ -53,6 +53,12 @@ fn ok_escaped() {
     panic!("{case }}");
 }
 
+fn unimplemented() {
+    let a = 2;
+    unimplemented!();
+    let b = a + 2;
+}
+
 fn main() {
     missing();
     ok_single();
@@ -61,4 +67,5 @@ fn main() {
     ok_inner();
     ok_nomsg();
     ok_escaped();
+    unimplemented();
 }

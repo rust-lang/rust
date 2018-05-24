@@ -815,6 +815,7 @@ All notable changes to this project will be documented in this file.
 [`trivial_regex`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#trivial_regex
 [`type_complexity`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#type_complexity
 [`unicode_not_nfc`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unicode_not_nfc
+[`unimplemented`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unimplemented
 [`unit_arg`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unit_arg
 [`unit_cmp`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unit_cmp
 [`unnecessary_cast`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_cast
