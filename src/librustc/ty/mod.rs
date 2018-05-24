@@ -43,7 +43,6 @@ use std::cell::RefCell;
 use std::cmp::{self, Ordering};
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
 use std::ops::Deref;
 use rustc_data_structures::sync::Lrc;
 use std::slice;
@@ -592,20 +591,13 @@ extern {
 /// A wrapper for slices with the additional invariant
 /// that the slice is interned and no other slice with
 /// the same contents can exist in the same context.
-/// This means we can use pointer + length for both
+/// This means we can use pointer for both
 /// equality comparisons and hashing.
-pub struct Slice<T>(PhantomData<T>, OpaqueSliceContents);
-
-impl<T> Slice<T> {
-    /// Returns the offset of the array
-    #[inline(always)]
-    fn offset() -> usize {
-        // Align up the size of the len (usize) field
-        let align = mem::align_of::<T>();
-        let align_mask = align - 1;
-        let offset = mem::size_of::<usize>();
-        (offset + align_mask) & !align_mask
-    }
+#[repr(C)]
+pub struct Slice<T> {
+    len: usize,
+    data: [T; 0],
+    opaque: OpaqueSliceContents,
 }
 
 impl<T: Copy> Slice<T> {
@@ -615,24 +607,27 @@ impl<T: Copy> Slice<T> {
         assert!(mem::size_of::<T>() != 0);
         assert!(slice.len() != 0);
 
-        let offset = Slice::<T>::offset();
+        // Align up the size of the len (usize) field
+        let align = mem::align_of::<T>();
+        let align_mask = align - 1;
+        let offset = mem::size_of::<usize>();
+        let offset = (offset + align_mask) & !align_mask;
+
         let size = offset + slice.len() * mem::size_of::<T>();
 
-        let mem: *mut u8 = arena.alloc_raw(
+        let mem = arena.alloc_raw(
             size,
-            cmp::max(mem::align_of::<T>(), mem::align_of::<usize>())).as_mut_ptr();
-
+            cmp::max(mem::align_of::<T>(), mem::align_of::<usize>()));
         unsafe {
+            let result = &mut *(mem.as_mut_ptr() as *mut Slice<T>);
             // Write the length
-            *(mem as *mut usize) = slice.len();
+            result.len = slice.len();
 
             // Write the elements
-            let arena_slice = slice::from_raw_parts_mut(
-                mem.offset(offset as isize) as *mut T,
-                slice.len());
+            let arena_slice = slice::from_raw_parts_mut(result.data.as_mut_ptr(), result.len);
             arena_slice.copy_from_slice(slice);
 
-            &*(mem as *const Slice<T>)
+            result
         }
     }
 }
@@ -686,10 +681,7 @@ impl<T> Deref for Slice<T> {
     #[inline(always)]
     fn deref(&self) -> &[T] {
         unsafe {
-            let raw = self as *const _ as *const u8;
-            let len = *(raw as *const usize);
-            let slice = raw.offset(Slice::<T>::offset() as isize);
-            slice::from_raw_parts(slice as *const T, len)
+            slice::from_raw_parts(self.data.as_ptr(), self.len)
         }
     }
 }
