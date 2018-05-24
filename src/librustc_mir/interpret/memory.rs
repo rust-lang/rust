@@ -956,8 +956,6 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
             }
 
             Value::ScalarPair(ptr, vtable) => Ok((ptr.into(), vtable.to_ptr()?)),
-
-            Value::Scalar(Scalar::Bits { defined: 0, .. }) => err!(ReadUndefBytes),
             _ => bug!("expected ptr and vtable, got {:?}", value),
         }
     }
@@ -980,7 +978,6 @@ pub trait HasMemory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
                 let len = val.to_bits(self.memory().pointer_size())?;
                 Ok((ptr.into(), len as u64))
             }
-            Value::Scalar(Scalar::Bits { defined: 0, .. }) => err!(ReadUndefBytes),
             Value::Scalar(_) => bug!("expected ptr and length, got {:?}", value),
         }
     }
