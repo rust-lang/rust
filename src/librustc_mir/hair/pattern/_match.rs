@@ -21,11 +21,13 @@ use super::{PatternFoldable, PatternFolder, compare_const_vals};
 use rustc::hir::def_id::DefId;
 use rustc::hir::RangeEnd;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::layout::{Integer, IntegerExt};
 
 use rustc::mir::Field;
 use rustc::mir::interpret::ConstValue;
 use rustc::util::common::ErrorReported;
 
+use syntax::attr::{SignedInt, UnsignedInt};
 use syntax_pos::{Span, DUMMY_SP};
 
 use arena::TypedArena;
@@ -469,10 +471,9 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 ConstantRange(endpoint('\u{E000}'), endpoint('\u{10FFFF}'), RangeEnd::Included),
             ]
         }
-        ty::TyInt(_) if exhaustive_integer_patterns => {
+        ty::TyInt(ity) if exhaustive_integer_patterns => {
             // FIXME(49937): refactor these bit manipulations into interpret.
-            let bits = cx.tcx.layout_of(ty::ParamEnv::reveal_all().and(pcx.ty))
-                             .unwrap().size.bits() as u128;
+            let bits = Integer::from_attr(cx.tcx, SignedInt(ity)).size().bits() as u128;
             let min = 1u128 << (bits - 1);
             let max = (1u128 << (bits - 1)) - 1;
             value_constructors = true;
@@ -480,10 +481,9 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                ty::Const::from_bits(cx.tcx, max as u128, pcx.ty),
                                RangeEnd::Included)]
         }
-        ty::TyUint(_) if exhaustive_integer_patterns => {
+        ty::TyUint(uty) if exhaustive_integer_patterns => {
             // FIXME(49937): refactor these bit manipulations into interpret.
-            let bits = cx.tcx.layout_of(ty::ParamEnv::reveal_all().and(pcx.ty))
-                             .unwrap().size.bits() as u128;
+            let bits = Integer::from_attr(cx.tcx, UnsignedInt(uty)).size().bits() as u128;
             let max = !0u128 >> (128 - bits);
             value_constructors = true;
             vec![ConstantRange(ty::Const::from_bits(cx.tcx, 0, pcx.ty),
@@ -627,7 +627,8 @@ impl<'tcx> IntRange<'tcx> {
                     if let Some(hi) = hi.assert_bits(ty) {
                         // Perform a shift if the underlying types are signed,
                         // which makes the interval arithmetic simpler.
-                        let (lo, hi) = Self::encode(tcx, ty, (lo, hi));
+                        let bias = IntRange::signed_bias(tcx, ty);
+                        let (lo, hi) = (lo ^ bias, hi ^ bias);
                         // Make sure the interval is well-formed.
                         return if lo > hi || lo == hi && *end == RangeEnd::Excluded {
                             None
@@ -642,8 +643,9 @@ impl<'tcx> IntRange<'tcx> {
             ConstantValue(val) => {
                 let ty = val.ty;
                 if let Some(val) = val.assert_bits(ty) {
-                    let (lo, hi) = Self::encode(tcx, ty, (val, val));
-                    Some(IntRange { range: lo..=hi, ty })
+                    let bias = IntRange::signed_bias(tcx, ty);
+                    let val = val ^ bias;
+                    Some(IntRange { range: val..=val, ty })
                 } else {
                     None
                 }
@@ -654,44 +656,14 @@ impl<'tcx> IntRange<'tcx> {
         }
     }
 
-    fn encode(tcx: TyCtxt<'_, 'tcx, 'tcx>,
-              ty: Ty<'tcx>,
-              (lo, hi): (u128, u128))
-              -> (u128, u128) {
+    fn signed_bias(tcx: TyCtxt<'_, 'tcx, 'tcx>, ty: Ty<'tcx>) -> u128 {
         match ty.sty {
-            ty::TyInt(_) => {
-                // FIXME(49937): refactor these bit manipulations into interpret.
-                let bits = tcx.layout_of(ty::ParamEnv::reveal_all().and(ty))
-                              .unwrap().size.bits() as u128;
-                let min = 1u128 << (bits - 1);
-                let mask = !0u128 >> (128 - bits);
-                let offset = |x: u128| x.wrapping_sub(min) & mask;
-                (offset(lo), offset(hi))
+            ty::TyInt(ity) => {
+                let bits = Integer::from_attr(tcx, SignedInt(ity)).size().bits() as u128;
+                1u128 << (bits - 1)
             }
-            _ => (lo, hi)
+            _ => 0
         }
-    }
-
-    fn decode(tcx: TyCtxt<'_, 'tcx, 'tcx>,
-              ty: Ty<'tcx>,
-              range: RangeInclusive<u128>)
-              -> Constructor<'tcx> {
-        let (lo, hi) = range.into_inner();
-        let (lo, hi) = match ty.sty {
-            ty::TyInt(_) => {
-                // FIXME(49937): refactor these bit manipulations into interpret.
-                let bits = tcx.layout_of(ty::ParamEnv::reveal_all().and(ty))
-                              .unwrap().size.bits() as u128;
-                let min = 1u128 << (bits - 1);
-                let mask = !0u128 >> (128 - bits);
-                let offset = |x: u128| x.wrapping_add(min) & mask;
-                (offset(lo), offset(hi))
-            }
-            _ => (lo, hi)
-        };
-        ConstantRange(ty::Const::from_bits(tcx, lo, ty),
-                      ty::Const::from_bits(tcx, hi, ty),
-                      RangeEnd::Included)
     }
 
     fn into_inner(self) -> (u128, u128) {
@@ -733,7 +705,11 @@ fn ranges_subtract_pattern<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         }
         // Convert the remaining ranges from pairs to inclusive `ConstantRange`s.
         remaining_ranges.into_iter().map(|r| {
-            IntRange::decode(cx.tcx, ty, r)
+            let (lo, hi) = r.into_inner();
+            let bias = IntRange::signed_bias(cx.tcx, ty);
+            ConstantRange(ty::Const::from_bits(cx.tcx, lo ^ bias, ty),
+                          ty::Const::from_bits(cx.tcx, hi ^ bias, ty),
+                          RangeEnd::Included)
         }).collect()
     } else {
         ranges
