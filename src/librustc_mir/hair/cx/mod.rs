@@ -155,14 +155,14 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             })
         };
 
-        let clamp = |n| {
+        let trunc = |n| {
             let gcx = self.tcx.global_tcx();
             let param_ty = self.param_env.and(gcx.lift(&ty).unwrap());
             let bit_width = gcx.layout_of(param_ty).unwrap().size.bits();
-            trace!("clamp {} with size {} and amt {}", n, bit_width, 128 - bit_width);
+            trace!("trunc {} with size {} and amt {}", n, bit_width, 128 - bit_width);
             let amt = 128 - bit_width;
             let result = (n << amt) >> amt;
-            trace!("clamp result: {}", result);
+            trace!("trunc result: {}", result);
             ConstValue::Scalar(Scalar::Bits {
                 bits: result,
                 defined: bit_width as u8,
@@ -193,9 +193,9 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             LitKind::Int(n, _) if neg => {
                 let n = n as i128;
                 let n = n.overflowing_neg().0;
-                clamp(n as u128)
+                trunc(n as u128)
             },
-            LitKind::Int(n, _) => clamp(n),
+            LitKind::Int(n, _) => trunc(n),
             LitKind::Float(n, fty) => {
                 parse_float(n, fty)
             }
