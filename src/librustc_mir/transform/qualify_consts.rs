@@ -279,7 +279,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             if let Place::Local(index) = *dest {
                 if self.mir.local_kind(index) == LocalKind::Temp
                 && self.temp_promotion_state[index].is_promotable() {
-                    debug!("store to promotable temp {:?}", index);
+                    debug!("store to promotable temp {:?} ({:?})", index, qualif);
                     store(&mut self.local_qualif[index]);
                 }
             }
@@ -969,10 +969,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                         feature: ref feature_name
                     }),
                 .. }) = self.tcx.lookup_stability(def_id) {
-
-                    // We are in a const or static initializer,
-                    if self.mode != Mode::Fn &&
-
+                    if
                         // feature-gate is not enabled,
                         !self.tcx.features()
                             .declared_lib_features
@@ -985,14 +982,19 @@ This does not pose a problem by itself because they can't be accessed directly."
                         // this doesn't come from a macro that has #[allow_internal_unstable]
                         !self.span.allows_unstable()
                     {
-                        let mut err = self.tcx.sess.struct_span_err(self.span,
-                            &format!("`{}` is not yet stable as a const fn",
-                                     self.tcx.item_path_str(def_id)));
-                        help!(&mut err,
-                              "in Nightly builds, add `#![feature({})]` \
-                               to the crate attributes to enable",
-                              feature_name);
-                        err.emit();
+                        self.qualif = Qualif::NOT_CONST;
+                        if self.mode != Mode::Fn {
+                            // inside a constant environment, not having the feature gate is
+                            // an error
+                            let mut err = self.tcx.sess.struct_span_err(self.span,
+                                &format!("`{}` is not yet stable as a const fn",
+                                        self.tcx.item_path_str(def_id)));
+                            help!(&mut err,
+                                "in Nightly builds, add `#![feature({})]` \
+                                to the crate attributes to enable",
+                                feature_name);
+                            err.emit();
+                        }
                     }
                 }
             } else {
