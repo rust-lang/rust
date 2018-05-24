@@ -394,6 +394,7 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 ///     // this point, `s` must no longer be used, as the underlying memory has
 ///     // been freed.
 ///     s2 = String::default();
+///     assert_eq!(s2, "");
 ///
 ///     // Assigning to `s` would cause the old value to be dropped again,
 ///     // resulting in undefined behavior.
