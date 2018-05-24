@@ -68,6 +68,7 @@
 #![feature(trusted_len)]
 #![feature(catch_expr)]
 #![feature(test)]
+#![feature(in_band_lifetimes)]
 
 #![recursion_limit="512"]
 

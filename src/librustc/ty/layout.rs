@@ -1513,7 +1513,7 @@ impl<'a, 'tcx> LayoutOf for LayoutCx<'tcx, ty::maps::TyCtxtAt<'a, 'tcx, 'tcx>> {
 }
 
 // Helper (inherent) `layout_of` methods to avoid pushing `LayoutCx` to users.
-impl<'a, 'tcx, 'empty> TyCtxt<'a, 'tcx, 'empty> {
+impl TyCtxt<'a, 'tcx, '_> {
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode.
     #[inline]
@@ -1527,7 +1527,7 @@ impl<'a, 'tcx, 'empty> TyCtxt<'a, 'tcx, 'empty> {
     }
 }
 
-impl<'a, 'tcx, 'empty> ty::maps::TyCtxtAt<'a, 'tcx, 'empty> {
+impl ty::maps::TyCtxtAt<'a, 'tcx, '_> {
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode.
     #[inline]
