@@ -1916,7 +1916,7 @@ pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Resul
         },
         (Value::Scalar(Scalar::Bits { bits, .. }), &TyChar) =>
             write!(f, "{:?}", ::std::char::from_u32(bits as u32).unwrap()),
-        (Value::Scalar(Scalar::Bits { .. }), &TyFnDef(did, _)) =>
+        (_, &TyFnDef(did, _)) =>
             write!(f, "{}", item_path_str(did)),
         (Value::ScalarPair(Scalar::Ptr(ptr), Scalar::Bits { bits: len, .. }),
          &TyRef(_, &ty::TyS { sty: TyStr, .. }, _)) => {
