@@ -81,9 +81,9 @@ use thread::{self, Thread};
 /// # Examples
 ///
 /// ```
-/// use std::sync::{Once, ONCE_INIT};
+/// use std::sync::Once;
 ///
-/// static START: Once = ONCE_INIT;
+/// static START: Once = Once::new();
 ///
 /// START.call_once(|| {
 ///     // run initialization here
@@ -181,10 +181,10 @@ impl Once {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Once, ONCE_INIT};
+    /// use std::sync::Once;
     ///
     /// static mut VAL: usize = 0;
-    /// static INIT: Once = ONCE_INIT;
+    /// static INIT: Once = Once::new();
     ///
     /// // Accessing a `static mut` is unsafe much of the time, but if we do so
     /// // in a synchronized fashion (e.g. write once or read all) then we're
@@ -249,10 +249,10 @@ impl Once {
     /// ```
     /// #![feature(once_poison)]
     ///
-    /// use std::sync::{Once, ONCE_INIT};
+    /// use std::sync::Once;
     /// use std::thread;
     ///
-    /// static INIT: Once = ONCE_INIT;
+    /// static INIT: Once = Once::new();
     ///
     /// // poison the once
     /// let handle = thread::spawn(|| {
@@ -432,10 +432,10 @@ impl OnceState {
     /// ```
     /// #![feature(once_poison)]
     ///
-    /// use std::sync::{Once, ONCE_INIT};
+    /// use std::sync::Once;
     /// use std::thread;
     ///
-    /// static INIT: Once = ONCE_INIT;
+    /// static INIT: Once = Once::new();
     ///
     /// // poison the once
     /// let handle = thread::spawn(|| {
@@ -453,9 +453,9 @@ impl OnceState {
     /// ```
     /// #![feature(once_poison)]
     ///
-    /// use std::sync::{Once, ONCE_INIT};
+    /// use std::sync::Once;
     ///
-    /// static INIT: Once = ONCE_INIT;
+    /// static INIT: Once = Once::new();
     ///
     /// INIT.call_once_force(|state| {
     ///     assert!(!state.poisoned());
