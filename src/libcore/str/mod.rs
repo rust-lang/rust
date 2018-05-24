@@ -2246,13 +2246,11 @@ impl str {
     #[inline(always)]
     #[rustc_const_unstable(feature="const_str_as_bytes")]
     pub const fn as_bytes(&self) -> &[u8] {
-        unsafe {
-            union Slices<'a> {
-                str: &'a str,
-                slice: &'a [u8],
-            }
-            Slices { str: self }.slice
+        union Slices<'a> {
+            str: &'a str,
+            slice: &'a [u8],
         }
+        unsafe { Slices { str: self }.slice }
     }
 
     /// Converts a mutable string slice to a mutable byte slice. To convert the
