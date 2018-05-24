@@ -1772,27 +1772,27 @@ impl<'a> Parser<'a> {
     pub fn parse_arg_general(&mut self, require_name: bool) -> PResult<'a, Arg> {
         maybe_whole!(self, NtArg, |x| x);
 
-        let pat = if require_name || self.is_named_argument() {
+        let (pat, ty) = if require_name || self.is_named_argument() {
             debug!("parse_arg_general parse_pat (require_name:{})",
                    require_name);
             let pat = self.parse_pat()?;
 
             self.expect(&token::Colon)?;
-            pat
+            (pat, self.parse_ty()?)
         } else {
             debug!("parse_arg_general ident_to_pat");
             let ident = Ident::new(keywords::Invalid.name(), self.prev_span);
-            P(Pat {
+            let ty = self.parse_ty()?;
+            let pat = P(Pat {
                 id: ast::DUMMY_NODE_ID,
                 node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None),
-                span: ident.span,
-            })
+                span: ty.span,
+            });
+            (pat, ty)
         };
 
-        let t = self.parse_ty()?;
-
         Ok(Arg {
-            ty: t,
+            ty,
             pat,
             id: ast::DUMMY_NODE_ID,
         })
