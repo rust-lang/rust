@@ -1134,13 +1134,8 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
         LitKind::Str(ref s, _) => {
             let s = s.as_str();
             let id = tcx.allocate_bytes(s.as_bytes());
-            ConstValue::ScalarPair(
-                Scalar::Ptr(id.into()),
-                Scalar::Bits {
-                    bits: s.len() as u128,
-                    defined: tcx.data_layout.pointer_size.bits() as u8,
-                },
-            )
+            let value = Scalar::Ptr(id.into()).to_value_with_len(s.len() as u64, tcx);
+            ConstValue::from_byval_value(value)
         },
         LitKind::ByteStr(ref data) => {
             let id = tcx.allocate_bytes(data);
