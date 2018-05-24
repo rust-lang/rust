@@ -850,4 +850,4 @@ impl<T: ?Sized> fmt::Pointer for PinBox<T> {
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<PinBox<U>> for PinBox<T> {}
 
 #[unstable(feature = "pin", issue = "49150")]
-unsafe impl<T: ?Sized> Unpin for PinBox<T> {}
+impl<T: ?Sized> Unpin for PinBox<T> {}
