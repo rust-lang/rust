@@ -521,6 +521,7 @@ pub fn noop_fold_mac<T: Folder>(Spanned {node, span}: Mac, fld: &mut T) -> Mac {
         node: Mac_ {
             tts: fld.fold_tts(node.stream()).into(),
             path: fld.fold_path(node.path),
+            delim: node.delim,
         },
         span: fld.new_span(span)
     }

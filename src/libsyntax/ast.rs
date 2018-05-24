@@ -1244,7 +1244,15 @@ pub type Mac = Spanned<Mac_>;
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Mac_ {
     pub path: Path,
+    pub delim: MacDelimiter,
     pub tts: ThinTokenStream,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum MacDelimiter {
+    Parenthesis,
+    Bracket,
+    Brace,
 }
 
 impl Mac_ {
