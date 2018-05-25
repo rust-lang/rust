@@ -743,7 +743,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
     }
 
     fn visit_struct_field(&mut self, f: &'hir hir::StructField) {
-        self.visit_testable(f.name.to_string(), &f.attrs, |this| {
+        self.visit_testable(f.ident.to_string(), &f.attrs, |this| {
             intravisit::walk_struct_field(this, f);
         });
     }

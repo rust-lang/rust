@@ -1774,7 +1774,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             CtorKind::Fictive => {
                                 let mut struct_fmt = fmt.debug_struct("");
                                 for (field, place) in variant_def.fields.iter().zip(places) {
-                                    struct_fmt.field(&field.name.as_str(), place);
+                                    struct_fmt.field(&field.ident.name.as_str(), place);
                                 }
                                 struct_fmt.finish()
                             }

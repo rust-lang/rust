@@ -427,12 +427,12 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::FieldPat {
                                           hasher: &mut StableHasher<W>) {
         let hir::FieldPat {
             id: _,
-            name,
+            ident,
             ref pat,
             is_shorthand,
         } = *self;
 
-        name.hash_stable(hcx, hasher);
+        ident.hash_stable(hcx, hasher);
         pat.hash_stable(hcx, hasher);
         is_shorthand.hash_stable(hcx, hasher);
     }
@@ -525,13 +525,13 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Field {
                                           hasher: &mut StableHasher<W>) {
         let hir::Field {
             id: _,
-            name,
+            ident,
             ref expr,
             span,
             is_shorthand,
         } = *self;
 
-        name.hash_stable(hcx, hasher);
+        ident.hash_stable(hcx, hasher);
         expr.hash_stable(hcx, hasher);
         span.hash_stable(hcx, hasher);
         is_shorthand.hash_stable(hcx, hasher);
@@ -598,7 +598,7 @@ impl_stable_hash_for!(enum hir::Expr_ {
     ExprBlock(blk, label),
     ExprAssign(lhs, rhs),
     ExprAssignOp(op, lhs, rhs),
-    ExprField(owner, field_name),
+    ExprField(owner, ident),
     ExprIndex(lhs, rhs),
     ExprPath(path),
     ExprAddrOf(mutability, sub),
@@ -835,7 +835,7 @@ impl_stable_hash_for!(enum hir::UseKind {
 
 impl_stable_hash_for!(struct hir::StructField {
     span,
-    name,
+    ident,
     vis,
     id,
     ty,

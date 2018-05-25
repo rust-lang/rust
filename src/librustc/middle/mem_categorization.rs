@@ -647,14 +647,14 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
           }
 
-          hir::ExprField(ref base, f_name) => {
+          hir::ExprField(ref base, f_ident) => {
             let base_cmt = Rc::new(self.cat_expr(&base)?);
             debug!("cat_expr(cat_field): id={} expr={:?} base={:?}",
                    expr.id,
                    expr,
                    base_cmt);
             let f_index = self.tcx.field_index(expr.id, self.tables);
-            Ok(self.cat_field(expr, base_cmt, f_index, f_name.node, expr_ty))
+            Ok(self.cat_field(expr, base_cmt, f_index, f_ident, expr_ty))
           }
 
           hir::ExprIndex(ref base, _) => {
@@ -983,14 +983,15 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                                  node: &N,
                                  base_cmt: cmt<'tcx>,
                                  f_index: usize,
-                                 f_name: Name,
+                                 f_ident: ast::Ident,
                                  f_ty: Ty<'tcx>)
                                  -> cmt_<'tcx> {
         let ret = cmt_ {
             id: node.id(),
             span: node.span(),
             mutbl: base_cmt.mutbl.inherit(),
-            cat: Categorization::Interior(base_cmt, InteriorField(FieldIndex(f_index, f_name))),
+            cat: Categorization::Interior(base_cmt,
+                                          InteriorField(FieldIndex(f_index, f_ident.name))),
             ty: f_ty,
             note: NoteNone
         };
@@ -1301,8 +1302,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             for fp in field_pats {
                 let field_ty = self.pat_ty(&fp.node.pat)?; // see (*2)
                 let f_index = self.tcx.field_index(fp.node.id, self.tables);
-                let cmt_field =
-                    Rc::new(self.cat_field(pat, cmt.clone(), f_index, fp.node.name, field_ty));
+                let cmt_field = Rc::new(self.cat_field(pat, cmt.clone(), f_index,
+                                                       fp.node.ident, field_ty));
                 self.cat_pattern_(cmt_field, &fp.node.pat, op)?;
             }
           }

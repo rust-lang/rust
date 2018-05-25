@@ -354,7 +354,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
                                       diff_fields.len(),
                                       diff_fields.iter()
                                           .map(|&(i, a, b)| {
-                                              format!("{} ({} to {})", fields[i].name, a, b)
+                                              format!("{} ({} to {})", fields[i].ident, a, b)
                                           })
                                           .collect::<Vec<_>>()
                                           .join(", ")));

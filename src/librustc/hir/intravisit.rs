@@ -42,7 +42,7 @@
 //! example generator inference, and possibly also HIR borrowck.
 
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{NodeId, CRATE_NODE_ID, Name, Attribute};
+use syntax::ast::{NodeId, CRATE_NODE_ID, Ident, Name, Attribute};
 use syntax_pos::Span;
 use hir::*;
 use hir::def::Def;
@@ -248,6 +248,9 @@ pub trait Visitor<'v> : Sized {
     fn visit_name(&mut self, _span: Span, _name: Name) {
         // Nothing to do.
     }
+    fn visit_ident(&mut self, ident: Ident) {
+        walk_ident(self, ident)
+    }
     fn visit_mod(&mut self, m: &'v Mod, _s: Span, n: NodeId) {
         walk_mod(self, m, n)
     }
@@ -411,6 +414,10 @@ pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local) {
     visitor.visit_id(local.id);
     visitor.visit_pat(&local.pat);
     walk_list!(visitor, visit_ty, &local.ty);
+}
+
+pub fn walk_ident<'v, V: Visitor<'v>>(visitor: &mut V, ident: Ident) {
+    visitor.visit_name(ident.span, ident.name);
 }
 
 pub fn walk_label<'v, V: Visitor<'v>>(visitor: &mut V, label: &'v Label) {
@@ -662,7 +669,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
             visitor.visit_qpath(qpath, pattern.id, pattern.span);
             for field in fields {
                 visitor.visit_id(field.node.id);
-                visitor.visit_name(field.span, field.node.name);
+                visitor.visit_ident(field.node.ident);
                 visitor.visit_pat(&field.node.pat)
             }
         }
@@ -915,7 +922,7 @@ pub fn walk_struct_def<'v, V: Visitor<'v>>(visitor: &mut V, struct_definition: &
 pub fn walk_struct_field<'v, V: Visitor<'v>>(visitor: &mut V, struct_field: &'v StructField) {
     visitor.visit_id(struct_field.id);
     visitor.visit_vis(&struct_field.vis);
-    visitor.visit_name(struct_field.span, struct_field.name);
+    visitor.visit_ident(struct_field.ident);
     visitor.visit_ty(&struct_field.ty);
     walk_list!(visitor, visit_attribute, &struct_field.attrs);
 }
@@ -970,7 +977,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_qpath(qpath, expression.id, expression.span);
             for field in fields {
                 visitor.visit_id(field.id);
-                visitor.visit_name(field.name.span, field.name.node);
+                visitor.visit_ident(field.ident);
                 visitor.visit_expr(&field.expr)
             }
             walk_list!(visitor, visit_expr, optional_base);
@@ -1035,9 +1042,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(right_expression);
             visitor.visit_expr(left_expression)
         }
-        ExprField(ref subexpression, ref name) => {
+        ExprField(ref subexpression, ident) => {
             visitor.visit_expr(subexpression);
-            visitor.visit_name(name.span, name.node);
+            visitor.visit_ident(ident);
         }
         ExprIndex(ref main_expression, ref index_expression) => {
             visitor.visit_expr(main_expression);

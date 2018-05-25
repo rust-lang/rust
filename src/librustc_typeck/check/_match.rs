@@ -859,7 +859,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         let field_map = variant.fields
             .iter()
             .enumerate()
-            .map(|(i, field)| (field.name.to_ident(), (i, field)))
+            .map(|(i, field)| (field.ident.modern(), (i, field)))
             .collect::<FxHashMap<_, _>>();
 
         // Keep track of which fields have already appeared in the pattern.
@@ -868,16 +868,16 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         let mut inexistent_fields = vec![];
         // Typecheck each field.
         for &Spanned { node: ref field, span } in fields {
-            let ident = tcx.adjust(field.name, variant.did, self.body_id).0;
+            let ident = tcx.adjust_ident(field.ident, variant.did, self.body_id).0;
             let field_ty = match used_fields.entry(ident) {
                 Occupied(occupied) => {
                     struct_span_err!(tcx.sess, span, E0025,
                                      "field `{}` bound multiple times \
                                       in the pattern",
-                                     field.name)
+                                     field.ident)
                         .span_label(span,
-                                    format!("multiple uses of `{}` in pattern", field.name))
-                        .span_label(*occupied.get(), format!("first use of `{}`", field.name))
+                                    format!("multiple uses of `{}` in pattern", field.ident))
+                        .span_label(*occupied.get(), format!("first use of `{}`", field.ident))
                         .emit();
                     tcx.types.err
                 }
@@ -890,7 +890,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                             self.field_ty(span, f, substs)
                         })
                         .unwrap_or_else(|| {
-                            inexistent_fields.push((span, field.name));
+                            inexistent_fields.push((span, field.ident));
                             tcx.types.err
                         })
                 }
@@ -958,7 +958,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         } else if !etc {
             let unmentioned_fields = variant.fields
                 .iter()
-                .map(|field| field.name.to_ident())
+                .map(|field| field.ident.modern())
                 .filter(|ident| !used_fields.contains_key(&ident))
                 .collect::<Vec<_>>();
             if unmentioned_fields.len() > 0 {

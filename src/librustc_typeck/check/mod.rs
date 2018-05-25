@@ -120,7 +120,7 @@ use std::ops::{self, Deref};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::{original_sp, Spanned};
+use syntax::codemap::original_sp;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, LocalInternedString, keywords};
@@ -3045,7 +3045,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                    expr: &'gcx hir::Expr,
                    needs: Needs,
                    base: &'gcx hir::Expr,
-                   field: &Spanned<ast::Name>) -> Ty<'tcx> {
+                   field: ast::Ident) -> Ty<'tcx> {
         let expr_t = self.check_expr_with_needs(base, needs);
         let expr_t = self.structurally_resolved_type(base.span,
                                                      expr_t);
@@ -3056,9 +3056,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 ty::TyAdt(base_def, substs) if !base_def.is_enum() => {
                     debug!("struct named {:?}",  base_t);
                     let (ident, def_scope) =
-                        self.tcx.adjust(field.node, base_def.did, self.body_id);
+                        self.tcx.adjust_ident(field, base_def.did, self.body_id);
                     let fields = &base_def.non_enum_variant().fields;
-                    if let Some(index) = fields.iter().position(|f| f.name.to_ident() == ident) {
+                    if let Some(index) = fields.iter().position(|f| f.ident.modern() == ident) {
                         let field = &fields[index];
                         let field_ty = self.field_ty(expr.span, field, substs);
                         // Save the index of all fields regardless of their visibility in case
@@ -3076,7 +3076,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
                 ty::TyTuple(ref tys) => {
-                    let fstr = field.node.as_str();
+                    let fstr = field.name.as_str();
                     if let Ok(index) = fstr.parse::<usize>() {
                         if fstr == index.to_string() {
                             if let Some(field_ty) = tys.get(index) {
@@ -3099,31 +3099,31 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let struct_path = self.tcx().item_path_str(did);
             let mut err = struct_span_err!(self.tcx().sess, expr.span, E0616,
                                            "field `{}` of struct `{}` is private",
-                                           field.node, struct_path);
+                                           field, struct_path);
             // Also check if an accessible method exists, which is often what is meant.
-            if self.method_exists(field.span, field.node, expr_t, expr.id, false) {
-                err.note(&format!("a method `{}` also exists, perhaps you wish to call it",
-                                  field.node));
+            if self.method_exists(field, expr_t, expr.id, false) {
+                err.note(&format!("a method `{}` also exists, perhaps you wish to call it", field));
             }
             err.emit();
             field_ty
-        } else if field.node == keywords::Invalid.name() {
+        } else if field.name == keywords::Invalid.name() {
             self.tcx().types.err
-        } else if self.method_exists(field.span, field.node, expr_t, expr.id, true) {
+        } else if self.method_exists(field, expr_t, expr.id, true) {
             type_error_struct!(self.tcx().sess, field.span, expr_t, E0615,
                               "attempted to take value of method `{}` on type `{}`",
-                              field.node, expr_t)
+                              field, expr_t)
                 .help("maybe a `()` to call it is missing?")
                 .emit();
             self.tcx().types.err
         } else {
             if !expr_t.is_primitive_ty() {
-                let mut err = self.no_such_field_err(field.span, &field.node, expr_t);
+                let mut err = self.no_such_field_err(field.span, field, expr_t);
 
                 match expr_t.sty {
                     ty::TyAdt(def, _) if !def.is_enum() => {
                         if let Some(suggested_field_name) =
-                            Self::suggest_field_name(def.non_enum_variant(), field, vec![]) {
+                            Self::suggest_field_name(def.non_enum_variant(),
+                                                     &field.name.as_str(), vec![]) {
                                 err.span_label(field.span,
                                                format!("did you mean `{}`?", suggested_field_name));
                             } else {
@@ -3139,7 +3139,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ty::TyRawPtr(..) => {
                         let base = self.tcx.hir.node_to_pretty_string(base.id);
                         let msg = format!("`{}` is a native pointer; try dereferencing it", base);
-                        let suggestion = format!("(*{}).{}", base, field.node);
+                        let suggestion = format!("(*{}).{}", base, field);
                         err.span_suggestion(field.span, &msg, suggestion);
                     }
                     _ => {}
@@ -3156,29 +3156,28 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     // Return an hint about the closest match in field names
     fn suggest_field_name(variant: &'tcx ty::VariantDef,
-                          field: &Spanned<ast::Name>,
+                          field: &str,
                           skip: Vec<LocalInternedString>)
                           -> Option<Symbol> {
-        let name = field.node.as_str();
         let names = variant.fields.iter().filter_map(|field| {
             // ignore already set fields and private fields from non-local crates
-            if skip.iter().any(|x| *x == field.name.as_str()) ||
+            if skip.iter().any(|x| *x == field.ident.name.as_str()) ||
                (variant.did.krate != LOCAL_CRATE && field.vis != Visibility::Public) {
                 None
             } else {
-                Some(&field.name)
+                Some(&field.ident.name)
             }
         });
 
-        find_best_match_for_name(names, &name, None)
+        find_best_match_for_name(names, field, None)
     }
 
     fn available_field_names(&self, variant: &'tcx ty::VariantDef) -> Vec<ast::Name> {
         let mut available = Vec::new();
         for field in variant.fields.iter() {
-            let (_, def_scope) = self.tcx.adjust(field.name, variant.did, self.body_id);
+            let def_scope = self.tcx.adjust_ident(field.ident, variant.did, self.body_id).1;
             if field.vis.is_accessible_from(def_scope, self.tcx) {
-                available.push(field.name);
+                available.push(field.ident.name);
             }
         }
         available
@@ -3209,36 +3208,36 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             skip_fields: &[hir::Field],
                             kind_name: &str) {
         let mut err = self.type_error_struct_with_diag(
-            field.name.span,
+            field.ident.span,
             |actual| match ty.sty {
                 ty::TyAdt(adt, ..) if adt.is_enum() => {
-                    struct_span_err!(self.tcx.sess, field.name.span, E0559,
+                    struct_span_err!(self.tcx.sess, field.ident.span, E0559,
                                     "{} `{}::{}` has no field named `{}`",
-                                    kind_name, actual, variant.name, field.name.node)
+                                    kind_name, actual, variant.name, field.ident)
                 }
                 _ => {
-                    struct_span_err!(self.tcx.sess, field.name.span, E0560,
+                    struct_span_err!(self.tcx.sess, field.ident.span, E0560,
                                     "{} `{}` has no field named `{}`",
-                                    kind_name, actual, field.name.node)
+                                    kind_name, actual, field.ident)
                 }
             },
             ty);
         // prevent all specified fields from being suggested
-        let skip_fields = skip_fields.iter().map(|ref x| x.name.node.as_str());
+        let skip_fields = skip_fields.iter().map(|ref x| x.ident.name.as_str());
         if let Some(field_name) = Self::suggest_field_name(variant,
-                                                           &field.name,
+                                                           &field.ident.name.as_str(),
                                                            skip_fields.collect()) {
-            err.span_label(field.name.span,
+            err.span_label(field.ident.span,
                            format!("field does not exist - did you mean `{}`?", field_name));
         } else {
             match ty.sty {
                 ty::TyAdt(adt, ..) => {
                     if adt.is_enum() {
-                        err.span_label(field.name.span,
+                        err.span_label(field.ident.span,
                                        format!("`{}::{}` does not have this field",
                                                ty, variant.name));
                     } else {
-                        err.span_label(field.name.span,
+                        err.span_label(field.ident.span,
                                        format!("`{}` does not have this field", ty));
                     }
                     let available_field_names = self.available_field_names(variant);
@@ -3278,7 +3277,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let mut remaining_fields = FxHashMap();
         for (i, field) in variant.fields.iter().enumerate() {
-            remaining_fields.insert(field.name.to_ident(), (i, field));
+            remaining_fields.insert(field.ident.modern(), (i, field));
         }
 
         let mut seen_fields = FxHashMap();
@@ -3287,7 +3286,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Typecheck each field.
         for field in ast_fields {
-            let ident = tcx.adjust(field.name.node, variant.did, self.body_id).0;
+            let ident = tcx.adjust_ident(field.ident, variant.did, self.body_id).0;
             let field_type = if let Some((i, v_field)) = remaining_fields.remove(&ident) {
                 seen_fields.insert(ident, field.span);
                 self.write_field_index(field.id, i);
@@ -3304,12 +3303,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 error_happened = true;
                 if let Some(prev_span) = seen_fields.get(&ident) {
                     let mut err = struct_span_err!(self.tcx.sess,
-                                                field.name.span,
+                                                field.ident.span,
                                                 E0062,
                                                 "field `{}` specified more than once",
                                                 ident);
 
-                    err.span_label(field.name.span, "used more than once");
+                    err.span_label(field.ident.span, "used more than once");
                     err.span_label(*prev_span, format!("first use of `{}`", ident));
 
                     err.emit();
@@ -4054,7 +4053,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::ExprStruct(ref qpath, ref fields, ref base_expr) => {
             self.check_expr_struct(expr, expected, qpath, fields, base_expr)
           }
-          hir::ExprField(ref base, ref field) => {
+          hir::ExprField(ref base, field) => {
             self.check_field(expr, needs, &base, field)
           }
           hir::ExprIndex(ref base, ref idx) => {
