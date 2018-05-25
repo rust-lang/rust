@@ -131,7 +131,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             // Third argument (argv): &[b"foo"]
             let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
             let ty = ecx.tcx.mk_imm_ptr(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8));
-            let foo = ecx.memory.allocate_cached(b"foo\0");
+            let foo = ecx.memory.allocate_bytes(b"foo\0");
             let ptr_size = ecx.memory.pointer_size();
             let ptr_align = ecx.tcx.data_layout.pointer_align;
             let foo_ptr = ecx.memory.allocate(ptr_size, ptr_align, None)?;
