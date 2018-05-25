@@ -177,7 +177,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ExprKind::ObsoleteInPlace(..) => {
                 self.err_handler()
                     .struct_span_err(expr.span, "emplacement syntax is obsolete (for now, anyway)")
-                    .note("for more information, see <https://github.com/rust-lang/rust/issues/27779#issuecomment-378416911>")
+                    .note("for more information, see \
+                           <https://github.com/rust-lang/rust/issues/27779#issuecomment-378416911>")
                     .emit();
             }
             _ => {}
