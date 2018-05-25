@@ -717,7 +717,7 @@ extern "rust-intrinsic" {
     /// Reinterprets the bits of a value of one type as another type.
     ///
     /// Both types must have the same size. Neither the original, nor the result,
-    /// may be an [invalid value](../../nomicon/meet-safe-and-unsafe.html).
+    /// may be an [invalid value](../../nomicon/what-unsafe-does.html).
     ///
     /// `transmute` is semantically equivalent to a bitwise move of one type
     /// into another. It copies the bits from the source value into the
