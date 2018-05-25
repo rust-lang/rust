@@ -9,7 +9,8 @@
 // except according to those terms.
 
 fn main() {
-    match 40u64 {
+    let n: Int = 40;
+    match n {
         0...10 => {},
         10...BAR => {}, //~ ERROR lower range bound must be less than or equal to upper
         _ => {},
