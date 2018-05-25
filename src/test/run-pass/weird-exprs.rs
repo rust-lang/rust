@@ -131,4 +131,5 @@ pub fn main() {
     you_eight();
     fishy();
     union();
+    special_characters();
 }
