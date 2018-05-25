@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/loop-return-break.rs:36:27
+   |
+LL |             loop { return break } //~ ERROR mismatched types
+   |                           ^^^^^ expected (), found !
+   |
+   = note: expected type `()`
+              found type `!`
+
+error[E0308]: mismatched types
+  --> $DIR/loop-return-break.rs:42:20
+   |
+LL |             loop { break } //~ ERROR mismatched types
+   |                    ^^^^^ expected (), found !
+   |
+   = note: expected type `()`
+              found type `!`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
