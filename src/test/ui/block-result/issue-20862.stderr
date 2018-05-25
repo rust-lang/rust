@@ -13,7 +13,9 @@ error[E0618]: expected function, found `()`
   --> $DIR/issue-20862.rs:17:13
    |
 LL |     let x = foo(5)(2);
-   |             ^^^^^^^^^ not a function
+   |             ^^^^^^-^^
+   |                   |
+   |                   help: try adding a semicolon: `;`
 
 error: aborting due to 2 previous errors
 
