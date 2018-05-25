@@ -4806,7 +4806,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // a problem.
         self.check_path_parameter_count(span, &mut type_segment, false);
         self.check_path_parameter_count(span, &mut fn_segment, false);
-        self.check_impl_trait(span, &mut fn_segment);
+        self.check_impl_trait(span, fn_segment);
 
         let (fn_start, has_self) = match (type_segment, fn_segment) {
             (_, Some((_, generics))) => {
@@ -5066,7 +5066,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Report error if there is an explicit type parameter when using `impl Trait`.
     fn check_impl_trait(&self,
                         span: Span,
-                        segment: &mut Option<(&hir::PathSegment, &ty::Generics)>) {
+                        segment: Option<(&hir::PathSegment, &ty::Generics)>) {
         use hir::SyntheticTyParamKind::*;
 
         segment.map(|(path_segment, generics)| {
