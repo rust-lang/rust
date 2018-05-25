@@ -112,6 +112,12 @@ fn union() {
     union union<'union> { union: &'union union<'union>, }
 }
 
+fn special_characters() {
+    let val = !((|(..):(_,_),__@_|__)((&*"\\",'@')/**/,{})=={&[..=..][..];})//
+    ;
+    assert!(!val);
+}
+
 pub fn main() {
     strange();
     funny();
