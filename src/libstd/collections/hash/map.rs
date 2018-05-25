@@ -2287,7 +2287,7 @@ impl<'a, K, V> Debug for RawEntryBuilderHashed<'a, K, V> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "42069")]
-impl<'a, K, V> Debug for RawEntry<'a, K, V> {
+impl<'a, K: Debug, V: Debug> Debug for RawEntry<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             RawEntry::Vacant(ref v) => {
@@ -2305,7 +2305,7 @@ impl<'a, K, V> Debug for RawEntry<'a, K, V> {
 }
 
 #[unstable(feature = "hash_raw_entry", issue = "42069")]
-impl<'a, K, V> Debug for RawOccupiedEntry<'a, K, V> {
+impl<'a, K: Debug, V: Debug> Debug for RawOccupiedEntry<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RawOccupiedEntry")
          .field("key", self.key())
