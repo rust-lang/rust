@@ -12,6 +12,7 @@ pub use self::error::{EvalError, EvalResult, EvalErrorKind, AssertMessage};
 
 pub use self::value::{PrimVal, PrimValKind, Value, Pointer, ConstValue};
 
+use std;
 use std::fmt;
 use mir;
 use hir::def_id::DefId;
@@ -28,7 +29,7 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{HashMapExt, LockGuard};
-use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
+use byteorder::{ByteOrder, WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
 
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Lock {
@@ -197,7 +198,7 @@ where
 
             // Write placeholder for size
             let size_pos = encoder.position();
-            0usize.encode(encoder)?;
+            [0; 4].encode(encoder)?;
 
             let start = encoder.position();
             alloc.encode(encoder)?;
@@ -206,7 +207,10 @@ where
             // Overwrite the placeholder with the real size
             let size: usize = end - start;
             encoder.set_position(size_pos);
-            size.encode(encoder)?;
+            assert!(size as u64 <= std::u32::MAX as u64);
+            let mut size_array = [0; 4];
+            LittleEndian::write_u32(&mut size_array, size as u32);
+            size_array.encode(encoder)?;
             encoder.set_position(end);
 
         }
@@ -245,7 +249,13 @@ pub fn specialized_decode_alloc_id<
         AllocKind::Alloc => {
             // Read the size of the allocation.
             // Used to skip ahead if we don't need to decode this.
-            let alloc_size = usize::decode(decoder)?;
+            let alloc_size = [
+                u8::decode(decoder)?,
+                u8::decode(decoder)?,
+                u8::decode(decoder)?,
+                u8::decode(decoder)?
+            ];
+            let alloc_size = LittleEndian::read_u32(&alloc_size);
 
             let (alloc_id, fully_loaded) = *global_cache(decoder).entry(pos).or_insert_with(|| {
                 // Create an id which is not fully loaded
@@ -258,7 +268,7 @@ pub fn specialized_decode_alloc_id<
 
                 // Skip the allocation
                 let pos = decoder.position();
-                decoder.set_position(pos + alloc_size);
+                decoder.set_position(pos + alloc_size as usize);
                 return Ok(alloc_id)
             }
 
