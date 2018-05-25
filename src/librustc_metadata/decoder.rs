@@ -195,6 +195,11 @@ impl<'a, 'tcx: 'a> TyDecoder<'a, 'tcx> for DecodeContext<'a, 'tcx> {
         self.opaque.position()
     }
 
+    #[inline]
+    fn set_position(&mut self, p: usize) {
+        self.opaque.set_position(p)
+    }
+
     fn cached_ty_for_shorthand<F>(&mut self,
                                   shorthand: usize,
                                   or_insert_with: F)

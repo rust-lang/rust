@@ -52,12 +52,17 @@ impl<'tcx> EncodableWithShorthand for ty::Predicate<'tcx> {
 
 pub trait TyEncoder: Encoder {
     fn position(&self) -> usize;
+    fn set_position(&mut self, usize);
 }
 
 impl<'buf> TyEncoder for opaque::Encoder<'buf> {
     #[inline]
     fn position(&self) -> usize {
         self.position()
+    }
+    #[inline]
+    fn set_position(&mut self, p: usize) {
+        self.cursor.set_position(p as u64)
     }
 }
 
@@ -122,6 +127,8 @@ pub trait TyDecoder<'a, 'tcx: 'a>: Decoder {
     fn peek_byte(&self) -> u8;
 
     fn position(&self) -> usize;
+
+    fn set_position(&mut self, usize);
 
     fn cached_ty_for_shorthand<F>(&mut self,
                                   shorthand: usize,

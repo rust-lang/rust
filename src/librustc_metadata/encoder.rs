@@ -234,6 +234,9 @@ impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
     fn position(&self) -> usize {
         self.opaque.position()
     }
+    fn set_position(&mut self, p: usize) {
+        self.opaque.set_position(p)
+    }
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {

@@ -526,6 +526,11 @@ impl<'a, 'tcx: 'a, 'x> ty_codec::TyDecoder<'a, 'tcx> for CacheDecoder<'a, 'tcx, 
     }
 
     #[inline]
+    fn set_position(&mut self, p: usize) {
+        self.opaque.set_position(p)
+    }
+
+    #[inline]
     fn peek_byte(&self) -> u8 {
         self.opaque.data[self.opaque.position()]
     }
@@ -859,6 +864,10 @@ impl<'enc, 'a, 'tcx, E> ty_codec::TyEncoder for CacheEncoder<'enc, 'a, 'tcx, E>
     #[inline]
     fn position(&self) -> usize {
         self.encoder.position()
+    }
+    #[inline]
+    fn set_position(&mut self, p: usize) {
+        self.encoder.set_position(p)
     }
 }
 

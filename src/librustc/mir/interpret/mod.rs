@@ -12,7 +12,6 @@ pub use self::error::{EvalError, EvalResult, EvalErrorKind, AssertMessage};
 
 pub use self::value::{PrimVal, PrimValKind, Value, Pointer, ConstValue};
 
-use std::collections::hash_map::Entry;
 use std::fmt;
 use mir;
 use hir::def_id::DefId;
@@ -195,7 +194,21 @@ where
             assert!(cache(encoder).insert(alloc_id, pos).is_none());
             trace!("encoding {:?} with {:#?}", alloc_id, alloc);
             AllocKind::Alloc.encode(encoder)?;
+
+            // Write placeholder for size
+            let size_pos = encoder.position();
+            0usize.encode(encoder)?;
+
+            let start = encoder.position();
             alloc.encode(encoder)?;
+            let end = encoder.position();
+
+            // Overwrite the placeholder with the real size
+            let size: usize = end - start;
+            encoder.set_position(size_pos);
+            size.encode(encoder)?;
+            encoder.set_position(end);
+
         }
         AllocType::Function(fn_instance) => {
             trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
@@ -230,40 +243,23 @@ pub fn specialized_decode_alloc_id<
             decoder.with_position(real_pos, AllocId::decode)
         },
         AllocKind::Alloc => {
-            let alloc_id = {
-                let mut cache = global_cache(decoder);
-                let entry = cache.entry(pos);
-                match entry {
-                    Entry::Occupied(occupied) => {
-                        let id = occupied.get().0;
+            // Read the size of the allocation.
+            // Used to skip ahead if we don't need to decode this.
+            let alloc_size = usize::decode(decoder)?;
 
-                        // If the alloc id is fully loaded we just return here.
-                        if occupied.get().1 {
-                            return Ok(id)
-                        }
-
-                        // It was only partially loaded.
-                        // This may be loading further up the stack
-                        // or concurrently in another thread.
-                        id
-                    }
-                    Entry::Vacant(vacant) => {
-                        // Insert early to allow recursive allocs
-                        let id = tcx.alloc_map.lock().reserve();
-                        vacant.insert((id, false));
-                        id
-                    }
-                }
-            };
-
-            // Insert early to allow recursive allocs and ot indicate that the current
-            // session will eventually fully load this alloc id
-            if !local_cache(decoder).insert(alloc_id) {
+            let (alloc_id, fully_loaded) = *global_cache(decoder).entry(pos).or_insert_with(|| {
+                // Create an id which is not fully loaded
+                (tcx.alloc_map.lock().reserve(), false)
+            });
+            if fully_loaded || !local_cache(decoder).insert(alloc_id) {
                 // We have started decoding this alloc id already, so just return it.
                 // Its content is already filled in or will be filled in by functions
                 // further up the stack.
-                return Ok(alloc_id);
-                
+
+                // Skip the allocation
+                let pos = decoder.position();
+                decoder.set_position(pos + alloc_size);
+                return Ok(alloc_id)
             }
 
             let allocation = <&'tcx Allocation as Decodable>::decode(decoder)?;
