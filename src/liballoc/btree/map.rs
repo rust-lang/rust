@@ -1834,7 +1834,7 @@ fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeBounds<Q>>(
      Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>)
         where Q: Ord, K: Borrow<Q>
 {
-    match (range.start(), range.end()) {
+    match (range.start_bound(), range.end_bound()) {
         (Excluded(s), Excluded(e)) if s==e =>
             panic!("range start and end are equal and excluded in BTreeMap"),
         (Included(s), Included(e)) |
@@ -1852,7 +1852,7 @@ fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeBounds<Q>>(
     let mut diverged = false;
 
     loop {
-        let min_edge = match (min_found, range.start()) {
+        let min_edge = match (min_found, range.start_bound()) {
             (false, Included(key)) => match search::search_linear(&min_node, key) {
                 (i, true) => { min_found = true; i },
                 (i, false) => i,
@@ -1866,7 +1866,7 @@ fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeBounds<Q>>(
             (true, Excluded(_)) => 0,
         };
 
-        let max_edge = match (max_found, range.end()) {
+        let max_edge = match (max_found, range.end_bound()) {
             (false, Included(key)) => match search::search_linear(&max_node, key) {
                 (i, true) => { max_found = true; i+1 },
                 (i, false) => i,

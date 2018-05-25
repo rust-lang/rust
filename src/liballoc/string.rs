@@ -1493,12 +1493,12 @@ impl String {
         // Because the range removal happens in Drop, if the Drain iterator is leaked,
         // the removal will not happen.
         let len = self.len();
-        let start = match range.start() {
+        let start = match range.start_bound() {
             Included(&n) => n,
             Excluded(&n) => n + 1,
             Unbounded => 0,
         };
-        let end = match range.end() {
+        let end = match range.end_bound() {
             Included(&n) => n + 1,
             Excluded(&n) => n,
             Unbounded => len,
@@ -1551,12 +1551,12 @@ impl String {
         // Replace_range does not have the memory safety issues of a vector Splice.
         // of the vector version. The data is just plain bytes.
 
-        match range.start() {
+        match range.start_bound() {
              Included(&n) => assert!(self.is_char_boundary(n)),
              Excluded(&n) => assert!(self.is_char_boundary(n + 1)),
              Unbounded => {},
         };
-        match range.end() {
+        match range.end_bound() {
              Included(&n) => assert!(self.is_char_boundary(n + 1)),
              Excluded(&n) => assert!(self.is_char_boundary(n)),
              Unbounded => {},
