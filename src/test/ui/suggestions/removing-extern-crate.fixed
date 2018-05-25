@@ -16,12 +16,12 @@
 #![warn(rust_2018_idioms)]
 #![allow(unused_imports)]
 
-use std as foo;
+
 
 
 mod another {
-    use std as foo;
-    use std;
+    
+    
 }
 
 fn main() {}

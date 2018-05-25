@@ -16,14 +16,14 @@
 // but we don't.
 
 #![feature(rust_2018_preview)]
-#![deny(absolute_path_not_starting_with_crate)]
-#![deny(unused_extern_crates)]
+#![deny(rust_2018_idioms)]
 #![allow(dead_code)]
 
 extern crate edition_lint_paths;
 //~^ ERROR unused extern crate
 
 extern crate edition_lint_paths as bar;
+//~^ ERROR `extern crate` is not idiomatic in the new edition
 
 fn main() {
     // This is not considered to *use* the `extern crate` in Rust 2018:
