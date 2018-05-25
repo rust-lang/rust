@@ -461,10 +461,11 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 .collect()
         }
         ty::TyChar if exhaustive_integer_patterns => {
-            let endpoint = |c: char| {
-                ty::Const::from_bits(cx.tcx, c as u128, cx.tcx.types.char)
-            };
             value_constructors = true;
+            let endpoint = |c: char| {
+                let ty = ty::ParamEnv::empty().and(cx.tcx.types.char);
+                ty::Const::from_bits(cx.tcx, c as u128, ty)
+            };
             vec![
                 // The valid Unicode Scalar Value ranges.
                 ConstantRange(endpoint('\u{0000}'), endpoint('\u{D7FF}'), RangeEnd::Included),
@@ -472,22 +473,24 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             ]
         }
         ty::TyInt(ity) if exhaustive_integer_patterns => {
+            value_constructors = true;
             // FIXME(49937): refactor these bit manipulations into interpret.
             let bits = Integer::from_attr(cx.tcx, SignedInt(ity)).size().bits() as u128;
             let min = 1u128 << (bits - 1);
             let max = (1u128 << (bits - 1)) - 1;
-            value_constructors = true;
-            vec![ConstantRange(ty::Const::from_bits(cx.tcx, min as u128, pcx.ty),
-                               ty::Const::from_bits(cx.tcx, max as u128, pcx.ty),
+            let ty = ty::ParamEnv::empty().and(pcx.ty);
+            vec![ConstantRange(ty::Const::from_bits(cx.tcx, min as u128, ty),
+                               ty::Const::from_bits(cx.tcx, max as u128, ty),
                                RangeEnd::Included)]
         }
         ty::TyUint(uty) if exhaustive_integer_patterns => {
+            value_constructors = true;
             // FIXME(49937): refactor these bit manipulations into interpret.
             let bits = Integer::from_attr(cx.tcx, UnsignedInt(uty)).size().bits() as u128;
             let max = !0u128 >> (128 - bits);
-            value_constructors = true;
-            vec![ConstantRange(ty::Const::from_bits(cx.tcx, 0, pcx.ty),
-                               ty::Const::from_bits(cx.tcx, max, pcx.ty),
+            let ty = ty::ParamEnv::empty().and(pcx.ty);
+            vec![ConstantRange(ty::Const::from_bits(cx.tcx, 0, ty),
+                               ty::Const::from_bits(cx.tcx, max, ty),
                                RangeEnd::Included)]
         }
         _ => {
@@ -623,8 +626,9 @@ impl<'tcx> IntRange<'tcx> {
             ConstantRange(lo, hi, end) => {
                 assert_eq!(lo.ty, hi.ty);
                 let ty = lo.ty;
-                if let Some(lo) = lo.assert_bits(ty) {
-                    if let Some(hi) = hi.assert_bits(ty) {
+                let env_ty = ty::ParamEnv::empty().and(ty);
+                if let Some(lo) = lo.assert_bits(tcx, env_ty) {
+                    if let Some(hi) = hi.assert_bits(tcx, env_ty) {
                         // Perform a shift if the underlying types are signed,
                         // which makes the interval arithmetic simpler.
                         let bias = IntRange::signed_bias(tcx, ty);
@@ -642,7 +646,7 @@ impl<'tcx> IntRange<'tcx> {
             }
             ConstantValue(val) => {
                 let ty = val.ty;
-                if let Some(val) = val.assert_bits(ty) {
+                if let Some(val) = val.assert_bits(tcx, ty::ParamEnv::empty().and(ty)) {
                     let bias = IntRange::signed_bias(tcx, ty);
                     let val = val ^ bias;
                     Some(IntRange { range: val..=val, ty })
@@ -707,6 +711,7 @@ fn ranges_subtract_pattern<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         remaining_ranges.into_iter().map(|r| {
             let (lo, hi) = r.into_inner();
             let bias = IntRange::signed_bias(cx.tcx, ty);
+            let ty = ty::ParamEnv::empty().and(ty);
             ConstantRange(ty::Const::from_bits(cx.tcx, lo ^ bias, ty),
                           ty::Const::from_bits(cx.tcx, hi ^ bias, ty),
                           RangeEnd::Included)

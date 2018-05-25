@@ -35,7 +35,6 @@ use std::slice;
 use std::vec::IntoIter;
 use std::{iter, mem, option, u32};
 use syntax::ast::{self, Name};
-use syntax::attr::SignedInt;
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
