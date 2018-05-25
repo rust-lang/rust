@@ -1,0 +1,10 @@
+error: `foo` is not yet stable as a const fn
+  --> $DIR/dont_promote_unstable_const_fn.rs:25:25
+   |
+LL | const fn bar() -> u32 { foo() } //~ ERROR `foo` is not yet stable as a const fn
+   |                         ^^^^^
+   |
+   = help: in Nightly builds, add `#![feature(foo)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
