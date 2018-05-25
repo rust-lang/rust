@@ -1546,7 +1546,7 @@ impl<'a> Parser<'a> {
 
             if ts.len() == 1 && !last_comma {
                 let ty = ts.into_iter().nth(0).unwrap().into_inner();
-                let maybe_bounds = allow_plus && self.check_plus();
+                let maybe_bounds = allow_plus && self.token.is_like_plus();
                 match ty.node {
                     // `(TY_BOUND_NOPAREN) + BOUND + ...`.
                     TyKind::Path(None, ref path) if maybe_bounds => {
