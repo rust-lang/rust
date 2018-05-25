@@ -198,7 +198,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let borrow_set = Rc::new(BorrowSet::build(tcx, mir));
 
     // If we are in non-lexical mode, compute the non-lexical lifetimes.
-    let (regioncx, opt_closure_req) = nll::compute_regions(
+    let (regioncx, _polonius_output, opt_closure_req) = nll::compute_regions(
         infcx,
         def_id,
         free_regions,

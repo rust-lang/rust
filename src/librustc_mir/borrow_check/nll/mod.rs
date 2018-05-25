@@ -9,11 +9,12 @@
 // except according to those terms.
 
 use borrow_check::borrow_set::BorrowSet;
-use borrow_check::location::LocationTable;
+use borrow_check::location::{LocationIndex, LocationTable};
 use borrow_check::nll::facts::AllFactsExt;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;
+use dataflow::indexes::BorrowIndex;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Mir};
@@ -22,6 +23,7 @@ use rustc::util::nodemap::FxHashMap;
 use std::collections::BTreeSet;
 use std::fmt::Debug;
 use std::io;
+use std::rc::Rc;
 use std::path::PathBuf;
 use transform::MirSource;
 use util::liveness::{LivenessResults, LocalSet};
@@ -29,6 +31,7 @@ use util::liveness::{LivenessResults, LocalSet};
 use self::mir_util::PassWhere;
 use util as mir_util;
 use util::pretty::{self, ALIGN};
+use polonius_engine::{Algorithm, Output};
 
 mod constraint_generation;
 pub mod explain_borrow;
@@ -83,6 +86,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     borrow_set: &BorrowSet<'tcx>,
 ) -> (
     RegionInferenceContext<'tcx>,
+    Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
     Option<ClosureRegionRequirements<'gcx>>,
 ) {
     // Run the MIR type-checker.
@@ -98,7 +102,9 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         move_data,
     );
 
-    let mut all_facts = if infcx.tcx.sess.opts.debugging_opts.nll_facts {
+    let mut all_facts = if infcx.tcx.sess.opts.debugging_opts.nll_facts
+        || infcx.tcx.sess.opts.debugging_opts.polonius
+    {
         Some(AllFacts::default())
     } else {
         None
@@ -142,11 +148,19 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     );
 
     // Dump facts if requested.
-    if let Some(all_facts) = all_facts {
-        let def_path = infcx.tcx.hir.def_path(def_id);
-        let dir_path = PathBuf::from("nll-facts").join(def_path.to_filename_friendly_no_crate());
-        all_facts.write_to_dir(dir_path, location_table).unwrap();
-    }
+    let polonius_output = all_facts.and_then(|all_facts| {
+         if infcx.tcx.sess.opts.debugging_opts.nll_facts {
+             let def_path = infcx.tcx.hir.def_path(def_id);
+             let dir_path = PathBuf::from("nll-facts").join(def_path.to_filename_friendly_no_crate());
+             all_facts.write_to_dir(dir_path, location_table).unwrap();
+         }
+
+         if infcx.tcx.sess.opts.debugging_opts.polonius {
+            Some(Rc::new(Output::compute(&all_facts, Algorithm::DatafrogOpt, false)))
+         } else {
+             None
+         }
+    });
 
     // Solve the region constraints.
     let closure_region_requirements = regioncx.solve(infcx, &mir, def_id);
@@ -166,7 +180,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     // information
     dump_annotation(infcx, &mir, def_id, &regioncx, &closure_region_requirements);
 
-    (regioncx, closure_region_requirements)
+    (regioncx, polonius_output, closure_region_requirements)
 }
 
 fn dump_mir_results<'a, 'gcx, 'tcx>(
