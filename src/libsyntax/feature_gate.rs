@@ -145,7 +145,7 @@ declare_features! (
     // rustc internal
     (active, rustc_diagnostic_macros, "1.0.0", None, None),
     (active, rustc_const_unstable, "1.0.0", None, None),
-    (active, box_syntax, "1.0.0", Some(27779), None),
+    (active, box_syntax, "1.0.0", Some(49733), None),
     (active, unboxed_closures, "1.0.0", Some(29625), None),
 
     (active, fundamental, "1.0.0", Some(29635), None),
