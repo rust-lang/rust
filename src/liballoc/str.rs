@@ -130,9 +130,9 @@ macro_rules! spezialize_for_lengths {
 macro_rules! copy_slice_and_advance {
     ($target:expr, $bytes:expr) => {
         let len = $bytes.len();
-        $target.get_unchecked_mut(..len)
-            .copy_from_slice($bytes);
-        $target = {$target}.get_unchecked_mut(len..);
+        let (head, tail) = {$target}.split_at_mut(len);
+        head.copy_from_slice($bytes);
+        $target = tail;
     }
 }
 
@@ -152,36 +152,42 @@ where
 {
     let sep_len = sep.len();
     let mut iter = slice.iter();
-    iter.next().map_or(vec![], |first| {
-        // this is wrong without the guarantee that `slice` is non-empty
-        // if the `len` calculation overflows, we'll panic
-        // we would have run out of memory anyway and the rest of the function requires
-        // the entire String pre-allocated for safety
-        //
-        // this is the exact len of the resulting String
-        let len =  sep_len.checked_mul(slice.len() - 1).and_then(|n| {
-            slice.iter().map(|s| s.borrow().as_ref().len()).try_fold(n, usize::checked_add)
+
+    // the first slice is the only one without a separator preceding it
+    let first = match iter.next() {
+        Some(first) => first,
+        None => return vec![],
+    };
+
+    // compute the exact total length of the joined Vec
+    // if the `len` calculation overflows, we'll panic
+    // we would have run out of memory anyway and the rest of the function requires
+    // the entire Vec pre-allocated for safety
+    let len =  sep_len.checked_mul(iter.len()).and_then(|n| {
+            slice.iter()
+                .map(|s| s.borrow().as_ref().len())
+                .try_fold(n, usize::checked_add)
         }).expect("attempt to join into collection with len > usize::MAX");
 
-        // crucial for safety
-        let mut result = Vec::with_capacity(len);
+    // crucial for safety
+    let mut result = Vec::with_capacity(len);
+    assert!(result.capacity() >= len);
 
-        unsafe {
-            result.extend_from_slice(first.borrow().as_ref());
+    result.extend_from_slice(first.borrow().as_ref());
 
-            {
-                let pos = result.len();
-                let target = result.get_unchecked_mut(pos..len);
+    unsafe {
+        {
+            let pos = result.len();
+            let target = result.get_unchecked_mut(pos..len);
 
-                // copy separator and strs over without bounds checks
-                // generate loops with hardcoded offsets for small separators
-                // massive improvements possible (~ x2)
-                spezialize_for_lengths!(sep, target, iter; 0, 1, 2, 3, 4);
-            }
-            result.set_len(len);
+            // copy separator and slices over without bounds checks
+            // generate loops with hardcoded offsets for small separators
+            // massive improvements possible (~ x2)
+            spezialize_for_lengths!(sep, target, iter; 0, 1, 2, 3, 4);
         }
-        result
-    })
+        result.set_len(len);
+    }
+    result
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
