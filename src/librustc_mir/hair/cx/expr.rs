@@ -614,7 +614,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                 let idx = adt_def.variant_index_with_id(variant_id);
                                 let (d, o) = adt_def.discriminant_def_for_variant(idx);
                                 use rustc::ty::util::IntTypeExt;
-                                let ty = adt_def.repr.discr_type().to_ty(cx.tcx());
+                                let ty = adt_def.repr.discr_type();
+                                let ty = ty.to_ty(cx.tcx());
                                 Some((d, o, ty))
                             }
                             _ => None,
@@ -634,7 +635,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             },
                         },
                     }.to_ref();
-                    let offset = mk_const(ty::Const::from_bits(cx.tcx, offset as u128, ty));
+                    let offset = mk_const(ty::Const::from_bits(
+                        cx.tcx,
+                        offset as u128,
+                        cx.param_env.and(ty),
+                    ));
                     match did {
                         Some(did) => {
                             // in case we are offsetting from a computed discriminant

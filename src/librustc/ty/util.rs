@@ -68,14 +68,14 @@ impl<'tcx> Discr<'tcx> {
         };
 
         let bit_size = int.size().bits();
-        let amt = 128 - bit_size;
+        let shift = 128 - bit_size;
         if signed {
             let sext = |u| {
                 let i = u as i128;
-                (i << amt) >> amt
+                (i << shift) >> shift
             };
             let min = sext(1_u128 << (bit_size - 1));
-            let max = i128::max_value() >> amt;
+            let max = i128::max_value() >> shift;
             let val = sext(self.val);
             assert!(n < (i128::max_value() as u128));
             let n = n as i128;
@@ -87,13 +87,13 @@ impl<'tcx> Discr<'tcx> {
             };
             // zero the upper bits
             let val = val as u128;
-            let val = (val << amt) >> amt;
+            let val = (val << shift) >> shift;
             (Self {
                 val: val as u128,
                 ty: self.ty,
             }, oflo)
         } else {
-            let max = u128::max_value() >> amt;
+            let max = u128::max_value() >> shift;
             let val = self.val;
             let oflo = val > max - n;
             let val = if oflo {

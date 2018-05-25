@@ -198,7 +198,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
                                     value: ty::Const::from_bits(
                                         tcx,
                                         *b as u128,
-                                        tcx.types.u8)
+                                        ty::ParamEnv::empty().and(tcx.types.u8))
                                 }
                             })
                         }).collect()
@@ -958,7 +958,7 @@ fn slice_pat_covered_by_constructor<'tcx>(
     {
         match pat.kind {
             box PatternKind::Constant { value } => {
-                let b = value.unwrap_bits(pat.ty);
+                let b = value.unwrap_bits(tcx, ty::ParamEnv::empty().and(pat.ty));
                 assert_eq!(b as u8 as u128, b);
                 if b as u8 != *ch {
                     return Ok(false);
@@ -979,9 +979,9 @@ fn constructor_covered_by_range<'a, 'tcx>(
     ty: Ty<'tcx>,
 ) -> Result<bool, ErrorReported> {
     trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, from, to, ty);
-    let cmp_from = |c_from| compare_const_vals(tcx, c_from, from, ty)
+    let cmp_from = |c_from| compare_const_vals(tcx, c_from, from, ty::ParamEnv::empty().and(ty))
         .map(|res| res != Ordering::Less);
-    let cmp_to = |c_to| compare_const_vals(tcx, c_to, to, ty);
+    let cmp_to = |c_to| compare_const_vals(tcx, c_to, to, ty::ParamEnv::empty().and(ty));
     macro_rules! some_or_ok {
         ($e:expr) => {
             match $e {

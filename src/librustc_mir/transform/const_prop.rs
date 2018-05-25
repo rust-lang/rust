@@ -19,7 +19,7 @@ use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionE
 use rustc::mir::visit::{Visitor, PlaceContext};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{TyCtxt, self, Instance};
-use rustc::mir::interpret::{Value, PrimVal, GlobalId, EvalResult};
+use rustc::mir::interpret::{Value, Scalar, GlobalId, EvalResult};
 use interpret::EvalContext;
 use interpret::CompileTimeEvaluator;
 use interpret::{eval_promoted, mk_borrowck_eval_cx, ValTy};
@@ -215,7 +215,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     trace!("field proj on {:?}", proj.base);
                     let (base, ty, span) = self.eval_place(&proj.base)?;
                     match base {
-                        Value::ByValPair(a, b) => {
+                        Value::ScalarPair(a, b) => {
                             trace!("by val pair: {:?}, {:?}", a, b);
                             let base_layout = self.tcx.layout_of(self.param_env.and(ty)).ok()?;
                             trace!("layout computed");
@@ -228,7 +228,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                             };
                             let field = base_layout.field(cx, field_index).ok()?;
                             trace!("projection resulted in: {:?}", val);
-                            Some((Value::ByVal(val), field.ty, span))
+                            Some((Value::Scalar(val), field.ty, span))
                         },
                         _ => None,
                     }
@@ -283,7 +283,10 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
             Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                 let param_env = self.tcx.param_env(self.source.def_id);
                 type_size_of(self.tcx, param_env, ty).map(|n| (
-                    Value::ByVal(PrimVal::Bytes(n as u128)),
+                    Value::Scalar(Scalar::Bits {
+                        bits: n as u128,
+                        defined: self.tcx.data_layout.pointer_size.bits() as u8,
+                    }),
                     self.tcx.types.usize,
                     span,
                 ))
@@ -302,10 +305,10 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
 
                 let val = self.eval_operand(arg)?;
                 let prim = self.use_ecx(span, |this| {
-                    this.ecx.value_to_primval(ValTy { value: val.0, ty: val.1 })
+                    this.ecx.value_to_scalar(ValTy { value: val.0, ty: val.1 })
                 })?;
                 let val = self.use_ecx(span, |this| this.ecx.unary_op(op, prim, val.1))?;
-                Some((Value::ByVal(val), place_ty, span))
+                Some((Value::Scalar(val), place_ty, span))
             }
             Rvalue::CheckedBinaryOp(op, ref left, ref right) |
             Rvalue::BinaryOp(op, ref left, ref right) => {
@@ -323,13 +326,18 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 }
 
                 let r = self.use_ecx(span, |this| {
-                    this.ecx.value_to_primval(ValTy { value: right.0, ty: right.1 })
+                    this.ecx.value_to_scalar(ValTy { value: right.0, ty: right.1 })
                 })?;
                 if op == BinOp::Shr || op == BinOp::Shl {
-                    let param_env = self.tcx.param_env(self.source.def_id);
                     let left_ty = left.ty(self.mir, self.tcx);
-                    let bits = self.tcx.layout_of(param_env.and(left_ty)).unwrap().size.bits();
-                    if r.to_bytes().ok().map_or(false, |b| b >= bits as u128) {
+                    let left_bits = self
+                        .tcx
+                        .layout_of(self.param_env.and(left_ty))
+                        .unwrap()
+                        .size
+                        .bits();
+                    let right_size = self.tcx.layout_of(self.param_env.and(right.1)).unwrap().size;
+                    if r.to_bits(right_size).ok().map_or(false, |b| b >= left_bits as u128) {
                         let scope_info = match self.mir.visibility_scope_info {
                             ClearCrossCrate::Set(ref data) => data,
                             ClearCrossCrate::Clear => return None,
@@ -350,16 +358,16 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 }
                 let left = self.eval_operand(left)?;
                 let l = self.use_ecx(span, |this| {
-                    this.ecx.value_to_primval(ValTy { value: left.0, ty: left.1 })
+                    this.ecx.value_to_scalar(ValTy { value: left.0, ty: left.1 })
                 })?;
                 trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
                 let (val, overflow) = self.use_ecx(span, |this| {
                     this.ecx.binary_op(op, l, left.1, r, right.1)
                 })?;
                 let val = if let Rvalue::CheckedBinaryOp(..) = *rvalue {
-                    Value::ByValPair(
+                    Value::ScalarPair(
                         val,
-                        PrimVal::from_bool(overflow),
+                        Scalar::from_bool(overflow),
                     )
                 } else {
                     if overflow {
@@ -371,7 +379,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                         });
                         return None;
                     }
-                    Value::ByVal(val)
+                    Value::Scalar(val)
                 };
                 Some((val, place_ty, span))
             },
@@ -485,7 +493,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
         if let TerminatorKind::Assert { expected, msg, cond, .. } = kind {
             if let Some(value) = self.eval_operand(cond) {
                 trace!("assertion on {:?} should be {:?}", value, expected);
-                if Value::ByVal(PrimVal::from_bool(*expected)) != value.0 {
+                if Value::Scalar(Scalar::from_bool(*expected)) != value.0 {
                     // poison all places this operand references so that further code
                     // doesn't use the invalid value
                     match cond {
@@ -520,14 +528,14 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                         BoundsCheck { ref len, ref index } => {
                             let len = self.eval_operand(len).expect("len must be const");
                             let len = match len.0 {
-                                Value::ByVal(PrimVal::Bytes(n)) => n,
+                                Value::Scalar(Scalar::Bits { bits, ..}) => bits,
                                 _ => bug!("const len not primitive: {:?}", len),
                             };
                             let index = self
                                 .eval_operand(index)
                                 .expect("index must be const");
                             let index = match index.0 {
-                                Value::ByVal(PrimVal::Bytes(n)) => n,
+                                Value::Scalar(Scalar::Bits { bits, .. }) => bits,
                                 _ => bug!("const index not primitive: {:?}", index),
                             };
                             format!(

@@ -14,9 +14,9 @@ use rustc_mir::interpret::{read_target_uint, const_val_field};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc::mir::interpret::{GlobalId, MemoryPointer, PrimVal, Allocation, ConstValue, AllocType};
+use rustc::mir::interpret::{GlobalId, Pointer, Scalar, Allocation, ConstValue, AllocType};
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Scalar, Size};
+use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Size};
 use builder::Builder;
 use common::{CodegenCx};
 use common::{C_bytes, C_struct, C_uint_big, C_undef, C_usize};
@@ -28,22 +28,24 @@ use syntax::ast::Mutability;
 use super::super::callee;
 use super::FunctionCx;
 
-pub fn primval_to_llvm(cx: &CodegenCx,
-                       cv: PrimVal,
-                       scalar: &Scalar,
+pub fn scalar_to_llvm(cx: &CodegenCx,
+                       cv: Scalar,
+                       layout: &layout::Scalar,
                        llty: Type) -> ValueRef {
-    let bits = if scalar.is_bool() { 1 } else { scalar.value.size(cx).bits() };
+    let bitsize = if layout.is_bool() { 1 } else { layout.value.size(cx).bits() };
     match cv {
-        PrimVal::Undef => C_undef(Type::ix(cx, bits)),
-        PrimVal::Bytes(b) => {
-            let llval = C_uint_big(Type::ix(cx, bits), b);
-            if scalar.value == layout::Pointer {
+        Scalar::Bits { defined, .. } if (defined as u64) < bitsize || defined == 0 => {
+            C_undef(Type::ix(cx, bitsize))
+        },
+        Scalar::Bits { bits, .. } => {
+            let llval = C_uint_big(Type::ix(cx, bitsize), bits);
+            if layout.value == layout::Pointer {
                 unsafe { llvm::LLVMConstIntToPtr(llval, llty.to_ref()) }
             } else {
                 consts::bitcast(llval, llty)
             }
         },
-        PrimVal::Ptr(ptr) => {
+        Scalar::Ptr(ptr) => {
             let alloc_type = cx.tcx.alloc_map.lock().get(ptr.alloc_id);
             let base_addr = match alloc_type {
                 Some(AllocType::Memory(alloc)) => {
@@ -68,7 +70,7 @@ pub fn primval_to_llvm(cx: &CodegenCx,
                 &C_usize(cx, ptr.offset.bytes()),
                 1,
             ) };
-            if scalar.value != layout::Pointer {
+            if layout.value != layout::Pointer {
                 unsafe { llvm::LLVMConstPtrToInt(llval, llty.to_ref()) }
             } else {
                 consts::bitcast(llval, llty)
@@ -94,10 +96,10 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
             layout.endian,
             &alloc.bytes[offset..(offset + pointer_size)],
         ).expect("const_alloc_to_llvm: could not read relocation pointer") as u64;
-        llvals.push(primval_to_llvm(
+        llvals.push(scalar_to_llvm(
             cx,
-            PrimVal::Ptr(MemoryPointer { alloc_id, offset: Size::from_bytes(ptr_offset) }),
-            &Scalar {
+            Pointer { alloc_id, offset: Size::from_bytes(ptr_offset) }.into(),
+            &layout::Scalar {
                 value: layout::Primitive::Pointer,
                 valid_range: 0..=!0
             },
@@ -197,13 +199,13 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                         c,
                         constant.ty,
                     )?;
-                    if let Some(prim) = field.to_primval() {
+                    if let Some(prim) = field.to_scalar() {
                         let layout = bx.cx.layout_of(field_ty);
                         let scalar = match layout.abi {
                             layout::Abi::Scalar(ref x) => x,
                             _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
                         };
-                        Ok(primval_to_llvm(
+                        Ok(scalar_to_llvm(
                             bx.cx, prim, scalar,
                             layout.immediate_llvm_type(bx.cx),
                         ))

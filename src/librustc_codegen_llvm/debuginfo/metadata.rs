@@ -325,7 +325,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         MemberDescription {
             name: "data_ptr".to_string(),
             type_metadata: data_ptr_metadata,
-            offset: Size::from_bytes(0),
+            offset: Size::ZERO,
             size: pointer_size,
             align: pointer_align,
             flags: DIFlags::FlagZero,
@@ -1074,7 +1074,7 @@ impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
             MemberDescription {
                 name: f.name.to_string(),
                 type_metadata: type_metadata(cx, field.ty, self.span),
-                offset: Size::from_bytes(0),
+                offset: Size::ZERO,
                 size,
                 align,
                 flags: DIFlags::FlagZero,
@@ -1158,7 +1158,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     MemberDescription {
                         name: "".to_string(),
                         type_metadata: variant_type_metadata,
-                        offset: Size::from_bytes(0),
+                        offset: Size::ZERO,
                         size: self.layout.size,
                         align: self.layout.align,
                         flags: DIFlags::FlagZero
@@ -1187,7 +1187,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     MemberDescription {
                         name: "".to_string(),
                         type_metadata: variant_type_metadata,
-                        offset: Size::from_bytes(0),
+                        offset: Size::ZERO,
                         size: variant.size,
                         align: variant.align,
                         flags: DIFlags::FlagZero
@@ -1248,7 +1248,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     MemberDescription {
                         name,
                         type_metadata: variant_type_metadata,
-                        offset: Size::from_bytes(0),
+                        offset: Size::ZERO,
                         size: variant.size,
                         align: variant.align,
                         flags: DIFlags::FlagZero
@@ -1747,7 +1747,7 @@ pub fn create_vtable_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             name.as_ptr(),
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
-            Size::from_bytes(0).bits(),
+            Size::ZERO.bits(),
             cx.tcx.data_layout.pointer_align.abi_bits() as u32,
             DIFlags::FlagArtificial,
             ptr::null_mut(),

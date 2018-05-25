@@ -394,10 +394,10 @@ for ::mir::interpret::ConstValue<'gcx> {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
-            ByVal(val) => {
+            Scalar(val) => {
                 val.hash_stable(hcx, hasher);
             }
-            ByValPair(a, b) => {
+            ScalarPair(a, b) => {
                 a.hash_stable(hcx, hasher);
                 b.hash_stable(hcx, hasher);
             }
@@ -410,12 +410,12 @@ for ::mir::interpret::ConstValue<'gcx> {
 }
 
 impl_stable_hash_for!(enum mir::interpret::Value {
-    ByVal(v),
-    ByValPair(a, b),
+    Scalar(v),
+    ScalarPair(a, b),
     ByRef(ptr, align)
 });
 
-impl_stable_hash_for!(struct mir::interpret::MemoryPointer {
+impl_stable_hash_for!(struct mir::interpret::Pointer {
     alloc_id,
     offset
 });
@@ -473,13 +473,24 @@ impl_stable_hash_for!(enum ::syntax::ast::Mutability {
     Mutable
 });
 
-impl_stable_hash_for!(struct mir::interpret::Pointer{primval});
 
-impl_stable_hash_for!(enum mir::interpret::PrimVal {
-    Bytes(b),
-    Ptr(p),
-    Undef
-});
+impl<'a> HashStable<StableHashingContext<'a>>
+for ::mir::interpret::Scalar {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        use mir::interpret::Scalar::*;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            Bits { bits, defined } => {
+                bits.hash_stable(hcx, hasher);
+                defined.hash_stable(hcx, hasher);
+            },
+            Ptr(ptr) => ptr.hash_stable(hcx, hasher),
+        }
+    }
+}
 
 impl_stable_hash_for!(struct ty::Const<'tcx> {
     ty,

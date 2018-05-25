@@ -24,7 +24,7 @@ use rustc_serialize as serialize;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
 use mir::visit::MirVisitable;
-use mir::interpret::{Value, PrimVal, EvalErrorKind};
+use mir::interpret::{Value, Scalar, EvalErrorKind};
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
@@ -1149,11 +1149,16 @@ impl<'tcx> TerminatorKind<'tcx> {
             Return | Resume | Abort | Unreachable | GeneratorDrop => vec![],
             Goto { .. } => vec!["".into()],
             SwitchInt { ref values, switch_ty, .. } => {
+                let size = ty::tls::with(|tcx| {
+                    let param_env = ty::ParamEnv::empty();
+                    let switch_ty = tcx.lift_to_global(&switch_ty).unwrap();
+                    tcx.layout_of(param_env.and(switch_ty)).unwrap().size
+                });
                 values.iter()
                       .map(|&u| {
                           let mut s = String::new();
                           print_miri_value(
-                              Value::ByVal(PrimVal::Bytes(u)),
+                              Value::Scalar(Scalar::Bits { bits: u, defined: size.bits() as u8 }),
                               switch_ty,
                               &mut s,
                           ).unwrap();
@@ -1893,19 +1898,26 @@ pub fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ty::Const) -> fmt::Resul
 pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Result {
     use ty::TypeVariants::*;
     match (value, &ty.sty) {
-        (Value::ByVal(PrimVal::Bytes(0)), &TyBool) => write!(f, "false"),
-        (Value::ByVal(PrimVal::Bytes(1)), &TyBool) => write!(f, "true"),
-        (Value::ByVal(PrimVal::Bytes(bits)), &TyFloat(ast::FloatTy::F32)) =>
+        (Value::Scalar(Scalar::Bits { bits: 0, .. }), &TyBool) => write!(f, "false"),
+        (Value::Scalar(Scalar::Bits { bits: 1, .. }), &TyBool) => write!(f, "true"),
+        (Value::Scalar(Scalar::Bits { bits, .. }), &TyFloat(ast::FloatTy::F32)) =>
             write!(f, "{}f32", Single::from_bits(bits)),
-        (Value::ByVal(PrimVal::Bytes(bits)), &TyFloat(ast::FloatTy::F64)) =>
+        (Value::Scalar(Scalar::Bits { bits, .. }), &TyFloat(ast::FloatTy::F64)) =>
             write!(f, "{}f64", Double::from_bits(bits)),
-        (Value::ByVal(PrimVal::Bytes(n)), &TyUint(ui)) => write!(f, "{:?}{}", n, ui),
-        (Value::ByVal(PrimVal::Bytes(n)), &TyInt(i)) => write!(f, "{:?}{}", n as i128, i),
-        (Value::ByVal(PrimVal::Bytes(n)), &TyChar) =>
-            write!(f, "{:?}", ::std::char::from_u32(n as u32).unwrap()),
-        (Value::ByVal(PrimVal::Undef), &TyFnDef(did, _)) =>
+        (Value::Scalar(Scalar::Bits { bits, .. }), &TyUint(ui)) => write!(f, "{:?}{}", bits, ui),
+        (Value::Scalar(Scalar::Bits { bits, .. }), &TyInt(i)) => {
+            let bit_width = ty::tls::with(|tcx| {
+                 let ty = tcx.lift_to_global(&ty).unwrap();
+                 tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size.bits()
+            });
+            let shift = 128 - bit_width;
+            write!(f, "{:?}{}", ((bits as i128) << shift) >> shift, i)
+        },
+        (Value::Scalar(Scalar::Bits { bits, .. }), &TyChar) =>
+            write!(f, "{:?}", ::std::char::from_u32(bits as u32).unwrap()),
+        (_, &TyFnDef(did, _)) =>
             write!(f, "{}", item_path_str(did)),
-        (Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(len)),
+        (Value::ScalarPair(Scalar::Ptr(ptr), Scalar::Bits { bits: len, .. }),
          &TyRef(_, &ty::TyS { sty: TyStr, .. }, _)) => {
             ty::tls::with(|tcx| {
                 match tcx.alloc_map.lock().get(ptr.alloc_id) {

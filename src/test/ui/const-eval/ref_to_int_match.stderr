@@ -1,0 +1,9 @@
+error[E0030]: lower range bound must be less than or equal to upper
+  --> $DIR/ref_to_int_match.rs:15:9
+   |
+LL |         10...BAR => {}, //~ ERROR lower range bound must be less than or equal to upper
+   |         ^^ lower bound larger than upper bound
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0030`.

@@ -1,9 +1,9 @@
 use rustc::mir;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{self, Align, LayoutOf, TyLayout, Size};
+use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
 
-use rustc::mir::interpret::{GlobalId, Value, PrimVal, EvalResult, Pointer, MemoryPointer};
+use rustc::mir::interpret::{GlobalId, Value, Scalar, EvalResult, Pointer};
 use super::{EvalContext, Machine, ValTy};
 use interpret::memory::HasMemory;
 
@@ -14,7 +14,7 @@ pub enum Place {
         /// A place may have an invalid (integral or undef) pointer,
         /// since it might be turned back into a reference
         /// before ever being dereferenced.
-        ptr: Pointer,
+        ptr: Scalar,
         align: Align,
         extra: PlaceExtra,
     },
@@ -28,17 +28,17 @@ pub enum Place {
 pub enum PlaceExtra {
     None,
     Length(u64),
-    Vtable(MemoryPointer),
+    Vtable(Pointer),
     DowncastVariant(usize),
 }
 
 impl<'tcx> Place {
     /// Produces a Place that will error if attempted to be read from
     pub fn undef() -> Self {
-        Self::from_primval_ptr(PrimVal::Undef.into(), Align::from_bytes(1, 1).unwrap())
+        Self::from_scalar_ptr(Scalar::undef().into(), Align::from_bytes(1, 1).unwrap())
     }
 
-    pub fn from_primval_ptr(ptr: Pointer, align: Align) -> Self {
+    pub fn from_scalar_ptr(ptr: Scalar, align: Align) -> Self {
         Place::Ptr {
             ptr,
             align,
@@ -46,11 +46,11 @@ impl<'tcx> Place {
         }
     }
 
-    pub fn from_ptr(ptr: MemoryPointer, align: Align) -> Self {
-        Self::from_primval_ptr(ptr.into(), align)
+    pub fn from_ptr(ptr: Pointer, align: Align) -> Self {
+        Self::from_scalar_ptr(ptr.into(), align)
     }
 
-    pub fn to_ptr_align_extra(self) -> (Pointer, Align, PlaceExtra) {
+    pub fn to_ptr_align_extra(self) -> (Scalar, Align, PlaceExtra) {
         match self {
             Place::Ptr { ptr, align, extra } => (ptr, align, extra),
             _ => bug!("to_ptr_and_extra: expected Place::Ptr, got {:?}", self),
@@ -58,12 +58,12 @@ impl<'tcx> Place {
         }
     }
 
-    pub fn to_ptr_align(self) -> (Pointer, Align) {
+    pub fn to_ptr_align(self) -> (Scalar, Align) {
         let (ptr, align, _extra) = self.to_ptr_align_extra();
         (ptr, align)
     }
 
-    pub fn to_ptr(self) -> EvalResult<'tcx, MemoryPointer> {
+    pub fn to_ptr(self) -> EvalResult<'tcx, Pointer> {
         // At this point, we forget about the alignment information -- the place has been turned into a reference,
         // and no matter where it came from, it now must be aligned.
         self.to_ptr_align().0.to_ptr()
@@ -128,17 +128,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let field_index = field.index();
         let field = base_layout.field(self, field_index)?;
         if field.size.bytes() == 0 {
-            return Ok(Some((Value::ByVal(PrimVal::Undef), field.ty)))
+            return Ok(Some((Value::Scalar(Scalar::undef()), field.ty)))
         }
         let offset = base_layout.fields.offset(field_index);
         match base {
             // the field covers the entire type
-            Value::ByValPair(..) |
-            Value::ByVal(_) if offset.bytes() == 0 && field.size == base_layout.size => Ok(Some((base, field.ty))),
+            Value::ScalarPair(..) |
+            Value::Scalar(_) if offset.bytes() == 0 && field.size == base_layout.size => Ok(Some((base, field.ty))),
             // split fat pointers, 2 element tuples, ...
-            Value::ByValPair(a, b) if base_layout.fields.count() == 2 => {
+            Value::ScalarPair(a, b) if base_layout.fields.count() == 2 => {
                 let val = [a, b][field_index];
-                Ok(Some((Value::ByVal(val), field.ty)))
+                Ok(Some((Value::Scalar(val), field.ty)))
             },
             // FIXME(oli-obk): figure out whether we should be calling `try_read_value` here
             _ => Ok(None),
@@ -173,7 +173,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         place: &mir::Place<'tcx>,
     ) -> EvalResult<'tcx, Value> {
         // Shortcut for things like accessing a fat pointer's field,
-        // which would otherwise (in the `eval_place` path) require moving a `ByValPair` to memory
+        // which would otherwise (in the `eval_place` path) require moving a `ScalarPair` to memory
         // and returning an `Place::Ptr` to it
         if let Some(val) = self.try_read_place(place)? {
             return Ok(val);
@@ -210,7 +210,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 };
                 let alloc = Machine::init_static(self, cid)?;
                 Place::Ptr {
-                    ptr: MemoryPointer::new(alloc, Size::from_bytes(0)).into(),
+                    ptr: Scalar::Ptr(alloc.into()),
                     align: layout.align,
                     extra: PlaceExtra::None,
                 }
@@ -250,8 +250,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Place::Local { frame, local } => {
                 match (&self.stack[frame].get_local(local)?, &base_layout.abi) {
                     // in case the field covers the entire type, just return the value
-                    (&Value::ByVal(_), &layout::Abi::Scalar(_)) |
-                    (&Value::ByValPair(..), &layout::Abi::ScalarPair(..))
+                    (&Value::Scalar(_), &layout::Abi::Scalar(_)) |
+                    (&Value::ScalarPair(..), &layout::Abi::ScalarPair(..))
                         if offset.bytes() == 0 && field.size == base_layout.size =>
                     {
                         return Ok((base, field));
@@ -272,7 +272,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             _ => offset,
         };
 
-        let ptr = base_ptr.offset(offset, &self)?;
+        let ptr = base_ptr.ptr_offset(offset, &self)?;
         let align = base_align.min(base_layout.align).min(field.align);
         let extra = if !field.is_unsized() {
             PlaceExtra::None
@@ -310,7 +310,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     extra: PlaceExtra::Length(len),
                 }
             }
-            _ => Place::from_primval_ptr(self.into_ptr(val)?, layout.align),
+            _ => Place::from_scalar_ptr(self.into_ptr(val)?, layout.align),
         })
     }
 
@@ -332,7 +332,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             n,
             len
         );
-        let ptr = base_ptr.offset(elem_size * n, &*self)?;
+        let ptr = base_ptr.ptr_offset(elem_size * n, &*self)?;
         Ok(Place::Ptr {
             ptr,
             align,
@@ -387,8 +387,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Index(local) => {
                 let value = self.frame().get_local(local)?;
                 let ty = self.tcx.types.usize;
-                let n = self.value_to_primval(ValTy { value, ty })?.to_u64()?;
-                self.place_index(base, base_ty, n)
+                let n = self
+                    .value_to_scalar(ValTy { value, ty })?
+                    .to_bits(self.tcx.data_layout.pointer_size)?;
+                self.place_index(base, base_ty, n as u64)
             }
 
             ConstantIndex {
@@ -410,7 +412,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     u64::from(offset)
                 };
 
-                let ptr = base_ptr.offset(elem_size * index, &self)?;
+                let ptr = base_ptr.ptr_offset(elem_size * index, &self)?;
                 Ok(Place::Ptr { ptr, align, extra: PlaceExtra::None })
             }
 
@@ -422,7 +424,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty, self.tcx.tcx);
                 let elem_size = self.layout_of(elem_ty)?.size;
                 assert!(u64::from(from) <= n - u64::from(to));
-                let ptr = base_ptr.offset(elem_size * u64::from(from), &self)?;
+                let ptr = base_ptr.ptr_offset(elem_size * u64::from(from), &self)?;
                 // sublicing arrays produces arrays
                 let extra = if self.type_is_sized(base_ty) {
                     PlaceExtra::None

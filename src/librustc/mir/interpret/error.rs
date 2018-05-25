@@ -5,7 +5,7 @@ use ty::{FnSig, Ty, layout};
 use ty::layout::{Size, Align};
 
 use super::{
-    MemoryPointer, Lock, AccessKind
+    Pointer, Lock, AccessKind
 };
 
 use backtrace::Backtrace;
@@ -38,7 +38,7 @@ pub enum EvalErrorKind<'tcx, O> {
     MachineError(String),
     FunctionPointerTyMismatch(FnSig<'tcx>, FnSig<'tcx>),
     NoMirFor(String),
-    UnterminatedCString(MemoryPointer),
+    UnterminatedCString(Pointer),
     DanglingPointerDeref,
     DoubleFree,
     InvalidMemoryAccess,
@@ -46,7 +46,7 @@ pub enum EvalErrorKind<'tcx, O> {
     InvalidBool,
     InvalidDiscriminant,
     PointerOutOfBounds {
-        ptr: MemoryPointer,
+        ptr: Pointer,
         access: bool,
         allocation_size: Size,
     },
@@ -76,26 +76,26 @@ pub enum EvalErrorKind<'tcx, O> {
         has: Align,
     },
     MemoryLockViolation {
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         frame: usize,
         access: AccessKind,
         lock: Lock,
     },
     MemoryAcquireConflict {
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         kind: AccessKind,
         lock: Lock,
     },
     InvalidMemoryLockRelease {
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         frame: usize,
         lock: Lock,
     },
     DeallocatedLockedMemory {
-        ptr: MemoryPointer,
+        ptr: Pointer,
         lock: Lock,
     },
     ValidationFailure(String),

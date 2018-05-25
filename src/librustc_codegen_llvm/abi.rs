@@ -454,7 +454,7 @@ impl<'a, 'tcx> FnTypeExt<'a, 'tcx> for FnType<'tcx, Ty<'tcx>> {
                     adjust_for_rust_scalar(&mut a_attrs,
                                            a,
                                            arg.layout,
-                                           Size::from_bytes(0),
+                                           Size::ZERO,
                                            false);
                     adjust_for_rust_scalar(&mut b_attrs,
                                            b,
@@ -471,7 +471,7 @@ impl<'a, 'tcx> FnTypeExt<'a, 'tcx> for FnType<'tcx, Ty<'tcx>> {
                     adjust_for_rust_scalar(attrs,
                                            scalar,
                                            arg.layout,
-                                           Size::from_bytes(0),
+                                           Size::ZERO,
                                            is_return);
                 }
             }

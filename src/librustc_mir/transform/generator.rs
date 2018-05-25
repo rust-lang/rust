@@ -181,7 +181,7 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
                 value: ty::Const::from_bits(
                     self.tcx,
                     state_disc.into(),
-                    self.tcx.types.u32),
+                    ty::ParamEnv::empty().and(self.tcx.types.u32)),
             },
         });
         Statement {

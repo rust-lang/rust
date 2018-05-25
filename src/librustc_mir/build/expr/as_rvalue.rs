@@ -202,7 +202,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                 value: ty::Const::from_bits(
                                     this.hir.tcx(),
                                     0,
-                                    this.hir.tcx().types.u32),
+                                    ty::ParamEnv::empty().and(this.hir.tcx().types.u32)),
                             },
                         }));
                         box AggregateKind::Generator(closure_id, substs, movability)
@@ -374,10 +374,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     // Helper to get a `-1` value of the appropriate type
     fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let bits = self.hir.integer_bit_width(ty);
+        let param_ty = ty::ParamEnv::empty().and(self.hir.tcx().lift_to_global(&ty).unwrap());
+        let bits = self.hir.tcx().layout_of(param_ty).unwrap().size.bits();
         let n = (!0u128) >> (128 - bits);
         let literal = Literal::Value {
-            value: ty::Const::from_bits(self.hir.tcx(), n, ty)
+            value: ty::Const::from_bits(self.hir.tcx(), n, param_ty)
         };
 
         self.literal_operand(span, ty, literal)
@@ -386,10 +387,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     // Helper to get the minimum value of the appropriate type
     fn minval_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         assert!(ty.is_signed());
-        let bits = self.hir.integer_bit_width(ty);
+        let param_ty = ty::ParamEnv::empty().and(self.hir.tcx().lift_to_global(&ty).unwrap());
+        let bits = self.hir.tcx().layout_of(param_ty).unwrap().size.bits();
         let n = 1 << (bits - 1);
         let literal = Literal::Value {
-            value: ty::Const::from_bits(self.hir.tcx(), n, ty)
+            value: ty::Const::from_bits(self.hir.tcx(), n, param_ty)
         };
 
         self.literal_operand(span, ty, literal)

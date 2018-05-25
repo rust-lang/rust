@@ -4,7 +4,7 @@ use rustc::ty::layout::LayoutOf;
 use syntax::codemap::Span;
 use rustc_target::spec::abi::Abi;
 
-use rustc::mir::interpret::{EvalResult, PrimVal, Value};
+use rustc::mir::interpret::{EvalResult, Scalar, Value};
 use super::{EvalContext, Place, Machine, ValTy};
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -38,13 +38,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 ..
             } => {
                 let discr_val = self.eval_operand(discr)?;
-                let discr_prim = self.value_to_primval(discr_val)?;
+                let discr_prim = self.value_to_scalar(discr_val)?;
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 let mut target_block = targets[targets.len() - 1];
 
                 for (index, &const_int) in values.iter().enumerate() {
-                    if discr_prim.to_bytes()? == const_int {
+                    if discr_prim.to_bits(self.layout_of(discr_val.ty).unwrap().size)? == const_int {
                         target_block = targets[index];
                         break;
                     }
@@ -67,7 +67,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let func = self.eval_operand(func)?;
                 let (fn_def, sig) = match func.ty.sty {
                     ty::TyFnPtr(sig) => {
-                        let fn_ptr = self.value_to_primval(func)?.to_ptr()?;
+                        let fn_ptr = self.value_to_scalar(func)?.to_ptr()?;
                         let instance = self.memory.get_fn(fn_ptr)?;
                         let instance_ty = instance.ty(*self.tcx);
                         match instance_ty.sty {
@@ -144,19 +144,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 target,
                 ..
             } => {
-                let cond_val = self.eval_operand_to_primval(cond)?.to_bool()?;
+                let cond_val = self.eval_operand_to_scalar(cond)?.to_bool()?;
                 if expected == cond_val {
                     self.goto_block(target);
                 } else {
                     use rustc::mir::interpret::EvalErrorKind::*;
                     return match *msg {
                         BoundsCheck { ref len, ref index } => {
-                            let len = self.eval_operand_to_primval(len)
+                            let len = self.eval_operand_to_scalar(len)
                                 .expect("can't eval len")
-                                .to_u64()?;
-                            let index = self.eval_operand_to_primval(index)
+                                .to_bits(self.memory().pointer_size())? as u64;
+                            let index = self.eval_operand_to_scalar(index)
                                 .expect("can't eval index")
-                                .to_u64()?;
+                                .to_bits(self.memory().pointer_size())? as u64;
                             err!(BoundsCheck { len, index })
                         }
                         Overflow(op) => Err(Overflow(op).into()),
@@ -342,7 +342,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                         for (i, arg_local) in arg_locals.enumerate() {
                                             let field = layout.field(&self, i)?;
                                             let offset = layout.fields.offset(i);
-                                            let arg = Value::ByRef(ptr.offset(offset, &self)?,
+                                            let arg = Value::ByRef(ptr.ptr_offset(offset, &self)?,
                                                                    align.min(field.align));
                                             let dest =
                                                 self.eval_place(&mir::Place::Local(arg_local))?;
@@ -359,7 +359,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                             self.write_value(valty, dest)?;
                                         }
                                     }
-                                    Value::ByVal(PrimVal::Undef) => {}
+                                    Value::Scalar(Scalar::Bits { defined: 0, .. }) => {}
                                     other => {
                                         trace!("{:#?}, {:#?}", other, layout);
                                         let mut layout = layout;

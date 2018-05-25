@@ -17,9 +17,9 @@ use middle::region;
 use rustc_data_structures::indexed_vec::Idx;
 use ty::subst::{Substs, Subst, Kind, UnpackedKind};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
-use ty::{Slice, TyS};
+use ty::{Slice, TyS, ParamEnvAnd, ParamEnv};
 use util::captures::Captures;
-use mir::interpret::{PrimVal, MemoryPointer, Value, ConstValue};
+use mir::interpret::{Scalar, Pointer, Value, ConstValue};
 
 use std::iter;
 use std::cmp::Ordering;
@@ -1809,51 +1809,64 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn from_primval(
+    pub fn from_scalar(
         tcx: TyCtxt<'_, '_, 'tcx>,
-        val: PrimVal,
+        val: Scalar,
         ty: Ty<'tcx>,
     ) -> &'tcx Self {
-        Self::from_const_value(tcx, ConstValue::from_primval(val), ty)
+        Self::from_const_value(tcx, ConstValue::from_scalar(val), ty)
     }
 
     #[inline]
     pub fn from_bits(
         tcx: TyCtxt<'_, '_, 'tcx>,
-        val: u128,
-        ty: Ty<'tcx>,
+        bits: u128,
+        ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
     ) -> &'tcx Self {
-        Self::from_primval(tcx, PrimVal::Bytes(val), ty)
+        let ty = tcx.lift_to_global(&ty).unwrap();
+        let size = tcx.layout_of(ty).unwrap_or_else(|e| {
+            panic!("could not compute layout for {:?}: {:?}", ty, e)
+        }).size;
+        let shift = 128 - size.bits();
+        let truncated = (bits << shift) >> shift;
+        assert_eq!(truncated, bits, "from_bits called with untruncated value");
+        Self::from_scalar(tcx, Scalar::Bits { bits, defined: size.bits() as u8 }, ty.value)
     }
 
     #[inline]
     pub fn zero_sized(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
-        Self::from_primval(tcx, PrimVal::Undef, ty)
+        Self::from_scalar(tcx, Scalar::undef(), ty)
     }
 
     #[inline]
     pub fn from_bool(tcx: TyCtxt<'_, '_, 'tcx>, v: bool) -> &'tcx Self {
-        Self::from_bits(tcx, v as u128, tcx.types.bool)
+        Self::from_bits(tcx, v as u128, ParamEnv::empty().and(tcx.types.bool))
     }
 
     #[inline]
     pub fn from_usize(tcx: TyCtxt<'_, '_, 'tcx>, n: u64) -> &'tcx Self {
-        Self::from_bits(tcx, n as u128, tcx.types.usize)
+        Self::from_bits(tcx, n as u128, ParamEnv::empty().and(tcx.types.usize))
     }
 
     #[inline]
-    pub fn to_bits(&self, ty: Ty<'_>) -> Option<u128> {
-        if self.ty != ty {
+    pub fn to_bits(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
+    ) -> Option<u128> {
+        if self.ty != ty.value {
             return None;
         }
+        let ty = tcx.lift_to_global(&ty).unwrap();
+        let size = tcx.layout_of(ty).ok()?.size;
         match self.val {
-            ConstVal::Value(val) => val.to_bits(),
+            ConstVal::Value(val) => val.to_bits(size),
             _ => None,
         }
     }
 
     #[inline]
-    pub fn to_ptr(&self) -> Option<MemoryPointer> {
+    pub fn to_ptr(&self) -> Option<Pointer> {
         match self.val {
             ConstVal::Value(val) => val.to_ptr(),
             _ => None,
@@ -1869,25 +1882,31 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn to_primval(&self) -> Option<PrimVal> {
+    pub fn to_scalar(&self) -> Option<Scalar> {
         match self.val {
-            ConstVal::Value(val) => val.to_primval(),
+            ConstVal::Value(val) => val.to_scalar(),
             _ => None,
         }
     }
 
     #[inline]
-    pub fn assert_bits(&self, ty: Ty<'_>) -> Option<u128> {
-        assert_eq!(self.ty, ty);
+    pub fn assert_bits(
+        &self,
+        tcx: TyCtxt<'_, '_, '_>,
+        ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
+    ) -> Option<u128> {
+        assert_eq!(self.ty, ty.value);
+        let ty = tcx.lift_to_global(&ty).unwrap();
+        let size = tcx.layout_of(ty).ok()?.size;
         match self.val {
-            ConstVal::Value(val) => val.to_bits(),
+            ConstVal::Value(val) => val.to_bits(size),
             _ => None,
         }
     }
 
     #[inline]
     pub fn assert_bool(&self, tcx: TyCtxt<'_, '_, '_>) -> Option<bool> {
-        self.assert_bits(tcx.types.bool).and_then(|v| match v {
+        self.assert_bits(tcx, ParamEnv::empty().and(tcx.types.bool)).and_then(|v| match v {
             0 => Some(false),
             1 => Some(true),
             _ => None,
@@ -1896,14 +1915,18 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn assert_usize(&self, tcx: TyCtxt<'_, '_, '_>) -> Option<u64> {
-        self.assert_bits(tcx.types.usize).map(|v| v as u64)
+        self.assert_bits(tcx, ParamEnv::empty().and(tcx.types.usize)).map(|v| v as u64)
     }
 
     #[inline]
-    pub fn unwrap_bits(&self, ty: Ty<'_>) -> u128 {
-        match self.assert_bits(ty) {
+    pub fn unwrap_bits(
+        &self,
+        tcx: TyCtxt<'_, '_, '_>,
+        ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
+    ) -> u128 {
+        match self.assert_bits(tcx, ty) {
             Some(val) => val,
-            None => bug!("expected bits of {}, got {:#?}", ty, self),
+            None => bug!("expected bits of {}, got {:#?}", ty.value, self),
         }
     }
 

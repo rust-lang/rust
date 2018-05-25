@@ -10,7 +10,7 @@
 
 //! A pass that simplifies branches when their condition is known.
 
-use rustc::ty::TyCtxt;
+use rustc::ty::{TyCtxt, ParamEnv};
 use rustc::mir::*;
 use transform::{MirPass, MirSource};
 
@@ -39,7 +39,8 @@ impl MirPass for SimplifyBranches {
                 TerminatorKind::SwitchInt { discr: Operand::Constant(box Constant {
                     literal: Literal::Value { ref value }, ..
                 }), switch_ty, ref values, ref targets, .. } => {
-                    if let Some(constint) = value.assert_bits(switch_ty) {
+                    let switch_ty = ParamEnv::empty().and(switch_ty);
+                    if let Some(constint) = value.assert_bits(tcx, switch_ty) {
                         let (otherwise, targets) = targets.split_last().unwrap();
                         let mut ret = TerminatorKind::Goto { target: *otherwise };
                         for (&v, t) in values.iter().zip(targets.iter()) {

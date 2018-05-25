@@ -28,7 +28,7 @@ use std::fmt;
 use std::ptr;
 
 use super::{FunctionCx, LocalRef};
-use super::constant::{primval_to_llvm, const_alloc_to_llvm};
+use super::constant::{scalar_to_llvm, const_alloc_to_llvm};
 use super::place::PlaceRef;
 
 /// The representation of a Rust value. The enum variant is in fact
@@ -105,12 +105,12 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         }
 
         let val = match val {
-            ConstValue::ByVal(x) => {
+            ConstValue::Scalar(x) => {
                 let scalar = match layout.abi {
                     layout::Abi::Scalar(ref x) => x,
                     _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
                 };
-                let llval = primval_to_llvm(
+                let llval = scalar_to_llvm(
                     bx.cx,
                     x,
                     scalar,
@@ -118,18 +118,18 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                 );
                 OperandValue::Immediate(llval)
             },
-            ConstValue::ByValPair(a, b) => {
+            ConstValue::ScalarPair(a, b) => {
                 let (a_scalar, b_scalar) = match layout.abi {
                     layout::Abi::ScalarPair(ref a, ref b) => (a, b),
-                    _ => bug!("from_const: invalid ByValPair layout: {:#?}", layout)
+                    _ => bug!("from_const: invalid ScalarPair layout: {:#?}", layout)
                 };
-                let a_llval = primval_to_llvm(
+                let a_llval = scalar_to_llvm(
                     bx.cx,
                     a,
                     a_scalar,
                     layout.scalar_pair_element_llvm_type(bx.cx, 0),
                 );
-                let b_llval = primval_to_llvm(
+                let b_llval = scalar_to_llvm(
                     bx.cx,
                     b,
                     b_scalar,

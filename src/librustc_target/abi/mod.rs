@@ -13,7 +13,7 @@ pub use self::Primitive::*;
 
 use spec::Target;
 
-use std::cmp;
+use std::{cmp, fmt};
 use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 
 pub mod call;
@@ -227,6 +227,8 @@ pub struct Size {
 }
 
 impl Size {
+    pub const ZERO: Size = Self::from_bytes(0);
+
     pub fn from_bits(bits: u64) -> Size {
         // Avoid potential overflow from `bits + 7`.
         Size::from_bytes(bits / 8 + ((bits % 8) + 7) / 8)
@@ -486,6 +488,42 @@ impl Integer {
     }
 }
 
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy,
+         PartialOrd, Ord)]
+pub enum FloatTy {
+    F32,
+    F64,
+}
+
+impl fmt::Debug for FloatTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl fmt::Display for FloatTy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.ty_to_string())
+    }
+}
+
+impl FloatTy {
+    pub fn ty_to_string(&self) -> &'static str {
+        match *self {
+            FloatTy::F32 => "f32",
+            FloatTy::F64 => "f64",
+        }
+    }
+
+    pub fn bit_width(&self) -> usize {
+        match *self {
+            FloatTy::F32 => 32,
+            FloatTy::F64 => 64,
+        }
+    }
+}
+
 /// Fundamental unit of memory access and layout.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Primitive {
@@ -497,8 +535,7 @@ pub enum Primitive {
     /// a negative integer passed by zero-extension will appear positive in
     /// the callee, and most operations on it will produce the wrong values.
     Int(Integer, bool),
-    F32,
-    F64,
+    Float(FloatTy),
     Pointer
 }
 
@@ -508,8 +545,8 @@ impl<'a, 'tcx> Primitive {
 
         match self {
             Int(i, _) => i.size(),
-            F32 => Size::from_bits(32),
-            F64 => Size::from_bits(64),
+            Float(FloatTy::F32) => Size::from_bits(32),
+            Float(FloatTy::F64) => Size::from_bits(64),
             Pointer => dl.pointer_size
         }
     }
@@ -519,9 +556,23 @@ impl<'a, 'tcx> Primitive {
 
         match self {
             Int(i, _) => i.align(dl),
-            F32 => dl.f32_align,
-            F64 => dl.f64_align,
+            Float(FloatTy::F32) => dl.f32_align,
+            Float(FloatTy::F64) => dl.f64_align,
             Pointer => dl.pointer_align
+        }
+    }
+
+    pub fn is_float(self) -> bool {
+        match self {
+            Float(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_int(self) -> bool {
+        match self {
+            Int(..) => true,
+            _ => false,
         }
     }
 }
@@ -614,7 +665,7 @@ impl FieldPlacement {
 
     pub fn offset(&self, i: usize) -> Size {
         match *self {
-            FieldPlacement::Union(_) => Size::from_bytes(0),
+            FieldPlacement::Union(_) => Size::ZERO,
             FieldPlacement::Array { stride, count } => {
                 let i = i as u64;
                 assert!(i < count);
