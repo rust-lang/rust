@@ -125,8 +125,7 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     let mut counter = 0;
     let type_list = fcx.tcx.fold_regions(&type_list, &mut false, |_, current_depth| {
         counter += 1;
-        fcx.tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(current_depth),
-                                        ty::BrAnon(counter)))
+        fcx.tcx.mk_region(ty::ReLateBound(current_depth, ty::BrAnon(counter)))
     });
 
     let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list));

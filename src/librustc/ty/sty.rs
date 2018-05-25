@@ -1259,6 +1259,8 @@ impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
 }
 
 impl DebruijnIndex {
+    pub const INNERMOST: DebruijnIndex = DebruijnIndex { depth: 1 };
+
     pub fn new(depth: u32) -> DebruijnIndex {
         assert!(depth > 0);
         DebruijnIndex { depth: depth }
@@ -1296,6 +1298,30 @@ impl DebruijnIndex {
     pub fn shift_out(&mut self, amount: u32) {
         *self = self.shifted_out(amount);
     }
+
+    /// Adjusts any Debruijn Indices so as to make `to_binder` the
+    /// innermost binder. That is, if we have something bound at `to_binder`,
+    /// it will now be bound at INNERMOST. This is an appropriate thing to do
+    /// when moving a region out from inside binders:
+    ///
+    /// ```
+    ///             for<'a>   fn(for<'b>   for<'c>   fn(&'a u32), _)
+    /// // Binder:  D3           D2        D1            ^^
+    /// ```
+    ///
+    /// Here, the region `'a` would have the debruijn index D3,
+    /// because it is the bound 3 binders out. However, if we wanted
+    /// to refer to that region `'a` in the second argument (the `_`),
+    /// those two binders would not be in scope. In that case, we
+    /// might invoke `shift_out_to_binder(D3)`. This would adjust the
+    /// debruijn index of `'a` to D1 (the innermost binder).
+    ///
+    /// If we invoke `shift_out_to_binder` and the region is in fact
+    /// bound by one of the binders we are shifting out of, that is an
+    /// error (and should fail an assertion failure).
+    pub fn shifted_out_to_binder(self, to_binder: DebruijnIndex) -> Self {
+        self.shifted_out(to_binder.depth - Self::INNERMOST.depth)
+    }
 }
 
 /// Region utilities
@@ -1314,12 +1340,32 @@ impl RegionKind {
         }
     }
 
-    /// Returns the depth of `self` from the (1-based) binding level `depth`
-    pub fn from_depth(&self, depth: u32) -> RegionKind {
+    /// Adjusts any Debruijn Indices so as to make `to_binder` the
+    /// innermost binder. That is, if we have something bound at `to_binder`,
+    /// it will now be bound at INNERMOST. This is an appropriate thing to do
+    /// when moving a region out from inside binders:
+    ///
+    /// ```
+    ///             for<'a>   fn(for<'b>   for<'c>   fn(&'a u32), _)
+    /// // Binder:  D3           D2        D1            ^^
+    /// ```
+    ///
+    /// Here, the region `'a` would have the debruijn index D3,
+    /// because it is the bound 3 binders out. However, if we wanted
+    /// to refer to that region `'a` in the second argument (the `_`),
+    /// those two binders would not be in scope. In that case, we
+    /// might invoke `shift_out_to_binder(D3)`. This would adjust the
+    /// debruijn index of `'a` to D1 (the innermost binder).
+    ///
+    /// If we invoke `shift_out_to_binder` and the region is in fact
+    /// bound by one of the binders we are shifting out of, that is an
+    /// error (and should fail an assertion failure).
+    pub fn shifted_out_to_binder(&self, to_binder: ty::DebruijnIndex) -> RegionKind {
         match *self {
-            ty::ReLateBound(debruijn, r) => ty::ReLateBound(DebruijnIndex {
-                depth: debruijn.depth - (depth - 1)
-            }, r),
+            ty::ReLateBound(debruijn, r) => ty::ReLateBound(
+                debruijn.shifted_out_to_binder(to_binder),
+                r,
+            ),
             r => r
         }
     }
