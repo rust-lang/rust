@@ -224,7 +224,7 @@ impl Token {
             _ => false,
         }
     }
-    
+
     pub fn is_like_plus(&self) -> bool {
         match *self {
             BinOp(Plus) | BinOpEq(Plus) => true,

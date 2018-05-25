@@ -880,11 +880,11 @@ impl<'a> Parser<'a> {
             false
         }
     }
-    
+
     /// Expect and consume a `+`. if `+=` is seen, replace it with a `=`
     /// and continue. If a `+` is not seen, return false.
     ///
-    /// This is using when token splitting += into +. 
+    /// This is using when token splitting += into +.
     /// See issue 47856 for an example of when this may occur.
     fn eat_plus(&mut self) -> bool {
         self.expected_tokens.push(TokenType::Token(token::BinOp(token::Plus)));
@@ -901,8 +901,8 @@ impl<'a> Parser<'a> {
             _ => false,
         }
     }
-    
-    
+
+
     /// Checks to see if the next token is either `+` or `+=`.
     /// Otherwise returns false.
     fn check_plus(&mut self) -> bool {
@@ -1679,7 +1679,7 @@ impl<'a> Parser<'a> {
         let poly_trait_ref = PolyTraitRef::new(generic_params, path, lo.to(self.prev_span));
         let mut bounds = vec![TraitTyParamBound(poly_trait_ref, TraitBoundModifier::None)];
         if parse_plus {
-            self.eat_plus(); // `+` or `+=` gets split and `+` is discarded 
+            self.eat_plus(); // `+`, or `+=` gets split and `+` is discarded
             bounds.append(&mut self.parse_ty_param_bounds()?);
         }
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
