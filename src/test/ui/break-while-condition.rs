@@ -22,16 +22,16 @@ fn main() {
     }
 
     if false {
-        let _: ! = { //~ ERROR mismatched types
-            while false {
+        let _: ! = {
+            while false { //~ ERROR mismatched types
                 break
             }
         };
     }
 
     if false {
-        let _: ! = { //~ ERROR mismatched types
-            while false {
+        let _: ! = {
+            while false { //~ ERROR mismatched types
                 return
             }
         };

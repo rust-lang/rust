@@ -16,7 +16,7 @@ error[E0308]: mismatched types
 LL |   fn main() {
    |             - expected `()` because of default return type
 ...
-LL | /             while false {
+LL | /             while false { //~ ERROR mismatched types
 LL | |                 break
 LL | |             }
    | |_____________^ expected !, found ()
@@ -30,7 +30,7 @@ error[E0308]: mismatched types
 LL |   fn main() {
    |             - expected `()` because of default return type
 ...
-LL | /             while false {
+LL | /             while false { //~ ERROR mismatched types
 LL | |                 return
 LL | |             }
    | |_____________^ expected !, found ()
