@@ -7,10 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(rustc_attrs)]
+
 use std::cell::RefCell;
 
-fn main() { #![rustc_error] // rust-lang/rust#49855
+fn main() {
     let m = RefCell::new(0);
     let p;
     {
@@ -18,4 +18,8 @@ fn main() { #![rustc_error] // rust-lang/rust#49855
         p = &*b;
     }
     //~^^ ERROR `b` does not live long enough
+    p.use_ref();
 }
+
+trait Fake { fn use_mut(&mut self) { } fn use_ref(&self) { }  }
+impl<T> Fake for T { }

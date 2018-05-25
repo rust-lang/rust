@@ -5,6 +5,7 @@ LL |     let _a = &collection;
    |               ---------- immutable borrow occurs here
 LL |     collection.swap(1, 2); //~ ERROR also borrowed as immutable
    |     ^^^^^^^^^^ mutable borrow occurs here
+LL |     _a.use_ref();
 LL | }
    | - immutable borrow ends here
 

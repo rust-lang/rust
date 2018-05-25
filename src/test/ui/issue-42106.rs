@@ -7,10 +7,14 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(rustc_attrs)]
+
 fn do_something<T>(collection: &mut Vec<T>) {
     let _a = &collection;
     collection.swap(1, 2); //~ ERROR also borrowed as immutable
+    _a.use_ref();
 }
 
-fn main() { #![rustc_error] } // rust-lang/rust#49855
+fn main() { }
+
+trait Fake { fn use_mut(&mut self) { } fn use_ref(&self) { }  }
+impl<T> Fake for T { }

@@ -14,7 +14,7 @@ use std::cell::RefCell;
 use std::ops::Generator;
 
 fn main() {
-    let (cell, mut gen);
+    let (mut gen, cell);
     cell = Box::new(RefCell::new(0));
     let ref_ = Box::leak(Box::new(Some(cell.borrow_mut())));
     //~^ ERROR `*cell` does not live long enough [E0597]

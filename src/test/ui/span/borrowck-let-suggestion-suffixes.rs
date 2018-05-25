@@ -40,7 +40,7 @@ fn f() {
         //~| NOTE temporary value does not live long enough
         //~| NOTE temporary value dropped here while still borrowed
         //~| NOTE consider using a `let` binding to increase its lifetime
-
+        v4.use_ref();
     }                       // (statement 7)
     //~^ NOTE temporary value needs to live until here
 
@@ -53,6 +53,8 @@ fn f() {
     //~| NOTE consider using a `let` binding to increase its lifetime
 
     v1.push(&old[0]);
+
+    (v1, v2, v3, /* v4 is above. */ v5).use_ref();
 }
 //~^ NOTE `young[..]` dropped here while still borrowed
 //~| NOTE temporary value needs to live until here
@@ -61,3 +63,6 @@ fn f() {
 fn main() { #![rustc_error] // rust-lang/rust#49855
     f();
 }
+
+trait Fake { fn use_mut(&mut self) { } fn use_ref(&self) { }  }
+impl<T> Fake for T { }

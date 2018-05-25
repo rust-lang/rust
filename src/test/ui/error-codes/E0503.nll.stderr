@@ -1,12 +1,13 @@
-error: compilation successful
-  --> $DIR/E0503.rs:11:1
+error[E0503]: cannot use `value` because it was mutably borrowed
+  --> $DIR/E0503.rs:14:16
    |
-LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
-LL | |     let mut value = 3;
-LL | |     let _borrow = &mut value;
-LL | |     let _sum = value + 1; //~ ERROR E0503
-LL | | }
-   | |_^
+LL |     let _borrow = &mut value;
+   |                   ---------- borrow of `value` occurs here
+LL |     let _sum = value + 1; //~ ERROR E0503
+   |                ^^^^^ use of borrowed `value`
+LL |     _borrow.use_mut();
+   |     ------- borrow later used here
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0503`.

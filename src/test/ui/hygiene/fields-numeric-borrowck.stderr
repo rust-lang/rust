@@ -5,7 +5,7 @@ LL |     let borrow1 = &mut s.0;
    |                        --- first mutable borrow occurs here
 LL |     let S { 0: ref mut borrow2 } = s;
    |                ^^^^^^^^^^^^^^^ second mutable borrow occurs here
-LL |     //~^ ERROR cannot borrow `s.0` as mutable more than once at a time
+...
 LL | }
    | - first borrow ends here
 
