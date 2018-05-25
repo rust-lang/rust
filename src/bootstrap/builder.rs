@@ -666,11 +666,11 @@ impl<'a> Builder<'a> {
             // Tools like cargo and rls don't get debuginfo by default right now, but this can be
             // enabled in the config.  Adding debuginfo makes them several times larger.
             if self.config.rust_debuginfo_tools {
-                cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string());
+                cargo.env("RUSTC_DEBUGINFO",
+                          self.config.rust_debuginfo[stage as usize].to_string());
                 cargo.env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string());
             }
         } else {
-            cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string());
             cargo.env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string());
             cargo.env("RUSTC_FORCE_UNSTABLE", "1");
 
@@ -866,7 +866,7 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
         }
 
-        if self.config.rust_optimize {
+        if self.config.rust_optimize[compiler.stage as usize] {
             // FIXME: cargo bench does not accept `--release`
             if cmd != "bench" {
                 cargo.arg("--release");
