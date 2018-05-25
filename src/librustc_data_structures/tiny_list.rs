@@ -174,7 +174,7 @@ mod test {
                 }
             }
 
-            assert!(!list.contains(i));
+            assert!(!list.contains(&i));
 
             if do_insert(i) {
                 list.insert(i);

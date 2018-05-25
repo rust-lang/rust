@@ -68,6 +68,7 @@
 #![feature(trace_macros)]
 #![feature(trusted_len)]
 #![feature(catch_expr)]
+#![feature(integer_atomics)]
 #![feature(test)]
 #![feature(in_band_lifetimes)]
 #![feature(macro_at_most_once_rep)]
