@@ -1,8 +1,9 @@
+use std::cmp::Ordering;
+
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc_const_math::ConstFloat;
 use syntax::ast::FloatTy;
-use std::cmp::Ordering;
 use rustc::ty::layout::LayoutOf;
 
 use super::{EvalContext, Place, Machine, ValTy};
@@ -134,13 +135,24 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 bits: r,
                 ty,
             };
+            let cmp = |l: ConstFloat, r: ConstFloat| -> Option<Ordering> {
+                l.try_cmp(r).unwrap_or(None)
+            };
             match op {
-                Eq => PrimVal::from_bool(l.try_cmp(r).unwrap() == Ordering::Equal),
-                Ne => PrimVal::from_bool(l.try_cmp(r).unwrap() != Ordering::Equal),
-                Lt => PrimVal::from_bool(l.try_cmp(r).unwrap() == Ordering::Less),
-                Le => PrimVal::from_bool(l.try_cmp(r).unwrap() != Ordering::Greater),
-                Gt => PrimVal::from_bool(l.try_cmp(r).unwrap() == Ordering::Greater),
-                Ge => PrimVal::from_bool(l.try_cmp(r).unwrap() != Ordering::Less),
+                Eq => PrimVal::from_bool(cmp(l, r) == Some(Ordering::Equal)),
+                Ne => PrimVal::from_bool(cmp(l, r) != Some(Ordering::Equal)),
+                Lt => PrimVal::from_bool(cmp(l, r) == Some(Ordering::Less)),
+                Gt => PrimVal::from_bool(cmp(l, r) == Some(Ordering::Greater)),
+                Le => PrimVal::from_bool(match cmp(l, r) {
+                    Some(Ordering::Less) => true,
+                    Some(Ordering::Equal) => true,
+                    _ => false,
+                }),
+                Ge => PrimVal::from_bool(match cmp(l, r) {
+                    Some(Ordering::Greater) => true,
+                    Some(Ordering::Equal) => true,
+                    _ => false,
+                }),
                 Add => PrimVal::Bytes((l + r).unwrap().bits),
                 Sub => PrimVal::Bytes((l - r).unwrap().bits),
                 Mul => PrimVal::Bytes((l * r).unwrap().bits),

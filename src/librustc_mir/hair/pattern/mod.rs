@@ -1115,7 +1115,12 @@ pub fn compare_const_vals<'a, 'tcx>(
                         ty,
                     };
                     // FIXME(oli-obk): report cmp errors?
-                    l.try_cmp(r).ok()
+                    // FIXME: Just returning Ordering::Greater here is the previous behavior but may
+                    // not be what we want. It means that NaN > NaN is true, which if false.
+                    match l.try_cmp(r) {
+                        Ok(opt) => Some(opt.unwrap_or(Ordering::Greater)),
+                        _ => None,
+                    }
                 },
                 ty::TyInt(_) => {
                     let a = interpret::sign_extend(tcx, a, ty).expect("layout error for TyInt");
