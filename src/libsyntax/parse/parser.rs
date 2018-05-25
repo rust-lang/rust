@@ -5190,36 +5190,36 @@ impl<'a> Parser<'a> {
         // Only a limited set of initial token sequences is considered self parameters, anything
         // else is parsed as a normal function parameter list, so some lookahead is required.
         let eself_lo = self.span;
-        let (eself, eself_ident) = match self.token {
+        let (eself, eself_ident, eself_hi) = match self.token {
             token::BinOp(token::And) => {
                 // &self
                 // &mut self
                 // &'lt self
                 // &'lt mut self
                 // &not_self
-                if isolated_self(self, 1) {
+                (if isolated_self(self, 1) {
                     self.bump();
-                    (SelfKind::Region(None, Mutability::Immutable), expect_ident(self))
+                    SelfKind::Region(None, Mutability::Immutable)
                 } else if self.look_ahead(1, |t| t.is_keyword(keywords::Mut)) &&
                           isolated_self(self, 2) {
                     self.bump();
                     self.bump();
-                    (SelfKind::Region(None, Mutability::Mutable), expect_ident(self))
+                    SelfKind::Region(None, Mutability::Mutable)
                 } else if self.look_ahead(1, |t| t.is_lifetime()) &&
                           isolated_self(self, 2) {
                     self.bump();
                     let lt = self.expect_lifetime();
-                    (SelfKind::Region(Some(lt), Mutability::Immutable), expect_ident(self))
+                    SelfKind::Region(Some(lt), Mutability::Immutable)
                 } else if self.look_ahead(1, |t| t.is_lifetime()) &&
                           self.look_ahead(2, |t| t.is_keyword(keywords::Mut)) &&
                           isolated_self(self, 3) {
                     self.bump();
                     let lt = self.expect_lifetime();
                     self.bump();
-                    (SelfKind::Region(Some(lt), Mutability::Mutable), expect_ident(self))
+                    SelfKind::Region(Some(lt), Mutability::Mutable)
                 } else {
                     return Ok(None);
-                }
+                }, expect_ident(self), self.prev_span)
             }
             token::BinOp(token::Star) => {
                 // *self
@@ -5227,43 +5227,45 @@ impl<'a> Parser<'a> {
                 // *mut self
                 // *not_self
                 // Emit special error for `self` cases.
-                if isolated_self(self, 1) {
+                (if isolated_self(self, 1) {
                     self.bump();
                     self.span_err(self.span, "cannot pass `self` by raw pointer");
-                    (SelfKind::Value(Mutability::Immutable), expect_ident(self))
+                    SelfKind::Value(Mutability::Immutable)
                 } else if self.look_ahead(1, |t| t.is_mutability()) &&
                           isolated_self(self, 2) {
                     self.bump();
                     self.bump();
                     self.span_err(self.span, "cannot pass `self` by raw pointer");
-                    (SelfKind::Value(Mutability::Immutable), expect_ident(self))
+                    SelfKind::Value(Mutability::Immutable)
                 } else {
                     return Ok(None);
-                }
+                }, expect_ident(self), self.prev_span)
             }
             token::Ident(..) => {
                 if isolated_self(self, 0) {
                     // self
                     // self: TYPE
                     let eself_ident = expect_ident(self);
-                    if self.eat(&token::Colon) {
+                    let eself_hi = self.prev_span;
+                    (if self.eat(&token::Colon) {
                         let ty = self.parse_ty()?;
-                        (SelfKind::Explicit(ty, Mutability::Immutable), eself_ident)
+                        SelfKind::Explicit(ty, Mutability::Immutable)
                     } else {
-                        (SelfKind::Value(Mutability::Immutable), eself_ident)
-                    }
+                        SelfKind::Value(Mutability::Immutable)
+                    }, eself_ident, eself_hi)
                 } else if self.token.is_keyword(keywords::Mut) &&
                           isolated_self(self, 1) {
                     // mut self
                     // mut self: TYPE
                     self.bump();
                     let eself_ident = expect_ident(self);
-                    if self.eat(&token::Colon) {
+                    let eself_hi = self.prev_span;
+                    (if self.eat(&token::Colon) {
                         let ty = self.parse_ty()?;
-                        (SelfKind::Explicit(ty, Mutability::Mutable), eself_ident)
+                        SelfKind::Explicit(ty, Mutability::Mutable)
                     } else {
-                        (SelfKind::Value(Mutability::Mutable), eself_ident)
-                    }
+                        SelfKind::Value(Mutability::Mutable)
+                    }, eself_ident, eself_hi)
                 } else {
                     return Ok(None);
                 }
@@ -5271,7 +5273,7 @@ impl<'a> Parser<'a> {
             _ => return Ok(None),
         };
 
-        let eself = codemap::respan(eself_lo.to(self.prev_span), eself);
+        let eself = codemap::respan(eself_lo.to(eself_hi), eself);
         Ok(Some(Arg::from_self(eself, eself_ident)))
     }
 

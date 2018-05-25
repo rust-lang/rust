@@ -899,7 +899,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 };
 
                 self.note_and_explain_mutbl_error(&mut db, &err, &error_span);
-                self.note_immutability_blame(&mut db, err.cmt.immutability_blame());
+                self.note_immutability_blame(&mut db, err.cmt.immutability_blame(), err.cmt.id);
                 db.emit();
             }
             err_out_of_scope(super_scope, sub_scope, cause) => {
@@ -1105,7 +1105,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                             Origin::Ast)
             }
         };
-        self.note_immutability_blame(&mut err, blame);
+        self.note_immutability_blame(&mut err, blame, cmt.id);
 
         if is_closure {
             err.help("closures behind references must be called via `&mut`");
@@ -1184,25 +1184,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
     fn note_immutability_blame(&self,
                                db: &mut DiagnosticBuilder,
-                               blame: Option<ImmutabilityBlame>) {
+                               blame: Option<ImmutabilityBlame>,
+                               error_node_id: ast::NodeId) {
         match blame {
             None => {}
             Some(ImmutabilityBlame::ClosureEnv(_)) => {}
             Some(ImmutabilityBlame::ImmLocal(node_id)) => {
-                let let_span = self.tcx.hir.span(node_id);
-                if let ty::BindByValue(..) = self.local_binding_mode(node_id) {
-                    if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(let_span) {
-                        let (_, is_implicit_self) = self.local_ty(node_id);
-                        if is_implicit_self && snippet != "self" {
-                            // avoid suggesting `mut &self`.
-                            return
-                        }
-                        db.span_label(
-                            let_span,
-                            format!("consider changing this to `mut {}`", snippet)
-                        );
-                    }
-                }
+                self.note_immutable_local(db, error_node_id, node_id)
             }
             Some(ImmutabilityBlame::LocalDeref(node_id)) => {
                 let let_span = self.tcx.hir.span(node_id);
@@ -1237,6 +1225,46 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     if let Some(msg) = self.suggest_mut_for_immutable(&field.ty, false) {
                         db.span_label(field.ty.span, msg);
                     }
+                }
+            }
+        }
+    }
+
+     // Suggest a fix when trying to mutably borrow an immutable local
+     // binding: either to make the binding mutable (if its type is
+     // not a mutable reference) or to avoid borrowing altogether
+    fn note_immutable_local(&self,
+                            db: &mut DiagnosticBuilder,
+                            borrowed_node_id: ast::NodeId,
+                            binding_node_id: ast::NodeId) {
+        let let_span = self.tcx.hir.span(binding_node_id);
+        if let ty::BindByValue(..) = self.local_binding_mode(binding_node_id) {
+            if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(let_span) {
+                let (ty, is_implicit_self) = self.local_ty(binding_node_id);
+                if is_implicit_self && snippet != "self" {
+                    // avoid suggesting `mut &self`.
+                    return
+                }
+                if let Some(&hir::TyRptr(
+                    _,
+                    hir::MutTy {
+                        mutbl: hir::MutMutable,
+                        ..
+                    },
+                )) = ty.map(|t| &t.node)
+                {
+                    let borrow_expr_id = self.tcx.hir.get_parent_node(borrowed_node_id);
+                    db.span_suggestion(
+                        self.tcx.hir.span(borrow_expr_id),
+                        "consider removing the `&mut`, as it is an \
+                        immutable binding to a mutable reference",
+                        snippet
+                    );
+                } else {
+                    db.span_label(
+                        let_span,
+                        format!("consider changing this to `mut {}`", snippet),
+                    );
                 }
             }
         }
