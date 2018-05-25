@@ -190,13 +190,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "cargo"
-version = "0.29.0"
+version = "0.28.0"
 dependencies = [
  "atty 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "bufstream 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.31.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "core-foundation 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "crates-io 0.17.0",
+ "crates-io 0.16.0",
  "crossbeam 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "crypto-hash 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "curl 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -305,12 +305,12 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.0.202"
+version = "0.0.200"
 dependencies = [
  "ansi_term 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo_metadata 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "clippy-mini-macro-test 0.2.0",
- "clippy_lints 0.0.202",
+ "clippy_lints 0.0.200",
  "compiletest_rs 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "derive-new 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -328,7 +328,6 @@ version = "0.2.0"
 [[package]]
 name = "clippy_lints"
 version = "0.0.200"
-source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cargo_metadata 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "if_chain 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -348,7 +347,8 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.0.202"
+version = "0.0.200"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cargo_metadata 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "if_chain 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -474,7 +474,7 @@ dependencies = [
 
 [[package]]
 name = "crates-io"
-version = "0.17.0"
+version = "0.16.0"
 dependencies = [
  "curl 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1660,7 +1660,7 @@ dependencies = [
 name = "rls"
 version = "0.128.0"
 dependencies = [
- "cargo 0.29.0",
+ "cargo 0.28.0",
  "cargo_metadata 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "clippy_lints 0.0.200 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1676,7 +1676,7 @@ dependencies = [
  "rls-analysis 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-blacklist 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-data 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rls-rustc 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rls-rustc 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-vfs 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustfmt-nightly 0.7.0",
@@ -1684,7 +1684,6 @@ dependencies = [
  "serde_derive 1.0.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "walkdir 2.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1718,7 +1717,7 @@ dependencies = [
 
 [[package]]
 name = "rls-rustc"
-version = "0.3.0"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -3158,7 +3157,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum rls-analysis 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)" = "da9794cd1f80f2cb888c00641a32f9855d0226c954ee31cef145784914c7142e"
 "checksum rls-blacklist 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e4a9cc2545ccb7e05b355bfe047b8039a6ec12270d5f3c996b766b340a50f7d2"
 "checksum rls-data 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3dd20763e1c60ae8945384c8a8fa4ac44f8afa7b0a817511f5e8927e5d24f988"
-"checksum rls-rustc 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8ed5342b2bbbe8663c04600af506c8902b6b4d3e627b006eb1bd65aa14805f4d"
+"checksum rls-rustc 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "885f66b92757420572cbb02e033d4a9558c7413ca9b7ac206f28fd58ffdb44ea"
 "checksum rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5d7c7046dc6a92f2ae02ed302746db4382e75131b9ce20ce967259f6b5867a6a"
 "checksum rls-vfs 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)" = "be231e1e559c315bc60ced5ad2cc2d7a9c208ed7d4e2c126500149836fda19bb"
 "checksum rustc-ap-rustc_cratesio_shim 128.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7374a2b466e6e3ce489e045302e304849355faf7fd033d4d95e6e86e48c313b4"
