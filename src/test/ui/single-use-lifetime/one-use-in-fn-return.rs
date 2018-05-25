@@ -10,7 +10,7 @@
 
 // compile-pass
 
-#![deny(single_use_lifetime)]
+#![deny(single_use_lifetimes)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
 

@@ -3486,7 +3486,7 @@ impl<'a> Resolver<'a> {
         let diag = lint::builtin::BuiltinLintDiagnostics
             ::AbsPathWithModule(span);
         self.session.buffer_lint_with_diagnostic(
-            lint::builtin::ABSOLUTE_PATH_NOT_STARTING_WITH_CRATE,
+            lint::builtin::ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
             id, span,
             "absolute paths must start with `self`, `super`, \
             `crate`, or an external crate name in the 2018 edition",

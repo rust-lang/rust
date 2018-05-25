@@ -10,7 +10,7 @@
 
 // Test that we DO warn when lifetime name is not used at all.
 
-#![deny(unused_lifetime)]
+#![deny(unused_lifetimes)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
 

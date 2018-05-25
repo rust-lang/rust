@@ -16,7 +16,7 @@
 // but we don't.
 
 #![feature(rust_2018_preview)]
-#![deny(absolute_path_not_starting_with_crate)]
+#![deny(absolute_paths_not_starting_with_crate)]
 
 extern crate edition_lint_paths;
 

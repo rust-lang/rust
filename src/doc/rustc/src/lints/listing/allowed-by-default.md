@@ -64,7 +64,7 @@ To fix it, do as the help message suggests:
 
 ```rust
 #![feature(dyn_trait)]
-#![deny(bare_trait_object)]
+#![deny(bare_trait_objects)]
 
 trait Trait { }
 

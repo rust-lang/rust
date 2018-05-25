@@ -225,13 +225,13 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub SINGLE_USE_LIFETIME,
+    pub SINGLE_USE_LIFETIMES,
     Allow,
     "detects lifetime parameters that are only used once"
 }
 
 declare_lint! {
-    pub UNUSED_LIFETIME,
+    pub UNUSED_LIFETIMES,
     Allow,
     "detects lifetime parameters that are never used"
 }
@@ -243,19 +243,19 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub ELIDED_LIFETIME_IN_PATH,
+    pub ELIDED_LIFETIMES_IN_PATHS,
     Allow,
     "hidden lifetime parameters are deprecated, try `Foo<'_>`"
 }
 
 declare_lint! {
-    pub BARE_TRAIT_OBJECT,
+    pub BARE_TRAIT_OBJECTS,
     Allow,
     "suggest using `dyn Trait` for trait objects"
 }
 
 declare_lint! {
-    pub ABSOLUTE_PATH_NOT_STARTING_WITH_CRATE,
+    pub ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
     Allow,
     "fully qualified paths that start with a module name \
      instead of `crate`, `self`, or an extern crate name"
@@ -268,7 +268,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub UNSTABLE_NAME_COLLISION,
+    pub UNSTABLE_NAME_COLLISIONS,
     Warn,
     "detects name collision with an existing but unstable method"
 }
@@ -328,14 +328,14 @@ impl LintPass for HardwiredLints {
             DEPRECATED,
             UNUSED_UNSAFE,
             UNUSED_MUT,
-            SINGLE_USE_LIFETIME,
-            UNUSED_LIFETIME,
+            SINGLE_USE_LIFETIMES,
+            UNUSED_LIFETIMES,
             UNUSED_LABELS,
             TYVAR_BEHIND_RAW_POINTER,
-            ELIDED_LIFETIME_IN_PATH,
-            BARE_TRAIT_OBJECT,
-            ABSOLUTE_PATH_NOT_STARTING_WITH_CRATE,
-            UNSTABLE_NAME_COLLISION,
+            ELIDED_LIFETIMES_IN_PATHS,
+            BARE_TRAIT_OBJECTS,
+            ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
+            UNSTABLE_NAME_COLLISIONS,
             DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
         )
     }

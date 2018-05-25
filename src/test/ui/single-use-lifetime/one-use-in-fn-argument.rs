@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(single_use_lifetime)]
+#![deny(single_use_lifetimes)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
 

@@ -7,8 +7,8 @@ LL | extern crate alloc;
 note: lint level defined here
   --> $DIR/unnecessary-extern-crate.rs:13:9
    |
-LL | #![deny(unnecessary_extern_crate)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(unnecessary_extern_crates)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `extern crate` is unnecessary in the new edition
   --> $DIR/unnecessary-extern-crate.rs:19:1
