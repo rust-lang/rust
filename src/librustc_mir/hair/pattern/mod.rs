@@ -233,7 +233,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
             PatternKind::Range { lo, hi, end } => {
                 fmt_const_val(f, lo)?;
                 match end {
-                    RangeEnd::Included => write!(f, "...")?,
+                    RangeEnd::Included => write!(f, "..=")?,
                     RangeEnd::Excluded => write!(f, "..")?,
                 }
                 fmt_const_val(f, hi)
