@@ -218,7 +218,7 @@ impl<'tcx> Scalar {
 
     pub fn to_bits(self, size: Size) -> EvalResult<'tcx, u128> {
         match self {
-            Scalar::Bits { defined: 0, .. } => err!(ReadUndefBytes),
+            Scalar::Bits { .. } if size.bits() == 0 => bug!("to_bits cannot be used with zsts"),
             Scalar::Bits { bits, defined } if size.bits() <= defined as u64 => Ok(bits),
             Scalar::Bits { .. } => err!(ReadUndefBytes),
             Scalar::Ptr(_) => err!(ReadPointerAsBytes),
