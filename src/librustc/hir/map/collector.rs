@@ -212,7 +212,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             NodeBlock(n) => EntryBlock(parent, dep_node_index, n),
             NodeStructCtor(n) => EntryStructCtor(parent, dep_node_index, n),
             NodeLifetime(n) => EntryLifetime(parent, dep_node_index, n),
-            NodeTyParam(n) => EntryTyParam(parent, dep_node_index, n),
+            NodeGenericParam(n) => EntryGenericParam(parent, dep_node_index, n),
             NodeVisibility(n) => EntryVisibility(parent, dep_node_index, n),
             NodeLocal(n) => EntryLocal(parent, dep_node_index, n),
             NodeMacroDef(n) => EntryMacroDef(dep_node_index, n),
@@ -347,12 +347,12 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_generic_param(&mut self, param: &'hir GenericParam) {
-        match *param {
-            GenericParam::Lifetime(ref ld) => {
-                self.insert(ld.lifetime.id, NodeLifetime(&ld.lifetime));
+        match param.kind {
+            GenericParamKind::Lifetime { ref lifetime_deprecated, .. } => {
+                self.insert(param.id, NodeLifetime(lifetime_deprecated));
             }
-            GenericParam::Type(ref ty_param) => {
-                self.insert(ty_param.id, NodeTyParam(ty_param));
+            GenericParamKind::Type { .. } => {
+                self.insert(param.id, NodeGenericParam(param));
             }
         }
         intravisit::walk_generic_param(self, param);

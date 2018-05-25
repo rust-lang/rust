@@ -743,26 +743,25 @@ pub fn walk_ty_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v TyPar
 }
 
 pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v GenericParam) {
-    match *param {
-        GenericParam::Lifetime(ref ld) => {
-            visitor.visit_id(ld.lifetime.id);
-            match ld.lifetime.name {
+    visitor.visit_id(param.id);
+    match param.kind {
+        GenericParamKind::Lifetime { ref bounds, ref lifetime_deprecated, .. } => {
+            match lifetime_deprecated.name {
                 LifetimeName::Name(name) => {
-                    visitor.visit_name(ld.lifetime.span, name);
+                    visitor.visit_name(param.span, name);
                 }
                 LifetimeName::Fresh(_) |
                 LifetimeName::Static |
                 LifetimeName::Implicit |
                 LifetimeName::Underscore => {}
             }
-            walk_list!(visitor, visit_lifetime, &ld.bounds);
+            walk_list!(visitor, visit_lifetime, bounds);
         }
-        GenericParam::Type(ref ty_param) => {
-            visitor.visit_id(ty_param.id);
-            visitor.visit_name(ty_param.span, ty_param.name);
-            walk_list!(visitor, visit_ty_param_bound, &ty_param.bounds);
-            walk_list!(visitor, visit_ty, &ty_param.default);
-            walk_list!(visitor, visit_attribute, ty_param.attrs.iter());
+        GenericParamKind::Type { name, ref bounds, ref default, ref attrs, .. } => {
+            visitor.visit_name(param.span, name);
+            walk_list!(visitor, visit_ty_param_bound, bounds);
+            walk_list!(visitor, visit_ty, default);
+            walk_list!(visitor, visit_attribute, attrs.iter());
         }
     }
 }

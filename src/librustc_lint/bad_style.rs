@@ -18,7 +18,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax_pos::Span;
 
-use rustc::hir::{self, PatKind};
+use rustc::hir::{self, GenericParamKind, PatKind};
 use rustc::hir::intravisit::FnKind;
 
 #[derive(PartialEq)]
@@ -147,9 +147,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
     }
 
     fn check_generic_param(&mut self, cx: &LateContext, param: &hir::GenericParam) {
-        if let hir::GenericParam::Type(ref gen) = *param {
-            if gen.synthetic.is_none() {
-                self.check_case(cx, "type parameter", gen.name, gen.span);
+        match param.kind {
+            GenericParamKind::Lifetime { .. } => {}
+            GenericParamKind::Type { synthetic, .. } => {
+                if synthetic.is_none() {
+                    self.check_case(cx, "type parameter", param.name(), param.span);
+                }
             }
         }
     }
@@ -253,13 +256,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     }
 
     fn check_generic_param(&mut self, cx: &LateContext, param: &hir::GenericParam) {
-        if let hir::GenericParam::Lifetime(ref ld) = *param {
-            self.check_snake_case(
-                cx,
-                "lifetime",
-                &ld.lifetime.name.name().as_str(),
-                Some(ld.lifetime.span)
-            );
+        match param.kind {
+            GenericParamKind::Lifetime { .. } => {
+                self.check_snake_case(cx, "lifetime", &param.name().as_str(), Some(param.span));
+            }
+            GenericParamKind::Type { .. } => {}
         }
     }
 

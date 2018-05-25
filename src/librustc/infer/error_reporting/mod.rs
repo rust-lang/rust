@@ -61,7 +61,7 @@ use super::region_constraints::GenericKind;
 use super::lexical_region_resolve::RegionResolutionError;
 
 use std::fmt;
-use hir;
+use hir::{self, GenericParamKind};
 use hir::map as hir_map;
 use hir::def_id::DefId;
 use middle::region;
@@ -1036,8 +1036,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             // Get the `hir::TyParam` to verify whether it already has any bounds.
                             // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                             // instead we suggest `T: 'a + 'b` in that case.
-                            let has_lifetimes = if let hir_map::NodeTyParam(ref p) = hir.get(id) {
-                                p.bounds.len() > 0
+                            let has_lifetimes =
+                                if let hir_map::NodeGenericParam(ref param) = hir.get(id) {
+                                match param.kind {
+                                    GenericParamKind::Type { ref bounds, .. } => {
+                                        !bounds.is_empty()
+                                    }
+                                    _ => bug!("unexpected non-type NodeGenericParam"),
+                                }
                             } else {
                                 false
                             };

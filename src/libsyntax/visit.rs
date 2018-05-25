@@ -73,7 +73,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_expr(&mut self, ex: &'ast Expr) { walk_expr(self, ex) }
     fn visit_expr_post(&mut self, _ex: &'ast Expr) { }
     fn visit_ty(&mut self, t: &'ast Ty) { walk_ty(self, t) }
-    fn visit_generic_param(&mut self, param: &'ast GenericParamAST) { walk_generic_param(self, param) }
+    fn visit_generic_param(&mut self, param: &'ast GenericParamAST) {
+        walk_generic_param(self, param)
+    }
     fn visit_generics(&mut self, g: &'ast Generics) { walk_generics(self, g) }
     fn visit_where_predicate(&mut self, p: &'ast WherePredicate) {
         walk_where_predicate(self, p)

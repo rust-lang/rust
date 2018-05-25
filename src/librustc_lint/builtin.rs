@@ -49,7 +49,7 @@ use syntax_pos::{BytePos, Span, SyntaxContext};
 use syntax::symbol::keywords;
 use syntax::errors::{Applicability, DiagnosticBuilder};
 
-use rustc::hir::{self, PatKind};
+use rustc::hir::{self, GenericParamKind, PatKind};
 use rustc::hir::intravisit::FnKind;
 
 use bad_style::{MethodLateContext, method_context};
@@ -1531,9 +1531,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
         }
         // The parameters must not have bounds
         for param in type_alias_generics.params.iter() {
-            let spans : Vec<_> = match param {
-                &hir::GenericParam::Lifetime(ref l) => l.bounds.iter().map(|b| b.span).collect(),
-                &hir::GenericParam::Type(ref ty) => ty.bounds.iter().map(|b| b.span()).collect(),
+            let spans: Vec<_> = match param.kind {
+                GenericParamKind::Lifetime { ref bounds, .. } => {
+                    bounds.iter().map(|b| b.span).collect()
+                }
+                GenericParamKind::Type { ref bounds, .. } => {
+                    bounds.iter().map(|b| b.span()).collect()
+                }
             };
             if !spans.is_empty() {
                 let mut err = cx.struct_span_lint(

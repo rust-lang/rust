@@ -192,7 +192,9 @@ impl<'a> Ty<'a> {
                 let ty_params: Vec<P<ast::Ty>> = self_generics.params
                     .iter()
                     .filter_map(|param| match *param {
-                        GenericParamAST::Type(ref ty_param) => Some(cx.ty_ident(span, ty_param.ident)),
+                        GenericParamAST::Type(ref ty_param) => {
+                            Some(cx.ty_ident(span, ty_param.ident))
+                        }
                         _ => None,
                     })
                     .collect();
@@ -280,7 +282,8 @@ impl<'a> LifetimeBounds<'a> {
                 let bounds = bounds.iter()
                     .map(|b| cx.lifetime(span, Ident::from_str(b)))
                     .collect();
-                GenericParamAST::Lifetime(cx.lifetime_def(span, Ident::from_str(lt), vec![], bounds))
+                let lifetime_def = cx.lifetime_def(span, Ident::from_str(lt), vec![], bounds);
+                GenericParamAST::Lifetime(lifetime_def)
             })
             .chain(self.bounds
                 .iter()

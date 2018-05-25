@@ -25,7 +25,7 @@ use syntax_pos::{self, BytePos, FileName};
 
 use hir;
 use hir::{PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier, RangeEnd};
-use hir::GenericArg;
+use hir::{GenericParam, GenericParamKind, GenericArg};
 
 use std::cell::Cell;
 use std::io::{self, Write, Read};
@@ -2094,30 +2094,12 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_lifetime(&mut self, lifetime: &hir::Lifetime) -> io::Result<()> {
-        self.print_name(lifetime.name.name())
-    }
-
-    pub fn print_lifetime_def(&mut self, lifetime: &hir::LifetimeDef) -> io::Result<()> {
-        self.print_lifetime(&lifetime.lifetime)?;
-        let mut sep = ":";
-        for v in &lifetime.bounds {
-            self.s.word(sep)?;
-            self.print_lifetime(v)?;
-            sep = "+";
-        }
-        Ok(())
-    }
-
-    pub fn print_generic_params(&mut self, generic_params: &[hir::GenericParam]) -> io::Result<()> {
+    pub fn print_generic_params(&mut self, generic_params: &[GenericParam]) -> io::Result<()> {
         if !generic_params.is_empty() {
             self.s.word("<")?;
 
             self.commasep(Inconsistent, generic_params, |s, param| {
-                match *param {
-                    hir::GenericParam::Lifetime(ref ld) => s.print_lifetime_def(ld),
-                    hir::GenericParam::Type(ref tp) => s.print_ty_param(tp),
-                }
+                s.print_generic_param(param)
             })?;
 
             self.s.word(">")?;
@@ -2125,17 +2107,34 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_ty_param(&mut self, param: &hir::TyParam) -> io::Result<()> {
-        self.print_name(param.name)?;
-        self.print_bounds(":", &param.bounds)?;
-        match param.default {
-            Some(ref default) => {
-                self.s.space()?;
-                self.word_space("=")?;
-                self.print_type(&default)
+    pub fn print_generic_param(&mut self, param: &GenericParam) -> io::Result<()> {
+        self.print_name(param.name())?;
+        match param.kind {
+            GenericParamKind::Lifetime { ref bounds, .. } => {
+                let mut sep = ":";
+                for bound in bounds {
+                    self.s.word(sep)?;
+                    self.print_lifetime(bound)?;
+                    sep = "+";
+                }
+                Ok(())
             }
-            _ => Ok(()),
+            GenericParamKind::Type { ref bounds, ref default, .. } => {
+                self.print_bounds(":", bounds)?;
+                match default {
+                    Some(default) => {
+                        self.s.space()?;
+                        self.word_space("=")?;
+                        self.print_type(&default)
+                    }
+                    _ => Ok(()),
+                }
+            }
         }
+    }
+
+    pub fn print_lifetime(&mut self, lifetime: &hir::Lifetime) -> io::Result<()> {
+        self.print_name(lifetime.name.name())
     }
 
     pub fn print_where_clause(&mut self, where_clause: &hir::WhereClause) -> io::Result<()> {

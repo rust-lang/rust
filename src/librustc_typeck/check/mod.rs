@@ -5188,9 +5188,8 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     for (&used, param) in tps_used.iter().zip(generics.ty_params()) {
         if !used {
-            struct_span_err!(tcx.sess, param.span, E0091,
-                "type parameter `{}` is unused",
-                param.name)
+            struct_span_err!(tcx.sess, param.span, E0091, "type parameter `{}` is unused",
+                             param.name())
                 .span_label(param.span, "unused type parameter")
                 .emit();
         }

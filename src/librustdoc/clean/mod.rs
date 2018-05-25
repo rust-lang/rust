@@ -1466,14 +1466,19 @@ pub struct TyParam {
     pub synthetic: Option<hir::SyntheticTyParamKind>,
 }
 
-impl Clean<TyParam> for hir::TyParam {
+impl Clean<TyParam> for hir::GenericParam {
     fn clean(&self, cx: &DocContext) -> TyParam {
-        TyParam {
-            name: self.name.clean(cx),
-            did: cx.tcx.hir.local_def_id(self.id),
-            bounds: self.bounds.clean(cx),
-            default: self.default.clean(cx),
-            synthetic: self.synthetic,
+        match self.kind {
+            hir::GenericParamKind::Type { ref bounds, ref default, synthetic, .. } => {
+                TyParam {
+                    name: self.name().clean(cx),
+                    did: cx.tcx.hir.local_def_id(self.id),
+                    bounds: bounds.clean(cx),
+                    default: default.clean(cx),
+                    synthetic: synthetic,
+                }
+            }
+            _ => panic!(),
         }
     }
 }
@@ -1707,18 +1712,21 @@ impl Clean<Lifetime> for hir::Lifetime {
     }
 }
 
-impl Clean<Lifetime> for hir::LifetimeDef {
+impl Clean<Lifetime> for hir::GenericParam {
     fn clean(&self, _: &DocContext) -> Lifetime {
-        if self.bounds.len() > 0 {
-            let mut s = format!("{}: {}",
-                                self.lifetime.name.name(),
-                                self.bounds[0].name.name());
-            for bound in self.bounds.iter().skip(1) {
-                s.push_str(&format!(" + {}", bound.name.name()));
+        match self.kind {
+            hir::GenericParamKind::Lifetime { ref bounds, .. } => {
+                if bounds.len() > 0 {
+                    let mut s = format!("{}: {}", self.name(), bounds[0].name.name());
+                    for bound in bounds.iter().skip(1) {
+                        s.push_str(&format!(" + {}", bound.name.name()));
+                    }
+                    Lifetime(s)
+                } else {
+                    Lifetime(self.name().to_string())
+                }
             }
-            Lifetime(s)
-        } else {
-            Lifetime(self.lifetime.name.name().to_string())
+            _ => panic!(),
         }
     }
 }
@@ -1880,9 +1888,11 @@ impl GenericParamDef {
 
 impl Clean<GenericParamDef> for hir::GenericParam {
     fn clean(&self, cx: &DocContext) -> GenericParamDef {
-        match *self {
-            hir::GenericParam::Lifetime(ref l) => GenericParamDef::Lifetime(l.clean(cx)),
-            hir::GenericParam::Type(ref t) => GenericParamDef::Type(t.clean(cx)),
+        match self.kind {
+            hir::GenericParamKind::Lifetime { .. } => {
+                GenericParamDef::Lifetime(self.clean(cx))
+            }
+            hir::GenericParamKind::Type { .. } => GenericParamDef::Type(self.clean(cx)),
         }
     }
 }
@@ -1900,10 +1910,11 @@ impl Clean<Generics> for hir::Generics {
         // In order for normal parameters to be able to refer to synthetic ones,
         // scans them first.
         fn is_impl_trait(param: &hir::GenericParam) -> bool {
-            if let hir::GenericParam::Type(ref tp) = param {
-                tp.synthetic == Some(hir::SyntheticTyParamKind::ImplTrait)
-            } else {
-                false
+            match param.kind {
+                hir::GenericParamKind::Type { synthetic, .. } => {
+                    synthetic == Some(hir::SyntheticTyParamKind::ImplTrait)
+                }
+                _ => false,
             }
         }
         let impl_trait_params = self.params
@@ -2857,25 +2868,25 @@ impl Clean<Type> for hir::Ty {
                             types: 0
                         };
                         for param in generics.params.iter() {
-                            match param {
-                                hir::GenericParam::Lifetime(lt_param) => {
+                            match param.kind {
+                                hir::GenericParamKind::Lifetime { .. } => {
                                     if let Some(lt) = generic_args.lifetimes()
                                         .nth(indices.lifetimes).cloned() {
                                         if !lt.is_elided() {
                                             let lt_def_id =
-                                                cx.tcx.hir.local_def_id(lt_param.lifetime.id);
+                                                cx.tcx.hir.local_def_id(param.id);
                                             lt_substs.insert(lt_def_id, lt.clean(cx));
                                         }
                                     }
                                     indices.lifetimes += 1;
                                 }
-                                hir::GenericParam::Type(ty_param) => {
+                                hir::GenericParamKind::Type { ref default, .. } => {
                                     let ty_param_def =
-                                        Def::TyParam(cx.tcx.hir.local_def_id(ty_param.id));
+                                        Def::TyParam(cx.tcx.hir.local_def_id(param.id));
                                     if let Some(ty) = generic_args.types()
                                         .nth(indices.types).cloned() {
                                         ty_substs.insert(ty_param_def, ty.into_inner().clean(cx));
-                                    } else if let Some(default) = ty_param.default.clone() {
+                                    } else if let Some(default) = default.clone() {
                                         ty_substs.insert(ty_param_def,
                                                          default.into_inner().clean(cx));
                                     }

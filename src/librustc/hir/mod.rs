@@ -53,8 +53,6 @@ use rustc_data_structures::sync::{ParallelIterator, par_iter, Send, Sync, scope}
 use serialize::{self, Encoder, Encodable, Decoder, Decodable};
 use std::collections::BTreeMap;
 use std::fmt;
-use std::iter;
-use std::slice;
 
 /// HIR doesn't commit to a concrete storage type and has its own alias for a vector.
 /// It can be `Vec`, `P<[T]>` or potentially `Box<[T]>`, or some other container with similar
@@ -242,6 +240,24 @@ impl LifetimeName {
             Name(name) => name,
         }
     }
+
+    fn is_elided(&self) -> bool {
+        use self::LifetimeName::*;
+        match self {
+            Implicit | Underscore => true,
+
+            // It might seem surprising that `Fresh(_)` counts as
+            // *not* elided -- but this is because, as far as the code
+            // in the compiler is concerned -- `Fresh(_)` variants act
+            // equivalently to "some fresh name". They correspond to
+            // early-bound regions on an impl, in other words.
+            Fresh(_) | Static | Name(_) => false,
+        }
+    }
+
+    fn is_static(&self) -> bool {
+        self == &LifetimeName::Static
+    }
 }
 
 impl fmt::Debug for Lifetime {
@@ -255,34 +271,12 @@ impl fmt::Debug for Lifetime {
 
 impl Lifetime {
     pub fn is_elided(&self) -> bool {
-        use self::LifetimeName::*;
-        match self.name {
-            Implicit | Underscore => true,
-
-            // It might seem surprising that `Fresh(_)` counts as
-            // *not* elided -- but this is because, as far as the code
-            // in the compiler is concerned -- `Fresh(_)` variants act
-            // equivalently to "some fresh name". They correspond to
-            // early-bound regions on an impl, in other words.
-            Fresh(_) | Static | Name(_) => false,
-        }
+        self.name.is_elided()
     }
 
     pub fn is_static(&self) -> bool {
-        self.name == LifetimeName::Static
+        self.name.is_static()
     }
-}
-
-/// A lifetime definition, eg `'a: 'b+'c+'d`
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct LifetimeDef {
-    pub lifetime: Lifetime,
-    pub bounds: HirVec<Lifetime>,
-    pub pure_wrt_drop: bool,
-    // Indicates that the lifetime definition was synthetically added
-    // as a result of an in-band lifetime usage like
-    // `fn foo(x: &'a u8) -> &'a u8 { x }`
-    pub in_band: bool,
 }
 
 /// A "Path" is essentially Rust's notion of a name; for instance:
@@ -466,70 +460,62 @@ pub enum TraitBoundModifier {
 pub type TyParamBounds = HirVec<TyParamBound>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct TyParam {
-    pub name: Name,
-    pub id: NodeId,
-    pub bounds: TyParamBounds,
-    pub default: Option<P<Ty>>,
-    pub span: Span,
-    pub pure_wrt_drop: bool,
-    pub synthetic: Option<SyntheticTyParamKind>,
-    pub attrs: HirVec<Attribute>,
+pub enum GenericParamKind {
+    /// A lifetime definition, eg `'a: 'b + 'c + 'd`.
+    Lifetime {
+        /// Either "'a", referring to a named lifetime definition,
+        /// or "" (aka keywords::Invalid), for elision placeholders.
+        ///
+        /// HIR lowering inserts these placeholders in type paths that
+        /// refer to type definitions needing lifetime parameters,
+        /// `&T` and `&mut T`, and trait objects without `... + 'a`.
+        name: LifetimeName,
+        bounds: HirVec<Lifetime>,
+        // Indicates that the lifetime definition was synthetically added
+        // as a result of an in-band lifetime usage like:
+        // `fn foo(x: &'a u8) -> &'a u8 { x }`
+        in_band: bool,
+        // We keep a `Lifetime` around for now just so we can `visit_lifetime`.
+        lifetime_deprecated: Lifetime,
+    },
+    Type {
+        name: Name,
+        bounds: TyParamBounds,
+        default: Option<P<Ty>>,
+        synthetic: Option<SyntheticTyParamKind>,
+        attrs: HirVec<Attribute>,
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum GenericParam {
-    Lifetime(LifetimeDef),
-    Type(TyParam),
+pub struct GenericParam {
+    pub id: NodeId,
+    pub span: Span,
+    pub pure_wrt_drop: bool,
+
+    pub kind: GenericParamKind,
 }
 
 impl GenericParam {
     pub fn is_lifetime_param(&self) -> bool {
-        match *self {
-            GenericParam::Lifetime(_) => true,
+        match self.kind {
+            GenericParamKind::Lifetime { .. } => true,
             _ => false,
         }
     }
 
     pub fn is_type_param(&self) -> bool {
-        match *self {
-            GenericParam::Type(_) => true,
+        match self.kind {
+            GenericParamKind::Type { .. } => true,
             _ => false,
         }
     }
-}
 
-pub trait GenericParamsExt {
-    fn lifetimes<'a>(&'a self) -> iter::FilterMap<
-        slice::Iter<GenericParam>,
-        fn(&GenericParam) -> Option<&LifetimeDef>,
-    >;
-
-    fn ty_params<'a>(&'a self) -> iter::FilterMap<
-        slice::Iter<GenericParam>,
-        fn(&GenericParam) -> Option<&TyParam>,
-    >;
-}
-
-impl GenericParamsExt for [GenericParam] {
-    fn lifetimes<'a>(&'a self) -> iter::FilterMap<
-        slice::Iter<GenericParam>,
-        fn(&GenericParam) -> Option<&LifetimeDef>,
-    > {
-        self.iter().filter_map(|param| match *param {
-            GenericParam::Lifetime(ref l) => Some(l),
-            _ => None,
-        })
-    }
-
-    fn ty_params<'a>(&'a self) -> iter::FilterMap<
-        slice::Iter<GenericParam>,
-        fn(&GenericParam) -> Option<&TyParam>,
-    > {
-        self.iter().filter_map(|param| match *param {
-            GenericParam::Type(ref t) => Some(t),
-            _ => None,
-        })
+    pub fn name(&self) -> Name {
+        match self.kind {
+            GenericParamKind::Lifetime { name, .. } => name.name(),
+            GenericParamKind::Type { name, .. } => name,
+        }
     }
 }
 
@@ -555,54 +541,39 @@ impl Generics {
     }
 
     pub fn is_lt_parameterized(&self) -> bool {
-        self.params.iter().any(|param| param.is_lifetime_param())
+        self.params.iter().any(|param| {
+            match param.kind {
+                GenericParamKind::Lifetime { .. } => true,
+                _ => false,
+            }
+        })
     }
 
     pub fn is_type_parameterized(&self) -> bool {
-        self.params.iter().any(|param| param.is_type_param())
-    }
-
-    pub fn lifetimes<'a>(&'a self) -> impl DoubleEndedIterator<Item = &'a LifetimeDef> {
-        self.params.lifetimes()
-    }
-
-    pub fn ty_params<'a>(&'a self) -> impl DoubleEndedIterator<Item = &'a TyParam> {
-        self.params.ty_params()
-    }
-}
-
-pub enum UnsafeGeneric {
-    Region(LifetimeDef, &'static str),
-    Type(TyParam, &'static str),
-}
-
-impl UnsafeGeneric {
-    pub fn attr_name(&self) -> &'static str {
-        match *self {
-            UnsafeGeneric::Region(_, s) => s,
-            UnsafeGeneric::Type(_, s) => s,
-        }
-    }
-}
-
-impl Generics {
-    pub fn carries_unsafe_attr(&self) -> Option<UnsafeGeneric> {
-        for param in &self.params {
-            match *param {
-                GenericParam::Lifetime(ref l) => {
-                    if l.pure_wrt_drop {
-                        return Some(UnsafeGeneric::Region(l.clone(), "may_dangle"));
-                    }
-                }
-                GenericParam::Type(ref t) => {
-                    if t.pure_wrt_drop {
-                        return Some(UnsafeGeneric::Type(t.clone(), "may_dangle"));
-                    }
-                }
+        self.params.iter().any(|param| {
+            match param.kind {
+                GenericParamKind::Type { .. } => true,
+                _ => false,
             }
-        }
+        })
+    }
 
-        None
+    pub fn lifetimes<'a>(&'a self) -> impl DoubleEndedIterator<Item = &'a GenericParam> {
+        self.params.iter().filter(|param| {
+            match param.kind {
+                GenericParamKind::Lifetime { .. } => true,
+                _ => false,
+            }
+        })
+    }
+
+    pub fn ty_params<'a>(&'a self) -> impl DoubleEndedIterator<Item = &'a GenericParam> {
+        self.params.iter().filter(|param| {
+            match param.kind {
+                GenericParamKind::Type { .. } => true,
+                _ => false,
+            }
+        })
     }
 }
 
