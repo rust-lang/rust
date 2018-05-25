@@ -825,6 +825,50 @@ impl<'a> LoweringContext<'a> {
         result
     }
 
+    // Takes the body of an async function/closure, or an async block, and
+    // lowers it to a generator wrapped in a ::std::raw::GenFuture adapter.
+    //
+    // This makes it evaluate to a Future.
+    // 
+    // For example, this: 
+    //      async { ... }
+    // Becomes:
+    //
+    // ::std::raw::GenFuture(|| { ... })
+    //
+    // TODO: Visit body and make sure it contains no bare `yield` statements.
+    fn make_async_expr(&mut self, body: hir::Expr) -> hir::Expr {
+        let span = body.span;
+
+        // Construct a generator around body
+        let generator = {
+            let decl = P(hir::FnDecl {
+                inputs: hir_vec![],
+                output: hir::DefaultReturn(span),
+                variadic: false,
+                has_implicit_self: false,
+            });
+            let body_id = {
+                let prev = mem::replace(&mut self.is_generator, true);
+                let r = self.record_body(body, None);
+                self.is_generator = prev;
+                r
+            };
+            let LoweredNodeId { node_id, hir_id } = self.next_id();
+            hir::Expr {
+                id: node_id,
+                node: hir::ExprClosure(hir::CaptureByValue, decl, body_id, span,
+                                       Some(hir::GeneratorMovability::Static)),
+                attrs: ThinVec::new(),
+                span, hir_id,
+            }
+        };
+
+        let gen_future = self.expr_std_path(span, &["raw", "GenFuture"], ThinVec::new());
+        self.expr_call(span, P(gen_future), hir_vec![generator])
+    }
+
+
     fn lower_body<F>(&mut self, decl: Option<&FnDecl>, f: F) -> hir::BodyId
     where
         F: FnOnce(&mut LoweringContext) -> hir::Expr,
@@ -2313,7 +2357,10 @@ impl<'a> LoweringContext<'a> {
                 self.with_new_scopes(|this| {
                     let body_id = this.lower_body(Some(decl), |this| {
                         let body = this.lower_block(body, false);
-                        this.expr_block(body, ThinVec::new())
+                        let expr = this.expr_block(body, ThinVec::new());
+                        if header.asyncness == IsAsync::Async {
+                            this.make_async_expr(expr)
+                        } else { expr }
                     });
                     let fn_ret_transform: &FnRetTransform = match header.asyncness {
                         IsAsync::Async => &AsyncFunctionRet,
@@ -2608,7 +2655,10 @@ impl<'a> LoweringContext<'a> {
                 TraitItemKind::Method(ref sig, Some(ref body)) => {
                     let body_id = this.lower_body(Some(&sig.decl), |this| {
                         let body = this.lower_block(body, false);
-                        this.expr_block(body, ThinVec::new())
+                        let expr = this.expr_block(body, ThinVec::new());
+                        if sig.header.asyncness == IsAsync::Async {
+                            this.make_async_expr(expr)
+                        } else { expr }
                     });
 
                     this.add_in_band_defs(
@@ -2691,7 +2741,10 @@ impl<'a> LoweringContext<'a> {
                 ImplItemKind::Method(ref sig, ref body) => {
                     let body_id = this.lower_body(Some(&sig.decl), |this| {
                         let body = this.lower_block(body, false);
-                        this.expr_block(body, ThinVec::new())
+                        let e = this.expr_block(body, ThinVec::new());
+                        if sig.header.asyncness == IsAsync::Async {
+                            this.make_async_expr(e)
+                        } else { e }
                     });
                     let impl_trait_return_allow = !this.is_in_trait_impl;
 
@@ -3203,7 +3256,9 @@ impl<'a> LoweringContext<'a> {
                         let body_id = this.lower_body(Some(decl), |this| {
                             let e = this.lower_expr(body);
                             is_generator = this.is_generator;
-                            e
+                            if asyncness == IsAsync::Async {
+                                this.make_async_expr(e)
+                            } else { e }
                         });
                         let generator_option = if is_generator {
                             if !decl.inputs.is_empty() {
@@ -3245,9 +3300,15 @@ impl<'a> LoweringContext<'a> {
                 })
             }
             ExprKind::Block(ref blk, opt_label) => {
-                hir::ExprBlock(self.lower_block(blk,
-                                                opt_label.is_some()),
-                                                self.lower_label(opt_label))
+                let blk = self.lower_block(blk,
+                                           opt_label.is_some());
+                let opt_label = self.lower_label(opt_label);
+                hir::ExprBlock(blk, opt_label)
+            }
+            ExprKind::Async(ref blk) => {
+                let blk = self.lower_block(blk, false);
+                let expr = self.expr(blk.span, hir::ExprBlock(blk, None), ThinVec::new());
+                return self.make_async_expr(expr);
             }
             ExprKind::Assign(ref el, ref er) => {
                 hir::ExprAssign(P(self.lower_expr(el)), P(self.lower_expr(er)))

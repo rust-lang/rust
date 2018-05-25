@@ -271,6 +271,7 @@ pub enum ExprPrecedence {
     Match,
     Block,
     Catch,
+    Async,
     Struct,
 }
 
@@ -340,6 +341,7 @@ impl ExprPrecedence {
             ExprPrecedence::Match |
             ExprPrecedence::Block |
             ExprPrecedence::Catch |
+            ExprPrecedence::Async |
             ExprPrecedence::Struct => PREC_PAREN,
         }
     }

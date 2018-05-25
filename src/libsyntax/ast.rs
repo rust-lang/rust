@@ -947,7 +947,7 @@ impl Expr {
     /// Whether this expression would be valid somewhere that expects a value, for example, an `if`
     /// condition.
     pub fn returns(&self) -> bool {
-        if let ExprKind::Block(ref block, _) = self.node {
+        if let ExprKind::Block(ref block, ..) = self.node {
             match block.stmts.last().map(|last_stmt| &last_stmt.node) {
                 // implicit return
                 Some(&StmtKind::Expr(_)) => true,
@@ -1027,6 +1027,7 @@ impl Expr {
             ExprKind::Match(..) => ExprPrecedence::Match,
             ExprKind::Closure(..) => ExprPrecedence::Closure,
             ExprKind::Block(..) => ExprPrecedence::Block,
+            ExprKind::Async(..) => ExprPrecedence::Async,
             ExprKind::Catch(..) => ExprPrecedence::Catch,
             ExprKind::Assign(..) => ExprPrecedence::Assign,
             ExprKind::AssignOp(..) => ExprPrecedence::AssignOp,
@@ -1138,6 +1139,8 @@ pub enum ExprKind {
     Block(P<Block>, Option<Label>),
     /// A catch block (`catch { ... }`)
     Catch(P<Block>),
+    /// An async block
+    Async(P<Block>),
 
     /// An assignment (`a = foo()`)
     Assign(P<Expr>, P<Expr>),

@@ -1349,6 +1349,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
             ExprKind::Yield(ex) => ExprKind::Yield(ex.map(|x| folder.fold_expr(x))),
             ExprKind::Try(ex) => ExprKind::Try(folder.fold_expr(ex)),
             ExprKind::Catch(body) => ExprKind::Catch(folder.fold_block(body)),
+            ExprKind::Async(body) => ExprKind::Async(folder.fold_block(body)),
         },
         id: folder.new_id(id),
         span: folder.new_span(span),

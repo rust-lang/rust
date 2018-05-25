@@ -2173,6 +2173,10 @@ impl<'a> State<'a> {
                 // empty box to satisfy the close.
                 self.ibox(0)?;
             }
+            ast::ExprKind::Async(ref blk) => {
+                self.print_asyncness(ast::IsAsync::Async)?;
+                self.print_block_with_attrs(blk, attrs)?;
+            }
             ast::ExprKind::Block(ref blk, opt_label) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident)?;
