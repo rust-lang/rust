@@ -4294,7 +4294,7 @@ mod test_map {
     fn test_raw_entry() {
         use super::RawEntry::{Occupied, Vacant};
 
-        let xs = [(1, 10), (2, 20), (3, 30), (4, 40), (5, 50), (6, 60)];
+        let xs = [(1i32, 10i32), (2, 20), (3, 30), (4, 40), (5, 50), (6, 60)];
 
         let mut map: HashMap<_, _> = xs.iter().cloned().collect();
 
@@ -4307,7 +4307,7 @@ mod test_map {
             }
         }
         assert_eq!(map.raw_entry_immut().hash_with(|mut h| {
-            1.hash(&mut h);
+            1i32.hash(&mut h);
             h.finish()
         }).search_with(|k| *k == 1)
           .unwrap(), (&10, &100));
@@ -4328,7 +4328,7 @@ mod test_map {
 
         // Existing key (take)
         match map.raw_entry().hash_with(|mut h| {
-            3.hash(&mut h);
+            3i32.hash(&mut h);
             h.finish()
         }).search_with(|k| *k == 3) {
             Vacant(_) => unreachable!(),
