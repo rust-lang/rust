@@ -224,7 +224,7 @@ impl Sig for ast::Ty {
                     text.push_str(&f.generic_params
                         .iter()
                         .filter_map(|p| match *p {
-                            ast::GenericParam::Lifetime(ref l) => {
+                            ast::GenericParamAST::Lifetime(ref l) => {
                                 Some(l.lifetime.ident.to_string())
                             }
                             _ => None,
@@ -618,7 +618,7 @@ impl Sig for ast::Generics {
         let mut defs = vec![];
         for param in &self.params {
             match *param {
-                ast::GenericParam::Lifetime(ref l) => {
+                ast::GenericParamAST::Lifetime(ref l) => {
                     let mut l_text = l.lifetime.ident.to_string();
                     defs.push(SigElement {
                         id: id_from_node_id(l.lifetime.id, scx),
@@ -639,7 +639,7 @@ impl Sig for ast::Generics {
                     text.push_str(&l_text);
                     text.push(',');
                 }
-                ast::GenericParam::Type(ref t) => {
+                ast::GenericParamAST::Type(ref t) => {
                     let mut t_text = t.ident.to_string();
                     defs.push(SigElement {
                         id: id_from_node_id(t.id, scx),

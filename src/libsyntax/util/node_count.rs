@@ -71,7 +71,7 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_ty(self, t)
     }
-    fn visit_generic_param(&mut self, param: &GenericParam) {
+    fn visit_generic_param(&mut self, param: &GenericParamAST) {
         self.count += 1;
         walk_generic_param(self, param)
     }

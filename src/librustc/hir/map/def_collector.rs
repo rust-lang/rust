@@ -170,9 +170,9 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         }
     }
 
-    fn visit_generic_param(&mut self, param: &'a GenericParam) {
+    fn visit_generic_param(&mut self, param: &'a GenericParamAST) {
         match *param {
-            GenericParam::Lifetime(ref lifetime_def) => {
+            GenericParamAST::Lifetime(ref lifetime_def) => {
                 self.create_def(
                     lifetime_def.lifetime.id,
                     DefPathData::LifetimeDef(lifetime_def.lifetime.ident.name.as_interned_str()),
@@ -180,7 +180,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     lifetime_def.lifetime.ident.span
                 );
             }
-            GenericParam::Type(ref ty_param) => {
+            GenericParamAST::Type(ref ty_param) => {
                 self.create_def(
                     ty_param.id,
                     DefPathData::TypeParam(ty_param.ident.name.as_interned_str()),

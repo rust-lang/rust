@@ -56,7 +56,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit::{self, FnKind, Visitor};
 use syntax::attr;
 use syntax::ast::{Arm, BindingMode, Block, Crate, Expr, ExprKind};
-use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParam, Generics};
+use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParamAST, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
@@ -798,14 +798,14 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         // them one by one as they are processed and become available.
         let mut default_ban_rib = Rib::new(ForwardTyParamBanRibKind);
         default_ban_rib.bindings.extend(generics.params.iter()
-            .filter_map(|p| if let GenericParam::Type(ref tp) = *p { Some(tp) } else { None })
+            .filter_map(|p| if let GenericParamAST::Type(ref tp) = *p { Some(tp) } else { None })
             .skip_while(|p| p.default.is_none())
             .map(|p| (Ident::with_empty_ctxt(p.ident.name), Def::Err)));
 
         for param in &generics.params {
             match *param {
-                GenericParam::Lifetime(_) => self.visit_generic_param(param),
-                GenericParam::Type(ref ty_param) => {
+                GenericParamAST::Lifetime(_) => self.visit_generic_param(param),
+                GenericParamAST::Type(ref ty_param) => {
                     for bound in &ty_param.bounds {
                         self.visit_ty_param_bound(bound);
                     }
@@ -2198,7 +2198,7 @@ impl<'a> Resolver<'a> {
                 let mut function_type_rib = Rib::new(rib_kind);
                 let mut seen_bindings = FxHashMap();
                 for param in &generics.params {
-                    if let GenericParam::Type(ref type_parameter) = *param {
+                    if let GenericParamAST::Type(ref type_parameter) = *param {
                         let ident = type_parameter.ident.modern();
                         debug!("with_type_parameter_rib: {}", type_parameter.id);
 

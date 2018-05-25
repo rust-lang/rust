@@ -370,7 +370,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         id: NodeId,
     ) {
         for param in &generics.params {
-            if let ast::GenericParam::Type(ref ty_param) = *param {
+            if let ast::GenericParamAST::Type(ref ty_param) = *param {
                 let param_ss = ty_param.ident.span;
                 let name = escape(self.span.snippet(param_ss));
                 // Append $id to name to make sure each one is unique
@@ -1479,7 +1479,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
 
     fn visit_generics(&mut self, generics: &'l ast::Generics) {
         for param in &generics.params {
-            if let ast::GenericParam::Type(ref ty_param) = *param {
+            if let ast::GenericParamAST::Type(ref ty_param) = *param {
                 for bound in ty_param.bounds.iter() {
                     if let ast::TraitTyParamBound(ref trait_ref, _) = *bound {
                         self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)

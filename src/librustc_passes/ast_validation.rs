@@ -138,12 +138,12 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_late_bound_lifetime_defs(&self, params: &Vec<GenericParam>) {
+    fn check_late_bound_lifetime_defs(&self, params: &Vec<GenericParamAST>) {
         // Check: Only lifetime parameters
         let non_lifetime_param_spans : Vec<_> = params.iter()
             .filter_map(|param| match *param {
-                GenericParam::Lifetime(_) => None,
-                GenericParam::Type(ref t) => Some(t.ident.span),
+                GenericParamAST::Lifetime(_) => None,
+                GenericParamAST::Type(ref t) => Some(t.ident.span),
             }).collect();
         if !non_lifetime_param_spans.is_empty() {
             self.err_handler().span_err(non_lifetime_param_spans,
@@ -153,14 +153,14 @@ impl<'a> AstValidator<'a> {
         // Check: No bounds on lifetime parameters
         for param in params.iter() {
             match *param {
-                GenericParam::Lifetime(ref l) => {
+                GenericParamAST::Lifetime(ref l) => {
                     if !l.bounds.is_empty() {
                         let spans: Vec<_> = l.bounds.iter().map(|b| b.ident.span).collect();
                         self.err_handler().span_err(spans,
                             "lifetime bounds cannot be used in this context");
                     }
                 }
-                GenericParam::Type(_) => {}
+                GenericParamAST::Type(_) => {}
             }
         }
     }
@@ -335,7 +335,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::TraitAlias(Generics { ref params, .. }, ..) => {
                 for param in params {
-                    if let GenericParam::Type(TyParam {
+                    if let GenericParamAST::Type(TyParam {
                         ident,
                         ref bounds,
                         ref default,
@@ -414,17 +414,17 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         let mut seen_default = None;
         for param in &g.params {
             match (param, seen_non_lifetime_param) {
-                (&GenericParam::Lifetime(ref ld), true) => {
+                (&GenericParamAST::Lifetime(ref ld), true) => {
                     self.err_handler()
                         .span_err(ld.lifetime.ident.span, "lifetime parameters must be leading");
                 },
-                (&GenericParam::Lifetime(_), false) => {}
+                (&GenericParamAST::Lifetime(_), false) => {}
                 _ => {
                     seen_non_lifetime_param = true;
                 }
             }
 
-            if let GenericParam::Type(ref ty_param @ TyParam { default: Some(_), .. }) = *param {
+            if let GenericParamAST::Type(ref ty_param @ TyParam { default: Some(_), .. }) = *param {
                 seen_default = Some(ty_param.ident.span);
             } else if let Some(span) = seen_default {
                 self.err_handler()

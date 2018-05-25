@@ -168,7 +168,7 @@ impl GenericArgs {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum GenericArg {
+pub enum GenericArgAST {
     Lifetime(Lifetime),
     Type(P<Ty>),
 }
@@ -179,7 +179,7 @@ pub struct AngleBracketedArgs {
     /// Overall span
     pub span: Span,
     /// The arguments for this path segment.
-    pub args: Vec<GenericArg>,
+    pub args: Vec<GenericArgAST>,
     /// Bindings (equality constraints) on associated types, if present.
     ///
     /// E.g., `Foo<A=Bar>`.
@@ -189,7 +189,7 @@ pub struct AngleBracketedArgs {
 impl AngleBracketedArgs {
     pub fn lifetimes(&self) -> impl DoubleEndedIterator<Item = &Lifetime> {
         self.args.iter().filter_map(|arg| {
-            if let GenericArg::Lifetime(lt) = arg {
+            if let GenericArgAST::Lifetime(lt) = arg {
                 Some(lt)
             } else {
                 None
@@ -199,7 +199,7 @@ impl AngleBracketedArgs {
 
     pub fn types(&self) -> impl DoubleEndedIterator<Item = &P<Ty>> {
         self.args.iter().filter_map(|arg| {
-            if let GenericArg::Type(ty) = arg {
+            if let GenericArgAST::Type(ty) = arg {
                 Some(ty)
             } else {
                 None
@@ -338,22 +338,22 @@ pub struct TyParam {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum GenericParam {
+pub enum GenericParamAST {
     Lifetime(LifetimeDef),
     Type(TyParam),
 }
 
-impl GenericParam {
+impl GenericParamAST {
     pub fn is_lifetime_param(&self) -> bool {
         match *self {
-            GenericParam::Lifetime(_) => true,
+            GenericParamAST::Lifetime(_) => true,
             _ => false,
         }
     }
 
     pub fn is_type_param(&self) -> bool {
         match *self {
-            GenericParam::Type(_) => true,
+            GenericParamAST::Type(_) => true,
             _ => false,
         }
     }
@@ -363,7 +363,7 @@ impl GenericParam {
 /// a function, enum, trait, etc.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Generics {
-    pub params: Vec<GenericParam>,
+    pub params: Vec<GenericParamAST>,
     pub where_clause: WhereClause,
     pub span: Span,
 }
@@ -383,7 +383,7 @@ impl Generics {
 
     pub fn span_for_name(&self, name: &str) -> Option<Span> {
         for param in &self.params {
-            if let GenericParam::Type(ref t) = *param {
+            if let GenericParamAST::Type(ref t) = *param {
                 if t.ident.name == name {
                     return Some(t.ident.span);
                 }
@@ -444,7 +444,7 @@ impl WherePredicate {
 pub struct WhereBoundPredicate {
     pub span: Span,
     /// Any generics from a `for` binding
-    pub bound_generic_params: Vec<GenericParam>,
+    pub bound_generic_params: Vec<GenericParamAST>,
     /// The type being bounded
     pub bounded_ty: P<Ty>,
     /// Trait and lifetime bounds (`Clone+Send+'static`)
@@ -1576,7 +1576,7 @@ impl fmt::Debug for Ty {
 pub struct BareFnTy {
     pub unsafety: Unsafety,
     pub abi: Abi,
-    pub generic_params: Vec<GenericParam>,
+    pub generic_params: Vec<GenericParamAST>,
     pub decl: P<FnDecl>
 }
 
@@ -1955,7 +1955,7 @@ pub struct TraitRef {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct PolyTraitRef {
     /// The `'a` in `<'a> Foo<&'a T>`
-    pub bound_generic_params: Vec<GenericParam>,
+    pub bound_generic_params: Vec<GenericParamAST>,
 
     /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`
     pub trait_ref: TraitRef,
@@ -1964,7 +1964,7 @@ pub struct PolyTraitRef {
 }
 
 impl PolyTraitRef {
-    pub fn new(generic_params: Vec<GenericParam>, path: Path, span: Span) -> Self {
+    pub fn new(generic_params: Vec<GenericParamAST>, path: Path, span: Span) -> Self {
         PolyTraitRef {
             bound_generic_params: generic_params,
             trait_ref: TraitRef { path: path, ref_id: DUMMY_NODE_ID },
