@@ -186,18 +186,23 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
                         hir::ItemFn(.., ref generics, _) => {
+                            let mut error = false;
                             if !generics.params.is_empty() {
                                 struct_span_err!(tcx.sess, generics.span, E0131,
-                                         "main function is not allowed to have type parameters")
+                                    "`main` function is not allowed to have type parameters")
                                     .span_label(generics.span,
-                                                "main cannot have type parameters")
+                                                "`main` cannot have type parameters")
                                     .emit();
-                                return;
+                                error = true;
                             }
-                            if !generics.where_clause.predicates.is_empty() {
-                                struct_span_err!(tcx.sess, main_span, E0646,
-                                         "main function is not allowed to have a where clause")
-                                         .emit();
+                            if let Some(sp) = generics.where_clause.span() {
+                                struct_span_err!(tcx.sess, sp, E0646,
+                                    "`main` function is not allowed to have a `where` clause")
+                                    .span_label(sp, "`main` cannot have a `where` clause")
+                                    .emit();
+                                error = true;
+                            }
+                            if error {
                                 return;
                             }
                         }
@@ -251,19 +256,24 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             match tcx.hir.find(start_id) {
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
-                        hir::ItemFn(..,ref ps,_) => {
-                            if !ps.params.is_empty() {
-                                struct_span_err!(tcx.sess, ps.span, E0132,
+                        hir::ItemFn(.., ref generics, _) => {
+                            let mut error = false;
+                            if !generics.params.is_empty() {
+                                struct_span_err!(tcx.sess, generics.span, E0132,
                                     "start function is not allowed to have type parameters")
-                                    .span_label(ps.span,
+                                    .span_label(generics.span,
                                                 "start function cannot have type parameters")
                                     .emit();
-                                return;
+                                error = true;
                             }
-                            if !ps.where_clause.predicates.is_empty() {
-                                struct_span_err!(tcx.sess, start_span, E0647,
-                                            "start function is not allowed to have a where clause")
-                                            .emit();
+                            if let Some(sp) = generics.where_clause.span() {
+                                struct_span_err!(tcx.sess, sp, E0647,
+                                    "start function is not allowed to have a `where` clause")
+                                    .span_label(sp, "start function cannot have a `where` clause")
+                                    .emit();
+                                error = true;
+                            }
+                            if error {
                                 return;
                             }
                         }
