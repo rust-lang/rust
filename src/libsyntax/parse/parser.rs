@@ -880,6 +880,27 @@ impl<'a> Parser<'a> {
             false
         }
     }
+    
+    /// Expect and consume a `+`. if `+=` is seen, replace it with a `=`
+    /// and continue. If a `+` is not seen, return false.
+    ///
+    /// This is using when token splitting += into +. 
+    /// See issue 47856 for an example of when this may occur.
+    fn eat_plus(&mut self) -> bool {
+        self.expected_tokens.push(TokenType::Token(token::BinOp(token::Plus)));
+        match self.token {
+            token::BinOp(token::Plus) => {
+                self.bump();
+                true
+            }
+            token::BinOpEq(token::Plus) => {
+                let span = self.span.with_lo(self.span.lo() + BytePos(1));
+                self.bump_with(token::Eq, span);
+                true
+            }
+            _ => false,
+        }
+    }
 
     /// Expect and consume an `&`. If `&&` is seen, replace it with a single
     /// `&` and continue. If an `&` is not seen, signal an error.
@@ -4801,7 +4822,7 @@ impl<'a> Parser<'a> {
                 break
             }
 
-            if !allow_plus || !self.eat(&token::BinOp(token::Plus)) {
+            if !allow_plus || !self.eat_plus() {
                 break
             }
         }
