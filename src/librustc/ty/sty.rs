@@ -1024,7 +1024,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, Copy, PartialOrd, Ord)]
 pub struct DebruijnIndex {
     /// We maintain the invariant that this is never 0. So 1 indicates
-    /// the innermost binder. To ensure this, create with `DebruijnIndex::new`.
+    /// the innermost binder.
     pub depth: u32,
 }
 
@@ -1260,11 +1260,6 @@ impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
 
 impl DebruijnIndex {
     pub const INNERMOST: DebruijnIndex = DebruijnIndex { depth: 1 };
-
-    pub fn new(depth: u32) -> DebruijnIndex {
-        assert!(depth > 0);
-        DebruijnIndex { depth: depth }
-    }
 
     /// Returns the resulting index when this value is moved into
     /// `amount` number of new binders. So e.g. if you had
