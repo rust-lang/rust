@@ -191,7 +191,7 @@ impl From<Pointer> for Scalar {
 pub enum Scalar {
     /// The raw bytes of a simple value.
     Bits {
-        /// number of bits that are valid and may be read
+        /// The first `defined` number of bits are valid
         defined: u8,
         bits: u128,
     },
