@@ -1,7 +1,8 @@
 use rustc::lint::*;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, walk::TypeWalker};
 use rustc::hir::*;
 use std::borrow::Cow;
+use std::mem;
 use syntax::ast;
 use utils::{last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then};
 use utils::{opt_def_id, sugg};
@@ -363,8 +364,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                             }
                                         )
                                     } else {
-                                        // In this case they differ only in lifetime
-                                        if ty_from != ty_to {
+                                        if !differ_only_in_lifetime_params(from_ty, to_ty) {
                                             span_lint_and_then(
                                                 cx,
                                                 TRANSMUTE_PTR_TO_PTR,
@@ -446,6 +446,48 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
             }
         }
     }
+}
+
+/// Returns true if `type1` and `type2` are the same type except for their lifetime parameters
+fn differ_only_in_lifetime_params(type1: Ty, type2: Ty) -> bool {
+    use rustc::ty::TypeVariants::*;
+    if TypeWalker::new(type1).count() != TypeWalker::new(type2).count() {
+        return false;
+    }
+    TypeWalker::new(type1)
+        .zip(TypeWalker::new(type2))
+        .all(|(t1, t2)| {
+            match (&t1.sty, &t2.sty) {
+                // types with generic parameters which can contain lifetimes
+                (TyAdt(_, sub1), TyAdt(_, sub2))
+                | (TyFnDef(_, sub1), TyFnDef(_, sub2))
+                | (TyAnon(_, sub1), TyAnon(_, sub2))
+                => {
+                    // Iterate over generic parameters, which are either Lifetimes or Types.
+                    // Here we only need to check that they are the same type of thing, because
+                    // if they are both Lifetimes then we don't care about their equality, and if
+                    // they are both Types, we will check their equality later in the type walk.
+                    sub1.iter().count() == sub2.iter().count()
+                    && sub1.iter().zip(sub2.iter()).all(|(k1, k2)| {
+                        mem::discriminant(&k1.unpack()) == mem::discriminant(&k2.unpack())
+                    })
+                }
+                // types without subtypes: check that the types are equal
+                (TyBool, TyBool)
+                | (TyChar, TyChar)
+                | (TyInt(_), TyInt(_))
+                | (TyUint(_), TyUint(_))
+                | (TyFloat(_), TyFloat(_))
+                | (TyForeign(_), TyForeign(_))
+                | (TyStr, TyStr)
+                | (TyNever, TyNever)
+                | (TyInfer(_), TyInfer(_))
+                => t1.sty == t2.sty,
+                // types with subtypes: return true for now if they are the same sort of type.
+                // we will check their subtypes later
+                (sty1, sty2) => mem::discriminant(sty1) == mem::discriminant(sty2)
+            }
+        })
 }
 
 /// Get the snippet of `Bar` in `…::transmute<Foo, &Bar>`. If that snippet is
