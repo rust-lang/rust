@@ -515,7 +515,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
 pub fn shift_region(region: ty::RegionKind, amount: u32) -> ty::RegionKind {
     match region {
         ty::ReLateBound(debruijn, br) => {
-            ty::ReLateBound(debruijn.shifted(amount), br)
+            ty::ReLateBound(debruijn.shifted_in(amount), br)
         }
         _ => {
             region
@@ -531,7 +531,7 @@ pub fn shift_region_ref<'a, 'gcx, 'tcx>(
 {
     match region {
         &ty::ReLateBound(debruijn, br) if amount > 0 => {
-            tcx.mk_region(ty::ReLateBound(debruijn.shifted(amount), br))
+            tcx.mk_region(ty::ReLateBound(debruijn.shifted_in(amount), br))
         }
         _ => {
             region

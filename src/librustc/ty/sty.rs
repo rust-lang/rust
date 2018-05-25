@@ -1264,8 +1264,37 @@ impl DebruijnIndex {
         DebruijnIndex { depth: depth }
     }
 
-    pub fn shifted(&self, amount: u32) -> DebruijnIndex {
+    /// Returns the resulting index when this value is moved into
+    /// `amount` number of new binders. So e.g. if you had
+    ///
+    ///    for<'a> fn(&'a x)
+    ///
+    /// and you wanted to change to
+    ///
+    ///    for<'a> fn(for<'b> fn(&'a x))
+    ///
+    /// you would need to shift the index for `'a` into 1 new binder.
+    #[must_use]
+    pub fn shifted_in(self, amount: u32) -> DebruijnIndex {
         DebruijnIndex { depth: self.depth + amount }
+    }
+
+    /// Update this index in place by shifting it "in" through
+    /// `amount` number of binders.
+    pub fn shift_in(&mut self, amount: u32) {
+        *self = self.shifted_in(amount);
+    }
+
+    /// Returns the resulting index when this value is moved out from
+    /// `amount` number of new binders.
+    #[must_use]
+    pub fn shifted_out(self, amount: u32) -> DebruijnIndex {
+        DebruijnIndex { depth: self.depth - amount }
+    }
+
+    /// Update in place by shifting out from `amount` binders.
+    pub fn shift_out(&mut self, amount: u32) {
+        *self = self.shifted_out(amount);
     }
 }
 
