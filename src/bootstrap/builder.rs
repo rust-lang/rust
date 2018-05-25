@@ -698,9 +698,14 @@ impl<'a> Builder<'a> {
         let out_dir = self.stage_out(compiler, mode);
         cargo
             .env("CARGO_TARGET_DIR", out_dir)
-            .arg(cmd)
-            .arg("--target")
-            .arg(target);
+            .arg(cmd);
+
+        if cmd != "install" {
+            cargo.arg("--target")
+                 .arg(target);
+        } else {
+            assert_eq!(target, compiler.host);
+        }
 
         // Set a flag for `check` so that certain build scripts can do less work
         // (e.g. not building/requiring LLVM).
@@ -1022,8 +1027,8 @@ impl<'a> Builder<'a> {
         }
 
         if self.config.rust_optimize {
-            // FIXME: cargo bench does not accept `--release`
-            if cmd != "bench" {
+            // FIXME: cargo bench/install do not accept `--release`
+            if cmd != "bench" && cmd != "install" {
                 cargo.arg("--release");
             }
         }
