@@ -114,15 +114,15 @@ pub enum CandidateSource {
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Determines whether the type `self_ty` supports a method name `method_name` or not.
     pub fn method_exists(&self,
-                         span: Span,
-                         method_name: ast::Name,
+                         method_name: ast::Ident,
                          self_ty: Ty<'tcx>,
                          call_expr_id: ast::NodeId,
                          allow_private: bool)
                          -> bool {
         let mode = probe::Mode::MethodCall;
-        match self.probe_for_name(span, mode, method_name, IsSuggestion(false),
-                                  self_ty, call_expr_id, ProbeScope::TraitsInScope) {
+        match self.probe_for_name(method_name.span, mode, method_name.name,
+                                  IsSuggestion(false), self_ty, call_expr_id,
+                                  ProbeScope::TraitsInScope) {
             Ok(..) => true,
             Err(NoMatch(..)) => false,
             Err(Ambiguity(..)) => true,

@@ -1619,7 +1619,7 @@ pub enum VariantDiscr {
 #[derive(Debug)]
 pub struct FieldDef {
     pub did: DefId,
-    pub name: Name,
+    pub ident: Ident,
     pub vis: Visibility,
 }
 
@@ -2454,7 +2454,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn find_field_index(self, ident: Ident, variant: &VariantDef) -> Option<usize> {
         variant.fields.iter().position(|field| {
-            self.adjust_ident(ident.modern(), variant.did, DUMMY_NODE_ID).0 == field.name.to_ident()
+            self.adjust_ident(ident, variant.did, DUMMY_NODE_ID).0 == field.ident.modern()
         })
     }
 
@@ -2635,11 +2635,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // supposed definition name (`def_name`). The method also needs `DefId` of the supposed
     // definition's parent/scope to perform comparison.
     pub fn hygienic_eq(self, use_name: Name, def_name: Name, def_parent_def_id: DefId) -> bool {
-        self.adjust(use_name, def_parent_def_id, DUMMY_NODE_ID).0 == def_name.to_ident()
-    }
-
-    pub fn adjust(self, name: Name, scope: DefId, block: NodeId) -> (Ident, DefId) {
-        self.adjust_ident(name.to_ident(), scope, block)
+        let (use_ident, def_ident) = (use_name.to_ident(), def_name.to_ident());
+        self.adjust_ident(use_ident, def_parent_def_id, DUMMY_NODE_ID).0 == def_ident
     }
 
     pub fn adjust_ident(self, mut ident: Ident, scope: DefId, block: NodeId) -> (Ident, DefId) {
@@ -2647,6 +2644,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             LOCAL_CRATE => self.hir.definitions().expansion(scope.index),
             _ => Mark::root(),
         };
+        ident = ident.modern();
         let scope = match ident.span.adjust(expansion) {
             Some(macro_def) => self.hir.definitions().macro_def_scope(macro_def),
             None if block == DUMMY_NODE_ID => DefId::local(CRATE_DEF_INDEX), // Dummy DefId

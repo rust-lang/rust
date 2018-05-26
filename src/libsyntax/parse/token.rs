@@ -341,7 +341,7 @@ impl Token {
     /// string slice.
     pub fn is_ident_named(&self, name: &str) -> bool {
         match self.ident() {
-            Some((ident, _)) => ident.name.as_str() == name,
+            Some((ident, _)) => ident.as_str() == name,
             None => false
         }
     }

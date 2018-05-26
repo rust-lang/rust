@@ -520,21 +520,21 @@ fn convert_struct_variant<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let node_id = tcx.hir.as_local_node_id(did).unwrap();
     let fields = def.fields().iter().map(|f| {
         let fid = tcx.hir.local_def_id(f.id);
-        let dup_span = seen_fields.get(&f.name.to_ident()).cloned();
+        let dup_span = seen_fields.get(&f.ident.modern()).cloned();
         if let Some(prev_span) = dup_span {
             struct_span_err!(tcx.sess, f.span, E0124,
                              "field `{}` is already declared",
-                             f.name)
+                             f.ident)
                 .span_label(f.span, "field already declared")
-                .span_label(prev_span, format!("`{}` first declared here", f.name))
+                .span_label(prev_span, format!("`{}` first declared here", f.ident))
                 .emit();
         } else {
-            seen_fields.insert(f.name.to_ident(), f.span);
+            seen_fields.insert(f.ident.modern(), f.span);
         }
 
         ty::FieldDef {
             did: fid,
-            name: f.name,
+            ident: f.ident,
             vis: ty::Visibility::from_hir(&f.vis, node_id, tcx)
         }
     }).collect();

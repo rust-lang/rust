@@ -669,7 +669,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                             &*with_expr,
                             with_cmt.clone(),
                             f_index,
-                            with_field.name,
+                            with_field.ident,
                             with_field.ty(self.tcx(), substs)
                         );
                         self.delegate_consume(with_expr.id, with_expr.span, &cmt_field);

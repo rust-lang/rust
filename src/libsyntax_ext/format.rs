@@ -166,7 +166,7 @@ fn parse_args(ecx: &mut ExtCtxt,
                     return None;
                 }
             };
-            let name: &str = &ident.name.as_str();
+            let name: &str = &ident.as_str();
 
             panictry!(p.expect(&token::Eq));
             let e = panictry!(p.parse_expr());

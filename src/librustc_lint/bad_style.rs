@@ -324,7 +324,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
                         _: &hir::Generics,
                         _: ast::NodeId) {
         for sf in s.fields() {
-            self.check_snake_case(cx, "structure field", &sf.name.as_str(), Some(sf.span));
+            self.check_snake_case(cx, "structure field", &sf.ident.as_str(), Some(sf.span));
         }
     }
 }

@@ -35,7 +35,7 @@ use mir::mono::Linkage;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::codemap::{self, Spanned};
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
+use syntax::ast::{self, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
 use syntax::attr::InlineAttr;
 use syntax::ext::hygiene::SyntaxContext;
@@ -866,7 +866,7 @@ impl Pat {
 pub struct FieldPat {
     pub id: NodeId,
     /// The identifier for the field
-    pub name: Name,
+    pub ident: Ident,
     /// The pattern the field is destructured to
     pub pat: P<Pat>,
     pub is_shorthand: bool,
@@ -1211,7 +1211,7 @@ pub struct Arm {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Field {
     pub id: NodeId,
-    pub name: Spanned<Name>,
+    pub ident: Ident,
     pub expr: P<Expr>,
     pub span: Span,
     pub is_shorthand: bool,
@@ -1414,7 +1414,7 @@ pub enum Expr_ {
     /// For example, `a += 1`.
     ExprAssignOp(BinOp, P<Expr>, P<Expr>),
     /// Access of a named (`obj.foo`) or unnamed (`obj.0`) struct or tuple field
-    ExprField(P<Expr>, Spanned<Name>),
+    ExprField(P<Expr>, Ident),
     /// An indexing operation (`foo[2]`)
     ExprIndex(P<Expr>, P<Expr>),
 
@@ -1973,7 +1973,7 @@ impl Visibility {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct StructField {
     pub span: Span,
-    pub name: Name,
+    pub ident: Ident,
     pub vis: Visibility,
     pub id: NodeId,
     pub ty: P<Ty>,
@@ -1983,7 +1983,7 @@ pub struct StructField {
 impl StructField {
     // Still necessary in couple of places
     pub fn is_positional(&self) -> bool {
-        let first = self.name.as_str().as_bytes()[0];
+        let first = self.ident.as_str().as_bytes()[0];
         first >= b'0' && first <= b'9'
     }
 }

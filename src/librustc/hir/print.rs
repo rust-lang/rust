@@ -857,7 +857,7 @@ impl<'a> State<'a> {
                 self.maybe_print_comment(field.span.lo())?;
                 self.print_outer_attributes(&field.attrs)?;
                 self.print_visibility(&field.vis)?;
-                self.print_name(field.name)?;
+                self.print_ident(field.ident)?;
                 self.word_nbsp(":")?;
                 self.print_type(&field.ty)?;
                 self.s.word(",")?;
@@ -1166,7 +1166,7 @@ impl<'a> State<'a> {
                            |s, field| {
                                s.ibox(indent_unit)?;
                                if !field.is_shorthand {
-                                    s.print_name(field.name.node)?;
+                                    s.print_ident(field.ident)?;
                                     s.word_space(":")?;
                                }
                                s.print_expr(&field.expr)?;
@@ -1406,10 +1406,10 @@ impl<'a> State<'a> {
                 self.word_space("=")?;
                 self.print_expr_maybe_paren(&rhs, prec)?;
             }
-            hir::ExprField(ref expr, name) => {
+            hir::ExprField(ref expr, ident) => {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX)?;
                 self.s.word(".")?;
-                self.print_name(name.node)?;
+                self.print_ident(ident)?;
             }
             hir::ExprIndex(ref expr, ref index) => {
                 self.print_expr_maybe_paren(&expr, parser::PREC_POSTFIX)?;
@@ -1561,13 +1561,17 @@ impl<'a> State<'a> {
         self.s.word(&i.to_string())
     }
 
-    pub fn print_name(&mut self, name: ast::Name) -> io::Result<()> {
-        if name.to_ident().is_raw_guess() {
-            self.s.word(&format!("r#{}", name))?;
+    pub fn print_ident(&mut self, ident: ast::Ident) -> io::Result<()> {
+        if ident.is_raw_guess() {
+            self.s.word(&format!("r#{}", ident.name))?;
         } else {
-            self.s.word(&name.as_str())?;
+            self.s.word(&ident.as_str())?;
         }
-        self.ann.post(self, NodeName(&name))
+        self.ann.post(self, NodeName(&ident.name))
+    }
+
+    pub fn print_name(&mut self, name: ast::Name) -> io::Result<()> {
+        self.print_ident(name.to_ident())
     }
 
     pub fn print_for_decl(&mut self, loc: &hir::Local, coll: &hir::Expr) -> io::Result<()> {
@@ -1773,7 +1777,7 @@ impl<'a> State<'a> {
                                    |s, f| {
                                        s.cbox(indent_unit)?;
                                        if !f.node.is_shorthand {
-                                           s.print_name(f.node.name)?;
+                                           s.print_ident(f.node.ident)?;
                                            s.word_nbsp(":")?;
                                        }
                                        s.print_pat(&f.node.pat)?;

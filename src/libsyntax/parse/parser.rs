@@ -6067,7 +6067,7 @@ impl<'a> Parser<'a> {
             self.directory.path.to_mut().push(&path.as_str());
             self.directory.ownership = DirectoryOwnership::Owned { relative: None };
         } else {
-            self.directory.path.to_mut().push(&id.name.as_str());
+            self.directory.path.to_mut().push(&id.as_str());
         }
     }
 
@@ -6088,7 +6088,7 @@ impl<'a> Parser<'a> {
         // `./<id>.rs` and `./<id>/mod.rs`.
         let relative_prefix_string;
         let relative_prefix = if let Some(ident) = relative {
-            relative_prefix_string = format!("{}{}", ident.name.as_str(), path::MAIN_SEPARATOR);
+            relative_prefix_string = format!("{}{}", ident.as_str(), path::MAIN_SEPARATOR);
             &relative_prefix_string
         } else {
             ""

@@ -108,8 +108,9 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                         RestrictionResult::Safe => RestrictionResult::Safe,
                         RestrictionResult::SafeIf(base_lp, mut base_vec) => {
                             for (i, field) in adt_def.non_enum_variant().fields.iter().enumerate() {
-                                let field =
-                                    InteriorKind::InteriorField(mc::FieldIndex(i, field.name));
+                                let field = InteriorKind::InteriorField(
+                                    mc::FieldIndex(i, field.ident.name)
+                                );
                                 let field_ty = if field == interior {
                                     cmt.ty
                                 } else {

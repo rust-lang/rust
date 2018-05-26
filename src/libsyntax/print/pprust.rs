@@ -724,7 +724,7 @@ pub trait PrintState<'a> {
             if segment.ident.name != keywords::CrateRoot.name() &&
                segment.ident.name != keywords::DollarCrate.name()
             {
-                self.writer().word(&segment.ident.name.as_str())?;
+                self.writer().word(&segment.ident.as_str())?;
             } else if segment.ident.name == keywords::DollarCrate.name() {
                 self.print_dollar_crate(segment.ident.span.ctxt())?;
             }
@@ -2380,7 +2380,7 @@ impl<'a> State<'a> {
         if ident.is_raw_guess() {
             self.s.word(&format!("r#{}", ident))?;
         } else {
-            self.s.word(&ident.name.as_str())?;
+            self.s.word(&ident.as_str())?;
         }
         self.ann.post(self, NodeIdent(&ident))
     }

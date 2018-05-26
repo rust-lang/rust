@@ -909,7 +909,7 @@ impl<'hir> Map<'hir> {
             NodeImplItem(ii) => ii.name,
             NodeTraitItem(ti) => ti.name,
             NodeVariant(v) => v.node.name,
-            NodeField(f) => f.name,
+            NodeField(f) => f.ident.name,
             NodeLifetime(lt) => lt.name.name(),
             NodeTyParam(tp) => tp.name,
             NodeBinding(&Pat { node: PatKind::Binding(_,_,l,_), .. }) => l.node,
@@ -1105,7 +1105,7 @@ impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() }
 impl Named for Item { fn name(&self) -> Name { self.name } }
 impl Named for ForeignItem { fn name(&self) -> Name { self.name } }
 impl Named for Variant_ { fn name(&self) -> Name { self.name } }
-impl Named for StructField { fn name(&self) -> Name { self.name } }
+impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
 impl Named for TraitItem { fn name(&self) -> Name { self.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.name } }
 
@@ -1291,7 +1291,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeField(ref field)) => {
             format!("field {} in {}{}",
-                    field.name,
+                    field.ident,
                     path_str(), id_str)
         }
         Some(NodeAnonConst(_)) => {

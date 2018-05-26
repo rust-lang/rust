@@ -542,7 +542,7 @@ impl<'a, 'tcx> CrateMetadata {
                 let f = self.entry(index);
                 ty::FieldDef {
                     did: self.local_def_id(index),
-                    name: self.item_name(index).as_symbol(),
+                    ident: Ident::from_interned_str(self.item_name(index)),
                     vis: f.visibility.decode(self)
                 }
             }).collect(),

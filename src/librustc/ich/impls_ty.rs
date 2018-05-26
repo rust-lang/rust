@@ -357,11 +357,17 @@ impl_stable_hash_for!(enum ty::VariantDiscr {
     Relative(distance)
 });
 
-impl_stable_hash_for!(struct ty::FieldDef {
-    did,
-    name,
-    vis
-});
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::FieldDef {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        let ty::FieldDef { did, ident, vis } = *self;
+
+        did.hash_stable(hcx, hasher);
+        ident.name.hash_stable(hcx, hasher);
+        vis.hash_stable(hcx, hasher);
+    }
+}
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
 for ::middle::const_val::ConstVal<'gcx> {

@@ -951,7 +951,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
             let name = if self.variant.ctor_kind == CtorKind::Fn {
                 format!("__{}", i)
             } else {
-                f.name.to_string()
+                f.ident.to_string()
             };
             let field = layout.field(cx, i);
             let (size, align) = field.size_and_align();
@@ -1072,7 +1072,7 @@ impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
             let field = self.layout.field(cx, i);
             let (size, align) = field.size_and_align();
             MemberDescription {
-                name: f.name.to_string(),
+                name: f.ident.to_string(),
                 type_metadata: type_metadata(cx, field.ty, self.span),
                 offset: Size::ZERO,
                 size,
@@ -1338,7 +1338,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         let name = if variant.ctor_kind == CtorKind::Fn {
             format!("__{}", i)
         } else {
-            variant.fields[i].name.to_string()
+            variant.fields[i].ident.to_string()
         };
         (name, layout.field(cx, i).ty)
     })).collect();

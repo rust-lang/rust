@@ -183,7 +183,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                             if let PatternKind::Wild = *p.pattern.kind {
                                 continue;
                             }
-                            let name = variant.fields[p.field.index()].name;
+                            let name = variant.fields[p.field.index()].ident;
                             write!(f, "{}{}: {}", start_or_continue(), name, p.pattern)?;
                             printed += 1;
                         }

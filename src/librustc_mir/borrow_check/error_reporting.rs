@@ -746,7 +746,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Place::Projection(ref proj) => match proj.elem {
                 ProjectionElem::Deref => self.describe_field(&proj.base, field),
                 ProjectionElem::Downcast(def, variant_index) => {
-                    format!("{}", def.variants[variant_index].fields[field.index()].name)
+                    format!("{}", def.variants[variant_index].fields[field.index()].ident)
                 }
                 ProjectionElem::Field(_, field_type) => {
                     self.describe_field_from_ty(&field_type, field)
@@ -770,7 +770,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 ty::TyAdt(def, _) => if def.is_enum() {
                     format!("{}", field.index())
                 } else {
-                    format!("{}", def.non_enum_variant().fields[field.index()].name)
+                    format!("{}", def.non_enum_variant().fields[field.index()].ident)
                 },
                 ty::TyTuple(_) => format!("{}", field.index()),
                 ty::TyRef(_, ty, _) | ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {

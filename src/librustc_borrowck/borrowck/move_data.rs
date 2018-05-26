@@ -343,7 +343,8 @@ impl<'a, 'tcx> MoveData<'tcx> {
                     = (&base_lp.ty.sty, lp_elem) {
                 if adt_def.is_union() {
                     for (i, field) in adt_def.non_enum_variant().fields.iter().enumerate() {
-                        let field = InteriorKind::InteriorField(mc::FieldIndex(i, field.name));
+                        let field =
+                            InteriorKind::InteriorField(mc::FieldIndex(i, field.ident.name));
                         if field != interior {
                             let sibling_lp_kind =
                                 LpExtend(base_lp.clone(), mutbl, LpInterior(opt_variant_id, field));
@@ -395,7 +396,8 @@ impl<'a, 'tcx> MoveData<'tcx> {
             if let ty::TyAdt(adt_def, _) = base_lp.ty.sty {
                 if adt_def.is_union() {
                     for (i, field) in adt_def.non_enum_variant().fields.iter().enumerate() {
-                        let field = InteriorKind::InteriorField(mc::FieldIndex(i, field.name));
+                        let field =
+                            InteriorKind::InteriorField(mc::FieldIndex(i, field.ident.name));
                         let field_ty = if field == interior {
                             lp.ty
                         } else {

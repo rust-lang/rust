@@ -1091,19 +1091,19 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
                         _ => false,
                     };
                     let elem = if is_enum {
-                        cx.tcx.adt_def(did).all_fields().find(|item| item.name == item_name)
+                        cx.tcx.adt_def(did).all_fields().find(|item| item.ident.name == item_name)
                     } else {
                         cx.tcx.adt_def(did)
                               .non_enum_variant()
                               .fields
                               .iter()
-                              .find(|item| item.name == item_name)
+                              .find(|item| item.ident.name == item_name)
                     };
                     if let Some(item) = elem {
                         Ok((ty.def,
                             Some(format!("{}.{}",
                                          if is_enum { "variant" } else { "structfield" },
-                                         item.name))))
+                                         item.ident))))
                     } else {
                         Err(())
                     }
@@ -2990,7 +2990,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 impl Clean<Item> for hir::StructField {
     fn clean(&self, cx: &DocContext) -> Item {
         Item {
-            name: Some(self.name).clean(cx),
+            name: Some(self.ident.name).clean(cx),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
             visibility: self.vis.clean(cx),
@@ -3005,7 +3005,7 @@ impl Clean<Item> for hir::StructField {
 impl<'tcx> Clean<Item> for ty::FieldDef {
     fn clean(&self, cx: &DocContext) -> Item {
         Item {
-            name: Some(self.name).clean(cx),
+            name: Some(self.ident.name).clean(cx),
             attrs: cx.tcx.get_attrs(self.did).clean(cx),
             source: cx.tcx.def_span(self.did).clean(cx),
             visibility: self.vis.clean(cx),
@@ -3201,7 +3201,7 @@ impl<'tcx> Clean<Item> for ty::VariantDef {
                     fields: self.fields.iter().map(|field| {
                         Item {
                             source: cx.tcx.def_span(field.did).clean(cx),
-                            name: Some(field.name.clean(cx)),
+                            name: Some(field.ident.name.clean(cx)),
                             attrs: cx.tcx.get_attrs(field.did).clean(cx),
                             visibility: field.vis.clean(cx),
                             def_id: field.did,
@@ -3850,7 +3850,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
         PatKind::Struct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", qpath_to_string(name),
                 fields.iter().map(|&Spanned { node: ref fp, .. }|
-                                  format!("{}: {}", fp.name, name_from_pat(&*fp.pat)))
+                                  format!("{}: {}", fp.ident, name_from_pat(&*fp.pat)))
                              .collect::<Vec<String>>().join(", "),
                 if etc { ", ..." } else { "" }
             )

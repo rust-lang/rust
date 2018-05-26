@@ -56,7 +56,7 @@ impl Ident {
     }
 
     pub fn without_first_quote(self) -> Ident {
-        Ident::new(Symbol::intern(self.name.as_str().trim_left_matches('\'')), self.span)
+        Ident::new(Symbol::intern(self.as_str().trim_left_matches('\'')), self.span)
     }
 
     pub fn modern(self) -> Ident {
@@ -65,6 +65,10 @@ impl Ident {
 
     pub fn gensym(self) -> Ident {
         Ident::new(self.name.gensymed(), self.span)
+    }
+
+    pub fn as_str(self) -> LocalInternedString {
+        self.name.as_str()
     }
 }
 
@@ -96,10 +100,10 @@ impl fmt::Display for Ident {
 impl Encodable for Ident {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         if self.span.ctxt().modern() == SyntaxContext::empty() {
-            s.emit_str(&self.name.as_str())
+            s.emit_str(&self.as_str())
         } else { // FIXME(jseyfried) intercrate hygiene
             let mut string = "#".to_owned();
-            string.push_str(&self.name.as_str());
+            string.push_str(&self.as_str());
             s.emit_str(&string)
         }
     }

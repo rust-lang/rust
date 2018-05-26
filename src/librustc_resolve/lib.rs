@@ -1060,7 +1060,7 @@ impl<'a> ModuleData<'a> {
     fn for_each_child_stable<F: FnMut(Ident, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
         let resolutions = self.resolutions.borrow();
         let mut resolutions = resolutions.iter().collect::<Vec<_>>();
-        resolutions.sort_by_cached_key(|&(&(ident, ns), _)| (ident.name.as_str(), ns));
+        resolutions.sort_by_cached_key(|&(&(ident, ns), _)| (ident.as_str(), ns));
         for &(&(ident, ns), &resolution) in resolutions.iter() {
             resolution.borrow().binding.map(|binding| f(ident, ns, binding));
         }
@@ -2608,7 +2608,7 @@ impl<'a> Resolver<'a> {
                     self,
                     ident.span,
                     ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(
-                        &ident.name.as_str())
+                        &ident.as_str())
                 );
             }
             Some(..) if pat_src == PatternSource::FnParam => {
@@ -2617,7 +2617,7 @@ impl<'a> Resolver<'a> {
                     self,
                     ident.span,
                     ResolutionError::IdentifierBoundMoreThanOnceInParameterList(
-                        &ident.name.as_str())
+                        &ident.as_str())
                 );
             }
             Some(..) if pat_src == PatternSource::Match ||
@@ -3765,12 +3765,12 @@ impl<'a> Resolver<'a> {
                         // the closest match
                         let close_match = self.search_label(label.ident, |rib, ident| {
                             let names = rib.bindings.iter().map(|(id, _)| &id.name);
-                            find_best_match_for_name(names, &*ident.name.as_str(), None)
+                            find_best_match_for_name(names, &*ident.as_str(), None)
                         });
                         self.record_def(expr.id, err_path_resolution());
                         resolve_error(self,
                                       label.ident.span,
-                                      ResolutionError::UndeclaredLabel(&label.ident.name.as_str(),
+                                      ResolutionError::UndeclaredLabel(&label.ident.as_str(),
                                                                        close_match));
                     }
                     Some(Def::Label(id)) => {
@@ -4380,7 +4380,7 @@ fn names_to_string(idents: &[Ident]) -> String {
         if i > 0 {
             result.push_str("::");
         }
-        result.push_str(&ident.name.as_str());
+        result.push_str(&ident.as_str());
     }
     result
 }

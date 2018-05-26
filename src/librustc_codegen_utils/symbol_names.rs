@@ -363,7 +363,7 @@ impl SymbolPathBuffer {
             result: String::with_capacity(64),
             temp_buf: String::with_capacity(16),
         };
-        result.result.push_str(&symbol.name.as_str());
+        result.result.push_str(&symbol.as_str());
         result
     }
 

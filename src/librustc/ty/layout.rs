@@ -1227,7 +1227,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 if !adt_def.variants.is_empty() {
                     let variant_def = &adt_def.variants[index];
                     let fields: Vec<_> =
-                        variant_def.fields.iter().map(|f| f.name).collect();
+                        variant_def.fields.iter().map(|f| f.ident.name).collect();
                     record(adt_kind.into(),
                            adt_packed,
                            None,
@@ -1248,7 +1248,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 let variant_infos: Vec<_> =
                     adt_def.variants.iter().enumerate().map(|(i, variant_def)| {
                         let fields: Vec<_> =
-                            variant_def.fields.iter().map(|f| f.name).collect();
+                            variant_def.fields.iter().map(|f| f.ident.name).collect();
                         build_variant_info(Some(variant_def.name),
                                             &fields,
                                             layout.for_variant(self, i))

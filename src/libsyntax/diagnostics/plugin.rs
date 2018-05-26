@@ -162,7 +162,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
         ecx.parse_sess.registered_diagnostics.with_lock(|diagnostics| {
             if let Err(e) = output_metadata(ecx,
                                             &target_triple,
-                                            &crate_name.name.as_str(),
+                                            &crate_name.as_str(),
                                             diagnostics) {
                 ecx.span_bug(span, &format!(
                     "error writing metadata for triple `{}` and crate `{}`, error: {}, \

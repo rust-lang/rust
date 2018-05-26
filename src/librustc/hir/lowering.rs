@@ -2072,11 +2072,11 @@ impl<'a> LoweringContext<'a> {
         hir::StructField {
             span: f.span,
             id: self.lower_node_id(f.id).node_id,
-            name: self.lower_ident(match f.ident {
+            ident: match f.ident {
                 Some(ident) => ident,
                 // FIXME(jseyfried) positional field hygiene
                 None => Ident::new(Symbol::intern(&index.to_string()), f.span),
-            }),
+            },
             vis: self.lower_visibility(&f.vis, None),
             ty: self.lower_ty(&f.ty, ImplTraitContext::Disallowed),
             attrs: self.lower_attrs(&f.attrs),
@@ -2086,7 +2086,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_field(&mut self, f: &Field) -> hir::Field {
         hir::Field {
             id: self.next_id().node_id,
-            name: respan(f.ident.span, self.lower_ident(f.ident)),
+            ident: f.ident,
             expr: P(self.lower_expr(&f.expr)),
             span: f.span,
             is_shorthand: f.is_shorthand,
@@ -2848,7 +2848,7 @@ impl<'a> LoweringContext<'a> {
                         span: f.span,
                         node: hir::FieldPat {
                             id: self.next_id().node_id,
-                            name: self.lower_ident(f.node.ident),
+                            ident: f.node.ident,
                             pat: self.lower_pat(&f.node.pat),
                             is_shorthand: f.node.is_shorthand,
                         },
@@ -3091,10 +3091,7 @@ impl<'a> LoweringContext<'a> {
                 P(self.lower_expr(el)),
                 P(self.lower_expr(er)),
             ),
-            ExprKind::Field(ref el, ident) => hir::ExprField(
-                P(self.lower_expr(el)),
-                respan(ident.span, self.lower_ident(ident)),
-            ),
+            ExprKind::Field(ref el, ident) => hir::ExprField(P(self.lower_expr(el)), ident),
             ExprKind::Index(ref el, ref er) => {
                 hir::ExprIndex(P(self.lower_expr(el)), P(self.lower_expr(er)))
             }
@@ -3134,7 +3131,8 @@ impl<'a> LoweringContext<'a> {
                         let expr = P(self.lower_expr(&e));
                         let unstable_span =
                             self.allow_internal_unstable(CompilerDesugaringKind::DotFill, e.span);
-                        self.field(Symbol::intern(s), expr, unstable_span)
+                        let ident = Ident::new(Symbol::intern(s), unstable_span);
+                        self.field(ident, expr, unstable_span)
                     })
                     .collect::<P<[hir::Field]>>();
 
@@ -3749,10 +3747,10 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn field(&mut self, name: Name, expr: P<hir::Expr>, span: Span) -> hir::Field {
+    fn field(&mut self, ident: Ident, expr: P<hir::Expr>, span: Span) -> hir::Field {
         hir::Field {
             id: self.next_id().node_id,
-            name: Spanned { node: name, span },
+            ident,
             span,
             expr,
             is_shorthand: false,
