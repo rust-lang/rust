@@ -422,7 +422,10 @@ impl<'a> TraitDef<'a> {
                     ast::ItemKind::Struct(_, ref generics) |
                     ast::ItemKind::Enum(_, ref generics) |
                     ast::ItemKind::Union(_, ref generics) => {
-                        !generics.params.iter().any(|p| p.is_type_param())
+                        !generics.params.iter().any(|param| match param.kind {
+                            ast::GenericParamKindAST::Type { .. } => true,
+                            _ => false,
+                        })
                     }
                     _ => {
                         // Non-ADT derive is an error, but it should have been

@@ -353,7 +353,7 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
 
                 match (has_output, has_should_panic_attr) {
                     (true, true) => No(BadTestSignature::ShouldPanicOnlyWithNoArgs),
-                    (true, false) => if generics.is_parameterized() {
+                    (true, false) => if !generics.params.is_empty() {
                         No(BadTestSignature::WrongTypeSignature)
                     } else {
                         Yes

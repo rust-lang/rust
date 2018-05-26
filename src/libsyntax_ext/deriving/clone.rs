@@ -49,7 +49,10 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                 ItemKind::Struct(_, Generics { ref params, .. }) |
                 ItemKind::Enum(_, Generics { ref params, .. }) => {
                     if attr::contains_name(&annitem.attrs, "rustc_copy_clone_marker") &&
-                        !params.iter().any(|param| param.is_type_param())
+                        !params.iter().any(|param| match param.kind {
+                            ast::GenericParamKindAST::Type { .. } => true,
+                            _ => false,
+                        })
                     {
                         bounds = vec![];
                         is_shallow = true;

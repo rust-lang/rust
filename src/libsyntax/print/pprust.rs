@@ -1329,7 +1329,7 @@ impl<'a> State<'a> {
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("impl")?;
 
-                if generics.is_parameterized() {
+                if !generics.params.is_empty() {
                     self.print_generic_params(&generics.params)?;
                     self.s.space()?;
                 }

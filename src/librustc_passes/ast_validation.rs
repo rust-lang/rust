@@ -294,7 +294,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Trait(is_auto, _, ref generics, ref bounds, ref trait_items) => {
                 if is_auto == IsAuto::Yes {
                     // Auto traits cannot have generics, super traits nor contain items.
-                    if generics.is_parameterized() {
+                    if !generics.params.is_empty() {
                         struct_span_err!(self.session, item.span, E0567,
                                         "auto traits cannot have generic parameters").emit();
                     }

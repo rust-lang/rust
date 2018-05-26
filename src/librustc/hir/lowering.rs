@@ -324,7 +324,10 @@ impl<'a> LoweringContext<'a> {
                         let count = generics
                             .params
                             .iter()
-                            .filter(|param| param.is_lifetime_param())
+                            .filter(|param| match param.kind {
+                                ast::GenericParamKindAST::Lifetime { .. } => true,
+                                _ => false,
+                            })
                             .count();
                         self.lctx.type_def_lifetime_params.insert(def_id, count);
                     }

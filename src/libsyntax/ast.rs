@@ -342,22 +342,6 @@ pub struct GenericParamAST {
     pub kind: GenericParamKindAST,
 }
 
-impl GenericParamAST {
-    pub fn is_lifetime_param(&self) -> bool {
-        match self.kind {
-            GenericParamKindAST::Lifetime { .. } => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_type_param(&self) -> bool {
-        match self.kind {
-            GenericParamKindAST::Type { .. } => true,
-            _ => false,
-        }
-    }
-}
-
 /// Represents lifetime, type and const parameters attached to a declaration of
 /// a function, enum, trait, etc.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -365,29 +349,6 @@ pub struct Generics {
     pub params: Vec<GenericParamAST>,
     pub where_clause: WhereClause,
     pub span: Span,
-}
-
-impl Generics {
-    pub fn is_lt_parameterized(&self) -> bool {
-        self.params.iter().any(|param| param.is_lifetime_param())
-    }
-
-    pub fn is_type_parameterized(&self) -> bool {
-        self.params.iter().any(|param| param.is_type_param())
-    }
-
-    pub fn is_parameterized(&self) -> bool {
-        !self.params.is_empty()
-    }
-
-    pub fn span_for_name(&self, name: &str) -> Option<Span> {
-        for param in &self.params {
-            if param.ident.name == name {
-                return Some(param.ident.span);
-            }
-        }
-        None
-    }
 }
 
 impl Default for Generics {
