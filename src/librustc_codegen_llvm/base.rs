@@ -642,7 +642,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
             config::CrateTypeDylib |
             config::CrateTypeProcMacro => MetadataKind::Compressed,
         }
-    }).max().unwrap();
+    }).max().unwrap_or(MetadataKind::None);
 
     if kind == MetadataKind::None {
         return (metadata_llcx,
