@@ -93,7 +93,7 @@ impl !Sync for LexError {}
 impl TokenStream {
     /// Returns an empty `TokenStream` containing no token trees.
     #[unstable(feature = "proc_macro", issue = "38356")]
-    pub fn empty() -> TokenStream {
+    pub fn new() -> TokenStream {
         TokenStream(tokenstream::TokenStream::empty())
     }
 
