@@ -29,7 +29,7 @@ use util::nodemap::{NodeSet, FxHashSet};
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr;
-use hir;
+use hir::{self, GenericParamKind};
 use hir::def_id::LOCAL_CRATE;
 use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::itemlikevisit::ItemLikeVisitor;
@@ -38,7 +38,13 @@ use hir::intravisit;
 // Returns true if the given set of generics implies that the item it's
 // associated with must be inlined.
 fn generics_require_inlining(generics: &hir::Generics) -> bool {
-    generics.params.iter().any(|param| param.is_type_param())
+    for param in &generics.params {
+        match param.kind {
+            GenericParamKind::Lifetime { .. } => {}
+            GenericParamKind::Type { .. } => return true,
+        }
+    }
+    false
 }
 
 // Returns true if the given item must be inlined because it may be

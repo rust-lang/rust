@@ -497,20 +497,6 @@ pub struct GenericParam {
 }
 
 impl GenericParam {
-    pub fn is_lifetime_param(&self) -> bool {
-        match self.kind {
-            GenericParamKind::Lifetime { .. } => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_type_param(&self) -> bool {
-        match self.kind {
-            GenericParamKind::Type { .. } => true,
-            _ => false,
-        }
-    }
-
     pub fn name(&self) -> Name {
         match self.kind {
             GenericParamKind::Lifetime { name, .. } => name.name(),
