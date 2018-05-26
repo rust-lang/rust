@@ -45,7 +45,6 @@
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
-#![feature(entry_or_default)]
 #![feature(from_ref)]
 #![feature(fs_read_write)]
 #![feature(iterator_find_map)]
