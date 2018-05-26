@@ -364,7 +364,6 @@ pub mod builtin {
     ///
     /// let s = fmt::format(format_args!("hello {}", "world"));
     /// assert_eq!(s, format!("hello {}", "world"));
-    ///
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
@@ -379,7 +378,7 @@ pub mod builtin {
     /// compile time, yielding an expression of type `&'static str`.
     ///
     /// If the environment variable is not defined, then a compilation error
-    /// will be emitted.  To not emit a compile error, use the [`option_env!`]
+    /// will be emitted. To not emit a compile error, use the [`option_env!`]
     /// macro instead.
     ///
     /// [`option_env!`]: ../std/macro.option_env.html
@@ -389,6 +388,20 @@ pub mod builtin {
     /// ```
     /// let path: &'static str = env!("PATH");
     /// println!("the $PATH variable at the time of compiling was: {}", path);
+    /// ```
+    ///
+    /// You can customize the error message by passing a string as the second
+    /// parameter:
+    ///
+    /// ```compile_fail
+    /// let doc: &'static str = env!("documentation", "what's that?!");
+    /// ```
+    ///
+    /// If the `documentation` environment variable is not defined, you'll get
+    /// the following error:
+    ///
+    /// ```text
+    /// error: what's that?!
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
