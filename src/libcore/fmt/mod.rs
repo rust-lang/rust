@@ -1202,6 +1202,23 @@ impl<'a> Formatter<'a> {
     ///               is longer than this length
     ///
     /// Notably this function ignores the `flag` parameters.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo;
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         formatter.pad("Foo")
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(&format!("{:<4}", Foo), "Foo ");
+    /// assert_eq!(&format!("{:0>4}", Foo), "0Foo");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pad(&mut self, s: &str) -> Result {
         // Make sure there's a fast path up front
@@ -1368,7 +1385,7 @@ impl<'a> Formatter<'a> {
         self.buf.write_str(data)
     }
 
-    /// Writes some formatted information into this instance
+    /// Writes some formatted information into this instance.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_fmt(&mut self, fmt: Arguments) -> Result {
         write(self.buf, fmt)
@@ -1381,11 +1398,69 @@ impl<'a> Formatter<'a> {
                                  or `sign_aware_zero_pad` methods instead")]
     pub fn flags(&self) -> u32 { self.flags }
 
-    /// Character used as 'fill' whenever there is alignment
+    /// Character used as 'fill' whenever there is alignment.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo;
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         let c = formatter.fill();
+    ///         if let Some(width) = formatter.width() {
+    ///             for _ in 0..width {
+    ///                 write!(formatter, "{}", c)?;
+    ///             }
+    ///             Ok(())
+    ///         } else {
+    ///             write!(formatter, "{}", c)
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// // We set alignment to the left with ">".
+    /// assert_eq!(&format!("{:G>3}", Foo), "GGG");
+    /// assert_eq!(&format!("{:t>6}", Foo), "tttttt");
+    /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn fill(&self) -> char { self.fill }
 
-    /// Flag indicating what form of alignment was requested
+    /// Flag indicating what form of alignment was requested.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(fmt_flags_align)]
+    ///
+    /// extern crate core;
+    ///
+    /// use std::fmt;
+    /// use core::fmt::Alignment;
+    ///
+    /// struct Foo;
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         let s = match formatter.align() {
+    ///             Alignment::Left    => "left",
+    ///             Alignment::Right   => "right",
+    ///             Alignment::Center  => "center",
+    ///             Alignment::Unknown => "into the void",
+    ///         };
+    ///         write!(formatter, "{}", s)
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     assert_eq!(&format!("{:<}", Foo), "left");
+    ///     assert_eq!(&format!("{:>}", Foo), "right");
+    ///     assert_eq!(&format!("{:^}", Foo), "center");
+    ///     assert_eq!(&format!("{}", Foo), "into the void");
+    /// }
+    /// ```
     #[unstable(feature = "fmt_flags_align", reason = "method was just created",
                issue = "27726")]
     pub fn align(&self) -> Alignment {
