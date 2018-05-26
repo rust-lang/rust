@@ -189,7 +189,7 @@ impl<'a> FmtVisitor<'a> {
             debug!("{:?}: {:?}", kind, subslice);
 
             let newline_count = count_newlines(subslice);
-            let within_file_lines_range = self.config.file_lines().intersects_range(
+            let within_file_lines_range = self.config.file_lines().contains_range(
                 file_name,
                 status.cur_line,
                 status.cur_line + newline_count,
