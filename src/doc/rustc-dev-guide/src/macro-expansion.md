@@ -89,7 +89,7 @@ against the pattern `ms`. Using our examples, `tts` could be the stream of
 tokens containing the inside of the example invocation `print foo`, while `ms`
 might be the sequence of token (trees) `print $mvar:ident`.
 
-The output of the parser is a `NamedParserResult`, which indicates which of
+The output of the parser is a `NamedParseResult`, which indicates which of
 three cases has occured:
 
 - Success: `tts` matches the given matcher `ms`, and we have produced a binding
