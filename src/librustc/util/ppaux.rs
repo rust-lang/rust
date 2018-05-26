@@ -287,7 +287,7 @@ impl PrintContext {
                     DefPathData::MacroDef(_) |
                     DefPathData::ClosureExpr |
                     DefPathData::TypeParam(_) |
-                    DefPathData::LifetimeDef(_) |
+                    DefPathData::LifetimeParam(_) |
                     DefPathData::Field(_) |
                     DefPathData::StructCtor |
                     DefPathData::AnonConst |

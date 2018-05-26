@@ -699,7 +699,7 @@ impl<'a> LoweringContext<'a> {
                 self.resolver.definitions().create_def_with_parent(
                     parent_id.index,
                     def_node_id,
-                    DefPathData::LifetimeDef(str_name.as_interned_str()),
+                    DefPathData::LifetimeParam(str_name.as_interned_str()),
                     DefIndexAddressSpace::High,
                     Mark::root(),
                     span,
@@ -1424,7 +1424,7 @@ impl<'a> LoweringContext<'a> {
                     self.context.resolver.definitions().create_def_with_parent(
                         self.parent,
                         def_node_id,
-                        DefPathData::LifetimeDef(name.name().as_interned_str()),
+                        DefPathData::LifetimeParam(name.name().as_interned_str()),
                         DefIndexAddressSpace::High,
                         Mark::root(),
                         lifetime.span,
