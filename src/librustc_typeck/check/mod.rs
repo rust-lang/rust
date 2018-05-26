@@ -3764,6 +3764,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   }
 
                   ctxt.may_break = true;
+
+                  // the type of a `break` is always `!`, since it diverges
+                  tcx.types.never
               } else {
                   // Otherwise, we failed to find the enclosing loop;
                   // this can only happen if the `break` was not
@@ -3784,10 +3787,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           }
                       }
                   }
+                  // There was an error, make typecheck fail
+                  tcx.types.err
               }
 
-              // the type of a `break` is always `!`, since it diverges
-              tcx.types.never
           }
           hir::ExprAgain(_) => { tcx.types.never }
           hir::ExprRet(ref expr_opt) => {
