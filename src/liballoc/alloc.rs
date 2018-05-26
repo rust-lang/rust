@@ -133,6 +133,7 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
     }
 }
 
+#[rustc_allocator_nounwind]
 pub fn oom() -> ! {
     extern {
         #[lang = "oom"]
