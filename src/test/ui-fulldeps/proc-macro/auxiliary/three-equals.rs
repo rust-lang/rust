@@ -50,7 +50,7 @@ fn parse(input: TokenStream) -> Result<(), Diagnostic> {
 pub fn three_equals(input: TokenStream) -> TokenStream {
     if let Err(diag) = parse(input) {
         diag.emit();
-        return TokenStream::empty();
+        return TokenStream::new();
     }
 
     "3".parse().unwrap()
