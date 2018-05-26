@@ -1,4 +1,4 @@
-error[E0658]: parentheses in patterns are unstable
+error[E0658]: parentheses in patterns are unstable (see issue #51087)
   --> $DIR/feature-gate-pattern_parentheses.rs:13:9
    |
 LL |         (pat) => {} //~ ERROR parentheses in patterns are unstable

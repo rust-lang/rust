@@ -1,4 +1,4 @@
-error[E0658]: attribute is currently unstable
+error[E0658]: attribute is currently unstable (see issue #51088)
   --> $DIR/feature-gate-wasm_custom_section.rs:11:1
    |
 LL | #[wasm_custom_section = "foo"] //~ ERROR: attribute is currently unstable
