@@ -8,17 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
-
+#![feature(rustc_attrs)]
 #![feature(infer_outlives_requirements)]
-// Outlives requirementes are inferred (RFC 2093)
+#![feature(untagged_unions)]
+#![allow(unions_with_drop_fields)]
 
-// nested-structs: infer U: 'b and therefore T: 'a
-struct NestFoo<'a, T> {
-    field1: NestBar<'a, T>
+
+#[rustc_outlives]
+union Foo<'b, U> { //~ ERROR 18:1: 20:2: rustc_outlives
+    bar: Bar<'b, U>
 }
-struct NestBar<'b, U> {
-    field2: &'b U
+
+union Bar<'a, T> where T: 'a {
+    x: &'a (),
+    y: T,
 }
 
 fn main() {}

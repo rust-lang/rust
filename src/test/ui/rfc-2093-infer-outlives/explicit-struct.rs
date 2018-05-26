@@ -8,16 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
-
+#![feature(rustc_attrs)]
 #![feature(infer_outlives_requirements)]
-// Outlives requirementes are inferred (RFC 2093)
 
-// reference: infer T: 'a
-struct RefFoo<'a, T> {
-    bar: &'a [T]
+#[rustc_outlives]
+struct Foo<'b, U> { //~ ERROR 15:1: 17:2: rustc_outlives
+    bar: Bar<'b, U>
 }
 
+struct Bar<'a, T> where T: 'a {
+    x: &'a (),
+    y: T,
+}
 
 fn main() {}
 

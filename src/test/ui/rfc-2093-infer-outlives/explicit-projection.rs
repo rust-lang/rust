@@ -8,31 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
-
+#![feature(rustc_attrs)]
 #![feature(infer_outlives_requirements)]
 
-// Type T needs to outlive lifetime 'a.
-enum Foo<'a, T> {
-
-    One(Bar<'a, T>)
+trait Trait<'x, T> where T: 'x {
+    type Type;
 }
 
-// Type U needs to outlive lifetime 'b
-struct Bar<'b, U> {
-    field2: &'b U
-}
-
-
-
-// Type K needs to outlive lifetime 'c.
-enum Ying<'c, K> {
-    One(&'c Yang<K>)
-}
-
-struct Yang<V> {
-    field2: V
+#[rustc_outlives]
+struct Foo<'a, A, B> where A: Trait<'a, B> //~ ERROR rustc_outlives
+{
+    foo: <A as Trait<'a, B>>::Type
 }
 
 fn main() {}
-

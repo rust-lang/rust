@@ -8,23 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-tidy-linelength
+#![feature(rustc_attrs)]
+#![feature(infer_outlives_requirements)]
 
-// Needs an explicit where clause stating outlives condition. (RFC 2093)
-
-trait MakeRef<'a> {
-    type Type;
+#[rustc_outlives]
+struct Foo<'a, T: Iterator> { //~ ERROR rustc_outlives
+    bar: &'a T::Item
 }
 
-impl<'a, T> MakeRef<'a> for Vec<T>
-  where T: 'a
-{
-    type Type = &'a T;
-}
+fn main() {}
 
-// Type T needs to outlive lifetime 'a, as stated in impl.
-struct Foo<'a, T> {
-    foo: <Vec<T> as MakeRef<'a>>::Type //~ Error the parameter type `T` may not live long enough [E0309]
-}
-
-fn main() { }
