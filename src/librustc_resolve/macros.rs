@@ -649,7 +649,7 @@ impl<'a> Resolver<'a> {
                             format!("cannot find derive macro `{}` in this scope", ident),
                     };
                     let mut err = self.session.struct_span_err(span, &msg);
-                    self.suggest_macro_name(&ident.name.as_str(), kind, &mut err, span);
+                    self.suggest_macro_name(&ident.as_str(), kind, &mut err, span);
                     err.emit();
                 },
                 _ => {},

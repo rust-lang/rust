@@ -1214,14 +1214,14 @@ impl TokenTree {
             SingleQuote => op!('\''),
 
             Ident(ident, false) => {
-                tt!(self::Ident::new(&ident.name.as_str(), Span(span)))
+                tt!(self::Ident::new(&ident.as_str(), Span(span)))
             }
             Ident(ident, true) => {
-                tt!(self::Ident::new_raw(&ident.name.as_str(), Span(span)))
+                tt!(self::Ident::new_raw(&ident.as_str(), Span(span)))
             }
             Lifetime(ident) => {
                 let ident = ident.without_first_quote();
-                stack.push(tt!(self::Ident::new(&ident.name.as_str(), Span(span))));
+                stack.push(tt!(self::Ident::new(&ident.as_str(), Span(span))));
                 tt!(Punct::new('\'', Spacing::Joint))
             }
             Literal(lit, suffix) => tt!(self::Literal { lit, suffix, span: Span(span) }),

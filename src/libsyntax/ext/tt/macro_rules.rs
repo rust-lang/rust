@@ -148,7 +148,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                 };
                 let mut p = Parser::new(cx.parse_sess(), tts, Some(directory), true, false);
                 p.root_module_name = cx.current_expansion.module.mod_path.last()
-                    .map(|id| id.name.as_str().to_string());
+                    .map(|id| id.as_str().to_string());
 
                 p.process_potential_macro_variable();
                 // Let the context choose how to interpret the result.
@@ -730,7 +730,7 @@ fn check_matcher_core(sess: &ParseSess,
         'each_last: for token in &last.tokens {
             if let TokenTree::MetaVarDecl(_, ref name, ref frag_spec) = *token {
                 for next_token in &suffix_first.tokens {
-                    match is_in_follow(next_token, &frag_spec.name.as_str()) {
+                    match is_in_follow(next_token, &frag_spec.as_str()) {
                         Err((msg, help)) => {
                             sess.span_diagnostic.struct_span_err(next_token.span(), &msg)
                                 .help(help).emit();
@@ -768,7 +768,7 @@ fn check_matcher_core(sess: &ParseSess,
 
 fn token_can_be_followed_by_any(tok: &quoted::TokenTree) -> bool {
     if let quoted::TokenTree::MetaVarDecl(_, _, frag_spec) = *tok {
-        frag_can_be_followed_by_any(&frag_spec.name.as_str())
+        frag_can_be_followed_by_any(&frag_spec.as_str())
     } else {
         // (Non NT's can always be followed by anthing in matchers.)
         true
@@ -893,7 +893,7 @@ fn has_legal_fragment_specifier(sess: &ParseSess,
                                 tok: &quoted::TokenTree) -> Result<(), String> {
     debug!("has_legal_fragment_specifier({:?})", tok);
     if let quoted::TokenTree::MetaVarDecl(_, _, ref frag_spec) = *tok {
-        let frag_name = frag_spec.name.as_str();
+        let frag_name = frag_spec.as_str();
         let frag_span = tok.span();
         if !is_legal_fragment_specifier(sess, features, attrs, &frag_name, frag_span) {
             return Err(frag_name.to_string());

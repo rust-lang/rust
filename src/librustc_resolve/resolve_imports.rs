@@ -831,7 +831,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     }
                 });
                 let lev_suggestion =
-                    match find_best_match_for_name(names, &ident.name.as_str(), None) {
+                    match find_best_match_for_name(names, &ident.as_str(), None) {
                         Some(name) => format!(". Did you mean to use `{}`?", name),
                         None => "".to_owned(),
                     };

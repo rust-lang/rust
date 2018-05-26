@@ -324,7 +324,7 @@ impl<'a> Classifier<'a> {
 
             // Keywords are also included in the identifier set.
             token::Ident(ident, is_raw) => {
-                match &*ident.name.as_str() {
+                match &*ident.as_str() {
                     "ref" | "mut" if !is_raw => Class::RefKeyWord,
 
                     "self" | "Self" => Class::Self_,

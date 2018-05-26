@@ -1565,7 +1565,7 @@ impl<'a> State<'a> {
         if ident.is_raw_guess() {
             self.s.word(&format!("r#{}", ident.name))?;
         } else {
-            self.s.word(&ident.name.as_str())?;
+            self.s.word(&ident.as_str())?;
         }
         self.ann.post(self, NodeName(&ident.name))
     }

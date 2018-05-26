@@ -3076,7 +3076,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
                 ty::TyTuple(ref tys) => {
-                    let fstr = field.name.as_str();
+                    let fstr = field.as_str();
                     if let Ok(index) = fstr.parse::<usize>() {
                         if fstr == index.to_string() {
                             if let Some(field_ty) = tys.get(index) {
@@ -3123,7 +3123,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ty::TyAdt(def, _) if !def.is_enum() => {
                         if let Some(suggested_field_name) =
                             Self::suggest_field_name(def.non_enum_variant(),
-                                                     &field.name.as_str(), vec![]) {
+                                                     &field.as_str(), vec![]) {
                                 err.span_label(field.span,
                                                format!("did you mean `{}`?", suggested_field_name));
                             } else {
@@ -3161,7 +3161,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           -> Option<Symbol> {
         let names = variant.fields.iter().filter_map(|field| {
             // ignore already set fields and private fields from non-local crates
-            if skip.iter().any(|x| *x == field.ident.name.as_str()) ||
+            if skip.iter().any(|x| *x == field.ident.as_str()) ||
                (variant.did.krate != LOCAL_CRATE && field.vis != Visibility::Public) {
                 None
             } else {
@@ -3223,9 +3223,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             },
             ty);
         // prevent all specified fields from being suggested
-        let skip_fields = skip_fields.iter().map(|ref x| x.ident.name.as_str());
+        let skip_fields = skip_fields.iter().map(|ref x| x.ident.as_str());
         if let Some(field_name) = Self::suggest_field_name(variant,
-                                                           &field.ident.name.as_str(),
+                                                           &field.ident.as_str(),
                                                            skip_fields.collect()) {
             err.span_label(field.ident.span,
                            format!("field does not exist - did you mean `{}`?", field_name));
@@ -3334,7 +3334,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             let mut displayable_field_names = remaining_fields
                                               .keys()
-                                              .map(|ident| ident.name.as_str())
+                                              .map(|ident| ident.as_str())
                                               .collect::<Vec<_>>();
 
             displayable_field_names.sort();
