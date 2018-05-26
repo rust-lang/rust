@@ -34,7 +34,7 @@ pub(crate) mod indexes {
 
     macro_rules! new_index {
         ($Index:ident, $debug_name:expr) => {
-            #[derive(Copy, Clone, PartialEq, Eq, Hash)]
+            #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
             pub struct $Index(NonZeroUsize);
 
             impl Idx for $Index {
