@@ -1,0 +1,22 @@
+error[E0426]: use of undeclared label `'L`
+  --> $DIR/issue-50576.rs:12:23
+   |
+LL |     |bool: [u8; break 'L]| 0;
+   |                       ^^ undeclared label `'L`
+
+error[E0268]: `break` outside of loop
+  --> $DIR/issue-50576.rs:12:17
+   |
+LL |     |bool: [u8; break 'L]| 0;
+   |                 ^^^^^^^^ cannot break outside of a loop
+
+error[E0268]: `break` outside of loop
+  --> $DIR/issue-50576.rs:15:16
+   |
+LL |     Vec::<[u8; break]>::new(); //~ ERROR [E0268]
+   |                ^^^^^ cannot break outside of a loop
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0268, E0426.
+For more information about an error, try `rustc --explain E0268`.

@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo() -> bool {
-    //~^ ERROR E0308
-    break true; //~ ERROR E0268
-}
-
 fn main() {
-    break {}; //~ ERROR E0268
+    |bool: [u8; break 'L]| 0;
+    //~^ ERROR [E0426]
+    //~| ERROR [E0268]
+    Vec::<[u8; break]>::new(); //~ ERROR [E0268]
 }
