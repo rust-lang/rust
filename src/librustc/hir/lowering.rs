@@ -1754,12 +1754,16 @@ impl<'a> LoweringContext<'a> {
         itctx: ImplTraitContext,
     ) -> (hir::GenericArgs, bool) {
         let &AngleBracketedArgs { ref args, ref bindings, .. } = data;
+        let has_types = args.iter().any(|arg| match arg {
+            GenericArgAST::Type(_) => true,
+            _ => false,
+        });
         (hir::GenericArgs {
             args: args.iter().map(|a| self.lower_generic_arg(a, itctx)).collect(),
             bindings: bindings.iter().map(|b| self.lower_ty_binding(b, itctx)).collect(),
             parenthesized: false,
         },
-        data.types().count() == 0 && param_mode == ParamMode::Optional)
+        has_types && param_mode == ParamMode::Optional)
     }
 
     fn lower_parenthesized_parameter_data(

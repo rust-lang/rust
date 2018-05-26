@@ -178,28 +178,6 @@ pub struct AngleBracketedArgs {
     pub bindings: Vec<TypeBinding>,
 }
 
-impl AngleBracketedArgs {
-    pub fn lifetimes(&self) -> impl DoubleEndedIterator<Item = &Lifetime> {
-        self.args.iter().filter_map(|arg| {
-            if let GenericArgAST::Lifetime(lt) = arg {
-                Some(lt)
-            } else {
-                None
-            }
-        })
-    }
-
-    pub fn types(&self) -> impl DoubleEndedIterator<Item = &P<Ty>> {
-        self.args.iter().filter_map(|arg| {
-            if let GenericArgAST::Type(ty) = arg {
-                Some(ty)
-            } else {
-                None
-            }
-        })
-    }
-}
-
 impl Into<Option<P<GenericArgs>>> for AngleBracketedArgs {
     fn into(self) -> Option<P<GenericArgs>> {
         Some(P(GenericArgs::AngleBracketed(self)))

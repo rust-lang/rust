@@ -679,12 +679,18 @@ impl<'a> ReplaceBodyWithLoop<'a> {
                     ast::TyKind::Path(_, ref path) => path.segments.iter().any(|seg| {
                         match seg.args.as_ref().map(|generic_arg| &**generic_arg) {
                             None => false,
-                            Some(&ast::GenericArgs::AngleBracketed(ref data)) =>
-                                any_involves_impl_trait(data.types().into_iter()) ||
-                                any_involves_impl_trait(data.bindings.iter().map(|b| &b.ty)),
-                            Some(&ast::GenericArgs::Parenthesized(ref data)) =>
+                            Some(&ast::GenericArgs::AngleBracketed(ref data)) => {
+                                let types = data.args.iter().filter_map(|arg| match arg {
+                                    ast::GenericArgAST::Type(ty) => Some(ty),
+                                    _ => None,
+                                });
+                                any_involves_impl_trait(types.into_iter()) ||
+                                any_involves_impl_trait(data.bindings.iter().map(|b| &b.ty))
+                            },
+                            Some(&ast::GenericArgs::Parenthesized(ref data)) => {
                                 any_involves_impl_trait(data.inputs.iter()) ||
-                                any_involves_impl_trait(data.output.iter()),
+                                any_involves_impl_trait(data.output.iter())
+                            }
                         }
                     }),
                     _ => false,

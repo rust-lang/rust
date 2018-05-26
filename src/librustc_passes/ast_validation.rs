@@ -515,21 +515,24 @@ impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
     }
     fn visit_generic_args(&mut self, _: Span, generic_args: &'a GenericArgs) {
         match *generic_args {
-            GenericArgs::AngleBracketed(ref generic_args) => {
-                for type_ in generic_args.types() {
-                    self.visit_ty(type_);
+            GenericArgs::AngleBracketed(ref data) => {
+                for arg in &data.args {
+                    match arg {
+                        GenericArgAST::Type(ty) => self.visit_ty(ty),
+                        _ => {}
+                    }
                 }
-                for type_binding in &generic_args.bindings {
+                for type_binding in &data.bindings {
                     // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
                     // are allowed to contain nested `impl Trait`.
                     self.with_impl_trait(None, |this| visit::walk_ty(this, &type_binding.ty));
                 }
             }
-            GenericArgs::Parenthesized(ref generic_args) => {
-                for type_ in &generic_args.inputs {
+            GenericArgs::Parenthesized(ref data) => {
+                for type_ in &data.inputs {
                     self.visit_ty(type_);
                 }
-                if let Some(ref type_) = generic_args.output {
+                if let Some(ref type_) = data.output {
                     // `-> Foo` syntax is essentially an associated type binding,
                     // so it is also allowed to contain nested `impl Trait`.
                     self.with_impl_trait(None, |this| visit::walk_ty(this, type_));
