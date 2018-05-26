@@ -191,10 +191,11 @@ pub mod ascii;
 pub mod sync;
 pub mod cell;
 pub mod char;
-pub mod panic;
-pub mod panicking;
+pub mod future;
 pub mod iter;
 pub mod option;
+pub mod panic;
+pub mod panicking;
 pub mod raw;
 pub mod result;
 

@@ -1558,9 +1558,7 @@ pub struct MutTy {
 /// Represents a method's signature in a trait declaration or implementation.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct MethodSig {
-    pub unsafety: Unsafety,
-    pub constness: Constness,
-    pub abi: Abi,
+    pub header: FnHeader,
     pub decl: P<FnDecl>,
 }
 
@@ -1787,7 +1785,13 @@ pub enum IsAuto {
     No
 }
 
-#[derive(Copy, Clone, PartialEq, Eq,PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum IsAsync {
+    Async,
+    NotAsync,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Unsafety {
     Unsafe,
     Normal,
@@ -2063,6 +2067,25 @@ pub struct Item {
     pub span: Span,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct FnHeader {
+    pub unsafety: Unsafety,
+    pub constness: Constness,
+    pub asyncness: IsAsync,
+    pub abi: Abi,
+}
+
+impl Default for FnHeader {
+    fn default() -> FnHeader {
+        FnHeader {
+            unsafety: Unsafety::Normal,
+            constness: Constness::NotConst,
+            asyncness: IsAsync::NotAsync,
+            abi: Abi::Rust,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Item_ {
     /// An `extern crate` item, with optional *original* crate name if the crate was renamed.
@@ -2082,7 +2105,7 @@ pub enum Item_ {
     /// A `const` item
     ItemConst(P<Ty>, BodyId),
     /// A function declaration
-    ItemFn(P<FnDecl>, Unsafety, Constness, Abi, Generics, BodyId),
+    ItemFn(P<FnDecl>, FnHeader, Generics, BodyId),
     /// A module
     ItemMod(Mod),
     /// An external module
@@ -2144,7 +2167,7 @@ impl Item_ {
 
     pub fn generics(&self) -> Option<&Generics> {
         Some(match *self {
-            ItemFn(_, _, _, _, ref generics, _) |
+            ItemFn(_, _, ref generics, _) |
             ItemTy(_, ref generics) |
             ItemEnum(_, ref generics) |
             ItemStruct(_, ref generics) |

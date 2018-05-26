@@ -18,7 +18,7 @@ pub use util::ThinVec;
 pub use util::parser::ExprPrecedence;
 
 use syntax_pos::{Span, DUMMY_SP};
-use codemap::{respan, Spanned};
+use codemap::{dummy_spanned, respan, Spanned};
 use rustc_target::spec::abi::Abi;
 use ext::hygiene::{Mark, SyntaxContext};
 use print::pprust;
@@ -947,7 +947,7 @@ impl Expr {
     /// Whether this expression would be valid somewhere that expects a value, for example, an `if`
     /// condition.
     pub fn returns(&self) -> bool {
-        if let ExprKind::Block(ref block, _) = self.node {
+        if let ExprKind::Block(ref block, ..) = self.node {
             match block.stmts.last().map(|last_stmt| &last_stmt.node) {
                 // implicit return
                 Some(&StmtKind::Expr(_)) => true,
@@ -1027,6 +1027,7 @@ impl Expr {
             ExprKind::Match(..) => ExprPrecedence::Match,
             ExprKind::Closure(..) => ExprPrecedence::Closure,
             ExprKind::Block(..) => ExprPrecedence::Block,
+            ExprKind::Async(..) => ExprPrecedence::Async,
             ExprKind::Catch(..) => ExprPrecedence::Catch,
             ExprKind::Assign(..) => ExprPrecedence::Assign,
             ExprKind::AssignOp(..) => ExprPrecedence::AssignOp,
@@ -1133,11 +1134,13 @@ pub enum ExprKind {
     /// A closure (for example, `move |a, b, c| a + b + c`)
     ///
     /// The final span is the span of the argument block `|...|`
-    Closure(CaptureBy, Movability, P<FnDecl>, P<Expr>, Span),
+    Closure(CaptureBy, IsAsync, Movability, P<FnDecl>, P<Expr>, Span),
     /// A block (`'label: { ... }`)
     Block(P<Block>, Option<Label>),
     /// A catch block (`catch { ... }`)
     Catch(P<Block>),
+    /// An async block
+    Async(P<Block>),
 
     /// An assignment (`a = foo()`)
     Assign(P<Expr>, P<Expr>),
@@ -1364,9 +1367,7 @@ pub struct MutTy {
 /// or in an implementation.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct MethodSig {
-    pub unsafety: Unsafety,
-    pub constness: Spanned<Constness>,
-    pub abi: Abi,
+    pub header: FnHeader,
     pub decl: P<FnDecl>,
 }
 
@@ -1748,6 +1749,12 @@ pub enum Unsafety {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum IsAsync {
+    Async,
+    NotAsync,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Constness {
     Const,
     NotConst,
@@ -2045,6 +2052,29 @@ pub struct Item {
     pub tokens: Option<TokenStream>,
 }
 
+/// A function header
+///
+/// All the information between the visibility & the name of the function is
+/// included in this struct (e.g. `async unsafe fn` or `const extern "C" fn`)
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct FnHeader {
+    pub unsafety: Unsafety,
+    pub asyncness: IsAsync,
+    pub constness: Spanned<Constness>,
+    pub abi: Abi,
+}
+
+impl Default for FnHeader {
+    fn default() -> FnHeader {
+        FnHeader {
+            unsafety: Unsafety::Normal,
+            asyncness: IsAsync::NotAsync,
+            constness: dummy_spanned(Constness::NotConst),
+            abi: Abi::Rust,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum ItemKind {
     /// An `extern crate` item, with optional *original* crate name if the crate was renamed.
@@ -2066,7 +2096,7 @@ pub enum ItemKind {
     /// A function declaration (`fn` or `pub fn`).
     ///
     /// E.g. `fn foo(bar: usize) -> usize { .. }`
-    Fn(P<FnDecl>, Unsafety, Spanned<Constness>, Abi, Generics, P<Block>),
+    Fn(P<FnDecl>, FnHeader, Generics, P<Block>),
     /// A module declaration (`mod` or `pub mod`).
     ///
     /// E.g. `mod foo;` or `mod foo { .. }`

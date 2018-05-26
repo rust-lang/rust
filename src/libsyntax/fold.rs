@@ -908,11 +908,11 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
         ItemKind::Const(t, e) => {
             ItemKind::Const(folder.fold_ty(t), folder.fold_expr(e))
         }
-        ItemKind::Fn(decl, unsafety, constness, abi, generics, body) => {
+        ItemKind::Fn(decl, header, generics, body) => {
             let generics = folder.fold_generics(generics);
             let decl = folder.fold_fn_decl(decl);
             let body = folder.fold_block(body);
-            ItemKind::Fn(decl, unsafety, constness, abi, generics, body)
+            ItemKind::Fn(decl, header, generics, body)
         }
         ItemKind::Mod(m) => ItemKind::Mod(folder.fold_mod(m)),
         ItemKind::ForeignMod(nm) => ItemKind::ForeignMod(folder.fold_foreign_mod(nm)),
@@ -1109,9 +1109,7 @@ pub fn noop_fold_foreign_item_simple<T: Folder>(ni: ForeignItem, folder: &mut T)
 
 pub fn noop_fold_method_sig<T: Folder>(sig: MethodSig, folder: &mut T) -> MethodSig {
     MethodSig {
-        abi: sig.abi,
-        unsafety: sig.unsafety,
-        constness: sig.constness,
+        header: sig.header,
         decl: folder.fold_fn_decl(sig.decl)
     }
 }
@@ -1267,8 +1265,9 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 ExprKind::Match(folder.fold_expr(expr),
                           arms.move_map(|x| folder.fold_arm(x)))
             }
-            ExprKind::Closure(capture_clause, movability, decl, body, span) => {
+            ExprKind::Closure(capture_clause, asyncness, movability, decl, body, span) => {
                 ExprKind::Closure(capture_clause,
+                                  asyncness,
                                   movability,
                                   folder.fold_fn_decl(decl),
                                   folder.fold_expr(body),
@@ -1350,6 +1349,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
             ExprKind::Yield(ex) => ExprKind::Yield(ex.map(|x| folder.fold_expr(x))),
             ExprKind::Try(ex) => ExprKind::Try(folder.fold_expr(ex)),
             ExprKind::Catch(body) => ExprKind::Catch(folder.fold_block(body)),
+            ExprKind::Async(body) => ExprKind::Async(folder.fold_block(body)),
         },
         id: folder.new_id(id),
         span: folder.new_span(span),

@@ -39,6 +39,10 @@ pub struct UnsafetySpace(pub hir::Unsafety);
 /// with a space after it.
 #[derive(Copy, Clone)]
 pub struct ConstnessSpace(pub hir::Constness);
+/// Similarly to VisSpace, this structure is used to render a function asyncness
+/// with a space after it.
+#[derive(Copy, Clone)]
+pub struct AsyncSpace(pub hir::IsAsync);
 /// Similar to VisSpace, but used for mutability
 #[derive(Copy, Clone)]
 pub struct MutableSpace(pub clean::Mutability);
@@ -958,6 +962,15 @@ impl fmt::Display for ConstnessSpace {
         match self.get() {
             hir::Constness::Const => write!(f, "const "),
             hir::Constness::NotConst => Ok(())
+        }
+    }
+}
+
+impl fmt::Display for AsyncSpace {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.0 {
+            hir::IsAsync::Async => write!(f, "async "),
+            hir::IsAsync::NotAsync => Ok(()),
         }
     }
 }

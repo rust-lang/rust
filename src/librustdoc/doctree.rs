@@ -13,7 +13,6 @@
 pub use self::StructType::*;
 pub use self::TypeBound::*;
 
-use rustc_target::spec::abi;
 use syntax::ast;
 use syntax::ast::{Name, NodeId};
 use syntax::attr;
@@ -149,11 +148,9 @@ pub struct Function {
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
     pub depr: Option<attr::Deprecation>,
-    pub unsafety: hir::Unsafety,
-    pub constness: hir::Constness,
+    pub header: hir::FnHeader,
     pub whence: Span,
     pub generics: hir::Generics,
-    pub abi: abi::Abi,
     pub body: hir::BodyId,
 }
 

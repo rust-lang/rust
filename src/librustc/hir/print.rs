@@ -446,9 +446,7 @@ impl<'a> State<'a> {
             hir::ForeignItemFn(ref decl, ref arg_names, ref generics) => {
                 self.head("")?;
                 self.print_fn(decl,
-                              hir::Unsafety::Normal,
-                              hir::Constness::NotConst,
-                              Abi::Rust,
+                              hir::FnHeader::default(),
                               Some(item.name),
                               generics,
                               &item.vis,
@@ -585,12 +583,10 @@ impl<'a> State<'a> {
                 self.s.word(";")?;
                 self.end()?; // end the outer cbox
             }
-            hir::ItemFn(ref decl, unsafety, constness, abi, ref typarams, body) => {
+            hir::ItemFn(ref decl, header, ref typarams, body) => {
                 self.head("")?;
                 self.print_fn(decl,
-                              unsafety,
-                              constness,
-                              abi,
+                              header,
                               Some(item.name),
                               typarams,
                               &item.vis,
@@ -887,9 +883,7 @@ impl<'a> State<'a> {
                             body_id: Option<hir::BodyId>)
                             -> io::Result<()> {
         self.print_fn(&m.decl,
-                      m.unsafety,
-                      m.constness,
-                      m.abi,
+                      m.header,
                       Some(name),
                       generics,
                       vis,
@@ -1924,16 +1918,14 @@ impl<'a> State<'a> {
 
     pub fn print_fn(&mut self,
                     decl: &hir::FnDecl,
-                    unsafety: hir::Unsafety,
-                    constness: hir::Constness,
-                    abi: Abi,
+                    header: hir::FnHeader,
                     name: Option<ast::Name>,
                     generics: &hir::Generics,
                     vis: &hir::Visibility,
                     arg_names: &[Spanned<ast::Name>],
                     body_id: Option<hir::BodyId>)
                     -> io::Result<()> {
-        self.print_fn_header_info(unsafety, constness, abi, vis)?;
+        self.print_fn_header_info(header, vis)?;
 
         if let Some(name) = name {
             self.nbsp()?;
@@ -2189,9 +2181,10 @@ impl<'a> State<'a> {
             span: syntax_pos::DUMMY_SP,
         };
         self.print_fn(decl,
-                      unsafety,
-                      hir::Constness::NotConst,
-                      abi,
+                      hir::FnHeader {
+                          unsafety, abi,
+                          ..hir::FnHeader::default()
+                      },
                       name,
                       &generics,
                       &hir::Inherited,
@@ -2262,22 +2255,26 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_header_info(&mut self,
-                                unsafety: hir::Unsafety,
-                                constness: hir::Constness,
-                                abi: Abi,
+                                header: hir::FnHeader,
                                 vis: &hir::Visibility)
                                 -> io::Result<()> {
         self.s.word(&visibility_qualified(vis, ""))?;
-        self.print_unsafety(unsafety)?;
 
-        match constness {
+        match header.constness {
             hir::Constness::NotConst => {}
             hir::Constness::Const => self.word_nbsp("const")?,
         }
 
-        if abi != Abi::Rust {
+        match header.asyncness {
+            hir::IsAsync::NotAsync => {}
+            hir::IsAsync::Async => self.word_nbsp("async")?,
+        }
+
+        self.print_unsafety(header.unsafety)?;
+
+        if header.abi != Abi::Rust {
             self.word_nbsp("extern")?;
-            self.word_nbsp(&abi.to_string())?;
+            self.word_nbsp(&header.abi.to_string())?;
         }
 
         self.s.word("fn")

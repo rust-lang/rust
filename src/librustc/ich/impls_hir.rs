@@ -260,9 +260,7 @@ impl_stable_hash_for!(struct hir::MutTy {
 });
 
 impl_stable_hash_for!(struct hir::MethodSig {
-    unsafety,
-    constness,
-    abi,
+    header,
     decl
 });
 
@@ -271,6 +269,13 @@ impl_stable_hash_for!(struct hir::TypeBinding {
     name,
     ty,
     span
+});
+
+impl_stable_hash_for!(struct hir::FnHeader {
+    unsafety,
+    constness,
+    asyncness,
+    abi
 });
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Ty {
@@ -877,7 +882,7 @@ impl_stable_hash_for!(enum hir::Item_ {
     ItemUse(path, use_kind),
     ItemStatic(ty, mutability, body_id),
     ItemConst(ty, body_id),
-    ItemFn(fn_decl, unsafety, constness, abi, generics, body_id),
+    ItemFn(fn_decl, header, generics, body_id),
     ItemMod(module),
     ItemForeignMod(foreign_mod),
     ItemGlobalAsm(global_asm),
@@ -1078,6 +1083,10 @@ impl_stable_hash_for!(enum hir::Unsafety {
     Normal
 });
 
+impl_stable_hash_for!(enum hir::IsAsync {
+    Async,
+    NotAsync
+});
 
 impl_stable_hash_for!(enum hir::Constness {
     Const,
