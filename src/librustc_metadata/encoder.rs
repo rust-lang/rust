@@ -1236,9 +1236,14 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 }
                 hir::ItemConst(..) => self.encode_optimized_mir(def_id),
                 hir::ItemFn(_, _, constness, _, ref generics, _) => {
-                    let has_tps = generics.ty_params().next().is_some();
+                    let has_types = generics.params.iter().find(|param| {
+                        match param.kind {
+                            hir::GenericParamKind::Type { .. } => true,
+                            _ => false,
+                        }
+                    }).is_some();
                     let needs_inline =
-                        (has_tps || tcx.codegen_fn_attrs(def_id).requests_inline()) &&
+                        (has_types || tcx.codegen_fn_attrs(def_id).requests_inline()) &&
                             !self.metadata_output_only();
                     let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
                     if needs_inline || constness == hir::Constness::Const || always_encode_mir {

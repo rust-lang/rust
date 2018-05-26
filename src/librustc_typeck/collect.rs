@@ -756,10 +756,15 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             outer_index: ty::INNERMOST,
             has_late_bound_regions: None,
         };
-        for lifetime in generics.lifetimes() {
-            let hir_id = tcx.hir.node_to_hir_id(lifetime.id);
-            if tcx.is_late_bound(hir_id) {
-                return Some(lifetime.span);
+        for param in &generics.params {
+            match param.kind {
+                GenericParamKind::Lifetime { .. } => {
+                    let hir_id = tcx.hir.node_to_hir_id(param.id);
+                    if tcx.is_late_bound(hir_id) {
+                        return Some(param.span);
+                    }
+                }
+                _ => {},
             }
         }
         visitor.visit_fn_decl(decl);
@@ -915,7 +920,8 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Now create the real type parameters.
     let type_start = own_start - has_self as u32 + params.len() as u32;
-    params.extend(ast_generics.ty_params().enumerate().map(|(i, param)| {
+    let mut i = 0;
+    params.extend(ast_generics.params.iter().filter_map(|param| {
         match param.kind {
             GenericParamKind::Type { ref default, synthetic, .. } => {
                 if param.name() == keywords::SelfType.name() {
@@ -934,7 +940,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     }
                 }
 
-                ty::GenericParamDef {
+                let ty_param = ty::GenericParamDef {
                     index: type_start + i as u32,
                     name: param.name().as_interned_str(),
                     def_id: tcx.hir.local_def_id(param.id),
@@ -945,9 +951,11 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             object_lifetime_defaults.as_ref().map_or(rl::Set1::Empty, |o| o[i]),
                         synthetic,
                     },
-                }
+                };
+                i += 1;
+                Some(ty_param)
             }
-            _ => bug!()
+            _ => None,
         }
     }));
 
@@ -1462,20 +1470,22 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T:Foo>`).
-    for param in ast_generics.ty_params() {
-        let param_ty = ty::ParamTy::new(index, param.name().as_interned_str()).to_ty(tcx);
-        index += 1;
+    for param in &ast_generics.params {
+        match param.kind {
+            GenericParamKind::Type { ref bounds, .. } => {
+                let param_ty = ty::ParamTy::new(index, param.name().as_interned_str())
+                                           .to_ty(tcx);
+                index += 1;
 
-        let bounds = match param.kind {
-            GenericParamKind::Type { ref bounds, .. } => bounds,
-            _ => bug!(),
-        };
-        let bounds = compute_bounds(&icx,
-                                    param_ty,
-                                    bounds,
-                                    SizedByDefault::Yes,
-                                    param.span);
-        predicates.extend(bounds.predicates(tcx, param_ty));
+                let bounds = compute_bounds(&icx,
+                                            param_ty,
+                                            bounds,
+                                            SizedByDefault::Yes,
+                                            param.span);
+                predicates.extend(bounds.predicates(tcx, param_ty));
+            }
+            _ => {}
+        }
     }
 
     // Add in the bounds that appear in the where-clause

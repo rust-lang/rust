@@ -519,6 +519,11 @@ impl GenericParam {
     }
 }
 
+pub struct GenericParamCount {
+    pub lifetimes: usize,
+    pub types: usize,
+}
+
 /// Represents lifetimes and type parameters attached to a declaration
 /// of a function, enum, trait, etc.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -540,40 +545,23 @@ impl Generics {
         }
     }
 
-    pub fn is_lt_parameterized(&self) -> bool {
-        self.params.iter().any(|param| {
-            match param.kind {
-                GenericParamKind::Lifetime { .. } => true,
-                _ => false,
-            }
-        })
-    }
+    pub fn own_counts(&self) -> GenericParamCount {
+        // We could cache this as a property of `GenericParamCount`, but
+        // the aim is to refactor this away entirely eventually and the
+        // presence of this method will be a constant reminder.
+        let mut own_counts = GenericParamCount {
+            lifetimes: 0,
+            types: 0,
+        };
 
-    pub fn is_type_parameterized(&self) -> bool {
-        self.params.iter().any(|param| {
+        for param in &self.params {
             match param.kind {
-                GenericParamKind::Type { .. } => true,
-                _ => false,
-            }
-        })
-    }
+                GenericParamKind::Lifetime { .. } => own_counts.lifetimes += 1,
+                GenericParamKind::Type { .. } => own_counts.types += 1,
+            };
+        }
 
-    pub fn lifetimes<'a>(&'a self) -> impl DoubleEndedIterator<Item = &'a GenericParam> {
-        self.params.iter().filter(|param| {
-            match param.kind {
-                GenericParamKind::Lifetime { .. } => true,
-                _ => false,
-            }
-        })
-    }
-
-    pub fn ty_params<'a>(&'a self) -> impl DoubleEndedIterator<Item = &'a GenericParam> {
-        self.params.iter().filter(|param| {
-            match param.kind {
-                GenericParamKind::Type { .. } => true,
-                _ => false,
-            }
-        })
+        own_counts
     }
 }
 

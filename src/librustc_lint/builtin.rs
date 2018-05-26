@@ -1196,15 +1196,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                         }
                         err.emit();
                     }
-                    if generics.is_type_parameterized() {
-                        let mut err = cx.struct_span_lint(NO_MANGLE_GENERIC_ITEMS,
-                                                          it.span,
-                                                          "functions generic over \
-                                                           types must be mangled");
-                        err.span_suggestion_short(no_mangle_attr.span,
-                                                  "remove this attribute",
-                                                  "".to_owned());
-                        err.emit();
+                    for param in &generics.params {
+                        match param.kind {
+                            GenericParamKind::Lifetime { .. } => {}
+                            GenericParamKind::Type { .. } => {
+                                let mut err = cx.struct_span_lint(NO_MANGLE_GENERIC_ITEMS,
+                                                                  it.span,
+                                                                  "functions generic over \
+                                                                   types must be mangled");
+                                err.span_suggestion_short(no_mangle_attr.span,
+                                                          "remove this attribute",
+                                                          "".to_owned());
+                                err.emit();
+                                break;
+                            }
+                        }
                     }
                 }
             }

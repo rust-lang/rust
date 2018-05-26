@@ -1105,8 +1105,11 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       ref generics,
                       ..,
                       ref impl_item_refs) => {
-            if generics.is_type_parameterized() {
-                return
+            for param in &generics.params {
+                match param.kind {
+                    hir::GenericParamKind::Lifetime { .. } => {}
+                    hir::GenericParamKind::Type { .. } => return,
+                }
             }
 
             let impl_def_id = tcx.hir.local_def_id(item.id);

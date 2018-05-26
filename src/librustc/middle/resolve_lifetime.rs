@@ -532,11 +532,18 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 } else {
                     0
                 };
-                let lifetimes = generics
-                    .lifetimes()
-                    .map(|def| Region::early(&self.tcx.hir, &mut index, def))
-                    .collect();
-                let next_early_index = index + generics.ty_params().count() as u32;
+                let mut next_early_index = index;
+                let lifetimes = generics.params.iter().filter_map(|param| {
+                    match param.kind {
+                        GenericParamKind::Lifetime { .. } => {
+                            Some(Region::early(&self.tcx.hir, &mut index, param))
+                        }
+                        GenericParamKind::Type { .. } => {
+                            next_early_index += 1;
+                            None
+                        }
+                    }
+                }).collect();
                 let scope = Scope::Binder {
                     lifetimes,
                     next_early_index,
@@ -691,18 +698,24 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
                 let mut elision = None;
                 let mut lifetimes = FxHashMap();
-                for lt_def in generics.lifetimes() {
-                    let (lt_name, region) = Region::early(&self.tcx.hir, &mut index, &lt_def);
-                    if let hir::LifetimeName::Underscore = lt_name {
-                        // Pick the elided lifetime "definition" if one exists and use it to make
-                        // an elision scope.
-                        elision = Some(region);
-                    } else {
-                        lifetimes.insert(lt_name, region);
+                let mut next_early_index = index;
+                for param in &generics.params {
+                    match param.kind {
+                        GenericParamKind::Lifetime { .. } => {
+                            let (name, reg) = Region::early(&self.tcx.hir, &mut index, &param);
+                            if let hir::LifetimeName::Underscore = name {
+                                // Pick the elided lifetime "definition" if one exists
+                                // and use it to make an elision scope.
+                                elision = Some(reg);
+                            } else {
+                                lifetimes.insert(name, reg);
+                            }
+                        }
+                        GenericParamKind::Type { .. } => {
+                            next_early_index += 1;
+                        }
                     }
                 }
-
-                let next_early_index = index + generics.ty_params().count() as u32;
 
                 if let Some(elision_region) = elision {
                     let scope = Scope::Elision {
@@ -760,12 +773,22 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let generics = &trait_item.generics;
                 let mut index = self.next_early_index();
                 debug!("visit_ty: index = {}", index);
-                let lifetimes = generics
-                    .lifetimes()
-                    .map(|lt_def| Region::early(&self.tcx.hir, &mut index, lt_def))
+                let mut next_early_index = index;
+                let lifetimes = generics.params
+                    .iter()
+                    .filter_map(|param| {
+                        match param.kind {
+                            GenericParamKind::Lifetime { .. } => {
+                                Some(Region::early(&self.tcx.hir, &mut index, param))
+                            }
+                            GenericParamKind::Type { .. } => {
+                                next_early_index += 1;
+                                None
+                            }
+                        }
+                    })
                     .collect();
 
-                let next_early_index = index + generics.ty_params().count() as u32;
                 let scope = Scope::Binder {
                     lifetimes,
                     next_early_index,
@@ -806,13 +829,23 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             Type(ref ty) => {
                 let generics = &impl_item.generics;
                 let mut index = self.next_early_index();
+                let mut next_early_index = index;
                 debug!("visit_ty: index = {}", index);
-                let lifetimes = generics
-                    .lifetimes()
-                    .map(|lt_def| Region::early(&self.tcx.hir, &mut index, lt_def))
+                let lifetimes = generics.params
+                    .iter()
+                    .filter_map(|param| {
+                        match param.kind {
+                            GenericParamKind::Lifetime { .. } => {
+                                Some(Region::early(&self.tcx.hir, &mut index, param))
+                            }
+                            GenericParamKind::Type { .. } => {
+                                next_early_index += 1;
+                                None
+                            }
+                        }
+                    })
                     .collect();
 
-                let next_early_index = index + generics.ty_params().count() as u32;
                 let scope = Scope::Binder {
                     lifetimes,
                     next_early_index,
@@ -863,9 +896,15 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
+
         check_mixed_explicit_and_in_band_defs(
             self.tcx,
-            &generics.lifetimes().cloned().collect::<Vec<_>>(),
+            &generics.params.iter().filter_map(|param| {
+                match param.kind {
+                    GenericParamKind::Lifetime { .. } => Some(param.clone()),
+                    _ => None,
+                }
+            }).collect::<Vec<_>>()
         );
         for param in &generics.params {
             match param.kind {
@@ -1216,12 +1255,18 @@ fn compute_object_lifetime_defaults(
                         .map(|set| match *set {
                             Set1::Empty => "BaseDefault".to_string(),
                             Set1::One(Region::Static) => "'static".to_string(),
-                            Set1::One(Region::EarlyBound(i, _, _)) => generics
-                                .lifetimes()
-                                .nth(i as usize)
-                                .unwrap()
-                                .name()
-                                .to_string(),
+                            Set1::One(Region::EarlyBound(i, _, _)) => {
+                                let mut j = 0;
+                                generics.params.iter().find(|param| {
+                                    match param.kind {
+                                        GenericParamKind::Lifetime { .. } => j += 1,
+                                        _ => {}
+                                    }
+                                    i == j
+                                }).unwrap()
+                                  .name()
+                                  .to_string()
+                            }
                             Set1::One(_) => bug!(),
                             Set1::Many => "Ambiguous".to_string(),
                         })
@@ -1485,18 +1530,25 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         }
 
-        let lifetimes = generics
-            .lifetimes()
-            .map(|param| {
-                if self.map.late_bound.contains(&param.id) {
-                    Region::late(&self.tcx.hir, param)
-                } else {
-                    Region::early(&self.tcx.hir, &mut index, param)
+        let mut next_early_index = index;
+        let lifetimes = generics.params
+            .iter()
+            .filter_map(|param| {
+                match param.kind {
+                    GenericParamKind::Lifetime { .. } => {
+                        if self.map.late_bound.contains(&param.id) {
+                            Some(Region::late(&self.tcx.hir, param))
+                        } else {
+                            Some(Region::early(&self.tcx.hir, &mut index, param))
+                        }
+                    }
+                    GenericParamKind::Type { .. } => {
+                        next_early_index += 1;
+                        None
+                    }
                 }
             })
             .collect();
-
-        let next_early_index = index + generics.ty_params().count() as u32;
 
         let scope = Scope::Binder {
             lifetimes,
@@ -2513,10 +2565,10 @@ fn insert_late_bound_lifetimes(
     // - appear in the inputs
     // - do not appear in the where-clauses
     // - are not implicitly captured by `impl Trait`
-    for lifetime in generics.lifetimes() {
-        let name = match lifetime.kind {
+    for param in &generics.params {
+        let name = match param.kind {
             GenericParamKind::Lifetime { name, .. } => name,
-            _ => bug!(),
+            _ => continue,
         };
 
         // appears in the where clauses? early-bound.
@@ -2533,10 +2585,10 @@ fn insert_late_bound_lifetimes(
 
         debug!("insert_late_bound_lifetimes: lifetime {:?} with id {:?} is late-bound",
                name,
-               lifetime.id);
+               param.id);
 
-        let inserted = map.late_bound.insert(lifetime.id);
-        assert!(inserted, "visited lifetime {:?} twice", lifetime.id);
+        let inserted = map.late_bound.insert(param.id);
+        assert!(inserted, "visited lifetime {:?} twice", param.id);
     }
 
     return;

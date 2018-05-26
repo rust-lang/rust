@@ -5166,27 +5166,34 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        generics: &hir::Generics,
                                        ty: Ty<'tcx>) {
-    debug!("check_bounds_are_used(n_tps={}, ty={:?})",
-           generics.ty_params().count(),  ty);
+    let own_counts = generics.own_counts();
+    debug!("check_bounds_are_used(n_tps={}, ty={:?})", own_counts.types, ty);
 
-    // make a vector of booleans initially false, set to true when used
-    if generics.ty_params().next().is_none() { return; }
-    let mut tps_used = vec![false; generics.ty_params().count()];
-
-    let lifetime_count = generics.lifetimes().count();
+    if own_counts.types == 0 {
+        return;
+    }
+    // Make a vector of booleans initially false, set to true when used.
+    let mut types_used = vec![false; own_counts.types];
 
     for leaf_ty in ty.walk() {
-        if let ty::TyParam(ty::ParamTy {idx, ..}) = leaf_ty.sty {
+        if let ty::TyParam(ty::ParamTy { idx, .. }) = leaf_ty.sty {
             debug!("Found use of ty param num {}", idx);
-            tps_used[idx as usize - lifetime_count] = true;
+            types_used[idx as usize - own_counts.lifetimes] = true;
         } else if let ty::TyError = leaf_ty.sty {
-            // If there already another error, do not emit an error for not using a type Parameter
+            // If there is already another error, do not emit
+            // an error for not using a type Parameter.
             assert!(tcx.sess.err_count() > 0);
             return;
         }
     }
 
-    for (&used, param) in tps_used.iter().zip(generics.ty_params()) {
+    let types = generics.params.iter().filter(|param| {
+        match param.kind {
+            hir::GenericParamKind::Type { .. } => true,
+            _ => false,
+        }
+    });
+    for (&used, param) in types_used.iter().zip(types) {
         if !used {
             struct_span_err!(tcx.sess, param.span, E0091, "type parameter `{}` is unused",
                              param.name())

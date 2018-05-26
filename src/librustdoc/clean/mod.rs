@@ -41,7 +41,7 @@ use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::def_id::DefIndexAddressSpace;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind, GenericParamCount};
+use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind};
 use rustc::middle::stability;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_typeck::hir_ty_to_ty;
@@ -2863,7 +2863,7 @@ impl Clean<Type> for hir::Ty {
                     let mut ty_substs = FxHashMap();
                     let mut lt_substs = FxHashMap();
                     provided_params.with_generic_args(|generic_args| {
-                        let mut indices = GenericParamCount {
+                        let mut indices = ty::GenericParamCount {
                             lifetimes: 0,
                             types: 0
                         };
