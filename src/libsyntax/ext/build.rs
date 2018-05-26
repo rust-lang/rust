@@ -69,7 +69,7 @@ pub trait AstBuilder {
                id: ast::Ident,
                attrs: Vec<ast::Attribute>,
                bounds: ast::TyParamBounds,
-               default: Option<P<ast::Ty>>) -> ast::TyParam;
+               default: Option<P<ast::Ty>>) -> ast::GenericParamAST;
 
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef;
     fn poly_trait_ref(&self, span: Span, path: ast::Path) -> ast::PolyTraitRef;
@@ -80,7 +80,7 @@ pub trait AstBuilder {
                     ident: ast::Ident,
                     attrs: Vec<ast::Attribute>,
                     bounds: Vec<ast::Lifetime>)
-                    -> ast::LifetimeDef;
+                    -> ast::GenericParamAST;
 
     // statements
     fn stmt_expr(&self, expr: P<ast::Expr>) -> ast::Stmt;
@@ -437,13 +437,15 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                ident: ast::Ident,
                attrs: Vec<ast::Attribute>,
                bounds: ast::TyParamBounds,
-               default: Option<P<ast::Ty>>) -> ast::TyParam {
-        ast::TyParam {
+               default: Option<P<ast::Ty>>) -> ast::GenericParamAST {
+        ast::GenericParamAST {
             ident: ident.with_span_pos(span),
             id: ast::DUMMY_NODE_ID,
             attrs: attrs.into(),
-            bounds,
-            default,
+            kind: ast::GenericParamKindAST::Type {
+                bounds,
+                default,
+            }
         }
     }
 
@@ -475,11 +477,16 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                     ident: ast::Ident,
                     attrs: Vec<ast::Attribute>,
                     bounds: Vec<ast::Lifetime>)
-                    -> ast::LifetimeDef {
-        ast::LifetimeDef {
+                    -> ast::GenericParamAST {
+        let lifetime = self.lifetime(span, ident);
+        ast::GenericParamAST {
+            ident: lifetime.ident,
+            id: lifetime.id,
             attrs: attrs.into(),
-            lifetime: self.lifetime(span, ident),
-            bounds,
+            kind: ast::GenericParamKindAST::Lifetime {
+                lifetime,
+                bounds,
+            }
         }
     }
 

@@ -223,9 +223,9 @@ impl Sig for ast::Ty {
                     text.push_str("for<");
                     text.push_str(&f.generic_params
                         .iter()
-                        .filter_map(|p| match *p {
-                            ast::GenericParamAST::Lifetime(ref l) => {
-                                Some(l.lifetime.ident.to_string())
+                        .filter_map(|param| match param.kind {
+                            ast::GenericParamKindAST::Lifetime { .. } => {
+                                Some(param.ident.to_string())
                             }
                             _ => None,
                         })
@@ -617,45 +617,34 @@ impl Sig for ast::Generics {
 
         let mut defs = vec![];
         for param in &self.params {
-            match *param {
-                ast::GenericParamAST::Lifetime(ref l) => {
-                    let mut l_text = l.lifetime.ident.to_string();
-                    defs.push(SigElement {
-                        id: id_from_node_id(l.lifetime.id, scx),
-                        start: offset + text.len(),
-                        end: offset + text.len() + l_text.len(),
-                    });
-
-                    if !l.bounds.is_empty() {
-                        l_text.push_str(": ");
-                        let bounds = l.bounds
-                            .iter()
+            let mut param_text = param.ident.to_string();
+            defs.push(SigElement {
+                id: id_from_node_id(param.id, scx),
+                start: offset + text.len(),
+                end: offset + text.len() + param_text.len(),
+            });
+            match param.kind {
+                ast::GenericParamKindAST::Lifetime { ref bounds, .. } => {
+                    if !bounds.is_empty() {
+                        param_text.push_str(": ");
+                        let bounds = bounds.iter()
                             .map(|l| l.ident.to_string())
                             .collect::<Vec<_>>()
                             .join(" + ");
-                        l_text.push_str(&bounds);
+                        param_text.push_str(&bounds);
                         // FIXME add lifetime bounds refs.
                     }
-                    text.push_str(&l_text);
-                    text.push(',');
                 }
-                ast::GenericParamAST::Type(ref t) => {
-                    let mut t_text = t.ident.to_string();
-                    defs.push(SigElement {
-                        id: id_from_node_id(t.id, scx),
-                        start: offset + text.len(),
-                        end: offset + text.len() + t_text.len(),
-                    });
-
-                    if !t.bounds.is_empty() {
-                        t_text.push_str(": ");
-                        t_text.push_str(&pprust::bounds_to_string(&t.bounds));
+                ast::GenericParamKindAST::Type { ref bounds, .. } => {
+                    if !bounds.is_empty() {
+                        param_text.push_str(": ");
+                        param_text.push_str(&pprust::bounds_to_string(bounds));
                         // FIXME descend properly into bounds.
                     }
-                    text.push_str(&t_text);
-                    text.push(',');
                 }
             }
+            text.push_str(&param_text);
+            text.push(',');
         }
 
         text.push('>');

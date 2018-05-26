@@ -370,35 +370,38 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         id: NodeId,
     ) {
         for param in &generics.params {
-            if let ast::GenericParamAST::Type(ref ty_param) = *param {
-                let param_ss = ty_param.ident.span;
-                let name = escape(self.span.snippet(param_ss));
-                // Append $id to name to make sure each one is unique
-                let qualname = format!("{}::{}${}", prefix, name, id);
-                if !self.span.filter_generated(Some(param_ss), full_span) {
-                    let id = ::id_from_node_id(ty_param.id, &self.save_ctxt);
-                    let span = self.span_from_span(param_ss);
+            match param.kind {
+                ast::GenericParamKindAST::Lifetime { .. } => {}
+                ast::GenericParamKindAST::Type { .. } => {
+                    let param_ss = param.ident.span;
+                    let name = escape(self.span.snippet(param_ss));
+                    // Append $id to name to make sure each one is unique.
+                    let qualname = format!("{}::{}${}", prefix, name, id);
+                    if !self.span.filter_generated(Some(param_ss), full_span) {
+                        let id = ::id_from_node_id(param.id, &self.save_ctxt);
+                        let span = self.span_from_span(param_ss);
 
-                    self.dumper.dump_def(
-                        &Access {
-                            public: false,
-                            reachable: false,
-                        },
-                        Def {
-                            kind: DefKind::Type,
-                            id,
-                            span,
-                            name,
-                            qualname,
-                            value: String::new(),
-                            parent: None,
-                            children: vec![],
-                            decl_id: None,
-                            docs: String::new(),
-                            sig: None,
-                            attributes: vec![],
-                        },
-                    );
+                        self.dumper.dump_def(
+                            &Access {
+                                public: false,
+                                reachable: false,
+                            },
+                            Def {
+                                kind: DefKind::Type,
+                                id,
+                                span,
+                                name,
+                                qualname,
+                                value: String::new(),
+                                parent: None,
+                                children: vec![],
+                                decl_id: None,
+                                docs: String::new(),
+                                sig: None,
+                                attributes: vec![],
+                            },
+                        );
+                    }
                 }
             }
         }
@@ -1479,14 +1482,17 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
 
     fn visit_generics(&mut self, generics: &'l ast::Generics) {
         for param in &generics.params {
-            if let ast::GenericParamAST::Type(ref ty_param) = *param {
-                for bound in ty_param.bounds.iter() {
-                    if let ast::TraitTyParamBound(ref trait_ref, _) = *bound {
-                        self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)
+            match param.kind {
+                ast::GenericParamKindAST::Lifetime { .. } => {}
+                ast::GenericParamKindAST::Type { ref bounds, ref default, .. } => {
+                    for bound in bounds {
+                        if let ast::TraitTyParamBound(ref trait_ref, _) = *bound {
+                            self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)
+                        }
                     }
-                }
-                if let Some(ref ty) = ty_param.default {
-                    self.visit_ty(&ty);
+                    if let Some(ref ty) = default {
+                        self.visit_ty(&ty);
+                    }
                 }
             }
         }

@@ -139,29 +139,23 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_late_bound_lifetime_defs(&self, params: &Vec<GenericParamAST>) {
-        // Check: Only lifetime parameters
-        let non_lifetime_param_spans : Vec<_> = params.iter()
-            .filter_map(|param| match *param {
-                GenericParamAST::Lifetime(_) => None,
-                GenericParamAST::Type(ref t) => Some(t.ident.span),
+        // Check only lifetime parameters are present and that the lifetime
+        // parameters that are present have no bounds.
+        let non_lifetime_param_spans: Vec<_> = params.iter()
+            .filter_map(|param| match param.kind {
+                GenericParamKindAST::Lifetime { ref bounds, .. } => {
+                    if !bounds.is_empty() {
+                        let spans: Vec<_> = bounds.iter().map(|b| b.ident.span).collect();
+                        self.err_handler().span_err(spans,
+                            "lifetime bounds cannot be used in this context");
+                    }
+                    None
+                }
+                _ => Some(param.ident.span),
             }).collect();
         if !non_lifetime_param_spans.is_empty() {
             self.err_handler().span_err(non_lifetime_param_spans,
                 "only lifetime parameters can be used in this context");
-        }
-
-        // Check: No bounds on lifetime parameters
-        for param in params.iter() {
-            match *param {
-                GenericParamAST::Lifetime(ref l) => {
-                    if !l.bounds.is_empty() {
-                        let spans: Vec<_> = l.bounds.iter().map(|b| b.ident.span).collect();
-                        self.err_handler().span_err(spans,
-                            "lifetime bounds cannot be used in this context");
-                    }
-                }
-                GenericParamAST::Type(_) => {}
-            }
         }
     }
 }
@@ -335,22 +329,21 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::TraitAlias(Generics { ref params, .. }, ..) => {
                 for param in params {
-                    if let GenericParamAST::Type(TyParam {
-                        ident,
-                        ref bounds,
-                        ref default,
-                        ..
-                    }) = *param
-                    {
-                        if !bounds.is_empty() {
-                            self.err_handler().span_err(ident.span,
-                                                        "type parameters on the left side of a \
-                                                         trait alias cannot be bounded");
-                        }
-                        if !default.is_none() {
-                            self.err_handler().span_err(ident.span,
-                                                        "type parameters on the left side of a \
-                                                         trait alias cannot have defaults");
+                    match param.kind {
+                        GenericParamKindAST::Lifetime { .. } => {}
+                        GenericParamKindAST::Type { ref bounds, ref default, .. } => {
+                            if !bounds.is_empty() {
+                                self.err_handler().span_err(param.ident.span,
+                                                            "type parameters on the left side \
+                                                             of a trait alias cannot be \
+                                                             bounded");
+                            }
+                            if !default.is_none() {
+                                self.err_handler().span_err(param.ident.span,
+                                                            "type parameters on the left side \
+                                                             of a trait alias cannot have \
+                                                             defaults");
+                            }
                         }
                     }
                 }
@@ -413,23 +406,22 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         let mut seen_non_lifetime_param = false;
         let mut seen_default = None;
         for param in &g.params {
-            match (param, seen_non_lifetime_param) {
-                (&GenericParamAST::Lifetime(ref ld), true) => {
+            match (&param.kind, seen_non_lifetime_param) {
+                (GenericParamKindAST::Lifetime { .. }, true) => {
                     self.err_handler()
-                        .span_err(ld.lifetime.ident.span, "lifetime parameters must be leading");
+                        .span_err(param.ident.span, "lifetime parameters must be leading");
                 },
-                (&GenericParamAST::Lifetime(_), false) => {}
-                _ => {
+                (GenericParamKindAST::Lifetime { .. }, false) => {}
+                (GenericParamKindAST::Type { ref default, .. }, _) => {
                     seen_non_lifetime_param = true;
+                    if default.is_some() {
+                        seen_default = Some(param.ident.span);
+                    } else if let Some(span) = seen_default {
+                        self.err_handler()
+                            .span_err(span, "type parameters with a default must be trailing");
+                        break;
+                    }
                 }
-            }
-
-            if let GenericParamAST::Type(ref ty_param @ TyParam { default: Some(_), .. }) = *param {
-                seen_default = Some(ty_param.ident.span);
-            } else if let Some(span) = seen_default {
-                self.err_handler()
-                    .span_err(span, "type parameters with a default must be trailing");
-                break
             }
         }
         for predicate in &g.where_clause.predicates {

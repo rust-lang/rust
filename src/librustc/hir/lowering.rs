@@ -759,20 +759,20 @@ impl<'a> LoweringContext<'a> {
         hir_name
     }
 
-    // Evaluates `f` with the lifetimes in `lt_defs` in-scope.
+    // Evaluates `f` with the lifetimes in `params` in-scope.
     // This is used to track which lifetimes have already been defined, and
     // which are new in-band lifetimes that need to have a definition created
     // for them.
     fn with_in_scope_lifetime_defs<'l, T, F>(
         &mut self,
-        lt_defs: impl Iterator<Item = &'l LifetimeDef>,
+        params: impl Iterator<Item = &'l GenericParamAST>,
         f: F,
     ) -> T
     where
         F: FnOnce(&mut LoweringContext) -> T,
     {
         let old_len = self.in_scope_lifetimes.len();
-        let lt_def_names = lt_defs.map(|lt_def| lt_def.lifetime.ident.name);
+        let lt_def_names = params.map(|param| param.ident.name);
         self.in_scope_lifetimes.extend(lt_def_names);
 
         let res = f(self);
@@ -781,8 +781,8 @@ impl<'a> LoweringContext<'a> {
         res
     }
 
-    // Same as the method above, but accepts `hir::LifetimeDef`s
-    // instead of `ast::LifetimeDef`s.
+    // Same as the method above, but accepts `hir::GenericParam`s
+    // instead of `ast::GenericParam`s.
     // This should only be used with generics that have already had their
     // in-band lifetimes added. In practice, this means that this function is
     // only used when lowering a child item of a trait or impl.
@@ -817,8 +817,8 @@ impl<'a> LoweringContext<'a> {
         F: FnOnce(&mut LoweringContext) -> T,
     {
         let (in_band_defs, (mut lowered_generics, res)) = self.with_in_scope_lifetime_defs(
-            generics.params.iter().filter_map(|p| match p {
-                GenericParamAST::Lifetime(ld) => Some(ld),
+            generics.params.iter().filter_map(|param| match param.kind {
+                GenericParamKindAST::Lifetime { .. } => Some(param),
                 _ => None,
             }),
             |this| {
@@ -1076,8 +1076,8 @@ impl<'a> LoweringContext<'a> {
                 hir::TyRptr(lifetime, self.lower_mt(mt, itctx))
             }
             TyKind::BareFn(ref f) => self.with_in_scope_lifetime_defs(
-                f.generic_params.iter().filter_map(|p| match p {
-                    GenericParamAST::Lifetime(ld) => Some(ld),
+                f.generic_params.iter().filter_map(|param| match param.kind {
+                    GenericParamKindAST::Lifetime { .. } => Some(param),
                     _ => None,
                 }),
                 |this| {
@@ -1940,21 +1940,19 @@ impl<'a> LoweringContext<'a> {
                            add_bounds: &NodeMap<Vec<TyParamBound>>,
                            itctx: ImplTraitContext)
                            -> hir::GenericParam {
-        match param {
-            GenericParamAST::Lifetime(ref lifetime_def) => {
+        match param.kind {
+            GenericParamKindAST::Lifetime { ref bounds, ref lifetime, .. } => {
                 let was_collecting_in_band = self.is_collecting_in_band_lifetimes;
                 self.is_collecting_in_band_lifetimes = false;
 
-                let lifetime = self.lower_lifetime(&lifetime_def.lifetime);
+                let lifetime = self.lower_lifetime(lifetime);
                 let param = hir::GenericParam {
                     id: lifetime.id,
                     span: lifetime.span,
-                    pure_wrt_drop: attr::contains_name(&lifetime_def.attrs, "may_dangle"),
+                    pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
                     kind: hir::GenericParamKind::Lifetime {
                         name: lifetime.name,
-                        bounds: lifetime_def.bounds
-                                            .iter()
-                                            .map(|lt| self.lower_lifetime(lt)).collect(),
+                        bounds: bounds.iter().map(|lt| self.lower_lifetime(lt)).collect(),
                         in_band: false,
                         lifetime_deprecated: lifetime,
                     }
@@ -1964,8 +1962,8 @@ impl<'a> LoweringContext<'a> {
 
                 param
             }
-            GenericParamAST::Type(ref ty_param) => {
-                let mut name = self.lower_ident(ty_param.ident);
+            GenericParamKindAST::Type { ref bounds, ref default } => {
+                let mut name = self.lower_ident(param.ident);
 
                 // Don't expose `Self` (recovered "keyword used as ident" parse error).
                 // `rustc::ty` expects `Self` to be only used for a trait's `Self`.
@@ -1974,8 +1972,8 @@ impl<'a> LoweringContext<'a> {
                     name = Symbol::gensym("Self");
                 }
 
-                let mut bounds = self.lower_bounds(&ty_param.bounds, itctx);
-                let add_bounds = add_bounds.get(&ty_param.id).map_or(&[][..], |x| &x);
+                let mut bounds = self.lower_bounds(bounds, itctx);
+                let add_bounds = add_bounds.get(&param.id).map_or(&[][..], |x| &x);
                 if !add_bounds.is_empty() {
                     bounds = bounds
                         .into_iter()
@@ -1984,22 +1982,20 @@ impl<'a> LoweringContext<'a> {
                 }
 
                 hir::GenericParam {
-                    id: self.lower_node_id(ty_param.id).node_id,
-                    span: ty_param.ident.span,
-                    pure_wrt_drop: attr::contains_name(&ty_param.attrs, "may_dangle"),
+                    id: self.lower_node_id(param.id).node_id,
+                    span: param.ident.span,
+                    pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
                     kind: hir::GenericParamKind::Type {
                         name,
                         bounds,
-                        default: ty_param.default.as_ref()
-                                         .map(|x| {
-                                             self.lower_ty(x, ImplTraitContext::Disallowed)
-                                         }),
-                        synthetic: ty_param.attrs
-                                           .iter()
-                                           .filter(|attr| attr.check_name("rustc_synthetic"))
-                                           .map(|_| hir::SyntheticTyParamKind::ImplTrait)
-                                           .nth(0),
-                        attrs: self.lower_attrs(&ty_param.attrs),
+                        default: default.as_ref().map(|x| {
+                            self.lower_ty(x, ImplTraitContext::Disallowed)
+                        }),
+                        synthetic: param.attrs.iter()
+                                              .filter(|attr| attr.check_name("rustc_synthetic"))
+                                              .map(|_| hir::SyntheticTyParamKind::ImplTrait)
+                                              .nth(0),
+                        attrs: self.lower_attrs(&param.attrs),
                     }
                 }
             }
@@ -2015,13 +2011,18 @@ impl<'a> LoweringContext<'a> {
         params.iter().map(|param| self.lower_generic_param(param, add_bounds, itctx)).collect()
     }
 
-    fn lower_generics(&mut self, g: &Generics, itctx: ImplTraitContext) -> hir::Generics {
+    fn lower_generics(
+        &mut self,
+        generics: &Generics,
+        itctx: ImplTraitContext)
+        -> hir::Generics
+    {
         // Collect `?Trait` bounds in where clause and move them to parameter definitions.
         // FIXME: This could probably be done with less rightward drift. Also looks like two control
         //        paths where report_error is called are also the only paths that advance to after
         //        the match statement, so the error reporting could probably just be moved there.
         let mut add_bounds = NodeMap();
-        for pred in &g.where_clause.predicates {
+        for pred in &generics.where_clause.predicates {
             if let WherePredicate::BoundPredicate(ref bound_pred) = *pred {
                 'next_bound: for bound in &bound_pred.bounds {
                     if let TraitTyParamBound(_, TraitBoundModifier::Maybe) = *bound {
@@ -2045,15 +2046,17 @@ impl<'a> LoweringContext<'a> {
                                     if let Some(node_id) =
                                         self.resolver.definitions().as_local_node_id(def_id)
                                     {
-                                        for param in &g.params {
-                                            if let GenericParamAST::Type(ref ty_param) = *param {
-                                                if node_id == ty_param.id {
-                                                    add_bounds
-                                                        .entry(ty_param.id)
-                                                        .or_insert(Vec::new())
-                                                        .push(bound.clone());
-                                                    continue 'next_bound;
+                                        for param in &generics.params {
+                                            match param.kind {
+                                                GenericParamKindAST::Type { .. } => {
+                                                    if node_id == param.id {
+                                                        add_bounds.entry(param.id)
+                                                            .or_insert(Vec::new())
+                                                            .push(bound.clone());
+                                                        continue 'next_bound;
+                                                    }
                                                 }
+                                                _ => {}
                                             }
                                         }
                                     }
@@ -2068,9 +2071,9 @@ impl<'a> LoweringContext<'a> {
         }
 
         hir::Generics {
-            params: self.lower_generic_params(&g.params, &add_bounds, itctx),
-            where_clause: self.lower_where_clause(&g.where_clause),
-            span: g.span,
+            params: self.lower_generic_params(&generics.params, &add_bounds, itctx),
+            where_clause: self.lower_where_clause(&generics.where_clause),
+            span: generics.span,
         }
     }
 
@@ -2093,8 +2096,8 @@ impl<'a> LoweringContext<'a> {
                 span,
             }) => {
                 self.with_in_scope_lifetime_defs(
-                    bound_generic_params.iter().filter_map(|p| match p {
-                        GenericParamAST::Lifetime(ld) => Some(ld),
+                    bound_generic_params.iter().filter_map(|param| match param.kind {
+                        GenericParamKindAST::Lifetime { .. } => Some(param),
                         _ => None,
                     }),
                     |this| {
@@ -2412,8 +2415,8 @@ impl<'a> LoweringContext<'a> {
                 );
 
                 let new_impl_items = self.with_in_scope_lifetime_defs(
-                    ast_generics.params.iter().filter_map(|p| match p {
-                        GenericParamAST::Lifetime(ld) => Some(ld),
+                    ast_generics.params.iter().filter_map(|param| match param.kind {
+                        GenericParamKindAST::Lifetime { .. } => Some(param),
                         _ => None,
                     }),
                     |this| {

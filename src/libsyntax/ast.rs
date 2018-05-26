@@ -58,14 +58,6 @@ impl fmt::Debug for Lifetime {
     }
 }
 
-/// A lifetime definition, e.g. `'a: 'b+'c+'d`
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct LifetimeDef {
-    pub attrs: ThinVec<Attribute>,
-    pub lifetime: Lifetime,
-    pub bounds: Vec<Lifetime>
-}
-
 /// A "Path" is essentially Rust's notion of a name.
 ///
 /// It's represented as a sequence of identifiers,
@@ -329,31 +321,38 @@ pub enum TraitBoundModifier {
 pub type TyParamBounds = Vec<TyParamBound>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct TyParam {
-    pub attrs: ThinVec<Attribute>,
-    pub ident: Ident,
-    pub id: NodeId,
-    pub bounds: TyParamBounds,
-    pub default: Option<P<Ty>>,
+pub enum GenericParamKindAST {
+    /// A lifetime definition, e.g. `'a: 'b+'c+'d`.
+    Lifetime {
+        bounds: Vec<Lifetime>,
+        lifetime: Lifetime,
+    },
+    Type {
+        bounds: TyParamBounds,
+        default: Option<P<Ty>>,
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum GenericParamAST {
-    Lifetime(LifetimeDef),
-    Type(TyParam),
+pub struct GenericParamAST {
+    pub ident: Ident,
+    pub id: NodeId,
+    pub attrs: ThinVec<Attribute>,
+
+    pub kind: GenericParamKindAST,
 }
 
 impl GenericParamAST {
     pub fn is_lifetime_param(&self) -> bool {
-        match *self {
-            GenericParamAST::Lifetime(_) => true,
+        match self.kind {
+            GenericParamKindAST::Lifetime { .. } => true,
             _ => false,
         }
     }
 
     pub fn is_type_param(&self) -> bool {
-        match *self {
-            GenericParamAST::Type(_) => true,
+        match self.kind {
+            GenericParamKindAST::Type { .. } => true,
             _ => false,
         }
     }
@@ -383,10 +382,8 @@ impl Generics {
 
     pub fn span_for_name(&self, name: &str) -> Option<Span> {
         for param in &self.params {
-            if let GenericParamAST::Type(ref t) = *param {
-                if t.ident.name == name {
-                    return Some(t.ident.span);
-                }
+            if param.ident.name == name {
+                return Some(param.ident.span);
             }
         }
         None

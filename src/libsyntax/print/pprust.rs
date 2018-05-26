@@ -2878,31 +2878,29 @@ impl<'a> State<'a> {
         self.s.word("<")?;
 
         self.commasep(Inconsistent, &generic_params, |s, param| {
-            match *param {
-                ast::GenericParamAST::Lifetime(ref lifetime_def) => {
-                    s.print_outer_attributes_inline(&lifetime_def.attrs)?;
-                    s.print_lifetime_bounds(&lifetime_def.lifetime, &lifetime_def.bounds)
+            match param.kind {
+                ast::GenericParamKindAST::Lifetime { ref bounds, ref lifetime } => {
+                    s.print_outer_attributes_inline(&param.attrs)?;
+                    s.print_lifetime_bounds(lifetime, bounds)
                 },
-                ast::GenericParamAST::Type(ref ty_param) => s.print_ty_param(ty_param),
+                ast::GenericParamKindAST::Type { ref bounds, ref default } => {
+                    s.print_outer_attributes_inline(&param.attrs)?;
+                    s.print_ident(param.ident)?;
+                    s.print_bounds(":", bounds)?;
+                    match default {
+                        Some(ref default) => {
+                            s.s.space()?;
+                            s.word_space("=")?;
+                            s.print_type(default)
+                        }
+                        _ => Ok(())
+                    }
+                }
             }
         })?;
 
         self.s.word(">")?;
         Ok(())
-    }
-
-    pub fn print_ty_param(&mut self, param: &ast::TyParam) -> io::Result<()> {
-        self.print_outer_attributes_inline(&param.attrs)?;
-        self.print_ident(param.ident)?;
-        self.print_bounds(":", &param.bounds)?;
-        match param.default {
-            Some(ref default) => {
-                self.s.space()?;
-                self.word_space("=")?;
-                self.print_type(default)
-            }
-            _ => Ok(())
-        }
     }
 
     pub fn print_where_clause(&mut self, where_clause: &ast::WhereClause)

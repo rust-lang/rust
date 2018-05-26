@@ -192,8 +192,8 @@ use std::collections::HashSet;
 use std::vec;
 
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, BinOpKind, EnumDef, Expr, GenericParamAST, Generics, Ident, PatKind};
-use syntax::ast::{VariantData, GenericArgAST};
+use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
+use syntax::ast::{VariantData, GenericParamKindAST, GenericArgAST};
 use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
@@ -547,9 +547,9 @@ impl<'a> TraitDef<'a> {
 
         // Create the generic parameters
         params.extend(generics.params.iter().map(|param| {
-            match *param {
-                ref l @ GenericParamAST::Lifetime(_) => l.clone(),
-                GenericParamAST::Type(ref ty_param) => {
+            match param.kind {
+                GenericParamKindAST::Lifetime { .. } => param.clone(),
+                GenericParamKindAST::Type { bounds: ref ty_bounds, .. } => {
                     // I don't think this can be moved out of the loop, since
                     // a TyParamBound requires an ast id
                     let mut bounds: Vec<_> =
@@ -564,12 +564,11 @@ impl<'a> TraitDef<'a> {
                     bounds.push(cx.typarambound(trait_path.clone()));
 
                     // also add in any bounds from the declaration
-                    for declared_bound in ty_param.bounds.iter() {
+                    for declared_bound in ty_bounds {
                         bounds.push((*declared_bound).clone());
                     }
 
-                    let ty_param = cx.typaram(self.span, ty_param.ident, vec![], bounds, None);
-                    GenericParamAST::Type(ty_param)
+                    cx.typaram(self.span, param.ident, vec![], bounds, None)
                 }
             }
         }));
@@ -607,8 +606,8 @@ impl<'a> TraitDef<'a> {
             // Extra scope required here so ty_params goes out of scope before params is moved
 
             let mut ty_params = params.iter()
-                .filter_map(|param| match *param {
-                    ast::GenericParamAST::Type(ref t) => Some(t),
+                .filter_map(|param| match param.kind {
+                    ast::GenericParamKindAST::Type { .. } => Some(param),
                     _ => None,
                 })
                 .peekable();
@@ -668,17 +667,16 @@ impl<'a> TraitDef<'a> {
         // Create the type parameters on the `self` path.
         let self_ty_params: Vec<P<ast::Ty>> = generics.params
             .iter()
-            .filter_map(|param| match *param {
-                GenericParamAST::Type(ref ty_param)
-                    => Some(cx.ty_ident(self.span, ty_param.ident)),
+            .filter_map(|param| match param.kind {
+                GenericParamKindAST::Type { .. } => Some(cx.ty_ident(self.span, param.ident)),
                 _ => None,
             })
             .collect();
 
         let self_lifetimes: Vec<ast::Lifetime> = generics.params
             .iter()
-            .filter_map(|param| match *param {
-                GenericParamAST::Lifetime(ref ld) => Some(ld.lifetime),
+            .filter_map(|param| match param.kind {
+                GenericParamKindAST::Lifetime { ref lifetime, .. } => Some(*lifetime),
                 _ => None,
             })
             .collect();

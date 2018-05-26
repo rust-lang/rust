@@ -21,10 +21,10 @@ use ast::EnumDef;
 use ast::{Expr, ExprKind, RangeLimits};
 use ast::{Field, FnDecl};
 use ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
-use ast::GenericParamAST;
+use ast::{GenericParamAST, GenericParamKindAST};
 use ast::GenericArgAST;
 use ast::{Ident, ImplItem, IsAuto, Item, ItemKind};
-use ast::{Label, Lifetime, LifetimeDef, Lit, LitKind};
+use ast::{Label, Lifetime, Lit, LitKind};
 use ast::Local;
 use ast::MacStmtStyle;
 use ast::{Mac, Mac_, MacDelimiter};
@@ -36,7 +36,7 @@ use ast::{VariantData, StructField};
 use ast::StrStyle;
 use ast::SelfKind;
 use ast::{TraitItem, TraitRef, TraitObjectSyntax};
-use ast::{Ty, TyKind, TypeBinding, TyParam, TyParamBounds};
+use ast::{Ty, TyKind, TypeBinding, TyParamBounds};
 use ast::{Visibility, VisibilityKind, WhereClause, CrateSugar};
 use ast::{UseTree, UseTreeKind};
 use ast::{BinOpKind, UnOp};
@@ -1311,9 +1311,7 @@ impl<'a> Parser<'a> {
         let lo = self.span;
 
         let (name, node, generics) = if self.eat_keyword(keywords::Type) {
-            let (generics, TyParam {ident, bounds, default, ..}) =
-                self.parse_trait_item_assoc_ty(vec![])?;
-            (ident, TraitItemKind::Type(bounds, default), generics)
+            self.parse_trait_item_assoc_ty()?
         } else if self.is_const_item() {
             self.expect_keyword(keywords::Const)?;
             let ident = self.parse_ident()?;
@@ -4805,7 +4803,9 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?
-    fn parse_ty_param(&mut self, preceding_attrs: Vec<Attribute>) -> PResult<'a, TyParam> {
+    fn parse_ty_param(&mut self,
+                      preceding_attrs: Vec<Attribute>)
+                      -> PResult<'a, GenericParamAST> {
         let ident = self.parse_ident()?;
 
         // Parse optional colon and param bounds.
@@ -4821,19 +4821,21 @@ impl<'a> Parser<'a> {
             None
         };
 
-        Ok(TyParam {
-            attrs: preceding_attrs.into(),
+        Ok(GenericParamAST {
             ident,
+            attrs: preceding_attrs.into(),
             id: ast::DUMMY_NODE_ID,
-            bounds,
-            default,
+            kind: GenericParamKindAST::Type {
+                bounds,
+                default,
+            }
         })
     }
 
     /// Parses the following grammar:
     ///     TraitItemAssocTy = Ident ["<"...">"] [":" [TyParamBounds]] ["where" ...] ["=" Ty]
-    fn parse_trait_item_assoc_ty(&mut self, preceding_attrs: Vec<Attribute>)
-        -> PResult<'a, (ast::Generics, TyParam)> {
+    fn parse_trait_item_assoc_ty(&mut self)
+        -> PResult<'a, (Ident, TraitItemKind, ast::Generics)> {
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
 
@@ -4852,13 +4854,7 @@ impl<'a> Parser<'a> {
         };
         self.expect(&token::Semi)?;
 
-        Ok((generics, TyParam {
-            attrs: preceding_attrs.into(),
-            ident,
-            id: ast::DUMMY_NODE_ID,
-            bounds,
-            default,
-        }))
+        Ok((ident, TraitItemKind::Type(bounds, default), generics))
     }
 
     /// Parses (possibly empty) list of lifetime and type parameters, possibly including
@@ -4876,18 +4872,22 @@ impl<'a> Parser<'a> {
                 } else {
                     Vec::new()
                 };
-                params.push(ast::GenericParamAST::Lifetime(LifetimeDef {
+                params.push(ast::GenericParamAST {
+                    ident: lifetime.ident,
+                    id: lifetime.id,
                     attrs: attrs.into(),
-                    lifetime,
-                    bounds,
-                }));
+                    kind: ast::GenericParamKindAST::Lifetime {
+                        lifetime,
+                        bounds,
+                    }
+                });
                 if seen_ty_param {
                     self.span_err(self.prev_span,
                         "lifetime parameters must be declared prior to type parameters");
                 }
             } else if self.check_ident() {
                 // Parse type parameter.
-                params.push(ast::GenericParamAST::Type(self.parse_ty_param(attrs)?));
+                params.push(self.parse_ty_param(attrs)?);
                 seen_ty_param = true;
             } else {
                 // Check for trailing attributes and stop parsing.

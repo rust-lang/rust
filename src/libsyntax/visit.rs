@@ -491,17 +491,17 @@ pub fn walk_ty_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a TyPar
 }
 
 pub fn walk_generic_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a GenericParamAST) {
-    match *param {
-        GenericParamAST::Lifetime(ref l) => {
-            visitor.visit_ident(l.lifetime.ident);
-            walk_list!(visitor, visit_lifetime, &l.bounds);
-            walk_list!(visitor, visit_attribute, &*l.attrs);
+    match param.kind {
+        GenericParamKindAST::Lifetime { ref bounds, ref lifetime, .. } => {
+            visitor.visit_ident(param.ident);
+            walk_list!(visitor, visit_lifetime, bounds);
+            walk_list!(visitor, visit_attribute, param.attrs.iter());
         }
-        GenericParamAST::Type(ref t) => {
+        GenericParamKindAST::Type { ref bounds, ref default, .. } => {
             visitor.visit_ident(t.ident);
-            walk_list!(visitor, visit_ty_param_bound, &t.bounds);
-            walk_list!(visitor, visit_ty, &t.default);
-            walk_list!(visitor, visit_attribute, &*t.attrs);
+            walk_list!(visitor, visit_ty_param_bound, bounds);
+            walk_list!(visitor, visit_ty, default);
+            walk_list!(visitor, visit_attribute, param.attrs.iter());
         }
     }
 }
