@@ -70,7 +70,7 @@ pub struct Session {
     pub opts: config::Options,
     pub parse_sess: ParseSess,
     /// For a library crate, this is always none
-    pub entry_fn: Once<Option<(NodeId, Span, config::EntryFnType)>>,
+    pub entry_fn: Once<Option<config::EntryFnType>>,
     pub plugin_registrar_fn: Once<Option<ast::NodeId>>,
     pub derive_registrar_fn: Once<Option<ast::NodeId>>,
     pub default_sysroot: Option<PathBuf>,

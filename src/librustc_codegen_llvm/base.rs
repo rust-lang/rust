@@ -525,28 +525,25 @@ pub fn set_link_section(cx: &CodegenCx,
 /// Create the `main` function which will initialize the rust runtime and call
 /// users main function.
 fn maybe_create_entry_wrapper(cx: &CodegenCx) {
-    let (main_def_id, span) = match *cx.sess().entry_fn.borrow() {
-        Some((id, span, _)) => {
-            (cx.tcx.hir.local_def_id(id), span)
+    if let Some(ref et) = cx.sess().entry_fn.get() {
+        let main_def_id = et.get_def_id(&cx.tcx.hir);
+        let span = et.get_span();
+
+        let instance = Instance::mono(cx.tcx, main_def_id);
+
+        if !cx.codegen_unit.contains_item(&MonoItem::Fn(instance)) {
+            // We want to create the wrapper in the same codegen unit as Rust's main
+            // function.
+            return;
         }
-        None => return,
-    };
 
-    let instance = Instance::mono(cx.tcx, main_def_id);
+        let main_llfn = callee::get_fn(cx, instance);
 
-    if !cx.codegen_unit.contains_item(&MonoItem::Fn(instance)) {
-        // We want to create the wrapper in the same codegen unit as Rust's main
-        // function.
-        return;
-    }
-
-    let main_llfn = callee::get_fn(cx, instance);
-
-    let et = cx.sess().entry_fn.get().map(|e| e.2);
-    match et {
-        Some(config::EntryMain) => create_entry_fn(cx, span, main_llfn, main_def_id, true),
-        Some(config::EntryStart) => create_entry_fn(cx, span, main_llfn, main_def_id, false),
-        None => {}    // Do nothing.
+        match et {
+            config::EntryImported(..)
+            | config::EntryMain(..) => create_entry_fn(cx, span, main_llfn, main_def_id, true),
+            config::EntryStart(..) => create_entry_fn(cx, span, main_llfn, main_def_id, false),
+        }
     }
 
     fn create_entry_fn<'cx>(cx: &'cx CodegenCx,

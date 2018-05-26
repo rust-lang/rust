@@ -219,6 +219,7 @@ impl fold::Folder for EntryPointCleaner {
                     }
                 }),
             EntryPointType::None |
+            EntryPointType::Import |
             EntryPointType::OtherMain => folded,
         };
 

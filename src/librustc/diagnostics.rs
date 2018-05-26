@@ -481,6 +481,46 @@ fn main() {
 ```
 "##,
 
+E0134: r##"
+More than one item was re-exported as `main`.
+
+Erroneous code example:
+
+```compile_fail,E0134
+#![feature(main_reexport)]
+
+mod foo {
+    pub fn bar() { }
+    pub fn baz() { }
+}
+
+use foo::bar as main;
+use foo::baz as main;
+```
+
+This error indicates that the compiler found multiple items re-exported as
+`main`. This is an error because there must be a unique entry point into a
+Rust program.
+"##,
+
+E0135: r##"
+The item re-exported as `main` is not a function.
+
+Erroneous code example:
+
+```compile_fail,E0135
+#![feature(main_reexport)]
+
+mod foo {
+    pub const bar: &'static str = "hello";
+}
+
+use foo::bar as main;
+```
+
+This is an error because the entry point of a Rust program must be a function.
+"##,
+
 // This shouldn't really ever trigger since the repeated value error comes first
 E0136: r##"
 A binary can only have one entry point, and by default that entry point is the

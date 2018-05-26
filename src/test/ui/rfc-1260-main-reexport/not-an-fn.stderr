@@ -1,0 +1,14 @@
+error[E0135]: The item re-exported as `main` is not a function
+  --> $DIR/not-an-fn.rs:17:1
+   |
+LL | use foo::bar as main;  //~ ERROR
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0601]: `main` function not found in crate `not_an_fn`
+   |
+   = note: consider adding a `main` function to `$DIR/not-an-fn.rs`
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0135, E0601.
+For more information about an error, try `rustc --explain E0135`.

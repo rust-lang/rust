@@ -262,13 +262,10 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     let mut flags = DIFlags::FlagPrototyped;
 
     let local_id = cx.tcx.hir.as_local_node_id(def_id);
-    match *cx.sess().entry_fn.borrow() {
-        Some((id, _, _)) => {
-            if local_id == Some(id) {
-                flags = flags | DIFlags::FlagMainSubprogram;
-            }
+    if let Some(e) = cx.sess().entry_fn.borrow() {
+        if local_id == Some(e.get_local_id()) {
+            flags = flags | DIFlags::FlagMainSubprogram;
         }
-        None => {}
     };
     if cx.layout_of(sig.output()).abi == ty::layout::Abi::Uninhabited {
         flags = flags | DIFlags::FlagNoReturn;

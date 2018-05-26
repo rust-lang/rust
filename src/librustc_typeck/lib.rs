@@ -101,6 +101,7 @@ use rustc::session;
 use rustc::util;
 
 use hir::map as hir_map;
+use hir::def_id::DefId;
 use rustc::infer::InferOk;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -110,6 +111,7 @@ use session::{CompileIncomplete, config};
 use util::common::time;
 
 use syntax::ast;
+use syntax::feature_gate;
 use rustc_target::spec::abi::Abi;
 use syntax_pos::Span;
 
@@ -175,10 +177,39 @@ fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     })
 }
 
+fn report_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             generics: &hir::Generics) -> bool {
+    let mut error = false;
+    if !generics.params.is_empty() {
+        let param_type = if generics.is_lt_parameterized() {
+            "lifetime"
+        } else {
+            "type"
+        };
+        let msg =
+            format!("`main` function is not allowed to have {} parameters",
+                    param_type);
+        let label =
+            format!("`main` cannot have {} parameters", param_type);
+        struct_span_err!(tcx.sess, generics.span, E0131, "{}", msg)
+            .span_label(generics.span, label)
+            .emit();
+        error = true;
+    }
+    if let Some(sp) = generics.where_clause.span() {
+        struct_span_err!(tcx.sess, sp, E0646,
+            "`main` function is not allowed to have a `where` clause")
+            .span_label(sp, "`main` cannot have a `where` clause")
+            .emit();
+        error = true;
+    }
+    return error;
+}
+
 fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               main_id: ast::NodeId,
+                              main_def_id: DefId,
                               main_span: Span) {
-    let main_def_id = tcx.hir.local_def_id(main_id);
     let main_t = tcx.type_of(main_def_id);
     match main_t.sty {
         ty::TyFnDef(..) => {
@@ -186,38 +217,30 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
                         hir::ItemFn(.., ref generics, _) => {
-                            let mut error = false;
-                            if !generics.params.is_empty() {
-                                let param_type = if generics.is_lt_parameterized() {
-                                    "lifetime"
-                                } else {
-                                    "type"
-                                };
-                                let msg =
-                                    format!("`main` function is not allowed to have {} parameters",
-                                            param_type);
-                                let label =
-                                    format!("`main` cannot have {} parameters", param_type);
-                                struct_span_err!(tcx.sess, generics.span, E0131, "{}", msg)
-                                    .span_label(generics.span, label)
-                                    .emit();
-                                error = true;
-                            }
-                            if let Some(sp) = generics.where_clause.span() {
-                                struct_span_err!(tcx.sess, sp, E0646,
-                                    "`main` function is not allowed to have a `where` clause")
-                                    .span_label(sp, "`main` cannot have a `where` clause")
-                                    .emit();
-                                error = true;
-                            }
-                            if error {
+                            if report_generics(tcx, generics) {
                                 return;
                             }
                         }
-                        _ => ()
+                        _ => {
+                            span_bug!(main_span, "`main` is not a function");
+                        }
                     }
                 }
-                _ => ()
+                Some(hir_map::NodeForeignItem(fi)) => {
+                    match fi.node {
+                        hir::ForeignItemFn(.., ref generics) => {
+                            if report_generics(tcx, generics) {
+                                return;
+                            }
+                        }
+                        _ => {
+                            span_bug!(main_span, "`main` is not a function");
+                        }
+                    }
+                }
+                _ => {
+                    span_bug!(main_span, "`main` is not a function");
+                }
             }
 
             let actual = tcx.fn_sig(main_def_id);
@@ -229,7 +252,6 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 // standard () main return type
                 tcx.mk_nil()
             };
-
             let se_ty = tcx.mk_fn_ptr(ty::Binder::bind(
                 tcx.mk_fn_sig(
                     iter::empty(),
@@ -319,10 +341,28 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn check_for_entry_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    if let Some((id, sp, entry_type)) = *tcx.sess.entry_fn.borrow() {
-        match entry_type {
-            config::EntryMain => check_main_fn_ty(tcx, id, sp),
-            config::EntryStart => check_start_fn_ty(tcx, id, sp),
+    if let Some(ref entry) = *tcx.sess.entry_fn.borrow() {
+        match entry {
+            config::EntryMain(id, sp) => {
+                let def_id = tcx.hir.local_def_id(*id);
+                check_main_fn_ty(tcx, *id, def_id, *sp);
+            }
+            config::EntryStart(id, sp) => {
+                check_start_fn_ty(tcx, *id, *sp);
+            }
+            config::EntryImported(_, def_id, sp) => {
+                if let Some(node_id) = tcx.hir.as_local_node_id(*def_id) {
+                    check_main_fn_ty(tcx, node_id, *def_id, *sp);
+                } else {
+                    span_bug!(*sp, "NodeId of `main` is not found");
+                }
+
+                if !tcx.features().main_reexport {
+                    feature_gate::emit_feature_err(&tcx.sess.parse_sess, "main_reexport",
+                        *sp, feature_gate::GateIssue::Language,
+                        "A re-export of a function as entry point is unstable");
+                }
+            }
         }
     }
 }
