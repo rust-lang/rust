@@ -14,6 +14,7 @@ use hir::def_id::DefId;
 
 use middle::const_val::ConstVal;
 use middle::region;
+use polonius_engine::Atom;
 use rustc_data_structures::indexed_vec::Idx;
 use ty::subst::{Substs, Subst, Kind, UnpackedKind};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
@@ -1168,6 +1169,24 @@ newtype_index!(RegionVid
         pub idx
         DEBUG_FORMAT = custom,
     });
+
+impl Atom for RegionVid {
+    fn index(self) -> usize {
+        Idx::index(self)
+    }
+}
+
+impl From<usize> for RegionVid {
+    fn from(i: usize) -> RegionVid {
+        RegionVid::new(i)
+    }
+}
+
+impl From<RegionVid> for usize {
+    fn from(vid: RegionVid) -> usize {
+        Idx::index(vid)
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum InferTy {

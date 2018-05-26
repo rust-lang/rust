@@ -26,7 +26,7 @@ pub fn assert1(_a: TokenStream, b: TokenStream) -> TokenStream {
 #[proc_macro_derive(Foo, attributes(foo))]
 pub fn assert2(a: TokenStream) -> TokenStream {
     assert_eq(a, "pub struct MyStructc { _a: i32, }".parse().unwrap());
-    TokenStream::empty()
+    TokenStream::new()
 }
 
 fn assert_eq(a: TokenStream, b: TokenStream) {

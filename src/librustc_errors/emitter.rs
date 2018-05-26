@@ -1215,19 +1215,20 @@ impl EmitterWriter {
 
             let mut row_num = 2;
             for &(ref complete, ref parts) in suggestions.iter().take(MAX_SUGGESTIONS) {
-                let show_underline = parts.len() == 1
-                    && complete.lines().count() == 1
-                    && parts[0].snippet.trim() != complete.trim();
+                // Only show underline if the suggestion spans a single line and doesn't cover the
+                // entirety of the code output. If you have multiple replacements in the same line
+                // of code, show the underline.
+                let show_underline = !(parts.len() == 1
+                    && parts[0].snippet.trim() == complete.trim())
+                    && complete.lines().count() == 1;
 
                 let lines = cm.span_to_lines(parts[0].span).unwrap();
 
                 assert!(!lines.lines.is_empty());
 
-                let span_start_pos = cm.lookup_char_pos(parts[0].span.lo());
-                let line_start = span_start_pos.line;
+                let line_start = cm.lookup_char_pos(parts[0].span.lo()).line;
                 draw_col_separator_no_space(&mut buffer, 1, max_line_num_len + 1);
                 let mut line_pos = 0;
-                // Only show underline if there's a single suggestion and it is a single line
                 let mut lines = complete.lines();
                 for line in lines.by_ref().take(MAX_HIGHLIGHT_LINES) {
                     // Print the span column to avoid confusion
@@ -1241,22 +1242,55 @@ impl EmitterWriter {
                     line_pos += 1;
                     row_num += 1;
                 }
+
+                // This offset and the ones below need to be signed to account for replacement code
+                // that is shorter than the original code.
+                let mut offset: isize = 0;
                 // Only show an underline in the suggestions if the suggestion is not the
                 // entirety of the code being shown and the displayed code is not multiline.
                 if show_underline {
                     draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
-                    let start = parts[0].snippet.len() - parts[0].snippet.trim_left().len();
-                    // account for substitutions containing unicode characters
-                    let sub_len = parts[0].snippet.trim().chars().fold(0, |acc, ch| {
-                        acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0)
-                    });
-                    let underline_start = span_start_pos.col_display + start;
-                    let underline_end = span_start_pos.col_display + start + sub_len;
-                    for p in underline_start..underline_end {
-                        buffer.putc(row_num,
-                                    max_line_num_len + 3 + p,
-                                    '^',
-                                    Style::UnderlinePrimary);
+                    for part in parts {
+                        let span_start_pos = cm.lookup_char_pos(part.span.lo()).col_display;
+                        let span_end_pos = cm.lookup_char_pos(part.span.hi()).col_display;
+
+                        // Do not underline the leading...
+                        let start = part.snippet.len()
+                            .saturating_sub(part.snippet.trim_left().len());
+                        // ...or trailing spaces. Account for substitutions containing unicode
+                        // characters.
+                        let sub_len = part.snippet.trim().chars().fold(0, |acc, ch| {
+                            acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0)
+                        });
+
+                        let underline_start = (span_start_pos + start) as isize + offset;
+                        let underline_end = (span_start_pos + start + sub_len) as isize + offset;
+                        for p in underline_start..underline_end {
+                            buffer.putc(row_num,
+                                        max_line_num_len + 3 + p as usize,
+                                        '^',
+                                        Style::UnderlinePrimary);
+                        }
+                        // underline removals too
+                        if underline_start == underline_end {
+                            for p in underline_start-1..underline_start+1 {
+                                buffer.putc(row_num,
+                                            max_line_num_len + 3 + p as usize,
+                                            '-',
+                                            Style::UnderlineSecondary);
+                            }
+                        }
+
+                        // length of the code after substitution
+                        let full_sub_len = part.snippet.chars().fold(0, |acc, ch| {
+                            acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0) as isize
+                        });
+
+                        // length of the code to be substituted
+                        let snippet_len = (span_end_pos - span_start_pos) as isize;
+                        // For multiple substitutions, use the position *after* the previous
+                        // substitutions have happened.
+                        offset += full_sub_len - snippet_len;
                     }
                     row_num += 1;
                 }

@@ -10,6 +10,7 @@
 
 use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
+use borrow_check::nll::facts::AllFactsExt;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;

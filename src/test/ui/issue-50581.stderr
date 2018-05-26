@@ -1,0 +1,9 @@
+error[E0268]: `break` outside of loop
+  --> $DIR/issue-50581.rs:12:14
+   |
+LL |     |_: [u8; break]| (); //~ ERROR [E0268]
+   |              ^^^^^ cannot break outside of a loop
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0268`.

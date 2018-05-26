@@ -20,13 +20,13 @@ use proc_macro::*;
 #[proc_macro]
 pub fn tokens(input: TokenStream) -> TokenStream {
     assert_nothing_joint(input);
-    TokenStream::empty()
+    TokenStream::new()
 }
 
 #[proc_macro_attribute]
 pub fn nothing(_: TokenStream, input: TokenStream) -> TokenStream {
     assert_nothing_joint(input);
-    TokenStream::empty()
+    TokenStream::new()
 }
 
 fn assert_nothing_joint(s: TokenStream) {
