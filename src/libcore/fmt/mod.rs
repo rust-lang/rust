@@ -25,18 +25,19 @@ mod float;
 mod num;
 mod builders;
 
-#[unstable(feature = "fmt_flags_align", issue = "27726")]
+#[stable(feature = "fmt_flags_align", since = "1.28.0")]
 /// Possible alignments returned by `Formatter::align`
 #[derive(Debug)]
 pub enum Alignment {
+    #[stable(feature = "fmt_flags_align", since = "1.28.0")]
     /// Indication that contents should be left-aligned.
     Left,
+    #[stable(feature = "fmt_flags_align", since = "1.28.0")]
     /// Indication that contents should be right-aligned.
     Right,
+    #[stable(feature = "fmt_flags_align", since = "1.28.0")]
     /// Indication that contents should be center-aligned.
     Center,
-    /// No alignment was requested.
-    Unknown,
 }
 
 #[stable(feature = "debug_builders", since = "1.2.0")]
@@ -1433,8 +1434,6 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(fmt_flags_align)]
-    ///
     /// extern crate core;
     ///
     /// use std::fmt;
@@ -1444,11 +1443,14 @@ impl<'a> Formatter<'a> {
     ///
     /// impl fmt::Display for Foo {
     ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-    ///         let s = match formatter.align() {
-    ///             Alignment::Left    => "left",
-    ///             Alignment::Right   => "right",
-    ///             Alignment::Center  => "center",
-    ///             Alignment::Unknown => "into the void",
+    ///         let s = if let Some(s) = formatter.align() {
+    ///             match s {
+    ///                 Alignment::Left    => "left",
+    ///                 Alignment::Right   => "right",
+    ///                 Alignment::Center  => "center",
+    ///             }
+    ///         } else {
+    ///             "into the void"
     ///         };
     ///         write!(formatter, "{}", s)
     ///     }
@@ -1461,14 +1463,13 @@ impl<'a> Formatter<'a> {
     ///     assert_eq!(&format!("{}", Foo), "into the void");
     /// }
     /// ```
-    #[unstable(feature = "fmt_flags_align", reason = "method was just created",
-               issue = "27726")]
-    pub fn align(&self) -> Alignment {
+    #[stable(feature = "fmt_flags_align", since = "1.28.0")]
+    pub fn align(&self) -> Option<Alignment> {
         match self.align {
-            rt::v1::Alignment::Left => Alignment::Left,
-            rt::v1::Alignment::Right => Alignment::Right,
-            rt::v1::Alignment::Center => Alignment::Center,
-            rt::v1::Alignment::Unknown => Alignment::Unknown,
+            rt::v1::Alignment::Left => Some(Alignment::Left),
+            rt::v1::Alignment::Right => Some(Alignment::Right),
+            rt::v1::Alignment::Center => Some(Alignment::Center),
+            rt::v1::Alignment::Unknown => None,
         }
     }
 
