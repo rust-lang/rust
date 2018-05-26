@@ -1,0 +1,23 @@
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'d` due to conflicting requirements
+  --> $DIR/normalization-bounds-error.rs:23:1
+   |
+LL | fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime 'd as defined on the function body at 23:1...
+  --> $DIR/normalization-bounds-error.rs:23:1
+   |
+LL | fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...but the lifetime must also be valid for the lifetime 'a as defined on the function body at 23:1...
+  --> $DIR/normalization-bounds-error.rs:23:1
+   |
+LL | fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...so that the types are compatible:
+           expected Visitor<'d>
+              found Visitor<'_>
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0495`.
