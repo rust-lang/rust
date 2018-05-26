@@ -43,7 +43,7 @@ declare_clippy_lint! {
 /// fn unused_lifetime<'a>(x: u8) { .. }
 /// ```
 declare_clippy_lint! {
-    pub UNUSED_LIFETIMES,
+    pub EXTRA_UNUSED_LIFETIMES,
     complexity,
     "unused lifetimes in function definitions"
 }
@@ -53,7 +53,7 @@ pub struct LifetimePass;
 
 impl LintPass for LifetimePass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(NEEDLESS_LIFETIMES, UNUSED_LIFETIMES)
+        lint_array!(NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES)
     }
 }
 
@@ -431,7 +431,7 @@ fn report_extra_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, func: &'tcx 
     walk_fn_decl(&mut checker, func);
 
     for &v in checker.map.values() {
-        span_lint(cx, UNUSED_LIFETIMES, v, "this lifetime isn't used in the function definition");
+        span_lint(cx, EXTRA_UNUSED_LIFETIMES, v, "this lifetime isn't used in the function definition");
     }
 }
 

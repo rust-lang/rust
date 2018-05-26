@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.205
+* Rustup to *rustc 1.28.0-nightly (990d8aa74 2018-05-25)*
+* Rename `unused_lifetimes` to `extra_unused_lifetimes` because of naming conflict with new rustc lint
+
 ## 0.0.204
 * Rustup to *rustc 1.28.0-nightly (71e87be38 2018-05-22)*
 
