@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const UNIVERSAL_GRAVITATIONAL_CONSTANT = 6.674e−11; // m³⋅kg⁻¹⋅s⁻²
+const UNIVERSAL_GRAVITATIONAL_CONSTANT: f64 = 6.674e−11; // m³⋅kg⁻¹⋅s⁻²
 //~^ ERROR expected at least one digit in exponent
 
 fn main() {}

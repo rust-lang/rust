@@ -1081,10 +1081,12 @@ impl<'a> StringReader<'a> {
                 );
                 if let Some(ch) = self.ch {
                     // check for e.g. Unicode minus '−' (Issue #49746)
-                    unicode_chars::check_for_substitution(self, ch, &mut err);
+                    if unicode_chars::check_for_substitution(self, ch, &mut err) {
+                        self.bump();
+                        self.scan_digits(10, 10);
+                    }
                 }
                 err.emit();
-                FatalError.raise();
             }
         }
     }
