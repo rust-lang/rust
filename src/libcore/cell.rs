@@ -510,36 +510,14 @@ impl<T: ?Sized> Cell<T> {
     /// use std::cell::Cell;
     /// let slice: &mut [i32] = &mut [1,2,3];
     /// let cell_slice: &Cell<[i32]> = Cell::from_mut(slice);
-    ///
-    /// assert_eq!(cell_slice.get_with(|v|v.len()), 3)
+    /// let slice_cell : &[Cell<i32>] = &cell_slice[..];
+    /// assert_eq!(slice_cell.len(), 3)
     /// ```
     #[inline]
     #[unstable(feature = "as_cell", issue="43038")]
     pub fn from_mut<'a>(t: &'a mut T) -> &'a Cell<T> {
         unsafe {
             &*(t as *mut T as *const Cell<T>)
-        }
-    }
-
-    /// Returns a value by applying a function on contained value
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(as_cell)]
-    /// use std::cell::Cell;
-    /// let c : Cell<Vec<i32>> = Cell::new(vec![1,2,3]);
-    /// let sum : i32 = c.get_with(|v|v.iter().sum());
-    /// assert_eq!(sum, 6_i32);
-    /// ```
-    #[inline]
-    #[unstable(feature = "as_cell", issue="43038")]
-    pub fn get_with<U, F>(&self, f: F) -> U
-    where
-        F: Fn(&T) -> U, U: 'static
-    {
-        unsafe {
-            f(&*self.value.get())
         }
     }
 }

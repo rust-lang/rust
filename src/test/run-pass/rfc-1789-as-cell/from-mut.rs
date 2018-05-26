@@ -15,8 +15,6 @@ use std::cell::Cell;
 fn main() {
     let slice: &mut [i32] = &mut [1,2,3];
     let cell_slice: &Cell<[i32]> = Cell::from_mut(slice);
-    assert_eq!(cell_slice.get_with(|v|v.len()), 3);
-
     let sub_slice : &[Cell<i32>] = &cell_slice[1..];
     assert_eq!(sub_slice.len(), 2);
 }
