@@ -3843,10 +3843,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               let ctxt = BreakableCtxt {
                   // cannot use break with a value from a while loop
                   coerce: None,
-                  may_break: true,
+                  may_break: false,  // Will get updated if/when we find a `break`.
               };
 
-              self.with_breakable_ctxt(expr.id, ctxt, || {
+              let (ctxt, ()) = self.with_breakable_ctxt(expr.id, ctxt, || {
                   self.check_expr_has_type_or_error(&cond, tcx.types.bool);
                   let cond_diverging = self.diverges.get();
                   self.check_block_no_value(&body);
@@ -3854,6 +3854,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   // We may never reach the body so it diverging means nothing.
                   self.diverges.set(cond_diverging);
               });
+
+              if ctxt.may_break {
+                  // No way to know whether it's diverging because
+                  // of a `break` or an outer `break` or `return`.
+                  self.diverges.set(Diverges::Maybe);
+              }
 
               self.tcx.mk_nil()
           }
@@ -3873,7 +3879,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
               let ctxt = BreakableCtxt {
                   coerce,
-                  may_break: false, // will get updated if/when we find a `break`
+                  may_break: false, // Will get updated if/when we find a `break`.
               };
 
               let (ctxt, ()) = self.with_breakable_ctxt(expr.id, ctxt, || {
@@ -3882,7 +3888,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
               if ctxt.may_break {
                   // No way to know whether it's diverging because
-                  // of a `break` or an outer `break` or `return.
+                  // of a `break` or an outer `break` or `return`.
                   self.diverges.set(Diverges::Maybe);
               }
 

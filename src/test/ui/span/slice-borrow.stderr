@@ -6,6 +6,7 @@ LL |         let x: &[isize] = &vec![1, 2, 3, 4, 5];
 LL |         y = &x[1..];
 LL |     }
    |     - temporary value dropped here while still borrowed
+LL |     y.use_ref();
 LL | }
    | - temporary value needs to live until here
    |
