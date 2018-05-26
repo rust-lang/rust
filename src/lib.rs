@@ -53,6 +53,81 @@ use validation::EvalContextExt as ValidationEvalContextExt;
 use range_map::RangeMap;
 use validation::{ValidationQuery, AbsPlace};
 
+pub trait ScalarExt {
+    fn null() -> Self;
+    fn from_i8(i: i8) -> Self;
+    fn from_u128(i: u128) -> Self;
+    fn from_i128(i: i128) -> Self;
+    fn from_usize(i: u64, ptr_size: Size) -> Self;
+    fn from_isize(i: i64, ptr_size: Size) -> Self;
+    fn from_f32(f: f32) -> Self;
+    fn from_f64(f: f64) -> Self;
+    fn to_u64(self) -> EvalResult<'static, u64>;
+    fn is_null(self) -> EvalResult<'static, bool>;
+    fn to_bytes(self) -> EvalResult<'static, u128>;
+}
+
+impl ScalarExt for Scalar {
+    fn null() -> Self {
+        Scalar::Bits { bits: 0, defined: 128 }
+    }
+
+    fn from_i8(i: i8) -> Self {
+        Scalar::Bits { bits: i as i128 as u128, defined: 8 }
+    }
+
+    fn from_u128(i: u128) -> Self {
+        Scalar::Bits { bits: i, defined: 128 }
+    }
+
+    fn from_i128(i: i128) -> Self {
+        Scalar::Bits { bits: i as u128, defined: 128 }
+    }
+
+    fn from_usize(i: u64, ptr_size: Size) -> Self {
+        Scalar::Bits { bits: i as u128, defined: ptr_size.bits() as u8 }
+    }
+
+    fn from_isize(i: i64, ptr_size: Size) -> Self {
+        Scalar::Bits { bits: i as i128 as u128, defined: ptr_size.bits() as u8 }
+    }
+
+    fn from_f32(f: f32) -> Self {
+        Scalar::Bits { bits: f.to_bits() as u128, defined: 32 }
+    }
+
+    fn from_f64(f: f64) -> Self {
+        Scalar::Bits { bits: f.to_bits() as u128, defined: 64 }
+    }
+
+    fn to_u64(self) -> EvalResult<'static, u64> {
+        let b = self.to_bits(Size::from_bits(64))?;
+        assert_eq!(b as u64 as u128, b);
+        Ok(b as u64)
+    }
+
+    fn is_null(self) -> EvalResult<'static, bool> {
+        match self {
+            Scalar::Bits { bits, defined } => {
+                if defined > 0 {
+                    Ok(bits == 0)
+                } else {
+                    err!(ReadUndefBytes)
+                }
+            }
+            Scalar::Ptr(_) => Ok(false)
+        }
+    }
+
+    fn to_bytes(self) -> EvalResult<'static, u128> {
+        match self {
+            Scalar::Bits { defined: 0, .. } => err!(ReadUndefBytes),
+            Scalar::Bits { bits, .. } => Ok(bits),
+            Scalar::Ptr(_) => err!(ReadPointerAsBytes),
+        }
+    }
+}
+
 pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     main_id: DefId,
@@ -65,7 +140,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
     ) -> EvalResult<'tcx> {
         let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
         let main_mir = ecx.load_mir(main_instance.def)?;
-        let mut cleanup_ptr = None; // Pointer to be deallocated when we are done
+        let mut cleanup_ptr = None; // Scalar to be deallocated when we are done
 
         if !main_mir.return_ty().is_nil() || main_mir.arg_count != 0 {
             return err!(Unimplemented(
@@ -116,7 +191,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             let main_ptr_ty = ecx.tcx.mk_fn_ptr(main_ty.fn_sig(ecx.tcx.tcx));
             ecx.write_value(
                 ValTy {
-                    value: Value::ByVal(PrimVal::Ptr(main_ptr)),
+                    value: Value::Scalar(Scalar::Ptr(main_ptr)),
                     ty: main_ptr_ty,
                 },
                 dest,
@@ -125,7 +200,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             // Second argument (argc): 1
             let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
             let ty = ecx.tcx.types.isize;
-            ecx.write_primval(dest, PrimVal::Bytes(1), ty)?;
+            ecx.write_scalar(dest, Scalar::from_u128(1), ty)?;
 
             // FIXME: extract main source file path
             // Third argument (argv): &[b"foo"]
@@ -135,7 +210,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             let ptr_size = ecx.memory.pointer_size();
             let ptr_align = ecx.tcx.data_layout.pointer_align;
             let foo_ptr = ecx.memory.allocate(ptr_size, ptr_align, None)?;
-            ecx.memory.write_primval(foo_ptr.into(), ptr_align, PrimVal::Ptr(foo.into()), ptr_size, false)?;
+            ecx.memory.write_scalar(foo_ptr.into(), ptr_align, Scalar::Ptr(foo), ptr_size, false)?;
             ecx.memory.mark_static_initialized(foo_ptr.alloc_id, Mutability::Immutable)?;
             ecx.write_ptr(dest, foo_ptr.into(), ty)?;
 
@@ -145,7 +220,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 main_instance,
                 main_mir.span,
                 main_mir,
-                Place::from_primval_ptr(PrimVal::Bytes(1).into(), ty::layout::Align::from_bytes(1, 1).unwrap()),
+                Place::from_scalar_ptr(Scalar::from_u128(1), ty::layout::Align::from_bytes(1, 1).unwrap()),
                 StackPopCleanup::None,
             )?;
 
@@ -187,6 +262,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
                     }
                 }
             }
+            ::std::process::exit(1);
         }
     }
 }
@@ -195,7 +271,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
 pub struct Evaluator<'tcx> {
     /// Environment variables set by `setenv`
     /// Miri does not expose env vars from the host to the emulated program
-    pub(crate) env_vars: HashMap<Vec<u8>, MemoryPointer>,
+    pub(crate) env_vars: HashMap<Vec<u8>, Pointer>,
 
     /// Places that were suspended by the validation subsystem, and will be recovered later
     pub(crate) suspended: HashMap<DynamicLifetime, Vec<ValidationQuery<'tcx>>>,
@@ -205,7 +281,7 @@ pub type TlsKey = usize;
 
 #[derive(Copy, Clone, Debug)]
 pub struct TlsEntry<'tcx> {
-    data: Pointer, // Will eventually become a map from thread IDs to `Pointer`s, if we ever support more than one thread.
+    data: Scalar, // Will eventually become a map from thread IDs to `Scalar`s, if we ever support more than one thread.
     dtor: Option<ty::Instance<'tcx>>,
 }
 
@@ -256,11 +332,11 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     fn try_ptr_op<'a>(
         ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
-        left: PrimVal,
+        left: Scalar,
         left_ty: ty::Ty<'tcx>,
-        right: PrimVal,
+        right: Scalar,
         right_ty: ty::Ty<'tcx>,
-    ) -> EvalResult<'tcx, Option<(PrimVal, bool)>> {
+    ) -> EvalResult<'tcx, Option<(Scalar, bool)>> {
         ecx.ptr_op(bin_op, left, left_ty, right, right_ty)
     }
 
@@ -372,7 +448,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
         ecx.write_value(
             ValTy {
-                value: Value::ByVal(PrimVal::Bytes(match layout.size.bytes() {
+                value: Value::Scalar(Scalar::from_u128(match layout.size.bytes() {
                     0 => 1 as u128,
                     size => size as u128,
                 }.into())),
@@ -385,7 +461,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
         ecx.write_value(
             ValTy {
-                value: Value::ByVal(PrimVal::Bytes(layout.align.abi().into())),
+                value: Value::Scalar(Scalar::from_u128(layout.align.abi().into())),
                 ty: usize,
             },
             dest,
@@ -406,7 +482,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
 
     fn check_locks<'a>(
         mem: &Memory<'a, 'mir, 'tcx, Self>,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         size: Size,
         access: AccessKind,
     ) -> EvalResult<'tcx> {
@@ -437,7 +513,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             .map_err(|lock| {
                 EvalErrorKind::DeallocatedLockedMemory {
                     //ptr, FIXME
-                    ptr: MemoryPointer {
+                    ptr: Pointer {
                         alloc_id: AllocId(0),
                         offset: Size::from_bytes(0),
                     },

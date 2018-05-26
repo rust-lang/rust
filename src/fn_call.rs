@@ -38,7 +38,7 @@ fn write_discriminant_value<'a, 'mir, 'tcx: 'a + 'mir>(
                     .val;
 
                 let (discr_dest, discr) = ecx.place_field(dest, mir::Field::new(0), layout)?;
-                ecx.write_primval(discr_dest, PrimVal::Bytes(discr_val), discr.ty)?;
+                ecx.write_scalar(discr_dest, Scalar::from_u128(discr_val), discr.ty)?;
             }
             layout::Variants::NicheFilling {
                 dataful_variant,
@@ -51,7 +51,7 @@ fn write_discriminant_value<'a, 'mir, 'tcx: 'a + 'mir>(
                         ecx.place_field(dest, mir::Field::new(0), layout)?;
                     let niche_value = ((variant_index - niche_variants.start()) as u128)
                         .wrapping_add(niche_start);
-                    ecx.write_primval(niche_dest, PrimVal::Bytes(niche_value), niche.ty)?;
+                    ecx.write_scalar(niche_dest, Scalar::from_u128(niche_value), niche.ty)?;
                 }
             }
         }
@@ -182,13 +182,13 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
         match &link_name[..] {
             "malloc" => {
-                let size = self.value_to_primval(args[0])?.to_u64()?;
+                let size = self.value_to_scalar(args[0])?.to_u64()?;
                 if size == 0 {
                     self.write_null(dest, dest_ty)?;
                 } else {
                     let align = self.tcx.data_layout.pointer_align;
                     let ptr = self.memory.allocate(Size::from_bytes(size), align, Some(MemoryKind::C.into()))?;
-                    self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
+                    self.write_scalar(dest, Scalar::Ptr(ptr), dest_ty)?;
                 }
             }
 
@@ -209,7 +209,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 //
                 // libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)
                 // is called if a `HashMap` is created the regular way.
-                match self.value_to_primval(args[0])?.to_u64()? {
+                match self.value_to_scalar(args[0])?.to_u64()? {
                     318 | 511 => {
                         return err!(Unimplemented(
                             "miri does not support random number generators".to_owned(),
@@ -281,7 +281,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             "memcmp" => {
                 let left = self.into_ptr(args[0].value)?;
                 let right = self.into_ptr(args[1].value)?;
-                let n = Size::from_bytes(self.value_to_primval(args[2])?.to_u64()?);
+                let n = Size::from_bytes(self.value_to_scalar(args[2])?.to_u64()?);
 
                 let result = {
                     let left_bytes = self.memory.read_bytes(left, n)?;
@@ -295,22 +295,22 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     }
                 };
 
-                self.write_primval(
+                self.write_scalar(
                     dest,
-                    PrimVal::Bytes(result as u128),
+                    Scalar::from_i8(result),
                     dest_ty,
                 )?;
             }
 
             "memrchr" => {
                 let ptr = self.into_ptr(args[0].value)?;
-                let val = self.value_to_primval(args[1])?.to_u64()? as u8;
-                let num = self.value_to_primval(args[2])?.to_u64()?;
+                let val = self.value_to_scalar(args[1])?.to_u64()? as u8;
+                let num = self.value_to_scalar(args[2])?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, Size::from_bytes(num))?.iter().rev().position(
                     |&c| c == val,
                 )
                 {
-                    let new_ptr = ptr.offset(Size::from_bytes(num - idx as u64 - 1), &self)?;
+                    let new_ptr = ptr.ptr_offset(Size::from_bytes(num - idx as u64 - 1), &self)?;
                     self.write_ptr(dest, new_ptr, dest_ty)?;
                 } else {
                     self.write_null(dest, dest_ty)?;
@@ -319,13 +319,13 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
             "memchr" => {
                 let ptr = self.into_ptr(args[0].value)?;
-                let val = self.value_to_primval(args[1])?.to_u64()? as u8;
-                let num = self.value_to_primval(args[2])?.to_u64()?;
+                let val = self.value_to_scalar(args[1])?.to_u64()? as u8;
+                let num = self.value_to_scalar(args[2])?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, Size::from_bytes(num))?.iter().position(
                     |&c| c == val,
                 )
                 {
-                    let new_ptr = ptr.offset(Size::from_bytes(idx as u64), &self)?;
+                    let new_ptr = ptr.ptr_offset(Size::from_bytes(idx as u64), &self)?;
                     self.write_ptr(dest, new_ptr, dest_ty)?;
                 } else {
                     self.write_null(dest, dest_ty)?;
@@ -337,11 +337,11 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     let name_ptr = self.into_ptr(args[0].value)?.to_ptr()?;
                     let name = self.memory.read_c_str(name_ptr)?;
                     match self.machine.env_vars.get(name) {
-                        Some(&var) => PrimVal::Ptr(var),
-                        None => PrimVal::Bytes(0),
+                        Some(&var) => Scalar::Ptr(var),
+                        None => Scalar::null(),
                     }
                 };
-                self.write_primval(dest, result, dest_ty)?;
+                self.write_scalar(dest, result, dest_ty)?;
             }
 
             "unsetenv" => {
@@ -361,7 +361,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     }
                     self.write_null(dest, dest_ty)?;
                 } else {
-                    self.write_primval(dest, PrimVal::from_i128(-1), dest_ty)?;
+                    self.write_scalar(dest, Scalar::from_i128(-1), dest_ty)?;
                 }
             }
 
@@ -397,14 +397,14 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     }
                     self.write_null(dest, dest_ty)?;
                 } else {
-                    self.write_primval(dest, PrimVal::from_i128(-1), dest_ty)?;
+                    self.write_scalar(dest, Scalar::from_i128(-1), dest_ty)?;
                 }
             }
 
             "write" => {
-                let fd = self.value_to_primval(args[0])?.to_u64()?;
+                let fd = self.value_to_scalar(args[0])?.to_u64()?;
                 let buf = self.into_ptr(args[1].value)?;
-                let n = self.value_to_primval(args[2])?.to_u64()?;
+                let n = self.value_to_scalar(args[2])?.to_u64()?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, n);
                 let result = if fd == 1 || fd == 2 {
                     // stdout/stderr
@@ -417,16 +417,17 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                         io::stderr().write(buf_cont)
                     };
                     match res {
-                        Ok(n) => n as isize,
+                        Ok(n) => n as i64,
                         Err(_) => -1,
                     }
                 } else {
                     warn!("Ignored output to FD {}", fd);
-                    n as isize // pretend it all went well
+                    n as i64 // pretend it all went well
                 }; // now result is the value we return back to the program
-                self.write_primval(
+                let ptr_size = self.memory.pointer_size();
+                self.write_scalar(
                     dest,
-                    PrimVal::Bytes(result as u128),
+                    Scalar::from_isize(result, ptr_size),
                     dest_ty,
                 )?;
             }
@@ -434,22 +435,23 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             "strlen" => {
                 let ptr = self.into_ptr(args[0].value)?.to_ptr()?;
                 let n = self.memory.read_c_str(ptr)?.len();
-                self.write_primval(dest, PrimVal::Bytes(n as u128), dest_ty)?;
+                let ptr_size = self.memory.pointer_size();
+                self.write_scalar(dest, Scalar::from_usize(n as u64, ptr_size), dest_ty)?;
             }
 
             // Some things needed for sys::thread initialization to go through
             "signal" | "sigaction" | "sigaltstack" => {
-                self.write_primval(dest, PrimVal::Bytes(0), dest_ty)?;
+                self.write_scalar(dest, Scalar::null(), dest_ty)?;
             }
 
             "sysconf" => {
-                let name = self.value_to_primval(args[0])?.to_u64()?;
+                let name = self.value_to_scalar(args[0])?.to_u64()?;
 
                 trace!("sysconf() called with name {}", name);
                 // cache the sysconf integers via miri's global cache
                 let paths = &[
-                    (&["libc", "_SC_PAGESIZE"], PrimVal::Bytes(4096)),
-                    (&["libc", "_SC_GETPW_R_SIZE_MAX"], PrimVal::from_i128(-1)),
+                    (&["libc", "_SC_PAGESIZE"], Scalar::from_i128(4096)),
+                    (&["libc", "_SC_GETPW_R_SIZE_MAX"], Scalar::from_i128(-1)),
                 ];
                 let mut result = None;
                 for &(path, path_value) in paths {
@@ -467,7 +469,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     }
                 }
                 if let Some(result) = result {
-                    self.write_primval(dest, result, dest_ty)?;
+                    self.write_scalar(dest, result, dest_ty)?;
                 } else {
                     return err!(Unimplemented(
                         format!("Unimplemented sysconf name: {}", name),
@@ -481,11 +483,11 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 let key_align = self.layout_of(args[0].ty)?.align;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves...)
-                let dtor = match self.into_ptr(args[1].value)?.into_inner_primval() {
-                    PrimVal::Ptr(dtor_ptr) => Some(self.memory.get_fn(dtor_ptr)?),
-                    PrimVal::Bytes(0) => None,
-                    PrimVal::Bytes(_) => return err!(ReadBytesAsPointer),
-                    PrimVal::Undef => return err!(ReadUndefBytes),
+                let dtor = match self.into_ptr(args[1].value)? {
+                    Scalar::Ptr(dtor_ptr) => Some(self.memory.get_fn(dtor_ptr)?),
+                    Scalar::Bits { defined: 0, .. } => return err!(ReadUndefBytes),
+                    Scalar::Bits { bits: 0, .. } => None,
+                    Scalar::Bits { .. } => return err!(ReadBytesAsPointer),
                 };
 
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
@@ -498,10 +500,10 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 if key_size.bits() < 128 && key >= (1u128 << key_size.bits() as u128) {
                     return err!(OutOfTls);
                 }
-                self.memory.write_primval(
+                self.memory.write_scalar(
                     key_ptr,
                     key_align,
-                    PrimVal::Bytes(key),
+                    Scalar::from_u128(key),
                     key_size,
                     false,
                 )?;
@@ -511,20 +513,20 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             }
             "pthread_key_delete" => {
                 // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
-                let key = self.value_to_primval(args[0])?.to_u64()? as TlsKey;
+                let key = self.value_to_scalar(args[0])?.to_u64()? as TlsKey;
                 self.memory.delete_tls_key(key)?;
                 // Return success (0)
                 self.write_null(dest, dest_ty)?;
             }
             "pthread_getspecific" => {
                 // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
-                let key = self.value_to_primval(args[0])?.to_u64()? as TlsKey;
+                let key = self.value_to_scalar(args[0])?.to_u64()? as TlsKey;
                 let ptr = self.memory.load_tls(key)?;
                 self.write_ptr(dest, ptr, dest_ty)?;
             }
             "pthread_setspecific" => {
                 // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
-                let key = self.value_to_primval(args[0])?.to_u64()? as TlsKey;
+                let key = self.value_to_scalar(args[0])?.to_u64()? as TlsKey;
                 let new_ptr = self.into_ptr(args[1].value)?;
                 self.memory.store_tls(key, new_ptr)?;
 
@@ -635,8 +637,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
         match &path[..] {
             // Allocators are magic.  They have no MIR, even when the rest of libstd does.
             "alloc::alloc::::__rust_alloc" => {
-                let size = self.value_to_primval(args[0])?.to_u64()?;
-                let align = self.value_to_primval(args[1])?.to_u64()?;
+                let size = self.value_to_scalar(args[0])?.to_u64()?;
+                let align = self.value_to_scalar(args[1])?.to_u64()?;
                 if size == 0 {
                     return err!(HeapAllocZeroBytes);
                 }
@@ -646,11 +648,11 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 let ptr = self.memory.allocate(Size::from_bytes(size),
                                                Align::from_bytes(align, align).unwrap(),
                                                Some(MemoryKind::Rust.into()))?;
-                self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
+                self.write_scalar(dest, Scalar::Ptr(ptr), dest_ty)?;
             }
             "alloc::alloc::::__rust_alloc_zeroed" => {
-                let size = self.value_to_primval(args[0])?.to_u64()?;
-                let align = self.value_to_primval(args[1])?.to_u64()?;
+                let size = self.value_to_scalar(args[0])?.to_u64()?;
+                let align = self.value_to_scalar(args[1])?.to_u64()?;
                 if size == 0 {
                     return err!(HeapAllocZeroBytes);
                 }
@@ -661,12 +663,12 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                                                Align::from_bytes(align, align).unwrap(),
                                                Some(MemoryKind::Rust.into()))?;
                 self.memory.write_repeat(ptr.into(), 0, Size::from_bytes(size))?;
-                self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
+                self.write_scalar(dest, Scalar::Ptr(ptr), dest_ty)?;
             }
             "alloc::alloc::::__rust_dealloc" => {
                 let ptr = self.into_ptr(args[0].value)?.to_ptr()?;
-                let old_size = self.value_to_primval(args[1])?.to_u64()?;
-                let align = self.value_to_primval(args[2])?.to_u64()?;
+                let old_size = self.value_to_scalar(args[1])?.to_u64()?;
+                let align = self.value_to_scalar(args[2])?.to_u64()?;
                 if old_size == 0 {
                     return err!(HeapAllocZeroBytes);
                 }
@@ -681,9 +683,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             }
             "alloc::alloc::::__rust_realloc" => {
                 let ptr = self.into_ptr(args[0].value)?.to_ptr()?;
-                let old_size = self.value_to_primval(args[1])?.to_u64()?;
-                let align = self.value_to_primval(args[2])?.to_u64()?;
-                let new_size = self.value_to_primval(args[3])?.to_u64()?;
+                let old_size = self.value_to_scalar(args[1])?.to_u64()?;
+                let align = self.value_to_scalar(args[2])?.to_u64()?;
+                let new_size = self.value_to_scalar(args[3])?.to_u64()?;
                 if old_size == 0 || new_size == 0 {
                     return err!(HeapAllocZeroBytes);
                 }
@@ -698,7 +700,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     Align::from_bytes(align, align).unwrap(),
                     MemoryKind::Rust.into(),
                 )?;
-                self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
+                self.write_scalar(dest, Scalar::Ptr(new_ptr), dest_ty)?;
             }
 
             // A Rust function is missing, which means we are running with MIR missing for libstd (or other dependencies).
@@ -720,13 +722,13 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             "std::rt::panicking" => {
                 // we abort on panic -> `std::rt::panicking` always returns false
                 let bool = self.tcx.types.bool;
-                self.write_primval(dest, PrimVal::from_bool(false), bool)?;
+                self.write_scalar(dest, Scalar::from_bool(false), bool)?;
             }
             "std::sys::imp::c::::AddVectoredExceptionHandler" |
             "std::sys::imp::c::::SetThreadStackGuarantee" => {
                 let usize = self.tcx.types.usize;
                 // any non zero value works for the stdlib. This is just used for stackoverflows anyway
-                self.write_primval(dest, PrimVal::Bytes(1), usize)?;
+                self.write_scalar(dest, Scalar::from_u128(1), usize)?;
             },
             _ => return err!(NoMirFor(path)),
         }
@@ -740,6 +742,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
     }
 
     fn write_null(&mut self, dest: Place, dest_ty: Ty<'tcx>) -> EvalResult<'tcx> {
-        self.write_primval(dest, PrimVal::Bytes(0), dest_ty)
+        self.write_scalar(dest, Scalar::null(), dest_ty)
     }
 }

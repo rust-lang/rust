@@ -1,11 +1,13 @@
 use rustc::mir;
-use rustc::ty::layout::{TyLayout, LayoutOf, Size};
+use rustc::ty::layout::{TyLayout, LayoutOf, Size, Primitive, Integer::*};
 use rustc::ty;
 
-use rustc::mir::interpret::{EvalResult, PrimVal, PrimValKind, Value, Pointer};
+use rustc::mir::interpret::{EvalResult, Scalar, Value};
 use rustc_mir::interpret::{Place, PlaceExtra, HasMemory, EvalContext, ValTy};
 
 use helpers::EvalContextExt as HelperEvalContextExt;
+
+use super::ScalarExt;
 
 pub trait EvalContextExt<'tcx> {
     fn call_intrinsic(
@@ -36,7 +38,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 // alignment bigger than the one requested
                 let n = u128::max_value();
                 let amt = 128 - self.memory.pointer_size().bytes() * 8;
-                self.write_primval(dest, PrimVal::Bytes((n << amt) >> amt), dest_layout.ty)?;
+                self.write_scalar(dest, Scalar::from_u128((n << amt) >> amt), dest_layout.ty)?;
             },
 
             "add_with_overflow" => {
@@ -77,7 +79,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "assume" => {
-                let cond = self.value_to_primval(args[0])?.to_bool()?;
+                let cond = self.value_to_scalar(args[0])?.to_bool()?;
                 if !cond {
                     return err!(AssumptionNotHeld);
                 }
@@ -115,16 +117,16 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let ty = substs.type_at(0);
                 let align = self.layout_of(ty)?.align;
                 let ptr = self.into_ptr(args[0].value)?;
-                let change = self.value_to_primval(args[1])?;
+                let change = self.value_to_scalar(args[1])?;
                 let old = self.read_value(ptr, align, ty)?;
                 let old = match old {
-                    Value::ByVal(val) => val,
+                    Value::Scalar(val) => val,
                     Value::ByRef { .. } => bug!("just read the value, can't be byref"),
-                    Value::ByValPair(..) => bug!("atomic_xchg doesn't work with nonprimitives"),
+                    Value::ScalarPair(..) => bug!("atomic_xchg doesn't work with nonprimitives"),
                 };
-                self.write_primval(dest, old, ty)?;
-                self.write_primval(
-                    Place::from_primval_ptr(ptr, align),
+                self.write_scalar(dest, old, ty)?;
+                self.write_scalar(
+                    Place::from_scalar_ptr(ptr, align),
                     change,
                     ty,
                 )?;
@@ -134,22 +136,22 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let ty = substs.type_at(0);
                 let align = self.layout_of(ty)?.align;
                 let ptr = self.into_ptr(args[0].value)?;
-                let expect_old = self.value_to_primval(args[1])?;
-                let change = self.value_to_primval(args[2])?;
+                let expect_old = self.value_to_scalar(args[1])?;
+                let change = self.value_to_scalar(args[2])?;
                 let old = self.read_value(ptr, align, ty)?;
                 let old = match old {
-                    Value::ByVal(val) => val,
+                    Value::Scalar(val) => val,
                     Value::ByRef { .. } => bug!("just read the value, can't be byref"),
-                    Value::ByValPair(..) => bug!("atomic_cxchg doesn't work with nonprimitives"),
+                    Value::ScalarPair(..) => bug!("atomic_cxchg doesn't work with nonprimitives"),
                 };
                 let (val, _) = self.binary_op(mir::BinOp::Eq, old, ty, expect_old, ty)?;
                 let valty = ValTy {
-                    value: Value::ByValPair(old, val),
+                    value: Value::ScalarPair(old, val),
                     ty: dest_layout.ty,
                 };
                 self.write_value(valty, dest)?;
-                self.write_primval(
-                    Place::from_primval_ptr(ptr, dest_layout.align),
+                self.write_scalar(
+                    Place::from_scalar_ptr(ptr, dest_layout.align),
                     change,
                     ty,
                 )?;
@@ -183,16 +185,16 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let ty = substs.type_at(0);
                 let align = self.layout_of(ty)?.align;
                 let ptr = self.into_ptr(args[0].value)?;
-                let change = self.value_to_primval(args[1])?;
+                let change = self.value_to_scalar(args[1])?;
                 let old = self.read_value(ptr, align, ty)?;
                 let old = match old {
-                    Value::ByVal(val) => val,
+                    Value::Scalar(val) => val,
                     Value::ByRef { .. } => bug!("just read the value, can't be byref"),
-                    Value::ByValPair(..) => {
+                    Value::ScalarPair(..) => {
                         bug!("atomic_xadd_relaxed doesn't work with nonprimitives")
                     }
                 };
-                self.write_primval(dest, old, ty)?;
+                self.write_scalar(dest, old, ty)?;
                 let op = match intrinsic_name.split('_').nth(1).unwrap() {
                     "or" => mir::BinOp::BitOr,
                     "xor" => mir::BinOp::BitXor,
@@ -203,7 +205,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 };
                 // FIXME: what do atomics do on overflow?
                 let (val, _) = self.binary_op(op, old, ty, change, ty)?;
-                self.write_primval(Place::from_primval_ptr(ptr, dest_layout.align), val, ty)?;
+                self.write_scalar(Place::from_scalar_ptr(ptr, dest_layout.align), val, ty)?;
             }
 
             "breakpoint" => unimplemented!(), // halt miri
@@ -233,8 +235,11 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 
             "ctpop" | "cttz" | "cttz_nonzero" | "ctlz" | "ctlz_nonzero" | "bswap" => {
                 let ty = substs.type_at(0);
-                let num = self.value_to_primval(args[0])?.to_bytes()?;
-                let kind = self.ty_to_primval_kind(ty)?;
+                let num = self.value_to_scalar(args[0])?.to_bytes()?;
+                let kind = match self.layout_of(ty)?.abi {
+                    ty::layout::Abi::Scalar(ref scalar) => scalar.value,
+                    _ => Err(::rustc::mir::interpret::EvalErrorKind::TypeNotPrimitive(ty))?,
+                };
                 let num = if intrinsic_name.ends_with("_nonzero") {
                     if num == 0 {
                         return err!(Intrinsic(format!("{} called on 0", intrinsic_name)));
@@ -243,21 +248,21 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 } else {
                     numeric_intrinsic(intrinsic_name, num, kind)?
                 };
-                self.write_primval(dest, num, ty)?;
+                self.write_scalar(dest, num, ty)?;
             }
 
             "discriminant_value" => {
                 let ty = substs.type_at(0);
                 let adt_ptr = self.into_ptr(args[0].value)?;
                 let adt_align = self.layout_of(args[0].ty)?.align;
-                let place = Place::from_primval_ptr(adt_ptr, adt_align);
+                let place = Place::from_scalar_ptr(adt_ptr, adt_align);
                 let discr_val = self.read_discriminant_value(place, ty)?;
-                self.write_primval(dest, PrimVal::Bytes(discr_val), dest_layout.ty)?;
+                self.write_scalar(dest, Scalar::from_u128(discr_val), dest_layout.ty)?;
             }
 
             "sinf32" | "fabsf32" | "cosf32" | "sqrtf32" | "expf32" | "exp2f32" | "logf32" |
             "log10f32" | "log2f32" | "floorf32" | "ceilf32" | "truncf32" => {
-                let f = self.value_to_primval(args[0])?.to_bytes()?;
+                let f = self.value_to_scalar(args[0])?.to_bytes()?;
                 let f = f32::from_bits(f as u32);
                 let f = match intrinsic_name {
                     "sinf32" => f.sin(),
@@ -274,12 +279,12 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     "truncf32" => f.trunc(),
                     _ => bug!(),
                 };
-                self.write_primval(dest, PrimVal::Bytes(f.to_bits() as u128), dest_layout.ty)?;
+                self.write_scalar(dest, Scalar::from_f32(f), dest_layout.ty)?;
             }
 
             "sinf64" | "fabsf64" | "cosf64" | "sqrtf64" | "expf64" | "exp2f64" | "logf64" |
             "log10f64" | "log2f64" | "floorf64" | "ceilf64" | "truncf64" => {
-                let f = self.value_to_primval(args[0])?.to_bytes()?;
+                let f = self.value_to_scalar(args[0])?.to_bytes()?;
                 let f = f64::from_bits(f as u64);
                 let f = match intrinsic_name {
                     "sinf64" => f.sin(),
@@ -296,13 +301,13 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     "truncf64" => f.trunc(),
                     _ => bug!(),
                 };
-                self.write_primval(dest, PrimVal::Bytes(f.to_bits() as u128), dest_layout.ty)?;
+                self.write_scalar(dest, Scalar::from_f64(f), dest_layout.ty)?;
             }
 
             "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" => {
                 let ty = substs.type_at(0);
-                let a = self.value_to_primval(args[0])?;
-                let b = self.value_to_primval(args[1])?;
+                let a = self.value_to_scalar(args[0])?;
+                let b = self.value_to_scalar(args[1])?;
                 let op = match intrinsic_name {
                     "fadd_fast" => mir::BinOp::Add,
                     "fsub_fast" => mir::BinOp::Sub,
@@ -312,21 +317,21 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     _ => bug!(),
                 };
                 let result = self.binary_op(op, a, ty, b, ty)?;
-                self.write_primval(dest, result.0, dest_layout.ty)?;
+                self.write_scalar(dest, result.0, dest_layout.ty)?;
             }
 
             "exact_div" => {
                 // Performs an exact division, resulting in undefined behavior where
                 // `x % y != 0` or `y == 0` or `x == T::min_value() && y == -1`
                 let ty = substs.type_at(0);
-                let a = self.value_to_primval(args[0])?;
-                let b = self.value_to_primval(args[1])?;
+                let a = self.value_to_scalar(args[0])?;
+                let b = self.value_to_scalar(args[1])?;
                 // check x % y != 0
-                if self.binary_op(mir::BinOp::Rem, a, ty, b, ty)?.0 != PrimVal::Bytes(0) {
+                if self.binary_op(mir::BinOp::Rem, a, ty, b, ty)?.0 != Scalar::null() {
                     return err!(ValidationFailure(format!("exact_div: {:?} cannot be divided by {:?}", a, b)));
                 }
                 let result = self.binary_op(mir::BinOp::Div, a, ty, b, ty)?;
-                self.write_primval(dest, result.0, dest_layout.ty)?;
+                self.write_scalar(dest, result.0, dest_layout.ty)?;
             },
 
             "likely" | "unlikely" | "forget" => {}
@@ -341,21 +346,21 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                             val
                         }
                         // TODO(solson): Revisit this, it's fishy to check for Undef here.
-                        Value::ByVal(PrimVal::Undef) => {
-                            match this.ty_to_primval_kind(dest_layout.ty) {
-                                Ok(_) => Value::ByVal(PrimVal::Bytes(0)),
-                                Err(_) => {
+                        Value::Scalar(Scalar::Bits { defined: 0, .. }) => {
+                            match this.layout_of(dest_layout.ty)?.abi {
+                                ty::layout::Abi::Scalar(_) => Value::Scalar(Scalar::null()),
+                                _ => {
                                     // FIXME(oli-obk): pass TyLayout to alloc_ptr instead of Ty
                                     let ptr = this.alloc_ptr(dest_layout.ty)?;
-                                    let ptr = Pointer::from(PrimVal::Ptr(ptr));
+                                    let ptr = Scalar::Ptr(ptr);
                                     this.memory.write_repeat(ptr, 0, size)?;
                                     Value::ByRef(ptr, dest_layout.align)
                                 }
                             }
                         }
-                        Value::ByVal(_) => Value::ByVal(PrimVal::Bytes(0)),
-                        Value::ByValPair(..) => {
-                            Value::ByValPair(PrimVal::Bytes(0), PrimVal::Bytes(0))
+                        Value::Scalar(_) => Value::Scalar(Scalar::null()),
+                        Value::ScalarPair(..) => {
+                            Value::ScalarPair(Scalar::null(), Scalar::null())
                         }
                     };
                     Ok(zero_val)
@@ -376,16 +381,16 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "min_align_of" => {
                 let elem_ty = substs.type_at(0);
                 let elem_align = self.layout_of(elem_ty)?.align.abi();
-                let align_val = PrimVal::from_u128(elem_align as u128);
-                self.write_primval(dest, align_val, dest_layout.ty)?;
+                let align_val = Scalar::from_u128(elem_align as u128);
+                self.write_scalar(dest, align_val, dest_layout.ty)?;
             }
 
             "pref_align_of" => {
                 let ty = substs.type_at(0);
                 let layout = self.layout_of(ty)?;
                 let align = layout.align.pref();
-                let align_val = PrimVal::from_u128(align as u128);
-                self.write_primval(dest, align_val, dest_layout.ty)?;
+                let align_val = Scalar::from_u128(align as u128);
+                self.write_scalar(dest, align_val, dest_layout.ty)?;
             }
 
             "move_val_init" => {
@@ -399,9 +404,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let ty = substs.type_at(0);
                 let env = ty::ParamEnv::reveal_all();
                 let needs_drop = ty.needs_drop(self.tcx.tcx, env);
-                self.write_primval(
+                self.write_scalar(
                     dest,
-                    PrimVal::from_bool(needs_drop),
+                    Scalar::from_bool(needs_drop),
                     dest_layout.ty,
                 )?;
             }
@@ -444,75 +449,75 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "powf32" => {
-                let f = self.value_to_primval(args[0])?.to_bytes()?;
+                let f = self.value_to_scalar(args[0])?.to_bits(Size::from_bits(32))?;
                 let f = f32::from_bits(f as u32);
-                let f2 = self.value_to_primval(args[1])?.to_bytes()?;
+                let f2 = self.value_to_scalar(args[1])?.to_bits(Size::from_bits(32))?;
                 let f2 = f32::from_bits(f2 as u32);
-                self.write_primval(
+                self.write_scalar(
                     dest,
-                    PrimVal::Bytes(f.powf(f2).to_bits() as u128),
+                    Scalar::from_f32(f.powf(f2)),
                     dest_layout.ty,
                 )?;
             }
 
             "powf64" => {
-                let f = self.value_to_primval(args[0])?.to_bytes()?;
+                let f = self.value_to_scalar(args[0])?.to_bits(Size::from_bits(64))?;
                 let f = f64::from_bits(f as u64);
-                let f2 = self.value_to_primval(args[1])?.to_bytes()?;
+                let f2 = self.value_to_scalar(args[1])?.to_bits(Size::from_bits(64))?;
                 let f2 = f64::from_bits(f2 as u64);
-                self.write_primval(
+                self.write_scalar(
                     dest,
-                    PrimVal::Bytes(f.powf(f2).to_bits() as u128),
+                    Scalar::from_f64(f.powf(f2)),
                     dest_layout.ty,
                 )?;
             }
 
             "fmaf32" => {
-                let a = self.value_to_primval(args[0])?.to_bytes()?;
+                let a = self.value_to_scalar(args[0])?.to_bits(Size::from_bits(32))?;
                 let a = f32::from_bits(a as u32);
-                let b = self.value_to_primval(args[1])?.to_bytes()?;
+                let b = self.value_to_scalar(args[1])?.to_bits(Size::from_bits(32))?;
                 let b = f32::from_bits(b as u32);
-                let c = self.value_to_primval(args[2])?.to_bytes()?;
+                let c = self.value_to_scalar(args[2])?.to_bits(Size::from_bits(32))?;
                 let c = f32::from_bits(c as u32);
-                self.write_primval(
+                self.write_scalar(
                     dest,
-                    PrimVal::Bytes((a * b + c).to_bits() as u128),
+                    Scalar::from_f32(a * b + c),
                     dest_layout.ty,
                 )?;
             }
 
             "fmaf64" => {
-                let a = self.value_to_primval(args[0])?.to_bytes()?;
+                let a = self.value_to_scalar(args[0])?.to_bits(Size::from_bits(64))?;
                 let a = f64::from_bits(a as u64);
-                let b = self.value_to_primval(args[1])?.to_bytes()?;
+                let b = self.value_to_scalar(args[1])?.to_bits(Size::from_bits(64))?;
                 let b = f64::from_bits(b as u64);
-                let c = self.value_to_primval(args[2])?.to_bytes()?;
+                let c = self.value_to_scalar(args[2])?.to_bits(Size::from_bits(64))?;
                 let c = f64::from_bits(c as u64);
-                self.write_primval(
+                self.write_scalar(
                     dest,
-                    PrimVal::Bytes((a * b + c).to_bits() as u128),
+                    Scalar::from_f64(a * b + c),
                     dest_layout.ty,
                 )?;
             }
 
             "powif32" => {
-                let f = self.value_to_primval(args[0])?.to_bytes()?;
+                let f = self.value_to_scalar(args[0])?.to_bits(Size::from_bits(32))?;
                 let f = f32::from_bits(f as u32);
                 let i = self.value_to_i32(args[1])?;
-                self.write_primval(
+                self.write_scalar(
                     dest,
-                    PrimVal::Bytes(f.powi(i).to_bits() as u128),
+                    Scalar::from_f32(f.powi(i)),
                     dest_layout.ty,
                 )?;
             }
 
             "powif64" => {
-                let f = self.value_to_primval(args[0])?.to_bytes()?;
+                let f = self.value_to_scalar(args[0])?.to_bits(Size::from_bits(64))?;
                 let f = f64::from_bits(f as u64);
                 let i = self.value_to_i32(args[1])?;
-                self.write_primval(
+                self.write_scalar(
                     dest,
-                    PrimVal::Bytes(f.powi(i).to_bits() as u128),
+                    Scalar::from_f64(f.powi(i)),
                     dest_layout.ty,
                 )?;
             }
@@ -520,15 +525,15 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "size_of" => {
                 let ty = substs.type_at(0);
                 let size = self.layout_of(ty)?.size.bytes().into();
-                self.write_primval(dest, PrimVal::from_u128(size), dest_layout.ty)?;
+                self.write_scalar(dest, Scalar::from_u128(size), dest_layout.ty)?;
             }
 
             "size_of_val" => {
                 let ty = substs.type_at(0);
                 let (size, _) = self.size_and_align_of_dst(ty, args[0].value)?;
-                self.write_primval(
+                self.write_scalar(
                     dest,
-                    PrimVal::from_u128(size.bytes() as u128),
+                    Scalar::from_u128(size.bytes() as u128),
                     dest_layout.ty,
                 )?;
             }
@@ -537,9 +542,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "align_of_val" => {
                 let ty = substs.type_at(0);
                 let (_, align) = self.size_and_align_of_dst(ty, args[0].value)?;
-                self.write_primval(
+                self.write_scalar(
                     dest,
-                    PrimVal::from_u128(align.abi() as u128),
+                    Scalar::from_u128(align.abi() as u128),
                     dest_layout.ty,
                 )?;
             }
@@ -553,7 +558,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "type_id" => {
                 let ty = substs.type_at(0);
                 let n = self.tcx.type_id_hash(ty);
-                self.write_primval(dest, PrimVal::Bytes(n as u128), dest_layout.ty)?;
+                self.write_scalar(dest, Scalar::Bits { bits: n as u128, defined: 64 }, dest_layout.ty)?;
             }
 
             "transmute" => {
@@ -566,7 +571,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 
             "unchecked_shl" => {
                 let bits = dest_layout.size.bytes() as u128 * 8;
-                let rhs = self.value_to_primval(args[1])?
+                let rhs = self.value_to_scalar(args[1])?
                     .to_bytes()?;
                 if rhs >= bits {
                     return err!(Intrinsic(
@@ -584,7 +589,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 
             "unchecked_shr" => {
                 let bits = dest_layout.size.bytes() as u128 * 8;
-                let rhs = self.value_to_primval(args[1])?
+                let rhs = self.value_to_scalar(args[1])?
                     .to_bytes()?;
                 if rhs >= bits {
                     return err!(Intrinsic(
@@ -601,7 +606,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "unchecked_div" => {
-                let rhs = self.value_to_primval(args[1])?
+                let rhs = self.value_to_scalar(args[1])?
                     .to_bytes()?;
                 if rhs == 0 {
                     return err!(Intrinsic(format!("Division by 0 in unchecked_div")));
@@ -616,7 +621,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "unchecked_rem" => {
-                let rhs = self.value_to_primval(args[1])?
+                let rhs = self.value_to_scalar(args[1])?
                     .to_bytes()?;
                 if rhs == 0 {
                     return err!(Intrinsic(format!("Division by 0 in unchecked_rem")));
@@ -637,7 +642,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                         this.memory.mark_definedness(ptr, size, false)?;
                         Ok(val)
                     }
-                    _ => Ok(Value::ByVal(PrimVal::Undef)),
+                    _ => Ok(Value::Scalar(Scalar::undef())),
                 };
                 match dest {
                     Place::Local { frame, local } => self.modify_local(frame, local, uninit)?,
@@ -681,26 +686,25 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
 fn numeric_intrinsic<'tcx>(
     name: &str,
     bytes: u128,
-    kind: PrimValKind,
-) -> EvalResult<'tcx, PrimVal> {
+    kind: Primitive,
+) -> EvalResult<'tcx, Scalar> {
     macro_rules! integer_intrinsic {
         ($method:ident) => ({
-            use rustc::mir::interpret::PrimValKind::*;
             let result_bytes = match kind {
-                I8 => (bytes as i8).$method() as u128,
-                U8 => (bytes as u8).$method() as u128,
-                I16 => (bytes as i16).$method() as u128,
-                U16 => (bytes as u16).$method() as u128,
-                I32 => (bytes as i32).$method() as u128,
-                U32 => (bytes as u32).$method() as u128,
-                I64 => (bytes as i64).$method() as u128,
-                U64 => (bytes as u64).$method() as u128,
-                I128 => (bytes as i128).$method() as u128,
-                U128 => bytes.$method() as u128,
+                Primitive::Int(I8, true) => (bytes as i8).$method() as u128,
+                Primitive::Int(I8, false) => (bytes as u8).$method() as u128,
+                Primitive::Int(I16, true) => (bytes as i16).$method() as u128,
+                Primitive::Int(I16, false) => (bytes as u16).$method() as u128,
+                Primitive::Int(I32, true) => (bytes as i32).$method() as u128,
+                Primitive::Int(I32, false) => (bytes as u32).$method() as u128,
+                Primitive::Int(I64, true) => (bytes as i64).$method() as u128,
+                Primitive::Int(I64, false) => (bytes as u64).$method() as u128,
+                Primitive::Int(I128, true) => (bytes as i128).$method() as u128,
+                Primitive::Int(I128, false) => bytes.$method() as u128,
                 _ => bug!("invalid `{}` argument: {:?}", name, bytes),
             };
 
-            PrimVal::Bytes(result_bytes)
+            Scalar::from_u128(result_bytes)
         });
     }
 

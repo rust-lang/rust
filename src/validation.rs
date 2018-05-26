@@ -12,7 +12,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_mir::interpret::HasMemory;
 
-use super::{EvalContext, Place, PlaceExtra, ValTy};
+use super::{EvalContext, Place, PlaceExtra, ValTy, ScalarExt};
 use rustc::mir::interpret::{DynamicLifetime, AccessKind, EvalErrorKind, Value, EvalError, EvalResult};
 use locks::MemoryExt;
 
@@ -119,7 +119,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             Index(v) => {
                 let value = self.frame().get_local(v)?;
                 let ty = self.tcx.tcx.types.usize;
-                let n = self.value_to_primval(ValTy { value, ty })?.to_u64()?;
+                let n = self.value_to_scalar(ValTy { value, ty })?.to_u64()?;
                 Index(n)
             },
             ConstantIndex { offset, min_length, from_end } =>
@@ -652,7 +652,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 TyBool | TyFloat(_) | TyChar => {
                     if mode.acquiring() {
                         let val = self.read_place(query.place.1)?;
-                        let val = self.value_to_primval(ValTy { value: val, ty: query.ty })?;
+                        let val = self.value_to_scalar(ValTy { value: val, ty: query.ty })?;
                         val.to_bytes()?;
                         // TODO: Check if these are valid bool/float/codepoint/UTF-8
                     }

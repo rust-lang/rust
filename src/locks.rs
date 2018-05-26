@@ -70,27 +70,27 @@ impl<'tcx> LockInfo<'tcx> {
 pub trait MemoryExt<'tcx> {
     fn check_locks(
         &self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         access: AccessKind,
     ) -> EvalResult<'tcx>;
     fn acquire_lock(
         &mut self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         region: Option<region::Scope>,
         kind: AccessKind,
     ) -> EvalResult<'tcx>;
     fn suspend_write_lock(
         &mut self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         lock_path: &AbsPlace<'tcx>,
         suspend: Option<region::Scope>,
     ) -> EvalResult<'tcx>;
     fn recover_write_lock(
         &mut self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         lock_path: &AbsPlace<'tcx>,
         lock_region: Option<region::Scope>,
@@ -103,7 +103,7 @@ pub trait MemoryExt<'tcx> {
 impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evaluator<'tcx>> {
     fn check_locks(
         &self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         access: AccessKind,
     ) -> EvalResult<'tcx> {
@@ -132,7 +132,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
     /// Acquire the lock for the given lifetime
     fn acquire_lock(
         &mut self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         region: Option<region::Scope>,
         kind: AccessKind,
@@ -191,7 +191,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
     /// When suspending, the same cases are fine; we just register an additional suspension.
     fn suspend_write_lock(
         &mut self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         lock_path: &AbsPlace<'tcx>,
         suspend: Option<region::Scope>,
@@ -264,7 +264,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evalu
     /// Release a suspension from the write lock.  If this is the last suspension or if there is no suspension, acquire the lock.
     fn recover_write_lock(
         &mut self,
-        ptr: MemoryPointer,
+        ptr: Pointer,
         len: u64,
         lock_path: &AbsPlace<'tcx>,
         lock_region: Option<region::Scope>,

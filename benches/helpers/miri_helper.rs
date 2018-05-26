@@ -55,16 +55,13 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls<'a> {
             state.session.abort_if_errors();
 
             let tcx = state.tcx.unwrap();
-            let (entry_node_id, _) = state.session.entry_fn.borrow().expect(
+            let (entry_node_id, _, _) = state.session.entry_fn.borrow().expect(
                 "no main or start function found",
             );
-            let entry_def_id = tcx.map.local_def_id(entry_node_id);
+            let entry_def_id = tcx.hir.local_def_id(entry_node_id);
 
-            let memory_size = 100 * 1024 * 1024; // 100MB
-            let step_limit = 1000_000;
-            let stack_limit = 100;
             bencher.borrow_mut().iter(|| {
-                eval_main(tcx, entry_def_id, memory_size, step_limit, stack_limit);
+                eval_main(tcx, entry_def_id, None);
             });
 
             state.session.abort_if_errors();
