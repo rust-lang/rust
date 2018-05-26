@@ -14,7 +14,12 @@
 //! but is not as ugly as it is right now.
 
 use rustc::mir::{BasicBlock, Location};
+use rustc::ty::RegionVid;
 use rustc_data_structures::indexed_set::Iter;
+
+use borrow_check::location::LocationIndex;
+
+use polonius_engine::Output;
 
 use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use dataflow::{EverInitializedPlaces, MovingOutStatements};
@@ -23,6 +28,7 @@ use dataflow::{FlowAtLocation, FlowsAtLocation};
 use dataflow::move_paths::HasMoveData;
 use dataflow::move_paths::indexes::BorrowIndex;
 use std::fmt;
+use std::rc::Rc;
 
 // (forced to be `pub` due to its use as an associated type below.)
 crate struct Flows<'b, 'gcx: 'tcx, 'tcx: 'b> {
@@ -31,6 +37,9 @@ crate struct Flows<'b, 'gcx: 'tcx, 'tcx: 'b> {
     pub uninits: FlowAtLocation<MaybeUninitializedPlaces<'b, 'gcx, 'tcx>>,
     pub move_outs: FlowAtLocation<MovingOutStatements<'b, 'gcx, 'tcx>>,
     pub ever_inits: FlowAtLocation<EverInitializedPlaces<'b, 'gcx, 'tcx>>,
+
+    /// Polonius Output
+    pub polonius_output: Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
 }
 
 impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
@@ -40,6 +49,7 @@ impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
         uninits: FlowAtLocation<MaybeUninitializedPlaces<'b, 'gcx, 'tcx>>,
         move_outs: FlowAtLocation<MovingOutStatements<'b, 'gcx, 'tcx>>,
         ever_inits: FlowAtLocation<EverInitializedPlaces<'b, 'gcx, 'tcx>>,
+        polonius_output: Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
     ) -> Self {
         Flows {
             borrows,
@@ -47,6 +57,7 @@ impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
             uninits,
             move_outs,
             ever_inits,
+            polonius_output,
         }
     }
 

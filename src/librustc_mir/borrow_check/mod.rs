@@ -11,12 +11,11 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
 use borrow_check::nll::region_infer::RegionInferenceContext;
-use borrow_check::location::LocationIndex;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::infer::InferCtxt;
-use rustc::ty::{self, ParamEnv, RegionVid, TyCtxt};
+use rustc::ty::{self, ParamEnv, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::lint::builtin::UNUSED_MUT;
 use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
@@ -46,7 +45,6 @@ use dataflow::move_paths::{IllegalMoveOriginKind, MoveError};
 use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
 use util::borrowck_errors::{BorrowckErrors, Origin};
 use util::collect_writes::FindAssignments;
-use polonius_engine::Output;
 
 use self::borrow_set::{BorrowSet, BorrowData};
 use self::flows::Flows;
@@ -253,7 +251,6 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         used_mut_upvars: SmallVec::new(),
         borrow_set,
         dominators,
-        polonius_output,
     };
 
     let mut state = Flows::new(
@@ -262,6 +259,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         flow_uninits,
         flow_move_outs,
         flow_ever_inits,
+        polonius_output,
     );
 
     mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
@@ -376,9 +374,6 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 
     /// Dominators for MIR
     dominators: Dominators<BasicBlock>,
-
-    /// Polonius Output
-    polonius_output: Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
 }
 
 // Check that:
