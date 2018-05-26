@@ -82,10 +82,6 @@ pub struct LoweringContext<'a> {
 
     cstore: &'a CrateStore,
 
-    // As we walk the AST we must keep track of the current 'parent' def id (in
-    // the form of a DefIndex) so that if we create a new node which introduces
-    // a definition, then we can properly create the def id.
-    parent_def: Option<DefIndex>,
     resolver: &'a mut Resolver,
     name_map: FxHashMap<Ident, Name>,
 
@@ -205,7 +201,6 @@ pub fn lower_crate(
         crate_root: std_inject::injected_crate_name(),
         sess,
         cstore,
-        parent_def: None,
         resolver,
         name_map: FxHashMap(),
         items: BTreeMap::new(),
@@ -882,22 +877,6 @@ impl<'a> LoweringContext<'a> {
 
         self.is_in_loop_condition = was_in_loop_condition;
 
-        result
-    }
-
-    fn with_parent_def<T, F>(&mut self, parent_id: NodeId, f: F) -> T
-    where
-        F: FnOnce(&mut LoweringContext) -> T,
-    {
-        let old_def = self.parent_def;
-        self.parent_def = {
-            let defs = self.resolver.definitions();
-            Some(defs.opt_def_index(parent_id).unwrap())
-        };
-
-        let result = f(self);
-
-        self.parent_def = old_def;
         result
     }
 
@@ -2461,74 +2440,72 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_trait_item(&mut self, i: &TraitItem) -> hir::TraitItem {
-        self.with_parent_def(i.id, |this| {
-            let LoweredNodeId { node_id, hir_id } = this.lower_node_id(i.id);
-            let trait_item_def_id = this.resolver.definitions().local_def_id(node_id);
+        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(i.id);
+        let trait_item_def_id = self.resolver.definitions().local_def_id(node_id);
 
-            let (generics, node) = match i.node {
-                TraitItemKind::Const(ref ty, ref default) => (
-                    this.lower_generics(&i.generics, ImplTraitContext::Disallowed),
-                    hir::TraitItemKind::Const(
-                        this.lower_ty(ty, ImplTraitContext::Disallowed),
-                        default
-                            .as_ref()
-                            .map(|x| this.lower_body(None, |this| this.lower_expr(x))),
-                    ),
+        let (generics, node) = match i.node {
+            TraitItemKind::Const(ref ty, ref default) => (
+                self.lower_generics(&i.generics, ImplTraitContext::Disallowed),
+                hir::TraitItemKind::Const(
+                    self.lower_ty(ty, ImplTraitContext::Disallowed),
+                    default
+                        .as_ref()
+                        .map(|x| self.lower_body(None, |this| this.lower_expr(x))),
                 ),
-                TraitItemKind::Method(ref sig, None) => {
-                    let names = this.lower_fn_args_to_names(&sig.decl);
-                    this.add_in_band_defs(
-                        &i.generics,
-                        trait_item_def_id,
-                        AnonymousLifetimeMode::PassThrough,
-                        |this| {
-                            hir::TraitItemKind::Method(
-                                this.lower_method_sig(sig, trait_item_def_id, false),
-                                hir::TraitMethod::Required(names),
-                            )
-                        },
-                    )
-                }
-                TraitItemKind::Method(ref sig, Some(ref body)) => {
-                    let body_id = this.lower_body(Some(&sig.decl), |this| {
-                        let body = this.lower_block(body, false);
-                        this.expr_block(body, ThinVec::new())
-                    });
-
-                    this.add_in_band_defs(
-                        &i.generics,
-                        trait_item_def_id,
-                        AnonymousLifetimeMode::PassThrough,
-                        |this| {
-                            hir::TraitItemKind::Method(
-                                this.lower_method_sig(sig, trait_item_def_id, false),
-                                hir::TraitMethod::Provided(body_id),
-                            )
-                        },
-                    )
-                }
-                TraitItemKind::Type(ref bounds, ref default) => (
-                    this.lower_generics(&i.generics, ImplTraitContext::Disallowed),
-                    hir::TraitItemKind::Type(
-                        this.lower_bounds(bounds, ImplTraitContext::Disallowed),
-                        default
-                            .as_ref()
-                            .map(|x| this.lower_ty(x, ImplTraitContext::Disallowed)),
-                    ),
-                ),
-                TraitItemKind::Macro(..) => panic!("Shouldn't exist any more"),
-            };
-
-            hir::TraitItem {
-                id: node_id,
-                hir_id,
-                name: this.lower_ident(i.ident),
-                attrs: this.lower_attrs(&i.attrs),
-                generics,
-                node,
-                span: i.span,
+            ),
+            TraitItemKind::Method(ref sig, None) => {
+                let names = self.lower_fn_args_to_names(&sig.decl);
+                self.add_in_band_defs(
+                    &i.generics,
+                    trait_item_def_id,
+                    AnonymousLifetimeMode::PassThrough,
+                    |this| {
+                        hir::TraitItemKind::Method(
+                            this.lower_method_sig(sig, trait_item_def_id, false),
+                            hir::TraitMethod::Required(names),
+                        )
+                    },
+                )
             }
-        })
+            TraitItemKind::Method(ref sig, Some(ref body)) => {
+                let body_id = self.lower_body(Some(&sig.decl), |this| {
+                    let body = this.lower_block(body, false);
+                    this.expr_block(body, ThinVec::new())
+                });
+
+                self.add_in_band_defs(
+                    &i.generics,
+                    trait_item_def_id,
+                    AnonymousLifetimeMode::PassThrough,
+                    |this| {
+                        hir::TraitItemKind::Method(
+                            this.lower_method_sig(sig, trait_item_def_id, false),
+                            hir::TraitMethod::Provided(body_id),
+                        )
+                    },
+                )
+            }
+            TraitItemKind::Type(ref bounds, ref default) => (
+                self.lower_generics(&i.generics, ImplTraitContext::Disallowed),
+                hir::TraitItemKind::Type(
+                    self.lower_bounds(bounds, ImplTraitContext::Disallowed),
+                    default
+                        .as_ref()
+                        .map(|x| self.lower_ty(x, ImplTraitContext::Disallowed)),
+                ),
+            ),
+            TraitItemKind::Macro(..) => panic!("Shouldn't exist any more"),
+        };
+
+        hir::TraitItem {
+            id: node_id,
+            hir_id,
+            name: self.lower_ident(i.ident),
+            attrs: self.lower_attrs(&i.attrs),
+            generics,
+            node,
+            span: i.span,
+        }
     }
 
     fn lower_trait_item_ref(&mut self, i: &TraitItem) -> hir::TraitItemRef {
@@ -2557,63 +2534,61 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_impl_item(&mut self, i: &ImplItem) -> hir::ImplItem {
-        self.with_parent_def(i.id, |this| {
-            let LoweredNodeId { node_id, hir_id } = this.lower_node_id(i.id);
-            let impl_item_def_id = this.resolver.definitions().local_def_id(node_id);
+        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(i.id);
+        let impl_item_def_id = self.resolver.definitions().local_def_id(node_id);
 
-            let (generics, node) = match i.node {
-                ImplItemKind::Const(ref ty, ref expr) => {
-                    let body_id = this.lower_body(None, |this| this.lower_expr(expr));
-                    (
-                        this.lower_generics(&i.generics, ImplTraitContext::Disallowed),
-                        hir::ImplItemKind::Const(
-                            this.lower_ty(ty, ImplTraitContext::Disallowed),
-                            body_id,
-                        ),
-                    )
-                }
-                ImplItemKind::Method(ref sig, ref body) => {
-                    let body_id = this.lower_body(Some(&sig.decl), |this| {
-                        let body = this.lower_block(body, false);
-                        this.expr_block(body, ThinVec::new())
-                    });
-                    let impl_trait_return_allow = !this.is_in_trait_impl;
-
-                    this.add_in_band_defs(
-                        &i.generics,
-                        impl_item_def_id,
-                        AnonymousLifetimeMode::PassThrough,
-                        |this| {
-                            hir::ImplItemKind::Method(
-                                this.lower_method_sig(
-                                    sig,
-                                    impl_item_def_id,
-                                    impl_trait_return_allow,
-                                ),
-                                body_id,
-                            )
-                        },
-                    )
-                }
-                ImplItemKind::Type(ref ty) => (
-                    this.lower_generics(&i.generics, ImplTraitContext::Disallowed),
-                    hir::ImplItemKind::Type(this.lower_ty(ty, ImplTraitContext::Disallowed)),
-                ),
-                ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
-            };
-
-            hir::ImplItem {
-                id: node_id,
-                hir_id,
-                name: this.lower_ident(i.ident),
-                attrs: this.lower_attrs(&i.attrs),
-                generics,
-                vis: this.lower_visibility(&i.vis, None),
-                defaultness: this.lower_defaultness(i.defaultness, true /* [1] */),
-                node,
-                span: i.span,
+        let (generics, node) = match i.node {
+            ImplItemKind::Const(ref ty, ref expr) => {
+                let body_id = self.lower_body(None, |this| this.lower_expr(expr));
+                (
+                    self.lower_generics(&i.generics, ImplTraitContext::Disallowed),
+                    hir::ImplItemKind::Const(
+                        self.lower_ty(ty, ImplTraitContext::Disallowed),
+                        body_id,
+                    ),
+                )
             }
-        })
+            ImplItemKind::Method(ref sig, ref body) => {
+                let body_id = self.lower_body(Some(&sig.decl), |this| {
+                    let body = this.lower_block(body, false);
+                    this.expr_block(body, ThinVec::new())
+                });
+                let impl_trait_return_allow = !self.is_in_trait_impl;
+
+                self.add_in_band_defs(
+                    &i.generics,
+                    impl_item_def_id,
+                    AnonymousLifetimeMode::PassThrough,
+                    |this| {
+                        hir::ImplItemKind::Method(
+                            this.lower_method_sig(
+                                sig,
+                                impl_item_def_id,
+                                impl_trait_return_allow,
+                            ),
+                            body_id,
+                        )
+                    },
+                )
+            }
+            ImplItemKind::Type(ref ty) => (
+                self.lower_generics(&i.generics, ImplTraitContext::Disallowed),
+                hir::ImplItemKind::Type(self.lower_ty(ty, ImplTraitContext::Disallowed)),
+            ),
+            ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
+        };
+
+        hir::ImplItem {
+            id: node_id,
+            hir_id,
+            name: self.lower_ident(i.ident),
+            attrs: self.lower_attrs(&i.attrs),
+            generics,
+            vis: self.lower_visibility(&i.vis, None),
+            defaultness: self.lower_defaultness(i.defaultness, true /* [1] */),
+            node,
+            span: i.span,
+        }
 
         // [1] since `default impl` is not yet implemented, this is always true in impls
     }
@@ -2689,9 +2664,7 @@ impl<'a> LoweringContext<'a> {
             return None;
         }
 
-        let node = self.with_parent_def(i.id, |this| {
-            this.lower_item_kind(i.id, &mut name, &attrs, &mut vis, &i.node)
-        });
+        let node = self.lower_item_kind(i.id, &mut name, &attrs, &mut vis, &i.node);
 
         let LoweredNodeId { node_id, hir_id } = self.lower_node_id(i.id);
 
@@ -2707,40 +2680,38 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> hir::ForeignItem {
-        self.with_parent_def(i.id, |this| {
-            let node_id = this.lower_node_id(i.id).node_id;
-            let def_id = this.resolver.definitions().local_def_id(node_id);
-            hir::ForeignItem {
-                id: node_id,
-                name: i.ident.name,
-                attrs: this.lower_attrs(&i.attrs),
-                node: match i.node {
-                    ForeignItemKind::Fn(ref fdec, ref generics) => {
-                        let (generics, (fn_dec, fn_args)) = this.add_in_band_defs(
-                            generics,
-                            def_id,
-                            AnonymousLifetimeMode::PassThrough,
-                            |this| {
-                                (
-                                    // Disallow impl Trait in foreign items
-                                    this.lower_fn_decl(fdec, None, false),
-                                    this.lower_fn_args_to_names(fdec),
-                                )
-                            },
-                        );
+        let node_id = self.lower_node_id(i.id).node_id;
+        let def_id = self.resolver.definitions().local_def_id(node_id);
+        hir::ForeignItem {
+            id: node_id,
+            name: i.ident.name,
+            attrs: self.lower_attrs(&i.attrs),
+            node: match i.node {
+                ForeignItemKind::Fn(ref fdec, ref generics) => {
+                    let (generics, (fn_dec, fn_args)) = self.add_in_band_defs(
+                        generics,
+                        def_id,
+                        AnonymousLifetimeMode::PassThrough,
+                        |this| {
+                            (
+                                // Disallow impl Trait in foreign items
+                                this.lower_fn_decl(fdec, None, false),
+                                this.lower_fn_args_to_names(fdec),
+                            )
+                        },
+                    );
 
-                        hir::ForeignItemFn(fn_dec, fn_args, generics)
-                    }
-                    ForeignItemKind::Static(ref t, m) => {
-                        hir::ForeignItemStatic(this.lower_ty(t, ImplTraitContext::Disallowed), m)
-                    }
-                    ForeignItemKind::Ty => hir::ForeignItemType,
-                    ForeignItemKind::Macro(_) => panic!("shouldn't exist here"),
-                },
-                vis: this.lower_visibility(&i.vis, None),
-                span: i.span,
-            }
-        })
+                    hir::ForeignItemFn(fn_dec, fn_args, generics)
+                }
+                ForeignItemKind::Static(ref t, m) => {
+                    hir::ForeignItemStatic(self.lower_ty(t, ImplTraitContext::Disallowed), m)
+                }
+                ForeignItemKind::Ty => hir::ForeignItemType,
+                ForeignItemKind::Macro(_) => panic!("shouldn't exist here"),
+            },
+            vis: self.lower_visibility(&i.vis, None),
+            span: i.span,
+        }
     }
 
     fn lower_method_sig(
@@ -3064,46 +3035,44 @@ impl<'a> LoweringContext<'a> {
             ),
             ExprKind::Closure(capture_clause, movability, ref decl, ref body, fn_decl_span) => {
                 self.with_new_scopes(|this| {
-                    this.with_parent_def(e.id, |this| {
-                        let mut is_generator = false;
-                        let body_id = this.lower_body(Some(decl), |this| {
-                            let e = this.lower_expr(body);
-                            is_generator = this.is_generator;
-                            e
-                        });
-                        let generator_option = if is_generator {
-                            if !decl.inputs.is_empty() {
-                                span_err!(
-                                    this.sess,
-                                    fn_decl_span,
-                                    E0628,
-                                    "generators cannot have explicit arguments"
-                                );
-                                this.sess.abort_if_errors();
-                            }
-                            Some(match movability {
-                                Movability::Movable => hir::GeneratorMovability::Movable,
-                                Movability::Static => hir::GeneratorMovability::Static,
-                            })
-                        } else {
-                            if movability == Movability::Static {
-                                span_err!(
-                                    this.sess,
-                                    fn_decl_span,
-                                    E0906,
-                                    "closures cannot be static"
-                                );
-                            }
-                            None
-                        };
-                        hir::ExprClosure(
-                            this.lower_capture_clause(capture_clause),
-                            this.lower_fn_decl(decl, None, false),
-                            body_id,
-                            fn_decl_span,
-                            generator_option,
-                        )
-                    })
+                    let mut is_generator = false;
+                    let body_id = this.lower_body(Some(decl), |this| {
+                        let e = this.lower_expr(body);
+                        is_generator = this.is_generator;
+                        e
+                    });
+                    let generator_option = if is_generator {
+                        if !decl.inputs.is_empty() {
+                            span_err!(
+                                this.sess,
+                                fn_decl_span,
+                                E0628,
+                                "generators cannot have explicit arguments"
+                            );
+                            this.sess.abort_if_errors();
+                        }
+                        Some(match movability {
+                            Movability::Movable => hir::GeneratorMovability::Movable,
+                            Movability::Static => hir::GeneratorMovability::Static,
+                        })
+                    } else {
+                        if movability == Movability::Static {
+                            span_err!(
+                                this.sess,
+                                fn_decl_span,
+                                E0906,
+                                "closures cannot be static"
+                            );
+                        }
+                        None
+                    };
+                    hir::ExprClosure(
+                        this.lower_capture_clause(capture_clause),
+                        this.lower_fn_decl(decl, None, false),
+                        body_id,
+                        fn_decl_span,
+                        generator_option,
+                    )
                 })
             }
             ExprKind::Block(ref blk, opt_label) => {
