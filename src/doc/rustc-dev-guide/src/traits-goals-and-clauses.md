@@ -67,7 +67,7 @@ its inputs P0..Pm:
 Projection = <P0 as TraitName<P1..Pn>>::AssocItem<Pn+1..Pm>
 ```
 
-Given that, we can define a `DomainGoal` as follows:
+Given these, we can define a `DomainGoal` as follows:
 
 ```text
 DomainGoal = Implemented(TraitRef)
@@ -78,32 +78,81 @@ DomainGoal = Implemented(TraitRef)
             | WellFormed(Type)
             | WellFormed(TraitRef)
             | WellFormed(Projection = Type)
-            | Outlives(Type, Region)
-            | Outlives(Region, Region)
+            | Outlives(Type: Region)
+            | Outlives(Region: Region)
 ```
 
-- `Implemented(TraitRef)` -- true if the given trait is
-  implemented for the given input types and lifetimes
-- `FromEnv(TraitEnv)` -- true if the given trait is *assumed* to be implemented;
-  that is, if it can be derived from the in-scope where clauses
-  - as we'll see in the section on lowering, `FromEnv(X)` implies
-    `Implemented(X)` but not vice versa. This distinction is crucial
-    to [implied bounds].
-- `ProjectionEq(Projection = Type)` -- the given associated type `Projection`
-  is equal to `Type`; see [the section on associated
-  types](./traits-associated-types.html)
-  - in general, proving `ProjectionEq(TraitRef::Item = Type)` also
-    requires proving `Implemented(TraitRef)`
-- `Normalize(Projection -> Type)` -- the given associated type `Projection` can
-  be [normalized][n] to `Type`
-  - as discussed in [the section on associated
-    types](./traits-associated-types.html),
-    `Normalize` implies `ProjectionEq` but not vice versa
-- `WellFormed(..)` -- these goals imply that the given item is
-  *well-formed*
-  - well-formedness is important to [implied bounds].
+Let's break down each one of these, one-by-one.
+
+#### Implemented(TraitRef)
+e.g. `Implemented(i32: Copy)`
+
+True if the given trait is implemented for the given input types and lifetimes.
+
+#### ProjectionEq(Projection = Type)
+e.g. `ProjectionEq<T as Iterator>::Item = u8`
+
+The given associated type `Projection` is equal to `Type`; this can be proved
+with either normalization or using skolemized types. See [the section
+on associated types](./traits-associated-types.html).
+
+#### Normalize(Projection -> Type)
+e.g. `ProjectionEq<T as Iterator>::Item -> u8`
+
+The given associated type `Projection` can be [normalized][n] to `Type`.
+
+As discussed in [the section on associated
+types](./traits-associated-types.html), `Normalize` implies `ProjectionEq`,
+but not vice versa. In general, proving `Normalize(<T as Trait>::Item -> U)`
+also requires proving `Implemented(T: Trait)`.
 
 [n]: ./traits-associated-types.html#normalize
+
+#### FromEnv(TraitRef), FromEnv(Projection = Type)
+e.g. `FromEnv(Self: Add<i32>)`
+
+e.g. `FromEnv(<Self as StreamingIterator>::Item<'a> = &'a [u8])`
+
+True if the inner `TraitRef` or projection equality is *assumed* to be true;
+that is, if it can be derived from the in-scope where clauses.
+
+For example, given the following function:
+
+```rust
+fn loud_clone<T: Clone>(stuff: &T) -> T {
+    println!("cloning!");
+    stuff.clone()
+}
+```
+
+Inside the body of our function, we would have `FromEnv(T: Clone)`. In-scope
+where clauses nest, so a function body inside an impl body inherits the
+impl body's where clauses, too.
+
+This and the next rule are used to implement [implied bounds]. As we'll see
+in the section on lowering, `FromEnv(X)` implies `Implemented(X)`, but not
+vice versa. This distinction is crucial to implied bounds.
+
+#### WellFormed(Item)
+These goals imply that the given item is *well-formed*.
+
+We can talk about different types of items being well-formed:
+
+**Types**, like `WellFormed(Vec<i32>)`, which is true in Rust, or
+  `WellFormed(Vec<str>)`, which is not (because `str` is not `Sized`.)
+
+**TraitRefs**, like `WellFormed(Vec<i32>: Clone)`.
+
+**Projections**, like `WellFormed(T: Iterator<Item = u32>)`.
+
+Well-formedness is important to [implied bounds]. In particular, the reason
+it is okay to assume `FromEnv(T: Clone)` in the example above is that we
+_also_ verify `WellFormed(T: Clone)` for each call site of `loud_clone`.
+
+#### Outlives(Type: Region), Outlives(Region: Region)
+e.g. `Outlives(&'a str: 'b)`, `Outlives('a: 'static)`
+
+True if the given type or region on the left outlives the right-hand region.
 
 <a name="coinductive"></a>
 

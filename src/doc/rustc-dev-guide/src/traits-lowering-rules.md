@@ -113,7 +113,7 @@ forall<Self, P1..Pn> {
 ```
 
 This clause says that if we are assuming that the trait holds, then we can also
-assume that it's where-clauses hold. It's perhaps useful to see an example:
+assume that its where-clauses hold. It's perhaps useful to see an example:
 
 ```rust,ignore
 trait Eq: PartialEq { ... }
