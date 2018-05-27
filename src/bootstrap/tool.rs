@@ -110,7 +110,7 @@ impl Step for ToolBuild {
             _ => panic!("unexpected Mode for tool build")
         }
 
-        let mut cargo = prepare_tool_cargo(builder, compiler, target, "build", path);
+        let mut cargo = prepare_tool_cargo(builder, compiler, self.mode, target, "build", path);
         cargo.arg("--features").arg(self.extra_features.join(" "));
 
         let _folder = builder.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
@@ -202,7 +202,7 @@ impl Step for ToolBuild {
                 return None;
             }
         } else {
-            let cargo_out = builder.cargo_out(compiler, Mode::ToolRustc, target)
+            let cargo_out = builder.cargo_out(compiler, self.mode, target)
                 .join(exe(tool, &compiler.host));
             let bin = builder.tools_dir(compiler).join(exe(tool, &compiler.host));
             builder.copy(&cargo_out, &bin);
@@ -214,11 +214,12 @@ impl Step for ToolBuild {
 pub fn prepare_tool_cargo(
     builder: &Builder,
     compiler: Compiler,
+    mode: Mode,
     target: Interned<String>,
     command: &'static str,
     path: &'static str,
 ) -> Command {
-    let mut cargo = builder.cargo(compiler, Mode::ToolRustc, target, command);
+    let mut cargo = builder.cargo(compiler, mode, target, command);
     let dir = builder.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
@@ -259,6 +260,15 @@ macro_rules! tool {
             $(
                 $name,
             )+
+        }
+
+        impl Tool {
+            pub fn get_mode(&self) -> Mode {
+                let mode = match self {
+                    $(Tool::$name => $mode,)+
+                };
+                mode
+            }
         }
 
         impl<'a> Builder<'a> {
@@ -414,6 +424,7 @@ impl Step for Rustdoc {
 
         let mut cargo = prepare_tool_cargo(builder,
                                            build_compiler,
+                                           Mode::ToolRustc,
                                            target,
                                            "build",
                                            "src/tools/rustdoc");
@@ -575,7 +586,7 @@ impl<'a> Builder<'a> {
     pub fn tool_cmd(&self, tool: Tool) -> Command {
         let mut cmd = Command::new(self.tool_exe(tool));
         let compiler = self.compiler(self.tool_default_stage(tool), self.config.build);
-        self.prepare_tool_cmd(compiler, &mut cmd);
+        self.prepare_tool_cmd(compiler, tool.get_mode(), &mut cmd);
         cmd
     }
 
@@ -583,11 +594,11 @@ impl<'a> Builder<'a> {
     ///
     /// Notably this munges the dynamic library lookup path to point to the
     /// right location to run `compiler`.
-    fn prepare_tool_cmd(&self, compiler: Compiler, cmd: &mut Command) {
+    fn prepare_tool_cmd(&self, compiler: Compiler, mode: Mode, cmd: &mut Command) {
         let host = &compiler.host;
         let mut lib_paths: Vec<PathBuf> = vec![
             PathBuf::from(&self.sysroot_libdir(compiler, compiler.host)),
-            self.cargo_out(compiler, Mode::ToolRustc, *host).join("deps"),
+            self.cargo_out(compiler, mode, *host).join("deps"),
         ];
 
         // On MSVC a tool may invoke a C compiler (e.g. compiletest in run-make

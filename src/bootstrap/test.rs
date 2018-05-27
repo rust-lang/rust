@@ -281,7 +281,12 @@ impl Step for Rls {
             return;
         }
 
-        let mut cargo = tool::prepare_tool_cargo(builder, compiler, host, "test", "src/tools/rls");
+        let mut cargo = tool::prepare_tool_cargo(builder,
+                                                 compiler,
+                                                 Mode::Rustc,
+                                                 host,
+                                                 "test",
+                                                 "src/tools/rls");
 
         // Don't build tests dynamically, just a pain to work with
         cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
@@ -331,8 +336,12 @@ impl Step for Rustfmt {
             return;
         }
 
-        let mut cargo =
-            tool::prepare_tool_cargo(builder, compiler, host, "test", "src/tools/rustfmt");
+        let mut cargo = tool::prepare_tool_cargo(builder,
+                                                 compiler,
+                                                 Mode::Rustc,
+                                                 host,
+                                                 "test",
+                                                 "src/tools/rustfmt");
 
         // Don't build tests dynamically, just a pain to work with
         cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
@@ -1718,13 +1727,12 @@ impl Step for CrateRustdoc {
         let compiler = builder.compiler(builder.top_stage, self.host);
         let target = compiler.host;
 
-        let mut cargo = tool::prepare_tool_cargo(
-            builder,
-            compiler,
-            target,
-            test_kind.subcommand(),
-            "src/tools/rustdoc",
-        );
+        let mut cargo = tool::prepare_tool_cargo(builder,
+                                                 compiler,
+                                                 Mode::Rustc,
+                                                 target,
+                                                 test_kind.subcommand(),
+                                                 "src/tools/rustdoc");
         if test_kind.subcommand() == "test" && !builder.fail_fast {
             cargo.arg("--no-fail-fast");
         }
