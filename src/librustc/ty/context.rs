@@ -794,6 +794,12 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
 
 impl<'tcx> CommonTypes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
+        // Ensure our type representation does not grow
+        #[cfg(target_pointer_width = "64")]
+        assert!(mem::size_of::<ty::TypeVariants>() <= 24);
+        #[cfg(target_pointer_width = "64")]
+        assert!(mem::size_of::<ty::TyS>() <= 32);
+
         let mk = |sty| CtxtInterners::intern_ty(interners, interners, sty);
         let mk_region = |r| {
             if let Some(r) = interners.region.borrow().get(&r) {
