@@ -1,7 +1,7 @@
 
 
 
-#![allow(unused_variables)]
+#![allow(unused_variables, trivially_copy_pass_by_ref)]
 
 fn takes_an_immutable_reference(a: &i32) {}
 fn takes_a_mutable_reference(a: &mut i32) {}

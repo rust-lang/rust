@@ -1,6 +1,6 @@
 
 
-#![allow(unused)]
+#![allow(unused, trivially_copy_pass_by_ref)]
 #![warn(mut_from_ref)]
 
 struct Foo;

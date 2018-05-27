@@ -2,7 +2,7 @@
 
 
 #![warn(needless_lifetimes, extra_unused_lifetimes)]
-#![allow(dead_code, needless_pass_by_value)]
+#![allow(dead_code, needless_pass_by_value, trivially_copy_pass_by_ref)]
 
 fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) { }
 

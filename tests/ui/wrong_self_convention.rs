@@ -3,7 +3,7 @@
 
 #![warn(wrong_self_convention)]
 #![warn(wrong_pub_self_convention)]
-#![allow(dead_code)]
+#![allow(dead_code, trivially_copy_pass_by_ref)]
 
 fn main() {}
 

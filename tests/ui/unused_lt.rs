@@ -1,6 +1,6 @@
 
 
-#![allow(unused, dead_code, needless_lifetimes, needless_pass_by_value)]
+#![allow(unused, dead_code, needless_lifetimes, needless_pass_by_value, trivially_copy_pass_by_ref)]
 #![warn(extra_unused_lifetimes)]
 
 fn empty() {
