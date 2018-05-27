@@ -802,10 +802,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
             .filter_map(|param| match param.kind {
                 GenericParamKindAST::Lifetime { .. } => None,
                 GenericParamKindAST::Type { ref default, .. } => {
-                    if default.is_some() {
+                    if found_default || default.is_some() {
                         found_default = true;
-                    }
-                    if found_default {
                         return Some((Ident::with_empty_ctxt(param.ident.name), Def::Err));
                     }
                     None
@@ -2209,8 +2207,7 @@ impl<'a> Resolver<'a> {
             HasTypeParameters(generics, rib_kind) => {
                 let mut function_type_rib = Rib::new(rib_kind);
                 let mut seen_bindings = FxHashMap();
-                for param in &generics.params {
-                    match param.kind {
+                generics.params.iter().for_each(|param| match param.kind {
                         GenericParamKindAST::Type { .. } => {
                             let ident = param.ident.modern();
                             debug!("with_type_parameter_rib: {}", param.id);
@@ -2225,15 +2222,13 @@ impl<'a> Resolver<'a> {
                             }
                             seen_bindings.entry(ident).or_insert(param.ident.span);
 
-                            // plain insert (no renaming)
-                            let def_id = self.definitions.local_def_id(param.id);
-                            let def = Def::TyParam(def_id);
+                        // Plain insert (no renaming).
+                        let def = Def::TyParam(self.definitions.local_def_id(param.id));
                             function_type_rib.bindings.insert(ident, def);
                             self.record_def(param.id, PathResolution::new(def));
                         }
                         _ => {}
-                    }
-                }
+                });
                 self.ribs[TypeNS].push(function_type_rib);
             }
 

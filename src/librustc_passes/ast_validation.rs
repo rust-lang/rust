@@ -141,20 +141,19 @@ impl<'a> AstValidator<'a> {
     fn check_late_bound_lifetime_defs(&self, params: &Vec<GenericParamAST>) {
         // Check only lifetime parameters are present and that the lifetime
         // parameters that are present have no bounds.
-        let non_lifetime_param_spans: Vec<_> = params.iter()
-            .filter_map(|param| match param.kind {
+        let non_lt_param_spans: Vec<_> = params.iter().filter_map(|param| match param.kind {
                 GenericParamKindAST::Lifetime { ref bounds, .. } => {
                     if !bounds.is_empty() {
                         let spans: Vec<_> = bounds.iter().map(|b| b.ident.span).collect();
-                        self.err_handler().span_err(spans,
-                            "lifetime bounds cannot be used in this context");
+                        self.err_handler()
+                            .span_err(spans, "lifetime bounds cannot be used in this context");
                     }
                     None
                 }
                 _ => Some(param.ident.span),
             }).collect();
-        if !non_lifetime_param_spans.is_empty() {
-            self.err_handler().span_err(non_lifetime_param_spans,
+        if !non_lt_param_spans.is_empty() {
+            self.err_handler().span_err(non_lt_param_spans,
                 "only lifetime parameters can be used in this context");
         }
     }
@@ -333,16 +332,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         GenericParamKindAST::Lifetime { .. } => {}
                         GenericParamKindAST::Type { ref bounds, ref default, .. } => {
                             if !bounds.is_empty() {
-                                self.err_handler().span_err(param.ident.span,
-                                                            "type parameters on the left side \
-                                                             of a trait alias cannot be \
-                                                             bounded");
+                                self.err_handler()
+                                    .span_err(param.ident.span, "type parameters on the left \
+                                        side of a trait alias cannot be bounded");
                             }
                             if !default.is_none() {
-                                self.err_handler().span_err(param.ident.span,
-                                                            "type parameters on the left side \
-                                                             of a trait alias cannot have \
-                                                             defaults");
+                                self.err_handler()
+                                    .span_err(param.ident.span, "type parameters on the left \
+                                        side of a trait alias cannot have defaults");
                             }
                         }
                     }
@@ -402,10 +399,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_vis(self, vis)
     }
 
-    fn visit_generics(&mut self, g: &'a Generics) {
+    fn visit_generics(&mut self, generics: &'a Generics) {
         let mut seen_non_lifetime_param = false;
         let mut seen_default = None;
-        for param in &g.params {
+        for param in &generics.params {
             match (&param.kind, seen_non_lifetime_param) {
                 (GenericParamKindAST::Lifetime { .. }, true) => {
                     self.err_handler()
@@ -424,13 +421,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
             }
         }
-        for predicate in &g.where_clause.predicates {
+        for predicate in &generics.where_clause.predicates {
             if let WherePredicate::EqPredicate(ref predicate) = *predicate {
                 self.err_handler().span_err(predicate.span, "equality constraints are not yet \
                                                              supported in where clauses (#20041)");
             }
         }
-        visit::walk_generics(self, g)
+        visit::walk_generics(self, generics)
     }
 
     fn visit_generic_param(&mut self, param: &'a GenericParam) {
@@ -516,12 +513,10 @@ impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
     fn visit_generic_args(&mut self, _: Span, generic_args: &'a GenericArgs) {
         match *generic_args {
             GenericArgs::AngleBracketed(ref data) => {
-                for arg in &data.args {
-                    match arg {
-                        GenericArgAST::Type(ty) => self.visit_ty(ty),
-                        _ => {}
-                    }
-                }
+                data.args.iter().for_each(|arg| match arg {
+                    GenericArgAST::Type(ty) => self.visit_ty(ty),
+                    _ => {}
+                });
                 for type_binding in &data.bindings {
                     // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
                     // are allowed to contain nested `impl Trait`.

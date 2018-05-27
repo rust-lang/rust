@@ -1268,16 +1268,14 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
-        for param in &generics.params {
-            match param.kind {
-                GenericParamKind::Lifetime { .. } => {}
-                GenericParamKind::Type { ref bounds, .. } => {
-                    for bound in bounds {
-                        self.check_ty_param_bound(bound);
-                    }
+        generics.params.iter().for_each(|param| match param.kind {
+            GenericParamKind::Lifetime { .. } => {}
+            GenericParamKind::Type { ref bounds, .. } => {
+                for bound in bounds {
+                    self.check_ty_param_bound(bound);
                 }
             }
-        }
+        });
         for predicate in &generics.where_clause.predicates {
             match predicate {
                 &hir::WherePredicate::BoundPredicate(ref bound_pred) => {

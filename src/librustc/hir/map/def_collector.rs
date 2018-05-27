@@ -176,12 +176,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             GenericParamKindAST::Lifetime { .. } => DefPathData::LifetimeParam(name),
             GenericParamKindAST::Type { .. } => DefPathData::TypeParam(name),
         };
-        self.create_def(
-            param.id,
-            def_path_data,
-            REGULAR_SPACE,
-            param.ident.span
-        );
+        self.create_def(param.id, def_path_data, REGULAR_SPACE, param.ident.span);
 
         visit::walk_generic_param(self, param);
     }

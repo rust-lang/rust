@@ -337,10 +337,10 @@ impl PrintContext {
             if !verbose {
                 let mut type_params =
                     generics.params.iter().rev().filter_map(|param| match param.kind {
+                        GenericParamDefKind::Lifetime => None,
                         GenericParamDefKind::Type { has_default, .. } => {
                             Some((param.def_id, has_default))
                         }
-                        GenericParamDefKind::Lifetime => None,
                     }).peekable();
                 let has_default = {
                     let has_default = type_params.peek().map(|(_, has_default)| has_default);

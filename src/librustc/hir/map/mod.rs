@@ -974,11 +974,9 @@ impl<'hir> Map<'hir> {
             Some(NodeField(ref f)) => Some(&f.attrs[..]),
             Some(NodeExpr(ref e)) => Some(&*e.attrs),
             Some(NodeStmt(ref s)) => Some(s.node.attrs()),
-            Some(NodeGenericParam(param)) => {
-                match param.kind {
-                    GenericParamKind::Type { ref attrs, .. } => Some(&attrs[..]),
-                    _ => bug!("unexpected non-type NodeGenericParam")
-                }
+            Some(NodeGenericParam(param)) => match param.kind {
+                GenericParamKind::Type { ref attrs, .. } => Some(&attrs[..]),
+                _ => bug!("unexpected non-type NodeGenericParam")
             }
             // unit/tuple structs take the attributes straight from
             // the struct definition.

@@ -654,8 +654,8 @@ pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V,
 }
 
 pub fn walk_generic_args<'v, V: Visitor<'v>>(visitor: &mut V,
-                                                _path_span: Span,
-                                                generic_args: &'v GenericArgs) {
+                                             _path_span: Span,
+                                             generic_args: &'v GenericArgs) {
     walk_list!(visitor, visit_generic_arg, &generic_args.args);
     walk_list!(visitor, visit_assoc_type_binding, &generic_args.bindings);
 }

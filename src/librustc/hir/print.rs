@@ -1270,13 +1270,10 @@ impl<'a> State<'a> {
         self.print_name(segment.name)?;
 
         segment.with_generic_args(|generic_args| {
-            if !generic_args.args.is_empty() ||
-                !generic_args.bindings.is_empty()
-            {
-                self.print_generic_args(&generic_args, segment.infer_types, true)
-            } else {
-                Ok(())
+            if !generic_args.args.is_empty() || !generic_args.bindings.is_empty() {
+                return self.print_generic_args(&generic_args, segment.infer_types, true);
             }
+            Ok(())
         })?;
         self.print_call_post(base_args)
     }
@@ -1642,8 +1639,7 @@ impl<'a> State<'a> {
                segment.name != keywords::DollarCrate.name() {
                self.print_name(segment.name)?;
                segment.with_generic_args(|generic_args| {
-                   self.print_generic_args(generic_args,
-                                           segment.infer_types,
+                   self.print_generic_args(generic_args, segment.infer_types,
                                            colons_before_params)
                })?;
             }

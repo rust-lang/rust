@@ -4979,12 +4979,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     |data| {
                         let mut lifetimes = vec![];
                         let mut types = vec![];
-                        for arg in &data.args {
-                            match arg {
-                                GenericArg::Lifetime(lt) => lifetimes.push(lt),
-                                GenericArg::Type(ty) => types.push(ty),
-                            }
-                        }
+                        data.args.iter().for_each(|arg| match arg {
+                            GenericArg::Lifetime(lt) => lifetimes.push(lt),
+                            GenericArg::Type(ty) => types.push(ty),
+                        });
                         (lifetimes, types, s.infer_types, &data.bindings[..])
                     }
                 )

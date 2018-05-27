@@ -135,9 +135,14 @@ pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
     clauses
 }
 
-pub fn ty_params(mut params: Vec<clean::TyParam>) -> Vec<clean::TyParam> {
+pub fn ty_params(mut params: Vec<clean::GenericParamDef>) -> Vec<clean::GenericParamDef> {
     for param in &mut params {
-        param.bounds = ty_bounds(mem::replace(&mut param.bounds, Vec::new()));
+        match param.kind {
+            clean::GenericParamDefKind::Type { ref mut bounds, .. } => {
+                *bounds = ty_bounds(mem::replace(bounds, Vec::new()));
+            }
+            _ => panic!("expected only type parameters"),
+        }
     }
     params
 }

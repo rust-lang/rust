@@ -81,6 +81,18 @@ pub enum Region {
     Free(DefId, /* lifetime decl */ DefId),
 }
 
+fn new_region(hir_map: &Map, param: &hir::GenericParam)
+    -> (hir::LifetimeName, DefId, LifetimeDefOrigin) {
+    let def_id = hir_map.local_def_id(param.id);
+    let (name, origin) = match param.kind {
+        GenericParamKind::Lifetime { name, in_band, .. } => {
+            (name, LifetimeDefOrigin::from_is_in_band(in_band))
+        }
+        _ => bug!("expected a lifetime param"),
+    };
+    (name, def_id, origin)
+}
+
 impl Region {
     fn early(
         hir_map: &Map,
@@ -89,26 +101,14 @@ impl Region {
     ) -> (hir::LifetimeName, Region) {
         let i = *index;
         *index += 1;
-        let def_id = hir_map.local_def_id(param.id);
-        let (name, origin) = match param.kind {
-            GenericParamKind::Lifetime { name, in_band, .. } => {
-                (name, LifetimeDefOrigin::from_is_in_band(in_band))
-            }
-            _ => bug!("expected a lifetime param"),
-        };
+        let (name, def_id, origin) = new_region(hir_map, param);
         debug!("Region::early: index={} def_id={:?}", i, def_id);
         (name, Region::EarlyBound(i, def_id, origin))
     }
 
     fn late(hir_map: &Map, param: &hir::GenericParam) -> (hir::LifetimeName, Region) {
         let depth = ty::INNERMOST;
-        let def_id = hir_map.local_def_id(param.id);
-        let (name, origin) = match param.kind {
-            GenericParamKind::Lifetime { name, in_band, .. } => {
-                (name, LifetimeDefOrigin::from_is_in_band(in_band))
-            }
-            _ => bug!("expected a lifetime param"),
-        };
+        let (name, def_id, origin) = new_region(hir_map, param);
         debug!(
             "Region::late: def={:?} depth={:?} def_id={:?} origin={:?}",
             def,
@@ -580,15 +580,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let was_in_fn_syntax = self.is_in_fn_syntax;
                 self.is_in_fn_syntax = true;
                 let scope = Scope::Binder {
-                    lifetimes: c.generic_params
-                                .iter()
-                                .filter_map(|param| match param.kind {
-                                    GenericParamKind::Lifetime { .. } => {
-                                        Some(Region::late(&self.tcx.hir, param))
-                                    }
-                                    _ => None,
-                                })
-                                .collect(),
+                    lifetimes: c.generic_params.iter().filter_map(|param| match param.kind {
+                        GenericParamKind::Lifetime { .. } => {
+                            Some(Region::late(&self.tcx.hir, param))
+                        }
+                        _ => None,
+                    }).collect(),
                     s: self.scope,
                     next_early_index,
                     track_lifetime_uses: true,
@@ -770,19 +767,15 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let mut index = self.next_early_index();
                 debug!("visit_ty: index = {}", index);
                 let mut type_count = 0;
-                let lifetimes = generics.params
-                    .iter()
-                    .filter_map(|param| match param.kind {
-                        GenericParamKind::Lifetime { .. } => {
-                            Some(Region::early(&self.tcx.hir, &mut index, param))
-                        }
-                        GenericParamKind::Type { .. } => {
-                            type_count += 1;
-                            None
-                        }
-                    })
-                    .collect();
-
+                let lifetimes = generics.params.iter().filter_map(|param| match param.kind {
+                    GenericParamKind::Lifetime { .. } => {
+                        Some(Region::early(&self.tcx.hir, &mut index, param))
+                    }
+                    GenericParamKind::Type { .. } => {
+                        type_count += 1;
+                        None
+                    }
+                }).collect();
                 let scope = Scope::Binder {
                     lifetimes,
                     next_early_index: index + type_count,
@@ -825,19 +818,15 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let mut index = self.next_early_index();
                 let mut next_early_index = index;
                 debug!("visit_ty: index = {}", index);
-                let lifetimes = generics.params
-                    .iter()
-                    .filter_map(|param| match param.kind {
-                        GenericParamKind::Lifetime { .. } => {
-                            Some(Region::early(&self.tcx.hir, &mut index, param))
-                        }
-                        GenericParamKind::Type { .. } => {
-                            next_early_index += 1;
-                            None
-                        }
-                    })
-                    .collect();
-
+                let lifetimes = generics.params.iter().filter_map(|param| match param.kind {
+                    GenericParamKind::Lifetime { .. } => {
+                        Some(Region::early(&self.tcx.hir, &mut index, param))
+                    }
+                    GenericParamKind::Type { .. } => {
+                        next_early_index += 1;
+                        None
+                    }
+                }).collect();
                 let scope = Scope::Binder {
                     lifetimes,
                     next_early_index,
@@ -888,13 +877,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
-        check_mixed_explicit_and_in_band_defs(
-            self.tcx,
-            &generics.params.iter().filter_map(|param| match param.kind {
-                GenericParamKind::Lifetime { .. } => Some(param.clone()),
-                _ => None,
-            }).collect::<Vec<_>>()
-        );
+        check_mixed_explicit_and_in_band_defs(self.tcx, &generics.params);
         for param in &generics.params {
             match param.kind {
                 GenericParamKind::Lifetime { .. } => {}
@@ -920,8 +903,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 Some(Region::late(&self.tcx.hir, param))
                             }
                             _ => None,
-                        })
-                        .collect();
+                        }).collect();
                     if !lifetimes.is_empty() {
                         self.trait_ref_hack = true;
                         let next_early_index = self.next_early_index();
@@ -992,16 +974,13 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             }
             let next_early_index = self.next_early_index();
             let scope = Scope::Binder {
-                lifetimes: trait_ref
-                    .bound_generic_params
-                    .iter()
+                lifetimes: trait_ref.bound_generic_params.iter()
                     .filter_map(|param| match param.kind {
                         GenericParamKind::Lifetime { .. } => {
                             Some(Region::late(&self.tcx.hir, param))
                         }
                         _ => None,
-                    })
-                    .collect(),
+                    }).collect(),
                 s: self.scope,
                 next_early_index,
                 track_lifetime_uses: true,
@@ -1068,11 +1047,11 @@ impl ShadowKind {
 
 fn check_mixed_explicit_and_in_band_defs(
     tcx: TyCtxt<'_, '_, '_>,
-    params: &[hir::GenericParam],
+    params: &P<[hir::GenericParam]>,
 ) {
-    let in_bands: Vec<_> = params.iter().map(|param| match param.kind {
-        GenericParamKind::Lifetime { in_band, .. } => (in_band, param.span),
-        _ => bug!("expected lifetime param"),
+    let in_bands: Vec<_> = params.iter().filter_map(|param| match param.kind {
+        GenericParamKind::Lifetime { in_band, .. } => Some((in_band, param.span)),
+        _ => None,
     }).collect();
     let out_of_band = in_bands.iter().find(|(in_band, _)| !in_band);
     let in_band = in_bands.iter().find(|(in_band, _)| *in_band);
@@ -1707,9 +1686,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         if elide_lifetimes {
             self.resolve_elided_lifetimes(lifetimes, true);
         } else {
-            for lt in lifetimes {
-                self.visit_lifetime(lt);
-            }
+            lifetimes.iter().for_each(|lt| self.visit_lifetime(lt));
         }
 
         // Figure out if this is a type/trait segment,

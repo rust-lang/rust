@@ -119,20 +119,20 @@ impl<'a> fmt::Display for TyParamBounds<'a> {
 
 impl fmt::Display for clean::GenericParamDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            clean::GenericParamDef::Lifetime(ref lp) => write!(f, "{}", lp),
-            clean::GenericParamDef::Type(ref tp) => {
-                f.write_str(&tp.name)?;
+        match self.kind {
+            clean::GenericParamDefKind::Lifetime => write!(f, "{}", self.name),
+            clean::GenericParamDefKind::Type { ref bounds, ref default, .. } => {
+                f.write_str(&self.name)?;
 
-                if !tp.bounds.is_empty() {
+                if !bounds.is_empty() {
                     if f.alternate() {
-                        write!(f, ": {:#}", TyParamBounds(&tp.bounds))?;
+                        write!(f, ": {:#}", TyParamBounds(bounds))?;
                     } else {
-                        write!(f, ":&nbsp;{}", TyParamBounds(&tp.bounds))?;
+                        write!(f, ":&nbsp;{}", TyParamBounds(bounds))?;
                     }
                 }
 
-                if let Some(ref ty) = tp.default {
+                if let Some(ref ty) = default {
                     if f.alternate() {
                         write!(f, " = {:#}", ty)?;
                     } else {

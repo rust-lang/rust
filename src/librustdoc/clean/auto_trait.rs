@@ -521,7 +521,10 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                         // We only care about late bound regions, as we need to add them
                         // to the 'for<>' section
                         &ty::ReLateBound(_, ty::BoundRegion::BrNamed(_, name)) => {
-                            Some(GenericParamDef::Lifetime(Lifetime(name.to_string())))
+                            Some(GenericParamDef {
+                                name: name.to_string(),
+                                kind: GenericParamDefKind::Lifetime,
+                            })
                         }
                         &ty::ReVar(_) | &ty::ReEarlyBound(_) => None,
                         _ => panic!("Unexpected region type {:?}", r),
@@ -867,19 +870,17 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
         existing_predicates.extend(final_bounds);
 
-        for p in generic_params.iter_mut() {
-            match p {
-                &mut GenericParamDef::Type(ref mut ty) => {
-                    // We never want something like 'impl<T=Foo>'
-                    ty.default.take();
-
-                    let generic_ty = Type::Generic(ty.name.clone());
-
+        for param in generic_params.iter_mut() {
+            match param.kind {
+                GenericParamDefKind::Type { ref mut default, ref mut bounds, .. } => {
+                    // We never want something like `impl<T=Foo>`.
+                    default.take();
+                    let generic_ty = Type::Generic(param.name.clone());
                     if !has_sized.contains(&generic_ty) {
-                        ty.bounds.insert(0, TyParamBound::maybe_sized(self.cx));
+                        bounds.insert(0, TyParamBound::maybe_sized(self.cx));
                     }
                 }
-                GenericParamDef::Lifetime(_) => {}
+                GenericParamDefKind::Lifetime => {}
             }
         }
 

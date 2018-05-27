@@ -1648,18 +1648,15 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     }
 
     fn encode_info_for_generics(&mut self, generics: &hir::Generics) {
-        for param in &generics.params {
-            match param.kind {
-                hir::GenericParamKind::Lifetime { .. } => {}
-                hir::GenericParamKind::Type { ref default, .. } => {
-                    let def_id = self.tcx.hir.local_def_id(param.id);
-                    let has_default = Untracked(default.is_some());
-                    self.record(def_id,
-                                IsolatedEncoder::encode_info_for_ty_param,
-                                (def_id, has_default));
-                }
+        generics.params.iter().for_each(|param| match param.kind {
+            hir::GenericParamKind::Lifetime { .. } => {}
+            hir::GenericParamKind::Type { ref default, .. } => {
+                let def_id = self.tcx.hir.local_def_id(param.id);
+                let has_default = Untracked(default.is_some());
+                let encode_info = IsolatedEncoder::encode_info_for_ty_param;
+                self.record(def_id, encode_info, (def_id, has_default));
             }
-        }
+        });
     }
 
     fn encode_info_for_ty(&mut self, ty: &hir::Ty) {
