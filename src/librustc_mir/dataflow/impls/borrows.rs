@@ -59,9 +59,16 @@ fn precompute_borrows_out_of_scope<'a, 'tcx>(
     borrows_out_of_scope_at_location: &mut FxHashMap<Location, Vec<BorrowIndex>>,
     borrow_index: BorrowIndex,
     borrow_region: RegionVid,
-    location: Location
+    location: Location,
+    visited_locations: &mut Vec<Location>
 ) {
-    // Start by dealing with the current location.
+    // Check if we have already visited this location and skip
+    // it if we have - avoids infinite loops.
+    if visited_locations.contains(&location) { return; }
+    visited_locations.push(location.clone());
+
+    // Next, add the borrow index to the current location's vector if the region does
+    // not contain the point at that location (or create a new vector if required).
     if !regioncx.region_contains_point(borrow_region, location) {
         borrows_out_of_scope_at_location
             .entry(location.clone())
@@ -80,14 +87,16 @@ fn precompute_borrows_out_of_scope<'a, 'tcx>(
                 TerminatorKind::FalseUnwind { real_target: target, .. } => {
                     precompute_borrows_out_of_scope(
                         mir, regioncx, borrows_out_of_scope_at_location,
-                        borrow_index, borrow_region, target.start_location()
+                        borrow_index, borrow_region, target.start_location(),
+                        visited_locations
                     );
                 },
                 TerminatorKind::SwitchInt { ref targets, .. } => {
                     for block in targets {
                         precompute_borrows_out_of_scope(
                             mir, regioncx, borrows_out_of_scope_at_location,
-                            borrow_index, borrow_region, block.start_location()
+                            borrow_index, borrow_region, block.start_location(),
+                            visited_locations
                         );
                     }
                 },
@@ -95,13 +104,15 @@ fn precompute_borrows_out_of_scope<'a, 'tcx>(
                 TerminatorKind::DropAndReplace { target, unwind, .. } => {
                     precompute_borrows_out_of_scope(
                         mir, regioncx, borrows_out_of_scope_at_location,
-                        borrow_index, borrow_region, target.start_location()
+                        borrow_index, borrow_region, target.start_location(),
+                        visited_locations
                     );
 
                     if let Some(unwind_block) = unwind {
                         precompute_borrows_out_of_scope(
                             mir, regioncx, borrows_out_of_scope_at_location,
-                            borrow_index, borrow_region, unwind_block.start_location()
+                            borrow_index, borrow_region, unwind_block.start_location(),
+                            visited_locations
                         );
                     }
                 },
@@ -109,14 +120,16 @@ fn precompute_borrows_out_of_scope<'a, 'tcx>(
                     if let Some((_, block)) = destination  {
                         precompute_borrows_out_of_scope(
                             mir, regioncx, borrows_out_of_scope_at_location,
-                            borrow_index, borrow_region, block.start_location()
+                            borrow_index, borrow_region, block.start_location(),
+                            visited_locations
                         );
                     }
 
                     if let Some(block) = cleanup  {
                         precompute_borrows_out_of_scope(
                             mir, regioncx, borrows_out_of_scope_at_location,
-                            borrow_index, borrow_region, block.start_location()
+                            borrow_index, borrow_region, block.start_location(),
+                            visited_locations
                         );
                     }
                 },
@@ -124,13 +137,15 @@ fn precompute_borrows_out_of_scope<'a, 'tcx>(
                 TerminatorKind::Yield { resume: target, drop: cleanup, .. } => {
                     precompute_borrows_out_of_scope(
                         mir, regioncx, borrows_out_of_scope_at_location,
-                        borrow_index, borrow_region, target.start_location()
+                        borrow_index, borrow_region, target.start_location(),
+                        visited_locations
                     );
 
                     if let Some(block) = cleanup  {
                         precompute_borrows_out_of_scope(
                             mir, regioncx, borrows_out_of_scope_at_location,
-                            borrow_index, borrow_region, block.start_location()
+                            borrow_index, borrow_region, block.start_location(),
+                            visited_locations
                         );
                     }
                 },
@@ -142,7 +157,7 @@ fn precompute_borrows_out_of_scope<'a, 'tcx>(
     } else {
         precompute_borrows_out_of_scope(mir, regioncx, borrows_out_of_scope_at_location,
                                         borrow_index, borrow_region,
-                                        location.successor_within_block());
+                                        location.successor_within_block(), visited_locations);
     }
 }
 
@@ -167,7 +182,8 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
 
             precompute_borrows_out_of_scope(mir, &nonlexical_regioncx,
                                             &mut borrows_out_of_scope_at_location,
-                                            borrow_index, borrow_region, location);
+                                            borrow_index, borrow_region, location,
+                                            &mut Vec::new());
         }
 
         Borrows {
