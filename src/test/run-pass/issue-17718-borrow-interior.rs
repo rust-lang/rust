@@ -9,17 +9,13 @@
 // except according to those terms.
 
 struct S { a: usize }
+
 static A: S  = S { a: 3 };
 static B: &'static usize = &A.a;
-//~^ ERROR: cannot refer to the interior of another static
 static C: &'static usize = &(A.a);
-//~^ ERROR: cannot refer to the interior of another static
 
 static D: [usize; 1] = [1];
 static E: usize = D[0];
-//~^ ERROR: cannot refer to the interior of another static
-//~^^ ERROR: cannot refer to other statics by value
 static F: &'static usize = &D[0];
-//~^ ERROR: cannot refer to the interior of another static
 
 fn main() {}
