@@ -712,30 +712,6 @@ pub trait CompilerCalls<'a> {
 #[derive(Copy, Clone)]
 pub struct RustcDefaultCalls;
 
-/// CompilerCalls instance for quick access to the result of one compile phase.
-pub enum AdHocCalls<'a> {
-    AfterAnalysis(Compilation, Box<Fn(&mut ::driver::CompileState) + 'a>)
-}
-
-impl<'a> CompilerCalls<'a> for AdHocCalls<'a> {
-    fn build_controller(
-        self: Box<Self>,
-        _: &Session,
-        _: &getopts::Matches
-    ) -> CompileController<'a> {
-        let mut control = CompileController::basic();
-
-        match *self {
-            AdHocCalls::AfterAnalysis(c, f) => {
-                control.after_analysis.stop = c;
-                control.after_analysis.callback = f;
-            }
-        }
-
-        control
-    }
-}
-
 // FIXME remove these and use winapi 0.3 instead
 // Duplicates: bootstrap/compile.rs, librustc_errors/emitter.rs
 #[cfg(unix)]
