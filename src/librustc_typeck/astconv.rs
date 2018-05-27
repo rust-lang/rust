@@ -274,15 +274,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let substs = Substs::for_item(tcx, def_id, |param, substs| {
             match param.kind {
                 GenericParamDefKind::Lifetime => {
-                    let i = param.index as usize - own_self;
-                    let mut j = 0;
+                    let mut i = param.index as usize - own_self;
                     for arg in &generic_args.args {
                         match arg {
                             GenericArg::Lifetime(lt) => {
-                                if i == j {
+                                if i == 0 {
                                     return self.ast_region_to_region(lt, Some(param)).into();
                                 }
-                                j += 1;
+                                i -= 1;
                             }
                             _ => {}
                         }
@@ -297,17 +296,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         return ty.into();
                     }
 
-                    let i = i - (lt_accepted + own_self);
+                    let mut i = i - (lt_accepted + own_self);
                     if i < ty_provided {
                         // A provided type parameter.
-                        let mut j = 0;
                         for arg in &generic_args.args {
                             match arg {
                                 GenericArg::Type(ty) => {
-                                    if i == j {
+                                    if i == 0 {
                                         return self.ast_ty_to_ty(ty).into();
                                     }
-                                    j += 1;
+                                    i -= 1;
                                 }
                                 _ => {}
                             }

@@ -745,8 +745,8 @@ pub fn walk_ty_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v TyPar
 pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v GenericParam) {
     visitor.visit_id(param.id);
     match param.kind {
-        GenericParamKind::Lifetime { ref bounds, ref lifetime_deprecated, .. } => {
-            match lifetime_deprecated.name {
+        GenericParamKind::Lifetime { ref bounds, ref lifetime, .. } => {
+            match lifetime.name {
                 LifetimeName::Name(name) => {
                     visitor.visit_name(param.span, name);
                 }

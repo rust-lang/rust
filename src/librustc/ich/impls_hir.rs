@@ -208,11 +208,11 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::GenericParamKind {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
             hir::GenericParamKind::Lifetime { name, ref bounds, in_band,
-                                              ref lifetime_deprecated } => {
+                                              ref lifetime } => {
                 name.hash_stable(hcx, hasher);
                 bounds.hash_stable(hcx, hasher);
                 in_band.hash_stable(hcx, hasher);
-                lifetime_deprecated.hash_stable(hcx, hasher);
+                lifetime.hash_stable(hcx, hasher);
             }
             hir::GenericParamKind::Type { name, ref bounds, ref default, synthetic, attrs } => {
                 name.hash_stable(hcx, hasher);

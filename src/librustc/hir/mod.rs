@@ -462,7 +462,7 @@ pub enum GenericParamKind {
         // `fn foo(x: &'a u8) -> &'a u8 { x }`
         in_band: bool,
         // We keep a `Lifetime` around for now just so we can `visit_lifetime`.
-        lifetime_deprecated: Lifetime,
+        lifetime: Lifetime,
     },
     Type {
         name: Name,

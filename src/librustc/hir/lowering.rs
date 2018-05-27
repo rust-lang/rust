@@ -705,7 +705,7 @@ impl<'a> LoweringContext<'a> {
                         name: hir_name,
                         bounds: vec![].into(),
                         in_band: true,
-                        lifetime_deprecated: hir::Lifetime {
+                        lifetime: hir::Lifetime {
                             id: def_node_id,
                             span,
                             name: hir_name,
@@ -1424,7 +1424,7 @@ impl<'a> LoweringContext<'a> {
                             name,
                             bounds: vec![].into(),
                             in_band: false,
-                            lifetime_deprecated: hir::Lifetime {
+                            lifetime: hir::Lifetime {
                                 id: def_node_id,
                                 span: lifetime.span,
                                 name,
@@ -1947,7 +1947,7 @@ impl<'a> LoweringContext<'a> {
                            itctx: ImplTraitContext)
                            -> hir::GenericParam {
         match param.kind {
-            GenericParamKind::Lifetime { ref bounds, ref lifetime, .. } => {
+            GenericParamKind::Lifetime { ref bounds, ref lifetime } => {
                 let was_collecting_in_band = self.is_collecting_in_band_lifetimes;
                 self.is_collecting_in_band_lifetimes = false;
 
@@ -1960,7 +1960,7 @@ impl<'a> LoweringContext<'a> {
                         name: lifetime.name,
                         bounds: bounds.iter().map(|lt| self.lower_lifetime(lt)).collect(),
                         in_band: false,
-                        lifetime_deprecated: lifetime,
+                        lifetime,
                     }
                 };
 

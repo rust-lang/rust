@@ -1220,20 +1220,17 @@ fn compute_object_lifetime_defaults(
                         .map(|set| match *set {
                             Set1::Empty => "BaseDefault".to_string(),
                             Set1::One(Region::Static) => "'static".to_string(),
-                            Set1::One(Region::EarlyBound(i, _, _)) => {
-                                let mut j = 0;
-                                generics.params.iter().find(|param| match param.kind {
+                            Set1::One(Region::EarlyBound(mut i, _, _)) => {
+                                generics.params.iter().find_map(|param| match param.kind {
                                         GenericParamKind::Lifetime { .. } => {
-                                            if i == j {
-                                                return true;
+                                            if i == 0 {
+                                                return Some(param.name().to_string());
                                             }
-                                            j += 1;
-                                            false
+                                            i -= 1;
+                                            None
                                         }
-                                        _ => false,
+                                        _ => None,
                                     }).unwrap()
-                                  .name()
-                                  .to_string()
                             }
                             Set1::One(_) => bug!(),
                             Set1::Many => "Ambiguous".to_string(),

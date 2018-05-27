@@ -325,21 +325,20 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         let provided = &segment.args;
         let own_counts = method_generics.own_counts();
         Substs::for_item(self.tcx, pick.item.def_id, |param, _| {
-            let i = param.index as usize;
+            let mut i = param.index as usize;
             if i < parent_substs.len() {
                 parent_substs[i]
             } else {
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
                         if let Some(lifetime) = provided.as_ref().and_then(|data| {
-                            let mut j = 0;
                             for arg in &data.args {
                                 match arg {
                                     GenericArg::Lifetime(lt) => {
-                                        if i - parent_substs.len() == j {
+                                        if i == parent_substs.len() {
                                             return Some(lt);
                                         }
-                                        j += 1;
+                                        i -= 1;
                                     }
                                     _ => {}
                                 }
@@ -352,14 +351,13 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     }
                     GenericParamDefKind::Type {..} => {
                         if let Some(ast_ty) = provided.as_ref().and_then(|data| {
-                            let mut j = 0;
                             for arg in &data.args {
                                 match arg {
                                     GenericArg::Type(ty) => {
-                                        if i - parent_substs.len() - own_counts.lifetimes == j {
+                                        if i == parent_substs.len() + own_counts.lifetimes {
                                             return Some(ty);
                                         }
-                                        j += 1;
+                                        i -= 1;
                                     }
                                     _ => {}
                                 }
