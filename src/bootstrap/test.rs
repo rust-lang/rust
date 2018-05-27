@@ -283,7 +283,7 @@ impl Step for Rls {
 
         let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
-                                                 Mode::Rustc,
+                                                 Mode::ToolRustc,
                                                  host,
                                                  "test",
                                                  "src/tools/rls");
@@ -338,7 +338,7 @@ impl Step for Rustfmt {
 
         let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
-                                                 Mode::Rustc,
+                                                 Mode::ToolRustc,
                                                  host,
                                                  "test",
                                                  "src/tools/rustfmt");
