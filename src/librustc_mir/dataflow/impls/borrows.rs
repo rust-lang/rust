@@ -15,12 +15,13 @@ use rustc;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
-use rustc::mir::{self, Location, Place, Mir};
+use rustc::mir::{self, Location, Place, Mir, TerminatorKind};
 use rustc::ty::TyCtxt;
-use rustc::ty::RegionKind;
+use rustc::ty::{RegionKind, RegionVid};
 use rustc::ty::RegionKind::ReScope;
 
 use rustc_data_structures::bitslice::BitwiseOperator;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_set::IdxSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
@@ -46,9 +47,103 @@ pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     root_scope: Option<region::Scope>,
 
     borrow_set: Rc<BorrowSet<'tcx>>,
+    borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
 
     /// NLL region inference context with which NLL queries should be resolved
-    nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
+    _nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
+}
+
+fn precompute_borrows_out_of_scope<'a, 'tcx>(
+    mir: &'a Mir<'tcx>,
+    regioncx: &Rc<RegionInferenceContext<'tcx>>,
+    borrows_out_of_scope_at_location: &mut FxHashMap<Location, Vec<BorrowIndex>>,
+    borrow_index: BorrowIndex,
+    borrow_region: RegionVid,
+    location: Location
+) {
+    // Start by dealing with the current location.
+    if !regioncx.region_contains_point(borrow_region, location) {
+        borrows_out_of_scope_at_location
+            .entry(location.clone())
+            .and_modify(|m| m.push(borrow_index))
+            .or_insert(vec![ borrow_index ]);
+    }
+
+    let bb_data = &mir[location.block];
+    // If we are on the last statement, then check the terminator
+    // to determine which location to proceed to.
+    if location.statement_index == bb_data.statements.len() - 1 {
+        if let Some(ref terminator) = bb_data.terminator {
+            match terminator.kind {
+                TerminatorKind::Goto { target } |
+                TerminatorKind::FalseEdges { real_target: target, .. } |
+                TerminatorKind::FalseUnwind { real_target: target, .. } => {
+                    precompute_borrows_out_of_scope(
+                        mir, regioncx, borrows_out_of_scope_at_location,
+                        borrow_index, borrow_region, target.start_location()
+                    );
+                },
+                TerminatorKind::SwitchInt { ref targets, .. } => {
+                    for block in targets {
+                        precompute_borrows_out_of_scope(
+                            mir, regioncx, borrows_out_of_scope_at_location,
+                            borrow_index, borrow_region, block.start_location()
+                        );
+                    }
+                },
+                TerminatorKind::Drop { target, unwind, .. } |
+                TerminatorKind::DropAndReplace { target, unwind, .. } => {
+                    precompute_borrows_out_of_scope(
+                        mir, regioncx, borrows_out_of_scope_at_location,
+                        borrow_index, borrow_region, target.start_location()
+                    );
+
+                    if let Some(unwind_block) = unwind {
+                        precompute_borrows_out_of_scope(
+                            mir, regioncx, borrows_out_of_scope_at_location,
+                            borrow_index, borrow_region, unwind_block.start_location()
+                        );
+                    }
+                },
+                TerminatorKind::Call { ref destination, cleanup, .. } => {
+                    if let Some((_, block)) = destination  {
+                        precompute_borrows_out_of_scope(
+                            mir, regioncx, borrows_out_of_scope_at_location,
+                            borrow_index, borrow_region, block.start_location()
+                        );
+                    }
+
+                    if let Some(block) = cleanup  {
+                        precompute_borrows_out_of_scope(
+                            mir, regioncx, borrows_out_of_scope_at_location,
+                            borrow_index, borrow_region, block.start_location()
+                        );
+                    }
+                },
+                TerminatorKind::Assert { target, cleanup, .. } |
+                TerminatorKind::Yield { resume: target, drop: cleanup, .. } => {
+                    precompute_borrows_out_of_scope(
+                        mir, regioncx, borrows_out_of_scope_at_location,
+                        borrow_index, borrow_region, target.start_location()
+                    );
+
+                    if let Some(block) = cleanup  {
+                        precompute_borrows_out_of_scope(
+                            mir, regioncx, borrows_out_of_scope_at_location,
+                            borrow_index, borrow_region, block.start_location()
+                        );
+                    }
+                },
+                _ => {},
+            };
+        };
+    // If we're not on the last statement, then go to the next
+    // statement in this block.
+    } else {
+        precompute_borrows_out_of_scope(mir, regioncx, borrows_out_of_scope_at_location,
+                                        borrow_index, borrow_region,
+                                        location.successor_within_block());
+    }
 }
 
 impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
@@ -65,18 +160,28 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             region::Scope::CallSite(tcx.hir.body(body_id).value.hir_id.local_id)
         });
 
+        let mut borrows_out_of_scope_at_location = FxHashMap();
+        for (borrow_index, borrow_data) in borrow_set.borrows.iter_enumerated() {
+            let borrow_region = borrow_data.region.to_region_vid();
+            let location = borrow_set.borrows[borrow_index].reserve_location;
+
+            precompute_borrows_out_of_scope(mir, &nonlexical_regioncx,
+                                            &mut borrows_out_of_scope_at_location,
+                                            borrow_index, borrow_region, location);
+        }
+
         Borrows {
             tcx: tcx,
             mir: mir,
             borrow_set: borrow_set.clone(),
+            borrows_out_of_scope_at_location,
             scope_tree,
             root_scope,
-            nonlexical_regioncx,
+            _nonlexical_regioncx: nonlexical_regioncx,
         }
     }
 
     crate fn borrows(&self) -> &IndexVec<BorrowIndex, BorrowData<'tcx>> { &self.borrow_set.borrows }
-
     pub fn scope_tree(&self) -> &Lrc<region::ScopeTree> { &self.scope_tree }
 
     pub fn location(&self, idx: BorrowIndex) -> &Location {
@@ -89,12 +194,10 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     fn kill_loans_out_of_scope_at_location(&self,
                                            sets: &mut BlockSets<BorrowIndex>,
                                            location: Location) {
-        let regioncx = &self.nonlexical_regioncx;
-
         // NOTE: The state associated with a given `location`
-        // reflects the dataflow on entry to the statement. If it
-        // does not contain `borrow_region`, then then that means
-        // that the statement at `location` kills the borrow.
+        // reflects the dataflow on entry to the statement.
+        // Iterate over each of the borrows that we've precomputed
+        // to have went out of scope at this location and kill them.
         //
         // We are careful always to call this function *before* we
         // set up the gen-bits for the statement or
@@ -102,10 +205,9 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
         // terminator *does* introduce a new loan of the same
         // region, then setting that gen-bit will override any
         // potential kill introduced here.
-        for (borrow_index, borrow_data) in self.borrow_set.borrows.iter_enumerated() {
-            let borrow_region = borrow_data.region.to_region_vid();
-            if !regioncx.region_contains_point(borrow_region, location) {
-                sets.kill(&borrow_index);
+        if let Some(indices) = self.borrows_out_of_scope_at_location.get(&location) {
+            for index in indices {
+                sets.kill(&index);
             }
         }
     }
