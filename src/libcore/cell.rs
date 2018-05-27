@@ -515,7 +515,7 @@ impl<T: ?Sized> Cell<T> {
     /// ```
     #[inline]
     #[unstable(feature = "as_cell", issue="43038")]
-    pub fn from_mut<'a>(t: &'a mut T) -> &'a Cell<T> {
+    pub fn from_mut(t: &mut T) -> &Cell<T> {
         unsafe {
             &*(t as *mut T as *const Cell<T>)
         }
