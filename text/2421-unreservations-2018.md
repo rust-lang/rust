@@ -1,7 +1,7 @@
 - Feature Name: `unreservations`
 - Start Date: 2018-04-26
-- RFC PR: 
-- Rust Issue: 
+- RFC PR: [rust-lang/rfcs#2421](https://github.com/rust-lang/rfcs/pull/2421)
+- Rust Issue: [rust-lang/rust#51115](https://github.com/rust-lang/rust/issues/51115)
 
 # Summary
 [summary]: #summary
