@@ -77,8 +77,9 @@ pub struct Lint {
     /// e.g. "imports that are never used"
     pub desc: &'static str,
 
-    /// Deny lint after this edition
-    pub edition_deny: Option<Edition>,
+    /// Starting at the given edition, default to the given lint level. If this is `None`, then use
+    /// `default_level`.
+    pub edition_lint_opts: Option<(Edition, Level)>,
 }
 
 impl Lint {
@@ -88,32 +89,32 @@ impl Lint {
     }
 
     pub fn default_level(&self, session: &Session) -> Level {
-        if let Some(edition_deny) = self.edition_deny {
-            if session.edition() >= edition_deny {
-                return Level::Deny
-            }
-        }
-        self.default_level
+        self.edition_lint_opts
+            .filter(|(e, _)| *e <= session.edition())
+            .map(|(_, l)| l)
+            .unwrap_or(self.default_level)
     }
 }
 
 /// Declare a static item of type `&'static Lint`.
 #[macro_export]
 macro_rules! declare_lint {
-    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, $edition: expr) => (
-        $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
-            name: stringify!($NAME),
-            default_level: $crate::lint::$Level,
-            desc: $desc,
-            edition_deny: Some($edition)
-        };
-    );
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
             desc: $desc,
-            edition_deny: None,
+            edition_lint_opts: None,
+        };
+    );
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
+     $lint_edition: expr => $edition_level: ident $(,)?
+    ) => (
+        $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
+            name: stringify!($NAME),
+            default_level: $crate::lint::$Level,
+            desc: $desc,
+            edition_lint_opts: Some(($lint_edition, $crate::lint::Level::$edition_level)),
         };
     );
 }
@@ -121,8 +122,7 @@ macro_rules! declare_lint {
 /// Declare a static `LintArray` and return it as an expression.
 #[macro_export]
 macro_rules! lint_array {
-    ($( $lint:expr ),*,) => { lint_array!( $( $lint ),* ) };
-    ($( $lint:expr ),*) => {{
+    ($( $lint:expr ),* $(,)?) => {{
          static ARRAY: LintArray = &[ $( &$lint ),* ];
          ARRAY
     }}

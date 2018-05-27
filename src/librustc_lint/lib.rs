@@ -29,6 +29,7 @@
 #![feature(macro_vis_matcher)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(macro_at_most_once_rep)]
 
 extern crate syntax;
 #[macro_use]

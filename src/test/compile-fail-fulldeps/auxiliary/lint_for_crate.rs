@@ -13,6 +13,7 @@
 #![feature(plugin_registrar, rustc_private)]
 #![feature(box_syntax)]
 #![feature(macro_vis_matcher)]
+#![feature(macro_at_most_once_rep)]
 
 #[macro_use] extern crate rustc;
 extern crate rustc_plugin;

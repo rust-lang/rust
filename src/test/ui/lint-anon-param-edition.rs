@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(future_incompatible)]
+// tests that the anonymous_parameters lint is warn-by-default on the 2018 edition
 
-trait Tr {
-    fn f(u8) {} //~ ERROR anonymous parameters are deprecated
-                //~^ WARN this was previously accepted
+// compile-pass
+// compile-flags: --edition=2018
+// run-rustfix
+
+trait Foo {
+    fn foo(u8);
+    //^ WARN anonymous parameters are deprecated
+    //| WARN this was previously accepted
 }
 
 fn main() {}

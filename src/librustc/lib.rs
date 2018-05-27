@@ -69,6 +69,7 @@
 #![feature(catch_expr)]
 #![feature(test)]
 #![feature(in_band_lifetimes)]
+#![feature(macro_at_most_once_rep)]
 
 #![recursion_limit="512"]
 
