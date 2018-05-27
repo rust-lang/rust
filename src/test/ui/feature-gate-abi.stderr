@@ -38,7 +38,7 @@ LL | extern "msp430-interrupt" fn f5() {} //~ ERROR msp430-interrupt ABI is expe
    |
    = help: add #![feature(abi_msp430_interrupt)] to the crate attributes to enable
 
-error[E0658]: PTX ABIs are experimental and subject to change
+error[E0658]: PTX ABIs are experimental and subject to change (see issue #38788)
   --> $DIR/feature-gate-abi.rs:24:1
    |
 LL | extern "ptx-kernel" fn f6() {} //~ ERROR PTX ABIs are experimental and subject to change
@@ -102,7 +102,7 @@ LL |     extern "msp430-interrupt" fn m5(); //~ ERROR msp430-interrupt ABI is ex
    |
    = help: add #![feature(abi_msp430_interrupt)] to the crate attributes to enable
 
-error[E0658]: PTX ABIs are experimental and subject to change
+error[E0658]: PTX ABIs are experimental and subject to change (see issue #38788)
   --> $DIR/feature-gate-abi.rs:35:5
    |
 LL |     extern "ptx-kernel" fn m6(); //~ ERROR PTX ABIs are experimental and subject to change
@@ -166,7 +166,7 @@ LL |     extern "msp430-interrupt" fn dm5() {} //~ ERROR msp430-interrupt ABI is
    |
    = help: add #![feature(abi_msp430_interrupt)] to the crate attributes to enable
 
-error[E0658]: PTX ABIs are experimental and subject to change
+error[E0658]: PTX ABIs are experimental and subject to change (see issue #38788)
   --> $DIR/feature-gate-abi.rs:44:5
    |
 LL |     extern "ptx-kernel" fn dm6() {} //~ ERROR PTX ABIs are experimental and subject to change
@@ -230,7 +230,7 @@ LL |     extern "msp430-interrupt" fn m5() {} //~ ERROR msp430-interrupt ABI is 
    |
    = help: add #![feature(abi_msp430_interrupt)] to the crate attributes to enable
 
-error[E0658]: PTX ABIs are experimental and subject to change
+error[E0658]: PTX ABIs are experimental and subject to change (see issue #38788)
   --> $DIR/feature-gate-abi.rs:58:5
    |
 LL |     extern "ptx-kernel" fn m6() {} //~ ERROR PTX ABIs are experimental and subject to change
@@ -294,7 +294,7 @@ LL |     extern "msp430-interrupt" fn im5() {} //~ ERROR msp430-interrupt ABI is
    |
    = help: add #![feature(abi_msp430_interrupt)] to the crate attributes to enable
 
-error[E0658]: PTX ABIs are experimental and subject to change
+error[E0658]: PTX ABIs are experimental and subject to change (see issue #38788)
   --> $DIR/feature-gate-abi.rs:70:5
    |
 LL |     extern "ptx-kernel" fn im6() {} //~ ERROR PTX ABIs are experimental and subject to change
@@ -358,7 +358,7 @@ LL | type A5 = extern "msp430-interrupt" fn(); //~ ERROR msp430-interrupt ABI is
    |
    = help: add #![feature(abi_msp430_interrupt)] to the crate attributes to enable
 
-error[E0658]: PTX ABIs are experimental and subject to change
+error[E0658]: PTX ABIs are experimental and subject to change (see issue #38788)
   --> $DIR/feature-gate-abi.rs:81:11
    |
 LL | type A6 = extern "ptx-kernel" fn (); //~ ERROR PTX ABIs are experimental and subject to change
@@ -422,7 +422,7 @@ LL | extern "msp430-interrupt" {} //~ ERROR msp430-interrupt ABI is experimental
    |
    = help: add #![feature(abi_msp430_interrupt)] to the crate attributes to enable
 
-error[E0658]: PTX ABIs are experimental and subject to change
+error[E0658]: PTX ABIs are experimental and subject to change (see issue #38788)
   --> $DIR/feature-gate-abi.rs:91:1
    |
 LL | extern "ptx-kernel" {} //~ ERROR PTX ABIs are experimental and subject to change

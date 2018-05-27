@@ -81,7 +81,7 @@ impl Feature {
 pub type Features = HashMap<String, Feature>;
 
 pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
-    let mut features = collect_lang_features(path);
+    let mut features = collect_lang_features(path, bad);
     assert!(!features.is_empty());
 
     let lib_features = get_and_check_lib_features(path, bad, &features);
@@ -214,14 +214,27 @@ fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {
     return false;
 }
 
-pub fn collect_lang_features(base_src_path: &Path) -> Features {
+pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
     let mut contents = String::new();
     let path = base_src_path.join("libsyntax/feature_gate.rs");
     t!(t!(File::open(path)).read_to_string(&mut contents));
 
-    contents.lines()
-        .filter_map(|line| {
-            let mut parts = line.trim().split(",");
+    // we allow rustc-internal features to omit a tracking issue.
+    // these features must be marked with `// rustc internal` in its own group.
+    let mut next_feature_is_rustc_internal = false;
+
+    contents.lines().zip(1..)
+        .filter_map(|(line, line_number)| {
+            let line = line.trim();
+            if line.starts_with("// rustc internal") {
+                next_feature_is_rustc_internal = true;
+                return None;
+            } else if line.is_empty() {
+                next_feature_is_rustc_internal = false;
+                return None;
+            }
+
+            let mut parts = line.split(',');
             let level = match parts.next().map(|l| l.trim().trim_left_matches('(')) {
                 Some("active") => Status::Unstable,
                 Some("removed") => Status::Removed,
@@ -232,8 +245,18 @@ pub fn collect_lang_features(base_src_path: &Path) -> Features {
             let since = parts.next().unwrap().trim().trim_matches('"');
             let issue_str = parts.next().unwrap().trim();
             let tracking_issue = if issue_str.starts_with("None") {
+                if level == Status::Unstable && !next_feature_is_rustc_internal {
+                    *bad = true;
+                    tidy_error!(
+                        bad,
+                        "libsyntax/feature_gate.rs:{}: no tracking issue for feature {}",
+                        line_number,
+                        name,
+                    );
+                }
                 None
             } else {
+                next_feature_is_rustc_internal = false;
                 let s = issue_str.split("(").nth(1).unwrap().split(")").nth(0).unwrap();
                 Some(s.parse().unwrap())
             };
