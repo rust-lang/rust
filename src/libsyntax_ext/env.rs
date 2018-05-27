@@ -13,7 +13,7 @@
 // interface.
 //
 
-use syntax::ast::{self, Ident, GenericArgAST};
+use syntax::ast::{self, Ident, GenericArg};
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
@@ -39,7 +39,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt,
             cx.expr_path(cx.path_all(sp,
                                      true,
                                      cx.std_path(&["option", "Option", "None"]),
-                                     vec![GenericArgAST::Type(cx.ty_rptr(sp,
+                                     vec![GenericArg::Type(cx.ty_rptr(sp,
                                                      cx.ty_ident(sp, Ident::from_str("str")),
                                                      Some(lt),
                                                      ast::Mutability::Immutable))],

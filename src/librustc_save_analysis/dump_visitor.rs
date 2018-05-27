@@ -371,8 +371,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     ) {
         for param in &generics.params {
             match param.kind {
-                ast::GenericParamKindAST::Lifetime { .. } => {}
-                ast::GenericParamKindAST::Type { .. } => {
+                ast::GenericParamKind::Lifetime { .. } => {}
+                ast::GenericParamKind::Type { .. } => {
                     let param_ss = param.ident.span;
                     let name = escape(self.span.snippet(param_ss));
                     // Append $id to name to make sure each one is unique.
@@ -827,7 +827,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 match **generic_args {
                     ast::GenericArgs::AngleBracketed(ref data) => {
                         data.args.iter().for_each(|arg| match arg {
-                            ast::GenericArgAST::Type(ty) => self.visit_ty(ty),
+                            ast::GenericArg::Type(ty) => self.visit_ty(ty),
                             _ => {}
                         });
                     }
@@ -914,7 +914,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         if let Some(ref generic_args) = seg.args {
             if let ast::GenericArgs::AngleBracketed(ref data) = **generic_args {
                 data.args.iter().for_each(|arg| match arg {
-                    ast::GenericArgAST::Type(ty) => self.visit_ty(ty),
+                    ast::GenericArg::Type(ty) => self.visit_ty(ty),
                     _ => {}
                 });
             }
@@ -1486,8 +1486,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
 
     fn visit_generics(&mut self, generics: &'l ast::Generics) {
         generics.params.iter().for_each(|param| match param.kind {
-            ast::GenericParamKindAST::Lifetime { .. } => {}
-            ast::GenericParamKindAST::Type { ref bounds, ref default, .. } => {
+            ast::GenericParamKind::Lifetime { .. } => {}
+            ast::GenericParamKind::Type { ref bounds, ref default, .. } => {
                 for bound in bounds {
                     if let ast::TraitTyParamBound(ref trait_ref, _) = *bound {
                         self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)

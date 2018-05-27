@@ -136,7 +136,7 @@ fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
             ast::ItemKind::Enum(_, ast::Generics { ref params, .. }) => {
                 for param in params {
                     match param.kind {
-                        ast::GenericParamKindAST::Type { .. } => {
+                        ast::GenericParamKind::Type { .. } => {
                             typaram.push_str(&param.ident.as_str());
                         }
                         _ => {}

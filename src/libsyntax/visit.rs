@@ -73,7 +73,7 @@ pub trait Visitor<'ast>: Sized {
     fn visit_expr(&mut self, ex: &'ast Expr) { walk_expr(self, ex) }
     fn visit_expr_post(&mut self, _ex: &'ast Expr) { }
     fn visit_ty(&mut self, t: &'ast Ty) { walk_ty(self, t) }
-    fn visit_generic_param(&mut self, param: &'ast GenericParamAST) {
+    fn visit_generic_param(&mut self, param: &'ast GenericParam) {
         walk_generic_param(self, param)
     }
     fn visit_generics(&mut self, g: &'ast Generics) { walk_generics(self, g) }
@@ -133,10 +133,10 @@ pub trait Visitor<'ast>: Sized {
     fn visit_generic_args(&mut self, path_span: Span, generic_args: &'ast GenericArgs) {
         walk_generic_args(self, path_span, generic_args)
     }
-    fn visit_generic_arg(&mut self, generic_arg: &'ast GenericArgAST) {
+    fn visit_generic_arg(&mut self, generic_arg: &'ast GenericArg) {
         match generic_arg {
-            GenericArgAST::Lifetime(lt) => self.visit_lifetime(lt),
-            GenericArgAST::Type(ty)     => self.visit_ty(ty),
+            GenericArg::Lifetime(lt) => self.visit_lifetime(lt),
+            GenericArg::Type(ty)     => self.visit_ty(ty),
         }
     }
     fn visit_assoc_type_binding(&mut self, type_binding: &'ast TypeBinding) {
@@ -490,14 +490,14 @@ pub fn walk_ty_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a TyPar
     }
 }
 
-pub fn walk_generic_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a GenericParamAST) {
+pub fn walk_generic_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a GenericParam) {
     match param.kind {
-        GenericParamKindAST::Lifetime { ref bounds, ref lifetime, .. } => {
+        GenericParamKind::Lifetime { ref bounds, ref lifetime, .. } => {
             visitor.visit_ident(param.ident);
             walk_list!(visitor, visit_lifetime, bounds);
             walk_list!(visitor, visit_attribute, param.attrs.iter());
         }
-        GenericParamKindAST::Type { ref bounds, ref default, .. } => {
+        GenericParamKind::Type { ref bounds, ref default, .. } => {
             visitor.visit_ident(t.ident);
             walk_list!(visitor, visit_ty_param_bound, bounds);
             walk_list!(visitor, visit_ty, default);

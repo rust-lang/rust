@@ -990,7 +990,7 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
         run_lints!(self, check_expr_post, early_passes, e);
     }
 
-    fn visit_generic_param(&mut self, param: &'a ast::GenericParamAST) {
+    fn visit_generic_param(&mut self, param: &'a ast::GenericParam) {
         run_lints!(self, check_generic_param, early_passes, param);
         ast_visit::walk_generic_param(self, param);
     }

@@ -325,7 +325,7 @@ impl<'a> LoweringContext<'a> {
                             .params
                             .iter()
                             .filter(|param| match param.kind {
-                                ast::GenericParamKindAST::Lifetime { .. } => true,
+                                ast::GenericParamKind::Lifetime { .. } => true,
                                 _ => false,
                             })
                             .count();
@@ -758,13 +758,13 @@ impl<'a> LoweringContext<'a> {
     // This is used to track which lifetimes have already been defined, and
     // which are new in-band lifetimes that need to have a definition created
     // for them.
-    fn with_in_scope_lifetime_defs<T, F>(&mut self, params: &Vec<GenericParamAST>, f: F) -> T
+    fn with_in_scope_lifetime_defs<T, F>(&mut self, params: &Vec<GenericParam>, f: F) -> T
     where
         F: FnOnce(&mut LoweringContext) -> T,
     {
         let old_len = self.in_scope_lifetimes.len();
         let lt_def_names = params.iter().filter_map(|param| match param.kind {
-            GenericParamKindAST::Lifetime { .. } => Some(param.ident.name),
+            GenericParamKind::Lifetime { .. } => Some(param.ident.name),
             _ => None,
         });
         self.in_scope_lifetimes.extend(lt_def_names);
@@ -1044,12 +1044,12 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_generic_arg(&mut self,
-                        arg: &ast::GenericArgAST,
+                        arg: &ast::GenericArg,
                         itctx: ImplTraitContext)
                         -> hir::GenericArg {
         match arg {
-            ast::GenericArgAST::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt)),
-            ast::GenericArgAST::Type(ty) => GenericArg::Type(self.lower_ty(&ty, itctx)),
+            ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt)),
+            ast::GenericArg::Type(ty) => GenericArg::Type(self.lower_ty(&ty, itctx)),
         }
     }
 
@@ -1745,7 +1745,7 @@ impl<'a> LoweringContext<'a> {
     ) -> (hir::GenericArgs, bool) {
         let &AngleBracketedArgs { ref args, ref bindings, .. } = data;
         let has_types = args.iter().any(|arg| match arg {
-            GenericArgAST::Type(_) => true,
+            ast::GenericArg::Type(_) => true,
             _ => false,
         });
         (hir::GenericArgs {
@@ -1934,7 +1934,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_generic_params(
         &mut self,
-        params: &Vec<GenericParamAST>,
+        params: &Vec<GenericParam>,
         add_bounds: &NodeMap<Vec<TyParamBound>>,
         itctx: ImplTraitContext,
     ) -> hir::HirVec<hir::GenericParam> {
@@ -1942,12 +1942,12 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_generic_param(&mut self,
-                           param: &GenericParamAST,
+                           param: &GenericParam,
                            add_bounds: &NodeMap<Vec<TyParamBound>>,
                            itctx: ImplTraitContext)
                            -> hir::GenericParam {
         match param.kind {
-            GenericParamKindAST::Lifetime { ref bounds, ref lifetime, .. } => {
+            GenericParamKind::Lifetime { ref bounds, ref lifetime, .. } => {
                 let was_collecting_in_band = self.is_collecting_in_band_lifetimes;
                 self.is_collecting_in_band_lifetimes = false;
 
@@ -1968,7 +1968,7 @@ impl<'a> LoweringContext<'a> {
 
                 param
             }
-            GenericParamKindAST::Type { ref bounds, ref default } => {
+            GenericParamKind::Type { ref bounds, ref default } => {
                 let mut name = self.lower_ident(param.ident);
 
                 // Don't expose `Self` (recovered "keyword used as ident" parse error).
@@ -2044,7 +2044,7 @@ impl<'a> LoweringContext<'a> {
                                     {
                                         for param in &generics.params {
                                             match param.kind {
-                                                GenericParamKindAST::Type { .. } => {
+                                                GenericParamKind::Type { .. } => {
                                                     if node_id == param.id {
                                                         add_bounds.entry(param.id)
                                                             .or_insert(Vec::new())

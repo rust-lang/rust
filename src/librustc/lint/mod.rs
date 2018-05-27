@@ -254,7 +254,7 @@ pub trait EarlyLintPass: LintPass {
     fn check_expr(&mut self, _: &EarlyContext, _: &ast::Expr) { }
     fn check_expr_post(&mut self, _: &EarlyContext, _: &ast::Expr) { }
     fn check_ty(&mut self, _: &EarlyContext, _: &ast::Ty) { }
-    fn check_generic_param(&mut self, _: &EarlyContext, _: &ast::GenericParamAST) { }
+    fn check_generic_param(&mut self, _: &EarlyContext, _: &ast::GenericParam) { }
     fn check_generics(&mut self, _: &EarlyContext, _: &ast::Generics) { }
     fn check_where_predicate(&mut self, _: &EarlyContext, _: &ast::WherePredicate) { }
     fn check_poly_trait_ref(&mut self, _: &EarlyContext, _: &ast::PolyTraitRef,

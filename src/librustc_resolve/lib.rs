@@ -56,7 +56,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit::{self, FnKind, Visitor};
 use syntax::attr;
 use syntax::ast::{Arm, BindingMode, Block, Crate, Expr, ExprKind};
-use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParamKindAST, Generics};
+use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParamKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
@@ -800,8 +800,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         let mut found_default = false;
         default_ban_rib.bindings.extend(generics.params.iter()
             .filter_map(|param| match param.kind {
-                GenericParamKindAST::Lifetime { .. } => None,
-                GenericParamKindAST::Type { ref default, .. } => {
+                GenericParamKind::Lifetime { .. } => None,
+                GenericParamKind::Type { ref default, .. } => {
                     if found_default || default.is_some() {
                         found_default = true;
                         return Some((Ident::with_empty_ctxt(param.ident.name), Def::Err));
@@ -812,8 +812,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
 
         for param in &generics.params {
             match param.kind {
-                GenericParamKindAST::Lifetime { .. } => self.visit_generic_param(param),
-                GenericParamKindAST::Type { ref bounds, ref default, .. } => {
+                GenericParamKind::Lifetime { .. } => self.visit_generic_param(param),
+                GenericParamKind::Type { ref bounds, ref default, .. } => {
                     for bound in bounds {
                         self.visit_ty_param_bound(bound);
                     }
@@ -2208,7 +2208,7 @@ impl<'a> Resolver<'a> {
                 let mut function_type_rib = Rib::new(rib_kind);
                 let mut seen_bindings = FxHashMap();
                 generics.params.iter().for_each(|param| match param.kind {
-                        GenericParamKindAST::Type { .. } => {
+                        GenericParamKind::Type { .. } => {
                             let ident = param.ident.modern();
                             debug!("with_type_parameter_rib: {}", param.id);
 

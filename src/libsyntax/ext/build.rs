@@ -31,7 +31,7 @@ pub trait AstBuilder {
     fn path_all(&self, sp: Span,
                 global: bool,
                 idents: Vec<ast::Ident>,
-                args: Vec<ast::GenericArgAST>,
+                args: Vec<ast::GenericArg>,
                 bindings: Vec<ast::TypeBinding>)
         -> ast::Path;
 
@@ -42,7 +42,7 @@ pub trait AstBuilder {
     fn qpath_all(&self, self_type: P<ast::Ty>,
                 trait_path: ast::Path,
                 ident: ast::Ident,
-                args: Vec<ast::GenericArgAST>,
+                args: Vec<ast::GenericArg>,
                 bindings: Vec<ast::TypeBinding>)
                 -> (ast::QSelf, ast::Path);
 
@@ -69,7 +69,7 @@ pub trait AstBuilder {
                id: ast::Ident,
                attrs: Vec<ast::Attribute>,
                bounds: ast::TyParamBounds,
-               default: Option<P<ast::Ty>>) -> ast::GenericParamAST;
+               default: Option<P<ast::Ty>>) -> ast::GenericParam;
 
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef;
     fn poly_trait_ref(&self, span: Span, path: ast::Path) -> ast::PolyTraitRef;
@@ -80,7 +80,7 @@ pub trait AstBuilder {
                     ident: ast::Ident,
                     attrs: Vec<ast::Attribute>,
                     bounds: Vec<ast::Lifetime>)
-                    -> ast::GenericParamAST;
+                    -> ast::GenericParam;
 
     // statements
     fn stmt_expr(&self, expr: P<ast::Expr>) -> ast::Stmt;
@@ -314,7 +314,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 span: Span,
                 global: bool,
                 mut idents: Vec<ast::Ident> ,
-                args: Vec<ast::GenericArgAST>,
+                args: Vec<ast::GenericArg>,
                 bindings: Vec<ast::TypeBinding> )
                 -> ast::Path {
         let last_ident = idents.pop().unwrap();
@@ -356,7 +356,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                  self_type: P<ast::Ty>,
                  trait_path: ast::Path,
                  ident: ast::Ident,
-                 args: Vec<ast::GenericArgAST>,
+                 args: Vec<ast::GenericArg>,
                  bindings: Vec<ast::TypeBinding>)
                  -> (ast::QSelf, ast::Path) {
         let mut path = trait_path;
@@ -424,7 +424,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             self.path_all(DUMMY_SP,
                           true,
                           self.std_path(&["option", "Option"]),
-                          vec![ast::GenericArgAST::Type(ty)],
+                          vec![ast::GenericArg::Type(ty)],
                           Vec::new()))
     }
 
@@ -437,12 +437,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                ident: ast::Ident,
                attrs: Vec<ast::Attribute>,
                bounds: ast::TyParamBounds,
-               default: Option<P<ast::Ty>>) -> ast::GenericParamAST {
-        ast::GenericParamAST {
+               default: Option<P<ast::Ty>>) -> ast::GenericParam {
+        ast::GenericParam {
             ident: ident.with_span_pos(span),
             id: ast::DUMMY_NODE_ID,
             attrs: attrs.into(),
-            kind: ast::GenericParamKindAST::Type {
+            kind: ast::GenericParamKind::Type {
                 bounds,
                 default,
             }
@@ -477,13 +477,13 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                     ident: ast::Ident,
                     attrs: Vec<ast::Attribute>,
                     bounds: Vec<ast::Lifetime>)
-                    -> ast::GenericParamAST {
+                    -> ast::GenericParam {
         let lifetime = self.lifetime(span, ident);
-        ast::GenericParamAST {
+        ast::GenericParam {
             ident: lifetime.ident,
             id: lifetime.id,
             attrs: attrs.into(),
-            kind: ast::GenericParamKindAST::Lifetime {
+            kind: ast::GenericParamKind::Lifetime {
                 lifetime,
                 bounds,
             }

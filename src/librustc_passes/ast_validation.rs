@@ -138,11 +138,11 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_late_bound_lifetime_defs(&self, params: &Vec<GenericParamAST>) {
+    fn check_late_bound_lifetime_defs(&self, params: &Vec<GenericParam>) {
         // Check only lifetime parameters are present and that the lifetime
         // parameters that are present have no bounds.
         let non_lt_param_spans: Vec<_> = params.iter().filter_map(|param| match param.kind {
-                GenericParamKindAST::Lifetime { ref bounds, .. } => {
+                GenericParamKind::Lifetime { ref bounds, .. } => {
                     if !bounds.is_empty() {
                         let spans: Vec<_> = bounds.iter().map(|b| b.ident.span).collect();
                         self.err_handler()
@@ -329,8 +329,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::TraitAlias(Generics { ref params, .. }, ..) => {
                 for param in params {
                     match param.kind {
-                        GenericParamKindAST::Lifetime { .. } => {}
-                        GenericParamKindAST::Type { ref bounds, ref default, .. } => {
+                        GenericParamKind::Lifetime { .. } => {}
+                        GenericParamKind::Type { ref bounds, ref default, .. } => {
                             if !bounds.is_empty() {
                                 self.err_handler()
                                     .span_err(param.ident.span, "type parameters on the left \
@@ -404,12 +404,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         let mut seen_default = None;
         for param in &generics.params {
             match (&param.kind, seen_non_lifetime_param) {
-                (GenericParamKindAST::Lifetime { .. }, true) => {
+                (GenericParamKind::Lifetime { .. }, true) => {
                     self.err_handler()
                         .span_err(param.ident.span, "lifetime parameters must be leading");
                 },
-                (GenericParamKindAST::Lifetime { .. }, false) => {}
-                (GenericParamKindAST::Type { ref default, .. }, _) => {
+                (GenericParamKind::Lifetime { .. }, false) => {}
+                (GenericParamKind::Type { ref default, .. }, _) => {
                     seen_non_lifetime_param = true;
                     if default.is_some() {
                         seen_default = Some(param.ident.span);
@@ -514,7 +514,7 @@ impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
         match *generic_args {
             GenericArgs::AngleBracketed(ref data) => {
                 data.args.iter().for_each(|arg| match arg {
-                    GenericArgAST::Type(ty) => self.visit_ty(ty),
+                    GenericArg::Type(ty) => self.visit_ty(ty),
                     _ => {}
                 });
                 for type_binding in &data.bindings {

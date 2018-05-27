@@ -132,10 +132,10 @@ pub trait Folder : Sized {
         noop_fold_exprs(es, self)
     }
 
-    fn fold_generic_arg(&mut self, arg: GenericArgAST) -> GenericArgAST {
+    fn fold_generic_arg(&mut self, arg: GenericArg) -> GenericArg {
         match arg {
-            GenericArgAST::Lifetime(lt) => GenericArgAST::Lifetime(self.fold_lifetime(lt)),
-            GenericArgAST::Type(ty) => GenericArgAST::Type(self.fold_ty(ty)),
+            GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.fold_lifetime(lt)),
+            GenericArg::Type(ty) => GenericArg::Type(self.fold_ty(ty)),
         }
     }
 
@@ -244,11 +244,11 @@ pub trait Folder : Sized {
         noop_fold_ty_param(tp, self)
     }
 
-    fn fold_generic_param(&mut self, param: GenericParamAST) -> GenericParamAST {
+    fn fold_generic_param(&mut self, param: GenericParam) -> GenericParam {
         noop_fold_generic_param(param, self)
     }
 
-    fn fold_generic_params(&mut self, params: Vec<GenericParamAST>) -> Vec<GenericParamAST> {
+    fn fold_generic_params(&mut self, params: Vec<GenericParam>) -> Vec<GenericParam> {
         noop_fold_generic_params(params, self)
     }
 
@@ -687,11 +687,11 @@ pub fn noop_fold_ty_param_bound<T>(tpb: TyParamBound, fld: &mut T)
     }
 }
 
-pub fn noop_fold_generic_param<T: Folder>(param: GenericParamAST, fld: &mut T) -> GenericParamAST {
-    match param {
-        GenericParamAST::Lifetime { bounds, lifetime } => {
+pub fn noop_fold_generic_param<T: Folder>(param: GenericParam, fld: &mut T) -> GenericParam {
+    match param.kind {
+        GenericParamKind::Lifetime { bounds, lifetime } => {
             let attrs: Vec<_> = param.attrs.into();
-            GenericParamAST::Lifetime(LifetimeDef {
+            GenericParamKind::Lifetime(LifetimeDef {
                 attrs: attrs.into_iter()
                     .flat_map(|x| fld.fold_attribute(x).into_iter())
                     .collect::<Vec<_>>()
@@ -703,14 +703,14 @@ pub fn noop_fold_generic_param<T: Folder>(param: GenericParamAST, fld: &mut T) -
                 bounds: bounds.move_map(|l| noop_fold_lifetime(l, fld)),
             })
         }
-        GenericParamAST::Type { .. } => GenericParamAST::Type(fld.fold_ty_param(param)),
+        GenericParamKind::Type { .. } => GenericParamKind::Type(fld.fold_ty_param(param)),
     }
 }
 
 pub fn noop_fold_generic_params<T: Folder>(
-    params: Vec<GenericParamAST>,
+    params: Vec<GenericParam>,
     fld: &mut T
-) -> Vec<GenericParamAST> {
+) -> Vec<GenericParam> {
     params.move_map(|p| fld.fold_generic_param(p))
 }
 

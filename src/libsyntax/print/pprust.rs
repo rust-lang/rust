@@ -13,7 +13,7 @@ pub use self::AnnNode::*;
 use rustc_target::spec::abi::{self, Abi};
 use ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use ast::{SelfKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
-use ast::{Attribute, MacDelimiter, GenericArgAST};
+use ast::{Attribute, MacDelimiter, GenericArg};
 use util::parser::{self, AssocOp, Fixity};
 use attr;
 use codemap::{self, CodeMap};
@@ -344,7 +344,7 @@ pub fn trait_item_to_string(i: &ast::TraitItem) -> String {
     to_string(|s| s.print_trait_item(i))
 }
 
-pub fn generic_params_to_string(generic_params: &[ast::GenericParamAST]) -> String {
+pub fn generic_params_to_string(generic_params: &[ast::GenericParam]) -> String {
     to_string(|s| s.print_generic_params(generic_params))
 }
 
@@ -1017,10 +1017,10 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_generic_arg(&mut self, generic_arg: &GenericArgAST) -> io::Result<()> {
+    pub fn print_generic_arg(&mut self, generic_arg: &GenericArg) -> io::Result<()> {
         match generic_arg {
-            GenericArgAST::Lifetime(lt) => self.print_lifetime(lt),
-            GenericArgAST::Type(ty) => self.print_type(ty),
+            GenericArg::Lifetime(lt) => self.print_lifetime(lt),
+            GenericArg::Type(ty) => self.print_type(ty),
         }
     }
 
@@ -1443,7 +1443,7 @@ impl<'a> State<'a> {
 
     fn print_formal_generic_params(
         &mut self,
-        generic_params: &[ast::GenericParamAST]
+        generic_params: &[ast::GenericParam]
     ) -> io::Result<()> {
         if !generic_params.is_empty() {
             self.s.word("for")?;
@@ -2869,7 +2869,7 @@ impl<'a> State<'a> {
 
     pub fn print_generic_params(
         &mut self,
-        generic_params: &[ast::GenericParamAST]
+        generic_params: &[ast::GenericParam]
     ) -> io::Result<()> {
         if generic_params.is_empty() {
             return Ok(());
@@ -2879,11 +2879,11 @@ impl<'a> State<'a> {
 
         self.commasep(Inconsistent, &generic_params, |s, param| {
             match param.kind {
-                ast::GenericParamKindAST::Lifetime { ref bounds, ref lifetime } => {
+                ast::GenericParamKind::Lifetime { ref bounds, ref lifetime } => {
                     s.print_outer_attributes_inline(&param.attrs)?;
                     s.print_lifetime_bounds(lifetime, bounds)
                 },
-                ast::GenericParamKindAST::Type { ref bounds, ref default } => {
+                ast::GenericParamKind::Type { ref bounds, ref default } => {
                     s.print_outer_attributes_inline(&param.attrs)?;
                     s.print_ident(param.ident)?;
                     s.print_bounds(":", bounds)?;
@@ -3045,7 +3045,7 @@ impl<'a> State<'a> {
                        unsafety: ast::Unsafety,
                        decl: &ast::FnDecl,
                        name: Option<ast::Ident>,
-                       generic_params: &Vec<ast::GenericParamAST>)
+                       generic_params: &Vec<ast::GenericParam>)
                        -> io::Result<()> {
         self.ibox(INDENT_UNIT)?;
         if !generic_params.is_empty() {

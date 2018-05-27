@@ -935,8 +935,8 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
             .params
             .iter()
             .map(|param| match param.kind {
-                ast::GenericParamKindAST::Lifetime { .. } => param.ident.name.to_string(),
-                ast::GenericParamKindAST::Type { .. } => param.ident.to_string(),
+                ast::GenericParamKind::Lifetime { .. } => param.ident.name.to_string(),
+                ast::GenericParamKind::Type { .. } => param.ident.to_string(),
             })
             .collect::<Vec<_>>()
             .join(", "));

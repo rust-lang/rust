@@ -170,11 +170,11 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         }
     }
 
-    fn visit_generic_param(&mut self, param: &'a GenericParamAST) {
+    fn visit_generic_param(&mut self, param: &'a GenericParam) {
         let name = param.ident.name.as_interned_str();
         let def_path_data = match param.kind {
-            GenericParamKindAST::Lifetime { .. } => DefPathData::LifetimeParam(name),
-            GenericParamKindAST::Type { .. } => DefPathData::TypeParam(name),
+            GenericParamKind::Lifetime { .. } => DefPathData::LifetimeParam(name),
+            GenericParamKind::Type { .. } => DefPathData::TypeParam(name),
         };
         self.create_def(param.id, def_path_data, REGULAR_SPACE, param.ident.span);
 

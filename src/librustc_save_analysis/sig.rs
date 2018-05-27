@@ -224,7 +224,7 @@ impl Sig for ast::Ty {
                     text.push_str(&f.generic_params
                         .iter()
                         .filter_map(|param| match param.kind {
-                            ast::GenericParamKindAST::Lifetime { .. } => {
+                            ast::GenericParamKind::Lifetime { .. } => {
                                 Some(param.ident.to_string())
                             }
                             _ => None,
@@ -624,7 +624,7 @@ impl Sig for ast::Generics {
                 end: offset + text.len() + param_text.len(),
             });
             match param.kind {
-                ast::GenericParamKindAST::Lifetime { ref bounds, .. } => {
+                ast::GenericParamKind::Lifetime { ref bounds, .. } => {
                     if !bounds.is_empty() {
                         param_text.push_str(": ");
                         let bounds = bounds.iter()
@@ -635,7 +635,7 @@ impl Sig for ast::Generics {
                         // FIXME add lifetime bounds refs.
                     }
                 }
-                ast::GenericParamKindAST::Type { ref bounds, .. } => {
+                ast::GenericParamKind::Type { ref bounds, .. } => {
                     if !bounds.is_empty() {
                         param_text.push_str(": ");
                         param_text.push_str(&pprust::bounds_to_string(bounds));

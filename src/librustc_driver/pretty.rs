@@ -681,7 +681,7 @@ impl<'a> ReplaceBodyWithLoop<'a> {
                             None => false,
                             Some(&ast::GenericArgs::AngleBracketed(ref data)) => {
                                 let types = data.args.iter().filter_map(|arg| match arg {
-                                    ast::GenericArgAST::Type(ty) => Some(ty),
+                                    ast::GenericArg::Type(ty) => Some(ty),
                                     _ => None,
                                 });
                                 any_involves_impl_trait(types.into_iter()) ||
