@@ -4977,8 +4977,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 s.args.as_ref().map_or(
                     (vec![], vec![], s.infer_types, &[][..]),
                     |data| {
-                        let mut lifetimes = vec![];
-                        let mut types = vec![];
+                        let (mut lifetimes, mut types) = (vec![], vec![]);
                         data.args.iter().for_each(|arg| match arg {
                             GenericArg::Lifetime(lt) => lifetimes.push(lt),
                             GenericArg::Type(ty) => types.push(ty),
@@ -4987,14 +4986,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 )
             });
-        let infer_lifetimes = lifetimes.len() == 0;
-
-        let count_lifetime_params = |n| {
-            format!("{} lifetime parameter{}", n, if n == 1 { "" } else { "s" })
-        };
-        let count_type_params = |n| {
-            format!("{} type parameter{}", n, if n == 1 { "" } else { "s" })
-        };
 
         // Check provided parameters.
         let ((ty_required, ty_accepted), lt_accepted) =
@@ -5008,9 +4999,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let mut ty_params = ParamRange { required: 0, accepted: 0 };
                 for param in &generics.params {
                     match param.kind {
-                        GenericParamDefKind::Lifetime => {
-                            lt_accepted += 1;
-                        }
+                        GenericParamDefKind::Lifetime => lt_accepted += 1,
                         GenericParamDefKind::Type { has_default, .. } => {
                             ty_params.accepted += 1;
                             if !has_default {
@@ -5027,36 +5016,37 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 ((ty_params.required, ty_params.accepted), lt_accepted)
             });
 
-        if types.len() > ty_accepted {
-            let span = types[ty_accepted].span;
-            let expected_text = count_type_params(ty_accepted);
-            let actual_text = count_type_params(types.len());
-            struct_span_err!(self.tcx.sess, span, E0087,
-                             "too many type parameters provided: \
-                              expected at most {}, found {}",
-                             expected_text, actual_text)
-                .span_label(span, format!("expected {}", expected_text))
-                .emit();
-
+        let count_type_params = |n| {
+            format!("{} type parameter{}", n, if n == 1 { "" } else { "s" })
+        };
+        let expected_text = count_type_params(ty_accepted);
+        let actual_text = count_type_params(types.len());
+        if let Some((mut err, span)) = if types.len() > ty_accepted {
             // To prevent derived errors to accumulate due to extra
             // type parameters, we force instantiate_value_path to
             // use inference variables instead of the provided types.
             *segment = None;
+            let span = types[ty_accepted].span;
+            Some((struct_span_err!(self.tcx.sess, span, E0087,
+                                  "too many type parameters provided: \
+                                  expected at most {}, found {}",
+                                  expected_text, actual_text), span))
         } else if types.len() < ty_required && !infer_types && !supress_mismatch_error {
-            let expected_text = count_type_params(ty_required);
-            let actual_text = count_type_params(types.len());
-            struct_span_err!(self.tcx.sess, span, E0089,
-                             "too few type parameters provided: \
-                              expected {}, found {}",
-                             expected_text, actual_text)
-                .span_label(span, format!("expected {}", expected_text))
-                .emit();
+            Some((struct_span_err!(self.tcx.sess, span, E0089,
+                                  "too few type parameters provided: \
+                                  expected {}, found {}",
+                                  expected_text, actual_text), span))
+        } else {
+            None
+        } {
+            err.span_label(span, format!("expected {}", expected_text)).emit();
         }
 
         if !bindings.is_empty() {
             AstConv::prohibit_projection(self, bindings[0].span);
         }
 
+        let infer_lifetimes = lifetimes.len() == 0;
         // Prohibit explicit lifetime arguments if late bound lifetime parameters are present.
         let has_late_bound_lifetime_defs =
             segment.map_or(None, |(_, generics)| generics.has_late_bound_regions);
@@ -5080,25 +5070,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        if lifetimes.len() > lt_accepted {
+        let count_lifetime_params = |n| {
+            format!("{} lifetime parameter{}", n, if n == 1 { "" } else { "s" })
+        };
+        let expected_text = count_lifetime_params(lt_accepted);
+        let actual_text = count_lifetime_params(lifetimes.len());
+        if let Some((mut err, span)) = if lifetimes.len() > lt_accepted {
             let span = lifetimes[lt_accepted].span;
-            let expected_text = count_lifetime_params(lt_accepted);
-            let actual_text = count_lifetime_params(lifetimes.len());
-            struct_span_err!(self.tcx.sess, span, E0088,
-                             "too many lifetime parameters provided: \
-                              expected at most {}, found {}",
-                             expected_text, actual_text)
-                .span_label(span, format!("expected {}", expected_text))
-                .emit();
+            Some((struct_span_err!(self.tcx.sess, span, E0088,
+                                  "too many lifetime parameters provided: \
+                                  expected at most {}, found {}",
+                                  expected_text, actual_text), span))
         } else if lifetimes.len() < lt_accepted && !infer_lifetimes {
-            let expected_text = count_lifetime_params(lt_accepted);
-            let actual_text = count_lifetime_params(lifetimes.len());
-            struct_span_err!(self.tcx.sess, span, E0090,
-                             "too few lifetime parameters provided: \
-                              expected {}, found {}",
-                             expected_text, actual_text)
-                .span_label(span, format!("expected {}", expected_text))
-                .emit();
+            Some((struct_span_err!(self.tcx.sess, span, E0090,
+                                  "too few lifetime parameters provided: \
+                                  expected {}, found {}",
+                                  expected_text, actual_text), span))
+        } else {
+            None
+        } {
+            err.span_label(span, format!("expected {}", expected_text)).emit();
         }
     }
 

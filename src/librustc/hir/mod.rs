@@ -449,12 +449,6 @@ pub type TyParamBounds = HirVec<TyParamBound>;
 pub enum GenericParamKind {
     /// A lifetime definition, eg `'a: 'b + 'c + 'd`.
     Lifetime {
-        /// Either "'a", referring to a named lifetime definition,
-        /// or "" (aka keywords::Invalid), for elision placeholders.
-        ///
-        /// HIR lowering inserts these placeholders in type paths that
-        /// refer to type definitions needing lifetime parameters,
-        /// `&T` and `&mut T`, and trait objects without `... + 'a`.
         name: LifetimeName,
         bounds: HirVec<Lifetime>,
         // Indicates that the lifetime definition was synthetically added

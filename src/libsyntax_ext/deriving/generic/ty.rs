@@ -185,41 +185,22 @@ impl<'a> Ty<'a> {
                    cx: &ExtCtxt,
                    span: Span,
                    self_ty: Ident,
-                   self_generics: &Generics)
+                   generics: &Generics)
                    -> ast::Path {
         match *self {
             Self_ => {
-                let ty_params: Vec<P<ast::Ty>> = self_generics.params
-                    .iter()
-                    .filter_map(|param| match param.kind {
-                        GenericParamKind::Type { .. } => {
-                            Some(cx.ty_ident(span, param.ident))
-                        }
-                        _ => None,
-                    })
-                    .collect();
+                let params: Vec<_> = generics.params.iter().map(|param| match param.kind {
+                    GenericParamKind::Lifetime { ref lifetime, .. } => {
+                        GenericArg::Lifetime(*lifetime)
+                    }
+                    GenericParamKind::Type { .. } => {
+                        GenericArg::Type(cx.ty_ident(span, param.ident))
+                    }
+                }).collect();
 
-                let lifetimes: Vec<ast::Lifetime> = self_generics.params
-                    .iter()
-                    .filter_map(|param| match param.kind {
-                        GenericParamKind::Lifetime { ref lifetime, .. } => Some(*lifetime),
-                        _ => None,
-                    })
-                    .collect();
-
-                let params = lifetimes.into_iter()
-                                      .map(|lt| GenericArg::Lifetime(lt))
-                                      .chain(ty_params.into_iter().map(|ty|
-                                            GenericArg::Type(ty)))
-                                      .collect();
-
-                cx.path_all(span,
-                            false,
-                            vec![self_ty],
-                            params,
-                            Vec::new())
+                cx.path_all(span, false, vec![self_ty], params, vec![])
             }
-            Literal(ref p) => p.to_path(cx, span, self_ty, self_generics),
+            Literal(ref p) => p.to_path(cx, span, self_ty, generics),
             Ptr(..) => cx.span_bug(span, "pointer in a path in generic `derive`"),
             Tuple(..) => cx.span_bug(span, "tuple in a path in generic `derive`"),
         }

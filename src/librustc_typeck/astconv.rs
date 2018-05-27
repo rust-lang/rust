@@ -996,13 +996,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     pub fn prohibit_type_params(&self, segments: &[hir::PathSegment]) {
         for segment in segments {
             segment.with_generic_args(|generic_args| {
-                let mut err_for_lifetime = false;
-                let mut err_for_type = false;
+                let (mut err_for_lt, mut err_for_ty) = (false, false);
                 for arg in &generic_args.args {
                     let (mut span_err, span, kind) = match arg {
                         hir::GenericArg::Lifetime(lt) => {
-                            if err_for_lifetime { continue }
-                            err_for_lifetime = true;
+                            if err_for_lt { continue }
+                            err_for_lt = true;
                             (struct_span_err!(self.tcx().sess, lt.span, E0110,
                                             "lifetime parameters are not allowed on \
                                                 this type"),
@@ -1010,8 +1009,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                              "lifetime")
                         }
                         hir::GenericArg::Type(ty) => {
-                            if err_for_type { continue }
-                            err_for_type = true;
+                            if err_for_ty { continue }
+                            err_for_ty = true;
                             (struct_span_err!(self.tcx().sess, ty.span, E0109,
                                             "type parameters are not allowed on this type"),
                              ty.span,
@@ -1020,7 +1019,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     };
                     span_err.span_label(span, format!("{} parameter not allowed", kind))
                             .emit();
-                    if err_for_lifetime && err_for_type {
+                    if err_for_lt && err_for_ty {
                         break;
                     }
                 }

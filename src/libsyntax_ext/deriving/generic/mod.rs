@@ -665,35 +665,18 @@ impl<'a> TraitDef<'a> {
         // Create the reference to the trait.
         let trait_ref = cx.trait_ref(trait_path);
 
-        // Create the type parameters on the `self` path.
-        let self_ty_params: Vec<P<ast::Ty>> = generics.params
-            .iter()
-            .filter_map(|param| match param.kind {
-                GenericParamKind::Type { .. } => Some(cx.ty_ident(self.span, param.ident)),
-                _ => None,
-            })
-            .collect();
-
-        let self_lifetimes: Vec<ast::Lifetime> = generics.params
-            .iter()
-            .filter_map(|param| match param.kind {
-                GenericParamKind::Lifetime { ref lifetime, .. } => Some(*lifetime),
-                _ => None,
-            })
-            .collect();
-
-        let self_params = self_lifetimes.into_iter()
-                                        .map(|lt| GenericArg::Lifetime(lt))
-                                        .chain(self_ty_params.into_iter().map(|ty|
-                                            GenericArg::Type(ty)))
-                                        .collect();
+        let self_params: Vec<_> = generics.params.iter().map(|param| match param.kind {
+            GenericParamKind::Lifetime { ref lifetime, .. } => {
+                GenericArg::Lifetime(*lifetime)
+            }
+            GenericParamKind::Type { .. } => {
+                GenericArg::Type(cx.ty_ident(self.span, param.ident))
+            }
+        }).collect();
 
         // Create the type of `self`.
-        let self_type = cx.ty_path(cx.path_all(self.span,
-                                               false,
-                                               vec![type_ident],
-                                               self_params,
-                                               Vec::new()));
+        let path = cx.path_all(self.span, false, vec![type_ident], self_params, vec![]);
+        let self_type = cx.ty_path(path);
 
         let attr = cx.attribute(self.span,
                                 cx.meta_word(self.span,

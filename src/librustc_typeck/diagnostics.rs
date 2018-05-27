@@ -1501,12 +1501,12 @@ struct Foo {
 "##,
 
 E0131: r##"
-It is not possible to define `main` with type parameters, or even with function
-parameters. When `main` is present, it must take no arguments and return `()`.
+It is not possible to define `main` with generic parameters.
+When `main` is present, it must take no arguments and return `()`.
 Erroneous code example:
 
 ```compile_fail,E0131
-fn main<T>() { // error: main function is not allowed to have type parameters
+fn main<T>() { // error: main function is not allowed to have generic parameters
 }
 ```
 "##,

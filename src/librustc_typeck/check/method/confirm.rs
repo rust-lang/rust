@@ -329,46 +329,32 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             if i < parent_substs.len() {
                 parent_substs[i]
             } else {
-                match param.kind {
-                    GenericParamDefKind::Lifetime => {
-                        if let Some(lifetime) = provided.as_ref().and_then(|data| {
-                            for arg in &data.args {
-                                match arg {
-                                    GenericArg::Lifetime(lt) => {
-                                        if i == parent_substs.len() {
-                                            return Some(lt);
-                                        }
-                                        i -= 1;
-                                    }
-                                    _ => {}
+                let (is_lt, is_ty) = match param.kind {
+                    GenericParamDefKind::Lifetime => (true, false),
+                    GenericParamDefKind::Type { .. } => (false, true),
+                };
+                provided.as_ref().and_then(|data| {
+                    for arg in &data.args {
+                        match arg {
+                            GenericArg::Lifetime(lt) if is_lt => {
+                                if i == parent_substs.len() {
+                                    return Some(AstConv::ast_region_to_region(
+                                        self.fcx, lt, Some(param)).into());
                                 }
+                                i -= 1;
                             }
-                            None
-                        }) {
-                            return AstConv::ast_region_to_region(
-                                self.fcx, lifetime, Some(param)).into();
+                            GenericArg::Lifetime(_) => {}
+                            GenericArg::Type(ty) if is_ty => {
+                                if i == parent_substs.len() + own_counts.lifetimes {
+                                    return Some(self.to_ty(ty).into());
+                                }
+                                i -= 1;
+                            }
+                            GenericArg::Type(_) => {}
                         }
                     }
-                    GenericParamDefKind::Type {..} => {
-                        if let Some(ast_ty) = provided.as_ref().and_then(|data| {
-                            for arg in &data.args {
-                                match arg {
-                                    GenericArg::Type(ty) => {
-                                        if i == parent_substs.len() + own_counts.lifetimes {
-                                            return Some(ty);
-                                        }
-                                        i -= 1;
-                                    }
-                                    _ => {}
-                                }
-                            }
-                            None
-                        }) {
-                            return self.to_ty(ast_ty).into();
-                        }
-                    }
-                }
-                self.var_for_def(self.span, param)
+                    None
+                }).unwrap_or_else(|| self.var_for_def(self.span, param))
             }
         })
     }

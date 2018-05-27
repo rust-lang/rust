@@ -117,12 +117,11 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
         for param in &generics.params {
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } => {}
-                hir::GenericParamKind::Type { ref default, .. } => {
-                    if default.is_some() {
-                        let def_id = self.tcx.hir.local_def_id(param.id);
-                        self.tcx.type_of(def_id);
-                    }
+                hir::GenericParamKind::Type { ref default, .. } if default.is_some() => {
+                    let def_id = self.tcx.hir.local_def_id(param.id);
+                    self.tcx.type_of(def_id);
                 }
+                hir::GenericParamKind::Type { .. } => {}
             }
         }
         intravisit::walk_generics(self, generics);
@@ -316,11 +315,8 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
         let from_ty_params =
             ast_generics.params.iter()
                 .filter_map(|param| match param.kind {
-                    GenericParamKind::Type { ref bounds, .. } => {
-                        if param.id == param_id {
-                            return Some(bounds);
-                        }
-                        None
+                    GenericParamKind::Type { ref bounds, .. } if param.id == param_id => {
+                        Some(bounds)
                     }
                     _ => None
                 })
@@ -1470,11 +1466,8 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            .to_ty(tcx);
                 index += 1;
 
-                let bounds = compute_bounds(&icx,
-                                            param_ty,
-                                            bounds,
-                                            SizedByDefault::Yes,
-                                            param.span);
+                let bounds =
+                    compute_bounds(&icx, param_ty, bounds, SizedByDefault::Yes, param.span);
                 predicates.extend(bounds.predicates(tcx, param_ty));
             }
             _ => {}

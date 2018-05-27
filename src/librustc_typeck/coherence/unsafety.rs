@@ -35,13 +35,8 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
 
             Some(trait_ref) => {
                 let trait_def = self.tcx.trait_def(trait_ref.def_id);
-                let unsafe_attr = impl_generics.and_then(|g| {
-                    for param in &g.params {
-                        if param.pure_wrt_drop {
-                            return Some("may_dangle");
-                        }
-                    }
-                    None
+                let unsafe_attr = impl_generics.and_then(|generics| {
+                    generics.params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle")
                 });
                 match (trait_def.unsafety, unsafe_attr, unsafety, polarity) {
                     (Unsafety::Normal, None, Unsafety::Unsafe, hir::ImplPolarity::Positive) => {

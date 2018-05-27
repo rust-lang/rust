@@ -43,7 +43,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt,
                                                      cx.ty_ident(sp, Ident::from_str("str")),
                                                      Some(lt),
                                                      ast::Mutability::Immutable))],
-                                     Vec::new()))
+                                     vec![]))
         }
         Ok(s) => {
             cx.expr_call_global(sp,

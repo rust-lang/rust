@@ -660,15 +660,12 @@ fn report_bivariance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
     let generics = tcx.generics_of(def_id);
     let parent = tcx.generics_of(generics.parent.unwrap());
-    let impl_params: FxHashMap<_, _> =
-        parent.params.iter()
-                     .flat_map(|param| match param.kind {
-                         GenericParamDefKind::Lifetime => None,
-                         GenericParamDefKind::Type {..} => Some((param.name, param.def_id)),
-                     })
-                     .collect();
+    let impl_params: FxHashMap<_, _> = parent.params.iter().flat_map(|param| match param.kind {
+        GenericParamDefKind::Lifetime => None,
+        GenericParamDefKind::Type {..} => Some((param.name, param.def_id)),
+    }).collect();
 
-    for method_param in generics.params.iter() {
+    for method_param in &generics.params {
         match method_param.kind {
             // Shadowing is checked in resolve_lifetime.
             GenericParamDefKind::Lifetime => continue,

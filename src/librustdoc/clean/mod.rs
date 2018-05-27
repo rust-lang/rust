@@ -3540,27 +3540,23 @@ impl Clean<GenericArgs> for hir::GenericArgs {
                 output: if output != Type::Tuple(Vec::new()) { Some(output) } else { None }
             }
         } else {
-            let mut lifetimes = vec![];
-            let mut types = vec![];
+            let (mut lifetimes, mut types) = (vec![], vec![]);
             let mut elided_lifetimes = true;
             for arg in &self.args {
                 match arg {
-                    GenericArg::Lifetime(lt) if elided_lifetimes => {
-                        if lt.is_elided() {
+                    GenericArg::Lifetime(lt) => {
+                        if !lt.is_elided() {
                             elided_lifetimes = false;
-                            lifetimes = vec![];
-                            continue;
                         }
                         lifetimes.push(lt.clean(cx));
                     }
-                    GenericArg::Lifetime(_) => {}
                     GenericArg::Type(ty) => {
                         types.push(ty.clean(cx));
                     }
                 }
             }
             GenericArgs::AngleBracketed {
-                lifetimes,
+                lifetimes: if elided_lifetimes { vec![] } else { lifetimes },
                 types,
                 bindings: self.bindings.clean(cx),
             }
