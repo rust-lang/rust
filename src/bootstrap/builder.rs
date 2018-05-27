@@ -806,7 +806,7 @@ impl<'a> Builder<'a> {
             );
         }
 
-        if [Mode::ToolRustc, Mode::ToolStd, Mode::ToolTest].iter().any(|m| &mode == m) {
+        if mode.is_tool() {
             // Tools like cargo and rls don't get debuginfo by default right now, but this can be
             // enabled in the config.  Adding debuginfo makes them several times larger.
             if self.config.rust_debuginfo_tools {
@@ -1012,7 +1012,7 @@ impl<'a> Builder<'a> {
         // be resolved because MinGW has the import library. The downside is we
         // don't get newer functions from Windows, but we don't use any of them
         // anyway.
-        if ![Mode::ToolRustc, Mode::ToolStd, Mode::ToolTest].iter().any(|m| &mode == m) {
+        if !mode.is_tool() {
             cargo.env("WINAPI_NO_BUNDLED_LIBRARIES", "1");
         }
 

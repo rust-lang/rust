@@ -953,7 +953,7 @@ impl Step for PlainSourceTarball {
             if !has_cargo_vendor {
                 let mut cmd = builder.cargo(
                     builder.compiler(0, builder.config.build),
-                    Mode::Tool,
+                    Mode::ToolRustc,
                     builder.config.build,
                     "install"
                 );

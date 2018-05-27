@@ -324,6 +324,15 @@ pub enum Mode {
     ToolRustc,
 }
 
+impl Mode {
+    pub fn is_tool(&self) -> bool {
+        match self {
+            Mode::ToolStd | Mode::ToolTest | Mode::ToolRustc => true,
+            _ => false
+        }
+    }
+}
+
 impl Build {
     /// Creates a new set of build configuration from the `flags` on the command
     /// line and the filesystem `config`.

@@ -219,7 +219,7 @@ impl Step for Rustdoc {
 
         let mut cargo = prepare_tool_cargo(builder,
                                            compiler,
-                                           Mode::Rustc,
+                                           Mode::ToolRustc,
                                            target,
                                            "check",
                                            "src/tools/rustdoc");

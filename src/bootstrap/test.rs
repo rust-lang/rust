@@ -1729,7 +1729,7 @@ impl Step for CrateRustdoc {
 
         let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
-                                                 Mode::Rustc,
+                                                 Mode::ToolRustc,
                                                  target,
                                                  test_kind.subcommand(),
                                                  "src/tools/rustdoc");
