@@ -1731,20 +1731,31 @@ impl<'a> State<'a> {
                 }
             };
 
-            let elide_lifetimes = generic_args.lifetimes().all(|lt| lt.is_elided());
+            let mut types = vec![];
+            let mut elide_lifetimes = true;
+            for arg in &generic_args.args {
+                match arg {
+                    GenericArg::Lifetime(lt) => {
+                        if !lt.is_elided() {
+                            elide_lifetimes = false;
+                        }
+                    }
+                    GenericArg::Type(ty) => {
+                        types.push(ty);
+                    }
+                }
+            }
             if !elide_lifetimes {
                 start_or_comma(self)?;
                 self.commasep(Inconsistent, &generic_args.args, |s, generic_arg| {
                     match generic_arg {
                         GenericArg::Lifetime(lt) => s.print_lifetime(lt),
                         GenericArg::Type(ty) => s.print_type(ty),
-                }
+                    }
                 })?;
-            } else if generic_args.types().count() != 0 {
+            } else if !types.is_empty() {
                 start_or_comma(self)?;
-                self.commasep(Inconsistent,
-                              &generic_args.types().collect::<Vec<_>>(),
-                              |s, ty| s.print_type(&ty))?;
+                self.commasep(Inconsistent, &types, |s, ty| s.print_type(&ty))?;
             }
 
             // FIXME(eddyb) This would leak into error messages, e.g.:

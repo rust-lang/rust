@@ -662,11 +662,9 @@ fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
     let parent = tcx.generics_of(generics.parent.unwrap());
     let impl_params: FxHashMap<_, _> =
         parent.params.iter()
-                     .flat_map(|param| {
-                         match param.kind {
-                             GenericParamDefKind::Lifetime => None,
-                             GenericParamDefKind::Type {..} => Some((param.name, param.def_id)),
-                         }
+                     .flat_map(|param| match param.kind {
+                         GenericParamDefKind::Lifetime => None,
+                         GenericParamDefKind::Type {..} => Some((param.name, param.def_id)),
                      })
                      .collect();
 

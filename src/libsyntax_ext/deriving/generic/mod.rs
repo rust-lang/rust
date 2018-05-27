@@ -549,30 +549,28 @@ impl<'a> TraitDef<'a> {
             .to_generics(cx, self.span, type_ident, generics);
 
         // Create the generic parameters
-        params.extend(generics.params.iter().map(|param| {
-            match param.kind {
-                GenericParamKindAST::Lifetime { .. } => param.clone(),
-                GenericParamKindAST::Type { bounds: ref ty_bounds, .. } => {
-                    // I don't think this can be moved out of the loop, since
-                    // a TyParamBound requires an ast id
-                    let mut bounds: Vec<_> =
-                        // extra restrictions on the generics parameters to the
-                        // type being derived upon
-                        self.additional_bounds.iter().map(|p| {
-                            cx.typarambound(p.to_path(cx, self.span,
-                                                        type_ident, generics))
-                        }).collect();
+        params.extend(generics.params.iter().map(|param| match param.kind {
+            GenericParamKindAST::Lifetime { .. } => param.clone(),
+            GenericParamKindAST::Type { bounds: ref ty_bounds, .. } => {
+                // I don't think this can be moved out of the loop, since
+                // a TyParamBound requires an ast id
+                let mut bounds: Vec<_> =
+                    // extra restrictions on the generics parameters to the
+                    // type being derived upon
+                    self.additional_bounds.iter().map(|p| {
+                        cx.typarambound(p.to_path(cx, self.span,
+                                                    type_ident, generics))
+                    }).collect();
 
-                    // require the current trait
-                    bounds.push(cx.typarambound(trait_path.clone()));
+                // require the current trait
+                bounds.push(cx.typarambound(trait_path.clone()));
 
-                    // also add in any bounds from the declaration
-                    for declared_bound in ty_bounds {
-                        bounds.push((*declared_bound).clone());
-                    }
-
-                    cx.typaram(self.span, param.ident, vec![], bounds, None)
+                // also add in any bounds from the declaration
+                for declared_bound in ty_bounds {
+                    bounds.push((*declared_bound).clone());
                 }
+
+                cx.typaram(self.span, param.ident, vec![], bounds, None)
             }
         }));
 

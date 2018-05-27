@@ -13,7 +13,7 @@
 //! is parameterized by an instance of `AstConv`.
 
 use rustc_data_structures::accumulate_vec::AccumulateVec;
-use hir;
+use hir::{self, GenericArg};
 use hir::def::Def;
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
@@ -213,10 +213,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
-        let decl_generics = tcx.generics_of(def_id);
-        let ty_provided = generic_args.types().count();
-        let lt_provided = generic_args.lifetimes().count();
+        let mut lt_provided = 0;
+        let mut ty_provided = 0;
+        for arg in &generic_args.args {
+            match arg {
+                GenericArg::Lifetime(_) => lt_provided += 1,
+                GenericArg::Type(_) => ty_provided += 1,
+            }
+        }
 
+        let decl_generics = tcx.generics_of(def_id);
         let mut lt_accepted = 0;
         let mut ty_params = ParamRange { required: 0, accepted: 0 };
         for param in &decl_generics.params {
@@ -269,11 +275,19 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             match param.kind {
                 GenericParamDefKind::Lifetime => {
                     let i = param.index as usize - own_self;
-                    if let Some(lifetime) = generic_args.lifetimes().nth(i) {
-                        self.ast_region_to_region(lifetime, Some(param)).into()
-                    } else {
-                        tcx.types.re_static.into()
+                    let mut j = 0;
+                    for arg in &generic_args.args {
+                        match arg {
+                            GenericArg::Lifetime(lt) => {
+                                if i == j {
+                                    return self.ast_region_to_region(lt, Some(param)).into();
+                                }
+                                j += 1;
+                            }
+                            _ => {}
+                        }
                     }
+                    tcx.types.re_static.into()
                 }
                 GenericParamDefKind::Type { has_default, .. } => {
                     let i = param.index as usize;
@@ -286,7 +300,19 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     let i = i - (lt_accepted + own_self);
                     if i < ty_provided {
                         // A provided type parameter.
-                        self.ast_ty_to_ty(&generic_args.types().nth(i).unwrap()).into()
+                        let mut j = 0;
+                        for arg in &generic_args.args {
+                            match arg {
+                                GenericArg::Type(ty) => {
+                                    if i == j {
+                                        return self.ast_ty_to_ty(ty).into();
+                                    }
+                                    j += 1;
+                                }
+                                _ => {}
+                            }
+                        }
+                        bug!()
                     } else if infer_types {
                         // No type parameters were provided, we can infer all.
                         if !default_needs_object_self(param) {

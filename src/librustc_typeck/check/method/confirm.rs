@@ -12,6 +12,7 @@ use super::{probe, MethodCallee};
 
 use astconv::AstConv;
 use check::{FnCtxt, PlaceOp, callee, Needs};
+use hir::GenericArg;
 use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
@@ -330,16 +331,40 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             } else {
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
-                        if let Some(lifetime) = provided.as_ref().and_then(|p| {
-                            p.lifetimes().nth(i - parent_substs.len())
+                        if let Some(lifetime) = provided.as_ref().and_then(|data| {
+                            let mut j = 0;
+                            for arg in &data.args {
+                                match arg {
+                                    GenericArg::Lifetime(lt) => {
+                                        if i - parent_substs.len() == j {
+                                            return Some(lt);
+                                        }
+                                        j += 1;
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            None
                         }) {
                             return AstConv::ast_region_to_region(
                                 self.fcx, lifetime, Some(param)).into();
                         }
                     }
                     GenericParamDefKind::Type {..} => {
-                        if let Some(ast_ty) = provided.as_ref().and_then(|p| {
-                            p.types().nth(i - parent_substs.len() - own_counts.lifetimes)
+                        if let Some(ast_ty) = provided.as_ref().and_then(|data| {
+                            let mut j = 0;
+                            for arg in &data.args {
+                                match arg {
+                                    GenericArg::Type(ty) => {
+                                        if i - parent_substs.len() - own_counts.lifetimes == j {
+                                            return Some(ty);
+                                        }
+                                        j += 1;
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            None
                         }) {
                             return self.to_ty(ast_ty).into();
                         }

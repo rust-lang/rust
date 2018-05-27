@@ -85,6 +85,7 @@ use self::method::MethodCallee;
 use self::TupleArgumentsFlag::*;
 
 use astconv::AstConv;
+use hir::GenericArg;
 use hir::def::Def;
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use std::slice;
@@ -4834,7 +4835,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match param.kind {
                 GenericParamDefKind::Lifetime => {
                     let lifetimes = segment.map_or(vec![], |(s, _)| {
-                        s.args.as_ref().map_or(vec![], |arg| arg.lifetimes().collect())
+                        s.args.as_ref().map_or(vec![], |data| {
+                            data.args.iter().filter_map(|arg| match arg {
+                                GenericArg::Lifetime(lt) => Some(lt),
+                                _ => None,
+                            }).collect()
+                        })
                     });
 
                     if let Some(lifetime) = lifetimes.get(i) {
@@ -4845,8 +4851,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 GenericParamDefKind::Type {..} => {
                     let (types, infer_types) = segment.map_or((vec![], true), |(s, _)| {
-                        (s.args.as_ref().map_or(vec![], |arg| {
-                            arg.types().collect()
+                        (s.args.as_ref().map_or(vec![], |data| {
+                            data.args.iter().filter_map(|arg| match arg {
+                                GenericArg::Type(ty) => Some(ty),
+                                _ => None,
+                            }).collect()
                         }), s.infer_types)
                     });
 
@@ -4967,11 +4976,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             |(s, _)| {
                 s.args.as_ref().map_or(
                     (vec![], vec![], s.infer_types, &[][..]),
-                    |arg| {
-                        (arg.lifetimes().collect(),
-                         arg.types().collect(),
-                         s.infer_types,
-                         &arg.bindings[..])
+                    |data| {
+                        let mut lifetimes = vec![];
+                        let mut types = vec![];
+                        for arg in &data.args {
+                            match arg {
+                                GenericArg::Lifetime(lt) => lifetimes.push(lt),
+                                GenericArg::Type(ty) => types.push(ty),
+                            }
+                        }
+                        (lifetimes, types, s.infer_types, &data.bindings[..])
                     }
                 )
             });
@@ -5097,13 +5111,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         -> bool {
         let segment = segment.map(|(path_segment, generics)| {
             let explicit = !path_segment.infer_types;
-            let impl_trait = generics.params.iter().any(|param| {
-                match param.kind {
-                    ty::GenericParamDefKind::Type {
-                        synthetic: Some(hir::SyntheticTyParamKind::ImplTrait), ..
-                    } => true,
-                    _ => false,
-                }
+            let impl_trait = generics.params.iter().any(|param| match param.kind {
+                ty::GenericParamDefKind::Type {
+                    synthetic: Some(hir::SyntheticTyParamKind::ImplTrait), ..
+                } => true,
+                _ => false,
             });
 
             if explicit && impl_trait {
@@ -5187,11 +5199,9 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let types = generics.params.iter().filter(|param| {
-        match param.kind {
-            hir::GenericParamKind::Type { .. } => true,
-            _ => false,
-        }
+    let types = generics.params.iter().filter(|param| match param.kind {
+        hir::GenericParamKind::Type { .. } => true,
+        _ => false,
     });
     for (&used, param) in types_used.iter().zip(types) {
         if !used {

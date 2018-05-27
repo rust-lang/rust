@@ -1731,7 +1731,11 @@ impl<'a> LoweringContext<'a> {
             self.lower_angle_bracketed_parameter_data(&Default::default(), param_mode, itctx)
         };
 
-        if !generic_args.parenthesized && generic_args.lifetimes().count() == 0 {
+        let has_lifetimes = generic_args.args.iter().any(|arg| match arg {
+            GenericArg::Lifetime(_) => true,
+            _ => false,
+        });
+        if !generic_args.parenthesized && !has_lifetimes {
             generic_args.args =
                 self.elided_path_lifetimes(path_span, expected_lifetimes)
                     .into_iter()
@@ -1763,7 +1767,7 @@ impl<'a> LoweringContext<'a> {
             bindings: bindings.iter().map(|b| self.lower_ty_binding(b, itctx)).collect(),
             parenthesized: false,
         },
-        has_types && param_mode == ParamMode::Optional)
+        !has_types && param_mode == ParamMode::Optional)
     }
 
     fn lower_parenthesized_parameter_data(

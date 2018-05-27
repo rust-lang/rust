@@ -315,17 +315,14 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
     {
         let from_ty_params =
             ast_generics.params.iter()
-                .filter_map(|param| {
-                    match param.kind {
-                        GenericParamKind::Type { ref bounds, .. } => {
-                            if param.id == param_id {
-                                Some(bounds)
-                            } else {
-                                None
-                            }
+                .filter_map(|param| match param.kind {
+                    GenericParamKind::Type { ref bounds, .. } => {
+                        if param.id == param_id {
+                            return Some(bounds);
                         }
-                        _ => None
+                        None
                     }
+                    _ => None
                 })
                 .flat_map(|bounds| bounds.iter())
                 .flat_map(|b| predicates_from_bound(self, ty, b));
@@ -921,42 +918,40 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Now create the real type parameters.
     let type_start = own_start - has_self as u32 + params.len() as u32;
     let mut i = 0;
-    params.extend(ast_generics.params.iter().filter_map(|param| {
-        match param.kind {
-            GenericParamKind::Type { ref default, synthetic, .. } => {
-                if param.name() == keywords::SelfType.name() {
-                    span_bug!(param.span,
-                              "`Self` should not be the name of a regular parameter");
-                }
-
-                if !allow_defaults && default.is_some() {
-                    if !tcx.features().default_type_parameter_fallback {
-                        tcx.lint_node(
-                            lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
-                            param.id,
-                            param.span,
-                            &format!("defaults for type parameters are only allowed in \
-                                      `struct`, `enum`, `type`, or `trait` definitions."));
-                    }
-                }
-
-                let ty_param = ty::GenericParamDef {
-                    index: type_start + i as u32,
-                    name: param.name().as_interned_str(),
-                    def_id: tcx.hir.local_def_id(param.id),
-                    pure_wrt_drop: param.pure_wrt_drop,
-                    kind: ty::GenericParamDefKind::Type {
-                        has_default: default.is_some(),
-                        object_lifetime_default:
-                            object_lifetime_defaults.as_ref().map_or(rl::Set1::Empty, |o| o[i]),
-                        synthetic,
-                    },
-                };
-                i += 1;
-                Some(ty_param)
+    params.extend(ast_generics.params.iter().filter_map(|param| match param.kind {
+        GenericParamKind::Type { ref default, synthetic, .. } => {
+            if param.name() == keywords::SelfType.name() {
+                span_bug!(param.span,
+                            "`Self` should not be the name of a regular parameter");
             }
-            _ => None,
+
+            if !allow_defaults && default.is_some() {
+                if !tcx.features().default_type_parameter_fallback {
+                    tcx.lint_node(
+                        lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
+                        param.id,
+                        param.span,
+                        &format!("defaults for type parameters are only allowed in \
+                                    `struct`, `enum`, `type`, or `trait` definitions."));
+                }
+            }
+
+            let ty_param = ty::GenericParamDef {
+                index: type_start + i as u32,
+                name: param.name().as_interned_str(),
+                def_id: tcx.hir.local_def_id(param.id),
+                pure_wrt_drop: param.pure_wrt_drop,
+                kind: ty::GenericParamDefKind::Type {
+                    has_default: default.is_some(),
+                    object_lifetime_default:
+                        object_lifetime_defaults.as_ref().map_or(rl::Set1::Empty, |o| o[i]),
+                    synthetic,
+                },
+            };
+            i += 1;
+            Some(ty_param)
         }
+        _ => None,
     }));
 
     // provide junk type parameter defs - the only place that
@@ -1313,14 +1308,12 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx>(
     generics: &'a hir::Generics)
     -> impl Iterator<Item=&'a hir::GenericParam> + Captures<'tcx>
 {
-    generics.params.iter().filter(move |param| {
-        match param.kind {
-            GenericParamKind::Lifetime { .. } => {
-                let hir_id = tcx.hir.node_to_hir_id(param.id);
-                !tcx.is_late_bound(hir_id)
-            }
-            _ => false,
+    generics.params.iter().filter(move |param| match param.kind {
+        GenericParamKind::Lifetime { .. } => {
+            let hir_id = tcx.hir.node_to_hir_id(param.id);
+            !tcx.is_late_bound(hir_id)
         }
+        _ => false,
     })
 }
 

@@ -400,33 +400,19 @@ impl GenericArgs {
 
     pub fn inputs(&self) -> &[P<Ty>] {
         if self.parenthesized {
-            if let Some(ref ty) = self.types().next() {
-                if let TyTup(ref tys) = ty.node {
-                    return tys;
+            for arg in &self.args {
+                match arg {
+                    GenericArg::Lifetime(_) => {}
+                    GenericArg::Type(ref ty) => {
+                        if let TyTup(ref tys) = ty.node {
+                            return tys;
+                        }
+                        break;
+                    }
                 }
             }
         }
         bug!("GenericArgs::inputs: not a `Fn(T) -> U`");
-    }
-
-    pub fn lifetimes(&self) -> impl DoubleEndedIterator<Item = &Lifetime> {
-        self.args.iter().filter_map(|p| {
-            if let GenericArg::Lifetime(lt) = p {
-                Some(lt)
-            } else {
-                None
-            }
-        })
-    }
-
-    pub fn types(&self) -> impl DoubleEndedIterator<Item = &P<Ty>> {
-        self.args.iter().filter_map(|p| {
-            if let GenericArg::Type(ty) = p {
-                Some(ty)
-            } else {
-                None
-            }
-        })
     }
 }
 
