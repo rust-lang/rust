@@ -334,10 +334,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // this case used to be allowed by the compiler,
                         // so we do a future-compat lint here for the 2015 edition
                         // (see https://github.com/rust-lang/rust/issues/46906)
-                        if self.tcx.sess.rust_2018() {
-                          span_err!(self.tcx.sess, span, E0908,
-                                    "the type of this value must be known \
-                                     to call a method on a raw pointer on it");
+                        if span.edition().rust_2018() {
+                            span_err!(self.tcx.sess, span, E0908,
+                                      "the type of this value must be known \
+                                       to call a method on a raw pointer on it");
                         } else {
                             self.tcx.lint_node(
                                 lint::builtin::TYVAR_BEHIND_RAW_POINTER,

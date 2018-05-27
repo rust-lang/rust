@@ -948,12 +948,14 @@ impl Session {
         self.opts.debugging_opts.teach && self.parse_sess.span_diagnostic.must_teach(code)
     }
 
-    /// Are we allowed to use features from the Rust 2018 edition?
-    pub fn rust_2018(&self) -> bool {
-        self.opts.edition >= Edition::Edition2018
-    }
-
-    pub fn edition(&self) -> Edition {
+    /// What is the edition of the "local crate" being compiled?
+    ///
+    /// You should not call this except as a last resort. It is better
+    /// to do `span.edition()` instead, which gives the edition for a
+    /// particular span: that way, when you are looking at code
+    /// creating a macro from a Rust 2015 crate, you will use the Rust
+    /// 2015 Edition rules.
+    pub fn local_edition(&self) -> Edition {
         self.opts.edition
     }
 }

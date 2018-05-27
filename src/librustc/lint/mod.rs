@@ -89,7 +89,13 @@ impl Lint {
 
     pub fn default_level(&self, session: &Session) -> Level {
         if let Some(edition_deny) = self.edition_deny {
-            if session.edition() >= edition_deny {
+            // Ideally, we would get the edition for the actual span,
+            // but that is kind of a pain in the neck to do right
+            // now. Also, lints are not breaking things anyway (due to
+            // `-Acap-lints`), and the lint itself should probably be
+            // checking the span to see if the code was injected via
+            // macro etc, so for now we'll just use the local level.
+            if session.local_edition() >= edition_deny {
                 return Level::Deny
             }
         }

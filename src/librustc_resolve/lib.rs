@@ -3302,7 +3302,7 @@ impl<'a> Resolver<'a> {
                     if prev_name == keywords::Extern.name() ||
                        prev_name == keywords::CrateRoot.name() &&
                        self.session.features_untracked().extern_absolute_paths &&
-                       self.session.rust_2018() {
+                       path_span.edition().rust_2018() {
                         // `::extern_crate::a::b`
                         let crate_id = self.crate_loader.process_path_extern(name, ident.span);
                         let crate_root =
@@ -3475,7 +3475,7 @@ impl<'a> Resolver<'a> {
 
     fn lint_path_starts_with_module(&self, id: NodeId, span: Span) {
         // In the 2018 edition this lint is a hard error, so nothing to do
-        if self.session.rust_2018() {
+        if span.edition().rust_2018() {
             return
         }
         // In the 2015 edition there's no use in emitting lints unless the

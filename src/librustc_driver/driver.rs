@@ -736,7 +736,7 @@ where
         krate,
         &sess.parse_sess,
         sess.opts.test,
-        sess.edition(),
+        sess.local_edition(),
     );
     // these need to be set "early" so that expansion sees `quote` if enabled.
     sess.init_features(features);
