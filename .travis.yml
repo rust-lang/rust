@@ -44,8 +44,6 @@ matrix:
     - env: INTEGRATION=rust-clippy
     # Doesn't build
     - env: INTEGRATION=rust-semverver
-    # dues to a test failure (fails before Rustfmt'ing too)
-    - env: INTEGRATION=stdsimd
 
 before_script:
 - |
