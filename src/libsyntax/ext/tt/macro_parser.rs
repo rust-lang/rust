@@ -18,7 +18,7 @@
 //! `NamedMatch`es at the very end. It'd be a pain, and require more memory to keep around old
 //! items, but it would also save overhead)
 //!
-//! We don't say this parser uses the Earley algorithm, because it's unnecessarily innacurate.
+//! We don't say this parser uses the Earley algorithm, because it's unnecessarily inaccurate.
 //! The macro parser restricts itself to the features of finite state automata. Earley parsers
 //! can be described as an extension of NFAs with completion rules, prediction rules, and recursion.
 //!
