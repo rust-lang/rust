@@ -2154,9 +2154,10 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, b
     let mut mut_var_visitor = VarCollectorVisitor {
         cx,
         ids: HashMap::new(),
+        def_ids: HashMap::new(),
         skip: false,
     };
-    walk_expr(&mut mut_var_visitor, expr);
+    mut_var_visitor.visit_expr(cond);
     if mut_var_visitor.skip {
         return;
     }
@@ -2172,7 +2173,7 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, b
     if delegate.skip {
         return;
     }
-    if !delegate.used_mutably.iter().any(|(_, v)| *v) {
+    if !(delegate.used_mutably.iter().any(|(_, v)| *v) || mut_var_visitor.def_ids.iter().any(|(_, v)| *v)) {
         span_lint(
             cx,
             WHILE_IMMUTABLE_CONDITION,
@@ -2189,6 +2190,7 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, b
 struct VarCollectorVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
     ids: HashMap<NodeId, bool>,
+    def_ids: HashMap<def_id::DefId, bool>,
     skip: bool,
 }
 
@@ -2202,6 +2204,9 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
                 match def {
                     Def::Local(node_id) | Def::Upvar(node_id, ..) => {
                         self.ids.insert(node_id, false);
+                    },
+                    Def::Static(def_id, mutable) => {
+                        self.def_ids.insert(def_id, mutable);
                     },
                     _ => {},
                 }
@@ -2220,8 +2225,6 @@ impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
             _ => walk_expr(self, ex),
         }
     }
-
-    fn visit_block(&mut self, _b: &'tcx Block) {}
 
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
