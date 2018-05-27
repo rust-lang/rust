@@ -1,8 +1,11 @@
+use std::cmp;
+
 use rustc::hir::*;
 use rustc::hir::map::*;
 use rustc::hir::intravisit::FnKind;
 use rustc::lint::*;
 use rustc::ty::TypeVariants;
+use rustc::session::config::Config as SessionConfig;
 use rustc_target::spec::abi::Abi;
 use rustc_target::abi::LayoutOf;
 use syntax::ast::NodeId;
@@ -16,6 +19,14 @@ use crate::utils::{in_macro, is_copy, is_self, span_lint_and_sugg, snippet};
 /// **Why is this bad?** In many calling conventions instances of structs will
 /// be passed through registers if they fit into two or less general purpose
 /// registers.
+///
+/// **Known problems:** This lint is target register size dependent, it is
+/// limited to 32-bit to try and reduce portability problems between 32 and
+/// 64-bit, but if you are compiling for 8 or 16-bit targets then the limit
+/// will be different.
+///
+/// The configuration option `trivial_copy_size_limit` can be set to override
+/// this limit for a project.
 ///
 /// **Example:**
 /// ```rust
@@ -33,7 +44,24 @@ declare_clippy_lint! {
     "functions taking small copyable arguments by reference"
 }
 
-pub struct TriviallyCopyPassByRef;
+pub struct TriviallyCopyPassByRef {
+    limit: u64,
+}
+
+impl TriviallyCopyPassByRef {
+    pub fn new(limit: Option<u64>, target: &SessionConfig) -> Self {
+        let limit = limit.unwrap_or_else(|| {
+            let bit_width = target.usize_ty.bit_width().expect("usize should have a width") as u64;
+            // Cap the calculated bit width at 32-bits to reduce
+            // portability problems between 32 and 64-bit targets
+            let bit_width = cmp::min(bit_width, 32);
+            let byte_width = bit_width / 8;
+            // Use a limit of 2 times the register bit width
+            byte_width * 2
+        });
+        Self { limit }
+    }
+}
 
 impl LintPass for TriviallyCopyPassByRef {
     fn get_lints(&self) -> LintArray {
@@ -94,7 +122,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
                 if let TypeVariants::TyRef(_, ty, Mutability::MutImmutable) = ty.sty;
                 if is_copy(cx, ty);
                 if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
-                if size < 16;
+                if size <= self.limit;
                 if let Ty_::TyRptr(_, MutTy { ty: ref decl_ty, .. }) = input.node;
                 then {
                     let value_type = if is_self(arg) {

@@ -156,6 +156,8 @@ define_Conf! {
     (verbose_bit_mask_threshold, "verbose_bit_mask_threshold", 1 => u64),
     /// Lint: DECIMAL_LITERAL_REPRESENTATION. The lower bound for linting decimal literals
     (literal_representation_threshold, "literal_representation_threshold", 16384 => u64),
+    /// Lint: TRIVIALLY_COPY_PASS_BY_REF. The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by reference.
+    (trivial_copy_size_limit, "trivial_copy_size_limit", None => Option<u64>),
 }
 
 /// Search for the configuration file.
