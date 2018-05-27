@@ -74,7 +74,7 @@ error[E0631]: type mismatch in closure arguments
 LL |     g1(|_: (), _: ()| {}); //~ ERROR type mismatch
    |     ^^ -------------- found signature of `fn((), ()) -> _`
    |     |
-   |     expected signature of `for<'r> fn(&'r (), std::boxed::Box<for<'s> std::ops::Fn(&'s ()) + 'static>) -> _`
+   |     expected signature of `for<'r> fn(&'r (), std::boxed::Box<(dyn for<'s> std::ops::Fn(&'s ()) + 'static)>) -> _`
    |
 note: required by `g1`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:33:1
@@ -102,7 +102,7 @@ error[E0631]: type mismatch in closure arguments
 LL |     g3(|_: (), _: ()| {}); //~ ERROR type mismatch
    |     ^^ -------------- found signature of `fn((), ()) -> _`
    |     |
-   |     expected signature of `for<'s> fn(&'s (), std::boxed::Box<for<'r> std::ops::Fn(&'r ()) + 'static>) -> _`
+   |     expected signature of `for<'s> fn(&'s (), std::boxed::Box<(dyn for<'r> std::ops::Fn(&'r ()) + 'static)>) -> _`
    |
 note: required by `g3`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:35:1
@@ -130,7 +130,7 @@ error[E0631]: type mismatch in closure arguments
 LL |     h1(|_: (), _: (), _: (), _: ()| {}); //~ ERROR type mismatch
    |     ^^ ---------------------------- found signature of `fn((), (), (), ()) -> _`
    |     |
-   |     expected signature of `for<'r, 's> fn(&'r (), std::boxed::Box<for<'t0> std::ops::Fn(&'t0 ()) + 'static>, &'s (), for<'t0, 't1> fn(&'t0 (), &'t1 ())) -> _`
+   |     expected signature of `for<'r, 's> fn(&'r (), std::boxed::Box<(dyn for<'t0> std::ops::Fn(&'t0 ()) + 'static)>, &'s (), for<'t0, 't1> fn(&'t0 (), &'t1 ())) -> _`
    |
 note: required by `h1`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:39:1
@@ -144,7 +144,7 @@ error[E0631]: type mismatch in closure arguments
 LL |     h2(|_: (), _: (), _: (), _: ()| {}); //~ ERROR type mismatch
    |     ^^ ---------------------------- found signature of `fn((), (), (), ()) -> _`
    |     |
-   |     expected signature of `for<'r, 't0> fn(&'r (), std::boxed::Box<for<'s> std::ops::Fn(&'s ()) + 'static>, &'t0 (), for<'s, 't1> fn(&'s (), &'t1 ())) -> _`
+   |     expected signature of `for<'r, 't0> fn(&'r (), std::boxed::Box<(dyn for<'s> std::ops::Fn(&'s ()) + 'static)>, &'t0 (), for<'s, 't1> fn(&'s (), &'t1 ())) -> _`
    |
 note: required by `h2`
   --> $DIR/anonymous-higher-ranked-lifetime.rs:40:1

@@ -16,7 +16,7 @@ error[E0308]: mismatched types
 LL |     () //~ ERROR mismatched types
    |     ^^ expected struct `std::boxed::Box`, found ()
    |
-   = note: expected type `std::boxed::Box<Id<_> + 'static>`
+   = note: expected type `std::boxed::Box<(dyn Id<_> + 'static)>`
               found type `()`
 
 error[E0308]: mismatched types
@@ -25,7 +25,7 @@ error[E0308]: mismatched types
 LL |         () //~ ERROR mismatched types
    |         ^^ expected struct `std::boxed::Box`, found ()
    |
-   = note: expected type `std::boxed::Box<Id<_> + 'static>`
+   = note: expected type `std::boxed::Box<(dyn Id<_> + 'static)>`
               found type `()`
 
 error: aborting due to 4 previous errors

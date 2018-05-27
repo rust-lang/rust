@@ -13,8 +13,8 @@ LL | |     }
    | |_____^
    = note: ...but the lifetime must also be valid for the static lifetime...
    = note: ...so that the method type is compatible with trait:
-           expected fn(&Struct) -> &Trait + 'static
-              found fn(&Struct) -> &Trait
+           expected fn(&Struct) -> &(dyn Trait + 'static)
+              found fn(&Struct) -> &dyn Trait
 
 error: aborting due to previous error
 
