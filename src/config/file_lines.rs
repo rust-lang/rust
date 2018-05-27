@@ -209,9 +209,9 @@ impl FileLines {
         self.file_range_matches(file_name, |r| r.lo <= line && r.hi >= line)
     }
 
-    /// Returns true if any of the lines between `lo` and `hi` from `file_name` are in `self`.
-    pub(crate) fn intersects_range(&self, file_name: &FileName, lo: usize, hi: usize) -> bool {
-        self.file_range_matches(file_name, |r| r.intersects(Range::new(lo, hi)))
+    /// Returns true if all the lines between `lo` and `hi` from `file_name` are in `self`.
+    pub(crate) fn contains_range(&self, file_name: &FileName, lo: usize, hi: usize) -> bool {
+        self.file_range_matches(file_name, |r| r.contains(Range::new(lo, hi)))
     }
 }
 
