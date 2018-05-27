@@ -336,6 +336,8 @@ pub fn format_expr(
                 ))
             }
         }
+        // FIXME(#2743)
+        ast::ExprKind::ObsoleteInPlace(..) => unimplemented!(),
     };
 
     expr_rw
