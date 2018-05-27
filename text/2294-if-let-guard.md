@@ -1,7 +1,7 @@
-- Feature Name: if_let_guard
+- Feature Name: `if_let_guard`
 - Start Date: 2018-01-15
-- RFC PR: 
-- Rust Issue: 
+- RFC PR: [rust-lang/rfcs#2294](https://github.com/rust-lang/rfcs/pull/2294)
+- Rust Issue: [rust-lang/rust#51114](https://github.com/rust-lang/rust/issues/51114)
 
 # Summary
 [summary]: #summary
