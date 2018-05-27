@@ -456,5 +456,5 @@ fn deadlock(tcx: TyCtxt<'_, '_, '_>, registry: &rayon_core::Registry) {
         waiter.notify(tcx, registry);
     }
 
-    mem::forget(on_panic);
+    on_panic.disable();
 }
