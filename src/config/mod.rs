@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use config::config_type::ConfigType;
-pub use config::file_lines::{FileLines, FileName};
+pub use config::file_lines::{FileLines, FileName, Range};
 pub use config::lists::*;
 pub use config::options::*;
 
