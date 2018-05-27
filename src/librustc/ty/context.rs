@@ -266,9 +266,7 @@ fn validate_hir_id_for_typeck_tables(local_id_root: Option<DefId>,
         if let Some(local_id_root) = local_id_root {
             if hir_id.owner != local_id_root.index {
                 ty::tls::with(|tcx| {
-                    let node_id = tcx.hir
-                                     .definitions()
-                                     .find_node_for_hir_id(hir_id);
+                    let node_id = tcx.hir.hir_to_node_id(hir_id);
 
                     bug!("node {} with HirId::owner {:?} cannot be placed in \
                           TypeckTables with local_id_root {:?}",
@@ -527,7 +525,7 @@ impl<'tcx> TypeckTables<'tcx> {
             None => {
                 bug!("node_id_to_type: no type for node `{}`",
                     tls::with(|tcx| {
-                        let id = tcx.hir.definitions().find_node_for_hir_id(id);
+                        let id = tcx.hir.hir_to_node_id(id);
                         tcx.hir.node_to_string(id)
                     }))
             }
@@ -2616,8 +2614,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                                     msg: &str)
         -> DiagnosticBuilder<'tcx>
     {
-        // FIXME: converting HirId → NodeId is said to be relatively expensive
-        let node_id = self.hir.definitions().find_node_for_hir_id(hir_id);
+        let node_id = self.hir.hir_to_node_id(hir_id);
         let (level, src) = self.lint_level_at_node(lint, node_id);
         lint::struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg)
     }

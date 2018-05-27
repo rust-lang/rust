@@ -106,7 +106,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         }
         assert_eq!(def_id.krate, LOCAL_CRATE);
         let hir_id = tcx.hir.definitions().def_index_to_hir_id(def_id.index);
-        let id = tcx.hir.definitions().find_node_for_hir_id(hir_id);
+        let id = tcx.hir.hir_to_node_id(hir_id);
         let lint = lint::builtin::UNUSED_EXTERN_CRATES;
         let msg = "unused extern crate";
         tcx.lint_node(lint, id, span, msg);

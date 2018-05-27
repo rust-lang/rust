@@ -609,8 +609,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         match local.init {
             None => {
                 local.pat.each_binding(|_, hir_id, span, _| {
-                    // FIXME: converting HirId → NodeId is said to be relatively expensive
-                    let node_id = self.mc.tcx.hir.definitions().find_node_for_hir_id(hir_id);
+                    let node_id = self.mc.tcx.hir.hir_to_node_id(hir_id);
                     self.delegate.decl_without_init(node_id, span);
                 })
             }
