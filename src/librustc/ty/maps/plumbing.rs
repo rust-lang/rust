@@ -659,7 +659,9 @@ macro_rules! define_maps {
             pub fn collect_active_jobs(&self) -> Vec<Lrc<QueryJob<$tcx>>> {
                 let mut jobs = Vec::new();
 
-                $(for v in self.$name.lock().active.values() {
+                // We use try_lock here since we are only called from the
+                // deadlock handler, and this shouldn't be locked
+                $(for v in self.$name.try_lock().unwrap().active.values() {
                     match *v {
                         QueryResult::Started(ref job) => jobs.push(job.clone()),
                         _ => (),

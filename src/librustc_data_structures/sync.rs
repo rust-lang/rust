@@ -521,6 +521,18 @@ impl<T> Lock<T> {
 
     #[cfg(parallel_queries)]
     #[inline(always)]
+    pub fn try_lock(&self) -> Option<LockGuard<T>> {
+        self.0.try_lock()
+    }
+
+    #[cfg(not(parallel_queries))]
+    #[inline(always)]
+    pub fn try_lock(&self) -> Option<LockGuard<T>> {
+        self.0.try_borrow_mut().ok()
+    }
+
+    #[cfg(parallel_queries)]
+    #[inline(always)]
     pub fn lock(&self) -> LockGuard<T> {
         if ERROR_CHECKING {
             self.0.try_lock().expect("lock was already held")
