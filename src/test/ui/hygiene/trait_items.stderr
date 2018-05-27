@@ -9,7 +9,7 @@ LL |     pub macro m() { ().f() } //~ ERROR no method named `f` found for type `
    |
    = help: items from traits can only be used if the trait is in scope
    = note: the following trait is implemented but not in scope, perhaps add a `use` for it:
-           candidate #1: `use foo::T;`
+           `use foo::T;`
 
 error: aborting due to previous error
 
