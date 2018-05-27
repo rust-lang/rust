@@ -1,0 +1,17 @@
+if_chain! {
+    if let Stmt_::StmtDecl(ref decl, _) = stmt.node
+    if let Decl_::DeclLocal(ref local) = decl.node;
+    if let Some(ref init) = local.init
+    if let Expr_::ExprCall(ref func, ref args) = init.node;
+    if let Expr_::ExprPath(ref path) = func.node;
+    if match_qpath(path, &["{{root}}", "std", "cmp", "min"]);
+    if args.len() == 2;
+    if let Expr_::ExprLit(ref lit) = args[0].node;
+    if let LitKind::Int(3, _) = lit.node;
+    if let Expr_::ExprLit(ref lit1) = args[1].node;
+    if let LitKind::Int(4, _) = lit1.node;
+    if let PatKind::Wild = local.pat.node;
+    then {
+        // report your lint here
+    }
+}
