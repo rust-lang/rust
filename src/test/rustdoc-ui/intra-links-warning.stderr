@@ -1,6 +1,24 @@
 warning: [Foo::baz] cannot be resolved, ignoring it...
+  --> $DIR/intra-links-warning.rs:13:1
+   |
+13 | / //! Test with [Foo::baz], [Bar::foo], ...
+14 | | //!
+15 | | //! and [Uniooon::X].
+   | |_____________________^
 
 warning: [Bar::foo] cannot be resolved, ignoring it...
+  --> $DIR/intra-links-warning.rs:13:1
+   |
+13 | / //! Test with [Foo::baz], [Bar::foo], ...
+14 | | //!
+15 | | //! and [Uniooon::X].
+   | |_____________________^
 
 warning: [Uniooon::X] cannot be resolved, ignoring it...
+  --> $DIR/intra-links-warning.rs:13:1
+   |
+13 | / //! Test with [Foo::baz], [Bar::foo], ...
+14 | | //!
+15 | | //! and [Uniooon::X].
+   | |_____________________^
 

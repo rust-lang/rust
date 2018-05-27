@@ -954,12 +954,20 @@ fn type_ns_kind(def: Def, path_str: &str) -> (&'static str, &'static str, String
     (kind, article, format!("{}@{}", kind, path_str))
 }
 
+fn span_of_attrs(attrs: &Attributes) -> syntax_pos::Span {
+    if attrs.doc_strings.is_empty() {
+        return DUMMY_SP;
+    }
+    let start = attrs.doc_strings[0].span();
+    let end = attrs.doc_strings.last().unwrap().span();
+    start.to(end)
+}
+
 fn ambiguity_error(cx: &DocContext, attrs: &Attributes,
                    path_str: &str,
                    article1: &str, kind1: &str, disambig1: &str,
                    article2: &str, kind2: &str, disambig2: &str) {
-    let sp = attrs.doc_strings.first()
-                  .map_or(DUMMY_SP, |a| a.span());
+    let sp = span_of_attrs(attrs);
     cx.sess()
       .struct_span_warn(sp,
                         &format!("`{}` is both {} {} and {} {}",
@@ -1174,8 +1182,9 @@ enum PathKind {
     Type,
 }
 
-fn resolution_failure(cx: &DocContext, path_str: &str) {
-    cx.sess().warn(&format!("[{}] cannot be resolved, ignoring it...", path_str));
+fn resolution_failure(cx: &DocContext, attrs: &Attributes, path_str: &str) {
+    let sp = span_of_attrs(attrs);
+    cx.sess().span_warn(sp, &format!("[{}] cannot be resolved, ignoring it...", path_str));
 }
 
 impl Clean<Attributes> for [ast::Attribute] {
@@ -1228,7 +1237,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                             if let Ok(def) = resolve(cx, path_str, true) {
                                 def
                             } else {
-                                resolution_failure(cx, path_str);
+                                resolution_failure(cx, &attrs, path_str);
                                 // this could just be a normal link or a broken link
                                 // we could potentially check if something is
                                 // "intra-doc-link-like" and warn in that case
@@ -1239,7 +1248,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                             if let Ok(def) = resolve(cx, path_str, false) {
                                 def
                             } else {
-                                resolution_failure(cx, path_str);
+                                resolution_failure(cx, &attrs, path_str);
                                 // this could just be a normal link
                                 continue;
                             }
@@ -1284,7 +1293,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                             } else if let Ok(value_def) = resolve(cx, path_str, true) {
                                 value_def
                             } else {
-                                resolution_failure(cx, path_str);
+                                resolution_failure(cx, &attrs, path_str);
                                 // this could just be a normal link
                                 continue;
                             }
@@ -1293,7 +1302,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                             if let Some(def) = macro_resolve(cx, path_str) {
                                 (def, None)
                             } else {
-                                resolution_failure(cx, path_str);
+                                resolution_failure(cx, &attrs, path_str);
                                 continue
                             }
                         }

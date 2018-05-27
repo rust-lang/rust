@@ -10,7 +10,9 @@
 
 // compile-pass
 
-//! Test with [Foo::baz], [Bar::foo], [Uniooon::X]
+//! Test with [Foo::baz], [Bar::foo], ...
+//!
+//! and [Uniooon::X].
 
 pub struct Foo {
     pub bar: usize,
