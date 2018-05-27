@@ -60,7 +60,7 @@ use visitor::{FmtVisitor, SnippetProvider};
 pub use checkstyle::{footer as checkstyle_footer, header as checkstyle_header};
 pub use config::summary::Summary;
 pub use config::{
-    load_config, CliOptions, Color, Config, EmitMode, FileLines, FileName, Verbosity,
+    load_config, CliOptions, Color, Config, EmitMode, FileLines, FileName, Range, Verbosity,
 };
 
 #[macro_use]
