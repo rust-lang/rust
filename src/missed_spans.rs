@@ -46,7 +46,13 @@ impl<'a> FmtVisitor<'a> {
     // TODO these format_missing methods are ugly. Refactor and add unit tests
     // for the central whitespace stripping loop.
     pub fn format_missing(&mut self, end: BytePos) {
-        // HACK
+        // HACK(topecongiro)
+        // We use `format_missing()` to extract a missing comment between a macro
+        // (or alike) and a trailing semicolon. Here we just try to avoid calling
+        // `format_missing_inner` in the common case where there is no such comment.
+        // This is a hack, ideally we should fix a possible bug in `format_missing_inner`
+        // or refactor `visit_mac` and `rewrite_macro`, but this should suffice to fix the
+        // issue (#2727).
         let missing_snippet = self.snippet(mk_sp(self.last_pos, end));
         if missing_snippet.trim() == ";" {
             self.push_str(";");
