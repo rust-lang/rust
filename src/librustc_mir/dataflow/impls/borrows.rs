@@ -70,9 +70,9 @@ fn precompute_borrows_out_of_scope<'a, 'tcx>(
     }
 
     let bb_data = &mir[location.block];
-    // If we are on the last statement, then check the terminator
+    // If we are past the last statement, then check the terminator
     // to determine which location to proceed to.
-    if location.statement_index == bb_data.statements.len() - 1 {
+    if location.statement_index == bb_data.statements.len() {
         if let Some(ref terminator) = bb_data.terminator {
             match terminator.kind {
                 TerminatorKind::Goto { target } |
