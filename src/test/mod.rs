@@ -900,6 +900,10 @@ fn rustfmt() -> PathBuf {
     me.pop(); // chop of the test name
     me.pop(); // chop off `deps`
     me.push("rustfmt");
+    assert!(
+        me.is_file() || me.with_extension("exe").is_file(),
+        "no rustfmt bin, try running `cargo build` before testing"
+    );
     return me;
 }
 
