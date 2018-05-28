@@ -204,10 +204,9 @@ impl<'a> DigitInfo<'a> {
                 .collect::<Vec<String>>()
                 .join("_");
             // Forces hexadecimal values to be grouped by 4 being filled with zeroes (e.g 0x00ab_cdef)
-            let nb_digits_to_fill = self.digits.len() % 4;
+            let nb_digits_to_fill = self.digits.chars().filter(|&c| c != '_').collect::<Vec<_>>().len() % 4;
             if self.radix == Radix::Hexadecimal && nb_digits_to_fill != 0 {
-                let filled_digits = format!("{:0>1$}", &hint[..nb_digits_to_fill], 4);
-                hint = format!("{}{}", filled_digits, &hint[nb_digits_to_fill..]);
+                hint = format!("{:0>4}{}", &hint[..nb_digits_to_fill], &hint[nb_digits_to_fill..]);
             }
             format!(
                 "{}{}{}",
