@@ -903,11 +903,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     );
                 }
                 self.check_rvalue(mir, rv, location);
-                let trait_ref = ty::TraitRef {
-                    def_id: tcx.lang_items().sized_trait().unwrap(),
-                    substs: tcx.mk_substs_trait(place_ty, &[]),
-                };
-                self.prove_trait_ref(trait_ref, location.interesting());
+                if !self.tcx().features().unsized_locals {
+                    let trait_ref = ty::TraitRef {
+                        def_id: tcx.lang_items().sized_trait().unwrap(),
+                        substs: tcx.mk_substs_trait(place_ty, &[]),
+                    };
+                    self.prove_trait_ref(trait_ref, location.interesting());
+                }
             }
             StatementKind::SetDiscriminant {
                 ref place,
@@ -962,6 +964,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         mir: &Mir<'tcx>,
         term: &Terminator<'tcx>,
         term_location: Location,
+        errors_buffer: &mut Option<&mut Vec<Diagnostic>>,
     ) {
         debug!("check_terminator: {:?}", term);
         let tcx = self.tcx();
@@ -1041,7 +1044,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     &sig,
                 );
                 let sig = self.normalize(sig, term_location);
-                self.check_call_dest(mir, term, &sig, destination, term_location);
+                self.check_call_dest(mir, term, &sig, destination, term_location, errors_buffer);
 
                 self.prove_predicates(
                     sig.inputs().iter().map(|ty| ty::Predicate::WellFormed(ty)),
@@ -1115,6 +1118,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         sig: &ty::FnSig<'tcx>,
         destination: &Option<(Place<'tcx>, BasicBlock)>,
         term_location: Location,
+        errors_buffer: &mut Option<&mut Vec<Diagnostic>>,
     ) {
         let tcx = self.tcx();
         match *destination {
@@ -1142,6 +1146,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         sig.output(),
                         terr
                     );
+                }
+
+                // When `#![feature(unsized_locals)]` is not enabled,
+                // this check is done at `check_local`.
+                if self.tcx().features().unsized_locals {
+                    let span = term.source_info.span;
+                    self.ensure_place_sized(dest_ty, span, errors_buffer);
                 }
             }
             None => {
@@ -1309,14 +1320,26 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             LocalKind::Var | LocalKind::Temp => {}
         }
 
-        let span = local_decl.source_info.span;
-        let ty = local_decl.ty;
+        // When `#![feature(unsized_locals)]` is enabled, only function calls
+        // are checked in `check_call_dest`.
+        if !self.tcx().features().unsized_locals {
+            let span = local_decl.source_info.span;
+            let ty = local_decl.ty;
+            self.ensure_place_sized(ty, span, errors_buffer);
+        }
+    }
+
+    fn ensure_place_sized(&mut self,
+                          ty: Ty<'tcx>,
+                          span: Span,
+                          errors_buffer: &mut Option<&mut Vec<Diagnostic>>) {
+        let tcx = self.tcx();
 
         // Erase the regions from `ty` to get a global type.  The
         // `Sized` bound in no way depends on precise regions, so this
         // shouldn't affect `is_sized`.
-        let gcx = self.tcx().global_tcx();
-        let erased_ty = gcx.lift(&self.tcx().erase_regions(&ty)).unwrap();
+        let gcx = tcx.global_tcx();
+        let erased_ty = gcx.lift(&tcx.erase_regions(&ty)).unwrap();
         if !erased_ty.is_sized(gcx.at(span), self.param_env) {
             // in current MIR construction, all non-control-flow rvalue
             // expressions evaluate through `as_temp` or `into` a return
@@ -1838,7 +1861,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 location.statement_index += 1;
             }
 
-            self.check_terminator(mir, block_data.terminator(), location);
+            self.check_terminator(mir, block_data.terminator(), location, &mut errors_buffer);
             self.check_iscleanup(mir, block_data);
         }
     }
