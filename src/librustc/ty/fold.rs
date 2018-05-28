@@ -671,17 +671,26 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     }
 }
 
-/// Collects all the late-bound regions it finds into a hash set.
+/// Collects all the late-bound regions at the innermost binding level
+/// into a hash set.
 struct LateBoundRegionsCollector {
-    current_depth: u32,
+    current_index: ty::DebruijnIndex,
     regions: FxHashSet<ty::BoundRegion>,
+
+    /// If true, we only want regions that are known to be
+    /// "constrained" when you equate this type with another type. In
+    /// partcular, if you have e.g. `&'a u32` and `&'b u32`, equating
+    /// them constraints `'a == 'b`.  But if you have `<&'a u32 as
+    /// Trait>::Foo` and `<&'b u32 as Trait>::Foo`, normalizing those
+    /// types may mean that `'a` and `'b` don't appear in the results,
+    /// so they are not considered *constrained*.
     just_constrained: bool,
 }
 
 impl LateBoundRegionsCollector {
     fn new(just_constrained: bool) -> Self {
         LateBoundRegionsCollector {
-            current_depth: 1,
+            current_index: ty::DebruijnIndex::INNERMOST,
             regions: FxHashSet(),
             just_constrained,
         }
@@ -690,9 +699,9 @@ impl LateBoundRegionsCollector {
 
 impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
     fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> bool {
-        self.current_depth += 1;
+        self.current_index.shift_in(1);
         let result = t.super_visit_with(self);
-        self.current_depth -= 1;
+        self.current_index.shift_out(1);
         result
     }
 
@@ -712,7 +721,7 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
         match *r {
-            ty::ReLateBound(debruijn, br) if debruijn.depth == self.current_depth => {
+            ty::ReLateBound(debruijn, br) if debruijn == self.current_index => {
                 self.regions.insert(br);
             }
             _ => { }
