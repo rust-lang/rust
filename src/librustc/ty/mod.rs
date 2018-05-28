@@ -36,6 +36,7 @@ use ty::util::{IntTypeExt, Discr};
 use ty::walk::TypeWalker;
 use util::captures::Captures;
 use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
+use arena::SyncDroplessArena;
 
 use serialize::{self, Encodable, Encoder};
 use std::cell::RefCell;
@@ -582,18 +583,72 @@ impl <'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for Ty<'tcx> {
     }
 }
 
+extern {
+    /// A dummy type used to force Slice to by unsized without requiring fat pointers
+    type OpaqueSliceContents;
+}
+
 /// A wrapper for slices with the additional invariant
 /// that the slice is interned and no other slice with
 /// the same contents can exist in the same context.
-/// This means we can use pointer + length for both
+/// This means we can use pointer for both
 /// equality comparisons and hashing.
-#[derive(Debug, RustcEncodable)]
-pub struct Slice<T>([T]);
+#[repr(C)]
+pub struct Slice<T> {
+    len: usize,
+    data: [T; 0],
+    opaque: OpaqueSliceContents,
+}
+
+impl<T: Copy> Slice<T> {
+    #[inline]
+    fn from_arena<'tcx>(arena: &'tcx SyncDroplessArena, slice: &[T]) -> &'tcx Slice<T> {
+        assert!(!mem::needs_drop::<T>());
+        assert!(mem::size_of::<T>() != 0);
+        assert!(slice.len() != 0);
+
+        // Align up the size of the len (usize) field
+        let align = mem::align_of::<T>();
+        let align_mask = align - 1;
+        let offset = mem::size_of::<usize>();
+        let offset = (offset + align_mask) & !align_mask;
+
+        let size = offset + slice.len() * mem::size_of::<T>();
+
+        let mem = arena.alloc_raw(
+            size,
+            cmp::max(mem::align_of::<T>(), mem::align_of::<usize>()));
+        unsafe {
+            let result = &mut *(mem.as_mut_ptr() as *mut Slice<T>);
+            // Write the length
+            result.len = slice.len();
+
+            // Write the elements
+            let arena_slice = slice::from_raw_parts_mut(result.data.as_mut_ptr(), result.len);
+            arena_slice.copy_from_slice(slice);
+
+            result
+        }
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for Slice<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        (**self).fmt(f)
+    }
+}
+
+impl<T: Encodable> Encodable for Slice<T> {
+    #[inline]
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        (**self).encode(s)
+    }
+}
 
 impl<T> Ord for Slice<T> where T: Ord {
     fn cmp(&self, other: &Slice<T>) -> Ordering {
         if self == other { Ordering::Equal } else {
-            <[T] as Ord>::cmp(&self.0, &other.0)
+            <[T] as Ord>::cmp(&**self, &**other)
         }
     }
 }
@@ -601,35 +656,40 @@ impl<T> Ord for Slice<T> where T: Ord {
 impl<T> PartialOrd for Slice<T> where T: PartialOrd {
     fn partial_cmp(&self, other: &Slice<T>) -> Option<Ordering> {
         if self == other { Some(Ordering::Equal) } else {
-            <[T] as PartialOrd>::partial_cmp(&self.0, &other.0)
+            <[T] as PartialOrd>::partial_cmp(&**self, &**other)
         }
     }
 }
 
-impl<T> PartialEq for Slice<T> {
+impl<T: PartialEq> PartialEq for Slice<T> {
     #[inline]
     fn eq(&self, other: &Slice<T>) -> bool {
-        (&self.0 as *const [T]) == (&other.0 as *const [T])
+        (self as *const _) == (other as *const _)
     }
 }
-impl<T> Eq for Slice<T> {}
+impl<T: Eq> Eq for Slice<T> {}
 
 impl<T> Hash for Slice<T> {
+    #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
-        (self.as_ptr(), self.len()).hash(s)
+        (self as *const Slice<T>).hash(s)
     }
 }
 
 impl<T> Deref for Slice<T> {
     type Target = [T];
+    #[inline(always)]
     fn deref(&self) -> &[T] {
-        &self.0
+        unsafe {
+            slice::from_raw_parts(self.data.as_ptr(), self.len)
+        }
     }
 }
 
 impl<'a, T> IntoIterator for &'a Slice<T> {
     type Item = &'a T;
     type IntoIter = <&'a [T] as IntoIterator>::IntoIter;
+    #[inline(always)]
     fn into_iter(self) -> Self::IntoIter {
         self[..].iter()
     }
@@ -638,9 +698,14 @@ impl<'a, T> IntoIterator for &'a Slice<T> {
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Slice<Ty<'tcx>> {}
 
 impl<T> Slice<T> {
+    #[inline(always)]
     pub fn empty<'a>() -> &'a Slice<T> {
+        #[repr(align(64), C)]
+        struct EmptySlice([u8; 64]);
+        static EMPTY_SLICE: EmptySlice = EmptySlice([0; 64]);
+        assert!(mem::align_of::<T>() <= 64);
         unsafe {
-            mem::transmute(slice::from_raw_parts(0x1 as *const T, 0))
+            &*(&EMPTY_SLICE as *const _ as *const Slice<T>)
         }
     }
 }
