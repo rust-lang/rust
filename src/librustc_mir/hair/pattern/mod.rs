@@ -368,9 +368,14 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                     "lower range bound must be less than upper",
                                 );
                                 PatternKind::Wild
-                            },
-                            (RangeEnd::Included, None) |
-                            (RangeEnd::Included, Some(Ordering::Greater)) => {
+                            }
+                            (RangeEnd::Included, Some(Ordering::Equal)) => {
+                                PatternKind::Constant { value: lo }
+                            }
+                            (RangeEnd::Included, Some(Ordering::Less)) => {
+                                PatternKind::Range { lo, hi, end }
+                            }
+                            (RangeEnd::Included, _) => {
                                 let mut err = struct_span_err!(
                                     self.tcx.sess,
                                     lo_expr.span,
@@ -390,12 +395,6 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                 }
                                 err.emit();
                                 PatternKind::Wild
-                            },
-                            (RangeEnd::Included, Some(Ordering::Equal)) => {
-                                PatternKind::Constant { value: lo }
-                            }
-                            (RangeEnd::Included, Some(Ordering::Less)) => {
-                                PatternKind::Range { lo, hi, end }
                             }
                         }
                     }
