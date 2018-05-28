@@ -21,25 +21,15 @@ use mem;
 use usize;
 use ptr::{self, NonNull};
 
-extern {
-    /// An opaque, unsized type. Used for pointers to allocated memory.
-    ///
-    /// This type can only be used behind a pointer like `*mut Opaque` or `ptr::NonNull<Opaque>`.
-    /// Such pointers are similar to C’s `void*` type.
-    pub type Opaque;
-}
-
-impl Opaque {
-    /// Similar to `std::ptr::null`, which requires `T: Sized`.
-    pub fn null() -> *const Self {
-        0 as _
-    }
-
-    /// Similar to `std::ptr::null_mut`, which requires `T: Sized`.
-    pub fn null_mut() -> *mut Self {
-        0 as _
-    }
-}
+/// An opaque, byte-sized type. Used for pointers to allocated memory.
+///
+/// This type can only be used behind a pointer like `*mut Opaque` or `ptr::NonNull<Opaque>`.
+/// Such pointers are similar to C’s `void*` type.
+///
+/// `Opaque` has a size of 1 byte, which allows you to calculate byte offsets
+/// from it using the `offset`, `add` and `sub` methods on raw pointers.
+#[allow(missing_debug_implementations)]
+pub struct Opaque(u8);
 
 /// Represents the combination of a starting address and
 /// a total capacity of the returned block.
@@ -964,7 +954,7 @@ pub unsafe trait Alloc {
     {
         let k = Layout::new::<T>();
         if k.size() > 0 {
-            self.dealloc(ptr.as_opaque(), k);
+            self.dealloc(ptr.cast(), k);
         }
     }
 
@@ -1052,7 +1042,7 @@ pub unsafe trait Alloc {
         match (Layout::array::<T>(n_old), Layout::array::<T>(n_new)) {
             (Ok(ref k_old), Ok(ref k_new)) if k_old.size() > 0 && k_new.size() > 0 => {
                 debug_assert!(k_old.align() == k_new.align());
-                self.realloc(ptr.as_opaque(), k_old.clone(), k_new.size()).map(NonNull::cast)
+                self.realloc(ptr.cast(), k_old.clone(), k_new.size()).map(NonNull::cast)
             }
             _ => {
                 Err(AllocErr)
@@ -1085,7 +1075,7 @@ pub unsafe trait Alloc {
     {
         match Layout::array::<T>(n) {
             Ok(ref k) if k.size() > 0 => {
-                Ok(self.dealloc(ptr.as_opaque(), k.clone()))
+                Ok(self.dealloc(ptr.cast(), k.clone()))
             }
             _ => {
                 Err(AllocErr)

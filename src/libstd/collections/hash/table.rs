@@ -1204,7 +1204,7 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for RawTable<K, V> {
         debug_assert!(!oflo, "should be impossible");
 
         unsafe {
-            Global.dealloc(NonNull::new_unchecked(self.hashes.ptr()).as_opaque(),
+            Global.dealloc(NonNull::new_unchecked(self.hashes.ptr()).cast(),
                            Layout::from_size_align(size, align).unwrap());
             // Remember how everything was allocated out of one buffer
             // during initialization? We only need one call to free here.
