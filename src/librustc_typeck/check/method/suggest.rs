@@ -380,6 +380,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if !static_sources.is_empty() {
                     err.note("found the following associated functions; to be used as methods, \
                               functions must have a `self` parameter");
+                }
+                if static_sources.len() == 1 {
                     if let Some(expr) = rcvr_expr {
                         err.span_suggestion(expr.span.to(span),
                                             "use associated function syntax intead",
@@ -388,6 +390,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         err.help(&format!("try with `{}::{}`",
                                           self.ty_to_string(actual), item_name));
                     }
+
+                    report_candidates(&mut err, static_sources);
+                } else if static_sources.len() > 1 {
 
                     report_candidates(&mut err, static_sources);
                 }
