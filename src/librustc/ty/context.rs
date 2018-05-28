@@ -181,7 +181,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             let ty_struct = TyS {
                 sty: st,
                 flags: flags.flags,
-                region_depth: flags.depth,
+                outer_exclusive_binder: flags.outer_exclusive_binder,
             };
 
             // Make sure we don't end up with inference
@@ -205,7 +205,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             let ty_struct = TyS {
                 sty: st,
                 flags: flags.flags,
-                region_depth: flags.depth,
+                outer_exclusive_binder: flags.outer_exclusive_binder,
             };
 
             // This is safe because all the types the ty_struct can point to

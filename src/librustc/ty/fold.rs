@@ -63,20 +63,22 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.super_visit_with(visitor)
     }
 
-    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
-        self.visit_with(&mut HasEscapingRegionsVisitor { depth: depth })
-    }
-
     /// True if `self` has any late-bound regions that are either
     /// bound by `binder` or bound by some binder outside of `binder`.
     /// If `binder` is `ty::DebruijnIndex::INNERMOST`, this indicates whether
     /// there are any late-bound regions that appear free.
-    fn has_regions_bound_by_or_escaping(&self, binder: ty::DebruijnIndex) -> bool {
-        self.has_regions_escaping_depth(binder.depth - 1)
+    fn has_regions_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
+        self.visit_with(&mut HasEscapingRegionsVisitor { outer_index: binder })
+    }
+
+    /// True if this `self` has any regions that escape `binder` (and
+    /// hence are not bound by it).
+    fn has_regions_bound_above(&self, binder: ty::DebruijnIndex) -> bool {
+        self.has_regions_bound_at_or_above(binder.shifted_in(1))
     }
 
     fn has_escaping_regions(&self) -> bool {
-        self.has_regions_escaping_depth(0)
+        self.has_regions_bound_at_or_above(ty::DebruijnIndex::INNERMOST)
     }
 
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
@@ -523,7 +525,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.has_regions_bound_by_or_escaping(self.current_index) {
+        if !t.has_regions_bound_at_or_above(self.current_index) {
             return t;
         }
 
@@ -623,23 +625,32 @@ pub fn shift_regions<'a, 'gcx, 'tcx, T>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 /// represent the scope to which it is attached, etc. An escaping region represents a bound region
 /// for which this processing has not yet been done.
 struct HasEscapingRegionsVisitor {
-    depth: u32,
+    /// Anything bound by `outer_index` or "above" is escaping
+    outer_index: ty::DebruijnIndex,
 }
 
 impl<'tcx> TypeVisitor<'tcx> for HasEscapingRegionsVisitor {
     fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> bool {
-        self.depth += 1;
+        self.outer_index.shift_in(1);
         let result = t.super_visit_with(self);
-        self.depth -= 1;
+        self.outer_index.shift_out(1);
         result
     }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-        t.region_depth > self.depth
+        // If the outer-exclusive-binder is *strictly greater* than
+        // `outer_index`, that means that `t` contains some content
+        // bound at `outer_index` or above (because
+        // `outer_exclusive_binder` is always 1 higher than the
+        // content in `t`). Therefore, `t` has some escaping regions.
+        t.outer_exclusive_binder > self.outer_index
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
-        r.escapes_depth(self.depth)
+        // If the region is bound by `outer_index` or anything outside
+        // of outer index, then it escapes the binders we have
+        // visited.
+        r.bound_at_or_above_binder(self.outer_index)
     }
 }
 

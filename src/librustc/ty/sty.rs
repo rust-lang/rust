@@ -1332,9 +1332,9 @@ impl RegionKind {
         }
     }
 
-    pub fn escapes_depth(&self, depth: u32) -> bool {
+    pub fn bound_at_or_above_binder(&self, index: DebruijnIndex) -> bool {
         match *self {
-            ty::ReLateBound(debruijn, _) => debruijn.depth > depth,
+            ty::ReLateBound(debruijn, _) => debruijn >= index,
             _ => false,
         }
     }
