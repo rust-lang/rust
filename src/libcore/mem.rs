@@ -635,8 +635,9 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
     }
 }
 
-/// Replaces the value at a mutable location with a new one, returning the old value, without
-/// deinitializing either one.
+/// Moves `src` into the referenced `dest`, returning the previous `dest` value.
+///
+/// Neither value is dropped.
 ///
 /// # Examples
 ///
