@@ -41,6 +41,8 @@ pub fn pkgname(builder: &Builder, component: &str) -> String {
         format!("{}-{}", component, builder.cargo_package_vers())
     } else if component == "rls" {
         format!("{}-{}", component, builder.rls_package_vers())
+    } else if component == "clippy" {
+        format!("{}-{}", component, builder.clippy_package_vers())
     } else if component == "rustfmt" {
         format!("{}-{}", component, builder.rustfmt_package_vers())
     } else if component == "llvm-tools" {
@@ -1183,6 +1185,83 @@ impl Step for Rls {
     }
 }
 
+#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Clippy {
+    pub stage: u32,
+    pub target: Interned<String>,
+}
+
+impl Step for Clippy {
+    type Output = Option<PathBuf>;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("clippy")
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Clippy {
+            stage: run.builder.top_stage,
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
+        let stage = self.stage;
+        let target = self.target;
+        assert!(builder.config.extended);
+
+        builder.info(&format!("Dist clippy stage{} ({})", stage, target));
+        let src = builder.src.join("src/tools/clippy");
+        let release_num = builder.release_num("clippy");
+        let name = pkgname(builder, "clippy");
+        let version = builder.clippy_info.version(builder, &release_num);
+
+        let tmp = tmpdir(builder);
+        let image = tmp.join("clippy-image");
+        drop(fs::remove_dir_all(&image));
+        t!(fs::create_dir_all(&image));
+
+        // Prepare the image directory
+        // We expect clippy to build, because we've exited this step above if tool
+        // state for clippy isn't testing.
+        let clippy = builder.ensure(tool::Clippy {
+            compiler: builder.compiler(stage, builder.config.build),
+            target, extra_features: Vec::new()
+        }).or_else(|| { println!("Unable to build clippy, skipping dist"); None })?;
+
+        builder.install(&clippy, &image.join("bin"), 0o755);
+        let doc = image.join("share/doc/clippy");
+        builder.install(&src.join("README.md"), &doc, 0o644);
+        builder.install(&src.join("LICENSE"), &doc, 0o644);
+
+        // Prepare the overlay
+        let overlay = tmp.join("clippy-overlay");
+        drop(fs::remove_dir_all(&overlay));
+        t!(fs::create_dir_all(&overlay));
+        builder.install(&src.join("README.md"), &overlay, 0o644);
+        builder.install(&src.join("LICENSE-MIT"), &overlay, 0o644);
+        builder.install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
+        builder.create(&overlay.join("version"), &version);
+
+        // Generate the installer tarball
+        let mut cmd = rust_installer(builder);
+        cmd.arg("generate")
+           .arg("--product-name=Rust")
+           .arg("--rel-manifest-dir=rustlib")
+           .arg("--success-message=clippy-ready-to-serve.")
+           .arg("--image-dir").arg(&image)
+           .arg("--work-dir").arg(&tmpdir(builder))
+           .arg("--output-dir").arg(&distdir(builder))
+           .arg("--non-installed-overlay").arg(&overlay)
+           .arg(format!("--package-name={}-{}", name, target))
+           .arg("--legacy-manifest-dirs=rustlib,cargo")
+           .arg("--component-name=clippy-preview");
+
+        builder.run(&mut cmd);
+        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target)))
+    }
+}
 
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rustfmt {
@@ -1304,6 +1383,7 @@ impl Step for Extended {
         let rustfmt_installer = builder.ensure(Rustfmt { stage, target });
         let rls_installer = builder.ensure(Rls { stage, target });
         let llvm_tools_installer = builder.ensure(LlvmTools { stage, target });
+        let clippy_installer = builder.ensure(Clippy { stage, target });
         let mingw_installer = builder.ensure(Mingw { host: target });
         let analysis_installer = builder.ensure(Analysis {
             compiler: builder.compiler(stage, self.host),
@@ -1340,6 +1420,7 @@ impl Step for Extended {
         tarballs.push(rustc_installer);
         tarballs.push(cargo_installer);
         tarballs.extend(rls_installer.clone());
+        tarballs.extend(clippy_installer.clone());
         tarballs.extend(rustfmt_installer.clone());
         tarballs.extend(llvm_tools_installer.clone());
         tarballs.push(analysis_installer);
@@ -1409,6 +1490,9 @@ impl Step for Extended {
             if rls_installer.is_none() {
                 contents = filter(&contents, "rls");
             }
+            if clippy_installer.is_none() {
+                contents = filter(&contents, "clippy");
+            }
             if rustfmt_installer.is_none() {
                 contents = filter(&contents, "rustfmt");
             }
@@ -1446,6 +1530,9 @@ impl Step for Extended {
             if rls_installer.is_some() {
                 prepare("rls");
             }
+            if clippy_installer.is_some() {
+                prepare("clippy");
+            }
 
             // create an 'uninstall' package
             builder.install(&etc.join("pkg/postinstall"), &pkg.join("uninstall"), 0o755);
@@ -1474,6 +1561,8 @@ impl Step for Extended {
                     format!("{}-{}", name, target)
                 } else if name == "rls" {
                     "rls-preview".to_string()
+                } else if name == "clippy" {
+                    "clippy-preview".to_string()
                 } else {
                     name.to_string()
                 };
@@ -1489,6 +1578,9 @@ impl Step for Extended {
             prepare("rust-std");
             if rls_installer.is_some() {
                 prepare("rls");
+            }
+            if clippy_installer.is_some() {
+                prepare("clippy");
             }
             if target.contains("windows-gnu") {
                 prepare("rust-mingw");
@@ -1570,6 +1662,18 @@ impl Step for Extended {
                                 .arg("-out").arg(exe.join("RlsGroup.wxs"))
                                 .arg("-t").arg(etc.join("msi/remove-duplicates.xsl")));
             }
+            if clippy_installer.is_some() {
+                builder.run(Command::new(&heat)
+                                .current_dir(&exe)
+                                .arg("dir")
+                                .arg("clippy")
+                                .args(&heat_flags)
+                                .arg("-cg").arg("ClippyGroup")
+                                .arg("-dr").arg("Clippy")
+                                .arg("-var").arg("var.ClippyDir")
+                                .arg("-out").arg(exe.join("ClippyGroup.wxs"))
+                                .arg("-t").arg(etc.join("msi/remove-duplicates.xsl")));
+            }
             builder.run(Command::new(&heat)
                             .current_dir(&exe)
                             .arg("dir")
@@ -1612,6 +1716,9 @@ impl Step for Extended {
                 if rls_installer.is_some() {
                     cmd.arg("-dRlsDir=rls");
                 }
+                if clippy_installer.is_some() {
+                    cmd.arg("-dClippyDir=clippy");
+                }
                 if target.contains("windows-gnu") {
                     cmd.arg("-dGccDir=rust-mingw");
                 }
@@ -1626,6 +1733,9 @@ impl Step for Extended {
             candle("StdGroup.wxs".as_ref());
             if rls_installer.is_some() {
                 candle("RlsGroup.wxs".as_ref());
+            }
+            if clippy_installer.is_some() {
+                candle("ClippyGroup.wxs".as_ref());
             }
             candle("AnalysisGroup.wxs".as_ref());
 
@@ -1655,6 +1765,9 @@ impl Step for Extended {
 
             if rls_installer.is_some() {
                 cmd.arg("RlsGroup.wixobj");
+            }
+            if clippy_installer.is_some() {
+                cmd.arg("ClippyGroup.wixobj");
             }
 
             if target.contains("windows-gnu") {
@@ -1741,6 +1854,7 @@ impl Step for HashSign {
         cmd.arg(builder.rust_package_vers());
         cmd.arg(builder.package_vers(&builder.release_num("cargo")));
         cmd.arg(builder.package_vers(&builder.release_num("rls")));
+        cmd.arg(builder.package_vers(&builder.release_num("clippy")));
         cmd.arg(builder.package_vers(&builder.release_num("rustfmt")));
         cmd.arg(builder.llvm_tools_package_vers());
         cmd.arg(addr);
