@@ -989,11 +989,11 @@ impl<'a, 'gcx, 'tcx> ParamTy {
 ///     for<'a> fn(for<'b> fn(&'b isize, &'a isize), &'a char)
 ///     ^          ^            |        |         |
 ///     |          |            |        |         |
-///     |          +------------+ 1      |         |
+///     |          +------------+ 0      |         |
 ///     |                                |         |
-///     +--------------------------------+ 2       |
+///     +--------------------------------+ 1       |
 ///     |                                          |
-///     +------------------------------------------+ 1
+///     +------------------------------------------+ 0
 ///
 /// In this type, there are two binders (the outer fn and the inner
 /// fn). We need to be able to determine, for any given region, which
@@ -1005,9 +1005,9 @@ impl<'a, 'gcx, 'tcx> ParamTy {
 ///
 /// Let's start with the reference type `&'b isize` that is the first
 /// argument to the inner function. This region `'b` is assigned a De
-/// Bruijn index of 1, meaning "the innermost binder" (in this case, a
+/// Bruijn index of 0, meaning "the innermost binder" (in this case, a
 /// fn). The region `'a` that appears in the second argument type (`&'a
-/// isize`) would then be assigned a De Bruijn index of 2, meaning "the
+/// isize`) would then be assigned a De Bruijn index of 1, meaning "the
 /// second-innermost binder". (These indices are written on the arrays
 /// in the diagram).
 ///
@@ -1017,7 +1017,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
 /// the outermost fn. But this time, this reference is not nested within
 /// any other binders (i.e., it is not an argument to the inner fn, but
 /// rather the outer one). Therefore, in this case, it is assigned a
-/// De Bruijn index of 1, because the innermost binder in that location
+/// De Bruijn index of 0, because the innermost binder in that location
 /// is the outer fn.
 ///
 /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
@@ -1025,7 +1025,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
 pub struct DebruijnIndex {
     /// We maintain the invariant that this is never 0. So 1 indicates
     /// the innermost binder.
-    depth: u32,
+    index: u32,
 }
 
 pub type Region<'tcx> = &'tcx RegionKind;
@@ -1259,7 +1259,7 @@ impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
 }
 
 impl DebruijnIndex {
-    pub const INNERMOST: DebruijnIndex = DebruijnIndex { depth: 1 };
+    pub const INNERMOST: DebruijnIndex = DebruijnIndex { index: 0 };
 
     /// Returns the resulting index when this value is moved into
     /// `amount` number of new binders. So e.g. if you had
@@ -1273,7 +1273,7 @@ impl DebruijnIndex {
     /// you would need to shift the index for `'a` into 1 new binder.
     #[must_use]
     pub const fn shifted_in(self, amount: u32) -> DebruijnIndex {
-        DebruijnIndex { depth: self.depth + amount }
+        DebruijnIndex { index: self.index + amount }
     }
 
     /// Update this index in place by shifting it "in" through
@@ -1286,7 +1286,7 @@ impl DebruijnIndex {
     /// `amount` number of new binders.
     #[must_use]
     pub const fn shifted_out(self, amount: u32) -> DebruijnIndex {
-        DebruijnIndex { depth: self.depth - amount }
+        DebruijnIndex { index: self.index - amount }
     }
 
     /// Update in place by shifting out from `amount` binders.
@@ -1315,12 +1315,12 @@ impl DebruijnIndex {
     /// bound by one of the binders we are shifting out of, that is an
     /// error (and should fail an assertion failure).
     pub fn shifted_out_to_binder(self, to_binder: DebruijnIndex) -> Self {
-        self.shifted_out(to_binder.depth - Self::INNERMOST.depth)
+        self.shifted_out(to_binder.index - Self::INNERMOST.index)
     }
 }
 
 impl_stable_hash_for!(struct DebruijnIndex {
-    depth
+    index
 });
 
 /// Region utilities
