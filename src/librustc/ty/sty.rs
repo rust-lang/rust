@@ -1025,7 +1025,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
 pub struct DebruijnIndex {
     /// We maintain the invariant that this is never 0. So 1 indicates
     /// the innermost binder.
-    pub depth: u32,
+    depth: u32,
 }
 
 pub type Region<'tcx> = &'tcx RegionKind;
