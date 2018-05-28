@@ -10,7 +10,7 @@
 
 use rustc_target::spec::abi::{self, Abi};
 use ast::{AngleBracketedArgs, ParenthesizedArgData, AttrStyle, BareFnTy};
-use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
+use ast::{Outlives, TraitTyParamBound, TraitBoundModifier};
 use ast::Unsafety;
 use ast::{Mod, AnonConst, Arg, Arm, Attribute, BindingMode, TraitItemKind};
 use ast::Block;
@@ -36,7 +36,7 @@ use ast::{VariantData, StructField};
 use ast::StrStyle;
 use ast::SelfKind;
 use ast::{TraitItem, TraitRef, TraitObjectSyntax};
-use ast::{Ty, TyKind, TypeBinding, TyParamBounds};
+use ast::{Ty, TyKind, TypeBinding, ParamBounds};
 use ast::{Visibility, VisibilityKind, WhereClause, CrateSugar};
 use ast::{UseTree, UseTreeKind};
 use ast::{BinOpKind, UnOp};
@@ -4735,7 +4735,7 @@ impl<'a> Parser<'a> {
     // LT_BOUND = LIFETIME (e.g. `'a`)
     // TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
     // TY_BOUND_NOPAREN = [?] [for<LT_PARAM_DEFS>] SIMPLE_PATH (e.g. `?for<'a: 'b> m::Trait<'a>`)
-    fn parse_ty_param_bounds_common(&mut self, allow_plus: bool) -> PResult<'a, TyParamBounds> {
+    fn parse_ty_param_bounds_common(&mut self, allow_plus: bool) -> PResult<'a, ParamBounds> {
         let mut bounds = Vec::new();
         loop {
             // This needs to be syncronized with `Token::can_begin_bound`.
@@ -4752,7 +4752,7 @@ impl<'a> Parser<'a> {
                         self.span_err(question_span,
                                       "`?` may only modify trait bounds, not lifetime bounds");
                     }
-                    bounds.push(RegionTyParamBound(self.expect_lifetime()));
+                    bounds.push(Outlives(RegionTyParamBound(self.expect_lifetime())));
                     if has_parens {
                         self.expect(&token::CloseDelim(token::Paren))?;
                         self.span_err(self.prev_span,
@@ -4784,7 +4784,7 @@ impl<'a> Parser<'a> {
         return Ok(bounds);
     }
 
-    fn parse_ty_param_bounds(&mut self) -> PResult<'a, TyParamBounds> {
+    fn parse_ty_param_bounds(&mut self) -> PResult<'a, ParamBounds> {
         self.parse_ty_param_bounds_common(true)
     }
 
@@ -4823,17 +4823,17 @@ impl<'a> Parser<'a> {
 
         Ok(GenericParam {
             ident,
-            attrs: preceding_attrs.into(),
             id: ast::DUMMY_NODE_ID,
+            attrs: preceding_attrs.into(),
+            bounds,
             kind: GenericParamKind::Type {
-                bounds,
                 default,
             }
         })
     }
 
     /// Parses the following grammar:
-    ///     TraitItemAssocTy = Ident ["<"...">"] [":" [TyParamBounds]] ["where" ...] ["=" Ty]
+    ///     TraitItemAssocTy = Ident ["<"...">"] [":" [ParamBounds]] ["where" ...] ["=" Ty]
     fn parse_trait_item_assoc_ty(&mut self)
         -> PResult<'a, (Ident, TraitItemKind, ast::Generics)> {
         let ident = self.parse_ident()?;
@@ -4868,7 +4868,9 @@ impl<'a> Parser<'a> {
                 let lifetime = self.expect_lifetime();
                 // Parse lifetime parameter.
                 let bounds = if self.eat(&token::Colon) {
-                    self.parse_lt_param_bounds()
+                    self.parse_lt_param_bounds().iter()
+                        .map(|bound| ast::ParamBound::Outlives(*bound))
+                        .collect()
                 } else {
                     Vec::new()
                 };
@@ -4876,9 +4878,9 @@ impl<'a> Parser<'a> {
                     ident: lifetime.ident,
                     id: lifetime.id,
                     attrs: attrs.into(),
+                    bounds,
                     kind: ast::GenericParamKind::Lifetime {
                         lifetime,
-                        bounds,
                     }
                 });
                 if seen_ty_param {

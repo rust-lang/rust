@@ -77,7 +77,7 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     /// Table node id of lifetime parameter definition -> substituted lifetime
     pub lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
     /// Table DefId of `impl Trait` in argument position -> bounds
-    pub impl_trait_bounds: RefCell<FxHashMap<DefId, Vec<clean::TyParamBound>>>,
+    pub impl_trait_bounds: RefCell<FxHashMap<DefId, Vec<clean::ParamBound>>>,
     pub send_trait: Option<DefId>,
     pub fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
     pub all_fake_def_ids: RefCell<FxHashSet<DefId>>,

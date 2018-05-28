@@ -701,9 +701,9 @@ impl<'a> LoweringContext<'a> {
                     id: def_node_id,
                     span,
                     pure_wrt_drop: false,
+                    bounds: vec![].into(),
                     kind: hir::GenericParamKind::Lifetime {
                         name: hir_name,
-                        bounds: vec![].into(),
                         in_band: true,
                         lifetime: hir::Lifetime {
                             id: def_node_id,
@@ -1127,7 +1127,7 @@ impl<'a> LoweringContext<'a> {
                             Some(self.lower_poly_trait_ref(ty, itctx))
                         }
                         TraitTyParamBound(_, TraitBoundModifier::Maybe) => None,
-                        RegionTyParamBound(ref lifetime) => {
+                        Outlives(ref lifetime) => {
                             if lifetime_bound.is_none() {
                                 lifetime_bound = Some(self.lower_lifetime(lifetime));
                             }
@@ -1246,16 +1246,16 @@ impl<'a> LoweringContext<'a> {
                             span,
                         );
 
-                        let hir_bounds = self.lower_bounds(bounds, itctx);
+                        let hir_bounds = self.lower_param_bounds(bounds, itctx);
                         // Set the name to `impl Bound1 + Bound2`
                         let name = Symbol::intern(&pprust::ty_to_string(t));
                         self.in_band_ty_params.push(hir::GenericParam {
                             id: def_node_id,
                             span,
                             pure_wrt_drop: false,
+                            bounds: hir_bounds,
                             kind: hir::GenericParamKind::Type {
                                 name,
-                                bounds: hir_bounds,
                                 default: None,
                                 synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
                                 attrs: P::new(),
@@ -1299,7 +1299,7 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         exist_ty_id: NodeId,
         parent_index: DefIndex,
-        bounds: &hir::TyParamBounds,
+        bounds: &hir::ParamBounds,
     ) -> (HirVec<hir::Lifetime>, HirVec<hir::GenericParam>) {
         // This visitor walks over impl trait bounds and creates defs for all lifetimes which
         // appear in the bounds, excluding lifetimes that are created within the bounds.
@@ -1420,9 +1420,9 @@ impl<'a> LoweringContext<'a> {
                         id: def_node_id,
                         span: lifetime.span,
                         pure_wrt_drop: false,
+                        bounds: vec![].into(),
                         kind: hir::GenericParamKind::Lifetime {
                             name,
-                            bounds: vec![].into(),
                             in_band: false,
                             lifetime: hir::Lifetime {
                                 id: def_node_id,
@@ -1882,18 +1882,18 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn lower_ty_param_bound(
+    fn lower_param_bound(
         &mut self,
-        tpb: &TyParamBound,
+        tpb: &ParamBound,
         itctx: ImplTraitContext,
-    ) -> hir::TyParamBound {
+    ) -> hir::ParamBound {
         match *tpb {
             TraitTyParamBound(ref ty, modifier) => hir::TraitTyParamBound(
                 self.lower_poly_trait_ref(ty, itctx),
                 self.lower_trait_bound_modifier(modifier),
             ),
-            RegionTyParamBound(ref lifetime) => {
-                hir::RegionTyParamBound(self.lower_lifetime(lifetime))
+            Outlives(ref lifetime) => {
+                hir::Outlives(self.lower_lifetime(lifetime))
             }
         }
     }
@@ -1935,7 +1935,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_generic_params(
         &mut self,
         params: &Vec<GenericParam>,
-        add_bounds: &NodeMap<Vec<TyParamBound>>,
+        add_bounds: &NodeMap<Vec<ParamBound>>,
         itctx: ImplTraitContext,
     ) -> hir::HirVec<hir::GenericParam> {
         params.iter().map(|param| self.lower_generic_param(param, add_bounds, itctx)).collect()
@@ -1943,11 +1943,12 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_generic_param(&mut self,
                            param: &GenericParam,
-                           add_bounds: &NodeMap<Vec<TyParamBound>>,
+                           add_bounds: &NodeMap<Vec<ParamBound>>,
                            itctx: ImplTraitContext)
                            -> hir::GenericParam {
+        let mut bounds = self.lower_param_bounds(&param.bounds, itctx);
         match param.kind {
-            GenericParamKind::Lifetime { ref bounds, ref lifetime } => {
+            GenericParamKind::Lifetime { ref lifetime } => {
                 let was_collecting_in_band = self.is_collecting_in_band_lifetimes;
                 self.is_collecting_in_band_lifetimes = false;
 
@@ -1956,9 +1957,9 @@ impl<'a> LoweringContext<'a> {
                     id: lifetime.id,
                     span: lifetime.span,
                     pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
+                    bounds,
                     kind: hir::GenericParamKind::Lifetime {
                         name: lifetime.name,
-                        bounds: bounds.iter().map(|lt| self.lower_lifetime(lt)).collect(),
                         in_band: false,
                         lifetime,
                     }
@@ -1968,7 +1969,7 @@ impl<'a> LoweringContext<'a> {
 
                 param
             }
-            GenericParamKind::Type { ref bounds, ref default } => {
+            GenericParamKind::Type { ref default, .. } => {
                 let mut name = self.lower_ident(param.ident);
 
                 // Don't expose `Self` (recovered "keyword used as ident" parse error).
@@ -1978,11 +1979,10 @@ impl<'a> LoweringContext<'a> {
                     name = Symbol::gensym("Self");
                 }
 
-                let mut bounds = self.lower_bounds(bounds, itctx);
                 let add_bounds = add_bounds.get(&param.id).map_or(&[][..], |x| &x);
                 if !add_bounds.is_empty() {
                     bounds = bounds.into_iter()
-                                   .chain(self.lower_bounds(add_bounds, itctx).into_iter())
+                                   .chain(self.lower_param_bounds(add_bounds, itctx).into_iter())
                                    .collect();
                 }
 
@@ -1990,9 +1990,9 @@ impl<'a> LoweringContext<'a> {
                     id: self.lower_node_id(param.id).node_id,
                     span: param.ident.span,
                     pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
+                    bounds,
                     kind: hir::GenericParamKind::Type {
                         name,
-                        bounds,
                         default: default.as_ref().map(|x| {
                             self.lower_ty(x, ImplTraitContext::Disallowed)
                         }),
@@ -2107,7 +2107,7 @@ impl<'a> LoweringContext<'a> {
                                     // Ignore `?Trait` bounds.
                                     // Tthey were copied into type parameters already.
                                     TraitTyParamBound(_, TraitBoundModifier::Maybe) => None,
-                                    _ => Some(this.lower_ty_param_bound(
+                                    _ => Some(this.lower_param_bound(
                                         bound,
                                         ImplTraitContext::Disallowed,
                                     )),
@@ -2228,15 +2228,9 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_bounds(
-        &mut self,
-        bounds: &[TyParamBound],
-        itctx: ImplTraitContext,
-    ) -> hir::TyParamBounds {
-        bounds
-            .iter()
-            .map(|bound| self.lower_ty_param_bound(bound, itctx))
-            .collect()
+    fn lower_param_bounds(&mut self, bounds: &[ParamBound], itctx: ImplTraitContext)
+        -> hir::ParamBounds {
+        bounds.iter().map(|bound| self.lower_param_bound(bound, itctx)).collect()
     }
 
     fn lower_block(&mut self, b: &Block, targeted_by_break: bool) -> P<hir::Block> {
@@ -2422,7 +2416,7 @@ impl<'a> LoweringContext<'a> {
                 )
             }
             ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref items) => {
-                let bounds = self.lower_bounds(bounds, ImplTraitContext::Disallowed);
+                let bounds = self.lower_param_bounds(bounds, ImplTraitContext::Disallowed);
                 let items = items
                     .iter()
                     .map(|item| self.lower_trait_item_ref(item))
@@ -2437,7 +2431,7 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::TraitAlias(ref generics, ref bounds) => hir::ItemTraitAlias(
                 self.lower_generics(generics, ImplTraitContext::Disallowed),
-                self.lower_bounds(bounds, ImplTraitContext::Disallowed),
+                self.lower_param_bounds(bounds, ImplTraitContext::Disallowed),
             ),
             ItemKind::MacroDef(..) | ItemKind::Mac(..) => panic!("Shouldn't still be around"),
         }
@@ -2664,7 +2658,7 @@ impl<'a> LoweringContext<'a> {
             TraitItemKind::Type(ref bounds, ref default) => (
                 self.lower_generics(&i.generics, ImplTraitContext::Disallowed),
                 hir::TraitItemKind::Type(
-                    self.lower_bounds(bounds, ImplTraitContext::Disallowed),
+                    self.lower_param_bounds(bounds, ImplTraitContext::Disallowed),
                     default
                         .as_ref()
                         .map(|x| self.lower_ty(x, ImplTraitContext::Disallowed)),

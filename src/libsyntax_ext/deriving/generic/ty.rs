@@ -219,7 +219,7 @@ fn mk_ty_param(cx: &ExtCtxt,
     let bounds = bounds.iter()
         .map(|b| {
             let path = b.to_path(cx, span, self_ident, self_generics);
-            cx.typarambound(path)
+            cx.ty_param_bound(path)
         })
         .collect();
     cx.typaram(span, cx.ident_of(name), attrs.to_owned(), bounds, None)
@@ -261,9 +261,8 @@ impl<'a> LifetimeBounds<'a> {
             .iter()
             .map(|&(lt, ref bounds)| {
                 let bounds = bounds.iter()
-                    .map(|b| cx.lifetime(span, Ident::from_str(b)))
-                    .collect();
-                cx.lifetime_def(span, Ident::from_str(lt), vec![], bounds)
+                    .map(|b| ast::ParamBound::Outlives(cx.lifetime(span, Ident::from_str(b))));
+                cx.lifetime_def(span, Ident::from_str(lt), vec![], bounds.collect())
             })
             .chain(self.bounds
                 .iter()

@@ -201,7 +201,7 @@ pub struct Trait {
     pub name: Name,
     pub items: hir::HirVec<hir::TraitItem>,
     pub generics: hir::Generics,
-    pub bounds: hir::HirVec<hir::TyParamBound>,
+    pub bounds: hir::HirVec<hir::ParamBound>,
     pub attrs: hir::HirVec<ast::Attribute>,
     pub id: ast::NodeId,
     pub whence: Span,

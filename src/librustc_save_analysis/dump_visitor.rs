@@ -718,7 +718,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         &mut self,
         item: &'l ast::Item,
         generics: &'l ast::Generics,
-        trait_refs: &'l ast::TyParamBounds,
+        trait_refs: &'l ast::ParamBounds,
         methods: &'l [ast::TraitItem],
     ) {
         let name = item.ident.to_string();
@@ -762,7 +762,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         for super_bound in trait_refs.iter() {
             let trait_ref = match *super_bound {
                 ast::TraitTyParamBound(ref trait_ref, _) => trait_ref,
-                ast::RegionTyParamBound(..) => {
+                ast::Outlives(..) => {
                     continue;
                 }
             };
@@ -1487,8 +1487,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
     fn visit_generics(&mut self, generics: &'l ast::Generics) {
         generics.params.iter().for_each(|param| match param.kind {
             ast::GenericParamKind::Lifetime { .. } => {}
-            ast::GenericParamKind::Type { ref bounds, ref default, .. } => {
-                for bound in bounds {
+            ast::GenericParamKind::Type { ref default, .. } => {
+                for bound in &param.bounds {
                     if let ast::TraitTyParamBound(ref trait_ref, _) = *bound {
                         self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)
                     }

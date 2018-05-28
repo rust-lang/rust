@@ -184,9 +184,9 @@ impl_stable_hash_for!(struct hir::GenericArgs {
     parenthesized
 });
 
-impl_stable_hash_for!(enum hir::TyParamBound {
+impl_stable_hash_for!(enum hir::ParamBound {
     TraitTyParamBound(poly_trait_ref, trait_bound_modifier),
-    RegionTyParamBound(lifetime)
+    Outlives(lifetime)
 });
 
 impl_stable_hash_for!(enum hir::TraitBoundModifier {
@@ -198,6 +198,7 @@ impl_stable_hash_for!(struct hir::GenericParam {
     id,
     span,
     pure_wrt_drop,
+    bounds,
     kind
 });
 
@@ -207,16 +208,13 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::GenericParamKind {
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
-            hir::GenericParamKind::Lifetime { name, ref bounds, in_band,
-                                              ref lifetime } => {
+            hir::GenericParamKind::Lifetime { name, in_band, ref lifetime } => {
                 name.hash_stable(hcx, hasher);
-                bounds.hash_stable(hcx, hasher);
                 in_band.hash_stable(hcx, hasher);
                 lifetime.hash_stable(hcx, hasher);
             }
-            hir::GenericParamKind::Type { name, ref bounds, ref default, synthetic, attrs } => {
+            hir::GenericParamKind::Type { name, ref default, synthetic, attrs } => {
                 name.hash_stable(hcx, hasher);
-                bounds.hash_stable(hcx, hasher);
                 default.hash_stable(hcx, hasher);
                 synthetic.hash_stable(hcx, hasher);
                 attrs.hash_stable(hcx, hasher);

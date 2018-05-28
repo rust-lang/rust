@@ -104,7 +104,7 @@ pub fn assoc_const_signature(
 pub fn assoc_type_signature(
     id: NodeId,
     ident: ast::Ident,
-    bounds: Option<&ast::TyParamBounds>,
+    bounds: Option<&ast::ParamBounds>,
     default: Option<&ast::Ty>,
     scx: &SaveContext,
 ) -> Option<Signature> {
@@ -623,22 +623,22 @@ impl Sig for ast::Generics {
                 start: offset + text.len(),
                 end: offset + text.len() + param_text.len(),
             });
-            match param.kind {
-                ast::GenericParamKind::Lifetime { ref bounds, .. } => {
-                    if !bounds.is_empty() {
-                        param_text.push_str(": ");
-                        let bounds = bounds.iter()
-                            .map(|l| l.ident.to_string())
+            if !param.bounds.is_empty() {
+                param_text.push_str(": ");
+                match param.kind {
+                    ast::GenericParamKind::Lifetime { .. } => {
+                        let bounds = param.bounds.iter()
+                            .map(|bound| match bound {
+                                ast::ParamBound::Outlives(lt) => lt.ident.to_string(),
+                                _ => panic!(),
+                            })
                             .collect::<Vec<_>>()
                             .join(" + ");
                         param_text.push_str(&bounds);
                         // FIXME add lifetime bounds refs.
                     }
-                }
-                ast::GenericParamKind::Type { ref bounds, .. } => {
-                    if !bounds.is_empty() {
-                        param_text.push_str(": ");
-                        param_text.push_str(&pprust::bounds_to_string(bounds));
+                    ast::GenericParamKind::Type { .. } => {
+                        param_text.push_str(&pprust::bounds_to_string(&param.bounds));
                         // FIXME descend properly into bounds.
                     }
                 }
@@ -841,7 +841,7 @@ fn name_and_generics(
 fn make_assoc_type_signature(
     id: NodeId,
     ident: ast::Ident,
-    bounds: Option<&ast::TyParamBounds>,
+    bounds: Option<&ast::ParamBounds>,
     default: Option<&ast::Ty>,
     scx: &SaveContext,
 ) -> Result {

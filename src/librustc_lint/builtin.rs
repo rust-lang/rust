@@ -1537,14 +1537,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
         }
         // The parameters must not have bounds
         for param in type_alias_generics.params.iter() {
-            let spans: Vec<_> = match param.kind {
-                GenericParamKind::Lifetime { ref bounds, .. } => {
-                    bounds.iter().map(|b| b.span).collect()
-                }
-                GenericParamKind::Type { ref bounds, .. } => {
-                    bounds.iter().map(|b| b.span()).collect()
-                }
-            };
+            let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
             if !spans.is_empty() {
                 let mut err = cx.struct_span_lint(
                     TYPE_ALIAS_BOUNDS,

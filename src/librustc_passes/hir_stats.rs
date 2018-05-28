@@ -203,8 +203,8 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_impl_item(self, ii)
     }
 
-    fn visit_ty_param_bound(&mut self, bounds: &'v hir::TyParamBound) {
-        self.record("TyParamBound", Id::None, bounds);
+    fn visit_ty_param_bound(&mut self, bounds: &'v hir::ParamBound) {
+        self.record("ParamBound", Id::None, bounds);
         hir_visit::walk_ty_param_bound(self, bounds)
     }
 
@@ -322,8 +322,8 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_impl_item(self, ii)
     }
 
-    fn visit_ty_param_bound(&mut self, bounds: &'v ast::TyParamBound) {
-        self.record("TyParamBound", Id::None, bounds);
+    fn visit_ty_param_bound(&mut self, bounds: &'v ast::ParamBound) {
+        self.record("ParamBound", Id::None, bounds);
         ast_visit::walk_ty_param_bound(self, bounds)
     }
 

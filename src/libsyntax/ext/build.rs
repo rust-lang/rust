@@ -68,18 +68,18 @@ pub trait AstBuilder {
                span: Span,
                id: ast::Ident,
                attrs: Vec<ast::Attribute>,
-               bounds: ast::TyParamBounds,
+               bounds: ast::ParamBounds,
                default: Option<P<ast::Ty>>) -> ast::GenericParam;
 
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef;
     fn poly_trait_ref(&self, span: Span, path: ast::Path) -> ast::PolyTraitRef;
-    fn typarambound(&self, path: ast::Path) -> ast::TyParamBound;
+    fn ty_param_bound(&self, path: ast::Path) -> ast::ParamBound;
     fn lifetime(&self, span: Span, ident: ast::Ident) -> ast::Lifetime;
     fn lifetime_def(&self,
                     span: Span,
                     ident: ast::Ident,
                     attrs: Vec<ast::Attribute>,
-                    bounds: Vec<ast::Lifetime>)
+                    bounds: ast::ParamBounds)
                     -> ast::GenericParam;
 
     // statements
@@ -436,14 +436,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                span: Span,
                ident: ast::Ident,
                attrs: Vec<ast::Attribute>,
-               bounds: ast::TyParamBounds,
+               bounds: ast::ParamBounds,
                default: Option<P<ast::Ty>>) -> ast::GenericParam {
         ast::GenericParam {
             ident: ident.with_span_pos(span),
             id: ast::DUMMY_NODE_ID,
             attrs: attrs.into(),
+            bounds,
             kind: ast::GenericParamKind::Type {
-                bounds,
                 default,
             }
         }
@@ -464,7 +464,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         }
     }
 
-    fn typarambound(&self, path: ast::Path) -> ast::TyParamBound {
+    fn ty_param_bound(&self, path: ast::Path) -> ast::ParamBound {
         ast::TraitTyParamBound(self.poly_trait_ref(path.span, path), ast::TraitBoundModifier::None)
     }
 
@@ -476,16 +476,16 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                     span: Span,
                     ident: ast::Ident,
                     attrs: Vec<ast::Attribute>,
-                    bounds: Vec<ast::Lifetime>)
+                    bounds: ast::ParamBounds)
                     -> ast::GenericParam {
         let lifetime = self.lifetime(span, ident);
         ast::GenericParam {
             ident: lifetime.ident,
             id: lifetime.id,
             attrs: attrs.into(),
+            bounds,
             kind: ast::GenericParamKind::Lifetime {
                 lifetime,
-                bounds,
             }
         }
     }

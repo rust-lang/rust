@@ -813,8 +813,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         for param in &generics.params {
             match param.kind {
                 GenericParamKind::Lifetime { .. } => self.visit_generic_param(param),
-                GenericParamKind::Type { ref bounds, ref default, .. } => {
-                    for bound in bounds {
+                GenericParamKind::Type { ref default, .. } => {
+                    for bound in &param.bounds {
                         self.visit_ty_param_bound(bound);
                     }
 

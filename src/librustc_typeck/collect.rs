@@ -315,9 +315,7 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
         let from_ty_params =
             ast_generics.params.iter()
                 .filter_map(|param| match param.kind {
-                    GenericParamKind::Type { ref bounds, .. } if param.id == param_id => {
-                        Some(bounds)
-                    }
+                    GenericParamKind::Type { .. } if param.id == param_id => Some(&param.bounds),
                     _ => None
                 })
                 .flat_map(|bounds| bounds.iter())
@@ -1252,7 +1250,7 @@ fn impl_polarity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 // Is it marked with ?Sized
 fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
-                                ast_bounds: &[hir::TyParamBound],
+                                ast_bounds: &[hir::ParamBound],
                                 span: Span) -> bool
 {
     let tcx = astconv.tcx();
@@ -1445,13 +1443,15 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         index += 1;
 
         match param.kind {
-            GenericParamKind::Lifetime { ref bounds, .. } => {
-                for bound in bounds {
-                    let bound_region = AstConv::ast_region_to_region(&icx, bound, None);
-                    let outlives =
-                        ty::Binder::bind(ty::OutlivesPredicate(region, bound_region));
-                    predicates.push(outlives.to_predicate());
-                }
+            GenericParamKind::Lifetime { .. } => {
+                param.bounds.iter().for_each(|bound| match bound {
+                    hir::ParamBound::Outlives(lt) => {
+                        let bound = AstConv::ast_region_to_region(&icx, &lt, None);
+                        let outlives = ty::Binder::bind(ty::OutlivesPredicate(region, bound));
+                        predicates.push(outlives.to_predicate());
+                    }
+                    _ => bug!(),
+                });
             },
             _ => bug!(),
         }
@@ -1461,13 +1461,12 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // type parameter (e.g., `<T:Foo>`).
     for param in &ast_generics.params {
         match param.kind {
-            GenericParamKind::Type { ref bounds, .. } => {
-                let param_ty = ty::ParamTy::new(index, param.name().as_interned_str())
-                                           .to_ty(tcx);
+            GenericParamKind::Type { .. } => {
+                let param_ty = ty::ParamTy::new(index, param.name().as_interned_str()).to_ty(tcx);
                 index += 1;
 
-                let bounds =
-                    compute_bounds(&icx, param_ty, bounds, SizedByDefault::Yes, param.span);
+                let sized = SizedByDefault::Yes;
+                let bounds = compute_bounds(&icx, param_ty, &param.bounds, sized, param.span);
                 predicates.extend(bounds.predicates(tcx, param_ty));
             }
             _ => {}
@@ -1483,7 +1482,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                 for bound in bound_pred.bounds.iter() {
                     match bound {
-                        &hir::TyParamBound::TraitTyParamBound(ref poly_trait_ref, _) => {
+                        &hir::ParamBound::TraitTyParamBound(ref poly_trait_ref, _) => {
                             let mut projections = Vec::new();
 
                             let trait_ref =
@@ -1499,7 +1498,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             }
                         }
 
-                        &hir::TyParamBound::RegionTyParamBound(ref lifetime) => {
+                        &hir::ParamBound::Outlives(ref lifetime) => {
                             let region = AstConv::ast_region_to_region(&icx,
                                                                        lifetime,
                                                                        None);
@@ -1578,7 +1577,7 @@ pub enum SizedByDefault { Yes, No, }
 /// built-in trait (formerly known as kind): Send.
 pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
                                         param_ty: Ty<'tcx>,
-                                        ast_bounds: &[hir::TyParamBound],
+                                        ast_bounds: &[hir::ParamBound],
                                         sized_by_default: SizedByDefault,
                                         span: Span)
                                         -> Bounds<'tcx>
@@ -1591,7 +1590,7 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
                 trait_bounds.push(b);
             }
             hir::TraitTyParamBound(_, hir::TraitBoundModifier::Maybe) => {}
-            hir::RegionTyParamBound(ref l) => {
+            hir::Outlives(ref l) => {
                 region_bounds.push(l);
             }
         }
@@ -1625,14 +1624,14 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     }
 }
 
-/// Converts a specific TyParamBound from the AST into a set of
+/// Converts a specific ParamBound from the AST into a set of
 /// predicates that apply to the self-type. A vector is returned
 /// because this can be anywhere from 0 predicates (`T:?Sized` adds no
 /// predicates) to 1 (`T:Foo`) to many (`T:Bar<X=i32>` adds `T:Bar`
 /// and `<T as Bar>::X == i32`).
 fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
                                param_ty: Ty<'tcx>,
-                               bound: &hir::TyParamBound)
+                               bound: &hir::ParamBound)
                                -> Vec<ty::Predicate<'tcx>>
 {
     match *bound {
@@ -1646,7 +1645,7 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
                        .chain(Some(pred.to_predicate()))
                        .collect()
         }
-        hir::RegionTyParamBound(ref lifetime) => {
+        hir::Outlives(ref lifetime) => {
             let region = astconv.ast_region_to_region(lifetime, None);
             let pred = ty::Binder::bind(ty::OutlivesPredicate(param_ty, region));
             vec![ty::Predicate::TypeOutlives(pred)]

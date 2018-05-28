@@ -95,7 +95,7 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_trait_ref(self, t)
     }
-    fn visit_ty_param_bound(&mut self, bounds: &TyParamBound) {
+    fn visit_ty_param_bound(&mut self, bounds: &ParamBound) {
         self.count += 1;
         walk_ty_param_bound(self, bounds)
     }

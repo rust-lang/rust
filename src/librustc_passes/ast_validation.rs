@@ -99,7 +99,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn no_questions_in_bounds(&self, bounds: &TyParamBounds, where_: &str, is_trait: bool) {
+    fn no_questions_in_bounds(&self, bounds: &ParamBounds, where_: &str, is_trait: bool) {
         for bound in bounds {
             if let TraitTyParamBound(ref poly, TraitBoundModifier::Maybe) = *bound {
                 let mut err = self.err_handler().struct_span_err(poly.span,
@@ -142,9 +142,9 @@ impl<'a> AstValidator<'a> {
         // Check only lifetime parameters are present and that the lifetime
         // parameters that are present have no bounds.
         let non_lt_param_spans: Vec<_> = params.iter().filter_map(|param| match param.kind {
-                GenericParamKind::Lifetime { ref bounds, .. } => {
-                    if !bounds.is_empty() {
-                        let spans: Vec<_> = bounds.iter().map(|b| b.ident.span).collect();
+                GenericParamKind::Lifetime { .. } => {
+                    if !param.bounds.is_empty() {
+                        let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
                         self.err_handler()
                             .span_err(spans, "lifetime bounds cannot be used in this context");
                     }
@@ -190,7 +190,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             TyKind::TraitObject(ref bounds, ..) => {
                 let mut any_lifetime_bounds = false;
                 for bound in bounds {
-                    if let RegionTyParamBound(ref lifetime) = *bound {
+                    if let Outlives(ref lifetime) = *bound {
                         if any_lifetime_bounds {
                             span_err!(self.session, lifetime.ident.span, E0226,
                                       "only a single explicit lifetime bound is permitted");
@@ -330,8 +330,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 for param in params {
                     match param.kind {
                         GenericParamKind::Lifetime { .. } => {}
-                        GenericParamKind::Type { ref bounds, ref default, .. } => {
-                            if !bounds.is_empty() {
+                        GenericParamKind::Type { ref default, .. } => {
+                            if !param.bounds.is_empty() {
                                 self.err_handler()
                                     .span_err(param.ident.span, "type parameters on the left \
                                         side of a trait alias cannot be bounded");

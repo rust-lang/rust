@@ -12,7 +12,7 @@ pub use self::AnnNode::*;
 
 use rustc_target::spec::abi::{self, Abi};
 use ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
-use ast::{SelfKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
+use ast::{SelfKind, Outlives, TraitTyParamBound, TraitBoundModifier};
 use ast::{Attribute, MacDelimiter, GenericArg};
 use util::parser::{self, AssocOp, Fixity};
 use attr;
@@ -292,7 +292,7 @@ pub fn ty_to_string(ty: &ast::Ty) -> String {
     to_string(|s| s.print_type(ty))
 }
 
-pub fn bounds_to_string(bounds: &[ast::TyParamBound]) -> String {
+pub fn bounds_to_string(bounds: &[ast::ParamBound]) -> String {
     to_string(|s| s.print_bounds("", bounds))
 }
 
@@ -1178,7 +1178,7 @@ impl<'a> State<'a> {
 
     fn print_associated_type(&mut self,
                              ident: ast::Ident,
-                             bounds: Option<&ast::TyParamBounds>,
+                             bounds: Option<&ast::ParamBounds>,
                              ty: Option<&ast::Ty>)
                              -> io::Result<()> {
         self.word_space("type")?;
@@ -2811,7 +2811,7 @@ impl<'a> State<'a> {
 
     pub fn print_bounds(&mut self,
                         prefix: &str,
-                        bounds: &[ast::TyParamBound])
+                        bounds: &[ast::ParamBound])
                         -> io::Result<()> {
         if !bounds.is_empty() {
             self.s.word(prefix)?;
@@ -2833,7 +2833,7 @@ impl<'a> State<'a> {
                         }
                         self.print_poly_trait_ref(tref)?;
                     }
-                    RegionTyParamBound(lt) => {
+                    Outlives(lt) => {
                         self.print_lifetime(lt)?;
                     }
                 }
@@ -2879,14 +2879,19 @@ impl<'a> State<'a> {
 
         self.commasep(Inconsistent, &generic_params, |s, param| {
             match param.kind {
-                ast::GenericParamKind::Lifetime { ref bounds, ref lifetime } => {
+                ast::GenericParamKind::Lifetime { ref lifetime } => {
                     s.print_outer_attributes_inline(&param.attrs)?;
-                    s.print_lifetime_bounds(lifetime, bounds)
+                    s.print_lifetime_bounds(lifetime, &param.bounds.iter().map(|bound| {
+                        match bound {
+                            ast::ParamBound::Outlives(lt) => *lt,
+                            _ => panic!(),
+                        }
+                    }).collect::<Vec<_>>().as_slice())
                 },
-                ast::GenericParamKind::Type { ref bounds, ref default } => {
+                ast::GenericParamKind::Type { ref default } => {
                     s.print_outer_attributes_inline(&param.attrs)?;
                     s.print_ident(param.ident)?;
-                    s.print_bounds(":", bounds)?;
+                    s.print_bounds(":", &param.bounds)?;
                     match default {
                         Some(ref default) => {
                             s.s.space()?;

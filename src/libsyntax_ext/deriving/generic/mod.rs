@@ -551,22 +551,21 @@ impl<'a> TraitDef<'a> {
         // Create the generic parameters
         params.extend(generics.params.iter().map(|param| match param.kind {
             GenericParamKind::Lifetime { .. } => param.clone(),
-            GenericParamKind::Type { bounds: ref ty_bounds, .. } => {
+            GenericParamKind::Type { .. } => {
                 // I don't think this can be moved out of the loop, since
-                // a TyParamBound requires an ast id
+                // a ParamBound requires an ast id
                 let mut bounds: Vec<_> =
                     // extra restrictions on the generics parameters to the
                     // type being derived upon
                     self.additional_bounds.iter().map(|p| {
-                        cx.typarambound(p.to_path(cx, self.span,
-                                                    type_ident, generics))
+                        cx.ty_param_bound(p.to_path(cx, self.span, type_ident, generics))
                     }).collect();
 
                 // require the current trait
-                bounds.push(cx.typarambound(trait_path.clone()));
+                bounds.push(cx.ty_param_bound(trait_path.clone()));
 
                 // also add in any bounds from the declaration
-                for declared_bound in ty_bounds {
+                for declared_bound in &param.bounds {
                     bounds.push((*declared_bound).clone());
                 }
 
@@ -635,12 +634,12 @@ impl<'a> TraitDef<'a> {
                         let mut bounds: Vec<_> = self.additional_bounds
                             .iter()
                             .map(|p| {
-                                cx.typarambound(p.to_path(cx, self.span, type_ident, generics))
+                                cx.ty_param_bound(p.to_path(cx, self.span, type_ident, generics))
                             })
                             .collect();
 
                         // require the current trait
-                        bounds.push(cx.typarambound(trait_path.clone()));
+                        bounds.push(cx.ty_param_bound(trait_path.clone()));
 
                         let predicate = ast::WhereBoundPredicate {
                             span: self.span,

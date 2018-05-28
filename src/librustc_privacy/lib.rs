@@ -1038,7 +1038,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn check_ty_param_bound(&mut self,
-                            ty_param_bound: &hir::TyParamBound) {
+                            ty_param_bound: &hir::ParamBound) {
         if let hir::TraitTyParamBound(ref trait_ref, _) = *ty_param_bound {
             if self.path_is_private_type(&trait_ref.trait_ref.path) {
                 self.old_error_set.insert(trait_ref.trait_ref.ref_id);
@@ -1270,8 +1270,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
         generics.params.iter().for_each(|param| match param.kind {
             GenericParamKind::Lifetime { .. } => {}
-            GenericParamKind::Type { ref bounds, .. } => {
-                for bound in bounds {
+            GenericParamKind::Type { .. } => {
+                for bound in &param.bounds {
                     self.check_ty_param_bound(bound);
                 }
             }

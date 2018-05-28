@@ -881,8 +881,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         for param in &generics.params {
             match param.kind {
                 GenericParamKind::Lifetime { .. } => {}
-                GenericParamKind::Type { ref bounds, ref default, .. } => {
-                    walk_list!(self, visit_ty_param_bound, bounds);
+                GenericParamKind::Type { ref default, .. } => {
+                    walk_list!(self, visit_ty_param_bound, &param.bounds);
                     if let Some(ref ty) = default {
                         self.visit_ty(&ty);
                     }
@@ -1255,9 +1255,9 @@ fn object_lifetime_defaults_for_item(
     tcx: TyCtxt<'_, '_, '_>,
     generics: &hir::Generics,
 ) -> Vec<ObjectLifetimeDefault> {
-    fn add_bounds(set: &mut Set1<hir::LifetimeName>, bounds: &[hir::TyParamBound]) {
+    fn add_bounds(set: &mut Set1<hir::LifetimeName>, bounds: &[hir::ParamBound]) {
         for bound in bounds {
-            if let hir::RegionTyParamBound(ref lifetime) = *bound {
+            if let hir::Outlives(ref lifetime) = *bound {
                 set.insert(lifetime.name);
             }
         }
@@ -1265,10 +1265,10 @@ fn object_lifetime_defaults_for_item(
 
     generics.params.iter().filter_map(|param| match param.kind {
         GenericParamKind::Lifetime { .. } => None,
-        GenericParamKind::Type { ref bounds, .. } => {
+        GenericParamKind::Type { .. } => {
             let mut set = Set1::Empty;
 
-            add_bounds(&mut set, &bounds);
+            add_bounds(&mut set, &param.bounds);
 
             let param_def_id = tcx.hir.local_def_id(param.id);
             for predicate in &generics.where_clause.predicates {
@@ -2283,45 +2283,44 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             // It is a soft error to shadow a lifetime within a parent scope.
             self.check_lifetime_param_for_shadowing(old_scope, &lifetime_i);
 
-            let bounds = match lifetime_i.kind {
-                GenericParamKind::Lifetime { ref bounds, .. } => bounds,
-                _ => bug!(),
-            };
-            for bound in bounds {
-                match bound.name {
-                    hir::LifetimeName::Underscore => {
-                        let mut err = struct_span_err!(
-                            self.tcx.sess,
-                            bound.span,
-                            E0637,
-                            "invalid lifetime bound name: `'_`"
-                        );
-                        err.span_label(bound.span, "`'_` is a reserved lifetime name");
-                        err.emit();
-                    }
-                    hir::LifetimeName::Static => {
-                        self.insert_lifetime(bound, Region::Static);
-                        self.tcx
-                            .sess
-                            .struct_span_warn(
-                                lifetime_i.span.to(bound.span),
-                                &format!(
-                                    "unnecessary lifetime parameter `{}`",
+            for bound in &lifetime_i.bounds {
+                match bound {
+                    hir::ParamBound::Outlives(lt) => match lt.name {
+                        hir::LifetimeName::Underscore => {
+                            let mut err = struct_span_err!(
+                                self.tcx.sess,
+                                lt.span,
+                                E0637,
+                                "invalid lifetime bound name: `'_`"
+                            );
+                            err.span_label(lt.span, "`'_` is a reserved lifetime name");
+                            err.emit();
+                        }
+                        hir::LifetimeName::Static => {
+                            self.insert_lifetime(lt, Region::Static);
+                            self.tcx
+                                .sess
+                                .struct_span_warn(
+                                    lifetime_i.span.to(lt.span),
+                                    &format!(
+                                        "unnecessary lifetime parameter `{}`",
+                                        lifetime_i.name()
+                                    ),
+                                )
+                                .help(&format!(
+                                    "you can use the `'static` lifetime directly, in place \
+                                     of `{}`",
                                     lifetime_i.name()
-                                ),
-                            )
-                            .help(&format!(
-                                "you can use the `'static` lifetime directly, in place \
-                                 of `{}`",
-                                lifetime_i.name()
-                            ))
-                            .emit();
+                                ))
+                                .emit();
+                        }
+                        hir::LifetimeName::Fresh(_)
+                        | hir::LifetimeName::Implicit
+                        | hir::LifetimeName::Name(_) => {
+                            self.resolve_lifetime_ref(lt);
+                        }
                     }
-                    hir::LifetimeName::Fresh(_)
-                    | hir::LifetimeName::Implicit
-                    | hir::LifetimeName::Name(_) => {
-                        self.resolve_lifetime_ref(bound);
-                    }
+                    _ => bug!(),
                 }
             }
         }
@@ -2521,8 +2520,8 @@ fn insert_late_bound_lifetimes(
 
     for param in &generics.params {
         match param.kind {
-            hir::GenericParamKind::Lifetime { ref bounds, .. } => {
-                if !bounds.is_empty() {
+            hir::GenericParamKind::Lifetime { .. } => {
+                if !param.bounds.is_empty() {
                     // `'a: 'b` means both `'a` and `'b` are referenced
                     appears_in_where_clause.regions.insert(lifetime_def.lifetime.name);
                 }

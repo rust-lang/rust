@@ -536,7 +536,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
     fn make_final_bounds<'b, 'c, 'cx>(
         &self,
-        ty_to_bounds: FxHashMap<Type, FxHashSet<TyParamBound>>,
+        ty_to_bounds: FxHashMap<Type, FxHashSet<ParamBound>>,
         ty_to_fn: FxHashMap<Type, (Option<PolyTrait>, Option<Type>)>,
         lifetime_to_bounds: FxHashMap<Lifetime, FxHashSet<Lifetime>>,
     ) -> Vec<WherePredicate> {
@@ -589,7 +589,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                         }
                         _ => panic!("Unexpected data: {:?}, {:?}", ty, data),
                     };
-                    bounds.insert(TyParamBound::TraitBound(
+                    bounds.insert(ParamBound::TraitBound(
                         PolyTrait {
                             trait_: new_ty,
                             generic_params: poly_trait.generic_params,
@@ -732,7 +732,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                         // later
 
                         let is_fn = match &mut b {
-                            &mut TyParamBound::TraitBound(ref mut p, _) => {
+                            &mut ParamBound::TraitBound(ref mut p, _) => {
                                 // Insert regions into the for_generics hash map first, to ensure
                                 // that we don't end up with duplicate bounds (e.g. for<'b, 'b>)
                                 for_generics.extend(p.generic_params.clone());
@@ -826,7 +826,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                         .entry(*ty.clone())
                                         .or_insert_with(|| FxHashSet());
 
-                                    bounds.insert(TyParamBound::TraitBound(
+                                    bounds.insert(ParamBound::TraitBound(
                                         PolyTrait {
                                             trait_: Type::ResolvedPath {
                                                 path: new_trait_path,
@@ -843,7 +843,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                     // that we don't see a
                                     // duplicate bound like `T: Iterator + Iterator<Item=u8>`
                                     // on the docs page.
-                                    bounds.remove(&TyParamBound::TraitBound(
+                                    bounds.remove(&ParamBound::TraitBound(
                                         PolyTrait {
                                             trait_: *trait_.clone(),
                                             generic_params: Vec::new(),
@@ -877,7 +877,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                     default.take();
                     let generic_ty = Type::Generic(param.name.clone());
                     if !has_sized.contains(&generic_ty) {
-                        bounds.insert(0, TyParamBound::maybe_sized(self.cx));
+                        bounds.insert(0, ParamBound::maybe_sized(self.cx));
                     }
                 }
                 GenericParamDefKind::Lifetime => {}
@@ -911,7 +911,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
     // both for visual consistency between 'rustdoc' runs, and to
     // make writing tests much easier
     #[inline]
-    fn sort_where_bounds(&self, mut bounds: &mut Vec<TyParamBound>) {
+    fn sort_where_bounds(&self, mut bounds: &mut Vec<ParamBound>) {
         // We should never have identical bounds - and if we do,
         // they're visually identical as well. Therefore, using
         // an unstable sort is fine.
@@ -939,7 +939,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
     // to end users, it makes writing tests much more difficult, as predicates
     // can appear in any order in the final result.
     //
-    // To solve this problem, we sort WherePredicates and TyParamBounds
+    // To solve this problem, we sort WherePredicates and ParamBounds
     // by their Debug string. The thing to keep in mind is that we don't really
     // care what the final order is - we're synthesizing an impl or bound
     // ourselves, so any order can be considered equally valid. By sorting the
@@ -949,7 +949,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
     // Using the Debug impementation for sorting prevents us from needing to
     // write quite a bit of almost entirely useless code (e.g. how should two
     // Types be sorted relative to each other). It also allows us to solve the
-    // problem for both WherePredicates and TyParamBounds at the same time. This
+    // problem for both WherePredicates and ParamBounds at the same time. This
     // approach is probably somewhat slower, but the small number of items
     // involved (impls rarely have more than a few bounds) means that it
     // shouldn't matter in practice.

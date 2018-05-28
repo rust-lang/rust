@@ -22,7 +22,7 @@ pub use self::Mutability::*;
 pub use self::PrimTy::*;
 pub use self::Stmt_::*;
 pub use self::Ty_::*;
-pub use self::TyParamBound::*;
+pub use self::ParamBound::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 pub use self::Visibility::{Public, Inherited};
@@ -416,25 +416,6 @@ impl GenericArgs {
     }
 }
 
-/// The AST represents all type param bounds as types.
-/// typeck::collect::compute_bounds matches these against
-/// the "special" built-in traits (see middle::lang_items) and
-/// detects Copy, Send and Sync.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum TyParamBound {
-    TraitTyParamBound(PolyTraitRef, TraitBoundModifier),
-    RegionTyParamBound(Lifetime),
-}
-
-impl TyParamBound {
-    pub fn span(&self) -> Span {
-        match self {
-            &TraitTyParamBound(ref t, ..) => t.span,
-            &RegionTyParamBound(ref l) => l.span,
-        }
-    }
-}
-
 /// A modifier on a bound, currently this is only used for `?Sized`, where the
 /// modifier is `Maybe`. Negative bounds should also be handled here.
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -443,14 +424,34 @@ pub enum TraitBoundModifier {
     Maybe,
 }
 
-pub type TyParamBounds = HirVec<TyParamBound>;
+pub type Outlives = Lifetime;
+
+/// The AST represents all type param bounds as types.
+/// typeck::collect::compute_bounds matches these against
+/// the "special" built-in traits (see middle::lang_items) and
+/// detects Copy, Send and Sync.
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum ParamBound {
+    TraitTyParamBound(PolyTraitRef, TraitBoundModifier),
+    Outlives(Lifetime),
+}
+
+impl ParamBound {
+    pub fn span(&self) -> Span {
+        match self {
+            &TraitTyParamBound(ref t, ..) => t.span,
+            &Outlives(ref l) => l.span,
+        }
+    }
+}
+
+pub type ParamBounds = HirVec<ParamBound>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum GenericParamKind {
     /// A lifetime definition, eg `'a: 'b + 'c + 'd`.
     Lifetime {
         name: LifetimeName,
-        bounds: HirVec<Lifetime>,
         // Indicates that the lifetime definition was synthetically added
         // as a result of an in-band lifetime usage like:
         // `fn foo(x: &'a u8) -> &'a u8 { x }`
@@ -460,7 +461,6 @@ pub enum GenericParamKind {
     },
     Type {
         name: Name,
-        bounds: TyParamBounds,
         default: Option<P<Ty>>,
         synthetic: Option<SyntheticTyParamKind>,
         attrs: HirVec<Attribute>,
@@ -470,6 +470,7 @@ pub enum GenericParamKind {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct GenericParam {
     pub id: NodeId,
+    pub bounds: ParamBounds,
     pub span: Span,
     pub pure_wrt_drop: bool,
 
@@ -587,7 +588,7 @@ pub struct WhereBoundPredicate {
     /// The type being bounded
     pub bounded_ty: P<Ty>,
     /// Trait and lifetime bounds (`Clone+Send+'static`)
-    pub bounds: TyParamBounds,
+    pub bounds: ParamBounds,
 }
 
 /// A lifetime predicate, e.g. `'a: 'b+'c`
@@ -1554,7 +1555,7 @@ pub enum TraitItemKind {
     Method(MethodSig, TraitMethod),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type
-    Type(TyParamBounds, Option<P<Ty>>),
+    Type(ParamBounds, Option<P<Ty>>),
 }
 
 // The bodies for items are stored "out of line", in a separate
@@ -1639,7 +1640,7 @@ pub struct BareFnTy {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct ExistTy {
     pub generics: Generics,
-    pub bounds: TyParamBounds,
+    pub bounds: ParamBounds,
     pub impl_trait_fn: Option<DefId>,
 }
 
@@ -2048,9 +2049,9 @@ pub enum Item_ {
     /// A union definition, e.g. `union Foo<A, B> {x: A, y: B}`
     ItemUnion(VariantData, Generics),
     /// Represents a Trait Declaration
-    ItemTrait(IsAuto, Unsafety, Generics, TyParamBounds, HirVec<TraitItemRef>),
+    ItemTrait(IsAuto, Unsafety, Generics, ParamBounds, HirVec<TraitItemRef>),
     /// Represents a Trait Alias Declaration
-    ItemTraitAlias(Generics, TyParamBounds),
+    ItemTraitAlias(Generics, ParamBounds),
 
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,

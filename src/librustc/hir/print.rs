@@ -24,7 +24,7 @@ use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
 
 use hir;
-use hir::{PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier, RangeEnd};
+use hir::{PatKind, Outlives, TraitTyParamBound, TraitBoundModifier, RangeEnd};
 use hir::{GenericParam, GenericParamKind, GenericArg};
 
 use std::cell::Cell;
@@ -514,7 +514,7 @@ impl<'a> State<'a> {
 
     fn print_associated_type(&mut self,
                              name: ast::Name,
-                             bounds: Option<&hir::TyParamBounds>,
+                             bounds: Option<&hir::ParamBounds>,
                              ty: Option<&hir::Ty>)
                              -> io::Result<()> {
         self.word_space("type")?;
@@ -2071,7 +2071,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_bounds(&mut self, prefix: &str, bounds: &[hir::TyParamBound]) -> io::Result<()> {
+    pub fn print_bounds(&mut self, prefix: &str, bounds: &[hir::ParamBound]) -> io::Result<()> {
         if !bounds.is_empty() {
             self.s.word(prefix)?;
             let mut first = true;
@@ -2092,7 +2092,7 @@ impl<'a> State<'a> {
                         }
                         self.print_poly_trait_ref(tref)?;
                     }
-                    RegionTyParamBound(lt) => {
+                    Outlives(lt) => {
                         self.print_lifetime(lt)?;
                     }
                 }
@@ -2117,17 +2117,22 @@ impl<'a> State<'a> {
     pub fn print_generic_param(&mut self, param: &GenericParam) -> io::Result<()> {
         self.print_name(param.name())?;
         match param.kind {
-            GenericParamKind::Lifetime { ref bounds, .. } => {
+            GenericParamKind::Lifetime { .. } => {
                 let mut sep = ":";
-                for bound in bounds {
-                    self.s.word(sep)?;
-                    self.print_lifetime(bound)?;
-                    sep = "+";
+                for bound in &param.bounds {
+                    match bound {
+                        hir::ParamBound::Outlives(lt) => {
+                            self.s.word(sep)?;
+                            self.print_lifetime(lt)?;
+                            sep = "+";
+                        }
+                        _ => bug!(),
+                    }
                 }
                 Ok(())
             }
-            GenericParamKind::Type { ref bounds, ref default, .. } => {
-                self.print_bounds(":", bounds)?;
+            GenericParamKind::Type { ref default, .. } => {
+                self.print_bounds(":", &param.bounds)?;
                 match default {
                     Some(default) => {
                         self.s.space()?;

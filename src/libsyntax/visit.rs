@@ -86,7 +86,7 @@ pub trait Visitor<'ast>: Sized {
     fn visit_trait_item(&mut self, ti: &'ast TraitItem) { walk_trait_item(self, ti) }
     fn visit_impl_item(&mut self, ii: &'ast ImplItem) { walk_impl_item(self, ii) }
     fn visit_trait_ref(&mut self, t: &'ast TraitRef) { walk_trait_ref(self, t) }
-    fn visit_ty_param_bound(&mut self, bounds: &'ast TyParamBound) {
+    fn visit_ty_param_bound(&mut self, bounds: &'ast ParamBound) {
         walk_ty_param_bound(self, bounds)
     }
     fn visit_poly_trait_ref(&mut self, t: &'ast PolyTraitRef, m: &'ast TraitBoundModifier) {
@@ -479,31 +479,30 @@ pub fn walk_global_asm<'a, V: Visitor<'a>>(_: &mut V, _: &'a GlobalAsm) {
     // Empty!
 }
 
-pub fn walk_ty_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a TyParamBound) {
+pub fn walk_ty_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a ParamBound) {
     match *bound {
         TraitTyParamBound(ref typ, ref modifier) => {
             visitor.visit_poly_trait_ref(typ, modifier);
         }
-        RegionTyParamBound(ref lifetime) => {
+        Outlives(ref lifetime) => {
             visitor.visit_lifetime(lifetime);
         }
     }
 }
 
 pub fn walk_generic_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a GenericParam) {
+    visitor.visit_ident(param.ident);
     match param.kind {
         GenericParamKind::Lifetime { ref bounds, ref lifetime } => {
-            visitor.visit_ident(param.ident);
             walk_list!(visitor, visit_lifetime, bounds);
-            walk_list!(visitor, visit_attribute, param.attrs.iter());
         }
         GenericParamKind::Type { ref bounds, ref default } => {
             visitor.visit_ident(t.ident);
             walk_list!(visitor, visit_ty_param_bound, bounds);
             walk_list!(visitor, visit_ty, default);
-            walk_list!(visitor, visit_attribute, param.attrs.iter());
         }
     }
+    walk_list!(visitor, visit_attribute, param.attrs.iter());
 }
 
 pub fn walk_generics<'a, V: Visitor<'a>>(visitor: &mut V, generics: &'a Generics) {

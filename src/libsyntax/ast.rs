@@ -10,7 +10,7 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::TyParamBound::*;
+pub use self::ParamBound::*;
 pub use self::UnsafeSource::*;
 pub use self::GenericArgs::*;
 pub use symbol::{Ident, Symbol as Name};
@@ -269,25 +269,6 @@ pub const CRATE_NODE_ID: NodeId = NodeId(0);
 /// small, positive ids.
 pub const DUMMY_NODE_ID: NodeId = NodeId(!0);
 
-/// The AST represents all type param bounds as types.
-/// typeck::collect::compute_bounds matches these against
-/// the "special" built-in traits (see middle::lang_items) and
-/// detects Copy, Send and Sync.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum TyParamBound {
-    TraitTyParamBound(PolyTraitRef, TraitBoundModifier),
-    RegionTyParamBound(Lifetime)
-}
-
-impl TyParamBound {
-    pub fn span(&self) -> Span {
-        match self {
-            &TraitTyParamBound(ref t, ..) => t.span,
-            &RegionTyParamBound(ref l) => l.ident.span,
-        }
-    }
-}
-
 /// A modifier on a bound, currently this is only used for `?Sized`, where the
 /// modifier is `Maybe`. Negative bounds should also be handled here.
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -296,17 +277,34 @@ pub enum TraitBoundModifier {
     Maybe,
 }
 
-pub type TyParamBounds = Vec<TyParamBound>;
+/// The AST represents all type param bounds as types.
+/// typeck::collect::compute_bounds matches these against
+/// the "special" built-in traits (see middle::lang_items) and
+/// detects Copy, Send and Sync.
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum ParamBound {
+    TraitTyParamBound(PolyTraitRef, TraitBoundModifier),
+    Outlives(Lifetime)
+}
+
+impl ParamBound {
+    pub fn span(&self) -> Span {
+        match self {
+            &TraitTyParamBound(ref t, ..) => t.span,
+            &Outlives(ref l) => l.ident.span,
+        }
+    }
+}
+
+pub type ParamBounds = Vec<ParamBound>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum GenericParamKind {
     /// A lifetime definition, e.g. `'a: 'b+'c+'d`.
     Lifetime {
-        bounds: Vec<Lifetime>,
         lifetime: Lifetime,
     },
     Type {
-        bounds: TyParamBounds,
         default: Option<P<Ty>>,
     }
 }
@@ -316,6 +314,7 @@ pub struct GenericParam {
     pub ident: Ident,
     pub id: NodeId,
     pub attrs: ThinVec<Attribute>,
+    pub bounds: ParamBounds,
 
     pub kind: GenericParamKind,
 }
@@ -384,7 +383,7 @@ pub struct WhereBoundPredicate {
     /// The type being bounded
     pub bounded_ty: P<Ty>,
     /// Trait and lifetime bounds (`Clone+Send+'static`)
-    pub bounds: TyParamBounds,
+    pub bounds: ParamBounds,
 }
 
 /// A lifetime predicate.
@@ -930,7 +929,7 @@ impl Expr {
         }
     }
 
-    fn to_bound(&self) -> Option<TyParamBound> {
+    fn to_bound(&self) -> Option<ParamBound> {
         match &self.node {
             ExprKind::Path(None, path) =>
                 Some(TraitTyParamBound(PolyTraitRef::new(Vec::new(), path.clone(), self.span),
@@ -1355,7 +1354,7 @@ pub struct TraitItem {
 pub enum TraitItemKind {
     Const(P<Ty>, Option<P<Expr>>),
     Method(MethodSig, Option<P<Block>>),
-    Type(TyParamBounds, Option<P<Ty>>),
+    Type(ParamBounds, Option<P<Ty>>),
     Macro(Mac),
 }
 
@@ -1540,10 +1539,10 @@ pub enum TyKind {
     Path(Option<QSelf>, Path),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TraitObject(TyParamBounds, TraitObjectSyntax),
+    TraitObject(ParamBounds, TraitObjectSyntax),
     /// An `impl Bound1 + Bound2 + Bound3` type
     /// where `Bound` is a trait or a lifetime.
-    ImplTrait(TyParamBounds),
+    ImplTrait(ParamBounds),
     /// No-op; kept solely so that we can pretty-print faithfully
     Paren(P<Ty>),
     /// Unused for now
@@ -2064,11 +2063,11 @@ pub enum ItemKind {
     /// A Trait declaration (`trait` or `pub trait`).
     ///
     /// E.g. `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`
-    Trait(IsAuto, Unsafety, Generics, TyParamBounds, Vec<TraitItem>),
+    Trait(IsAuto, Unsafety, Generics, ParamBounds, Vec<TraitItem>),
     /// Trait alias
     ///
     /// E.g. `trait Foo = Bar + Quux;`
-    TraitAlias(Generics, TyParamBounds),
+    TraitAlias(Generics, ParamBounds),
     /// An implementation.
     ///
     /// E.g. `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`

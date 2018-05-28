@@ -69,7 +69,7 @@ use doctree;
 use fold::DocFolder;
 use html::escape::Escape;
 use html::format::{ConstnessSpace};
-use html::format::{TyParamBounds, WhereClause, href, AbiSpace};
+use html::format::{ParamBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
@@ -2960,14 +2960,14 @@ fn assoc_const(w: &mut fmt::Formatter,
 }
 
 fn assoc_type<W: fmt::Write>(w: &mut W, it: &clean::Item,
-                             bounds: &Vec<clean::TyParamBound>,
+                             bounds: &Vec<clean::ParamBound>,
                              default: Option<&clean::Type>,
                              link: AssocItemLink) -> fmt::Result {
     write!(w, "type <a href='{}' class=\"type\">{}</a>",
            naive_assoc_href(it, link),
            it.name.as_ref().unwrap())?;
     if !bounds.is_empty() {
-        write!(w, ": {}", TyParamBounds(bounds))?
+        write!(w, ": {}", ParamBounds(bounds))?
     }
     if let Some(default) = default {
         write!(w, " = {}", default)?;
