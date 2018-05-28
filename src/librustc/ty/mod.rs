@@ -584,7 +584,7 @@ impl <'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for Ty<'tcx> {
 }
 
 extern {
-    /// A dummy type used to force Slice to by unsized without requiring fat pointers
+    /// A dummy type used to force Slice to be unsized without requiring fat pointers
     type OpaqueSliceContents;
 }
 

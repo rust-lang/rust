@@ -209,7 +209,7 @@ impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
 }
 
 extern {
-    /// A dummy type used to force Str to by unsized without requiring fat pointers
+    /// A dummy type used to force Str to be unsized without requiring fat pointers
     type OpaqueStrContents;
 }
 
@@ -220,6 +220,9 @@ struct Str {
     data: [u8; 0],
     opaque: OpaqueStrContents,
 }
+
+unsafe impl Send for Str {}
+unsafe impl Sync for Str {}
 
 impl Str {
     #[inline(always)]
@@ -270,7 +273,7 @@ impl<'a> std::borrow::Borrow<str> for &'a Str {
     }
 }
 
-// The &'static strs in this type actually point into the arena
+// The &'static Strs in this type actually point into the arena
 pub struct Interner {
     arena: DroplessArena,
     names: FxHashMap<&'static Str, Symbol>,
