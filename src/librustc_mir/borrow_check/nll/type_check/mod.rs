@@ -873,6 +873,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     );
                 }
                 self.check_rvalue(mir, rv, location);
+                let trait_ref = ty::TraitRef {
+                    def_id: tcx.lang_items().sized_trait().unwrap(),
+                    substs: tcx.mk_substs_trait(place_ty, &[]),
+                };
+                self.prove_trait_ref(trait_ref, location);
             }
             StatementKind::SetDiscriminant {
                 ref place,
