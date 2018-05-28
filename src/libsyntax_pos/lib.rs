@@ -20,6 +20,7 @@
 
 #![feature(const_fn)]
 #![feature(custom_attribute)]
+#![feature(extern_types)]
 #![feature(non_exhaustive)]
 #![feature(optin_builtin_traits)]
 #![allow(unused_attributes)]

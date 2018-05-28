@@ -19,8 +19,11 @@ use {Span, DUMMY_SP, GLOBALS};
 use rustc_data_structures::fx::FxHashMap;
 use arena::DroplessArena;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
+use std;
 use std::fmt;
 use std::str;
+use std::mem;
+use std::slice;
 use std::cmp::{PartialEq, Ordering, PartialOrd, Ord};
 use std::hash::{Hash, Hasher};
 
@@ -205,11 +208,73 @@ impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
     }
 }
 
+extern {
+    /// A dummy type used to force Str to by unsized without requiring fat pointers
+    type OpaqueStrContents;
+}
+
+/// A utf8 string which stores the length inline
+#[repr(C)]
+struct Str {
+    len: usize,
+    data: [u8; 0],
+    opaque: OpaqueStrContents,
+}
+
+impl Str {
+    #[inline(always)]
+    fn from_arena<'a>(arena: &'a DroplessArena, string: &str) -> &'a Str {
+        let mem = arena.alloc_raw(mem::size_of::<usize>() + string.len(), mem::align_of::<usize>());
+        unsafe {
+            let result = &mut *(mem.as_mut_ptr() as *mut Str);
+            // Write the length
+            result.len = string.len();
+
+            // Write the elements
+            let slice = slice::from_raw_parts_mut(result.data.as_mut_ptr(), result.len);
+            slice.copy_from_slice(string.as_bytes());
+
+            result
+        }
+    }
+}
+
+impl PartialEq for Str {
+    #[inline]
+    fn eq(&self, other: &Str) -> bool {
+        **self == **other
+    }
+}
+impl Eq for Str {}
+
+impl Hash for Str {
+    #[inline]
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        (**self).hash(s)
+    }
+}
+
+impl std::ops::Deref for Str {
+    type Target = str;
+    #[inline(always)]
+    fn deref(&self) -> &str {
+        unsafe {
+            str::from_utf8_unchecked(slice::from_raw_parts(self.data.as_ptr(), self.len))
+        }
+    }
+}
+
+impl<'a> std::borrow::Borrow<str> for &'a Str {
+    fn borrow(&self) -> &str {
+        &***self
+    }
+}
+
 // The &'static strs in this type actually point into the arena
 pub struct Interner {
     arena: DroplessArena,
-    names: FxHashMap<&'static str, Symbol>,
-    strings: Vec<&'static str>,
+    names: FxHashMap<&'static Str, Symbol>,
+    strings: Vec<&'static Str>,
     gensyms: Vec<Symbol>,
 }
 
@@ -226,14 +291,7 @@ impl Interner {
     fn prefill(init: &[&str]) -> Self {
         let mut this = Interner::new();
         for &string in init {
-            if string == "" {
-                // We can't allocate empty strings in the arena, so handle this here
-                let name = Symbol(this.strings.len() as u32);
-                this.names.insert("", name);
-                this.strings.push("");
-            } else {
-                this.intern(string);
-            }
+            this.intern(string);
         }
         this
     }
@@ -245,14 +303,12 @@ impl Interner {
 
         let name = Symbol(self.strings.len() as u32);
 
-        // from_utf8_unchecked is safe since we just allocated a &str which is known to be utf8
-        let string: &str = unsafe {
-            str::from_utf8_unchecked(self.arena.alloc_slice(string.as_bytes()))
-        };
+        let string = Str::from_arena(&self.arena, string);
+
         // It is safe to extend the arena allocation to 'static because we only access
-        // these while the arena is still alive
-        let string: &'static str =  unsafe {
-            &*(string as *const str)
+        // it while the arena is still alive
+        let string: &'static Str =  unsafe {
+            &*(string as *const Str)
         };
         self.strings.push(string);
         self.names.insert(string, name);
