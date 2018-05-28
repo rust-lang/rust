@@ -243,10 +243,30 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         where F: FnMut(ty::Region<'tcx>),
               T: TypeFoldable<'tcx>,
     {
-        value.visit_with(&mut RegionVisitor { current_depth: 0, callback });
+        value.visit_with(&mut RegionVisitor {
+            outer_index: ty::DebruijnIndex::INNERMOST,
+            callback
+        });
 
         struct RegionVisitor<F> {
-            current_depth: u32,
+            /// The index of a binder *just outside* the things we have
+            /// traversed. If we encounter a bound region bound by this
+            /// binder or one outer to it, it appears free. Example:
+            ///
+            /// ```
+            ///    for<'a> fn(for<'b> fn(), T)
+            /// ^          ^          ^     ^
+            /// |          |          |     | here, would be shifted in 1
+            /// |          |          | here, would be shifted in 2
+            /// |          | here, would be INNTERMOST shifted in by 1
+            /// | here, initially, binder would be INNERMOST
+            /// ```
+            ///
+            /// You see that, initially, *any* bound value is free,
+            /// because we've not traversed any binders. As we pass
+            /// through a binder, we shift the `outer_index` by 1 to
+            /// account for the new binder that encloses us.
+            outer_index: ty::DebruijnIndex,
             callback: F,
         }
 
@@ -254,16 +274,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             where F : FnMut(ty::Region<'tcx>)
         {
             fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> bool {
-                self.current_depth += 1;
+                self.outer_index.shift_in(1);
                 t.skip_binder().visit_with(self);
-                self.current_depth -= 1;
+                self.outer_index.shift_out(1);
 
                 false // keep visiting
             }
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
                 match *r {
-                    ty::ReLateBound(debruijn, _) if debruijn.depth <= self.current_depth => {
+                    ty::ReLateBound(debruijn, _) if debruijn < self.outer_index => {
                         /* ignore bound regions */
                     }
                     _ => (self.callback)(r),
