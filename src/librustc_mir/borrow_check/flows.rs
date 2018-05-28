@@ -21,12 +21,12 @@ use borrow_check::location::LocationIndex;
 
 use polonius_engine::Output;
 
-use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
-use dataflow::{EverInitializedPlaces, MovingOutStatements};
-use dataflow::{Borrows};
-use dataflow::{FlowAtLocation, FlowsAtLocation};
-use dataflow::move_paths::HasMoveData;
 use dataflow::move_paths::indexes::BorrowIndex;
+use dataflow::move_paths::HasMoveData;
+use dataflow::Borrows;
+use dataflow::{EverInitializedPlaces, MovingOutStatements};
+use dataflow::{FlowAtLocation, FlowsAtLocation};
+use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use either::Either;
 use std::fmt;
 use std::rc::Rc;
@@ -62,7 +62,10 @@ impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
         }
     }
 
-    crate fn borrows_in_scope(&self, location: LocationIndex) -> impl Iterator<Item = BorrowIndex> + '_ {
+    crate fn borrows_in_scope(
+        &self,
+        location: LocationIndex,
+    ) -> impl Iterator<Item = BorrowIndex> + '_ {
         if let Some(ref polonius) = self.polonius_output {
             Either::Left(polonius.errors_at(location).iter().cloned())
         } else {
@@ -82,7 +85,7 @@ macro_rules! each_flow {
         FlowAtLocation::$meth(&mut $this.uninits, $arg);
         FlowAtLocation::$meth(&mut $this.move_outs, $arg);
         FlowAtLocation::$meth(&mut $this.ever_inits, $arg);
-    }
+    };
 }
 
 impl<'b, 'gcx, 'tcx> FlowsAtLocation for Flows<'b, 'gcx, 'tcx> {
@@ -150,8 +153,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
                 s.push_str(", ");
             };
             saw_one = true;
-            let move_path =
-                &self.uninits.operator().move_data().move_paths[mpi_uninit];
+            let move_path = &self.uninits.operator().move_data().move_paths[mpi_uninit];
             s.push_str(&format!("{}", move_path));
         });
         s.push_str("] ");
@@ -175,8 +177,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
                 s.push_str(", ");
             };
             saw_one = true;
-            let ever_init =
-                &self.ever_inits.operator().move_data().inits[mpi_ever_init];
+            let ever_init = &self.ever_inits.operator().move_data().inits[mpi_ever_init];
             s.push_str(&format!("{:?}", ever_init));
         });
         s.push_str("]");
