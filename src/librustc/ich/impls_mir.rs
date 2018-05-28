@@ -364,7 +364,7 @@ for mir::ProjectionElem<'gcx, V, T>
 }
 
 impl_stable_hash_for!(struct mir::SourceScopeData { span, parent_scope });
-impl_stable_hash_for!(struct mir::SourceScopeInfo {
+impl_stable_hash_for!(struct mir::SourceScopeLocalData {
     lint_root, safety
 });
 

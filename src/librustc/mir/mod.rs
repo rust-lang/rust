@@ -84,7 +84,7 @@ pub struct Mir<'tcx> {
 
     /// Crate-local information for each source scope, that can't (and
     /// needn't) be tracked across crates.
-    pub source_scope_info: ClearCrossCrate<IndexVec<SourceScope, SourceScopeInfo>>,
+    pub source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
 
     /// Rvalues promoted from this function, such as borrows of constants.
     /// Each of them is the Mir of a constant with the fn's type parameters
@@ -138,8 +138,8 @@ pub const START_BLOCK: BasicBlock = BasicBlock(0);
 impl<'tcx> Mir<'tcx> {
     pub fn new(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
                source_scopes: IndexVec<SourceScope, SourceScopeData>,
-               source_scope_info: ClearCrossCrate<IndexVec<SourceScope,
-                                                               SourceScopeInfo>>,
+               source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope,
+                                                                 SourceScopeLocalData>>,
                promoted: IndexVec<Promoted, Mir<'tcx>>,
                yield_ty: Option<Ty<'tcx>>,
                local_decls: IndexVec<Local, LocalDecl<'tcx>>,
@@ -154,7 +154,7 @@ impl<'tcx> Mir<'tcx> {
         Mir {
             basic_blocks,
             source_scopes,
-            source_scope_info,
+            source_scope_local_data,
             promoted,
             yield_ty,
             generator_drop: None,
@@ -308,14 +308,6 @@ impl<'tcx> Mir<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct SourceScopeInfo {
-    /// A NodeId with lint levels equivalent to this scope's lint levels.
-    pub lint_root: ast::NodeId,
-    /// The unsafe block that contains this node.
-    pub safety: Safety,
-}
-
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum Safety {
     Safe,
@@ -330,7 +322,7 @@ pub enum Safety {
 impl_stable_hash_for!(struct Mir<'tcx> {
     basic_blocks,
     source_scopes,
-    source_scope_info,
+    source_scope_local_data,
     promoted,
     yield_ty,
     generator_drop,
@@ -1515,6 +1507,14 @@ pub struct SourceScopeData {
     pub parent_scope: Option<SourceScope>,
 }
 
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct SourceScopeLocalData {
+    /// A NodeId with lint levels equivalent to this scope's lint levels.
+    pub lint_root: ast::NodeId,
+    /// The unsafe block that contains this node.
+    pub safety: Safety,
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Operands
 
@@ -2155,16 +2155,16 @@ CloneTypeFoldableAndLiftImpls! {
     SourceInfo,
     UpvarDecl,
     ValidationOp,
-    SourceScopeData,
     SourceScope,
-    SourceScopeInfo,
+    SourceScopeData,
+    SourceScopeLocalData,
 }
 
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for Mir<'tcx> {
         basic_blocks,
         source_scopes,
-        source_scope_info,
+        source_scope_local_data,
         promoted,
         yield_ty,
         generator_drop,

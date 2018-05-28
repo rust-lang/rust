@@ -323,7 +323,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let sets = tcx.lint_levels(LOCAL_CRATE);
                 let parent_hir_id =
                     tcx.hir.definitions().node_to_hir_id(
-                        self.source_scope_info[source_scope].lint_root
+                        self.source_scope_local_data[source_scope].lint_root
                             );
                 let current_hir_id =
                     tcx.hir.definitions().node_to_hir_id(node_id);
@@ -517,22 +517,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let parent = self.source_scope;
         debug!("new_source_scope({:?}, {:?}, {:?}) - parent({:?})={:?}",
                span, lint_level, safety,
-               parent, self.source_scope_info.get(parent));
+               parent, self.source_scope_local_data.get(parent));
         let scope = self.source_scopes.push(SourceScopeData {
             span,
             parent_scope: Some(parent),
         });
-        let scope_info = SourceScopeInfo {
+        let scope_local_data = SourceScopeLocalData {
             lint_root: if let LintLevel::Explicit(lint_root) = lint_level {
                 lint_root
             } else {
-                self.source_scope_info[parent].lint_root
+                self.source_scope_local_data[parent].lint_root
             },
             safety: safety.unwrap_or_else(|| {
-                self.source_scope_info[parent].safety
+                self.source_scope_local_data[parent].safety
             })
         };
-        self.source_scope_info.push(scope_info);
+        self.source_scope_local_data.push(scope_local_data);
         scope
     }
 

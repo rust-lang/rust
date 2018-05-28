@@ -257,7 +257,7 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// the vector of all scopes that we have created thus far;
     /// we track this for debuginfo later
     source_scopes: IndexVec<SourceScope, SourceScopeData>,
-    source_scope_info: IndexVec<SourceScope, SourceScopeInfo>,
+    source_scope_local_data: IndexVec<SourceScope, SourceScopeLocalData>,
     source_scope: SourceScope,
 
     /// the guard-context: each time we build the guard expression for
@@ -595,7 +595,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             scopes: vec![],
             source_scopes: IndexVec::new(),
             source_scope: OUTERMOST_SOURCE_SCOPE,
-            source_scope_info: IndexVec::new(),
+            source_scope_local_data: IndexVec::new(),
             guard_context: vec![],
             push_unsafe_count: 0,
             unpushed_unsafe: safety,
@@ -630,7 +630,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         Mir::new(self.cfg.basic_blocks,
                  self.source_scopes,
-                 ClearCrossCrate::Set(self.source_scope_info),
+                 ClearCrossCrate::Set(self.source_scope_local_data),
                  IndexVec::new(),
                  yield_ty,
                  self.local_decls,
