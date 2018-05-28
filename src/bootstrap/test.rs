@@ -887,7 +887,6 @@ impl Step for Compiletest {
         let target = self.target;
         let mode = self.mode;
         let suite = self.suite;
-        let compare_mode = self.compare_mode;
 
         // Path for test suite
         let suite_path = self.path.unwrap_or("");
@@ -964,6 +963,8 @@ impl Step for Compiletest {
         if builder.config.cmd.bless() {
             cmd.arg("--bless");
         }
+
+        let compare_mode = builder.config.cmd.compare_mode().or(self.compare_mode);
 
         if let Some(ref nodejs) = builder.config.nodejs {
             cmd.arg("--nodejs").arg(nodejs);

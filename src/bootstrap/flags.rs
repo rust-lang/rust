@@ -61,6 +61,7 @@ pub enum Subcommand {
         paths: Vec<PathBuf>,
         /// Whether to automatically update stderr/stdout files
         bless: bool,
+        compare_mode: Option<String>,
         test_args: Vec<String>,
         rustc_args: Vec<String>,
         fail_fast: bool,
@@ -176,6 +177,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
                 opts.optflag("", "no-doc", "do not run doc tests");
                 opts.optflag("", "doc", "only run doc tests");
                 opts.optflag("", "bless", "update all stderr/stdout files of failing ui tests");
+                opts.optopt("", "compare-mode", "mode describing what file the actual ui output will be compared to", "COMPARE MODE");
             },
             "bench" => { opts.optmulti("", "test-args", "extra arguments", "ARGS"); },
             "clean" => { opts.optflag("", "all", "clean all build artifacts"); },
@@ -262,6 +264,7 @@ Arguments:
         ./x.py test src/libstd --test-args hash_map
         ./x.py test src/libstd --stage 0
         ./x.py test src/test/ui --bless
+        ./x.py test src/test/ui --compare-mode nll
 
     If no arguments are passed then the complete artifacts for that stage are
     compiled and tested.
@@ -327,6 +330,7 @@ Arguments:
                 Subcommand::Test {
                     paths,
                     bless: matches.opt_present("bless"),
+                    compare_mode: matches.opt_str("compare-mode"),
                     test_args: matches.opt_strs("test-args"),
                     rustc_args: matches.opt_strs("rustc-args"),
                     fail_fast: !matches.opt_present("no-fail-fast"),
@@ -434,6 +438,13 @@ impl Subcommand {
         match *self {
             Subcommand::Test { bless, .. } => bless,
             _ => false,
+        }
+    }
+
+    pub fn compare_mode(&self) -> Option<&str> {
+        match *self {
+            Subcommand::Test { ref compare_mode, .. } => compare_mode.as_ref().map(|s| &s[..]),
+            _ => None,
         }
     }
 }

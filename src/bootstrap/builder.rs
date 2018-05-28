@@ -1457,6 +1457,7 @@ mod __test {
             fail_fast: true,
             doc_tests: DocTests::No,
             bless: false,
+            compare_mode: None,
         };
 
         let build = Build::new(config);
