@@ -574,6 +574,25 @@ macro_rules! test_float {
             assert_eq!((-9.0 as $fty).max($nan), -9.0);
             assert!(($nan as $fty).max($nan).is_nan());
         }
+        #[test]
+        fn mod_euc() {
+            let a: $fty = 42.0;
+            assert!($inf.mod_euc(a).is_nan());
+            assert_eq!(a.mod_euc($inf), a);
+            assert!(a.mod_euc($nan).is_nan());
+            assert!($inf.mod_euc($inf).is_nan());
+            assert!($inf.mod_euc($nan).is_nan());
+            assert!($nan.mod_euc($inf).is_nan());
+        }
+        #[test]
+        fn div_euc() {
+            let a: $fty = 42.0;
+            assert_eq!(a.div_euc($inf), 0.0);
+            assert!(a.div_euc($nan).is_nan());
+            assert!($inf.div_euc($inf).is_nan());
+            assert!($inf.div_euc($nan).is_nan());
+            assert!($nan.div_euc($inf).is_nan());
+        }
     } }
 }
 
