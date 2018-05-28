@@ -64,6 +64,11 @@ pub unsafe extern fn __rust_probestack() {
         // bytes pushed on the stack orginally with our return address. Using
         // `8(%rsp)` simulates us testing the stack pointer in the caller's
         // context.
+
+        // It's usually called when %rax >= 0x1000, but that's not always true.
+        // Dynamic stack allocation, which is needed to implement unsized
+        // rvalues, triggers stackprobe even if %rax < 0x1000.
+        // Thus we have to check %r11 first to avoid segfault.
         cmp    $$0x1000,%r11
         jna    3f
     2:
