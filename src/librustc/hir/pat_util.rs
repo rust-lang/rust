@@ -10,7 +10,7 @@
 
 use hir::def::Def;
 use hir::def_id::DefId;
-use hir::{self, PatKind};
+use hir::{self, HirId, PatKind};
 use syntax::ast;
 use syntax::codemap::Spanned;
 use syntax_pos::Span;
@@ -91,11 +91,11 @@ impl hir::Pat {
     /// Call `f` on every "binding" in a pattern, e.g., on `a` in
     /// `match foo() { Some(a) => (), None => () }`
     pub fn each_binding<F>(&self, mut f: F)
-        where F: FnMut(hir::BindingAnnotation, ast::NodeId, Span, &Spanned<ast::Name>),
+        where F: FnMut(hir::BindingAnnotation, HirId, Span, &Spanned<ast::Name>),
     {
         self.walk(|p| {
             if let PatKind::Binding(binding_mode, _, ref pth, _) = p.node {
-                f(binding_mode, p.id, p.span, pth);
+                f(binding_mode, p.hir_id, p.span, pth);
             }
             true
         });

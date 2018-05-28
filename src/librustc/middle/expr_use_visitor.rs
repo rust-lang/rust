@@ -608,9 +608,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     fn walk_local(&mut self, local: &hir::Local) {
         match local.init {
             None => {
-                let delegate = &mut self.delegate;
-                local.pat.each_binding(|_, id, span, _| {
-                    delegate.decl_without_init(id, span);
+                local.pat.each_binding(|_, hir_id, span, _| {
+                    let node_id = self.mc.tcx.hir.hir_to_node_id(hir_id);
+                    self.delegate.decl_without_init(node_id, span);
                 })
             }
 

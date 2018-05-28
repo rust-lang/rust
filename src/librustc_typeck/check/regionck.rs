@@ -380,7 +380,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
     fn constrain_bindings_in_pat(&mut self, pat: &hir::Pat) {
         debug!("regionck::visit_pat(pat={:?})", pat);
-        pat.each_binding(|_, id, span, _| {
+        pat.each_binding(|_, hir_id, span, _| {
             // If we have a variable that contains region'd data, that
             // data will be accessible from anywhere that the variable is
             // accessed. We must be wary of loops like this:
@@ -403,8 +403,6 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             // iteration. The easiest way to guarantee this is to require
             // that the lifetime of any regions that appear in a
             // variable's type enclose at least the variable's scope.
-
-            let hir_id = self.tcx.hir.node_to_hir_id(id);
             let var_scope = self.region_scope_tree.var_scope(hir_id.local_id);
             let var_region = self.tcx.mk_region(ty::ReScope(var_scope));
 

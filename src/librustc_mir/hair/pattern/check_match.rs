@@ -499,8 +499,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
                                    pats: &[P<Pat>]) {
     let mut by_ref_span = None;
     for pat in pats {
-        pat.each_binding(|_, id, span, _path| {
-            let hir_id = cx.tcx.hir.node_to_hir_id(id);
+        pat.each_binding(|_, hir_id, span, _path| {
             let bm = *cx.tables
                         .pat_binding_modes()
                         .get(hir_id)

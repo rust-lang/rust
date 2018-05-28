@@ -487,14 +487,6 @@ impl Definitions {
         self.node_to_hir_id[node_id]
     }
 
-    pub fn find_node_for_hir_id(&self, hir_id: hir::HirId) -> ast::NodeId {
-        self.node_to_hir_id
-            .iter()
-            .position(|x| *x == hir_id)
-            .map(|idx| ast::NodeId::new(idx))
-            .unwrap()
-    }
-
     #[inline]
     pub fn def_index_to_hir_id(&self, def_index: DefIndex) -> hir::HirId {
         let space_index = def_index.address_space().index();

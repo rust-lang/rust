@@ -560,7 +560,7 @@ impl Locatable for DefIndex {
 
 impl Locatable for hir::HirId {
     fn to_span(&self, tcx: &TyCtxt) -> Span {
-        let node_id = tcx.hir.definitions().find_node_for_hir_id(*self);
+        let node_id = tcx.hir.hir_to_node_id(*self);
         tcx.hir.span(node_id)
     }
 }
