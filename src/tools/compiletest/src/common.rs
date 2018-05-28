@@ -99,18 +99,21 @@ impl fmt::Display for Mode {
 #[derive(Clone, PartialEq)]
 pub enum CompareMode {
     Nll,
+    Polonius,
 }
 
 impl CompareMode {
     pub(crate) fn to_str(&self) -> &'static str {
         match *self {
             CompareMode::Nll => "nll",
+            CompareMode::Polonius => "polonius",
         }
     }
 
     pub fn parse(s: String) -> CompareMode {
         match s.as_str() {
             "nll" => CompareMode::Nll,
+            "polonius" => CompareMode::Polonius,
             x => panic!("unknown --compare-mode option: {}", x),
         }
     }

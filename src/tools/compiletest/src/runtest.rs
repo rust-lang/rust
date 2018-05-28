@@ -1729,6 +1729,9 @@ impl<'test> TestCx<'test> {
             Some(CompareMode::Nll) => {
                 rustc.args(&["-Zborrowck=mir", "-Ztwo-phase-borrows"]);
             }
+            Some(CompareMode::Polonius) => {
+                rustc.args(&["-Zpolonius", "-Zborrowck=mir", "-Ztwo-phase-borrows"]);
+            }
             None => {}
         }
 
@@ -2898,8 +2901,14 @@ impl<'test> TestCx<'test> {
             &self.config.compare_mode,
             kind,
         );
-        if !path.exists() && self.config.compare_mode.is_some() {
-            // fallback!
+
+        if !path.exists() {
+            if let Some(CompareMode::Polonius) = self.config.compare_mode {
+                path = expected_output_path(&self.testpaths, self.revision, &Some(CompareMode::Nll), kind);
+            }
+        }
+
+        if !path.exists() {
             path = expected_output_path(&self.testpaths, self.revision, &None, kind);
         }
 
