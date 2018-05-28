@@ -2115,7 +2115,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_generic_param(&mut self, param: &GenericParam) -> io::Result<()> {
-        self.print_name(param.name())?;
+        self.print_name(param.name)?;
         match param.kind {
             GenericParamKind::Lifetime { .. } => {
                 let mut sep = ":";

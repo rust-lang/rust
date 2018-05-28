@@ -84,13 +84,13 @@ pub enum Region {
 fn new_region(hir_map: &Map, param: &hir::GenericParam)
     -> (hir::LifetimeName, DefId, LifetimeDefOrigin) {
     let def_id = hir_map.local_def_id(param.id);
-    let (name, origin) = match param.kind {
-        GenericParamKind::Lifetime { name, in_band, .. } => {
-            (name, LifetimeDefOrigin::from_is_in_band(in_band))
+    let (lt_name, origin) = match param.kind {
+        GenericParamKind::Lifetime { lt_name, in_band, .. } => {
+            (lt_name, LifetimeDefOrigin::from_is_in_band(in_band))
         }
         _ => bug!("expected a lifetime param"),
     };
-    (name, def_id, origin)
+    (lt_name, def_id, origin)
 }
 
 impl Region {
@@ -1222,7 +1222,7 @@ fn compute_object_lifetime_defaults(
                                 generics.params.iter().find_map(|param| match param.kind {
                                         GenericParamKind::Lifetime { .. } => {
                                             if i == 0 {
-                                                return Some(param.name().to_string());
+                                                return Some(param.name.to_string());
                                             }
                                             i -= 1;
                                             None
@@ -1299,8 +1299,8 @@ fn object_lifetime_defaults_for_item(
                         Set1::One(Region::Static)
                     } else {
                         generics.params.iter().filter_map(|param| match param.kind {
-                            GenericParamKind::Lifetime { name, in_band, .. } => {
-                                Some((param.id, name, in_band))
+                            GenericParamKind::Lifetime { lt_name, in_band, .. } => {
+                                Some((param.id, lt_name, in_band))
                             }
                             _ => None,
                         })
@@ -2237,7 +2237,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
     fn check_lifetime_params(&mut self, old_scope: ScopeRef, params: &'tcx [hir::GenericParam]) {
         let lifetimes: Vec<_> = params.iter().filter_map(|param| match param.kind {
-            GenericParamKind::Lifetime { name, .. } => Some((param, name)),
+            GenericParamKind::Lifetime { lt_name, .. } => Some((param, lt_name)),
             _ => None,
         }).collect();
         for (i, (lifetime_i, lifetime_i_name)) in lifetimes.iter().enumerate() {
@@ -2271,7 +2271,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         lifetime_j.span,
                         E0263,
                         "lifetime name `{}` declared twice in the same scope",
-                        lifetime_j.name()
+                        lifetime_j.name
                     ).span_label(lifetime_j.span, "declared twice")
                         .span_label(lifetime_i.span, "previous declaration here")
                         .emit();
@@ -2302,13 +2302,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                     lifetime_i.span.to(lt.span),
                                     &format!(
                                         "unnecessary lifetime parameter `{}`",
-                                        lifetime_i.name()
+                                        lifetime_i.name
                                     ),
                                 )
                                 .help(&format!(
                                     "you can use the `'static` lifetime directly, in place \
                                      of `{}`",
-                                    lifetime_i.name()
+                                    lifetime_i.name
                                 ))
                                 .emit();
                         }
@@ -2331,7 +2331,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     ) {
         for &(label, label_span) in &self.labels_in_fn {
             // FIXME (#24278): non-hygienic comparison
-            if param.name() == label {
+            if param.name == label {
                 signal_shadowing_problem(
                     self.tcx,
                     label,
@@ -2343,7 +2343,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }
 
         let name = match param.kind {
-            GenericParamKind::Lifetime { name, .. } => name,
+            GenericParamKind::Lifetime { lt_name, .. } => lt_name,
             _ => bug!("expected lifetime param"),
         };
 
@@ -2367,7 +2367,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                         signal_shadowing_problem(
                             self.tcx,
-                            param.name(),
+                            param.name,
                             original_lifetime(self.tcx.hir.span(node_id)),
                             shadower_lifetime(&param),
                         );
@@ -2539,7 +2539,7 @@ fn insert_late_bound_lifetimes(
     // - are not implicitly captured by `impl Trait`
     for param in &generics.params {
         let name = match param.kind {
-            GenericParamKind::Lifetime { name, .. } => name,
+            GenericParamKind::Lifetime { lt_name, .. } => lt_name,
             _ => continue,
         };
 

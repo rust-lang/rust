@@ -424,8 +424,6 @@ pub enum TraitBoundModifier {
     Maybe,
 }
 
-pub type Outlives = Lifetime;
-
 /// The AST represents all type param bounds as types.
 /// typeck::collect::compute_bounds matches these against
 /// the "special" built-in traits (see middle::lang_items) and
@@ -451,7 +449,7 @@ pub type ParamBounds = HirVec<ParamBound>;
 pub enum GenericParamKind {
     /// A lifetime definition, eg `'a: 'b + 'c + 'd`.
     Lifetime {
-        name: LifetimeName,
+        lt_name: LifetimeName,
         // Indicates that the lifetime definition was synthetically added
         // as a result of an in-band lifetime usage like:
         // `fn foo(x: &'a u8) -> &'a u8 { x }`
@@ -460,7 +458,6 @@ pub enum GenericParamKind {
         lifetime: Lifetime,
     },
     Type {
-        name: Name,
         default: Option<P<Ty>>,
         synthetic: Option<SyntheticTyParamKind>,
         attrs: HirVec<Attribute>,
@@ -470,20 +467,12 @@ pub enum GenericParamKind {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct GenericParam {
     pub id: NodeId,
+    pub name: Name,
     pub bounds: ParamBounds,
     pub span: Span,
     pub pure_wrt_drop: bool,
 
     pub kind: GenericParamKind,
-}
-
-impl GenericParam {
-    pub fn name(&self) -> Name {
-        match self.kind {
-            GenericParamKind::Lifetime { name, .. } => name.name(),
-            GenericParamKind::Type { name, .. } => name,
-        }
-    }
 }
 
 pub struct GenericParamCount {

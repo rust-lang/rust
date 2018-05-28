@@ -699,11 +699,12 @@ impl<'a> LoweringContext<'a> {
 
                 hir::GenericParam {
                     id: def_node_id,
+                    name: hir_name.name(),
                     span,
                     pure_wrt_drop: false,
                     bounds: vec![].into(),
                     kind: hir::GenericParamKind::Lifetime {
-                        name: hir_name,
+                        lt_name: hir_name,
                         in_band: true,
                         lifetime: hir::Lifetime {
                             id: def_node_id,
@@ -734,10 +735,7 @@ impl<'a> LoweringContext<'a> {
 
         let hir_name = hir::LifetimeName::Name(name);
 
-        if self.lifetimes_to_define
-            .iter()
-            .any(|(_, lt_name)| *lt_name == hir_name)
-        {
+        if self.lifetimes_to_define.iter().any(|(_, lt_name)| *lt_name == hir_name) {
             return;
         }
 
@@ -788,7 +786,7 @@ impl<'a> LoweringContext<'a> {
     {
         let old_len = self.in_scope_lifetimes.len();
         let lt_def_names = params.iter().filter_map(|param| match param.kind {
-            hir::GenericParamKind::Lifetime { .. } => Some(param.name()),
+            hir::GenericParamKind::Lifetime { .. } => Some(param.name),
             _ => None,
         });
         self.in_scope_lifetimes.extend(lt_def_names);
@@ -1251,11 +1249,11 @@ impl<'a> LoweringContext<'a> {
                         let name = Symbol::intern(&pprust::ty_to_string(t));
                         self.in_band_ty_params.push(hir::GenericParam {
                             id: def_node_id,
+                            name,
                             span,
                             pure_wrt_drop: false,
                             bounds: hir_bounds,
                             kind: hir::GenericParamKind::Type {
-                                name,
                                 default: None,
                                 synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
                                 attrs: P::new(),
@@ -1366,10 +1364,10 @@ impl<'a> LoweringContext<'a> {
 
             fn visit_generic_param(&mut self, param: &'v hir::GenericParam) {
                 // Record the introduction of 'a in `for<'a> ...`
-                if let hir::GenericParamKind::Lifetime { name, .. } = param.kind {
+                if let hir::GenericParamKind::Lifetime { lt_name, .. } = param.kind {
                     // Introduce lifetimes one at a time so that we can handle
                     // cases like `fn foo<'d>() -> impl for<'a, 'b: 'a, 'c: 'b + 'd>`
-                    self.currently_bound_lifetimes.push(name);
+                    self.currently_bound_lifetimes.push(lt_name);
                 }
 
                 hir::intravisit::walk_generic_param(self, param);
@@ -1418,11 +1416,12 @@ impl<'a> LoweringContext<'a> {
 
                     self.output_lifetime_params.push(hir::GenericParam {
                         id: def_node_id,
+                        name: name.name(),
                         span: lifetime.span,
                         pure_wrt_drop: false,
                         bounds: vec![].into(),
                         kind: hir::GenericParamKind::Lifetime {
-                            name,
+                            lt_name: name,
                             in_band: false,
                             lifetime: hir::Lifetime {
                                 id: def_node_id,
@@ -1955,11 +1954,12 @@ impl<'a> LoweringContext<'a> {
                 let lifetime = self.lower_lifetime(lifetime);
                 let param = hir::GenericParam {
                     id: lifetime.id,
+                    name: lifetime.name.name(),
                     span: lifetime.span,
                     pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
                     bounds,
                     kind: hir::GenericParamKind::Lifetime {
-                        name: lifetime.name,
+                        lt_name: lifetime.name,
                         in_band: false,
                         lifetime,
                     }
@@ -1988,11 +1988,11 @@ impl<'a> LoweringContext<'a> {
 
                 hir::GenericParam {
                     id: self.lower_node_id(param.id).node_id,
+                    name,
                     span: param.ident.span,
                     pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
                     bounds,
                     kind: hir::GenericParamKind::Type {
-                        name,
                         default: default.as_ref().map(|x| {
                             self.lower_ty(x, ImplTraitContext::Disallowed)
                         }),

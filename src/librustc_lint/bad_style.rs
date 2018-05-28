@@ -151,7 +151,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
             GenericParamKind::Lifetime { .. } => {}
             GenericParamKind::Type { synthetic, .. } => {
                 if synthetic.is_none() {
-                    self.check_case(cx, "type parameter", param.name(), param.span);
+                    self.check_case(cx, "type parameter", param.name, param.span);
                 }
             }
         }
@@ -258,7 +258,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     fn check_generic_param(&mut self, cx: &LateContext, param: &hir::GenericParam) {
         match param.kind {
             GenericParamKind::Lifetime { .. } => {
-                self.check_snake_case(cx, "lifetime", &param.name().as_str(), Some(param.span));
+                self.check_snake_case(cx, "lifetime", &param.name.as_str(), Some(param.span));
             }
             GenericParamKind::Type { .. } => {}
         }

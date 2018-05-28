@@ -616,7 +616,7 @@ impl<'hir> Map<'hir> {
             NodeItem(&Item { node: ItemTrait(..), .. }) => {
                 keywords::SelfType.name()
             }
-            NodeGenericParam(param) => param.name(),
+            NodeGenericParam(param) => param.name,
             _ => {
                 bug!("ty_param_name: {} not a type parameter",
                     self.node_to_string(id))
@@ -957,7 +957,7 @@ impl<'hir> Map<'hir> {
             NodeVariant(v) => v.node.name,
             NodeField(f) => f.ident.name,
             NodeLifetime(lt) => lt.name.name(),
-            NodeGenericParam(param) => param.name(),
+            NodeGenericParam(param) => param.name,
             NodeBinding(&Pat { node: PatKind::Binding(_,_,l,_), .. }) => l.node,
             NodeStructCtor(_) => self.name(self.get_parent(id)),
             _ => bug!("no name for {}", self.node_to_string(id))

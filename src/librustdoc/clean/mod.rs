@@ -1678,13 +1678,13 @@ impl Clean<Lifetime> for hir::GenericParam {
                         _ => panic!(),
                     });
                     let name = bounds.next().unwrap().name.name();
-                    let mut s = format!("{}: {}", self.name(), name);
+                    let mut s = format!("{}: {}", self.name, name);
                     for bound in bounds {
                         s.push_str(&format!(" + {}", bound.name.name()));
                     }
                     Lifetime(s)
                 } else {
-                    Lifetime(self.name().to_string())
+                    Lifetime(self.name.to_string())
                 }
             }
             _ => panic!(),
@@ -1897,18 +1897,18 @@ impl Clean<GenericParamDef> for hir::GenericParam {
                         _ => panic!(),
                     });
                     let name = bounds.next().unwrap().name.name();
-                    let mut s = format!("{}: {}", self.name(), name);
+                    let mut s = format!("{}: {}", self.name, name);
                     for bound in bounds {
                         s.push_str(&format!(" + {}", bound.name.name()));
                     }
                     s
                 } else {
-                    self.name().to_string()
+                    self.name.to_string()
                 };
                 (name, GenericParamDefKind::Lifetime)
             }
             hir::GenericParamKind::Type { ref default, synthetic, .. } => {
-                (self.name().clean(cx), GenericParamDefKind::Type {
+                (self.name.clean(cx), GenericParamDefKind::Type {
                     did: cx.tcx.hir.local_def_id(self.id),
                     bounds: self.bounds.clean(cx),
                     default: default.clean(cx),

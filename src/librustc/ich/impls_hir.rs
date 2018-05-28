@@ -196,6 +196,7 @@ impl_stable_hash_for!(enum hir::TraitBoundModifier {
 
 impl_stable_hash_for!(struct hir::GenericParam {
     id,
+    name,
     span,
     pure_wrt_drop,
     bounds,
@@ -208,13 +209,12 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::GenericParamKind {
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
-            hir::GenericParamKind::Lifetime { name, in_band, ref lifetime } => {
-                name.hash_stable(hcx, hasher);
+            hir::GenericParamKind::Lifetime { lt_name, in_band, ref lifetime } => {
+                lt_name.hash_stable(hcx, hasher);
                 in_band.hash_stable(hcx, hasher);
                 lifetime.hash_stable(hcx, hasher);
             }
-            hir::GenericParamKind::Type { name, ref default, synthetic, attrs } => {
-                name.hash_stable(hcx, hasher);
+            hir::GenericParamKind::Type { ref default, synthetic, attrs } => {
                 default.hash_stable(hcx, hasher);
                 synthetic.hash_stable(hcx, hasher);
                 attrs.hash_stable(hcx, hasher);
