@@ -1,6 +1,4 @@
 
-#![allow(stable_features)]
-#![feature(conservative_impl_trait)]
 #![deny(needless_lifetimes)]
 #![allow(dead_code)]
 

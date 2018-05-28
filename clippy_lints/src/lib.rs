@@ -4,14 +4,11 @@
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
-#![feature(conservative_impl_trait)]
 #![feature(range_contains)]
 #![feature(macro_vis_matcher)]
 #![allow(unknown_lints, indexing_slicing, shadow_reuse, missing_docs_in_private_items)]
 #![recursion_limit = "256"]
-// FIXME(mark-i-m) remove after i128 stablization merges
 #![allow(stable_features)]
-#![feature(i128, i128_type)]
 #![feature(iterator_find_map)]
 
 
