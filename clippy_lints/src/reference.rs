@@ -54,3 +54,53 @@ impl EarlyLintPass for Pass {
         }
     }
 }
+
+/// **What it does:** Checks for references in expressions that use
+/// auto dereference.
+///
+/// **Why is this bad?** The reference is a no-op and is automatically
+/// dereferenced by the compiler and makes the code less clear.
+///
+/// **Example:**
+/// ```rust
+/// struct Point(u32, u32);
+/// let point = Foo(30, 20);
+/// let x = (&point).x;
+/// ```
+declare_clippy_lint! {
+    pub REF_IN_DEREF,
+    complexity,
+    "Use of reference in auto dereference expression."
+}
+
+pub struct DerefPass;
+
+impl LintPass for DerefPass {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(REF_IN_DEREF)
+    }
+}
+
+impl EarlyLintPass for DerefPass {
+    fn check_expr(&mut self, cx: &EarlyContext, e: &Expr) {
+        if_chain! {
+            if let ExprKind::Field(ref object, ref field_name) = e.node;
+            if let ExprKind::Paren(ref parened) = object.node;
+            if let ExprKind::AddrOf(_, ref inner) = parened.node;
+            then {
+                span_lint_and_sugg(
+                    cx,
+                    REF_IN_DEREF,
+                    object.span,
+                    "Creating a reference that is immediately dereferenced.",
+                    "try this",
+                    format!(
+                        "{}.{}",
+                        snippet(cx, inner.span, "_"),
+                        snippet(cx, field_name.span, "_")
+                    )
+                );
+            }
+        }
+    }
+}

@@ -388,6 +388,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box if_let_redundant_pattern_matching::Pass);
     reg.register_late_lint_pass(box partialeq_ne_impl::Pass);
     reg.register_early_lint_pass(box reference::Pass);
+    reg.register_early_lint_pass(box reference::DerefPass);
     reg.register_early_lint_pass(box double_parens::DoubleParens);
     reg.register_late_lint_pass(box unused_io_amount::UnusedIoAmount);
     reg.register_late_lint_pass(box large_enum_variant::LargeEnumVariant::new(conf.enum_variant_size_threshold));
@@ -809,6 +810,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         precedence::PRECEDENCE,
         ranges::RANGE_ZIP_WITH_LEN,
         reference::DEREF_ADDROF,
+        reference::REF_IN_DEREF,
         swap::MANUAL_SWAP,
         temporary_assignment::TEMPORARY_ASSIGNMENT,
         transmute::CROSSPOINTER_TRANSMUTE,
