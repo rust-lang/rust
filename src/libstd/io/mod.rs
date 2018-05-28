@@ -967,18 +967,23 @@ impl Initializer {
 ///
 /// Implementors of the `Write` trait are sometimes called 'writers'.
 ///
-/// Writers are defined by two required methods, [`write`] and [`flush`]:
+/// Writers are intended to be composable with one another. Many implementors
+/// throughout [`std::io`] take and provide types which implement the `Write`
+/// trait. For example, `BufWriter` may be composed with `TcpStream`,
+/// buffering the output passed to its `write` method, until its internal
+/// buffer is full, or the `flush` method is invoked.
+///
+/// The 'true sink' is the final writer in a chain of writers, for example,
+/// `TcpStream`, `File`, or `Cursor`. For a true sink the ['flush']
+/// operation is a no-op which always returns `Ok()`.
+///
+/// Implementors of `Write` must define two methods, [`write`] and [`flush`]:
 ///
 /// * The [`write`] method will attempt to write some data into the object,
 ///   returning how many bytes were successfully written.
 ///
-/// * The [`flush`] method is useful for adaptors and explicit buffers
-///   themselves for ensuring that all buffered data has been pushed out to the
-///   'true sink'.
-///
-/// Writers are intended to be composable with one another. Many implementors
-/// throughout [`std::io`] take and provide types which implement the `Write`
-/// trait.
+/// * The [`flush`] method ensures that all data, some of which might have
+///   been in an intermedate buffer, has been flushed to the 'true sink'.
 ///
 /// [`write`]: #tymethod.write
 /// [`flush`]: #tymethod.flush
@@ -1050,12 +1055,11 @@ pub trait Write {
     fn write(&mut self, buf: &[u8]) -> Result<usize>;
 
     /// Flush this output stream, ensuring that all intermediately buffered
-    /// contents reach their destination.
+    /// contents reach the 'true sink'.
     ///
     /// # Errors
     ///
-    /// It is considered an error if not all bytes could be written due to
-    /// I/O errors or EOF being reached.
+    /// It is considered an error if any buffered data could not be flushed.
     ///
     /// # Examples
     ///
@@ -1075,7 +1079,7 @@ pub trait Write {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn flush(&mut self) -> Result<()>;
 
-    /// Attempts to write an entire buffer into this write.
+    /// Attempts to write an entire buffer into this writer.
     ///
     /// This method will continuously call [`write`] until there is no more data
     /// to be written or an error of non-[`ErrorKind::Interrupted`] kind is
