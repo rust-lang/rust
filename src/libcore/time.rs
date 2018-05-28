@@ -277,7 +277,7 @@ impl Duration {
     #[unstable(feature = "duration_as_u128", issue = "50202")]
     #[inline]
     pub fn as_millis(&self) -> u128 {
-        self.secs as u128 * MILLIS_PER_SEC as u128 + self.nanos as u128 / NANOS_PER_MILLI as u128
+        self.secs as u128 * MILLIS_PER_SEC as u128 + (self.nanos / NANOS_PER_MILLI) as u128
     }
 
     /// Returns the total number of microseconds contained by this `Duration`.
@@ -294,7 +294,7 @@ impl Duration {
     #[unstable(feature = "duration_as_u128", issue = "50202")]
     #[inline]
     pub fn as_micros(&self) -> u128 {
-        self.secs as u128 * MICROS_PER_SEC as u128 + self.nanos as u128 / NANOS_PER_MICRO as u128
+        self.secs as u128 * MICROS_PER_SEC as u128 + (self.nanos / NANOS_PER_MICRO) as u128
     }
 
     /// Returns the total number of nanoseconds contained by this `Duration`.
