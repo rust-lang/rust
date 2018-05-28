@@ -628,6 +628,11 @@ tr.result span.primitive::after {
 	font-style: italic;
 }
 
+tr.result span.keyword::after {
+	content: ' (keyword)';
+	font-style: italic;
+}
+
 body.blur > :not(#help) {
 	filter: blur(8px);
 	-webkit-filter: blur(8px);

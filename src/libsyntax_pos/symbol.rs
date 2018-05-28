@@ -311,6 +311,17 @@ macro_rules! declare_keywords {(
                 ident: Ident::with_empty_ctxt(super::Symbol($index))
             };
         )*
+
+        impl ::std::str::FromStr for Keyword {
+            type Err = ();
+
+            fn from_str(s: &str) -> Result<Self, ()> {
+                match s {
+                    $($string => Ok($konst),)*
+                    _ => Err(()),
+                }
+            }
+        }
     }
 
     impl Interner {

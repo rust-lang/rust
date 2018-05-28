@@ -126,6 +126,9 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 
             // Associated types are never stripped
             clean::AssociatedTypeItem(..) => {}
+
+            // Keywords are never stripped
+            clean::KeywordItem(..) => {}
         }
 
         let fastreturn = match i.inner {

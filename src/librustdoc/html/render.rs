@@ -1541,6 +1541,7 @@ struct AllTypes {
     typedefs: HashSet<ItemEntry>,
     statics: HashSet<ItemEntry>,
     constants: HashSet<ItemEntry>,
+    keywords: HashSet<ItemEntry>,
 }
 
 impl AllTypes {
@@ -1556,6 +1557,7 @@ impl AllTypes {
             typedefs: HashSet::with_capacity(100),
             statics: HashSet::with_capacity(100),
             constants: HashSet::with_capacity(100),
+            keywords: HashSet::with_capacity(10),
         }
     }
 
@@ -2063,12 +2065,13 @@ impl<'a> fmt::Display for Item<'a> {
             clean::StaticItem(..) | clean::ForeignStaticItem(..) => write!(fmt, "Static ")?,
             clean::ConstantItem(..) => write!(fmt, "Constant ")?,
             clean::ForeignTypeItem => write!(fmt, "Foreign Type ")?,
+            clean::KeywordItem(..) => write!(fmt, "Keyword ")?,
             _ => {
                 // We don't generate pages for any other type.
                 unreachable!();
             }
         }
-        if !self.item.is_primitive() {
+        if !self.item.is_primitive() && !self.item.is_keyword() {
             let cur = &self.cx.current;
             let amt = if self.item.is_mod() { cur.len() - 1 } else { cur.len() };
             for (i, component) in cur.iter().enumerate().take(amt) {
@@ -2126,6 +2129,7 @@ impl<'a> fmt::Display for Item<'a> {
                 item_static(fmt, self.cx, self.item, i),
             clean::ConstantItem(ref c) => item_constant(fmt, self.cx, self.item, c),
             clean::ForeignTypeItem => item_foreign_type(fmt, self.cx, self.item),
+            clean::KeywordItem(ref k) => item_keyword(fmt, self.cx, self.item, k),
             _ => {
                 // We don't generate pages for any other type.
                 unreachable!();
@@ -2353,29 +2357,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 write!(w, "</table>")?;
             }
             curty = myty;
-            let (short, name) = match myty.unwrap() {
-                ItemType::ExternCrate |
-                ItemType::Import          => ("reexports", "Re-exports"),
-                ItemType::Module          => ("modules", "Modules"),
-                ItemType::Struct          => ("structs", "Structs"),
-                ItemType::Union           => ("unions", "Unions"),
-                ItemType::Enum            => ("enums", "Enums"),
-                ItemType::Function        => ("functions", "Functions"),
-                ItemType::Typedef         => ("types", "Type Definitions"),
-                ItemType::Static          => ("statics", "Statics"),
-                ItemType::Constant        => ("constants", "Constants"),
-                ItemType::Trait           => ("traits", "Traits"),
-                ItemType::Impl            => ("impls", "Implementations"),
-                ItemType::TyMethod        => ("tymethods", "Type Methods"),
-                ItemType::Method          => ("methods", "Methods"),
-                ItemType::StructField     => ("fields", "Struct Fields"),
-                ItemType::Variant         => ("variants", "Variants"),
-                ItemType::Macro           => ("macros", "Macros"),
-                ItemType::Primitive       => ("primitives", "Primitive Types"),
-                ItemType::AssociatedType  => ("associated-types", "Associated Types"),
-                ItemType::AssociatedConst => ("associated-consts", "Associated Constants"),
-                ItemType::ForeignType     => ("foreign-types", "Foreign Types"),
-            };
+            let (short, name) = item_ty_to_strs(&myty.unwrap());
             write!(w, "<h2 id='{id}' class='section-header'>\
                        <a href=\"#{id}\">{name}</a></h2>\n<table>",
                    id = derive_id(short.to_owned()), name = name)?;
@@ -4360,6 +4342,33 @@ fn sidebar_enum(fmt: &mut fmt::Formatter, it: &clean::Item,
     Ok(())
 }
 
+fn item_ty_to_strs(ty: &ItemType) -> (&'static str, &'static str) {
+    match *ty {
+        ItemType::ExternCrate |
+        ItemType::Import          => ("reexports", "Re-exports"),
+        ItemType::Module          => ("modules", "Modules"),
+        ItemType::Struct          => ("structs", "Structs"),
+        ItemType::Union           => ("unions", "Unions"),
+        ItemType::Enum            => ("enums", "Enums"),
+        ItemType::Function        => ("functions", "Functions"),
+        ItemType::Typedef         => ("types", "Type Definitions"),
+        ItemType::Static          => ("statics", "Statics"),
+        ItemType::Constant        => ("constants", "Constants"),
+        ItemType::Trait           => ("traits", "Traits"),
+        ItemType::Impl            => ("impls", "Implementations"),
+        ItemType::TyMethod        => ("tymethods", "Type Methods"),
+        ItemType::Method          => ("methods", "Methods"),
+        ItemType::StructField     => ("fields", "Struct Fields"),
+        ItemType::Variant         => ("variants", "Variants"),
+        ItemType::Macro           => ("macros", "Macros"),
+        ItemType::Primitive       => ("primitives", "Primitive Types"),
+        ItemType::AssociatedType  => ("associated-types", "Associated Types"),
+        ItemType::AssociatedConst => ("associated-consts", "Associated Constants"),
+        ItemType::ForeignType     => ("foreign-types", "Foreign Types"),
+        ItemType::Keyword         => ("keywords", "Keywords"),
+    }
+}
+
 fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
                   items: &[clean::Item]) -> fmt::Result {
     let mut sidebar = String::new();
@@ -4379,29 +4388,7 @@ fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
                    ItemType::TyMethod, ItemType::Method, ItemType::StructField, ItemType::Variant,
                    ItemType::AssociatedType, ItemType::AssociatedConst, ItemType::ForeignType] {
         if items.iter().any(|it| !it.is_stripped() && it.type_() == myty) {
-            let (short, name) = match myty {
-                ItemType::ExternCrate |
-                ItemType::Import          => ("reexports", "Re-exports"),
-                ItemType::Module          => ("modules", "Modules"),
-                ItemType::Struct          => ("structs", "Structs"),
-                ItemType::Union           => ("unions", "Unions"),
-                ItemType::Enum            => ("enums", "Enums"),
-                ItemType::Function        => ("functions", "Functions"),
-                ItemType::Typedef         => ("types", "Type Definitions"),
-                ItemType::Static          => ("statics", "Statics"),
-                ItemType::Constant        => ("constants", "Constants"),
-                ItemType::Trait           => ("traits", "Traits"),
-                ItemType::Impl            => ("impls", "Implementations"),
-                ItemType::TyMethod        => ("tymethods", "Type Methods"),
-                ItemType::Method          => ("methods", "Methods"),
-                ItemType::StructField     => ("fields", "Struct Fields"),
-                ItemType::Variant         => ("variants", "Variants"),
-                ItemType::Macro           => ("macros", "Macros"),
-                ItemType::Primitive       => ("primitives", "Primitive Types"),
-                ItemType::AssociatedType  => ("associated-types", "Associated Types"),
-                ItemType::AssociatedConst => ("associated-consts", "Associated Constants"),
-                ItemType::ForeignType     => ("foreign-types", "Foreign Types"),
-            };
+            let (short, name) = item_ty_to_strs(&myty);
             sidebar.push_str(&format!("<li><a href=\"#{id}\">{name}</a></li>",
                                       id = short,
                                       name = name));
@@ -4458,6 +4445,13 @@ fn item_macro(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 fn item_primitive(w: &mut fmt::Formatter, cx: &Context,
                   it: &clean::Item,
                   _p: &clean::PrimitiveType) -> fmt::Result {
+    document(w, cx, it)?;
+    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
+}
+
+fn item_keyword(w: &mut fmt::Formatter, cx: &Context,
+                it: &clean::Item,
+                _p: &str) -> fmt::Result {
     document(w, cx, it)?;
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }

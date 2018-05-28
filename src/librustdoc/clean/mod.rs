@@ -26,7 +26,7 @@ use syntax::attr;
 use syntax::codemap::{dummy_spanned, Spanned};
 use syntax::feature_gate::UnstableFeatures;
 use syntax::ptr::P;
-use syntax::symbol::keywords;
+use syntax::symbol::keywords::{self, Keyword};
 use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::{self, DUMMY_SP, Pos, FileName};
 
@@ -54,6 +54,7 @@ use std::{mem, slice, vec};
 use std::iter::{FromIterator, once};
 use rustc_data_structures::sync::Lrc;
 use std::rc::Rc;
+use std::str::FromStr;
 use std::cell::RefCell;
 use std::sync::Arc;
 use std::u32;
@@ -177,7 +178,7 @@ impl<'a, 'tcx, 'rcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx, 'rcx> 
             _ => unreachable!(),
         }
 
-        let ExternalCrate { name, src, primitives, .. } = LOCAL_CRATE.clean(cx);
+        let ExternalCrate { name, src, primitives, keywords, .. } = LOCAL_CRATE.clean(cx);
         {
             let m = match module.inner {
                 ModuleItem(ref mut m) => m,
@@ -193,6 +194,18 @@ impl<'a, 'tcx, 'rcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx, 'rcx> 
                     deprecation: get_deprecation(cx, def_id),
                     def_id,
                     inner: PrimitiveItem(prim),
+                }
+            }));
+            m.items.extend(keywords.iter().map(|&(def_id, ref kw, ref attrs)| {
+                Item {
+                    source: Span::empty(),
+                    name: Some(kw.clone()),
+                    attrs: attrs.clone(),
+                    visibility: Some(Public),
+                    stability: get_stability(cx, def_id),
+                    deprecation: get_deprecation(cx, def_id),
+                    def_id,
+                    inner: KeywordItem(kw.clone()),
                 }
             }));
         }
@@ -220,6 +233,7 @@ pub struct ExternalCrate {
     pub src: FileName,
     pub attrs: Attributes,
     pub primitives: Vec<(DefId, PrimitiveType, Attributes)>,
+    pub keywords: Vec<(DefId, String, Attributes)>,
 }
 
 impl Clean<ExternalCrate> for CrateNum {
@@ -286,11 +300,54 @@ impl Clean<ExternalCrate> for CrateNum {
               .filter_map(as_primitive).collect()
         };
 
+        let as_keyword = |def: Def| {
+            if let Def::Mod(def_id) = def {
+                let attrs = cx.tcx.get_attrs(def_id).clean(cx);
+                let mut keyword = None;
+                for attr in attrs.lists("doc") {
+                    if let Some(v) = attr.value_str() {
+                        if attr.check_name("keyword") {
+                            keyword = Keyword::from_str(&v.as_str()).ok()
+                                                                    .map(|x| x.name().to_string());
+                            if keyword.is_some() {
+                                break
+                            }
+                            // FIXME: should warn on unknown keywords?
+                        }
+                    }
+                }
+                return keyword.map(|p| (def_id, p, attrs));
+            }
+            None
+        };
+        let keywords = if root.is_local() {
+            cx.tcx.hir.krate().module.item_ids.iter().filter_map(|&id| {
+                let item = cx.tcx.hir.expect_item(id.id);
+                match item.node {
+                    hir::ItemMod(_) => {
+                        as_keyword(Def::Mod(cx.tcx.hir.local_def_id(id.id)))
+                    }
+                    hir::ItemUse(ref path, hir::UseKind::Single)
+                    if item.vis == hir::Visibility::Public => {
+                        as_keyword(path.def).map(|(_, prim, attrs)| {
+                            // Pretend the primitive is local.
+                            (cx.tcx.hir.local_def_id(id.id), prim, attrs)
+                        })
+                    }
+                    _ => None
+                }
+            }).collect()
+        } else {
+            cx.tcx.item_children(root).iter().map(|item| item.def)
+              .filter_map(as_keyword).collect()
+        };
+
         ExternalCrate {
             name: cx.tcx.crate_name(*self).to_string(),
             src: krate_src,
             attrs: cx.tcx.get_attrs(root).clean(cx),
             primitives,
+            keywords,
         }
     }
 }
@@ -397,6 +454,9 @@ impl Item {
     pub fn is_extern_crate(&self) -> bool {
         self.type_() == ItemType::ExternCrate
     }
+    pub fn is_keyword(&self) -> bool {
+        self.type_() == ItemType::Keyword
+    }
 
     pub fn is_stripped(&self) -> bool {
         match self.inner { StrippedItem(..) => true, _ => false }
@@ -475,6 +535,7 @@ pub enum ItemEnum {
     AssociatedTypeItem(Vec<TyParamBound>, Option<Type>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemEnum>),
+    KeywordItem(String),
 }
 
 impl ItemEnum {
