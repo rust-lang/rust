@@ -74,6 +74,7 @@ pub mod control_flow_graph;
 pub mod flock;
 pub mod sync;
 pub mod owning_ref;
+pub mod tiny_list;
 pub mod sorted_map;
 
 pub struct OnDrop<F: Fn()>(pub F);
