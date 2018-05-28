@@ -38,6 +38,7 @@ Read ["Installation"] from [The Book].
 3. Build and install:
 
     ```sh
+    $ git submodule update --init --recursive --progress
     $ ./x.py build && sudo ./x.py install
     ```
 
