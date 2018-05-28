@@ -27,7 +27,7 @@ use util;
 
 pub struct UnsafetyChecker<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
-    visibility_scope_info: &'a IndexVec<VisibilityScope, VisibilityScopeInfo>,
+    source_scope_info: &'a IndexVec<SourceScope, SourceScopeInfo>,
     violations: Vec<UnsafetyViolation>,
     source_info: SourceInfo,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -38,16 +38,16 @@ pub struct UnsafetyChecker<'a, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> UnsafetyChecker<'a, 'tcx> {
     fn new(mir: &'a Mir<'tcx>,
-           visibility_scope_info: &'a IndexVec<VisibilityScope, VisibilityScopeInfo>,
+           source_scope_info: &'a IndexVec<SourceScope, SourceScopeInfo>,
            tcx: TyCtxt<'a, 'tcx, 'tcx>,
            param_env: ty::ParamEnv<'tcx>) -> Self {
         Self {
             mir,
-            visibility_scope_info,
+            source_scope_info,
             violations: vec![],
             source_info: SourceInfo {
                 span: mir.span,
-                scope: ARGUMENT_VISIBILITY_SCOPE
+                scope: OUTERMOST_SOURCE_SCOPE
             },
             tcx,
             param_env,
@@ -147,7 +147,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             if util::is_disaligned(self.tcx, self.mir, self.param_env, place) {
                 let source_info = self.source_info;
                 let lint_root =
-                    self.visibility_scope_info[source_info.scope].lint_root;
+                    self.source_scope_info[source_info.scope].lint_root;
                 self.register_violations(&[UnsafetyViolation {
                     source_info,
                     description: Symbol::intern("borrow of packed field").as_interned_str(),
@@ -212,7 +212,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 } else if self.tcx.is_foreign_item(def_id) {
                     let source_info = self.source_info;
                     let lint_root =
-                        self.visibility_scope_info[source_info.scope].lint_root;
+                        self.source_scope_info[source_info.scope].lint_root;
                     self.register_violations(&[UnsafetyViolation {
                         source_info,
                         description: Symbol::intern("use of extern static").as_interned_str(),
@@ -240,7 +240,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     fn register_violations(&mut self,
                            violations: &[UnsafetyViolation],
                            unsafe_blocks: &[(ast::NodeId, bool)]) {
-        let within_unsafe = match self.visibility_scope_info[self.source_info.scope].safety {
+        let within_unsafe = match self.source_scope_info[self.source_info.scope].safety {
             Safety::Safe => {
                 for violation in violations {
                     if !self.violations.contains(violation) {
@@ -327,7 +327,7 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     // `mir_built` force this.
     let mir = &tcx.mir_built(def_id).borrow();
 
-    let visibility_scope_info = match mir.visibility_scope_info {
+    let source_scope_info = match mir.source_scope_info {
         ClearCrossCrate::Set(ref data) => data,
         ClearCrossCrate::Clear => {
             debug!("unsafety_violations: {:?} - remote, skipping", def_id);
@@ -340,7 +340,7 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
 
     let param_env = tcx.param_env(def_id);
     let mut checker = UnsafetyChecker::new(
-        mir, visibility_scope_info, tcx, param_env);
+        mir, source_scope_info, tcx, param_env);
     checker.visit_mir(mir);
 
     check_unused_unsafe(tcx, def_id, &checker.used_unsafe, &mut checker.inherited_blocks);

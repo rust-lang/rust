@@ -300,7 +300,7 @@ fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
         ty: ret_ty,
         name: None,
         source_info: source_info(mir),
-        syntactic_scope: ARGUMENT_VISIBILITY_SCOPE,
+        syntactic_scope: OUTERMOST_SOURCE_SCOPE,
         internal: false,
         is_user_variable: false,
     };
@@ -641,7 +641,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
         ty: tcx.mk_nil(),
         name: None,
         source_info,
-        syntactic_scope: ARGUMENT_VISIBILITY_SCOPE,
+        syntactic_scope: OUTERMOST_SOURCE_SCOPE,
         internal: false,
         is_user_variable: false,
     };
@@ -657,7 +657,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
         }),
         name: None,
         source_info,
-        syntactic_scope: ARGUMENT_VISIBILITY_SCOPE,
+        syntactic_scope: OUTERMOST_SOURCE_SCOPE,
         internal: false,
         is_user_variable: false,
     };
@@ -762,7 +762,7 @@ fn create_generator_resume_function<'a, 'tcx>(
 fn source_info<'a, 'tcx>(mir: &Mir<'tcx>) -> SourceInfo {
     SourceInfo {
         span: mir.span,
-        scope: ARGUMENT_VISIBILITY_SCOPE,
+        scope: OUTERMOST_SOURCE_SCOPE,
     }
 }
 

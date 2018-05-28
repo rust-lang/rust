@@ -92,9 +92,9 @@ macro_rules! make_mir_visitor {
                 self.super_basic_block_data(block, data);
             }
 
-            fn visit_visibility_scope_data(&mut self,
-                                           scope_data: & $($mutability)* VisibilityScopeData) {
-                self.super_visibility_scope_data(scope_data);
+            fn visit_source_scope_data(&mut self,
+                                           scope_data: & $($mutability)* SourceScopeData) {
+                self.super_source_scope_data(scope_data);
             }
 
             fn visit_statement(&mut self,
@@ -261,9 +261,9 @@ macro_rules! make_mir_visitor {
                             _location: Location) {
             }
 
-            fn visit_visibility_scope(&mut self,
-                                      scope: & $($mutability)* VisibilityScope) {
-                self.super_visibility_scope(scope);
+            fn visit_source_scope(&mut self,
+                                      scope: & $($mutability)* SourceScope) {
+                self.super_source_scope(scope);
             }
 
             // The `super_xxx` methods comprise the default behavior and are
@@ -274,7 +274,7 @@ macro_rules! make_mir_visitor {
                 if let Some(yield_ty) = &$($mutability)* mir.yield_ty {
                     self.visit_ty(yield_ty, TyContext::YieldTy(SourceInfo {
                         span: mir.span,
-                        scope: ARGUMENT_VISIBILITY_SCOPE,
+                        scope: OUTERMOST_SOURCE_SCOPE,
                     }));
                 }
 
@@ -289,13 +289,13 @@ macro_rules! make_mir_visitor {
                     self.visit_basic_block_data(bb, data);
                 }
 
-                for scope in &$($mutability)* mir.visibility_scopes {
-                    self.visit_visibility_scope_data(scope);
+                for scope in &$($mutability)* mir.source_scopes {
+                    self.visit_source_scope_data(scope);
                 }
 
                 self.visit_ty(&$($mutability)* mir.return_ty(), TyContext::ReturnTy(SourceInfo {
                     span: mir.span,
-                    scope: ARGUMENT_VISIBILITY_SCOPE,
+                    scope: OUTERMOST_SOURCE_SCOPE,
                 }));
 
                 for local in mir.local_decls.indices() {
@@ -327,16 +327,16 @@ macro_rules! make_mir_visitor {
                 }
             }
 
-            fn super_visibility_scope_data(&mut self,
-                                           scope_data: & $($mutability)* VisibilityScopeData) {
-                let VisibilityScopeData {
+            fn super_source_scope_data(&mut self,
+                                           scope_data: & $($mutability)* SourceScopeData) {
+                let SourceScopeData {
                     ref $($mutability)* span,
                     ref $($mutability)* parent_scope,
                 } = *scope_data;
 
                 self.visit_span(span);
                 if let Some(ref $($mutability)* parent_scope) = *parent_scope {
-                    self.visit_visibility_scope(parent_scope);
+                    self.visit_source_scope(parent_scope);
                 }
             }
 
@@ -725,11 +725,11 @@ macro_rules! make_mir_visitor {
                     source_info: *source_info,
                 });
                 self.visit_source_info(source_info);
-                self.visit_visibility_scope(syntactic_scope);
+                self.visit_source_scope(syntactic_scope);
             }
 
-            fn super_visibility_scope(&mut self,
-                                      _scope: & $($mutability)* VisibilityScope) {
+            fn super_source_scope(&mut self,
+                                      _scope: & $($mutability)* SourceScope) {
             }
 
             fn super_branch(&mut self,
@@ -775,7 +775,7 @@ macro_rules! make_mir_visitor {
                 } = *source_info;
 
                 self.visit_span(span);
-                self.visit_visibility_scope(scope);
+                self.visit_source_scope(scope);
             }
 
             fn super_ty(&mut self, _ty: & $($mutability)* Ty<'tcx>) {

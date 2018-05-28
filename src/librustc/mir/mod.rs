@@ -78,13 +78,13 @@ pub struct Mir<'tcx> {
     /// that indexes into this vector.
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
 
-    /// List of visibility (lexical) scopes; these are referenced by statements
-    /// and used (eventually) for debuginfo. Indexed by a `VisibilityScope`.
-    pub visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
+    /// List of source scopes; these are referenced by statements
+    /// and used for debuginfo. Indexed by a `SourceScope`.
+    pub source_scopes: IndexVec<SourceScope, SourceScopeData>,
 
-    /// Crate-local information for each visibility scope, that can't (and
+    /// Crate-local information for each source scope, that can't (and
     /// needn't) be tracked across crates.
-    pub visibility_scope_info: ClearCrossCrate<IndexVec<VisibilityScope, VisibilityScopeInfo>>,
+    pub source_scope_info: ClearCrossCrate<IndexVec<SourceScope, SourceScopeInfo>>,
 
     /// Rvalues promoted from this function, such as borrows of constants.
     /// Each of them is the Mir of a constant with the fn's type parameters
@@ -137,9 +137,9 @@ pub const START_BLOCK: BasicBlock = BasicBlock(0);
 
 impl<'tcx> Mir<'tcx> {
     pub fn new(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
-               visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
-               visibility_scope_info: ClearCrossCrate<IndexVec<VisibilityScope,
-                                                               VisibilityScopeInfo>>,
+               source_scopes: IndexVec<SourceScope, SourceScopeData>,
+               source_scope_info: ClearCrossCrate<IndexVec<SourceScope,
+                                                               SourceScopeInfo>>,
                promoted: IndexVec<Promoted, Mir<'tcx>>,
                yield_ty: Option<Ty<'tcx>>,
                local_decls: IndexVec<Local, LocalDecl<'tcx>>,
@@ -153,8 +153,8 @@ impl<'tcx> Mir<'tcx> {
 
         Mir {
             basic_blocks,
-            visibility_scopes,
-            visibility_scope_info,
+            source_scopes,
+            source_scope_info,
             promoted,
             yield_ty,
             generator_drop: None,
@@ -309,7 +309,7 @@ impl<'tcx> Mir<'tcx> {
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct VisibilityScopeInfo {
+pub struct SourceScopeInfo {
     /// A NodeId with lint levels equivalent to this scope's lint levels.
     pub lint_root: ast::NodeId,
     /// The unsafe block that contains this node.
@@ -329,8 +329,8 @@ pub enum Safety {
 
 impl_stable_hash_for!(struct Mir<'tcx> {
     basic_blocks,
-    visibility_scopes,
-    visibility_scope_info,
+    source_scopes,
+    source_scope_info,
     promoted,
     yield_ty,
     generator_drop,
@@ -376,8 +376,9 @@ pub struct SourceInfo {
     /// Source span for the AST pertaining to this MIR entity.
     pub span: Span,
 
-    /// The lexical visibility scope, i.e. which bindings can be seen.
-    pub scope: VisibilityScope
+    /// The source scope, keeping track of which bindings can be
+    /// seen by debuginfo, active lint levels, `unsafe {...}`, etc.
+    pub scope: SourceScope
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -512,16 +513,17 @@ pub struct LocalDecl<'tcx> {
     /// to generate better debuginfo.
     pub name: Option<Name>,
 
-    /// Source info of the local.
+    /// Source info of the local. The `SourceScope` is the *visibility* one,
+    /// not the the *syntactic* one (see `syntactic_scope` for more details).
     pub source_info: SourceInfo,
 
-    /// The *syntactic* visibility scope the local is defined
+    /// The *syntactic* (i.e. not visibility) source scope the local is defined
     /// in. If the local was defined in a let-statement, this
     /// is *within* the let-statement, rather than outside
     /// of it.
     ///
-    /// This is needed because visibility scope of locals within a let-statement
-    /// is weird.
+    /// This is needed because the visibility source scope of locals within
+    /// a let-statement is weird.
     ///
     /// The reason is that we want the local to be *within* the let-statement
     /// for lint purposes, but we want the local to be *after* the let-statement
@@ -594,7 +596,7 @@ pub struct LocalDecl<'tcx> {
     ///  │ │← x.source_info.scope
     ///  │ │← `drop(x)` // this accesses `x: u32`
     /// ```
-    pub syntactic_scope: VisibilityScope,
+    pub syntactic_scope: SourceScope,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
@@ -607,9 +609,9 @@ impl<'tcx> LocalDecl<'tcx> {
             name: None,
             source_info: SourceInfo {
                 span,
-                scope: ARGUMENT_VISIBILITY_SCOPE
+                scope: OUTERMOST_SOURCE_SCOPE
             },
-            syntactic_scope: ARGUMENT_VISIBILITY_SCOPE,
+            syntactic_scope: OUTERMOST_SOURCE_SCOPE,
             internal: false,
             is_user_variable: false
         }
@@ -624,9 +626,9 @@ impl<'tcx> LocalDecl<'tcx> {
             name: None,
             source_info: SourceInfo {
                 span,
-                scope: ARGUMENT_VISIBILITY_SCOPE
+                scope: OUTERMOST_SOURCE_SCOPE
             },
-            syntactic_scope: ARGUMENT_VISIBILITY_SCOPE,
+            syntactic_scope: OUTERMOST_SOURCE_SCOPE,
             internal: true,
             is_user_variable: false
         }
@@ -642,9 +644,9 @@ impl<'tcx> LocalDecl<'tcx> {
             ty: return_ty,
             source_info: SourceInfo {
                 span,
-                scope: ARGUMENT_VISIBILITY_SCOPE
+                scope: OUTERMOST_SOURCE_SCOPE
             },
-            syntactic_scope: ARGUMENT_VISIBILITY_SCOPE,
+            syntactic_scope: OUTERMOST_SOURCE_SCOPE,
             internal: false,
             name: None,     // FIXME maybe we do want some name here?
             is_user_variable: false
@@ -1047,7 +1049,7 @@ impl<'tcx> BasicBlockData<'tcx> {
         self.statements.resize(gap.end, Statement {
             source_info: SourceInfo {
                 span: DUMMY_SP,
-                scope: ARGUMENT_VISIBILITY_SCOPE
+                scope: OUTERMOST_SOURCE_SCOPE
             },
             kind: StatementKind::Nop
         });
@@ -1501,16 +1503,16 @@ impl<'tcx> Debug for Place<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Scopes
 
-newtype_index!(VisibilityScope
+newtype_index!(SourceScope
     {
         DEBUG_FORMAT = "scope[{}]",
-        const ARGUMENT_VISIBILITY_SCOPE = 0,
+        const OUTERMOST_SOURCE_SCOPE = 0,
     });
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct VisibilityScopeData {
+pub struct SourceScopeData {
     pub span: Span,
-    pub parent_scope: Option<VisibilityScope>,
+    pub parent_scope: Option<SourceScope>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -2153,16 +2155,16 @@ CloneTypeFoldableAndLiftImpls! {
     SourceInfo,
     UpvarDecl,
     ValidationOp,
-    VisibilityScopeData,
-    VisibilityScope,
-    VisibilityScopeInfo,
+    SourceScopeData,
+    SourceScope,
+    SourceScopeInfo,
 }
 
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for Mir<'tcx> {
         basic_blocks,
-        visibility_scopes,
-        visibility_scope_info,
+        source_scopes,
+        source_scope_info,
         promoted,
         yield_ty,
         generator_drop,

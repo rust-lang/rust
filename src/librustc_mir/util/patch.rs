@@ -62,7 +62,7 @@ impl<'tcx> MirPatch<'tcx> {
                 terminator: Some(Terminator {
                     source_info: SourceInfo {
                         span: mir.span,
-                        scope: ARGUMENT_VISIBILITY_SCOPE
+                        scope: OUTERMOST_SOURCE_SCOPE
                     },
                     kind: TerminatorKind::Resume
                 }),

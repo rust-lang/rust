@@ -338,7 +338,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                         .bits();
                     let right_size = self.tcx.layout_of(self.param_env.and(right.1)).unwrap().size;
                     if r.to_bits(right_size).ok().map_or(false, |b| b >= left_bits as u128) {
-                        let scope_info = match self.mir.visibility_scope_info {
+                        let scope_info = match self.mir.source_scope_info {
                             ClearCrossCrate::Set(ref data) => data,
                             ClearCrossCrate::Clear => return None,
                         };

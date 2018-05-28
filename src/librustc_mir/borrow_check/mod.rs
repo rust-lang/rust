@@ -292,7 +292,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     debug!("mbcx.used_mut: {:?}", mbcx.used_mut);
 
     for local in mbcx.mir.mut_vars_and_args_iter().filter(|local| !mbcx.used_mut.contains(local)) {
-        if let ClearCrossCrate::Set(ref vsi) = mbcx.mir.visibility_scope_info {
+        if let ClearCrossCrate::Set(ref vsi) = mbcx.mir.source_scope_info {
             let local_decl = &mbcx.mir.local_decls[local];
 
             // Skip implicit `self` argument for closures

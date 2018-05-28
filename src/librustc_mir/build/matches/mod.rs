@@ -97,7 +97,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                               LintLevel::Inherited,
                                               &arm.patterns[0],
                                               ArmHasGuard(arm.guard.is_some()));
-            (body, scope.unwrap_or(self.visibility_scope))
+            (body, scope.unwrap_or(self.source_scope))
         }).collect();
 
         // create binding start block for link them by false edges
@@ -200,15 +200,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let end_block = self.cfg.start_new_block();
 
         let outer_source_info = self.source_info(span);
-        for (arm_index, (body, visibility_scope)) in arm_bodies.into_iter().enumerate() {
+        for (arm_index, (body, source_scope)) in arm_bodies.into_iter().enumerate() {
             let mut arm_block = arm_blocks.blocks[arm_index];
-            // Re-enter the visibility scope we created the bindings in.
-            self.visibility_scope = visibility_scope;
+            // Re-enter the source scope we created the bindings in.
+            self.source_scope = source_scope;
             unpack!(arm_block = self.into(destination, arm_block, body));
             self.cfg.terminate(arm_block, outer_source_info,
                                TerminatorKind::Goto { target: end_block });
         }
-        self.visibility_scope = outer_source_info.scope;
+        self.source_scope = outer_source_info.scope;
 
         end_block.unit()
     }
@@ -294,30 +294,30 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         block.unit()
     }
 
-    /// Declares the bindings of the given pattern and returns the visibility scope
+    /// Declares the bindings of the given pattern and returns the source scope
     /// for the bindings in this patterns, if such a scope had to be created.
     /// NOTE: Declaring the bindings should always be done in their drop scope.
     pub fn declare_bindings(&mut self,
-                            mut var_scope: Option<VisibilityScope>,
+                            mut var_scope: Option<SourceScope>,
                             scope_span: Span,
                             lint_level: LintLevel,
                             pattern: &Pattern<'tcx>,
                             has_guard: ArmHasGuard)
-                            -> Option<VisibilityScope> {
+                            -> Option<SourceScope> {
         assert!(!(var_scope.is_some() && lint_level.is_explicit()),
                 "can't have both a var and a lint scope at the same time");
-        let mut syntactic_scope = self.visibility_scope;
+        let mut syntactic_scope = self.source_scope;
         self.visit_bindings(pattern, &mut |this, mutability, name, var, span, ty| {
             if var_scope.is_none() {
-                var_scope = Some(this.new_visibility_scope(scope_span,
+                var_scope = Some(this.new_source_scope(scope_span,
                                                            LintLevel::Inherited,
                                                            None));
-                // If we have lints, create a new visibility scope
+                // If we have lints, create a new source scope
                 // that marks the lints for the locals. See the comment
                 // on the `syntactic_scope` field for why this is needed.
                 if lint_level.is_explicit() {
                     syntactic_scope =
-                        this.new_visibility_scope(scope_span, lint_level, None);
+                        this.new_source_scope(scope_span, lint_level, None);
                 }
             }
             let source_info = SourceInfo {
@@ -1114,7 +1114,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// in the arm body, which will have type `T`.
     fn declare_binding(&mut self,
                        source_info: SourceInfo,
-                       syntactic_scope: VisibilityScope,
+                       syntactic_scope: SourceScope,
                        mutability: Mutability,
                        name: Name,
                        var_id: NodeId,

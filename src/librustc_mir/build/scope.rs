@@ -100,8 +100,8 @@ use rustc_data_structures::fx::FxHashMap;
 
 #[derive(Debug)]
 pub struct Scope<'tcx> {
-    /// The visibility scope this scope was created in.
-    visibility_scope: VisibilityScope,
+    /// The source scope this scope was created in.
+    source_scope: SourceScope,
 
     /// the region span of this scope within source code.
     region_scope: region::Scope,
@@ -251,11 +251,11 @@ impl<'tcx> Scope<'tcx> {
         }
     }
 
-    /// Given a span and this scope's visibility scope, make a SourceInfo.
+    /// Given a span and this scope's source scope, make a SourceInfo.
     fn source_info(&self, span: Span) -> SourceInfo {
         SourceInfo {
             span,
-            scope: self.visibility_scope
+            scope: self.source_scope
         }
     }
 }
@@ -316,14 +316,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_scope(region_scope={:?}, block={:?})", region_scope, block);
-        let visibility_scope = self.visibility_scope;
+        let source_scope = self.source_scope;
         let tcx = self.hir.tcx();
         if let LintLevel::Explicit(node_id) = lint_level {
             let same_lint_scopes = tcx.dep_graph.with_ignore(|| {
                 let sets = tcx.lint_levels(LOCAL_CRATE);
                 let parent_hir_id =
                     tcx.hir.definitions().node_to_hir_id(
-                        self.visibility_scope_info[visibility_scope].lint_root
+                        self.source_scope_info[source_scope].lint_root
                             );
                 let current_hir_id =
                     tcx.hir.definitions().node_to_hir_id(node_id);
@@ -332,15 +332,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             });
 
             if !same_lint_scopes {
-                self.visibility_scope =
-                    self.new_visibility_scope(region_scope.1.span, lint_level,
+                self.source_scope =
+                    self.new_source_scope(region_scope.1.span, lint_level,
                                               None);
             }
         }
         self.push_scope(region_scope);
         let rv = unpack!(block = f(self));
         unpack!(block = self.pop_scope(region_scope, block));
-        self.visibility_scope = visibility_scope;
+        self.source_scope = source_scope;
         debug!("in_scope: exiting region_scope={:?} block={:?}", region_scope, block);
         block.and(rv)
     }
@@ -351,9 +351,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// wrapper maybe preferable.
     pub fn push_scope(&mut self, region_scope: (region::Scope, SourceInfo)) {
         debug!("push_scope({:?})", region_scope);
-        let vis_scope = self.visibility_scope;
+        let vis_scope = self.source_scope;
         self.scopes.push(Scope {
-            visibility_scope: vis_scope,
+            source_scope: vis_scope,
             region_scope: region_scope.0,
             region_scope_span: region_scope.1.span,
             needs_cleanup: false,
@@ -509,30 +509,30 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         Some(result)
     }
 
-    /// Creates a new visibility scope, nested in the current one.
-    pub fn new_visibility_scope(&mut self,
+    /// Creates a new source scope, nested in the current one.
+    pub fn new_source_scope(&mut self,
                                 span: Span,
                                 lint_level: LintLevel,
-                                safety: Option<Safety>) -> VisibilityScope {
-        let parent = self.visibility_scope;
-        debug!("new_visibility_scope({:?}, {:?}, {:?}) - parent({:?})={:?}",
+                                safety: Option<Safety>) -> SourceScope {
+        let parent = self.source_scope;
+        debug!("new_source_scope({:?}, {:?}, {:?}) - parent({:?})={:?}",
                span, lint_level, safety,
-               parent, self.visibility_scope_info.get(parent));
-        let scope = self.visibility_scopes.push(VisibilityScopeData {
+               parent, self.source_scope_info.get(parent));
+        let scope = self.source_scopes.push(SourceScopeData {
             span,
             parent_scope: Some(parent),
         });
-        let scope_info = VisibilityScopeInfo {
+        let scope_info = SourceScopeInfo {
             lint_root: if let LintLevel::Explicit(lint_root) = lint_level {
                 lint_root
             } else {
-                self.visibility_scope_info[parent].lint_root
+                self.source_scope_info[parent].lint_root
             },
             safety: safety.unwrap_or_else(|| {
-                self.visibility_scope_info[parent].safety
+                self.source_scope_info[parent].safety
             })
         };
-        self.visibility_scope_info.push(scope_info);
+        self.source_scope_info.push(scope_info);
         scope
     }
 
@@ -552,11 +552,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             .unwrap_or_else(|| span_bug!(span, "no enclosing breakable scope found"))
     }
 
-    /// Given a span and the current visibility scope, make a SourceInfo.
+    /// Given a span and the current source scope, make a SourceInfo.
     pub fn source_info(&self, span: Span) -> SourceInfo {
         SourceInfo {
             span,
-            scope: self.visibility_scope
+            scope: self.source_scope
         }
     }
 
@@ -730,7 +730,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let resumeblk = self.cfg.start_new_cleanup_block();
             self.cfg.terminate(resumeblk,
                                SourceInfo {
-                                   scope: ARGUMENT_VISIBILITY_SCOPE,
+                                   scope: OUTERMOST_SOURCE_SCOPE,
                                    span: self.fn_span
                                },
                                TerminatorKind::Resume);
@@ -939,10 +939,10 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     // remainder. If everything is cached, we'll just walk right to
     // left reading the cached results but never create anything.
 
-    let visibility_scope = scope.visibility_scope;
+    let source_scope = scope.source_scope;
     let source_info = |span| SourceInfo {
         span,
-        scope: visibility_scope
+        scope: source_scope
     };
 
     // Next, build up the drops. Here we iterate the vector in

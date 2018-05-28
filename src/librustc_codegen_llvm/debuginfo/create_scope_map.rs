@@ -15,7 +15,7 @@ use super::utils::{DIB, span_start};
 use llvm;
 use llvm::debuginfo::DIScope;
 use common::CodegenCx;
-use rustc::mir::{Mir, VisibilityScope};
+use rustc::mir::{Mir, SourceScope};
 
 use libc::c_uint;
 use std::ptr;
@@ -45,13 +45,13 @@ impl MirDebugScope {
 /// Produce DIScope DIEs for each MIR Scope which has variables defined in it.
 /// If debuginfo is disabled, the returned vector is empty.
 pub fn create_mir_scopes(cx: &CodegenCx, mir: &Mir, debug_context: &FunctionDebugContext)
-    -> IndexVec<VisibilityScope, MirDebugScope> {
+    -> IndexVec<SourceScope, MirDebugScope> {
     let null_scope = MirDebugScope {
         scope_metadata: ptr::null_mut(),
         file_start_pos: BytePos(0),
         file_end_pos: BytePos(0)
     };
-    let mut scopes = IndexVec::from_elem(null_scope, &mir.visibility_scopes);
+    let mut scopes = IndexVec::from_elem(null_scope, &mir.source_scopes);
 
     let debug_context = match *debug_context {
         FunctionDebugContext::RegularContext(ref data) => data,
@@ -62,15 +62,15 @@ pub fn create_mir_scopes(cx: &CodegenCx, mir: &Mir, debug_context: &FunctionDebu
     };
 
     // Find all the scopes with variables defined in them.
-    let mut has_variables = BitVector::new(mir.visibility_scopes.len());
+    let mut has_variables = BitVector::new(mir.source_scopes.len());
     for var in mir.vars_iter() {
         let decl = &mir.local_decls[var];
         has_variables.insert(decl.source_info.scope.index());
     }
 
     // Instantiate all scopes.
-    for idx in 0..mir.visibility_scopes.len() {
-        let scope = VisibilityScope::new(idx);
+    for idx in 0..mir.source_scopes.len() {
+        let scope = SourceScope::new(idx);
         make_mir_scope(cx, &mir, &has_variables, debug_context, scope, &mut scopes);
     }
 
@@ -81,13 +81,13 @@ fn make_mir_scope(cx: &CodegenCx,
                   mir: &Mir,
                   has_variables: &BitVector,
                   debug_context: &FunctionDebugContextData,
-                  scope: VisibilityScope,
-                  scopes: &mut IndexVec<VisibilityScope, MirDebugScope>) {
+                  scope: SourceScope,
+                  scopes: &mut IndexVec<SourceScope, MirDebugScope>) {
     if scopes[scope].is_valid() {
         return;
     }
 
-    let scope_data = &mir.visibility_scopes[scope];
+    let scope_data = &mir.source_scopes[scope];
     let parent_scope = if let Some(parent) = scope_data.parent_scope {
         make_mir_scope(cx, mir, has_variables, debug_context, parent, scopes);
         scopes[parent]

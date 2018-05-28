@@ -256,9 +256,9 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     /// the vector of all scopes that we have created thus far;
     /// we track this for debuginfo later
-    visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
-    visibility_scope_info: IndexVec<VisibilityScope, VisibilityScopeInfo>,
-    visibility_scope: VisibilityScope,
+    source_scopes: IndexVec<SourceScope, SourceScopeData>,
+    source_scope_info: IndexVec<SourceScope, SourceScopeInfo>,
+    source_scope: SourceScope,
 
     /// the guard-context: each time we build the guard expression for
     /// a match arm, we push onto this stack, and then pop when we
@@ -593,9 +593,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             fn_span: span,
             arg_count,
             scopes: vec![],
-            visibility_scopes: IndexVec::new(),
-            visibility_scope: ARGUMENT_VISIBILITY_SCOPE,
-            visibility_scope_info: IndexVec::new(),
+            source_scopes: IndexVec::new(),
+            source_scope: OUTERMOST_SOURCE_SCOPE,
+            source_scope_info: IndexVec::new(),
             guard_context: vec![],
             push_unsafe_count: 0,
             unpushed_unsafe: safety,
@@ -611,9 +611,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
         assert_eq!(
-            builder.new_visibility_scope(span, lint_level, Some(safety)),
-            ARGUMENT_VISIBILITY_SCOPE);
-        builder.visibility_scopes[ARGUMENT_VISIBILITY_SCOPE].parent_scope = None;
+            builder.new_source_scope(span, lint_level, Some(safety)),
+            OUTERMOST_SOURCE_SCOPE);
+        builder.source_scopes[OUTERMOST_SOURCE_SCOPE].parent_scope = None;
 
         builder
     }
@@ -629,8 +629,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
 
         Mir::new(self.cfg.basic_blocks,
-                 self.visibility_scopes,
-                 ClearCrossCrate::Set(self.visibility_scope_info),
+                 self.source_scopes,
+                 ClearCrossCrate::Set(self.source_scope_info),
                  IndexVec::new(),
                  yield_ty,
                  self.local_decls,
@@ -661,10 +661,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 mutability: Mutability::Mut,
                 ty,
                 source_info: SourceInfo {
-                    scope: ARGUMENT_VISIBILITY_SCOPE,
+                    scope: OUTERMOST_SOURCE_SCOPE,
                     span: pattern.map_or(self.fn_span, |pat| pat.span)
                 },
-                syntactic_scope: ARGUMENT_VISIBILITY_SCOPE,
+                syntactic_scope: OUTERMOST_SOURCE_SCOPE,
                 name,
                 internal: false,
                 is_user_variable: false,
@@ -702,9 +702,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         }
 
-        // Enter the argument pattern bindings visibility scope, if it exists.
-        if let Some(visibility_scope) = scope {
-            self.visibility_scope = visibility_scope;
+        // Enter the argument pattern bindings source scope, if it exists.
+        if let Some(source_scope) = scope {
+            self.source_scope = source_scope;
         }
 
         let body = self.hir.mirror(ast_body);
