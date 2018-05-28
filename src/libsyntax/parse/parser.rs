@@ -2805,7 +2805,7 @@ impl<'a> Parser<'a> {
                 )?;
                 let blk = self.parse_block()?;
                 let span = blk.span;
-                let blk_expr = self.mk_expr(span, ExprKind::Block(blk, None), ThinVec::new());
+                let blk_expr = self.mk_expr(span, ExprKind::Block(blk), ThinVec::new());
                 (lo.to(span), ExprKind::ObsoleteInPlace(place, blk_expr))
             }
             token::Ident(..) if self.token.is_keyword(keywords::Box) => {
