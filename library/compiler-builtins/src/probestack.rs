@@ -64,6 +64,13 @@ pub unsafe extern fn __rust_probestack() {
         // bytes pushed on the stack orginally with our return address. Using
         // `8(%rsp)` simulates us testing the stack pointer in the caller's
         // context.
+
+        // It's usually called when %rax >= 0x1000, but that's not always true.
+        // Dynamic stack allocation, which is needed to implement unsized
+        // rvalues, triggers stackprobe even if %rax < 0x1000.
+        // Thus we have to check %r11 first to avoid segfault.
+        cmp    $$0x1000,%r11
+        jna    3f
     2:
         sub    $$0x1000,%rsp
         test   %rsp,8(%rsp)
@@ -71,6 +78,7 @@ pub unsafe extern fn __rust_probestack() {
         cmp    $$0x1000,%r11
         ja     2b
 
+    3:
         // Finish up the last remaining stack space requested, getting the last
         // bits out of r11
         sub    %r11,%rsp
@@ -98,6 +106,9 @@ pub unsafe extern fn __rust_probestack() {
     asm!("
         push   %ecx
         mov    %eax,%ecx
+
+        cmp    $$0x1000,%ecx
+        jna    3f
     2:
         sub    $$0x1000,%esp
         test   %esp,8(%esp)
@@ -105,6 +116,7 @@ pub unsafe extern fn __rust_probestack() {
         cmp    $$0x1000,%ecx
         ja     2b
 
+    3:
         sub    %ecx,%esp
         test   %esp,8(%esp)
 
