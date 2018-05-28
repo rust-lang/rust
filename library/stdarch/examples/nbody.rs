@@ -10,7 +10,12 @@
                   shadow_reuse, print_stdout))]
 
 extern crate stdsimd;
+#[macro_use]
+extern crate cfg_if;
+
 use stdsimd::simd::*;
+
+
 
 const PI: f64 = std::f64::consts::PI;
 const SOLAR_MASS: f64 = 4.0 * PI * PI;
@@ -20,16 +25,15 @@ pub trait Frsqrt {
     fn frsqrt(&self) -> Self;
 }
 
-impl Frsqrt for f64x2 {
-    fn frsqrt(&self) -> Self {
-        #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"),
-                  target_feature = "sse"))]
-        {
+cfg_if! {
+    if #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"),
+                  target_feature = "sse"))] {
+        fn frsqrt(s: &f64x2) -> f64x2 {
             #[cfg(target_arch = "x86")]
             use stdsimd::arch::x86::*;
             #[cfg(target_arch = "x86_64")]
             use stdsimd::arch::x86_64::*;
-            let t: f32x2 = (*self).into();
+            let t: f32x2 = (*s).into();
 
             let u: f64x4 = unsafe {
                 let res = _mm_rsqrt_ps(_mm_setr_ps(
@@ -40,29 +44,31 @@ impl Frsqrt for f64x2 {
                 ));
                 f32x4::from_bits(res).into()
             };
-            Self::new(u.extract(0), u.extract(1))
+            f64x2::new(u.extract(0), u.extract(1))
         }
-        #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
-        {
+    } else if #[cfg(all(target_arch = "aarch64", target_feature = "neon"))] {
+        fn frsqrt(s: &f64x2) -> f64x2 {
             #[cfg(target_arch = "aarch64")]
             use stdsimd::arch::aarch64::*;
             #[cfg(target_arch = "arm")]
             use stdsimd::arch::arm::*;
 
-            let t: f32x2 = (*self).into();
+            let t: f32x2 = (*s).into();
             let t: f32x2 = unsafe { vrsqrte_f32(t.into_bits()).into_bits() };
             t.into()
         }
-        #[cfg(not(any(all(any(target_arch = "x86",
-                              target_arch = "x86_64"),
-                          target_feature = "sse"),
-                      all(target_arch = "aarch64",
-                          target_feature = "neon"))))]
-        {
-            let r = self.replace(0, 1. / self.extract(0).sqrt());
-            let r = r.replace(1, 1. / self.extract(1).sqrt());
+    } else {
+        fn frsqrt(s: &f64x2) -> f64x2 {
+            let r = s.replace(0, 1. / s.extract(0).sqrt());
+            let r = r.replace(1, 1. / s.extract(1).sqrt());
             r
         }
+    }
+}
+
+impl Frsqrt for f64x2 {
+    fn frsqrt(&self) -> Self {
+        frsqrt(self)
     }
 }
 
