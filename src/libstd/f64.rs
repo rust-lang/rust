@@ -234,6 +234,10 @@ impl f64 {
     /// most cases.  However, due to a floating point round-off error it can
     /// result in `r == rhs.abs()`, violating the mathematical definition, if
     /// `self` is much smaller than `rhs.abs()` in magnitude and `self < 0.0`.
+    /// This result is not an element of the function's codomain, but it is the
+    /// closest floating point number in the real numbers and thus fulfills the
+    /// property `self == self.div_euc(rhs) * rhs + self.mod_euc(rhs)`
+    /// approximatively.
     ///
     /// # Examples
     ///
