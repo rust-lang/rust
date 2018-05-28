@@ -654,6 +654,7 @@ All notable changes to this project will be documented in this file.
 [`explicit_iter_loop`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#explicit_iter_loop
 [`explicit_write`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#explicit_write
 [`extend_from_slice`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#extend_from_slice
+[`extra_unused_lifetimes`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#extra_unused_lifetimes
 [`fallible_impl_from`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#fallible_impl_from
 [`filter_map`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#filter_map
 [`filter_next`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#filter_next
@@ -835,7 +836,6 @@ All notable changes to this project will be documented in this file.
 [`unused_collect`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unused_collect
 [`unused_io_amount`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unused_io_amount
 [`unused_label`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unused_label
-[`unused_lifetimes`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unused_lifetimes
 [`use_debug`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#use_debug
 [`use_self`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#use_self
 [`used_underscore_binding`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#used_underscore_binding
