@@ -33,7 +33,7 @@ pub struct Bar(u32, u32, u32);
 struct Y(usize);
 
 #[derive(PartialEq)]
-//~^ ERROR #[derive] can't be used on a non-Copy #[repr(packed)]
+//~^ ERROR #[derive] can't be used
 //~| hard error
 #[repr(packed)]
 struct X(Y);
