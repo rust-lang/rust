@@ -1,4 +1,3 @@
-#![feature(tool_attributes)]
 enum Foo {
     A(usize),
     B
