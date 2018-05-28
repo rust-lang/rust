@@ -329,6 +329,32 @@ declare_clippy_lint! {
     "using any `*or` method with a function call, which suggests `*or_else`"
 }
 
+/// **What it does:** Checks for calls to `.expect(&format!(...))`, `.expect(foo(..))`,
+/// etc., and suggests to use `unwrap_or_else` instead
+///
+/// **Why is this bad?** The function will always be called.
+///
+/// **Known problems:** If the function has side-effects, not calling it will
+/// change the semantic of the program, but you shouldn't rely on that anyway.
+/// 
+/// **Example:**
+/// ```rust
+/// foo.expect(&format("Err {}: {}", err_code, err_msg))
+/// ```
+/// or
+/// ```rust
+/// foo.expect(format("Err {}: {}", err_code, err_msg).as_str())
+/// ```
+/// this can instead be written:
+/// ```rust
+/// foo.unwrap_or_else(|_| panic!(&format("Err {}: {}", err_code, err_msg)))
+/// ```
+declare_clippy_lint! {
+    pub EXPECT_FUN_CALL,
+    perf,
+    "using any `expect` method with a function call"
+}
+
 /// **What it does:** Checks for usage of `.clone()` on a `Copy` type.
 ///
 /// **Why is this bad?** The only reason `Copy` types implement `Clone` is for
@@ -657,6 +683,7 @@ impl LintPass for Pass {
             RESULT_MAP_UNWRAP_OR_ELSE,
             OPTION_MAP_OR_NONE,
             OR_FUN_CALL,
+            EXPECT_FUN_CALL,
             CHARS_NEXT_CMP,
             CHARS_LAST_CMP,
             CLONE_ON_COPY,
@@ -741,6 +768,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 }
 
                 lint_or_fun_call(cx, expr, *method_span, &method_call.name.as_str(), args);
+                lint_expect_fun_call(cx, expr, *method_span, &method_call.name.as_str(), args);
 
                 let self_ty = cx.tables.expr_ty_adjusted(&args[0]);
                 if args.len() == 1 && method_call.name == "clone" {
@@ -960,6 +988,48 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, name:
                 check_general_case(cx, name, method_span, span, &args[0], &args[1], !or_args.is_empty(), expr.span)
             },
             _ => {},
+        }
+    }
+}
+
+/// Checks for the `EXPECT_FUN_CALL` lint.
+fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, name: &str, args: &[hir::Expr]) {
+    #[allow(too_many_arguments)]
+    fn check_general_case(
+        cx: &LateContext,
+        name: &str,
+        method_span: Span,
+        arg: &hir::Expr,
+        span: Span,
+    ) {
+        if name != "expect" {
+            return;
+        }
+
+        // don't lint for constant values
+        let owner_def = cx.tcx.hir.get_parent_did(arg.id);
+        let promotable = cx.tcx.rvalue_promotable_map(owner_def).contains(&arg.hir_id.local_id);
+        if promotable {
+            return;
+        }
+
+        let sugg: Cow<_> = snippet(cx, arg.span, "..");
+        let span_replace_word = method_span.with_hi(span.hi());
+        
+        span_lint_and_sugg(
+            cx,
+            EXPECT_FUN_CALL,
+            span_replace_word,
+            &format!("use of `{}` followed by a function call", name),
+            "try this",
+            format!("unwrap_or_else(|_| panic!({}))", sugg),
+        );
+    }
+
+    if args.len() == 2 {
+        match args[1].node {
+            hir::ExprLit(_) => {},
+            _ => check_general_case(cx, name, method_span, &args[1], expr.span),
         }
     }
 }
