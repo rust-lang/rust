@@ -376,35 +376,6 @@ pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
     Ok(unsafe { from_utf8_unchecked_mut(v) })
 }
 
-/// Forms a str from a pointer and a length.
-///
-/// The `len` argument is the number of bytes in the string.
-///
-/// # Safety
-///
-/// This function is unsafe as there is no guarantee that the given pointer is
-/// valid for `len` bytes, nor whether the lifetime inferred is a suitable
-/// lifetime for the returned str.
-///
-/// The data must be valid UTF-8
-///
-/// `p` must be non-null and aligned, even for zero-length strs, as is
-/// required for all references. However, for zero-length strs, `p` can be
-/// a bogus non-dereferencable pointer such as [`NonNull::dangling()`].
-///
-/// # Caveat
-///
-/// The lifetime for the returned str is inferred from its usage. To
-/// prevent accidental misuse, it's suggested to tie the lifetime to whichever
-/// source lifetime is safe in the context, such as by providing a helper
-/// function taking the lifetime of a host value for the str, or by explicit
-/// annotation.
-///
-/// [`NonNull::dangling()`]: ../../std/ptr/struct.NonNull.html#method.dangling
-unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
-    from_utf8_unchecked_mut(slice::from_raw_parts_mut(p, len))
-}
-
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8.
 ///
@@ -2600,8 +2571,11 @@ impl str {
             let len = self.len();
             let ptr = self.as_ptr() as *mut u8;
             unsafe {
-                (from_raw_parts_mut(ptr, mid),
-                 from_raw_parts_mut(ptr.offset(mid as isize), len - mid))
+                (from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr, mid)),
+                 from_utf8_unchecked_mut(slice::from_raw_parts_mut(
+                    ptr.offset(mid as isize),
+                    len - mid
+                 )))
             }
         } else {
             slice_error_fail(self, 0, mid)
