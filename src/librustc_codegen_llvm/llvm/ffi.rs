@@ -875,6 +875,11 @@ extern "C" {
 
     // Memory
     pub fn LLVMBuildAlloca(B: &Builder<'a>, Ty: &'a Type, Name: *const c_char) -> &'a Value;
+    pub fn LLVMBuildArrayAlloca(B: &Builder<'a>,
+                                Ty: &'a Type,
+                                Val: &'a Value,
+                                Name: *const c_char)
+                                -> &'a Value;
     pub fn LLVMBuildLoad(B: &Builder<'a>, PointerVal: &'a Value, Name: *const c_char) -> &'a Value;
 
     pub fn LLVMBuildStore(B: &Builder<'a>, Val: &'a Value, Ptr: &'a Value) -> &'a Value;
