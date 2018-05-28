@@ -1319,6 +1319,10 @@ impl DebruijnIndex {
     }
 }
 
+impl_stable_hash_for!(struct DebruijnIndex {
+    depth
+});
+
 /// Region utilities
 impl RegionKind {
     pub fn is_late_bound(&self) -> bool {
