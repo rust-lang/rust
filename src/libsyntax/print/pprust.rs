@@ -293,7 +293,7 @@ pub fn ty_to_string(ty: &ast::Ty) -> String {
 }
 
 pub fn bounds_to_string(bounds: &[ast::ParamBound]) -> String {
-    to_string(|s| s.print_bounds("", bounds))
+    to_string(|s| s.print_type_bounds("", bounds))
 }
 
 pub fn pat_to_string(pat: &ast::Pat) -> String {
@@ -1078,10 +1078,10 @@ impl<'a> State<'a> {
             }
             ast::TyKind::TraitObject(ref bounds, syntax) => {
                 let prefix = if syntax == ast::TraitObjectSyntax::Dyn { "dyn" } else { "" };
-                self.print_bounds(prefix, &bounds[..])?;
+                self.print_type_bounds(prefix, &bounds[..])?;
             }
             ast::TyKind::ImplTrait(ref bounds) => {
-                self.print_bounds("impl", &bounds[..])?;
+                self.print_type_bounds("impl", &bounds[..])?;
             }
             ast::TyKind::Array(ref ty, ref length) => {
                 self.s.word("[")?;
@@ -1184,7 +1184,7 @@ impl<'a> State<'a> {
         self.word_space("type")?;
         self.print_ident(ident)?;
         if let Some(bounds) = bounds {
-            self.print_bounds(":", bounds)?;
+            self.print_type_bounds(":", bounds)?;
         }
         if let Some(ty) = ty {
             self.s.space()?;
@@ -1373,7 +1373,7 @@ impl<'a> State<'a> {
                         real_bounds.push(b.clone());
                     }
                 }
-                self.print_bounds(":", &real_bounds[..])?;
+                self.print_type_bounds(":", &real_bounds[..])?;
                 self.print_where_clause(&generics.where_clause)?;
                 self.s.word(" ")?;
                 self.bopen()?;
@@ -1400,7 +1400,7 @@ impl<'a> State<'a> {
                     }
                 }
                 self.nbsp()?;
-                self.print_bounds("=", &real_bounds[..])?;
+                self.print_type_bounds("=", &real_bounds[..])?;
                 self.print_where_clause(&generics.where_clause)?;
                 self.s.word(";")?;
             }
@@ -2809,7 +2809,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_bounds(&mut self,
+    pub fn print_type_bounds(&mut self,
                         prefix: &str,
                         bounds: &[ast::ParamBound])
                         -> io::Result<()> {
@@ -2851,7 +2851,7 @@ impl<'a> State<'a> {
 
     pub fn print_lifetime_bounds(&mut self,
                                  lifetime: &ast::Lifetime,
-                                 bounds: &[ast::Lifetime])
+                                 bounds: &ast::ParamBounds)
                                  -> io::Result<()>
     {
         self.print_lifetime(lifetime)?;
@@ -2861,7 +2861,10 @@ impl<'a> State<'a> {
                 if i != 0 {
                     self.s.word(" + ")?;
                 }
-                self.print_lifetime(bound)?;
+                match bound {
+                    ast::ParamBound::Outlives(lt) => self.print_lifetime(lt)?,
+                    _ => panic!(),
+                }
             }
         }
         Ok(())
@@ -2881,17 +2884,12 @@ impl<'a> State<'a> {
             match param.kind {
                 ast::GenericParamKind::Lifetime { ref lifetime } => {
                     s.print_outer_attributes_inline(&param.attrs)?;
-                    s.print_lifetime_bounds(lifetime, &param.bounds.iter().map(|bound| {
-                        match bound {
-                            ast::ParamBound::Outlives(lt) => *lt,
-                            _ => panic!(),
-                        }
-                    }).collect::<Vec<_>>().as_slice())
+                    s.print_lifetime_bounds(lifetime, &param.bounds)
                 },
                 ast::GenericParamKind::Type { ref default } => {
                     s.print_outer_attributes_inline(&param.attrs)?;
                     s.print_ident(param.ident)?;
-                    s.print_bounds(":", &param.bounds)?;
+                    s.print_type_bounds(":", &param.bounds)?;
                     match default {
                         Some(ref default) => {
                             s.s.space()?;
@@ -2931,7 +2929,7 @@ impl<'a> State<'a> {
                 }) => {
                     self.print_formal_generic_params(bound_generic_params)?;
                     self.print_type(bounded_ty)?;
-                    self.print_bounds(":", bounds)?;
+                    self.print_type_bounds(":", bounds)?;
                 }
                 ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
                                                                                ref bounds,

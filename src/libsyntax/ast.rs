@@ -393,7 +393,7 @@ pub struct WhereBoundPredicate {
 pub struct WhereRegionPredicate {
     pub span: Span,
     pub lifetime: Lifetime,
-    pub bounds: Vec<Lifetime>,
+    pub bounds: ParamBounds,
 }
 
 /// An equality predicate (unsupported).

@@ -726,7 +726,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         this.with(scope, |_old_scope, this| {
                             this.visit_generics(generics);
                             for bound in bounds {
-                                this.visit_ty_param_bound(bound);
+                                this.visit_param_bound(bound);
                             }
                         });
                     });
@@ -741,7 +741,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     self.with(scope, |_old_scope, this| {
                         this.visit_generics(generics);
                         for bound in bounds {
-                            this.visit_ty_param_bound(bound);
+                            this.visit_param_bound(bound);
                         }
                     });
                 }
@@ -786,7 +786,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 self.with(scope, |_old_scope, this| {
                     this.visit_generics(generics);
                     for bound in bounds {
-                        this.visit_ty_param_bound(bound);
+                        this.visit_param_bound(bound);
                     }
                     if let Some(ty) = ty {
                         this.visit_ty(ty);
@@ -882,7 +882,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             match param.kind {
                 GenericParamKind::Lifetime { .. } => {}
                 GenericParamKind::Type { ref default, .. } => {
-                    walk_list!(self, visit_ty_param_bound, &param.bounds);
+                    walk_list!(self, visit_param_bound, &param.bounds);
                     if let Some(ref ty) = default {
                         self.visit_ty(&ty);
                     }
@@ -917,13 +917,13 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         let result = self.with(scope, |old_scope, this| {
                             this.check_lifetime_params(old_scope, &bound_generic_params);
                             this.visit_ty(&bounded_ty);
-                            walk_list!(this, visit_ty_param_bound, bounds);
+                            walk_list!(this, visit_param_bound, bounds);
                         });
                         self.trait_ref_hack = false;
                         result
                     } else {
                         self.visit_ty(&bounded_ty);
-                        walk_list!(self, visit_ty_param_bound, bounds);
+                        walk_list!(self, visit_param_bound, bounds);
                     }
                 }
                 &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
@@ -932,9 +932,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     ..
                 }) => {
                     self.visit_lifetime(lifetime);
-                    for bound in bounds {
-                        self.visit_lifetime(bound);
-                    }
+                    walk_list!(self, visit_param_bound, bounds);
                 }
                 &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
                     ref lhs_ty,

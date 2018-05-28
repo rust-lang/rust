@@ -270,7 +270,7 @@ impl fmt::Display for clean::PolyTrait {
 impl fmt::Display for clean::ParamBound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            clean::RegionBound(ref lt) => {
+            clean::Outlives(ref lt) => {
                 write!(f, "{}", *lt)
             }
             clean::TraitBound(ref ty, modifier) => {

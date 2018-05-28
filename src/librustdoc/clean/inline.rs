@@ -375,7 +375,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     let trait_ = associated_trait.clean(cx).map(|bound| {
         match bound {
             clean::TraitBound(polyt, _) => polyt.trait_,
-            clean::RegionBound(..) => unreachable!(),
+            clean::Outlives(..) => unreachable!(),
         }
     });
     if trait_.def_id() == tcx.lang_items().deref_trait() {

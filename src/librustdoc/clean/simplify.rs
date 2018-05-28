@@ -84,7 +84,7 @@ pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
         !bounds.iter_mut().any(|b| {
             let trait_ref = match *b {
                 clean::TraitBound(ref mut tr, _) => tr,
-                clean::RegionBound(..) => return false,
+                clean::Outlives(..) => return false,
             };
             let (did, path) = match trait_ref.trait_ {
                 clean::ResolvedPath { did, ref mut path, ..} => (did, path),

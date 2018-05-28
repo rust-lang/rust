@@ -1512,7 +1512,12 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             &hir::WherePredicate::RegionPredicate(ref region_pred) => {
                 let r1 = AstConv::ast_region_to_region(&icx, &region_pred.lifetime, None);
                 for bound in &region_pred.bounds {
-                    let r2 = AstConv::ast_region_to_region(&icx, bound, None);
+                    let r2 = match bound {
+                        hir::ParamBound::Outlives(lt) => {
+                            AstConv::ast_region_to_region(&icx, lt, None)
+                        }
+                        _ => bug!(),
+                    };
                     let pred = ty::Binder::bind(ty::OutlivesPredicate(r1, r2));
                     predicates.push(ty::Predicate::RegionOutlives(pred))
                 }

@@ -2180,7 +2180,12 @@ impl<'a> State<'a> {
                     self.s.word(":")?;
 
                     for (i, bound) in bounds.iter().enumerate() {
-                        self.print_lifetime(bound)?;
+                        match bound {
+                            hir::ParamBound::Outlives(lt) => {
+                                self.print_lifetime(lt)?;
+                            }
+                            _ => bug!(),
+                        }
 
                         if i != 0 {
                             self.s.word(":")?;

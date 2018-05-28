@@ -86,8 +86,8 @@ pub trait Visitor<'ast>: Sized {
     fn visit_trait_item(&mut self, ti: &'ast TraitItem) { walk_trait_item(self, ti) }
     fn visit_impl_item(&mut self, ii: &'ast ImplItem) { walk_impl_item(self, ii) }
     fn visit_trait_ref(&mut self, t: &'ast TraitRef) { walk_trait_ref(self, t) }
-    fn visit_ty_param_bound(&mut self, bounds: &'ast ParamBound) {
-        walk_ty_param_bound(self, bounds)
+    fn visit_param_bound(&mut self, bounds: &'ast ParamBound) {
+        walk_param_bound(self, bounds)
     }
     fn visit_poly_trait_ref(&mut self, t: &'ast PolyTraitRef, m: &'ast TraitBoundModifier) {
         walk_poly_trait_ref(self, t, m)
@@ -276,12 +276,12 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         }
         ItemKind::Trait(.., ref generics, ref bounds, ref methods) => {
             visitor.visit_generics(generics);
-            walk_list!(visitor, visit_ty_param_bound, bounds);
+            walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_trait_item, methods);
         }
         ItemKind::TraitAlias(ref generics, ref bounds) => {
             visitor.visit_generics(generics);
-            walk_list!(visitor, visit_ty_param_bound, bounds);
+            walk_list!(visitor, visit_param_bound, bounds);
         }
         ItemKind::Mac(ref mac) => visitor.visit_mac(mac),
         ItemKind::MacroDef(ref ts) => visitor.visit_mac_def(ts, item.id),
@@ -341,7 +341,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
         }
         TyKind::TraitObject(ref bounds, ..) |
         TyKind::ImplTrait(ref bounds) => {
-            walk_list!(visitor, visit_ty_param_bound, bounds);
+            walk_list!(visitor, visit_param_bound, bounds);
         }
         TyKind::Typeof(ref expression) => {
             visitor.visit_anon_const(expression)
@@ -479,7 +479,7 @@ pub fn walk_global_asm<'a, V: Visitor<'a>>(_: &mut V, _: &'a GlobalAsm) {
     // Empty!
 }
 
-pub fn walk_ty_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a ParamBound) {
+pub fn walk_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a ParamBound) {
     match *bound {
         TraitTyParamBound(ref typ, ref modifier) => {
             visitor.visit_poly_trait_ref(typ, modifier);
@@ -517,14 +517,14 @@ pub fn walk_where_predicate<'a, V: Visitor<'a>>(visitor: &mut V, predicate: &'a 
                                                            ref bound_generic_params,
                                                            ..}) => {
             visitor.visit_ty(bounded_ty);
-            walk_list!(visitor, visit_ty_param_bound, bounds);
+            walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_generic_param, bound_generic_params);
         }
         WherePredicate::RegionPredicate(WhereRegionPredicate{ref lifetime,
                                                              ref bounds,
                                                              ..}) => {
             visitor.visit_lifetime(lifetime);
-            walk_list!(visitor, visit_lifetime, bounds);
+            walk_list!(visitor, visit_param_bound, bounds);
         }
         WherePredicate::EqPredicate(WhereEqPredicate{ref lhs_ty,
                                                      ref rhs_ty,
@@ -585,7 +585,7 @@ pub fn walk_trait_item<'a, V: Visitor<'a>>(visitor: &mut V, trait_item: &'a Trai
                              &sig.decl, trait_item.span, trait_item.id);
         }
         TraitItemKind::Type(ref bounds, ref default) => {
-            walk_list!(visitor, visit_ty_param_bound, bounds);
+            walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_ty, default);
         }
         TraitItemKind::Macro(ref mac) => {

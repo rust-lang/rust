@@ -1447,7 +1447,7 @@ impl<'a> LoweringContext<'a> {
         };
 
         for bound in bounds {
-            hir::intravisit::walk_ty_param_bound(&mut lifetime_collector, &bound);
+            hir::intravisit::walk_param_bound(&mut lifetime_collector, &bound);
         }
 
         (
@@ -2125,10 +2125,7 @@ impl<'a> LoweringContext<'a> {
             }) => hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
                 span,
                 lifetime: self.lower_lifetime(lifetime),
-                bounds: bounds
-                    .iter()
-                    .map(|bound| self.lower_lifetime(bound))
-                    .collect(),
+                bounds: self.lower_param_bounds(bounds, ImplTraitContext::Disallowed),
             }),
             WherePredicate::EqPredicate(WhereEqPredicate {
                 id,

@@ -815,7 +815,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                 GenericParamKind::Lifetime { .. } => self.visit_generic_param(param),
                 GenericParamKind::Type { ref default, .. } => {
                     for bound in &param.bounds {
-                        self.visit_ty_param_bound(bound);
+                        self.visit_param_bound(bound);
                     }
 
                     if let Some(ref ty) = default {
@@ -2076,7 +2076,7 @@ impl<'a> Resolver<'a> {
                     let local_def_id = this.definitions.local_def_id(item.id);
                     this.with_self_rib(Def::SelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
-                        walk_list!(this, visit_ty_param_bound, bounds);
+                        walk_list!(this, visit_param_bound, bounds);
 
                         for trait_item in trait_items {
                             this.check_proc_macro_attrs(&trait_item.attrs);
@@ -2119,7 +2119,7 @@ impl<'a> Resolver<'a> {
                     let local_def_id = this.definitions.local_def_id(item.id);
                     this.with_self_rib(Def::SelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
-                        walk_list!(this, visit_ty_param_bound, bounds);
+                        walk_list!(this, visit_param_bound, bounds);
                     });
                 });
             }

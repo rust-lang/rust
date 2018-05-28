@@ -486,11 +486,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             .iter()
             .flat_map(|(name, lifetime)| {
                 let empty = Vec::new();
-                let bounds: FxHashSet<Lifetime> = finished
-                    .get(name)
-                    .unwrap_or(&empty)
-                    .iter()
-                    .map(|region| self.get_lifetime(region, names_map))
+                let bounds: FxHashSet<ParamBound> = finished.get(name).unwrap_or(&empty).iter()
+                    .map(|region| ParamBound::Outlives(self.get_lifetime(region, names_map)))
                     .collect();
 
                 if bounds.is_empty() {
@@ -538,7 +535,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         &self,
         ty_to_bounds: FxHashMap<Type, FxHashSet<ParamBound>>,
         ty_to_fn: FxHashMap<Type, (Option<PolyTrait>, Option<Type>)>,
-        lifetime_to_bounds: FxHashMap<Lifetime, FxHashSet<Lifetime>>,
+        lifetime_to_bounds: FxHashMap<Lifetime, FxHashSet<ParamBound>>,
     ) -> Vec<WherePredicate> {
         ty_to_bounds
             .into_iter()
@@ -615,7 +612,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                     .filter(|&(_, ref bounds)| !bounds.is_empty())
                     .map(|(lifetime, bounds)| {
                         let mut bounds_vec = bounds.into_iter().collect();
-                        self.sort_where_lifetimes(&mut bounds_vec);
+                        self.sort_where_bounds(&mut bounds_vec);
                         WherePredicate::RegionPredicate {
                             lifetime,
                             bounds: bounds_vec,
@@ -912,14 +909,6 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
     // make writing tests much easier
     #[inline]
     fn sort_where_bounds(&self, mut bounds: &mut Vec<ParamBound>) {
-        // We should never have identical bounds - and if we do,
-        // they're visually identical as well. Therefore, using
-        // an unstable sort is fine.
-        self.unstable_debug_sort(&mut bounds);
-    }
-
-    #[inline]
-    fn sort_where_lifetimes(&self, mut bounds: &mut Vec<Lifetime>) {
         // We should never have identical bounds - and if we do,
         // they're visually identical as well. Therefore, using
         // an unstable sort is fine.
