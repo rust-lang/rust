@@ -821,13 +821,14 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let has_copy_file_range = HAS_COPY_FILE_RANGE.load(Ordering::Relaxed);
     let mut written = 0u64;
     while written < len {
-        // TODO should ideally use TryFrom
-        let bytes_to_copy = if len - written > usize::max_value() as u64 {
-            usize::max_value()
-        } else {
-            (len - written) as usize
-        };
         let copy_result = if has_copy_file_range {
+            // FIXME: should ideally use TryFrom
+            let bytes_to_copy = if len - written > usize::max_value() as u64 {
+                usize::max_value()
+            } else {
+                (len - written) as usize
+            };
+
             let copy_result = unsafe {
                 // We actually don't have to adjust the offsets,
                 // because copy_file_range adjusts the file offset automatically
