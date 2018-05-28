@@ -1053,7 +1053,7 @@ impl UnixDatagram {
 
     /// Create an unnamed pair of connected sockets.
     ///
-    /// Returns two `UnixDatagrams`s which are connected to each other.
+    /// Returns two `UnixDatagram`s which are connected to each other.
     ///
     /// # Examples
     ///
@@ -1467,6 +1467,685 @@ impl IntoRawFd for UnixDatagram {
     }
 }
 
+/// A structure representing a Unix domain seqpacket socket server.
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(unix_socket_seqpacket)]
+/// use std::thread;
+/// use std::os::unix::net::{UnixSeqpacket, UnixSeqpacketListener};
+///
+/// fn handle_client(socket: UnixSeqpacket) {
+///     // ...
+/// }
+///
+/// let listener = UnixSeqpacketListener::bind("/path/to/the/socket").unwrap();
+///
+/// // accept connections and process them, spawning a new thread for each one
+/// for socket in listener.incoming() {
+///     match socket {
+///         Ok(socket) => {
+///             /* connection succeeded */
+///             thread::spawn(|| handle_client(socket));
+///         }
+///         Err(err) => {
+///             /* connection failed */
+///             break;
+///         }
+///     }
+/// }
+/// ```
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+pub struct UnixSeqpacketListener(Socket);
+
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+impl fmt::Debug for UnixSeqpacketListener {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let mut builder = fmt.debug_struct("UnixSeqpacketListener");
+        builder.field("fd", self.0.as_inner());
+        if let Ok(addr) = self.local_addr() {
+            builder.field("local", &addr);
+        }
+        builder.finish()
+    }
+}
+
+impl UnixSeqpacketListener {
+    /// Creates a new `UnixSeqpacketListener` bound to the specified socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacketListener;
+    ///
+    /// let listener = match UnixSeqpacketListener::bind("/path/to/the/socket") {
+    ///     Ok(socket) => socket,
+    ///     Err(e) => {
+    ///         println!("Couldn't connect: {:?}", e);
+    ///         return
+    ///     }
+    /// };
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixSeqpacketListener> {
+        fn inner(path: &Path) -> io::Result<UnixSeqpacketListener> {
+            unsafe {
+                let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_SEQPACKET)?;
+                let (addr, len) = sockaddr_un(path)?;
+
+                cvt(libc::bind(*inner.as_inner(), &addr as *const _ as *const _, len as _))?;
+                cvt(libc::listen(*inner.as_inner(), 128))?;
+
+                Ok(UnixSeqpacketListener(inner))
+            }
+        }
+        inner(path.as_ref())
+    }
+
+    /// Accepts a new incoming connection to this listener.
+    ///
+    /// This function will block the calling thread until a new Unix connection
+    /// is established. When established, the corresponding [`UnixSeqpacket`] and
+    /// the remote peer's address will be returned.
+    ///
+    /// [`UnixSeqpacket`]: ../../../../std/os/unix/net/struct.UnixSeqpacket.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacketListener;
+    ///
+    /// let listener = UnixSeqpacketListener::bind("/path/to/the/socket").unwrap();
+    ///
+    /// match listener.accept() {
+    ///     Ok((socket, addr)) => println!("Got a client: {:?}", addr),
+    ///     Err(e) => println!("accept function failed: {:?}", e),
+    /// }
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn accept(&self) -> io::Result<(UnixSeqpacket, SocketAddr)> {
+        let mut storage: libc::sockaddr_un = unsafe { mem::zeroed() };
+        let mut len = mem::size_of_val(&storage) as libc::socklen_t;
+        let sock = self.0.accept(&mut storage as *mut _ as *mut _, &mut len)?;
+        let addr = SocketAddr::from_parts(storage, len)?;
+        Ok((UnixSeqpacket(sock), addr))
+    }
+
+    /// Creates a new independently owned handle to the underlying socket.
+    ///
+    /// The returned `UnixSeqpacketListener` is a reference to the same socket that this
+    /// object references. Both handles can be used to accept incoming
+    /// connections and options set on one listener will affect the other.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacketListener;
+    ///
+    /// let listener = UnixSeqpacketListener::bind("/path/to/the/socket").unwrap();
+    ///
+    /// let listener_copy = listener.try_clone().expect("try_clone failed");
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn try_clone(&self) -> io::Result<UnixSeqpacketListener> {
+        self.0.duplicate().map(UnixSeqpacketListener)
+    }
+
+    /// Returns the local socket address of this listener.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacketListener;
+    ///
+    /// let listener = UnixSeqpacketListener::bind("/path/to/the/socket").unwrap();
+    ///
+    /// let addr = listener.local_addr().expect("Couldn't get local address");
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
+    }
+
+    /// Moves the socket into or out of nonblocking mode.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacketListener;
+    ///
+    /// let listener = UnixSeqpacketListener::bind("/path/to/the/socket").unwrap();
+    ///
+    /// listener.set_nonblocking(true).expect("Couldn't set non blocking");
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        self.0.set_nonblocking(nonblocking)
+    }
+
+    /// Returns the value of the `SO_ERROR` option.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacketListener;
+    ///
+    /// let listener = UnixSeqpacketListener::bind("/tmp/sock").unwrap();
+    ///
+    /// if let Ok(Some(err)) = listener.take_error() {
+    ///     println!("Got error: {:?}", err);
+    /// }
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+        self.0.take_error()
+    }
+
+    /// Returns an iterator over incoming connections.
+    ///
+    /// The iterator will never return [`None`] and will also not yield the
+    /// peer's [`SocketAddr`] structure.
+    ///
+    /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
+    /// [`SocketAddr`]: struct.SocketAddr.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::thread;
+    /// use std::os::unix::net::{UnixSeqpacket, UnixSeqpacketListener};
+    ///
+    /// fn handle_client(socket: UnixSeqpacket) {
+    ///     // ...
+    /// }
+    ///
+    /// let listener = UnixSeqpacketListener::bind("/path/to/the/socket").unwrap();
+    ///
+    /// for socket in listener.incoming() {
+    ///     match socket {
+    ///         Ok(socket) => {
+    ///             thread::spawn(|| handle_client(socket));
+    ///         }
+    ///         Err(err) => {
+    ///             break;
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn incoming<'a>(&'a self) -> IncomingSeqpacket<'a> {
+        IncomingSeqpacket { listener: self }
+    }
+}
+
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+impl AsRawFd for UnixSeqpacketListener {
+    fn as_raw_fd(&self) -> RawFd {
+        *self.0.as_inner()
+    }
+}
+
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+impl FromRawFd for UnixSeqpacketListener {
+    unsafe fn from_raw_fd(fd: RawFd) -> UnixSeqpacketListener {
+        UnixSeqpacketListener(Socket::from_inner(fd))
+    }
+}
+
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+impl IntoRawFd for UnixSeqpacketListener {
+    fn into_raw_fd(self) -> RawFd {
+        self.0.into_inner()
+    }
+}
+
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+impl<'a> IntoIterator for &'a UnixSeqpacketListener {
+    type Item = io::Result<UnixSeqpacket>;
+    type IntoIter = IncomingSeqpacket<'a>;
+
+    fn into_iter(self) -> IncomingSeqpacket<'a> {
+        self.incoming()
+    }
+}
+
+/// An iterator over incoming connections to a [`UnixSeqpacketListener`].
+///
+/// It will never return [`None`].
+///
+/// [`None`]: ../../../../std/option/enum.Option.html#variant.None
+/// [`UnixSeqpacketListener`]: struct.UnixSeqpacketListener.html
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(unix_socket_seqpacket)]
+/// use std::thread;
+/// use std::os::unix::net::{UnixSeqpacket, UnixSeqpacketListener};
+///
+/// fn handle_client(socket: UnixSeqpacket) {
+///     // ...
+/// }
+///
+/// let listener = UnixSeqpacketListener::bind("/path/to/the/socket").unwrap();
+///
+/// for socket in listener.incoming() {
+///     match socket {
+///         Ok(socket) => {
+///             thread::spawn(|| handle_client(socket));
+///         }
+///         Err(err) => {
+///             break;
+///         }
+///     }
+/// }
+/// ```
+#[derive(Debug)]
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+pub struct IncomingSeqpacket<'a> {
+    listener: &'a UnixSeqpacketListener,
+}
+
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+impl<'a> Iterator for IncomingSeqpacket<'a> {
+    type Item = io::Result<UnixSeqpacket>;
+
+    fn next(&mut self) -> Option<io::Result<UnixSeqpacket>> {
+        Some(self.listener.accept().map(|s| s.0))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (usize::max_value(), None)
+    }
+}
+
+/// A Unix seqpacket socket.
+///
+/// A Unix Seqpacket socket is connection oriented but sends and receives
+/// datagrams with guaranteed ordering.
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(unix_socket_seqpacket)]
+/// use std::os::unix::net::UnixSeqpacket;
+///
+/// let path = "/path/to/my/socket";
+/// let socket = UnixSeqpacket::connect(path).unwrap();
+/// let _count = socket.send(b"hello world").unwrap();
+/// let mut buf = [0; 100];
+/// let count = socket.recv(&mut buf).unwrap();
+/// println!("socket {:?} sent {:?}", path, &buf[..count]);
+/// ```
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+pub struct UnixSeqpacket(Socket);
+
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+impl fmt::Debug for UnixSeqpacket {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let mut builder = fmt.debug_struct("UnixSeqpacket");
+        builder.field("fd", self.0.as_inner());
+        if let Ok(addr) = self.local_addr() {
+            builder.field("local", &addr);
+        }
+        if let Ok(addr) = self.peer_addr() {
+            builder.field("peer", &addr);
+        }
+        builder.finish()
+    }
+}
+
+impl UnixSeqpacket {
+    /// Connects to the socket named by `path`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacket;
+    ///
+    /// let socket = match UnixSeqpacket::connect("/tmp/socket") {
+    ///     Ok(socket) => socket,
+    ///     Err(e) => {
+    ///         println!("Couldn't connect: {:?}", e);
+    ///         return
+    ///     }
+    /// };
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn connect<P: AsRef<Path>>(path: P) -> io::Result<UnixSeqpacket> {
+        fn inner(path: &Path) -> io::Result<UnixSeqpacket> {
+            unsafe {
+                let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_SEQPACKET)?;
+                let (addr, len) = sockaddr_un(path)?;
+
+                cvt(libc::connect(*inner.as_inner(), &addr as *const _ as *const _, len))?;
+                Ok(UnixSeqpacket(inner))
+            }
+        }
+        inner(path.as_ref())
+    }
+
+    /// Create an unnamed pair of connected sockets.
+    ///
+    /// Returns two `UnixSeqpacket`s which are connected to each other.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacket;
+    ///
+    /// let (sock1, sock2) = match UnixSeqpacket::pair() {
+    ///     Ok((sock1, sock2)) => (sock1, sock2),
+    ///     Err(e) => {
+    ///         println!("Couldn't unbound: {:?}", e);
+    ///         return
+    ///     }
+    /// };
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn pair() -> io::Result<(UnixSeqpacket, UnixSeqpacket)> {
+        let (i1, i2) = Socket::new_pair(libc::AF_UNIX, libc::SOCK_SEQPACKET)?;
+        Ok((UnixSeqpacket(i1), UnixSeqpacket(i2)))
+    }
+
+    /// Creates a new independently owned handle to the underlying socket.
+    ///
+    /// The returned `UnixSeqpacket` is a reference to the same socket that this
+    /// object references. Both handles can be used to accept incoming
+    /// connections and options set on one side will affect the other.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacket;
+    ///
+    /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
+    ///
+    /// let sock_copy = socket.try_clone().expect("try_clone failed");
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn try_clone(&self) -> io::Result<UnixSeqpacket> {
+        self.0.duplicate().map(UnixSeqpacket)
+    }
+
+    /// Returns the address of this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacket;
+    ///
+    /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
+    ///
+    /// let addr = socket.local_addr().expect("Couldn't get local address");
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
+    }
+
+    /// Returns the address of this socket's peer.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacket;
+    ///
+    /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
+    ///
+    /// let addr = socket.peer_addr().expect("Couldn't get peer address");
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        SocketAddr::new(|addr, len| unsafe { libc::getpeername(*self.0.as_inner(), addr, len) })
+    }
+
+    /// Receives data from the socket.
+    ///
+    /// On success, returns the number of bytes read.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacket;
+    ///
+    /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
+    /// let mut buf = vec![0; 10];
+    /// socket.recv(buf.as_mut_slice()).expect("recv function failed");
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.read(buf)
+    }
+
+    /// Sends data on the socket to the socket's peer.
+    ///
+    /// On success, returns the number of bytes written.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacket;
+    ///
+    /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
+    /// socket.send(b"omelette au fromage").expect("send_to function failed");
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
+        self.0.write(buf)
+    }
+
+    /// Sets the read timeout for the socket.
+    ///
+    /// If the provided value is [`None`], then [`recv`] will block indefinitely.
+    /// An [`Err`] is returned if the zero [`Duration`] is passed to this method.
+    ///
+    /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
+    /// [`Err`]: ../../../../std/result/enum.Result.html#variant.Err
+    /// [`recv`]: #method.recv
+    /// [`Duration`]: ../../../../std/time/struct.Duration.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacket;
+    /// use std::time::Duration;
+    ///
+    /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
+    /// socket.set_read_timeout(Some(Duration::new(1, 0)))
+    ///     .expect("set_read_timeout function failed");
+    /// ```
+    ///
+    /// An [`Err`] is returned if the zero [`Duration`] is passed to this
+    /// method:
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::io;
+    /// use std::os::unix::net::UnixSeqpacket;
+    /// use std::time::Duration;
+    ///
+    /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
+    /// let result = socket.set_read_timeout(Some(Duration::new(0, 0)));
+    /// let err = result.unwrap_err();
+    /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
+        self.0.set_timeout(timeout, libc::SO_RCVTIMEO)
+    }
+
+    /// Sets the write timeout for the socket.
+    ///
+    /// If the provided value is [`None`], then [`send`] will block indefinitely.
+    /// An [`Err`] is returned if the zero [`Duration`] is passed to this method.
+    ///
+    /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
+    /// [`send`]: #method.send
+    /// [`Duration`]: ../../../../std/time/struct.Duration.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacket;
+    /// use std::time::Duration;
+    ///
+    /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
+    /// socket.set_write_timeout(Some(Duration::new(1, 0)))
+    ///     .expect("set_write_timeout function failed");
+    /// ```
+    ///
+    /// An [`Err`] is returned if the zero [`Duration`] is passed to this
+    /// method:
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::io;
+    /// use std::os::unix::net::UnixSeqpacket;
+    /// use std::time::Duration;
+    ///
+    /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
+    /// let result = socket.set_write_timeout(Some(Duration::new(0, 0)));
+    /// let err = result.unwrap_err();
+    /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
+        self.0.set_timeout(timeout, libc::SO_SNDTIMEO)
+    }
+
+    /// Returns the read timeout of this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacket;
+    /// use std::time::Duration;
+    ///
+    /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
+    /// socket.set_read_timeout(Some(Duration::new(1, 0)))
+    ///     .expect("set_read_timeout function failed");
+    /// assert_eq!(socket.read_timeout().unwrap(), Some(Duration::new(1, 0)));
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
+        self.0.timeout(libc::SO_RCVTIMEO)
+    }
+
+    /// Returns the write timeout of this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacket;
+    /// use std::time::Duration;
+    ///
+    /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
+    /// socket.set_write_timeout(Some(Duration::new(1, 0)))
+    ///     .expect("set_write_timeout function failed");
+    /// assert_eq!(socket.write_timeout().unwrap(), Some(Duration::new(1, 0)));
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
+        self.0.timeout(libc::SO_SNDTIMEO)
+    }
+
+    /// Moves the socket into or out of nonblocking mode.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacket;
+    ///
+    /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
+    /// socket.set_nonblocking(true).expect("set_nonblocking function failed");
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        self.0.set_nonblocking(nonblocking)
+    }
+
+    /// Returns the value of the `SO_ERROR` option.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacket;
+    ///
+    /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
+    /// if let Ok(Some(err)) = socket.take_error() {
+    ///     println!("Got error: {:?}", err);
+    /// }
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+        self.0.take_error()
+    }
+
+    /// Shut down the read, write, or both halves of this connection.
+    ///
+    /// This function will cause all pending and future I/O calls on the
+    /// specified portions to immediately return with an appropriate value
+    /// (see the documentation of [`Shutdown`]).
+    ///
+    /// [`Shutdown`]: ../../../../std/net/enum.Shutdown.html
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_seqpacket)]
+    /// use std::os::unix::net::UnixSeqpacket;
+    /// use std::net::Shutdown;
+    ///
+    /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
+    /// socket.shutdown(Shutdown::Both).expect("shutdown function failed");
+    /// ```
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+    pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
+        self.0.shutdown(how)
+    }
+}
+
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+impl AsRawFd for UnixSeqpacket {
+    fn as_raw_fd(&self) -> RawFd {
+        *self.0.as_inner()
+    }
+}
+
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+impl FromRawFd for UnixSeqpacket {
+    unsafe fn from_raw_fd(fd: RawFd) -> UnixSeqpacket {
+        UnixSeqpacket(Socket::from_inner(fd))
+    }
+}
+
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
+impl IntoRawFd for UnixSeqpacket {
+    fn into_raw_fd(self) -> RawFd {
+        self.0.into_inner()
+    }
+}
+
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod test {
     use thread;
@@ -1814,5 +2493,169 @@ mod test {
     #[test]
     fn abstract_namespace_not_allowed() {
         assert!(UnixStream::connect("\0asdf").is_err());
+    }
+
+    #[test]
+    fn basic_seqpacket() {
+        let dir = tmpdir();
+        let path = dir.path().join("socket");
+        let msg1 = b"hello";
+        let msg2 = b"world!";
+
+        let listener = or_panic!(UnixSeqpacketListener::bind(&path));
+        let thread = thread::spawn(move || {
+            let socket = or_panic!(listener.accept()).0;
+            let mut buf = [0; 5];
+            or_panic!(socket.recv(&mut buf));
+            assert_eq!(&buf, msg1);
+            or_panic!(socket.send(msg2));
+        });
+
+        let socket = or_panic!(UnixSeqpacket::connect(&path));
+        assert_eq!(socket.peer_addr().unwrap().as_pathname(), Some(&*path));
+        or_panic!(socket.send(msg1));
+        let mut buf = [0; 6];
+        or_panic!(socket.recv(&mut buf));
+        assert_eq!(&buf, msg2);
+        drop(socket);
+
+        thread.join().unwrap();
+    }
+
+    #[test]
+    fn seqpacket_pair() {
+        let msg1 = b"hello";
+        let msg2 = b"world!";
+
+        let (s1, s2) = or_panic!(UnixSeqpacket::pair());
+        let thread = thread::spawn(move || {
+            let mut buf = [0; 5];
+            or_panic!(s1.recv(&mut buf));
+            assert_eq!(&buf, msg1);
+            or_panic!(s1.send(msg2));
+        });
+
+        or_panic!(s2.send(msg1));
+        let mut buf = [0; 6];
+        or_panic!(s2.recv(&mut buf));
+        assert_eq!(&buf, msg2);
+
+        drop(s2);
+        thread.join().unwrap();
+    }
+
+    #[test]
+    fn seqpacket_try_clone() {
+        let dir = tmpdir();
+        let path = dir.path().join("socket");
+        let msg1 = b"hello";
+        let msg2 = b"world";
+
+        let listener = or_panic!(UnixSeqpacketListener::bind(&path));
+        let thread = thread::spawn(move || {
+            let socket = or_panic!(listener.accept()).0;
+            or_panic!(socket.send(msg1));
+            or_panic!(socket.send(msg2));
+        });
+
+        let s1 = or_panic!(UnixSeqpacket::connect(&path));
+        let s2 = or_panic!(s1.try_clone());
+
+        let mut buf = [0; 5];
+        or_panic!(s1.recv(&mut buf));
+        assert_eq!(&buf, msg1);
+        or_panic!(s2.recv(&mut buf));
+        assert_eq!(&buf, msg2);
+
+        drop(s2);
+        drop(s1);
+        thread.join().unwrap();
+    }
+
+    #[test]
+    fn seqpacket_listener_try_clone() {
+        let dir = tmpdir();
+        let path = dir.path().join("socket");
+        let msg1 = b"hello";
+        let msg2 = b"world";
+
+        let l1 = or_panic!(UnixSeqpacketListener::bind(&path));
+        let l2 = or_panic!(l1.try_clone());
+        let thread = thread::spawn(move || {
+            let s1 = or_panic!(l1.accept()).0;
+            or_panic!(s1.send(msg1));
+            let s2 = or_panic!(l2.accept()).0;
+            or_panic!(s2.send(msg2));
+        });
+
+        let s1 = or_panic!(UnixSeqpacket::connect(&path));
+        let s2 = or_panic!(UnixSeqpacket::connect(&path));
+
+        let mut buf = [0; 5];
+        or_panic!(s1.recv(&mut buf));
+        assert_eq!(&buf, msg1);
+        or_panic!(s2.recv(&mut buf));
+        assert_eq!(&buf, msg2);
+
+        drop(s2);
+        drop(s1);
+        thread.join().unwrap();
+    }
+
+    #[test]
+    fn seqpacket_timeout() {
+        let dir = tmpdir();
+        let path = dir.path().join("socket");
+
+        let _listener = or_panic!(UnixSeqpacketListener::bind(&path));
+        let socket = or_panic!(UnixSeqpacket::connect(&path));
+
+        assert_eq!(socket.set_write_timeout(Some(Duration::new(0, 0))).unwrap_err().kind(),
+                   ErrorKind::InvalidInput);
+        assert_eq!(socket.set_read_timeout(Some(Duration::new(0, 0))).unwrap_err().kind(),
+                   ErrorKind::InvalidInput);
+
+        or_panic!(socket.set_read_timeout(Some(Duration::from_millis(1000))));
+
+        let mut buf = [0; 5];
+
+        let kind = socket.recv(&mut buf).err().expect("expected error").kind();
+        assert!(kind == io::ErrorKind::WouldBlock || kind == io::ErrorKind::TimedOut);
+    }
+
+    #[test]
+    fn seqpacket_read_with_timeout() {
+        let dir = tmpdir();
+        let path = dir.path().join("socket");
+        let msg = b"hello world";
+
+        let listener = or_panic!(UnixSeqpacketListener::bind(&path));
+        let thread = thread::spawn(move || {
+            let socket = or_panic!(listener.accept()).0;
+            or_panic!(socket.send(msg));
+
+            // Wait for main thread to time out in its recv()
+            let mut buf = [0; 11];
+            or_panic!(socket.recv(&mut buf));
+            assert_eq!(&buf, msg);
+        });
+
+        let socket = or_panic!(UnixSeqpacket::connect(&path));
+        or_panic!(socket.set_read_timeout(Some(Duration::from_millis(1000))));
+
+        let mut buf = [0; 11];
+
+        // recv() should work despite enabled timeout if something is sent
+        or_panic!(socket.recv(&mut buf));
+        assert_eq!(&buf, msg);
+
+        let kind = socket.recv(&mut buf).err().expect("expected error").kind();
+        assert!(kind == io::ErrorKind::WouldBlock || kind == io::ErrorKind::TimedOut);
+
+        // "Unblock" the listener
+        or_panic!(socket.send(msg));
+
+        drop(socket);
+        thread.join().unwrap();
     }
 }
