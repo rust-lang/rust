@@ -388,10 +388,9 @@ pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 ///
 /// The data must be valid UTF-8
 ///
-/// `p` must be non-null, even for zero-length strs, because non-zero bits
-/// are required to distinguish between a zero-length str within `Some()`
-/// from `None`. `p` can be a bogus non-dereferencable pointer, such as `0x1`,
-/// for zero-length strs, though.
+/// `p` must be non-null and aligned, even for zero-length strs, as is
+/// required for all references. However, for zero-length strs, `p` can be
+/// a bogus non-dereferencable pointer such as [`NonNull::dangling()`].
 ///
 /// # Caveat
 ///
@@ -400,9 +399,8 @@ pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 /// source lifetime is safe in the context, such as by providing a helper
 /// function taking the lifetime of a host value for the str, or by explicit
 /// annotation.
-/// Performs the same functionality as `from_raw_parts`, except that a mutable
-/// str is returned.
 ///
+/// [`NonNull::dangling()`]: ../../std/ptr/struct.NonNull.html#method.dangling
 unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
     from_utf8_unchecked_mut(slice::from_raw_parts_mut(p, len))
 }
