@@ -107,6 +107,14 @@ impl<'a> MacroBinding<'a> {
             MacroBinding::Legacy(_) => panic!("unexpected MacroBinding::Legacy"),
         }
     }
+
+    pub fn def_ignoring_ambiguity(self) -> Def {
+        match self {
+            MacroBinding::Legacy(binding) => Def::Macro(binding.def_id, MacroKind::Bang),
+            MacroBinding::Global(binding) | MacroBinding::Modern(binding) =>
+                binding.def_ignoring_ambiguity(),
+        }
+    }
 }
 
 impl<'a> base::Resolver for Resolver<'a> {
@@ -476,7 +484,7 @@ impl<'a> Resolver<'a> {
         };
 
         self.current_module.nearest_item_scope().legacy_macro_resolutions.borrow_mut()
-            .push((scope, path[0], span, kind));
+            .push((scope, path[0], kind, result.ok()));
 
         result
     }
@@ -622,10 +630,33 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        for &(mark, ident, span, kind) in module.legacy_macro_resolutions.borrow().iter() {
+        for &(mark, ident, kind, def) in module.legacy_macro_resolutions.borrow().iter() {
+            let span = ident.span;
             let legacy_scope = &self.invocations[&mark].legacy_scope;
             let legacy_resolution = self.resolve_legacy_scope(legacy_scope, ident, true);
             let resolution = self.resolve_lexical_macro_path_segment(ident, MacroNS, true, span);
+
+            let check_consistency = |this: &Self, binding: MacroBinding| {
+                if let Some(def) = def {
+                    if this.ambiguity_errors.is_empty() && this.disallowed_shadowing.is_empty() &&
+                       binding.def_ignoring_ambiguity() != def {
+                        // Make sure compilation does not succeed if preferred macro resolution
+                        // has changed after the macro had been expanded. In theory all such
+                        // situations should be reported as ambiguity errors, so this is span-bug.
+                        span_bug!(span, "inconsistent resolution for a macro");
+                    }
+                } else {
+                    // It's possible that the macro was unresolved (indeterminate) and silently
+                    // expanded into a dummy fragment for recovery during expansion.
+                    // Now, post-expansion, the resolution may succeed, but we can't change the
+                    // past and need to report an error.
+                    let msg =
+                        format!("cannot determine resolution for the {} `{}`", kind.descr(), ident);
+                    let msg_note = "import resolution is stuck, try simplifying macro imports";
+                    this.session.struct_span_err(span, &msg).note(msg_note).emit();
+                }
+            };
+
             match (legacy_resolution, resolution) {
                 (Some(MacroBinding::Legacy(legacy_binding)), Ok(MacroBinding::Modern(binding))) => {
                     let msg1 = format!("`{}` could refer to the macro defined here", ident);
@@ -635,24 +666,35 @@ impl<'a> Resolver<'a> {
                         .span_note(binding.span, &msg2)
                         .emit();
                 },
-                (Some(MacroBinding::Global(binding)), Ok(MacroBinding::Global(_))) => {
-                    self.record_use(ident, MacroNS, binding, span);
-                    self.err_if_macro_use_proc_macro(ident.name, span, binding);
-                },
                 (None, Err(_)) => {
-                    let msg = match kind {
-                        MacroKind::Bang =>
-                            format!("cannot find macro `{}!` in this scope", ident),
-                        MacroKind::Attr =>
-                            format!("cannot find attribute macro `{}` in this scope", ident),
-                        MacroKind::Derive =>
-                            format!("cannot find derive macro `{}` in this scope", ident),
-                    };
+                    assert!(def.is_none());
+                    let bang = if kind == MacroKind::Bang { "!" } else { "" };
+                    let msg =
+                        format!("cannot find {} `{}{}` in this scope", kind.descr(), ident, bang);
                     let mut err = self.session.struct_span_err(span, &msg);
                     self.suggest_macro_name(&ident.as_str(), kind, &mut err, span);
                     err.emit();
                 },
-                _ => {},
+                (Some(MacroBinding::Modern(_)), _) | (_, Ok(MacroBinding::Legacy(_))) => {
+                    span_bug!(span, "impossible macro resolution result");
+                }
+                // OK, unambiguous resolution
+                (Some(binding), Err(_)) | (None, Ok(binding)) |
+                // OK, legacy wins over global even if their definitions are different
+                (Some(binding @ MacroBinding::Legacy(_)), Ok(MacroBinding::Global(_))) |
+                // OK, modern wins over global even if their definitions are different
+                (Some(MacroBinding::Global(_)), Ok(binding @ MacroBinding::Modern(_))) => {
+                    check_consistency(self, binding);
+                }
+                (Some(MacroBinding::Global(binding1)), Ok(MacroBinding::Global(binding2))) => {
+                    if binding1.def() != binding2.def() {
+                        span_bug!(span, "mismatch between same global macro resolutions");
+                    }
+                    check_consistency(self, MacroBinding::Global(binding1));
+
+                    self.record_use(ident, MacroNS, binding1, span);
+                    self.err_if_macro_use_proc_macro(ident.name, span, binding1);
+                },
             };
         }
     }

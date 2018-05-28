@@ -210,7 +210,7 @@ impl Def {
             Def::Upvar(..) => "closure capture",
             Def::Label(..) => "label",
             Def::SelfTy(..) => "self type",
-            Def::Macro(..) => "macro",
+            Def::Macro(.., macro_kind) => macro_kind.descr(),
             Def::GlobalAsm(..) => "global asm",
             Def::Err => "unresolved item",
         }
