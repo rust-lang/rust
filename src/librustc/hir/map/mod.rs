@@ -495,7 +495,10 @@ impl<'hir> Map<'hir> {
                                 MacroKind::Bang))
             }
             NodeGenericParam(param) => {
-                Some(Def::TyParam(self.local_def_id(param.id)))
+                Some(match param.kind {
+                    GenericParamKind::Lifetime { .. } => Def::Local(param.id),
+                    GenericParamKind::Type { .. } => Def::TyParam(self.local_def_id(param.id))
+                })
             }
         }
     }
@@ -975,8 +978,8 @@ impl<'hir> Map<'hir> {
             Some(NodeExpr(ref e)) => Some(&*e.attrs),
             Some(NodeStmt(ref s)) => Some(s.node.attrs()),
             Some(NodeGenericParam(param)) => match param.kind {
+                GenericParamKind::Lifetime { .. } => None,
                 GenericParamKind::Type { ref attrs, .. } => Some(&attrs[..]),
-                _ => bug!("unexpected non-type NodeGenericParam")
             }
             // unit/tuple structs take the attributes straight from
             // the struct definition.
@@ -1375,7 +1378,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
             format!("lifetime {}{}", map.node_to_pretty_string(id), id_str)
         }
         Some(NodeGenericParam(ref param)) => {
-            format!("genericparam {:?}{}", param, id_str)
+            format!("generic_param {:?}{}", param, id_str)
         }
         Some(NodeVisibility(ref vis)) => {
             format!("visibility {:?}{}", vis, id_str)
