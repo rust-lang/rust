@@ -9,13 +9,13 @@
 // except according to those terms.
 
 // ignore-emscripten
-// min-llvm-version 6.0
+// min-llvm-version 7.0
 // error-pattern: panicked
 
 // Test that the simd_f{min,max} intrinsics produce the correct results.
 
 #![feature(repr_simd, platform_intrinsics)]
-#[allow(non_camel_case_types)]
+#![allow(non_camel_case_types)]
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -43,7 +43,6 @@ fn main() {
         let minn = simd_fmin(y, n);
         assert_eq!(minn, y);
 
-        // FIXME(49261)
         let max0 = simd_fmax(x, y);
         let max1 = simd_fmax(y, x);
         assert_eq!(max0, max1);

@@ -351,8 +351,25 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         "simd_add" | "simd_sub" | "simd_mul" | "simd_rem" |
         "simd_div" | "simd_shl" | "simd_shr" |
         "simd_and" | "simd_or" | "simd_xor" |
-        "simd_fmin" | "simd_fmax" => {
+        "simd_fmin" | "simd_fmax" | "simd_fpow" => {
             (1, vec![param(0), param(0)], param(0))
+        }
+        "simd_fsqrt" | "simd_fsin" | "simd_fcos" | "simd_fexp" | "simd_fexp2" |
+        "simd_flog2" | "simd_flog10" | "simd_flog" |
+        "simd_fabs" | "simd_floor" | "simd_ceil" => {
+            (1, vec![param(0)], param(0))
+        }
+        "simd_fpowi" => {
+            (1, vec![param(0), tcx.types.i32], param(0))
+        }
+        "simd_fma" => {
+            (1, vec![param(0), param(0), param(0)], param(0))
+        }
+        "simd_gather" => {
+            (3, vec![param(0), param(1), param(2)], param(0))
+        }
+        "simd_scatter" => {
+            (3, vec![param(0), param(1), param(2)], tcx.mk_nil())
         }
         "simd_insert" => (2, vec![param(0), tcx.types.u32, param(1)], param(0)),
         "simd_extract" => (2, vec![param(0), tcx.types.u32], param(1)),

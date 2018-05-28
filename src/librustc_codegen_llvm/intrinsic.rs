@@ -1140,6 +1140,359 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
 
+    fn simd_simple_float_intrinsic<'a, 'tcx>(name: &str,
+                                             in_elem: &::rustc::ty::TyS,
+                                             in_ty: &::rustc::ty::TyS,
+                                             in_len: usize,
+                                             bx: &Builder<'a, 'tcx>,
+                                             span: Span,
+                                             args: &[OperandRef<'tcx>])
+                                             -> Result<ValueRef, ()> {
+        macro_rules! emit_error {
+            ($msg: tt) => {
+                emit_error!($msg, )
+            };
+            ($msg: tt, $($fmt: tt)*) => {
+                span_invalid_monomorphization_error(
+                    bx.sess(), span,
+                    &format!(concat!("invalid monomorphization of `{}` intrinsic: ",
+                                     $msg),
+                             name, $($fmt)*));
+            }
+        }
+        macro_rules! return_error {
+            ($($fmt: tt)*) => {
+                {
+                    emit_error!($($fmt)*);
+                    return Err(());
+                }
+            }
+        }
+        let ety = match in_elem.sty {
+            ty::TyFloat(f) if f.bit_width() == 32 => {
+                if in_len < 2 || in_len > 16 {
+                    return_error!(
+                        "unsupported floating-point vector `{}` with length `{}` \
+                         out-of-range [2, 16]",
+                        in_ty, in_len);
+                }
+                "f32"
+            },
+            ty::TyFloat(f) if f.bit_width() == 64 => {
+                if in_len < 2 || in_len > 8 {
+                    return_error!("unsupported floating-point vector `{}` with length `{}` \
+                                   out-of-range [2, 8]",
+                                  in_ty, in_len);
+                }
+                "f64"
+            },
+            ty::TyFloat(f) => {
+                return_error!("unsupported element type `{}` of floating-point vector `{}`",
+                              f, in_ty);
+            },
+            _ => {
+                return_error!("`{}` is not a floating-point type", in_ty);
+            }
+        };
+
+        let llvm_name = &format!("llvm.{0}.v{1}{2}", name, in_len, ety);
+        let intrinsic = bx.cx.get_intrinsic(&llvm_name);
+        let c = bx.call(intrinsic,
+                        &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                        None);
+        unsafe { llvm::LLVMRustSetHasUnsafeAlgebra(c) };
+        return Ok(c);
+    }
+
+    if name == "simd_fsqrt" {
+        return simd_simple_float_intrinsic("sqrt", in_elem, in_ty, in_len, bx, span, args);
+    }
+
+    if name == "simd_fsin" {
+        return simd_simple_float_intrinsic("sin", in_elem, in_ty, in_len, bx, span, args);
+    }
+
+    if name == "simd_fcos" {
+        return simd_simple_float_intrinsic("cos", in_elem, in_ty, in_len, bx, span, args);
+    }
+
+    if name == "simd_fabs" {
+        return simd_simple_float_intrinsic("fabs", in_elem, in_ty, in_len, bx, span, args);
+    }
+
+    if name == "simd_floor" {
+        return simd_simple_float_intrinsic("floor", in_elem, in_ty, in_len, bx, span, args);
+    }
+
+    if name == "simd_ceil" {
+        return simd_simple_float_intrinsic("ceil", in_elem, in_ty, in_len, bx, span, args);
+    }
+
+    if name == "simd_fexp" {
+        return simd_simple_float_intrinsic("exp", in_elem, in_ty, in_len, bx, span, args);
+    }
+
+    if name == "simd_fexp2" {
+        return simd_simple_float_intrinsic("exp2", in_elem, in_ty, in_len, bx, span, args);
+    }
+
+    if name == "simd_flog10" {
+        return simd_simple_float_intrinsic("log10", in_elem, in_ty, in_len, bx, span, args);
+    }
+
+    if name == "simd_flog2" {
+        return simd_simple_float_intrinsic("log2", in_elem, in_ty, in_len, bx, span, args);
+    }
+
+    if name == "simd_flog" {
+        return simd_simple_float_intrinsic("log", in_elem, in_ty, in_len, bx, span, args);
+    }
+
+    if name == "simd_fpowi" {
+        return simd_simple_float_intrinsic("powi", in_elem, in_ty, in_len, bx, span, args);
+    }
+
+    if name == "simd_fpow"  {
+        return simd_simple_float_intrinsic("pow", in_elem, in_ty, in_len, bx, span, args);
+    }
+
+    if name == "simd_fma" {
+        return simd_simple_float_intrinsic("fma", in_elem, in_ty, in_len, bx, span, args);
+    }
+
+    // FIXME: use:
+    //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Function.h#L182
+    //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Intrinsics.h#L81
+    fn llvm_vector_str(elem_ty: ty::Ty, vec_len: usize, no_pointers: usize) -> String {
+        let p0s: String = "p0".repeat(no_pointers);
+        match elem_ty.sty {
+            ty::TyInt(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
+            ty::TyUint(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
+            ty::TyFloat(v) => format!("v{}{}f{}", vec_len, p0s, v.bit_width()),
+            _ => unreachable!(),
+        }
+    }
+
+    fn llvm_vector_ty(cx: &CodegenCx, elem_ty: ty::Ty, vec_len: usize,
+                      mut no_pointers: usize) -> Type {
+        // FIXME: use cx.layout_of(ty).llvm_type() ?
+        let mut elem_ty = match elem_ty.sty {
+            ty::TyInt(v) => Type::int_from_ty(cx, v),
+            ty::TyUint(v) => Type::uint_from_ty(cx, v),
+            ty::TyFloat(v) => Type::float_from_ty(cx, v),
+            _ => unreachable!(),
+        };
+        while no_pointers > 0 {
+            elem_ty = elem_ty.ptr_to();
+            no_pointers -= 1;
+        }
+        Type::vector(&elem_ty, vec_len as u64)
+    }
+
+
+    if name == "simd_gather"  {
+        // simd_gather(values: <N x T>, pointers: <N x *_ T>,
+        //             mask: <N x i{M}>) -> <N x T>
+        // * N: number of elements in the input vectors
+        // * T: type of the element to load
+        // * M: any integer width is supported, will be truncated to i1
+
+        // All types must be simd vector types
+        require_simd!(in_ty, "first");
+        require_simd!(arg_tys[1], "second");
+        require_simd!(arg_tys[2], "third");
+        require_simd!(ret_ty, "return");
+
+        // Of the same length:
+        require!(in_len == arg_tys[1].simd_size(tcx),
+                 "expected {} argument with length {} (same as input type `{}`), \
+                  found `{}` with length {}", "second", in_len, in_ty, arg_tys[1],
+                 arg_tys[1].simd_size(tcx));
+        require!(in_len == arg_tys[2].simd_size(tcx),
+                 "expected {} argument with length {} (same as input type `{}`), \
+                  found `{}` with length {}", "third", in_len, in_ty, arg_tys[2],
+                 arg_tys[2].simd_size(tcx));
+
+        // The return type must match the first argument type
+        require!(ret_ty == in_ty,
+                 "expected return type `{}`, found `{}`",
+                 in_ty, ret_ty);
+
+        // This counts how many pointers
+        fn ptr_count(t: ty::Ty) -> usize {
+            match t.sty {
+                ty::TyRawPtr(p) => 1 + ptr_count(p.ty),
+                _ => 0,
+            }
+        }
+
+        // Non-ptr type
+        fn non_ptr(t: ty::Ty) -> ty::Ty {
+            match t.sty {
+                ty::TyRawPtr(p) => non_ptr(p.ty),
+                _ => t,
+            }
+        }
+
+        // The second argument must be a simd vector with an element type that's a pointer
+        // to the element type of the first argument
+        let (pointer_count, underlying_ty) = match arg_tys[1].simd_type(tcx).sty {
+            ty::TyRawPtr(p) if p.ty == in_elem => (ptr_count(arg_tys[1].simd_type(tcx)),
+                                                   non_ptr(arg_tys[1].simd_type(tcx))),
+            _ => {
+                require!(false, "expected element type `{}` of second argument `{}` \
+                                 to be a pointer to the element type `{}` of the first \
+                                 argument `{}`, found `{}` != `*_ {}`",
+                         arg_tys[1].simd_type(tcx).sty, arg_tys[1], in_elem, in_ty,
+                         arg_tys[1].simd_type(tcx).sty, in_elem);
+                unreachable!();
+            }
+        };
+        assert!(pointer_count > 0);
+        assert!(pointer_count - 1 == ptr_count(arg_tys[0].simd_type(tcx)));
+        assert_eq!(underlying_ty, non_ptr(arg_tys[0].simd_type(tcx)));
+
+        // The element type of the third argument must be a signed integer type of any width:
+        match arg_tys[2].simd_type(tcx).sty {
+            ty::TyInt(_) => (),
+            _ => {
+                require!(false, "expected element type `{}` of third argument `{}` \
+                                 to be a signed integer type",
+                         arg_tys[2].simd_type(tcx).sty, arg_tys[2]);
+            }
+        }
+
+        // Alignment of T, must be a constant integer value:
+        let alignment_ty = Type::i32(bx.cx);
+        let alignment = C_i32(bx.cx, bx.cx.align_of(in_elem).abi() as i32);
+
+        // Truncate the mask vector to a vector of i1s:
+        let (mask, mask_ty) = {
+            let i1 = Type::i1(bx.cx);
+            let i1xn = Type::vector(&i1, in_len as u64);
+            (bx.trunc(args[2].immediate(), i1xn), i1xn)
+        };
+
+        // Type of the vector of pointers:
+        let llvm_pointer_vec_ty = llvm_vector_ty(bx.cx, underlying_ty, in_len, pointer_count);
+        let llvm_pointer_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count);
+
+        // Type of the vector of elements:
+        let llvm_elem_vec_ty = llvm_vector_ty(bx.cx, underlying_ty, in_len, pointer_count - 1);
+        let llvm_elem_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count - 1);
+
+        let llvm_intrinsic = format!("llvm.masked.gather.{}.{}",
+                                     llvm_elem_vec_str, llvm_pointer_vec_str);
+        let f = declare::declare_cfn(bx.cx, &llvm_intrinsic,
+                                     Type::func(&[llvm_pointer_vec_ty, alignment_ty, mask_ty,
+                                                  llvm_elem_vec_ty], &llvm_elem_vec_ty));
+        llvm::SetUnnamedAddr(f, false);
+        let v = bx.call(f, &[args[1].immediate(), alignment, mask, args[0].immediate()],
+                        None);
+        return Ok(v);
+    }
+
+    if name == "simd_scatter"  {
+        // simd_scatter(values: <N x T>, pointers: <N x *mut T>,
+        //             mask: <N x i{M}>) -> ()
+        // * N: number of elements in the input vectors
+        // * T: type of the element to load
+        // * M: any integer width is supported, will be truncated to i1
+
+        // All types must be simd vector types
+        require_simd!(in_ty, "first");
+        require_simd!(arg_tys[1], "second");
+        require_simd!(arg_tys[2], "third");
+
+        // Of the same length:
+        require!(in_len == arg_tys[1].simd_size(tcx),
+                 "expected {} argument with length {} (same as input type `{}`), \
+                  found `{}` with length {}", "second", in_len, in_ty, arg_tys[1],
+                 arg_tys[1].simd_size(tcx));
+        require!(in_len == arg_tys[2].simd_size(tcx),
+                 "expected {} argument with length {} (same as input type `{}`), \
+                  found `{}` with length {}", "third", in_len, in_ty, arg_tys[2],
+                 arg_tys[2].simd_size(tcx));
+
+        // This counts how many pointers
+        fn ptr_count(t: ty::Ty) -> usize {
+            match t.sty {
+                ty::TyRawPtr(p) => 1 + ptr_count(p.ty),
+                _ => 0,
+            }
+        }
+
+        // Non-ptr type
+        fn non_ptr(t: ty::Ty) -> ty::Ty {
+            match t.sty {
+                ty::TyRawPtr(p) => non_ptr(p.ty),
+                _ => t,
+            }
+        }
+
+        // The second argument must be a simd vector with an element type that's a pointer
+        // to the element type of the first argument
+        let (pointer_count, underlying_ty) = match arg_tys[1].simd_type(tcx).sty {
+            ty::TyRawPtr(p) if p.ty == in_elem && p.mutbl == hir::MutMutable
+                => (ptr_count(arg_tys[1].simd_type(tcx)),
+                    non_ptr(arg_tys[1].simd_type(tcx))),
+            _ => {
+                require!(false, "expected element type `{}` of second argument `{}` \
+                                 to be a pointer to the element type `{}` of the first \
+                                 argument `{}`, found `{}` != `*mut {}`",
+                         arg_tys[1].simd_type(tcx).sty, arg_tys[1], in_elem, in_ty,
+                         arg_tys[1].simd_type(tcx).sty, in_elem);
+                unreachable!();
+            }
+        };
+        assert!(pointer_count > 0);
+        assert!(pointer_count - 1 == ptr_count(arg_tys[0].simd_type(tcx)));
+        assert_eq!(underlying_ty, non_ptr(arg_tys[0].simd_type(tcx)));
+
+        // The element type of the third argument must be a signed integer type of any width:
+        match arg_tys[2].simd_type(tcx).sty {
+            ty::TyInt(_) => (),
+            _ => {
+                require!(false, "expected element type `{}` of third argument `{}` \
+                                 to be a signed integer type",
+                         arg_tys[2].simd_type(tcx).sty, arg_tys[2]);
+            }
+        }
+
+        // Alignment of T, must be a constant integer value:
+        let alignment_ty = Type::i32(bx.cx);
+        let alignment = C_i32(bx.cx, bx.cx.align_of(in_elem).abi() as i32);
+
+        // Truncate the mask vector to a vector of i1s:
+        let (mask, mask_ty) = {
+            let i1 = Type::i1(bx.cx);
+            let i1xn = Type::vector(&i1, in_len as u64);
+            (bx.trunc(args[2].immediate(), i1xn), i1xn)
+        };
+
+        let ret_t = Type::void(bx.cx);
+
+        // Type of the vector of pointers:
+        let llvm_pointer_vec_ty = llvm_vector_ty(bx.cx, underlying_ty, in_len, pointer_count);
+        let llvm_pointer_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count);
+
+        // Type of the vector of elements:
+        let llvm_elem_vec_ty = llvm_vector_ty(bx.cx, underlying_ty, in_len, pointer_count - 1);
+        let llvm_elem_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count - 1);
+
+        let llvm_intrinsic = format!("llvm.masked.scatter.{}.{}",
+                                     llvm_elem_vec_str, llvm_pointer_vec_str);
+        let f = declare::declare_cfn(bx.cx, &llvm_intrinsic,
+                                     Type::func(&[llvm_elem_vec_ty,
+                                                  llvm_pointer_vec_ty,
+                                                  alignment_ty,
+                                                  mask_ty], &ret_t));
+        llvm::SetUnnamedAddr(f, false);
+        let v = bx.call(f, &[args[0].immediate(), args[1].immediate(), alignment, mask],
+                        None);
+        return Ok(v);
+    }
+
     macro_rules! arith_red {
         ($name:tt : $integer_reduce:ident, $float_reduce:ident, $ordered:expr) => {
             if name == $name {
