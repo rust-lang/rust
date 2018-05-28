@@ -148,6 +148,9 @@ exhaustive. Header commands can generally be found by browsing the
 `TestProps` structure found in [`header.rs`] from the compiletest
 source.
 
+* `run-rustfix` for UI tests, indicates that the test produces
+  structured suggestions, which are then applied and the final
+  source is compiled again.
 * `min-{gdb,lldb}-version`
 * `min-llvm-version`
 * `compile-pass` for UI tests, indicates that the test is
