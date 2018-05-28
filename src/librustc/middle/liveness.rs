@@ -109,6 +109,7 @@ use self::VarKind::*;
 use hir::def::*;
 use ty::{self, TyCtxt};
 use lint;
+use errors::Applicability;
 use util::nodemap::{NodeMap, NodeSet};
 
 use std::collections::VecDeque;
@@ -1535,11 +1536,15 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     let mut err = self.ir.tcx
                         .struct_span_lint_node(lint::builtin::UNUSED_VARIABLES, id, sp, &msg);
                     if self.ir.variable_is_shorthand(var) {
-                        err.span_suggestion(sp, "try ignoring the field",
-                                            format!("{}: _", name));
+                        err.span_suggestion_with_applicability(sp, "try ignoring the field",
+                                                               format!("{}: _", name),
+                                                               Applicability::MachineApplicable);
                     } else {
-                        err.span_suggestion_short(sp, &suggest_underscore_msg,
-                                                  format!("_{}", name));
+                        err.span_suggestion_short_with_applicability(
+                            sp, &suggest_underscore_msg,
+                            format!("_{}", name),
+                            Applicability::MachineApplicable,
+                        );
                     }
                     err.emit()
                 }

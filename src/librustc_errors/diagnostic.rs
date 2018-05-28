@@ -330,6 +330,23 @@ impl Diagnostic {
         self
     }
 
+    pub fn span_suggestion_short_with_applicability(
+        &mut self, sp: Span, msg: &str, suggestion: String, applicability: Applicability
+    ) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitutions: vec![Substitution {
+                parts: vec![SubstitutionPart {
+                    snippet: suggestion,
+                    span: sp,
+                }],
+            }],
+            msg: msg.to_owned(),
+            show_code_when_inline: false,
+            applicability: applicability,
+        });
+        self
+    }
+
     pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self {
         self.span = sp.into();
         self

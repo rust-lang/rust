@@ -11,7 +11,7 @@
 use ast::{self, Ident};
 use syntax_pos::{self, BytePos, CharPos, Pos, Span, NO_EXPANSION};
 use codemap::{CodeMap, FilePathMapping};
-use errors::{FatalError, DiagnosticBuilder};
+use errors::{Applicability, FatalError, DiagnosticBuilder};
 use parse::{token, ParseSess};
 use str::char_at;
 use symbol::{Symbol, keywords};
@@ -1379,11 +1379,12 @@ impl<'a> StringReader<'a> {
                             self.sess.span_diagnostic
                                 .struct_span_err(span,
                                                  "character literal may only contain one codepoint")
-                                .span_suggestion(span,
-                                                 "if you meant to write a `str` literal, \
-                                                  use double quotes",
-                                                 format!("\"{}\"", &self.src[start..end]))
-                                .emit();
+                                .span_suggestion_with_applicability(
+                                    span,
+                                    "if you meant to write a `str` literal, use double quotes",
+                                    format!("\"{}\"", &self.src[start..end]),
+                                    Applicability::MachineApplicable
+                                ).emit();
                             return Ok(token::Literal(token::Str_(Symbol::intern("??")), None))
                         }
                         if self.ch_is('\n') || self.is_eof() || self.ch_is('/') {

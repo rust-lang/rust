@@ -23,7 +23,7 @@ fn main() {
     let mut m = HashMap::new();
     m.insert("foo", "bar");
 
-    let _n = m.iter().map(|_, b| {
+    let _n = m.iter().map(|(_, b)| {
         //~^ ERROR closure is expected to take a single 2-tuple
         b.to_string()
     });
