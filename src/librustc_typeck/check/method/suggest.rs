@@ -297,7 +297,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tcx.sess.diagnostic().struct_dummy()
                 };
 
-                if let Some(def) =  actual.ty_adt_def() {
+                if let Some(def) = actual.ty_adt_def() {
                     if let Some(full_sp) = tcx.hir.span_if_local(def.did) {
                         let def_sp = tcx.sess.codemap().def_span(full_sp);
                         err.span_label(def_sp, format!("{} `{}` not found {}",
@@ -380,6 +380,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if !static_sources.is_empty() {
                     err.note("found the following associated functions; to be used as methods, \
                               functions must have a `self` parameter");
+                    err.span_label(span, "this is an associated function, not a method");
                 }
                 if static_sources.len() == 1 {
                     if let Some(expr) = rcvr_expr {
