@@ -45,6 +45,8 @@ pub enum PassMode {
     Cast(CastTarget),
     /// Pass the argument indirectly via a hidden pointer.
     Indirect(ArgAttributes),
+    /// Pass the unsized argument indirectly via a hidden pointer.
+    UnsizedIndirect(ArgAttributes, ArgAttributes),
 }
 
 // Hack to disable non_upper_case_globals only for the bitflags! and not for the rest
@@ -381,6 +383,25 @@ impl<'a, Ty> ArgType<'a, Ty> {
         }
     }
 
+    pub fn make_unsized_indirect(&mut self, vtable_size: Option<Size>) {
+        self.make_indirect();
+
+        let attrs = if let PassMode::Indirect(attrs) = self.mode {
+            attrs
+        } else {
+            unreachable!()
+        };
+
+        let mut extra_attrs = ArgAttributes::new();
+        if let Some(vtable_size) = vtable_size {
+            extra_attrs.set(ArgAttribute::NoAlias)
+                       .set(ArgAttribute::NonNull);
+            extra_attrs.pointee_size = vtable_size;
+        }
+
+        self.mode = PassMode::UnsizedIndirect(attrs, extra_attrs);
+    }
+
     pub fn extend_integer_width_to(&mut self, bits: u64) {
         // Only integers have signedness
         if let Abi::Scalar(ref scalar) = self.layout.abi {
@@ -410,6 +431,13 @@ impl<'a, Ty> ArgType<'a, Ty> {
     pub fn is_indirect(&self) -> bool {
         match self.mode {
             PassMode::Indirect(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_unsized_indirect(&self) -> bool {
+        match self.mode {
+            PassMode::UnsizedIndirect(..) => true,
             _ => false
         }
     }

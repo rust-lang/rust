@@ -102,6 +102,7 @@ pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>, flavor: Flav
                 PassMode::Indirect(_) => continue,
                 PassMode::Direct(ref mut attrs) => attrs,
                 PassMode::Pair(..) |
+                PassMode::UnsizedIndirect(..) |
                 PassMode::Cast(_) => {
                     unreachable!("x86 shouldn't be passing arguments by {:?}", arg.mode)
                 }

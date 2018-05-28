@@ -48,6 +48,7 @@ impl PlaceRef<'ll, 'tcx> {
         layout: TyLayout<'tcx>,
         align: Align,
     ) -> PlaceRef<'ll, 'tcx> {
+        assert!(!layout.is_unsized());
         PlaceRef {
             llval,
             llextra: None,
@@ -77,8 +78,19 @@ impl PlaceRef<'ll, 'tcx> {
     pub fn alloca(bx: &Builder<'a, 'll, 'tcx>, layout: TyLayout<'tcx>, name: &str)
                   -> PlaceRef<'ll, 'tcx> {
         debug!("alloca({:?}: {:?})", name, layout);
+        assert!(!layout.is_unsized(), "tried to statically allocate unsized place");
         let tmp = bx.alloca(layout.llvm_type(bx.cx), name, layout.align);
         Self::new_sized(tmp, layout, layout.align)
+    }
+
+    /// Returns a place for an indirect reference to an unsized place.
+    pub fn alloca_unsized_indirect(bx: &Builder<'a, 'll, 'tcx>, layout: TyLayout<'tcx>, name: &str)
+                  -> PlaceRef<'ll, 'tcx> {
+        debug!("alloca_unsized_indirect({:?}: {:?})", name, layout);
+        assert!(layout.is_unsized(), "tried to allocate indirect place for sized values");
+        let ptr_ty = bx.cx.tcx.mk_mut_ptr(layout.ty);
+        let ptr_layout = bx.cx.layout_of(ptr_ty);
+        Self::alloca(bx, ptr_layout, name)
     }
 
     pub fn len(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Value {
@@ -97,7 +109,7 @@ impl PlaceRef<'ll, 'tcx> {
     pub fn load(&self, bx: &Builder<'a, 'll, 'tcx>) -> OperandRef<'ll, 'tcx> {
         debug!("PlaceRef::load: {:?}", self);
 
-        assert_eq!(self.llextra, None);
+        assert_eq!(self.llextra.is_some(), self.layout.is_unsized());
 
         if self.layout.is_zst() {
             return OperandRef::new_zst(bx.cx, self.layout);
@@ -119,7 +131,9 @@ impl PlaceRef<'ll, 'tcx> {
             }
         };
 
-        let val = if self.layout.is_llvm_immediate() {
+        let val = if let Some(llextra) = self.llextra {
+            OperandValue::UnsizedRef(self.llval, llextra)
+        } else if self.layout.is_llvm_immediate() {
             let mut const_llval = None;
             unsafe {
                 if let Some(global) = llvm::LLVMIsAGlobalVariable(self.llval) {
@@ -423,6 +437,9 @@ impl FunctionCx<'a, 'll, 'tcx> {
             match self.locals[index] {
                 LocalRef::Place(place) => {
                     return place;
+                }
+                LocalRef::UnsizedPlace(place) => {
+                    return place.load(bx).deref(&cx);
                 }
                 LocalRef::Operand(..) => {
                     bug!("using operand local {:?} as place", place);

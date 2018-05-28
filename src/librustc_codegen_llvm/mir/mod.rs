@@ -180,6 +180,11 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
 enum LocalRef<'ll, 'tcx> {
     Place(PlaceRef<'ll, 'tcx>),
+    /// `UnsizedPlace(p)`: `p` itself is a thin pointer (indirect place).
+    /// `*p` is the fat pointer that references the actual unsized place.
+    /// Every time it is initialized, we have to reallocate the place
+    /// and update the fat pointer. That's the reason why it is indirect.
+    UnsizedPlace(PlaceRef<'ll, 'tcx>),
     Operand(Option<OperandRef<'ll, 'tcx>>),
 }
 
@@ -275,17 +280,24 @@ pub fn codegen_mir(
                 }
 
                 debug!("alloc: {:?} ({}) -> place", local, name);
-                let place = PlaceRef::alloca(&bx, layout, &name.as_str());
-                if dbg {
-                    let (scope, span) = fx.debug_loc(mir::SourceInfo {
-                        span: decl.source_info.span,
-                        scope: decl.visibility_scope,
-                    });
-                    declare_local(&bx, &fx.debug_context, name, layout.ty, scope.unwrap(),
-                        VariableAccess::DirectVariable { alloca: place.llval },
-                        VariableKind::LocalVariable, span);
+                if layout.is_unsized() {
+                    let indirect_place =
+                        PlaceRef::alloca_unsized_indirect(&bx, layout, &name.as_str());
+                    // FIXME: add an appropriate debuginfo
+                    LocalRef::UnsizedPlace(indirect_place)
+                } else {
+                    let place = PlaceRef::alloca(&bx, layout, &name.as_str());
+                    if dbg {
+                        let (scope, span) = fx.debug_loc(mir::SourceInfo {
+                            span: decl.source_info.span,
+                            scope: decl.visibility_scope,
+                        });
+                        declare_local(&bx, &fx.debug_context, name, layout.ty, scope.unwrap(),
+                            VariableAccess::DirectVariable { alloca: place.llval },
+                            VariableKind::LocalVariable, span);
+                    }
+                    LocalRef::Place(place)
                 }
-                LocalRef::Place(place)
             } else {
                 // Temporary or return place
                 if local == mir::RETURN_PLACE && fx.fn_ty.ret.is_indirect() {
@@ -294,7 +306,13 @@ pub fn codegen_mir(
                     LocalRef::Place(PlaceRef::new_sized(llretptr, layout, layout.align))
                 } else if memory_locals.contains(local) {
                     debug!("alloc: {:?} -> place", local);
-                    LocalRef::Place(PlaceRef::alloca(&bx, layout, &format!("{:?}", local)))
+                    if layout.is_unsized() {
+                        let indirect_place =
+                            PlaceRef::alloca_unsized_indirect(&bx, layout, &format!("{:?}", local));
+                        LocalRef::UnsizedPlace(indirect_place)
+                    } else {
+                        LocalRef::Place(PlaceRef::alloca(&bx, layout, &format!("{:?}", local)))
+                    }
                 } else {
                     // If this is an immediate local, we do not create an
                     // alloca in advance. Instead we wait until we see the
@@ -531,6 +549,18 @@ fn arg_local_refs(
             bx.set_value_name(llarg, &name);
             llarg_idx += 1;
             PlaceRef::new_sized(llarg, arg.layout, arg.layout.align)
+        } else if arg.is_unsized_indirect() {
+            // As the storage for the indirect argument lives during
+            // the whole function call, we just copy the fat pointer.
+            let llarg = llvm::get_param(bx.llfn(), llarg_idx as c_uint);
+            llarg_idx += 1;
+            let llextra = llvm::get_param(bx.llfn(), llarg_idx as c_uint);
+            llarg_idx += 1;
+            let indirect_operand = OperandValue::Pair(llarg, llextra);
+
+            let tmp = PlaceRef::alloca_unsized_indirect(bx, arg.layout, &name);
+            indirect_operand.store(&bx, tmp);
+            tmp
         } else {
             let tmp = PlaceRef::alloca(bx, arg.layout, &name);
             arg.store_fn_arg(bx, &mut llarg_idx, tmp);
@@ -632,7 +662,11 @@ fn arg_local_refs(
                 );
             }
         });
-        LocalRef::Place(place)
+        if arg.is_unsized_indirect() {
+            LocalRef::UnsizedPlace(place)
+        } else {
+            LocalRef::Place(place)
+        }
     }).collect()
 }
 

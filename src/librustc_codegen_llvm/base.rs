@@ -295,7 +295,7 @@ pub fn coerce_unsized_into(
             OperandValue::Immediate(base) => {
                 unsize_thin_ptr(bx, base, src_ty, dst_ty)
             }
-            OperandValue::Ref(..) => bug!()
+            OperandValue::Ref(..) | OperandValue::UnsizedRef(..) => bug!()
         };
         OperandValue::Pair(base, info).store(bx, dst);
     };

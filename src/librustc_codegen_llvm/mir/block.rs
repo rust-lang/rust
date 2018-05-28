@@ -32,7 +32,7 @@ use syntax_pos::Pos;
 use super::{FunctionCx, LocalRef};
 use super::place::PlaceRef;
 use super::operand::OperandRef;
-use super::operand::OperandValue::{Pair, Ref, Immediate};
+use super::operand::OperandValue::{Pair, Ref, UnsizedRef, Immediate};
 
 impl FunctionCx<'a, 'll, 'tcx> {
     pub fn codegen_block(&mut self, bb: mir::BasicBlock) {
@@ -234,6 +234,8 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         let op = self.codegen_consume(&bx, &mir::Place::Local(mir::RETURN_PLACE));
                         if let Ref(llval, align) = op.val {
                             bx.load(llval, align)
+                        } else if let UnsizedRef(..) = op.val {
+                            bug!("return type must be sized");
                         } else {
                             op.immediate_or_packed_pair(&bx)
                         }
@@ -249,6 +251,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                                     layout: cg_place.layout
                                 }
                             }
+                            LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
                         };
                         let llslot = match op.val {
                             Immediate(_) | Pair(..) => {
@@ -261,11 +264,14 @@ impl FunctionCx<'a, 'll, 'tcx> {
                                            "return place is unaligned!");
                                 llval
                             }
+                            UnsizedRef(..) => bug!("return type must be sized"),
                         };
                         bx.load(
                             bx.pointercast(llslot, cast_ty.llvm_type(bx.cx).ptr_to()),
                             self.fn_ty.ret.layout.align)
                     }
+
+                    PassMode::UnsizedIndirect(..) => bug!("return value must be sized"),
                 };
                 bx.ret(llval);
             }
@@ -607,6 +613,10 @@ impl FunctionCx<'a, 'll, 'tcx> {
                             op.val.store(&bx, tmp);
                             op.val = Ref(tmp.llval, tmp.align);
                         }
+                        (&mir::Operand::Copy(_), UnsizedRef(..)) |
+                        (&mir::Operand::Constant(_), UnsizedRef(..)) => {
+                            bug!("tried to pass an unsized argument by copy or constant")
+                        }
                         _ => {}
                     }
 
@@ -657,6 +667,15 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 }
                 _ => bug!("codegen_argument: {:?} invalid for pair arugment", op)
             }
+        } else if let PassMode::UnsizedIndirect(..) = arg.mode {
+            match op.val {
+                UnsizedRef(a, b) => {
+                    llargs.push(a);
+                    llargs.push(b);
+                    return;
+                }
+                _ => bug!("codegen_argument: {:?} invalid for unsized indirect argument", op)
+            }
         }
 
         // Force by-ref if we have to load through a cast pointer.
@@ -686,6 +705,8 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     (llval, align, true)
                 }
             }
+            UnsizedRef(..) =>
+                bug!("codegen_argument: tried to pass unsized operand to sized argument"),
         };
 
         if by_ref && !arg.is_indirect() {
@@ -727,6 +748,8 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 let field_ptr = tuple_ptr.project_field(bx, i);
                 self.codegen_argument(bx, field_ptr.load(bx), llargs, &args[i]);
             }
+        } else if let UnsizedRef(..) = tuple.val {
+            bug!("closure arguments must be sized")
         } else {
             // If the tuple is immediate, the elements are as well.
             for i in 0..tuple.layout.fields.count() {
@@ -820,6 +843,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         let dest = if let mir::Place::Local(index) = *dest {
             match self.locals[index] {
                 LocalRef::Place(dest) => dest,
+                LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
                 LocalRef::Operand(None) => {
                     // Handle temporary places, specifically Operand ones, as
                     // they don't have allocas
@@ -871,6 +895,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
         if let mir::Place::Local(index) = *dst {
             match self.locals[index] {
                 LocalRef::Place(place) => self.codegen_transmute_into(bx, src, place),
+                LocalRef::UnsizedPlace(_) => bug!("transmute must not involve unsized locals"),
                 LocalRef::Operand(None) => {
                     let dst_layout = bx.cx.layout_of(self.monomorphized_place_ty(dst));
                     assert!(!dst_layout.ty.has_erasable_regions());
