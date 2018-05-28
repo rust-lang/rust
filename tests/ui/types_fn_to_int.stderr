@@ -1,0 +1,10 @@
+error: casting Fn not to usize may truncate the value
+ --> $DIR/types_fn_to_int.rs:9:13
+  |
+9 |     let y = x as i32;
+  |             ^^^^^^^^
+  |
+  = note: `-D unnecessary-cast` implied by `-D warnings`
+
+error: aborting due to previous error
+

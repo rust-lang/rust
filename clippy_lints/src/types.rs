@@ -975,6 +975,22 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                     },
                 }
             }
+
+            match &cast_from.sty {
+                ty::TyFnDef(..) |
+                ty::TyFnPtr(..) => {
+                    if cast_to.is_numeric() && cast_to.sty != ty::TyUint(UintTy::Usize){
+                        span_lint(
+                            cx,
+                            UNNECESSARY_CAST,
+                            expr.span,
+                            "casting Fn not to usize may truncate the value",
+                        );
+                    }
+                }
+                _ => ()
+            }
+
             if_chain!{
                 if let ty::TyRawPtr(from_ptr_ty) = &cast_from.sty;
                 if let ty::TyRawPtr(to_ptr_ty) = &cast_to.sty;
