@@ -1,6 +1,16 @@
 # Running Rustfmt from Atom
 
-You'll need to install [Beautify](https://atom.io/packages/atom-beautify), you
+## RLS
+
+Rustfmt is included with the Rust Language Server, itself provided by [ide-rust](https://atom.io/packages/ide-rust).
+
+`apm install ide-rust`
+
+Once installed a file is formatted with `ctrl-shift-c` or `cmd-shift-c`, also available in context menu.
+
+## atom-beautify
+
+Another way is to install [Beautify](https://atom.io/packages/atom-beautify), you
 can do this by running `apm install atom-beautify`.
 
 There are 2 setting that need to be configured in the atom beautifier configuration.
