@@ -998,12 +998,19 @@ fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, n
         cx: &LateContext,
         name: &str,
         method_span: Span,
+        self_expr: &hir::Expr,
         arg: &hir::Expr,
         span: Span,
     ) {
         if name != "expect" {
             return;
         }
+
+        let self_ty = cx.tables.expr_ty(self_expr);
+        let closure = match match_type(cx, self_ty, &paths::OPTION) {
+            true => "||",
+            false => "|_|",
+        };
 
         // don't lint for constant values
         let owner_def = cx.tcx.hir.get_parent_did(arg.id);
@@ -1021,14 +1028,14 @@ fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, n
             span_replace_word,
             &format!("use of `{}` followed by a function call", name),
             "try this",
-            format!("unwrap_or_else(|_| panic!({}))", sugg),
+            format!("unwrap_or_else({} panic!({}))", closure, sugg),
         );
     }
 
     if args.len() == 2 {
         match args[1].node {
             hir::ExprLit(_) => {},
-            _ => check_general_case(cx, name, method_span, &args[1], expr.span),
+            _ => check_general_case(cx, name, method_span, &args[0], &args[1], expr.span),
         }
     }
 }
