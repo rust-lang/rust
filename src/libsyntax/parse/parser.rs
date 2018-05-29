@@ -3749,6 +3749,16 @@ impl<'a> Parser<'a> {
                         err.span_label(self.span,
                                        "`..` must be in the last position, \
                                         and cannot have a trailing comma");
+                        if self.look_ahead(1, |t| {
+                            t == &token::CloseDelim(token::Brace) || t.is_ident()
+                        }) {
+                            // If the struct looks otherwise well formed, recover and continue.
+                            // This way we avoid "pattern missing fields" errors afterwards.
+                            err.emit();
+                            self.bump();
+                            etc = true;
+                            break;
+                        }
                     } else {
                         err.span_label(self.span, "expected `}`");
                     }

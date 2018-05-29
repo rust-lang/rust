@@ -4,12 +4,6 @@ error: expected `}`, found `,`
 LL |     let Point { .., y } = p; //~ ERROR expected `}`, found `,`
    |                   ^ `..` must be in the last position, and cannot have a trailing comma
 
-error[E0027]: pattern does not mention fields `x`, `y`
-  --> $DIR/issue-49257.rs:20:9
-   |
-LL |     let Point { .., y } = p; //~ ERROR expected `}`, found `,`
-   |         ^^^^^^^^^^^^^^^ missing fields `x`, `y`
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0027`.
