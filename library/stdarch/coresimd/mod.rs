@@ -146,24 +146,31 @@ pub mod arch {
 mod simd_llvm;
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64", dox))]
+#[doc(cfg(any(target_arch = "x86", target_arch = "x86_64")))]
 mod x86;
 #[cfg(any(target_arch = "x86_64", dox))]
+#[doc(cfg(target_arch = "x86_64"))]
 mod x86_64;
 
 #[cfg(any(target_arch = "aarch64", dox))]
+#[doc(cfg(target_arch = "aarch64"))]
 mod aarch64;
 #[cfg(any(target_arch = "arm", target_arch = "aarch64", dox))]
+#[doc(cfg(any(target_arch = "arm", target_arch = "aarch64")))]
 mod arm;
 #[cfg(target_arch = "wasm32")]
 mod wasm32;
 
 #[cfg(any(target_arch = "mips", target_arch = "mips64", dox))]
+#[doc(cfg(any(target_arch = "mips", target_arch = "mips64")))]
 mod mips;
 
 #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64", dox))]
+#[doc(cfg(any(target_arch = "powerpc", target_arch = "powerpc64")))]
 mod powerpc;
 
 #[cfg(any(target_arch = "powerpc64", dox))]
+#[doc(cfg(target_arch = "powerpc64"))]
 mod powerpc64;
 
 mod nvptx;
