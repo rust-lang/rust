@@ -187,10 +187,10 @@ fn check_pat<'a, 'tcx>(
         PatKind::Struct(_, ref pfields, _) => if let Some(init_struct) = init {
             if let ExprStruct(_, ref efields, _) = init_struct.node {
                 for field in pfields {
-                    let name = field.node.name;
+                    let name = field.node.ident.name;
                     let efield = efields
                         .iter()
-                        .find(|f| f.name.node == name)
+                        .find(|f| f.ident.name == name)
                         .map(|f| &*f.expr);
                     check_pat(cx, &field.node.pat, efield, span, bindings);
                 }

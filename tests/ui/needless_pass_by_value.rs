@@ -1,10 +1,5 @@
-
-
-
 #![warn(needless_pass_by_value)]
 #![allow(dead_code, single_match, if_let_redundant_pattern_matching, many_single_char_names, option_option)]
-
-#![feature(collections_range)]
 
 use std::borrow::Borrow;
 use std::convert::AsRef;
@@ -116,8 +111,8 @@ trait FalsePositive {
 extern "C" fn ext(x: String) -> usize { x.len() }
 
 // whitelist RangeArgument
-fn range<T: ::std::collections::range::RangeArgument<usize>>(range: T) {
-    let _ = range.start();
+fn range<T: ::std::ops::RangeBounds<usize>>(range: T) {
+    let _ = range.start_bound();
 }
 
 struct CopyWrapper(u32);

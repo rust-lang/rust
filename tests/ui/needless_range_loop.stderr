@@ -8,7 +8,7 @@ error: the loop variable `i` is only used to index `ns`.
 help: consider using an iterator
   |
 8 |     for <item> in ns.iter().take(10).skip(3) {
-  |
+  |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the loop variable `i` is only used to index `ms`.
   --> $DIR/needless_range_loop.rs:29:14
@@ -18,7 +18,7 @@ error: the loop variable `i` is only used to index `ms`.
 help: consider using an iterator
    |
 29 |     for <item> in &mut ms {
-   |
+   |         ^^^^^^    ^^^^^^^
 
 error: the loop variable `i` is only used to index `ms`.
   --> $DIR/needless_range_loop.rs:35:14
@@ -28,7 +28,7 @@ error: the loop variable `i` is only used to index `ms`.
 help: consider using an iterator
    |
 35 |     for <item> in &mut ms {
-   |
+   |         ^^^^^^    ^^^^^^^
 
 error: aborting due to 3 previous errors
 

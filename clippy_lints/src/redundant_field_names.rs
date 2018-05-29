@@ -45,7 +45,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantFieldNames {
 
         if let ExprStruct(_, ref fields, _) = expr.node {
             for field in fields {
-                let name = field.name.node;
+                let name = field.ident.name;
 
                 if match_var(&field.expr, name) && !field.is_shorthand {
                     span_lint_and_sugg (

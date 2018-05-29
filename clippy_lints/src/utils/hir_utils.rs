@@ -101,7 +101,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&ExprCast(ref lx, ref lt), &ExprCast(ref rx, ref rt)) |
             (&ExprType(ref lx, ref lt), &ExprType(ref rx, ref rt)) => self.eq_expr(lx, rx) && self.eq_ty(lt, rt),
             (&ExprField(ref l_f_exp, ref l_f_ident), &ExprField(ref r_f_exp, ref r_f_ident)) => {
-                l_f_ident.node == r_f_ident.node && self.eq_expr(l_f_exp, r_f_exp)
+                l_f_ident.name == r_f_ident.name && self.eq_expr(l_f_exp, r_f_exp)
             },
             (&ExprIndex(ref la, ref li), &ExprIndex(ref ra, ref ri)) => self.eq_expr(la, ra) && self.eq_expr(li, ri),
             (&ExprIf(ref lc, ref lt, ref le), &ExprIf(ref rc, ref rt, ref re)) => {
@@ -149,7 +149,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     }
 
     fn eq_field(&mut self, left: &Field, right: &Field) -> bool {
-        left.name.node == right.name.node && self.eq_expr(&left.expr, &right.expr)
+        left.ident.name == right.ident.name && self.eq_expr(&left.expr, &right.expr)
     }
 
     fn eq_lifetime(&mut self, left: &Lifetime, right: &Lifetime) -> bool {
@@ -419,7 +419,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 let c: fn(_, _) -> _ = ExprField;
                 c.hash(&mut self.s);
                 self.hash_expr(e);
-                self.hash_name(&f.node);
+                self.hash_name(&f.name);
             },
             ExprIndex(ref a, ref i) => {
                 let c: fn(_, _) -> _ = ExprIndex;
@@ -502,7 +502,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_qpath(path);
 
                 for f in fields {
-                    self.hash_name(&f.name.node);
+                    self.hash_name(&f.ident.name);
                     self.hash_expr(&f.expr);
                 }
 
