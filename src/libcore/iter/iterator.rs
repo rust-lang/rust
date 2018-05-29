@@ -1169,8 +1169,9 @@ pub trait Iterator {
     /// happening at various parts in the pipeline. To do that, insert
     /// a call to `inspect()`.
     ///
-    /// It's much more common for `inspect()` to be used as a debugging tool
-    /// than to exist in your final code, but never say never.
+    /// It's more common for `inspect()` to be used as a debugging tool than to
+    /// exist in your final code, but applications may find it useful in certain
+    /// situations when errors need to be logged before being discarded.
     ///
     /// # Examples
     ///
@@ -1209,6 +1210,32 @@ pub trait Iterator {
     /// made it through filter: 2
     /// about to filter: 3
     /// 6
+    /// ```
+    ///
+    /// Logging errors before discarding them:
+    ///
+    /// ```
+    /// let lines = ["1", "2", "a"];
+    ///
+    /// let sum: i32 = lines
+    ///     .iter()
+    ///     .map(|line| line.parse::<i32>())
+    ///     .inspect(|num| {
+    ///         if let Err(ref e) = *num {
+    ///             println!("Parsing error: {}", e);
+    ///         }
+    ///     })
+    ///     .filter_map(Result::ok)
+    ///     .sum();
+    ///
+    /// println!("Sum: {}", sum);
+    /// ```
+    ///
+    /// This will print:
+    ///
+    /// ```text
+    /// Parsing error: invalid digit found in string
+    /// Sum: 3
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
