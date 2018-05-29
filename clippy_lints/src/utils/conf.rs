@@ -113,29 +113,6 @@ macro_rules! define_Conf {
     // hack to convert tts
     (TY $ty: ty) => { $ty };
 
-    // how to read the value?
-    (CONV i64, $value: expr) => { $value.as_integer() };
-    (CONV u64, $value: expr) => {
-        $value.as_integer()
-        .iter()
-        .filter_map(|&i| if i >= 0 { Some(i as u64) } else { None })
-        .next()
-    };
-    (CONV String, $value: expr) => { $value.as_str().map(Into::into) };
-    (CONV Vec<String>, $value: expr) => {{
-        let slice = $value.as_array();
-
-        if let Some(slice) = slice {
-            if slice.iter().any(|v| v.as_str().is_none()) {
-                None
-            } else {
-                Some(slice.iter().map(|v| v.as_str().expect("already checked").to_owned()).collect())
-            }
-        } else {
-            None
-        }
-    }};
-
     // provide a nicer syntax to declare the default value of `Vec<String>` variables
     (DEFAULT Vec<String>, $e: expr) => { $e.iter().map(|&e| e.to_owned()).collect() };
     (DEFAULT $ty: ty, $e: expr) => { $e };
