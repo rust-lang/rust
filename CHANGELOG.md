@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.206
+* Rustup to *rustc 1.28.0-nightly (5bf68db6e 2018-05-28)*
+
 ## 0.0.205
 * Rustup to *rustc 1.28.0-nightly (990d8aa74 2018-05-25)*
 * Rename `unused_lifetimes` to `extra_unused_lifetimes` because of naming conflict with new rustc lint
@@ -778,6 +781,7 @@ All notable changes to this project will be documented in this file.
 [`redundant_closure_call`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_closure_call
 [`redundant_field_names`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_field_names
 [`redundant_pattern`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_pattern
+[`ref_in_deref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#ref_in_deref
 [`regex_macro`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#regex_macro
 [`replace_consts`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#replace_consts
 [`result_map_unit_fn`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#result_map_unit_fn

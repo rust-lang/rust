@@ -637,6 +637,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         ranges::RANGE_ZIP_WITH_LEN,
         redundant_field_names::REDUNDANT_FIELD_NAMES,
         reference::DEREF_ADDROF,
+        reference::REF_IN_DEREF,
         regex::INVALID_REGEX,
         regex::REGEX_MACRO,
         regex::TRIVIAL_REGEX,

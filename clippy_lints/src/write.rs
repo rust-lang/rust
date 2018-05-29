@@ -365,7 +365,7 @@ where
                     then {
                         if args.len() == 2 {
                             lint_fn(tup_val.span);
-                        } 
+                        }
 
                         // ensure the format str has no options (e.g., width, precision, alignment, etc.)
                         // and is just "{}"

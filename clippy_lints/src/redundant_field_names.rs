@@ -4,20 +4,20 @@ use utils::{in_macro, is_range_expression, match_var, span_lint_and_sugg};
 
 /// **What it does:** Checks for fields in struct literals where shorthands
 /// could be used.
-/// 
+///
 /// **Why is this bad?** If the field and variable names are the same,
 /// the field name is redundant.
-/// 
+///
 /// **Known problems:** None.
-/// 
+///
 /// **Example:**
 /// ```rust
 /// let bar: u8 = 123;
-/// 
+///
 /// struct Foo {
 ///     bar: u8,
 /// }
-/// 
+///
 /// let foo = Foo{ bar: bar }
 /// ```
 declare_clippy_lint! {
