@@ -3839,10 +3839,9 @@ unsafe impl<'a, T> TrustedRandomAccess for ExactChunksMut<'a, T> {
 /// valid for `len` elements, nor whether the lifetime inferred is a suitable
 /// lifetime for the returned slice.
 ///
-/// `p` must be non-null, even for zero-length slices, because non-zero bits
-/// are required to distinguish between a zero-length slice within `Some()`
-/// from `None`. `p` can be a bogus non-dereferencable pointer, such as `0x1`,
-/// for zero-length slices, though.
+/// `p` must be non-null and aligned, even for zero-length slices, as is
+/// required for all references. However, for zero-length slices, `p` can be
+/// a bogus non-dereferencable pointer such as [`NonNull::dangling()`].
 ///
 /// # Caveat
 ///
@@ -3864,6 +3863,8 @@ unsafe impl<'a, T> TrustedRandomAccess for ExactChunksMut<'a, T> {
 ///     let slice = slice::from_raw_parts(ptr, amt);
 /// }
 /// ```
+///
+/// [`NonNull::dangling()`]: ../../std/ptr/struct.NonNull.html#method.dangling
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
@@ -3875,7 +3876,7 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 ///
 /// This function is unsafe for the same reasons as `from_raw_parts`, as well
 /// as not being able to provide a non-aliasing guarantee of the returned
-/// mutable slice. `p` must be non-null even for zero-length slices as with
+/// mutable slice. `p` must be non-null and aligned even for zero-length slices as with
 /// `from_raw_parts`.
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
