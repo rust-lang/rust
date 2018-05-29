@@ -138,10 +138,11 @@ enum CallKind {
 }
 
 fn temp_decl(mutability: Mutability, ty: Ty, span: Span) -> LocalDecl {
+    let source_info = SourceInfo { scope: OUTERMOST_SOURCE_SCOPE, span };
     LocalDecl {
         mutability, ty, name: None,
-        source_info: SourceInfo { scope: OUTERMOST_SOURCE_SCOPE, span },
-        syntactic_scope: OUTERMOST_SOURCE_SCOPE,
+        source_info,
+        syntactic_source_info: source_info,
         internal: false,
         is_user_variable: false
     }

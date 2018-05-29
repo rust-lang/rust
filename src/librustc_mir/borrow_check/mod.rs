@@ -311,7 +311,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
 
             tcx.struct_span_lint_node(
                 UNUSED_MUT,
-                vsi[local_decl.syntactic_scope].lint_root,
+                vsi[local_decl.syntactic_source_info.scope].lint_root,
                 source_info.span,
                 "variable does not need to be mutable"
             )

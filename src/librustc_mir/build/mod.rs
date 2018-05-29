@@ -657,14 +657,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
+            let source_info = SourceInfo {
+                scope: OUTERMOST_SOURCE_SCOPE,
+                span: pattern.map_or(self.fn_span, |pat| pat.span)
+            };
             self.local_decls.push(LocalDecl {
                 mutability: Mutability::Mut,
                 ty,
-                source_info: SourceInfo {
-                    scope: OUTERMOST_SOURCE_SCOPE,
-                    span: pattern.map_or(self.fn_span, |pat| pat.span)
-                },
-                syntactic_scope: OUTERMOST_SOURCE_SCOPE,
+                source_info,
+                syntactic_source_info: source_info,
                 name,
                 internal: false,
                 is_user_variable: false,

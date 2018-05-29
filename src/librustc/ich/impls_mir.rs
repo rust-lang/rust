@@ -26,8 +26,8 @@ impl_stable_hash_for!(struct mir::LocalDecl<'tcx> {
     ty,
     name,
     source_info,
+    syntactic_source_info,
     internal,
-    syntactic_scope,
     is_user_variable
 });
 impl_stable_hash_for!(struct mir::UpvarDecl { debug_name, by_ref, mutability });

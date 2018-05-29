@@ -295,12 +295,13 @@ fn make_generator_state_argument_indirect<'a, 'tcx>(
 
 fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
                             mir: &mut Mir<'tcx>) -> Local {
+    let source_info = source_info(mir);
     let new_ret = LocalDecl {
         mutability: Mutability::Mut,
         ty: ret_ty,
         name: None,
-        source_info: source_info(mir),
-        syntactic_scope: OUTERMOST_SOURCE_SCOPE,
+        source_info,
+        syntactic_source_info: source_info,
         internal: false,
         is_user_variable: false,
     };
@@ -641,7 +642,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
         ty: tcx.mk_nil(),
         name: None,
         source_info,
-        syntactic_scope: OUTERMOST_SOURCE_SCOPE,
+        syntactic_source_info: source_info,
         internal: false,
         is_user_variable: false,
     };
@@ -657,7 +658,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
         }),
         name: None,
         source_info,
-        syntactic_scope: OUTERMOST_SOURCE_SCOPE,
+        syntactic_source_info: source_info,
         internal: false,
         is_user_variable: false,
     };

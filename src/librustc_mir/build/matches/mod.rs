@@ -314,7 +314,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                                            None));
                 // If we have lints, create a new source scope
                 // that marks the lints for the locals. See the comment
-                // on the `syntactic_scope` field for why this is needed.
+                // on the `syntactic_source_info` field for why this is needed.
                 if lint_level.is_explicit() {
                     syntactic_scope =
                         this.new_source_scope(scope_span, lint_level, None);
@@ -324,7 +324,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 span,
                 scope: var_scope.unwrap()
             };
-            this.declare_binding(source_info, syntactic_scope, mutability, name, var,
+            let syntactic_source_info = SourceInfo {
+                span,
+                scope: syntactic_scope,
+            };
+            this.declare_binding(source_info, syntactic_source_info, mutability, name, var,
                                  ty, has_guard);
         });
         var_scope
@@ -1114,7 +1118,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// in the arm body, which will have type `T`.
     fn declare_binding(&mut self,
                        source_info: SourceInfo,
-                       syntactic_scope: SourceScope,
+                       syntactic_source_info: SourceInfo,
                        mutability: Mutability,
                        name: Name,
                        var_id: NodeId,
@@ -1122,8 +1126,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                        has_guard: ArmHasGuard)
     {
         debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, source_info={:?}, \
-                syntactic_scope={:?})",
-               var_id, name, var_ty, source_info, syntactic_scope);
+                syntactic_source_info={:?})",
+               var_id, name, var_ty, source_info, syntactic_source_info);
 
         let tcx = self.hir.tcx();
         let local = LocalDecl::<'tcx> {
@@ -1131,7 +1135,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ty: var_ty.clone(),
             name: Some(name),
             source_info,
-            syntactic_scope,
+            syntactic_source_info,
             internal: false,
             is_user_variable: true,
         };
@@ -1143,7 +1147,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 ty: tcx.mk_imm_ref(tcx.types.re_empty, var_ty),
                 name: Some(name),
                 source_info,
-                syntactic_scope,
+                syntactic_source_info,
                 internal: false,
                 is_user_variable: true,
             });
