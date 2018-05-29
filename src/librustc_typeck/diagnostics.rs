@@ -207,7 +207,7 @@ let string = "salutations !";
 // The ordering relation for strings can't be evaluated at compile time,
 // so this doesn't work:
 match string {
-    "hello" ... "world" => {}
+    "hello" ..= "world" => {}
     _ => {}
 }
 
@@ -2146,7 +2146,7 @@ fn main() -> i32 { 0 }
 
 let x = 1u8;
 match x {
-    0u8...3i8 => (),
+    0u8..=3i8 => (),
     // error: mismatched types in range: expected u8, found i8
     _ => ()
 }
@@ -2189,7 +2189,7 @@ as the type you're matching on. Example:
 let x = 1u8;
 
 match x {
-    0u8...3u8 => (), // ok!
+    0u8..=3u8 => (), // ok!
     _ => ()
 }
 ```

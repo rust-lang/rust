@@ -286,16 +286,16 @@ fn run() {
     // would require parens in patterns to allow disambiguation...
 
     reject_expr_parse("match 0 {
-        0...#[attr] 10 => ()
+        0..=#[attr] 10 => ()
     }");
     reject_expr_parse("match 0 {
-        0...#[attr] -10 => ()
+        0..=#[attr] -10 => ()
     }");
     reject_expr_parse("match 0 {
-        0...-#[attr] 10 => ()
+        0..=-#[attr] 10 => ()
     }");
     reject_expr_parse("match 0 {
-        0...#[attr] FOO => ()
+        0..=#[attr] FOO => ()
     }");
 
     // make sure we don't catch this bug again...

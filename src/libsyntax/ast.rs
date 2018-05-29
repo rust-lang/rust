@@ -843,11 +843,11 @@ pub struct Local {
 
 /// An arm of a 'match'.
 ///
-/// E.g. `0...10 => { println!("match!") }` as in
+/// E.g. `0..=10 => { println!("match!") }` as in
 ///
 /// ```
 /// match 123 {
-///     0...10 => { println!("match!") },
+///     0..=10 => { println!("match!") },
 ///     _ => { println!("no match!") },
 /// }
 /// ```

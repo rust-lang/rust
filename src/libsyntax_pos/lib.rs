@@ -818,8 +818,8 @@ impl Encodable for FileMap {
                     };
 
                     let bytes_per_diff: u8 = match max_line_length {
-                        0 ... 0xFF => 1,
-                        0x100 ... 0xFFFF => 2,
+                        0 ..= 0xFF => 1,
+                        0x100 ..= 0xFFFF => 2,
                         _ => 4
                     };
 

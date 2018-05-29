@@ -481,7 +481,7 @@ fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             let joined_patterns = match witnesses.len() {
                 0 => bug!(),
                 1 => format!("`{}`", witnesses[0]),
-                2...LIMIT => {
+                2..=LIMIT => {
                     let (tail, head) = witnesses.split_last().unwrap();
                     let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
                     format!("`{}` and `{}`", head.join("`, `"), tail)

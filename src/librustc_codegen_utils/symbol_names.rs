@@ -424,7 +424,7 @@ pub fn sanitize(result: &mut String, s: &str) -> bool {
             '-' | ':' => result.push('.'),
 
             // These are legal symbols
-            'a'...'z' | 'A'...'Z' | '0'...'9' | '_' | '.' | '$' => result.push(c),
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '.' | '$' => result.push(c),
 
             _ => {
                 result.push('$');

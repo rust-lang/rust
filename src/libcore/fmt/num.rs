@@ -121,19 +121,19 @@ macro_rules! radix {
             fn digit(x: u8) -> u8 {
                 match x {
                     $($x => $conv,)+
-                    x => panic!("number not in the range 0..{}: {}", Self::BASE - 1, x),
+                    x => panic!("number not in the range 0..={}: {}", Self::BASE - 1, x),
                 }
             }
         }
     }
 }
 
-radix! { Binary,    2, "0b", x @  0 ...  1 => b'0' + x }
-radix! { Octal,     8, "0o", x @  0 ...  7 => b'0' + x }
-radix! { LowerHex, 16, "0x", x @  0 ...  9 => b'0' + x,
-                             x @ 10 ... 15 => b'a' + (x - 10) }
-radix! { UpperHex, 16, "0x", x @  0 ...  9 => b'0' + x,
-                             x @ 10 ... 15 => b'A' + (x - 10) }
+radix! { Binary,    2, "0b", x @  0 ..=  1 => b'0' + x }
+radix! { Octal,     8, "0o", x @  0 ..=  7 => b'0' + x }
+radix! { LowerHex, 16, "0x", x @  0 ..=  9 => b'0' + x,
+                             x @ 10 ..= 15 => b'a' + (x - 10) }
+radix! { UpperHex, 16, "0x", x @  0 ..=  9 => b'0' + x,
+                             x @ 10 ..= 15 => b'A' + (x - 10) }
 
 macro_rules! int_base {
     ($Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {

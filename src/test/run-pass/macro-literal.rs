@@ -41,18 +41,18 @@ macro_rules! mtester_dbg {
 }
 
 macro_rules! catch_range {
-    ($s:literal ... $e:literal) => {
-        &format!("macro caught literal: {} ... {}", $s, $e)
+    ($s:literal ..= $e:literal) => {
+        &format!("macro caught literal: {} ..= {}", $s, $e)
     };
-    (($s:expr) ... ($e:expr)) => { // Must use ')' before '...'
-        &format!("macro caught expr: {} ... {}", $s, $e)
+    (($s:expr) ..= ($e:expr)) => { // Must use ')' before '..='
+        &format!("macro caught expr: {} ..= {}", $s, $e)
     };
 }
 
 macro_rules! pat_match {
-    ($s:literal ... $e:literal) => {
+    ($s:literal ..= $e:literal) => {
         match 3 {
-            $s ... $e => "literal, in range",
+            $s ..= $e => "literal, in range",
             _ => "literal, other",
         }
     };
@@ -115,22 +115,22 @@ pub fn main() {
     assert_eq!(mtester!('c'), "macro caught literal: c");
     assert_eq!(mtester!(-1.2), "macro caught literal: -1.2");
     assert_eq!(two_negative_literals!(-2 -3), "macro caught literals: -2, -3");
-    assert_eq!(catch_range!(2 ... 3), "macro caught literal: 2 ... 3");
+    assert_eq!(catch_range!(2 ..= 3), "macro caught literal: 2 ..= 3");
     assert_eq!(match_attr!(#[attr] 1), "attr matched literal");
     assert_eq!(test_user!(10, 20), "literal");
     assert_eq!(mtester!(false), "macro caught literal: false");
     assert_eq!(mtester!(true), "macro caught literal: true");
     match_produced_attr!("a");
     let _a = LiteralProduced;
-    assert_eq!(pat_match!(1 ... 3), "literal, in range");
-    assert_eq!(pat_match!(4 ... 6), "literal, other");
+    assert_eq!(pat_match!(1 ..= 3), "literal, in range");
+    assert_eq!(pat_match!(4 ..= 6), "literal, other");
 
     // Cases where 'expr' catches
     assert_eq!(mtester!((-1.2)), "macro caught expr: -1.2");
     assert_eq!(only_expr!(-1.2), "macro caught expr: -1.2");
     assert_eq!(mtester!((1 + 3)), "macro caught expr: 4");
     assert_eq!(mtester_dbg!(()), "macro caught expr: ()");
-    assert_eq!(catch_range!((1 + 1) ... (2 + 2)), "macro caught expr: 2 ... 4");
+    assert_eq!(catch_range!((1 + 1) ..= (2 + 2)), "macro caught expr: 2 ..= 4");
     assert_eq!(match_attr!(#[attr] (1 + 2)), "attr matched expr");
     assert_eq!(test_user!(10, (20 + 2)), "expr");
 

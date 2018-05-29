@@ -64,7 +64,7 @@ impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
                 }
             }
             macro_rules! continuation_byte {
-                () => { continuation_byte!(0x80...0xBF) };
+                () => { continuation_byte!(0x80..=0xBF) };
                 ($range: pat) => {
                     match self.0.peek() {
                         Some(&byte @ $range) => {
@@ -77,35 +77,35 @@ impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
             }
 
             match first_byte {
-                0x00...0x7F => {
+                0x00..=0x7F => {
                     first_byte!(0b1111_1111);
                 }
-                0xC2...0xDF => {
+                0xC2..=0xDF => {
                     first_byte!(0b0001_1111);
                     continuation_byte!();
                 }
                 0xE0 => {
                     first_byte!(0b0000_1111);
-                    continuation_byte!(0xA0...0xBF);  // 0x80...0x9F here are overlong
+                    continuation_byte!(0xA0..=0xBF);  // 0x80..=0x9F here are overlong
                     continuation_byte!();
                 }
-                0xE1...0xEC | 0xEE...0xEF => {
+                0xE1..=0xEC | 0xEE..=0xEF => {
                     first_byte!(0b0000_1111);
                     continuation_byte!();
                     continuation_byte!();
                 }
                 0xED => {
                     first_byte!(0b0000_1111);
-                    continuation_byte!(0x80...0x9F);  // 0xA0..0xBF here are surrogates
+                    continuation_byte!(0x80..=0x9F);  // 0xA0..0xBF here are surrogates
                     continuation_byte!();
                 }
                 0xF0 => {
                     first_byte!(0b0000_0111);
-                    continuation_byte!(0x90...0xBF);  // 0x80..0x8F here are overlong
+                    continuation_byte!(0x90..=0xBF);  // 0x80..0x8F here are overlong
                     continuation_byte!();
                     continuation_byte!();
                 }
-                0xF1...0xF3 => {
+                0xF1..=0xF3 => {
                     first_byte!(0b0000_0111);
                     continuation_byte!();
                     continuation_byte!();
@@ -113,7 +113,7 @@ impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
                 }
                 0xF4 => {
                     first_byte!(0b0000_0111);
-                    continuation_byte!(0x80...0x8F);  // 0x90..0xBF here are beyond char::MAX
+                    continuation_byte!(0x80..=0x8F);  // 0x90..0xBF here are beyond char::MAX
                     continuation_byte!();
                     continuation_byte!();
                 }

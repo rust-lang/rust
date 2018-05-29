@@ -1484,10 +1484,10 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
                 },
                 3 => {
                     match (first, next!()) {
-                        (0xE0         , 0xA0 ... 0xBF) |
-                        (0xE1 ... 0xEC, 0x80 ... 0xBF) |
-                        (0xED         , 0x80 ... 0x9F) |
-                        (0xEE ... 0xEF, 0x80 ... 0xBF) => {}
+                        (0xE0         , 0xA0 ..= 0xBF) |
+                        (0xE1 ..= 0xEC, 0x80 ..= 0xBF) |
+                        (0xED         , 0x80 ..= 0x9F) |
+                        (0xEE ..= 0xEF, 0x80 ..= 0xBF) => {}
                         _ => err!(Some(1))
                     }
                     if next!() & !CONT_MASK != TAG_CONT_U8 {
@@ -1496,9 +1496,9 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
                 }
                 4 => {
                     match (first, next!()) {
-                        (0xF0         , 0x90 ... 0xBF) |
-                        (0xF1 ... 0xF3, 0x80 ... 0xBF) |
-                        (0xF4         , 0x80 ... 0x8F) => {}
+                        (0xF0         , 0x90 ..= 0xBF) |
+                        (0xF1 ..= 0xF3, 0x80 ..= 0xBF) |
+                        (0xF4         , 0x80 ..= 0x8F) => {}
                         _ => err!(Some(1))
                     }
                     if next!() & !CONT_MASK != TAG_CONT_U8 {

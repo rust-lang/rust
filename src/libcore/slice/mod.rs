@@ -1230,7 +1230,7 @@ impl<T> [T] {
     /// assert_eq!(s.binary_search(&4),   Err(7));
     /// assert_eq!(s.binary_search(&100), Err(13));
     /// let r = s.binary_search(&1);
-    /// assert!(match r { Ok(1...4) => true, _ => false, });
+    /// assert!(match r { Ok(1..=4) => true, _ => false, });
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn binary_search(&self, x: &T) -> Result<usize, usize>
@@ -1268,7 +1268,7 @@ impl<T> [T] {
     /// assert_eq!(s.binary_search_by(|probe| probe.cmp(&seek)), Err(13));
     /// let seek = 1;
     /// let r = s.binary_search_by(|probe| probe.cmp(&seek));
-    /// assert!(match r { Ok(1...4) => true, _ => false, });
+    /// assert!(match r { Ok(1..=4) => true, _ => false, });
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1325,7 +1325,7 @@ impl<T> [T] {
     /// assert_eq!(s.binary_search_by_key(&4, |&(a,b)| b),   Err(7));
     /// assert_eq!(s.binary_search_by_key(&100, |&(a,b)| b), Err(13));
     /// let r = s.binary_search_by_key(&1, |&(a,b)| b);
-    /// assert!(match r { Ok(1...4) => true, _ => false, });
+    /// assert!(match r { Ok(1..=4) => true, _ => false, });
     /// ```
     #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
     #[inline]

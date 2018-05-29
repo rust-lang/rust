@@ -15,7 +15,7 @@ const e: isize = 42;
 
 pub fn main() {
     match 7 {
-        s...e => (),
+        s..=e => (),
         _ => (),
     }
 }

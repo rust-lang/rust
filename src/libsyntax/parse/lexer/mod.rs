@@ -266,7 +266,7 @@ impl<'a> StringReader<'a> {
     /// Pushes a character to a message string for error reporting
     fn push_escaped_char_for_msg(m: &mut String, c: char) {
         match c {
-            '\u{20}'...'\u{7e}' => {
+            '\u{20}'..='\u{7e}' => {
                 // Don't escape \, ' or " for user-facing messages
                 m.push(c);
             }
@@ -779,7 +779,7 @@ impl<'a> StringReader<'a> {
                     base = 16;
                     num_digits = self.scan_digits(16, 16);
                 }
-                '0'...'9' | '_' | '.' | 'e' | 'E' => {
+                '0'..='9' | '_' | '.' | 'e' | 'E' => {
                     num_digits = self.scan_digits(10, 10) + 1;
                 }
                 _ => {

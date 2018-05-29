@@ -306,9 +306,9 @@ For example:
 ```compile_fail
 match 5u32 {
     // This range is ok, albeit pointless.
-    1 ... 1 => {}
+    1 ..= 1 => {}
     // This range is empty, and the compiler can tell.
-    1000 ... 5 => {}
+    1000 ..= 5 => {}
 }
 ```
 "##,
