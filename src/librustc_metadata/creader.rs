@@ -19,6 +19,7 @@ use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX};
 use rustc::hir::svh::Svh;
 use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::DepKind;
+use rustc::mir::interpret::AllocDecodingState;
 use rustc::session::{Session, CrateDisambiguator};
 use rustc::session::config::{Sanitizer, self};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
@@ -222,6 +223,9 @@ impl<'a> CrateLoader<'a> {
             crate_root.def_path_table.decode((&metadata, self.sess))
         });
 
+        let interpret_alloc_index: Vec<u32> = crate_root.interpret_alloc_index
+                                                        .decode(&metadata)
+                                                        .collect();
         let trait_impls = crate_root
             .impls
             .decode((&metadata, self.sess))
@@ -242,6 +246,7 @@ impl<'a> CrateLoader<'a> {
             cnum,
             dependencies: Lock::new(dependencies),
             codemap_import_info: RwLock::new(vec![]),
+            alloc_decoding_state: AllocDecodingState::new(interpret_alloc_index),
             dep_kind: Lock::new(dep_kind),
             source: cstore::CrateSource {
                 dylib,
