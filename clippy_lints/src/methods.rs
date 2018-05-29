@@ -994,7 +994,6 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, name:
 
 /// Checks for the `EXPECT_FUN_CALL` lint.
 fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, name: &str, args: &[hir::Expr]) {
-    #[allow(too_many_arguments)]
     fn check_general_case(
         cx: &LateContext,
         name: &str,
