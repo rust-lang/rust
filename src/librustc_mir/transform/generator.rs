@@ -301,7 +301,7 @@ fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
         ty: ret_ty,
         name: None,
         syntactic_source_info: source_info,
-        visibility_source_info: source_info,
+        visibility_scope: source_info.scope,
         internal: false,
         is_user_variable: false,
     };
@@ -642,7 +642,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
         ty: tcx.mk_nil(),
         name: None,
         syntactic_source_info: source_info,
-        visibility_source_info: source_info,
+        visibility_scope: source_info.scope,
         internal: false,
         is_user_variable: false,
     };
@@ -658,7 +658,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
         }),
         name: None,
         syntactic_source_info: source_info,
-        visibility_source_info: source_info,
+        visibility_scope: source_info.scope,
         internal: false,
         is_user_variable: false,
     };

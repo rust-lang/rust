@@ -210,7 +210,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let no_stmts = self.source[loc.block].statements.len();
         let new_temp = self.promoted.local_decls.push(
             LocalDecl::new_temp(self.source.local_decls[temp].ty,
-                                self.source.local_decls[temp].visibility_source_info.span));
+                                self.source.local_decls[temp].syntactic_source_info.span));
 
         debug!("promote({:?} @ {:?}/{:?}, {:?})",
                temp, loc, no_stmts, self.keep_original);
@@ -335,7 +335,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             // otherwise we would use the `promoted` directly.
                             let mut promoted_ref = LocalDecl::new_temp(ref_ty, span);
                             promoted_ref.syntactic_source_info = statement.source_info;
-                            promoted_ref.visibility_source_info = statement.source_info;
+                            promoted_ref.visibility_scope = statement.source_info.scope;
                             let promoted_ref = local_decls.push(promoted_ref);
                             assert_eq!(self.temps.push(TempState::Unpromotable), promoted_ref);
                             self.extra_statements.push((loc, Statement {

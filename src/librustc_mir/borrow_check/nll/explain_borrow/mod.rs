@@ -67,7 +67,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             }
                             None => {
                                 err.span_label(
-                                    mir.local_decls[local].visibility_source_info.span,
+                                    mir.local_decls[local].syntactic_source_info.span,
                                     "borrow may end up in a temporary, created here",
                                 );
 

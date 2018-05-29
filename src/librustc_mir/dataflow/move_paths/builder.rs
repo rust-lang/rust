@@ -233,7 +233,7 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     fn gather_args(&mut self) {
         for arg in self.mir.args_iter() {
             let path = self.data.rev_lookup.locals[arg];
-            let span = self.mir.local_decls[arg].visibility_source_info.span;
+            let span = self.mir.local_decls[arg].syntactic_source_info.span;
 
             let init = self.data.inits.push(Init {
                 path, span, kind: InitKind::Deep

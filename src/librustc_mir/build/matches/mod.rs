@@ -324,11 +324,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 span,
                 scope: syntactic_scope,
             };
-            let visibility_source_info = SourceInfo {
-                span,
-                scope: visibility_scope.unwrap()
-            };
-            this.declare_binding(syntactic_source_info, visibility_source_info, mutability, name, var,
+            let visibility_scope = visibility_scope.unwrap();
+            this.declare_binding(syntactic_source_info, visibility_scope, mutability, name, var,
                                  ty, has_guard);
         });
         visibility_scope
@@ -1118,16 +1115,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// in the arm body, which will have type `T`.
     fn declare_binding(&mut self,
                        syntactic_source_info: SourceInfo,
-                       visibility_source_info: SourceInfo,
+                       visibility_scope: SourceScope,
                        mutability: Mutability,
                        name: Name,
                        var_id: NodeId,
                        var_ty: Ty<'tcx>,
                        has_guard: ArmHasGuard)
     {
-        debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, visibility_source_info={:?}, \
+        debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, visibility_scope={:?}, \
                 syntactic_source_info={:?})",
-               var_id, name, var_ty, visibility_source_info, syntactic_source_info);
+               var_id, name, var_ty, visibility_scope, syntactic_source_info);
 
         let tcx = self.hir.tcx();
         let local = LocalDecl::<'tcx> {
@@ -1135,7 +1132,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ty: var_ty.clone(),
             name: Some(name),
             syntactic_source_info,
-            visibility_source_info,
+            visibility_scope,
             internal: false,
             is_user_variable: true,
         };
@@ -1147,7 +1144,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 ty: tcx.mk_imm_ref(tcx.types.re_empty, var_ty),
                 name: Some(name),
                 syntactic_source_info,
-                visibility_source_info,
+                visibility_scope,
                 internal: false,
                 is_user_variable: true,
             });

@@ -247,7 +247,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         ty: ptr_ty,
                         name: None,
                         syntactic_source_info: source_info,
-                        visibility_source_info: source_info,
+                        visibility_scope: source_info.scope,
                         internal: true,
                         is_user_variable: false
                     });

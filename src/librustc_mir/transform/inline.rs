@@ -401,9 +401,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     local.syntactic_source_info.scope =
                         scope_map[local.syntactic_source_info.scope];
                     local.syntactic_source_info.span = callsite.location.span;
-                    local.visibility_source_info.scope =
-                        scope_map[local.visibility_source_info.scope];
-                    local.visibility_source_info.span = callsite.location.span;
+                    local.visibility_scope = scope_map[local.visibility_scope];
 
                     let idx = caller_mir.local_decls.push(local);
                     local_map.push(idx);

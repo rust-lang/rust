@@ -1046,7 +1046,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                 // conservatively, that drop elaboration will do.
                 let needs_drop = if let Place::Local(local) = *place {
                     if self.local_qualif[local].map_or(true, |q| q.intersects(Qualif::NEEDS_DROP)) {
-                        Some(self.mir.local_decls[local].visibility_source_info.span)
+                        Some(self.mir.local_decls[local].syntactic_source_info.span)
                     } else {
                         None
                     }
@@ -1102,7 +1102,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                     let mut err = feature_err(
                         &self.tcx.sess.parse_sess,
                         "const_let",
-                        decl.visibility_source_info.span,
+                        decl.syntactic_source_info.span,
                         GateIssue::Language,
                         "arguments of constant functions can only be immutable by-value bindings"
                     );

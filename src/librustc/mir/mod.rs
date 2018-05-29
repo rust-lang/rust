@@ -558,7 +558,7 @@ pub struct LocalDecl<'tcx> {
     /// To allow both uses to work, we need to have more than a single scope
     /// for a local. We have the `syntactic_source_info.scope` represent the
     /// "syntactic" lint scope (with a variable being under its let
-    /// block) while the `visibility_source_info.scope` represents the "local variable"
+    /// block) while the `visibility_scope` represents the "local variable"
     /// scope (where the "rest" of a block is under all prior let-statements).
     ///
     /// The end result looks like this:
@@ -577,18 +577,18 @@ pub struct LocalDecl<'tcx> {
     ///  │ │
     ///  │ │ │{ let y: u32 }
     ///  │ │ │
-    ///  │ │ │← y.visibility_source_info.scope
+    ///  │ │ │← y.visibility_scope
     ///  │ │ │← `y + 2`
     ///  │
     ///  │ │{ let x: u32 }
-    ///  │ │← x.visibility_source_info.scope
+    ///  │ │← x.visibility_scope
     ///  │ │← `drop(x)` // this accesses `x: u32`
     /// ```
     pub syntactic_source_info: SourceInfo,
 
-    /// Source info of the local. The `SourceScope` is the *visibility* one,
-    /// not the the *syntactic* one (see `syntactic_source_info` for more details).
-    pub visibility_source_info: SourceInfo,
+    /// Source scope within which the local is visible (for debuginfo)
+    /// (see `syntactic_source_info` for more details).
+    pub visibility_scope: SourceScope,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
@@ -603,10 +603,7 @@ impl<'tcx> LocalDecl<'tcx> {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE
             },
-            visibility_source_info: SourceInfo {
-                span,
-                scope: OUTERMOST_SOURCE_SCOPE
-            },
+            visibility_scope: OUTERMOST_SOURCE_SCOPE,
             internal: false,
             is_user_variable: false
         }
@@ -623,10 +620,7 @@ impl<'tcx> LocalDecl<'tcx> {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE
             },
-            visibility_source_info: SourceInfo {
-                span,
-                scope: OUTERMOST_SOURCE_SCOPE
-            },
+            visibility_scope: OUTERMOST_SOURCE_SCOPE,
             internal: true,
             is_user_variable: false
         }
@@ -644,10 +638,7 @@ impl<'tcx> LocalDecl<'tcx> {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE
             },
-            visibility_source_info: SourceInfo {
-                span,
-                scope: OUTERMOST_SOURCE_SCOPE
-            },
+            visibility_scope: OUTERMOST_SOURCE_SCOPE,
             internal: false,
             name: None,     // FIXME maybe we do want some name here?
             is_user_variable: false
@@ -2201,7 +2192,7 @@ BraceStructTypeFoldableImpl! {
         ty,
         name,
         syntactic_source_info,
-        visibility_source_info,
+        visibility_scope,
     }
 }
 
