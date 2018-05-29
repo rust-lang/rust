@@ -1557,7 +1557,7 @@ impl AllTypes {
             typedefs: HashSet::with_capacity(100),
             statics: HashSet::with_capacity(100),
             constants: HashSet::with_capacity(100),
-            keywords: HashSet::with_capacity(10),
+            keywords: HashSet::with_capacity(100),
         }
     }
 

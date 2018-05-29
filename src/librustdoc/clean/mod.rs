@@ -196,16 +196,16 @@ impl<'a, 'tcx, 'rcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx, 'rcx> 
                     inner: PrimitiveItem(prim),
                 }
             }));
-            m.items.extend(keywords.iter().map(|&(def_id, ref kw, ref attrs)| {
+            m.items.extend(keywords.into_iter().map(|(def_id, kw, attrs)| {
                 Item {
                     source: Span::empty(),
                     name: Some(kw.clone()),
-                    attrs: attrs.clone(),
+                    attrs: attrs,
                     visibility: Some(Public),
                     stability: get_stability(cx, def_id),
                     deprecation: get_deprecation(cx, def_id),
                     def_id,
-                    inner: KeywordItem(kw.clone()),
+                    inner: KeywordItem(kw),
                 }
             }));
         }
@@ -330,7 +330,6 @@ impl Clean<ExternalCrate> for CrateNum {
                     hir::ItemUse(ref path, hir::UseKind::Single)
                     if item.vis == hir::Visibility::Public => {
                         as_keyword(path.def).map(|(_, prim, attrs)| {
-                            // Pretend the primitive is local.
                             (cx.tcx.hir.local_def_id(id.id), prim, attrs)
                         })
                     }
