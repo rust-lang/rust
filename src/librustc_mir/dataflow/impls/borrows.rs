@@ -66,8 +66,13 @@ fn precompute_borrows_out_of_scope<'a, 'tcx>(
     let mut visited = FxHashSet();
     visited.insert(location);
 
-    debug!("borrow {:?} (region: {:?}) starts at {:?}",
-           borrow_index, borrow_region, location);
+    debug!(
+        "borrow {:?} has region {:?} with value {:?}",
+        borrow_index,
+        borrow_region,
+        regioncx.region_value_str(borrow_region),
+    );
+    debug!("borrow {:?} starts at {:?}", borrow_index, location);
     while let Some(location) = stack.pop() {
         // If region does not contain a point at the location, then add to list and skip
         // successor locations.
