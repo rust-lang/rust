@@ -192,7 +192,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     pub TRANSMUTE_PTR_TO_PTR,
     complexity,
-    "transmutes from a pointer to a reference type"
+    "transmutes from a pointer to a pointer / a reference to a reference"
 }
 
 pub struct Transmute;
@@ -363,23 +363,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                             }
                                         )
                                     } else {
-                                        span_lint_and_then(
-                                            cx,
-                                            TRANSMUTE_PTR_TO_PTR,
-                                            e.span,
-                                            "transmute from a reference to a reference",
-                                            |db| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                                let ty_from_and_mut = ty::TypeAndMut { ty: ty_from, mutbl: from_mutbl };
-                                                let ty_to_and_mut = ty::TypeAndMut { ty: ty_to, mutbl: to_mutbl };
-                                                let sugg_paren = arg.as_ty(cx.tcx.mk_ptr(ty_from_and_mut)).as_ty(cx.tcx.mk_ptr(ty_to_and_mut));
-                                                let sugg = if to_mutbl == Mutability::MutMutable {
-                                                    sugg_paren.mut_addr_deref()
-                                                } else {
-                                                    sugg_paren.addr_deref()
-                                                };
-                                                db.span_suggestion(e.span, "try", sugg.to_string());
-                                            },
-                                        )
+                                        if cx.tcx.erase_regions(&from_ty) != cx.tcx.erase_regions(&to_ty) {
+                                            span_lint_and_then(
+                                                cx,
+                                                TRANSMUTE_PTR_TO_PTR,
+                                                e.span,
+                                                "transmute from a reference to a reference",
+                                                |db| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
+                                                    let ty_from_and_mut = ty::TypeAndMut { ty: ty_from, mutbl: from_mutbl };
+                                                    let ty_to_and_mut = ty::TypeAndMut { ty: ty_to, mutbl: to_mutbl };
+                                                    let sugg_paren = arg.as_ty(cx.tcx.mk_ptr(ty_from_and_mut)).as_ty(cx.tcx.mk_ptr(ty_to_and_mut));
+                                                    let sugg = if to_mutbl == Mutability::MutMutable {
+                                                        sugg_paren.mut_addr_deref()
+                                                    } else {
+                                                        sugg_paren.addr_deref()
+                                                    };
+                                                    db.span_suggestion(e.span, "try", sugg.to_string());
+                                                },
+                                            )
+                                        }
                                     }
                                 }
                             },
