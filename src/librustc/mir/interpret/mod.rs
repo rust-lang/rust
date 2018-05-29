@@ -23,7 +23,7 @@ use std::io;
 use std::ops::{Deref, DerefMut};
 use std::hash::Hash;
 use syntax::ast::Mutability;
-use rustc_serialize::{Encoder, Decoder, Decodable, Encodable};
+use rustc_serialize::{Encoder, Decodable, Encodable};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{Lock as Mutex, HashMapExt};
@@ -207,47 +207,6 @@ pub fn specialized_encode_alloc_id<
         }
     }
     Ok(())
-}
-
-pub fn specialized_decode_alloc_id<
-    'a, 'tcx,
-    D: Decoder,
-    CACHE: FnOnce(&mut D, AllocId),
->(
-    decoder: &mut D,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    cache: CACHE,
-) -> Result<AllocId, D::Error> {
-    match AllocKind::decode(decoder)? {
-        AllocKind::Alloc => {
-            let alloc_id = tcx.alloc_map.lock().reserve();
-            trace!("creating alloc id {:?}", alloc_id);
-            // insert early to allow recursive allocs
-            cache(decoder, alloc_id);
-
-            let allocation = <&'tcx Allocation as Decodable>::decode(decoder)?;
-            trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
-            tcx.alloc_map.lock().set_id_memory(alloc_id, allocation);
-
-            Ok(alloc_id)
-        },
-        AllocKind::Fn => {
-            trace!("creating fn alloc id");
-            let instance = ty::Instance::decode(decoder)?;
-            trace!("decoded fn alloc instance: {:?}", instance);
-            let id = tcx.alloc_map.lock().create_fn_alloc(instance);
-            trace!("created fn alloc id: {:?}", id);
-            cache(decoder, id);
-            Ok(id)
-        },
-        AllocKind::Static => {
-            trace!("creating extern static alloc id at");
-            let did = DefId::decode(decoder)?;
-            let alloc_id = tcx.alloc_map.lock().intern_static(did);
-            cache(decoder, alloc_id);
-            Ok(alloc_id)
-        },
-    }
 }
 
 // Used to avoid infinite recursion when decoding cyclic allocations.
