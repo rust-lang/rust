@@ -2306,6 +2306,34 @@ impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
 /// This `struct` is created by the `into_iter` method on [`Vec`][`Vec`] (provided
 /// by the [`IntoIterator`] trait).
 ///
+/// # Examples
+///
+/// Using `collect` to turn an `IntoIter` back into a `Vec`, *if the iterator has not been
+/// advanced*, will return the same `Vec` as the original.
+///
+/// ```
+/// let numbers_vec = vec![ "one", "two", "three", "four" ];
+/// let original_ptr = numbers_vec.as_ptr();
+///
+/// let numbers_iter = numbers_vec.into_iter();
+/// let same_vec = numbers_iter.collect::<Vec<_>>();
+///
+/// assert_eq!(original_ptr, same_vec.as_ptr());
+/// ```
+///
+/// However, if the iterator has been advanced at least once, it will be collected into a new `Vec`.
+///
+/// ```
+/// let numbers_vec = vec![ "one", "two", "three", "four" ];
+/// let original_ptr = numbers_vec.as_ptr();
+///
+/// let mut numbers_iter = numbers_vec.into_iter();
+/// numbers_iter.next();  // advance over "one"
+/// let different_vec = numbers_iter.collect::<Vec<_>>();
+///
+/// assert!(original_ptr != different_vec.as_ptr());
+/// ```
+///
 /// [`Vec`]: struct.Vec.html
 /// [`IntoIterator`]: ../../std/iter/trait.IntoIterator.html
 #[stable(feature = "rust1", since = "1.0.0")]
