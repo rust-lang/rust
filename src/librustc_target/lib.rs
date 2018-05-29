@@ -15,11 +15,7 @@
 //! is really just odds-and-ends relating to code gen and linking.
 //! This crate mostly exists to make rustc smaller, so we might put
 //! more 'stuff' here in the future.  It does not have a dependency on
-//! rustc_llvm.
-//!
-//! FIXME: Split this into two crates: one that has deps on syntax, and
-//! one that doesn't; the one that doesn't might get decent parallel
-//! build speedups.
+//! LLVM.
 
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",

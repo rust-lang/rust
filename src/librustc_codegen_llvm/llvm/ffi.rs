@@ -14,15 +14,17 @@
 // This method was changed in this LLVM patch:
 // https://reviews.llvm.org/D26769
 
-use debuginfo::{DIBuilderRef, DIDescriptor, DIFile, DILexicalBlock, DISubprogram, DIType,
-                DIBasicType, DIDerivedType, DICompositeType, DIScope, DIVariable,
-                DIGlobalVariable, DIArray, DISubrange, DITemplateTypeParameter, DIEnumerator,
-                DINameSpace, DIFlags};
+use super::debuginfo::{
+    DIBuilderRef, DIDescriptor, DIFile, DILexicalBlock, DISubprogram, DIType,
+    DIBasicType, DIDerivedType, DICompositeType, DIScope, DIVariable,
+    DIGlobalVariable, DIArray, DISubrange, DITemplateTypeParameter, DIEnumerator,
+    DINameSpace, DIFlags,
+};
 
 use libc::{c_uint, c_int, size_t, c_char};
 use libc::{c_longlong, c_ulonglong, c_void};
 
-use RustStringRef;
+use super::RustStringRef;
 
 pub type Opcode = u32;
 pub type Bool = c_uint;
@@ -512,13 +514,6 @@ pub mod debuginfo {
 
 pub enum ModuleBuffer {}
 
-// This annotation is primarily needed for MSVC where attributes like
-// dllimport/dllexport are applied and need to be correct for everything to
-// link successfully. The #[link] annotation here says "these symbols are
-// included statically" which means that they're all exported with dllexport
-// and from the rustc_llvm dynamic library. Otherwise the rustc_codegen_llvm dynamic
-// library would not be able to access these symbols.
-#[link(name = "rustllvm", kind = "static")]
 extern "C" {
     // Create and destroy contexts.
     pub fn LLVMRustContextCreate(shouldDiscardNames: bool) -> ContextRef;

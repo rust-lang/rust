@@ -29,6 +29,9 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(optin_builtin_traits)]
+#![feature(concat_idents)]
+#![feature(link_args)]
+#![feature(static_nobundle)]
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
@@ -46,7 +49,7 @@ extern crate rustc_target;
 #[macro_use] extern crate rustc_data_structures;
 extern crate rustc_demangle;
 extern crate rustc_incremental;
-extern crate rustc_llvm as llvm;
+extern crate rustc_llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_codegen_utils;
 
@@ -110,6 +113,7 @@ mod debuginfo;
 mod declare;
 mod glue;
 mod intrinsic;
+pub mod llvm;
 mod llvm_util;
 mod metadata;
 mod meth;

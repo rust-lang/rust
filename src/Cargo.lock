@@ -2222,11 +2222,8 @@ dependencies = [
 name = "rustc_llvm"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "build_helper 0.1.0",
  "cc 1.0.18 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.42 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc_cratesio_shim 0.0.0",
 ]
 
 [[package]]

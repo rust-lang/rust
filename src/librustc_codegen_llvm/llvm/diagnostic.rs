@@ -16,7 +16,7 @@ pub use self::Diagnostic::*;
 use libc::c_uint;
 use std::ptr;
 
-use {DiagnosticInfoRef, TwineRef, ValueRef};
+use super::{DiagnosticInfoRef, TwineRef, ValueRef};
 
 #[derive(Copy, Clone)]
 pub enum OptimizationDiagnosticKind {
