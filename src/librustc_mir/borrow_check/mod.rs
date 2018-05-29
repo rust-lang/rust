@@ -198,7 +198,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let borrow_set = Rc::new(BorrowSet::build(tcx, mir));
 
     // If we are in non-lexical mode, compute the non-lexical lifetimes.
-    let (regioncx, opt_closure_req) = nll::compute_regions(
+    let (regioncx, polonius_output, opt_closure_req) = nll::compute_regions(
         infcx,
         def_id,
         free_regions,
@@ -259,6 +259,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         flow_uninits,
         flow_move_outs,
         flow_ever_inits,
+        polonius_output,
     );
 
     mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
@@ -936,6 +937,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let mut error_reported = false;
         let tcx = self.tcx;
         let mir = self.mir;
+        let location_table = &LocationTable::new(mir);
+        let location = location_table.start_index(context.loc);
         let borrow_set = self.borrow_set.clone();
         each_borrow_involving_path(
             self,
@@ -944,7 +947,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             context,
             (sd, place_span.0),
             &borrow_set,
-            flow_state.borrows_in_scope(),
+            flow_state.borrows_in_scope(location),
             |this, borrow_index, borrow|
             match (rw, borrow.kind) {
                 // Obviously an activation is compatible with its own

@@ -73,6 +73,7 @@ static WHITELIST: &'static [Crate] = &[
     Crate("crossbeam-deque"),
     Crate("crossbeam-epoch"),
     Crate("crossbeam-utils"),
+    Crate("datafrog"),
     Crate("either"),
     Crate("ena"),
     Crate("env_logger"),
