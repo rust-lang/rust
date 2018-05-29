@@ -15,13 +15,13 @@ use rustc;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
-use rustc::mir::{self, Location, Place, Mir, TerminatorKind};
+use rustc::mir::{self, Location, Place, Mir};
 use rustc::ty::TyCtxt;
 use rustc::ty::{RegionKind, RegionVid};
 use rustc::ty::RegionKind::ReScope;
 
 use rustc_data_structures::bitslice::BitwiseOperator;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_set::IdxSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
@@ -60,104 +60,33 @@ fn precompute_borrows_out_of_scope<'a, 'tcx>(
     borrow_index: BorrowIndex,
     borrow_region: RegionVid,
     location: Location,
-    visited_locations: &mut Vec<Location>
 ) {
-    // Check if we have already visited this location and skip
-    // it if we have - avoids infinite loops.
-    if visited_locations.contains(&location) { return; }
-    visited_locations.push(location.clone());
+    // Keep track of places we've locations to check and locations that we have checked.
+    let mut stack = vec![ location ];
+    let mut visited = FxHashSet();
+    visited.insert(location);
 
-    // Next, add the borrow index to the current location's vector if the region does
-    // not contain the point at that location (or create a new vector if required).
-    if !regioncx.region_contains_point(borrow_region, location) {
-        borrows_out_of_scope_at_location
-            .entry(location.clone())
-            .and_modify(|m| m.push(borrow_index))
-            .or_insert(vec![ borrow_index ]);
-    }
+    while let Some(location) = stack.pop() {
+        // If region does not contain a point at the location, then add to list and skip
+        // successor locations.
+        if !regioncx.region_contains_point(borrow_region, location) {
+            borrows_out_of_scope_at_location
+                .entry(location)
+                .or_insert(vec![])
+                .push(borrow_index);
+            continue;
+        }
 
-    let bb_data = &mir[location.block];
-    // If we are past the last statement, then check the terminator
-    // to determine which location to proceed to.
-    if location.statement_index == bb_data.statements.len() {
+        // Add successors to locations to visit, if not visited before.
+        let bb_data = &mir[location.block];
         if let Some(ref terminator) = bb_data.terminator {
-            match terminator.kind {
-                TerminatorKind::Goto { target } |
-                TerminatorKind::FalseEdges { real_target: target, .. } |
-                TerminatorKind::FalseUnwind { real_target: target, .. } => {
-                    precompute_borrows_out_of_scope(
-                        mir, regioncx, borrows_out_of_scope_at_location,
-                        borrow_index, borrow_region, target.start_location(),
-                        visited_locations
-                    );
-                },
-                TerminatorKind::SwitchInt { ref targets, .. } => {
-                    for block in targets {
-                        precompute_borrows_out_of_scope(
-                            mir, regioncx, borrows_out_of_scope_at_location,
-                            borrow_index, borrow_region, block.start_location(),
-                            visited_locations
-                        );
-                    }
-                },
-                TerminatorKind::Drop { target, unwind, .. } |
-                TerminatorKind::DropAndReplace { target, unwind, .. } => {
-                    precompute_borrows_out_of_scope(
-                        mir, regioncx, borrows_out_of_scope_at_location,
-                        borrow_index, borrow_region, target.start_location(),
-                        visited_locations
-                    );
-
-                    if let Some(unwind_block) = unwind {
-                        precompute_borrows_out_of_scope(
-                            mir, regioncx, borrows_out_of_scope_at_location,
-                            borrow_index, borrow_region, unwind_block.start_location(),
-                            visited_locations
-                        );
-                    }
-                },
-                TerminatorKind::Call { ref destination, cleanup, .. } => {
-                    if let Some((_, block)) = destination  {
-                        precompute_borrows_out_of_scope(
-                            mir, regioncx, borrows_out_of_scope_at_location,
-                            borrow_index, borrow_region, block.start_location(),
-                            visited_locations
-                        );
-                    }
-
-                    if let Some(block) = cleanup  {
-                        precompute_borrows_out_of_scope(
-                            mir, regioncx, borrows_out_of_scope_at_location,
-                            borrow_index, borrow_region, block.start_location(),
-                            visited_locations
-                        );
-                    }
-                },
-                TerminatorKind::Assert { target, cleanup, .. } |
-                TerminatorKind::Yield { resume: target, drop: cleanup, .. } => {
-                    precompute_borrows_out_of_scope(
-                        mir, regioncx, borrows_out_of_scope_at_location,
-                        borrow_index, borrow_region, target.start_location(),
-                        visited_locations
-                    );
-
-                    if let Some(block) = cleanup  {
-                        precompute_borrows_out_of_scope(
-                            mir, regioncx, borrows_out_of_scope_at_location,
-                            borrow_index, borrow_region, block.start_location(),
-                            visited_locations
-                        );
-                    }
-                },
-                _ => {},
-            };
-        };
-    // If we're not on the last statement, then go to the next
-    // statement in this block.
-    } else {
-        precompute_borrows_out_of_scope(mir, regioncx, borrows_out_of_scope_at_location,
-                                        borrow_index, borrow_region,
-                                        location.successor_within_block(), visited_locations);
+            for block in terminator.successors() {
+                let loc = block.start_location();
+                if visited.insert(loc) {
+                    stack.push(loc);
+                }
+            }
+        }
     }
 }
 
@@ -182,8 +111,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
 
             precompute_borrows_out_of_scope(mir, &nonlexical_regioncx,
                                             &mut borrows_out_of_scope_at_location,
-                                            borrow_index, borrow_region, location,
-                                            &mut Vec::new());
+                                            borrow_index, borrow_region, location);
         }
 
         Borrows {
