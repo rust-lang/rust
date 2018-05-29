@@ -66,8 +66,8 @@ fn precompute_borrows_out_of_scope<'a, 'tcx>(
     let mut visited = FxHashSet();
     visited.insert(location);
 
-    debug!("borrow {:?} starts at {:?}", borrow_index, location);
-
+    debug!("borrow {:?} (region: {:?}) starts at {:?}",
+           borrow_index, borrow_region, location);
     while let Some(location) = stack.pop() {
         // If region does not contain a point at the location, then add to list and skip
         // successor locations.
@@ -80,14 +80,24 @@ fn precompute_borrows_out_of_scope<'a, 'tcx>(
             continue;
         }
 
-        // Add successors to locations to visit, if not visited before.
         let bb_data = &mir[location.block];
-        if let Some(ref terminator) = bb_data.terminator {
-            for block in terminator.successors() {
-                let loc = block.start_location();
-                if visited.insert(loc) {
-                    stack.push(loc);
+        // If this is the last statement in the block, then add the
+        // terminator successors next.
+        if location.statement_index == bb_data.statements.len() - 1 {
+            // Add successors to locations to visit, if not visited before.
+            if let Some(ref terminator) = bb_data.terminator {
+                for block in terminator.successors() {
+                    let loc = block.start_location();
+                    if visited.insert(loc) {
+                        stack.push(loc);
+                    }
                 }
+            }
+        } else {
+            // Visit next statement in block.
+            let loc = location.successor_within_block();
+            if visited.insert(loc) {
+                stack.push(loc);
             }
         }
     }
