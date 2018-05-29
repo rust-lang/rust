@@ -830,6 +830,7 @@ impl MacroArgParser {
 
                     if self.is_meta_var {
                         self.add_repeat(delimited_arg, delimited.delim, &mut iter, *sp)?;
+                        self.is_meta_var = false;
                     } else {
                         self.add_delimited(delimited_arg, delimited.delim, *sp);
                     }
