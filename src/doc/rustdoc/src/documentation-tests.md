@@ -284,3 +284,27 @@ environment that has no network access.
 compiles, then the test will fail. However please note that code failing
 with the current Rust release may work in a future release, as new features
 are added.
+
+## Syntax reference
+
+The *exact* syntax for code blocks, including the edge cases, can be found
+in the [Fenced Code Blocks](https://spec.commonmark.org/0.28/#fenced-code-blocks)
+section of the CommonMark specification.
+
+Rustdoc also accepts *indented* code blocks as an alternative to fenced
+code blocks: instead of surrounding your code with three backticks, you
+can indent each line by four or more spaces.
+
+``````markdown
+    let foo = "foo";
+    assert_eq!(foo, "foo");
+``````
+
+These, too, are documented in the CommonMark specification, in the
+[Indented Code Blocks](https://spec.commonmark.org/0.28/#indented-code-blocks)
+section.
+
+However, it's preferable to use fenced code blocks over indented code blocks.
+Not only are fenced code blocks the more popular choice in the Rust community,
+but there is no way to use directives such as `ignore` or `should_panic` with
+indented code blocks.
