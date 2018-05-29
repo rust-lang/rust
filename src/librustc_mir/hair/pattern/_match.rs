@@ -426,11 +426,10 @@ impl<'tcx> Witness<'tcx> {
 /// Option<!> we do not include Some(_) in the returned list of constructors.
 fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                   pcx: PatternContext<'tcx>)
-                                  -> (Vec<Constructor<'tcx>>, bool)
+                                  -> Vec<Constructor<'tcx>>
 {
     debug!("all_constructors({:?})", pcx.ty);
     let exhaustive_integer_patterns = cx.tcx.features().exhaustive_integer_patterns;
-    let mut value_constructors = false;
     let ctors = match pcx.ty.sty {
         ty::TyBool => {
             [true, false].iter().map(|&b| {
@@ -461,7 +460,6 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 .collect()
         }
         ty::TyChar if exhaustive_integer_patterns => {
-            value_constructors = true;
             let endpoint = |c: char| {
                 let ty = ty::ParamEnv::empty().and(cx.tcx.types.char);
                 ty::Const::from_bits(cx.tcx, c as u128, ty)
@@ -473,7 +471,6 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             ]
         }
         ty::TyInt(ity) if exhaustive_integer_patterns => {
-            value_constructors = true;
             // FIXME(49937): refactor these bit manipulations into interpret.
             let bits = Integer::from_attr(cx.tcx, SignedInt(ity)).size().bits() as u128;
             let min = 1u128 << (bits - 1);
@@ -484,7 +481,6 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                RangeEnd::Included)]
         }
         ty::TyUint(uty) if exhaustive_integer_patterns => {
-            value_constructors = true;
             // FIXME(49937): refactor these bit manipulations into interpret.
             let bits = Integer::from_attr(cx.tcx, UnsignedInt(uty)).size().bits() as u128;
             let max = !0u128 >> (128 - bits);
@@ -501,7 +497,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
             }
         }
     };
-    (ctors, value_constructors)
+    ctors
 }
 
 fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
@@ -810,22 +806,23 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         debug!("used_ctors = {:#?}", used_ctors);
         // `all_ctors` are all the constructors for the given type, which
         // should all be represented (or caught with the wild pattern `_`).
-        // `value_constructors` is true if we may exhaustively consider all
-        // the possible values (e.g. integers) of a type as its constructors.
-        let (all_ctors, value_constructors) = all_constructors(cx, pcx);
+        let all_ctors = all_constructors(cx, pcx);
         debug!("all_ctors = {:#?}", all_ctors);
+
+        // The only constructor patterns for which it is valid to
+        // treat the values as constructors are ranges (see
+        // `all_constructors` for details).
+        let exhaustive_integer_patterns = cx.tcx.features().exhaustive_integer_patterns;
+        let consider_value_constructors = exhaustive_integer_patterns
+            && all_ctors.iter().all(|ctor| match ctor {
+                ConstantRange(..) => true,
+                _ => false,
+            });
 
         // `missing_ctors` are those that should have appeared
         // as patterns in the `match` expression, but did not.
         let mut missing_ctors = vec![];
         for req_ctor in &all_ctors {
-            // The only constructor patterns for which it is valid to
-            // treat the values as constructors are ranges (see
-            // `all_constructors` for details).
-            let consider_value_constructors = value_constructors && match req_ctor {
-                ConstantRange(..) => true,
-                _ => false,
-            };
             if consider_value_constructors {
                 let mut refined_ctors = vec![req_ctor.clone()];
                 for used_ctor in &used_ctors {
@@ -886,7 +883,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         let is_non_exhaustive = is_privately_empty || is_declared_nonexhaustive;
 
         if missing_ctors.is_empty() && !is_non_exhaustive {
-            if value_constructors {
+            if consider_value_constructors {
                 // If we've successfully matched every value
                 // of the type, then we're done.
                 NotUseful
@@ -962,7 +959,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                             witness
                         }).collect()
                     } else {
-                        if value_constructors {
+                        if consider_value_constructors {
                             // If we've been trying to exhaustively match
                             // over the domain of values for a type,
                             // then we can provide better diagnostics
