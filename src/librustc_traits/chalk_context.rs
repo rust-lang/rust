@@ -22,7 +22,7 @@ use rustc::traits::{
     ProgramClause,
     QuantifierKind
 };
-use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeHasher, TypeVisitor};
 use rustc::ty::subst::Kind;
 use rustc::ty::{self, TyCtxt};
 
@@ -507,6 +507,23 @@ impl ExClauseFold<'tcx> for ChalkArenas<'tcx> {
             && delayed_literals.visit_with(visitor)
             && constraints.visit_with(visitor)
             && subgoals.visit_with(visitor)
+    }
+
+    fn hash_ex_clause_with<'gcx: 'tcx, H: TypeHasher<'tcx>>(
+        ex_clause: &ExClause<Self>,
+        hasher: &mut H,
+    ) -> u64 {
+        let ExClause {
+            subst,
+            delayed_literals,
+            constraints,
+            subgoals,
+        } = ex_clause;
+        subst.hash_with(hasher);
+        delayed_literals.hash_with(hasher);
+        constraints.hash_with(hasher);
+        subgoals.hash_with(hasher);
+        hasher.get_hash()
     }
 }
 

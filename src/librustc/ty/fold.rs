@@ -194,7 +194,7 @@ pub trait TypeVisitor<'tcx> : Sized {
     }
 }
 
-pub trait TypeHasher<'tcx> : Sized {
+pub trait TypeHasher<'tcx> : Sized + ::std::hash::Hasher {
     fn hash_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> u64 {
         t.super_hash_with(self)
     }
@@ -210,6 +210,13 @@ pub trait TypeHasher<'tcx> : Sized {
     fn hash_const(&mut self, c: &'tcx ty::Const<'tcx>) -> u64 {
         c.super_hash_with(self)
     }
+
+    fn hash_hashable<H: ::std::hash::Hash>(&mut self, h: H) -> u64 {
+        h.hash(self);
+        self.get_hash()
+    }
+
+    fn get_hash(&self) -> u64;
 }
 
 ///////////////////////////////////////////////////////////////////////////

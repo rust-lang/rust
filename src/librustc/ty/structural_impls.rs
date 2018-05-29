@@ -661,8 +661,8 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::AdtDef {
         false
     }
 
-    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
-        unimplemented!()
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        hasher.hash_hashable(self)
     }
 }
 
@@ -675,8 +675,10 @@ impl<'tcx, T:TypeFoldable<'tcx>, U:TypeFoldable<'tcx>> TypeFoldable<'tcx> for (T
         self.0.visit_with(visitor) || self.1.visit_with(visitor)
     }
 
-    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
-        unimplemented!()
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        self.0.hash_with(hasher);
+        self.1.hash_with(hasher);
+        hasher.get_hash()
     }
 }
 
@@ -725,8 +727,9 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Vec<T> {
         self.iter().any(|t| t.visit_with(visitor))
     }
 
-    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
-        unimplemented!()
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        self.iter().for_each(|t| {t.hash_with(hasher);});
+        hasher.get_hash()
     }
 }
 
@@ -747,8 +750,8 @@ impl<'tcx, T:TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
         visitor.visit_binder(self)
     }
 
-    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
-        unimplemented!()
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        self.skip_binder().hash_with(hasher)
     }
 
     fn hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
@@ -770,8 +773,9 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Slice<ty::ExistentialPredicate<'tcx>
         self.iter().any(|p| p.visit_with(visitor))
     }
 
-    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
-        unimplemented!()
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        self.iter().for_each(|p| {p.hash_with(hasher);});
+        hasher.get_hash()
     }
 }
 
@@ -793,8 +797,9 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Slice<Ty<'tcx>> {
         self.iter().any(|t| t.visit_with(visitor))
     }
 
-    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
-        unimplemented!()
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        self.iter().for_each(|t| {t.hash_with(hasher);});
+        hasher.get_hash()
     }
 }
 
@@ -852,8 +857,34 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
         }
     }
 
-    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
-        unimplemented!()
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        use ty::InstanceDef::*;
+        self.substs.hash_with(hasher);
+        match self.def {
+            Item(did) => did.hash_with(hasher),
+            Intrinsic(did) => did.hash_with(hasher),
+            FnPtrShim(did, ty) => {
+                did.hash_with(hasher);
+                ty.hash_with(hasher);
+                hasher.get_hash()
+            },
+            Virtual(did, idx) => {
+                did.hash_with(hasher);
+                hasher.hash_hashable(idx);
+                hasher.get_hash()
+            }
+            ClosureOnceShim { call_once } => hasher.hash_hashable(call_once),
+            DropGlue(did, ty) => {
+                did.hash_with(hasher);
+                ty.hash_with(hasher);
+                hasher.get_hash()
+            },
+            CloneShim(did, ty) => {
+                did.hash_with(hasher);
+                ty.hash_with(hasher);
+                hasher.get_hash()
+            },
+        }
     }
 }
 
@@ -869,8 +900,10 @@ impl<'tcx> TypeFoldable<'tcx> for interpret::GlobalId<'tcx> {
         self.instance.visit_with(visitor)
     }
 
-    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
-        unimplemented!()
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        self.instance.hash_with(hasher);
+        hasher.hash_hashable(self.promoted);
+        hasher.get_hash()
     }
 }
 
@@ -946,8 +979,44 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
         visitor.visit_ty(self)
     }
 
-    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
-        unimplemented!()
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        hasher.hash_hashable(self.region_depth);
+        hasher.hash_hashable(self.flags);
+        match self.sty {
+            ty::TyRawPtr(ref tm) => { tm.hash_with(hasher); }
+            ty::TyArray(typ, sz) => {
+                typ.hash_with(hasher);
+                sz.hash_with(hasher);
+            }
+            ty::TySlice(typ) => { typ.hash_with(hasher); }
+            ty::TyAdt(adt_def, substs) => { hasher.hash_hashable(adt_def); substs.hash_with(hasher); }
+            ty::TyDynamic(ref trait_ty, ref reg) =>
+                {
+                    trait_ty.hash_with(hasher);
+                    reg.hash_with(hasher);
+                }
+            ty::TyTuple(ts) => { ts.hash_with(hasher); }
+            ty::TyFnDef(did, substs) => { hasher.hash_hashable(did); substs.hash_with(hasher); }
+            ty::TyFnPtr(ref f) => { f.hash_with(hasher); }
+            ty::TyRef(r, ty, mutability) => {
+                r.hash_with(hasher);
+                ty.hash_with(hasher);
+                hasher.hash_hashable(mutability);
+            }
+            ty::TyGenerator(did, ref substs, mov) => {
+                hasher.hash_hashable(did);
+                substs.hash_with(hasher);
+                hasher.hash_hashable(mov);
+            }
+            ty::TyGeneratorWitness(ref types) => { types.hash_with(hasher); }
+            ty::TyClosure(_did, ref substs) => { substs.hash_with(hasher); }
+            ty::TyProjection(ref data) => { data.hash_with(hasher); }
+            ty::TyAnon(_, ref substs) => { substs.hash_with(hasher); }
+            ty::TyBool | ty::TyChar | ty::TyStr | ty::TyInt(_) |
+            ty::TyUint(_) | ty::TyFloat(_) | ty::TyError | ty::TyInfer(_) |
+            ty::TyParam(..) | ty::TyNever | ty::TyForeign(..) => { hasher.hash_hashable(&self.sty); }
+        };
+        hasher.get_hash()
     }
 
     fn hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
@@ -1077,8 +1146,9 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Slice<ty::Predicate<'tcx>> {
         self.iter().any(|p| p.visit_with(visitor))
     }
 
-    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
-        unimplemented!()
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        self.iter().for_each(|p| {p.hash_with(hasher);});
+        hasher.get_hash()
     }
 }
 
@@ -1165,8 +1235,9 @@ impl<'tcx, T: TypeFoldable<'tcx>, I: Idx> TypeFoldable<'tcx> for IndexVec<I, T> 
         self.iter().any(|t| t.visit_with(visitor))
     }
 
-    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
-        unimplemented!()
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        self.iter().for_each(|t| {t.hash_with(hasher);});
+        hasher.get_hash()
     }
 }
 
@@ -1216,8 +1287,8 @@ impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
         }
     }
 
-    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
-        unimplemented!()
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        hasher.hash_hashable(self)
     }
 }
 
@@ -1243,8 +1314,10 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Const<'tcx> {
         visitor.visit_const(self)
     }
 
-    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
-        unimplemented!()
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        self.ty.hash_with(hasher);
+        self.val.hash_with(hasher);
+        hasher.get_hash()
     }
 
     fn hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {

@@ -706,8 +706,11 @@ where
         )
     }
 
-    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
-        unimplemented!()
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        <C as traits::ExClauseFold>::hash_ex_clause_with(
+            self,
+            hasher,
+        )
     }
 }
 

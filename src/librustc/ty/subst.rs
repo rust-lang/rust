@@ -346,8 +346,9 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
         self.iter().any(|t| t.visit_with(visitor))
     }
 
-    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
-        unimplemented!()
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        self.iter().for_each(|t| {t.hash_with(hasher);});
+        hasher.get_hash()
     }
 }
 

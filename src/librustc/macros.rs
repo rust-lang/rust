@@ -329,12 +329,14 @@ macro_rules! BraceStructTypeFoldableImpl {
                 false $(|| $crate::ty::fold::TypeFoldable::visit_with($field, visitor))*
             }
 
-            fn super_hash_with<F: $crate::ty::fold::TypeHasher<$tcx>>(
+            fn super_hash_with<H: $crate::ty::fold::TypeHasher<$tcx>>(
                 &self,
-                _: &mut F)
+                hasher: &mut H)
                 -> u64
             {
-                unimplemented!()
+                let $s { $($field,)* } = self;
+                $($crate::ty::fold::TypeFoldable::hash_with($field, hasher);)*
+                hasher.get_hash()
             }
         }
     };
@@ -364,12 +366,14 @@ macro_rules! TupleStructTypeFoldableImpl {
                 false $(|| $crate::ty::fold::TypeFoldable::visit_with($field, visitor))*
             }
 
-            fn super_hash_with<F: $crate::ty::fold::TypeHasher<$tcx>>(
+            fn super_hash_with<H: $crate::ty::fold::TypeHasher<$tcx>>(
                 &self,
-                _: &mut F)
+                hasher: &mut H)
                 -> u64
             {
-                unimplemented!()
+                let $s($($field,)*) = self;
+                $($crate::ty::fold::TypeFoldable::hash_with($field, hasher);)*
+                hasher.get_hash()
             }
         }
     };
@@ -397,12 +401,13 @@ macro_rules! EnumTypeFoldableImpl {
                 EnumTypeFoldableImpl!(@VisitVariants(self, visitor) input($($variants)*) output())
             }
 
-            fn super_hash_with<F: $crate::ty::fold::TypeHasher<$tcx>>(
+            fn super_hash_with<H: $crate::ty::fold::TypeHasher<$tcx>>(
                 &self,
-                _: &mut F)
+                hasher: &mut H)
                 -> u64
             {
-                unimplemented!()
+                EnumTypeFoldableImpl!(@HashVariants(self, hasher) input($($variants)*) output());
+                hasher.get_hash()
             }
         }
     };
@@ -509,6 +514,59 @@ macro_rules! EnumTypeFoldableImpl {
                 input($($input)*)
                 output(
                     $variant => { false }
+                    $($output)*
+                )
+        )
+    };
+
+    (@HashVariants($this:expr, $hasher:expr) input() output($($output:tt)*)) => {
+        match $this {
+            $($output)*
+        }
+    };
+
+    (@HashVariants($this:expr, $hasher:expr)
+     input( ($variant:path) ( $($variant_arg:ident),* ) , $($input:tt)*)
+     output( $($output:tt)*) ) => {
+        EnumTypeFoldableImpl!(
+            @HashVariants($this, $hasher)
+                input($($input)*)
+                output(
+                    $variant ( $($variant_arg),* ) => {
+                        $($crate::ty::fold::TypeFoldable::hash_with(
+                            $variant_arg, $hasher
+                        );)*
+                    }
+                    $($output)*
+                )
+        )
+    };
+
+    (@HashVariants($this:expr, $hasher:expr)
+     input( ($variant:path) { $($variant_arg:ident),* $(,)* } , $($input:tt)*)
+     output( $($output:tt)*) ) => {
+        EnumTypeFoldableImpl!(
+            @HashVariants($this, $hasher)
+                input($($input)*)
+                output(
+                    $variant { $($variant_arg),* } => {
+                        $($crate::ty::fold::TypeFoldable::hash_with(
+                            $variant_arg, $hasher
+                        );)*
+                    }
+                    $($output)*
+                )
+        )
+    };
+
+    (@HashVariants($this:expr, $hasher:expr)
+     input( ($variant:path), $($input:tt)*)
+     output( $($output:tt)*) ) => {
+        EnumTypeFoldableImpl!(
+            @HashVariants($this, $hasher)
+                input($($input)*)
+                output(
+                    $variant => {  }
                     $($output)*
                 )
         )
