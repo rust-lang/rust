@@ -794,6 +794,7 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     Ok(PathBuf::from(OsString::from_vec(buf)))
 }
 
+#[cfg(not(any(target_os = "linux", target_os = "android")))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use fs::{File, set_permissions};
     if !from.is_file() {
@@ -808,4 +809,91 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let ret = io::copy(&mut reader, &mut writer)?;
     set_permissions(to, perm)?;
     Ok(ret)
+}
+
+#[cfg(any(target_os = "linux", target_os = "android"))]
+pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+    use cmp;
+    use fs::{File, set_permissions};
+    use sync::atomic::{AtomicBool, Ordering};
+
+    // Kernel prior to 4.5 don't have copy_file_range
+    // We store the availability in a global to avoid unneccessary syscalls
+    static HAS_COPY_FILE_RANGE: AtomicBool = AtomicBool::new(true);
+
+    unsafe fn copy_file_range(
+        fd_in: libc::c_int,
+        off_in: *mut libc::loff_t,
+        fd_out: libc::c_int,
+        off_out: *mut libc::loff_t,
+        len: libc::size_t,
+        flags: libc::c_uint,
+    ) -> libc::c_long {
+        libc::syscall(
+            libc::SYS_copy_file_range,
+            fd_in,
+            off_in,
+            fd_out,
+            off_out,
+            len,
+            flags,
+        )
+    }
+
+    if !from.is_file() {
+        return Err(Error::new(ErrorKind::InvalidInput,
+                              "the source path is not an existing regular file"))
+    }
+
+    let mut reader = File::open(from)?;
+    let mut writer = File::create(to)?;
+    let (perm, len) = {
+        let metadata = reader.metadata()?;
+        (metadata.permissions(), metadata.size())
+    };
+
+    let has_copy_file_range = HAS_COPY_FILE_RANGE.load(Ordering::Relaxed);
+    let mut written = 0u64;
+    while written < len {
+        let copy_result = if has_copy_file_range {
+            let bytes_to_copy = cmp::min(len - written, usize::max_value() as u64) as usize;
+            let copy_result = unsafe {
+                // We actually don't have to adjust the offsets,
+                // because copy_file_range adjusts the file offset automatically
+                cvt(copy_file_range(reader.as_raw_fd(),
+                                    ptr::null_mut(),
+                                    writer.as_raw_fd(),
+                                    ptr::null_mut(),
+                                    bytes_to_copy,
+                                    0)
+                    )
+            };
+            if let Err(ref copy_err) = copy_result {
+                if let Some(libc::ENOSYS) = copy_err.raw_os_error() {
+                    HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
+                }
+            }
+            copy_result
+        } else {
+            Err(io::Error::from_raw_os_error(libc::ENOSYS))
+        };
+        match copy_result {
+            Ok(ret) => written += ret as u64,
+            Err(err) => {
+                match err.raw_os_error() {
+                    Some(os_err) if os_err == libc::ENOSYS || os_err == libc::EXDEV => {
+                        // Either kernel is too old or the files are not mounted on the same fs.
+                        // Try again with fallback method
+                        assert_eq!(written, 0);
+                        let ret = io::copy(&mut reader, &mut writer)?;
+                        set_permissions(to, perm)?;
+                        return Ok(ret)
+                    },
+                    _ => return Err(err),
+                }
+            }
+        }
+    }
+    set_permissions(to, perm)?;
+    Ok(written)
 }
