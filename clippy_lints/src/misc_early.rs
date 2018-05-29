@@ -334,7 +334,7 @@ impl EarlyLintPass for MiscEarly {
                 if let ExprKind::Call(ref closure, _) = call.node;
                 if let ExprKind::Path(_, ref path) = closure.node;
                 then {
-                    if ident == (&path.segments[0]).ident {
+                    if ident == path.segments[0].ident {
                         span_lint(
                             cx,
                             REDUNDANT_CLOSURE_CALL,
