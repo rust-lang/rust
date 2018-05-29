@@ -168,37 +168,55 @@ By repeating all parts of the example, you can ensure that your example still
 compiles, while only showing the parts that are relevant to that part of your
 explanation.
 
-Another case where the use of `#` is handy is when you want to ignore
-error handling. Lets say you want the following,
+
+## Using `?` in doc tests
+
+A complete error handling is often not useful in your example, as it would add
+significant amounts of boilerplate code. Instead, you may want the following:
 
 ```ignore
+/// ```
 /// use std::io;
 /// let mut input = String::new();
 /// io::stdin().read_line(&mut input)?;
+/// ```
 ```
 
-The problem is that `?` returns a `Result<T, E>` and test functions
-don't return anything so this will give a mismatched types error.
+The problem is that `?` returns a `Result<T, E>` and test functions don't
+return anything, so this will give a mismatched types error.
+
+You can get around this limitation by manually adding a `main` that returns
+`Result<T, E>`, because `Result<T, E>` implements the `Termination` trait:
 
 ```ignore
 /// A doc test using ?
 ///
 /// ```
 /// use std::io;
-/// # fn foo() -> io::Result<()> {
+///
+/// fn main() -> io::Result<()> {
+///     let mut input = String::new();
+///     io::stdin().read_line(&mut input)?;
+///     Ok(())
+/// }
+/// ```
+```
+
+Together with the `# ` from the section above, you arrive at a solution that
+appears to the reader as the initial idea but works with doc tests:
+
+```ignore
+/// ```
+/// use std::io;
+/// # fn main() -> io::Result<()> {
 /// let mut input = String::new();
 /// io::stdin().read_line(&mut input)?;
 /// # Ok(())
 /// # }
 /// ```
-# fn foo() {}
 ```
 
-You can get around this by wrapping the code in a function. This catches
-and swallows the `Result<T, E>` when running tests on the docs. This
-pattern appears regularly in the standard library.
-
-### Documenting macros
+## Documenting macros
 
 Here’s an example of documenting a macro:
 
