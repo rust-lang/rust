@@ -11,6 +11,8 @@
 // Regression test for the issue #50716: NLL ignores lifetimes bounds
 // derived from `Sized` requirements
 
+#![feature(nll)]
+
 trait A {
     type X: ?Sized;
 }
@@ -20,7 +22,7 @@ where
     for<'b> &'b T: A,
     <&'static T as A>::X: Sized
 {
-    let _x = *s; //~ ERROR mismatched types [E0308]
+    let _x = *s; //~ ERROR free region `'a` does not outlive free region `'static`
 }
 
 fn main() {}
