@@ -77,7 +77,7 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
     /// Find the field named `name` in the field. Always return `Some` for
     /// convenience.
     fn get_field<'a>(name: &str, fields: &'a [hir::Field]) -> Option<&'a hir::Expr> {
-        let expr = &fields.iter().find(|field| field.name.node == name)?.expr;
+        let expr = &fields.iter().find(|field| field.ident.name == name)?.expr;
 
         Some(expr)
     }

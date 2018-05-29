@@ -147,9 +147,9 @@ fn check_unformatted(expr: &Expr) -> bool {
         if let ExprArray(ref exprs) = expr.node;
         if exprs.len() == 1;
         if let ExprStruct(_, ref fields, _) = exprs[0].node;
-        if let Some(format_field) = fields.iter().find(|f| f.name.node == "format");
+        if let Some(format_field) = fields.iter().find(|f| f.ident.name == "format");
         if let ExprStruct(_, ref fields, _) = format_field.expr.node;
-        if let Some(align_field) = fields.iter().find(|f| f.name.node == "width");
+        if let Some(align_field) = fields.iter().find(|f| f.ident.name == "width");
         if let ExprPath(ref qpath) = align_field.expr.node;
         if last_path_segment(qpath).name == "Implied";
         then {

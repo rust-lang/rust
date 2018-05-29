@@ -375,7 +375,7 @@ where
                             if let ExprArray(ref format_exprs) = format_expr.node;
                             if format_exprs.len() >= 1;
                             if let ExprStruct(_, ref fields, _) = format_exprs[idx].node;
-                            if let Some(format_field) = fields.iter().find(|f| f.name.node == "format");
+                            if let Some(format_field) = fields.iter().find(|f| f.ident.name == "format");
                             if check_unformatted(&format_field.expr);
                             then {
                                 lint_fn(tup_val.span);
@@ -469,13 +469,13 @@ fn is_in_debug_impl(cx: &LateContext, expr: &Expr) -> bool {
 pub fn check_unformatted(format_field: &Expr) -> bool {
     if_chain! {
         if let ExprStruct(_, ref fields, _) = format_field.node;
-        if let Some(width_field) = fields.iter().find(|f| f.name.node == "width");
+        if let Some(width_field) = fields.iter().find(|f| f.ident.name == "width");
         if let ExprPath(ref qpath) = width_field.expr.node;
         if last_path_segment(qpath).name == "Implied";
-        if let Some(align_field) = fields.iter().find(|f| f.name.node == "align");
+        if let Some(align_field) = fields.iter().find(|f| f.ident.name == "align");
         if let ExprPath(ref qpath) = align_field.expr.node;
         if last_path_segment(qpath).name == "Unknown";
-        if let Some(precision_field) = fields.iter().find(|f| f.name.node == "precision");
+        if let Some(precision_field) = fields.iter().find(|f| f.ident.name == "precision");
         if let ExprPath(ref qpath_precision) = precision_field.expr.node;
         if last_path_segment(qpath_precision).name == "Implied";
         then {

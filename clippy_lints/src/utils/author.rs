@@ -383,11 +383,11 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.current = value_pat;
                 self.visit_expr(value);
             },
-            Expr_::ExprField(ref object, ref field_name) => {
+            Expr_::ExprField(ref object, ref field_ident) => {
                 let obj_pat = self.next("object");
                 let field_name_pat = self.next("field_name");
                 println!("Field(ref {}, ref {}) = {};", obj_pat, field_name_pat, current);
-                println!("    if {}.node.as_str() == {:?}", field_name_pat, field_name.node.as_str());
+                println!("    if {}.node.as_str() == {:?}", field_name_pat, field_ident.name.as_str());
                 self.current = obj_pat;
                 self.visit_expr(object);
             },

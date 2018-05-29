@@ -10,13 +10,13 @@
 #![recursion_limit = "256"]
 #![allow(stable_features)]
 #![feature(iterator_find_map)]
-
+#![feature(macro_at_most_once_rep)]
 
 extern crate cargo_metadata;
 #[macro_use]
 extern crate rustc;
-extern crate rustc_typeck;
 extern crate rustc_target;
+extern crate rustc_typeck;
 extern crate syntax;
 extern crate syntax_pos;
 

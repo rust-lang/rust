@@ -268,9 +268,9 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
             println!("{}rhs:", ind);
             print_expr(cx, rhs, indent + 1);
         },
-        hir::ExprField(ref e, ref name) => {
+        hir::ExprField(ref e, ref ident) => {
             println!("{}Field", ind);
-            println!("{}field name: {}", ind, name.node);
+            println!("{}field name: {}", ind, ident.name);
             println!("{}struct expr:", ind);
             print_expr(cx, e, indent + 1);
         },
@@ -322,7 +322,7 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
             println!("{}Struct", ind);
             println!("{}path: {:?}", ind, path);
             for field in fields {
-                println!("{}field \"{}\":", ind, field.name.node);
+                println!("{}field \"{}\":", ind, field.ident.name);
                 print_expr(cx, &field.expr, indent + 1);
             }
             if let Some(ref base) = *base {
@@ -433,7 +433,7 @@ fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
             println!("{}ignore leftover fields: {}", ind, ignore);
             println!("{}fields:", ind);
             for field in fields {
-                println!("{}  field name: {}", ind, field.node.name);
+                println!("{}  field name: {}", ind, field.node.ident.name);
                 if field.node.is_shorthand {
                     println!("{}  in shorthand notation", ind);
                 }

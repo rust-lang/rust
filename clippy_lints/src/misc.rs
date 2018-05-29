@@ -392,8 +392,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     None
                 }
             },
-            ExprField(_, spanned) => {
-                let name = spanned.node.as_str();
+            ExprField(_, ident) => {
+                let name = ident.as_str();
                 if name.starts_with('_') && !name.starts_with("__") {
                     Some(name)
                 } else {

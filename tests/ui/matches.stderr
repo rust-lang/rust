@@ -65,7 +65,7 @@ error: you don't need to add `&` to all patterns
 help: instead of prefixing all patterns with `&`, you can dereference the expression
    |
 57 |     if let None = *a {
-   |
+   |            ^^^^   ^^
 
 error: you don't need to add `&` to both the expression and the patterns
   --> $DIR/matches.rs:62:5
@@ -77,7 +77,7 @@ error: you don't need to add `&` to both the expression and the patterns
 help: try
    |
 62 |     if let None = b {
-   |
+   |            ^^^^   ^
 
 error: some ranges overlap
   --> $DIR/matches.rs:71:9
