@@ -53,7 +53,10 @@ impl LintPass for EqOp {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprBinary(ref op, ref left, ref right) = e.node {
-            if is_valid_operator(op) && SpanlessEq::new(cx).ignore_fn().eq_expr(left, right) && !in_macro(e.span) {
+            if in_macro(e.span) {
+                return;
+            }
+            if is_valid_operator(op) && SpanlessEq::new(cx).ignore_fn().eq_expr(left, right) {
                 span_lint(
                     cx,
                     EQ_OP,
