@@ -88,7 +88,7 @@ fn precompute_borrows_out_of_scope<'a, 'tcx>(
         let bb_data = &mir[location.block];
         // If this is the last statement in the block, then add the
         // terminator successors next.
-        if location.statement_index == bb_data.statements.len() - 1 {
+        if location.statement_index == bb_data.statements.len() {
             // Add successors to locations to visit, if not visited before.
             if let Some(ref terminator) = bb_data.terminator {
                 for block in terminator.successors() {
