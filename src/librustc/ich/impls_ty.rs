@@ -521,6 +521,7 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             InvalidNullPointerUsage |
             ReadPointerAsBytes |
             ReadBytesAsPointer |
+            ReadForeignStatic |
             InvalidPointerMath |
             ReadUndefBytes |
             DeadLocal |

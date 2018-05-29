@@ -16,6 +16,5 @@ struct A {
 
 static B: &'static A = &A { a: &() };
 static C: &'static A = &B;
-//~^ ERROR cannot refer to other statics by value
 
 fn main() {}
