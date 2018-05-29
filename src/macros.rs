@@ -493,11 +493,18 @@ fn delim_token_to_str(
     delim_token: &DelimToken,
     shape: Shape,
     use_multiple_lines: bool,
+    inner_is_empty: bool,
 ) -> (String, String) {
     let (lhs, rhs) = match *delim_token {
         DelimToken::Paren => ("(", ")"),
         DelimToken::Bracket => ("[", "]"),
-        DelimToken::Brace => ("{ ", " }"),
+        DelimToken::Brace => {
+            if inner_is_empty || use_multiple_lines {
+                ("{", "}")
+            } else {
+                ("{ ", " }")
+            }
+        }
         DelimToken::NoDelim => ("", ""),
     };
     if use_multiple_lines {
@@ -553,13 +560,13 @@ impl MacroArgKind {
         use_multiple_lines: bool,
     ) -> Option<String> {
         let rewrite_delimited_inner = |delim_tok, args| -> Option<(String, String, String)> {
-            let (lhs, rhs) = delim_token_to_str(context, delim_tok, shape, false);
             let inner = wrap_macro_args(context, args, shape)?;
+            let (lhs, rhs) = delim_token_to_str(context, delim_tok, shape, false, inner.is_empty());
             if lhs.len() + inner.len() + rhs.len() <= shape.width {
                 return Some((lhs, inner, rhs));
             }
 
-            let (lhs, rhs) = delim_token_to_str(context, delim_tok, shape, true);
+            let (lhs, rhs) = delim_token_to_str(context, delim_tok, shape, true, false);
             let nested_shape = shape
                 .block_indent(context.config.tab_spaces())
                 .with_max_width(context.config);
