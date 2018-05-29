@@ -14,6 +14,7 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::{Attribute, Crate, LitKind, StrStyle};
 use syntax::ast::{Arg, Constness, Generics, Mac, Mutability, Ty, Unsafety};
 use syntax::ast::{self, Expr, Ident, Item, ItemKind, TyKind, VisibilityKind};
+use syntax::ast::{Path, PathSegment};
 use syntax::attr;
 use syntax::codemap::{dummy_spanned, respan};
 use syntax::codemap::{ExpnInfo, MacroAttribute, NameAndSpan};
@@ -149,7 +150,7 @@ impl<'a> AllocFnFactory<'a> {
             .map(|ty| self.arg_ty(ty, &mut abi_args, mk))
             .collect();
         let result = self.call_allocator(method.name, args);
-        let (output_ty, output_expr) = self.ret_ty(&method.output, result);
+        let (output_ty, output_expr) = self.ret_ty(&method.output, result, mk);
         let kind = ItemKind::Fn(
             self.cx.fn_decl(abi_args, ast::FunctionRetTy::Ty(output_ty)),
             Unsafety::Unsafe,
@@ -234,10 +235,40 @@ impl<'a> AllocFnFactory<'a> {
             }
 
             AllocatorTy::Ptr => {
+                let nonnull_new = Path {
+                    span: self.span,
+                    segments: vec![
+                        PathSegment {
+                            ident: self.core,
+                            parameters: None,
+                        },
+                        PathSegment {
+                            ident: Ident::from_str("ptr"),
+                            parameters: None,
+                        },
+                        PathSegment {
+                            ident: Ident::from_str("NonNull"),
+                            parameters: ast::AngleBracketedParameterData {
+                                span: self.span,
+                                lifetimes: Vec::new(),
+                                types: vec![self.opaque()],
+                                bindings: Vec::new(),
+                            }.into(),
+                        },
+                        PathSegment {
+                            ident: Ident::from_str("new_unchecked"),
+                            parameters: None,
+                        },
+                    ],
+                };
+                let nonnull_new = self.cx.expr_path(nonnull_new);
+                let ptr_opaque = self.cx.ty_ptr(self.span, self.opaque(), Mutability::Mutable);
+
                 let ident = ident();
                 args.push(self.cx.arg(self.span, ident, self.ptr_u8()));
                 let arg = self.cx.expr_ident(self.span, ident);
-                self.cx.expr_cast(self.span, arg, self.ptr_opaque())
+                let arg = self.cx.expr_cast(self.span, arg, ptr_opaque);
+                self.cx.expr_call(self.span, nonnull_new, vec![arg])
             }
 
             AllocatorTy::Usize => {
@@ -252,14 +283,47 @@ impl<'a> AllocFnFactory<'a> {
         }
     }
 
-    fn ret_ty(&self, ty: &AllocatorTy, expr: P<Expr>) -> (P<Ty>, P<Expr>) {
+    fn ret_ty(
+        &self,
+        ty: &AllocatorTy,
+        expr: P<Expr>,
+        ident: &mut FnMut() -> Ident,
+    ) -> (P<Ty>, P<Expr>) {
         match *ty {
             AllocatorTy::ResultPtr => {
                 // We're creating:
                 //
-                //      #expr as *mut u8
+                //      match #expr {
+                //          Ok(ptr) => ptr.as_ptr() as *mut u8,
+                //          Err(_) => 0 as *mut u8,
+                //      }
 
-                let expr = self.cx.expr_cast(self.span, expr, self.ptr_u8());
+                let name = ident();
+                let ok_expr = {
+                    let nonnull = self.cx.expr_ident(self.span, name);
+                    let ptr = self.cx.expr_method_call(
+                        self.span,
+                        nonnull,
+                        Ident::from_str("as_ptr"),
+                        Vec::new()
+                    );
+                    self.cx.expr_cast(self.span, ptr, self.ptr_u8())
+                };
+                let pat = self.cx.pat_ident(self.span, name);
+                let ok = self.cx.path_ident(self.span, Ident::from_str("Ok"));
+                let ok = self.cx.pat_tuple_struct(self.span, ok, vec![pat]);
+                let ok = self.cx.arm(self.span, vec![ok], ok_expr);
+
+                let err_expr = {
+                    let null = self.cx.expr_usize(self.span, 0);
+                    self.cx.expr_cast(self.span, null, self.ptr_u8())
+                };
+                let pat = self.cx.pat_wild(self.span);
+                let err = self.cx.path_ident(self.span, Ident::from_str("Err"));
+                let err = self.cx.pat_tuple_struct(self.span, err, vec![pat]);
+                let err = self.cx.arm(self.span, vec![err], err_expr);
+
+                let expr = self.cx.expr_match(self.span, expr, vec![ok, err]);
                 (self.ptr_u8(), expr)
             }
 
@@ -282,7 +346,7 @@ impl<'a> AllocFnFactory<'a> {
         self.cx.ty_ptr(self.span, ty_u8, Mutability::Mutable)
     }
 
-    fn ptr_opaque(&self) -> P<Ty> {
+    fn opaque(&self) -> P<Ty> {
         let opaque = self.cx.path(
             self.span,
             vec![
@@ -291,7 +355,6 @@ impl<'a> AllocFnFactory<'a> {
                 Ident::from_str("Opaque"),
             ],
         );
-        let ty_opaque = self.cx.ty_path(opaque);
-        self.cx.ty_ptr(self.span, ty_opaque, Mutability::Mutable)
+        self.cx.ty_path(opaque)
     }
 }

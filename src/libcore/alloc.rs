@@ -393,7 +393,7 @@ pub unsafe trait GlobalAlloc {
     /// # Safety
     ///
     /// **FIXME:** what are the exact requirements?
-    unsafe fn alloc(&self, layout: Layout) -> *mut Opaque;
+    unsafe fn alloc(&self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr>;
 
     /// Deallocate the block of memory at the given `ptr` pointer with the given `layout`.
     ///
@@ -401,15 +401,13 @@ pub unsafe trait GlobalAlloc {
     ///
     /// **FIXME:** what are the exact requirements?
     /// In particular around layout *fit*. (See docs for the `Alloc` trait.)
-    unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout);
+    unsafe fn dealloc(&self, ptr: NonNull<Opaque>, layout: Layout);
 
-    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Opaque {
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
         let size = layout.size();
-        let ptr = self.alloc(layout);
-        if !ptr.is_null() {
-            ptr::write_bytes(ptr as *mut u8, 0, size);
-        }
-        ptr
+        let ptr = self.alloc(layout)?;
+        ptr::write_bytes(ptr.as_ptr() as *mut u8, 0, size);
+        Ok(ptr)
     }
 
     /// Shink or grow a block of memory to the given `new_size`.
@@ -428,18 +426,21 @@ pub unsafe trait GlobalAlloc {
     ///
     /// **FIXME:** what are the exact requirements?
     /// In particular around layout *fit*. (See docs for the `Alloc` trait.)
-    unsafe fn realloc(&self, ptr: *mut Opaque, layout: Layout, new_size: usize) -> *mut Opaque {
+    unsafe fn realloc(
+        &self,
+        ptr: NonNull<Opaque>,
+        layout: Layout,
+        new_size: usize,
+    ) -> Result<NonNull<Opaque>, AllocErr> {
         let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
-        let new_ptr = self.alloc(new_layout);
-        if !new_ptr.is_null() {
-            ptr::copy_nonoverlapping(
-                ptr as *const u8,
-                new_ptr as *mut u8,
-                cmp::min(layout.size(), new_size),
-            );
-            self.dealloc(ptr, layout);
-        }
-        new_ptr
+        let new_ptr = self.alloc(new_layout)?;
+        ptr::copy_nonoverlapping(
+            ptr.as_ptr() as *const u8,
+            new_ptr.as_ptr() as *mut u8,
+            cmp::min(layout.size(), new_size),
+        );
+        self.dealloc(ptr, layout);
+        Ok(new_ptr)
     }
 }
 

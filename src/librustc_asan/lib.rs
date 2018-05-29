@@ -21,7 +21,10 @@
 
 extern crate alloc_system;
 
+#[cfg(not(stage0))]
 use alloc_system::System;
 
+// The GlobalAllocator trait has changed since stage0
+#[cfg(not(stage0))]
 #[global_allocator]
 static ALLOC: System = System;

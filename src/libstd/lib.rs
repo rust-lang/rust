@@ -326,13 +326,64 @@
 // `force_alloc_system` is *only* intended as a workaround for local rebuilds
 // with a rustc without jemalloc.
 // FIXME(#44236) shouldn't need MSVC logic
-#![cfg_attr(all(not(target_env = "msvc"),
-                any(all(stage0, not(test)), feature = "force_alloc_system")),
+#![cfg_attr(all(not(target_env = "msvc"), not(stage0), feature = "force_alloc_system"),
             feature(global_allocator))]
-#[cfg(all(not(target_env = "msvc"),
-          any(all(stage0, not(test)), feature = "force_alloc_system")))]
+#[cfg(all(not(target_env = "msvc"), not(stage0), feature = "force_alloc_system"))]
 #[global_allocator]
 static ALLOC: alloc_system::System = alloc_system::System;
+
+// Workaround for the GlobalAlloc trait having changed since stage0. This code
+// is mostly copied from libstd/alloc.rs
+#[cfg(all(not(target_env = "msvc"), stage0, not(test)))]
+#[unstable(issue = "0", feature = "std_internals")]
+#[doc(hidden)]
+#[allow(unused_attributes)]
+pub mod __global_lib_allocator {
+    use alloc::{System, Layout, GlobalAlloc, Opaque};
+    use ptr::{self, NonNull};
+
+    #[no_mangle]
+    #[rustc_std_internal_symbol]
+    pub unsafe extern fn __rg_alloc(size: usize, align: usize) -> *mut u8 {
+        let layout = Layout::from_size_align_unchecked(size, align);
+        match System.alloc(layout) {
+            Ok(p) => p.as_ptr() as *mut u8,
+            Err(_) => ptr::null_mut(),
+        }
+    }
+
+    #[no_mangle]
+    #[rustc_std_internal_symbol]
+    pub unsafe extern fn __rg_dealloc(ptr: *mut u8,
+                                      size: usize,
+                                      align: usize) {
+        let layout = Layout::from_size_align_unchecked(size, align);
+        System.dealloc(NonNull::new_unchecked(ptr as *mut Opaque), layout);
+    }
+
+    #[no_mangle]
+    #[rustc_std_internal_symbol]
+    pub unsafe extern fn __rg_realloc(ptr: *mut u8,
+                                      old_size: usize,
+                                      align: usize,
+                                      new_size: usize) -> *mut u8 {
+        let old_layout = Layout::from_size_align_unchecked(old_size, align);
+        match System.realloc(NonNull::new_unchecked(ptr as *mut Opaque), old_layout, new_size) {
+            Ok(p) => p.as_ptr() as *mut u8,
+            Err(_) => ptr::null_mut(),
+        }
+    }
+
+    #[no_mangle]
+    #[rustc_std_internal_symbol]
+    pub unsafe extern fn __rg_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
+        let layout = Layout::from_size_align_unchecked(size, align);
+        match System.alloc_zeroed(layout) {
+            Ok(p) => p.as_ptr() as *mut u8,
+            Err(_) => ptr::null_mut(),
+        }
+    }
+}
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.
