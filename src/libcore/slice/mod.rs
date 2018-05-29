@@ -1977,35 +1977,69 @@ fn slice_index_overflow_fail() -> ! {
     panic!("attempted to index slice up to maximum usize");
 }
 
+mod private_slice_index {
+    use super::ops;
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    pub trait Sealed {}
+
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    impl Sealed for usize {}
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    impl Sealed for ops::Range<usize> {}
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    impl Sealed for ops::RangeTo<usize> {}
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    impl Sealed for ops::RangeFrom<usize> {}
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    impl Sealed for ops::RangeFull {}
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    impl Sealed for ops::RangeInclusive<usize> {}
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    impl Sealed for ops::RangeToInclusive<usize> {}
+}
+
 /// A helper trait used for indexing operations.
-#[unstable(feature = "slice_get_slice", issue = "35729")]
+#[stable(feature = "slice_get_slice", since = "1.28.0")]
 #[rustc_on_unimplemented = "slice indices are of type `usize` or ranges of `usize`"]
-pub trait SliceIndex<T: ?Sized> {
+pub trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// The output type returned by methods.
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
     type Output: ?Sized;
 
     /// Returns a shared reference to the output at this location, if in
     /// bounds.
+    #[unstable(feature = "slice_index_methods", issue = "0")]
+    #[doc(hidden)]
     fn get(self, slice: &T) -> Option<&Self::Output>;
 
     /// Returns a mutable reference to the output at this location, if in
     /// bounds.
+    #[unstable(feature = "slice_index_methods", issue = "0")]
+    #[doc(hidden)]
     fn get_mut(self, slice: &mut T) -> Option<&mut Self::Output>;
 
     /// Returns a shared reference to the output at this location, without
     /// performing any bounds checking.
+    #[unstable(feature = "slice_index_methods", issue = "0")]
+    #[doc(hidden)]
     unsafe fn get_unchecked(self, slice: &T) -> &Self::Output;
 
     /// Returns a mutable reference to the output at this location, without
     /// performing any bounds checking.
+    #[unstable(feature = "slice_index_methods", issue = "0")]
+    #[doc(hidden)]
     unsafe fn get_unchecked_mut(self, slice: &mut T) -> &mut Self::Output;
 
     /// Returns a shared reference to the output at this location, panicking
     /// if out of bounds.
+    #[unstable(feature = "slice_index_methods", issue = "0")]
+    #[doc(hidden)]
     fn index(self, slice: &T) -> &Self::Output;
 
     /// Returns a mutable reference to the output at this location, panicking
     /// if out of bounds.
+    #[unstable(feature = "slice_index_methods", issue = "0")]
+    #[doc(hidden)]
     fn index_mut(self, slice: &mut T) -> &mut Self::Output;
 }
 
