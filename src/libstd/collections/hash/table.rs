@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use alloc::{Global, Alloc, Layout, CollectionAllocErr, oom};
-use cmp;
+use alloc::{Global, Alloc, Layout, LayoutErr, CollectionAllocErr, oom};
 use hash::{BuildHasher, Hash, Hasher};
 use marker;
-use mem::{align_of, size_of, needs_drop};
+use mem::{size_of, needs_drop};
 use mem;
 use ops::{Deref, DerefMut};
 use ptr::{self, Unique, NonNull};
@@ -651,64 +650,12 @@ impl<K, V, M> GapThenFull<K, V, M>
     }
 }
 
-
-/// Rounds up to a multiple of a power of two. Returns the closest multiple
-/// of `target_alignment` that is higher or equal to `unrounded`.
-///
-/// # Panics
-///
-/// Panics if `target_alignment` is not a power of two.
-#[inline]
-fn round_up_to_next(unrounded: usize, target_alignment: usize) -> usize {
-    assert!(target_alignment.is_power_of_two());
-    (unrounded + target_alignment - 1) & !(target_alignment - 1)
-}
-
-#[test]
-fn test_rounding() {
-    assert_eq!(round_up_to_next(0, 4), 0);
-    assert_eq!(round_up_to_next(1, 4), 4);
-    assert_eq!(round_up_to_next(2, 4), 4);
-    assert_eq!(round_up_to_next(3, 4), 4);
-    assert_eq!(round_up_to_next(4, 4), 4);
-    assert_eq!(round_up_to_next(5, 4), 8);
-}
-
-// Returns a tuple of (pairs_offset, end_of_pairs_offset),
-// from the start of a mallocated array.
-#[inline]
-fn calculate_offsets(hashes_size: usize,
-                     pairs_size: usize,
-                     pairs_align: usize)
-                     -> (usize, usize, bool) {
-    let pairs_offset = round_up_to_next(hashes_size, pairs_align);
-    let (end_of_pairs, oflo) = pairs_offset.overflowing_add(pairs_size);
-
-    (pairs_offset, end_of_pairs, oflo)
-}
-
-// Returns a tuple of (minimum required malloc alignment,
-// array_size), from the start of a mallocated array.
-fn calculate_allocation(hash_size: usize,
-                        hash_align: usize,
-                        pairs_size: usize,
-                        pairs_align: usize)
-                        -> (usize, usize, bool) {
-    let (_, end_of_pairs, oflo) = calculate_offsets(hash_size, pairs_size, pairs_align);
-
-    let align = cmp::max(hash_align, pairs_align);
-
-    (align, end_of_pairs, oflo)
-}
-
-#[test]
-fn test_offset_calculation() {
-    assert_eq!(calculate_allocation(128, 8, 16, 8), (8, 144, false));
-    assert_eq!(calculate_allocation(3, 1, 2, 1), (1, 5, false));
-    assert_eq!(calculate_allocation(6, 2, 12, 4), (4, 20, false));
-    assert_eq!(calculate_offsets(128, 15, 4), (128, 143, false));
-    assert_eq!(calculate_offsets(3, 2, 4), (4, 6, false));
-    assert_eq!(calculate_offsets(6, 12, 4), (8, 20, false));
+// Returns a Layout which describes the allocation required for a hash table,
+// and the offset of the array of (key, value) pairs in the allocation.
+fn calculate_layout<K, V>(capacity: usize) -> Result<(Layout, usize), LayoutErr> {
+    let hashes = Layout::array::<HashUint>(capacity)?;
+    let pairs = Layout::array::<(K, V)>(capacity)?;
+    hashes.extend(pairs)
 }
 
 pub(crate) enum Fallibility {
@@ -735,37 +682,11 @@ impl<K, V> RawTable<K, V> {
             });
         }
 
-        // No need for `checked_mul` before a more restrictive check performed
-        // later in this method.
-        let hashes_size = capacity.wrapping_mul(size_of::<HashUint>());
-        let pairs_size = capacity.wrapping_mul(size_of::<(K, V)>());
-
         // Allocating hashmaps is a little tricky. We need to allocate two
         // arrays, but since we know their sizes and alignments up front,
         // we just allocate a single array, and then have the subarrays
         // point into it.
-        //
-        // This is great in theory, but in practice getting the alignment
-        // right is a little subtle. Therefore, calculating offsets has been
-        // factored out into a different function.
-        let (alignment, size, oflo) = calculate_allocation(hashes_size,
-                                                           align_of::<HashUint>(),
-                                                           pairs_size,
-                                                           align_of::<(K, V)>());
-        if oflo {
-            return Err(CollectionAllocErr::CapacityOverflow);
-        }
-
-        // One check for overflow that covers calculation and rounding of size.
-        let size_of_bucket = size_of::<HashUint>().checked_add(size_of::<(K, V)>())
-            .ok_or(CollectionAllocErr::CapacityOverflow)?;
-        let capacity_mul_size_of_bucket = capacity.checked_mul(size_of_bucket);
-        if capacity_mul_size_of_bucket.is_none() || size < capacity_mul_size_of_bucket.unwrap() {
-            return Err(CollectionAllocErr::CapacityOverflow);
-        }
-
-        let layout = Layout::from_size_align(size, alignment)
-            .map_err(|_| CollectionAllocErr::CapacityOverflow)?;
+        let (layout, _) = calculate_layout::<K, V>(capacity)?;
         let buffer = Global.alloc(layout).map_err(|e| match fallibility {
             Infallible => oom(layout),
             Fallible => e,
@@ -790,18 +711,12 @@ impl<K, V> RawTable<K, V> {
     }
 
     fn raw_bucket_at(&self, index: usize) -> RawBucket<K, V> {
-        let hashes_size = self.capacity() * size_of::<HashUint>();
-        let pairs_size = self.capacity() * size_of::<(K, V)>();
-
-        let (pairs_offset, _, oflo) =
-            calculate_offsets(hashes_size, pairs_size, align_of::<(K, V)>());
-        debug_assert!(!oflo, "capacity overflow");
-
+        let (_, pairs_offset) = calculate_layout::<K, V>(self.capacity()).unwrap();
         let buffer = self.hashes.ptr() as *mut u8;
         unsafe {
             RawBucket {
                 hash_start: buffer as *mut HashUint,
-                pair_start: buffer.offset(pairs_offset as isize) as *const (K, V),
+                pair_start: buffer.add(pairs_offset) as *const (K, V),
                 idx: index,
                 _marker: marker::PhantomData,
             }
@@ -1194,18 +1109,9 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for RawTable<K, V> {
             }
         }
 
-        let hashes_size = self.capacity() * size_of::<HashUint>();
-        let pairs_size = self.capacity() * size_of::<(K, V)>();
-        let (align, size, oflo) = calculate_allocation(hashes_size,
-                                                       align_of::<HashUint>(),
-                                                       pairs_size,
-                                                       align_of::<(K, V)>());
-
-        debug_assert!(!oflo, "should be impossible");
-
+        let (layout, _) = calculate_layout::<K, V>(self.capacity()).unwrap();
         unsafe {
-            Global.dealloc(NonNull::new_unchecked(self.hashes.ptr()).as_opaque(),
-                           Layout::from_size_align(size, align).unwrap());
+            Global.dealloc(NonNull::new_unchecked(self.hashes.ptr()).as_opaque(), layout);
             // Remember how everything was allocated out of one buffer
             // during initialization? We only need one call to free here.
         }

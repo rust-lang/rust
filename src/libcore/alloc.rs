@@ -392,6 +392,14 @@ impl From<AllocErr> for CollectionAllocErr {
     }
 }
 
+#[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+impl From<LayoutErr> for CollectionAllocErr {
+    #[inline]
+    fn from(_: LayoutErr) -> Self {
+        CollectionAllocErr::CapacityOverflow
+    }
+}
+
 /// A memory allocator that can be registered to be the one backing `std::alloc::Global`
 /// though the `#[global_allocator]` attributes.
 pub unsafe trait GlobalAlloc {
