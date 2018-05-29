@@ -1,11 +1,11 @@
-error[E0119]: conflicting implementations of trait `std::ops::Deref` for type `&_`:
+error[E0119]: conflicting implementations of trait `std::ops::Deref` for type `std::cell::Ref<'_, _>`:
   --> $DIR/issue-28981.rs:15:1
    |
 LL | impl<Foo> Deref for Foo { } //~ ERROR must be used
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:
-           - impl<'a, T> std::ops::Deref for &'a T
+           - impl<'b, T> std::ops::Deref for std::cell::Ref<'b, T>
              where T: ?Sized;
 
 error[E0210]: type parameter `Foo` must be used as the type parameter for some local type (e.g. `MyStruct<Foo>`)
