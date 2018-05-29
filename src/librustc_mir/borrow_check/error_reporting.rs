@@ -398,7 +398,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let borrow_span = self.mir.source_info(borrow.reserve_location).span;
         let proper_span = match *root_place {
-            Place::Local(local) => self.mir.local_decls[local].syntactic_source_info.span,
+            Place::Local(local) => self.mir.local_decls[local].source_info.span,
             _ => drop_span,
         };
 

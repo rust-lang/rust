@@ -1201,7 +1201,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             LocalKind::Var | LocalKind::Temp => {}
         }
 
-        let span = local_decl.syntactic_source_info.span;
+        let span = local_decl.source_info.span;
         let ty = local_decl.ty;
 
         // Erase the regions from `ty` to get a global type.  The

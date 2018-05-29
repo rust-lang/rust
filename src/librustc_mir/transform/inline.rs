@@ -398,9 +398,9 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 for loc in callee_mir.vars_and_temps_iter() {
                     let mut local = callee_mir.local_decls[loc].clone();
 
-                    local.syntactic_source_info.scope =
-                        scope_map[local.syntactic_source_info.scope];
-                    local.syntactic_source_info.span = callsite.location.span;
+                    local.source_info.scope =
+                        scope_map[local.source_info.scope];
+                    local.source_info.span = callsite.location.span;
                     local.visibility_scope = scope_map[local.visibility_scope];
 
                     let idx = caller_mir.local_decls.push(local);

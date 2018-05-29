@@ -246,7 +246,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         mutability: Mutability::Mut,
                         ty: ptr_ty,
                         name: None,
-                        syntactic_source_info: source_info,
+                        source_info,
                         visibility_scope: source_info.scope,
                         internal: true,
                         is_user_variable: false

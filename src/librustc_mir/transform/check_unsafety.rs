@@ -166,7 +166,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         // Internal locals are used in the `move_val_init` desugaring.
                         // We want to check unsafety against the source info of the
                         // desugaring, rather than the source info of the RHS.
-                        self.source_info = self.mir.local_decls[local].syntactic_source_info;
+                        self.source_info = self.mir.local_decls[local].source_info;
                     }
                 }
                 let base_ty = base.ty(self.mir, self.tcx).to_ty(self.tcx);

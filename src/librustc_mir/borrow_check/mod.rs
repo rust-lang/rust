@@ -306,12 +306,12 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
                 None => continue,
             }
 
-            let span = local_decl.syntactic_source_info.span;
+            let span = local_decl.source_info.span;
             let mut_span = tcx.sess.codemap().span_until_non_whitespace(span);
 
             tcx.struct_span_lint_node(
                 UNUSED_MUT,
-                vsi[local_decl.syntactic_source_info.scope].lint_root,
+                vsi[local_decl.source_info.scope].lint_root,
                 span,
                 "variable does not need to be mutable"
             )

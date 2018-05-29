@@ -277,7 +277,7 @@ pub fn codegen_mir<'a, 'tcx: 'a>(
                 let place = PlaceRef::alloca(&bx, layout, &name.as_str());
                 if dbg {
                     let (scope, span) = fx.debug_loc(mir::SourceInfo {
-                        span: decl.syntactic_source_info.span,
+                        span: decl.source_info.span,
                         scope: decl.visibility_scope,
                     });
                     declare_local(&bx, &fx.debug_context, name, layout.ty, scope,

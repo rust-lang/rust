@@ -306,7 +306,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             -> Option<SourceScope> {
         assert!(!(visibility_scope.is_some() && lint_level.is_explicit()),
                 "can't have both a visibility and a lint scope at the same time");
-        let mut syntactic_scope = self.source_scope;
+        let mut scope = self.source_scope;
         self.visit_bindings(pattern, &mut |this, mutability, name, var, span, ty| {
             if visibility_scope.is_none() {
                 visibility_scope = Some(this.new_source_scope(scope_span,
@@ -314,18 +314,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                                            None));
                 // If we have lints, create a new source scope
                 // that marks the lints for the locals. See the comment
-                // on the `syntactic_source_info` field for why this is needed.
+                // on the `source_info` field for why this is needed.
                 if lint_level.is_explicit() {
-                    syntactic_scope =
+                    scope =
                         this.new_source_scope(scope_span, lint_level, None);
                 }
             }
-            let syntactic_source_info = SourceInfo {
+            let source_info = SourceInfo {
                 span,
-                scope: syntactic_scope,
+                scope,
             };
             let visibility_scope = visibility_scope.unwrap();
-            this.declare_binding(syntactic_source_info, visibility_scope, mutability, name, var,
+            this.declare_binding(source_info, visibility_scope, mutability, name, var,
                                  ty, has_guard);
         });
         visibility_scope
@@ -1114,7 +1114,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// `&T`. The second local is a binding for occurrences of `var`
     /// in the arm body, which will have type `T`.
     fn declare_binding(&mut self,
-                       syntactic_source_info: SourceInfo,
+                       source_info: SourceInfo,
                        visibility_scope: SourceScope,
                        mutability: Mutability,
                        name: Name,
@@ -1123,15 +1123,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                        has_guard: ArmHasGuard)
     {
         debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, visibility_scope={:?}, \
-                syntactic_source_info={:?})",
-               var_id, name, var_ty, visibility_scope, syntactic_source_info);
+                source_info={:?})",
+               var_id, name, var_ty, visibility_scope, source_info);
 
         let tcx = self.hir.tcx();
         let local = LocalDecl::<'tcx> {
             mutability,
             ty: var_ty.clone(),
             name: Some(name),
-            syntactic_source_info,
+            source_info,
             visibility_scope,
             internal: false,
             is_user_variable: true,
@@ -1143,7 +1143,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 mutability,
                 ty: tcx.mk_imm_ref(tcx.types.re_empty, var_ty),
                 name: Some(name),
-                syntactic_source_info,
+                source_info,
                 visibility_scope,
                 internal: false,
                 is_user_variable: true,

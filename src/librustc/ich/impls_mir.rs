@@ -25,7 +25,7 @@ impl_stable_hash_for!(struct mir::LocalDecl<'tcx> {
     mutability,
     ty,
     name,
-    syntactic_source_info,
+    source_info,
     visibility_scope,
     internal,
     is_user_variable

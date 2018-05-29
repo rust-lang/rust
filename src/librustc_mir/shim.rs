@@ -141,7 +141,7 @@ fn temp_decl(mutability: Mutability, ty: Ty, span: Span) -> LocalDecl {
     let source_info = SourceInfo { scope: OUTERMOST_SOURCE_SCOPE, span };
     LocalDecl {
         mutability, ty, name: None,
-        syntactic_source_info: source_info,
+        source_info,
         visibility_scope: source_info.scope,
         internal: false,
         is_user_variable: false

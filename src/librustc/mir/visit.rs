@@ -714,7 +714,7 @@ macro_rules! make_mir_visitor {
                     mutability: _,
                     ref $($mutability)* ty,
                     name: _,
-                    ref $($mutability)* syntactic_source_info,
+                    ref $($mutability)* source_info,
                     ref $($mutability)* visibility_scope,
                     internal: _,
                     is_user_variable: _,
@@ -722,9 +722,9 @@ macro_rules! make_mir_visitor {
 
                 self.visit_ty(ty, TyContext::LocalDecl {
                     local,
-                    source_info: *syntactic_source_info,
+                    source_info: *source_info,
                 });
-                self.visit_source_info(syntactic_source_info);
+                self.visit_source_info(source_info);
                 self.visit_source_scope(visibility_scope);
             }
 
