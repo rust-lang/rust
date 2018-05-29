@@ -780,6 +780,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+    use cmp;
     use fs::{File, set_permissions};
     use sync::atomic::{AtomicBool, Ordering};
 
@@ -822,13 +823,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let mut written = 0u64;
     while written < len {
         let copy_result = if has_copy_file_range {
-            // FIXME: should ideally use TryFrom
-            let bytes_to_copy = if len - written > usize::max_value() as u64 {
-                usize::max_value()
-            } else {
-                (len - written) as usize
-            };
-
+            let bytes_to_copy = cmp::min(len - written, usize::max_value() as u64) as usize;
             let copy_result = unsafe {
                 // We actually don't have to adjust the offsets,
                 // because copy_file_range adjusts the file offset automatically
@@ -856,6 +851,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
                     Some(os_err) if os_err == libc::ENOSYS || os_err == libc::EXDEV => {
                         // Either kernel is too old or the files are not mounted on the same fs.
                         // Try again with fallback method
+                        assert_eq!(written, 0);
                         let ret = io::copy(&mut reader, &mut writer)?;
                         set_permissions(to, perm)?;
                         return Ok(ret)
