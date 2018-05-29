@@ -907,7 +907,15 @@ This does not pose a problem by itself because they can't be accessed directly."
                     Abi::PlatformIntrinsic => {
                         assert!(!self.tcx.is_const_fn(def_id));
                         match &self.tcx.item_name(def_id).as_str()[..] {
-                            "size_of" | "min_align_of" | "type_id" => is_const_fn = Some(def_id),
+                            | "size_of"
+                            | "min_align_of"
+                            | "type_id"
+                            | "bswap"
+                            | "ctpop"
+                            | "cttz"
+                            | "cttz_nonzero"
+                            | "ctlz"
+                            | "ctlz_nonzero" => is_const_fn = Some(def_id),
 
                             name if name.starts_with("simd_shuffle") => {
                                 is_shuffle = true;
