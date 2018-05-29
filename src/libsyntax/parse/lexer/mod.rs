@@ -1452,6 +1452,13 @@ impl<'a> StringReader<'a> {
                 self.bump();
                 let mut hash_count: u16 = 0;
                 while self.ch_is('#') {
+                    if hash_count == 65535 {
+                        let bpos = self.next_pos;
+                        self.fatal_span_(start_bpos,
+                                         bpos,
+                                         "too many `#` symbols: raw strings may be \
+                                         delimited by up to 65535 `#` symbols").raise();
+                    }
                     self.bump();
                     hash_count += 1;
                 }
@@ -1682,6 +1689,13 @@ impl<'a> StringReader<'a> {
         self.bump();
         let mut hash_count = 0;
         while self.ch_is('#') {
+            if hash_count == 65535 {
+                let bpos = self.next_pos;
+                self.fatal_span_(start_bpos,
+                                 bpos,
+                                 "too many `#` symbols: raw byte strings may be \
+                                 delimited by up to 65535 `#` symbols").raise();
+            }
             self.bump();
             hash_count += 1;
         }
