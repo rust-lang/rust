@@ -679,6 +679,23 @@ declare_clippy_lint! {
     "cast to the same type, e.g. `x as i32` where `x: i32`"
 }
 
+/// **What it does:** Checks for casts function pointer to the numeric type.
+///
+/// **Why is this bad?** Cast pointer not to usize truncate value.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// fn test_fn() -> i16;
+/// let _ = test_fn as i32
+/// ```
+declare_clippy_lint! {
+    pub FN_TO_NUMERIC_CAST,
+    correctness,
+    "cast function pointer to the numeric type"
+}
+
 /// **What it does:** Checks for casts from a less-strictly-aligned pointer to a
 /// more-strictly-aligned pointer
 ///
@@ -891,7 +908,8 @@ impl LintPass for CastPass {
             CAST_POSSIBLE_WRAP,
             CAST_LOSSLESS,
             UNNECESSARY_CAST,
-            CAST_PTR_ALIGNMENT
+            CAST_PTR_ALIGNMENT,
+            FN_TO_NUMERIC_CAST
         )
     }
 }
@@ -980,11 +998,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                 ty::TyFnDef(..) |
                 ty::TyFnPtr(..) => {
                     if cast_to.is_numeric() && cast_to.sty != ty::TyUint(UintTy::Usize){
-                        span_lint(
+                        span_lint_and_sugg(
                             cx,
-                            UNNECESSARY_CAST,
+                            FN_TO_NUMERIC_CAST,
                             expr.span,
-                            "casting Fn not to usize may truncate the value",
+                            &format!("casting a Fn to {} may truncate the function address value.", cast_to),
+                            "if you need address of function, use cast to `usize` instead:",
+                            format!("{} as usize", &snippet(cx, ex.span, "x"))
                         );
                     }
                 }

@@ -1,10 +1,14 @@
-error: casting Fn not to usize may truncate the value
+error: casting a Fn to i32 may truncate the function address value.
  --> $DIR/types_fn_to_int.rs:8:13
   |
 8 |     let y = x as i32;
   |             ^^^^^^^^
   |
-  = note: `-D unnecessary-cast` implied by `-D warnings`
+  = note: #[deny(fn_to_numeric_cast)] on by default
+help: if you need address of function, use cast to `usize` instead:
+  |
+8 |     let y = x as usize;
+  |             ^^^^^^^^^^
 
 error: aborting due to previous error
 
