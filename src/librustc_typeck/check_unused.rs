@@ -120,62 +120,68 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
         .cloned()
         .collect();
 
-    // Issue lints for fully unused crates that suggest removing them.
-    for (&def_id, &span) in &unused_extern_crates {
-        assert_eq!(def_id.krate, LOCAL_CRATE);
-        let hir_id = tcx.hir.definitions().def_index_to_hir_id(def_id.index);
-        let id = tcx.hir.hir_to_node_id(hir_id);
-        let msg = "unused extern crate";
-        tcx.struct_span_lint_node(lint, id, span, msg)
-            .span_suggestion_short(span, "remove it", "".to_string())
-            .emit();
-    }
-
-    // If we are not in Rust 2018 edition, we are done.
-    if !tcx.sess.rust_2018() {
-        return;
-    }
-
-    // Otherwise, we can *also* suggest rewriting `extern crate`
-    // into `use` etc.
-    let mut crates_to_convert_to_use = vec![];
+    // Collect all the extern crates (in a reliable order).
+    let mut crates_to_lint = vec![];
     tcx.hir.krate().visit_all_item_likes(&mut CollectExternCrateVisitor {
         tcx,
-        unused_extern_crates: &unused_extern_crates,
-        crates_to_convert_to_use: &mut crates_to_convert_to_use,
+        crates_to_lint: &mut crates_to_lint,
     });
 
-    for to_convert in &crates_to_convert_to_use {
-        assert_eq!(to_convert.def_id.krate, LOCAL_CRATE);
-        let hir_id = tcx.hir.definitions().def_index_to_hir_id(to_convert.def_id.index);
+    for extern_crate in &crates_to_lint {
+        assert!(extern_crate.def_id.is_local());
+
+        // If the crate is fully unused, we suggest removing it altogether.
+        // We do this in any edition.
+        if let Some(&span) = unused_extern_crates.get(&extern_crate.def_id) {
+            assert_eq!(extern_crate.def_id.krate, LOCAL_CRATE);
+            let hir_id = tcx.hir.definitions().def_index_to_hir_id(extern_crate.def_id.index);
+            let id = tcx.hir.hir_to_node_id(hir_id);
+            let msg = "unused extern crate";
+            tcx.struct_span_lint_node(lint, id, span, msg)
+                .span_suggestion_short(span, "remove it", "".to_string())
+                .emit();
+            continue;
+        }
+
+        // If we are not in Rust 2018 edition, then we don't make any further
+        // suggestions.
+        if !tcx.sess.rust_2018() {
+            continue;
+        }
+
+        // If the extern crate has any attributes, they may have funky
+        // semantics we can't faithfully represent using `use` (most
+        // notably `#[macro_use]`). Ignore it.
+        if !tcx.get_attrs(extern_crate.def_id).is_empty() {
+            continue;
+        }
+
+        // Otherwise, we can convert it into a `use` of some kind.
+        let hir_id = tcx.hir.definitions().def_index_to_hir_id(extern_crate.def_id.index);
         let id = tcx.hir.hir_to_node_id(hir_id);
         let item = tcx.hir.expect_item(id);
         let msg = "`extern crate` is not idiomatic in the new edition";
-
         let help = format!(
             "convert it to a `{}`",
             visibility_qualified(&item.vis, "use")
         );
-
-        let base_replacement = match to_convert.orig_name {
+        let base_replacement = match extern_crate.orig_name {
             Some(orig_name) => format!("use {} as {};", orig_name, item.name),
             None => format!("use {};", item.name),
         };
         let replacement = visibility_qualified(&item.vis, &base_replacement);
-
-        tcx.struct_span_lint_node(lint, id, to_convert.span, msg)
-            .span_suggestion_short(to_convert.span, &help, replacement)
+        tcx.struct_span_lint_node(lint, id, extern_crate.span, msg)
+            .span_suggestion_short(extern_crate.span, &help, replacement)
             .emit();
     }
 }
 
 struct CollectExternCrateVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    unused_extern_crates: &'a FxHashMap<DefId, Span>,
-    crates_to_convert_to_use: &'a mut Vec<ExternCrateToConvertToUse>,
+    crates_to_lint: &'a mut Vec<ExternCrateToLint>,
 }
 
-struct ExternCrateToConvertToUse {
+struct ExternCrateToLint {
     /// def-id of the extern crate
     def_id: DefId,
 
@@ -192,22 +198,8 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CollectExternCrateVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if let hir::ItemExternCrate(orig_name) = item.node {
             let extern_crate_def_id = self.tcx.hir.local_def_id(item.id);
-
-            // If the crate is fully unused, we are going to suggest
-            // removing it anyway, so ignore it.
-            if self.unused_extern_crates.contains_key(&extern_crate_def_id) {
-                return;
-            }
-
-            // If the extern crate has any attributes, they may have funky
-            // semantics we can't entirely understand. Ignore it.
-            if !self.tcx.get_attrs(extern_crate_def_id).is_empty() {
-                return;
-            }
-
-            // Otherwise, we can convert it into a `use` of some kind.
-            self.crates_to_convert_to_use.push(
-                ExternCrateToConvertToUse {
+            self.crates_to_lint.push(
+                ExternCrateToLint {
                     def_id: extern_crate_def_id,
                     span: item.span,
                     orig_name,

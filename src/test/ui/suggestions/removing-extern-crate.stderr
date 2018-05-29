@@ -1,8 +1,8 @@
 warning: unused extern crate
-  --> $DIR/removing-extern-crate.rs:24:5
+  --> $DIR/removing-extern-crate.rs:19:1
    |
-LL |     extern crate std;
-   |     ^^^^^^^^^^^^^^^^^ help: remove it
+LL | extern crate std as foo;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
    |
 note: lint level defined here
   --> $DIR/removing-extern-crate.rs:16:9
@@ -24,8 +24,8 @@ LL |     extern crate std as foo;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
 
 warning: unused extern crate
-  --> $DIR/removing-extern-crate.rs:19:1
+  --> $DIR/removing-extern-crate.rs:24:5
    |
-LL | extern crate std as foo;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
+LL |     extern crate std;
+   |     ^^^^^^^^^^^^^^^^^ help: remove it
 
