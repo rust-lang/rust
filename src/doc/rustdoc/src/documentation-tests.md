@@ -305,6 +305,6 @@ These, too, are documented in the CommonMark specification, in the
 section.
 
 However, it's preferable to use fenced code blocks over indented code blocks.
-Not only are fenced code blocks the more popular choice in the Rust community,
+Not only are fenced code blocks considered more idiomatic for Rust code,
 but there is no way to use directives such as `ignore` or `should_panic` with
 indented code blocks.
