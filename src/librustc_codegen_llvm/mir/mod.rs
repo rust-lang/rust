@@ -265,7 +265,7 @@ pub fn codegen_mir<'a, 'tcx: 'a>(
 
             if let Some(name) = decl.name {
                 // User variable
-                let debug_scope = fx.scopes[decl.source_info.scope];
+                let debug_scope = fx.scopes[decl.visibility_source_info.scope];
                 let dbg = debug_scope.is_valid() && bx.sess().opts.debuginfo == FullDebugInfo;
 
                 if !memory_locals.contains(local.index()) && !dbg {
@@ -276,7 +276,7 @@ pub fn codegen_mir<'a, 'tcx: 'a>(
                 debug!("alloc: {:?} ({}) -> place", local, name);
                 let place = PlaceRef::alloca(&bx, layout, &name.as_str());
                 if dbg {
-                    let (scope, span) = fx.debug_loc(decl.source_info);
+                    let (scope, span) = fx.debug_loc(decl.visibility_source_info);
                     declare_local(&bx, &fx.debug_context, name, layout.ty, scope,
                         VariableAccess::DirectVariable { alloca: place.llval },
                         VariableKind::LocalVariable, span);

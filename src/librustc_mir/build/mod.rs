@@ -664,8 +664,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.local_decls.push(LocalDecl {
                 mutability: Mutability::Mut,
                 ty,
-                source_info,
                 syntactic_source_info: source_info,
+                visibility_source_info: source_info,
                 name,
                 internal: false,
                 is_user_variable: false,

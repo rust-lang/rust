@@ -505,10 +505,6 @@ pub struct LocalDecl<'tcx> {
     /// to generate better debuginfo.
     pub name: Option<Name>,
 
-    /// Source info of the local. The `SourceScope` is the *visibility* one,
-    /// not the the *syntactic* one (see `syntactic_source_info` for more details).
-    pub source_info: SourceInfo,
-
     /// The *syntactic* (i.e. not visibility) source scope the local is defined
     /// in. If the local was defined in a let-statement, this
     /// is *within* the let-statement, rather than outside
@@ -562,7 +558,7 @@ pub struct LocalDecl<'tcx> {
     /// To allow both uses to work, we need to have more than a single scope
     /// for a local. We have the `syntactic_source_info.scope` represent the
     /// "syntactic" lint scope (with a variable being under its let
-    /// block) while the `source_info.scope` represents the "local variable"
+    /// block) while the `visibility_source_info.scope` represents the "local variable"
     /// scope (where the "rest" of a block is under all prior let-statements).
     ///
     /// The end result looks like this:
@@ -581,14 +577,18 @@ pub struct LocalDecl<'tcx> {
     ///  │ │
     ///  │ │ │{ let y: u32 }
     ///  │ │ │
-    ///  │ │ │← y.source_info.scope
+    ///  │ │ │← y.visibility_source_info.scope
     ///  │ │ │← `y + 2`
     ///  │
     ///  │ │{ let x: u32 }
-    ///  │ │← x.source_info.scope
+    ///  │ │← x.visibility_source_info.scope
     ///  │ │← `drop(x)` // this accesses `x: u32`
     /// ```
     pub syntactic_source_info: SourceInfo,
+
+    /// Source info of the local. The `SourceScope` is the *visibility* one,
+    /// not the the *syntactic* one (see `syntactic_source_info` for more details).
+    pub visibility_source_info: SourceInfo,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
@@ -599,11 +599,11 @@ impl<'tcx> LocalDecl<'tcx> {
             mutability: Mutability::Mut,
             ty,
             name: None,
-            source_info: SourceInfo {
+            syntactic_source_info: SourceInfo {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE
             },
-            syntactic_source_info: SourceInfo {
+            visibility_source_info: SourceInfo {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE
             },
@@ -619,11 +619,11 @@ impl<'tcx> LocalDecl<'tcx> {
             mutability: Mutability::Mut,
             ty,
             name: None,
-            source_info: SourceInfo {
+            syntactic_source_info: SourceInfo {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE
             },
-            syntactic_source_info: SourceInfo {
+            visibility_source_info: SourceInfo {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE
             },
@@ -640,11 +640,11 @@ impl<'tcx> LocalDecl<'tcx> {
         LocalDecl {
             mutability: Mutability::Mut,
             ty: return_ty,
-            source_info: SourceInfo {
+            syntactic_source_info: SourceInfo {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE
             },
-            syntactic_source_info: SourceInfo {
+            visibility_source_info: SourceInfo {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE
             },
@@ -2200,8 +2200,8 @@ BraceStructTypeFoldableImpl! {
         internal,
         ty,
         name,
-        source_info,
         syntactic_source_info,
+        visibility_source_info,
     }
 }
 

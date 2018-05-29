@@ -294,22 +294,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         block.unit()
     }
 
-    /// Declares the bindings of the given pattern and returns the source scope
+    /// Declares the bindings of the given pattern and returns the visibility scope
     /// for the bindings in this patterns, if such a scope had to be created.
     /// NOTE: Declaring the bindings should always be done in their drop scope.
     pub fn declare_bindings(&mut self,
-                            mut var_scope: Option<SourceScope>,
+                            mut visibility_scope: Option<SourceScope>,
                             scope_span: Span,
                             lint_level: LintLevel,
                             pattern: &Pattern<'tcx>,
                             has_guard: ArmHasGuard)
                             -> Option<SourceScope> {
-        assert!(!(var_scope.is_some() && lint_level.is_explicit()),
-                "can't have both a var and a lint scope at the same time");
+        assert!(!(visibility_scope.is_some() && lint_level.is_explicit()),
+                "can't have both a visibility and a lint scope at the same time");
         let mut syntactic_scope = self.source_scope;
         self.visit_bindings(pattern, &mut |this, mutability, name, var, span, ty| {
-            if var_scope.is_none() {
-                var_scope = Some(this.new_source_scope(scope_span,
+            if visibility_scope.is_none() {
+                visibility_scope = Some(this.new_source_scope(scope_span,
                                                            LintLevel::Inherited,
                                                            None));
                 // If we have lints, create a new source scope
@@ -320,18 +320,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         this.new_source_scope(scope_span, lint_level, None);
                 }
             }
-            let source_info = SourceInfo {
-                span,
-                scope: var_scope.unwrap()
-            };
             let syntactic_source_info = SourceInfo {
                 span,
                 scope: syntactic_scope,
             };
-            this.declare_binding(source_info, syntactic_source_info, mutability, name, var,
+            let visibility_source_info = SourceInfo {
+                span,
+                scope: visibility_scope.unwrap()
+            };
+            this.declare_binding(syntactic_source_info, visibility_source_info, mutability, name, var,
                                  ty, has_guard);
         });
-        var_scope
+        visibility_scope
     }
 
     pub fn storage_live_binding(&mut self,
@@ -1117,25 +1117,25 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// `&T`. The second local is a binding for occurrences of `var`
     /// in the arm body, which will have type `T`.
     fn declare_binding(&mut self,
-                       source_info: SourceInfo,
                        syntactic_source_info: SourceInfo,
+                       visibility_source_info: SourceInfo,
                        mutability: Mutability,
                        name: Name,
                        var_id: NodeId,
                        var_ty: Ty<'tcx>,
                        has_guard: ArmHasGuard)
     {
-        debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, source_info={:?}, \
+        debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, visibility_source_info={:?}, \
                 syntactic_source_info={:?})",
-               var_id, name, var_ty, source_info, syntactic_source_info);
+               var_id, name, var_ty, visibility_source_info, syntactic_source_info);
 
         let tcx = self.hir.tcx();
         let local = LocalDecl::<'tcx> {
             mutability,
             ty: var_ty.clone(),
             name: Some(name),
-            source_info,
             syntactic_source_info,
+            visibility_source_info,
             internal: false,
             is_user_variable: true,
         };
@@ -1146,8 +1146,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 mutability,
                 ty: tcx.mk_imm_ref(tcx.types.re_empty, var_ty),
                 name: Some(name),
-                source_info,
                 syntactic_source_info,
+                visibility_source_info,
                 internal: false,
                 is_user_variable: true,
             });

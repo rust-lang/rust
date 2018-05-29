@@ -306,7 +306,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
                 None => continue,
             }
 
-            let source_info = local_decl.source_info;
+            let source_info = local_decl.visibility_source_info;
             let mut_span = tcx.sess.codemap().span_until_non_whitespace(source_info.span);
 
             tcx.struct_span_lint_node(
