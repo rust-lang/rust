@@ -38,7 +38,7 @@ use std::{iter, mem, option, u32};
 use syntax::ast::{self, Name};
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
-use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use ty::fold::{TypeFoldable, TypeFolder, TypeHasher, TypeVisitor};
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt};
 use util::ppaux;
@@ -2681,6 +2681,10 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             | FalseUnwind { .. } => false,
         }
     }
+
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
+        unimplemented!()
+    }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
@@ -2697,6 +2701,10 @@ impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
         } else {
             false
         }
+    }
+
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
+        unimplemented!()
     }
 }
 
@@ -2764,6 +2772,10 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
             }
         }
     }
+
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
+        unimplemented!()
+    }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Operand<'tcx> {
@@ -2780,6 +2792,10 @@ impl<'tcx> TypeFoldable<'tcx> for Operand<'tcx> {
             Operand::Copy(ref place) | Operand::Move(ref place) => place.visit_with(visitor),
             Operand::Constant(ref c) => c.visit_with(visitor),
         }
+    }
+
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
+        unimplemented!()
     }
 }
 
@@ -2812,6 +2828,10 @@ where
             _ => false,
         }
     }
+
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
+        unimplemented!()
+    }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Field {
@@ -2820,6 +2840,10 @@ impl<'tcx> TypeFoldable<'tcx> for Field {
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
         false
+    }
+
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
+        unimplemented!()
     }
 }
 
@@ -2833,6 +2857,10 @@ impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.ty.visit_with(visitor) || self.literal.visit_with(visitor)
+    }
+
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
+        unimplemented!()
     }
 }
 
@@ -2850,5 +2878,9 @@ impl<'tcx> TypeFoldable<'tcx> for Literal<'tcx> {
             Literal::Value { value } => value.visit_with(visitor),
             Literal::Promoted { .. } => false,
         }
+    }
+
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
+        unimplemented!()
     }
 }

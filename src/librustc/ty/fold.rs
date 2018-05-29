@@ -63,12 +63,9 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.super_visit_with(visitor)
     }
 
-    /// True if `self` has any late-bound regions that are either
-    /// bound by `binder` or bound by some binder outside of `binder`.
-    /// If `binder` is `ty::INNERMOST`, this indicates whether
-    /// there are any late-bound regions that appear free.
-    fn has_regions_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
-        self.visit_with(&mut HasEscapingRegionsVisitor { outer_index: binder })
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64;
+    fn hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        self.super_hash_with(hasher)
     }
 
     /// True if this `self` has any regions that escape `binder` (and
@@ -194,6 +191,24 @@ pub trait TypeVisitor<'tcx> : Sized {
 
     fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
         c.super_visit_with(self)
+    }
+}
+
+pub trait TypeHasher<'tcx> : Sized {
+    fn hash_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> u64 {
+        t.super_hash_with(self)
+    }
+
+    fn hash_ty(&mut self, t: Ty<'tcx>) -> u64 {
+        t.super_hash_with(self)
+    }
+
+    fn hash_region(&mut self, r: ty::Region<'tcx>) -> u64 {
+        r.super_hash_with(self)
+    }
+
+    fn hash_const(&mut self, c: &'tcx ty::Const<'tcx>) -> u64 {
+        c.super_hash_with(self)
     }
 }
 

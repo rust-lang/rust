@@ -205,6 +205,14 @@ macro_rules! CloneTypeFoldableImpls {
                 {
                     false
                 }
+
+                fn super_hash_with<F: $crate::ty::fold::TypeHasher<$tcx>>(
+                    &self,
+                    _: &mut F)
+                    -> u64
+                {
+                    unimplemented!()
+                }
             }
         )+
     };
@@ -320,6 +328,14 @@ macro_rules! BraceStructTypeFoldableImpl {
                 let $s { $($field,)* } = self;
                 false $(|| $crate::ty::fold::TypeFoldable::visit_with($field, visitor))*
             }
+
+            fn super_hash_with<F: $crate::ty::fold::TypeHasher<$tcx>>(
+                &self,
+                _: &mut F)
+                -> u64
+            {
+                unimplemented!()
+            }
         }
     };
 }
@@ -347,6 +363,14 @@ macro_rules! TupleStructTypeFoldableImpl {
                 let $s($($field,)*) = self;
                 false $(|| $crate::ty::fold::TypeFoldable::visit_with($field, visitor))*
             }
+
+            fn super_hash_with<F: $crate::ty::fold::TypeHasher<$tcx>>(
+                &self,
+                _: &mut F)
+                -> u64
+            {
+                unimplemented!()
+            }
         }
     };
 }
@@ -371,6 +395,14 @@ macro_rules! EnumTypeFoldableImpl {
                 visitor: &mut V,
             ) -> bool {
                 EnumTypeFoldableImpl!(@VisitVariants(self, visitor) input($($variants)*) output())
+            }
+
+            fn super_hash_with<F: $crate::ty::fold::TypeHasher<$tcx>>(
+                &self,
+                _: &mut F)
+                -> u64
+            {
+                unimplemented!()
             }
         }
     };

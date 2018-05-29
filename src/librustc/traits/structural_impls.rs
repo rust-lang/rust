@@ -12,7 +12,7 @@ use chalk_engine;
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use traits;
 use traits::project::Normalized;
-use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use ty::fold::{TypeFoldable, TypeFolder, TypeHasher, TypeVisitor};
 use ty::{self, Lift, TyCtxt};
 
 use std::fmt;
@@ -342,6 +342,10 @@ impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.predicate.visit_with(visitor)
     }
+
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        self.predicate.hash_with(hasher)
+    }
 }
 
 BraceStructTypeFoldableImpl! {
@@ -630,6 +634,10 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Slice<traits::Goal<'tcx>> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.iter().any(|t| t.visit_with(visitor))
     }
+
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
+        unimplemented!()
+    }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx traits::Goal<'tcx> {
@@ -640,6 +648,10 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx traits::Goal<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         (**self).visit_with(visitor)
+    }
+
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
+        unimplemented!()
     }
 }
 
@@ -668,6 +680,10 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Slice<traits::Clause<'tcx>> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.iter().any(|t| t.visit_with(visitor))
     }
+
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
+        unimplemented!()
+    }
 }
 
 impl<'tcx, C> TypeFoldable<'tcx> for chalk_engine::ExClause<C>
@@ -688,6 +704,10 @@ where
             self,
             visitor,
         )
+    }
+
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
+        unimplemented!()
     }
 }
 

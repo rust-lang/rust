@@ -12,7 +12,7 @@
 
 use hir::def_id::DefId;
 use ty::{self, Lift, Slice, Ty, TyCtxt};
-use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use ty::fold::{TypeFoldable, TypeFolder, TypeHasher, TypeVisitor};
 
 use serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};
@@ -160,6 +160,13 @@ impl<'tcx> TypeFoldable<'tcx> for Kind<'tcx> {
         match self.unpack() {
             UnpackedKind::Lifetime(lt) => lt.visit_with(visitor),
             UnpackedKind::Type(ty) => ty.visit_with(visitor),
+        }
+    }
+
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
+        match self.unpack() {
+            UnpackedKind::Lifetime(lt) => lt.hash_with(hasher),
+            UnpackedKind::Type(ty) => ty.hash_with(hasher),
         }
     }
 }
@@ -337,6 +344,10 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.iter().any(|t| t.visit_with(visitor))
+    }
+
+    fn super_hash_with<H: TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
+        unimplemented!()
     }
 }
 

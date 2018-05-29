@@ -92,6 +92,10 @@ impl<'tcx> ty::TypeFoldable<'tcx> for Value {
     fn super_visit_with<V: ty::fold::TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
         false
     }
+
+    fn super_hash_with<H: ty::fold::TypeHasher<'tcx>>(&self, _hasher: &mut H) -> u64 {
+        unimplemented!()
+    }
 }
 
 impl<'tcx> Scalar {
