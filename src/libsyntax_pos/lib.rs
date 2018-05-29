@@ -657,7 +657,7 @@ pub struct MultiByteChar {
     /// The absolute offset of the character in the CodeMap
     pub pos: BytePos,
     /// The number of bytes, >=2
-    pub bytes: usize,
+    pub bytes: u32,
 }
 
 /// Identifies an offset of a non-narrow character in a FileMap
@@ -1174,6 +1174,8 @@ fn remove_bom(src: &mut String) {
 pub trait Pos {
     fn from_usize(n: usize) -> Self;
     fn to_usize(&self) -> usize;
+    fn from_u32(n: u32) -> Self;
+    fn to_u32(&self) -> u32;
 }
 
 /// A byte offset. Keep this small (currently 32-bits), as AST contains
@@ -1195,7 +1197,13 @@ impl Pos for BytePos {
     fn from_usize(n: usize) -> BytePos { BytePos(n as u32) }
 
     #[inline(always)]
-    fn to_usize(&self) -> usize { let BytePos(n) = *self; n as usize }
+    fn to_usize(&self) -> usize { self.0 as usize }
+
+    #[inline(always)]
+    fn from_u32(n: u32) -> BytePos { BytePos(n) }
+
+    #[inline(always)]
+    fn to_u32(&self) -> u32 { self.0 }
 }
 
 impl Add for BytePos {
@@ -1233,7 +1241,13 @@ impl Pos for CharPos {
     fn from_usize(n: usize) -> CharPos { CharPos(n) }
 
     #[inline(always)]
-    fn to_usize(&self) -> usize { let CharPos(n) = *self; n }
+    fn to_usize(&self) -> usize { self.0 }
+
+    #[inline(always)]
+    fn from_u32(n: u32) -> CharPos { CharPos(n as usize) }
+
+    #[inline(always)]
+    fn to_u32(&self) -> u32 { self.0 as u32}
 }
 
 impl Add for CharPos {

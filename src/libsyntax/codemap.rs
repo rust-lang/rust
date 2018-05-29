@@ -822,14 +822,14 @@ impl CodeMap {
                 total_extra_bytes += mbc.bytes - 1;
                 // We should never see a byte position in the middle of a
                 // character
-                assert!(bpos.to_usize() >= mbc.pos.to_usize() + mbc.bytes);
+                assert!(bpos.to_u32() >= mbc.pos.to_u32() + mbc.bytes);
             } else {
                 break;
             }
         }
 
-        assert!(map.start_pos.to_usize() + total_extra_bytes <= bpos.to_usize());
-        CharPos(bpos.to_usize() - map.start_pos.to_usize() - total_extra_bytes)
+        assert!(map.start_pos.to_u32() + total_extra_bytes <= bpos.to_u32());
+        CharPos(bpos.to_usize() - map.start_pos.to_usize() - total_extra_bytes as usize)
     }
 
     // Return the index of the filemap (in self.files) which contains pos.
