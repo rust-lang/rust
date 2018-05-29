@@ -205,14 +205,6 @@ pub trait Folder : Sized {
         noop_fold_label(label, self)
     }
 
-    fn fold_lifetime(&mut self, l: Lifetime) -> Lifetime {
-        noop_fold_lifetime(l, self)
-    }
-
-    fn fold_lifetime_def(&mut self, l: LifetimeDef) -> LifetimeDef {
-        noop_fold_lifetime_def(l, self)
-    }
-
     fn fold_attribute(&mut self, at: Attribute) -> Option<Attribute> {
         noop_fold_attribute(at, self)
     }
@@ -235,14 +227,6 @@ pub trait Folder : Sized {
 
     fn fold_variant_data(&mut self, vdata: VariantData) -> VariantData {
         noop_fold_variant_data(vdata, self)
-    }
-
-    fn fold_lifetimes(&mut self, lts: Vec<Lifetime>) -> Vec<Lifetime> {
-        noop_fold_lifetimes(lts, self)
-    }
-
-    fn fold_lifetime_defs(&mut self, lts: Vec<LifetimeDef>) -> Vec<LifetimeDef> {
-        noop_fold_lifetime_defs(lts, self)
     }
 
     fn fold_ty_param(&mut self, tp: TyParam) -> TyParam {
@@ -271,10 +255,6 @@ pub trait Folder : Sized {
 
     fn fold_interpolated(&mut self, nt: token::Nonterminal) -> token::Nonterminal {
         noop_fold_interpolated(nt, self)
-    }
-
-    fn fold_opt_lifetime(&mut self, o_lt: Option<Lifetime>) -> Option<Lifetime> {
-        noop_fold_opt_lifetime(o_lt, self)
     }
 
     fn fold_opt_bounds(&mut self, b: Option<TyParamBounds>)
@@ -376,7 +356,7 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             TyKind::Slice(ty) => TyKind::Slice(fld.fold_ty(ty)),
             TyKind::Ptr(mt) => TyKind::Ptr(fld.fold_mt(mt)),
             TyKind::Rptr(region, mt) => {
-                TyKind::Rptr(fld.fold_opt_lifetime(region), fld.fold_mt(mt))
+                TyKind::Rptr(region.map(|lt| noop_fold_lifetime(lt, fld)), fld.fold_mt(mt))
             }
             TyKind::BareFn(f) => {
                 TyKind::BareFn(f.map(|BareFnTy {generic_params, unsafety, abi, decl}| BareFnTy {
@@ -478,7 +458,7 @@ pub fn noop_fold_angle_bracketed_parameter_data<T: Folder>(data: AngleBracketedP
                                                            -> AngleBracketedParameterData
 {
     let AngleBracketedParameterData { lifetimes, types, bindings, span } = data;
-    AngleBracketedParameterData { lifetimes: fld.fold_lifetimes(lifetimes),
+    AngleBracketedParameterData { lifetimes: lifetimes.move_map(|l| noop_fold_lifetime(l, fld)),
                                   types: types.move_map(|ty| fld.fold_ty(ty)),
                                   bindings: bindings.move_map(|b| fld.fold_ty_binding(b)),
                                   span: fld.new_span(span) }
@@ -680,7 +660,7 @@ pub fn noop_fold_ty_param_bound<T>(tpb: TyParamBound, fld: &mut T)
                                    where T: Folder {
     match tpb {
         TraitTyParamBound(ty, modifier) => TraitTyParamBound(fld.fold_poly_trait_ref(ty), modifier),
-        RegionTyParamBound(lifetime) => RegionTyParamBound(fld.fold_lifetime(lifetime)),
+        RegionTyParamBound(lifetime) => RegionTyParamBound(noop_fold_lifetime(lifetime, fld)),
     }
 }
 
@@ -701,7 +681,20 @@ pub fn noop_fold_ty_param<T: Folder>(tp: TyParam, fld: &mut T) -> TyParam {
 
 pub fn noop_fold_generic_param<T: Folder>(param: GenericParam, fld: &mut T) -> GenericParam {
     match param {
-        GenericParam::Lifetime(l) => GenericParam::Lifetime(fld.fold_lifetime_def(l)),
+        GenericParam::Lifetime(l) => {
+            let attrs: Vec<_> = l.attrs.into();
+            GenericParam::Lifetime(LifetimeDef {
+                attrs: attrs.into_iter()
+                    .flat_map(|x| fld.fold_attribute(x).into_iter())
+                    .collect::<Vec<_>>()
+                    .into(),
+                lifetime: Lifetime {
+                    id: fld.new_id(l.lifetime.id),
+                    ident: fld.fold_ident(l.lifetime.ident),
+                },
+                bounds: l.bounds.move_map(|l| noop_fold_lifetime(l, fld)),
+            })
+        }
         GenericParam::Type(t) => GenericParam::Type(fld.fold_ty_param(t)),
     }
 }
@@ -719,38 +712,11 @@ pub fn noop_fold_label<T: Folder>(label: Label, fld: &mut T) -> Label {
     }
 }
 
-pub fn noop_fold_lifetime<T: Folder>(l: Lifetime, fld: &mut T) -> Lifetime {
+fn noop_fold_lifetime<T: Folder>(l: Lifetime, fld: &mut T) -> Lifetime {
     Lifetime {
         id: fld.new_id(l.id),
         ident: fld.fold_ident(l.ident),
     }
-}
-
-pub fn noop_fold_lifetime_def<T: Folder>(l: LifetimeDef, fld: &mut T)
-                                         -> LifetimeDef {
-    let attrs: Vec<_> = l.attrs.into();
-    LifetimeDef {
-        attrs: attrs.into_iter()
-            .flat_map(|x| fld.fold_attribute(x).into_iter())
-            .collect::<Vec<_>>()
-            .into(),
-        lifetime: fld.fold_lifetime(l.lifetime),
-        bounds: fld.fold_lifetimes(l.bounds),
-    }
-}
-
-pub fn noop_fold_lifetimes<T: Folder>(lts: Vec<Lifetime>, fld: &mut T) -> Vec<Lifetime> {
-    lts.move_map(|l| fld.fold_lifetime(l))
-}
-
-pub fn noop_fold_lifetime_defs<T: Folder>(lts: Vec<LifetimeDef>, fld: &mut T)
-                                          -> Vec<LifetimeDef> {
-    lts.move_map(|l| fld.fold_lifetime_def(l))
-}
-
-pub fn noop_fold_opt_lifetime<T: Folder>(o_lt: Option<Lifetime>, fld: &mut T)
-                                         -> Option<Lifetime> {
-    o_lt.map(|lt| fld.fold_lifetime(lt))
 }
 
 pub fn noop_fold_generics<T: Folder>(Generics { params, where_clause, span }: Generics,
@@ -796,8 +762,8 @@ pub fn noop_fold_where_predicate<T: Folder>(
                                                                        span}) => {
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                 span: fld.new_span(span),
-                lifetime: fld.fold_lifetime(lifetime),
-                bounds: bounds.move_map(|bound| fld.fold_lifetime(bound))
+                lifetime: noop_fold_lifetime(lifetime, fld),
+                bounds: bounds.move_map(|bound| noop_fold_lifetime(bound, fld))
             })
         }
         ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{id,
