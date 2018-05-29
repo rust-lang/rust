@@ -150,7 +150,8 @@ source.
 
 * `run-rustfix` for UI tests, indicates that the test produces
   structured suggestions, which are then applied and the final
-  source is compiled again.
+  source is stored in a `.fixed` file and compiled again. The final
+  compilation is required to succeed.
 * `min-{gdb,lldb}-version`
 * `min-llvm-version`
 * `compile-pass` for UI tests, indicates that the test is
