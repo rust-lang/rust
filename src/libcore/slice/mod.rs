@@ -691,41 +691,6 @@ impl<T> [T] {
         Chunks { v: self, chunk_size: chunk_size }
     }
 
-    /// Returns an iterator over `chunk_size` elements of the slice at a
-    /// time. The chunks are slices and do not overlap. If `chunk_size` does
-    /// not divide the length of the slice, then the last up to `chunk_size-1`
-    /// elements will be omitted.
-    ///
-    /// Due to each chunk having exactly `chunk_size` elements, the compiler
-    /// can often optimize the resulting code better than in the case of
-    /// [`chunks`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if `chunk_size` is 0.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(exact_chunks)]
-    ///
-    /// let slice = ['l', 'o', 'r', 'e', 'm'];
-    /// let mut iter = slice.exact_chunks(2);
-    /// assert_eq!(iter.next().unwrap(), &['l', 'o']);
-    /// assert_eq!(iter.next().unwrap(), &['r', 'e']);
-    /// assert!(iter.next().is_none());
-    /// ```
-    ///
-    /// [`chunks`]: #method.chunks
-    #[unstable(feature = "exact_chunks", issue = "47115")]
-    #[inline]
-    pub fn exact_chunks(&self, chunk_size: usize) -> ExactChunks<T> {
-        assert!(chunk_size != 0);
-        let rem = self.len() % chunk_size;
-        let len = self.len() - rem;
-        ExactChunks { v: &self[..len], chunk_size: chunk_size}
-    }
-
     /// Returns an iterator over `chunk_size` elements of the slice at a time.
     /// The chunks are mutable slices, and do not overlap. If `chunk_size` does
     /// not divide the length of the slice, then the last chunk will not
@@ -759,6 +724,41 @@ impl<T> [T] {
     pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<T> {
         assert!(chunk_size != 0);
         ChunksMut { v: self, chunk_size: chunk_size }
+    }
+
+    /// Returns an iterator over `chunk_size` elements of the slice at a
+    /// time. The chunks are slices and do not overlap. If `chunk_size` does
+    /// not divide the length of the slice, then the last up to `chunk_size-1`
+    /// elements will be omitted.
+    ///
+    /// Due to each chunk having exactly `chunk_size` elements, the compiler
+    /// can often optimize the resulting code better than in the case of
+    /// [`chunks`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `chunk_size` is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(exact_chunks)]
+    ///
+    /// let slice = ['l', 'o', 'r', 'e', 'm'];
+    /// let mut iter = slice.exact_chunks(2);
+    /// assert_eq!(iter.next().unwrap(), &['l', 'o']);
+    /// assert_eq!(iter.next().unwrap(), &['r', 'e']);
+    /// assert!(iter.next().is_none());
+    /// ```
+    ///
+    /// [`chunks`]: #method.chunks
+    #[unstable(feature = "exact_chunks", issue = "47115")]
+    #[inline]
+    pub fn exact_chunks(&self, chunk_size: usize) -> ExactChunks<T> {
+        assert!(chunk_size != 0);
+        let rem = self.len() % chunk_size;
+        let len = self.len() - rem;
+        ExactChunks { v: &self[..len], chunk_size: chunk_size}
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time.
