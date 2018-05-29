@@ -273,7 +273,7 @@ If you have changed the compiler's output intentionally, or you are
 making a new test, you can pass `--bless` to the test subcommand. E.g.
 if some tests in `src/test/ui` are failing, you can run
 
-```
+```text
 ./x.py test --stage 1 src/test/ui --bless
 ```
 
