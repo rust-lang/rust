@@ -1049,7 +1049,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
         if arg.pat.simple_ident().is_none() {
-            fcx.require_type_is_sized(arg_ty, decl.output.span(), traits::MiscObligation);
+            fcx.require_type_is_sized(arg_ty, decl.output.span(), traits::SizedArgumentType);
         }
 
         fcx.write_ty(arg.hir_id, arg_ty);

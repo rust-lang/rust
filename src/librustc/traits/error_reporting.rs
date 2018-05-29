@@ -1455,6 +1455,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ObligationCauseCode::VariableType(_) => {
                 err.note("all local variables must have a statically known size");
             }
+            ObligationCauseCode::SizedArgumentType => {
+                err.note("all function arguments must have a statically known size");
+            }
             ObligationCauseCode::SizedReturnType => {
                 err.note("the return type of a function must have a \
                           statically known size");

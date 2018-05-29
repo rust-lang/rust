@@ -7,6 +7,7 @@ LL |     fn baz(_: Self::Target) where Self: Deref {}
    = help: the trait `std::marker::Sized` is not implemented for `<Self as std::ops::Deref>::Target`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where <Self as std::ops::Deref>::Target: std::marker::Sized` bound
+   = note: all function arguments must have a statically known size
 
 error[E0277]: the size for values of type `(dyn std::string::ToString + 'static)` cannot be known at compilation time
   --> $DIR/issue-42312.rs:18:23
@@ -16,6 +17,7 @@ LL | pub fn f(_: ToString) {}
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn std::string::ToString + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: all function arguments must have a statically known size
 
 error: aborting due to 2 previous errors
 
