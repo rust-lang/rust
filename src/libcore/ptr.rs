@@ -226,12 +226,28 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     mem::forget(tmp);
 }
 
-/// Swaps a sequence of values at two mutable locations of the same type.
+/// Swaps `count * size_of::<T>()` bytes between the two regions of memory
+/// beginning at `x` and `y`. The two regions must *not* overlap.
 ///
 /// # Safety
 ///
-/// The two arguments must each point to the beginning of `count` locations
-/// of valid memory, and the two memory ranges must not overlap.
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * Both `x` and `y` must be [valid].
+///
+/// * Both `x` and `y` must be properly aligned.
+///
+/// * `x.offset(count)` must be [valid]. In other words, the region of memory
+///   which begins at `x` and has a length of `count * size_of::<T>()` bytes
+///   must belong to a single, live allocation.
+///
+/// * `y.offset(count)` must be [valid]. In other words, the region of memory
+///   which begins at `y` and has a length of `count * size_of::<T>()` bytes
+///   must belong to a single, live allocation.
+///
+/// * The two regions of memory must *not* overlap.
+///
+/// [valid]: ../ptr/index.html#safety
 ///
 /// # Examples
 ///
