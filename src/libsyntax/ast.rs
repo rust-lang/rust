@@ -617,7 +617,7 @@ pub enum PatKind {
     /// A literal
     Lit(P<Expr>),
     /// A range pattern, e.g. `1...2`, `1..=2` or `1..2`
-    Range(P<Expr>, P<Expr>, RangeEnd),
+    Range(P<Expr>, P<Expr>, Spanned<RangeEnd>),
     /// `[a, b, ..i, y, z]` is represented as:
     ///     `PatKind::Slice(box [a, b], Some(i), box [y, z])`
     Slice(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),

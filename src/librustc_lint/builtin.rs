@@ -43,6 +43,7 @@ use std::collections::HashSet;
 
 use syntax::ast;
 use syntax::attr;
+use syntax::codemap::Spanned;
 use syntax::edition::Edition;
 use syntax::feature_gate::{AttributeGate, AttributeType, Stability, deprecated_attributes};
 use syntax_pos::{BytePos, Span, SyntaxContext};
@@ -1669,6 +1670,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
     }
 }
 
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -1699,5 +1701,41 @@ impl LintPass for SoftLints {
             TYPE_ALIAS_BOUNDS,
             TRIVIAL_BOUNDS,
         )
+    }
+}
+
+
+declare_lint! {
+    pub ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
+    Allow,
+    "`...` range patterns are deprecated"
+}
+
+
+pub struct EllipsisInclusiveRangePatterns;
+
+impl LintPass for EllipsisInclusiveRangePatterns {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS)
+    }
+}
+
+impl EarlyLintPass for EllipsisInclusiveRangePatterns {
+    fn check_pat(&mut self, cx: &EarlyContext, pat: &ast::Pat) {
+        use self::ast::{PatKind, RangeEnd, RangeSyntax};
+
+        if let PatKind::Range(
+            _, _, Spanned { span, node: RangeEnd::Included(RangeSyntax::DotDotDot) }
+        ) = pat.node {
+            let msg = "`...` range patterns are deprecated";
+            let mut err = cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, span, msg);
+            err.span_suggestion_short_with_applicability(
+                span, "use `..=` for an inclusive range", "..=".to_owned(),
+                // FIXME: outstanding problem with precedence in ref patterns:
+                // https://github.com/rust-lang/rust/issues/51043#issuecomment-392252285
+                Applicability::MaybeIncorrect
+            );
+            err.emit()
+        }
     }
 }

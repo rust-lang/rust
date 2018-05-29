@@ -3356,7 +3356,7 @@ impl<'a> LoweringContext<'a> {
             PatKind::Ref(ref inner, mutbl) => {
                 hir::PatKind::Ref(self.lower_pat(inner), self.lower_mutability(mutbl))
             }
-            PatKind::Range(ref e1, ref e2, ref end) => hir::PatKind::Range(
+            PatKind::Range(ref e1, ref e2, Spanned { node: ref end, .. }) => hir::PatKind::Range(
                 P(self.lower_expr(e1)),
                 P(self.lower_expr(e2)),
                 self.lower_range_end(end),

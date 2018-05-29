@@ -111,6 +111,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                        AnonymousParameters,
                        UnusedDocComment,
                        BadRepr,
+                       EllipsisInclusiveRangePatterns,
                        );
 
     add_early_builtin_with_new!(sess,
@@ -188,7 +189,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     "rust_2018_idioms",
                     BARE_TRAIT_OBJECTS,
                     UNREACHABLE_PUB,
-                    UNUSED_EXTERN_CRATES);
+                    UNUSED_EXTERN_CRATES,
+                    ELLIPSIS_INCLUSIVE_RANGE_PATTERNS);
 
     // Guidelines for creating a future incompatibility lint:
     //

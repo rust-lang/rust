@@ -28,6 +28,7 @@ use self::AttributeGate::*;
 use rustc_target::spec::abi::Abi;
 use ast::{self, NodeId, PatKind, RangeEnd};
 use attr;
+use codemap::Spanned;
 use edition::{ALL_EDITIONS, Edition};
 use syntax_pos::{Span, DUMMY_SP};
 use errors::{DiagnosticBuilder, Handler, FatalError};
@@ -1752,7 +1753,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                   pattern.span,
                                   "box pattern syntax is experimental");
             }
-            PatKind::Range(_, _, RangeEnd::Excluded) => {
+            PatKind::Range(_, _, Spanned { node: RangeEnd::Excluded, .. }) => {
                 gate_feature_post!(&self, exclusive_range_pattern, pattern.span,
                                    "exclusive range pattern syntax is experimental");
             }

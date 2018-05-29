@@ -4024,12 +4024,14 @@ impl<'a> Parser<'a> {
                             _ => panic!("can only parse `..`/`...`/`..=` for ranges \
                                          (checked above)"),
                         };
+                        let op_span = self.span;
                         // Parse range
                         let span = lo.to(self.prev_span);
                         let begin = self.mk_expr(span, ExprKind::Path(qself, path), ThinVec::new());
                         self.bump();
                         let end = self.parse_pat_range_end()?;
-                        pat = PatKind::Range(begin, end, end_kind);
+                        let op = Spanned { span: op_span, node: end_kind };
+                        pat = PatKind::Range(begin, end, op);
                     }
                     token::OpenDelim(token::Brace) => {
                         if qself.is_some() {
@@ -4065,17 +4067,22 @@ impl<'a> Parser<'a> {
                 // Try to parse everything else as literal with optional minus
                 match self.parse_literal_maybe_minus() {
                     Ok(begin) => {
-                        if self.eat(&token::DotDotDot) {
+                        let op_span = self.span;
+                        if self.check(&token::DotDot) || self.check(&token::DotDotEq) ||
+                                self.check(&token::DotDotDot) {
+                            let end_kind = if self.eat(&token::DotDotDot) {
+                                RangeEnd::Included(RangeSyntax::DotDotDot)
+                            } else if self.eat(&token::DotDotEq) {
+                                RangeEnd::Included(RangeSyntax::DotDotEq)
+                            } else if self.eat(&token::DotDot) {
+                                RangeEnd::Excluded
+                            } else {
+                                panic!("impossible case: we already matched \
+                                        on a range-operator token")
+                            };
                             let end = self.parse_pat_range_end()?;
-                            pat = PatKind::Range(begin, end,
-                                    RangeEnd::Included(RangeSyntax::DotDotDot));
-                        } else if self.eat(&token::DotDotEq) {
-                            let end = self.parse_pat_range_end()?;
-                            pat = PatKind::Range(begin, end,
-                                    RangeEnd::Included(RangeSyntax::DotDotEq));
-                        } else if self.eat(&token::DotDot) {
-                            let end = self.parse_pat_range_end()?;
-                            pat = PatKind::Range(begin, end, RangeEnd::Excluded);
+                            let op = Spanned { span: op_span, node: end_kind };
+                            pat = PatKind::Range(begin, end, op);
                         } else {
                             pat = PatKind::Lit(begin);
                         }
@@ -4096,7 +4103,9 @@ impl<'a> Parser<'a> {
 
         if !allow_range_pat {
             match pat.node {
-                PatKind::Range(_, _, RangeEnd::Included(RangeSyntax::DotDotDot)) => {}
+                PatKind::Range(
+                    _, _, Spanned { node: RangeEnd::Included(RangeSyntax::DotDotDot), .. }
+                ) => {},
                 PatKind::Range(..) => {
                     let mut err = self.struct_span_err(
                         pat.span,
