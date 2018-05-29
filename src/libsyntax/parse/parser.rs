@@ -777,7 +777,7 @@ impl<'a> Parser<'a> {
         } else {
             err.span_label(self.span, "expected identifier");
             if self.token == token::Comma {
-                err.span_suggestion(self.span, "try removing a comma", ",".into());
+                err.span_suggestion(self.span, "remove this comma", ",".into());
             }
         }
         err
