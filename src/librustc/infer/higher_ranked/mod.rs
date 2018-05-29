@@ -417,7 +417,8 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
         {
             for (a_br, a_r) in a_map {
                 if *a_r == r {
-                    return infcx.tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1), *a_br));
+                    return infcx.tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::INNERMOST,
+                                                               *a_br));
                 }
             }
             span_bug!(
@@ -473,7 +474,7 @@ fn fold_regions_in<'a, 'gcx, 'tcx, T, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             _ => true
         });
 
-        fldr(region, ty::DebruijnIndex::new(current_depth))
+        fldr(region, current_depth)
     })
 }
 
@@ -734,7 +735,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     // trait checking, and all of the skolemized regions
                     // appear inside predicates, which always have
                     // binders, so this assert is satisfied.
-                    assert!(current_depth > 1);
+                    assert!(current_depth > ty::DebruijnIndex::INNERMOST);
 
                     // since leak-check passed, this skolemized region
                     // should only have incoming edges from variables
@@ -750,7 +751,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         r, br);
 
                     self.tcx.mk_region(ty::ReLateBound(
-                        ty::DebruijnIndex::new(current_depth - 1), br.clone()))
+                        current_depth.shifted_out(1),
+                        br.clone(),
+                    ))
                 }
             }
         });

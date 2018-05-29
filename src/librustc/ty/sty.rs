@@ -989,11 +989,11 @@ impl<'a, 'gcx, 'tcx> ParamTy {
 ///     for<'a> fn(for<'b> fn(&'b isize, &'a isize), &'a char)
 ///     ^          ^            |        |         |
 ///     |          |            |        |         |
-///     |          +------------+ 1      |         |
+///     |          +------------+ 0      |         |
 ///     |                                |         |
-///     +--------------------------------+ 2       |
+///     +--------------------------------+ 1       |
 ///     |                                          |
-///     +------------------------------------------+ 1
+///     +------------------------------------------+ 0
 ///
 /// In this type, there are two binders (the outer fn and the inner
 /// fn). We need to be able to determine, for any given region, which
@@ -1005,9 +1005,9 @@ impl<'a, 'gcx, 'tcx> ParamTy {
 ///
 /// Let's start with the reference type `&'b isize` that is the first
 /// argument to the inner function. This region `'b` is assigned a De
-/// Bruijn index of 1, meaning "the innermost binder" (in this case, a
+/// Bruijn index of 0, meaning "the innermost binder" (in this case, a
 /// fn). The region `'a` that appears in the second argument type (`&'a
-/// isize`) would then be assigned a De Bruijn index of 2, meaning "the
+/// isize`) would then be assigned a De Bruijn index of 1, meaning "the
 /// second-innermost binder". (These indices are written on the arrays
 /// in the diagram).
 ///
@@ -1017,15 +1017,15 @@ impl<'a, 'gcx, 'tcx> ParamTy {
 /// the outermost fn. But this time, this reference is not nested within
 /// any other binders (i.e., it is not an argument to the inner fn, but
 /// rather the outer one). Therefore, in this case, it is assigned a
-/// De Bruijn index of 1, because the innermost binder in that location
+/// De Bruijn index of 0, because the innermost binder in that location
 /// is the outer fn.
 ///
 /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, Copy, PartialOrd, Ord)]
 pub struct DebruijnIndex {
     /// We maintain the invariant that this is never 0. So 1 indicates
-    /// the innermost binder. To ensure this, create with `DebruijnIndex::new`.
-    pub depth: u32,
+    /// the innermost binder.
+    index: u32,
 }
 
 pub type Region<'tcx> = &'tcx RegionKind;
@@ -1259,15 +1259,69 @@ impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
 }
 
 impl DebruijnIndex {
-    pub fn new(depth: u32) -> DebruijnIndex {
-        assert!(depth > 0);
-        DebruijnIndex { depth: depth }
+    pub const INNERMOST: DebruijnIndex = DebruijnIndex { index: 0 };
+
+    /// Returns the resulting index when this value is moved into
+    /// `amount` number of new binders. So e.g. if you had
+    ///
+    ///    for<'a> fn(&'a x)
+    ///
+    /// and you wanted to change to
+    ///
+    ///    for<'a> fn(for<'b> fn(&'a x))
+    ///
+    /// you would need to shift the index for `'a` into 1 new binder.
+    #[must_use]
+    pub const fn shifted_in(self, amount: u32) -> DebruijnIndex {
+        DebruijnIndex { index: self.index + amount }
     }
 
-    pub fn shifted(&self, amount: u32) -> DebruijnIndex {
-        DebruijnIndex { depth: self.depth + amount }
+    /// Update this index in place by shifting it "in" through
+    /// `amount` number of binders.
+    pub fn shift_in(&mut self, amount: u32) {
+        *self = self.shifted_in(amount);
+    }
+
+    /// Returns the resulting index when this value is moved out from
+    /// `amount` number of new binders.
+    #[must_use]
+    pub const fn shifted_out(self, amount: u32) -> DebruijnIndex {
+        DebruijnIndex { index: self.index - amount }
+    }
+
+    /// Update in place by shifting out from `amount` binders.
+    pub fn shift_out(&mut self, amount: u32) {
+        *self = self.shifted_out(amount);
+    }
+
+    /// Adjusts any Debruijn Indices so as to make `to_binder` the
+    /// innermost binder. That is, if we have something bound at `to_binder`,
+    /// it will now be bound at INNERMOST. This is an appropriate thing to do
+    /// when moving a region out from inside binders:
+    ///
+    /// ```
+    ///             for<'a>   fn(for<'b>   for<'c>   fn(&'a u32), _)
+    /// // Binder:  D3           D2        D1            ^^
+    /// ```
+    ///
+    /// Here, the region `'a` would have the debruijn index D3,
+    /// because it is the bound 3 binders out. However, if we wanted
+    /// to refer to that region `'a` in the second argument (the `_`),
+    /// those two binders would not be in scope. In that case, we
+    /// might invoke `shift_out_to_binder(D3)`. This would adjust the
+    /// debruijn index of `'a` to D1 (the innermost binder).
+    ///
+    /// If we invoke `shift_out_to_binder` and the region is in fact
+    /// bound by one of the binders we are shifting out of, that is an
+    /// error (and should fail an assertion failure).
+    pub fn shifted_out_to_binder(self, to_binder: DebruijnIndex) -> Self {
+        self.shifted_out(to_binder.index - Self::INNERMOST.index)
     }
 }
+
+impl_stable_hash_for!(struct DebruijnIndex {
+    index
+});
 
 /// Region utilities
 impl RegionKind {
@@ -1278,19 +1332,39 @@ impl RegionKind {
         }
     }
 
-    pub fn escapes_depth(&self, depth: u32) -> bool {
+    pub fn bound_at_or_above_binder(&self, index: DebruijnIndex) -> bool {
         match *self {
-            ty::ReLateBound(debruijn, _) => debruijn.depth > depth,
+            ty::ReLateBound(debruijn, _) => debruijn >= index,
             _ => false,
         }
     }
 
-    /// Returns the depth of `self` from the (1-based) binding level `depth`
-    pub fn from_depth(&self, depth: u32) -> RegionKind {
+    /// Adjusts any Debruijn Indices so as to make `to_binder` the
+    /// innermost binder. That is, if we have something bound at `to_binder`,
+    /// it will now be bound at INNERMOST. This is an appropriate thing to do
+    /// when moving a region out from inside binders:
+    ///
+    /// ```
+    ///             for<'a>   fn(for<'b>   for<'c>   fn(&'a u32), _)
+    /// // Binder:  D3           D2        D1            ^^
+    /// ```
+    ///
+    /// Here, the region `'a` would have the debruijn index D3,
+    /// because it is the bound 3 binders out. However, if we wanted
+    /// to refer to that region `'a` in the second argument (the `_`),
+    /// those two binders would not be in scope. In that case, we
+    /// might invoke `shift_out_to_binder(D3)`. This would adjust the
+    /// debruijn index of `'a` to D1 (the innermost binder).
+    ///
+    /// If we invoke `shift_out_to_binder` and the region is in fact
+    /// bound by one of the binders we are shifting out of, that is an
+    /// error (and should fail an assertion failure).
+    pub fn shifted_out_to_binder(&self, to_binder: ty::DebruijnIndex) -> RegionKind {
         match *self {
-            ty::ReLateBound(debruijn, r) => ty::ReLateBound(DebruijnIndex {
-                depth: debruijn.depth - (depth - 1)
-            }, r),
+            ty::ReLateBound(debruijn, r) => ty::ReLateBound(
+                debruijn.shifted_out_to_binder(to_binder),
+                r,
+            ),
             r => r
         }
     }

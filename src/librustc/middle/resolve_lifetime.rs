@@ -98,7 +98,7 @@ impl Region {
     }
 
     fn late(hir_map: &Map, def: &hir::LifetimeDef) -> (hir::LifetimeName, Region) {
-        let depth = ty::DebruijnIndex::new(1);
+        let depth = ty::DebruijnIndex::INNERMOST;
         let def_id = hir_map.local_def_id(def.lifetime.id);
         let origin = LifetimeDefOrigin::from_is_in_band(def.in_band);
         (def.lifetime.name, Region::LateBound(depth, def_id, origin))
@@ -107,7 +107,7 @@ impl Region {
     fn late_anon(index: &Cell<u32>) -> Region {
         let i = index.get();
         index.set(i + 1);
-        let depth = ty::DebruijnIndex::new(1);
+        let depth = ty::DebruijnIndex::INNERMOST;
         Region::LateBoundAnon(depth, i)
     }
 
@@ -123,29 +123,25 @@ impl Region {
 
     fn shifted(self, amount: u32) -> Region {
         match self {
-            Region::LateBound(depth, id, origin) => {
-                Region::LateBound(depth.shifted(amount), id, origin)
+            Region::LateBound(debruijn, id, origin) => {
+                Region::LateBound(debruijn.shifted_in(amount), id, origin)
             }
-            Region::LateBoundAnon(depth, index) => {
-                Region::LateBoundAnon(depth.shifted(amount), index)
+            Region::LateBoundAnon(debruijn, index) => {
+                Region::LateBoundAnon(debruijn.shifted_in(amount), index)
             }
             _ => self,
         }
     }
 
-    fn from_depth(self, depth: u32) -> Region {
+    fn shifted_out_to_binder(self, binder: ty::DebruijnIndex) -> Region {
         match self {
             Region::LateBound(debruijn, id, origin) => Region::LateBound(
-                ty::DebruijnIndex {
-                    depth: debruijn.depth - (depth - 1),
-                },
+                debruijn.shifted_out_to_binder(binder),
                 id,
                 origin,
             ),
             Region::LateBoundAnon(debruijn, index) => Region::LateBoundAnon(
-                ty::DebruijnIndex {
-                    depth: debruijn.depth - (depth - 1),
-                },
+                debruijn.shifted_out_to_binder(binder),
                 index,
             ),
             _ => self,
@@ -1858,7 +1854,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             .map(|(i, input)| {
                 let mut gather = GatherLifetimes {
                     map: self.map,
-                    binder_depth: 1,
+                    outer_index: ty::DebruijnIndex::INNERMOST,
                     have_bound_regions: false,
                     lifetimes: FxHashSet(),
                 };
@@ -1899,7 +1895,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
         struct GatherLifetimes<'a> {
             map: &'a NamedRegionMap,
-            binder_depth: u32,
+            outer_index: ty::DebruijnIndex,
             have_bound_regions: bool,
             lifetimes: FxHashSet<Region>,
         }
@@ -1911,7 +1907,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             fn visit_ty(&mut self, ty: &hir::Ty) {
                 if let hir::TyBareFn(_) = ty.node {
-                    self.binder_depth += 1;
+                    self.outer_index.shift_in(1);
                 }
                 if let hir::TyTraitObject(ref bounds, ref lifetime) = ty.node {
                     for bound in bounds {
@@ -1927,7 +1923,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     intravisit::walk_ty(self, ty);
                 }
                 if let hir::TyBareFn(_) = ty.node {
-                    self.binder_depth -= 1;
+                    self.outer_index.shift_out(1);
                 }
             }
 
@@ -1946,22 +1942,22 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 trait_ref: &hir::PolyTraitRef,
                 modifier: hir::TraitBoundModifier,
             ) {
-                self.binder_depth += 1;
+                self.outer_index.shift_in(1);
                 intravisit::walk_poly_trait_ref(self, trait_ref, modifier);
-                self.binder_depth -= 1;
+                self.outer_index.shift_out(1);
             }
 
             fn visit_lifetime(&mut self, lifetime_ref: &hir::Lifetime) {
                 if let Some(&lifetime) = self.map.defs.get(&lifetime_ref.id) {
                     match lifetime {
                         Region::LateBound(debruijn, _, _) | Region::LateBoundAnon(debruijn, _)
-                            if debruijn.depth < self.binder_depth =>
+                            if debruijn < self.outer_index =>
                         {
                             self.have_bound_regions = true;
                         }
                         _ => {
                             self.lifetimes
-                                .insert(lifetime.from_depth(self.binder_depth));
+                                .insert(lifetime.shifted_out_to_binder(self.outer_index));
                         }
                     }
                 }

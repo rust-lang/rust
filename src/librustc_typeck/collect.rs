@@ -689,7 +689,7 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     -> Option<Span> {
     struct LateBoundRegionsDetector<'a, 'tcx: 'a> {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        binder_depth: u32,
+        outer_index: ty::DebruijnIndex,
         has_late_bound_regions: Option<Span>,
     }
 
@@ -702,9 +702,9 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if self.has_late_bound_regions.is_some() { return }
             match ty.node {
                 hir::TyBareFn(..) => {
-                    self.binder_depth += 1;
+                    self.outer_index.shift_in(1);
                     intravisit::walk_ty(self, ty);
-                    self.binder_depth -= 1;
+                    self.outer_index.shift_out(1);
                 }
                 _ => intravisit::walk_ty(self, ty)
             }
@@ -714,9 +714,9 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 tr: &'tcx hir::PolyTraitRef,
                                 m: hir::TraitBoundModifier) {
             if self.has_late_bound_regions.is_some() { return }
-            self.binder_depth += 1;
+            self.outer_index.shift_in(1);
             intravisit::walk_poly_trait_ref(self, tr, m);
-            self.binder_depth -= 1;
+            self.outer_index.shift_out(1);
         }
 
         fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) {
@@ -727,8 +727,13 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Some(rl::Region::Static) | Some(rl::Region::EarlyBound(..)) => {}
                 Some(rl::Region::LateBound(debruijn, _, _)) |
                 Some(rl::Region::LateBoundAnon(debruijn, _))
-                    if debruijn.depth < self.binder_depth => {}
-                _ => self.has_late_bound_regions = Some(lt.span),
+                    if debruijn < self.outer_index => {}
+                Some(rl::Region::LateBound(..)) |
+                Some(rl::Region::LateBoundAnon(..)) |
+                Some(rl::Region::Free(..)) |
+                None => {
+                    self.has_late_bound_regions = Some(lt.span);
+                }
             }
         }
     }
@@ -738,7 +743,9 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         decl: &'tcx hir::FnDecl)
                                         -> Option<Span> {
         let mut visitor = LateBoundRegionsDetector {
-            tcx, binder_depth: 1, has_late_bound_regions: None
+            tcx,
+            outer_index: ty::DebruijnIndex::INNERMOST,
+            has_late_bound_regions: None,
         };
         for lifetime in generics.lifetimes() {
             let hir_id = tcx.hir.node_to_hir_id(lifetime.lifetime.id);

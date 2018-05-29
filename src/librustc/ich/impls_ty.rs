@@ -104,16 +104,16 @@ for ty::RegionKind {
                 c.hash_stable(hcx, hasher);
             }
             ty::ReLateBound(db, ty::BrAnon(i)) => {
-                db.depth.hash_stable(hcx, hasher);
+                db.hash_stable(hcx, hasher);
                 i.hash_stable(hcx, hasher);
             }
             ty::ReLateBound(db, ty::BrNamed(def_id, name)) => {
-                db.depth.hash_stable(hcx, hasher);
+                db.hash_stable(hcx, hasher);
                 def_id.hash_stable(hcx, hasher);
                 name.hash_stable(hcx, hasher);
             }
             ty::ReLateBound(db, ty::BrEnv) => {
-                db.depth.hash_stable(hcx, hasher);
+                db.hash_stable(hcx, hasher);
             }
             ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index, name }) => {
                 def_id.hash_stable(hcx, hasher);
@@ -819,10 +819,6 @@ impl_stable_hash_for!(enum ::middle::resolve_lifetime::Region {
     LateBound(db_index, decl, is_in_band),
     LateBoundAnon(db_index, anon_index),
     Free(call_site_scope_data, decl)
-});
-
-impl_stable_hash_for!(struct ty::DebruijnIndex {
-    depth
 });
 
 impl_stable_hash_for!(enum ty::cast::CastKind {

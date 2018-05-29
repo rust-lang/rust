@@ -488,8 +488,24 @@ pub struct TyS<'tcx> {
     pub sty: TypeVariants<'tcx>,
     pub flags: TypeFlags,
 
-    // the maximal depth of any bound regions appearing in this type.
-    region_depth: u32,
+    /// This is a kind of confusing thing: it stores the smallest
+    /// binder such that
+    ///
+    /// (a) the binder itself captures nothing but
+    /// (b) all the late-bound things within the type are captured
+    ///     by some sub-binder.
+    ///
+    /// So, for a type without any late-bound things, like `u32`, this
+    /// will be INNERMOST, because that is the innermost binder that
+    /// captures nothing. But for a type `&'D u32`, where `'D` is a
+    /// late-bound region with debruijn index D, this would be D+1 --
+    /// the binder itself does not capture D, but D is captured by an
+    /// inner binder.
+    ///
+    /// We call this concept an "exclusive" binder D (because all
+    /// debruijn indices within the type are contained within `0..D`
+    /// (exclusive)).
+    outer_exclusive_binder: ty::DebruijnIndex,
 }
 
 impl<'tcx> Ord for TyS<'tcx> {
@@ -560,7 +576,8 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::TyS<'gcx> {
             // The other fields just provide fast access to information that is
             // also contained in `sty`, so no need to hash them.
             flags: _,
-            region_depth: _,
+
+            outer_exclusive_binder: _,
         } = *self;
 
         sty.hash_stable(hcx, hasher);
