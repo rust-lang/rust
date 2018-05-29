@@ -130,7 +130,7 @@ use syntax_pos::{self, BytePos, Span, MultiSpan};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::map::Node;
-use rustc::hir::{self, PatKind};
+use rustc::hir::{self, PatKind, Item_};
 use rustc::middle::lang_items;
 
 mod autoderef;
@@ -1133,7 +1133,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     if let Some(panic_impl_did) = fcx.tcx.lang_items().panic_impl() {
         if panic_impl_did == fn_hir_id.owner_def_id() {
             if let Some(panic_info_did) = fcx.tcx.lang_items().panic_info() {
-                if ret_ty.sty != ty::TyNever {
+                if declared_ret_ty.sty != ty::TyNever {
                     fcx.tcx.sess.span_err(
                         decl.output.span(),
                         "return type should be `!`",
@@ -1160,6 +1160,17 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                             decl.inputs[0].span,
                             "argument should be `&PanicInfo`",
                         );
+                    }
+
+                    if let Node::NodeItem(item) = fcx.tcx.hir.get(fn_id) {
+                        if let Item_::ItemFn(_, _, _, _, ref generics, _) = item.node {
+                            if !generics.params.is_empty() {
+                                fcx.tcx.sess.span_err(
+                                    span,
+                                    "`#[panic_implementation]` function should have no type parameters",
+                                );
+                            }
+                        }
                     }
                 } else {
                     fcx.tcx.sess.span_err(span, "function should have one argument");
