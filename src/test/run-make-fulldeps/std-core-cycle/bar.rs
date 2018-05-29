@@ -12,15 +12,16 @@
 #![crate_type = "rlib"]
 
 use std::alloc::*;
+use std::ptr::NonNull;
 
 pub struct A;
 
 unsafe impl GlobalAlloc for A {
-    unsafe fn alloc(&self, _: Layout) -> *mut Opaque {
+    unsafe fn alloc(&self, _: Layout) -> Result<NonNull<Opaque>, AllocErr> {
         loop {}
     }
 
-    unsafe fn dealloc(&self, _ptr: *mut Opaque, _: Layout) {
+    unsafe fn dealloc(&self, _ptr: NonNull<Opaque>, _: Layout) {
         loop {}
     }
 }
