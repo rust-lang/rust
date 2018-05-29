@@ -38,10 +38,13 @@
 /// The multi-argument form of this macro panics with a string and has the
 /// [`format!`] syntax for building a string.
 ///
+/// See also the macro [`compile_error!`], for raising errors during compilation.
+///
 /// [runwrap]: ../std/result/enum.Result.html#method.unwrap
 /// [`Option`]: ../std/option/enum.Option.html#method.unwrap
 /// [`Result`]: ../std/result/enum.Result.html
 /// [`format!`]: ../std/macro.format.html
+/// [`compile_error!`]: ../std/macro.compile_error.html
 /// [book]: ../book/second-edition/ch09-01-unrecoverable-errors-with-panic.html
 ///
 /// # Current implementation
@@ -305,7 +308,8 @@ pub mod builtin {
     /// Unconditionally causes compilation to fail with the given error message when encountered.
     ///
     /// This macro should be used when a crate uses a conditional compilation strategy to provide
-    /// better error messages for erroneous conditions.
+    /// better error messages for erroneous conditions. It's the compiler-level form of [`panic!`],
+    /// which emits an error at *runtime*, rather than during compilation.
     ///
     /// # Examples
     ///
@@ -332,6 +336,8 @@ pub mod builtin {
     /// #[cfg(not(any(feature = "foo", feature = "bar")))]
     /// compile_error!("Either feature \"foo\" or \"bar\" must be enabled for this crate.")
     /// ```
+    ///
+    /// [`panic!`]: ../std/macro.panic.html
     #[stable(feature = "compile_error_macro", since = "1.20.0")]
     #[macro_export]
     macro_rules! compile_error {
