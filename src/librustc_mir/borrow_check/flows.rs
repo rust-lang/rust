@@ -27,6 +27,7 @@ use dataflow::{Borrows};
 use dataflow::{FlowAtLocation, FlowsAtLocation};
 use dataflow::move_paths::HasMoveData;
 use dataflow::move_paths::indexes::BorrowIndex;
+use either::Either;
 use std::fmt;
 use std::rc::Rc;
 
@@ -61,8 +62,12 @@ impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
         }
     }
 
-    crate fn borrows_in_scope(&self) -> impl Iterator<Item = BorrowIndex> + '_ {
-        self.borrows.iter_incoming()
+    crate fn borrows_in_scope(&self, location: LocationIndex) -> impl Iterator<Item = BorrowIndex> + '_ {
+        if let Some(ref polonius) = self.polonius_output {
+            Either::Left(polonius.errors_at(location).iter().cloned())
+        } else {
+            Either::Right(self.borrows.iter_incoming())
+        }
     }
 
     crate fn with_outgoing_borrows(&self, op: impl FnOnce(Iter<BorrowIndex>)) {
