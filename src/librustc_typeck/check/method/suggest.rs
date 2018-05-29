@@ -385,7 +385,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if static_sources.len() == 1 {
                     if let Some(expr) = rcvr_expr {
                         err.span_suggestion(expr.span.to(span),
-                                            "use associated function syntax intead",
+                                            "use associated function syntax instead",
                                             format!("{}::{}",
                                                     self.ty_to_string(actual),
                                                     item_name));
