@@ -296,7 +296,9 @@ pub mod builtin {
     ///
     /// Two such examples are macros and `#[cfg]` environments.
     ///
-    /// Emit better compiler error if a macro is passed invalid values.
+    /// Emit better compiler error if a macro is passed invalid values. Without the final branch,
+    /// the compiler would still emit an error, but the error's message would not mention the two
+    /// valid values.
     ///
     /// ```compile_fail
     /// macro_rules! give_me_foo_or_bar {
