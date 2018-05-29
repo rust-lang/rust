@@ -302,6 +302,64 @@ impl f32 {
         self.to_bits() & 0x8000_0000 != 0
     }
 
+    /// Adds `x` to `self`, accumulating rounding errors in a compensation term.
+    ///
+    /// At the cost of performance (~4x slower), this method provides additional
+    /// guarantees that normal floating-point addition can't, such as:
+    ///
+    /// * Associativity (i.e. `a + (b + c) == (a + b) + c`)
+    /// * Numerical stability (rounding errors don't result in the wrong result)
+    ///
+    /// For more information, you can read the Wikipedia article on [Kahan summation],
+    /// which is the algorithm that this method uses.
+    ///
+    /// This method is worthless when adding two numbers. Its guarantees help when
+    /// adding three or more numbers, because the additional compensation term helps
+    /// track small errors to ensure that the final result is almost as correct as if no
+    /// rounding was done until the very end.
+    ///
+    /// [Kahan summation]: https://en.wikipedia.org/wiki/Kahan_summation_algorithm
+    ///
+    /// # Examples
+    ///
+    /// Using a for loop:
+    ///
+    /// ```
+    /// let nums: &[f32] = &[0.1, 0.1, 0.1, 0.1, 10.0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
+    /// let mut basic_sum = 0.0;
+    /// let mut comp_sum = 0.0;
+    /// let mut comp = 0.0;
+    /// for x in nums {
+    ///     let (s, c) = comp_sum.compensated_add(x, comp);
+    ///     comp_sum = s;
+    ///     comp = c;
+    ///     basic_sum += x;
+    /// }
+    /// assert_ne!(basic_sum, 11.0);
+    /// assert_eq!(comp_sum, 11.0);
+    /// ```
+    ///
+    /// Using `Iterator::fold`:
+    ///
+    /// ```
+    /// let nums: &[f32] = &[0.1, 0.1, 0.1, 0.1, 10.0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
+    /// let basic_sum = nums.iter().sum();
+    /// let comp_sum = nums.iter()
+    ///     .fold(
+    ///         (0.0, 0.0),
+    ///         |(s, c), x| s.compensated_add(x, c)
+    ///     ).0;
+    /// assert_ne!(basic_sum, 11.0);
+    /// assert_eq!(comp_sum, 11.0);
+    /// ```
+    #[unstable(feature = "compensated_add", issue = "0")]
+    #[inline]
+    pub fn compensated_add(self, x: f32, comp: f32) -> (f32, f32) {
+        let y = x - comp;
+        let t = self + y;
+        (t, (t - self) - y)
+    }
+
     /// Takes the reciprocal (inverse) of a number, `1/x`.
     ///
     /// ```
