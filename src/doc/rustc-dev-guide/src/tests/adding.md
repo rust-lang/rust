@@ -148,6 +148,10 @@ exhaustive. Header commands can generally be found by browsing the
 `TestProps` structure found in [`header.rs`] from the compiletest
 source.
 
+* `run-rustfix` for UI tests, indicates that the test produces
+  structured suggestions, which are then applied and the final
+  source is stored in a `.fixed` file and compiled again. The final
+  compilation is required to succeed.
 * `min-{gdb,lldb}-version`
 * `min-llvm-version`
 * `compile-pass` for UI tests, indicates that the test is
@@ -266,13 +270,16 @@ you can even run the resulting program. Just add one of the following
 ### Editing and updating the reference files
 
 If you have changed the compiler's output intentionally, or you are
-making a new test, you can use the script `ui/update-references.sh` to
-update the references. When you run the test framework, it will report
-various errors: in those errors is a command you can use to run the
-`ui/update-references.sh` script, which will then copy over the files
-from the build directory and use them as the new reference. You can
-also just run `ui/update-all-references.sh`. In both cases, you can run
-the script with `--help` to get a help message.
+making a new test, you can pass `--bless` to the test subcommand. E.g.
+if some tests in `src/test/ui` are failing, you can run
+
+```text
+./x.py test --stage 1 src/test/ui --bless
+```
+
+to automatically adjust the `.stderr`, `.stdout` or `.fixed` files of
+all tests. Of course you can also target just specific tests with the
+`--test-args your_test_name` flag, just like when running the tests.
 
 ### Normalization
 
