@@ -34,7 +34,7 @@ use syntax_pos::Span;
 /// ```
 declare_clippy_lint! {
     pub MULTIPLE_INHERENT_IMPL,
-    pedantic,
+    restriction,
     "Multiple inherent impl that could be grouped"
 }
 
