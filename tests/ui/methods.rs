@@ -344,6 +344,16 @@ fn or_fun_call() {
 
 /// Checks implementation of the `EXPECT_FUN_CALL` lint
 fn expect_fun_call() {
+    struct Foo;
+
+    impl Foo {
+        fn new() -> Self { Foo }
+
+        fn expect(&self, msg: &str) {
+            panic!("{}", msg)
+        }
+    }
+
     let with_some = Some("value");
     with_some.expect("error");
 
@@ -369,6 +379,15 @@ fn expect_fun_call() {
 
     let with_err_and_as_str: Result<(), ()> = Err(());
     with_err_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
+
+    let with_dummy_type = Foo::new();
+    with_dummy_type.expect("another test string");
+
+    let with_dummy_type_and_format = Foo::new();
+    with_dummy_type_and_format.expect(&format!("Error {}: fake error", error_code));
+
+    let with_dummy_type_and_as_str = Foo::new();
+    with_dummy_type_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
 }
 
 /// Checks implementation of `ITER_NTH` lint

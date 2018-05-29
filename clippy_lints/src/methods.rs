@@ -1006,11 +1006,13 @@ fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, n
             return;
         }
 
-        let self_ty = cx.tables.expr_ty(self_expr);
-        let closure = match match_type(cx, self_ty, &paths::OPTION) {
-            true => "||",
-            false => "|_|",
-        };
+        let self_type = cx.tables.expr_ty(self_expr);
+        let known_types = &[&paths::OPTION, &paths::RESULT];
+
+        // if not a known type, return early
+        if known_types.iter().all(|&k| !match_type(cx, self_type, k)) {
+            return;
+        }
 
         // don't lint for constant values
         let owner_def = cx.tcx.hir.get_parent_did(arg.id);
@@ -1018,6 +1020,11 @@ fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, n
         if promotable {
             return;
         }
+
+        let closure = match match_type(cx, self_type, &paths::OPTION) {
+            true => "||",
+            false => "|_|",
+        };
 
         let sugg: Cow<_> = snippet(cx, arg.span, "..");
         let span_replace_word = method_span.with_hi(span.hi());
