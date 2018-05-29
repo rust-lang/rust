@@ -41,11 +41,11 @@ fn main() {
 // fn main() -> () {
 //     let mut _0: ();
 //     ...
-//     let mut _1: bool;
+//     let mut _4: &'33_0rs i32;
 //     ...
 //     let _2: i32;
 //     ...
-//     let mut _4: &'33_0rs i32;
+//     let mut _1: bool;
 //     ...
 //     let mut _3: ();
 //     let mut _5: !;

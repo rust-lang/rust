@@ -722,7 +722,7 @@ macro_rules! make_mir_visitor {
 
                 self.visit_ty(ty, TyContext::LocalDecl {
                     local,
-                    source_info: *visibility_source_info,
+                    source_info: *syntactic_source_info,
                 });
                 self.visit_source_info(syntactic_source_info);
                 self.visit_source_info(visibility_source_info);

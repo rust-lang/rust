@@ -467,8 +467,8 @@ fn write_scope_tree(
         // User variable types (including the user's name in a comment).
         for local in mir.vars_iter() {
             let var = &mir.local_decls[local];
-            let (name, source_info) = if var.visibility_source_info.scope == child {
-                (var.name.unwrap(), var.visibility_source_info)
+            let (name, source_info) = if var.syntactic_source_info.scope == child {
+                (var.name.unwrap(), var.syntactic_source_info)
             } else {
                 // Not a variable or not declared in this scope.
                 continue;
