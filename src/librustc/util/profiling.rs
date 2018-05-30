@@ -92,7 +92,7 @@ impl CategoryData {
             ($name:tt, $rustic_name:ident) => {
                 writeln!(
                    lock,
-                   "{0: <15} \t\t {1: <15}",
+                   "{0: <15} \t\t {1: <15}ms",
                    $name,
                    self.times.$rustic_name / 1_000_000
                 ).unwrap();
