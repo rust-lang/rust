@@ -3,6 +3,9 @@
 extern crate compiletest_rs as compiletest;
 extern crate test;
 
+use std::ffi::OsStr;
+use std::fs;
+use std::error::Error;
 use std::env::{set_var, var};
 use std::path::{Path, PathBuf};
 
@@ -30,7 +33,7 @@ fn rustc_lib_path() -> PathBuf {
     option_env!("RUSTC_LIB_PATH").unwrap().into()
 }
 
-fn config(dir: &'static str, mode: &'static str) -> compiletest::Config {
+fn config(mode: &str, dir: &str) -> compiletest::Config {
     let mut config = compiletest::Config::default();
 
     let cfg_mode = mode.parse().expect("Invalid mode");
@@ -61,8 +64,38 @@ fn config(dir: &'static str, mode: &'static str) -> compiletest::Config {
     config
 }
 
-fn run_mode(dir: &'static str, mode: &'static str) {
-    compiletest::run_tests(&config(dir, mode));
+fn run_mode(mode: &str, dir: &str) {
+    compiletest::run_tests(&config(mode, dir));
+}
+
+fn run_ui_toml() -> Result<(), Box<Error>> {
+    let base = PathBuf::from("tests/ui-toml/").canonicalize()?;
+    for dir in fs::read_dir(&base)? {
+        let dir = dir?;
+        if !dir.file_type()?.is_dir() {
+            continue;
+        }
+        let dir_path = dir.path();
+        set_var("CARGO_MANIFEST_DIR", &dir_path);
+        let config = config("ui", "ui-toml");
+        for file in fs::read_dir(&dir_path)? {
+            let file = file?;
+            let file_path = file.path();
+            if !file.file_type()?.is_file() {
+                continue;
+            }
+            if file_path.extension() != Some(OsStr::new("rs")) {
+                continue;
+            }
+            let paths = compiletest::common::TestPaths {
+                file: file_path,
+                base: base.clone(),
+                relative_dir: dir_path.file_name().unwrap().into(),
+            };
+            compiletest::runtest::run(config.clone(), &paths);
+        }
+    }
+    Ok(())
 }
 
 fn prepare_env() {
@@ -76,4 +109,5 @@ fn compile_test() {
     prepare_env();
     run_mode("run-pass", "run-pass");
     run_mode("ui", "ui");
+    run_ui_toml().unwrap();
 }
