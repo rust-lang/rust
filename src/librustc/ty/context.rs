@@ -1344,10 +1344,29 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.on_disk_query_result_cache.serialize(self.global_tcx(), encoder)
     }
 
+    /// If true, we should use a naive AST walk to determine if match
+    /// guard could perform bad mutations (or mutable-borrows).
+    pub fn check_for_mutation_in_guard_via_ast_walk(self) -> bool {
+        !self.sess.opts.debugging_opts.disable_ast_check_for_mutation_in_guard
+    }
+
     /// If true, we should use the MIR-based borrowck (we may *also* use
     /// the AST-based borrowck).
     pub fn use_mir_borrowck(self) -> bool {
         self.borrowck_mode().use_mir()
+    }
+
+    /// If true, make MIR codegen for `match` emit a temp that holds a
+    /// borrow of the input to the match expression.
+    pub fn generate_borrow_of_any_match_input(&self) -> bool {
+        self.emit_read_for_match()
+    }
+
+    /// If true, make MIR codegen for `match` emit ReadForMatch
+    /// statements (which simulate the maximal effect of executing the
+    /// patterns in a match arm).
+    pub fn emit_read_for_match(&self) -> bool {
+        self.use_mir_borrowck() && !self.sess.opts.debugging_opts.nll_dont_emit_read_for_match
     }
 
     /// If true, pattern variables for use in guards on match arms

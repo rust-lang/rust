@@ -12,7 +12,7 @@
 /// allowed to be split into separate Reservation and
 /// Activation phases.
 use borrow_check::ArtificialField;
-use borrow_check::borrow_set::{BorrowSet, BorrowData};
+use borrow_check::borrow_set::{BorrowSet, BorrowData, TwoPhaseUse};
 use borrow_check::{Context, Overlap};
 use borrow_check::{ShallowOrDeep, Deep, Shallow};
 use dataflow::indexes::BorrowIndex;
@@ -431,10 +431,13 @@ pub(super) fn is_active<'tcx>(
 ) -> bool {
     debug!("is_active(borrow_data={:?}, location={:?})", borrow_data, location);
 
-    // If this is not a 2-phase borrow, it is always active.
     let activation_location = match borrow_data.activation_location {
-        Some(v) => v,
+        // If this is not a 2-phase borrow, it is always active.
         None => return true,
+        // And if the unique 2-phase use is not an activation, then it is *never* active.
+        Some((TwoPhaseUse::SharedUse, _)) => return false,
+        // Otherwise, we derive info from the activation point `v`:
+        Some((TwoPhaseUse::MutActivate, v)) => v,
     };
 
     // Otherwise, it is active for every location *except* in between

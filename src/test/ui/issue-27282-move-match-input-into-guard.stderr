@@ -1,0 +1,32 @@
+error[E0505]: cannot move out of `b` because it is borrowed
+  --> $DIR/issue-27282-move-match-input-into-guard.rs:26:16
+   |
+LL |        match b {
+   |   _____-
+   |  |_____|
+   | ||
+LL | ||         &mut false => {},
+LL | ||         _ if { (|| { let bar = b; *bar = false; })();
+   | ||                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ move out of `b` occurs here
+LL | ||                      //~^ ERROR cannot move out of `b` because it is borrowed [E0505]
+...  ||
+LL | ||         _ => panic!("surely we could never get here, since rustc warns it is unreachable."),
+LL | ||     }
+   | ||     -
+   | ||_____|
+   | |______borrow of `b` occurs here
+   |        borrow later used here
+
+error[E0382]: use of moved value: `*b`
+  --> $DIR/issue-27282-move-match-input-into-guard.rs:29:14
+   |
+LL |         _ if { (|| { let bar = b; *bar = false; })();
+   |                ----------------------------------- value moved here
+...
+LL |         &mut true => { println!("You might think we should get here"); },
+   |              ^^^^ value used here after move
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0382, E0505.
+For more information about an error, try `rustc --explain E0382`.

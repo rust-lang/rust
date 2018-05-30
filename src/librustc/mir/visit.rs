@@ -355,6 +355,11 @@ macro_rules! make_mir_visitor {
                                           ref $($mutability)* rvalue) => {
                         self.visit_assign(block, place, rvalue, location);
                     }
+                    StatementKind::ReadForMatch(ref $($mutability)* place) => {
+                        self.visit_place(place,
+                                         PlaceContext::Inspect,
+                                         location);
+                    }
                     StatementKind::EndRegion(_) => {}
                     StatementKind::Validate(_, ref $($mutability)* places) => {
                         for operand in places {

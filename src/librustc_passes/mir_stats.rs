@@ -85,6 +85,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
         self.record("Statement", statement);
         self.record(match statement.kind {
             StatementKind::Assign(..) => "StatementKind::Assign",
+            StatementKind::ReadForMatch(..) => "StatementKind::ReadForMatch",
             StatementKind::EndRegion(..) => "StatementKind::EndRegion",
             StatementKind::Validate(..) => "StatementKind::Validate",
             StatementKind::SetDiscriminant { .. } => "StatementKind::SetDiscriminant",

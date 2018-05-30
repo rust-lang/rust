@@ -82,6 +82,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 asm::codegen_inline_asm(&bx, asm, outputs, input_vals);
                 bx
             }
+            mir::StatementKind::ReadForMatch(_) |
             mir::StatementKind::EndRegion(_) |
             mir::StatementKind::Validate(..) |
             mir::StatementKind::UserAssertTy(..) |

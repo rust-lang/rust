@@ -23,13 +23,20 @@ LL |           if let Some(thing) = maybe {
    |           ^           ----- value moved here
    |  _________|
    | |
-LL | |         //~^ ERROR use of partially moved value: `maybe` (Ast) [E0382]
-LL | |         //~| ERROR use of moved value: `(maybe as std::prelude::v1::Some).0` (Ast) [E0382]
-LL | |         //~| ERROR use of moved value: `maybe` (Mir) [E0382]
-LL | |         //~| ERROR use of moved value: `maybe` (Mir) [E0382]
-LL | |         //~| ERROR use of moved value: `maybe.0` (Mir) [E0382]
 LL | |         }
    | |_________^ value used here after move
+   |
+   = note: move occurs because `maybe` has type `std::option::Option<std::vec::Vec<bool>>`, which does not implement the `Copy` trait
+
+error[E0382]: borrow of moved value: `maybe` (Mir)
+  --> $DIR/issue-41962.rs:17:9
+   |
+LL |           if let Some(thing) = maybe {
+   |           ^           ----- value moved here
+   |  _________|
+   | |
+LL | |         }
+   | |_________^ value borrowed here after move
    |
    = note: move occurs because `maybe` has type `std::option::Option<std::vec::Vec<bool>>`, which does not implement the `Copy` trait
 
@@ -52,6 +59,6 @@ LL |         if let Some(thing) = maybe {
    |
    = note: move occurs because `maybe.0` has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0382`.

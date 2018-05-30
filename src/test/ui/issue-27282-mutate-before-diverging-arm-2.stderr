@@ -1,0 +1,26 @@
+error[E0500]: closure requires unique access to `x` but it is already borrowed
+  --> $DIR/issue-27282-mutate-before-diverging-arm-2.rs:38:18
+   |
+LL |        match x {
+   |   _____-
+   |  |_____|
+   | ||
+LL | ||         &mut None => panic!("unreachable"),
+LL | ||         &mut Some(&_)
+LL | ||             if {
+LL | ||                 // ForceFnOnce needed to exploit #27282
+LL | ||                 (|| { *x = None; drop(force_fn_once); })();
+   | ||                  ^^    - borrow occurs due to use of `x` in closure
+   | ||                  |
+   | ||                  closure construction occurs here
+...  ||
+LL | ||         _ => panic!("unreachable"),
+LL | ||     }
+   | ||     -
+   | ||_____|
+   | |______borrow occurs here
+   |        borrow later used here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0500`.

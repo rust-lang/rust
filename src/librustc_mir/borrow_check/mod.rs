@@ -423,6 +423,14 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                     flow_state,
                 );
             }
+            StatementKind::ReadForMatch(ref place) => {
+                self.access_place(ContextKind::ReadForMatch.new(location),
+                                  (place, span),
+                                  (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
+                                  LocalMutationIsAllowed::No,
+                                  flow_state,
+                                  );
+            }
             StatementKind::SetDiscriminant {
                 ref place,
                 variant_index: _,
@@ -1689,14 +1697,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
         let mut error_reported = false;
         match kind {
-            Reservation(WriteKind::MutableBorrow(BorrowKind::Unique))
-            | Write(WriteKind::MutableBorrow(BorrowKind::Unique)) => {
-                if let Err(_place_err) = self.is_mutable(place, LocalMutationIsAllowed::Yes) {
-                    span_bug!(span, "&unique borrow for {:?} should not fail", place);
-                }
-            }
-            Reservation(WriteKind::MutableBorrow(BorrowKind::Mut { .. }))
-            | Write(WriteKind::MutableBorrow(BorrowKind::Mut { .. })) => {
+            Reservation(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Unique))
+            | Reservation(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Mut { .. }))
+            | Write(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Unique))
+            | Write(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Mut { .. })) =>
+            {
+                let is_local_mutation_allowed = match borrow_kind {
+                    BorrowKind::Unique => LocalMutationIsAllowed::Yes,
+                    BorrowKind::Mut { .. } => is_local_mutation_allowed,
+                    BorrowKind::Shared => unreachable!(),
+                };
                 match self.is_mutable(place, is_local_mutation_allowed) {
                     Ok(root_place) => self.add_used_mut(root_place, flow_state),
                     Err(place_err) => {
@@ -2090,6 +2100,7 @@ enum ContextKind {
     CallDest,
     Assert,
     Yield,
+    ReadForMatch,
     StorageDead,
 }
 

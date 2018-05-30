@@ -1,0 +1,9 @@
+error[E0596]: cannot borrow immutable item `*r` as mutable
+  --> $DIR/issue-27282-reborrow-ref-mut-in-guard.rs:26:24
+   |
+LL |         ref mut r if { (|| { let bar = &mut *r; **bar = false; })();
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.

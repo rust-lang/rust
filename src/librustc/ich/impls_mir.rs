@@ -241,6 +241,9 @@ for mir::StatementKind<'gcx> {
                 place.hash_stable(hcx, hasher);
                 rvalue.hash_stable(hcx, hasher);
             }
+            mir::StatementKind::ReadForMatch(ref place) => {
+                place.hash_stable(hcx, hasher);
+            }
             mir::StatementKind::SetDiscriminant { ref place, variant_index } => {
                 place.hash_stable(hcx, hasher);
                 variant_index.hash_stable(hcx, hasher);

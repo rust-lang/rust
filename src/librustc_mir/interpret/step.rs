@@ -79,6 +79,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 self.deallocate_local(old_val)?;
             }
 
+            // No dynamic semantics attached to `ReadForMatch`; MIR
+            // interpreter is solely intended for borrowck'ed code.
+            ReadForMatch(..) => {}
+
             // Validity checks.
             Validate(op, ref places) => {
                 for operand in places {
