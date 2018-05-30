@@ -957,6 +957,24 @@ impl Build {
         self.package_vers(&self.release_num("rustfmt"))
     }
 
+    fn llvm_tools_vers(&self) -> String {
+        let stdout = build_helper::output(
+            Command::new(self.llvm_out(self.config.build).join("build/bin/llvm-size"))
+                .arg("--version"),
+        );
+
+        for line in stdout.lines() {
+            if line.contains("LLVM version") {
+                if let Some(vers) = line.split_whitespace().nth(2) {
+                    return vers.to_string();
+                }
+            }
+        }
+
+        panic!("The output of $LLVM_TOOL has changed; \
+                please fix `bootstrap::Build.llvm_tools_vers`");
+    }
+
     /// Returns the `version` string associated with this compiler for Rust
     /// itself.
     ///

@@ -43,6 +43,8 @@ pub fn pkgname(builder: &Builder, component: &str) -> String {
         format!("{}-{}", component, builder.rls_package_vers())
     } else if component == "rustfmt" {
         format!("{}-{}", component, builder.rustfmt_package_vers())
+    } else if component == "llvm-tools" {
+        format!("{}-{}", component, builder.llvm_tools_vers())
     } else {
         assert!(component.starts_with("rust"));
         format!("{}-{}", component, builder.rust_package_vers())
@@ -394,7 +396,7 @@ impl Step for Rustc {
         let compiler = self.compiler;
         let host = self.compiler.host;
 
-        builder.info(&format!("Dist rustc stage{} ({})", compiler.stage, compiler.host));
+        builder.info(&format!("Dist rustc stage{} ({})", compiler.stage, host));
         let name = pkgname(builder, "rustc");
         let image = tmpdir(builder).join(format!("{}-{}-image", name, host));
         let _ = fs::remove_dir_all(&image);
@@ -501,24 +503,6 @@ impl Step for Rustc {
                     .join(&exe);
                 t!(fs::create_dir_all(&dst.parent().unwrap()));
                 builder.copy(&src, &dst);
-            }
-
-            if builder.config.ship_llvm_tools {
-                let src = builder.sysroot_libdir(compiler, host)
-                    .parent()
-                    .unwrap()
-                    .join("bin");
-
-                let dst = image.join("lib/rustlib")
-                    .join(&*host)
-                    .join("bin");
-
-                t!(fs::create_dir_all(&dst.parent().unwrap()));
-
-                for tool in LLVM_TOOLS {
-                    let exe = exe(tool, &compiler.host);
-                    builder.copy(&src.join(&exe), &dst.join(&exe));
-                }
             }
 
             // Man pages
@@ -1756,6 +1740,7 @@ impl Step for HashSign {
         cmd.arg(builder.package_vers(&builder.release_num("cargo")));
         cmd.arg(builder.package_vers(&builder.release_num("rls")));
         cmd.arg(builder.package_vers(&builder.release_num("rustfmt")));
+        cmd.arg(builder.llvm_tools_vers());
         cmd.arg(addr);
 
         builder.create_dir(&distdir(builder));
@@ -1764,5 +1749,80 @@ impl Step for HashSign {
         t!(child.stdin.take().unwrap().write_all(pass.as_bytes()));
         let status = t!(child.wait());
         assert!(status.success());
+    }
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct LlvmTools {
+    pub stage: u32,
+    pub compiler: Compiler,
+    pub target: Interned<String>,
+}
+
+impl Step for LlvmTools {
+    type Output = Option<PathBuf>;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("llvm-tools")
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(LlvmTools {
+            stage: run.builder.top_stage,
+            compiler: run.builder.compiler(run.builder.top_stage, run.target),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
+        let compiler = self.compiler;
+        let host = compiler.host;
+
+        let stage = self.stage;
+        assert!(builder.config.extended);
+
+        builder.info(&format!("Dist LlvmTools stage{} ({})", stage, host));
+        let src = builder.src.join("src/llvm");
+        let name = pkgname(builder, "llvm-tools");
+
+        let tmp = tmpdir(builder);
+        let image = tmp.join("llvm-tools-image");
+        drop(fs::remove_dir_all(&image));
+        t!(fs::create_dir_all(&image.join("bin")));
+
+        // Prepare the image directory
+        for tool in LLVM_TOOLS {
+            let exe = builder
+                .llvm_out(host)
+                .join("bin")
+                .join(exe(tool, &compiler.host));
+            builder.install(&exe, &image.join("bin"), 0o755);
+        }
+
+        // Prepare the overlay
+        let overlay = tmp.join("llvm-tools-overlay");
+        drop(fs::remove_dir_all(&overlay));
+        builder.create_dir(&overlay);
+        builder.install(&src.join("README.txt"), &overlay, 0o644);
+        builder.install(&src.join("LICENSE.TXT"), &overlay, 0o644);
+
+        // Generate the installer tarball
+        let mut cmd = rust_installer(builder);
+        cmd.arg("generate")
+            .arg("--product-name=Rust")
+            .arg("--rel-manifest-dir=rustlib")
+            .arg("--success-message=llvm-tools-installed.")
+            .arg("--image-dir").arg(&image)
+            .arg("--work-dir").arg(&tmpdir(builder))
+            .arg("--output-dir").arg(&distdir(builder))
+            .arg("--non-installed-overlay").arg(&overlay)
+            .arg(format!("--package-name={}-{}", name, host))
+            .arg("--legacy-manifest-dirs=rustlib,cargo")
+            .arg("--component-name=llvm-tools");
+
+
+        builder.run(&mut cmd);
+        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, host)))
     }
 }

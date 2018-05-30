@@ -31,7 +31,7 @@ use filetime::FileTime;
 use serde_json;
 
 use util::{exe, libdir, is_dylib, CiEnv};
-use {Compiler, Mode, LLVM_TOOLS};
+use {Compiler, Mode};
 use native;
 use tool;
 
@@ -775,23 +775,6 @@ fn copy_codegen_backends_to_sysroot(builder: &Builder,
     }
 }
 
-fn copy_llvm_tools_to_sysroot(builder: &Builder,
-                              target_compiler: Compiler) {
-    let target = target_compiler.host;
-
-    let dst = builder.sysroot_libdir(target_compiler, target)
-        .parent()
-        .unwrap()
-        .join("bin");
-    t!(fs::create_dir_all(&dst));
-
-    let src = builder.llvm_out(target).join("bin");
-    for tool in LLVM_TOOLS {
-        let exe = exe(tool, &target);
-        builder.copy(&src.join(&exe), &dst.join(&exe));
-    }
-}
-
 fn copy_lld_to_sysroot(builder: &Builder,
                        target_compiler: Compiler,
                        lld_install_root: &Path) {
@@ -983,9 +966,6 @@ impl Step for Assemble {
         copy_codegen_backends_to_sysroot(builder,
                                          build_compiler,
                                          target_compiler);
-        if builder.config.ship_llvm_tools {
-            copy_llvm_tools_to_sysroot(builder, target_compiler);
-        }
         if let Some(lld_install) = lld_install {
             copy_lld_to_sysroot(builder, target_compiler, &lld_install);
         }

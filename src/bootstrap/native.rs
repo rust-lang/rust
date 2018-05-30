@@ -170,12 +170,12 @@ impl Step for Llvm {
         //
         // If we are shipping llvm tools then we statically link them LLVM
         if (target.contains("linux-gnu") || target.contains("apple-darwin")) &&
-            !builder.config.ship_llvm_tools  {
+            !builder.config.llvm_tools_enabled {
                 cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
         // For distribution we want the LLVM tools to be *statically* linked to libstdc++
-        if builder.config.ship_llvm_tools {
+        if builder.config.llvm_tools_enabled {
             cfg.define("CMAKE_EXE_LINKER_FLAGS", "-Wl,-Bsymbolic -static-libstdc++");
         }
 

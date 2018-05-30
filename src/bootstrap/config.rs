@@ -88,7 +88,7 @@ pub struct Config {
     pub llvm_link_jobs: Option<u32>,
 
     pub lld_enabled: bool,
-    pub ship_llvm_tools: bool,
+    pub llvm_tools_enabled: bool,
 
     // rust codegen options
     pub rust_optimize: bool,
@@ -533,7 +533,7 @@ impl Config {
             set(&mut config.test_miri, rust.test_miri);
             set(&mut config.wasm_syscall, rust.wasm_syscall);
             set(&mut config.lld_enabled, rust.lld);
-            set(&mut config.ship_llvm_tools, rust.llvm_tools);
+            set(&mut config.llvm_tools_enabled, rust.llvm_tools);
             config.rustc_parallel_queries = rust.experimental_parallel_queries.unwrap_or(false);
             config.rustc_default_linker = rust.default_linker.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
