@@ -25,6 +25,8 @@ use sys_common::{AsInner, FromInner};
 
 #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "l4re"))]
 use libc::{stat64, fstat64, lstat64, off64_t, ftruncate64, lseek64, dirent64, readdir64_r, open64};
+#[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
+use libc::{fstatat, dirfd};
 #[cfg(target_os = "android")]
 use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, lseek64,
            dirent as dirent64, open as open64};
@@ -48,10 +50,14 @@ pub struct FileAttr {
     stat: stat64,
 }
 
-pub struct ReadDir {
+// all DirEntry's will have a reference to this struct
+struct InnerReadDir {
     dirp: Dir,
-    root: Arc<PathBuf>,
+    root: PathBuf,
 }
+
+#[derive(Clone)]
+pub struct ReadDir(Arc<InnerReadDir>);
 
 struct Dir(*mut libc::DIR);
 
@@ -60,8 +66,8 @@ unsafe impl Sync for Dir {}
 
 pub struct DirEntry {
     entry: dirent64,
-    root: Arc<PathBuf>,
-    // We need to store an owned copy of the directory name
+    dir: ReadDir,
+    // We need to store an owned copy of the entry name
     // on Solaris and Fuchsia because a) it uses a zero-length
     // array to store the name, b) its lifetime between readdir
     // calls is not guaranteed.
@@ -207,7 +213,7 @@ impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // This will only be called from std::fs::ReadDir, which will add a "ReadDir()" frame.
         // Thus the result will be e g 'ReadDir("/home")'
-        fmt::Debug::fmt(&*self.root, f)
+        fmt::Debug::fmt(&*self.0.root, f)
     }
 }
 
@@ -240,7 +246,7 @@ impl Iterator for ReadDir {
                     entry: *entry_ptr,
                     name: ::slice::from_raw_parts(name as *const u8,
                                                   namelen as usize).to_owned().into_boxed_slice(),
-                    root: self.root.clone()
+                    dir: self.clone()
                 };
                 if ret.name_bytes() != b"." && ret.name_bytes() != b".." {
                     return Some(Ok(ret))
@@ -254,11 +260,11 @@ impl Iterator for ReadDir {
         unsafe {
             let mut ret = DirEntry {
                 entry: mem::zeroed(),
-                root: self.root.clone()
+                dir: self.clone(),
             };
             let mut entry_ptr = ptr::null_mut();
             loop {
-                if readdir64_r(self.dirp.0, &mut ret.entry, &mut entry_ptr) != 0 {
+                if readdir64_r(self.0.dirp.0, &mut ret.entry, &mut entry_ptr) != 0 {
                     return Some(Err(Error::last_os_error()))
                 }
                 if entry_ptr.is_null() {
@@ -281,13 +287,27 @@ impl Drop for Dir {
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        self.root.join(OsStr::from_bytes(self.name_bytes()))
+        self.dir.0.root.join(OsStr::from_bytes(self.name_bytes()))
     }
 
     pub fn file_name(&self) -> OsString {
         OsStr::from_bytes(self.name_bytes()).to_os_string()
     }
 
+    #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
+    pub fn metadata(&self) -> io::Result<FileAttr> {
+        let fd = cvt(unsafe {dirfd(self.dir.0.dirp.0)})?;
+        let mut stat: stat64 = unsafe { mem::zeroed() };
+        cvt(unsafe {
+            fstatat(fd,
+                    self.entry.d_name.as_ptr(),
+                    &mut stat as *mut _ as *mut _,
+                    libc::AT_SYMLINK_NOFOLLOW)
+        })?;
+        Ok(FileAttr { stat: stat })
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "emscripten", target_os = "android")))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
         lstat(&self.path())
     }
@@ -664,14 +684,15 @@ impl fmt::Debug for File {
 }
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
-    let root = Arc::new(p.to_path_buf());
+    let root = p.to_path_buf();
     let p = cstr(p)?;
     unsafe {
         let ptr = libc::opendir(p.as_ptr());
         if ptr.is_null() {
             Err(Error::last_os_error())
         } else {
-            Ok(ReadDir { dirp: Dir(ptr), root: root })
+            let inner = InnerReadDir { dirp: Dir(ptr), root };
+            Ok(ReadDir(Arc::new(inner)))
         }
     }
 }
@@ -796,7 +817,7 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
 
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    use fs::{File, set_permissions};
+    use fs::File;
     if !from.is_file() {
         return Err(Error::new(ErrorKind::InvalidInput,
                               "the source path is not an existing regular file"))
@@ -807,14 +828,14 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let perm = reader.metadata()?.permissions();
 
     let ret = io::copy(&mut reader, &mut writer)?;
-    set_permissions(to, perm)?;
+    writer.set_permissions(perm)?;
     Ok(ret)
 }
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use cmp;
-    use fs::{File, set_permissions};
+    use fs::File;
     use sync::atomic::{AtomicBool, Ordering};
 
     // Kernel prior to 4.5 don't have copy_file_range
@@ -886,7 +907,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
                         // Try again with fallback method
                         assert_eq!(written, 0);
                         let ret = io::copy(&mut reader, &mut writer)?;
-                        set_permissions(to, perm)?;
+                        writer.set_permissions(perm)?;
                         return Ok(ret)
                     },
                     _ => return Err(err),
@@ -894,6 +915,6 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             }
         }
     }
-    set_permissions(to, perm)?;
+    writer.set_permissions(perm)?;
     Ok(written)
 }

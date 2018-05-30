@@ -75,9 +75,6 @@ pub struct ObligationForest<O: ForestObligation> {
     done_cache: FxHashSet<O::Predicate>,
     /// An cache of the nodes in `nodes`, indexed by predicate.
     waiting_cache: FxHashMap<O::Predicate, NodeIndex>,
-    /// A list of the obligations added in snapshots, to allow
-    /// for their removal.
-    cache_list: Vec<O::Predicate>,
     scratch: Option<Vec<usize>>,
 }
 
@@ -158,7 +155,6 @@ impl<O: ForestObligation> ObligationForest<O> {
             nodes: vec![],
             done_cache: FxHashSet(),
             waiting_cache: FxHashMap(),
-            cache_list: vec![],
             scratch: Some(vec![]),
         }
     }
@@ -207,7 +203,6 @@ impl<O: ForestObligation> ObligationForest<O> {
                 debug!("register_obligation_at({:?}, {:?}) - ok, new index is {}",
                        obligation, parent, self.nodes.len());
                 v.insert(NodeIndex::new(self.nodes.len()));
-                self.cache_list.push(obligation.as_predicate().clone());
                 self.nodes.push(Node::new(parent, obligation));
                 Ok(())
             }

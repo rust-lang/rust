@@ -835,7 +835,9 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 
 /// Opaque type representing the discriminant of an enum.
 ///
-/// See the `discriminant` function in this module for more information.
+/// See the [`discriminant`] function in this module for more information.
+///
+/// [`discriminant`]: fn.discriminant.html
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 pub struct Discriminant<T>(u64, PhantomData<fn() -> T>);
 

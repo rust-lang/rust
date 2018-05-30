@@ -691,41 +691,6 @@ impl<T> [T] {
         Chunks { v: self, chunk_size: chunk_size }
     }
 
-    /// Returns an iterator over `chunk_size` elements of the slice at a
-    /// time. The chunks are slices and do not overlap. If `chunk_size` does
-    /// not divide the length of the slice, then the last up to `chunk_size-1`
-    /// elements will be omitted.
-    ///
-    /// Due to each chunk having exactly `chunk_size` elements, the compiler
-    /// can often optimize the resulting code better than in the case of
-    /// [`chunks`].
-    ///
-    /// # Panics
-    ///
-    /// Panics if `chunk_size` is 0.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(exact_chunks)]
-    ///
-    /// let slice = ['l', 'o', 'r', 'e', 'm'];
-    /// let mut iter = slice.exact_chunks(2);
-    /// assert_eq!(iter.next().unwrap(), &['l', 'o']);
-    /// assert_eq!(iter.next().unwrap(), &['r', 'e']);
-    /// assert!(iter.next().is_none());
-    /// ```
-    ///
-    /// [`chunks`]: #method.chunks
-    #[unstable(feature = "exact_chunks", issue = "47115")]
-    #[inline]
-    pub fn exact_chunks(&self, chunk_size: usize) -> ExactChunks<T> {
-        assert!(chunk_size != 0);
-        let rem = self.len() % chunk_size;
-        let len = self.len() - rem;
-        ExactChunks { v: &self[..len], chunk_size: chunk_size}
-    }
-
     /// Returns an iterator over `chunk_size` elements of the slice at a time.
     /// The chunks are mutable slices, and do not overlap. If `chunk_size` does
     /// not divide the length of the slice, then the last chunk will not
@@ -759,6 +724,41 @@ impl<T> [T] {
     pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<T> {
         assert!(chunk_size != 0);
         ChunksMut { v: self, chunk_size: chunk_size }
+    }
+
+    /// Returns an iterator over `chunk_size` elements of the slice at a
+    /// time. The chunks are slices and do not overlap. If `chunk_size` does
+    /// not divide the length of the slice, then the last up to `chunk_size-1`
+    /// elements will be omitted.
+    ///
+    /// Due to each chunk having exactly `chunk_size` elements, the compiler
+    /// can often optimize the resulting code better than in the case of
+    /// [`chunks`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `chunk_size` is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(exact_chunks)]
+    ///
+    /// let slice = ['l', 'o', 'r', 'e', 'm'];
+    /// let mut iter = slice.exact_chunks(2);
+    /// assert_eq!(iter.next().unwrap(), &['l', 'o']);
+    /// assert_eq!(iter.next().unwrap(), &['r', 'e']);
+    /// assert!(iter.next().is_none());
+    /// ```
+    ///
+    /// [`chunks`]: #method.chunks
+    #[unstable(feature = "exact_chunks", issue = "47115")]
+    #[inline]
+    pub fn exact_chunks(&self, chunk_size: usize) -> ExactChunks<T> {
+        assert!(chunk_size != 0);
+        let rem = self.len() % chunk_size;
+        let len = self.len() - rem;
+        ExactChunks { v: &self[..len], chunk_size: chunk_size}
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time.
@@ -1977,35 +1977,63 @@ fn slice_index_overflow_fail() -> ! {
     panic!("attempted to index slice up to maximum usize");
 }
 
+mod private_slice_index {
+    use super::ops;
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    pub trait Sealed {}
+
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    impl Sealed for usize {}
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    impl Sealed for ops::Range<usize> {}
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    impl Sealed for ops::RangeTo<usize> {}
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    impl Sealed for ops::RangeFrom<usize> {}
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    impl Sealed for ops::RangeFull {}
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    impl Sealed for ops::RangeInclusive<usize> {}
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    impl Sealed for ops::RangeToInclusive<usize> {}
+}
+
 /// A helper trait used for indexing operations.
-#[unstable(feature = "slice_get_slice", issue = "35729")]
+#[stable(feature = "slice_get_slice", since = "1.28.0")]
 #[rustc_on_unimplemented = "slice indices are of type `usize` or ranges of `usize`"]
-pub trait SliceIndex<T: ?Sized> {
+pub trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// The output type returned by methods.
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
     type Output: ?Sized;
 
     /// Returns a shared reference to the output at this location, if in
     /// bounds.
+    #[unstable(feature = "slice_index_methods", issue = "0")]
     fn get(self, slice: &T) -> Option<&Self::Output>;
 
     /// Returns a mutable reference to the output at this location, if in
     /// bounds.
+    #[unstable(feature = "slice_index_methods", issue = "0")]
     fn get_mut(self, slice: &mut T) -> Option<&mut Self::Output>;
 
     /// Returns a shared reference to the output at this location, without
     /// performing any bounds checking.
+    #[unstable(feature = "slice_index_methods", issue = "0")]
     unsafe fn get_unchecked(self, slice: &T) -> &Self::Output;
 
     /// Returns a mutable reference to the output at this location, without
     /// performing any bounds checking.
+    #[unstable(feature = "slice_index_methods", issue = "0")]
     unsafe fn get_unchecked_mut(self, slice: &mut T) -> &mut Self::Output;
 
     /// Returns a shared reference to the output at this location, panicking
     /// if out of bounds.
+    #[unstable(feature = "slice_index_methods", issue = "0")]
     fn index(self, slice: &T) -> &Self::Output;
 
     /// Returns a mutable reference to the output at this location, panicking
     /// if out of bounds.
+    #[unstable(feature = "slice_index_methods", issue = "0")]
     fn index_mut(self, slice: &mut T) -> &mut Self::Output;
 }
 
