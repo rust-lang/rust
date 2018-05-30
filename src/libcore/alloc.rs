@@ -20,6 +20,7 @@ use fmt;
 use mem;
 use usize;
 use ptr::{self, NonNull};
+use num::NonZeroUsize;
 
 extern {
     /// An opaque, unsized type. Used for pointers to allocated memory.
@@ -66,7 +67,7 @@ fn size_align<T>() -> (usize, usize) {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Layout {
     // size of the requested block of memory, measured in bytes.
-    size: usize,
+    size_: usize,
 
     // alignment of the requested block of memory, measured in bytes.
     // we ensure that this is always a power-of-two, because API's
@@ -75,17 +76,12 @@ pub struct Layout {
     //
     // (However, we do not analogously require `align >= sizeof(void*)`,
     //  even though that is *also* a requirement of `posix_memalign`.)
-    align: usize,
+    align_: NonZeroUsize,
 }
-
-
-// FIXME: audit default implementations for overflow errors,
-// (potentially switching to overflowing_add and
-//  overflowing_mul as necessary).
 
 impl Layout {
     /// Constructs a `Layout` from a given `size` and `align`,
-    /// or returns `None` if either of the following conditions
+    /// or returns `LayoutErr` if either of the following conditions
     /// are not met:
     ///
     /// * `align` must be a power of two,
@@ -126,23 +122,23 @@ impl Layout {
     ///
     /// # Safety
     ///
-    /// This function is unsafe as it does not verify that `align` is
-    /// a power-of-two nor `size` aligned to `align` fits within the
-    /// address space (i.e. the `Layout::from_size_align` preconditions).
+    /// This function is unsafe as it does not verify the preconditions from
+    /// [`Layout::from_size_align`](#method.from_size_align).
     #[inline]
     pub unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
-        Layout { size: size, align: align }
+        Layout { size_: size, align_: NonZeroUsize::new_unchecked(align) }
     }
 
     /// The minimum size in bytes for a memory block of this layout.
     #[inline]
-    pub fn size(&self) -> usize { self.size }
+    pub fn size(&self) -> usize { self.size_ }
 
     /// The minimum byte alignment for a memory block of this layout.
     #[inline]
-    pub fn align(&self) -> usize { self.align }
+    pub fn align(&self) -> usize { self.align_.get() }
 
     /// Constructs a `Layout` suitable for holding a value of type `T`.
+    #[inline]
     pub fn new<T>() -> Self {
         let (size, align) = size_align::<T>();
         // Note that the align is guaranteed by rustc to be a power of two and
@@ -158,6 +154,7 @@ impl Layout {
     /// Produces layout describing a record that could be used to
     /// allocate backing structure for `T` (which could be a trait
     /// or other unsized type like a slice).
+    #[inline]
     pub fn for_value<T: ?Sized>(t: &T) -> Self {
         let (size, align) = (mem::size_of_val(t), mem::align_of_val(t));
         // See rationale in `new` for why this us using an unsafe variant below
@@ -181,18 +178,19 @@ impl Layout {
     ///
     /// # Panics
     ///
-    /// Panics if the combination of `self.size` and the given `align`
-    /// violates the conditions listed in `from_size_align`.
+    /// Panics if the combination of `self.size()` and the given `align`
+    /// violates the conditions listed in
+    /// [`Layout::from_size_align`](#method.from_size_align).
     #[inline]
     pub fn align_to(&self, align: usize) -> Self {
-        Layout::from_size_align(self.size, cmp::max(self.align, align)).unwrap()
+        Layout::from_size_align(self.size(), cmp::max(self.align(), align)).unwrap()
     }
 
     /// Returns the amount of padding we must insert after `self`
     /// to ensure that the following address will satisfy `align`
     /// (measured in bytes).
     ///
-    /// E.g. if `self.size` is 9, then `self.padding_needed_for(4)`
+    /// E.g. if `self.size()` is 9, then `self.padding_needed_for(4)`
     /// returns 3, because that is the minimum number of bytes of
     /// padding required to get a 4-aligned address (assuming that the
     /// corresponding memory block starts at a 4-aligned address).
@@ -203,9 +201,12 @@ impl Layout {
     /// Note that the utility of the returned value requires `align`
     /// to be less than or equal to the alignment of the starting
     /// address for the whole allocated block of memory. One way to
-    /// satisfy this constraint is to ensure `align <= self.align`.
+    /// satisfy this constraint is to ensure `align <= self.align()`.
     #[inline]
     pub fn padding_needed_for(&self, align: usize) -> usize {
+        // **FIXME**: This function is only called with proper power-of-two
+        // alignments. Maybe we should turn this into a real assert!.
+        debug_assert!(align.is_power_of_two());
         let len = self.size();
 
         // Rounded up value is:
@@ -227,7 +228,8 @@ impl Layout {
         // size and padding overflow in the above manner should cause
         // the allocator to yield an error anyway.)
 
-        let len_rounded_up = len.wrapping_add(align).wrapping_sub(1) & !align.wrapping_sub(1);
+        let len_rounded_up = len.wrapping_add(align).wrapping_sub(1)
+            & !align.wrapping_sub(1);
         return len_rounded_up.wrapping_sub(len);
     }
 
@@ -238,14 +240,14 @@ impl Layout {
     /// layout of the array and `offs` is the distance between the start
     /// of each element in the array.
     ///
-    /// On arithmetic overflow, returns `None`.
+    /// On arithmetic overflow, returns `LayoutErr`.
     #[inline]
     pub fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutErr> {
-        let padded_size = self.size.checked_add(self.padding_needed_for(self.align))
+        let padded_size = self.size().checked_add(self.padding_needed_for(self.align()))
             .ok_or(LayoutErr { private: () })?;
         let alloc_size = padded_size.checked_mul(n)
             .ok_or(LayoutErr { private: () })?;
-        Ok((Layout::from_size_align(alloc_size, self.align)?, padded_size))
+        Ok((Layout::from_size_align(alloc_size, self.align())?, padded_size))
     }
 
     /// Creates a layout describing the record for `self` followed by
@@ -258,16 +260,16 @@ impl Layout {
     /// start of the `next` embedded within the concatenated record
     /// (assuming that the record itself starts at offset 0).
     ///
-    /// On arithmetic overflow, returns `None`.
+    /// On arithmetic overflow, returns `LayoutErr`.
     pub fn extend(&self, next: Self) -> Result<(Self, usize), LayoutErr> {
-        let new_align = cmp::max(self.align, next.align);
-        let realigned = Layout::from_size_align(self.size, new_align)?;
+        let new_align = cmp::max(self.align(), next.align());
+        let realigned = Layout::from_size_align(self.size(), new_align)?;
 
-        let pad = realigned.padding_needed_for(next.align);
+        let pad = realigned.padding_needed_for(next.align());
 
-        let offset = self.size.checked_add(pad)
+        let offset = self.size().checked_add(pad)
             .ok_or(LayoutErr { private: () })?;
-        let new_size = offset.checked_add(next.size)
+        let new_size = offset.checked_add(next.size())
             .ok_or(LayoutErr { private: () })?;
 
         let layout = Layout::from_size_align(new_size, new_align)?;
@@ -285,10 +287,10 @@ impl Layout {
     /// guaranteed that all elements in the array will be properly
     /// aligned.
     ///
-    /// On arithmetic overflow, returns `None`.
+    /// On arithmetic overflow, returns `LayoutErr`.
     pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutErr> {
         let size = self.size().checked_mul(n).ok_or(LayoutErr { private: () })?;
-        Layout::from_size_align(size, self.align)
+        Layout::from_size_align(size, self.align())
     }
 
     /// Creates a layout describing the record for `self` followed by
@@ -305,17 +307,17 @@ impl Layout {
     ///  signature out of convenience in matching the signature of
     ///  `extend`.)
     ///
-    /// On arithmetic overflow, returns `None`.
+    /// On arithmetic overflow, returns `LayoutErr`.
     pub fn extend_packed(&self, next: Self) -> Result<(Self, usize), LayoutErr> {
         let new_size = self.size().checked_add(next.size())
             .ok_or(LayoutErr { private: () })?;
-        let layout = Layout::from_size_align(new_size, self.align)?;
+        let layout = Layout::from_size_align(new_size, self.align())?;
         Ok((layout, self.size()))
     }
 
     /// Creates a layout describing the record for a `[T; n]`.
     ///
-    /// On arithmetic overflow, returns `None`.
+    /// On arithmetic overflow, returns `LayoutErr`.
     pub fn array<T>(n: usize) -> Result<Self, LayoutErr> {
         Layout::new::<T>()
             .repeat(n)
@@ -834,7 +836,7 @@ pub unsafe trait Alloc {
                             layout: Layout,
                             new_size: usize) -> Result<(), CannotReallocInPlace> {
         let _ = ptr; // this default implementation doesn't care about the actual address.
-        debug_assert!(new_size >= layout.size);
+        debug_assert!(new_size >= layout.size());
         let (_l, u) = self.usable_size(&layout);
         // _l <= layout.size()                       [guaranteed by usable_size()]
         //       layout.size() <= new_layout.size()  [required by this method]
@@ -889,7 +891,7 @@ pub unsafe trait Alloc {
                               layout: Layout,
                               new_size: usize) -> Result<(), CannotReallocInPlace> {
         let _ = ptr; // this default implementation doesn't care about the actual address.
-        debug_assert!(new_size <= layout.size);
+        debug_assert!(new_size <= layout.size());
         let (l, _u) = self.usable_size(&layout);
         //                      layout.size() <= _u  [guaranteed by usable_size()]
         // new_layout.size() <= layout.size()        [required by this method]
