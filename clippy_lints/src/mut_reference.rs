@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::Subst;
 use rustc::hir::*;
-use utils::span_lint;
+use crate::utils::span_lint;
 
 /// **What it does:** Detects giving a mutable reference to a function that only
 /// requires an immutable reference.

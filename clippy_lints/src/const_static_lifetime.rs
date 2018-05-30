@@ -1,6 +1,6 @@
 use syntax::ast::*;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use utils::{in_macro, snippet, span_lint_and_then};
+use crate::utils::{in_macro, snippet, span_lint_and_then};
 
 /// **What it does:** Checks for constants with an explicit `'static` lifetime.
 ///

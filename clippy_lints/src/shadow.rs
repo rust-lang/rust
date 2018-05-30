@@ -1,10 +1,10 @@
-use reexport::*;
+use crate::reexport::*;
 use rustc::lint::*;
 use rustc::hir::*;
 use rustc::hir::intravisit::FnKind;
 use rustc::ty;
 use syntax::codemap::Span;
-use utils::{contains_name, higher, in_external_macro, iter_input_pats, snippet, span_lint_and_then};
+use crate::utils::{contains_name, higher, in_external_macro, iter_input_pats, snippet, span_lint_and_then};
 
 /// **What it does:** Checks for bindings that shadow other bindings already in
 /// scope, while just changing reference level or mutability.

@@ -2,8 +2,8 @@ use rustc::hir::*;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::*;
 use syntax::codemap::Span;
-use utils::SpanlessEq;
-use utils::{get_item_name, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty};
+use crate::utils::SpanlessEq;
+use crate::utils::{get_item_name, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty};
 
 /// **What it does:** Checks for uses of `contains_key` + `insert` on `HashMap`
 /// or `BTreeMap`.

@@ -2,8 +2,8 @@ use rustc::lint::*;
 use rustc::ty::{self, Ty};
 use rustc::hir::*;
 use syntax::codemap::Span;
-use utils::paths;
-use utils::{is_automatically_derived, is_copy, match_path, span_lint_and_then};
+use crate::utils::paths;
+use crate::utils::{is_automatically_derived, is_copy, match_path, span_lint_and_then};
 
 /// **What it does:** Checks for deriving `Hash` but implementing `PartialEq`
 /// explicitly or vice versa.

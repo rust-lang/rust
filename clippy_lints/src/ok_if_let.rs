@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{match_type, method_chain_args, paths, snippet, span_help_and_lint};
+use crate::utils::{match_type, method_chain_args, paths, snippet, span_help_and_lint};
 
 /// **What it does:*** Checks for unnecessary `ok()` in if let.
 ///

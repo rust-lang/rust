@@ -1,7 +1,7 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::hir::def::Def;
 use rustc::hir::{BiAnd, BiOr, BlockCheckMode, Expr, Expr_, Stmt, StmtSemi, UnsafeSource};
-use utils::{has_drop, in_macro, snippet_opt, span_lint, span_lint_and_sugg};
+use crate::utils::{has_drop, in_macro, snippet_opt, span_lint, span_lint_and_sugg};
 use std::ops::Deref;
 
 /// **What it does:** Checks for statements which have no effect.

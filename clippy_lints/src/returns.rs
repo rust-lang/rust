@@ -3,7 +3,7 @@ use syntax::ast;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
 
-use utils::{in_external_macro, in_macro, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};
+use crate::utils::{in_external_macro, in_macro, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};
 
 /// **What it does:** Checks for return statements at the end of a block.
 ///

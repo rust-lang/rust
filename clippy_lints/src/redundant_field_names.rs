@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{in_macro, is_range_expression, match_var, span_lint_and_sugg};
+use crate::utils::{in_macro, is_range_expression, match_var, span_lint_and_sugg};
 
 /// **What it does:** Checks for fields in struct literals where shorthands
 /// could be used.

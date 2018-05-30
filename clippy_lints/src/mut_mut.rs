@@ -2,7 +2,7 @@ use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::lint::*;
 use rustc::ty;
-use utils::{higher, in_external_macro, span_lint};
+use crate::utils::{higher, in_external_macro, span_lint};
 
 /// **What it does:** Checks for instances of `mut mut` references.
 ///

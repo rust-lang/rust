@@ -6,7 +6,7 @@ use rustc::lint::*;
 use rustc::hir::{BindingAnnotation, Expr, ExprAddrOf, MutImmutable, Pat, PatKind};
 use rustc::ty;
 use rustc::ty::adjustment::{Adjust, Adjustment};
-use utils::{in_macro, snippet_opt, span_lint_and_then};
+use crate::utils::{in_macro, snippet_opt, span_lint_and_then};
 
 /// **What it does:** Checks for address of operations (`&`) that are going to
 /// be dereferenced immediately by the compiler.

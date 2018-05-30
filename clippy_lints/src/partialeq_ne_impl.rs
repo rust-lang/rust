@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{is_automatically_derived, span_lint};
+use crate::utils::{is_automatically_derived, span_lint};
 
 /// **What it does:** Checks for manual re-implementations of `PartialEq::ne`.
 ///

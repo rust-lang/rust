@@ -3,9 +3,9 @@ use rustc::hir;
 use rustc::lint::*;
 use rustc::ty::{self, Ty};
 use syntax::codemap::Span;
-use utils::paths;
-use utils::{get_trait_def_id, implements_trait, in_external_macro, return_ty, same_tys, span_lint_and_then};
-use utils::sugg::DiagnosticBuilderExt;
+use crate::utils::paths;
+use crate::utils::{get_trait_def_id, implements_trait, in_external_macro, return_ty, same_tys, span_lint_and_then};
+use crate::utils::sugg::DiagnosticBuilderExt;
 
 /// **What it does:** Checks for types with a `fn new() -> Self` method and no
 /// implementation of

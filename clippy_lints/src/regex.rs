@@ -4,8 +4,8 @@ use rustc::lint::*;
 use std::collections::HashSet;
 use syntax::ast::{LitKind, NodeId, StrStyle};
 use syntax::codemap::{BytePos, Span};
-use utils::{is_expn_of, match_def_path, match_type, opt_def_id, paths, span_help_and_lint, span_lint};
-use consts::{constant, Constant};
+use crate::utils::{is_expn_of, match_def_path, match_type, opt_def_id, paths, span_help_and_lint, span_lint};
+use crate::consts::{constant, Constant};
 
 /// **What it does:** Checks [regex](https://crates.io/crates/regex) creation
 /// (with `Regex::new`,`RegexBuilder::new` or `RegexSet::new`) for correct

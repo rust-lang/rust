@@ -3,8 +3,8 @@ use rustc::lint::*;
 use rustc::ty;
 use syntax::ast::LitKind;
 use syntax_pos::Span;
-use utils::paths;
-use utils::{in_macro, is_expn_of, last_path_segment, match_def_path, match_type, opt_def_id, resolve_node, snippet, span_lint_and_then, walk_ptrs_ty};
+use crate::utils::paths;
+use crate::utils::{in_macro, is_expn_of, last_path_segment, match_def_path, match_type, opt_def_id, resolve_node, snippet, span_lint_and_then, walk_ptrs_ty};
 
 /// **What it does:** Checks for the use of `format!("string literal with no
 /// argument")` and `format!("{}", foo)` where `foo` is a string.

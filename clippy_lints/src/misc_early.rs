@@ -4,7 +4,7 @@ use std::char;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
-use utils::{constants, in_external_macro, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then};
+use crate::utils::{constants, in_external_macro, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then};
 
 /// **What it does:** Checks for structure field patterns bound to wildcards.
 ///

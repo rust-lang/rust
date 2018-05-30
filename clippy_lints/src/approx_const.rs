@@ -3,7 +3,7 @@ use rustc::lint::*;
 use std::f64::consts as f64;
 use syntax::ast::{FloatTy, Lit, LitKind};
 use syntax::symbol;
-use utils::span_lint;
+use crate::utils::span_lint;
 
 /// **What it does:** Checks for floating point literals that approximate
 /// constants which are defined in

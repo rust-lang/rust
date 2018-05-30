@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::ty;
 use rustc::hir::*;
-use utils::{match_def_path, opt_def_id, paths, span_help_and_lint};
+use crate::utils::{match_def_path, opt_def_id, paths, span_help_and_lint};
 
 /// **What it does:** Checks for creation of references to zeroed or uninitialized memory.
 ///

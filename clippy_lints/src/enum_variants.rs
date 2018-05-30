@@ -4,8 +4,8 @@ use rustc::lint::*;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::symbol::LocalInternedString;
-use utils::{span_help_and_lint, span_lint};
-use utils::{camel_case_from, camel_case_until, in_macro};
+use crate::utils::{span_help_and_lint, span_lint};
+use crate::utils::{camel_case_from, camel_case_until, in_macro};
 
 /// **What it does:** Detects enumeration variants that are prefixed or suffixed
 /// by the same characters.

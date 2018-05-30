@@ -4,7 +4,7 @@ use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::LateContext;
 use syntax::ast::Name;
 use syntax::codemap::Span;
-use utils::{get_pat_name, match_var, snippet};
+use crate::utils::{get_pat_name, match_var, snippet};
 
 pub fn get_spans(
     cx: &LateContext,

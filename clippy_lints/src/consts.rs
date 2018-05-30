@@ -14,7 +14,7 @@ use std::rc::Rc;
 use syntax::ast::{FloatTy, LitKind};
 use syntax::ptr::P;
 use rustc::middle::const_val::ConstVal;
-use utils::{sext, unsext, clip};
+use crate::utils::{sext, unsext, clip};
 
 #[derive(Debug, Copy, Clone)]
 pub enum FloatWidth {

@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use syntax::ast;
-use utils::{get_trait_def_id, span_lint};
+use crate::utils::{get_trait_def_id, span_lint};
 
 /// **What it does:** Lints for suspicious operations in impls of arithmetic operators, e.g.
 /// subtracting elements in an Add impl.
@@ -149,7 +149,7 @@ fn check_binop<'a>(
     expected_ops: &[hir::BinOp_],
 ) -> Option<&'a str> {
     let mut trait_ids = vec![];
-    let [krate, module] = ::utils::paths::OPS_MODULE;
+    let [krate, module] = crate::utils::paths::OPS_MODULE;
 
     for t in traits {
         let path = [krate, module, t];

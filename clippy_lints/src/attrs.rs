@@ -1,13 +1,13 @@
 //! checks for attributes
 
-use reexport::*;
+use crate::reexport::*;
 use rustc::hir::*;
 use rustc::lint::*;
 use rustc::ty::{self, TyCtxt};
 use semver::Version;
 use syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use syntax::codemap::Span;
-use utils::{
+use crate::utils::{
     in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_then,
     without_block_comments,
 };

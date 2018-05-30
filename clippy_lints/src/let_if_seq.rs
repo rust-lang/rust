@@ -3,7 +3,7 @@ use rustc::hir;
 use rustc::hir::BindingAnnotation;
 use rustc::hir::def::Def;
 use syntax::ast;
-use utils::{snippet, span_lint_and_then};
+use crate::utils::{snippet, span_lint_and_then};
 
 /// **What it does:** Checks for variable declarations immediately followed by a
 /// conditional affectation.

@@ -2,8 +2,8 @@ use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::*;
 use syntax::ast;
-use utils::{get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, SpanlessEq};
-use utils::{higher, sugg};
+use crate::utils::{get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, SpanlessEq};
+use crate::utils::{higher, sugg};
 
 /// **What it does:** Checks for compound assignment operations (`+=` and
 /// similar).
@@ -145,7 +145,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                              $($trait_name:ident:$full_trait_name:ident),+) => {
                                 match $op {
                                     $(hir::$full_trait_name => {
-                                        let [krate, module] = ::utils::paths::OPS_MODULE;
+                                        let [krate, module] = crate::utils::paths::OPS_MODULE;
                                         let path = [krate, module, concat!(stringify!($trait_name), "Assign")];
                                         let trait_id = if let Some(trait_id) = get_trait_def_id($cx, &path) {
                                             trait_id

@@ -2,9 +2,9 @@ use rustc::lint::*;
 use rustc::hir::*;
 use syntax::ast::RangeLimits;
 use syntax::codemap::Spanned;
-use utils::{is_integer_literal, paths, snippet, span_lint, span_lint_and_then};
-use utils::{get_trait_def_id, higher, implements_trait};
-use utils::sugg::Sugg;
+use crate::utils::{is_integer_literal, paths, snippet, span_lint, span_lint_and_then};
+use crate::utils::{get_trait_def_id, higher, implements_trait};
+use crate::utils::sugg::Sugg;
 
 /// **What it does:** Checks for calling `.step_by(0)` on iterators,
 /// which never terminates.
@@ -93,7 +93,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
             // Range with step_by(0).
             if name == "step_by" && args.len() == 2 && has_step_by(cx, &args[0]) {
-                use consts::{constant, Constant};
+                use crate::consts::{constant, Constant};
                 if let Some((Constant::Int(0), _)) = constant(cx, cx.tables, &args[1]) {
                     span_lint(
                         cx,

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::symbol::LocalInternedString;
-use utils::{in_macro, span_lint};
+use crate::utils::{in_macro, span_lint};
 
 /// **What it does:** Checks for unused labels.
 ///

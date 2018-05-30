@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir;
-use utils::{is_try, match_qpath, match_trait_method, paths, span_lint};
+use crate::utils::{is_try, match_qpath, match_trait_method, paths, span_lint};
 
 /// **What it does:** Checks for unused written/read amount.
 ///

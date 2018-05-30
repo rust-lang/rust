@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use reexport::*;
+use crate::reexport::*;
 use rustc::hir::*;
 use rustc::hir::def::Def;
 use rustc::hir::def_id;
@@ -17,13 +17,13 @@ use std::collections::{HashMap, HashSet};
 use std::iter::{once, Iterator};
 use syntax::ast;
 use syntax::codemap::Span;
-use utils::{sugg, sext};
-use consts::{constant, Constant};
+use crate::utils::{sugg, sext};
+use crate::consts::{constant, Constant};
 
-use utils::{get_enclosing_block, get_parent_expr, higher, in_external_macro, is_integer_literal, is_refutable,
+use crate::utils::{get_enclosing_block, get_parent_expr, higher, in_external_macro, is_integer_literal, is_refutable,
             last_path_segment, match_trait_method, match_type, match_var, multispan_sugg, snippet, snippet_opt,
             span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then};
-use utils::paths;
+use crate::utils::paths;
 
 /// **What it does:** Checks for for-loops that manually copy items between
 /// slices that could be optimized by having a memcpy.

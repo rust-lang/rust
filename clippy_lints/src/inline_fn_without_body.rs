@@ -3,8 +3,8 @@
 use rustc::lint::*;
 use rustc::hir::*;
 use syntax::ast::{Attribute, Name};
-use utils::span_lint_and_then;
-use utils::sugg::DiagnosticBuilderExt;
+use crate::utils::span_lint_and_then;
+use crate::utils::sugg::DiagnosticBuilderExt;
 
 /// **What it does:** Checks for `#[inline]` on trait methods without bodies
 ///

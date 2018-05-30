@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{match_qpath, paths, snippet, span_lint_and_then};
+use crate::utils::{match_qpath, paths, snippet, span_lint_and_then};
 
 /// **What it does:*** Lint for redundant pattern matching over `Result` or
 /// `Option`

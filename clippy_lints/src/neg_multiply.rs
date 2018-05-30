@@ -2,8 +2,8 @@ use rustc::hir::*;
 use rustc::lint::*;
 use syntax::codemap::{Span, Spanned};
 
-use consts::{self, Constant};
-use utils::span_lint;
+use crate::consts::{self, Constant};
+use crate::utils::span_lint;
 
 /// **What it does:** Checks for multiplication by -1 as a form of negation.
 ///

@@ -32,7 +32,7 @@ use syntax::ast;
 use syntax::codemap::{original_sp, DUMMY_SP};
 use std::borrow::Cow;
 
-use utils::{in_macro, snippet, snippet_block, span_help_and_lint, trim_multiline};
+use crate::utils::{in_macro, snippet, snippet_block, span_help_and_lint, trim_multiline};
 
 /// **What it does:** The lint checks for `if`-statements appearing in loops
 /// that contain a `continue` statement in either their main blocks or their

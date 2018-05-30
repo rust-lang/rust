@@ -9,7 +9,7 @@ use rustc::ty::layout::LayoutOf;
 use rustc::util::nodemap::NodeSet;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
-use utils::span_lint;
+use crate::utils::span_lint;
 
 pub struct Pass {
     pub too_large_for_stack: u64,

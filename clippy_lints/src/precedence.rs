@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax::codemap::Spanned;
-use utils::{in_macro, snippet, span_lint_and_sugg};
+use crate::utils::{in_macro, snippet, span_lint_and_sugg};
 
 /// **What it does:** Checks for operations where precedence may be unclear
 /// and suggests to add parentheses. Currently it catches the following:

@@ -4,7 +4,7 @@ use syntax::symbol::LocalInternedString;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::visit::{walk_block, walk_expr, walk_pat, Visitor};
-use utils::{in_macro, span_lint, span_lint_and_then};
+use crate::utils::{in_macro, span_lint, span_lint_and_then};
 
 /// **What it does:** Checks for names that are very similar and thus confusing.
 ///

@@ -1,7 +1,7 @@
-use consts::{constant_simple, Constant};
+use crate::consts::{constant_simple, Constant};
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::span_help_and_lint;
+use crate::utils::span_help_and_lint;
 
 /// **What it does:** Checks for `0.0 / 0.0`.
 ///

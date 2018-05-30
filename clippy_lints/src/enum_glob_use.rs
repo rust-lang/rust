@@ -5,7 +5,7 @@ use rustc::hir::def::Def;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
-use utils::span_lint;
+use crate::utils::span_lint;
 
 /// **What it does:** Checks for `use Enum::*`.
 ///
