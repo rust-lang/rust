@@ -159,9 +159,7 @@ impl<'a> GccLinker<'a> {
         self
     }
 
-    fn add_lib<S>(&mut self, lib: S) -> &mut Self
-        where S: AsRef<OsStr>
-    {
+    fn add_lib(&mut self, lib: &str) -> &mut Self {
         let mut os = OsString::from("-l");
         os.push(lib.as_ref());
         self.cmd.arg(os);
@@ -229,7 +227,7 @@ impl<'a> Linker for GccLinker<'a> {
         self.hint_static();
         let target = &self.sess.target.target;
         if !target.options.is_like_osx {
-            self.linker_arg("--whole-archive").cmd.arg("-l").arg(lib);
+            self.linker_arg("--whole-archive").add_lib(lib);
             self.linker_arg("--no-whole-archive");
         } else {
             // -force_load is the macOS equivalent of --whole-archive, but it
@@ -247,7 +245,7 @@ impl<'a> Linker for GccLinker<'a> {
             v.push(lib);
             self.linker_arg(&v);
         } else {
-            self.linker_arg("--whole-archive").add_lib(lib);
+            self.linker_arg("--whole-archive").cmd.arg(lib);
             self.linker_arg("--no-whole-archive");
         }
     }
