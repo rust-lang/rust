@@ -1318,7 +1318,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     }
 }
 
-/// Divides a list of general trait bounds into two groups: builtin bounds (Sync/Send) and the
+/// Divides a list of general trait bounds into two groups: auto traits (e.g. Sync and Send) and the
 /// remaining general trait bounds.
 fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                          trait_bounds: &'b [hir::PolyTraitRef])
