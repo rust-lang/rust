@@ -14,7 +14,7 @@
 // See https://github.com/rust-lang/rust/issues/34793 for more information.
 
 // Make sure we don't optimize anything away:
-// compile-flags: -C no-prepopulate-passes
+// compile-flags: -C no-prepopulate-passes -Cpasses=name-anon-globals
 
 // Expand something exponentially
 macro_rules! go_bacterial {

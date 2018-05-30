@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -C no-prepopulate-passes
+// compile-flags: -C no-prepopulate-passes -Cpasses=name-anon-globals
 
 #![crate_type = "lib"]
 
