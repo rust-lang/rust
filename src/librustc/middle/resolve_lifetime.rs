@@ -101,6 +101,13 @@ impl Region {
         let depth = ty::DebruijnIndex::INNERMOST;
         let def_id = hir_map.local_def_id(def.lifetime.id);
         let origin = LifetimeDefOrigin::from_is_in_band(def.in_band);
+        debug!(
+            "Region::late: def={:?} depth={:?} def_id={:?} origin={:?}",
+            def,
+            depth,
+            def_id,
+            origin,
+        );
         (def.lifetime.name, Region::LateBound(depth, def_id, origin))
     }
 

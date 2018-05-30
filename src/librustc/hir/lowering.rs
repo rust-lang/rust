@@ -594,6 +594,18 @@ impl<'a> LoweringContext<'a> {
         span.with_ctxt(SyntaxContext::empty().apply_mark(mark))
     }
 
+    fn with_anonymous_lifetime_mode<R>(
+        &mut self,
+        anonymous_lifetime_mode: AnonymousLifetimeMode,
+        op: impl FnOnce(&mut Self) -> R,
+    ) -> R {
+        let old_anonymous_lifetime_mode = self.anonymous_lifetime_mode;
+        self.anonymous_lifetime_mode = anonymous_lifetime_mode;
+        let result = op(self);
+        self.anonymous_lifetime_mode = old_anonymous_lifetime_mode;
+        result
+    }
+
     /// Creates a new hir::GenericParam for every new lifetime and
     /// type parameter encountered while evaluating `f`. Definitions
     /// are created with the parent provided. If no `parent_id` is
@@ -1620,44 +1632,54 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         data: &ParenthesizedParameterData,
     ) -> (hir::PathParameters, bool) {
-        const DISALLOWED: ImplTraitContext = ImplTraitContext::Disallowed;
-        let &ParenthesizedParameterData {
-            ref inputs,
-            ref output,
-            span,
-        } = data;
-        let inputs = inputs
-            .iter()
-            .map(|ty| self.lower_ty(ty, DISALLOWED))
-            .collect();
-        let mk_tup = |this: &mut Self, tys, span| {
-            let LoweredNodeId { node_id, hir_id } = this.next_id();
-            P(hir::Ty {
-                node: hir::TyTup(tys),
-                id: node_id,
-                hir_id,
-                span,
-            })
-        };
+        // Switch to `PassThrough` mode for anonymous lifetimes: this
+        // means that we permit things like `&Ref<T>`, where `Ref` has
+        // a hidden lifetime parameter. This is needed for backwards
+        // compatibility, even in contexts like an impl header where
+        // we generally don't permit such things (see #51008).
+        self.with_anonymous_lifetime_mode(
+            AnonymousLifetimeMode::PassThrough,
+            |this| {
+                const DISALLOWED: ImplTraitContext = ImplTraitContext::Disallowed;
+                let &ParenthesizedParameterData {
+                    ref inputs,
+                    ref output,
+                    span,
+                } = data;
+                let inputs = inputs
+                    .iter()
+                    .map(|ty| this.lower_ty(ty, DISALLOWED))
+                    .collect();
+                let mk_tup = |this: &mut Self, tys, span| {
+                    let LoweredNodeId { node_id, hir_id } = this.next_id();
+                    P(hir::Ty {
+                        node: hir::TyTup(tys),
+                        id: node_id,
+                        hir_id,
+                        span,
+                    })
+                };
 
-        (
-            hir::PathParameters {
-                lifetimes: hir::HirVec::new(),
-                types: hir_vec![mk_tup(self, inputs, span)],
-                bindings: hir_vec![
-                    hir::TypeBinding {
-                        id: self.next_id().node_id,
-                        name: Symbol::intern(FN_OUTPUT_NAME),
-                        ty: output
-                            .as_ref()
-                            .map(|ty| self.lower_ty(&ty, DISALLOWED))
-                            .unwrap_or_else(|| mk_tup(self, hir::HirVec::new(), span)),
-                        span: output.as_ref().map_or(span, |ty| ty.span),
-                    }
-                ],
-                parenthesized: true,
-            },
-            false,
+                (
+                    hir::PathParameters {
+                        lifetimes: hir::HirVec::new(),
+                        types: hir_vec![mk_tup(this, inputs, span)],
+                        bindings: hir_vec![
+                            hir::TypeBinding {
+                                id: this.next_id().node_id,
+                                name: Symbol::intern(FN_OUTPUT_NAME),
+                                ty: output
+                                    .as_ref()
+                                    .map(|ty| this.lower_ty(&ty, DISALLOWED))
+                                    .unwrap_or_else(|| mk_tup(this, hir::HirVec::new(), span)),
+                                span: output.as_ref().map_or(span, |ty| ty.span),
+                            }
+                        ],
+                        parenthesized: true,
+                    },
+                    false,
+                )
+            }
         )
     }
 
