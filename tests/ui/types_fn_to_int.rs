@@ -12,7 +12,4 @@ fn main() {
     let y = x as i32;
 
     let z = bar as u32;
-
-    //let c = || {0i32};
-    //let ac = c as u32;
 }

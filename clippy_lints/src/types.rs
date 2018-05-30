@@ -679,9 +679,9 @@ declare_clippy_lint! {
     "cast to the same type, e.g. `x as i32` where `x: i32`"
 }
 
-/// **What it does:** Checks for casts function pointer to the numeric type.
+/// **What it does:** Checks for casts of a function pointer to a numeric type except `usize`.
 ///
-/// **Why is this bad?** Cast pointer not to usize truncate value.
+/// **Why is this bad?** Casting a function pointer to something other than `usize` could truncate the address value.
 ///
 /// **Known problems:** None.
 ///
@@ -1003,8 +1003,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                             FN_TO_NUMERIC_CAST,
                             expr.span,
                             &format!("casting a `{}` to `{}` may truncate the function address value.", cast_from, cast_to),
-                            //   &format!("if you need address of function, use cast zz `usize`:"),
-                            &format!("if you need the address of the function, z consider:"),
+                            "if you need the address of the function, consider :",
                             format!("{} as usize", &snippet(cx, ex.span, "x"))
                         );
                     }
