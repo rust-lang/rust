@@ -118,6 +118,11 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             let mut lock = cache.borrow_mut();
             if let Some(value) = lock.results.get(key) {
                 profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
+                tcx.sess.profiler(|p| {
+                    p.record_query(Q::CATEGORY);
+                    p.record_query_hit(Q::CATEGORY);
+                });
+
                 let result = Ok((value.value.clone(), value.index));
                 return TryGetJob::JobCompleted(result);
             }
@@ -379,7 +384,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         if dep_node.kind.is_anon() {
             profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
-            self.sess.profiler(|p| p.start_activity(Q::CATEGORY));
+            self.sess.profiler(|p| {
+                p.start_activity(Q::CATEGORY);
+                p.record_query(Q::CATEGORY);
+            });
 
             let res = job.start(self, |tcx| {
                 tcx.dep_graph.with_anon_task(dep_node.kind, || {
@@ -404,6 +412,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if !dep_node.kind.is_input() {
             if let Some(dep_node_index) = self.try_mark_green_and_read(&dep_node) {
                 profq_msg!(self, ProfileQueriesMsg::CacheHit);
+                self.sess.profiler(|p| p.record_query_hit(Q::CATEGORY));
+
                 return self.load_from_disk_and_cache_in_memory::<Q>(key,
                                                                     job,
                                                                     dep_node_index,
@@ -525,7 +535,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 key, dep_node);
 
         profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
-        self.sess.profiler(|p| p.start_activity(Q::CATEGORY));
+        self.sess.profiler(|p| {
+            p.start_activity(Q::CATEGORY);
+            p.record_query(Q::CATEGORY);
+        });
 
         let res = job.start(self, |tcx| {
             if dep_node.kind.is_eval_always() {

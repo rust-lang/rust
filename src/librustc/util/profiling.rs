@@ -76,23 +76,46 @@ impl<T> Categories<T> {
 
 struct CategoryData {
     times: Categories<u64>,
+    query_counts: Categories<(u64, u64)>,
 }
 
 impl CategoryData {
     fn new() -> CategoryData {
         CategoryData {
             times: Categories::new(),
+            query_counts: Categories::new(),
         }
     }
 
     fn print(&self, lock: &mut StdoutLock) {
-        writeln!(lock, "{0: <15} \t\t {1: <15}", "Parsing", self.times.parsing / 1_000_000).unwrap();
-        writeln!(lock, "{0: <15} \t\t {1: <15}", "Expansion", self.times.expansion / 1_000_000).unwrap();
-        writeln!(lock, "{0: <15} \t\t {1: <15}", "TypeChecking", self.times.type_checking / 1_000_000).unwrap();
-        writeln!(lock, "{0: <15} \t\t {1: <15}", "BorrowChecking", self.times.borrow_checking / 1_000_000).unwrap();
-        writeln!(lock, "{0: <15} \t\t {1: <15}", "Codegen", self.times.codegen / 1_000_000).unwrap();
-        writeln!(lock, "{0: <15} \t\t {1: <15}", "Linking", self.times.linking / 1_000_000).unwrap();
-        writeln!(lock, "{0: <15} \t\t {1: <15}", "Other", self.times.other / 1_000_000).unwrap();
+        macro_rules! p {
+            ($name:tt, $rustic_name:ident) => {
+                writeln!(
+                   lock,
+                   "{0: <15} \t\t {1: <15}",
+                   $name,
+                   self.times.$rustic_name / 1_000_000
+                ).unwrap();
+                
+                let (hits, total) = self.query_counts.$rustic_name;
+                if total > 0 {
+                    writeln!(
+                        lock,
+                        "\t{} hits {} queries",
+                        hits,
+                        total
+                    ).unwrap();
+                }
+            };
+        }
+
+        p!("Parsing", parsing);
+        p!("Expansion", expansion);
+        p!("TypeChecking", type_checking);
+        p!("BorrowChecking", borrow_checking);
+        p!("Codegen", codegen);
+        p!("Linking", linking);
+        p!("Other", other);
     }
 }
 
@@ -145,6 +168,16 @@ impl SelfProfiler {
 
         //push the new category
         self.timer_stack.push(category);
+    }
+
+    pub fn record_query(&mut self, category: ProfileCategory) {
+        let (hits, total) = *self.data.query_counts.get(category);
+        self.data.query_counts.set(category, (hits, total + 1));
+    }
+
+    pub fn record_query_hit(&mut self, category: ProfileCategory) {
+        let (hits, total) = *self.data.query_counts.get(category);
+        self.data.query_counts.set(category, (hits + 1, total));
     }
 
     pub fn end_activity(&mut self, category: ProfileCategory) {
