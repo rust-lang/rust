@@ -29,17 +29,17 @@ looks like:
 ```rust
 #![feature(global_allocator, allocator_api, heap_api)]
 
-use std::alloc::{GlobalAlloc, System, Layout, Opaque};
+use std::alloc::{AllocErr, GlobalAlloc, System, Layout, Opaque};
 use std::ptr::NonNull;
 
 struct MyAllocator;
 
 unsafe impl GlobalAlloc for MyAllocator {
-    unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
+    unsafe fn alloc(&self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
         System.alloc(layout)
     }
 
-    unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout) {
+    unsafe fn dealloc(&self, ptr: NonNull<Opaque>, layout: Layout) {
         System.dealloc(ptr, layout)
     }
 }
@@ -55,18 +55,15 @@ fn main() {
 ```
 
 And that's it! The `#[global_allocator]` attribute is applied to a `static`
-which implements the `Alloc` trait in the `std::alloc` module. Note, though,
-that the implementation is defined for `&MyAllocator`, not just `MyAllocator`.
-You may wish, however, to also provide `Alloc for MyAllocator` for other use
-cases.
+which implements the `GlobalAlloc` trait in the `std::alloc` module.
 
 A crate can only have one instance of `#[global_allocator]` and this instance
 may be loaded through a dependency. For example `#[global_allocator]` above
 could have been placed in one of the dependencies loaded through `extern crate`.
 
-Note that `Alloc` itself is an `unsafe` trait, with much documentation on the
-trait itself about usage and for implementors. Extra care should be taken when
-implementing a global allocator as well as the allocator may be called from many
-portions of the standard library, such as the panicking routine. As a result it
-is highly recommended to not panic during allocation and work in as many
-situations with as few dependencies as possible as well.
+Note that `GlobalAlloc` itself is an `unsafe` trait, with much documentation on
+the trait itself about usage and for implementors. Extra care should be taken
+when implementing a global allocator as well as the allocator may be called from
+many portions of the standard library, such as the panicking routine. As a
+result it is highly recommended to not panic during allocation and work in as
+many situations with as few dependencies as possible as well.

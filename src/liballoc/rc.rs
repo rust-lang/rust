@@ -845,7 +845,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
                 self.dec_weak();
 
                 if self.weak() == 0 {
-                    Global.dealloc(self.ptr.as_opaque(), Layout::for_value(self.ptr.as_ref()));
+                    Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
                 }
             }
         }
@@ -1269,7 +1269,7 @@ impl<T: ?Sized> Drop for Weak<T> {
             // the weak count starts at 1, and will only go to zero if all
             // the strong pointers have disappeared.
             if self.weak() == 0 {
-                Global.dealloc(self.ptr.as_opaque(), Layout::for_value(self.ptr.as_ref()));
+                Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
             }
         }
     }

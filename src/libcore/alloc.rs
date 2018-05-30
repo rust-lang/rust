@@ -21,25 +21,15 @@ use mem;
 use usize;
 use ptr::{self, NonNull};
 
-extern {
-    /// An opaque, unsized type. Used for pointers to allocated memory.
-    ///
-    /// This type can only be used behind a pointer like `*mut Opaque` or `ptr::NonNull<Opaque>`.
-    /// Such pointers are similar to C’s `void*` type.
-    pub type Opaque;
-}
-
-impl Opaque {
-    /// Similar to `std::ptr::null`, which requires `T: Sized`.
-    pub fn null() -> *const Self {
-        0 as _
-    }
-
-    /// Similar to `std::ptr::null_mut`, which requires `T: Sized`.
-    pub fn null_mut() -> *mut Self {
-        0 as _
-    }
-}
+/// An opaque, byte-sized type. Used for pointers to allocated memory.
+///
+/// This type can only be used behind a pointer like `*mut Opaque` or `ptr::NonNull<Opaque>`.
+/// Such pointers are similar to C’s `void*` type.
+///
+/// `Opaque` has a size of 1 byte, which allows you to calculate byte offsets
+/// from it using the `offset`, `add` and `sub` methods on raw pointers.
+#[allow(missing_debug_implementations)]
+pub struct Opaque(u8);
 
 /// Represents the combination of a starting address and
 /// a total capacity of the returned block.
@@ -403,7 +393,7 @@ pub unsafe trait GlobalAlloc {
     /// # Safety
     ///
     /// **FIXME:** what are the exact requirements?
-    unsafe fn alloc(&self, layout: Layout) -> *mut Opaque;
+    unsafe fn alloc(&self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr>;
 
     /// Deallocate the block of memory at the given `ptr` pointer with the given `layout`.
     ///
@@ -411,15 +401,13 @@ pub unsafe trait GlobalAlloc {
     ///
     /// **FIXME:** what are the exact requirements?
     /// In particular around layout *fit*. (See docs for the `Alloc` trait.)
-    unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout);
+    unsafe fn dealloc(&self, ptr: NonNull<Opaque>, layout: Layout);
 
-    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Opaque {
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
         let size = layout.size();
-        let ptr = self.alloc(layout);
-        if !ptr.is_null() {
-            ptr::write_bytes(ptr as *mut u8, 0, size);
-        }
-        ptr
+        let ptr = self.alloc(layout)?;
+        ptr::write_bytes(ptr.as_ptr() as *mut u8, 0, size);
+        Ok(ptr)
     }
 
     /// Shink or grow a block of memory to the given `new_size`.
@@ -438,18 +426,21 @@ pub unsafe trait GlobalAlloc {
     ///
     /// **FIXME:** what are the exact requirements?
     /// In particular around layout *fit*. (See docs for the `Alloc` trait.)
-    unsafe fn realloc(&self, ptr: *mut Opaque, layout: Layout, new_size: usize) -> *mut Opaque {
+    unsafe fn realloc(
+        &self,
+        ptr: NonNull<Opaque>,
+        layout: Layout,
+        new_size: usize,
+    ) -> Result<NonNull<Opaque>, AllocErr> {
         let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
-        let new_ptr = self.alloc(new_layout);
-        if !new_ptr.is_null() {
-            ptr::copy_nonoverlapping(
-                ptr as *const u8,
-                new_ptr as *mut u8,
-                cmp::min(layout.size(), new_size),
-            );
-            self.dealloc(ptr, layout);
-        }
-        new_ptr
+        let new_ptr = self.alloc(new_layout)?;
+        ptr::copy_nonoverlapping(
+            ptr.as_ptr() as *const u8,
+            new_ptr.as_ptr() as *mut u8,
+            cmp::min(layout.size(), new_size),
+        );
+        self.dealloc(ptr, layout);
+        Ok(new_ptr)
     }
 }
 
@@ -964,7 +955,7 @@ pub unsafe trait Alloc {
     {
         let k = Layout::new::<T>();
         if k.size() > 0 {
-            self.dealloc(ptr.as_opaque(), k);
+            self.dealloc(ptr.cast(), k);
         }
     }
 
@@ -1052,7 +1043,7 @@ pub unsafe trait Alloc {
         match (Layout::array::<T>(n_old), Layout::array::<T>(n_new)) {
             (Ok(ref k_old), Ok(ref k_new)) if k_old.size() > 0 && k_new.size() > 0 => {
                 debug_assert!(k_old.align() == k_new.align());
-                self.realloc(ptr.as_opaque(), k_old.clone(), k_new.size()).map(NonNull::cast)
+                self.realloc(ptr.cast(), k_old.clone(), k_new.size()).map(NonNull::cast)
             }
             _ => {
                 Err(AllocErr)
@@ -1085,7 +1076,7 @@ pub unsafe trait Alloc {
     {
         match Layout::array::<T>(n) {
             Ok(ref k) if k.size() > 0 => {
-                Ok(self.dealloc(ptr.as_opaque(), k.clone()))
+                Ok(self.dealloc(ptr.cast(), k.clone()))
             }
             _ => {
                 Err(AllocErr)

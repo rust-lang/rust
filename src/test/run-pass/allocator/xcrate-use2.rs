@@ -30,21 +30,21 @@ fn main() {
         let layout = Layout::from_size_align(4, 2).unwrap();
 
         // Global allocator routes to the `custom_as_global` global
-        let ptr = Global.alloc(layout.clone());
+        let ptr = Global.alloc(layout.clone()).unwrap();
         helper::work_with(&ptr);
         assert_eq!(custom_as_global::get(), n + 1);
         Global.dealloc(ptr, layout.clone());
         assert_eq!(custom_as_global::get(), n + 2);
 
         // Usage of the system allocator avoids all globals
-        let ptr = System.alloc(layout.clone());
+        let ptr = System.alloc(layout.clone()).unwrap();
         helper::work_with(&ptr);
         assert_eq!(custom_as_global::get(), n + 2);
         System.dealloc(ptr, layout.clone());
         assert_eq!(custom_as_global::get(), n + 2);
 
         // Usage of our personal allocator doesn't affect other instances
-        let ptr = GLOBAL.alloc(layout.clone());
+        let ptr = GLOBAL.alloc(layout.clone()).unwrap();
         helper::work_with(&ptr);
         assert_eq!(custom_as_global::get(), n + 2);
         assert_eq!(GLOBAL.0.load(Ordering::SeqCst), 1);
