@@ -41,15 +41,6 @@ extern "Rust" {
 pub struct Global;
 
 #[unstable(feature = "allocator_api", issue = "32838")]
-#[rustc_deprecated(since = "1.27.0", reason = "type renamed to `Global`")]
-pub type Heap = Global;
-
-#[unstable(feature = "allocator_api", issue = "32838")]
-#[rustc_deprecated(since = "1.27.0", reason = "type renamed to `Global`")]
-#[allow(non_upper_case_globals)]
-pub const Heap: Global = Global;
-
-#[unstable(feature = "allocator_api", issue = "32838")]
 #[inline]
 pub unsafe fn alloc(layout: Layout) -> *mut u8 {
     __rust_alloc(layout.size(), layout.align())

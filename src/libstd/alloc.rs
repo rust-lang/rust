@@ -12,7 +12,6 @@
 
 #![unstable(issue = "32838", feature = "allocator_api")]
 
-#[doc(inline)] #[allow(deprecated)] pub use alloc_crate::alloc::Heap;
 #[doc(inline)] pub use alloc_crate::alloc::{Global, Layout, oom};
 #[doc(inline)] pub use alloc_crate::alloc::{alloc, alloc_zeroed, dealloc, realloc};
 #[doc(inline)] pub use alloc_system::System;
