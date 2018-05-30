@@ -34,9 +34,9 @@
 use std::collections::HashSet;
 use std::{env, iter};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use build_helper::output;
+use build_helper::command_ext::Command;
 use cc;
 
 use Build;
@@ -158,7 +158,9 @@ fn set_compiler(cfg: &mut cc::Build,
                 return
             }
 
-            let output = output(c.to_command().arg("--version"));
+
+            let output = output(Command::from_std_command(c.to_command())
+                                .arg("--version"));
             let i = match output.find(" 4.") {
                 Some(i) => i,
                 None => return,

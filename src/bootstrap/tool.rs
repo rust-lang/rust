@@ -12,11 +12,12 @@ use std::fs;
 use std::env;
 use std::iter;
 use std::path::PathBuf;
-use std::process::{Command, exit};
+use std::process::exit;
 
 use Mode;
 use Compiler;
 use builder::{Step, RunConfig, ShouldRun, Builder};
+use build_helper::command_ext::Command;
 use util::{exe, add_lib_path};
 use compile::{self, libtest_stamp, libstd_stamp, librustc_stamp};
 use native;

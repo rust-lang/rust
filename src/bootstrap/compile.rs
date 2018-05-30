@@ -22,11 +22,12 @@ use std::fs::{self, File};
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::str;
 use std::cmp::min;
 
 use build_helper::{output, mtime, up_to_date};
+use build_helper::command_ext::Command;
 use filetime::FileTime;
 use serde_json;
 

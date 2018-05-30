@@ -145,11 +145,12 @@ use std::env;
 use std::fs::{self, OpenOptions, File};
 use std::io::{self, Seek, SeekFrom, Write, Read};
 use std::path::{PathBuf, Path};
-use std::process::{self, Command};
+use std::process;
 use std::slice;
 use std::str;
 
 use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime};
+use build_helper::command_ext::Command;
 use filetime::FileTime;
 
 use util::{exe, libdir, OutputFolder, CiEnv};

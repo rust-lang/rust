@@ -20,9 +20,9 @@ use std::fs::{self, File};
 use std::io::Read;
 use std::iter;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use build_helper::{self, output};
+use build_helper::command_ext::Command;
 
 use builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use cache::{Interned, INTERNER};

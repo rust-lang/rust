@@ -10,9 +10,13 @@
 
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::{env, fs};
+
+pub mod command_ext;
+
+use command_ext::Command;
 
 /// A helper macro to `unwrap` a result except also print out details like:
 ///

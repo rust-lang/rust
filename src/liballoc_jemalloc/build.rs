@@ -15,8 +15,8 @@ extern crate cc;
 
 use std::env;
 use std::path::PathBuf;
-use std::process::Command;
 use build_helper::{run, native_lib_boilerplate};
+use build_helper::command_ext::Command;
 
 fn main() {
     // FIXME: This is a hack to support building targets that don't

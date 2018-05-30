@@ -18,9 +18,9 @@ use std::fs;
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::{Duration, Instant};
 
+use build_helper::command_ext::Command;
 use cache::{Cache, Interned, INTERNER};
 use check;
 use compile;
