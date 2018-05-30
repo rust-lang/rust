@@ -135,6 +135,18 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             _ => {}
         }
 
+        if self.tcx.lang_items().align_offset_fn() == Some(instance.def.def_id()) {
+            // FIXME: return a real value in case the target allocation has an
+            // alignment bigger than the one requested
+            let n = u128::max_value();
+            let amt = 128 - self.memory.pointer_size().bytes() * 8;
+            let (dest, return_to_block) = destination.unwrap();
+            let ty = self.tcx.types.usize;
+            self.write_scalar(dest, Scalar::from_u128((n << amt) >> amt), ty)?;
+            self.goto_block(return_to_block);
+            return Ok(true);
+        }
+
         let mir = match self.load_mir(instance.def) {
             Ok(mir) => mir,
             Err(EvalError { kind: EvalErrorKind::NoMirFor(path), .. }) => {
