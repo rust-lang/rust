@@ -153,7 +153,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
 }
 
 fn create_new_without_default_suggest_msg(ty: Ty) -> String {
-    #[rustfmt_skip]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
     format!(
 "impl Default for {} {{
     fn default() -> Self {{
