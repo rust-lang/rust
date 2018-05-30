@@ -93,7 +93,7 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             // handles ZSTs and `cap = 0` alike
             let ptr = if alloc_size == 0 {
-                NonNull::<T>::dangling().cast()
+                NonNull::<T>::dangling()
             } else {
                 let align = mem::align_of::<T>();
                 let layout = Layout::from_size_align(alloc_size, align).unwrap();
@@ -103,13 +103,13 @@ impl<T, A: Alloc> RawVec<T, A> {
                     a.alloc(layout)
                 };
                 match result {
-                    Ok(ptr) => ptr,
+                    Ok(ptr) => ptr.cast(),
                     Err(_) => oom(layout),
                 }
             };
 
             RawVec {
-                ptr: ptr.cast().into(),
+                ptr: ptr.into(),
                 cap,
                 a,
             }
