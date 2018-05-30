@@ -796,7 +796,7 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
 
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    use fs::{File, set_permissions};
+    use fs::File;
     if !from.is_file() {
         return Err(Error::new(ErrorKind::InvalidInput,
                               "the source path is not an existing regular file"))
