@@ -4,7 +4,7 @@ use rustc::hir::*;
 use rustc::lint::*;
 use syntax::codemap::Span;
 
-use utils::{snippet, span_lint_and_sugg, SpanlessEq};
+use crate::utils::{snippet, span_lint_and_sugg, SpanlessEq};
 
 /// **What it does:** Checks for double comparions that could be simpified to a single expression.
 ///

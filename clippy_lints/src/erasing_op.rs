@@ -1,8 +1,8 @@
-use consts::{constant_simple, Constant};
+use crate::consts::{constant_simple, Constant};
 use rustc::hir::*;
 use rustc::lint::*;
 use syntax::codemap::Span;
-use utils::{in_macro, span_lint};
+use crate::utils::{in_macro, span_lint};
 
 /// **What it does:** Checks for erasing operations, e.g. `x * 0`.
 ///

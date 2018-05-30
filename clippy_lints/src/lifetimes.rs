@@ -1,11 +1,11 @@
-use reexport::*;
+use crate::reexport::*;
 use rustc::lint::*;
 use rustc::hir::def::Def;
 use rustc::hir::*;
 use rustc::hir::intravisit::*;
 use std::collections::{HashMap, HashSet};
 use syntax::codemap::Span;
-use utils::{in_external_macro, last_path_segment, span_lint};
+use crate::utils::{in_external_macro, last_path_segment, span_lint};
 use syntax::symbol::keywords;
 
 /// **What it does:** Checks for lifetime annotations which can be removed by

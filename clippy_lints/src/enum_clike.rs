@@ -6,8 +6,8 @@ use rustc::hir::*;
 use rustc::ty;
 use rustc::ty::subst::Substs;
 use syntax::ast::{IntTy, UintTy};
-use utils::span_lint;
-use consts::{Constant, miri_to_const};
+use crate::utils::span_lint;
+use crate::consts::{Constant, miri_to_const};
 use rustc::ty::util::IntTypeExt;
 use rustc::mir::interpret::GlobalId;
 

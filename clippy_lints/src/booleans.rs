@@ -4,7 +4,7 @@ use rustc::hir::intravisit::*;
 use syntax::ast::{LitKind, NodeId, DUMMY_NODE_ID};
 use syntax::codemap::{dummy_spanned, Span, DUMMY_SP};
 use syntax::util::ThinVec;
-use utils::{in_macro, paths, match_type, snippet_opt, span_lint_and_then, SpanlessEq};
+use crate::utils::{in_macro, paths, match_type, snippet_opt, span_lint_and_then, SpanlessEq};
 
 /// **What it does:** Checks for boolean expressions that can be written more
 /// concisely.

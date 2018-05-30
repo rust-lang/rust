@@ -6,7 +6,7 @@ use std::f64;
 use std::fmt;
 use syntax::ast::*;
 use syntax_pos::symbol::Symbol;
-use utils::span_lint_and_sugg;
+use crate::utils::span_lint_and_sugg;
 
 /// **What it does:** Checks for float literals with a precision greater
 /// than that supported by the underlying type

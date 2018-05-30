@@ -2,9 +2,9 @@ use rustc::hir::*;
 use rustc::lint::*;
 use syntax::ast::LitKind;
 use syntax::codemap::Span;
-use utils::{span_lint, span_lint_and_then};
-use utils::sugg::Sugg;
-use consts::{constant, Constant};
+use crate::utils::{span_lint, span_lint_and_then};
+use crate::utils::sugg::Sugg;
+use crate::consts::{constant, Constant};
 
 /// **What it does:** Checks for incompatible bit masks in comparisons.
 ///

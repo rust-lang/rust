@@ -4,7 +4,7 @@
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax_pos;
-use utils::{in_external_macro, snippet_opt, span_lint_and_sugg};
+use crate::utils::{in_external_macro, snippet_opt, span_lint_and_sugg};
 
 /// **What it does:** Warns if a long integral or floating-point constant does
 /// not contain underscores.

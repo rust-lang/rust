@@ -4,7 +4,7 @@
 
 use rustc::lint::*;
 use rustc::hir::{BindingAnnotation, MutImmutable, Pat, PatKind};
-use utils::{in_macro, snippet, span_lint_and_then};
+use crate::utils::{in_macro, snippet, span_lint_and_then};
 
 /// **What it does:** Checks for useless borrowed references.
 ///

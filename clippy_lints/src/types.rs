@@ -1,4 +1,4 @@
-use reexport::*;
+use crate::reexport::*;
 use rustc::hir;
 use rustc::hir::*;
 use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
@@ -12,11 +12,11 @@ use std::borrow::Cow;
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
-use utils::{comparisons, differing_macro_contexts, higher, in_constant, in_external_macro, in_macro, last_path_segment, match_def_path, match_path,
+use crate::utils::{comparisons, differing_macro_contexts, higher, in_constant, in_external_macro, in_macro, last_path_segment, match_def_path, match_path,
             match_type, multispan_sugg, opt_def_id, same_tys, snippet, snippet_opt, span_help_and_lint, span_lint,
             span_lint_and_sugg, span_lint_and_then, clip, unsext, sext, int_bits};
-use utils::paths;
-use consts::{constant, Constant};
+use crate::utils::paths;
+use crate::consts::{constant, Constant};
 
 /// Handles all the linting of funky types
 #[allow(missing_copy_implementations)]
@@ -1290,9 +1290,9 @@ fn detect_absurd_comparison<'a, 'tcx>(
     lhs: &'tcx Expr,
     rhs: &'tcx Expr,
 ) -> Option<(ExtremeExpr<'tcx>, AbsurdComparisonResult)> {
-    use types::ExtremeType::*;
-    use types::AbsurdComparisonResult::*;
-    use utils::comparisons::*;
+    use crate::types::ExtremeType::*;
+    use crate::types::AbsurdComparisonResult::*;
+    use crate::utils::comparisons::*;
 
     // absurd comparison only makes sense on primitive types
     // primitive types don't implement comparison operators with each other
@@ -1337,7 +1337,7 @@ fn detect_absurd_comparison<'a, 'tcx>(
 }
 
 fn detect_extreme_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<ExtremeExpr<'tcx>> {
-    use types::ExtremeType::*;
+    use crate::types::ExtremeType::*;
 
     let ty = cx.tables.expr_ty(expr);
 
@@ -1362,8 +1362,8 @@ fn detect_extreme_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        use types::ExtremeType::*;
-        use types::AbsurdComparisonResult::*;
+        use crate::types::ExtremeType::*;
+        use crate::types::AbsurdComparisonResult::*;
 
         if let ExprBinary(ref cmp, ref lhs, ref rhs) = expr.node {
             if let Some((culprit, result)) = detect_absurd_comparison(cx, cmp.node, lhs, rhs) {
@@ -1562,7 +1562,7 @@ fn upcast_comparison_bounds_err<'a, 'tcx>(
     rhs: &'tcx Expr,
     invert: bool,
 ) {
-    use utils::comparisons::*;
+    use crate::utils::comparisons::*;
 
     if let Some((lb, ub)) = lhs_bounds {
         if let Some(norm_rhs_val) = node_as_const_fullint(cx, rhs) {

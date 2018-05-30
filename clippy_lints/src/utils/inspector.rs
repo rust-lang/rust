@@ -6,7 +6,7 @@ use rustc::lint::*;
 use rustc::hir;
 use rustc::hir::print;
 use syntax::ast::Attribute;
-use utils::get_attr;
+use crate::utils::get_attr;
 
 /// **What it does:** Dumps every ast/hir node which has the `#[clippy_dump]`
 /// attribute

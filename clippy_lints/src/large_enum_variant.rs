@@ -2,7 +2,7 @@
 
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{snippet_opt, span_lint_and_then};
+use crate::utils::{snippet_opt, span_lint_and_then};
 use rustc::ty::layout::LayoutOf;
 
 /// **What it does:** Checks for large size differences between variants on

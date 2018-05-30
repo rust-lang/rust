@@ -96,8 +96,8 @@ macro_rules! define_Conf {
                     -> Result<define_Conf!(TY $($ty)+), D::Error> {
                         type T = define_Conf!(TY $($ty)+);
                         Ok(T::deserialize(deserializer).unwrap_or_else(|e| {
-                            ::utils::conf::ERRORS.lock().expect("no threading here")
-                                                        .push(::utils::conf::Error::Toml(e.to_string()));
+                            crate::utils::conf::ERRORS.lock().expect("no threading here")
+                                                        .push(crate::utils::conf::Error::Toml(e.to_string()));
                             super::$rust_name()
                         }))
                     }

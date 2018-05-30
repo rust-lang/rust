@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::hir;
 use rustc::hir::def::Def;
-use utils::{match_def_path, span_lint_and_sugg};
+use crate::utils::{match_def_path, span_lint_and_sugg};
 
 /// **What it does:** Checks for usage of `ATOMIC_X_INIT`, `ONCE_INIT`, and
 /// `uX/iX::MIN/MAX`.

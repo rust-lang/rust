@@ -9,8 +9,8 @@ use rustc::ty;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use syntax_pos::MultiSpan;
-use utils::{match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_then, walk_ptrs_hir_ty};
-use utils::ptr::get_spans;
+use crate::utils::{match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_then, walk_ptrs_hir_ty};
+use crate::utils::ptr::get_spans;
 
 /// **What it does:** This lint checks for function arguments of type `&String`
 /// or `&Vec` unless the references are mutable. It will also suggest you

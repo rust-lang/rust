@@ -8,7 +8,7 @@ use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use syntax::ast::{Attribute, NodeId};
 use syntax::codemap::Span;
 
-use utils::{in_macro, is_allowed, match_type, paths, span_help_and_lint, LimitStack};
+use crate::utils::{in_macro, is_allowed, match_type, paths, span_help_and_lint, LimitStack};
 
 /// **What it does:** Checks for methods with high cyclomatic complexity.
 ///

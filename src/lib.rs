@@ -1,5 +1,6 @@
 // error-pattern:cargo-clippy
 #![feature(plugin_registrar)]
+#![feature(rust_2018_preview)]
 #![feature(rustc_private)]
 #![feature(macro_vis_matcher)]
 #![allow(unknown_lints)]

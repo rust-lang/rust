@@ -2,7 +2,7 @@
 
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::span_lint_and_then;
+use crate::utils::span_lint_and_then;
 
 /// **What it does:** Checks for `enum`s with no variants.
 ///

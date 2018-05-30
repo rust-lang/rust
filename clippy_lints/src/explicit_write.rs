@@ -1,7 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
-use utils::{is_expn_of, match_def_path, resolve_node, span_lint};
-use utils::opt_def_id;
+use crate::utils::{is_expn_of, match_def_path, resolve_node, span_lint};
+use crate::utils::opt_def_id;
 
 /// **What it does:** Checks for usage of `write!()` / `writeln()!` which can be
 /// replaced with `(e)print!()` / `(e)println!()`

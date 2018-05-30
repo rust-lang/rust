@@ -3,7 +3,7 @@ use rustc::lint::*;
 use syntax::ast::LitKind;
 use syntax::ptr::P;
 use syntax::ext::quote::rt::Span;
-use utils::{is_direct_expn_of, is_expn_of, match_def_path, opt_def_id, paths, resolve_node, span_lint};
+use crate::utils::{is_direct_expn_of, is_expn_of, match_def_path, opt_def_id, paths, resolve_node, span_lint};
 
 /// **What it does:** Checks for missing parameters in `panic!`.
 ///

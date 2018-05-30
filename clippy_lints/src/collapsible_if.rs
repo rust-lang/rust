@@ -15,8 +15,8 @@
 use rustc::lint::*;
 use syntax::ast;
 
-use utils::{in_macro, snippet_block, span_lint_and_sugg, span_lint_and_then};
-use utils::sugg::Sugg;
+use crate::utils::{in_macro, snippet_block, span_lint_and_sugg, span_lint_and_then};
+use crate::utils::sugg::Sugg;
 
 /// **What it does:** Checks for nested `if` statements which can be collapsed
 /// by `&&`-combining their conditions and for `else { if ... }` expressions

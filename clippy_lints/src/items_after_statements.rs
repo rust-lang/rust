@@ -2,7 +2,7 @@
 
 use rustc::lint::*;
 use syntax::ast::*;
-use utils::{in_macro, span_lint};
+use crate::utils::{in_macro, span_lint};
 
 /// **What it does:** Checks for items declared after some statement in a block.
 ///

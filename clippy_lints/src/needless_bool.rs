@@ -6,8 +6,8 @@ use rustc::lint::*;
 use rustc::hir::*;
 use syntax::ast::LitKind;
 use syntax::codemap::Spanned;
-use utils::{snippet, span_lint, span_lint_and_sugg};
-use utils::sugg::Sugg;
+use crate::utils::{snippet, span_lint, span_lint_and_sugg};
+use crate::utils::sugg::Sugg;
 
 /// **What it does:** Checks for expressions of the form `if c { true } else {
 /// false }`

@@ -2,8 +2,8 @@ use rustc::lint::*;
 use rustc::hir;
 use rustc::ty;
 use syntax_pos::Span;
-use utils::{match_def_path, method_chain_args, span_lint_and_then, walk_ptrs_ty, is_expn_of};
-use utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT, OPTION, RESULT};
+use crate::utils::{match_def_path, method_chain_args, span_lint_and_then, walk_ptrs_ty, is_expn_of};
+use crate::utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT, OPTION, RESULT};
 
 /// **What it does:** Checks for impls of `From<..>` that contain `panic!()` or `unwrap()`
 ///

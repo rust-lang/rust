@@ -1,8 +1,8 @@
 use rustc::lint::*;
 use rustc::hir::*;
 use syntax::ast::NodeId;
-use utils::{in_macro, match_def_path, match_trait_method, same_tys, snippet, span_lint_and_then};
-use utils::{opt_def_id, paths, resolve_node};
+use crate::utils::{in_macro, match_def_path, match_trait_method, same_tys, snippet, span_lint_and_then};
+use crate::utils::{opt_def_id, paths, resolve_node};
 
 /// **What it does:** Checks for always-identical `Into`/`From` conversions.
 ///

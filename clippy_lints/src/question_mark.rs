@@ -1,11 +1,11 @@
 use rustc::lint::*;
 use rustc::hir::*;
 use rustc::hir::def::Def;
-use utils::sugg::Sugg;
+use crate::utils::sugg::Sugg;
 use syntax::ptr::P;
 
-use utils::{match_def_path, match_type, span_lint_and_then};
-use utils::paths::*;
+use crate::utils::{match_def_path, match_type, span_lint_and_then};
+use crate::utils::paths::*;
 
 /// **What it does:** Checks for expressions that could be replaced by the question mark operator
 ///

@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::span_lint;
+use crate::utils::span_lint;
 
 /// **What it does:** Detects classic underflow/overflow checks.
 ///

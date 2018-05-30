@@ -2,7 +2,7 @@ use rustc::hir::{Expr, ExprLit, ExprMethodCall};
 use rustc::lint::*;
 use syntax::ast::LitKind;
 use syntax::codemap::{Span, Spanned};
-use utils::{match_type, paths, span_lint, walk_ptrs_ty};
+use crate::utils::{match_type, paths, span_lint, walk_ptrs_ty};
 
 /// **What it does:** Checks for duplicate open options as well as combinations
 /// that make no sense.

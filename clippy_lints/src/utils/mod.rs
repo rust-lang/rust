@@ -1,4 +1,4 @@
-use reexport::*;
+use crate::reexport::*;
 use rustc::hir;
 use rustc::hir::*;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};

@@ -14,7 +14,7 @@ use syntax::parse::token;
 use syntax::print::pprust::token_to_string;
 use syntax::util::parser::AssocOp;
 use syntax::ast;
-use utils::{higher, snippet, snippet_opt};
+use crate::utils::{higher, snippet, snippet_opt};
 use syntax_pos::{BytePos, Pos};
 
 /// A helper type to build suggestion correctly handling parenthesis.

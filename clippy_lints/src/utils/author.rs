@@ -9,7 +9,7 @@ use rustc::hir::{Expr, Expr_, QPath, Ty_, Pat, PatKind, BindingAnnotation, StmtS
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
 use syntax::ast::{Attribute, LitKind, DUMMY_NODE_ID};
 use std::collections::HashMap;
-use utils::get_attr;
+use crate::utils::get_attr;
 
 /// **What it does:** Generates clippy code that detects the offending pattern
 ///

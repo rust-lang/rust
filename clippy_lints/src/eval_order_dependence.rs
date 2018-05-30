@@ -3,7 +3,7 @@ use rustc::hir::*;
 use rustc::ty;
 use rustc::lint::*;
 use syntax::ast;
-use utils::{get_parent_expr, span_lint, span_note_and_lint};
+use crate::utils::{get_parent_expr, span_lint, span_note_and_lint};
 
 /// **What it does:** Checks for a read and a write to the same variable where
 /// whether the read occurs before or after the write depends on the evaluation

@@ -3,8 +3,8 @@ use rustc::ty::{self, Ty};
 use rustc::hir::*;
 use std::borrow::Cow;
 use syntax::ast;
-use utils::{last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then};
-use utils::{opt_def_id, sugg};
+use crate::utils::{last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then};
+use crate::utils::{opt_def_id, sugg};
 
 /// **What it does:** Checks for transmutes that can't ever be correct on any
 /// architecture.

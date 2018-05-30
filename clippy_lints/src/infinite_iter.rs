@@ -1,6 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::*;
-use utils::{get_trait_def_id, higher, implements_trait, match_qpath, paths, span_lint};
+use crate::utils::{get_trait_def_id, higher, implements_trait, match_qpath, paths, span_lint};
 
 /// **What it does:** Checks for iteration that is guaranteed to be infinite.
 ///

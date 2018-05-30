@@ -1,8 +1,8 @@
 use rustc::hir::*;
 use rustc::lint::*;
 use rustc::ty;
-use utils::{differing_macro_contexts, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty, SpanlessEq};
-use utils::sugg::Sugg;
+use crate::utils::{differing_macro_contexts, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty, SpanlessEq};
+use crate::utils::sugg::Sugg;
 
 /// **What it does:** Checks for manual swapping.
 ///

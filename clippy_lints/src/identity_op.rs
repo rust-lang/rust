@@ -1,8 +1,8 @@
-use consts::{constant_simple, Constant};
+use crate::consts::{constant_simple, Constant};
 use rustc::hir::*;
 use rustc::lint::*;
 use syntax::codemap::Span;
-use utils::{in_macro, snippet, span_lint, unsext, clip};
+use crate::utils::{in_macro, snippet, span_lint, unsext, clip};
 use rustc::ty;
 
 /// **What it does:** Checks for identity operations, e.g. `x + 0`.

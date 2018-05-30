@@ -1,7 +1,7 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::hir::*;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use utils::*;
+use crate::utils::*;
 
 /// **What it does:** Checks for `if` conditions that use blocks to contain an
 /// expression.

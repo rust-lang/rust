@@ -3,7 +3,7 @@
 use rustc::lint::*;
 use syntax::ast::*;
 
-use utils::{snippet_opt, span_lint_and_then};
+use crate::utils::{snippet_opt, span_lint_and_then};
 
 /// **What it does:** Checks for usage of `x >= y + 1` or `x - 1 >= y` (and `<=`) in a block
 ///

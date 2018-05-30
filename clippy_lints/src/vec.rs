@@ -2,8 +2,8 @@ use rustc::hir::*;
 use rustc::lint::*;
 use rustc::ty::{self, Ty};
 use syntax::codemap::Span;
-use utils::{higher, is_copy, snippet, span_lint_and_sugg};
-use consts::constant;
+use crate::utils::{higher, is_copy, snippet, span_lint_and_sugg};
+use crate::consts::constant;
 
 /// **What it does:** Checks for usage of `&vec![..]` when using `&[..]` would
 /// be possible.

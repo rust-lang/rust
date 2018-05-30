@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use syntax::ast;
-use utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
+use crate::utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
 use syntax::ptr::P;
 
 /// **What it does:** Checks for use of the non-existent `=*`, `=!` and `=-`

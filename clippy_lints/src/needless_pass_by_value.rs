@@ -10,9 +10,9 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::NodeId;
 use syntax_pos::Span;
 use syntax::errors::DiagnosticBuilder;
-use utils::{get_trait_def_id, implements_trait, in_macro, is_copy, is_self, match_type, multispan_sugg, paths,
+use crate::utils::{get_trait_def_id, implements_trait, in_macro, is_copy, is_self, match_type, multispan_sugg, paths,
             snippet, snippet_opt, span_lint_and_then};
-use utils::ptr::get_spans;
+use crate::utils::ptr::get_spans;
 use std::collections::{HashMap, HashSet};
 use std::borrow::Cow;
 

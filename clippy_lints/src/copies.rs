@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use syntax::symbol::LocalInternedString;
 use syntax::util::small_vector::SmallVector;
-use utils::{SpanlessEq, SpanlessHash};
-use utils::{get_parent_expr, in_macro, snippet, span_lint_and_then, span_note_and_lint};
+use crate::utils::{SpanlessEq, SpanlessHash};
+use crate::utils::{get_parent_expr, in_macro, snippet, span_lint_and_then, span_note_and_lint};
 
 /// **What it does:** Checks for consecutive `if`s with the same condition.
 ///

@@ -4,7 +4,7 @@ use rustc::lint::*;
 use syntax::ast;
 use syntax::codemap::{BytePos, Span};
 use syntax_pos::Pos;
-use utils::span_lint;
+use crate::utils::span_lint;
 use url::Url;
 
 /// **What it does:** Checks for the presence of `_`, `::` or camel-case words

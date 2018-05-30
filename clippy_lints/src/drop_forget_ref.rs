@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::ty;
 use rustc::hir::*;
-use utils::{is_copy, match_def_path, opt_def_id, paths, span_note_and_lint};
+use crate::utils::{is_copy, match_def_path, opt_def_id, paths, span_note_and_lint};
 
 /// **What it does:** Checks for calls to `std::mem::drop` with a reference
 /// instead of an owned value.

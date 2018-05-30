@@ -1,8 +1,8 @@
 use rustc::hir::*;
 use rustc::lint::*;
 use syntax::codemap::Spanned;
-use utils::SpanlessEq;
-use utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty};
+use crate::utils::SpanlessEq;
+use crate::utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty};
 
 /// **What it does:** Checks for string appends of the form `x = x + y` (without
 /// `let`!).
@@ -146,7 +146,7 @@ impl LintPass for StringLitAsBytes {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         use syntax::ast::LitKind;
-        use utils::{in_macro, snippet};
+        use crate::utils::{in_macro, snippet};
 
         if let ExprMethodCall(ref path, _, ref args) = e.node {
             if path.name == "as_bytes" {

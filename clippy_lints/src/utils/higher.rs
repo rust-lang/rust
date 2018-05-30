@@ -6,7 +6,7 @@
 use rustc::{hir, ty};
 use rustc::lint::LateContext;
 use syntax::ast;
-use utils::{is_expn_of, match_def_path, match_qpath, opt_def_id, paths, resolve_node};
+use crate::utils::{is_expn_of, match_def_path, match_qpath, opt_def_id, paths, resolve_node};
 
 /// Convert a hir binary operator to the corresponding `ast` type.
 pub fn binop(op: hir::BinOp_) -> ast::BinOpKind {

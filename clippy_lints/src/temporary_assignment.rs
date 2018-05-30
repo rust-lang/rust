@@ -1,7 +1,7 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::hir::{Expr, ExprAssign, ExprField, ExprStruct, ExprTup};
-use utils::is_adjusted;
-use utils::span_lint;
+use crate::utils::is_adjusted;
+use crate::utils::span_lint;
 
 /// **What it does:** Checks for construction of a structure or tuple just to
 /// assign a value in it.

@@ -11,6 +11,7 @@
 #![allow(stable_features)]
 #![feature(iterator_find_map)]
 #![feature(macro_at_most_once_rep)]
+#![feature(rust_2018_preview)]
 
 extern crate cargo_metadata;
 #[macro_use]

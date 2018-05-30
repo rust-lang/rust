@@ -6,8 +6,8 @@ use syntax::ast::LitKind;
 use syntax::ptr;
 use syntax::symbol::LocalInternedString;
 use syntax_pos::Span;
-use utils::{is_expn_of, match_def_path, match_path, resolve_node, span_lint, span_lint_and_sugg};
-use utils::{opt_def_id, paths, last_path_segment};
+use crate::utils::{is_expn_of, match_def_path, match_path, resolve_node, span_lint, span_lint_and_sugg};
+use crate::utils::{opt_def_id, paths, last_path_segment};
 
 /// **What it does:** This lint warns when you use `println!("")` to
 /// print a newline.

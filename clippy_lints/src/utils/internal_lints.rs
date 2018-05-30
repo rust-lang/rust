@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::hir::*;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use utils::{match_qpath, paths, span_lint};
+use crate::utils::{match_qpath, paths, span_lint};
 use syntax::symbol::LocalInternedString;
 use syntax::ast::{Crate as AstCrate, ItemKind, Name, NodeId};
 use syntax::codemap::Span;

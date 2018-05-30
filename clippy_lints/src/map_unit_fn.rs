@@ -3,8 +3,8 @@ use rustc::lint::*;
 use rustc::ty;
 use rustc_errors::{Applicability};
 use syntax::codemap::Span;
-use utils::{in_macro, iter_input_pats, match_type, method_chain_args, snippet, span_lint_and_then};
-use utils::paths;
+use crate::utils::{in_macro, iter_input_pats, match_type, method_chain_args, snippet, span_lint_and_then};
+use crate::utils::paths;
 
 #[derive(Clone)]
 pub struct Pass;
