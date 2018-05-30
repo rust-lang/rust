@@ -352,6 +352,14 @@ fn configure_cmake(builder: &Builder,
         }
     }
 
+    if let Some(ranlib) = builder.ranlib(target) {
+        if ranlib.is_absolute() {
+            // LLVM build breaks if `CMAKE_RANLIB` is a relative path, for some reason it
+            // tries to resolve this path in the LLVM build directory.
+            cfg.define("CMAKE_RANLIB", sanitize_cc(ranlib));
+        }
+    }
+
     if env::var_os("SCCACHE_ERROR_LOG").is_some() {
         cfg.env("RUST_LOG", "sccache=warn");
     }

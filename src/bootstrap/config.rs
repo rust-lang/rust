@@ -161,6 +161,7 @@ pub struct Target {
     pub cc: Option<PathBuf>,
     pub cxx: Option<PathBuf>,
     pub ar: Option<PathBuf>,
+    pub ranlib: Option<PathBuf>,
     pub linker: Option<PathBuf>,
     pub ndk: Option<PathBuf>,
     pub crt_static: Option<bool>,
@@ -321,6 +322,7 @@ struct TomlTarget {
     cc: Option<String>,
     cxx: Option<String>,
     ar: Option<String>,
+    ranlib: Option<String>,
     linker: Option<String>,
     android_ndk: Option<String>,
     crt_static: Option<bool>,
@@ -569,6 +571,7 @@ impl Config {
                 target.cc = cfg.cc.clone().map(PathBuf::from);
                 target.cxx = cfg.cxx.clone().map(PathBuf::from);
                 target.ar = cfg.ar.clone().map(PathBuf::from);
+                target.ranlib = cfg.ranlib.clone().map(PathBuf::from);
                 target.linker = cfg.linker.clone().map(PathBuf::from);
                 target.crt_static = cfg.crt_static.clone();
                 target.musl_root = cfg.musl_root.clone().map(PathBuf::from);

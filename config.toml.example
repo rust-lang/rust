@@ -374,6 +374,10 @@
 # Note: an absolute path should be used, otherwise LLVM build will break.
 #ar = "ar"
 
+# Ranlib to be used to assemble static libraries compiled from C/C++ code.
+# Note: an absolute path should be used, otherwise LLVM build will break.
+#ranlib = "ranlib"
+
 # Linker to be used to link Rust code. Note that the
 # default value is platform specific, and if not specified it may also depend on
 # what platform is crossing to what platform.

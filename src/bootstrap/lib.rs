@@ -265,6 +265,7 @@ pub struct Build {
     cc: HashMap<Interned<String>, cc::Tool>,
     cxx: HashMap<Interned<String>, cc::Tool>,
     ar: HashMap<Interned<String>, PathBuf>,
+    ranlib: HashMap<Interned<String>, PathBuf>,
     // Misc
     crates: HashMap<Interned<String>, Crate>,
     is_sudo: bool,
@@ -366,6 +367,7 @@ impl Build {
             cc: HashMap::new(),
             cxx: HashMap::new(),
             ar: HashMap::new(),
+            ranlib: HashMap::new(),
             crates: HashMap::new(),
             lldb_version: None,
             lldb_python_dir: None,
@@ -723,6 +725,11 @@ impl Build {
     /// Returns the path to the `ar` archive utility for the target specified.
     fn ar(&self, target: Interned<String>) -> Option<&Path> {
         self.ar.get(&target).map(|p| &**p)
+    }
+
+    /// Returns the path to the `ranlib` utility for the target specified.
+    fn ranlib(&self, target: Interned<String>) -> Option<&Path> {
+        self.ranlib.get(&target).map(|p| &**p)
     }
 
     /// Returns the path to the C++ compiler for the target specified.
