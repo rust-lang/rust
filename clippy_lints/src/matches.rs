@@ -199,7 +199,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchPass {
     }
 }
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
     if arms.len() == 2 &&
       arms[0].pats.len() == 1 && arms[0].guard.is_none() &&

@@ -1787,7 +1787,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarUsedAfterLoopVisitor<'a, 'tcx> {
 
 /// Return true if the type of expr is one that provides `IntoIterator` impls
 /// for `&T` and `&mut T`, such as `Vec`.
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 fn is_ref_iterable_type(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
     // no walk_ptrs_ty: calling iter() on a reference can make sense because it
     // will allow further borrows afterwards

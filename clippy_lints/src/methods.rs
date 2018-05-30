@@ -1955,7 +1955,7 @@ enum Convention {
     StartsWith(&'static str),
 }
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 const CONVENTIONS: [(Convention, &[SelfKind]); 6] = [
     (Convention::Eq("new"), &[SelfKind::No]),
     (Convention::StartsWith("as_"), &[SelfKind::Ref, SelfKind::RefMut]),
@@ -1965,7 +1965,7 @@ const CONVENTIONS: [(Convention, &[SelfKind]); 6] = [
     (Convention::StartsWith("to_"), &[SelfKind::Ref]),
 ];
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 const TRAIT_METHODS: [(&str, usize, SelfKind, OutType, &str); 30] = [
     ("add", 2, SelfKind::Value, OutType::Any, "std::ops::Add"),
     ("as_mut", 1, SelfKind::RefMut, OutType::Ref, "std::convert::AsMut"),
@@ -1999,7 +1999,7 @@ const TRAIT_METHODS: [(&str, usize, SelfKind, OutType, &str); 30] = [
     ("sub", 2, SelfKind::Value, OutType::Any, "std::ops::Sub"),
 ];
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 const PATTERN_METHODS: [(&str, usize); 17] = [
     ("contains", 1),
     ("starts_with", 1),

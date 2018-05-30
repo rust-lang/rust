@@ -89,7 +89,7 @@ struct SimilarNamesLocalVisitor<'a, 'tcx: 'a> {
 
 // this list contains lists of names that are allowed to be similar
 // the assumption is that no name is ever contained in multiple lists.
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 const WHITELIST: &[&[&str]] = &[
     &["parsed", "parser"],
     &["lhs", "rhs"],
