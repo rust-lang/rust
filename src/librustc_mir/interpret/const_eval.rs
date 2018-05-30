@@ -596,34 +596,17 @@ fn numeric_intrinsic<'tcx>(
     bytes: u128,
     kind: Primitive,
 ) -> EvalResult<'tcx, Scalar> {
-    macro_rules! integer_intrinsic {
-        ($method:ident) => ({
-            use rustc_target::abi::Integer;
-            let (bits, defined) = match kind {
-                Primitive::Int(Integer::I8, true) => ((bytes as i8).$method() as u128, 8),
-                Primitive::Int(Integer::I8, false) => ((bytes as u8).$method() as u128, 8),
-                Primitive::Int(Integer::I16, true) => ((bytes as i16).$method() as u128, 16),
-                Primitive::Int(Integer::I16, false) => ((bytes as u16).$method() as u128, 16),
-                Primitive::Int(Integer::I32, true) => ((bytes as i32).$method() as u128, 32),
-                Primitive::Int(Integer::I32, false) => ((bytes as u32).$method() as u128, 32),
-                Primitive::Int(Integer::I64, true) => ((bytes as i64).$method() as u128, 64),
-                Primitive::Int(Integer::I64, false) => ((bytes as u64).$method() as u128, 64),
-                Primitive::Int(Integer::I128, true) => ((bytes as i128).$method() as u128, 128),
-                Primitive::Int(Integer::I128, false) => (bytes.$method() as u128, 128),
-                _ => bug!("invalid `{}` argument: {:?}", name, bytes),
-            };
-
-            Scalar::Bits { bits, defined }
-        });
-    }
-
-    let result_val = match name {
-        "bswap" => integer_intrinsic!(swap_bytes),
-        "ctlz" => integer_intrinsic!(leading_zeros),
-        "ctpop" => integer_intrinsic!(count_ones),
-        "cttz" => integer_intrinsic!(trailing_zeros),
+    let defined = match kind {
+        Primitive::Int(integer, _) => integer.size().bits() as u8,
+        _ => bug!("invalid `{}` argument: {:?}", name, bytes),
+    };
+    let extra = 128 - defined as u128;
+    let bytes_out = match name {
+        "ctpop" => bytes.count_ones() as u128,
+        "ctlz" => bytes.leading_zeros() as u128 - extra,
+        "cttz" => (bytes << extra).trailing_zeros() as u128 - extra,
+        "bswap" => (bytes << extra).swap_bytes(),
         _ => bug!("not a numeric intrinsic: {}", name),
     };
-
-    Ok(result_val)
+    Ok(Scalar::Bits { bits: bytes_out, defined })
 }
