@@ -1,5 +1,5 @@
 set -x
-cargo install --force
+cargo install --force --path .
 
 echo "Running integration test for crate ${INTEGRATION}"
 
