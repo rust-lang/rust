@@ -499,13 +499,6 @@ pub mod process;
 pub mod sync;
 pub mod time;
 
-#[unstable(feature = "allocator_api", issue = "32838")]
-#[rustc_deprecated(since = "1.27.0", reason = "module renamed to `alloc`")]
-/// Use the `alloc` module instead.
-pub mod heap {
-    pub use alloc::*;
-}
-
 // Platform-abstraction modules
 #[macro_use]
 mod sys_common;

@@ -150,18 +150,10 @@ pub mod allocator {
 
 pub mod alloc;
 
-#[unstable(feature = "allocator_api", issue = "32838")]
-#[rustc_deprecated(since = "1.27.0", reason = "module renamed to `alloc`")]
-/// Use the `alloc` module instead.
-pub mod heap {
-    pub use alloc::*;
-}
-
 #[unstable(feature = "futures_api",
            reason = "futures in libcore are unstable",
            issue = "50547")]
 pub mod task;
-
 // Primitive types using the heaps above
 
 // Need to conditionally define the mod from `boxed.rs` to avoid
