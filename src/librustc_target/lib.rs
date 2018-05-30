@@ -29,6 +29,7 @@
 #![feature(const_fn)]
 #![feature(fs_read_write)]
 #![feature(inclusive_range)]
+#![cfg_attr(stage0, feature(inclusive_range_methods))]
 #![feature(slice_patterns)]
 
 #[macro_use]

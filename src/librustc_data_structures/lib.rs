@@ -27,6 +27,7 @@
 #![feature(specialization)]
 #![feature(optin_builtin_traits)]
 #![feature(macro_vis_matcher)]
+#![feature(nonzero)]
 #![feature(allow_internal_unstable)]
 
 #![cfg_attr(unix, feature(libc))]

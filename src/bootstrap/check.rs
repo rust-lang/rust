@@ -175,6 +175,8 @@ impl Step for Test {
         let compiler = builder.compiler(0, builder.config.build);
         let target = self.target;
 
+        builder.ensure(Std { target });
+
         let out_dir = builder.stage_out(compiler, Mode::Libtest);
         builder.clear_if_dirty(&out_dir, &libstd_stamp(builder, compiler, target));
 

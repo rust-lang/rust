@@ -14,6 +14,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 
 */
 
+#![cfg_attr(stage0, feature(inclusive_range_methods))]
 #![feature(slice_patterns)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(from_ref)]
@@ -26,6 +27,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(decl_macro)]
 #![feature(fs_read_write)]
 #![feature(macro_vis_matcher)]
+#![feature(nonzero)]
 #![feature(exhaustive_patterns)]
 #![feature(range_contains)]
 #![feature(rustc_diagnostic_macros)]

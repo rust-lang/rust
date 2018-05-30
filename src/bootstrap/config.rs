@@ -364,7 +364,7 @@ impl Config {
         config.src = Config::path_from_python("SRC");
         config.out = Config::path_from_python("BUILD_DIR");
 
-        let stage0_root = config.out.join(&config.build).join("stage0/bin");
+        let stage0_root = config.out.join("base").join(&config.build).join("bin");
         config.initial_rustc = stage0_root.join(exe("rustc", &config.build));
         config.initial_cargo = stage0_root.join(exe("cargo", &config.build));
 

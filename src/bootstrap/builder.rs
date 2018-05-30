@@ -326,7 +326,7 @@ impl<'a> Builder<'a> {
             }};
         }
         match kind {
-            Kind::Build => describe!(compile::Std, compile::Test, compile::Rustc,
+            Kind::Build => describe!(check::Test, compile::Std, compile::Test, compile::Rustc,
                 compile::StartupObjects, tool::BuildManifest, tool::Rustbook, tool::ErrorIndex,
                 tool::UnstableBookGen, tool::Tidy, tool::Linkchecker, tool::CargoTest,
                 tool::Compiletest, tool::RemoteTestServer, tool::RemoteTestClient,
@@ -624,6 +624,13 @@ impl<'a> Builder<'a> {
         }
 
         let want_rustdoc = self.doc_tests != DocTests::No;
+        let sysroot = if compiler.stage == 0 && !(mode == Mode::Libstd || mode == Mode::Libtest) {
+            // Use the bootstrap compiler's sysroot for stage0
+            // unless we are checking libstd and libtest
+            INTERNER.intern_path(PathBuf::new())
+        } else {
+            self.sysroot(compiler)
+        };
 
         // Customize the compiler we're running. Specify the compiler to cargo
         // as our shim and then pass it some various options used to configure
@@ -637,7 +644,7 @@ impl<'a> Builder<'a> {
              .env("RUSTC_STAGE", stage.to_string())
              .env("RUSTC_DEBUG_ASSERTIONS",
                   self.config.rust_debug_assertions.to_string())
-             .env("RUSTC_SYSROOT", self.sysroot(compiler))
+             .env("RUSTC_SYSROOT", sysroot)
              .env("RUSTC_LIBDIR", self.rustc_libdir(compiler))
              .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
              .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
@@ -1226,10 +1233,6 @@ mod __test {
         ]);
         assert_eq!(first(builder.cache.all::<compile::Test>()), &[
             compile::Test {
-                compiler: Compiler { host: a, stage: 0 },
-                target: a,
-            },
-            compile::Test {
                 compiler: Compiler { host: a, stage: 1 },
                 target: a,
             },
@@ -1311,10 +1314,6 @@ mod __test {
 
         assert_eq!(first(builder.cache.all::<compile::Test>()), &[
             compile::Test {
-                compiler: Compiler { host: a, stage: 0 },
-                target: a,
-            },
-            compile::Test {
                 compiler: Compiler { host: a, stage: 1 },
                 target: a,
             },
@@ -1325,10 +1324,6 @@ mod __test {
             compile::Test {
                 compiler: Compiler { host: b, stage: 2 },
                 target: a,
-            },
-            compile::Test {
-                compiler: Compiler { host: a, stage: 0 },
-                target: b,
             },
             compile::Test {
                 compiler: Compiler { host: a, stage: 1 },
@@ -1404,10 +1399,6 @@ mod __test {
 
         assert_eq!(first(builder.cache.all::<compile::Test>()), &[
             compile::Test {
-                compiler: Compiler { host: a, stage: 0 },
-                target: a,
-            },
-            compile::Test {
                 compiler: Compiler { host: a, stage: 1 },
                 target: a,
             },
@@ -1418,10 +1409,6 @@ mod __test {
             compile::Test {
                 compiler: Compiler { host: b, stage: 2 },
                 target: a,
-            },
-            compile::Test {
-                compiler: Compiler { host: a, stage: 0 },
-                target: b,
             },
             compile::Test {
                 compiler: Compiler { host: a, stage: 1 },
