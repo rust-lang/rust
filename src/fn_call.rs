@@ -289,7 +289,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
                     use std::cmp::Ordering::*;
                     match left_bytes.cmp(right_bytes) {
-                        Less => -1i8,
+                        Less => -1i32,
                         Equal => 0,
                         Greater => 1,
                     }
@@ -297,7 +297,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
                 self.write_scalar(
                     dest,
-                    Scalar::from_i8(result),
+                    Scalar::from_i32(result),
                     dest_ty,
                 )?;
             }

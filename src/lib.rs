@@ -55,7 +55,7 @@ use validation::{ValidationQuery, AbsPlace};
 
 pub trait ScalarExt {
     fn null() -> Self;
-    fn from_i8(i: i8) -> Self;
+    fn from_i32(i: i32) -> Self;
     fn from_u128(i: u128) -> Self;
     fn from_i128(i: i128) -> Self;
     fn from_usize(i: u64, ptr_size: Size) -> Self;
@@ -72,8 +72,8 @@ impl ScalarExt for Scalar {
         Scalar::Bits { bits: 0, defined: 128 }
     }
 
-    fn from_i8(i: i8) -> Self {
-        Scalar::Bits { bits: i as i128 as u128, defined: 8 }
+    fn from_i32(i: i32) -> Self {
+        Scalar::Bits { bits: i as u32 as u128, defined: 32 }
     }
 
     fn from_u128(i: u128) -> Self {
