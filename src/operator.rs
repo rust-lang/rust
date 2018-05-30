@@ -52,11 +52,13 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             16 => I128,
             _ => unreachable!(),
         }, true);
-        let left_kind = match self.layout_of(left_ty)?.abi {
+        let left_layout = self.layout_of(left_ty)?;
+        let left_kind = match left_layout.abi {
             ty::layout::Abi::Scalar(ref scalar) => scalar.value,
             _ => Err(EvalErrorKind::TypeNotPrimitive(left_ty))?,
         };
-        let right_kind = match self.layout_of(right_ty)?.abi {
+        let right_layout = self.layout_of(right_ty)?;
+        let right_kind = match right_layout.abi {
             ty::layout::Abi::Scalar(ref scalar) => scalar.value,
             _ => Err(EvalErrorKind::TypeNotPrimitive(right_ty))?,
         };
@@ -77,7 +79,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             Eq if left_kind == right_kind => {
                 let result = match (left, right) {
                     (Scalar::Bits { .. }, Scalar::Bits { .. }) => {
-                        left.to_bits(self.memory.pointer_size())? == right.to_bits(self.memory.pointer_size())?
+                        left.to_bits(left_layout.size)? == right.to_bits(right_layout.size)?
                     },
                     (Scalar::Ptr(left), Scalar::Ptr(right)) => left == right,
                     _ => false,
@@ -87,7 +89,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             Ne if left_kind == right_kind => {
                 let result = match (left, right) {
                     (Scalar::Bits { .. }, Scalar::Bits { .. }) => {
-                        left.to_bits(self.memory.pointer_size())? != right.to_bits(self.memory.pointer_size())?
+                        left.to_bits(left_layout.size)? != right.to_bits(right_layout.size)?
                     },
                     (Scalar::Ptr(left), Scalar::Ptr(right)) => left != right,
                     _ => true,
