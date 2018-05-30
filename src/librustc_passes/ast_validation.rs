@@ -441,6 +441,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_generics(self, g)
     }
 
+    fn visit_generic_param(&mut self, param: &'a GenericParam) {
+        if let GenericParam::Lifetime(ref ld) = *param {
+            self.check_lifetime(ld.lifetime.ident);
+        }
+        visit::walk_generic_param(self, param);
+    }
+
     fn visit_pat(&mut self, pat: &'a Pat) {
         match pat.node {
             PatKind::Lit(ref expr) => {

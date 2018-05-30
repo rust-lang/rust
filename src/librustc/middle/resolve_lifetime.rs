@@ -1928,10 +1928,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
 
             fn visit_generic_param(&mut self, param: &hir::GenericParam) {
-                if let hir::GenericParam::Lifetime(ref lifetime_def) = *param {
-                    for l in &lifetime_def.bounds {
-                        self.visit_lifetime(l);
-                    }
+                if let hir::GenericParam::Lifetime(_) = *param {
+                    // FIXME(eddyb) Do we want this? It only makes a difference
+                    // if this `for<'a>` lifetime parameter is never used.
+                    self.have_bound_regions = true;
                 }
 
                 intravisit::walk_generic_param(self, param);
@@ -2144,28 +2144,26 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
     fn check_lifetime_params(&mut self, old_scope: ScopeRef, params: &'tcx [hir::GenericParam]) {
         for (i, lifetime_i) in params.lifetimes().enumerate() {
-            for lifetime in params.lifetimes() {
-                match lifetime.lifetime.name {
-                    hir::LifetimeName::Static | hir::LifetimeName::Underscore => {
-                        let lifetime = lifetime.lifetime;
-                        let name = lifetime.name.name();
-                        let mut err = struct_span_err!(
-                            self.tcx.sess,
-                            lifetime.span,
-                            E0262,
-                            "invalid lifetime parameter name: `{}`",
-                            name
-                        );
-                        err.span_label(
-                            lifetime.span,
-                            format!("{} is a reserved lifetime name", name),
-                        );
-                        err.emit();
-                    }
-                    hir::LifetimeName::Fresh(_)
-                    | hir::LifetimeName::Implicit
-                    | hir::LifetimeName::Name(_) => {}
+            match lifetime_i.lifetime.name {
+                hir::LifetimeName::Static | hir::LifetimeName::Underscore => {
+                    let lifetime = lifetime_i.lifetime;
+                    let name = lifetime.name.name();
+                    let mut err = struct_span_err!(
+                        self.tcx.sess,
+                        lifetime.span,
+                        E0262,
+                        "invalid lifetime parameter name: `{}`",
+                        name
+                    );
+                    err.span_label(
+                        lifetime.span,
+                        format!("{} is a reserved lifetime name", name),
+                    );
+                    err.emit();
                 }
+                hir::LifetimeName::Fresh(_)
+                | hir::LifetimeName::Implicit
+                | hir::LifetimeName::Name(_) => {}
             }
 
             // It is a hard error to shadow a lifetime within the same scope.
@@ -2347,31 +2345,18 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             | Region::LateBound(_, def_id, _)
             | Region::EarlyBound(_, def_id, _) => {
                 // A lifetime declared by the user.
-                let def_local_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
-                if def_local_id == lifetime_ref.id {
-                    // This is weird. Because the HIR defines a
-                    // lifetime *definition* as wrapping a Lifetime,
-                    // we wind up invoking this method also for the
-                    // definitions in some cases (notably
-                    // higher-ranked types). This means that a
-                    // lifetime with one use (e.g., `for<'a> fn(&'a
-                    // u32)`) wind up being counted as two uses.  To
-                    // avoid that, we just ignore the lifetime that
-                    // corresponds to the definition.
+                let track_lifetime_uses = self.track_lifetime_uses();
+                debug!(
+                    "insert_lifetime: track_lifetime_uses={}",
+                    track_lifetime_uses
+                );
+                if track_lifetime_uses && !self.lifetime_uses.contains_key(&def_id) {
+                    debug!("insert_lifetime: first use of {:?}", def_id);
+                    self.lifetime_uses
+                        .insert(def_id, LifetimeUseSet::One(lifetime_ref));
                 } else {
-                    let track_lifetime_uses = self.track_lifetime_uses();
-                    debug!(
-                        "insert_lifetime: track_lifetime_uses={}",
-                        track_lifetime_uses
-                    );
-                    if track_lifetime_uses && !self.lifetime_uses.contains_key(&def_id) {
-                        debug!("insert_lifetime: first use of {:?}", def_id);
-                        self.lifetime_uses
-                            .insert(def_id, LifetimeUseSet::One(lifetime_ref));
-                    } else {
-                        debug!("insert_lifetime: many uses of {:?}", def_id);
-                        self.lifetime_uses.insert(def_id, LifetimeUseSet::Many);
-                    }
+                    debug!("insert_lifetime: many uses of {:?}", def_id);
+                    self.lifetime_uses.insert(def_id, LifetimeUseSet::Many);
                 }
             }
         }
@@ -2424,30 +2409,19 @@ fn insert_late_bound_lifetimes(
     let mut appears_in_where_clause = AllCollector {
         regions: FxHashSet(),
     };
+    appears_in_where_clause.visit_generics(generics);
 
     for param in &generics.params {
         match *param {
             hir::GenericParam::Lifetime(ref lifetime_def) => {
                 if !lifetime_def.bounds.is_empty() {
                     // `'a: 'b` means both `'a` and `'b` are referenced
-                    appears_in_where_clause.visit_generic_param(param);
+                    appears_in_where_clause.regions.insert(lifetime_def.lifetime.name);
                 }
             }
-            hir::GenericParam::Type(ref ty_param) => {
-                walk_list!(
-                    &mut appears_in_where_clause,
-                    visit_ty_param_bound,
-                    &ty_param.bounds
-                );
-            }
+            hir::GenericParam::Type(_) => {}
         }
     }
-
-    walk_list!(
-        &mut appears_in_where_clause,
-        visit_where_predicate,
-        &generics.where_clause.predicates
-    );
 
     debug!(
         "insert_late_bound_lifetimes: appears_in_where_clause={:?}",

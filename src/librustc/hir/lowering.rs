@@ -1214,7 +1214,13 @@ impl<'a> LoweringContext<'a> {
                 if let &hir::Ty_::TyBareFn(_) = &t.node {
                     let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
                     self.collect_elided_lifetimes = false;
+
+                    // Record the "stack height" of `for<'a>` lifetime bindings
+                    // to be able to later fully undo their introduction.
+                    let old_len = self.currently_bound_lifetimes.len();
                     hir::intravisit::walk_ty(self, t);
+                    self.currently_bound_lifetimes.truncate(old_len);
+
                     self.collect_elided_lifetimes = old_collect_elided_lifetimes;
                 } else {
                     hir::intravisit::walk_ty(self, t);
@@ -1223,28 +1229,25 @@ impl<'a> LoweringContext<'a> {
 
             fn visit_poly_trait_ref(
                 &mut self,
-                polytr: &'v hir::PolyTraitRef,
-                _: hir::TraitBoundModifier,
+                trait_ref: &'v hir::PolyTraitRef,
+                modifier: hir::TraitBoundModifier,
             ) {
+                // Record the "stack height" of `for<'a>` lifetime bindings
+                // to be able to later fully undo their introduction.
                 let old_len = self.currently_bound_lifetimes.len();
+                hir::intravisit::walk_poly_trait_ref(self, trait_ref, modifier);
+                self.currently_bound_lifetimes.truncate(old_len);
+            }
 
+            fn visit_generic_param(&mut self, param: &'v hir::GenericParam) {
                 // Record the introduction of 'a in `for<'a> ...`
-                for param in &polytr.bound_generic_params {
-                    if let hir::GenericParam::Lifetime(ref lt_def) = *param {
-                        // Introduce lifetimes one at a time so that we can handle
-                        // cases like `fn foo<'d>() -> impl for<'a, 'b: 'a, 'c: 'b + 'd>`
-                        self.currently_bound_lifetimes.push(lt_def.lifetime.name);
-
-                        // Visit the lifetime bounds
-                        for lt_bound in &lt_def.bounds {
-                            self.visit_lifetime(&lt_bound);
-                        }
-                    }
+                if let hir::GenericParam::Lifetime(ref lt_def) = *param {
+                    // Introduce lifetimes one at a time so that we can handle
+                    // cases like `fn foo<'d>() -> impl for<'a, 'b: 'a, 'c: 'b + 'd>`
+                    self.currently_bound_lifetimes.push(lt_def.lifetime.name);
                 }
 
-                hir::intravisit::walk_trait_ref(self, &polytr.trait_ref);
-
-                self.currently_bound_lifetimes.truncate(old_len);
+                hir::intravisit::walk_generic_param(self, param);
             }
 
             fn visit_lifetime(&mut self, lifetime: &'v hir::Lifetime) {

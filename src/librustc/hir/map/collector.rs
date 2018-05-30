@@ -346,12 +346,16 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_generics(&mut self, generics: &'hir Generics) {
-        for ty_param in generics.ty_params() {
-            self.insert(ty_param.id, NodeTyParam(ty_param));
+    fn visit_generic_param(&mut self, param: &'hir GenericParam) {
+        match *param {
+            GenericParam::Lifetime(ref ld) => {
+                self.insert(ld.lifetime.id, NodeLifetime(&ld.lifetime));
+            }
+            GenericParam::Type(ref ty_param) => {
+                self.insert(ty_param.id, NodeTyParam(ty_param));
+            }
         }
-
-        intravisit::walk_generics(self, generics);
+        intravisit::walk_generic_param(self, param);
     }
 
     fn visit_trait_item(&mut self, ti: &'hir TraitItem) {
