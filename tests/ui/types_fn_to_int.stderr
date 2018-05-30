@@ -2,23 +2,15 @@ error: casting a `fn(usize) -> Foo {Foo::A}` to `i32` may truncate the function 
   --> $DIR/types_fn_to_int.rs:12:13
    |
 12 |     let y = x as i32;
-   |             ^^^^^^^^
+   |             ^^^^^^^^ help: if you need the address of the function, consider: `x as usize`
    |
    = note: #[deny(fn_to_numeric_cast)] on by default
-help: if you need the address of the function, consider :
-   |
-12 |     let y = x as usize;
-   |             ^^^^^^^^^^
 
 error: casting a `fn() -> i32 {bar}` to `u32` may truncate the function address value.
   --> $DIR/types_fn_to_int.rs:14:13
    |
 14 |     let z = bar as u32;
-   |             ^^^^^^^^^^
-help: if you need the address of the function, consider :
-   |
-14 |     let z = bar as usize;
-   |             ^^^^^^^^^^^^
+   |             ^^^^^^^^^^ help: if you need the address of the function, consider: `bar as usize`
 
 error: aborting due to 2 previous errors
 
