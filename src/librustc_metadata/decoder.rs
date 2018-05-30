@@ -1148,12 +1148,6 @@ impl<'a, 'tcx> CrateMetadata {
 
         // Lock the codemap_import_info to ensure this only happens once
         let mut codemap_import_info = self.codemap_import_info.borrow_mut();
-
-        if !codemap_import_info.is_empty() {
-            drop(codemap_import_info);
-            return self.codemap_import_info.borrow();
-        }
-
         let external_codemap = self.root.codemap.decode(self);
 
         let imported_filemaps = external_codemap.map(|filemap_to_import| {
