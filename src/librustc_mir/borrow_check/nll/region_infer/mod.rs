@@ -352,7 +352,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Returns access to the value of `r` for debugging purposes.
-    pub(super) fn region_value_str(&self, r: RegionVid) -> String {
+    crate fn region_value_str(&self, r: RegionVid) -> String {
         let inferred_values = self.inferred_values
             .as_ref()
             .expect("region values not yet inferred");
