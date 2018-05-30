@@ -327,7 +327,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let a = self.value_to_scalar(args[0])?;
                 let b = self.value_to_scalar(args[1])?;
                 // check x % y != 0
-                if self.binary_op(mir::BinOp::Rem, a, ty, b, ty)?.0 != Scalar::null() {
+                if !self.binary_op(mir::BinOp::Rem, a, ty, b, ty)?.0.is_null()? {
                     return err!(ValidationFailure(format!("exact_div: {:?} cannot be divided by {:?}", a, b)));
                 }
                 let result = self.binary_op(mir::BinOp::Div, a, ty, b, ty)?;
