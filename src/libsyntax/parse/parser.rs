@@ -4877,9 +4877,7 @@ impl<'a> Parser<'a> {
                     id: lifetime.id,
                     attrs: attrs.into(),
                     bounds,
-                    kind: ast::GenericParamKind::Lifetime {
-                        lifetime,
-                    }
+                    kind: ast::GenericParamKind::Lifetime,
                 });
                 if seen_ty_param {
                     self.span_err(self.prev_span,

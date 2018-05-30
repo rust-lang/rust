@@ -484,9 +484,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             id: lifetime.id,
             attrs: attrs.into(),
             bounds,
-            kind: ast::GenericParamKind::Lifetime {
-                lifetime,
-            }
+            kind: ast::GenericParamKind::Lifetime,
         }
     }
 

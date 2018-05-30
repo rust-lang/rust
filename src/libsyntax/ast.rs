@@ -301,9 +301,7 @@ pub type ParamBounds = Vec<ParamBound>;
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum GenericParamKind {
     /// A lifetime definition, e.g. `'a: 'b+'c+'d`.
-    Lifetime {
-        lifetime: Lifetime,
-    },
+    Lifetime,
     Type {
         default: Option<P<Ty>>,
     }

@@ -706,13 +706,8 @@ impl<'a> LoweringContext<'a> {
                     kind: hir::GenericParamKind::Lifetime {
                         lt_name: hir_name,
                         in_band: true,
-                        lifetime: hir::Lifetime {
-                            id: def_node_id,
-                            span,
-                            name: hir_name,
                         }
                     }
-                }
             })
             .chain(in_band_ty_params.into_iter())
             .collect();
@@ -1423,12 +1418,7 @@ impl<'a> LoweringContext<'a> {
                         kind: hir::GenericParamKind::Lifetime {
                             lt_name: name,
                             in_band: false,
-                            lifetime: hir::Lifetime {
-                                id: def_node_id,
-                                span: lifetime.span,
-                                name,
                             }
-                        }
                     });
                 }
             }
@@ -1947,21 +1937,20 @@ impl<'a> LoweringContext<'a> {
                            -> hir::GenericParam {
         let mut bounds = self.lower_param_bounds(&param.bounds, itctx);
         match param.kind {
-            GenericParamKind::Lifetime { ref lifetime } => {
+            GenericParamKind::Lifetime => {
                 let was_collecting_in_band = self.is_collecting_in_band_lifetimes;
                 self.is_collecting_in_band_lifetimes = false;
 
-                let lifetime = self.lower_lifetime(lifetime);
+                let lt = self.lower_lifetime(&Lifetime { id: param.id, ident: param.ident });
                 let param = hir::GenericParam {
-                    id: lifetime.id,
-                    name: lifetime.name.name(),
-                    span: lifetime.span,
+                    id: lt.id,
+                    name: lt.name.name(),
+                    span: lt.span,
                     pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
                     bounds,
                     kind: hir::GenericParamKind::Lifetime {
-                        lt_name: lifetime.name,
+                        lt_name: lt.name,
                         in_band: false,
-                        lifetime,
                     }
                 };
 

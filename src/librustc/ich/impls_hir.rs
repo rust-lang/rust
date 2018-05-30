@@ -209,10 +209,9 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::GenericParamKind {
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
-            hir::GenericParamKind::Lifetime { lt_name, in_band, ref lifetime } => {
+            hir::GenericParamKind::Lifetime { lt_name, in_band } => {
                 lt_name.hash_stable(hcx, hasher);
                 in_band.hash_stable(hcx, hasher);
-                lifetime.hash_stable(hcx, hasher);
             }
             hir::GenericParamKind::Type { ref default, synthetic, attrs } => {
                 default.hash_stable(hcx, hasher);

@@ -190,8 +190,8 @@ impl<'a> Ty<'a> {
         match *self {
             Self_ => {
                 let params: Vec<_> = generics.params.iter().map(|param| match param.kind {
-                    GenericParamKind::Lifetime { ref lifetime, .. } => {
-                        GenericArg::Lifetime(*lifetime)
+                    GenericParamKind::Lifetime { .. } => {
+                        GenericArg::Lifetime(ast::Lifetime { id: param.id, ident: param.ident })
                     }
                     GenericParamKind::Type { .. } => {
                         GenericArg::Type(cx.ty_ident(span, param.ident))

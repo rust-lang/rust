@@ -308,8 +308,8 @@ pub fn expr_to_string(e: &ast::Expr) -> String {
     to_string(|s| s.print_expr(e))
 }
 
-pub fn lifetime_to_string(e: &ast::Lifetime) -> String {
-    to_string(|s| s.print_lifetime(e))
+pub fn lifetime_to_string(lt: &ast::Lifetime) -> String {
+    to_string(|s| s.print_lifetime(*lt))
 }
 
 pub fn tt_to_string(tt: tokenstream::TokenTree) -> String {
@@ -1008,10 +1008,9 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_opt_lifetime(&mut self,
-                              lifetime: &Option<ast::Lifetime>) -> io::Result<()> {
-        if let Some(l) = *lifetime {
-            self.print_lifetime(&l)?;
+    pub fn print_opt_lifetime(&mut self, lifetime: &Option<ast::Lifetime>) -> io::Result<()> {
+        if let Some(lt) = *lifetime {
+            self.print_lifetime(lt)?;
             self.nbsp()?;
         }
         Ok(())
@@ -1019,7 +1018,7 @@ impl<'a> State<'a> {
 
     pub fn print_generic_arg(&mut self, generic_arg: &GenericArg) -> io::Result<()> {
         match generic_arg {
-            GenericArg::Lifetime(lt) => self.print_lifetime(lt),
+            GenericArg::Lifetime(lt) => self.print_lifetime(*lt),
             GenericArg::Type(ty) => self.print_type(ty),
         }
     }
@@ -2833,26 +2832,19 @@ impl<'a> State<'a> {
                         }
                         self.print_poly_trait_ref(tref)?;
                     }
-                    Outlives(lt) => {
-                        self.print_lifetime(lt)?;
-                    }
+                    Outlives(lt) => self.print_lifetime(*lt)?,
                 }
             }
         }
         Ok(())
     }
 
-    pub fn print_lifetime(&mut self,
-                          lifetime: &ast::Lifetime)
-                          -> io::Result<()>
-    {
+    pub fn print_lifetime(&mut self, lifetime: ast::Lifetime) -> io::Result<()> {
         self.print_name(lifetime.ident.name)
     }
 
-    pub fn print_lifetime_bounds(&mut self,
-                                 lifetime: &ast::Lifetime,
-                                 bounds: &ast::ParamBounds)
-                                 -> io::Result<()>
+    pub fn print_lifetime_bounds(&mut self, lifetime: ast::Lifetime, bounds: &ast::ParamBounds)
+        -> io::Result<()>
     {
         self.print_lifetime(lifetime)?;
         if !bounds.is_empty() {
@@ -2862,7 +2854,7 @@ impl<'a> State<'a> {
                     self.s.word(" + ")?;
                 }
                 match bound {
-                    ast::ParamBound::Outlives(lt) => self.print_lifetime(lt)?,
+                    ast::ParamBound::Outlives(lt) => self.print_lifetime(*lt)?,
                     _ => panic!(),
                 }
             }
@@ -2882,9 +2874,10 @@ impl<'a> State<'a> {
 
         self.commasep(Inconsistent, &generic_params, |s, param| {
             match param.kind {
-                ast::GenericParamKind::Lifetime { ref lifetime } => {
+                ast::GenericParamKind::Lifetime => {
                     s.print_outer_attributes_inline(&param.attrs)?;
-                    s.print_lifetime_bounds(lifetime, &param.bounds)
+                    let lt = ast::Lifetime { id: param.id, ident: param.ident };
+                    s.print_lifetime_bounds(lt, &param.bounds)
                 },
                 ast::GenericParamKind::Type { ref default } => {
                     s.print_outer_attributes_inline(&param.attrs)?;
@@ -2934,7 +2927,7 @@ impl<'a> State<'a> {
                 ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
                                                                                ref bounds,
                                                                                ..}) => {
-                    self.print_lifetime_bounds(lifetime, bounds)?;
+                    self.print_lifetime_bounds(*lifetime, bounds)?;
                 }
                 ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref lhs_ty,
                                                                        ref rhs_ty,

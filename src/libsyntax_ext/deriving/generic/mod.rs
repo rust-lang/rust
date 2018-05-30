@@ -665,8 +665,8 @@ impl<'a> TraitDef<'a> {
         let trait_ref = cx.trait_ref(trait_path);
 
         let self_params: Vec<_> = generics.params.iter().map(|param| match param.kind {
-            GenericParamKind::Lifetime { ref lifetime, .. } => {
-                GenericArg::Lifetime(*lifetime)
+            GenericParamKind::Lifetime { .. } => {
+                GenericArg::Lifetime(ast::Lifetime { id: param.id, ident: param.ident })
             }
             GenericParamKind::Type { .. } => {
                 GenericArg::Type(cx.ty_ident(self.span, param.ident))

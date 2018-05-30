@@ -454,8 +454,6 @@ pub enum GenericParamKind {
         // as a result of an in-band lifetime usage like:
         // `fn foo(x: &'a u8) -> &'a u8 { x }`
         in_band: bool,
-        // We keep a `Lifetime` around for now just so we can `visit_lifetime`.
-        lifetime: Lifetime,
     },
     Type {
         default: Option<P<Ty>>,
