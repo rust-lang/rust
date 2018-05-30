@@ -318,8 +318,8 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
             walk_list!(visitor, visit_ty, tuple_element_types);
         }
         TyKind::BareFn(ref function_declaration) => {
-            walk_fn_decl(visitor, &function_declaration.decl);
             walk_list!(visitor, visit_generic_param, &function_declaration.generic_params);
+            walk_fn_decl(visitor, &function_declaration.decl);
         }
         TyKind::Path(ref maybe_qself, ref path) => {
             if let Some(ref qself) = *maybe_qself {
@@ -485,7 +485,7 @@ pub fn walk_ty_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a TyPar
 pub fn walk_generic_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a GenericParam) {
     match *param {
         GenericParam::Lifetime(ref l) => {
-            visitor.visit_lifetime(&l.lifetime);
+            visitor.visit_ident(l.lifetime.ident);
             walk_list!(visitor, visit_lifetime, &l.bounds);
             walk_list!(visitor, visit_attribute, &*l.attrs);
         }

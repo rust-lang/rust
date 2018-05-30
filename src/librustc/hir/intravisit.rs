@@ -580,8 +580,8 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             walk_list!(visitor, visit_ty, tuple_element_types);
         }
         TyBareFn(ref function_declaration) => {
-            visitor.visit_fn_decl(&function_declaration.decl);
             walk_list!(visitor, visit_generic_param, &function_declaration.generic_params);
+            visitor.visit_fn_decl(&function_declaration.decl);
         }
         TyPath(ref qpath) => {
             visitor.visit_qpath(qpath, typ.id, typ.span);
@@ -733,7 +733,16 @@ pub fn walk_ty_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v TyPar
 pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v GenericParam) {
     match *param {
         GenericParam::Lifetime(ref ld) => {
-            visitor.visit_lifetime(&ld.lifetime);
+            visitor.visit_id(ld.lifetime.id);
+            match ld.lifetime.name {
+                LifetimeName::Name(name) => {
+                    visitor.visit_name(ld.lifetime.span, name);
+                }
+                LifetimeName::Fresh(_) |
+                LifetimeName::Static |
+                LifetimeName::Implicit |
+                LifetimeName::Underscore => {}
+            }
             walk_list!(visitor, visit_lifetime, &ld.bounds);
         }
         GenericParam::Type(ref ty_param) => {
