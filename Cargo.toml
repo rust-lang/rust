@@ -1,3 +1,5 @@
+cargo-features = ["edition"]
+
 [package]
 name = "clippy"
 version = "0.0.205"
@@ -15,6 +17,7 @@ license = "MPL-2.0"
 keywords = ["clippy", "lint", "plugin"]
 categories = ["development-tools", "development-tools::cargo-plugins"]
 build = "build.rs"
+edition = "2018"
 
 [badges]
 travis-ci = { repository = "rust-lang-nursery/rust-clippy" }
