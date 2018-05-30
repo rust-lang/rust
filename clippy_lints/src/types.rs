@@ -1002,8 +1002,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                             cx,
                             FN_TO_NUMERIC_CAST,
                             expr.span,
-                            &format!("casting a Fn to {} may truncate the function address value.", cast_to),
-                            "if you need address of function, use cast to `usize` instead:",
+                            &format!("casting a `{}` to `{}` may truncate the function address value.", cast_from, cast_to),
+                            //   &format!("if you need address of function, use cast zz `usize`:"),
+                            &format!("if you need the address of the function, z consider:"),
                             format!("{} as usize", &snippet(cx, ex.span, "x"))
                         );
                     }
