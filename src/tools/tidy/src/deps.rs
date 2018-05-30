@@ -98,6 +98,7 @@ static WHITELIST: &'static [Crate] = &[
     Crate("parking_lot"),
     Crate("parking_lot_core"),
     Crate("polonius-engine"),
+    Crate("pkg-config"),
     Crate("quick-error"),
     Crate("rand"),
     Crate("redox_syscall"),

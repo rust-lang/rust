@@ -105,7 +105,7 @@ name = "backtrace"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "backtrace-sys 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "backtrace-sys 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-demangle 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -114,11 +114,12 @@ dependencies = [
 
 [[package]]
 name = "backtrace-sys"
-version = "0.1.16"
+version = "0.1.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cc 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.40 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pkg-config 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2513,6 +2514,7 @@ dependencies = [
  "alloc_jemalloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
+ "cc 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiler_builtins 0.0.0",
  "core 0.0.0",
  "libc 0.0.0",
@@ -3051,7 +3053,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum assert_cli 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5da59dbd8df54562665b925b427221ceda9b771408cb8a6cbd2125d3b001330b"
 "checksum atty 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "af80143d6f7608d746df1520709e5d141c96f240b0e62b0aa41bdfb53374d9d4"
 "checksum backtrace 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "ebbe525f66f42d207968308ee86bc2dd60aa5fab535b22e616323a173d097d8e"
-"checksum backtrace-sys 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "44585761d6161b0f57afc49482ab6bd067e4edef48c12a152c237eb0203f7661"
+"checksum backtrace-sys 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)" = "5fd343a2466c4603f76f38de264bc0526cffc7fa38ba52fb9f13237eccc1ced2"
 "checksum bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "aad18937a628ec6abcd26d1489012cc0e18c21798210f491af69ded9b881106d"
 "checksum bitflags 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4efd02e230a02e18f92fc2735f44597385ed02ad8f831e7c1c1156ee5e1ab3a5"
 "checksum bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b3c30d3802dfb7281680d6285f2ccdaa8c2d8fee41f93805dba5c4cf50dc23cf"
