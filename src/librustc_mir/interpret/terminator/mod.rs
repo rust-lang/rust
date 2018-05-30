@@ -39,12 +39,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             } => {
                 let discr_val = self.eval_operand(discr)?;
                 let discr_prim = self.value_to_scalar(discr_val)?;
+                let discr_layout = self.layout_of(discr_val.ty).unwrap();
+                trace!("SwitchInt({:?}, {:#?})", discr_prim, discr_layout);
+                let discr_prim = discr_prim.to_bits(discr_layout.size)?;
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 let mut target_block = targets[targets.len() - 1];
 
                 for (index, &const_int) in values.iter().enumerate() {
-                    if discr_prim.to_bits(self.layout_of(discr_val.ty).unwrap().size)? == const_int {
+                    if discr_prim == const_int {
                         target_block = targets[index];
                         break;
                     }
