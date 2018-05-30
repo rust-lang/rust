@@ -305,7 +305,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 Some(alloc) => Ok(alloc),
                 None => {
                     // static alloc?
-                    match self.tcx.alloc_map.lock().get(id) {
+                    let alloc = self.tcx.alloc_map.lock().get(id);
+                    match alloc {
                         Some(AllocType::Memory(mem)) => Ok(mem),
                         Some(AllocType::Function(..)) => {
                             Err(EvalErrorKind::DerefFunctionPointer.into())

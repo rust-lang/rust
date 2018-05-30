@@ -16,5 +16,6 @@ extern {
 
 pub static BAZ: u32 = *&error_message_count;
 //~^ ERROR constant evaluation error
+//~| tried to read foreign (extern) static
 
 fn main() {}
