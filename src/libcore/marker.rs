@@ -294,7 +294,7 @@ pub trait Copy : Clone {
 /// This trait is automatically implemented when the compiler determines
 /// it's appropriate.
 ///
-/// The precise definition is: a type `T` is `Sync` if `&T` is
+/// The precise definition is: a type `T` is `Sync` if and only if `&T` is
 /// [`Send`][send]. In other words, if there is no possibility of
 /// [undefined behavior][ub] (including data races) when passing
 /// `&T` references between threads.
