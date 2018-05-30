@@ -277,7 +277,7 @@ pub struct Evaluator<'tcx> {
     pub(crate) suspended: HashMap<DynamicLifetime, Vec<ValidationQuery<'tcx>>>,
 }
 
-pub type TlsKey = usize;
+pub type TlsKey = u128;
 
 #[derive(Copy, Clone, Debug)]
 pub struct TlsEntry<'tcx> {

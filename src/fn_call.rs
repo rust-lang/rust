@@ -512,21 +512,18 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 self.write_null(dest, dest_ty)?;
             }
             "pthread_key_delete" => {
-                // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
-                let key = self.value_to_scalar(args[0])?.to_u64()? as TlsKey;
+                let key = self.value_to_scalar(args[0])?.to_bytes()?;
                 self.memory.delete_tls_key(key)?;
                 // Return success (0)
                 self.write_null(dest, dest_ty)?;
             }
             "pthread_getspecific" => {
-                // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
-                let key = self.value_to_scalar(args[0])?.to_u64()? as TlsKey;
+                let key = self.value_to_scalar(args[0])?.to_bytes()?;
                 let ptr = self.memory.load_tls(key)?;
                 self.write_ptr(dest, ptr, dest_ty)?;
             }
             "pthread_setspecific" => {
-                // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
-                let key = self.value_to_scalar(args[0])?.to_u64()? as TlsKey;
+                let key = self.value_to_scalar(args[0])?.to_bytes()?;
                 let new_ptr = self.into_ptr(args[1].value)?;
                 self.memory.store_tls(key, new_ptr)?;
 
