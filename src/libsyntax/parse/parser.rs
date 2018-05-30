@@ -3868,7 +3868,7 @@ impl<'a> Parser<'a> {
                     "move the `..` to the end of the field list",
                     vec![
                         (etc_span, "".into()),
-                        (self.span, ", .. }".into()),
+                        (self.span, format!("{}.. }}", if ate_comma { "" } else { ", " })),
                     ],
                 );
             }
