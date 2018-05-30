@@ -1033,17 +1033,22 @@ impl<'a> LoweringContext<'a> {
                     _ => None,
                 }),
                 |this| {
-                    hir::TyBareFn(P(hir::BareFnTy {
-                        generic_params: this.lower_generic_params(
-                            &f.generic_params,
-                            &NodeMap(),
-                            ImplTraitContext::Disallowed,
-                        ),
-                        unsafety: this.lower_unsafety(f.unsafety),
-                        abi: f.abi,
-                        decl: this.lower_fn_decl(&f.decl, None, false),
-                        arg_names: this.lower_fn_args_to_names(&f.decl),
-                    }))
+                    this.with_anonymous_lifetime_mode(
+                        AnonymousLifetimeMode::PassThrough,
+                        |this| {
+                            hir::TyBareFn(P(hir::BareFnTy {
+                                generic_params: this.lower_generic_params(
+                                    &f.generic_params,
+                                    &NodeMap(),
+                                    ImplTraitContext::Disallowed,
+                                ),
+                                unsafety: this.lower_unsafety(f.unsafety),
+                                abi: f.abi,
+                                decl: this.lower_fn_decl(&f.decl, None, false),
+                                arg_names: this.lower_fn_args_to_names(&f.decl),
+                            }))
+                        },
+                    )
                 },
             ),
             TyKind::Never => hir::TyNever,
