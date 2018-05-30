@@ -13,15 +13,59 @@
 #![unstable(issue = "32838", feature = "allocator_api")]
 
 #[doc(inline)] #[allow(deprecated)] pub use alloc_crate::alloc::Heap;
-#[doc(inline)] pub use alloc_crate::alloc::{Global, oom};
+#[doc(inline)] pub use alloc_crate::alloc::{Global, Layout, oom};
 #[doc(inline)] pub use alloc_system::System;
 #[doc(inline)] pub use core::alloc::*;
+
+use core::sync::atomic::{AtomicPtr, Ordering};
+use core::{mem, ptr};
+
+static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
+
+/// Registers a custom OOM hook, replacing any that was previously registered.
+///
+/// The OOM hook is invoked when an infallible memory allocation fails.
+/// The default hook prints a message to standard error and aborts the
+/// execution, but this behavior can be customized with the [`set_oom_hook`]
+/// and [`take_oom_hook`] functions.
+///
+/// The hook is provided with a `Layout` struct which contains information
+/// about the allocation that failed.
+///
+/// The OOM hook is a global resource.
+pub fn set_oom_hook(hook: fn(Layout) -> !) {
+    HOOK.store(hook as *mut (), Ordering::SeqCst);
+}
+
+/// Unregisters the current OOM hook, returning it.
+///
+/// *See also the function [`set_oom_hook`].*
+///
+/// If no custom hook is registered, the default hook will be returned.
+pub fn take_oom_hook() -> fn(Layout) -> ! {
+    let hook = HOOK.swap(ptr::null_mut(), Ordering::SeqCst);
+    if hook.is_null() {
+        default_oom_hook
+    } else {
+        unsafe { mem::transmute(hook) }
+    }
+}
+
+fn default_oom_hook(layout: Layout) -> ! {
+    rtabort!("memory allocation of {} bytes failed", layout.size())
+}
 
 #[cfg(not(test))]
 #[doc(hidden)]
 #[lang = "oom"]
-pub extern fn rust_oom() -> ! {
-    rtabort!("memory allocation failed");
+pub extern fn rust_oom(layout: Layout) -> ! {
+    let hook = HOOK.load(Ordering::SeqCst);
+    let hook: fn(Layout) -> ! = if hook.is_null() {
+        default_oom_hook
+    } else {
+        unsafe { mem::transmute(hook) }
+    };
+    hook(layout)
 }
 
 #[cfg(not(test))]
