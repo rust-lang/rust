@@ -19,9 +19,6 @@ fn main() {
     let x: &Void = unsafe { std::mem::uninitialized() };
     let _ = match x {}; //~ ERROR non-exhaustive
 
-    let x: (Void,) = unsafe { std::mem::uninitialized() };
-    let _ = match x {}; //~ ERROR non-exhaustive
-
     let x: [Void; 1] = unsafe { std::mem::uninitialized() };
     let _ = match x {}; //~ ERROR non-exhaustive
 
@@ -29,9 +26,6 @@ fn main() {
     let _ = match x {   //~ ERROR non-exhaustive
         &[] => (),
     };
-
-    let x: Void = unsafe { std::mem::uninitialized() };
-    let _ = match x {}; // okay
 
     let x: Result<u32, Void> = Ok(23);
     let _ = match x {   //~ ERROR non-exhaustive

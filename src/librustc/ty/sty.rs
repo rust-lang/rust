@@ -1473,6 +1473,16 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    pub fn conservative_is_uninhabited(&self) -> bool {
+        // "rustc-1.0-style" uncontentious uninhabitableness check
+        match self.sty {
+            ty::TyNever => true,
+            ty::TyAdt(def, _) => def.variants.is_empty(),
+            ty::TyTuple(tys) => tys.iter().any(|ty| ty.conservative_is_uninhabited()),
+            _ => false
+        }
+    }
+
     pub fn is_primitive(&self) -> bool {
         match self.sty {
             TyBool | TyChar | TyInt(_) | TyUint(_) | TyFloat(_) => true,

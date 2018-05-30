@@ -27,8 +27,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                      expr: Expr<'tcx>)
                      -> BlockAnd<()>
     {
-        debug!("into_expr(destination={:?}, block={:?}, expr={:?})",
-               destination, block, expr);
+        debug!("into_expr(destination={:?}, block={:?}, expr_kind={:?}, expr={:?})",
+               destination, block, expr.kind, expr);
 
         // since we frequently have to reference `self` from within a
         // closure, where `self` would be shadowed, it's easier to
@@ -317,9 +317,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     _ => true,
                 });
 
+                let ty = expr.ty;
                 let rvalue = unpack!(block = this.as_local_rvalue(block, expr));
-                this.cfg.push_assign(block, source_info, destination, rvalue);
-                block.unit()
+
+                if ty.conservative_is_uninhabited() {
+                    // It's impossible to have an rvalue of type `!`, so if we encounter one,
+                    // we can terminate the block as unreachable immediately.
+                    this.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
+                    let end_block = this.cfg.start_new_block();
+                    end_block.unit()
+                } else {
+                    this.cfg.push_assign(block, source_info, destination, rvalue);
+                    block.unit()
+                }
             }
         }
     }

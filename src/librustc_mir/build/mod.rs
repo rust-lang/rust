@@ -667,6 +667,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
 
         let mut scope = None;
+        let mut unreachable_arguments = false;
         // Bind the argument patterns
         for (index, &(ty, pattern)) in arguments.iter().enumerate() {
             // Function arguments always get the first Local indices after the return place
@@ -675,6 +676,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             if let Some(pattern) = pattern {
                 let pattern = self.hir.pattern_from_hir(pattern);
+
+                if pattern.is_unreachable() {
+                    unreachable_arguments = true;
+                    break;
+                }
 
                 match *pattern.kind {
                     // Don't introduce extra copies for simple bindings
@@ -694,7 +700,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(pattern.as_ref().map_or(ast_body.span, |pat| pat.span),
                                argument_scope, &place, ty);
-
         }
 
         // Enter the argument pattern bindings visibility scope, if it exists.
@@ -703,6 +708,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
 
         let body = self.hir.mirror(ast_body);
+        if unreachable_arguments {
+            let source_info = self.source_info(body.span);
+            self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
+            let end_block = self.cfg.start_new_block();
+            return end_block.unit();
+        }
         self.into(&Place::Local(RETURN_PLACE), block, body)
     }
 
