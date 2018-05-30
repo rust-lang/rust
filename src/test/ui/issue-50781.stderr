@@ -1,11 +1,17 @@
-error[E0038]: the trait `X` cannot be made into an object
-  --> $DIR/issue-50781.rs:21:6
+error: the trait `X` cannot be made into an object
+  --> $DIR/issue-50781.rs:16:5
    |
-LL | impl Trait for dyn X {}
-   |      ^^^^^ the trait `X` cannot be made into an object
+LL |     fn foo(&self) where Self: Trait; //~ ERROR the trait `X` cannot be made into an object
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: method `foo` references the `Self` type in its arguments or return type
+note: lint level defined here
+  --> $DIR/issue-50781.rs:11:9
+   |
+LL | #![deny(where_clauses_object_safety)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue TBD
+   = note: method `foo` references the `Self` type in where clauses
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0038`.

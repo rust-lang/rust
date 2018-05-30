@@ -17,7 +17,7 @@
 struct Bar<T:Eq+?Sized> { value: Box<T> }
 
 trait Foo {
-    fn bar(&self) where Bar<Self>: Copy;
+    fn bar(&self) where Self: Sized, Bar<Self>: Copy;
         //~^ ERROR E0277
         //
         // Here, Eq ought to be implemented.

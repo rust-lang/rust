@@ -11,7 +11,7 @@
 #![feature(fn_traits)]
 
 trait CallSingle<A, B> {
-    fn call(&self, a: A) -> B where Self: Fn(A) -> B;
+    fn call(&self, a: A) -> B where Self: Sized, Self: Fn(A) -> B;
 }
 
 impl<A, B, F: Fn(A) -> B> CallSingle<A, B> for F {

@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(where_clauses_object_safety)]
+
 trait Trait {}
 
 trait X {
-    fn foo(&self) where Self: Trait;
+    fn foo(&self) where Self: Trait; //~ ERROR the trait `X` cannot be made into an object
+    //~^ WARN this was previously accepted by the compiler but is being phased out
 }
 
 impl X for () {
@@ -19,7 +22,6 @@ impl X for () {
 }
 
 impl Trait for dyn X {}
-//~^ ERROR the trait `X` cannot be made into an object
 
 pub fn main() {
     // Check that this does not segfault.
