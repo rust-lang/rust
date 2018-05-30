@@ -64,6 +64,9 @@ pub trait ScalarExt {
     fn from_f64(f: f64) -> Self;
     fn to_u64(self) -> EvalResult<'static, u64>;
     fn is_null(self) -> EvalResult<'static, bool>;
+    /// HACK: this function just extracts all bits if `defined != 0`
+    /// Mainly used for args of C-functions and we should totally correctly fetch the size
+    /// of their arguments
     fn to_bytes(self) -> EvalResult<'static, u128>;
 }
 

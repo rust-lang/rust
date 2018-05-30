@@ -316,7 +316,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
             "memrchr" => {
                 let ptr = self.into_ptr(args[0].value)?;
-                let val = self.value_to_scalar(args[1])?.to_u64()? as u8;
+                let val = self.value_to_scalar(args[1])?.to_bytes()? as u8;
                 let num = self.value_to_scalar(args[2])?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, Size::from_bytes(num))?.iter().rev().position(
                     |&c| c == val,
@@ -331,7 +331,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
             "memchr" => {
                 let ptr = self.into_ptr(args[0].value)?;
-                let val = self.value_to_scalar(args[1])?.to_u64()? as u8;
+                let val = self.value_to_scalar(args[1])?.to_bytes()? as u8;
                 let num = self.value_to_scalar(args[2])?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, Size::from_bytes(num))?.iter().position(
                     |&c| c == val,
@@ -414,9 +414,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             }
 
             "write" => {
-                let fd = self.value_to_scalar(args[0])?.to_u64()?;
+                let fd = self.value_to_scalar(args[0])?.to_bytes()?;
                 let buf = self.into_ptr(args[1].value)?;
-                let n = self.value_to_scalar(args[2])?.to_u64()?;
+                let n = self.value_to_scalar(args[2])?.to_bytes()? as u64;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, n);
                 let result = if fd == 1 || fd == 2 {
                     // stdout/stderr
