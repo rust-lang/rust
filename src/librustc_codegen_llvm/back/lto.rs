@@ -461,9 +461,12 @@ fn run_pass_manager(cgcx: &CodegenContext,
     unsafe {
         let pm = llvm::LLVMCreatePassManager();
         llvm::LLVMRustAddAnalysisPasses(tm, pm, llmod);
-        let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);
-        assert!(!pass.is_null());
-        llvm::LLVMRustAddPass(pm, pass);
+
+        if !config.no_verify {
+            let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);
+            assert!(!pass.is_null());
+            llvm::LLVMRustAddPass(pm, pass);
+        }
 
         // When optimizing for LTO we don't actually pass in `-O0`, but we force
         // it to always happen at least with `-O1`.
@@ -494,9 +497,11 @@ fn run_pass_manager(cgcx: &CodegenContext,
             }
         });
 
-        let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);
-        assert!(!pass.is_null());
-        llvm::LLVMRustAddPass(pm, pass);
+        if !config.no_verify {
+            let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);
+            assert!(!pass.is_null());
+            llvm::LLVMRustAddPass(pm, pass);
+        }
 
         time_ext(cgcx.time_passes, None, "LTO passes", ||
              llvm::LLVMRunPassManager(pm, llmod));

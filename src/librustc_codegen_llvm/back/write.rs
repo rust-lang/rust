@@ -232,7 +232,7 @@ pub struct ModuleConfig {
     emit_obj: bool,
     // Miscellaneous flags.  These are mostly copied from command-line
     // options.
-    no_verify: bool,
+    pub no_verify: bool,
     no_prepopulate_passes: bool,
     no_builtins: bool,
     time_passes: bool,
