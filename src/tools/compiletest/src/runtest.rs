@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use common::CompareMode;
-use common::{expected_output_path, UI_STDERR, UI_STDOUT, UI_FIXED};
+use common::{expected_output_path, UI_FIXED, UI_STDERR, UI_STDOUT};
 use common::{output_base_dir, output_base_name, output_testname_unique};
 use common::{Codegen, CodegenUnits, DebugInfoGdb, DebugInfoLldb, Rustdoc};
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
@@ -24,8 +24,8 @@ use regex::Regex;
 use rustfix::{apply_suggestions, get_suggestions_from_json};
 use util::{logv, PathBufExt};
 
-use std::collections::{HashMap, HashSet, VecDeque};
 use std::collections::hash_map::DefaultHasher;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::env;
 use std::ffi::OsString;
 use std::fmt;
@@ -48,9 +48,7 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     }
 
     lazy_static! {
-        static ref LOCK: Mutex<()> = {
-            Mutex::new(())
-        };
+        static ref LOCK: Mutex<()> = { Mutex::new(()) };
     }
     // Error mode is a global variable, so lock it so only one thread will change it
     let _lock = LOCK.lock().unwrap();
@@ -743,7 +741,8 @@ impl<'test> TestCx<'test> {
             }
 
             _ => {
-                let rust_src_root = self.config
+                let rust_src_root = self
+                    .config
                     .find_rust_src_root()
                     .expect("Could not find Rust source root");
                 let rust_pp_module_rel_path = Path::new("./src/etc");
@@ -905,7 +904,8 @@ impl<'test> TestCx<'test> {
         script_str.push_str("version\n");
 
         // Switch LLDB into "Rust mode"
-        let rust_src_root = self.config
+        let rust_src_root = self
+            .config
             .find_rust_src_root()
             .expect("Could not find Rust source root");
         let rust_pp_module_rel_path = Path::new("./src/etc/lldb_rust_formatters.py");
@@ -1052,7 +1052,8 @@ impl<'test> TestCx<'test> {
 
         // Remove options that are either unwanted (-O) or may lead to duplicates due to RUSTFLAGS.
         let options_to_remove = ["-O".to_owned(), "-g".to_owned(), "--debuginfo".to_owned()];
-        let new_options = self.split_maybe_args(options)
+        let new_options = self
+            .split_maybe_args(options)
             .into_iter()
             .filter(|x| !options_to_remove.contains(x))
             .collect::<Vec<String>>();
@@ -1351,7 +1352,8 @@ impl<'test> TestCx<'test> {
 
         let aux_dir = self.aux_output_dir_name();
 
-        let rustdoc_path = self.config
+        let rustdoc_path = self
+            .config
             .rustdoc_path
             .as_ref()
             .expect("--rustdoc-path passed");
@@ -1449,7 +1451,8 @@ impl<'test> TestCx<'test> {
     /// For each `aux-build: foo/bar` annotation, we check to find the
     /// file in a `auxiliary` directory relative to the test itself.
     fn compute_aux_test_paths(&self, rel_ab: &str) -> TestPaths {
-        let test_ab = self.testpaths
+        let test_ab = self
+            .testpaths
             .file
             .parent()
             .expect("test file path has no parent")
@@ -1464,7 +1467,8 @@ impl<'test> TestCx<'test> {
 
         TestPaths {
             file: test_ab,
-            relative_dir: self.testpaths
+            relative_dir: self
+                .testpaths
                 .relative_dir
                 .join(self.output_testname_unique())
                 .join("auxiliary")
@@ -1617,16 +1621,20 @@ impl<'test> TestCx<'test> {
         let mut rustc = if !is_rustdoc {
             Command::new(&self.config.rustc_path)
         } else {
-            Command::new(&self.config
-                .rustdoc_path
-                .clone()
-                .expect("no rustdoc built yet"))
+            Command::new(
+                &self
+                    .config
+                    .rustdoc_path
+                    .clone()
+                    .expect("no rustdoc built yet"),
+            )
         };
         // FIXME Why is -L here?
-        rustc.arg(input_file);//.arg("-L").arg(&self.config.build_base);
+        rustc.arg(input_file); //.arg("-L").arg(&self.config.build_base);
 
         // Optionally prevent default --target if specified in test compile-flags.
-        let custom_target = self.props
+        let custom_target = self
+            .props
             .compile_flags
             .iter()
             .any(|x| x.starts_with("--target"));
@@ -1670,7 +1678,8 @@ impl<'test> TestCx<'test> {
                 }
             }
             Ui => {
-                if !self.props
+                if !self
+                    .props
                     .compile_flags
                     .iter()
                     .any(|s| s.starts_with("--error-format"))
@@ -1704,7 +1713,13 @@ impl<'test> TestCx<'test> {
         }
 
         if self.props.skip_codegen {
-            assert!(!self.props.compile_flags.iter().any(|s| s.starts_with("--emit")));
+            assert!(
+                !self
+                    .props
+                    .compile_flags
+                    .iter()
+                    .any(|s| s.starts_with("--emit"))
+            );
             rustc.args(&["--emit", "metadata"]);
         }
 
@@ -1812,7 +1827,8 @@ impl<'test> TestCx<'test> {
 
     fn split_maybe_args(&self, argstr: &Option<String>) -> Vec<String> {
         match *argstr {
-            Some(ref s) => s.split(' ')
+            Some(ref s) => s
+                .split(' ')
                 .filter_map(|s| {
                     if s.chars().all(|c| c.is_whitespace()) {
                         None
@@ -2125,7 +2141,8 @@ impl<'test> TestCx<'test> {
         }
 
         let mut tested = 0;
-        for _ in res.stdout
+        for _ in res
+            .stdout
             .split('\n')
             .filter(|s| s.starts_with("test "))
             .inspect(|s| {
@@ -2136,7 +2153,8 @@ impl<'test> TestCx<'test> {
                         tested += 1;
                         let mut iter = tmp[1].split("(line ");
                         iter.next();
-                        let line = iter.next()
+                        let line = iter
+                            .next()
                             .unwrap_or(")")
                             .split(')')
                             .next()
@@ -2290,7 +2308,8 @@ impl<'test> TestCx<'test> {
 
             let full_string = format!("{}{}", PREFIX, s.trim().to_owned());
 
-            let parts: Vec<&str> = s.split(CGU_MARKER)
+            let parts: Vec<&str> = s
+                .split(CGU_MARKER)
                 .map(str::trim)
                 .filter(|s| !s.is_empty())
                 .collect();
@@ -2375,7 +2394,8 @@ impl<'test> TestCx<'test> {
         // FIXME -- use non-incremental mode as an oracle? That doesn't apply
         // to #[rustc_dirty] and clean tests I guess
 
-        let revision = self.revision
+        let revision = self
+            .revision
             .expect("incremental tests require a list of revisions");
 
         // Incremental workproduct directory should have already been created.
@@ -2421,7 +2441,8 @@ impl<'test> TestCx<'test> {
 
     fn run_rmake_test(&self) {
         let cwd = env::current_dir().unwrap();
-        let src_root = self.config
+        let src_root = self
+            .config
             .src_base
             .parent()
             .unwrap()
@@ -2438,8 +2459,10 @@ impl<'test> TestCx<'test> {
         create_dir_all(&tmpdir).unwrap();
 
         let host = &self.config.host;
-        let make = if host.contains("bitrig") || host.contains("dragonfly")
-            || host.contains("freebsd") || host.contains("netbsd")
+        let make = if host.contains("bitrig")
+            || host.contains("dragonfly")
+            || host.contains("freebsd")
+            || host.contains("netbsd")
             || host.contains("openbsd")
         {
             "gmake"
@@ -2494,7 +2517,8 @@ impl<'test> TestCx<'test> {
             // MSYS doesn't like passing flags of the form `/foo` as it thinks it's
             // a path and instead passes `C:\msys64\foo`, so convert all
             // `/`-arguments to MSVC here to `-` arguments.
-            let cflags = self.config
+            let cflags = self
+                .config
                 .cflags
                 .split(' ')
                 .map(|s| s.replace("/", "-"))
@@ -2516,7 +2540,8 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        let output = cmd.spawn()
+        let output = cmd
+            .spawn()
             .and_then(read2_abbreviated)
             .expect("failed to spawn `make`");
         if !output.status.success() {
@@ -2557,7 +2582,8 @@ impl<'test> TestCx<'test> {
         // if the user specified a format in the ui test
         // print the output to the stderr file, otherwise extract
         // the rendered error messages from json and print them
-        let explicit = self.props
+        let explicit = self
+            .props
             .compile_flags
             .iter()
             .any(|s| s.contains("--error-format"));
@@ -2587,22 +2613,27 @@ impl<'test> TestCx<'test> {
             // don't test rustfix with nll right now
         } else if self.props.run_rustfix {
             // Apply suggestions from rustc to the code itself
-            let unfixed_code = self.load_expected_output_from_path(&self.testpaths.file)
+            let unfixed_code = self
+                .load_expected_output_from_path(&self.testpaths.file)
                 .unwrap();
             let suggestions = get_suggestions_from_json(&proc_res.stderr, &HashSet::new()).unwrap();
-            let fixed_code = apply_suggestions(&unfixed_code, &suggestions).expect(
-                &format!("failed to apply suggestions for {:?} with rustfix", self.testpaths.file)
-            );
+            let fixed_code = apply_suggestions(&unfixed_code, &suggestions).expect(&format!(
+                "failed to apply suggestions for {:?} with rustfix",
+                self.testpaths.file
+            ));
 
             errors += self.compare_output("fixed", &fixed_code, &expected_fixed);
         } else if !expected_fixed.is_empty() {
-            panic!("the `// run-rustfix` directive wasn't found but a `*.fixed` \
-                    file was found");
+            panic!(
+                "the `// run-rustfix` directive wasn't found but a `*.fixed` \
+                 file was found"
+            );
         }
 
         if errors > 0 {
             println!("To update references, rerun the tests and pass the `--bless` flag");
-            let relative_path_to_file = self.testpaths
+            let relative_path_to_file = self
+                .testpaths
                 .relative_dir
                 .join(self.testpaths.file.file_name().unwrap());
             println!(
@@ -2784,11 +2815,7 @@ impl<'test> TestCx<'test> {
                  Test Name: {}\n\
                  Expected:\n{}\n\
                  Actual:\n{}",
-                extra_msg,
-                expected_line,
-                test_name,
-                expected_content,
-                normalize_all
+                extra_msg, expected_line, test_name, expected_content, normalize_all
             );
         };
 
@@ -2904,7 +2931,12 @@ impl<'test> TestCx<'test> {
 
         if !path.exists() {
             if let Some(CompareMode::Polonius) = self.config.compare_mode {
-                path = expected_output_path(&self.testpaths, self.revision, &Some(CompareMode::Nll), kind);
+                path = expected_output_path(
+                    &self.testpaths,
+                    self.revision,
+                    &Some(CompareMode::Nll),
+                    kind,
+                );
             }
         }
 
@@ -2973,7 +3005,8 @@ impl<'test> TestCx<'test> {
         }
 
         let mode = self.config.compare_mode.as_ref().map_or("", |m| m.to_str());
-        let output_file = self.output_base_name()
+        let output_file = self
+            .output_base_name()
             .with_extra_extension(self.revision.unwrap_or(""))
             .with_extra_extension(mode)
             .with_extra_extension(kind);
@@ -3023,7 +3056,8 @@ impl<'test> TestCx<'test> {
 
     fn create_stamp(&self) {
         let mut f = File::create(::stamp(&self.config, self.testpaths, self.revision)).unwrap();
-        f.write_all(compute_stamp_hash(&self.config).as_bytes()).unwrap();
+        f.write_all(compute_stamp_hash(&self.config).as_bytes())
+            .unwrap();
     }
 }
 
