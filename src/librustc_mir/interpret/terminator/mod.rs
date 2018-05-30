@@ -291,10 +291,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     // and need to pack arguments
                     Abi::Rust => {
                         trace!(
-                            "arg_locals: {:?}",
+                            "arg_locals: {:#?}",
                             self.frame().mir.args_iter().collect::<Vec<_>>()
                         );
-                        trace!("args: {:?}", args);
+                        trace!("args: {:#?}", args);
                         let local = arg_locals.nth(1).unwrap();
                         for (i, &valty) in args.into_iter().enumerate() {
                             let dest = self.eval_place(&mir::Place::Local(local).field(
@@ -321,10 +321,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let mut arg_locals = self.frame().mir.args_iter();
                 trace!("ABI: {:?}", sig.abi);
                 trace!(
-                    "arg_locals: {:?}",
+                    "arg_locals: {:#?}",
                     self.frame().mir.args_iter().collect::<Vec<_>>()
                 );
-                trace!("args: {:?}", args);
+                trace!("args: {:#?}", args);
                 match sig.abi {
                     Abi::RustCall => {
                         assert_eq!(args.len(), 2);
@@ -376,14 +376,26 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                             }
                                             break;
                                         }
-                                        let dest = self.eval_place(&mir::Place::Local(
-                                            arg_locals.next().unwrap(),
-                                        ))?;
-                                        let valty = ValTy {
-                                            value: other,
-                                            ty: layout.ty,
-                                        };
-                                        self.write_value(valty, dest)?;
+                                        {
+                                            let mut write_next = |value| {
+                                                let dest = self.eval_place(&mir::Place::Local(
+                                                    arg_locals.next().unwrap(),
+                                                ))?;
+                                                let valty = ValTy {
+                                                    value: Value::Scalar(value),
+                                                    ty: layout.ty,
+                                                };
+                                                self.write_value(valty, dest)
+                                            };
+                                            match other {
+                                                Value::Scalar(value) | Value::ScalarPair(value, _) => write_next(value)?,
+                                                _ => unreachable!(),
+                                            }
+                                            if let Value::ScalarPair(_, value) = other {
+                                                write_next(value)?;
+                                            }
+                                        }
+                                        assert!(arg_locals.next().is_none());
                                     }
                                 }
                             } else {
