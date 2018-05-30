@@ -79,6 +79,7 @@ pub struct Config {
     pub llvm_assertions: bool,
     pub llvm_optimize: bool,
     pub llvm_release_debuginfo: bool,
+    pub llvm_thin_lto: bool,
     pub llvm_version_check: bool,
     pub llvm_static_stdcpp: bool,
     pub llvm_link_shared: bool,
@@ -246,6 +247,7 @@ struct Llvm {
     assertions: Option<bool>,
     optimize: Option<bool>,
     release_debuginfo: Option<bool>,
+    thin_lto: Option<bool>,
     version_check: Option<bool>,
     static_libstdcpp: Option<bool>,
     targets: Option<String>,
@@ -501,6 +503,7 @@ impl Config {
             llvm_assertions = llvm.assertions;
             set(&mut config.llvm_optimize, llvm.optimize);
             set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
+            set(&mut config.llvm_thin_lto, llvm.thin_lto);
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
             set(&mut config.llvm_link_shared, llvm.link_shared);

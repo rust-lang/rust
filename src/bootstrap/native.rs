@@ -154,6 +154,11 @@ impl Step for Llvm {
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
 
+        if builder.config.llvm_thin_lto {
+            cfg.define("LLVM_ENABLE_LTO", "Thin")
+               .define("LLVM_ENABLE_LLD", "ON");
+        }
+
         // By default, LLVM will automatically find OCaml and, if it finds it,
         // install the LLVM bindings in LLVM_OCAML_INSTALL_PATH, which defaults
         // to /usr/bin/ocaml.
