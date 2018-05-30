@@ -571,6 +571,10 @@ impl<T> Vec<T> {
     /// It will drop down as close as possible to the length but the allocator
     /// may still inform the vector that there is space for a few more elements.
     ///
+    /// Note: `shrink_to_fit` is a non-binding request. Whether the `Vec` size
+    /// will be shrunk at all, and if so by how much depends on the particular
+    /// allocator being used.
+    ///
     /// # Examples
     ///
     /// ```
@@ -594,6 +598,10 @@ impl<T> Vec<T> {
     ///
     /// Panics if the current capacity is smaller than the supplied
     /// minimum capacity.
+    ///
+    /// Note: `shrink_to` is a non-binding request. Whether the `Vec` size
+    /// will be shrunk at all, and if so by how much depends on the particular
+    /// allocator being used.
     ///
     /// # Examples
     ///

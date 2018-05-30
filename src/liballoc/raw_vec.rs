@@ -14,7 +14,7 @@ use core::ops::Drop;
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
 
-use alloc::{Alloc, Layout, Global, oom};
+use alloc::{Alloc, Layout, Global, oom, Excess};
 use alloc::CollectionAllocErr;
 use alloc::CollectionAllocErr::*;
 use boxed::Box;
@@ -92,17 +92,17 @@ impl<T, A: Alloc> RawVec<T, A> {
             alloc_guard(alloc_size).unwrap_or_else(|_| capacity_overflow());
 
             // handles ZSTs and `cap = 0` alike
-            let ptr = if alloc_size == 0 {
-                NonNull::<T>::dangling().as_opaque()
+            let (ptr, cap) = if alloc_size == 0 {
+                (NonNull::<T>::dangling().as_opaque(), cap)
             } else {
                 let align = mem::align_of::<T>();
                 let result = if zeroed {
-                    a.alloc_zeroed(Layout::from_size_align(alloc_size, align).unwrap())
+                    a.alloc_zeroed_excess(Layout::from_size_align(alloc_size, align).unwrap())
                 } else {
-                    a.alloc(Layout::from_size_align(alloc_size, align).unwrap())
+                    a.alloc_excess(Layout::from_size_align(alloc_size, align).unwrap())
                 };
                 match result {
-                    Ok(ptr) => ptr,
+                    Ok(Excess(ptr, alloc_size)) => (ptr, alloc_size / elem_size),
                     Err(_) => oom(),
                 }
             };
@@ -407,16 +407,17 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             alloc_guard(new_layout.size())?;
 
-            let res = match self.current_layout() {
+            let Excess(ptr, alloc_size) = match self.current_layout() {
                 Some(layout) => {
                     debug_assert!(new_layout.align() == layout.align());
-                    self.a.realloc(NonNull::from(self.ptr).as_opaque(), layout, new_layout.size())
+                    self.a.realloc_excess(NonNull::from(self.ptr).as_opaque(),
+                                          layout, new_layout.size())
                 }
-                None => self.a.alloc(new_layout),
-            };
+                None => self.a.alloc_excess(new_layout),
+            }?;
 
-            self.ptr = res?.cast().into();
-            self.cap = new_cap;
+            self.ptr = ptr.cast().into();
+            self.cap = alloc_size / mem::size_of::<T>();
 
             Ok(())
         }
@@ -485,16 +486,16 @@ impl<T, A: Alloc> RawVec<T, A> {
              // FIXME: may crash and burn on over-reserve
             alloc_guard(new_layout.size())?;
 
-            let res = match self.current_layout() {
+            let Excess(ptr, alloc_size) = match self.current_layout() {
                 Some(layout) => {
                     debug_assert!(new_layout.align() == layout.align());
-                    self.a.realloc(NonNull::from(self.ptr).as_opaque(), layout, new_layout.size())
+                    self.a.realloc_excess(NonNull::from(self.ptr).as_opaque(),
+                                          layout, new_layout.size())
                 }
-                None => self.a.alloc(new_layout),
-            };
-
-            self.ptr = res?.cast().into();
-            self.cap = new_cap;
+                None => self.a.alloc_excess(new_layout),
+            }?;
+            self.ptr = ptr.cast().into();
+            self.cap = alloc_size / mem::size_of::<T>();
 
             Ok(())
         }
@@ -604,11 +605,11 @@ impl<T, A: Alloc> RawVec<T, A> {
             let new_layout = Layout::new::<T>().repeat(new_cap).unwrap().0;
             // FIXME: may crash and burn on over-reserve
             alloc_guard(new_layout.size()).unwrap_or_else(|_| capacity_overflow());
-            match self.a.grow_in_place(
+            match self.a.grow_in_place_excess(
                 NonNull::from(self.ptr).as_opaque(), old_layout, new_layout.size(),
             ) {
-                Ok(_) => {
-                    self.cap = new_cap;
+                Ok(Excess(_, alloc_size)) => {
+                    self.cap = alloc_size / mem::size_of::<T>();
                     true
                 }
                 Err(_) => {
@@ -666,10 +667,13 @@ impl<T, A: Alloc> RawVec<T, A> {
                 let new_size = elem_size * amount;
                 let align = mem::align_of::<T>();
                 let old_layout = Layout::from_size_align_unchecked(old_size, align);
-                match self.a.realloc(NonNull::from(self.ptr).as_opaque(),
+                match self.a.realloc_excess(NonNull::from(self.ptr).as_opaque(),
                                      old_layout,
                                      new_size) {
-                    Ok(p) => self.ptr = p.cast().into(),
+                    Ok(Excess(ptr, alloc_size)) => {
+                        self.ptr = ptr.cast().into();
+                        self.cap = alloc_size / mem::size_of::<T>();
+                    },
                     Err(_) => oom(),
                 }
             }
