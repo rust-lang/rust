@@ -793,7 +793,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let ty = self.place_ty(place);
                 let place = self.eval_place(place)?;
                 let discr_val = self.read_discriminant_value(place, ty)?;
-                let defined = self.layout_of(ty).unwrap().size.bits() as u8;
+                let defined = self.layout_of(dest_ty).unwrap().size.bits() as u8;
                 self.write_scalar(dest, Scalar::Bits {
                     bits: discr_val,
                     defined,
