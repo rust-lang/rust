@@ -593,20 +593,20 @@ pub fn const_eval_provider<'a, 'tcx>(
 
 fn numeric_intrinsic<'tcx>(
     name: &str,
-    bytes: u128,
+    bits: u128,
     kind: Primitive,
 ) -> EvalResult<'tcx, Scalar> {
     let defined = match kind {
         Primitive::Int(integer, _) => integer.size().bits() as u8,
-        _ => bug!("invalid `{}` argument: {:?}", name, bytes),
+        _ => bug!("invalid `{}` argument: {:?}", name, bits),
     };
     let extra = 128 - defined as u128;
-    let bytes_out = match name {
-        "ctpop" => bytes.count_ones() as u128,
-        "ctlz" => bytes.leading_zeros() as u128 - extra,
-        "cttz" => (bytes << extra).trailing_zeros() as u128 - extra,
-        "bswap" => (bytes << extra).swap_bytes(),
+    let bits_out = match name {
+        "ctpop" => bits.count_ones() as u128,
+        "ctlz" => bits.leading_zeros() as u128 - extra,
+        "cttz" => (bits << extra).trailing_zeros() as u128 - extra,
+        "bswap" => (bits << extra).swap_bytes(),
         _ => bug!("not a numeric intrinsic: {}", name),
     };
-    Ok(Scalar::Bits { bits: bytes_out, defined })
+    Ok(Scalar::Bits { bits: bits_out, defined })
 }
