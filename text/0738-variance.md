@@ -163,7 +163,7 @@ Finally, there can be cases where it is ok to make a lifetime
 ## Why variance should be inferred
 
 Actually, lifetime parameters already have a notion of variance, and
-this varinace is fully inferred. In fact, the proper variance for type
+this variance is fully inferred. In fact, the proper variance for type
 parameters is *also* being inferred, we're just largely ignoring
 it. (It's not completely ignored; it informs the variance of
 lifetimes.)
