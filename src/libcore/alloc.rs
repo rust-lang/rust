@@ -19,7 +19,7 @@ use usize;
 use ptr::{self, NonNull};
 use num::NonZeroUsize;
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "alloc_internals", issue = "0")]
 #[cfg(stage0)]
 pub type Opaque = u8;
 

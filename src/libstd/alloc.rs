@@ -64,7 +64,7 @@ fn default_oom_hook(layout: Layout) {
 #[cfg(not(test))]
 #[doc(hidden)]
 #[lang = "oom"]
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "alloc_internals", issue = "0")]
 pub extern fn rust_oom(layout: Layout) -> ! {
     let hook = HOOK.load(Ordering::SeqCst);
     let hook: fn(Layout) = if hook.is_null() {
@@ -79,7 +79,7 @@ pub extern fn rust_oom(layout: Layout) -> ! {
 #[cfg(not(test))]
 #[doc(hidden)]
 #[allow(unused_attributes)]
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "alloc_internals", issue = "0")]
 pub mod __default_lib_allocator {
     use super::{System, Layout, GlobalAlloc};
     // for symbol names src/librustc/middle/allocator.rs
