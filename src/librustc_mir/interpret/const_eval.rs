@@ -348,20 +348,20 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
             "ctpop" | "cttz" | "cttz_nonzero" | "ctlz" | "ctlz_nonzero" | "bswap" => {
                 let ty = substs.type_at(0);
                 let layout_of = ecx.layout_of(ty)?;
-                let num = ecx.value_to_scalar(args[0])?.to_bits(layout_of.size)?;
+                let bits = ecx.value_to_scalar(args[0])?.to_bits(layout_of.size)?;
                 let kind = match layout_of.abi {
                     ty::layout::Abi::Scalar(ref scalar) => scalar.value,
                     _ => Err(::rustc::mir::interpret::EvalErrorKind::TypeNotPrimitive(ty))?,
                 };
-                let num = if intrinsic_name.ends_with("_nonzero") {
-                    if num == 0 {
+                let out_val = if intrinsic_name.ends_with("_nonzero") {
+                    if bits == 0 {
                         return err!(Intrinsic(format!("{} called on 0", intrinsic_name)));
                     }
-                    numeric_intrinsic(intrinsic_name.trim_right_matches("_nonzero"), num, kind)?
+                    numeric_intrinsic(intrinsic_name.trim_right_matches("_nonzero"), bits, kind)?
                 } else {
-                    numeric_intrinsic(intrinsic_name, num, kind)?
+                    numeric_intrinsic(intrinsic_name, bits, kind)?
                 };
-                ecx.write_scalar(dest, num, ty)?;
+                ecx.write_scalar(dest, out_val, ty)?;
             }
 
             name => return Err(
