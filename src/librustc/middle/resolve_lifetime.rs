@@ -1397,25 +1397,22 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 Some(LifetimeUseSet::One(_)) => {
                     let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
                     debug!("node id first={:?}", node_id);
-                    if let hir::map::NodeLifetime(hir_lifetime) = self.tcx.hir.get(node_id) {
-                        let span = hir_lifetime.span;
-                        let id = hir_lifetime.id;
-                        debug!(
-                            "id ={:?} span = {:?} hir_lifetime = {:?}",
-                            node_id, span, hir_lifetime
-                        );
-
-                        self.tcx
-                            .struct_span_lint_node(
-                                lint::builtin::SINGLE_USE_LIFETIMES,
-                                id,
-                                span,
-                                &format!(
-                                    "lifetime parameter `{}` only used once",
-                                    hir_lifetime.name.name()
-                                ),
-                            )
-                            .emit();
+                    if let Some((id, span, name)) = match self.tcx.hir.get(node_id) {
+                        hir::map::NodeLifetime(hir_lifetime) => {
+                            Some((hir_lifetime.id, hir_lifetime.span, hir_lifetime.name.name()))
+                        }
+                        hir::map::NodeGenericParam(param) => {
+                            Some((param.id, param.span, param.name))
+                        }
+                        _ => None,
+                    } {
+                        debug!("id = {:?} span = {:?} name = {:?}", node_id, span, name);
+                        self.tcx.struct_span_lint_node(
+                            lint::builtin::SINGLE_USE_LIFETIMES,
+                            id,
+                            span,
+                            &format!("lifetime parameter `{}` only used once", name),
+                        ).emit();
                     }
                 }
                 Some(LifetimeUseSet::Many) => {
@@ -1423,21 +1420,22 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
                 None => {
                     let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
-                    if let hir::map::NodeLifetime(hir_lifetime) = self.tcx.hir.get(node_id) {
-                        let span = hir_lifetime.span;
-                        let id = hir_lifetime.id;
-
-                        self.tcx
-                            .struct_span_lint_node(
-                                lint::builtin::UNUSED_LIFETIMES,
-                                id,
-                                span,
-                                &format!(
-                                    "lifetime parameter `{}` never used",
-                                    hir_lifetime.name.name()
-                                ),
-                            )
-                            .emit();
+                    if let Some((id, span, name)) = match self.tcx.hir.get(node_id) {
+                        hir::map::NodeLifetime(hir_lifetime) => {
+                            Some((hir_lifetime.id, hir_lifetime.span, hir_lifetime.name.name()))
+                        }
+                        hir::map::NodeGenericParam(param) => {
+                            Some((param.id, param.span, param.name))
+                        }
+                        _ => None,
+                    } {
+                        debug!("id ={:?} span = {:?} name = {:?}", node_id, span, name);
+                        self.tcx.struct_span_lint_node(
+                            lint::builtin::UNUSED_LIFETIMES,
+                            id,
+                            span,
+                            &format!("lifetime parameter `{}` never used", name)
+                        ).emit();
                     }
                 }
             }
