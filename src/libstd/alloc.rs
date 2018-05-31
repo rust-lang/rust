@@ -37,7 +37,7 @@ static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
 /// about the allocation that failed.
 ///
 /// The OOM hook is a global resource.
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "oom_hook", issue = "51245")]
 pub fn set_oom_hook(hook: fn(Layout)) {
     HOOK.store(hook as *mut (), Ordering::SeqCst);
 }
@@ -47,7 +47,7 @@ pub fn set_oom_hook(hook: fn(Layout)) {
 /// *See also the function [`set_oom_hook`].*
 ///
 /// If no custom hook is registered, the default hook will be returned.
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[unstable(feature = "oom_hook", issue = "51245")]
 pub fn take_oom_hook() -> fn(Layout) {
     let hook = HOOK.swap(ptr::null_mut(), Ordering::SeqCst);
     if hook.is_null() {
