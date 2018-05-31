@@ -229,7 +229,7 @@ impl Iterator for ReadDir {
                 // is safe to use in threaded applications and it is generally preferred
                 // over the readdir_r(3C) function.
                 super::os::set_errno(0);
-                let entry_ptr = libc::readdir(self.dirp.0);
+                let entry_ptr = libc::readdir(self.0.dirp.0);
                 if entry_ptr.is_null() {
                     // NULL can mean either the end is reached or an error occurred.
                     // So we had to clear errno beforehand to check for an error now.
