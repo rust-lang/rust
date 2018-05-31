@@ -1214,7 +1214,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             db.span_label(
                                 let_span,
                                 format!("consider changing this to `{}`",
-                                         snippet.replace("ref ", "ref mut "))
+                                         snippet.replacen("ref ", "ref mut ", 1))
                             );
                         }
                     }
