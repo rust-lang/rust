@@ -1047,7 +1047,7 @@ impl EmitterWriter {
                     }
                 } else {
                     buffer.prepend(0,
-                                   &format!("{}:{}:{} - ",
+                                   &format!("{}:{}:{}: ",
                                             loc.file.name,
                                             cm.doctest_offset_line(loc.line),
                                             loc.col.0 + 1),
