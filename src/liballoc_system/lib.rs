@@ -45,7 +45,7 @@ use core::alloc::{Alloc, GlobalAlloc, AllocErr, Layout};
 use core::ptr::NonNull;
 
 /// The default memory allocator provided by the operating system.
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "alloc_system_type", since = "1.28.0")]
 pub struct System;
 
 #[unstable(feature = "allocator_api", issue = "32838")]
@@ -107,7 +107,7 @@ mod platform {
     use System;
     use core::alloc::{GlobalAlloc, Layout};
 
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[stable(feature = "alloc_system_type", since = "1.28.0")]
     unsafe impl GlobalAlloc for System {
         #[inline]
         unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
@@ -240,7 +240,7 @@ mod platform {
         ptr as *mut u8
     }
 
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[stable(feature = "alloc_system_type", since = "1.28.0")]
     unsafe impl GlobalAlloc for System {
         #[inline]
         unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
@@ -304,7 +304,7 @@ mod platform {
     // No need for synchronization here as wasm is currently single-threaded
     static mut DLMALLOC: dlmalloc::Dlmalloc = dlmalloc::DLMALLOC_INIT;
 
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[stable(feature = "alloc_system_type", since = "1.28.0")]
     unsafe impl GlobalAlloc for System {
         #[inline]
         unsafe fn alloc(&self, layout: Layout) -> *mut u8 {

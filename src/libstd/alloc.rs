@@ -20,7 +20,7 @@ use sys_common::util::dumb_print;
 #[doc(inline)]
 pub use alloc_crate::alloc::*;
 
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "alloc_system_type", since = "1.28.0")]
 #[doc(inline)]
 pub use alloc_system::System;
 
