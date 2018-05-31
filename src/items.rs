@@ -649,8 +649,14 @@ pub fn format_impl(
         } else {
             context.budget(last_line_width(&result))
         };
-        let option = WhereClauseOption::snuggled(&ref_and_type);
-        let where_clause_str = rewrite_where_clause(
+
+        let mut option = WhereClauseOption::snuggled(&ref_and_type);
+        if items.is_empty() && generics.where_clause.predicates.len() == 1 {
+            option.compress_where();
+            option.suppress_comma();
+        }
+
+        let mut where_clause_str = rewrite_where_clause(
             context,
             &generics.where_clause,
             context.config.brace_style(),
@@ -1380,9 +1386,9 @@ fn format_tuple_struct(
         // We need to put the where clause on a new line, but we didn't
         // know that earlier, so the where clause will not be indented properly.
         result.push('\n');
-        result.push_str(
-            &(offset.block_only() + (context.config.tab_spaces() - 1)).to_string(context.config),
-        );
+        result
+            .push_str(&(offset.block_only() + (context.config.tab_spaces() - 1))
+                .to_string(context.config));
     }
     result.push_str(&where_clause_str);
 
@@ -2132,6 +2138,14 @@ impl WhereClauseOption {
             snuggle: trimmed_last_line_width(current) == 1,
             compress_where: false,
         }
+    }
+
+    pub fn suppress_comma(&mut self) {
+        self.suppress_comma = true
+    }
+
+    pub fn compress_where(&mut self) {
+        self.compress_where = true
     }
 }
 
