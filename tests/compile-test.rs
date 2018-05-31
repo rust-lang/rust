@@ -3,6 +3,9 @@
 extern crate compiletest_rs as compiletest;
 extern crate test;
 
+use std::io;
+use std::ffi::OsStr;
+use std::fs;
 use std::env::{set_var, var};
 use std::path::{Path, PathBuf};
 
@@ -30,7 +33,7 @@ fn rustc_lib_path() -> PathBuf {
     option_env!("RUSTC_LIB_PATH").unwrap().into()
 }
 
-fn config(dir: &'static str, mode: &'static str) -> compiletest::Config {
+fn config(mode: &str, dir: PathBuf) -> compiletest::Config {
     let mut config = compiletest::Config::default();
 
     let cfg_mode = mode.parse().expect("Invalid mode");
@@ -56,13 +59,64 @@ fn config(dir: &'static str, mode: &'static str) -> compiletest::Config {
         path.push("target/debug/test_build_base");
         path
     };
-    config.src_base = PathBuf::from(format!("tests/{}", dir));
+    config.src_base = dir;
     config.rustc_path = clippy_driver_path();
     config
 }
 
-fn run_mode(dir: &'static str, mode: &'static str) {
-    compiletest::run_tests(&config(dir, mode));
+fn run_mode(mode: &str, dir: PathBuf) {
+    compiletest::run_tests(&config(mode, dir));
+}
+
+fn run_ui_toml_tests(config: &compiletest::Config, mut tests: Vec<test::TestDescAndFn>) -> Result<bool, io::Error> {
+    let mut result = true;
+    let opts = compiletest::test_opts(config);
+    for dir in fs::read_dir(&config.src_base)? {
+        let dir = dir?;
+        if !dir.file_type()?.is_dir() {
+            continue;
+        }
+        let dir_path = dir.path();
+        set_var("CARGO_MANIFEST_DIR", &dir_path);
+        for file in fs::read_dir(&dir_path)? {
+            let file = file?;
+            let file_path = file.path();
+            if !file.file_type()?.is_file() {
+                continue;
+            }
+            if file_path.extension() != Some(OsStr::new("rs")) {
+                continue;
+            }
+            let paths = compiletest::common::TestPaths {
+                file: file_path,
+                base: config.src_base.clone(),
+                relative_dir: dir_path.file_name().unwrap().into(),
+            };
+            let test_name = compiletest::make_test_name(&config, &paths);
+            let index = tests.iter()
+                .position(|test| test.desc.name == test_name)
+                .expect("The test should be in there");
+            result &= test::run_tests_console(
+                &opts,
+                vec![tests.swap_remove(index)])?;
+        }
+    }
+    Ok(result)
+}
+
+fn run_ui_toml() {
+    let path = PathBuf::from("tests/ui-toml").canonicalize().unwrap();
+    let config = config("ui", path);
+    let tests = compiletest::make_tests(&config);
+
+    let res = run_ui_toml_tests(&config, tests);
+    match res {
+        Ok(true) => {}
+        Ok(false) => panic!("Some tests failed"),
+        Err(e) => {
+            println!("I/O failure during tests: {:?}", e);
+        }
+    }
 }
 
 fn prepare_env() {
@@ -74,6 +128,7 @@ fn prepare_env() {
 #[test]
 fn compile_test() {
     prepare_env();
-    run_mode("run-pass", "run-pass");
-    run_mode("ui", "ui");
+    run_mode("run-pass", "tests/run-pass".into());
+    run_mode("ui", "tests/ui".into());
+    run_ui_toml();
 }
