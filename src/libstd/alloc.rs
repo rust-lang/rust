@@ -19,21 +19,22 @@
 
 use core::sync::atomic::{AtomicPtr, Ordering};
 use core::{mem, ptr};
+use sys_common::util::dumb_print;
 
 static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
 
 /// Registers a custom OOM hook, replacing any that was previously registered.
 ///
-/// The OOM hook is invoked when an infallible memory allocation fails.
-/// The default hook prints a message to standard error and aborts the
-/// execution, but this behavior can be customized with the [`set_oom_hook`]
-/// and [`take_oom_hook`] functions.
+/// The OOM hook is invoked when an infallible memory allocation fails, before
+/// the runtime aborts. The default hook prints a message to standard error,
+/// but this behavior can be customized with the [`set_oom_hook`] and
+/// [`take_oom_hook`] functions.
 ///
 /// The hook is provided with a `Layout` struct which contains information
 /// about the allocation that failed.
 ///
 /// The OOM hook is a global resource.
-pub fn set_oom_hook(hook: fn(Layout) -> !) {
+pub fn set_oom_hook(hook: fn(Layout)) {
     HOOK.store(hook as *mut (), Ordering::SeqCst);
 }
 
@@ -42,7 +43,7 @@ pub fn set_oom_hook(hook: fn(Layout) -> !) {
 /// *See also the function [`set_oom_hook`].*
 ///
 /// If no custom hook is registered, the default hook will be returned.
-pub fn take_oom_hook() -> fn(Layout) -> ! {
+pub fn take_oom_hook() -> fn(Layout) {
     let hook = HOOK.swap(ptr::null_mut(), Ordering::SeqCst);
     if hook.is_null() {
         default_oom_hook
@@ -51,8 +52,8 @@ pub fn take_oom_hook() -> fn(Layout) -> ! {
     }
 }
 
-fn default_oom_hook(layout: Layout) -> ! {
-    rtabort!("memory allocation of {} bytes failed", layout.size())
+fn default_oom_hook(layout: Layout) {
+    dumb_print(format_args!("memory allocation of {} bytes failed", layout.size()));
 }
 
 #[cfg(not(test))]
@@ -60,12 +61,13 @@ fn default_oom_hook(layout: Layout) -> ! {
 #[lang = "oom"]
 pub extern fn rust_oom(layout: Layout) -> ! {
     let hook = HOOK.load(Ordering::SeqCst);
-    let hook: fn(Layout) -> ! = if hook.is_null() {
+    let hook: fn(Layout) = if hook.is_null() {
         default_oom_hook
     } else {
         unsafe { mem::transmute(hook) }
     };
-    hook(layout)
+    hook(layout);
+    unsafe { ::sys::abort_internal(); }
 }
 
 #[cfg(not(test))]
