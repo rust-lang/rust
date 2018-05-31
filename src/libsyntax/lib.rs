@@ -25,6 +25,7 @@
 #![feature(const_atomic_usize_new)]
 #![feature(rustc_attrs)]
 #![feature(str_escape)]
+#![feature(crate_visibility_modifier)]
 
 #![recursion_limit="256"]
 
