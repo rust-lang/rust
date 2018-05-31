@@ -651,9 +651,15 @@ pub fn format_impl(
         };
 
         let mut option = WhereClauseOption::snuggled(&ref_and_type);
-        if items.is_empty() && generics.where_clause.predicates.len() == 1 {
-            option.compress_where();
+        let snippet = context.snippet(item.span);
+        let open_pos = snippet.find_uncommented("{")? + 1;
+        if !contains_comment(&snippet[open_pos..])
+            && items.is_empty()
+            && generics.where_clause.predicates.len() == 1
+        {
             option.suppress_comma();
+            option.snuggle();
+            option.compress_where();
         }
 
         let mut where_clause_str = rewrite_where_clause(
@@ -1386,9 +1392,9 @@ fn format_tuple_struct(
         // We need to put the where clause on a new line, but we didn't
         // know that earlier, so the where clause will not be indented properly.
         result.push('\n');
-        result
-            .push_str(&(offset.block_only() + (context.config.tab_spaces() - 1))
-                .to_string(context.config));
+        result.push_str(
+            &(offset.block_only() + (context.config.tab_spaces() - 1)).to_string(context.config),
+        );
     }
     result.push_str(&where_clause_str);
 
@@ -2146,6 +2152,10 @@ impl WhereClauseOption {
 
     pub fn compress_where(&mut self) {
         self.compress_where = true
+    }
+
+    pub fn snuggle(&mut self) {
+        self.snuggle = true
     }
 }
 
