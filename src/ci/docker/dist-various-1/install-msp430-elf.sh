@@ -15,7 +15,8 @@ mkdir /usr/local/msp430-none-elf
 # Newer versions of toolchain can be found here
 # http://software-dl.ti.com/msp430/msp430_public_sw/mcu/msp430/MSPGCC/latest/index_FDS.html
 # Original link for version 5_01_02_00 (6.4.0.32) is
-# http://software-dl.ti.com/msp430/msp430_public_sw/mcu/msp430/MSPGCC/5_01_02_00/exports/msp430-gcc-6.4.0.32_linux64.tar.bz2
+# http://software-dl.ti.com/msp430/msp430_public_sw/mcu/msp430/MSPGCC/5_01_02_00/exports/
+# msp430-gcc-6.4.0.32_linux64.tar.bz2
 # TI website doesn't allow curl, so we have to use mirror
 URL="https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror"
 FILE="msp430-gcc-6.4.0.32_linux64.tar.bz2"
