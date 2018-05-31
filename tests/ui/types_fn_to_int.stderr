@@ -6,11 +6,17 @@ error: casting a `fn(usize) -> Foo {Foo::A}` to `i32` may truncate the function 
    |
    = note: #[deny(fn_to_numeric_cast)] on by default
 
-error: casting a `fn() -> i32 {bar}` to `u32` may truncate the function address value.
-  --> $DIR/types_fn_to_int.rs:14:13
+error: casting a `fn(usize) -> Foo {Foo::A}` to `i32` may truncate the function address value.
+  --> $DIR/types_fn_to_int.rs:13:14
    |
-14 |     let z = bar as u32;
+13 |     let y1 = Foo::A as i32;
+   |              ^^^^^^^^^^^^^ help: if you need the address of the function, consider: `Foo::A as usize`
+
+error: casting a `fn() -> i32 {bar}` to `u32` may truncate the function address value.
+  --> $DIR/types_fn_to_int.rs:15:13
+   |
+15 |     let z = bar as u32;
    |             ^^^^^^^^^^ help: if you need the address of the function, consider: `bar as usize`
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
