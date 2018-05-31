@@ -95,6 +95,7 @@
 #![feature(fmt_internals)]
 #![feature(from_ref)]
 #![feature(fundamental)]
+#![feature(futures_api)]
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(needs_allocator)]
@@ -103,6 +104,7 @@
 #![feature(pin)]
 #![feature(ptr_internals)]
 #![feature(ptr_offset_from)]
+#![feature(repr_transparent)]
 #![feature(rustc_attrs)]
 #![feature(slice_get_slice)]
 #![feature(specialization)]
@@ -156,6 +158,10 @@ pub mod heap {
     pub use alloc::*;
 }
 
+#[unstable(feature = "futures_api",
+           reason = "futures in libcore are unstable",
+           issue = "50547")]
+pub mod task;
 
 // Primitive types using the heaps above
 

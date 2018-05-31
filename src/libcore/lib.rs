@@ -100,6 +100,7 @@
 #![feature(optin_builtin_traits)]
 #![feature(prelude_import)]
 #![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_transparent)]
 #![feature(rustc_attrs)]
 #![feature(rustc_const_unstable)]
 #![feature(simd_ffi)]
@@ -205,6 +206,10 @@ pub mod fmt;
 pub mod time;
 
 pub mod unicode;
+
+/* Async */
+pub mod future;
+pub mod task;
 
 /* Heap memory allocator trait */
 #[allow(missing_docs)]
