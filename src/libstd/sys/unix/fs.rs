@@ -817,7 +817,7 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
 
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    use fs::{File, set_permissions};
+    use fs::File;
     if !from.is_file() {
         return Err(Error::new(ErrorKind::InvalidInput,
                               "the source path is not an existing regular file"))
@@ -828,14 +828,14 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let perm = reader.metadata()?.permissions();
 
     let ret = io::copy(&mut reader, &mut writer)?;
-    set_permissions(to, perm)?;
+    writer.set_permissions(perm)?;
     Ok(ret)
 }
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use cmp;
-    use fs::{File, set_permissions};
+    use fs::File;
     use sync::atomic::{AtomicBool, Ordering};
 
     // Kernel prior to 4.5 don't have copy_file_range
@@ -907,7 +907,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
                         // Try again with fallback method
                         assert_eq!(written, 0);
                         let ret = io::copy(&mut reader, &mut writer)?;
-                        set_permissions(to, perm)?;
+                        writer.set_permissions(perm)?;
                         return Ok(ret)
                     },
                     _ => return Err(err),
@@ -915,6 +915,6 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             }
         }
     }
-    set_permissions(to, perm)?;
+    writer.set_permissions(perm)?;
     Ok(written)
 }

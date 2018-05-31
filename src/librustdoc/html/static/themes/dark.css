@@ -33,7 +33,7 @@ h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.t
 	background: rgba(0, 0, 0, 0);
 }
 
-.docblock code, .docblock-short code {
+.docblock p > code, .docblock-short p > code {
 	background-color: #2A2A2A;
 }
 pre {
@@ -163,7 +163,7 @@ a {
 	color: #ddd;
 }
 
-.docblock a, .docblock-short a, .stability a {
+.docblock a:not(.srclink), .docblock-short a:not(.srclink), .stability a {
 	color: #D2991D;
 }
 

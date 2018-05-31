@@ -516,6 +516,7 @@ impl<'a> StringReader<'a> {
             return None;
         }
         let start = self.pos;
+        self.bump();
         while ident_continue(self.ch) {
             self.bump();
         }
@@ -1155,6 +1156,7 @@ impl<'a> StringReader<'a> {
                 }
 
                 let start = self.pos;
+                self.bump();
                 while ident_continue(self.ch) {
                     self.bump();
                 }
@@ -1300,11 +1302,7 @@ impl<'a> StringReader<'a> {
                     }
                     '-' => {
                         self.bump();
-                        match self.ch.unwrap_or('\x00') {
-                            _ => {
-                                Ok(token::LArrow)
-                            }
-                        }
+                        Ok(token::LArrow)
                     }
                     _ => {
                         Ok(token::Lt)

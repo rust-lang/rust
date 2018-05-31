@@ -721,8 +721,11 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         self.demand_eqtype(pat.span, expected, pat_ty);
 
         // Type check subpatterns.
-        self.check_struct_pat_fields(pat_ty, pat.id, pat.span, variant, fields, etc, def_bm);
-        pat_ty
+        if self.check_struct_pat_fields(pat_ty, pat.id, pat.span, variant, fields, etc, def_bm) {
+            pat_ty
+        } else {
+            self.tcx.types.err
+        }
     }
 
     fn check_pat_path(&self,
@@ -847,7 +850,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                                variant: &'tcx ty::VariantDef,
                                fields: &'gcx [Spanned<hir::FieldPat>],
                                etc: bool,
-                               def_bm: ty::BindingMode) {
+                               def_bm: ty::BindingMode) -> bool {
         let tcx = self.tcx;
 
         let (substs, adt) = match adt_ty.sty {
@@ -865,6 +868,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
         // Keep track of which fields have already appeared in the pattern.
         let mut used_fields = FxHashMap();
+        let mut no_field_errors = true;
 
         let mut inexistent_fields = vec![];
         // Typecheck each field.
@@ -880,6 +884,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                                     format!("multiple uses of `{}` in pattern", field.ident))
                         .span_label(*occupied.get(), format!("first use of `{}`", field.ident))
                         .emit();
+                    no_field_errors = false;
                     tcx.types.err
                 }
                 Vacant(vacant) => {
@@ -892,6 +897,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                         })
                         .unwrap_or_else(|| {
                             inexistent_fields.push((span, field.ident));
+                            no_field_errors = false;
                             tcx.types.err
                         })
                 }
@@ -990,5 +996,6 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 diag.emit();
             }
         }
+        no_field_errors
     }
 }
