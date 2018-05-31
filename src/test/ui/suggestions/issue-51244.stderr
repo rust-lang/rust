@@ -1,0 +1,11 @@
+error[E0594]: cannot assign to immutable borrowed content `*my_ref`
+  --> $DIR/issue-51244.rs:13:5
+   |
+LL |     let ref my_ref @ _ = 0;
+   |         -------------- consider changing this to `ref mut my_ref @ _`
+LL |     *my_ref = 0;
+   |     ^^^^^^^^^^^ cannot borrow as mutable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0594`.
