@@ -1737,20 +1737,28 @@ pub mod tls {
         pub task: &'a OpenTask,
     }
 
+    /// Sets Rayon's thread local variable which is preserved for Rayon jobs
+    /// to `value` during the call to `f`. It is restored to its previous value after.
+    /// This is used to set the pointer to the new ImplicitCtxt.
     #[cfg(parallel_queries)]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
         rayon_core::tlv::with(value, f)
     }
 
+    /// Gets Rayon's thread local variable which is preserved for Rayon jobs.
+    /// This is used to get the pointer to the current ImplicitCtxt.
     #[cfg(parallel_queries)]
     fn get_tlv() -> usize {
         rayon_core::tlv::get()
     }
 
-    // A thread local value which stores a pointer to the current ImplicitCtxt
+    /// A thread local variable which stores a pointer to the current ImplicitCtxt
     #[cfg(not(parallel_queries))]
     thread_local!(static TLV: Cell<usize> = Cell::new(0));
 
+    /// Sets TLV to `value` during the call to `f`.
+    /// It is restored to its previous value after.
+    /// This is used to set the pointer to the new ImplicitCtxt.
     #[cfg(not(parallel_queries))]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
         let old = get_tlv();
@@ -1759,6 +1767,7 @@ pub mod tls {
         f()
     }
 
+    /// This is used to get the pointer to the current ImplicitCtxt.
     #[cfg(not(parallel_queries))]
     fn get_tlv() -> usize {
         TLV.with(|tlv| tlv.get())
@@ -1828,9 +1837,11 @@ pub mod tls {
         where F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'gcx>) -> R
     {
         with_thread_locals(|| {
+            // Update GCX_PTR to indicate there's a GlobalCtxt available
             GCX_PTR.with(|lock| {
                 *lock.lock() = gcx as *const _ as usize;
             });
+            // Set GCX_PTR back to 0 when we exit
             let _on_drop = OnDrop(move || {
                 GCX_PTR.with(|lock| *lock.lock() = 0);
             });
@@ -1851,8 +1862,13 @@ pub mod tls {
         })
     }
 
+    /// Stores a pointer to the GlobalCtxt if one is available.
+    /// This is used to access the GlobalCtxt in the deadlock handler
+    /// given to Rayon.
     scoped_thread_local!(pub static GCX_PTR: Lock<usize>);
 
+    /// Creates a TyCtxt and ImplicitCtxt based on the GCX_PTR thread local.
+    /// This is used in the deadlock handler.
     pub unsafe fn with_global<F, R>(f: F) -> R
         where F: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
     {

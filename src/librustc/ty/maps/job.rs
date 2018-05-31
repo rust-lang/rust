@@ -61,6 +61,7 @@ pub struct QueryJob<'tcx> {
     /// Diagnostic messages which are emitted while the query executes
     pub diagnostics: Lock<Vec<Diagnostic>>,
 
+    /// The latch which is used to wait on this job
     #[cfg(parallel_queries)]
     latch: QueryLatch<'tcx>,
 }
@@ -200,7 +201,7 @@ impl<'tcx> QueryLatch<'tcx> {
             // this thread.
             info.waiters.push(waiter.clone());
 
-            // If this detects a deadlock and the deadlock handler want to resume this thread
+            // If this detects a deadlock and the deadlock handler wants to resume this thread
             // we have to be in the `wait` call. This is ensured by the deadlock handler
             // getting the self.info lock.
             rayon_core::mark_blocked();
