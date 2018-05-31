@@ -47,7 +47,7 @@ impl<'a, 'tcx> CheckVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CheckVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        if item.vis == hir::Public || item.span == DUMMY_SP {
+        if item.vis == hir::Public || item.span == DUMMY_SP || item.name == "main" {
             return;
         }
         if let hir::ItemUse(ref path, _) = item.node {

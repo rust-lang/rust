@@ -475,6 +475,9 @@ declare_features! (
 
     // 'a: { break 'a; }
     (active, label_break_value, "1.28.0", Some(48594), None),
+
+    // Allow a re-export of a function as entry point `main`.
+    (active, main_reexport, "1.28.0", Some(28937), None),
 );
 
 declare_features! (

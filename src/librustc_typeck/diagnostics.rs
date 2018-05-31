@@ -1544,6 +1544,18 @@ fn my_start(argc: isize, argv: *const *const u8) -> isize {
 ```
 "##,
 
+E0133: r##"
+A function exported as `main` was declared with type parameters.
+
+Erroneous code example:
+
+```compile_fail,E0133
+#![feature(main_reexport)]
+
+
+```
+"##,
+
 E0164: r##"
 This error means that an attempt was made to match a struct type enum
 variant as a non-struct type:

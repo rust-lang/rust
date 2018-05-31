@@ -10,14 +10,14 @@
 
 
 use hir::map as hir_map;
-use hir::def_id::{CRATE_DEF_INDEX};
+use hir::def_id::{CRATE_DEF_INDEX, DefId};
 use session::{config, Session};
 use syntax::ast::NodeId;
 use syntax::attr;
-use syntax::entry::EntryPointType;
 use syntax_pos::Span;
-use hir::{Item, ItemFn, ImplItem, TraitItem};
+use hir::{Item, ItemFn, ImplItem, TraitItem, ItemUse, Path, def};
 use hir::itemlikevisit::ItemLikeVisitor;
+use session::config::EntryFnType;
 
 struct EntryContext<'a, 'tcx: 'a> {
     session: &'a Session,
@@ -32,6 +32,9 @@ struct EntryContext<'a, 'tcx: 'a> {
 
     // The function that has the attribute 'start' on it
     start_fn: Option<(NodeId, Span)>,
+
+    // The function is imported and renamed as 'main'
+    imported_fn: Option<(NodeId, DefId, Span)>,
 
     // The functions that one might think are 'main' but aren't, e.g.
     // main functions not defined at the top level. For diagnostics.
@@ -79,6 +82,7 @@ pub fn find_entry_point(session: &Session,
         main_fn: None,
         attr_main_fn: None,
         start_fn: None,
+        imported_fn: None,
         non_main_fns: Vec::new(),
     };
 
@@ -87,79 +91,93 @@ pub fn find_entry_point(session: &Session,
     configure_main(&mut ctxt, crate_name);
 }
 
-// Beware, this is duplicated in libsyntax/entry.rs, make sure to keep
-// them in sync.
-fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
-    match item.node {
-        ItemFn(..) => {
-            if attr::contains_name(&item.attrs, "start") {
-                EntryPointType::Start
-            } else if attr::contains_name(&item.attrs, "main") {
-                EntryPointType::MainAttr
-            } else if item.name == "main" {
-                if at_root {
-                    // This is a top-level function so can be 'main'
-                    EntryPointType::MainNamed
-                } else {
-                    EntryPointType::OtherMain
-                }
-            } else {
-                EntryPointType::None
-            }
-        }
-        _ => EntryPointType::None,
+fn update_start_attr(item: &Item, ctxt: &mut EntryContext) {
+    if ctxt.start_fn.is_none() {
+        ctxt.start_fn = Some((item.id, item.span));
+    } else {
+        struct_span_err!(
+            ctxt.session, item.span, E0138,
+            "multiple 'start' functions")
+            .span_label(ctxt.start_fn.unwrap().1,
+                        "previous `start` function here")
+            .span_label(item.span, "multiple `start` functions")
+            .emit();
     }
 }
 
+fn update_main_attr(item: &Item, ctxt: &mut EntryContext) {
+    if ctxt.attr_main_fn.is_none() {
+        ctxt.attr_main_fn = Some((item.id, item.span));
+    } else {
+        struct_span_err!(ctxt.session, item.span, E0137,
+                    "multiple functions with a #[main] attribute")
+        .span_label(item.span, "additional #[main] function")
+        .span_label(ctxt.attr_main_fn.unwrap().1, "first #[main] function")
+        .emit();
+    }
+}
+
+fn update_imported_fn(p: &Path, item: &Item, ctxt: &mut EntryContext) {
+    if let def::Def::Fn(def_id) = p.def {
+        if ctxt.imported_fn.is_none() {
+            ctxt.imported_fn = Some((item.id, def_id, item.span));
+        } else {
+            span_err!(ctxt.session, item.span, E0134,
+                        "Re-exported multiple items as `main`");
+        }
+    } else {
+        span_err!(ctxt.session, item.span, E0135,
+                    "The item re-exported as `main` is not a function");
+    }
+}
+
+fn update_main_fn(item: &Item, ctxt: &mut EntryContext) {
+    if ctxt.main_fn.is_none() {
+        ctxt.main_fn = Some((item.id, item.span));
+    } else {
+        span_err!(ctxt.session, item.span, E0136,
+                    "multiple 'main' functions");
+    }
+}
+
+fn update_non_main_fns(item: &Item, ctxt: &mut EntryContext) {
+    ctxt.non_main_fns.push((item.id, item.span));
+}
 
 fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
-    match entry_point_type(item, at_root) {
-        EntryPointType::MainNamed => {
-            if ctxt.main_fn.is_none() {
-                ctxt.main_fn = Some((item.id, item.span));
-            } else {
-                span_err!(ctxt.session, item.span, E0136,
-                          "multiple 'main' functions");
+    match item.node {
+        ItemFn(..) => {
+            if attr::contains_name(&item.attrs, "start") {
+                update_start_attr(item, ctxt);
+            } else if attr::contains_name(&item.attrs, "main") {
+                update_main_attr(item, ctxt);
+            } else if item.name == "main" {
+                if at_root {
+                    // This is a top-level function so can be 'main'
+                    update_main_fn(item, ctxt);
+                } else {
+                    update_non_main_fns(item, ctxt);
+                }
             }
-        },
-        EntryPointType::OtherMain => {
-            ctxt.non_main_fns.push((item.id, item.span));
-        },
-        EntryPointType::MainAttr => {
-            if ctxt.attr_main_fn.is_none() {
-                ctxt.attr_main_fn = Some((item.id, item.span));
-            } else {
-                struct_span_err!(ctxt.session, item.span, E0137,
-                          "multiple functions with a #[main] attribute")
-                .span_label(item.span, "additional #[main] function")
-                .span_label(ctxt.attr_main_fn.unwrap().1, "first #[main] function")
-                .emit();
+        }
+        ItemUse(ref p, _) => {
+            if item.name == "main" {
+                update_imported_fn(p, item, ctxt);
             }
-        },
-        EntryPointType::Start => {
-            if ctxt.start_fn.is_none() {
-                ctxt.start_fn = Some((item.id, item.span));
-            } else {
-                struct_span_err!(
-                    ctxt.session, item.span, E0138,
-                    "multiple 'start' functions")
-                    .span_label(ctxt.start_fn.unwrap().1,
-                                "previous `start` function here")
-                    .span_label(item.span, "multiple `start` functions")
-                    .emit();
-            }
-        },
-        EntryPointType::None => ()
+        }
+        _ => {}
     }
 }
 
 fn configure_main(this: &mut EntryContext, crate_name: &str) {
     if let Some((node_id, span)) = this.start_fn {
-        this.session.entry_fn.set(Some((node_id, span, config::EntryStart)));
+        this.session.entry_fn.set(Some(EntryFnType::EntryStart(node_id, span)));
     } else if let Some((node_id, span)) = this.attr_main_fn {
-        this.session.entry_fn.set(Some((node_id, span, config::EntryMain)));
+        this.session.entry_fn.set(Some(EntryFnType::EntryMain(node_id, span)));
     } else if let Some((node_id, span)) = this.main_fn {
-        this.session.entry_fn.set(Some((node_id, span, config::EntryMain)));
+        this.session.entry_fn.set(Some(EntryFnType::EntryMain(node_id, span)));
+    } else if let Some((node_id, def_id, span)) = this.imported_fn {
+        this.session.entry_fn.set(Some(EntryFnType::EntryImported(node_id, def_id, span)));
     } else {
         // No main function
         this.session.entry_fn.set(None);

@@ -28,13 +28,17 @@ use rustc_data_structures::stable_hasher::ToStableHashKey;
 use lint;
 use middle::cstore;
 
-use syntax::ast::{self, IntTy, UintTy};
+use syntax::ast::{self, IntTy, UintTy, NodeId};
 use syntax::codemap::{FileName, FilePathMapping};
 use syntax::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
 use syntax::parse::token;
 use syntax::parse;
 use syntax::symbol::Symbol;
 use syntax::feature_gate::UnstableFeatures;
+
+use syntax_pos::Span;
+use hir::def_id::DefId;
+use hir::map::Map;
 
 use errors::{ColorConfig, FatalError, Handler};
 
@@ -641,10 +645,39 @@ impl Options {
 // The type of entry function, so
 // users can have their own entry
 // functions
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub enum EntryFnType {
-    EntryMain,
-    EntryStart,
+    EntryMain(NodeId, Span),
+    EntryStart(NodeId, Span),
+    EntryImported(NodeId, DefId, Span),
+}
+
+impl EntryFnType {
+    pub fn get_local_id(&self) -> NodeId {
+        match self {
+            EntryFnType::EntryMain(node_id, ..)
+            | EntryFnType::EntryStart(node_id, ..)
+            | EntryFnType::EntryImported(node_id, ..) => *node_id,
+        }
+    }
+
+    pub fn get_def_id<'hir>(&self, map: &Map<'hir>) -> DefId {
+        match self {
+            EntryFnType::EntryMain(node_id, ..)
+            | EntryFnType::EntryStart(node_id, ..) => {
+                map.local_def_id(*node_id)
+            }
+            EntryFnType::EntryImported(_, def_id, _) => *def_id,
+        }
+    }
+
+    pub fn get_span(&self) -> Span {
+        match self {
+            EntryFnType::EntryMain(_, sp)
+            | EntryFnType::EntryStart(_, sp)
+            | EntryFnType::EntryImported(_, _, sp) => *sp
+        }
+    }
 }
 
 #[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug)]

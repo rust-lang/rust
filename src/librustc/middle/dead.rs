@@ -28,6 +28,8 @@ use syntax::{ast, codemap};
 use syntax::attr;
 use syntax_pos;
 
+use session::config::EntryFnType;
+
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live NodeItem that is a
 // function, then we should explore its block to check for codes that
@@ -389,8 +391,18 @@ fn create_and_seed_worklist<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     // Seed entry point
-    if let Some((id, _, _)) = *tcx.sess.entry_fn.borrow() {
-        worklist.push(id);
+    if let Some(ref entry) = *tcx.sess.entry_fn.borrow() {
+        match entry {
+            | EntryFnType::EntryMain(id, ..)
+            | EntryFnType::EntryStart(id, ..) => worklist.push(*id),
+            | EntryFnType::EntryImported(_, def_id, _) => {
+                if let Some(node) = tcx.hir.get_if_local(*def_id) {
+                    if let hir_map::Node::NodeItem(it) = node {
+                        worklist.push(it.id);
+                    }
+                }
+            }
+        }
     }
 
     // Seed implemented trait items

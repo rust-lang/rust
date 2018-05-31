@@ -85,9 +85,16 @@ impl<'a, 'b> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b> {
         // whether they're used or not. Also ignore imports with a dummy span
         // because this means that they were generated in some fashion by the
         // compiler and we don't need to consider them.
-        if let ast::ItemKind::Use(..) = item.node {
-            if item.vis.node == ast::VisibilityKind::Public || item.span.source_equal(&DUMMY_SP) {
+        if let ast::ItemKind::Use(ref tree) = item.node {
+            if item.vis.node == ast::VisibilityKind::Public ||
+               item.span.source_equal(&DUMMY_SP) {
                 return;
+            }
+            // And ignore the item imported as "main".
+            if let ast::UseTreeKind::Simple(Some(ident)) = tree.kind {
+                if ident.name == "main" {
+                    return;
+                }
             }
         }
 
