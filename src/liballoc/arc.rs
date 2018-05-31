@@ -519,7 +519,7 @@ impl<T: ?Sized> Arc<T> {
 
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
-            Global.dealloc(self.ptr.as_opaque(), Layout::for_value(self.ptr.as_ref()))
+            Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()))
         }
     }
 
@@ -639,7 +639,7 @@ impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);
 
-                    Global.dealloc(self.mem.as_opaque(), self.layout.clone());
+                    Global.dealloc(self.mem.cast(), self.layout.clone());
                 }
             }
         }
@@ -1196,7 +1196,7 @@ impl<T: ?Sized> Drop for Weak<T> {
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
             unsafe {
-                Global.dealloc(self.ptr.as_opaque(), Layout::for_value(self.ptr.as_ref()))
+                Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()))
             }
         }
     }

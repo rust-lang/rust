@@ -29,17 +29,17 @@ looks like:
 ```rust
 #![feature(global_allocator, allocator_api, heap_api)]
 
-use std::alloc::{GlobalAlloc, System, Layout, Opaque};
+use std::alloc::{GlobalAlloc, System, Layout};
 use std::ptr::NonNull;
 
 struct MyAllocator;
 
 unsafe impl GlobalAlloc for MyAllocator {
-    unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         System.alloc(layout)
     }
 
-    unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout) {
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         System.dealloc(ptr, layout)
     }
 }
