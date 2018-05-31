@@ -171,8 +171,9 @@ explanation.
 
 ## Using `?` in doc tests
 
-A complete error handling is often not useful in your example, as it would add
-significant amounts of boilerplate code. Instead, you may want the following:
+When writing an example, it is rarely useful to include a complete error
+handling, as it would add significant amounts of boilerplate code. Instead, you
+may want the following:
 
 ```ignore
 /// ```
