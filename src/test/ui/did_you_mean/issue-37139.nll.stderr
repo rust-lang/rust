@@ -1,6 +1,8 @@
 error[E0596]: cannot borrow immutable item `x` as mutable
   --> $DIR/issue-37139.rs:22:18
    |
+LL |         TestEnum::Item(ref mut x) => {
+   |                        --------- consider changing this to `mut x`
 LL |             test(&mut x); //~ ERROR cannot borrow immutable
    |                  ^^^^^^ cannot borrow as mutable
 
