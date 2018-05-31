@@ -10,17 +10,13 @@
 
 //! Memory allocation APIs
 
-#![unstable(feature = "allocator_api",
-            reason = "the precise API and guarantees it provides may be tweaked \
-                      slightly, especially to possibly take into account the \
-                      types being stored to make room for a future \
-                      tracing garbage collector",
-            issue = "32838")]
+#![stable(feature = "alloc_module", since = "1.28.0")]
 
 use core::intrinsics::{min_align_of_val, size_of_val};
 use core::ptr::{NonNull, Unique};
 use core::usize;
 
+#[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
 pub use core::alloc::*;
 
@@ -44,6 +40,7 @@ extern "Rust" {
 /// This type implements the [`Alloc`] trait by forwarding calls
 /// to the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
+#[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Global;
 
@@ -119,6 +116,7 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
     __rust_alloc_zeroed(layout.size(), layout.align())
 }
 
+#[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl Alloc for Global {
     #[inline]
     unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
@@ -188,6 +186,7 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
 /// and abort the process.
 /// It can be replaced with [`std::alloc::set_oom_hook`]
 /// and [`std::alloc::take_oom_hook`].
+#[unstable(feature = "allocator_api", issue = "32838")]
 #[rustc_allocator_nounwind]
 pub fn oom(layout: Layout) -> ! {
     #[allow(improper_ctypes)]
