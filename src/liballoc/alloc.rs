@@ -56,7 +56,7 @@ pub struct Global;
 /// # Safety
 ///
 /// See [`GlobalAlloc::alloc`].
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "global_alloc", since = "1.28.0")]
 #[inline]
 pub unsafe fn alloc(layout: Layout) -> *mut u8 {
     __rust_alloc(layout.size(), layout.align())
@@ -74,7 +74,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 /// # Safety
 ///
 /// See [`GlobalAlloc::dealloc`].
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "global_alloc", since = "1.28.0")]
 #[inline]
 pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
     __rust_dealloc(ptr, layout.size(), layout.align())
@@ -92,7 +92,7 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
 /// # Safety
 ///
 /// See [`GlobalAlloc::realloc`].
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "global_alloc", since = "1.28.0")]
 #[inline]
 pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
     __rust_realloc(ptr, layout.size(), layout.align(), new_size)
@@ -110,7 +110,7 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 /// # Safety
 ///
 /// See [`GlobalAlloc::alloc_zeroed`].
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "global_alloc", since = "1.28.0")]
 #[inline]
 pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
     __rust_alloc_zeroed(layout.size(), layout.align())
