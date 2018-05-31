@@ -90,24 +90,26 @@ impl CategoryData {
     fn print(&self, lock: &mut StdoutLock) {
         macro_rules! p {
             ($name:tt, $rustic_name:ident) => {
+                let (hits, total) = self.query_counts.$rustic_name;
+                let (hits, total) = if total > 0 {
+                    (format!("{:.2}%", (((hits as f32) / (total as f32)) * 100.0)), total.to_string())
+                } else {
+                    ("".into(), "".into())
+                };
+
                 writeln!(
                    lock,
-                   "{0: <15} \t\t {1: <15}ms",
+                   "| {0: <16} | {1: <14} | {2: <14} | {3: <8} |",
                    $name,
-                   self.times.$rustic_name / 1_000_000
+                   self.times.$rustic_name / 1_000_000,
+                   total,
+                   hits
                 ).unwrap();
-                
-                let (hits, total) = self.query_counts.$rustic_name;
-                if total > 0 {
-                    writeln!(
-                        lock,
-                        "\t{} hits {} queries",
-                        hits,
-                        total
-                    ).unwrap();
-                }
             };
         }
+
+        writeln!(lock, "| Phase            | Time (ms)      | Queries        | Hits (%) |").unwrap();
+        writeln!(lock, "| ---------------- | -------------- | -------------- | -------- |").unwrap();
 
         p!("Parsing", parsing);
         p!("Expansion", expansion);
@@ -222,6 +224,7 @@ impl SelfProfiler {
         let crate_name = opts.crate_name.as_ref().map(|n| format!(" for {}", n)).unwrap_or_default();
 
         writeln!(lock, "Self profiling results{}:", crate_name).unwrap();
+        writeln!(lock).unwrap();
 
         self.data.print(&mut lock);
 
