@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! dox
+//! Memory allocation APIs
 
 #![unstable(issue = "32838", feature = "allocator_api")]
 

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Memory allocation APIs
+
 #![unstable(feature = "allocator_api",
             reason = "the precise API and guarantees it provides may be tweaked \
                       slightly, especially to possibly take into account the \
@@ -37,27 +39,80 @@ extern "Rust" {
     fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
 }
 
+/// The global memory allocator.
+///
+/// This type implements the [`Alloc`] trait by forwarding calls
+/// to the allocator registered with the `#[global_allocator]` attribute
+/// if there is one, or the `std` crate’s default.
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Global;
 
+/// Allocate memory with the global allocator.
+///
+/// This function forwards calls to the [`GlobalAlloc::alloc`] method
+/// of the allocator registered with the `#[global_allocator]` attribute
+/// if there is one, or the `std` crate’s default.
+///
+/// This function is expected to be deprecated in favor of the `alloc` method
+/// of the [`Global`] type when it and the [`Alloc`] trait become stable.
+///
+/// # Safety
+///
+/// See [`GlobalAlloc::alloc`].
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[inline]
 pub unsafe fn alloc(layout: Layout) -> *mut u8 {
     __rust_alloc(layout.size(), layout.align())
 }
 
+/// Deallocate memory with the global allocator.
+///
+/// This function forwards calls to the [`GlobalAlloc::dealloc`] method
+/// of the allocator registered with the `#[global_allocator]` attribute
+/// if there is one, or the `std` crate’s default.
+///
+/// This function is expected to be deprecated in favor of the `dealloc` method
+/// of the [`Global`] type when it and the [`Alloc`] trait become stable.
+///
+/// # Safety
+///
+/// See [`GlobalAlloc::dealloc`].
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[inline]
 pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
     __rust_dealloc(ptr, layout.size(), layout.align())
 }
 
+/// Reallocate memory with the global allocator.
+///
+/// This function forwards calls to the [`GlobalAlloc::realloc`] method
+/// of the allocator registered with the `#[global_allocator]` attribute
+/// if there is one, or the `std` crate’s default.
+///
+/// This function is expected to be deprecated in favor of the `realloc` method
+/// of the [`Global`] type when it and the [`Alloc`] trait become stable.
+///
+/// # Safety
+///
+/// See [`GlobalAlloc::realloc`].
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[inline]
 pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
     __rust_realloc(ptr, layout.size(), layout.align(), new_size)
 }
 
+/// Allocate zero-initialized memory with the global allocator.
+///
+/// This function forwards calls to the [`GlobalAlloc::alloc_zeroed`] method
+/// of the allocator registered with the `#[global_allocator]` attribute
+/// if there is one, or the `std` crate’s default.
+///
+/// This function is expected to be deprecated in favor of the `alloc_zeroed` method
+/// of the [`Global`] type when it and the [`Alloc`] trait become stable.
+///
+/// # Safety
+///
+/// See [`GlobalAlloc::alloc_zeroed`].
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[inline]
 pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
@@ -123,6 +178,16 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
     }
 }
 
+/// Abort on memory allocation error or failure.
+///
+/// Callers of memory allocation APIs wishing to abort computation
+/// in response to an allocation error are encouraged to call this function,
+/// rather than directly invoking `panic!` or similar.
+///
+/// The default behavior of this function is to print a message to standard error
+/// and abort the process.
+/// It can be replaced with [`std::alloc::set_oom_hook`]
+/// and [`std::alloc::take_oom_hook`].
 #[rustc_allocator_nounwind]
 pub fn oom(layout: Layout) -> ! {
     #[allow(improper_ctypes)]

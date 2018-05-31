@@ -44,6 +44,7 @@ const MIN_ALIGN: usize = 16;
 use core::alloc::{Alloc, GlobalAlloc, AllocErr, Layout};
 use core::ptr::NonNull;
 
+/// The default memory allocator provided by the operating system.
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub struct System;
 
