@@ -236,6 +236,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     .borrow_mut()
                     .pat_binding_modes_mut()
                     .insert(pat.hir_id, bm);
+                debug!("check_pat_walk: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
                 let typ = self.local_ty(pat.span, pat.id);
                 match bm {
                     ty::BindByReference(mutbl) => {
