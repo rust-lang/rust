@@ -139,6 +139,7 @@ pub mod if_let_redundant_pattern_matching;
 pub mod if_not_else;
 pub mod infallible_destructuring_match;
 pub mod infinite_iter;
+pub mod inherent_impl;
 pub mod inline_fn_without_body;
 pub mod int_plus_one;
 pub mod invalid_ref;
@@ -417,6 +418,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_early_lint_pass(box multiple_crate_versions::Pass);
     reg.register_late_lint_pass(box map_unit_fn::Pass);
     reg.register_late_lint_pass(box infallible_destructuring_match::Pass);
+    reg.register_late_lint_pass(box inherent_impl::Pass::default());
 
 
     reg.register_lint_group("clippy_restriction", vec![
@@ -425,6 +427,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         array_indexing::INDEXING_SLICING,
         assign_ops::ASSIGN_OPS,
         else_if_without_else::ELSE_IF_WITHOUT_ELSE,
+        inherent_impl::MULTIPLE_INHERENT_IMPL,
         literal_representation::DECIMAL_LITERAL_REPRESENTATION,
         mem_forget::MEM_FORGET,
         methods::CLONE_ON_REF_PTR,

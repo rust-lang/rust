@@ -24,10 +24,13 @@ before_install:
     fi
 
 install:
-  - . $HOME/.nvm/nvm.sh
-  - nvm install stable
-  - nvm use stable
-  - npm install remark-cli remark-lint
+  - |
+    if [ -z ${INTEGRATION} ]; then
+      . $HOME/.nvm/nvm.sh
+      nvm install stable
+      nvm use stable
+      npm install remark-cli remark-lint
+    fi
 
 matrix:
   include:
