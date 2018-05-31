@@ -380,10 +380,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 debug!("Inlined {:?} into {:?}", callsite.callee, self.source);
 
                 let mut local_map = IndexVec::with_capacity(callee_mir.local_decls.len());
-                let mut scope_map = IndexVec::with_capacity(callee_mir.visibility_scopes.len());
+                let mut scope_map = IndexVec::with_capacity(callee_mir.source_scopes.len());
                 let mut promoted_map = IndexVec::with_capacity(callee_mir.promoted.len());
 
-                for mut scope in callee_mir.visibility_scopes.iter().cloned() {
+                for mut scope in callee_mir.source_scopes.iter().cloned() {
                     if scope.parent_scope.is_none() {
                         scope.parent_scope = Some(callsite.location.scope);
                         scope.span = callee_mir.span;
@@ -391,15 +391,17 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                     scope.span = callsite.location.span;
 
-                    let idx = caller_mir.visibility_scopes.push(scope);
+                    let idx = caller_mir.source_scopes.push(scope);
                     scope_map.push(idx);
                 }
 
                 for loc in callee_mir.vars_and_temps_iter() {
                     let mut local = callee_mir.local_decls[loc].clone();
 
-                    local.source_info.scope = scope_map[local.source_info.scope];
+                    local.source_info.scope =
+                        scope_map[local.source_info.scope];
                     local.source_info.span = callsite.location.span;
+                    local.visibility_scope = scope_map[local.visibility_scope];
 
                     let idx = caller_mir.local_decls.push(local);
                     local_map.push(idx);
@@ -618,7 +620,7 @@ struct Integrator<'a, 'tcx: 'a> {
     block_idx: usize,
     args: &'a [Local],
     local_map: IndexVec<Local, Local>,
-    scope_map: IndexVec<VisibilityScope, VisibilityScope>,
+    scope_map: IndexVec<SourceScope, SourceScope>,
     promoted_map: IndexVec<Promoted, Promoted>,
     _callsite: CallSite<'tcx>,
     destination: Place<'tcx>,
@@ -745,7 +747,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         }
     }
 
-    fn visit_visibility_scope(&mut self, scope: &mut VisibilityScope) {
+    fn visit_source_scope(&mut self, scope: &mut SourceScope) {
         *scope = self.scope_map[*scope];
     }
 

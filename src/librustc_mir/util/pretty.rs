@@ -447,9 +447,9 @@ fn comment(tcx: TyCtxt, SourceInfo { span, scope }: SourceInfo) -> String {
 fn write_scope_tree(
     tcx: TyCtxt,
     mir: &Mir,
-    scope_tree: &FxHashMap<VisibilityScope, Vec<VisibilityScope>>,
+    scope_tree: &FxHashMap<SourceScope, Vec<SourceScope>>,
     w: &mut dyn Write,
-    parent: VisibilityScope,
+    parent: SourceScope,
     depth: usize,
 ) -> io::Result<()> {
     let indent = depth * INDENT.len();
@@ -460,7 +460,7 @@ fn write_scope_tree(
     };
 
     for &child in children {
-        let data = &mir.visibility_scopes[child];
+        let data = &mir.source_scopes[child];
         assert_eq!(data.parent_scope, Some(parent));
         writeln!(w, "{0:1$}scope {2} {{", "", indent, child.index())?;
 
@@ -519,16 +519,16 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
     writeln!(w, "{{")?;
 
     // construct a scope tree and write it out
-    let mut scope_tree: FxHashMap<VisibilityScope, Vec<VisibilityScope>> = FxHashMap();
-    for (index, scope_data) in mir.visibility_scopes.iter().enumerate() {
+    let mut scope_tree: FxHashMap<SourceScope, Vec<SourceScope>> = FxHashMap();
+    for (index, scope_data) in mir.source_scopes.iter().enumerate() {
         if let Some(parent) = scope_data.parent_scope {
             scope_tree
                 .entry(parent)
                 .or_insert(vec![])
-                .push(VisibilityScope::new(index));
+                .push(SourceScope::new(index));
         } else {
             // Only the argument scope has no parent, because it's the root.
-            assert_eq!(index, ARGUMENT_VISIBILITY_SCOPE.index());
+            assert_eq!(index, OUTERMOST_SOURCE_SCOPE.index());
         }
     }
 
@@ -541,7 +541,7 @@ pub fn write_mir_intro<'a, 'gcx, 'tcx>(
              indented_retptr,
              ALIGN)?;
 
-    write_scope_tree(tcx, mir, &scope_tree, w, ARGUMENT_VISIBILITY_SCOPE, 1)?;
+    write_scope_tree(tcx, mir, &scope_tree, w, OUTERMOST_SOURCE_SCOPE, 1)?;
 
     write_temp_decls(mir, w)?;
 

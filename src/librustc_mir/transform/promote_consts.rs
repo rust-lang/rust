@@ -167,7 +167,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             terminator: Some(Terminator {
                 source_info: SourceInfo {
                     span,
-                    scope: ARGUMENT_VISIBILITY_SCOPE
+                    scope: OUTERMOST_SOURCE_SCOPE
                 },
                 kind: TerminatorKind::Return
             }),
@@ -181,7 +181,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         data.statements.push(Statement {
             source_info: SourceInfo {
                 span,
-                scope: ARGUMENT_VISIBILITY_SCOPE
+                scope: OUTERMOST_SOURCE_SCOPE
             },
             kind: StatementKind::Assign(Place::Local(dest), rvalue)
         });
@@ -335,6 +335,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             // otherwise we would use the `promoted` directly.
                             let mut promoted_ref = LocalDecl::new_temp(ref_ty, span);
                             promoted_ref.source_info = statement.source_info;
+                            promoted_ref.visibility_scope = statement.source_info.scope;
                             let promoted_ref = local_decls.push(promoted_ref);
                             assert_eq!(self.temps.push(TempState::Unpromotable), promoted_ref);
                             self.extra_statements.push((loc, Statement {
@@ -424,8 +425,8 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                 IndexVec::new(),
                 // FIXME: maybe try to filter this to avoid blowing up
                 // memory usage?
-                mir.visibility_scopes.clone(),
-                mir.visibility_scope_info.clone(),
+                mir.source_scopes.clone(),
+                mir.source_scope_local_data.clone(),
                 IndexVec::new(),
                 None,
                 initial_locals,

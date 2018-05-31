@@ -231,7 +231,7 @@ impl MirPass for AddValidation {
         // Add an AcquireValid at the beginning of the start block.
         {
             let source_info = SourceInfo {
-                scope: ARGUMENT_VISIBILITY_SCOPE,
+                scope: OUTERMOST_SOURCE_SCOPE,
                 span: mir.span, // FIXME: Consider using just the span covering the function
                                 // argument declaration.
             };

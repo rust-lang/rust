@@ -99,7 +99,7 @@ pub struct FunctionCx<'a, 'tcx:'a> {
     locals: IndexVec<mir::Local, LocalRef<'tcx>>,
 
     /// Debug information for MIR scopes.
-    scopes: IndexVec<mir::VisibilityScope, debuginfo::MirDebugScope>,
+    scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope>,
 
     /// If this function is being monomorphized, this contains the type substitutions used.
     param_substs: &'tcx Substs<'tcx>,
@@ -158,9 +158,9 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
 
     // DILocations inherit source file name from the parent DIScope.  Due to macro expansions
     // it may so happen that the current span belongs to a different file than the DIScope
-    // corresponding to span's containing visibility scope.  If so, we need to create a DIScope
+    // corresponding to span's containing source scope.  If so, we need to create a DIScope
     // "extension" into that file.
-    fn scope_metadata_for_loc(&self, scope_id: mir::VisibilityScope, pos: BytePos)
+    fn scope_metadata_for_loc(&self, scope_id: mir::SourceScope, pos: BytePos)
                                -> llvm::debuginfo::DIScope {
         let scope_metadata = self.scopes[scope_id].scope_metadata;
         if pos < self.scopes[scope_id].file_start_pos ||
@@ -265,7 +265,7 @@ pub fn codegen_mir<'a, 'tcx: 'a>(
 
             if let Some(name) = decl.name {
                 // User variable
-                let debug_scope = fx.scopes[decl.source_info.scope];
+                let debug_scope = fx.scopes[decl.visibility_scope];
                 let dbg = debug_scope.is_valid() && bx.sess().opts.debuginfo == FullDebugInfo;
 
                 if !memory_locals.contains(local.index()) && !dbg {
@@ -276,7 +276,10 @@ pub fn codegen_mir<'a, 'tcx: 'a>(
                 debug!("alloc: {:?} ({}) -> place", local, name);
                 let place = PlaceRef::alloca(&bx, layout, &name.as_str());
                 if dbg {
-                    let (scope, span) = fx.debug_loc(decl.source_info);
+                    let (scope, span) = fx.debug_loc(mir::SourceInfo {
+                        span: decl.source_info.span,
+                        scope: decl.visibility_scope,
+                    });
                     declare_local(&bx, &fx.debug_context, name, layout.ty, scope,
                         VariableAccess::DirectVariable { alloca: place.llval },
                         VariableKind::LocalVariable, span);
@@ -411,7 +414,7 @@ fn create_funclets<'a, 'tcx>(
 /// indirect.
 fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                             fx: &FunctionCx<'a, 'tcx>,
-                            scopes: &IndexVec<mir::VisibilityScope, debuginfo::MirDebugScope>,
+                            scopes: &IndexVec<mir::SourceScope, debuginfo::MirDebugScope>,
                             memory_locals: &BitVector)
                             -> Vec<LocalRef<'tcx>> {
     let mir = fx.mir;
@@ -420,7 +423,7 @@ fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
     let mut llarg_idx = fx.fn_ty.ret.is_indirect() as usize;
 
     // Get the argument scope, if it exists and if we need it.
-    let arg_scope = scopes[mir::ARGUMENT_VISIBILITY_SCOPE];
+    let arg_scope = scopes[mir::OUTERMOST_SOURCE_SCOPE];
     let arg_scope = if arg_scope.is_valid() && bx.sess().opts.debuginfo == FullDebugInfo {
         Some(arg_scope.scope_metadata)
     } else {

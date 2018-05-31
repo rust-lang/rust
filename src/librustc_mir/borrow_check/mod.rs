@@ -292,7 +292,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     debug!("mbcx.used_mut: {:?}", mbcx.used_mut);
 
     for local in mbcx.mir.mut_vars_and_args_iter().filter(|local| !mbcx.used_mut.contains(local)) {
-        if let ClearCrossCrate::Set(ref vsi) = mbcx.mir.visibility_scope_info {
+        if let ClearCrossCrate::Set(ref vsi) = mbcx.mir.source_scope_local_data {
             let local_decl = &mbcx.mir.local_decls[local];
 
             // Skip implicit `self` argument for closures
@@ -306,13 +306,13 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
                 None => continue,
             }
 
-            let source_info = local_decl.source_info;
-            let mut_span = tcx.sess.codemap().span_until_non_whitespace(source_info.span);
+            let span = local_decl.source_info.span;
+            let mut_span = tcx.sess.codemap().span_until_non_whitespace(span);
 
             tcx.struct_span_lint_node(
                 UNUSED_MUT,
-                vsi[local_decl.syntactic_scope].lint_root,
-                source_info.span,
+                vsi[local_decl.source_info.scope].lint_root,
+                span,
                 "variable does not need to be mutable"
             )
             .span_suggestion_short(mut_span, "remove this `mut`", "".to_owned())

@@ -28,11 +28,11 @@ fn main() {
 // START rustc.main.SimplifyCfg-qualify-consts.after.mir
 //     let mut _0: ();
 //     ...
-//     let mut _1: bool;
+//     let _7: &'26_3rs bool;
 //     ...
 //     let _3: &'26_1rs bool;
 //     ...
-//     let _7: &'26_3rs bool;
+//     let mut _1: bool;
 //     ...
 //     let mut _2: ();
 //     let mut _4: ();

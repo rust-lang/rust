@@ -32,14 +32,14 @@ fn main() {
 // fn main() -> (){
 //     let mut _0: ();
 //     scope 1 {
-//         let _1: Test;
 //         scope 3 {
-//             let _2: &ReErased Test;
 //         }
 //         scope 4 {
+//             let _2: &ReErased Test;
 //         }
 //     }
 //     scope 2 {
+//         let _1: Test;
 //     }
 //     let mut _3: ();
 //     let mut _4: &ReErased i32;

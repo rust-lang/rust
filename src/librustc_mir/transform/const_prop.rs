@@ -338,7 +338,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                         .bits();
                     let right_size = self.tcx.layout_of(self.param_env.and(right.1)).unwrap().size;
                     if r.to_bits(right_size).ok().map_or(false, |b| b >= left_bits as u128) {
-                        let scope_info = match self.mir.visibility_scope_info {
+                        let source_scope_local_data = match self.mir.source_scope_local_data {
                             ClearCrossCrate::Set(ref data) => data,
                             ClearCrossCrate::Clear => return None,
                         };
@@ -347,7 +347,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                         } else {
                             "left"
                         };
-                        let node_id = scope_info[source_info.scope].lint_root;
+                        let node_id = source_scope_local_data[source_info.scope].lint_root;
                         self.tcx.lint_node(
                             ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
                             node_id,
