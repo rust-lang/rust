@@ -74,7 +74,6 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
             Categorization::Local(..) |                     // L-Local
             Categorization::Upvar(..) |
             Categorization::Deref(_, mc::BorrowedPtr(..)) | // L-Deref-Borrowed
-            Categorization::Deref(_, mc::Implicit(..)) |
             Categorization::Deref(_, mc::UnsafePtr(..)) => {
                 self.check_scope(self.scope(cmt))
             }
@@ -122,8 +121,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
             Categorization::Deref(_, mc::UnsafePtr(..)) => {
                 self.bccx.tcx.types.re_static
             }
-            Categorization::Deref(_, mc::BorrowedPtr(_, r)) |
-            Categorization::Deref(_, mc::Implicit(_, r)) => {
+            Categorization::Deref(_, mc::BorrowedPtr(_, r)) => {
                 r
             }
             Categorization::Downcast(ref cmt, _) |
