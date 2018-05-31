@@ -1113,7 +1113,6 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                    borrow_kind,
                    borrow_cmt);
             match borrow_cmt_cat {
-                Categorization::Deref(ref_cmt, mc::Implicit(ref_kind, ref_region)) |
                 Categorization::Deref(ref_cmt, mc::BorrowedPtr(ref_kind, ref_region)) => {
                     match self.link_reborrowed_region(span,
                                                       borrow_region, borrow_kind,

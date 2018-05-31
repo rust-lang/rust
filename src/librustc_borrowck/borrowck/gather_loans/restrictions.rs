@@ -148,7 +148,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                         let result = self.restrict(&cmt_base);
                         self.extend(result, &cmt, LpDeref(pk))
                     }
-                    mc::Implicit(bk, lt) | mc::BorrowedPtr(bk, lt) => {
+                    mc::BorrowedPtr(bk, lt) => {
                         // R-Deref-[Mut-]Borrowed
                         if !self.bccx.is_subregion_of(self.loan_region, lt) {
                             self.bccx.report(
