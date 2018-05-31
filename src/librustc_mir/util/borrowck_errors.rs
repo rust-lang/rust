@@ -312,15 +312,19 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         self.cancel_if_wrong_origin(err, o)
     }
 
+    /// Signal an error due to an attempt to move out of the interior
+    /// of an array or slice. `is_index` is None when error origin
+    /// didn't capture whether there was an indexing operation or not.
     fn cannot_move_out_of_interior_noncopy(self,
                                            move_from_span: Span,
                                            ty: ty::Ty,
-                                           is_index: bool,
+                                           is_index: Option<bool>,
                                            o: Origin)
                                            -> DiagnosticBuilder<'cx>
     {
         let type_name = match (&ty.sty, is_index) {
-            (&ty::TyArray(_, _), true) => "array",
+            (&ty::TyArray(_, _), Some(true)) |
+            (&ty::TyArray(_, _), None) => "array",
             (&ty::TySlice(_),    _) => "slice",
             _ => span_bug!(move_from_span, "this path should not cause illegal move"),
         };

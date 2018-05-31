@@ -132,14 +132,21 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
                     IllegalMoveOriginKind::Static => {
                         tcx.cannot_move_out_of(span, "static item", origin)
                     }
-                    IllegalMoveOriginKind::BorrowedContent => {
-                        tcx.cannot_move_out_of(span, "borrowed content", origin)
+                    IllegalMoveOriginKind::BorrowedContent { target_ty: ty } => {
+                        // Inspect the type of the content behind the
+                        // borrow to provide feedback about why this
+                        // was a move rather than a copy.
+                        match ty.sty {
+                            ty::TyArray(..) | ty::TySlice(..) =>
+                                tcx.cannot_move_out_of_interior_noncopy(span, ty, None, origin),
+                            _ => tcx.cannot_move_out_of(span, "borrowed content", origin)
+                        }
                     }
                     IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
                         tcx.cannot_move_out_of_interior_of_drop(span, ty, origin)
                     }
                     IllegalMoveOriginKind::InteriorOfSliceOrArray { ty, is_index } => {
-                        tcx.cannot_move_out_of_interior_noncopy(span, ty, is_index, origin)
+                        tcx.cannot_move_out_of_interior_noncopy(span, ty, Some(is_index), origin)
                     }
                 };
                 err.emit();
