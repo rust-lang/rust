@@ -48,11 +48,7 @@ where
     }
 }
 
-impl<T> Foo for Bar<T>
-where
-    T: Baz,
-{
-}
+impl<T> Foo for Bar<T> where T: Baz {}
 
 impl<T> Foo for Bar<T>
 where
@@ -133,11 +129,7 @@ mod m {
         }
     }
 
-    impl<T> PartialEq for S<T>
-    where
-        T: PartialEq,
-    {
-    }
+    impl<T> PartialEq for S<T> where T: PartialEq {}
 }
 
 impl<BorrowType, K, V, NodeType, HandleType>

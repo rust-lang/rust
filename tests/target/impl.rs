@@ -28,7 +28,7 @@ impl<T> Foo for T
 where
     // comment2
     // blah
-    T: Clone,
+    T: Clone
 {
 }
 
