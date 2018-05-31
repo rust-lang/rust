@@ -516,6 +516,7 @@ impl<'a> StringReader<'a> {
             return None;
         }
         let start = self.pos;
+        self.bump();
         while ident_continue(self.ch) {
             self.bump();
         }
@@ -1155,6 +1156,7 @@ impl<'a> StringReader<'a> {
                 }
 
                 let start = self.pos;
+                self.bump();
                 while ident_continue(self.ch) {
                     self.bump();
                 }
