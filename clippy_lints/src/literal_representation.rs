@@ -227,12 +227,12 @@ enum WarningType {
 }
 
 impl WarningType {
-    pub fn display(&self, grouping_hint: &str, cx: &EarlyContext, span: &syntax_pos::Span) {
-        match *self {
+    pub fn display(&self, grouping_hint: &str, cx: &EarlyContext, span: syntax_pos::Span) {
+        match self {
             WarningType::UnreadableLiteral => span_lint_and_sugg(
                 cx,
                 UNREADABLE_LITERAL,
-                *span,
+                span,
                 "long literal lacking separators",
                 "consider",
                 grouping_hint.to_owned(),
@@ -240,7 +240,7 @@ impl WarningType {
             WarningType::LargeDigitGroups => span_lint_and_sugg(
                 cx,
                 LARGE_DIGIT_GROUPS,
-                *span,
+                span,
                 "digit groups should be smaller",
                 "consider",
                 grouping_hint.to_owned(),
@@ -248,7 +248,7 @@ impl WarningType {
             WarningType::InconsistentDigitGrouping => span_lint_and_sugg(
                 cx,
                 INCONSISTENT_DIGIT_GROUPING,
-                *span,
+                span,
                 "digits grouped inconsistently by underscores",
                 "consider",
                 grouping_hint.to_owned(),
@@ -256,7 +256,7 @@ impl WarningType {
             WarningType::DecimalRepresentation => span_lint_and_sugg(
                 cx,
                 DECIMAL_LITERAL_REPRESENTATION,
-                *span,
+                span,
                 "integer literal has a better hexadecimal representation",
                 "consider",
                 grouping_hint.to_owned(),
@@ -291,7 +291,7 @@ impl EarlyLintPass for LiteralDigitGrouping {
 }
 
 impl LiteralDigitGrouping {
-    fn check_lit(&self, cx: &EarlyContext, lit: &Lit) {
+    fn check_lit(self, cx: &EarlyContext, lit: &Lit) {
         match lit.node {
             LitKind::Int(..) => {
                 // Lint integral literals.
@@ -302,7 +302,7 @@ impl LiteralDigitGrouping {
                     then {
                         let digit_info = DigitInfo::new(&src, false);
                         let _ = Self::do_lint(digit_info.digits).map_err(|warning_type| {
-                            warning_type.display(&digit_info.grouping_hint(), cx, &lit.span)
+                            warning_type.display(&digit_info.grouping_hint(), cx, lit.span)
                         });
                     }
                 }
@@ -337,15 +337,15 @@ impl LiteralDigitGrouping {
                                             if !consistent {
                                                 WarningType::InconsistentDigitGrouping.display(&digit_info.grouping_hint(),
                                                 cx,
-                                                &lit.span);
+                                                lit.span);
                                             }
                                         })
                                     .map_err(|warning_type| warning_type.display(&digit_info.grouping_hint(),
                                     cx,
-                                    &lit.span));
+                                    lit.span));
                                 }
                             })
-                        .map_err(|warning_type| warning_type.display(&digit_info.grouping_hint(), cx, &lit.span));
+                        .map_err(|warning_type| warning_type.display(&digit_info.grouping_hint(), cx, lit.span));
                     }
                 }
             },
@@ -436,7 +436,7 @@ impl LiteralRepresentation {
             threshold,
         }
     }
-    fn check_lit(&self, cx: &EarlyContext, lit: &Lit) {
+    fn check_lit(self, cx: &EarlyContext, lit: &Lit) {
         // Lint integral literals.
         if_chain! {
             if let LitKind::Int(..) = lit.node;
@@ -457,7 +457,7 @@ impl LiteralRepresentation {
                     let hex = format!("{:#X}", val);
                     let digit_info = DigitInfo::new(&hex[..], false);
                     let _ = Self::do_lint(digit_info.digits).map_err(|warning_type| {
-                        warning_type.display(&digit_info.grouping_hint(), cx, &lit.span)
+                        warning_type.display(&digit_info.grouping_hint(), cx, lit.span)
                     });
                 }
             }

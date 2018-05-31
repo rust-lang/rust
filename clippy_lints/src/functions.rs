@@ -126,7 +126,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
 }
 
 impl<'a, 'tcx> Functions {
-    fn check_arg_number(&self, cx: &LateContext, decl: &hir::FnDecl, span: Span) {
+    fn check_arg_number(self, cx: &LateContext, decl: &hir::FnDecl, span: Span) {
         let args = decl.inputs.len() as u64;
         if args > self.threshold {
             span_lint(
@@ -139,7 +139,7 @@ impl<'a, 'tcx> Functions {
     }
 
     fn check_raw_ptr(
-        &self,
+        self,
         cx: &LateContext<'a, 'tcx>,
         unsafety: hir::Unsafety,
         decl: &'tcx hir::FnDecl,

@@ -92,7 +92,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
             if let Some(impl_trait) = check_binop(
                 cx,
                 expr,
-                &binop.node,
+                binop.node,
                 &["Add", "Sub", "Mul", "Div"],
                 &[BiAdd, BiSub, BiMul, BiDiv],
             ) {
@@ -110,7 +110,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
             if let Some(impl_trait) = check_binop(
                 cx,
                 expr,
-                &binop.node,
+                binop.node,
                 &[
                     "AddAssign",
                     "SubAssign",
@@ -144,7 +144,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
 fn check_binop<'a>(
     cx: &LateContext,
     expr: &hir::Expr,
-    binop: &hir::BinOp_,
+    binop: hir::BinOp_,
     traits: &[&'a str],
     expected_ops: &[hir::BinOp_],
 ) -> Option<&'a str> {
@@ -169,7 +169,7 @@ fn check_binop<'a>(
         if let hir::map::Node::NodeItem(item) = cx.tcx.hir.get(parent_impl);
         if let hir::Item_::ItemImpl(_, _, _, _, Some(ref trait_ref), _, _) = item.node;
         if let Some(idx) = trait_ids.iter().position(|&tid| tid == trait_ref.path.def.def_id());
-        if *binop != expected_ops[idx];
+        if binop != expected_ops[idx];
         then{
             return Some(traits[idx])
         }

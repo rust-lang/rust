@@ -349,7 +349,7 @@ impl EarlyLintPass for MiscEarly {
 }
 
 impl MiscEarly {
-    fn check_lit(&self, cx: &EarlyContext, lit: &Lit) {
+    fn check_lit(self, cx: &EarlyContext, lit: &Lit) {
         if_chain! {
             if let LitKind::Int(value, ..) = lit.node;
             if let Some(src) = snippet_opt(cx, lit.span);

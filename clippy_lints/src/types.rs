@@ -1606,12 +1606,12 @@ fn node_as_const_fullint<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr)
     }
 }
 
-fn err_upcast_comparison(cx: &LateContext, span: &Span, expr: &Expr, always: bool) {
+fn err_upcast_comparison(cx: &LateContext, span: Span, expr: &Expr, always: bool) {
     if let ExprCast(ref cast_val, _) = expr.node {
         span_lint(
             cx,
             INVALID_UPCAST_COMPARISONS,
-            *span,
+            span,
             &format!(
                 "because of the numeric bounds on `{}` prior to casting, this expression is always {}",
                 snippet(cx, cast_val.span, "the expression"),
@@ -1623,7 +1623,7 @@ fn err_upcast_comparison(cx: &LateContext, span: &Span, expr: &Expr, always: boo
 
 fn upcast_comparison_bounds_err<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    span: &Span,
+    span: Span,
     rel: comparisons::Rel,
     lhs_bounds: Option<(FullInt, FullInt)>,
     lhs: &'tcx Expr,
@@ -1684,8 +1684,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidUpcastComparisons {
             let lhs_bounds = numeric_cast_precast_bounds(cx, normalized_lhs);
             let rhs_bounds = numeric_cast_precast_bounds(cx, normalized_rhs);
 
-            upcast_comparison_bounds_err(cx, &expr.span, rel, lhs_bounds, normalized_lhs, normalized_rhs, false);
-            upcast_comparison_bounds_err(cx, &expr.span, rel, rhs_bounds, normalized_rhs, normalized_lhs, true);
+            upcast_comparison_bounds_err(cx, expr.span, rel, lhs_bounds, normalized_lhs, normalized_rhs, false);
+            upcast_comparison_bounds_err(cx, expr.span, rel, rhs_bounds, normalized_rhs, normalized_lhs, true);
         }
     }
 }

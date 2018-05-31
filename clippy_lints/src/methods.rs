@@ -2079,8 +2079,8 @@ impl SelfKind {
         }
     }
 
-    fn description(&self) -> &'static str {
-        match *self {
+    fn description(self) -> &'static str {
+        match self {
             SelfKind::Value => "self by value",
             SelfKind::Ref => "self by reference",
             SelfKind::RefMut => "self by mutable reference",
@@ -2164,13 +2164,13 @@ enum OutType {
 }
 
 impl OutType {
-    fn matches(&self, ty: &hir::FunctionRetTy) -> bool {
+    fn matches(self, ty: &hir::FunctionRetTy) -> bool {
         match (self, ty) {
-            (&OutType::Unit, &hir::DefaultReturn(_)) => true,
-            (&OutType::Unit, &hir::Return(ref ty)) if ty.node == hir::TyTup(vec![].into()) => true,
-            (&OutType::Bool, &hir::Return(ref ty)) if is_bool(ty) => true,
-            (&OutType::Any, &hir::Return(ref ty)) if ty.node != hir::TyTup(vec![].into()) => true,
-            (&OutType::Ref, &hir::Return(ref ty)) => matches!(ty.node, hir::TyRptr(_, _)),
+            (OutType::Unit, &hir::DefaultReturn(_)) => true,
+            (OutType::Unit, &hir::Return(ref ty)) if ty.node == hir::TyTup(vec![].into()) => true,
+            (OutType::Bool, &hir::Return(ref ty)) if is_bool(ty) => true,
+            (OutType::Any, &hir::Return(ref ty)) if ty.node != hir::TyTup(vec![].into()) => true,
+            (OutType::Ref, &hir::Return(ref ty)) => matches!(ty.node, hir::TyRptr(_, _)),
             _ => false,
         }
     }

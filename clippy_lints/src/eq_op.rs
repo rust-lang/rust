@@ -52,7 +52,7 @@ impl LintPass for EqOp {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprBinary(ref op, ref left, ref right) = e.node {
+        if let ExprBinary(op, ref left, ref right) = e.node {
             if in_macro(e.span) {
                 return;
             }
@@ -157,7 +157,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
 }
 
 
-fn is_valid_operator(op: &BinOp) -> bool {
+fn is_valid_operator(op: BinOp) -> bool {
     match op.node {
         BiSub | BiDiv | BiEq | BiLt | BiLe | BiGt | BiGe | BiNe | BiAnd | BiOr | BiBitXor | BiBitAnd | BiBitOr => true,
         _ => false,
