@@ -309,8 +309,8 @@ pub enum GenericParamKind {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct GenericParam {
-    pub ident: Ident,
     pub id: NodeId,
+    pub ident: Ident,
     pub attrs: ThinVec<Attribute>,
     pub bounds: ParamBounds,
 

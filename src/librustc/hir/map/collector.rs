@@ -347,14 +347,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_generic_param(&mut self, param: &'hir GenericParam) {
-        match param.kind {
-            GenericParamKind::Lifetime { ref lifetime_deprecated, .. } => {
-                self.insert(param.id, NodeLifetime(lifetime_deprecated));
-            }
-            GenericParamKind::Type { .. } => {
-                self.insert(param.id, NodeGenericParam(param));
-            }
-        }
+        self.insert(param.id, NodeGenericParam(param));
         intravisit::walk_generic_param(self, param);
     }
 

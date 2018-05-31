@@ -110,8 +110,8 @@ impl Region {
         let depth = ty::INNERMOST;
         let (name, def_id, origin) = new_region(hir_map, param);
         debug!(
-            "Region::late: def={:?} depth={:?} def_id={:?} origin={:?}",
-            def,
+            "Region::late: param={:?} depth={:?} def_id={:?} origin={:?}",
+            param,
             depth,
             def_id,
             origin,
@@ -2243,8 +2243,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         for (i, (lifetime_i, lifetime_i_name)) in lifetimes.iter().enumerate() {
             match lifetime_i_name {
                 hir::LifetimeName::Static | hir::LifetimeName::Underscore => {
-                    let lifetime = lifetime_i.lifetime;
-                    let name = lifetime_i.name();
+                    let name = lifetime_i.name;
                     let mut err = struct_span_err!(
                         self.tcx.sess,
                         lifetime_i.span,
@@ -2518,10 +2517,10 @@ fn insert_late_bound_lifetimes(
 
     for param in &generics.params {
         match param.kind {
-            hir::GenericParamKind::Lifetime { .. } => {
+            hir::GenericParamKind::Lifetime { lt_name, .. } => {
                 if !param.bounds.is_empty() {
                     // `'a: 'b` means both `'a` and `'b` are referenced
-                    appears_in_where_clause.regions.insert(lifetime_def.lifetime.name);
+                    appears_in_where_clause.regions.insert(lt_name);
                 }
             }
             hir::GenericParamKind::Type { .. } => {}

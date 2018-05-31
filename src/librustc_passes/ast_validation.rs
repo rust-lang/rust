@@ -431,8 +431,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_generic_param(&mut self, param: &'a GenericParam) {
-        if let GenericParam::Lifetime(ref ld) = *param {
-            self.check_lifetime(ld.lifetime.ident);
+        if let GenericParamKind::Lifetime { .. } = param.kind {
+            self.check_lifetime(param.ident);
         }
         visit::walk_generic_param(self, param);
     }
