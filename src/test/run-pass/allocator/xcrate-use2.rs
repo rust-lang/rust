@@ -19,7 +19,7 @@ extern crate custom;
 extern crate custom_as_global;
 extern crate helper;
 
-use std::alloc::{Global, Alloc, GlobalAlloc, System, Layout};
+use std::alloc::{alloc, dealloc, GlobalAlloc, System, Layout};
 use std::sync::atomic::{Ordering, ATOMIC_USIZE_INIT};
 
 static GLOBAL: custom::A = custom::A(ATOMIC_USIZE_INIT);
@@ -30,10 +30,10 @@ fn main() {
         let layout = Layout::from_size_align(4, 2).unwrap();
 
         // Global allocator routes to the `custom_as_global` global
-        let ptr = Global.alloc(layout.clone());
+        let ptr = alloc(layout.clone());
         helper::work_with(&ptr);
         assert_eq!(custom_as_global::get(), n + 1);
-        Global.dealloc(ptr, layout.clone());
+        dealloc(ptr, layout.clone());
         assert_eq!(custom_as_global::get(), n + 2);
 
         // Usage of the system allocator avoids all globals
