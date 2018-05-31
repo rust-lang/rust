@@ -474,11 +474,30 @@ h4 > code, h3 > code, .invisible > code {
 	margin-bottom: 15px;
 }
 
+.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
+	margin-left: 20px;
+}
 .content .impl-items .docblock, .content .impl-items .stability {
 	margin-bottom: .6em;
 }
-.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
+.content .docblock > .impl-items {
 	margin-left: 20px;
+	margin-top: -34px;
+}
+.content .docblock > .impl-items > h4 {
+	border-bottom: 0;
+}
+.content .docblock >.impl-items .table-display {
+	margin: 0;
+}
+.content .docblock >.impl-items table td {
+	padding: 0;
+}
+.toggle-wrapper.marg-left > .collapse-toggle {
+	left: -24px;
+}
+.content .docblock > .impl-items .table-display, .impl-items table td {
+	border: none;
 }
 
 .content .stability code {
@@ -542,7 +561,7 @@ a {
 	content: '\2002\00a7\2002';
 }
 
-.docblock a:hover, .docblock-short a:hover, .stability a {
+.docblock a:not(.srclink):hover, .docblock-short a:not(.srclink):hover, .stability a {
 	text-decoration: underline;
 }
 
