@@ -186,7 +186,7 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
 /// and abort the process.
 /// It can be replaced with [`std::alloc::set_oom_hook`]
 /// and [`std::alloc::take_oom_hook`].
-#[unstable(feature = "allocator_api", issue = "32838")]
+#[stable(feature = "global_alloc", since = "1.28.0")]
 #[rustc_allocator_nounwind]
 pub fn oom(layout: Layout) -> ! {
     #[allow(improper_ctypes)]
