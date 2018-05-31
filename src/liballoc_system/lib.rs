@@ -14,7 +14,6 @@
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
             issue = "32838")]
-#![feature(global_allocator)]
 #![feature(allocator_api)]
 #![feature(core_intrinsics)]
 #![feature(staged_api)]

@@ -61,7 +61,6 @@ crate.io’s `jemallocator` crate provides equivalent functionality.)
 jemallocator = "0.1"
 ```
 ```rust,ignore
-#![feature(global_allocator)]
 #![crate_type = "dylib"]
 
 extern crate jemallocator;

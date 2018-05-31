@@ -263,7 +263,6 @@
 #![feature(fnbox)]
 #![feature(futures_api)]
 #![feature(hashmap_internals)]
-#![feature(heap_api)]
 #![feature(int_error_internals)]
 #![feature(integer_atomics)]
 #![feature(into_cow)]
