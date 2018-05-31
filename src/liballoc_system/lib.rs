@@ -44,6 +44,29 @@ use core::alloc::{Alloc, GlobalAlloc, AllocErr, Layout};
 use core::ptr::NonNull;
 
 /// The default memory allocator provided by the operating system.
+///
+/// This is based on `malloc` on Unix platforms and `HeapAlloc` on Windows,
+/// plus related functions.
+///
+/// This type can be used in a `static` item
+/// with the `#[global_allocator]` attribute
+/// to force the global allocator to be the system’s one.
+/// (The default is jemalloc for executables, on some platforms.)
+///
+/// ```rust
+/// use std::alloc::System;
+///
+/// #[global_allocator]
+/// static A: System = System;
+///
+/// fn main() {
+///     let a = Box::new(4); // Allocates from the system allocator.
+///     println!("{}", a);
+/// }
+/// ```
+///
+/// It can also be used directly to allocate memory
+/// independently of the standard library’s global allocator.
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
 pub struct System;
 
