@@ -184,8 +184,10 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
 ///
 /// The default behavior of this function is to print a message to standard error
 /// and abort the process.
-/// It can be replaced with [`std::alloc::set_oom_hook`]
-/// and [`std::alloc::take_oom_hook`].
+/// It can be replaced with [`set_oom_hook`] and [`take_oom_hook`].
+///
+/// [`set_oom_hook`]: ../../std/alloc/fn.set_oom_hook.html
+/// [`take_oom_hook`]: ../../std/alloc/fn.take_oom_hook.html
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[rustc_allocator_nounwind]
 pub fn oom(layout: Layout) -> ! {
