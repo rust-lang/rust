@@ -1716,10 +1716,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             .cannot_borrow_path_as_mutable(span, &item_msg, Origin::Mir);
                         err.span_label(span, "cannot borrow as mutable");
 
-                        if place != place_err {
-                            if let Some(name) = self.describe_place(place_err) {
-                                err.note(&format!("the value which is causing this path not to be \
-                                    mutable is...: `{}`", name));
+                        if let &Place::Local(local) = place_err {
+                            let local_decl = &self.mir.local_decls[local];
+                            if local_decl.is_user_variable && local_decl.mutability == Mutability::Not {
+                                err.span_label(local_decl.source_info.span,
+                                               format!("consider changing this to `mut {}`", local_decl.name.unwrap()));
                             }
                         }
 

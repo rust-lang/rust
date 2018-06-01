@@ -21,6 +21,8 @@ LL |     give_any(|y| x = Some(y));
 error[E0596]: cannot borrow immutable item `x` as mutable
   --> $DIR/issue-45983.rs:17:14
    |
+LL |     let x = None;
+   |         - consider changing this to `mut x`
 LL |     give_any(|y| x = Some(y));
    |              ^^^^^^^^^^^^^^^ cannot borrow as mutable
 

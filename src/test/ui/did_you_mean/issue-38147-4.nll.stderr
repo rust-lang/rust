@@ -3,8 +3,6 @@ error[E0596]: cannot borrow immutable item `*f.s` as mutable
    |
 LL |     f.s.push('x'); //~ ERROR cannot borrow data mutably
    |     ^^^ cannot borrow as mutable
-   |
-   = note: the value which is causing this path not to be mutable is...: `*f`
 
 error: aborting due to previous error
 

@@ -23,8 +23,6 @@ error[E0596]: cannot borrow immutable item `*f.f` as mutable
    |
 LL |     f.f.call_mut(())
    |     ^^^ cannot borrow as mutable
-   |
-   = note: the value which is causing this path not to be mutable is...: `*f`
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:66:13
