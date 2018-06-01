@@ -910,8 +910,8 @@ impl<'a> Parser<'a> {
             true
         }
         else {
-                self.expected_tokens.push(TokenType::Token(token::BinOp(token::Plus)));
-                false
+            self.expected_tokens.push(TokenType::Token(token::BinOp(token::Plus)));
+            false
         }
     }
 
