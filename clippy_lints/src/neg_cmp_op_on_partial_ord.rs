@@ -84,9 +84,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {
                     cx.span_lint(
                         NEG_CMP_OP_ON_PARTIAL_ORD,
                         expr.span,
-                        "The use of negated comparision operators on partially orded\
-                        types produces code that is hard to read and refactor. Please\
-                        consider to use the partial_cmp() instead, to make it clear\
+                        "The use of negated comparision operators on partially orded \
+                        types produces code that is hard to read and refactor. Please \
+                        consider to use the `partial_cmp` instead, to make it clear \
                         that the two values could be incomparable."
                     )
                 }

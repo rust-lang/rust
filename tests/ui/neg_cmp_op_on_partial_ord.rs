@@ -32,7 +32,7 @@ fn main() {
 
     let _not_less = match a_value.partial_cmp(&another_value) {
         None | Some(Ordering::Greater) | Some(Ordering::Equal)  => true,
-	_ => false,
+        _ => false,
     };
     let _not_less_or_equal = match a_value.partial_cmp(&another_value) {
         None | Some(Ordering::Greater) => true,
@@ -40,11 +40,11 @@ fn main() {
     };
     let _not_greater = match a_value.partial_cmp(&another_value) {
         None | Some(Ordering::Less) | Some(Ordering::Equal) => true,
-	_ => false,
+        _ => false,
     };
     let _not_greater_or_equal = match a_value.partial_cmp(&another_value) {
         None | Some(Ordering::Less) => true,
-	_ => false,
+        _ => false,
     };
 
 
