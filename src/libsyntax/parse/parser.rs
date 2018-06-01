@@ -651,7 +651,7 @@ impl<'a> Parser<'a> {
                 Err(err)
             }
         } else {
-            self.expect_one_of(unsafe { slice::from_raw_parts(t, 1) }, &[])
+            self.expect_one_of(slice::from_ref(t), &[])
         }
     }
 
@@ -1107,7 +1107,12 @@ impl<'a> Parser<'a> {
     {
         let mut first: bool = true;
         let mut v = vec![];
-        while !kets.contains(&&self.token) {
+        while !kets.iter().any(|k| {
+                match expect {
+                    TokenExpectType::Expect => self.check(k),
+                    TokenExpectType::NoExpect => self.token == **k,
+                }
+            }) {
             match self.token {
                 token::CloseDelim(..) | token::Eof => break,
                 _ => {}
