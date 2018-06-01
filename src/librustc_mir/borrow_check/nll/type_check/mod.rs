@@ -712,21 +712,65 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         traits::ObligationCause::misc(span, self.body_id)
     }
 
-    #[inline(never)]
-    fn fully_perform_op<OP, R>(
+    /// Given some operation `op` that manipulates types, proves
+    /// predicates, or otherwise uses the inference context, executes
+    /// `op` and then executes all the further obligations that `op`
+    /// returns. This will yield a set of outlives constraints amongst
+    /// regions which are extracted and stored as having occured at
+    /// `locations`.
+    ///
+    /// **Any `rustc::infer` operations that might generate region
+    /// constraints should occur within this method so that those
+    /// constraints can be properly localized!**
+    fn fully_perform_op<R>(
         &mut self,
         locations: Locations,
         describe_op: impl Fn() -> String,
-        op: OP,
-    ) -> Result<R, TypeError<'tcx>>
-    where
-        OP: FnOnce(&mut Self) -> InferResult<'tcx, R>,
-    {
+        op: impl FnOnce(&mut Self) -> InferResult<'tcx, R>,
+    ) -> Result<R, TypeError<'tcx>> {
+        let (r, opt_data) = self.fully_perform_op_and_get_region_constraint_data(
+            || format!("{} at {:?}", describe_op(), locations),
+            op,
+        )?;
+
+        if let Some(data) = opt_data {
+            self.push_region_constraints(locations, data);
+        }
+
+        Ok(r)
+    }
+
+    fn push_region_constraints(
+        &mut self,
+        locations: Locations,
+        data: Rc<RegionConstraintData<'tcx>>,
+    ) {
+        debug!(
+            "push_region_constraints: constraints generated at {:?} are {:#?}",
+            locations, data
+        );
+
+        self.constraints
+            .outlives_sets
+            .push(OutlivesSet { locations, data });
+    }
+
+    /// Helper for `fully_perform_op`, but also used on its own
+    /// sometimes to enable better caching: executes `op` fully (along
+    /// with resulting obligations) and returns the full set of region
+    /// obligations. If the same `op` were to be performed at some
+    /// other location, then the same set of region obligations would
+    /// be generated there, so this can be useful for caching.
+    #[inline(never)]
+    fn fully_perform_op_and_get_region_constraint_data<R>(
+        &mut self,
+        describe_op: impl Fn() -> String,
+        op: impl FnOnce(&mut Self) -> InferResult<'tcx, R>,
+    ) -> Result<(R, Option<Rc<RegionConstraintData<'tcx>>>), TypeError<'tcx>> {
         if cfg!(debug_assertions) {
             info!(
-                "fully_perform_op(describe_op={}) at {:?}",
+                "fully_perform_op_and_get_region_constraint_data({})",
                 describe_op(),
-                locations
             );
         }
 
@@ -745,18 +789,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         );
 
         let data = self.infcx.take_and_reset_region_constraints();
-        if !data.is_empty() {
-            debug!(
-                "fully_perform_op: constraints generated at {:?} are {:#?}",
-                locations, data
-            );
-            let data = Rc::new(data);
-            self.constraints
-                .outlives_sets
-                .push(OutlivesSet { locations, data });
+        if data.is_empty() {
+            Ok((value, None))
+        } else {
+            Ok((value, Some(Rc::new(data))))
         }
-
-        Ok(value)
     }
 
     #[inline(never)]
