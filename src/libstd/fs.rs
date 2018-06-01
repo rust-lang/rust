@@ -295,8 +295,6 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(fs_read_write)]
-///
 /// use std::fs;
 /// use std::net::SocketAddr;
 ///
