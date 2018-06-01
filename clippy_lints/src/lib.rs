@@ -169,6 +169,7 @@ pub mod needless_borrowed_ref;
 pub mod needless_continue;
 pub mod needless_pass_by_value;
 pub mod needless_update;
+pub mod neg_cmp_op_on_partial_ord;
 pub mod neg_multiply;
 pub mod new_without_default;
 pub mod no_effect;
@@ -419,7 +420,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box map_unit_fn::Pass);
     reg.register_late_lint_pass(box infallible_destructuring_match::Pass);
     reg.register_late_lint_pass(box inherent_impl::Pass::default());
-
+    reg.register_late_lint_pass(box neg_cmp_op_on_partial_ord::NoNegCompOpForPartialOrd);
 
     reg.register_lint_group("clippy_restriction", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -501,6 +502,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         booleans::LOGIC_BUG,
         booleans::NONMINIMAL_BOOL,
         bytecount::NAIVE_BYTECOUNT,
+        neg_cmp_op_on_partial_ord::NEG_CMP_OP_ON_PARTIAL_ORD,
         collapsible_if::COLLAPSIBLE_IF,
         const_static_lifetime::CONST_STATIC_LIFETIME,
         copies::IF_SAME_THEN_ELSE,
