@@ -102,6 +102,8 @@ cfg_if! {
 
             for chunk_index in 0 .. chunk_count {
                 let ptr = src_bytes.as_ptr() as *const __m128i;
+                // We don't know if the pointer is aligned to 16 bytes, so we
+                // use `loadu`, which supports unaligned loading.
                 let chunk = _mm_loadu_si128(ptr.offset(chunk_index as isize));
 
                 // For character in the chunk, see if its byte value is < 0, which
