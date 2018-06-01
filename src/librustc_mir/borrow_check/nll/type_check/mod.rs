@@ -1551,31 +1551,36 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     where
         T: IntoIterator<Item = ty::Predicate<'tcx>> + Clone,
     {
+        let cause = self.misc(self.last_span);
+        let obligations: Vec<_> = predicates
+            .into_iter()
+            .map(|p| traits::Obligation::new(cause.clone(), self.param_env, p))
+            .collect();
+
+        // Micro-optimization
+        if obligations.is_empty() {
+            return;
+        }
+
         // This intermediate vector is mildly unfortunate, in that we
         // sometimes create it even when logging is disabled, but only
         // if debug-info is enabled, and I doubt it is actually
         // expensive. -nmatsakis
         let predicates_vec: Vec<_> = if cfg!(debug_assertions) {
-            predicates.clone().into_iter().collect()
+            obligations.iter().map(|o| o.predicate).collect()
         } else {
             Vec::new()
         };
 
         debug!(
             "prove_predicates(predicates={:?}, location={:?})",
-            predicates_vec,
-            location,
+            predicates_vec, location,
         );
 
         self.fully_perform_op(
             location.at_self(),
             || format!("prove_predicates({:?})", predicates_vec),
-            |this| {
-                let cause = this.misc(this.last_span);
-                let obligations = predicates
-                    .into_iter()
-                    .map(|p| traits::Obligation::new(cause.clone(), this.param_env, p))
-                    .collect();
+            |_this| {
                 Ok(InferOk {
                     value: (),
                     obligations,
@@ -1615,12 +1620,18 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     where
         T: fmt::Debug + TypeFoldable<'tcx>,
     {
+        // Micro-optimization: avoid work when we don't have to
+        if !value.has_projections() {
+            return value.clone();
+        }
+
         debug!("normalize(value={:?}, location={:?})", value, location);
         self.fully_perform_op(
             location.to_locations(),
             || format!("normalize(value={:?})", value),
             |this| {
-                let Normalized { value, obligations } = this.infcx
+                let Normalized { value, obligations } = this
+                    .infcx
                     .at(&this.misc(this.last_span), this.param_env)
                     .normalize(value)
                     .unwrap_or_else(|NoSolution| {
