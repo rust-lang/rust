@@ -12,10 +12,10 @@
 // crates and libraries
 
 use schema;
-
 use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
+use rustc::mir::interpret::AllocDecodingState;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FxHashMap, NodeMap};
 
@@ -65,6 +65,9 @@ pub struct CrateMetadata {
     pub cnum: CrateNum,
     pub dependencies: Lock<Vec<CrateNum>>,
     pub codemap_import_info: RwLock<Vec<ImportedFileMap>>,
+
+    /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
+    pub alloc_decoding_state: AllocDecodingState,
 
     pub root: schema::CrateRoot,
 

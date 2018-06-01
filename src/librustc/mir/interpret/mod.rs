@@ -23,10 +23,15 @@ use std::io;
 use std::ops::{Deref, DerefMut};
 use std::hash::Hash;
 use syntax::ast::Mutability;
-use rustc_serialize::{Encoder, Decoder, Decodable, Encodable};
+use rustc_serialize::{Encoder, Decodable, Encodable};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::{Lock as Mutex, HashMapExt};
+use rustc_data_structures::tiny_list::TinyList;
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
+use ty::codec::TyDecoder;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::num::NonZeroU32;
 
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Lock {
@@ -204,44 +209,163 @@ pub fn specialized_encode_alloc_id<
     Ok(())
 }
 
-pub fn specialized_decode_alloc_id<
-    'a, 'tcx,
-    D: Decoder,
-    CACHE: FnOnce(&mut D, AllocId),
->(
-    decoder: &mut D,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    cache: CACHE,
-) -> Result<AllocId, D::Error> {
-    match AllocKind::decode(decoder)? {
-        AllocKind::Alloc => {
-            let alloc_id = tcx.alloc_map.lock().reserve();
-            trace!("creating alloc id {:?}", alloc_id);
-            // insert early to allow recursive allocs
-            cache(decoder, alloc_id);
+// Used to avoid infinite recursion when decoding cyclic allocations.
+type DecodingSessionId = NonZeroU32;
 
-            let allocation = <&'tcx Allocation as Decodable>::decode(decoder)?;
-            trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
-            tcx.alloc_map.lock().set_id_memory(alloc_id, allocation);
+#[derive(Clone)]
+enum State {
+    Empty,
+    InProgressNonAlloc(TinyList<DecodingSessionId>),
+    InProgress(TinyList<DecodingSessionId>, AllocId),
+    Done(AllocId),
+}
 
-            Ok(alloc_id)
-        },
-        AllocKind::Fn => {
-            trace!("creating fn alloc id");
-            let instance = ty::Instance::decode(decoder)?;
-            trace!("decoded fn alloc instance: {:?}", instance);
-            let id = tcx.alloc_map.lock().create_fn_alloc(instance);
-            trace!("created fn alloc id: {:?}", id);
-            cache(decoder, id);
-            Ok(id)
-        },
-        AllocKind::Static => {
-            trace!("creating extern static alloc id at");
-            let did = DefId::decode(decoder)?;
-            let alloc_id = tcx.alloc_map.lock().intern_static(did);
-            cache(decoder, alloc_id);
-            Ok(alloc_id)
-        },
+pub struct AllocDecodingState {
+    // For each AllocId we keep track of which decoding state it's currently in.
+    decoding_state: Vec<Mutex<State>>,
+    // The offsets of each allocation in the data stream.
+    data_offsets: Vec<u32>,
+}
+
+impl AllocDecodingState {
+
+    pub fn new_decoding_session(&self) -> AllocDecodingSession {
+        static DECODER_SESSION_ID: AtomicU32 = AtomicU32::new(0);
+        let counter = DECODER_SESSION_ID.fetch_add(1, Ordering::SeqCst);
+
+        // Make sure this is never zero
+        let session_id = DecodingSessionId::new((counter & 0x7FFFFFFF) + 1).unwrap();
+
+        AllocDecodingSession {
+            state: self,
+            session_id,
+        }
+    }
+
+    pub fn new(data_offsets: Vec<u32>) -> AllocDecodingState {
+        let decoding_state: Vec<_> = ::std::iter::repeat(Mutex::new(State::Empty))
+            .take(data_offsets.len())
+            .collect();
+
+        AllocDecodingState {
+            decoding_state: decoding_state,
+            data_offsets,
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct AllocDecodingSession<'s> {
+    state: &'s AllocDecodingState,
+    session_id: DecodingSessionId,
+}
+
+impl<'s> AllocDecodingSession<'s> {
+
+    // Decodes an AllocId in a thread-safe way.
+    pub fn decode_alloc_id<'a, 'tcx, D>(&self,
+                                        decoder: &mut D)
+                                        -> Result<AllocId, D::Error>
+        where D: TyDecoder<'a, 'tcx>,
+              'tcx: 'a,
+    {
+        // Read the index of the allocation
+        let idx = decoder.read_u32()? as usize;
+        let pos = self.state.data_offsets[idx] as usize;
+
+        // Decode the AllocKind now so that we know if we have to reserve an
+        // AllocId.
+        let (alloc_kind, pos) = decoder.with_position(pos, |decoder| {
+            let alloc_kind = AllocKind::decode(decoder)?;
+            Ok((alloc_kind, decoder.position()))
+        })?;
+
+        // Check the decoding state, see if it's already decoded or if we should
+        // decode it here.
+        let alloc_id = {
+            let mut entry = self.state.decoding_state[idx].lock();
+
+            match *entry {
+                State::Done(alloc_id) => {
+                    return Ok(alloc_id);
+                }
+                ref mut entry @ State::Empty => {
+                    // We are allowed to decode
+                    match alloc_kind {
+                        AllocKind::Alloc => {
+                            // If this is an allocation, we need to reserve an
+                            // AllocId so we can decode cyclic graphs.
+                            let alloc_id = decoder.tcx().alloc_map.lock().reserve();
+                            *entry = State::InProgress(
+                                TinyList::new_single(self.session_id),
+                                alloc_id);
+                            Some(alloc_id)
+                        },
+                        AllocKind::Fn | AllocKind::Static => {
+                            // Fns and statics cannot be cyclic and their AllocId
+                            // is determined later by interning
+                            *entry = State::InProgressNonAlloc(
+                                TinyList::new_single(self.session_id));
+                            None
+                        }
+                    }
+                }
+                State::InProgressNonAlloc(ref mut sessions) => {
+                    if sessions.contains(&self.session_id) {
+                        bug!("This should be unreachable")
+                    } else {
+                        // Start decoding concurrently
+                        sessions.insert(self.session_id);
+                        None
+                    }
+                }
+                State::InProgress(ref mut sessions, alloc_id) => {
+                    if sessions.contains(&self.session_id) {
+                        // Don't recurse.
+                        return Ok(alloc_id)
+                    } else {
+                        // Start decoding concurrently
+                        sessions.insert(self.session_id);
+                        Some(alloc_id)
+                    }
+                }
+            }
+        };
+
+        // Now decode the actual data
+        let alloc_id = decoder.with_position(pos, |decoder| {
+            match alloc_kind {
+                AllocKind::Alloc => {
+                    let allocation = <&'tcx Allocation as Decodable>::decode(decoder)?;
+                    // We already have a reserved AllocId.
+                    let alloc_id = alloc_id.unwrap();
+                    trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
+                    decoder.tcx().alloc_map.lock().set_id_same_memory(alloc_id, allocation);
+                    Ok(alloc_id)
+                },
+                AllocKind::Fn => {
+                    assert!(alloc_id.is_none());
+                    trace!("creating fn alloc id");
+                    let instance = ty::Instance::decode(decoder)?;
+                    trace!("decoded fn alloc instance: {:?}", instance);
+                    let alloc_id = decoder.tcx().alloc_map.lock().create_fn_alloc(instance);
+                    Ok(alloc_id)
+                },
+                AllocKind::Static => {
+                    assert!(alloc_id.is_none());
+                    trace!("creating extern static alloc id at");
+                    let did = DefId::decode(decoder)?;
+                    let alloc_id = decoder.tcx().alloc_map.lock().intern_static(did);
+                    Ok(alloc_id)
+                }
+            }
+        })?;
+
+        self.state.decoding_state[idx].with_lock(|entry| {
+            *entry = State::Done(alloc_id);
+        });
+
+        Ok(alloc_id)
     }
 }
 
@@ -339,6 +463,10 @@ impl<'tcx, M: fmt::Debug + Eq + Hash + Clone> AllocMap<'tcx, M> {
         if let Some(old) = self.id_to_type.insert(id, AllocType::Memory(mem)) {
             bug!("tried to set allocation id {}, but it was already existing as {:#?}", id, old);
         }
+    }
+
+    pub fn set_id_same_memory(&mut self, id: AllocId, mem: M) {
+       self.id_to_type.insert_same(id, AllocType::Memory(mem));
     }
 }
 
