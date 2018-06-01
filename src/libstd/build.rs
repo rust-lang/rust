@@ -74,7 +74,6 @@ fn main() {
         }
         println!("cargo:rustc-link-lib=zircon");
         println!("cargo:rustc-link-lib=fdio");
-        println!("cargo:rustc-link-lib=launchpad"); // for std::process
     } else if target.contains("cloudabi") {
         if cfg!(feature = "backtrace") {
             println!("cargo:rustc-link-lib=unwind");
