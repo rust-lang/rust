@@ -150,6 +150,23 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
                 span.allows_unstable();
         }
     }
+
+    /// While the `ExprUseVisitor` walks, we will identify which
+    /// expressions are borrowed, and insert their ids into this
+    /// table. Actually, we insert the "borrow-id", which is normally
+    /// the id of the expession being borrowed: but in the case of
+    /// `ref mut` borrows, the `id` of the pattern is
+    /// inserted. Therefore later we remove that entry from the table
+    /// and transfer it over to the value being matched. This will
+    /// then prevent said value from being promoted.
+    fn remove_mut_rvalue_borrow(&mut self, pat: &hir::Pat) -> bool {
+        let mut any_removed = false;
+        pat.walk(|p| {
+            any_removed |= self.mut_rvalue_borrows.remove(&p.id);
+            true
+        });
+        any_removed
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
@@ -200,9 +217,15 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
     fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt) {
         match stmt.node {
             hir::StmtDecl(ref decl, _) => {
-                match decl.node {
-                    hir::DeclLocal(_) => {
+                match &decl.node {
+                    hir::DeclLocal(local) => {
                         self.promotable = false;
+
+                        if self.remove_mut_rvalue_borrow(&local.pat) {
+                            if let Some(init) = &local.init {
+                                self.mut_rvalue_borrows.insert(init.id);
+                            }
+                        }
                     }
                     // Item statements are allowed
                     hir::DeclItem(_) => {}
@@ -229,9 +252,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
             // patterns and set that on the discriminator.
             let mut mut_borrow = false;
             for pat in arms.iter().flat_map(|arm| &arm.pats) {
-                if self.mut_rvalue_borrows.remove(&pat.id) {
-                    mut_borrow = true;
-                }
+                mut_borrow = self.remove_mut_rvalue_borrow(pat);
             }
             if mut_borrow {
                 self.mut_rvalue_borrows.insert(discr.id);
@@ -498,6 +519,14 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
               _loan_region: ty::Region<'tcx>,
               bk: ty::BorrowKind,
               loan_cause: euv::LoanCause) {
+        debug!(
+            "borrow(borrow_id={:?}, cmt={:?}, bk={:?}, loan_cause={:?})",
+            borrow_id,
+            cmt,
+            bk,
+            loan_cause,
+        );
+
         // Kind of hacky, but we allow Unsafe coercions in constants.
         // These occur when we convert a &T or *T to a *U, as well as
         // when making a thin pointer (e.g., `*T`) into a fat pointer
