@@ -3,7 +3,7 @@ use rustc::middle::const_val::{ConstEvalErr, ErrKind};
 use rustc::middle::const_val::ErrKind::{TypeckError, CheckMatchError};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, Ty, Instance};
-use rustc::ty::layout::{self, LayoutOf};
+use rustc::ty::layout::{self, LayoutOf, Primitive};
 use rustc::ty::subst::Subst;
 
 use syntax::ast::Mutability;
@@ -307,7 +307,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
     fn call_intrinsic<'a>(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        _args: &[ValTy<'tcx>],
+        args: &[ValTy<'tcx>],
         dest: Place,
         dest_layout: layout::TyLayout<'tcx>,
         target: mir::BasicBlock,
@@ -345,8 +345,28 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
                 };
                 ecx.write_scalar(dest, id_val, dest_layout.ty)?;
             }
+            "ctpop" | "cttz" | "cttz_nonzero" | "ctlz" | "ctlz_nonzero" | "bswap" => {
+                let ty = substs.type_at(0);
+                let layout_of = ecx.layout_of(ty)?;
+                let bits = ecx.value_to_scalar(args[0])?.to_bits(layout_of.size)?;
+                let kind = match layout_of.abi {
+                    ty::layout::Abi::Scalar(ref scalar) => scalar.value,
+                    _ => Err(::rustc::mir::interpret::EvalErrorKind::TypeNotPrimitive(ty))?,
+                };
+                let out_val = if intrinsic_name.ends_with("_nonzero") {
+                    if bits == 0 {
+                        return err!(Intrinsic(format!("{} called on 0", intrinsic_name)));
+                    }
+                    numeric_intrinsic(intrinsic_name.trim_right_matches("_nonzero"), bits, kind)?
+                } else {
+                    numeric_intrinsic(intrinsic_name, bits, kind)?
+                };
+                ecx.write_scalar(dest, out_val, ty)?;
+            }
 
-            name => return Err(ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", name)).into()),
+            name => return Err(
+                ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", name)).into()
+            ),
         }
 
         ecx.goto_block(target);
@@ -569,4 +589,24 @@ pub fn const_eval_provider<'a, 'tcx>(
             span,
         }
     })
+}
+
+fn numeric_intrinsic<'tcx>(
+    name: &str,
+    bits: u128,
+    kind: Primitive,
+) -> EvalResult<'tcx, Scalar> {
+    let defined = match kind {
+        Primitive::Int(integer, _) => integer.size().bits() as u8,
+        _ => bug!("invalid `{}` argument: {:?}", name, bits),
+    };
+    let extra = 128 - defined as u128;
+    let bits_out = match name {
+        "ctpop" => bits.count_ones() as u128,
+        "ctlz" => bits.leading_zeros() as u128 - extra,
+        "cttz" => (bits << extra).trailing_zeros() as u128 - extra,
+        "bswap" => (bits << extra).swap_bytes(),
+        _ => bug!("not a numeric intrinsic: {}", name),
+    };
+    Ok(Scalar::Bits { bits: bits_out, defined })
 }
