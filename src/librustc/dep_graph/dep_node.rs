@@ -665,8 +665,6 @@ define_dep_nodes!( <'tcx>
 
     [] InstanceDefSizeEstimate { instance_def: InstanceDef<'tcx> },
 
-    [] WasmCustomSections(CrateNum),
-
     [input] Features,
 
     [] ProgramClausesFor(DefId),

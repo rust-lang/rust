@@ -1925,6 +1925,14 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
             if let Some(val) = attr.value_str() {
                 codegen_fn_attrs.linkage = Some(linkage_by_name(tcx, id, &val.as_str()));
             }
+        } else if attr.check_name("wasm_custom_section") {
+            match attr.value_str() {
+                Some(name) => codegen_fn_attrs.wasm_custom_section = Some(name),
+                None => {
+                    tcx.sess.span_err(attr.span, "must be of the form \
+                        #[wasm_custom_section = \"foo\"]");
+                }
+            }
         }
     }
 

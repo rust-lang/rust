@@ -33,6 +33,7 @@ use back::link;
 use back::write::{self, OngoingCodegen, create_target_machine};
 use llvm::{ContextRef, ModuleRef, ValueRef, Vector, get_param};
 use llvm;
+use libc::c_uint;
 use metadata;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::middle::lang_items::StartFnLangItem;
@@ -74,10 +75,8 @@ use type_of::LayoutLlvmExt;
 use rustc::util::nodemap::{FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
 use rustc_data_structures::sync::Lrc;
-use rustc_target::spec::TargetTriple;
 
 use std::any::Any;
-use std::collections::BTreeMap;
 use std::ffi::CString;
 use std::str;
 use std::sync::Arc;
@@ -1095,7 +1094,6 @@ impl CrateInfo {
             used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic),
             used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic),
             used_crate_source: FxHashMap(),
-            wasm_custom_sections: BTreeMap::new(),
             wasm_imports: FxHashMap(),
             lang_item_to_crate: FxHashMap(),
             missing_lang_items: FxHashMap(),
@@ -1105,16 +1103,9 @@ impl CrateInfo {
         let load_wasm_items = tcx.sess.crate_types.borrow()
             .iter()
             .any(|c| *c != config::CrateTypeRlib) &&
-            tcx.sess.opts.target_triple == TargetTriple::from_triple("wasm32-unknown-unknown");
+            tcx.sess.opts.target_triple.triple() == "wasm32-unknown-unknown";
 
         if load_wasm_items {
-            info!("attempting to load all wasm sections");
-            for &id in tcx.wasm_custom_sections(LOCAL_CRATE).iter() {
-                let (name, contents) = fetch_wasm_section(tcx, id);
-                info.wasm_custom_sections.entry(name)
-                    .or_insert(Vec::new())
-                    .extend(contents);
-            }
             info.load_wasm_imports(tcx, LOCAL_CRATE);
         }
 
@@ -1138,12 +1129,6 @@ impl CrateInfo {
                 info.is_no_builtins.insert(cnum);
             }
             if load_wasm_items {
-                for &id in tcx.wasm_custom_sections(cnum).iter() {
-                    let (name, contents) = fetch_wasm_section(tcx, id);
-                    info.wasm_custom_sections.entry(name)
-                        .or_insert(Vec::new())
-                        .extend(contents);
-                }
                 info.load_wasm_imports(tcx, cnum);
             }
             let missing = tcx.missing_lang_items(cnum);
@@ -1380,25 +1365,41 @@ mod temp_stable_hash_impls {
     }
 }
 
-fn fetch_wasm_section(tcx: TyCtxt, id: DefId) -> (String, Vec<u8>) {
+pub fn define_custom_section(cx: &CodegenCx, def_id: DefId) {
     use rustc::mir::interpret::GlobalId;
 
-    info!("loading wasm section {:?}", id);
+    assert!(cx.tcx.sess.opts.target_triple.triple().starts_with("wasm32"));
 
-    let section = tcx.get_attrs(id)
-        .iter()
-        .find(|a| a.check_name("wasm_custom_section"))
-        .expect("missing #[wasm_custom_section] attribute")
-        .value_str()
-        .expect("malformed #[wasm_custom_section] attribute");
+    info!("loading wasm section {:?}", def_id);
 
-    let instance = ty::Instance::mono(tcx, id);
+    let section = cx.tcx.codegen_fn_attrs(def_id).wasm_custom_section.unwrap();
+
+    let instance = ty::Instance::mono(cx.tcx, def_id);
     let cid = GlobalId {
         instance,
         promoted: None
     };
     let param_env = ty::ParamEnv::reveal_all();
-    let val = tcx.const_eval(param_env.and(cid)).unwrap();
-    let alloc = tcx.const_value_to_allocation(val);
-    (section.to_string(), alloc.bytes.clone())
+    let val = cx.tcx.const_eval(param_env.and(cid)).unwrap();
+    let alloc = cx.tcx.const_value_to_allocation(val);
+
+    unsafe {
+        let section = llvm::LLVMMDStringInContext(
+            cx.llcx,
+            section.as_str().as_ptr() as *const _,
+            section.as_str().len() as c_uint,
+        );
+        let alloc = llvm::LLVMMDStringInContext(
+            cx.llcx,
+            alloc.bytes.as_ptr() as *const _,
+            alloc.bytes.len() as c_uint,
+        );
+        let data = [section, alloc];
+        let meta = llvm::LLVMMDNodeInContext(cx.llcx, data.as_ptr(), 2);
+        llvm::LLVMAddNamedMetadataOperand(
+            cx.llmod,
+            "wasm.custom_sections\0".as_ptr() as *const _,
+            meta,
+        );
+    }
 }

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 use std::str;
@@ -23,45 +22,6 @@ const WASM_EXTERNAL_KIND_FUNCTION: u8 = 0;
 const WASM_EXTERNAL_KIND_TABLE: u8 = 1;
 const WASM_EXTERNAL_KIND_MEMORY: u8 = 2;
 const WASM_EXTERNAL_KIND_GLOBAL: u8 = 3;
-
-/// Append all the custom sections listed in `sections` to the wasm binary
-/// specified at `path`.
-///
-/// LLVM 6 which we're using right now doesn't have the ability to create custom
-/// sections in wasm files nor does LLD have the ability to merge these sections
-/// into one larger section when linking. It's expected that this will
-/// eventually get implemented, however!
-///
-/// Until that time though this is a custom implementation in rustc to append
-/// all sections to a wasm file to the finished product that LLD produces.
-///
-/// Support for this is landing in LLVM in https://reviews.llvm.org/D43097,
-/// although after that support will need to be in LLD as well.
-pub fn add_custom_sections(path: &Path, sections: &BTreeMap<String, Vec<u8>>) {
-    if sections.len() == 0 {
-        return
-    }
-
-    let wasm = fs::read(path).expect("failed to read wasm output");
-
-    // see https://webassembly.github.io/spec/core/binary/modules.html#custom-section
-    let mut wasm = WasmEncoder { data: wasm };
-    for (section, bytes) in sections {
-        // write the `id` identifier, 0 for a custom section
-        wasm.byte(0);
-
-        // figure out how long our name descriptor will be
-        let mut name = WasmEncoder::new();
-        name.str(section);
-
-        // write the length of the payload followed by all its contents
-        wasm.u32((bytes.len() + name.data.len()) as u32);
-        wasm.data.extend_from_slice(&name.data);
-        wasm.data.extend_from_slice(bytes);
-    }
-
-    fs::write(path, &wasm.data).expect("failed to write wasm output");
-}
 
 /// Rewrite the module imports are listed from in a wasm module given the field
 /// name to module name mapping in `import_map`.
@@ -80,7 +40,7 @@ pub fn add_custom_sections(path: &Path, sections: &BTreeMap<String, Vec<u8>>) {
 ///
 /// Support for this was added to LLVM in
 /// https://github.com/llvm-mirror/llvm/commit/0f32e1365, although support still
-/// needs to be added (AFAIK at the time of this writing) to LLD
+/// needs to be added, tracked at https://bugs.llvm.org/show_bug.cgi?id=37168
 pub fn rewrite_imports(path: &Path, import_map: &FxHashMap<String, String>) {
     if import_map.len() == 0 {
         return

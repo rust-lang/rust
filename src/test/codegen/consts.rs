@@ -10,6 +10,7 @@
 
 // compile-flags: -C no-prepopulate-passes
 // ignore-tidy-linelength
+// min-llvm-version 7.0
 
 #![crate_type = "lib"]
 
@@ -54,7 +55,7 @@ pub fn inline_enum_const() -> E<i8, i16> {
 #[no_mangle]
 pub fn low_align_const() -> E<i16, [i16; 3]> {
 // Check that low_align_const and high_align_const use the same constant
-// CHECK: i8* getelementptr inbounds (<{ [8 x i8] }>, <{ [8 x i8] }>* [[LOW_HIGH]], i32 0, i32 0, i32 0),
+// CHECK: i8* align 2 getelementptr inbounds (<{ [8 x i8] }>, <{ [8 x i8] }>* [[LOW_HIGH]], i32 0, i32 0, i32 0),
     *&E::A(0)
 }
 
@@ -62,6 +63,6 @@ pub fn low_align_const() -> E<i16, [i16; 3]> {
 #[no_mangle]
 pub fn high_align_const() -> E<i16, i32> {
 // Check that low_align_const and high_align_const use the same constant
-// CHECK: i8* getelementptr inbounds (<{ [8 x i8] }>, <{ [8 x i8] }>* [[LOW_HIGH]], i32 0, i32 0, i32 0),
+// CHECK: i8* align 4 getelementptr inbounds (<{ [8 x i8] }>, <{ [8 x i8] }>* [[LOW_HIGH]], i32 0, i32 0, i32 0),
     *&E::A(0)
 }

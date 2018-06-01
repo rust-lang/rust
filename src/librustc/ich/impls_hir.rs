@@ -1120,6 +1120,7 @@ impl_stable_hash_for!(struct hir::CodegenFnAttrs {
     export_name,
     target_features,
     linkage,
+    wasm_custom_section,
 });
 
 impl<'hir> HashStable<StableHashingContext<'hir>> for hir::CodegenFnAttrFlags

@@ -63,6 +63,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
                 instance.substs.types().next().is_some()
             }
             MonoItem::Static(..) |
+            MonoItem::CustomSection(..) |
             MonoItem::GlobalAsm(..) => false,
         }
     }
@@ -71,6 +72,9 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
         match *self.as_mono_item() {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
             MonoItem::Static(def_id) => {
+                tcx.symbol_name(Instance::mono(tcx, def_id))
+            }
+            MonoItem::CustomSection(def_id) => {
                 tcx.symbol_name(Instance::mono(tcx, def_id))
             }
             MonoItem::GlobalAsm(node_id) => {
@@ -121,9 +125,8 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
                     }
                 }
             }
-            MonoItem::Static(..) => {
-                InstantiationMode::GloballyShared { may_conflict: false }
-            }
+            MonoItem::Static(..) |
+            MonoItem::CustomSection(..) |
             MonoItem::GlobalAsm(..) => {
                 InstantiationMode::GloballyShared { may_conflict: false }
             }
@@ -134,6 +137,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
         let def_id = match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => instance.def_id(),
             MonoItem::Static(def_id) => def_id,
+            MonoItem::CustomSection(..) => return None,
             MonoItem::GlobalAsm(..) => return None,
         };
 
@@ -171,6 +175,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
         let (def_id, substs) = match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => (instance.def_id(), instance.substs),
             MonoItem::Static(def_id) => (def_id, Substs::empty()),
+            MonoItem::CustomSection(..) => return true,
             // global asm never has predicates
             MonoItem::GlobalAsm(..) => return true
         };
@@ -186,6 +191,10 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
             MonoItem::Static(def_id) => {
                 let instance = Instance::new(def_id, tcx.intern_substs(&[]));
                 to_string_internal(tcx, "static ", instance)
+            },
+            MonoItem::CustomSection(def_id) => {
+                let instance = Instance::new(def_id, tcx.intern_substs(&[]));
+                to_string_internal(tcx, "custom-section ", instance)
             },
             MonoItem::GlobalAsm(..) => {
                 "global_asm".to_string()
@@ -210,6 +219,9 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
                 tcx.hir.as_local_node_id(def.def_id())
             }
             MonoItem::Static(def_id) => {
+                tcx.hir.as_local_node_id(def_id)
+            }
+            MonoItem::CustomSection(def_id) => {
                 tcx.hir.as_local_node_id(def_id)
             }
             MonoItem::GlobalAsm(node_id) => {

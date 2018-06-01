@@ -11,9 +11,8 @@
 
 use std::ffi::{CStr, CString};
 
-use rustc::hir::{self, CodegenFnAttrFlags};
+use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::session::Session;
 use rustc::session::config::Sanitizer;
 use rustc::ty::TyCtxt;
@@ -222,35 +221,7 @@ pub fn provide(providers: &mut Providers) {
         }
     };
 
-    providers.wasm_custom_sections = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        let mut finder = WasmSectionFinder { tcx, list: Vec::new() };
-        tcx.hir.krate().visit_all_item_likes(&mut finder);
-        Lrc::new(finder.list)
-    };
-
     provide_extern(providers);
-}
-
-struct WasmSectionFinder<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    list: Vec<DefId>,
-}
-
-impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for WasmSectionFinder<'a, 'tcx> {
-    fn visit_item(&mut self, i: &'tcx hir::Item) {
-        match i.node {
-            hir::ItemConst(..) => {}
-            _ => return,
-        }
-        if i.attrs.iter().any(|i| i.check_name("wasm_custom_section")) {
-            self.list.push(self.tcx.hir.local_def_id(i.id));
-        }
-    }
-
-    fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem) {}
-
-    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem) {}
 }
 
 pub fn provide_extern(providers: &mut Providers) {

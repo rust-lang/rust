@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::mem;
+
 use clean::*;
 
 pub enum FoldItem {
@@ -109,12 +111,13 @@ pub trait DocFolder : Sized {
     }
 
     fn fold_crate(&mut self, mut c: Crate) -> Crate {
-        c.module = c.module.and_then(|module| self.fold_item(module));
+        c.module = c.module.take().and_then(|module| self.fold_item(module));
 
-        c.external_traits = c.external_traits.into_iter().map(|(k, mut v)| {
+        let traits = mem::replace(&mut c.external_traits, Default::default());
+        c.external_traits.extend(traits.into_iter().map(|(k, mut v)| {
             v.items = v.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
             (k, v)
-        }).collect();
+        }));
         c
     }
 }

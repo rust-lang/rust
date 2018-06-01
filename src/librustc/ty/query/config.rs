@@ -776,12 +776,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::instance_def_size_estimate<'tcx> 
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::wasm_custom_sections<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
-        format!("custom wasm sections for a crate")
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::generics_of<'tcx> {
     #[inline]
     fn cache_on_disk(def_id: Self::Key) -> bool {
