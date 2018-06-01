@@ -37,8 +37,9 @@ const PARTIAL_ORD: [&str; 3] = ["core", "cmp", "PartialOrd"];
 ///     _ => false, 
 /// };
 /// ```
-declare_lint! {
-    pub NEG_CMP_OP_ON_PARTIAL_ORD, Warn,
+declare_clippy_lint! {
+    pub NEG_CMP_OP_ON_PARTIAL_ORD,
+    complexity,
     "The use of negated comparision operators on partially orded types may produce confusing code."
 }
 
