@@ -61,7 +61,6 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
 
     interpret_allocs: FxHashMap<interpret::AllocId, usize>,
-    interpret_allocs_inverse: Vec<interpret::AllocId>,
 
     // This is used to speed up Span encoding.
     filemap_cache: Lrc<FileMap>,
@@ -198,18 +197,13 @@ impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
-        use std::collections::hash_map::Entry;
-        let index = match self.interpret_allocs.entry(*alloc_id) {
-            Entry::Occupied(e) => *e.get(),
-            Entry::Vacant(e) => {
-                let idx = self.interpret_allocs_inverse.len();
-                self.interpret_allocs_inverse.push(*alloc_id);
-                e.insert(idx);
-                idx
-            },
-        };
-
-        index.encode(self)
+        let tcx = self.tcx;
+        interpret::specialized_encode_alloc_id(
+            self,
+            tcx,
+            |this| &mut this.interpret_allocs,
+            *alloc_id,
+        )
     }
 }
 
@@ -239,6 +233,9 @@ for EncodeContext<'a, 'tcx> {
 impl<'a, 'tcx> TyEncoder for EncodeContext<'a, 'tcx> {
     fn position(&self) -> usize {
         self.opaque.position()
+    }
+    fn set_position(&mut self, p: usize) {
+        self.opaque.set_position(p)
     }
 }
 
@@ -450,34 +447,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let items = self.encode_info_for_items();
         let item_bytes = self.position() - i;
 
-        // Encode the allocation index
-        let interpret_alloc_index = {
-            let mut interpret_alloc_index = Vec::new();
-            let mut n = 0;
-            trace!("beginning to encode alloc ids");
-            loop {
-                let new_n = self.interpret_allocs_inverse.len();
-                // if we have found new ids, serialize those, too
-                if n == new_n {
-                    // otherwise, abort
-                    break;
-                }
-                trace!("encoding {} further alloc ids", new_n - n);
-                for idx in n..new_n {
-                    let id = self.interpret_allocs_inverse[idx];
-                    let pos = self.position() as u32;
-                    interpret_alloc_index.push(pos);
-                    interpret::specialized_encode_alloc_id(
-                        self,
-                        tcx,
-                        id,
-                    ).unwrap();
-                }
-                n = new_n;
-            }
-            self.lazy_seq(interpret_alloc_index)
-        };
-
         // Index the items
         i = self.position();
         let index = items.write_index(&mut self.opaque.cursor);
@@ -529,7 +498,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             impls,
             exported_symbols,
             wasm_custom_sections,
-            interpret_alloc_index,
             index,
         });
 
@@ -1823,7 +1791,6 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             predicate_shorthands: Default::default(),
             filemap_cache: tcx.sess.codemap().files()[0].clone(),
             interpret_allocs: Default::default(),
-            interpret_allocs_inverse: Default::default(),
         };
 
         // Encode the rustc version string in a predictable location.

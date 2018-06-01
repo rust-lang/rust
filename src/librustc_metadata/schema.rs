@@ -207,7 +207,6 @@ pub struct CrateRoot {
     pub impls: LazySeq<TraitImpls>,
     pub exported_symbols: EncodedExportedSymbols,
     pub wasm_custom_sections: LazySeq<DefIndex>,
-    pub interpret_alloc_index: LazySeq<u32>,
 
     pub index: LazySeq<index::Index>,
 

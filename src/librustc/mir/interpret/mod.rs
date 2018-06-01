@@ -12,21 +12,24 @@ pub use self::error::{EvalError, EvalResult, EvalErrorKind, AssertMessage};
 
 pub use self::value::{Scalar, Value, ConstValue};
 
+use std;
 use std::fmt;
 use mir;
 use hir::def_id::DefId;
 use ty::{self, TyCtxt, Instance};
 use ty::layout::{self, Align, HasDataLayout, Size};
+use ty::codec::{TyEncoder, TyDecoder};
 use middle::region;
 use std::iter;
 use std::io;
 use std::ops::{Deref, DerefMut};
 use std::hash::Hash;
 use syntax::ast::Mutability;
-use rustc_serialize::{Encoder, Decoder, Decodable, Encodable};
+use rustc_serialize::{Decodable, Encodable};
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::fx::FxHashMap;
-use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::sync::{HashMapExt, LockGuard};
+use byteorder::{ByteOrder, WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
 
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Lock {
@@ -169,25 +172,54 @@ impl ::rustc_serialize::UseSpecializedDecodable for AllocId {}
 #[derive(RustcDecodable, RustcEncodable)]
 enum AllocKind {
     Alloc,
+    AllocAtPos,
     Fn,
     Static,
 }
 
 pub fn specialized_encode_alloc_id<
     'a, 'tcx,
-    E: Encoder,
+    E: TyEncoder,
+    M,
 >(
     encoder: &mut E,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    cache: M,
     alloc_id: AllocId,
-) -> Result<(), E::Error> {
+) -> Result<(), E::Error>
+where
+    M: Fn(&mut E) -> &mut FxHashMap<AllocId, usize>
+{
     let alloc_type: AllocType<'tcx, &'tcx Allocation> =
         tcx.alloc_map.lock().get(alloc_id).expect("no value for AllocId");
     match alloc_type {
         AllocType::Memory(alloc) => {
+            if let Some(alloc_pos) = cache(encoder).get(&alloc_id).cloned() {
+                AllocKind::AllocAtPos.encode(encoder)?;
+                return encoder.emit_usize(alloc_pos);
+            }
+            let pos = encoder.position();
+            assert!(cache(encoder).insert(alloc_id, pos).is_none());
             trace!("encoding {:?} with {:#?}", alloc_id, alloc);
             AllocKind::Alloc.encode(encoder)?;
+
+            // Write placeholder for size
+            let size_pos = encoder.position();
+            [0; 4].encode(encoder)?;
+
+            let start = encoder.position();
             alloc.encode(encoder)?;
+            let end = encoder.position();
+
+            // Overwrite the placeholder with the real size
+            let size: usize = end - start;
+            encoder.set_position(size_pos);
+            assert!(size as u64 <= std::u32::MAX as u64);
+            let mut size_array = [0; 4];
+            LittleEndian::write_u32(&mut size_array, size as u32);
+            size_array.encode(encoder)?;
+            encoder.set_position(end);
+
         }
         AllocType::Function(fn_instance) => {
             trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
@@ -206,23 +238,54 @@ pub fn specialized_encode_alloc_id<
 
 pub fn specialized_decode_alloc_id<
     'a, 'tcx,
-    D: Decoder,
-    CACHE: FnOnce(&mut D, AllocId),
+    D: TyDecoder<'a, 'tcx>,
+    GlobalCache: FnMut(&mut D) -> LockGuard<'_, FxHashMap<usize, (AllocId, bool)>>,
+    LocalCache: FnOnce(&mut D) -> &mut FxHashSet<AllocId>,
 >(
     decoder: &mut D,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    cache: CACHE,
+    mut global_cache: GlobalCache,
+    local_cache: LocalCache,
 ) -> Result<AllocId, D::Error> {
+    let pos = decoder.position();
     match AllocKind::decode(decoder)? {
+        AllocKind::AllocAtPos => {
+            let real_pos = decoder.read_usize()?;
+            decoder.with_position(real_pos, AllocId::decode)
+        },
         AllocKind::Alloc => {
-            let alloc_id = tcx.alloc_map.lock().reserve();
-            trace!("creating alloc id {:?}", alloc_id);
-            // insert early to allow recursive allocs
-            cache(decoder, alloc_id);
+            // Read the size of the allocation.
+            // Used to skip ahead if we don't need to decode this.
+            let alloc_size = [
+                u8::decode(decoder)?,
+                u8::decode(decoder)?,
+                u8::decode(decoder)?,
+                u8::decode(decoder)?
+            ];
+            let alloc_size = LittleEndian::read_u32(&alloc_size);
+
+            let (alloc_id, fully_loaded) = *global_cache(decoder).entry(pos).or_insert_with(|| {
+                // Create an id which is not fully loaded
+                (tcx.alloc_map.lock().reserve(), false)
+            });
+            if fully_loaded || !local_cache(decoder).insert(alloc_id) {
+                // We have started decoding this alloc id already, so just return it.
+                // Its content is already filled in or will be filled in by functions
+                // further up the stack.
+
+                // Skip the allocation
+                let pos = decoder.position();
+                decoder.set_position(pos + alloc_size as usize);
+                return Ok(alloc_id)
+            }
 
             let allocation = <&'tcx Allocation as Decodable>::decode(decoder)?;
             trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
-            tcx.alloc_map.lock().set_id_memory(alloc_id, allocation);
+            // This may overwrite with the same allocation
+            tcx.alloc_map.lock().set_id_same_memory(alloc_id, allocation);
+
+            // Mark the alloc id as fully loaded
+            global_cache(decoder).insert(pos, (alloc_id, true));
 
             Ok(alloc_id)
         },
@@ -232,14 +295,12 @@ pub fn specialized_decode_alloc_id<
             trace!("decoded fn alloc instance: {:?}", instance);
             let id = tcx.alloc_map.lock().create_fn_alloc(instance);
             trace!("created fn alloc id: {:?}", id);
-            cache(decoder, id);
             Ok(id)
         },
         AllocKind::Static => {
             trace!("creating extern static alloc id at");
             let did = DefId::decode(decoder)?;
             let alloc_id = tcx.alloc_map.lock().intern_static(did);
-            cache(decoder, alloc_id);
             Ok(alloc_id)
         },
     }
@@ -339,6 +400,10 @@ impl<'tcx, M: fmt::Debug + Eq + Hash + Clone> AllocMap<'tcx, M> {
         if let Some(old) = self.id_to_type.insert(id, AllocType::Memory(mem)) {
             bug!("tried to set allocation id {}, but it was already existing as {:#?}", id, old);
         }
+    }
+
+    fn set_id_same_memory(&mut self, id: AllocId, mem: M) {
+        self.id_to_type.insert_same(id, AllocType::Memory(mem));
     }
 }
 
