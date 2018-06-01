@@ -132,8 +132,6 @@ to be **well-formed**:
 
 ```text
 // Rule WellFormed-TraitRef
-//
-// For each where clause WC:
 forall<Self, P1..Pn> {
   WellFormed(Self: Trait<P1..Pn>) :- Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)
 }
@@ -198,38 +196,72 @@ in detail in the [section on associated types](./traits-associated-types.html),
 but reproduced here for reference:
 
 ```text
-  // Rule ProjectionEq-Normalize
-  //
-  // ProjectionEq can succeed by normalizing:
-  forall<Self, P1..Pn, Pn+1..Pm, U> {
-    ProjectionEq(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> = U) :-
-        Normalize(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> -> U)
-  }
+// Rule ProjectionEq-Normalize
+//
+// ProjectionEq can succeed by normalizing:
+forall<Self, P1..Pn, Pn+1..Pm, U> {
+  ProjectionEq(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> = U) :-
+      Normalize(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> -> U)
+}
+```
 
-  // Rule ProjectionEq-Skolemize
-  //
-  // ProjectionEq can succeed by skolemizing, see "associated type"
-  // chapter for more:
-  forall<Self, P1..Pn, Pn+1..Pm> {
-    ProjectionEq(
-      <Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> =
-        (Trait::AssocType)<Self, P1..Pn, Pn+1..Pm>
-    ) :-
-      // But only if the trait is implemented, and the conditions from
-      // the associated type are met as well:
-      Implemented(Self: Trait<P1..Pn>)
-      && WC1
-  }
+```text
+// Rule ProjectionEq-Skolemize
+//
+// ProjectionEq can succeed by skolemizing, see "associated type"
+// chapter for more:
+forall<Self, P1..Pn, Pn+1..Pm> {
+  ProjectionEq(
+    <Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> =
+    (Trait::AssocType)<Self, P1..Pn, Pn+1..Pm>
+  )
+}
 ```
 
 The next rule covers implied bounds for the projection. In particular,
-the `Bounds` declared on the associated type must be proven to hold to
-show that the impl is well-formed, and hence we can rely on them
+the `Bounds` declared on the associated type must have been proven to hold
+to show that the impl is well-formed, and hence we can rely on them
 elsewhere.
 
 ```text
-// XXX how exactly should we set this up? Have to be careful;
-// presumably this has to be a kind of `FromEnv` setup.
+// Rule Implied-Bound-From-AssocTy
+//
+// For each `Bound` in `Bounds`:
+forall<Self, P1..Pn, Pn+1..Pm> {
+    FromEnv(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm>>: Bound) :-
+      FromEnv(Self: Trait<P1..Pn>)
+}
+```
+
+Next, we define the requirements for an instantiation of our associated
+type to be well-formed...
+
+```text
+// Rule WellFormed-AssocTy
+forall<Self, P1..Pn, Pn+1..Pm> {
+    WellFormed((Trait::AssocType)<Self, P1..Pn, Pn+1..Pm>) :-
+      WC1, Implemented(Self: Trait<P1..Pn>)
+}
+```
+
+...along with the reverse implications, when we can assume that it is
+well-formed.
+
+```text
+// Rule Implied-WC-From-AssocTy
+//
+// For each where clause WC1:
+forall<Self, P1..Pn, Pn+1..Pm> {
+    FromEnv(WC1) :- FromEnv((Trait::AssocType)<Self, P1..Pn, Pn+1..Pm>)
+}
+```
+
+```text
+// Rule Implied-Trait-From-AssocTy
+forall<Self, P1..Pn, Pn+1..Pm> {
+    FromEnv(Self: Trait<P1..Pn>) :-
+      FromEnv((Trait::AssocType)<Self, P1..Pn, Pn+1..Pm>)
+}
 ```
 
 ### Lowering function and constant declarations
@@ -269,27 +301,29 @@ In addition, we will lower all of the *impl items*.
 Given an impl that contains:
 
 ```rust,ignore
-impl<P0..Pn> Trait<A1..An> for A0
-where WC
+impl<P0..Pn> Trait<P1..Pn> for P0
+where WC_impl
 {
-    type AssocType<Pn+1..Pm> where WC1 = T;
+    type AssocType<Pn+1..Pm> = T;
 }
 ```
 
-We produce the following rule:
+and our where clause `WC1` on the trait associated type from above, we
+produce the following rule:
 
 ```text
 // Rule Normalize-From-Impl
 forall<P0..Pm> {
   forall<Pn+1..Pm> {
-    Normalize(<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm> -> T) :-
-      WC && WC1
+    Normalize(<P0 as Trait<P1..Pn>>::AssocType<Pn+1..Pm> -> T) :-
+      Implemented(P0 as Trait) && WC1
   }
 }
 ```
 
-Note that `WC` and `WC1` both encode where-clauses that the impl can
-rely on.
+Note that `WC_impl` and `WC1` both encode where-clauses that the impl can
+rely on. (`WC_impl` is not used here, because it is implied by
+`Implemented(P0 as Trait)`.)
 
 <a name="constant-vals"></a>
 
@@ -300,5 +334,3 @@ like to treat them exactly like normalization. This presumably
 involves adding a new kind of parameter (constant), and then having a
 `NormalizeValue` domain goal. This is *to be written* because the
 details are a bit up in the air.
-
-

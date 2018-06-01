@@ -53,12 +53,15 @@ we saw above would be lowered to a program clause like so:
 
 ```text
 forall<T> {
-    Normalize(<Option<T> as IntoIterator>::Item -> T)
+    Normalize(<Option<T> as IntoIterator>::Item -> T) :-
+        Implemented(Option<T>: IntoIterator)
 }
 ```
 
+where in this case, the one `Implemented` condition is always true.
+
 (An aside: since we do not permit quantification over traits, this is
-really more like a family of predicates, one for each associated
+really more like a family of program clauses, one for each associated
 type.)
 
 We could apply that rule to normalize either of the examples that
