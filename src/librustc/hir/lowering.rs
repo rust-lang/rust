@@ -41,7 +41,7 @@
 //! in the HIR, especially for multiple identifiers.
 
 use dep_graph::DepGraph;
-use hir;
+use hir::{self, ParamName};
 use hir::HirVec;
 use hir::map::{DefKey, DefPathData, Definitions};
 use hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CRATE_DEF_INDEX};
@@ -125,7 +125,7 @@ pub struct LoweringContext<'a> {
     // (i.e. it doesn't appear in the in_scope_lifetimes list), it is added
     // to this list. The results of this list are then added to the list of
     // lifetime definitions in the corresponding impl or function generics.
-    lifetimes_to_define: Vec<(Span, hir::LifetimeName)>,
+    lifetimes_to_define: Vec<(Span, ParamName)>,
 
     // Whether or not in-band lifetimes are being collected. This is used to
     // indicate whether or not we're in a place where new lifetimes will result
@@ -678,13 +678,8 @@ impl<'a> LoweringContext<'a> {
                 // that collisions are ok here and this shouldn't
                 // really show up for end-user.
                 let str_name = match hir_name {
-                    hir::LifetimeName::Name(n) => n.as_str(),
-                    hir::LifetimeName::Fresh(_) => keywords::UnderscoreLifetime.name().as_str(),
-                    hir::LifetimeName::Implicit
-                    | hir::LifetimeName::Underscore
-                    | hir::LifetimeName::Static => {
-                        span_bug!(span, "unexpected in-band lifetime name: {:?}", hir_name)
-                    }
+                    ParamName::Plain(name) => name.as_str(),
+                    ParamName::Fresh(_) => keywords::UnderscoreLifetime.name().as_str(),
                 };
 
                 // Add a definition for the in-band lifetime def
@@ -699,15 +694,12 @@ impl<'a> LoweringContext<'a> {
 
                 hir::GenericParam {
                     id: def_node_id,
-                    name: hir_name.name(),
+                    name: hir_name,
                     span,
                     pure_wrt_drop: false,
                     bounds: vec![].into(),
-                    kind: hir::GenericParamKind::Lifetime {
-                        lt_name: hir_name,
-                        in_band: true,
-                        }
-                    }
+                    kind: hir::GenericParamKind::Lifetime { in_band: true }
+                }
             })
             .chain(in_band_ty_params.into_iter())
             .collect();
@@ -728,7 +720,7 @@ impl<'a> LoweringContext<'a> {
             return;
         }
 
-        let hir_name = hir::LifetimeName::Name(name);
+        let hir_name = ParamName::Plain(name);
 
         if self.lifetimes_to_define.iter().any(|(_, lt_name)| *lt_name == hir_name) {
             return;
@@ -739,10 +731,10 @@ impl<'a> LoweringContext<'a> {
 
     /// When we have either an elided or `'_` lifetime in an impl
     /// header, we convert it to
-    fn collect_fresh_in_band_lifetime(&mut self, span: Span) -> hir::LifetimeName {
+    fn collect_fresh_in_band_lifetime(&mut self, span: Span) -> ParamName {
         assert!(self.is_collecting_in_band_lifetimes);
         let index = self.lifetimes_to_define.len();
-        let hir_name = hir::LifetimeName::Fresh(index);
+        let hir_name = ParamName::Fresh(index);
         self.lifetimes_to_define.push((span, hir_name));
         hir_name
     }
@@ -781,7 +773,7 @@ impl<'a> LoweringContext<'a> {
     {
         let old_len = self.in_scope_lifetimes.len();
         let lt_def_names = params.iter().filter_map(|param| match param.kind {
-            hir::GenericParamKind::Lifetime { .. } => Some(param.name),
+            hir::GenericParamKind::Lifetime { .. } => Some(param.name.name()),
             _ => None,
         });
         self.in_scope_lifetimes.extend(lt_def_names);
@@ -1244,7 +1236,7 @@ impl<'a> LoweringContext<'a> {
                         let name = Symbol::intern(&pprust::ty_to_string(t));
                         self.in_band_ty_params.push(hir::GenericParam {
                             id: def_node_id,
-                            name,
+                            name: ParamName::Plain(name),
                             span,
                             pure_wrt_drop: false,
                             bounds: hir_bounds,
@@ -1359,9 +1351,10 @@ impl<'a> LoweringContext<'a> {
 
             fn visit_generic_param(&mut self, param: &'v hir::GenericParam) {
                 // Record the introduction of 'a in `for<'a> ...`
-                if let hir::GenericParamKind::Lifetime { lt_name, .. } = param.kind {
+                if let hir::GenericParamKind::Lifetime { .. } = param.kind {
                     // Introduce lifetimes one at a time so that we can handle
                     // cases like `fn foo<'d>() -> impl for<'a, 'b: 'a, 'c: 'b + 'd>`
+                    let lt_name = hir::LifetimeName::Param(param.name);
                     self.currently_bound_lifetimes.push(lt_name);
                 }
 
@@ -1379,14 +1372,12 @@ impl<'a> LoweringContext<'a> {
                             return;
                         }
                     }
-                    name @ hir::LifetimeName::Fresh(_) => name,
-                    name @ hir::LifetimeName::Name(_) => name,
+                    hir::LifetimeName::Param(_) => lifetime.name,
                     hir::LifetimeName::Static => return,
                 };
 
                 if !self.currently_bound_lifetimes.contains(&name)
-                    && !self.already_defined_lifetimes.contains(&name)
-                {
+                    && !self.already_defined_lifetimes.contains(&name) {
                     self.already_defined_lifetimes.insert(name);
 
                     self.output_lifetimes.push(hir::Lifetime {
@@ -1409,16 +1400,23 @@ impl<'a> LoweringContext<'a> {
                         lifetime.span,
                     );
 
+                    let name = match name {
+                        hir::LifetimeName::Underscore => {
+                            hir::ParamName::Plain(keywords::UnderscoreLifetime.name())
+                        }
+                        hir::LifetimeName::Param(param_name) => param_name,
+                        _ => bug!("expected LifetimeName::Param or ParamName::Plain"),
+                    };
+
                     self.output_lifetime_params.push(hir::GenericParam {
                         id: def_node_id,
-                        name: name.name(),
+                        name,
                         span: lifetime.span,
                         pure_wrt_drop: false,
                         bounds: vec![].into(),
                         kind: hir::GenericParamKind::Lifetime {
-                            lt_name: name,
                             in_band: false,
-                            }
+                        }
                     });
                 }
             }
@@ -1894,7 +1892,7 @@ impl<'a> LoweringContext<'a> {
             x if x == "'_" => match self.anonymous_lifetime_mode {
                 AnonymousLifetimeMode::CreateParameter => {
                     let fresh_name = self.collect_fresh_in_band_lifetime(span);
-                    self.new_named_lifetime(l.id, span, fresh_name)
+                    self.new_named_lifetime(l.id, span, hir::LifetimeName::Param(fresh_name))
                 }
 
                 AnonymousLifetimeMode::PassThrough => {
@@ -1903,7 +1901,8 @@ impl<'a> LoweringContext<'a> {
             },
             name => {
                 self.maybe_collect_in_band_lifetime(span, name);
-                self.new_named_lifetime(l.id, span, hir::LifetimeName::Name(name))
+                let param_name = ParamName::Plain(name);
+                self.new_named_lifetime(l.id, span, hir::LifetimeName::Param(param_name))
             }
         }
     }
@@ -1942,16 +1941,17 @@ impl<'a> LoweringContext<'a> {
                 self.is_collecting_in_band_lifetimes = false;
 
                 let lt = self.lower_lifetime(&Lifetime { id: param.id, ident: param.ident });
+                let param_name = match lt.name {
+                    hir::LifetimeName::Param(param_name) => param_name,
+                    _ => hir::ParamName::Plain(lt.name.name()),
+                };
                 let param = hir::GenericParam {
                     id: lt.id,
-                    name: lt.name.name(),
+                    name: param_name,
                     span: lt.span,
                     pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
                     bounds,
-                    kind: hir::GenericParamKind::Lifetime {
-                        lt_name: lt.name,
-                        in_band: false,
-                    }
+                    kind: hir::GenericParamKind::Lifetime { in_band: false }
                 };
 
                 self.is_collecting_in_band_lifetimes = was_collecting_in_band;
@@ -1977,7 +1977,7 @@ impl<'a> LoweringContext<'a> {
 
                 hir::GenericParam {
                     id: self.lower_node_id(param.id).node_id,
-                    name,
+                    name: hir::ParamName::Plain(name),
                     span: param.ident.span,
                     pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
                     bounds,
@@ -4193,7 +4193,7 @@ impl<'a> LoweringContext<'a> {
                 hir::Lifetime {
                     id: self.next_id().node_id,
                     span,
-                    name: fresh_name,
+                    name: hir::LifetimeName::Param(fresh_name),
                 }
             }
 

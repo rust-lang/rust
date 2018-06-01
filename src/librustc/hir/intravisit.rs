@@ -433,10 +433,10 @@ pub fn walk_label<'v, V: Visitor<'v>>(visitor: &mut V, label: &'v Label) {
 pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime) {
     visitor.visit_id(lifetime.id);
     match lifetime.name {
-        LifetimeName::Name(name) => {
+        LifetimeName::Param(ParamName::Plain(name)) => {
             visitor.visit_name(lifetime.span, name);
         }
-        LifetimeName::Fresh(_) |
+        LifetimeName::Param(ParamName::Fresh(_)) |
         LifetimeName::Static |
         LifetimeName::Implicit |
         LifetimeName::Underscore => {}
@@ -742,20 +742,13 @@ pub fn walk_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v ParamBou
 
 pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v GenericParam) {
     visitor.visit_id(param.id);
+    match param.name {
+        ParamName::Plain(name) => visitor.visit_name(param.span, name),
+        ParamName::Fresh(_) => {}
+    }
     match param.kind {
-        GenericParamKind::Lifetime { ref lt_name, .. } => {
-            match lt_name {
-                LifetimeName::Name(name) => {
-                    visitor.visit_name(param.span, *name);
-                }
-                LifetimeName::Fresh(_) |
-                LifetimeName::Static |
-                LifetimeName::Implicit |
-                LifetimeName::Underscore => {}
-            }
-        }
+        GenericParamKind::Lifetime { .. } => {}
         GenericParamKind::Type { ref default, ref attrs, .. } => {
-            visitor.visit_name(param.span, param.name);
             walk_list!(visitor, visit_ty, default);
             walk_list!(visitor, visit_attribute, attrs.iter());
         }

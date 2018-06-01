@@ -201,12 +201,9 @@ pub struct Lifetime {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
-pub enum LifetimeName {
-    /// User typed nothing. e.g. the lifetime in `&u32`.
-    Implicit,
-
-    /// User typed `'_`.
-    Underscore,
+pub enum ParamName {
+    /// Some user-given name like `T` or `'x`.
+    Plain(Name),
 
     /// Synthetic name generated when user elided a lifetime in an impl header,
     /// e.g. the lifetimes in cases like these:
@@ -222,12 +219,30 @@ pub enum LifetimeName {
     /// where `'f` is something like `Fresh(0)`. The indices are
     /// unique per impl, but not necessarily continuous.
     Fresh(usize),
+}
+
+impl ParamName {
+    pub fn name(&self) -> Name {
+        match *self {
+            ParamName::Plain(name) => name,
+            ParamName::Fresh(_) => keywords::UnderscoreLifetime.name(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
+pub enum LifetimeName {
+    /// User-given names or fresh (synthetic) names.
+    Param(ParamName),
+
+    /// User typed nothing. e.g. the lifetime in `&u32`.
+    Implicit,
+
+    /// User typed `'_`.
+    Underscore,
 
     /// User wrote `'static`
     Static,
-
-    /// Some user-given name like `'x`
-    Name(Name),
 }
 
 impl LifetimeName {
@@ -235,9 +250,9 @@ impl LifetimeName {
         use self::LifetimeName::*;
         match *self {
             Implicit => keywords::Invalid.name(),
-            Fresh(_) | Underscore => keywords::UnderscoreLifetime.name(),
+            Underscore => keywords::UnderscoreLifetime.name(),
             Static => keywords::StaticLifetime.name(),
-            Name(name) => name,
+            Param(param_name) => param_name.name(),
         }
     }
 
@@ -251,7 +266,7 @@ impl LifetimeName {
             // in the compiler is concerned -- `Fresh(_)` variants act
             // equivalently to "some fresh name". They correspond to
             // early-bound regions on an impl, in other words.
-            Fresh(_) | Static | Name(_) => false,
+            Param(_) | Static => false,
         }
     }
 
@@ -449,7 +464,6 @@ pub type ParamBounds = HirVec<ParamBound>;
 pub enum GenericParamKind {
     /// A lifetime definition, eg `'a: 'b + 'c + 'd`.
     Lifetime {
-        lt_name: LifetimeName,
         // Indicates that the lifetime definition was synthetically added
         // as a result of an in-band lifetime usage like:
         // `fn foo(x: &'a u8) -> &'a u8 { x }`
@@ -465,7 +479,7 @@ pub enum GenericParamKind {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct GenericParam {
     pub id: NodeId,
-    pub name: Name,
+    pub name: ParamName,
     pub bounds: ParamBounds,
     pub span: Span,
     pub pure_wrt_drop: bool,

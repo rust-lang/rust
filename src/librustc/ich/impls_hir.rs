@@ -142,12 +142,16 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItemId {
     }
 }
 
+impl_stable_hash_for!(enum hir::ParamName {
+    Plain(name),
+    Fresh(index)
+});
+
 impl_stable_hash_for!(enum hir::LifetimeName {
+    Param(param_name),
     Implicit,
     Underscore,
-    Fresh(index),
     Static,
-    Name(name)
 });
 
 impl_stable_hash_for!(struct hir::Label {
@@ -209,8 +213,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::GenericParamKind {
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
-            hir::GenericParamKind::Lifetime { lt_name, in_band } => {
-                lt_name.hash_stable(hcx, hasher);
+            hir::GenericParamKind::Lifetime { in_band } => {
                 in_band.hash_stable(hcx, hasher);
             }
             hir::GenericParamKind::Type { ref default, synthetic, attrs } => {

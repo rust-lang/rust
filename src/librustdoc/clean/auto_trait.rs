@@ -251,15 +251,15 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             match param.kind {
                 ty::GenericParamDefKind::Lifetime => {
                     let name = if param.name == "" {
-                        hir::LifetimeName::Static
+                        hir::ParamName::Plain(keywords::StaticLifetime.name())
                     } else {
-                        hir::LifetimeName::Name(param.name.as_symbol())
+                        hir::ParamName::Plain(param.name.as_symbol())
                     };
 
                     args.push(hir::GenericArg::Lifetime(hir::Lifetime {
                         id: ast::DUMMY_NODE_ID,
                         span: DUMMY_SP,
-                        name,
+                        name: hir::LifetimeName::Param(name),
                     }));
                 }
                 ty::GenericParamDefKind::Type {..} => {
