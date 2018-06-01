@@ -1610,6 +1610,16 @@ impl<'a> Resolver<'a> {
         DefCollector::new(&mut definitions, Mark::root())
             .collect_root(crate_name, session.local_crate_disambiguator());
 
+        let mut extern_prelude: FxHashSet<Name> =
+            session.opts.externs.iter().map(|kv| Symbol::intern(kv.0)).collect();
+        if !attr::contains_name(&krate.attrs, "no_core") {
+            if !attr::contains_name(&krate.attrs, "no_std") {
+                extern_prelude.insert(Symbol::intern("std"));
+            } else {
+                extern_prelude.insert(Symbol::intern("core"));
+            }
+        }
+
         let mut invocations = FxHashMap();
         invocations.insert(Mark::root(),
                            arenas.alloc_invocation_data(InvocationData::root(graph_root)));
@@ -1630,7 +1640,7 @@ impl<'a> Resolver<'a> {
             // AST.
             graph_root,
             prelude: None,
-            extern_prelude: session.opts.externs.iter().map(|kv| Symbol::intern(kv.0)).collect(),
+            extern_prelude,
 
             has_self: FxHashSet(),
             field_names: FxHashMap(),
