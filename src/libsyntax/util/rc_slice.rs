@@ -17,7 +17,7 @@ use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
 
 #[derive(Clone)]
 pub struct RcSlice<T> {
-    data: Lrc<Box<[T]>>,
+    data: Lrc<[T]>,
     offset: u32,
     len: u32,
 }
@@ -27,7 +27,7 @@ impl<T> RcSlice<T> {
         RcSlice {
             offset: 0,
             len: vec.len() as u32,
-            data: Lrc::new(vec.into_boxed_slice()),
+            data: vec.into(),
         }
     }
 
