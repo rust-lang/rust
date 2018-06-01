@@ -66,7 +66,7 @@ where
     liveness: &'gen LivenessResults,
     flow_inits: &'gen mut FlowAtLocation<MaybeInitializedPlaces<'flow, 'gcx, 'tcx>>,
     move_data: &'gen MoveData<'tcx>,
-    drop_data: FxHashMap<Local, DropData<'tcx>>,
+    drop_data: FxHashMap<Ty<'tcx>, DropData<'tcx>>,
 }
 
 struct DropData<'tcx> {
@@ -194,7 +194,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
             dropped_local, dropped_ty, location
         );
 
-        let drop_data = self.drop_data.entry(dropped_local).or_insert_with({
+        let drop_data = self.drop_data.entry(dropped_ty).or_insert_with({
             let cx = &mut self.cx;
             move || Self::compute_drop_data(cx, dropped_ty)
         });
