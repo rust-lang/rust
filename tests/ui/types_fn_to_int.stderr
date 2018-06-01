@@ -1,22 +1,66 @@
 error: casting a `fn(usize) -> Foo {Foo::A}` to `i32` may truncate the function address value.
-  --> $DIR/types_fn_to_int.rs:12:13
+  --> $DIR/types_fn_to_int.rs:12:14
    |
-12 |     let y = x as i32;
-   |             ^^^^^^^^ help: if you need the address of the function, consider: `x as usize`
+12 |     let _y = x as i32;
+   |              ^^^^^^^^ help: if you need the address of the function, consider: `x as usize`
    |
-   = note: #[deny(fn_to_numeric_cast)] on by default
+   = note: #[deny(fn_to_numeric_cast_with_truncation)] on by default
 
 error: casting a `fn(usize) -> Foo {Foo::A}` to `i32` may truncate the function address value.
-  --> $DIR/types_fn_to_int.rs:13:14
+  --> $DIR/types_fn_to_int.rs:13:15
    |
-13 |     let y1 = Foo::A as i32;
-   |              ^^^^^^^^^^^^^ help: if you need the address of the function, consider: `Foo::A as usize`
+13 |     let _y1 = Foo::A as i32;
+   |               ^^^^^^^^^^^^^ help: if you need the address of the function, consider: `Foo::A as usize`
+
+error: casting a `fn(usize) -> Foo {Foo::A}` to `u32` may truncate the function address value.
+  --> $DIR/types_fn_to_int.rs:14:14
+   |
+14 |     let _y = x as u32;
+   |              ^^^^^^^^ help: if you need the address of the function, consider: `x as usize`
 
 error: casting a `fn() -> i32 {bar}` to `u32` may truncate the function address value.
-  --> $DIR/types_fn_to_int.rs:15:13
+  --> $DIR/types_fn_to_int.rs:15:14
    |
-15 |     let z = bar as u32;
-   |             ^^^^^^^^^^ help: if you need the address of the function, consider: `bar as usize`
+15 |     let _z = bar as u32;
+   |              ^^^^^^^^^^ help: if you need the address of the function, consider: `bar as usize`
 
-error: aborting due to 3 previous errors
+error: casting a `fn() -> i32 {bar}` to `i64` may truncate the function address value.
+  --> $DIR/types_fn_to_int.rs:16:14
+   |
+16 |     let _y = bar as i64;
+   |              ^^^^^^^^^^ help: if you need the address of the function, consider: `bar as usize`
+
+error: casting a `fn() -> i32 {bar}` to `u64` is bad style.
+  --> $DIR/types_fn_to_int.rs:17:14
+   |
+17 |     let _y = bar as u64;
+   |              ^^^^^^^^^^ help: if you need the address of the function, consider: `bar as usize`
+   |
+   = note: `-D fn-to-numeric-cast` implied by `-D warnings`
+
+error: casting a `fn(usize) -> Foo {Foo::A}` to `i128` is bad style.
+  --> $DIR/types_fn_to_int.rs:18:14
+   |
+18 |     let _z = Foo::A as i128;
+   |              ^^^^^^^^^^^^^^ help: if you need the address of the function, consider: `Foo::A as usize`
+
+error: casting a `fn(usize) -> Foo {Foo::A}` to `u128` is bad style.
+  --> $DIR/types_fn_to_int.rs:19:14
+   |
+19 |     let _z = Foo::A as u128;
+   |              ^^^^^^^^^^^^^^ help: if you need the address of the function, consider: `Foo::A as usize`
+
+error: casting a `fn() -> i32 {bar}` to `i128` is bad style.
+  --> $DIR/types_fn_to_int.rs:20:14
+   |
+20 |     let _z = bar as i128;
+   |              ^^^^^^^^^^^ help: if you need the address of the function, consider: `bar as usize`
+
+error: casting a `fn() -> i32 {bar}` to `u128` is bad style.
+  --> $DIR/types_fn_to_int.rs:21:14
+   |
+21 |     let _z = bar as u128;
+   |              ^^^^^^^^^^^ help: if you need the address of the function, consider: `bar as usize`
+
+error: aborting due to 10 previous errors
 
