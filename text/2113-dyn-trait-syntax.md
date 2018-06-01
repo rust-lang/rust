@@ -25,7 +25,7 @@ Because it makes traits and trait objects appear indistinguishable. Some specifi
 - `impl MyTrait {}` is valid syntax, which can easily be mistaken for adding default impls of methods or adding extension methods or some other useful operation on the trait itself. In reality, it adds inherent methods to the trait object.
 - Function types and function traits only differ in the capitalization of one letter. This leads to function pointers `&fn ...` and function trait objects `&Fn ...` differing only in one letter, making it very easy to mistake one for the other.
 
-Making one of these mistakes typically leads to an error about the trait not implemeting Sized, which is at best misleading and unhelpful. It may be possible to produce better error messages today, but the compiler can only do so much when most of this "obviously wrong" syntax is technically legal.
+Making one of these mistakes typically leads to an error about the trait not implementing Sized, which is at best misleading and unhelpful. It may be possible to produce better error messages today, but the compiler can only do so much when most of this "obviously wrong" syntax is technically legal.
 
 ### favors a feature that is not more frequently used than its alternatives
 
