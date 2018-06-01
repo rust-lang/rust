@@ -17,7 +17,7 @@ pub use self::IntType::*;
 use ast;
 use ast::{AttrId, Attribute, Name, Ident, Path, PathSegment};
 use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
-use ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind};
+use ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind, GenericParam};
 use codemap::{BytePos, Spanned, respan, dummy_spanned};
 use syntax_pos::Span;
 use errors::{Applicability, Handler};
@@ -1444,6 +1444,22 @@ impl HasAttrs for Stmt {
     }
 }
 
+impl HasAttrs for GenericParam {
+    fn attrs(&self) -> &[ast::Attribute] {
+        match self {
+            GenericParam::Lifetime(lifetime) => lifetime.attrs(),
+            GenericParam::Type(ty) => ty.attrs(),
+        }
+    }
+
+    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
+        match self {
+            GenericParam::Lifetime(lifetime) => GenericParam::Lifetime(lifetime.map_attrs(f)),
+            GenericParam::Type(ty) => GenericParam::Type(ty.map_attrs(f)),
+        }
+    }
+}
+
 macro_rules! derive_has_attrs {
     ($($ty:path),*) => { $(
         impl HasAttrs for $ty {
@@ -1463,5 +1479,5 @@ macro_rules! derive_has_attrs {
 
 derive_has_attrs! {
     Item, Expr, Local, ast::ForeignItem, ast::StructField, ast::ImplItem, ast::TraitItem, ast::Arm,
-    ast::Field, ast::FieldPat, ast::Variant_
+    ast::Field, ast::FieldPat, ast::Variant_, ast::LifetimeDef, ast::TyParam
 }

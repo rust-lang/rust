@@ -598,7 +598,7 @@ declare_features! (
     // allow `'_` placeholder lifetimes
     (accepted, underscore_lifetimes, "1.26.0", Some(44524), None),
     // Allows attributes on lifetime/type formal parameters in generics (RFC 1327)
-    (accepted, generic_param_attrs, "1.26.0", Some(48848), None),
+    (accepted, generic_param_attrs, "1.27.0", Some(48848), None),
     // Allows cfg(target_feature = "...").
     (accepted, cfg_target_feature, "1.27.0", Some(29717), None),
     // Allows #[target_feature(...)]
