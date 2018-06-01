@@ -86,52 +86,108 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
     type Output = String;
 
     fn concat(&self) -> String {
-        if self.is_empty() {
-            return String::new();
-        }
-
-        // `len` calculation may overflow but push_str will check boundaries
-        let len = self.iter().map(|s| s.borrow().len()).sum();
-        let mut result = String::with_capacity(len);
-
-        for s in self {
-            result.push_str(s.borrow())
-        }
-
-        result
+        self.join("")
     }
 
     fn join(&self, sep: &str) -> String {
-        if self.is_empty() {
-            return String::new();
+        unsafe {
+            String::from_utf8_unchecked( join_generic_copy(self, sep.as_bytes()) )
         }
-
-        // concat is faster
-        if sep.is_empty() {
-            return self.concat();
-        }
-
-        // this is wrong without the guarantee that `self` is non-empty
-        // `len` calculation may overflow but push_str but will check boundaries
-        let len = sep.len() * (self.len() - 1) +
-                  self.iter().map(|s| s.borrow().len()).sum::<usize>();
-        let mut result = String::with_capacity(len);
-        let mut first = true;
-
-        for s in self {
-            if first {
-                first = false;
-            } else {
-                result.push_str(sep);
-            }
-            result.push_str(s.borrow());
-        }
-        result
     }
 
     fn connect(&self, sep: &str) -> String {
         self.join(sep)
     }
+}
+
+macro_rules! spezialize_for_lengths {
+    ($separator:expr, $target:expr, $iter:expr; $($num:expr),*) => {
+        let mut target = $target;
+        let iter = $iter;
+        let sep_bytes = $separator;
+        match $separator.len() {
+            $(
+                // loops with hardcoded sizes run much faster
+                // specialize the cases with small separator lengths
+                $num => {
+                    for s in iter {
+                        copy_slice_and_advance!(target, sep_bytes);
+                        copy_slice_and_advance!(target, s.borrow().as_ref());
+                    }
+                },
+            )*
+            _ => {
+                // arbitrary non-zero size fallback
+                for s in iter {
+                    copy_slice_and_advance!(target, sep_bytes);
+                    copy_slice_and_advance!(target, s.borrow().as_ref());
+                }
+            }
+        }
+    };
+}
+
+macro_rules! copy_slice_and_advance {
+    ($target:expr, $bytes:expr) => {
+        let len = $bytes.len();
+        let (head, tail) = {$target}.split_at_mut(len);
+        head.copy_from_slice($bytes);
+        $target = tail;
+    }
+}
+
+// Optimized join implementation that works for both Vec<T> (T: Copy) and String's inner vec
+// Currently (2018-05-13) there is a bug with type inference and specialization (see issue #36262)
+// For this reason SliceConcatExt<T> is not specialized for T: Copy and SliceConcatExt<str> is the
+// only user of this function. It is left in place for the time when that is fixed.
+//
+// the bounds for String-join are S: Borrow<str> and for Vec-join Borrow<[T]>
+// [T] and str both impl AsRef<[T]> for some T
+// => s.borrow().as_ref() and we always have slices
+fn join_generic_copy<B, T, S>(slice: &[S], sep: &[T]) -> Vec<T>
+where
+    T: Copy,
+    B: AsRef<[T]> + ?Sized,
+    S: Borrow<B>,
+{
+    let sep_len = sep.len();
+    let mut iter = slice.iter();
+
+    // the first slice is the only one without a separator preceding it
+    let first = match iter.next() {
+        Some(first) => first,
+        None => return vec![],
+    };
+
+    // compute the exact total length of the joined Vec
+    // if the `len` calculation overflows, we'll panic
+    // we would have run out of memory anyway and the rest of the function requires
+    // the entire Vec pre-allocated for safety
+    let len =  sep_len.checked_mul(iter.len()).and_then(|n| {
+            slice.iter()
+                .map(|s| s.borrow().as_ref().len())
+                .try_fold(n, usize::checked_add)
+        }).expect("attempt to join into collection with len > usize::MAX");
+
+    // crucial for safety
+    let mut result = Vec::with_capacity(len);
+    assert!(result.capacity() >= len);
+
+    result.extend_from_slice(first.borrow().as_ref());
+
+    unsafe {
+        {
+            let pos = result.len();
+            let target = result.get_unchecked_mut(pos..len);
+
+            // copy separator and slices over without bounds checks
+            // generate loops with hardcoded offsets for small separators
+            // massive improvements possible (~ x2)
+            spezialize_for_lengths!(sep, target, iter; 0, 1, 2, 3, 4);
+        }
+        result.set_len(len);
+    }
+    result
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
