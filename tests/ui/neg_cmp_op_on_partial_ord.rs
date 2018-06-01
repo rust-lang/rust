@@ -4,7 +4,6 @@
 
 use std::cmp::Ordering;
 
-#[allow(nonminimal_bool)]
 #[warn(neg_cmp_op_on_partial_ord)]
 fn main() {
 

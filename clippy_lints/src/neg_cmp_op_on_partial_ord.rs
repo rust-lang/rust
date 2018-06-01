@@ -1,10 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
 
-use crate::utils;
-
-const ORD: [&str; 3] = ["core", "cmp", "Ord"];
-const PARTIAL_ORD: [&str; 3] = ["core", "cmp", "PartialOrd"];
+use crate::utils::{self, paths};
 
 /// **What it does:**
 /// Checks for the usage of negated comparision operators on types which only implement
@@ -65,7 +62,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {
                 let ty = cx.tables.expr_ty(left);
 
                 let implements_ord = {
-                    if let Some(id) = utils::get_trait_def_id(cx, &ORD) {
+                    if let Some(id) = utils::get_trait_def_id(cx, &paths::ORD) {
                         utils::implements_trait(cx, ty, id, &[])
                     } else {
                         return;
@@ -73,7 +70,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {
                 };
 
                 let implements_partial_ord = {
-                    if let Some(id) = utils::get_trait_def_id(cx, &PARTIAL_ORD) {
+                    if let Some(id) = utils::get_trait_def_id(cx, &paths::PARTIAL_ORD) {
                         utils::implements_trait(cx, ty, id, &[])
                     } else {
                         return;
