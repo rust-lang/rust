@@ -844,7 +844,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
 
         // Forget all the relocations.
-        alloc.relocations.remove_range(first ..= last);
+        alloc.relocations.remove_range(first..last);
 
         Ok(())
     }
