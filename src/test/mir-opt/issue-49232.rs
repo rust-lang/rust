@@ -23,9 +23,9 @@ fn main() {
 //     let mut _5: ();
 //     let mut _6: &i32;
 //     scope 1 {
+//         let _2: i32;
 //     }
 //     scope 2 {
-//         let _2: i32;
 //     }
 //     bb0: {
 //         goto -> bb1;

@@ -505,14 +505,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             UserTypeProjections::none(),
             &mut |this, mutability, name, mode, var, span, ty, user_ty| {
                 if visibility_scope.is_none() {
-                    visibility_scope =
-                        Some(this.new_source_scope(scope_span, LintLevel::Inherited, None));
                     // If we have lints, create a new source scope
                     // that marks the lints for the locals. See the comment
                     // on the `source_info` field for why this is needed.
                     if lint_level.is_explicit() {
                         scope = this.new_source_scope(scope_span, lint_level, None);
                     }
+                visibility_scope = Some(this.new_source_scope(scope_span,
+                                                           LintLevel::Inherited,
+                                                           None));
                 }
                 let source_info = SourceInfo { span, scope };
                 let visibility_scope = visibility_scope.unwrap();

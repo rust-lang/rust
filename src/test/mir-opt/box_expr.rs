@@ -26,9 +26,9 @@ impl Drop for S {
 //     let mut _3: ();
 //     let mut _4: std::boxed::Box<S>;
 //     scope 1 {
+//         let _1: std::boxed::Box<S>;
 //     }
 //     scope 2 {
-//         let _1: std::boxed::Box<S>;
 //     }
 //     bb0: {
 //         StorageLive(_1);

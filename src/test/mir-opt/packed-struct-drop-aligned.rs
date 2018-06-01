@@ -24,9 +24,9 @@ impl Drop for Droppy {
 //     let mut _5: Droppy;
 //     let mut _6: Aligned;
 //     scope 1 {
+//         let mut _1: Packed;
 //     }
 //     scope 2 {
-//         let mut _1: Packed;
 //     }
 //
 //     bb0: {
