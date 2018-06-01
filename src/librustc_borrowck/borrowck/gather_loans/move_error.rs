@@ -140,7 +140,6 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &'a BorrowckCtxt<'a, 'tcx>,
                                        -> DiagnosticBuilder<'a> {
     match move_from.cat {
         Categorization::Deref(_, mc::BorrowedPtr(..)) |
-        Categorization::Deref(_, mc::Implicit(..)) |
         Categorization::Deref(_, mc::UnsafePtr(..)) |
         Categorization::StaticItem => {
             bccx.cannot_move_out_of(

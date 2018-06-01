@@ -1,3 +1,13 @@
+Version 1.26.2 (2018-06-05)
+==========================
+
+Compatibility Notes
+-------------------
+
+- [The borrow checker was fixed to avoid unsoundness when using match ergonomics][51117]
+
+[51117]: https://github.com/rust-lang/rust/issues/51117
+
 Version 1.26.1 (2018-05-29)
 ==========================
 

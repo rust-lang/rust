@@ -328,8 +328,7 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
             guarantor.cat
         );
         match guarantor.cat {
-            Categorization::Deref(_, mc::BorrowedPtr(..)) |
-            Categorization::Deref(_, mc::Implicit(..)) => {
+            Categorization::Deref(_, mc::BorrowedPtr(..)) => {
                 debug!(
                     "adjust_upvar_borrow_kind_for_consume: found deref with note {:?}",
                     cmt.note
@@ -367,7 +366,7 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
                             var_name(tcx, upvar_id.var_id),
                         );
                     }
-                    mc::NoteNone => {}
+                    mc::NoteIndex | mc::NoteNone => {}
                 }
             }
             _ => {}
@@ -389,8 +388,7 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
                 self.adjust_upvar_borrow_kind_for_mut(base);
             }
 
-            Categorization::Deref(base, mc::BorrowedPtr(..)) |
-            Categorization::Deref(base, mc::Implicit(..)) => {
+            Categorization::Deref(base, mc::BorrowedPtr(..)) => {
                 if !self.try_adjust_upvar_deref(cmt, ty::MutBorrow) {
                     // assignment to deref of an `&mut`
                     // borrowed pointer implies that the
@@ -422,8 +420,7 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
                 self.adjust_upvar_borrow_kind_for_unique(base);
             }
 
-            Categorization::Deref(base, mc::BorrowedPtr(..)) |
-            Categorization::Deref(base, mc::Implicit(..)) => {
+            Categorization::Deref(base, mc::BorrowedPtr(..)) => {
                 if !self.try_adjust_upvar_deref(cmt, ty::UniqueImmBorrow) {
                     // for a borrowed pointer to be unique, its
                     // base must be unique
@@ -481,7 +478,7 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
 
                 true
             }
-            mc::NoteNone => false,
+            mc::NoteIndex | mc::NoteNone => false,
         }
     }
 

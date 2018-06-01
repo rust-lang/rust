@@ -137,17 +137,30 @@ impl<'tcx> ProjectionTyCandidateSet<'tcx> {
     fn push_candidate(&mut self, candidate: ProjectionTyCandidate<'tcx>) -> bool {
         use self::ProjectionTyCandidateSet::*;
         use self::ProjectionTyCandidate::*;
+
+        // This wacky variable is just used to try and
+        // make code readable and avoid confusing paths.
+        // It is assigned a "value" of `()` only on those
+        // paths in which we wish to convert `*self` to
+        // ambiguous (and return false, because the candidate
+        // was not used). On other paths, it is not assigned,
+        // and hence if those paths *could* reach the code that
+        // comes after the match, this fn would not compile.
+        let convert_to_ambigious;
+
         match self {
             None => {
                 *self = Single(candidate);
-                true
+                return true;
             }
+
             Single(current) => {
                 // Duplicates can happen inside ParamEnv. In the case, we
                 // perform a lazy deduplication.
                 if current == &candidate {
                     return false;
                 }
+
                 // Prefer where-clauses. As in select, if there are multiple
                 // candidates, we prefer where-clause candidates over impls.  This
                 // may seem a bit surprising, since impls are the source of
@@ -156,17 +169,23 @@ impl<'tcx> ProjectionTyCandidateSet<'tcx> {
                 // clauses are the safer choice. See the comment on
                 // `select::SelectionCandidate` and #21974 for more details.
                 match (current, candidate) {
-                    (ParamEnv(..), ParamEnv(..)) => { *self = Ambiguous; }
-                    (ParamEnv(..), _) => {}
+                    (ParamEnv(..), ParamEnv(..)) => convert_to_ambigious = (),
+                    (ParamEnv(..), _) => return false,
                     (_, ParamEnv(..)) => { unreachable!(); }
-                    (_, _) => { *self = Ambiguous; }
+                    (_, _) => convert_to_ambigious = (),
                 }
-                false
             }
+
             Ambiguous | Error(..) => {
-                false
+                return false;
             }
         }
+
+        // We only ever get here when we moved from a single candidate
+        // to ambiguous.
+        let () = convert_to_ambigious;
+        *self = Ambiguous;
+        false
     }
 }
 
