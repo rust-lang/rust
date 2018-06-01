@@ -20,9 +20,9 @@ use dataflow::MaybeInitializedPlaces;
 use rustc::hir::def_id::DefId;
 use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
 use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
+use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
-use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::*;
 use rustc::traits::query::NoSolution;
 use rustc::traits::{self, Normalized, TraitEngine};
@@ -300,7 +300,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
         debug!("sanitize_constant: expected_ty={:?}", expected_ty);
 
-        if let Err(terr) = self.cx
+        if let Err(terr) = self
+            .cx
             .eq_types(expected_ty, constant.ty, location.at_self())
         {
             span_mirbug!(
@@ -667,7 +668,7 @@ pub enum Locations {
         /// NLL RFC, when you have a constraint `R1: R2 @ P`, this field
         /// is the `P` value.
         at_location: Location,
-    }
+    },
 }
 
 impl Locations {
@@ -721,7 +722,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         OP: FnOnce(&mut Self) -> InferResult<'tcx, R>,
     {
         if cfg!(debug_assertions) {
-            info!("fully_perform_op(describe_op={}) at {:?}", describe_op(), locations);
+            info!(
+                "fully_perform_op(describe_op={}) at {:?}",
+                describe_op(),
+                locations
+            );
         }
 
         let mut fulfill_cx = TraitEngine::new(self.infcx.tcx);
@@ -845,7 +850,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             }
             StatementKind::UserAssertTy(ref c_ty, ref local) => {
                 let local_ty = mir.local_decls()[*local].ty;
-                let (ty, _) = self.infcx
+                let (ty, _) = self
+                    .infcx
                     .instantiate_canonical_with_fresh_inference_vars(stmt.source_info.span, c_ty);
                 debug!(
                     "check_stmt: user_assert_ty ty={:?} local_ty={:?}",
@@ -1457,9 +1463,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             };
             let operand_ty = operand.ty(mir, tcx);
-            if let Err(terr) =
-                self.sub_types(operand_ty, field_ty, location.at_self())
-            {
+            if let Err(terr) = self.sub_types(operand_ty, field_ty, location.at_self()) {
                 span_mirbug!(
                     self,
                     rvalue,
