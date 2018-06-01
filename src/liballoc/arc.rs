@@ -16,6 +16,7 @@
 //!
 //! [arc]: struct.Arc.html
 
+use core::any::Any;
 use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 use core::borrow;
@@ -971,6 +972,44 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
     }
 }
 
+impl Arc<Any + Send + Sync> {
+    #[inline]
+    #[unstable(feature = "rc_downcast", issue = "44608")]
+    /// Attempt to downcast the `Arc<Any + Send + Sync>` to a concrete type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(rc_downcast)]
+    /// use std::any::Any;
+    /// use std::sync::Arc;
+    ///
+    /// fn print_if_string(value: Arc<Any + Send + Sync>) {
+    ///     if let Ok(string) = value.downcast::<String>() {
+    ///         println!("String ({}): {}", string.len(), string);
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let my_string = "Hello World".to_string();
+    ///     print_if_string(Arc::new(my_string));
+    ///     print_if_string(Arc::new(0i8));
+    /// }
+    /// ```
+    pub fn downcast<T>(self) -> Result<Arc<T>, Self>
+    where
+        T: Any + Send + Sync + 'static,
+    {
+        if (*self).is::<T>() {
+            let ptr = self.ptr.cast::<ArcInner<T>>();
+            mem::forget(self);
+            Ok(Arc { ptr, phantom: PhantomData })
+        } else {
+            Err(self)
+        }
+    }
+}
+
 impl<T> Weak<T> {
     /// Constructs a new `Weak<T>`, allocating memory for `T` without initializing
     /// it. Calling [`upgrade`] on the return value always gives [`None`].
@@ -1843,6 +1882,26 @@ mod tests {
         let r: Arc<[u32]> = Arc::from(v);
 
         assert_eq!(&r[..], [1, 2, 3]);
+    }
+
+    #[test]
+    fn test_downcast() {
+        use std::any::Any;
+
+        let r1: Arc<Any + Send + Sync> = Arc::new(i32::max_value());
+        let r2: Arc<Any + Send + Sync> = Arc::new("abc");
+
+        assert!(r1.clone().downcast::<u32>().is_err());
+
+        let r1i32 = r1.downcast::<i32>();
+        assert!(r1i32.is_ok());
+        assert_eq!(r1i32.unwrap(), Arc::new(i32::max_value()));
+
+        assert!(r2.clone().downcast::<i32>().is_err());
+
+        let r2str = r2.downcast::<&'static str>();
+        assert!(r2str.is_ok());
+        assert_eq!(r2str.unwrap(), Arc::new("abc"));
     }
 }
 
