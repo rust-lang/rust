@@ -848,12 +848,6 @@ host_test!(RunPassFullDeps {
     suite: "run-pass-fulldeps"
 });
 
-host_test!(RunFailFullDeps {
-    path: "src/test/run-fail-fulldeps",
-    mode: "run-fail",
-    suite: "run-fail-fulldeps"
-});
-
 host_test!(Rustdoc {
     path: "src/test/rustdoc",
     mode: "rustdoc",
@@ -885,20 +879,6 @@ test!(RunPassValgrindPretty {
     path: "src/test/run-pass-valgrind/pretty",
     mode: "pretty",
     suite: "run-pass-valgrind",
-    default: false,
-    host: true
-});
-test!(RunPassFullDepsPretty {
-    path: "src/test/run-pass-fulldeps/pretty",
-    mode: "pretty",
-    suite: "run-pass-fulldeps",
-    default: false,
-    host: true
-});
-test!(RunFailFullDepsPretty {
-    path: "src/test/run-fail-fulldeps/pretty",
-    mode: "pretty",
-    suite: "run-fail-fulldeps",
     default: false,
     host: true
 });

@@ -8,7 +8,6 @@ use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
 use errors::{FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
-use ptr::P;
 use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree};
 use diagnostics::plugin::ErrorMap;
@@ -133,25 +132,6 @@ pub fn parse_crate_from_source_str(name: FileName, source: String, sess: &ParseS
 pub fn parse_crate_attrs_from_source_str(name: FileName, source: String, sess: &ParseSess)
                                              -> PResult<Vec<ast::Attribute>> {
     new_parser_from_source_str(sess, name, source).parse_inner_attributes()
-}
-
-crate fn parse_expr_from_source_str(name: FileName, source: String, sess: &ParseSess)
-                                      -> PResult<P<ast::Expr>> {
-    new_parser_from_source_str(sess, name, source).parse_expr()
-}
-
-/// Parses an item.
-///
-/// Returns `Ok(Some(item))` when successful, `Ok(None)` when no item was found, and `Err`
-/// when a syntax error occurred.
-crate fn parse_item_from_source_str(name: FileName, source: String, sess: &ParseSess)
-                                      -> PResult<Option<P<ast::Item>>> {
-    new_parser_from_source_str(sess, name, source).parse_item()
-}
-
-crate fn parse_stmt_from_source_str(name: FileName, source: String, sess: &ParseSess)
-                                      -> PResult<Option<ast::Stmt>> {
-    new_parser_from_source_str(sess, name, source).parse_stmt()
 }
 
 pub fn parse_stream_from_source_str(name: FileName, source: String, sess: &ParseSess,
@@ -781,12 +761,21 @@ mod tests {
     use syntax_pos::{Span, BytePos, Pos, NO_EXPANSION};
     use ast::{self, Ident, PatKind};
     use attr::first_attr_value_str_by_name;
-    use parse;
+    use ptr::P;
     use print::pprust::item_to_string;
     use tokenstream::{DelimSpan, TokenTree};
     use util::parser_testing::string_to_stream;
     use util::parser_testing::{string_to_expr, string_to_item};
     use with_globals;
+
+    /// Parses an item.
+    ///
+    /// Returns `Ok(Some(item))` when successful, `Ok(None)` when no item was found, and `Err`
+    /// when a syntax error occurred.
+    fn parse_item_from_source_str(name: FileName, source: String, sess: &ParseSess)
+                                        -> PResult<Option<P<ast::Item>>> {
+        new_parser_from_source_str(sess, name, source).parse_item()
+    }
 
     // produce a syntax_pos::span
     fn sp(a: u32, b: u32) -> Span {
@@ -1016,9 +1005,15 @@ mod tests {
 
     #[test]
     fn ttdelim_span() {
+        fn parse_expr_from_source_str(
+            name: FileName, source: String, sess: &ParseSess
+        ) -> PResult<P<ast::Expr>> {
+            new_parser_from_source_str(sess, name, source).parse_expr()
+        }
+
         with_globals(|| {
             let sess = ParseSess::new(FilePathMapping::empty());
-            let expr = parse::parse_expr_from_source_str(PathBuf::from("foo").into(),
+            let expr = parse_expr_from_source_str(PathBuf::from("foo").into(),
                 "foo!( fn main() { body } )".to_string(), &sess).unwrap();
 
             let tts: Vec<_> = match expr.node {

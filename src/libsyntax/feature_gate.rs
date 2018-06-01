@@ -124,7 +124,6 @@ declare_features! (
 
     (active, link_llvm_intrinsics, "1.0.0", Some(29602), None),
     (active, linkage, "1.0.0", Some(29603), None),
-    (active, quote, "1.0.0", Some(29601), None),
 
     // rustc internal
     (active, rustc_diagnostic_macros, "1.0.0", None, None),
@@ -504,6 +503,7 @@ declare_features! (
     // Paths of the form: `extern::foo::bar`
     (removed, extern_in_paths, "1.33.0", Some(55600), None,
      Some("subsumed by `::foo::bar` paths")),
+    (removed, quote, "1.0.0", Some(29601), None, None),
 );
 
 declare_features! (

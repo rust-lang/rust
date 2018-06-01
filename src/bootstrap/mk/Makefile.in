@@ -53,7 +53,6 @@ check-aux:
 		src/test/run-fail/pretty \
 		src/test/run-pass-valgrind/pretty \
 		src/test/run-pass-fulldeps/pretty \
-		src/test/run-fail-fulldeps/pretty \
 		$(AUX_ARGS) \
 		$(BOOTSTRAP_ARGS)
 check-bootstrap:

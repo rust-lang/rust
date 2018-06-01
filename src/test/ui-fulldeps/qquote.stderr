@@ -1,9 +1,0 @@
-error[E0425]: cannot find value `abcd` in this scope
-  --> $DIR/qquote.rs:25:38
-   |
-LL |     let expr = quote_expr!(&cx, 2 - $abcd + 7); //~ ERROR cannot find value `abcd` in this scope
-   |                                      ^^^^ not found in this scope
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0425`.

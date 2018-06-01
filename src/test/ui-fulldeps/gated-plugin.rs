@@ -1,6 +1,6 @@
-// aux-build:macro_crate_test.rs
+// aux-build:attr_plugin_test.rs
 
-#![plugin(macro_crate_test)]
+#![plugin(attr_plugin_test)]
 //~^ ERROR compiler plugins are experimental and possibly buggy
 
 fn main() {}

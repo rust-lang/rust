@@ -12,7 +12,6 @@
 #![feature(nll)]
 #![allow(unused_attributes)]
 #![allow(dead_code)]
-#![feature(quote)]
 
 #![recursion_limit="256"]
 

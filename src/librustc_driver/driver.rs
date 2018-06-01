@@ -916,7 +916,7 @@ where
         crate_loader,
         &resolver_arenas,
     );
-    syntax_ext::register_builtins(&mut resolver, syntax_exts, sess.features_untracked().quote);
+    syntax_ext::register_builtins(&mut resolver, syntax_exts);
 
     // Expand all macros
     sess.profiler(|p| p.start_activity(ProfileCategory::Expansion));

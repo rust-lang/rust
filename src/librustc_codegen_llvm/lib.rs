@@ -17,7 +17,6 @@
 #![allow(unused_attributes)]
 #![feature(libc)]
 #![feature(nll)]
-#![feature(quote)]
 #![feature(range_contains)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]

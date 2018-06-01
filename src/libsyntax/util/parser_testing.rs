@@ -25,7 +25,7 @@ fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> T 
 {
     let mut p = string_to_parser(&ps, s);
     let x = panictry!(f(&mut p));
-    p.abort_if_errors();
+    p.sess.span_diagnostic.abort_if_errors();
     x
 }
 

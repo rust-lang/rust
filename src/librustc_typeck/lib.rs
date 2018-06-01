@@ -66,7 +66,6 @@ This API is completely unstable and subject to change.
 #![feature(crate_visibility_modifier)]
 #![feature(exhaustive_patterns)]
 #![feature(nll)]
-#![feature(quote)]
 #![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
