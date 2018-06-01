@@ -2044,6 +2044,7 @@ dependencies = [
  "parking_lot_core 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-rayon 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-rayon-core 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_cratesio_shim 0.0.0",
  "serialize 0.0.0",
  "stable_deref_trait 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",

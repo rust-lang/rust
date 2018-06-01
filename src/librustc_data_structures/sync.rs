@@ -36,7 +36,6 @@ use std::marker::PhantomData;
 use std::fmt::Debug;
 use std::fmt::Formatter;
 use std::fmt;
-use std;
 use std::ops::{Deref, DerefMut};
 use owning_ref::{Erased, OwningRef};
 
@@ -99,6 +98,33 @@ cfg_if! {
         use std::cell::RefCell as InnerLock;
 
         use std::cell::Cell;
+
+        #[derive(Debug)]
+        pub struct WorkerLocal<T>(OneThread<T>);
+
+        impl<T> WorkerLocal<T> {
+            /// Creates a new worker local where the `initial` closure computes the
+            /// value this worker local should take for each thread in the thread pool.
+            #[inline]
+            pub fn new<F: FnMut(usize) -> T>(mut f: F) -> WorkerLocal<T> {
+                WorkerLocal(OneThread::new(f(0)))
+            }
+
+            /// Returns the worker-local value for each thread
+            #[inline]
+            pub fn into_inner(self) -> Vec<T> {
+                vec![OneThread::into_inner(self.0)]
+            }
+        }
+
+        impl<T> Deref for WorkerLocal<T> {
+            type Target = T;
+
+            #[inline(always)]
+            fn deref(&self) -> &T {
+                &*self.0
+            }
+        }
 
         #[derive(Debug)]
         pub struct MTLock<T>(T);
@@ -200,8 +226,11 @@ cfg_if! {
         use parking_lot::Mutex as InnerLock;
         use parking_lot::RwLock as InnerRwLock;
 
+        use std;
         use std::thread;
         pub use rayon::{join, scope};
+
+        pub use rayon_core::WorkerLocal;
 
         pub use rayon::iter::ParallelIterator;
         use rayon::iter::IntoParallelIterator;
@@ -638,7 +667,9 @@ pub struct OneThread<T> {
     inner: T,
 }
 
+#[cfg(parallel_queries)]
 unsafe impl<T> std::marker::Sync for OneThread<T> {}
+#[cfg(parallel_queries)]
 unsafe impl<T> std::marker::Send for OneThread<T> {}
 
 impl<T> OneThread<T> {

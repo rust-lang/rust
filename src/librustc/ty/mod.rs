@@ -617,6 +617,8 @@ pub struct Slice<T> {
     opaque: OpaqueSliceContents,
 }
 
+unsafe impl<T: Sync> Sync for Slice<T> {}
+
 impl<T: Copy> Slice<T> {
     #[inline]
     fn from_arena<'tcx>(arena: &'tcx SyncDroplessArena, slice: &[T]) -> &'tcx Slice<T> {

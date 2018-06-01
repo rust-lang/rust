@@ -58,7 +58,7 @@ use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableVec};
 use arena::{TypedArena, SyncDroplessArena};
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::sync::{Lrc, Lock};
+use rustc_data_structures::sync::{self, Lrc, Lock, WorkerLocal};
 use std::any::Any;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -80,14 +80,14 @@ use syntax_pos::Span;
 use hir;
 
 pub struct AllArenas<'tcx> {
-    pub global: GlobalArenas<'tcx>,
+    pub global: WorkerLocal<GlobalArenas<'tcx>>,
     pub interner: SyncDroplessArena,
 }
 
 impl<'tcx> AllArenas<'tcx> {
     pub fn new() -> Self {
         AllArenas {
-            global: GlobalArenas::new(),
+            global: WorkerLocal::new(|_| GlobalArenas::new()),
             interner: SyncDroplessArena::new(),
         }
     }
@@ -854,7 +854,7 @@ impl<'a, 'gcx, 'tcx> Deref for TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 pub struct GlobalCtxt<'tcx> {
-    global_arenas: &'tcx GlobalArenas<'tcx>,
+    global_arenas: &'tcx WorkerLocal<GlobalArenas<'tcx>>,
     global_interners: CtxtInterners<'tcx>,
 
     cstore: &'tcx CrateStoreDyn,
@@ -1178,6 +1178,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             tx_to_llvm_workers: Lock::new(tx),
             output_filenames: Arc::new(output_filenames.clone()),
         };
+
+        sync::assert_send_val(&gcx);
 
         tls::enter_global(gcx, f)
     }
@@ -1704,7 +1706,7 @@ pub mod tls {
     use ty::maps;
     use errors::{Diagnostic, TRACK_DIAGNOSTICS};
     use rustc_data_structures::OnDrop;
-    use rustc_data_structures::sync::Lrc;
+    use rustc_data_structures::sync::{self, Lrc};
     use dep_graph::OpenTask;
 
     /// This is the implicit state of rustc. It contains the current
@@ -1832,6 +1834,10 @@ pub mod tls {
         if context == 0 {
             f(None)
         } else {
+            // We could get a ImplicitCtxt pointer from another thread.
+            // Ensure that ImplicitCtxt is Sync
+            sync::assert_sync::<ImplicitCtxt>();
+
             unsafe { f(Some(&*(context as *const ImplicitCtxt))) }
         }
     }

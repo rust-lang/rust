@@ -17,6 +17,8 @@
 #![feature(iterator_find_map)]
 #![feature(in_band_lifetimes)]
 
+#![recursion_limit="256"]
+
 extern crate chalk_engine;
 #[macro_use]
 extern crate log;

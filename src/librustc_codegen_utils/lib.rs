@@ -23,6 +23,8 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 
+#![recursion_limit="256"]
+
 extern crate ar;
 extern crate flate2;
 #[macro_use]
