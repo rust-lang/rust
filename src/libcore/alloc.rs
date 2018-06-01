@@ -364,7 +364,6 @@ impl fmt::Display for AllocErr {
 /// The `CannotReallocInPlace` error is used when `grow_in_place` or
 /// `shrink_in_place` were unable to reuse the given memory block for
 /// a requested layout.
-// FIXME: should this be in libcore or liballoc?
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct CannotReallocInPlace;
@@ -455,10 +454,6 @@ impl From<LayoutErr> for CollectionAllocErr {
 ///
 /// The `GlobalAlloc` trait is an `unsafe` trait for a number of reasons, and
 /// implementors must ensure that they adhere to these contracts:
-///
-/// * Pointers returned from allocation functions must point to valid memory and
-///   retain their validity until at least the instance of `GlobalAlloc` is dropped
-///   itself.
 ///
 /// * It's undefined behavior if global allocators unwind.  This restriction may
 ///   be lifted in the future, but currently a panic from any of these
