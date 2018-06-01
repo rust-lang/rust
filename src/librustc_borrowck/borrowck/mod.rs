@@ -1196,11 +1196,16 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 let let_span = self.tcx.hir.span(node_id);
                 match self.local_binding_mode(node_id) {
                     ty::BindByReference(..) => {
-                        let ref_span = self.tcx.sess.codemap().span_until_whitespace(let_span);
-                        if let Ok(_) = self.tcx.sess.codemap().span_to_snippet(let_span) {
+                        if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(let_span) {
+                            let replace_str = if snippet.starts_with("ref ") {
+                                snippet.replacen("ref ", "ref mut ", 1)
+                            } else {
+                                snippet
+                            };
                             db.span_label(
-                                ref_span,
-                                format!("consider changing this to `{}`", "ref mut"));
+                                let_span,
+                                format!("consider changing this to `{}`", replace_str)
+                            );
                         };
                     }
                     ty::BindByValue(..) => {
