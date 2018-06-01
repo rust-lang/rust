@@ -30,6 +30,7 @@ use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
 use std::fmt;
+use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use transform::{MirPass, MirSource};
@@ -616,7 +617,7 @@ pub struct OutlivesSet<'tcx> {
     /// Constraints generated. In terms of the NLL RFC, when you have
     /// a constraint `R1: R2 @ P`, the data in there specifies things
     /// like `R1: R2`.
-    pub data: RegionConstraintData<'tcx>,
+    pub data: Rc<RegionConstraintData<'tcx>>,
 }
 
 /// The `Locations` type summarizes *where* region constraints are
@@ -749,6 +750,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 "fully_perform_op: constraints generated at {:?} are {:#?}",
                 locations, data
             );
+            let data = Rc::new(data);
             self.constraints
                 .outlives_sets
                 .push(OutlivesSet { locations, data });

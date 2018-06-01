@@ -88,7 +88,7 @@ impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
                 constraints,
                 verifys,
                 givens,
-            } = data;
+            } = &**data;
 
             let span = self.mir
                 .source_info(locations.from_location().unwrap_or(Location::START))
