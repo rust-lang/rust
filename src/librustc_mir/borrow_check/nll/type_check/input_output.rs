@@ -21,17 +21,18 @@ use borrow_check::nll::renumber;
 use borrow_check::nll::universal_regions::UniversalRegions;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferOk;
-use rustc::ty::Ty;
-use rustc::ty::subst::Subst;
-use rustc::mir::*;
 use rustc::mir::visit::TyContext;
+use rustc::mir::*;
 use rustc::traits::PredicateObligations;
+use rustc::ty::subst::Subst;
+use rustc::ty::Ty;
 
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::{Locations, TypeChecker};
 
 impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
+    #[inline(never)]
     pub(super) fn equate_inputs_and_outputs(
         &mut self,
         mir: &Mir<'tcx>,
@@ -56,8 +57,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
 
         assert!(
-            mir.yield_ty.is_some() && universal_regions.yield_ty.is_some() ||
-            mir.yield_ty.is_none() && universal_regions.yield_ty.is_none()
+            mir.yield_ty.is_some() && universal_regions.yield_ty.is_some()
+                || mir.yield_ty.is_none() && universal_regions.yield_ty.is_none()
         );
         if let Some(mir_yield_ty) = mir.yield_ty {
             let ur_yield_ty = universal_regions.yield_ty.unwrap();
@@ -76,57 +77,66 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             output_ty
         );
         let mir_output_ty = mir.local_decls[RETURN_PLACE].ty;
-        let anon_type_map = self.fully_perform_op(Locations::All, |cx| {
-            let mut obligations = ObligationAccumulator::default();
+        let anon_type_map =
+            self.fully_perform_op(
+                Locations::All,
+                || format!("input_output"),
+                |cx| {
+                    let mut obligations = ObligationAccumulator::default();
 
-            let (output_ty, anon_type_map) = obligations.add(infcx.instantiate_anon_types(
-                mir_def_id,
-                cx.body_id,
-                cx.param_env,
-                &output_ty,
-            ));
-            debug!(
-                "equate_inputs_and_outputs: instantiated output_ty={:?}",
-                output_ty
-            );
-            debug!(
-                "equate_inputs_and_outputs: anon_type_map={:#?}",
-                anon_type_map
-            );
+                    let (output_ty, anon_type_map) = obligations.add(infcx.instantiate_anon_types(
+                        mir_def_id,
+                        cx.body_id,
+                        cx.param_env,
+                        &output_ty,
+                    ));
+                    debug!(
+                        "equate_inputs_and_outputs: instantiated output_ty={:?}",
+                        output_ty
+                    );
+                    debug!(
+                        "equate_inputs_and_outputs: anon_type_map={:#?}",
+                        anon_type_map
+                    );
 
-            debug!(
-                "equate_inputs_and_outputs: mir_output_ty={:?}",
-                mir_output_ty
-            );
-            obligations.add(infcx
-                .at(&cx.misc(cx.last_span), cx.param_env)
-                .eq(output_ty, mir_output_ty)?);
+                    debug!(
+                        "equate_inputs_and_outputs: mir_output_ty={:?}",
+                        mir_output_ty
+                    );
+                    obligations.add(
+                        infcx
+                            .at(&cx.misc(cx.last_span), cx.param_env)
+                            .eq(output_ty, mir_output_ty)?,
+                    );
 
-            for (&anon_def_id, anon_decl) in &anon_type_map {
-                let anon_defn_ty = tcx.type_of(anon_def_id);
-                let anon_defn_ty = anon_defn_ty.subst(tcx, anon_decl.substs);
-                let anon_defn_ty = renumber::renumber_regions(
-                    cx.infcx,
-                    TyContext::Location(Location::START),
-                    &anon_defn_ty,
-                );
-                debug!(
-                    "equate_inputs_and_outputs: concrete_ty={:?}",
-                    anon_decl.concrete_ty
-                );
-                debug!("equate_inputs_and_outputs: anon_defn_ty={:?}", anon_defn_ty);
-                obligations.add(infcx
-                    .at(&cx.misc(cx.last_span), cx.param_env)
-                    .eq(anon_decl.concrete_ty, anon_defn_ty)?);
-            }
+                    for (&anon_def_id, anon_decl) in &anon_type_map {
+                        let anon_defn_ty = tcx.type_of(anon_def_id);
+                        let anon_defn_ty = anon_defn_ty.subst(tcx, anon_decl.substs);
+                        let anon_defn_ty = renumber::renumber_regions(
+                            cx.infcx,
+                            TyContext::Location(Location::START),
+                            &anon_defn_ty,
+                        );
+                        debug!(
+                            "equate_inputs_and_outputs: concrete_ty={:?}",
+                            anon_decl.concrete_ty
+                        );
+                        debug!("equate_inputs_and_outputs: anon_defn_ty={:?}", anon_defn_ty);
+                        obligations.add(
+                            infcx
+                                .at(&cx.misc(cx.last_span), cx.param_env)
+                                .eq(anon_decl.concrete_ty, anon_defn_ty)?,
+                        );
+                    }
 
-            debug!("equate_inputs_and_outputs: equated");
+                    debug!("equate_inputs_and_outputs: equated");
 
-            Ok(InferOk {
-                value: Some(anon_type_map),
-                obligations: obligations.into_vec(),
-            })
-        }).unwrap_or_else(|terr| {
+                    Ok(InferOk {
+                        value: Some(anon_type_map),
+                        obligations: obligations.into_vec(),
+                    })
+                },
+            ).unwrap_or_else(|terr| {
                 span_mirbug!(
                     self,
                     Location::START,
@@ -143,13 +153,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         // prove that `T: Iterator` where `T` is the type we
         // instantiated it with).
         if let Some(anon_type_map) = anon_type_map {
-            self.fully_perform_op(Locations::All, |_cx| {
-                infcx.constrain_anon_types(&anon_type_map, universal_regions);
-                Ok(InferOk {
-                    value: (),
-                    obligations: vec![],
-                })
-            }).unwrap();
+            self.fully_perform_op(
+                Locations::All,
+                || format!("anon_type_map"),
+                |_cx| {
+                    infcx.constrain_anon_types(&anon_type_map, universal_regions);
+                    Ok(InferOk {
+                        value: (),
+                        obligations: vec![],
+                    })
+                },
+            ).unwrap();
         }
     }
 

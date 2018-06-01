@@ -710,14 +710,20 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         traits::ObligationCause::misc(span, self.body_id)
     }
 
+    #[inline(never)]
     fn fully_perform_op<OP, R>(
         &mut self,
         locations: Locations,
+        describe_op: impl Fn() -> String,
         op: OP,
     ) -> Result<R, TypeError<'tcx>>
     where
         OP: FnOnce(&mut Self) -> InferResult<'tcx, R>,
     {
+        if cfg!(debug_assertions) {
+            info!("fully_perform_op(describe_op={}) at {:?}", describe_op(), locations);
+        }
+
         let mut fulfill_cx = TraitEngine::new(self.infcx.tcx);
         let InferOk { value, obligations } = self.infcx.commit_if_ok(|_| op(self))?;
         fulfill_cx.register_predicate_obligations(self.infcx, obligations);
@@ -746,25 +752,35 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         Ok(value)
     }
 
+    #[inline(never)]
     fn sub_types(
         &mut self,
         sub: Ty<'tcx>,
         sup: Ty<'tcx>,
         locations: Locations,
     ) -> UnitResult<'tcx> {
-        self.fully_perform_op(locations, |this| {
-            this.infcx
-                .at(&this.misc(this.last_span), this.param_env)
-                .sup(sup, sub)
-        })
+        self.fully_perform_op(
+            locations,
+            || format!("sub_types({:?} <: {:?})", sub, sup),
+            |this| {
+                this.infcx
+                    .at(&this.misc(this.last_span), this.param_env)
+                    .sup(sup, sub)
+            },
+        )
     }
 
+    #[inline(never)]
     fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> UnitResult<'tcx> {
-        self.fully_perform_op(locations, |this| {
-            this.infcx
-                .at(&this.misc(this.last_span), this.param_env)
-                .eq(b, a)
-        })
+        self.fully_perform_op(
+            locations,
+            || format!("eq_types({:?} = {:?})", a, b),
+            |this| {
+                this.infcx
+                    .at(&this.misc(this.last_span), this.param_env)
+                    .eq(b, a)
+            },
+        )
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
@@ -1520,29 +1536,42 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         );
     }
 
+    #[inline(never)]
     fn prove_predicates<T>(&mut self, predicates: T, location: Location)
     where
-        T: IntoIterator<Item = ty::Predicate<'tcx>>,
-        T::IntoIter: Clone,
+        T: IntoIterator<Item = ty::Predicate<'tcx>> + Clone,
     {
-        let predicates = predicates.into_iter();
+        // This intermediate vector is mildly unfortunate, in that we
+        // sometimes create it even when logging is disabled, but only
+        // if debug-info is enabled, and I doubt it is actually
+        // expensive. -nmatsakis
+        let predicates_vec: Vec<_> = if cfg!(debug_assertions) {
+            predicates.clone().into_iter().collect()
+        } else {
+            Vec::new()
+        };
 
         debug!(
             "prove_predicates(predicates={:?}, location={:?})",
-            predicates.clone().collect::<Vec<_>>(),
+            predicates_vec,
             location,
         );
-        self.fully_perform_op(location.at_self(), |this| {
-            let cause = this.misc(this.last_span);
-            let obligations = predicates
-                .into_iter()
-                .map(|p| traits::Obligation::new(cause.clone(), this.param_env, p))
-                .collect();
-            Ok(InferOk {
-                value: (),
-                obligations,
-            })
-        }).unwrap()
+
+        self.fully_perform_op(
+            location.at_self(),
+            || format!("prove_predicates({:?})", predicates_vec),
+            |this| {
+                let cause = this.misc(this.last_span);
+                let obligations = predicates
+                    .into_iter()
+                    .map(|p| traits::Obligation::new(cause.clone(), this.param_env, p))
+                    .collect();
+                Ok(InferOk {
+                    value: (),
+                    obligations,
+                })
+            },
+        ).unwrap()
     }
 
     fn typeck_mir(&mut self, mir: &Mir<'tcx>) {
@@ -1571,25 +1600,30 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
+    #[inline(never)]
     fn normalize<T>(&mut self, value: &T, location: impl ToLocations) -> T
     where
         T: fmt::Debug + TypeFoldable<'tcx>,
     {
         debug!("normalize(value={:?}, location={:?})", value, location);
-        self.fully_perform_op(location.to_locations(), |this| {
-            let Normalized { value, obligations } = this.infcx
-                .at(&this.misc(this.last_span), this.param_env)
-                .normalize(value)
-                .unwrap_or_else(|NoSolution| {
-                    span_bug!(
-                        this.last_span,
-                        "normalization of `{:?}` failed at {:?}",
-                        value,
-                        location,
-                    );
-                });
-            Ok(InferOk { value, obligations })
-        }).unwrap()
+        self.fully_perform_op(
+            location.to_locations(),
+            || format!("normalize(value={:?})", value),
+            |this| {
+                let Normalized { value, obligations } = this.infcx
+                    .at(&this.misc(this.last_span), this.param_env)
+                    .normalize(value)
+                    .unwrap_or_else(|NoSolution| {
+                        span_bug!(
+                            this.last_span,
+                            "normalization of `{:?}` failed at {:?}",
+                            value,
+                            location,
+                        );
+                    });
+                Ok(InferOk { value, obligations })
+            },
+        ).unwrap()
     }
 }
 

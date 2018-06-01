@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dataflow::{FlowAtLocation, FlowsAtLocation};
 use borrow_check::nll::region_infer::Cause;
-use dataflow::MaybeInitializedPlaces;
-use dataflow::move_paths::{HasMoveData, MoveData};
-use rustc::mir::{BasicBlock, Location, Mir};
-use rustc::mir::Local;
-use rustc::ty::{Ty, TyCtxt, TypeFoldable};
-use rustc::infer::InferOk;
 use borrow_check::nll::type_check::AtLocation;
+use dataflow::move_paths::{HasMoveData, MoveData};
+use dataflow::MaybeInitializedPlaces;
+use dataflow::{FlowAtLocation, FlowsAtLocation};
+use rustc::infer::InferOk;
+use rustc::mir::Local;
+use rustc::mir::{BasicBlock, Location, Mir};
+use rustc::ty::{Ty, TyCtxt, TypeFoldable};
 use util::liveness::LivenessResults;
 
 use super::TypeChecker;
@@ -170,6 +170,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
     /// the regions in its type must be live at `location`. The
     /// precise set will depend on the dropck constraints, and in
     /// particular this takes `#[may_dangle]` into account.
+    #[inline(never)]
     fn add_drop_live_constraint(
         &mut self,
         dropped_local: Local,
@@ -191,33 +192,39 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         //
         // For this reason, we avoid calling TypeChecker.normalize, instead doing all normalization
         // ourselves in one large 'fully_perform_op' callback.
-        let kind_constraints = self.cx
-            .fully_perform_op(location.at_self(), |cx| {
-                let span = cx.last_span;
+        let kind_constraints = self
+            .cx
+            .fully_perform_op(
+                location.at_self(),
+                || format!("add_drop_live_constraint(dropped_ty={:?})", dropped_ty),
+                |cx| {
+                    let span = cx.last_span;
 
-                let mut final_obligations = Vec::new();
-                let mut kind_constraints = Vec::new();
+                    let mut final_obligations = Vec::new();
+                    let mut kind_constraints = Vec::new();
 
-                let InferOk {
-                    value: kinds,
-                    obligations,
-                } = cx.infcx
-                    .at(&cx.misc(span), cx.param_env)
-                    .dropck_outlives(dropped_ty);
-                for kind in kinds {
-                    // All things in the `outlives` array may be touched by
-                    // the destructor and must be live at this point.
-                    let cause = Cause::DropVar(dropped_local, location);
-                    kind_constraints.push((kind, location, cause));
-                }
+                    let InferOk {
+                        value: kinds,
+                        obligations,
+                    } = cx
+                        .infcx
+                        .at(&cx.misc(span), cx.param_env)
+                        .dropck_outlives(dropped_ty);
+                    for kind in kinds {
+                        // All things in the `outlives` array may be touched by
+                        // the destructor and must be live at this point.
+                        let cause = Cause::DropVar(dropped_local, location);
+                        kind_constraints.push((kind, location, cause));
+                    }
 
-                final_obligations.extend(obligations);
+                    final_obligations.extend(obligations);
 
-                Ok(InferOk {
-                    value: kind_constraints,
-                    obligations: final_obligations,
-                })
-            })
+                    Ok(InferOk {
+                        value: kind_constraints,
+                        obligations: final_obligations,
+                    })
+                },
+            )
             .unwrap();
 
         for (kind, location, cause) in kind_constraints {
