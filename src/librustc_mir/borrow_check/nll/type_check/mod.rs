@@ -759,6 +759,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         sup: Ty<'tcx>,
         locations: Locations,
     ) -> UnitResult<'tcx> {
+        // Micro-optimization.
+        if sub == sup {
+            return Ok(());
+        }
+
         self.fully_perform_op(
             locations,
             || format!("sub_types({:?} <: {:?})", sub, sup),
@@ -772,6 +777,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     #[inline(never)]
     fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> UnitResult<'tcx> {
+        // Micro-optimization.
+        if a == b {
+            return Ok(());
+        }
+
         self.fully_perform_op(
             locations,
             || format!("eq_types({:?} = {:?})", a, b),
