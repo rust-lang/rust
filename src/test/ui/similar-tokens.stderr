@@ -1,4 +1,4 @@
-error: expected one of `,`, `::`, or `as`, found `.`
+error: expected one of `,`, `::`, `as`, or `}`, found `.`
   --> $DIR/similar-tokens.rs:17:10
    |
 LL | use x::{A. B}; //~ ERROR expected one of `,`, `::`, `as`, or `}`, found `.`
