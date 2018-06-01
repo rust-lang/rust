@@ -2313,7 +2313,7 @@ Basic usage:
 ```
 ", $Feature, "assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(1), ",
 "Some(", stringify!($SelfT), "::max_value() - 1));
-assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3),None);", $EndFeature, "
+assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
