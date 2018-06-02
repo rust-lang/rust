@@ -7,10 +7,10 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::traits::{FulfillmentContext, FulfillmentError,
                     Obligation, ObligationCause, TraitEngine};
-use rustc::ty::{ParamEnv, Predicate, TraitRef, Ty, TyCtxt};
+use rustc::ty::{GenericParamDefKind, ParamEnv, Predicate, TraitRef, Ty, TyCtxt};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Kind, Substs};
 
 use semcheck::changes::ChangeSet;
 use semcheck::mapping::IdMapping;
@@ -150,12 +150,10 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         let has_self = self.infcx.tcx.generics_of(target_def_id).has_self;
 
         Substs::for_item(self.infcx.tcx, target_def_id, |def, _| {
-            self.infcx.region_var_for_def(DUMMY_SP, def)
-        }, |def, _| {
             if def.index == 0 && has_self { // `Self` is special
                 self.infcx.tcx.mk_param_from_def(def)
             } else {
-                self.infcx.type_var_for_def(DUMMY_SP, def)
+                self.infcx.var_for_def(DUMMY_SP, def)
             }
         })
     }
@@ -165,11 +163,21 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         use rustc::ty::ReEarlyBound;
 
         Substs::for_item(self.infcx.tcx, target_def_id, |def, _| {
-            self.infcx.tcx.mk_region(ReEarlyBound(def.to_early_bound_region_data()))
-        }, |def, _| if self.id_mapping.is_non_mapped_defaulted_type_param(&def.def_id) {
-            self.infcx.tcx.type_of(def.def_id)
-        } else {
-            self.infcx.tcx.mk_param_from_def(def)
+            match def.kind {
+                GenericParamDefKind::Lifetime => {
+                    Kind::from(
+                        self.infcx
+                            .tcx
+                            .mk_region(ReEarlyBound(def.to_early_bound_region_data())))
+                },
+                GenericParamDefKind::Type { .. } => {
+                    if self.id_mapping.is_non_mapped_defaulted_type_param(&def.def_id) {
+                        Kind::from(self.infcx.tcx.type_of(def.def_id))
+                    } else {
+                        self.infcx.tcx.mk_param_from_def(def)
+                    }
+                },
+            }
         })
     }
 

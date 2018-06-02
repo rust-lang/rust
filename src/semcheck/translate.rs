@@ -2,8 +2,9 @@
 //! comparison and inference.
 
 use rustc::hir::def_id::DefId;
-use rustc::ty::{ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt};
+use rustc::ty::{GenericParamDefKind, ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
+use rustc::ty::subst::Kind;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Substs;
 
@@ -58,15 +59,25 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         let mut index_map = HashMap::new();
         let orig_generics = self.tcx.generics_of(orig_def_id);
 
-        for type_ in &orig_generics.types {
-            index_map.insert(type_.index, type_.def_id);
+        for param in &orig_generics.params {
+            match param.kind {
+                GenericParamDefKind::Type { .. } => {
+                    index_map.insert(param.index, param.def_id);
+                },
+                _ => (),
+            };
         }
 
         if let Some(did) = orig_generics.parent {
             let parent_generics = self.tcx.generics_of(did);
 
-            for type_ in &parent_generics.types {
-                index_map.insert(type_.index, type_.def_id);
+            for param in &parent_generics.params {
+                match param.kind {
+                    GenericParamDefKind::Type { .. } => {
+                        index_map.insert(param.index, param.def_id);
+                    },
+                    _ => (),
+                };
             }
         }
 
@@ -104,33 +115,39 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
             let success = Cell::new(true);
 
             let target_substs = Substs::for_item(self.tcx, target_def_id, |def, _| {
-                if !success.get() {
-                    self.tcx.mk_region(ReEarlyBound(def.to_early_bound_region_data()))
-                } else if let Some(UnpackedKind::Lifetime(region)) = orig_substs
-                    .get(def.index as usize)
-                    .map(|k| k.unpack())
-                {
-                    self.translate_region(region)
-                } else {
-                    success.set(false);
-                    self.tcx.mk_region(ReEarlyBound(def.to_early_bound_region_data()))
-                }
-
-            }, |def, _| {
-                if !success.get() {
-                    self.tcx.mk_param_from_def(def)
-                } else if let Some(UnpackedKind::Type(type_)) = orig_substs
-                    .get(def.index as usize)
-                    .map(|k| k.unpack())
-                {
-                    self.translate(index_map, &type_)
-                } else if self.id_mapping.is_non_mapped_defaulted_type_param(&def.def_id) {
-                    self.tcx.type_of(def.def_id)
-                } else if self.tcx.generics_of(target_def_id).has_self && def.index == 0 {
-                    self.tcx.mk_param_from_def(def)
-                } else {
-                    success.set(false);
-                    self.tcx.mk_param_from_def(def)
+                match def.kind {
+                    GenericParamDefKind::Lifetime => {
+                        Kind::from(if !success.get() {
+                            self.tcx.mk_region(ReEarlyBound(def.to_early_bound_region_data()))
+                        } else if let Some(UnpackedKind::Lifetime(region)) = orig_substs
+                            .get(def.index as usize)
+                            .map(|k| k.unpack())
+                        {
+                            self.translate_region(region)
+                        } else {
+                            success.set(false);
+                            self.tcx.mk_region(ReEarlyBound(def.to_early_bound_region_data()))
+                        })
+                    },
+                    GenericParamDefKind::Type { .. } => {
+                        if !success.get() {
+                            self.tcx.mk_param_from_def(def)
+                        } else if let Some(UnpackedKind::Type(type_)) = orig_substs
+                            .get(def.index as usize)
+                            .map(|k| k.unpack())
+                        {
+                            self.translate(index_map, &Kind::from(type_))
+                        } else if self.id_mapping
+                                      .is_non_mapped_defaulted_type_param(&def.def_id) {
+                            Kind::from(self.tcx.type_of(def.def_id))
+                        } else if self.tcx
+                                      .generics_of(target_def_id).has_self && def.index == 0 {
+                            self.tcx.mk_param_from_def(def)
+                        } else {
+                            success.set(false);
+                            self.tcx.mk_param_from_def(def)
+                        }
+                    },
                 }
             });
 
@@ -266,11 +283,16 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                     if param.idx != 0 && self.translate_params { // `Self` is special
                         let orig_def_id = index_map[&param.idx];
                         if self.needs_translation(orig_def_id) {
+                            use rustc::ty::subst::UnpackedKind;
+
                             let target_def_id = self.translate_orig(orig_def_id);
                             debug!("translating type param: {:?}", param);
                             let type_param = self.id_mapping.get_type_param(&target_def_id);
                             debug!("translated type param: {:?}", type_param);
-                            self.tcx.mk_param_from_def(&type_param)
+                            match self.tcx.mk_param_from_def(&type_param).unpack() {
+                                UnpackedKind::Type(param_t) => param_t,
+                                _ => unreachable!(),
+                            }
                         } else {
                             ty
                         }

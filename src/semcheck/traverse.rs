@@ -11,7 +11,7 @@
 
 use rustc::hir::def::{CtorKind, Def, Export};
 use rustc::hir::def_id::DefId;
-use rustc::ty::{AssociatedItem, Ty, TyCtxt};
+use rustc::ty::{AssociatedItem, GenericParamDefKind, Ty, TyCtxt};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::Visibility;
 use rustc::ty::Visibility::Public;
@@ -391,11 +391,11 @@ fn diff_adts(changes: &mut ChangeSet,
         match *items {
             (Some(old), Some(new)) => {
                 for field in &old.fields {
-                    fields.entry(field.name).or_insert((None, None)).0 = Some(field);
+                    fields.entry(field.ident.name).or_insert((None, None)).0 = Some(field);
                 }
 
                 for field in &new.fields {
-                    fields.entry(field.name).or_insert((None, None)).1 = Some(field);
+                    fields.entry(field.ident.name).or_insert((None, None)).1 = Some(field);
                 }
 
                 let mut total_private = true;
@@ -621,11 +621,11 @@ fn diff_generics(changes: &mut ChangeSet,
     let old_var = tcx.variances_of(old);
     let new_var = tcx.variances_of(new);
 
-    let old_regions_len = old_gen.regions.len();
-    let new_regions_len = new_gen.regions.len();
+    let old_count = old_gen.own_counts();
+    let new_count = new_gen.own_counts();
 
-    for i in 0..max(old_regions_len, new_regions_len) {
-        match (old_gen.regions.get(i), new_gen.regions.get(i)) {
+    for i in 0..max(old_count.lifetimes, new_count.lifetimes) {
+        match (old_gen.params.get(i), new_gen.params.get(i)) {
             (Some(old_region), Some(new_region)) => {
                 // type aliases don't have inferred variance, so we have to ignore that.
                 if let (Some(old_var), Some(new_var)) = (old_var.get(i), new_var.get(i)) {
@@ -645,21 +645,31 @@ fn diff_generics(changes: &mut ChangeSet,
         }
     }
 
-    for i in 0..max(old_gen.types.len(), new_gen.types.len()) {
-        match (old_gen.types.get(i), new_gen.types.get(i)) {
+    for i in 0..max(old_count.types, new_count.types) {
+        match (old_gen.params.get(old_count.lifetimes + i),
+               new_gen.params.get(new_count.lifetimes + i)) {
             (Some(old_type), Some(new_type)) => {
                 // type aliases don't have inferred variance, so we have to ignore that.
                 if let (Some(old_var), Some(new_var)) =
-                    (old_var.get(i + old_regions_len), new_var.get(i + new_regions_len))
+                    (old_var.get(old_count.lifetimes + i), new_var.get(new_count.lifetimes + i))
                 {
                     diff_variance(*old_var, *new_var)
                         .map(|t| found.push(t));
                 }
 
-                if old_type.has_default && !new_type.has_default {
+                let old_default = match old_type.kind {
+                    GenericParamDefKind::Type { has_default, .. } => has_default,
+                    _ => unreachable!(),
+                };
+                let new_default = match new_type.kind {
+                    GenericParamDefKind::Type { has_default, .. } => has_default,
+                    _ => unreachable!(),
+                };
+
+                if old_default && !new_default {
                     found.push(TypeParameterRemoved { defaulted: true });
                     found.push(TypeParameterAdded { defaulted: false });
-                } else if !old_type.has_default && new_type.has_default {
+                } else if !old_default && new_default {
                     found.push(TypeParameterRemoved { defaulted: false });
                     found.push(TypeParameterAdded { defaulted: true });
                 }
@@ -668,17 +678,27 @@ fn diff_generics(changes: &mut ChangeSet,
                        old, new, old_type, new_type);
 
                 id_mapping.add_internal_item(old_type.def_id, new_type.def_id);
-                id_mapping.add_type_param(*old_type);
-                id_mapping.add_type_param(*new_type);
+                id_mapping.add_type_param(old_type);
+                id_mapping.add_type_param(new_type);
             },
             (Some(old_type), None) => {
-                found.push(TypeParameterRemoved { defaulted: old_type.has_default });
-                id_mapping.add_type_param(*old_type);
+                let old_default = match old_type.kind {
+                    GenericParamDefKind::Type { has_default, .. } => has_default,
+                    _ => unreachable!(),
+                };
+
+                found.push(TypeParameterRemoved { defaulted: old_default });
+                id_mapping.add_type_param(old_type);
                 id_mapping.add_non_mapped(old_type.def_id);
             },
             (None, Some(new_type)) => {
-                found.push(TypeParameterAdded { defaulted: new_type.has_default || is_fn });
-                id_mapping.add_type_param(*new_type);
+                let new_default = match new_type.kind {
+                    GenericParamDefKind::Type { has_default, .. } => has_default,
+                    _ => unreachable!(),
+                };
+
+                found.push(TypeParameterAdded { defaulted: new_default || is_fn });
+                id_mapping.add_type_param(new_type);
                 id_mapping.add_non_mapped(new_type.def_id);
             },
             (None, None) => unreachable!(),

@@ -105,14 +105,17 @@ impl<'a> WorkInfo<'a> {
     /// Construct a package/workspace pair for the local directory.
     fn local(config: &'a Config, explicit_path: Option<PathBuf>) -> CargoResult<WorkInfo<'a>> {
         let manifest_path = if let Some(path) = explicit_path {
-            find_root_manifest_for_wd(None, &path)?
+            find_root_manifest_for_wd(&path)?
         } else {
-            find_root_manifest_for_wd(None, config.cwd())?
+            find_root_manifest_for_wd(config.cwd())?
         };
 
+        let workspace = Workspace::new(&manifest_path, config)?;
+        let package = workspace.load(&manifest_path)?;
+
         Ok(WorkInfo {
-            package: Package::for_path(&manifest_path, config)?,
-            workspace: Workspace::new(&manifest_path, config)?,
+            package,
+            workspace,
         })
     }
 

@@ -8,7 +8,7 @@ extern crate log;
 extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_errors;
-extern crate rustc_trans_utils;
+extern crate rustc_codegen_utils;
 extern crate semverver;
 extern crate syntax;
 
@@ -21,7 +21,7 @@ use rustc::session::config::{Input, ErrorOutputType};
 
 use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
 
-use rustc_trans_utils::trans_crate::TransCrate;
+use rustc_codegen_utils::codegen_backend::CodegenBackend;
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -117,7 +117,7 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
     }
 
     fn late_callback(&mut self,
-                     trans_crate: &TransCrate,
+                     trans_crate: &CodegenBackend,
                      matches: &getopts::Matches,
                      sess: &Session,
                      cstore: &CrateStore,

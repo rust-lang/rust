@@ -5,7 +5,7 @@
 
 use rustc::hir::def::{Def, Export};
 use rustc::hir::def_id::{CrateNum, DefId};
-use rustc::ty::{AssociatedKind, TypeParameterDef};
+use rustc::ty::{AssociatedKind, GenericParamDef, GenericParamDefKind};
 
 use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 
@@ -51,7 +51,7 @@ pub struct IdMapping {
     /// New `DefId`s mapped to their old counterparts.
     reverse_mapping: HashMap<DefId, DefId>,
     /// Type parameters' `DefId`s mapped to their definitions.
-    type_params: HashMap<DefId, TypeParameterDef>,
+    type_params: HashMap<DefId, GenericParamDef>,
     /// Map from inherent impls' descriptors to the impls they are declared in.
     inherent_items: HashMap<InherentEntry, InherentImplSet>,
 }
@@ -133,19 +133,27 @@ impl IdMapping {
     }
 
     /// Record that a `DefId` represents a type parameter.
-    pub fn add_type_param(&mut self, param: TypeParameterDef) {
-        self.type_params.insert(param.def_id, param);
+    pub fn add_type_param(&mut self, param: &GenericParamDef) {
+        match param.kind {
+            GenericParamDefKind::Lifetime => unreachable!(),
+            GenericParamDefKind::Type { .. } => (),
+        };
+
+        self.type_params.insert(param.def_id, param.clone());
     }
 
     /// Get the type parameter represented by a given `DefId`.
-    pub fn get_type_param(&self, did: &DefId) -> TypeParameterDef {
-        self.type_params[did]
+    pub fn get_type_param(&self, did: &DefId) -> &GenericParamDef {
+        &self.type_params[did]
     }
 
     /// Check whether a `DefId` represents a non-mapped defaulted type parameter.
     pub fn is_non_mapped_defaulted_type_param(&self, def_id: &DefId) -> bool {
         self.non_mapped_items.contains(def_id) &&
-            self.type_params.get(def_id).map_or(false, |def| def.has_default)
+            self.type_params.get(def_id).map_or(false, |def| match def.kind {
+                GenericParamDefKind::Type { has_default, .. } => has_default,
+                _ => unreachable!(),
+            })
     }
 
     /// Record an item from an inherent impl.
