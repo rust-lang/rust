@@ -3030,7 +3030,7 @@ impl Clean<Option<Visibility>> for hir::Visibility {
         Some(match *self {
             hir::Visibility::Public => Visibility::Public,
             hir::Visibility::Inherited => Visibility::Inherited,
-            hir::Visibility::Crate => Visibility::Crate,
+            hir::Visibility::Crate(_) => Visibility::Crate,
             hir::Visibility::Restricted { ref path, .. } => {
                 let path = path.clean(cx);
                 let did = register_def(cx, path.def);

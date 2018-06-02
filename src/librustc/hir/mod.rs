@@ -35,7 +35,7 @@ use mir::mono::Linkage;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::codemap::{self, Spanned};
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
+use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
 use syntax::attr::InlineAttr;
 use syntax::ext::hygiene::SyntaxContext;
@@ -1953,7 +1953,7 @@ pub struct PolyTraitRef {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Visibility {
     Public,
-    Crate,
+    Crate(CrateSugar),
     Restricted { path: P<Path>, id: NodeId },
     Inherited,
 }
@@ -1964,7 +1964,7 @@ impl Visibility {
         match self {
             &Public |
             &Inherited => false,
-            &Crate |
+            &Crate(_) |
             &Restricted { .. } => true,
         }
     }
