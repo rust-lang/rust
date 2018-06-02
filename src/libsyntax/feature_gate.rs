@@ -476,8 +476,12 @@ declare_features! (
     // 'a: { break 'a; }
     (active, label_break_value, "1.28.0", Some(48594), None),
 
+
     // #[panic_implementation]
     (active, panic_implementation, "1.28.0", Some(44489), None),
+
+    // #[doc(keyword = "...")]
+    (active, doc_keyword, "1.28.0", Some(51315), None),
 );
 
 declare_features! (
@@ -1505,6 +1509,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 } else if content.iter().any(|c| c.check_name("alias")) {
                     gate_feature_post!(&self, doc_alias, attr.span,
                         "#[doc(alias = \"...\")] is experimental"
+                    );
+                } else if content.iter().any(|c| c.check_name("keyword")) {
+                    gate_feature_post!(&self, doc_keyword, attr.span,
+                        "#[doc(keyword = \"...\")] is experimental"
                     );
                 }
             }
