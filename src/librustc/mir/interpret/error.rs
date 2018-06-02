@@ -16,6 +16,42 @@ pub struct EvalError<'tcx> {
     pub backtrace: Option<Backtrace>,
 }
 
+impl<'tcx> EvalError<'tcx> {
+    pub fn print_backtrace(&mut self) {
+        if let Some(ref mut backtrace) = self.backtrace {
+            use std::fmt::Write;
+            let mut trace_text = "\n\nAn error occurred in miri:\n".to_string();
+            backtrace.resolve();
+            write!(trace_text, "backtrace frames: {}\n", backtrace.frames().len()).unwrap();
+            'frames: for (i, frame) in backtrace.frames().iter().enumerate() {
+                if frame.symbols().is_empty() {
+                    write!(trace_text, "{}: no symbols\n", i).unwrap();
+                }
+                for symbol in frame.symbols() {
+                    write!(trace_text, "{}: ", i).unwrap();
+                    if let Some(name) = symbol.name() {
+                        write!(trace_text, "{}\n", name).unwrap();
+                    } else {
+                        write!(trace_text, "<unknown>\n").unwrap();
+                    }
+                    write!(trace_text, "\tat ").unwrap();
+                    if let Some(file_path) = symbol.filename() {
+                        write!(trace_text, "{}", file_path.display()).unwrap();
+                    } else {
+                        write!(trace_text, "<unknown_file>").unwrap();
+                    }
+                    if let Some(line) = symbol.lineno() {
+                        write!(trace_text, ":{}\n", line).unwrap();
+                    } else {
+                        write!(trace_text, "\n").unwrap();
+                    }
+                }
+            }
+            error!("{}", trace_text);
+        }
+    }
+}
+
 impl<'tcx> From<EvalErrorKind<'tcx, u64>> for EvalError<'tcx> {
     fn from(kind: EvalErrorKind<'tcx, u64>) -> Self {
         let backtrace = match env::var("MIRI_BACKTRACE") {

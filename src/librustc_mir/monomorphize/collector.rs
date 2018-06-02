@@ -388,7 +388,10 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Ok(val) => collect_const(tcx, val, instance.substs, &mut neighbors),
                 Err(err) => {
                     let span = tcx.def_span(def_id);
-                    err.report(tcx, span, "static");
+                    err.report_as_error(
+                        tcx.at(span),
+                        "could not evaluate static initializer",
+                    );
                 }
             }
         }
@@ -1236,7 +1239,10 @@ fn collect_const<'a, 'tcx>(
                 Ok(val) => val.val,
                 Err(err) => {
                     let span = tcx.def_span(def_id);
-                    err.report(tcx, span, "constant");
+                    err.report_as_error(
+                        tcx.at(span),
+                        "constant evaluation error",
+                    );
                     return;
                 }
             }

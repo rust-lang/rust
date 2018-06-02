@@ -523,7 +523,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let count = match cx.tcx.at(span).const_eval(cx.param_env.and(global_id)) {
                 Ok(cv) => cv.unwrap_usize(cx.tcx),
                 Err(e) => {
-                    e.report(cx.tcx, cx.tcx.def_span(def_id), "array length");
+                    e.report_as_error(cx.tcx.at(span), "could not evaluate array length");
                     0
                 },
             };

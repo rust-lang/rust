@@ -65,32 +65,10 @@ pub fn eval_promoted<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: &'mir mir::Mir<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> Option<(Value, Scalar, Ty<'tcx>)> {
+) -> EvalResult<'tcx, (Value, Scalar, Ty<'tcx>)> {
     ecx.with_fresh_body(|ecx| {
-        let res = eval_body_using_ecx(ecx, cid, Some(mir), param_env);
-        match res {
-            Ok(val) => Some(val),
-            Err(mut err) => {
-                ecx.report(&mut err, false, None);
-                None
-            }
-        }
+        eval_body_using_ecx(ecx, cid, Some(mir), param_env)
     })
-}
-
-pub fn eval_body<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    cid: GlobalId<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-) -> Option<(Value, Scalar, Ty<'tcx>)> {
-    let (res, ecx) = eval_body_and_ecx(tcx, cid, None, param_env);
-    match res {
-        Ok(val) => Some(val),
-        Err(mut err) => {
-            ecx.report(&mut err, true, None);
-            None
-        }
-    }
 }
 
 pub fn value_to_const_value<'tcx>(
@@ -124,9 +102,17 @@ pub fn value_to_const_value<'tcx>(
     })();
     match val {
         Ok(val) => ty::Const::from_const_value(ecx.tcx.tcx, val, ty),
-        Err(mut err) => {
-            ecx.report(&mut err, true, None);
-            bug!("miri error occured when converting Value to ConstValue")
+        Err(err) => {
+            let (frames, span) = ecx.generate_stacktrace(None);
+            let err = ConstEvalErr {
+                span,
+                kind: ErrKind::Miri(err, frames).into(),
+            };
+            err.report_as_error(
+                ecx.tcx,
+                "failed to convert Value to ConstValue, this is a bug",
+            );
+            span_bug!(span, "miri error occured when converting Value to ConstValue")
         }
     }
 }
@@ -579,15 +565,17 @@ pub fn const_eval_provider<'a, 'tcx>(
         }
         Ok(value_to_const_value(&ecx, val, miri_ty))
     }).map_err(|mut err| {
-        if tcx.is_static(def_id).is_some() {
-            ecx.report(&mut err, true, None);
-        }
+        err.print_backtrace();
         let (trace, span) = ecx.generate_stacktrace(None);
         let err = ErrKind::Miri(err, trace);
-        ConstEvalErr {
+        let err = ConstEvalErr {
             kind: err.into(),
             span,
+        };
+        if tcx.is_static(def_id).is_some() {
+            err.report_as_error(ecx.tcx, "could not evaluate static initializer");
         }
+        err
     })
 }
 

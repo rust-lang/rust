@@ -13,7 +13,7 @@
 pub const A: i8 = -std::i8::MIN;
 //~^ ERROR E0080
 //~| ERROR attempt to negate with overflow
-//~| ERROR constant evaluation error
+//~| ERROR this expression will panic at runtime
 //~| ERROR this constant cannot be used
 pub const B: i8 = A;
 //~^ ERROR const_err

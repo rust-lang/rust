@@ -510,6 +510,7 @@ impl_stable_hash_for!(struct ::middle::const_val::ConstEvalErr<'tcx> {
 
 impl_stable_hash_for!(struct ::middle::const_val::FrameInfo {
     span,
+    lint_root,
     location
 });
 

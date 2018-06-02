@@ -14,7 +14,9 @@ warning: this constant cannot be used
   --> $DIR/issue-43197.rs:21:5
    |
 LL |     const X: u32 = 0-1;
-   |     ^^^^^^^^^^^^^^^^^^^ attempt to subtract with overflow
+   |     ^^^^^^^^^^^^^^^---^
+   |                    |
+   |                    attempt to subtract with overflow
 
 warning: attempt to subtract with overflow
   --> $DIR/issue-43197.rs:24:24
@@ -26,15 +28,17 @@ warning: this constant cannot be used
   --> $DIR/issue-43197.rs:24:5
    |
 LL |     const Y: u32 = foo(0-1);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ attempt to subtract with overflow
+   |     ^^^^^^^^^^^^^^^^^^^---^^
+   |                        |
+   |                        attempt to subtract with overflow
 
-warning: constant evaluation error
+warning: this expression will panic at runtime
   --> $DIR/issue-43197.rs:27:23
    |
 LL |     println!("{} {}", X, Y);
    |                       ^ referenced constant has errors
 
-warning: constant evaluation error
+warning: this expression will panic at runtime
   --> $DIR/issue-43197.rs:27:26
    |
 LL |     println!("{} {}", X, Y);

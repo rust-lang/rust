@@ -14,9 +14,11 @@ warning: this constant cannot be used
   --> $DIR/conditional_array_execution.rs:16:1
    |
 LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempt to subtract with overflow
+   | ^^^^^^^^^^^^^^^^^^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                   |
+   |                   attempt to subtract with overflow
 
-warning: constant evaluation error
+warning: this expression will panic at runtime
   --> $DIR/conditional_array_execution.rs:21:20
    |
 LL |     println!("{}", FOO);

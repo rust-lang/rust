@@ -12,11 +12,13 @@ error[E0080]: constant evaluation error
 LL | const LEN: usize = ONE - TWO;
    |                    ^^^^^^^^^ attempt to subtract with overflow
 
-error[E0080]: constant evaluation error
-  --> $DIR/const-len-underflow-separate-spans.rs:22:17
+error[E0080]: could not evaluate constant expression
+  --> $DIR/const-len-underflow-separate-spans.rs:22:12
    |
 LL |     let a: [i8; LEN] = unimplemented!();
-   |                 ^^^ referenced constant has errors
+   |            ^^^^^---^
+   |                 |
+   |                 referenced constant has errors
 
 error: aborting due to 3 previous errors
 

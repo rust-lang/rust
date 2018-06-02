@@ -25,6 +25,6 @@ fn main() {
     //~^ WARN attempt to subtract with overflow
     //~| WARN this constant cannot be used
     println!("{} {}", X, Y);
-    //~^ WARN constant evaluation error
-    //~| WARN constant evaluation error
+    //~^ WARN this expression will panic at runtime
+    //~| WARN this expression will panic at runtime
 }

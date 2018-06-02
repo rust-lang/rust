@@ -19,5 +19,5 @@ const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
 
 fn main() {
     println!("{}", FOO);
-    //~^ WARN constant evaluation error
+    //~^ WARN this expression will panic at runtime
 }

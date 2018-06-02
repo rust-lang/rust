@@ -14,7 +14,9 @@ warning: this constant cannot be used
   --> $DIR/pub_const_err_bin.rs:14:1
    |
 LL | pub const Z: u32 = 0 - 1;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ attempt to subtract with overflow
+   | ^^^^^^^^^^^^^^^^^^^-----^
+   |                    |
+   |                    attempt to subtract with overflow
 
 warning: attempt to subtract with overflow
   --> $DIR/pub_const_err_bin.rs:18:22

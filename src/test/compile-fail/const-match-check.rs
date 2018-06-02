@@ -40,5 +40,4 @@ fn main() {
     #[cfg(eval2)]
     let x: [i32; { let 0 = 0; 0 }] = [];
     //[eval2]~^ ERROR refutable pattern in local binding
-    //[eval2]~| ERROR constant evaluation error
 }

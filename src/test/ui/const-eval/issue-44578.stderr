@@ -1,4 +1,4 @@
-warning: constant evaluation error
+warning: this expression will panic at runtime
   --> $DIR/issue-44578.rs:36:20
    |
 LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT); //~ WARN const_err
@@ -10,7 +10,7 @@ note: lint level defined here
 LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
-warning: constant evaluation error
+warning: this expression will panic at runtime
   --> $DIR/issue-44578.rs:36:20
    |
 LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT); //~ WARN const_err

@@ -17,7 +17,7 @@ use rustc::mir::{Constant, Literal, Location, Place, Mir, Operand, Rvalue, Local
 use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext};
-use rustc::middle::const_val::ConstVal;
+use rustc::middle::const_val::{ConstVal, ConstEvalErr, ErrKind};
 use rustc::ty::{TyCtxt, self, Instance};
 use rustc::mir::interpret::{Value, Scalar, GlobalId, EvalResult};
 use interpret::EvalContext;
@@ -121,17 +121,37 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
 
     fn use_ecx<F, T>(
         &mut self,
-        span: Span,
+        source_info: SourceInfo,
         f: F
     ) -> Option<T>
     where
         F: FnOnce(&mut Self) -> EvalResult<'tcx, T>,
     {
-        self.ecx.tcx.span = span;
+        self.ecx.tcx.span = source_info.span;
+        let lint_root = match self.mir.source_scope_local_data {
+            ClearCrossCrate::Set(ref ivs) => {
+                use rustc_data_structures::indexed_vec::Idx;
+                //FIXME(#51314): remove this check
+                if source_info.scope.index() >= ivs.len() {
+                    return None;
+                }
+                ivs[source_info.scope].lint_root
+            },
+            ClearCrossCrate::Clear => return None,
+        };
         let r = match f(self) {
             Ok(val) => Some(val),
-            Err(mut err) => {
-                self.ecx.report(&mut err, false, Some(span));
+            Err(err) => {
+                let (frames, span) = self.ecx.generate_stacktrace(None);
+                let err = ConstEvalErr {
+                    span,
+                    kind: ErrKind::Miri(err, frames).into(),
+                };
+                err.report_as_lint(
+                    self.ecx.tcx,
+                    "this expression will panic at runtime",
+                    lint_root,
+                );
                 None
             },
         };
@@ -139,30 +159,37 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
         r
     }
 
-    fn const_eval(&mut self, cid: GlobalId<'tcx>, span: Span) -> Option<Const<'tcx>> {
+    fn const_eval(&mut self, cid: GlobalId<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
         let value = match self.tcx.const_eval(self.param_env.and(cid)) {
             Ok(val) => val,
             Err(err) => {
-                err.report(self.tcx, err.span, "constant propagated");
+                err.report_as_error(
+                    self.tcx.at(err.span),
+                    "constant evaluation error",
+                );
                 return None;
             },
         };
         let val = match value.val {
             ConstVal::Value(v) => {
-                self.use_ecx(span, |this| this.ecx.const_value_to_value(v, value.ty))?
+                self.use_ecx(source_info, |this| this.ecx.const_value_to_value(v, value.ty))?
             },
             _ => bug!("eval produced: {:?}", value),
         };
-        let val = (val, value.ty, span);
+        let val = (val, value.ty, source_info.span);
         trace!("evaluated {:?} to {:?}", cid, val);
         Some(val)
     }
 
-    fn eval_constant(&mut self, c: &Constant<'tcx>) -> Option<Const<'tcx>> {
+    fn eval_constant(
+        &mut self,
+        c: &Constant<'tcx>,
+        source_info: SourceInfo,
+    ) -> Option<Const<'tcx>> {
         match c.literal {
             Literal::Value { value } => match value.val {
                 ConstVal::Value(v) => {
-                    let v = self.use_ecx(c.span, |this| {
+                    let v = self.use_ecx(source_info, |this| {
                         this.ecx.const_value_to_value(v, value.ty)
                     })?;
                     Some((v, value.ty, c.span))
@@ -178,7 +205,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                         instance,
                         promoted: None,
                     };
-                    self.const_eval(cid, c.span)
+                    self.const_eval(cid, source_info)
                 },
             },
             // evaluate the promoted and replace the constant with the evaluated result
@@ -196,10 +223,9 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 };
                 // cannot use `const_eval` here, because that would require having the MIR
                 // for the current function available, but we're producing said MIR right now
-                let span = self.mir.span;
-                let (value, _, ty) = self.use_ecx(span, |this| {
-                    Ok(eval_promoted(&mut this.ecx, cid, this.mir, this.param_env))
-                })??;
+                let (value, _, ty) = self.use_ecx(source_info, |this| {
+                    eval_promoted(&mut this.ecx, cid, this.mir, this.param_env)
+                })?;
                 let val = (value, ty, c.span);
                 trace!("evaluated {:?} to {:?}", c, val);
                 Some(val)
@@ -225,9 +251,9 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
         }
     }
 
-    fn eval_operand(&mut self, op: &Operand<'tcx>) -> Option<Const<'tcx>> {
+    fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
         match *op {
-            Operand::Constant(ref c) => self.eval_constant(c),
+            Operand::Constant(ref c) => self.eval_constant(c, source_info),
             Operand::Move(ref place) | Operand::Copy(ref place) => self.eval_place(place),
         }
     }
@@ -243,10 +269,10 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
             // This branch exists for the sanity type check
             Rvalue::Use(Operand::Constant(ref c)) => {
                 assert_eq!(c.ty, place_ty);
-                self.eval_constant(c)
+                self.eval_constant(c, source_info)
             },
             Rvalue::Use(ref op) => {
-                self.eval_operand(op)
+                self.eval_operand(op, source_info)
             },
             Rvalue::Repeat(..) |
             Rvalue::Ref(..) |
@@ -279,17 +305,17 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     return None;
                 }
 
-                let val = self.eval_operand(arg)?;
-                let prim = self.use_ecx(span, |this| {
+                let val = self.eval_operand(arg, source_info)?;
+                let prim = self.use_ecx(source_info, |this| {
                     this.ecx.value_to_scalar(ValTy { value: val.0, ty: val.1 })
                 })?;
-                let val = self.use_ecx(span, |this| this.ecx.unary_op(op, prim, val.1))?;
+                let val = self.use_ecx(source_info, |this| this.ecx.unary_op(op, prim, val.1))?;
                 Some((Value::Scalar(val), place_ty, span))
             }
             Rvalue::CheckedBinaryOp(op, ref left, ref right) |
             Rvalue::BinaryOp(op, ref left, ref right) => {
                 trace!("rvalue binop {:?} for {:?} and {:?}", op, left, right);
-                let right = self.eval_operand(right)?;
+                let right = self.eval_operand(right, source_info)?;
                 let def_id = if self.tcx.is_closure(self.source.def_id) {
                     self.tcx.closure_base_def_id(self.source.def_id)
                 } else {
@@ -301,7 +327,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                     return None;
                 }
 
-                let r = self.use_ecx(span, |this| {
+                let r = self.use_ecx(source_info, |this| {
                     this.ecx.value_to_scalar(ValTy { value: right.0, ty: right.1 })
                 })?;
                 if op == BinOp::Shr || op == BinOp::Shl {
@@ -332,12 +358,12 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                         return None;
                     }
                 }
-                let left = self.eval_operand(left)?;
-                let l = self.use_ecx(span, |this| {
+                let left = self.eval_operand(left, source_info)?;
+                let l = self.use_ecx(source_info, |this| {
                     this.ecx.value_to_scalar(ValTy { value: left.0, ty: left.1 })
                 })?;
                 trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
-                let (val, overflow) = self.use_ecx(span, |this| {
+                let (val, overflow) = self.use_ecx(source_info, |this| {
                     this.ecx.binary_op(op, l, left.1, r, right.1)
                 })?;
                 let val = if let Rvalue::CheckedBinaryOp(..) = *rvalue {
@@ -348,11 +374,8 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 } else {
                     if overflow {
                         use rustc::mir::interpret::EvalErrorKind;
-                        let mut err = EvalErrorKind::Overflow(op).into();
-                        self.use_ecx(span, |this| {
-                            this.ecx.report(&mut err, false, Some(span));
-                            Ok(())
-                        });
+                        let err = EvalErrorKind::Overflow(op).into();
+                        let _: Option<()> = self.use_ecx(source_info, |_| Err(err));
                         return None;
                     }
                     Value::Scalar(val)
@@ -431,7 +454,8 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
     ) {
         trace!("visit_constant: {:?}", constant);
         self.super_constant(constant, location);
-        self.eval_constant(constant);
+        let source_info = *self.mir.source_info(location);
+        self.eval_constant(constant, source_info);
     }
 
     fn visit_statement(
@@ -466,8 +490,9 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
         location: Location,
     ) {
         self.super_terminator_kind(block, kind, location);
+        let source_info = *self.mir.source_info(location);
         if let TerminatorKind::Assert { expected, msg, cond, .. } = kind {
-            if let Some(value) = self.eval_operand(cond) {
+            if let Some(value) = self.eval_operand(cond, source_info) {
                 trace!("assertion on {:?} should be {:?}", value, expected);
                 if Value::Scalar(Scalar::from_bool(*expected)) != value.0 {
                     // poison all places this operand references so that further code
@@ -502,13 +527,15 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                         DivisionByZero |
                         RemainderByZero => msg.description().to_owned(),
                         BoundsCheck { ref len, ref index } => {
-                            let len = self.eval_operand(len).expect("len must be const");
+                            let len = self
+                                .eval_operand(len, source_info)
+                                .expect("len must be const");
                             let len = match len.0 {
                                 Value::Scalar(Scalar::Bits { bits, ..}) => bits,
                                 _ => bug!("const len not primitive: {:?}", len),
                             };
                             let index = self
-                                .eval_operand(index)
+                                .eval_operand(index, source_info)
                                 .expect("index must be const");
                             let index = match index.0 {
                                 Value::Scalar(Scalar::Bits { bits, .. }) => bits,
