@@ -796,10 +796,10 @@ pub fn park() {
     let mut m = thread.inner.lock.lock().unwrap();
     match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
         Ok(_) => {}
-        Err(NOTIFIED) => { 
+        Err(NOTIFIED) => {
         	// should consume this notification, so prohibit spurious wakeups in next park...
-        	thread.inner.state.store(EMPTY, SeqCst); 
-        	return; 
+        	thread.inner.state.store(EMPTY, SeqCst);
+        	return;
         }, // notified after we locked
         Err(_) => panic!("inconsistent park state"),
     }
@@ -886,10 +886,10 @@ pub fn park_timeout(dur: Duration) {
     let m = thread.inner.lock.lock().unwrap();
     match thread.inner.state.compare_exchange(EMPTY, PARKED, SeqCst, SeqCst) {
         Ok(_) => {}
-        Err(NOTIFIED) => { 
+        Err(NOTIFIED) => {
         	// should consume this notification, so prohibit spurious wakeups in next park...
-        	thread.inner.state.store(EMPTY, SeqCst); 
-        	return; 
+        	thread.inner.state.store(EMPTY, SeqCst);
+        	return;
         }, // notified after we locked
         Err(_) => panic!("inconsistent park_timeout state"),
     }
