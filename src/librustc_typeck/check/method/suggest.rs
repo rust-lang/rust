@@ -119,11 +119,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             }
                         };
 
-                        let note_str = format!("candidate #{} is defined in an impl{} \
-                                                for the type `{}`",
-                                               idx + 1,
-                                               insertion,
-                                               impl_ty);
+                        let note_str = if sources.len() > 1 {
+                            format!("candidate #{} is defined in an impl{} for the type `{}`",
+                                    idx + 1,
+                                    insertion,
+                                    impl_ty)
+                        } else {
+                            format!("the candidate is defined in an impl{} for the type `{}`",
+                                    insertion,
+                                    impl_ty)
+                        };
                         if let Some(note_span) = note_span {
                             // We have a span pointing to the method. Show note with snippet.
                             err.span_note(self.tcx.sess.codemap().def_span(note_span), &note_str);
@@ -137,11 +142,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             .unwrap();
                         let item_span = self.tcx.sess.codemap()
                             .def_span(self.tcx.def_span(item.def_id));
-                        span_note!(err,
-                                   item_span,
-                                   "candidate #{} is defined in the trait `{}`",
-                                   idx + 1,
-                                   self.tcx.item_path_str(trait_did));
+                        if sources.len() > 1 {
+                            span_note!(err,
+                                       item_span,
+                                       "candidate #{} is defined in the trait `{}`",
+                                       idx + 1,
+                                       self.tcx.item_path_str(trait_did));
+                        } else {
+                            span_note!(err,
+                                       item_span,
+                                       "the candidate is defined in the trait `{}`",
+                                       self.tcx.item_path_str(trait_did));
+                        }
                         err.help(&format!("to disambiguate the method call, write `{}::{}({}{})` \
                                           instead",
                                           self.tcx.item_path_str(trait_did),
@@ -285,7 +297,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tcx.sess.diagnostic().struct_dummy()
                 };
 
-                if let Some(def) =  actual.ty_adt_def() {
+                if let Some(def) = actual.ty_adt_def() {
                     if let Some(full_sp) = tcx.hir.span_if_local(def.did) {
                         let def_sp = tcx.sess.codemap().def_span(full_sp);
                         err.span_label(def_sp, format!("{} `{}` not found {}",
@@ -368,7 +380,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if !static_sources.is_empty() {
                     err.note("found the following associated functions; to be used as methods, \
                               functions must have a `self` parameter");
-                    err.help(&format!("try with `{}::{}`", self.ty_to_string(actual), item_name));
+                    err.span_label(span, "this is an associated function, not a method");
+                }
+                if static_sources.len() == 1 {
+                    if let Some(expr) = rcvr_expr {
+                        err.span_suggestion(expr.span.to(span),
+                                            "use associated function syntax instead",
+                                            format!("{}::{}",
+                                                    self.ty_to_string(actual),
+                                                    item_name));
+                    } else {
+                        err.help(&format!("try with `{}::{}`",
+                                          self.ty_to_string(actual), item_name));
+                    }
+
+                    report_candidates(&mut err, static_sources);
+                } else if static_sources.len() > 1 {
 
                     report_candidates(&mut err, static_sources);
                 }
@@ -468,9 +495,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } else {
             let limit = if candidates.len() == 5 { 5 } else { 4 };
             for (i, trait_did) in candidates.iter().take(limit).enumerate() {
-                msg.push_str(&format!("\ncandidate #{}: `use {};`",
-                                        i + 1,
-                                        self.tcx.item_path_str(*trait_did)));
+                if candidates.len() > 1 {
+                    msg.push_str(&format!("\ncandidate #{}: `use {};`",
+                                            i + 1,
+                                            self.tcx.item_path_str(*trait_did)));
+                } else {
+                    msg.push_str(&format!("\n`use {};`",
+                                            self.tcx.item_path_str(*trait_did)));
+                }
             }
             if candidates.len() > limit {
                 msg.push_str(&format!("\nand {} others", candidates.len() - limit));
