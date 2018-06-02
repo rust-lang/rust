@@ -3875,6 +3875,12 @@ impl<'a> Default for &'a str {
     fn default() -> &'a str { "" }
 }
 
+#[stable(feature = "default_mut_str", since = "1.28.0")]
+impl<'a> Default for &'a mut str {
+    /// Creates an empty mutable str
+    fn default() -> &'a mut str { unsafe { from_utf8_unchecked_mut(&mut []) } }
+}
+
 /// An iterator over the non-whitespace substrings of a string,
 /// separated by any amount of whitespace.
 ///
