@@ -40,7 +40,7 @@ pub fn assert_instr(
     // for.
     let disable_assert_instr = std::env::var("STDSIMD_DISABLE_ASSERT_INSTR").is_ok();
     let maybe_ignore = if cfg!(optimized) && !disable_assert_instr {
-        TokenStream::empty()
+        TokenStream::new()
     } else {
         (quote! { #[ignore] }).into()
     };

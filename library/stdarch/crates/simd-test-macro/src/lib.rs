@@ -89,7 +89,7 @@ pub fn simd_test(
     };
     let macro_test = Ident::new(macro_test, Span::call_site());
 
-    let mut cfg_target_features = TokenStream::empty();
+    let mut cfg_target_features = TokenStream::new();
     use quote::ToTokens;
     for feature in target_features {
         let q = quote_spanned! {
@@ -103,7 +103,7 @@ pub fn simd_test(
 
     let test_norun = std::env::var("STDSIMD_TEST_NORUN").is_ok();
     let maybe_ignore = if !test_norun {
-        TokenStream::empty()
+        TokenStream::new()
     } else {
         (quote! { #[ignore] }).into()
     };
