@@ -11,7 +11,7 @@
 
 use rustc::hir::def::{CtorKind, Def, Export};
 use rustc::hir::def_id::DefId;
-use rustc::ty::{AssociatedItem, GenericParamDefKind, Ty, TyCtxt};
+use rustc::ty::{AssociatedItem, Generics, GenericParamDef, GenericParamDefKind, Ty, TyCtxt};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::Visibility;
 use rustc::ty::Visibility::Public;
@@ -624,8 +624,18 @@ fn diff_generics(changes: &mut ChangeSet,
     let old_count = old_gen.own_counts();
     let new_count = new_gen.own_counts();
 
+    // guarantee that the return value's kind is `GenericParamDefKind::Lifetime`
+    fn get_region_from_params(gen: &Generics, idx: usize) -> Option<&GenericParamDef> {
+        let param = gen.params.get(idx)?;
+
+        match param.kind {
+            GenericParamDefKind::Lifetime => Some(param),
+            _ => None,
+        }
+    }
+
     for i in 0..max(old_count.lifetimes, new_count.lifetimes) {
-        match (old_gen.params.get(i), new_gen.params.get(i)) {
+        match (get_region_from_params(old_gen, i), get_region_from_params(new_gen, i)) {
             (Some(old_region), Some(new_region)) => {
                 // type aliases don't have inferred variance, so we have to ignore that.
                 if let (Some(old_var), Some(new_var)) = (old_var.get(i), new_var.get(i)) {
@@ -645,9 +655,19 @@ fn diff_generics(changes: &mut ChangeSet,
         }
     }
 
+    // guarantee that the return value's kind is `GenericParamDefKind::Type`
+    fn get_type_from_params(gen: &Generics, idx: usize) -> Option<&GenericParamDef> {
+        let param = &gen.params.get(idx)?;
+
+        match param.kind {
+            GenericParamDefKind::Type { .. } => Some(param),
+            _ => None,
+        }
+    }
+
     for i in 0..max(old_count.types, new_count.types) {
-        match (old_gen.params.get(old_count.lifetimes + i),
-               new_gen.params.get(new_count.lifetimes + i)) {
+        match (get_type_from_params(old_gen, old_count.lifetimes + i),
+               get_type_from_params(new_gen, new_count.lifetimes + i)) {
             (Some(old_type), Some(new_type)) => {
                 // type aliases don't have inferred variance, so we have to ignore that.
                 if let (Some(old_var), Some(new_var)) =
