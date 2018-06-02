@@ -33,7 +33,7 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
     /// normalized. If you don't care about regions, you should prefer
     /// `normalize_erasing_regions`, which is more efficient.
     ///
-    /// If the normalization succeeds and is unambigious, returns back
+    /// If the normalization succeeds and is unambiguous, returns back
     /// the normalized value along with various outlives relations (in
     /// the form of obligations that must be discharged).
     ///
