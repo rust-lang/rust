@@ -204,9 +204,6 @@ impl Layout {
     /// satisfy this constraint is to ensure `align <= self.align()`.
     #[inline]
     pub fn padding_needed_for(&self, align: usize) -> usize {
-        // **FIXME**: This function is only called with proper power-of-two
-        // alignments. Maybe we should turn this into a real assert!.
-        debug_assert!(align.is_power_of_two());
         let len = self.size();
 
         // Rounded up value is:
