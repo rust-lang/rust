@@ -134,9 +134,6 @@ pub struct Export {
     /// The visibility of the export.
     /// We include non-`pub` exports for hygienic macros that get used from extern crates.
     pub vis: ty::Visibility,
-    /// True if from a `use` or and `extern crate`.
-    /// Used in rustdoc.
-    pub is_import: bool,
 }
 
 impl CtorKind {
