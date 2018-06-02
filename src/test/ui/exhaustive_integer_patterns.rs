@@ -120,4 +120,16 @@ fn main() {
     match 0i128 {
         i128::MIN ..= i128::MAX => {} // ok
     }
+
+    // Make sure that guards don't factor into the exhaustiveness checks.
+    match 0u8 { //~ ERROR non-exhaustive patterns
+        0 .. 128 => {}
+        128 ..= 255 if true => {}
+    }
+
+    match 0u8 {
+        0 .. 128 => {}
+        128 ..= 255 if false => {}
+        128 ..= 255 => {} // ok, because previous arm was guarded
+    }
 }
