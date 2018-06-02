@@ -267,9 +267,18 @@ $EndFeature, "
 ```
 "),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(not(stage0))]
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn count_ones(self) -> u32 { (self as $UnsignedT).count_ones() }
+        }
+
+        doc_comment! {
+            concat!("Dummy docs. See !stage0 documentation"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
+            #[inline]
+            pub fn count_ones(self) -> u32 { (self as $UnsignedT).count_ones() }
         }
 
         doc_comment! {
@@ -283,9 +292,20 @@ Basic usage:
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::max_value().count_zeros(), 1);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(not(stage0))]
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn count_zeros(self) -> u32 {
+                (!self).count_ones()
+            }
+        }
+
+        doc_comment! {
+            concat!("Dummy docs. See !stage0 documentatio"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
+            #[inline]
+            pub fn count_zeros(self) -> u32 {
                 (!self).count_ones()
             }
         }
@@ -304,9 +324,20 @@ assert_eq!(n.leading_zeros(), 0);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(not(stage0))]
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn leading_zeros(self) -> u32 {
+                (self as $UnsignedT).leading_zeros()
+            }
+        }
+
+        doc_comment! {
+            concat!("Dummy docs. See !stage0 documentation"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
+            #[inline]
+            pub fn leading_zeros(self) -> u32 {
                 (self as $UnsignedT).leading_zeros()
             }
         }
@@ -325,9 +356,20 @@ assert_eq!(n.trailing_zeros(), 2);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(not(stage0))]
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn trailing_zeros(self) -> u32 {
+                (self as $UnsignedT).trailing_zeros()
+            }
+        }
+
+        doc_comment! {
+            concat!("Dummy docs. See !stage0 documentation"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
+            #[inline]
+            pub fn trailing_zeros(self) -> u32 {
                 (self as $UnsignedT).trailing_zeros()
             }
         }
@@ -400,9 +442,18 @@ $EndFeature, "
         /// assert_eq!(m, 21760);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[cfg(not(stage0))]
         #[rustc_const_unstable(feature = "const_int_ops")]
         #[inline]
         pub const fn swap_bytes(self) -> Self {
+            (self as $UnsignedT).swap_bytes() as Self
+        }
+
+        /// Dummy docs. See !stage0 documentation.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[cfg(stage0)]
+        #[inline]
+        pub fn swap_bytes(self) -> Self {
             (self as $UnsignedT).swap_bytes() as Self
         }
 
@@ -452,6 +503,7 @@ if cfg!(target_endian = \"big\") {
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(not(stage0))]
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn from_be(x: Self) -> Self {
@@ -463,6 +515,16 @@ $EndFeature, "
                 {
                     x.swap_bytes()
                 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Dummy docs. See !stage0 documentation"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
+            #[inline]
+            pub fn from_be(x: Self) -> Self {
+                if cfg!(target_endian = "big") { x } else { x.swap_bytes() }
             }
         }
 
@@ -486,6 +548,7 @@ if cfg!(target_endian = \"little\") {
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(not(stage0))]
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn from_le(x: Self) -> Self {
@@ -497,6 +560,16 @@ $EndFeature, "
                 {
                     x.swap_bytes()
                 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Dummy docs. See !stage0 documentation"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
+            #[inline]
+            pub fn from_le(x: Self) -> Self {
+                if cfg!(target_endian = "little") { x } else { x.swap_bytes() }
             }
         }
 
@@ -520,6 +593,7 @@ if cfg!(target_endian = \"big\") {
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(not(stage0))]
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn to_be(self) -> Self { // or not to be?
@@ -531,6 +605,16 @@ $EndFeature, "
                 {
                     self.swap_bytes()
                 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Dummy docs. See !stage0 documentation"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
+            #[inline]
+            pub fn to_be(self) -> Self { // or not to be?
+                if cfg!(target_endian = "big") { self } else { self.swap_bytes() }
             }
         }
 
@@ -554,6 +638,7 @@ if cfg!(target_endian = \"little\") {
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(not(stage0))]
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn to_le(self) -> Self {
@@ -565,6 +650,16 @@ $EndFeature, "
                 {
                     self.swap_bytes()
                 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Dummy docs. See !stage0 documentation"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
+            #[inline]
+            pub fn to_le(self) -> Self {
+                if cfg!(target_endian = "little") { self } else { self.swap_bytes() }
             }
         }
 
@@ -2070,9 +2165,20 @@ Basic usage:
 assert_eq!(n.count_ones(), 3);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(not(stage0))]
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn count_ones(self) -> u32 {
+                unsafe { intrinsics::ctpop(self as $ActualT) as u32 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Dummy docs. See !stage0 documentation"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
+            #[inline]
+            pub fn count_ones(self) -> u32 {
                 unsafe { intrinsics::ctpop(self as $ActualT) as u32 }
             }
         }
@@ -2088,9 +2194,20 @@ Basic usage:
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::max_value().count_zeros(), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(not(stage0))]
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn count_zeros(self) -> u32 {
+                (!self).count_ones()
+            }
+        }
+
+        doc_comment! {
+            concat!("Dummy docs. See !stage0 documentation"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
+            #[inline]
+            pub fn count_zeros(self) -> u32 {
                 (!self).count_ones()
             }
         }
@@ -2108,9 +2225,20 @@ Basic usage:
 assert_eq!(n.leading_zeros(), 2);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(not(stage0))]
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn leading_zeros(self) -> u32 {
+                unsafe { intrinsics::ctlz(self as $ActualT) as u32 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Dummy docs. See !stage0 documentation"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
+            #[inline]
+            pub fn leading_zeros(self) -> u32 {
                 unsafe { intrinsics::ctlz(self as $ActualT) as u32 }
             }
         }
@@ -2129,9 +2257,20 @@ Basic usage:
 assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(not(stage0))]
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn trailing_zeros(self) -> u32 {
+                unsafe { uint_cttz_call!(self, $BITS) as u32 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Dummy docs. See !stage0 documentation"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
+            #[inline]
+            pub fn trailing_zeros(self) -> u32 {
                 unsafe { uint_cttz_call!(self, $BITS) as u32 }
             }
         }
@@ -2208,9 +2347,18 @@ assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
         /// assert_eq!(m, 21760);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[cfg(not(stage0))]
         #[rustc_const_unstable(feature = "const_int_ops")]
         #[inline]
         pub const fn swap_bytes(self) -> Self {
+            unsafe { intrinsics::bswap(self as $ActualT) as Self }
+        }
+
+        /// Dummy docs. See !stage0 documentation.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[cfg(stage0)]
+        #[inline]
+        pub fn swap_bytes(self) -> Self {
             unsafe { intrinsics::bswap(self as $ActualT) as Self }
         }
 
@@ -2260,6 +2408,7 @@ if cfg!(target_endian = \"big\") {
 }", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(not(stage0))]
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn from_be(x: Self) -> Self {
@@ -2271,6 +2420,16 @@ if cfg!(target_endian = \"big\") {
                 {
                     x.swap_bytes()
                 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Dummy docs. See !stage0 documentation"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
+            #[inline]
+            pub fn from_be(x: Self) -> Self {
+                if cfg!(target_endian = "big") { x } else { x.swap_bytes() }
             }
         }
 
@@ -2294,6 +2453,7 @@ if cfg!(target_endian = \"little\") {
 }", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(not(stage0))]
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn from_le(x: Self) -> Self {
@@ -2305,6 +2465,16 @@ if cfg!(target_endian = \"little\") {
                 {
                     x.swap_bytes()
                 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Dummy docs. See !stage0 documentation"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
+            #[inline]
+            pub fn from_le(x: Self) -> Self {
+                if cfg!(target_endian = "little") { x } else { x.swap_bytes() }
             }
         }
 
@@ -2328,6 +2498,7 @@ if cfg!(target_endian = \"big\") {
 }", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(not(stage0))]
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn to_be(self) -> Self { // or not to be?
@@ -2339,6 +2510,16 @@ if cfg!(target_endian = \"big\") {
                 {
                     self.swap_bytes()
                 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Dummy docs. See !stage0 documentation"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
+            #[inline]
+            pub fn to_be(self) -> Self { // or not to be?
+                if cfg!(target_endian = "big") { self } else { self.swap_bytes() }
             }
         }
 
@@ -2362,6 +2543,7 @@ if cfg!(target_endian = \"little\") {
 }", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(not(stage0))]
             #[rustc_const_unstable(feature = "const_int_ops")]
             #[inline]
             pub const fn to_le(self) -> Self {
@@ -2373,6 +2555,16 @@ if cfg!(target_endian = \"little\") {
                 {
                     self.swap_bytes()
                 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Dummy docs. See !stage0 documentation"),
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
+            #[inline]
+            pub fn to_le(self) -> Self {
+                if cfg!(target_endian = "little") { self } else { self.swap_bytes() }
             }
         }
 
