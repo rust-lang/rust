@@ -146,7 +146,7 @@ impl<'tcx> ProjectionTyCandidateSet<'tcx> {
         // was not used). On other paths, it is not assigned,
         // and hence if those paths *could* reach the code that
         // comes after the match, this fn would not compile.
-        let convert_to_ambigious;
+        let convert_to_ambiguous;
 
         match self {
             None => {
@@ -169,10 +169,10 @@ impl<'tcx> ProjectionTyCandidateSet<'tcx> {
                 // clauses are the safer choice. See the comment on
                 // `select::SelectionCandidate` and #21974 for more details.
                 match (current, candidate) {
-                    (ParamEnv(..), ParamEnv(..)) => convert_to_ambigious = (),
+                    (ParamEnv(..), ParamEnv(..)) => convert_to_ambiguous = (),
                     (ParamEnv(..), _) => return false,
                     (_, ParamEnv(..)) => { unreachable!(); }
-                    (_, _) => convert_to_ambigious = (),
+                    (_, _) => convert_to_ambiguous = (),
                 }
             }
 
@@ -183,7 +183,7 @@ impl<'tcx> ProjectionTyCandidateSet<'tcx> {
 
         // We only ever get here when we moved from a single candidate
         // to ambiguous.
-        let () = convert_to_ambigious;
+        let () = convert_to_ambiguous;
         *self = Ambiguous;
         false
     }
