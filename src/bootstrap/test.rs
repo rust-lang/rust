@@ -952,8 +952,7 @@ impl Step for Compiletest {
         if suite.ends_with("fulldeps") ||
             // FIXME: Does pretty need librustc compiled? Note that there are
             // fulldeps test suites with mode = pretty as well.
-            mode == "pretty" ||
-            mode == "rustdoc"
+            mode == "pretty"
         {
             builder.ensure(compile::Rustc { compiler, target });
         }
