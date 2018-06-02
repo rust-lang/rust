@@ -136,8 +136,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             Value::ScalarPair(..) |
             Value::Scalar(_) if offset.bytes() == 0 && field.size == base_layout.size => Ok(Some((base, field.ty))),
             // split fat pointers, 2 element tuples, ...
-            Value::ScalarPair(a, b) if base_layout.fields.count() == 2 => {
-                let val = [a, b][field_index];
+            Value::ScalarPair(a, b) => {
+                let val = if offset.bytes() == 0 { a } else { b };
                 Ok(Some((Value::Scalar(val), field.ty)))
             },
             // FIXME(oli-obk): figure out whether we should be calling `try_read_value` here
