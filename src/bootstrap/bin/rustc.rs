@@ -268,6 +268,15 @@ fn main() {
         if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
             cmd.arg(format!("-Clinker={}", host_linker));
         }
+
+        if let Ok(s) = env::var("RUSTC_HOST_CRT_STATIC") {
+            if s == "true" {
+                cmd.arg("-C").arg("target-feature=+crt-static");
+            }
+            if s == "false" {
+                cmd.arg("-C").arg("target-feature=-crt-static");
+            }
+        }
     }
 
     if env::var_os("RUSTC_PARALLEL_QUERIES").is_some() {
