@@ -398,9 +398,6 @@ declare_features! (
     // `foo.rs` as an alternative to `foo/mod.rs`
     (active, non_modrs_mods, "1.24.0", Some(44660), Some(Edition::Edition2018)),
 
-    // Termination trait in tests (RFC 1937)
-    (active, termination_trait_test, "1.24.0", Some(48854), Some(Edition::Edition2018)),
-
     // `extern` in paths
     (active, extern_in_paths, "1.23.0", Some(44660), None),
 
@@ -475,6 +472,9 @@ declare_features! (
 
     // 'a: { break 'a; }
     (active, label_break_value, "1.28.0", Some(48594), None),
+
+    // Termination trait in tests (RFC 1937)
+    (accepted, termination_trait_test, "1.28.0", Some(48854), Some(Edition::Edition2018)),
 );
 
 declare_features! (
