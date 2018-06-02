@@ -260,7 +260,8 @@ array_impls! {
      0  1  2  3  4  5  6  7  8  9
     10 11 12 13 14 15 16 17 18 19
     20 21 22 23 24 25 26 27 28 29
-    30 31 32
+    30 31 32 33 34 35 36 37 38 39
+    40 41 42 43 44
 }
 
 // The Default impls cannot be generated using the array_impls! macro because
@@ -284,4 +285,4 @@ macro_rules! array_impl_default {
     };
 }
 
-array_impl_default!{32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
+array_impl_default!{44, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
