@@ -244,7 +244,12 @@ impl Layout {
             .ok_or(LayoutErr { private: () })?;
         let alloc_size = padded_size.checked_mul(n)
             .ok_or(LayoutErr { private: () })?;
-        Ok((Layout::from_size_align(alloc_size, self.align())?, padded_size))
+
+        unsafe {
+            // self.align is already known to be valid and alloc_size has been
+            // padded already.
+            Ok((Layout::from_size_align_unchecked(alloc_size, self.align()), padded_size))
+        }
     }
 
     /// Creates a layout describing the record for `self` followed by
@@ -258,11 +263,10 @@ impl Layout {
     /// (assuming that the record itself starts at offset 0).
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
+    #[inline]
     pub fn extend(&self, next: Self) -> Result<(Self, usize), LayoutErr> {
         let new_align = cmp::max(self.align(), next.align());
-        let realigned = Layout::from_size_align(self.size(), new_align)?;
-
-        let pad = realigned.padding_needed_for(next.align());
+        let pad = self.padding_needed_for(next.align());
 
         let offset = self.size().checked_add(pad)
             .ok_or(LayoutErr { private: () })?;
@@ -285,6 +289,7 @@ impl Layout {
     /// aligned.
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
+    #[inline]
     pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutErr> {
         let size = self.size().checked_mul(n).ok_or(LayoutErr { private: () })?;
         Layout::from_size_align(size, self.align())
@@ -305,6 +310,7 @@ impl Layout {
     ///  `extend`.)
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
+    #[inline]
     pub fn extend_packed(&self, next: Self) -> Result<(Self, usize), LayoutErr> {
         let new_size = self.size().checked_add(next.size())
             .ok_or(LayoutErr { private: () })?;
@@ -315,6 +321,7 @@ impl Layout {
     /// Creates a layout describing the record for a `[T; n]`.
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
+    #[inline]
     pub fn array<T>(n: usize) -> Result<Self, LayoutErr> {
         Layout::new::<T>()
             .repeat(n)
