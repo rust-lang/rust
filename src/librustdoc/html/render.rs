@@ -4452,8 +4452,7 @@ fn item_primitive(w: &mut fmt::Formatter, cx: &Context,
 fn item_keyword(w: &mut fmt::Formatter, cx: &Context,
                 it: &clean::Item,
                 _p: &str) -> fmt::Result {
-    document(w, cx, it)?;
-    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
+    document(w, cx, it)
 }
 
 const BASIC_KEYWORDS: &'static str = "rust, rustlang, rust-lang";
