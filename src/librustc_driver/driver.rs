@@ -974,9 +974,18 @@ where
         });
     }
 
+    // Expand global allocators, which are treated as an in-tree proc macro
     krate = time(sess, "creating allocators", || {
-        allocator::expand::modify(&sess.parse_sess, &mut resolver, krate, sess.diagnostic())
+        allocator::expand::modify(
+            &sess.parse_sess,
+            &mut resolver,
+            krate,
+            crate_name.to_string(),
+            sess.diagnostic(),
+        )
     });
+
+    // Done with macro expansion!
 
     after_expand(&krate)?;
 
