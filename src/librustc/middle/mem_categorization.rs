@@ -179,14 +179,18 @@ pub enum Note {
 // and how it is located, as well as the mutability of the memory in
 // which the value is stored.
 //
-// *WARNING* The field `cmt.ty` is NOT necessarily the same as the
-// result of `node_id_to_type(cmt.id)`. This is because the `id` is
-// always the `id` of the node producing the type; in an expression
-// like `*x`, the type of this deref node is the deref'd type (`T`),
-// but in a pattern like `@x`, the `@x` pattern is again a
-// dereference, but its type is the type *before* the dereference
-// (`@T`). So use `cmt.ty` to find the type of the value in a consistent
-// fashion. For more details, see the method `cat_pattern`
+// *WARNING* The field `cmt.type` is NOT necessarily the same as the
+// result of `node_id_to_type(cmt.id)`.
+//
+// (FIXME: rewrite the following comment given that `@x` managed
+// pointers have been obsolete for quite some time.)
+//
+// This is because the `id` is always the `id` of the node producing the
+// type; in an expression like `*x`, the type of this deref node is the
+// deref'd type (`T`), but in a pattern like `@x`, the `@x` pattern is
+// again a dereference, but its type is the type *before* the
+// dereference (`@T`). So use `cmt.ty` to find the type of the value in
+// a consistent fashion. For more details, see the method `cat_pattern`
 #[derive(Clone, Debug, PartialEq)]
 pub struct cmt_<'tcx> {
     pub hir_id: hir::HirId,        // HIR id of expr/pat producing this value
@@ -1191,6 +1195,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // exactly, but I consider them to "execute" when they match a
         // value, and I consider them to produce the value that was
         // matched. So if you have something like:
+        //
+        // (FIXME: `@@3` is not legal code anymore!)
         //
         //     let x = @@3;
         //     match x {
