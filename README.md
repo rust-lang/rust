@@ -1,4 +1,5 @@
-# Rust RFCs
+# Rust RFCs - [Active RFC List](https://rfcbot.rs/)
+
 [Rust RFCs]: #rust-rfcs
 
 Many changes, including bug fixes and documentation improvements can be
