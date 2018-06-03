@@ -119,7 +119,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             Index(v) => {
                 let value = self.frame().get_local(v)?;
                 let ty = self.tcx.tcx.types.usize;
-                let n = self.value_to_scalar(ValTy { value, ty })?.to_u64()?;
+                let n = self.value_to_scalar(ValTy { value, ty })?.to_usize(self)?;
                 Index(n)
             },
             ConstantIndex { offset, min_length, from_end } =>

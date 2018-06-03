@@ -62,7 +62,7 @@ pub trait ScalarExt {
     fn from_isize(i: i64, ptr_size: Size) -> Self;
     fn from_f32(f: f32) -> Self;
     fn from_f64(f: f64) -> Self;
-    fn to_u64(self) -> EvalResult<'static, u64>;
+    fn to_usize<'a, 'mir, 'tcx>(self, ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>) -> EvalResult<'static, u64>;
     fn is_null(self) -> EvalResult<'static, bool>;
     /// HACK: this function just extracts all bits if `defined != 0`
     /// Mainly used for args of C-functions and we should totally correctly fetch the size
@@ -103,8 +103,8 @@ impl ScalarExt for Scalar {
         Scalar::Bits { bits: f.to_bits() as u128, defined: 64 }
     }
 
-    fn to_u64(self) -> EvalResult<'static, u64> {
-        let b = self.to_bits(Size::from_bits(64))?;
+    fn to_usize<'a, 'mir, 'tcx>(self, ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>) -> EvalResult<'static, u64> {
+        let b = self.to_bits(ecx.memory.pointer_size())?;
         assert_eq!(b as u64 as u128, b);
         Ok(b as u64)
     }
