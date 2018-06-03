@@ -561,7 +561,8 @@ a {
 	content: '\2002\00a7\2002';
 }
 
-.docblock a:not(.srclink):hover, .docblock-short a:not(.srclink):hover, .stability a {
+.docblock a:not(.srclink):not(.test-arrow):hover,
+.docblock-short a:not(.srclink):not(.test-arrow):hover, .stability a {
 	text-decoration: underline;
 }
 

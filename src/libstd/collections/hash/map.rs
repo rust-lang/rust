@@ -2250,6 +2250,11 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
 
     /// Gets a mutable reference to the value in the entry.
     ///
+    /// If you need a reference to the `OccupiedEntry` which may outlive the
+    /// destruction of the `Entry` value, see [`into_mut`].
+    ///
+    /// [`into_mut`]: #method.into_mut
+    ///
     /// # Examples
     ///
     /// ```
@@ -2261,10 +2266,14 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     ///
     /// assert_eq!(map["poneyland"], 12);
     /// if let Entry::Occupied(mut o) = map.entry("poneyland") {
-    ///      *o.get_mut() += 10;
+    ///     *o.get_mut() += 10;
+    ///     assert_eq!(*o.get(), 22);
+    ///
+    ///     // We can use the same Entry multiple times.
+    ///     *o.get_mut() += 2;
     /// }
     ///
-    /// assert_eq!(map["poneyland"], 22);
+    /// assert_eq!(map["poneyland"], 24);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut V {
@@ -2273,6 +2282,10 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
 
     /// Converts the OccupiedEntry into a mutable reference to the value in the entry
     /// with a lifetime bound to the map itself.
+    ///
+    /// If you need multiple references to the `OccupiedEntry`, see [`get_mut`].
+    ///
+    /// [`get_mut`]: #method.get_mut
     ///
     /// # Examples
     ///

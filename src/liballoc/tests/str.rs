@@ -1326,6 +1326,7 @@ fn test_str_default() {
 
     t::<&str>();
     t::<String>();
+    t::<&mut str>();
 }
 
 #[test]
