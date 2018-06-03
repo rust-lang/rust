@@ -2706,9 +2706,7 @@ impl<'a, T> IterMut<'a, T> {
     /// View the underlying data as a subslice of the original data.
     ///
     /// To avoid creating `&mut` references that alias, this is forced
-    /// to consume the iterator. Consider using the `Slice` and
-    /// `SliceMut` implementations for obtaining slices with more
-    /// restricted lifetimes that do not consume the iterator.
+    /// to consume the iterator.
     ///
     /// # Examples
     ///
