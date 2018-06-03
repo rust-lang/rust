@@ -154,7 +154,7 @@ fn main() {
 
         // this check ensures that dependencies are built but not interpreted and the final crate is
         // interpreted but not built
-        let miri_enabled = std::env::args().any(|s| s == "-Zno-trans");
+        let miri_enabled = std::env::args().any(|s| s == "--emit=dep-info,metadata");
 
         let mut command = if miri_enabled {
             let mut path = std::env::current_exe().expect("current executable path invalid");
@@ -193,7 +193,7 @@ where
     if !found_dashes {
         args.push("--".to_owned());
     }
-    args.push("-Zno-trans".to_owned());
+    args.push("--emit=dep-info,metadata".to_owned());
     args.push("--cfg".to_owned());
     args.push(r#"feature="cargo-miri""#.to_owned());
 
