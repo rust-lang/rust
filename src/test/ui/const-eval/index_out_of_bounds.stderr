@@ -1,0 +1,17 @@
+error[E0080]: constant evaluation error
+  --> $DIR/index_out_of_bounds.rs:11:19
+   |
+LL | static FOO: i32 = [][0];
+   |                   ^^^^^ index out of bounds: the len is 0 but the index is 0
+
+error: index out of bounds: the len is 1 but the index is 1
+  --> $DIR/index_out_of_bounds.rs:16:5
+   |
+LL |     array[1]; //~ ERROR index out of bounds
+   |     ^^^^^^^^
+   |
+   = note: #[deny(const_err)] on by default
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
