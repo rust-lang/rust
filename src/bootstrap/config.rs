@@ -530,7 +530,10 @@ impl Config {
             set(&mut config.rust_dist_src, rust.dist_src);
             set(&mut config.quiet_tests, rust.quiet_tests);
             set(&mut config.test_miri, rust.test_miri);
-            set(&mut config.incremental, rust.incremental);
+            // in the case "false" is set explicitly, do not overwrite the command line args
+            if let Some(true) = rust.incremental {
+                config.incremental = true;
+            }
             set(&mut config.wasm_syscall, rust.wasm_syscall);
             set(&mut config.lld_enabled, rust.lld);
             config.rustc_parallel_queries = rust.experimental_parallel_queries.unwrap_or(false);
