@@ -806,7 +806,7 @@ impl<'a> Builder<'a> {
             );
         }
 
-        if mode == Mode::Tool {
+        if mode.is_tool() {
             // Tools like cargo and rls don't get debuginfo by default right now, but this can be
             // enabled in the config.  Adding debuginfo makes them several times larger.
             if self.config.rust_debuginfo_tools {
@@ -871,7 +871,7 @@ impl<'a> Builder<'a> {
         //
         // If LLVM support is disabled we need to use the snapshot compiler to compile
         // build scripts, as the new compiler doesn't support executables.
-        if mode == Mode::Libstd || !self.config.llvm_enabled {
+        if mode == Mode::Std || !self.config.llvm_enabled {
             cargo
                 .env("RUSTC_SNAPSHOT", &self.initial_rustc)
                 .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
@@ -903,7 +903,7 @@ impl<'a> Builder<'a> {
         cargo.env("RUSTC_VERBOSE", format!("{}", self.verbosity));
 
         // in std, we want to avoid denying warnings for stage 0 as that makes cfg's painful.
-        if self.config.deny_warnings && !(mode == Mode::Libstd && stage == 0) {
+        if self.config.deny_warnings && !(mode == Mode::Std && stage == 0) {
             cargo.env("RUSTC_DENY_WARNINGS", "1");
         }
 
@@ -963,7 +963,7 @@ impl<'a> Builder<'a> {
         }
 
         if cmd == "build"
-            && mode == Mode::Libstd
+            && mode == Mode::Std
             && self.config.extended
             && compiler.is_final_stage(self)
         {
@@ -1012,7 +1012,7 @@ impl<'a> Builder<'a> {
         // be resolved because MinGW has the import library. The downside is we
         // don't get newer functions from Windows, but we don't use any of them
         // anyway.
-        if mode != Mode::Tool {
+        if !mode.is_tool() {
             cargo.env("WINAPI_NO_BUNDLED_LIBRARIES", "1");
         }
 
@@ -1751,7 +1751,7 @@ mod __test {
             &[test::Crate {
                 compiler: Compiler { host, stage: 0 },
                 target: host,
-                mode: Mode::Libstd,
+                mode: Mode::Std,
                 test_kind: test::TestKind::Test,
                 krate: INTERNER.intern_str("std"),
             },]

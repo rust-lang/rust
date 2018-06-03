@@ -463,7 +463,7 @@ impl Step for Std {
         };
 
         builder.ensure(compile::Std { compiler, target });
-        let out_dir = builder.stage_out(compiler, Mode::Libstd)
+        let out_dir = builder.stage_out(compiler, Mode::Std)
                            .join(target).join("doc");
 
         // Here what we're doing is creating a *symlink* (directory junction on
@@ -483,7 +483,7 @@ impl Step for Std {
         builder.clear_if_dirty(&my_out, &rustdoc);
         t!(symlink_dir_force(&builder.config, &my_out, &out_dir));
 
-        let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "doc");
+        let mut cargo = builder.cargo(compiler, Mode::Std, target, "doc");
         compile::std_cargo(builder, &compiler, target, &mut cargo);
 
         // Keep a whitelist so we do not build internal stdlib crates, these will be
@@ -546,7 +546,7 @@ impl Step for Test {
         builder.ensure(Std { stage, target });
 
         builder.ensure(compile::Test { compiler, target });
-        let out_dir = builder.stage_out(compiler, Mode::Libtest)
+        let out_dir = builder.stage_out(compiler, Mode::Test)
                            .join(target).join("doc");
 
         // See docs in std above for why we symlink
@@ -554,7 +554,7 @@ impl Step for Test {
         builder.clear_if_dirty(&my_out, &rustdoc);
         t!(symlink_dir_force(&builder.config, &my_out, &out_dir));
 
-        let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "doc");
+        let mut cargo = builder.cargo(compiler, Mode::Test, target, "doc");
         compile::test_cargo(builder, &compiler, target, &mut cargo);
 
         cargo.arg("--no-deps").arg("-p").arg("test");
@@ -614,7 +614,7 @@ impl Step for WhitelistedRustc {
         builder.ensure(Std { stage, target });
 
         builder.ensure(compile::Rustc { compiler, target });
-        let out_dir = builder.stage_out(compiler, Mode::Librustc)
+        let out_dir = builder.stage_out(compiler, Mode::Rustc)
                            .join(target).join("doc");
 
         // See docs in std above for why we symlink
@@ -622,7 +622,7 @@ impl Step for WhitelistedRustc {
         builder.clear_if_dirty(&my_out, &rustdoc);
         t!(symlink_dir_force(&builder.config, &my_out, &out_dir));
 
-        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "doc");
+        let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "doc");
         compile::rustc_cargo(builder, &mut cargo);
 
         // We don't want to build docs for internal compiler dependencies in this
@@ -698,12 +698,12 @@ impl Step for Rustc {
 
         // We do not symlink to the same shared folder that already contains std library
         // documentation from previous steps as we do not want to include that.
-        let out_dir = builder.stage_out(compiler, Mode::Librustc).join(target).join("doc");
+        let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target).join("doc");
         builder.clear_if_dirty(&out, &rustdoc);
         t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
         // Build cargo command.
-        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "doc");
+        let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "doc");
         cargo.env("RUSTDOCFLAGS", "--document-private-items");
         compile::rustc_cargo(builder, &mut cargo);
 
@@ -799,13 +799,15 @@ impl Step for Rustdoc {
         builder.ensure(tool::Rustdoc { host: compiler.host });
 
         // Symlink compiler docs to the output directory of rustdoc documentation.
-        let out_dir = builder.stage_out(compiler, Mode::Tool).join(target).join("doc");
+        let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target).join("doc");
         t!(fs::create_dir_all(&out_dir));
         builder.clear_if_dirty(&out, &rustdoc);
         t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
         // Build cargo command.
-        let mut cargo = prepare_tool_cargo(builder, compiler, target, "doc", "src/tools/rustdoc");
+        let mut cargo = prepare_tool_cargo(
+            builder, compiler, Mode::ToolRustc, target, "doc", "src/tools/rustdoc");
+
         cargo.env("RUSTDOCFLAGS", "--document-private-items");
         builder.run(&mut cargo);
     }

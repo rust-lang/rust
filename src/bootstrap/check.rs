@@ -40,10 +40,10 @@ impl Step for Std {
         let target = self.target;
         let compiler = builder.compiler(0, builder.config.build);
 
-        let out_dir = builder.stage_out(compiler, Mode::Libstd);
+        let out_dir = builder.stage_out(compiler, Mode::Std);
         builder.clear_if_dirty(&out_dir, &builder.rustc(compiler));
 
-        let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "check");
+        let mut cargo = builder.cargo(compiler, Mode::Std, target, "check");
         std_cargo(builder, &compiler, target, &mut cargo);
 
         let _folder = builder.fold_output(|| format!("stage{}-std", compiler.stage));
@@ -87,11 +87,11 @@ impl Step for Rustc {
         let compiler = builder.compiler(0, builder.config.build);
         let target = self.target;
 
-        let stage_out = builder.stage_out(compiler, Mode::Librustc);
+        let stage_out = builder.stage_out(compiler, Mode::Rustc);
         builder.clear_if_dirty(&stage_out, &libstd_stamp(builder, compiler, target));
         builder.clear_if_dirty(&stage_out, &libtest_stamp(builder, compiler, target));
 
-        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "check");
+        let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "check");
         rustc_cargo(builder, &mut cargo);
 
         let _folder = builder.fold_output(|| format!("stage{}-rustc", compiler.stage));
@@ -137,7 +137,7 @@ impl Step for CodegenBackend {
         let target = self.target;
         let backend = self.backend;
 
-        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "check");
+        let mut cargo = builder.cargo(compiler, Mode::Codegen, target, "check");
         let features = builder.rustc_features().to_string();
         cargo.arg("--manifest-path").arg(builder.src.join("src/librustc_codegen_llvm/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo);
@@ -175,10 +175,10 @@ impl Step for Test {
         let compiler = builder.compiler(0, builder.config.build);
         let target = self.target;
 
-        let out_dir = builder.stage_out(compiler, Mode::Libtest);
+        let out_dir = builder.stage_out(compiler, Mode::Test);
         builder.clear_if_dirty(&out_dir, &libstd_stamp(builder, compiler, target));
 
-        let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "check");
+        let mut cargo = builder.cargo(compiler, Mode::Test, target, "check");
         test_cargo(builder, &compiler, target, &mut cargo);
 
         let _folder = builder.fold_output(|| format!("stage{}-test", compiler.stage));
@@ -219,6 +219,7 @@ impl Step for Rustdoc {
 
         let mut cargo = prepare_tool_cargo(builder,
                                            compiler,
+                                           Mode::ToolRustc,
                                            target,
                                            "check",
                                            "src/tools/rustdoc");
@@ -236,7 +237,7 @@ impl Step for Rustdoc {
         builder.ensure(tool::CleanTools {
             compiler,
             target,
-            mode: Mode::Tool,
+            cause: Mode::Rustc,
         });
     }
 }
@@ -244,19 +245,19 @@ impl Step for Rustdoc {
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
 pub fn libstd_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Libstd, target).join(".libstd-check.stamp")
+    builder.cargo_out(compiler, Mode::Std, target).join(".libstd-check.stamp")
 }
 
 /// Cargo's output path for libtest in a given stage, compiled by a particular
 /// compiler for the specified target.
 pub fn libtest_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Libtest, target).join(".libtest-check.stamp")
+    builder.cargo_out(compiler, Mode::Test, target).join(".libtest-check.stamp")
 }
 
 /// Cargo's output path for librustc in a given stage, compiled by a particular
 /// compiler for the specified target.
 pub fn librustc_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Librustc, target).join(".librustc-check.stamp")
+    builder.cargo_out(compiler, Mode::Rustc, target).join(".librustc-check.stamp")
 }
 
 /// Cargo's output path for librustc_codegen_llvm in a given stage, compiled by a particular
@@ -265,12 +266,12 @@ fn codegen_backend_stamp(builder: &Builder,
                          compiler: Compiler,
                          target: Interned<String>,
                          backend: Interned<String>) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Librustc, target)
+    builder.cargo_out(compiler, Mode::Codegen, target)
          .join(format!(".librustc_codegen_llvm-{}-check.stamp", backend))
 }
 
 /// Cargo's output path for rustdoc in a given stage, compiled by a particular
 /// compiler for the specified target.
 pub fn rustdoc_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Tool, target).join(".rustdoc-check.stamp")
+    builder.cargo_out(compiler, Mode::ToolRustc, target).join(".rustdoc-check.stamp")
 }
