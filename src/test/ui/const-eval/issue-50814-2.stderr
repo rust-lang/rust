@@ -1,0 +1,11 @@
+error[E0080]: erroneous constant used
+  --> $DIR/issue-50814-2.rs:26:5
+   |
+LL |     &<A<T> as Foo<T>>::BAR //~ ERROR erroneous constant used
+   |     ^---------------------
+   |      |
+   |      referenced constant has errors
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

@@ -1190,13 +1190,25 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let param_env = ty::ParamEnv::reveal_all();
     for i in 0..mir.promoted.len() {
         use rustc_data_structures::indexed_vec::Idx;
+        let i = Promoted::new(i);
         let cid = GlobalId {
             instance,
-            promoted: Some(Promoted::new(i)),
+            promoted: Some(i),
         };
         match tcx.const_eval(param_env.and(cid)) {
             Ok(val) => collect_const(tcx, val, instance.substs, output),
-            Err(_) => {},
+            Err(err) => {
+                use rustc::middle::const_val::ErrKind;
+                use rustc::mir::interpret::EvalErrorKind;
+                if let ErrKind::Miri(ref miri, ..) = *err.kind {
+                    if let EvalErrorKind::ReferencedConstant = miri.kind {
+                        err.report_as_error(
+                            tcx.at(mir.promoted[i].span),
+                            "erroneous constant used",
+                        );
+                    }
+                }
+            },
         }
     }
 }

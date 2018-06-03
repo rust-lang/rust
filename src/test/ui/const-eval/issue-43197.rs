@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
 #![warn(const_err)]
 
 #![feature(const_fn)]
@@ -27,4 +26,6 @@ fn main() {
     println!("{} {}", X, Y);
     //~^ WARN this expression will panic at runtime
     //~| WARN this expression will panic at runtime
+    //~| ERROR erroneous constant used
+    //~| ERROR erroneous constant used
 }

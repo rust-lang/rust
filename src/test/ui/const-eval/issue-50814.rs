@@ -8,16 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![warn(const_err)]
+trait Unsigned {
+    const MAX: u8;
+}
 
-const X: u32 = 5;
-const Y: u32 = 6;
-const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
-//~^ WARN attempt to subtract with overflow
-//~| WARN this constant cannot be used
+struct U8(u8);
+impl Unsigned for U8 {
+    const MAX: u8 = 0xff;
+}
+
+struct Sum<A,B>(A,B);
+
+impl<A: Unsigned, B: Unsigned> Unsigned for Sum<A,B> {
+    const MAX: u8 = A::MAX + B::MAX;
+}
+
+fn foo<T>(_: T) -> &'static u8 {
+    &Sum::<U8,U8>::MAX //~ ERROR erroneous constant used
+}
 
 fn main() {
-    println!("{}", FOO);
-    //~^ WARN this expression will panic at runtime
-    //~| ERROR erroneous constant used
+    foo(0);
 }

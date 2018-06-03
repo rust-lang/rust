@@ -45,6 +45,16 @@ LL |     println!("{} {}", X, Y);
    |                          ^ referenced constant has errors
 
 error[E0080]: erroneous constant used
+  --> $DIR/issue-43197.rs:26:5
+   |
+LL |     println!("{} {}", X, Y);
+   |     ^^^^^^^^^^^^^^^^^^-^^^^^
+   |                       |
+   |                       referenced constant has errors
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error[E0080]: erroneous constant used
   --> $DIR/issue-43197.rs:26:26
    |
 LL |     println!("{} {}", X, Y);
@@ -56,6 +66,6 @@ error[E0080]: erroneous constant used
 LL |     println!("{} {}", X, Y);
    |                       ^ referenced constant has errors
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

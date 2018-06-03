@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
-#![warn(const_err)]
+#![allow(const_err)]
 
 trait Foo {
     const AMT: usize;
@@ -33,6 +32,6 @@ impl Foo for u16 {
 }
 
 fn main() {
-    println!("{}", <Bar<u16, u8> as Foo>::AMT); //~ WARN const_err
-    //~^ WARN const_err
+    println!("{}", <Bar<u16, u8> as Foo>::AMT);
+    //~^ ERROR erroneous constant used
 }
