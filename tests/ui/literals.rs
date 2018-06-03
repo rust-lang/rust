@@ -1,5 +1,3 @@
-
-
 #![warn(mixed_case_hex_literals)]
 #![warn(unseparated_literal_suffix)]
 #![warn(zero_prefixed_literal)]
@@ -31,4 +29,16 @@ fn main() {
 
     let ok11 = 0o123;
     let ok12 = 0b10_1010;
+
+    let ok13 = 0xab_abcd;
+    let ok14 = 0xBAFE_BAFE;
+    let ok15 = 0xab_cabc_abca_bcab_cabc;
+    let ok16 = 0xFE_BAFE_ABAB_ABCD;
+    let ok17 = 0x123_4567_8901_usize;
+
+    let fail9 = 0xabcdef;
+    let fail10 = 0xBAFEBAFE;
+    let fail11 = 0xabcdeff;
+    let fail12 = 0xabcabcabcabcabcabc;
+    let fail13 = 0x1_23456_78901_usize;
 }

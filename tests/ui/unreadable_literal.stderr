@@ -10,7 +10,7 @@ error: long literal lacking separators
  --> $DIR/unreadable_literal.rs:7:30
   |
 7 |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
-  |                              ^^^^^^^^^^^^^^^^^^^ help: consider: `0x123_4567_8901_usize`
+  |                              ^^^^^^^^^^^^^^^^^^^ help: consider: `0x0123_4567_8901_usize`
 
 error: long literal lacking separators
  --> $DIR/unreadable_literal.rs:7:51

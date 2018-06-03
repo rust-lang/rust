@@ -193,16 +193,22 @@ impl<'a> DigitInfo<'a> {
                 self.suffix.unwrap_or("")
             )
         } else {
-            let hint = self.digits
+            let filtered_digits_vec = self.digits
                 .chars()
-                .rev()
                 .filter(|&c| c != '_')
-                .collect::<Vec<_>>()
+                .rev()
+                .collect::<Vec<_>>();
+            let mut hint = filtered_digits_vec
                 .chunks(group_size)
                 .map(|chunk| chunk.into_iter().rev().collect())
                 .rev()
                 .collect::<Vec<String>>()
                 .join("_");
+            // Forces hexadecimal values to be grouped by 4 being filled with zeroes (e.g 0x00ab_cdef)
+            let nb_digits_to_fill = filtered_digits_vec.len() % 4;
+            if self.radix == Radix::Hexadecimal && nb_digits_to_fill != 0 {
+                hint = format!("{:0>4}{}", &hint[..nb_digits_to_fill], &hint[nb_digits_to_fill..]);
+            }
             format!(
                 "{}{}{}",
                 self.prefix.unwrap_or(""),
