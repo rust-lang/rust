@@ -284,6 +284,8 @@ fn run() {
 
     // FIXME: Allow attributes in pattern constexprs?
     // would require parens in patterns to allow disambiguation...
+    // —which is now available under the `pattern_parentheses` feature gate
+    // (tracking issue #51087)
 
     reject_expr_parse("match 0 {
         0..=#[attr] 10 => ()
