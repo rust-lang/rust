@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,14 +7,21 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![deny(single_use_lifetimes)]
-struct Foo<'x> { //~ ERROR lifetime name `'x` only used once
-    x: &'x u32 // no warning!
+
+use std::any::Any;
+pub struct EventHandler {
 }
 
-// Once #44524 is fixed, this should issue a warning.
-impl<'y> Foo<'y> { //~ ERROR lifetime name `'y` only used once
-    fn method() { }
+impl EventHandler
+{
+    pub fn handle_event<T: Any>(&mut self, _efunc: impl FnMut(T)) {}
 }
 
-fn main() { }
+struct TestEvent(i32);
+
+fn main() {
+    let mut evt = EventHandler {};
+    evt.handle_event::<TestEvent, fn(TestEvent)>(|_evt| {
+        //~^ ERROR cannot provide explicit type parameters
+    });
+}

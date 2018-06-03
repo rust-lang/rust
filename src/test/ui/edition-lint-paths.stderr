@@ -7,8 +7,8 @@ LL |     use ::bar::Bar;
 note: lint level defined here
   --> $DIR/edition-lint-paths.rs:12:9
    |
-LL | #![deny(absolute_path_starting_with_module)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(absolute_paths_not_starting_with_crate)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
    = note: for more information, see issue TBD
 

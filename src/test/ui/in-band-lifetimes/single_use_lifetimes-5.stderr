@@ -7,8 +7,8 @@ LL | trait Foo<'x> { //~ ERROR lifetime name `'x` only used once
 note: lint level defined here
   --> $DIR/single_use_lifetimes-5.rs:10:9
    |
-LL | #![deny(single_use_lifetime)]
-   |         ^^^^^^^^^^^^^^^^^^^
+LL | #![deny(single_use_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

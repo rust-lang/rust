@@ -219,6 +219,8 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         if let Some(exports) = self.cx.tcx.module_exports(def_id) {
             for export in exports.iter().filter(|e| e.vis == Visibility::Public) {
                 if let Def::Macro(def_id, ..) = export.def {
+                    // FIXME(50647): this eager macro inlining does not take
+                    // doc(hidden)/doc(no_inline) into account
                     if def_id.krate == LOCAL_CRATE {
                         continue // These are `krate.exported_macros`, handled in `self.visit()`.
                     }
@@ -237,6 +239,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                         unreachable!()
                     };
 
+                    debug!("inlining macro {}", def.ident.name);
                     om.macros.push(Macro {
                         def_id,
                         attrs: def.attrs.clone().into(),
@@ -561,6 +564,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
 
     // convert each exported_macro into a doc item
     fn visit_local_macro(&self, def: &hir::MacroDef) -> Macro {
+        debug!("visit_local_macro: {}", def.name);
         let tts = def.body.trees().collect::<Vec<_>>();
         // Extract the spans of all matchers. They represent the "interface" of the macro.
         let matchers = tts.chunks(4).map(|arm| arm[0].span()).collect();

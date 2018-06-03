@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(bare_trait_object)]
+#![allow(bare_trait_objects)]
 
 struct Foo;
 

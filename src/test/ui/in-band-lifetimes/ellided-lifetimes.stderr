@@ -7,8 +7,8 @@ LL | fn foo(x: &Foo) {
 note: lint level defined here
   --> $DIR/ellided-lifetimes.rs:12:9
    |
-LL | #![deny(elided_lifetime_in_path)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(elided_lifetimes_in_paths)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
