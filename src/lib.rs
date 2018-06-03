@@ -265,7 +265,6 @@ pub fn eval_main<'a, 'tcx: 'a>(
                     }
                 }
             }
-            ::std::process::exit(1);
         }
     }
 }
