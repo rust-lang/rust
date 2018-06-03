@@ -566,8 +566,14 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                         ProjectionElem::Field(..) |
                         ProjectionElem::Index(_) => {
-                            if this.mode != Mode::Fn &&
-                               this.qualif.intersects(Qualif::STATIC) {
+                            if this.mode == Mode::Fn {
+                                let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
+                                if let Some(def) = base_ty.ty_adt_def() {
+                                    if def.is_union() {
+                                        this.not_const();
+                                    }
+                                }
+                            } else if this.qualif.intersects(Qualif::STATIC) {
                                 span_err!(this.tcx.sess, this.span, E0494,
                                           "cannot refer to the interior of another \
                                            static, use a constant instead");
