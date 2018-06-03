@@ -163,7 +163,8 @@ a {
 	color: #000;
 }
 
-.docblock a:not(.srclink), .docblock-short a:not(.srclink), .stability a {
+.docblock a:not(.srclink):not(.test-arrow), .docblock-short a:not(.srclink):not(.test-arrow),
+.stability a {
 	color: #3873AD;
 }
 
