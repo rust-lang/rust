@@ -114,3 +114,13 @@ fn warn_for_built_in_methods_with_negation() {
     if !res.is_some() { }
     if !res.is_none() { }
 }
+
+#[allow(neg_cmp_op_on_partial_ord)]
+fn dont_warn_for_negated_partial_ord_comparision() {
+    let a: f64 = unimplemented!();
+    let b: f64 = unimplemented!();
+    let _ = !(a < b);
+    let _ = !(a <= b);
+    let _ = !(a > b);
+    let _ = !(a >= b);
+}

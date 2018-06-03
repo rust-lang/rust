@@ -4,7 +4,7 @@ use rustc::hir::intravisit::*;
 use syntax::ast::{LitKind, NodeId, DUMMY_NODE_ID};
 use syntax::codemap::{dummy_spanned, Span, DUMMY_SP};
 use syntax::util::ThinVec;
-use crate::utils::{in_macro, paths, match_type, snippet_opt, span_lint_and_then, SpanlessEq};
+use crate::utils::{in_macro, paths, match_type, snippet_opt, span_lint_and_then, SpanlessEq, get_trait_def_id, implements_trait};
 
 /// **What it does:** Checks for boolean expressions that can be written more
 /// concisely.
@@ -122,6 +122,11 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
             }
             let negated = match e.node {
                 ExprBinary(binop, ref lhs, ref rhs) => {
+ 
+                    if !implements_ord(self.cx, lhs) {
+                        continue;
+                    }
+
                     let mk_expr = |op| {
                         Expr {
                             id: DUMMY_NODE_ID,
@@ -174,6 +179,11 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
     fn simplify_not(&self, expr: &Expr) -> Option<String> {
         match expr.node {
             ExprBinary(binop, ref lhs, ref rhs) => {
+
+                if !implements_ord(self.cx, lhs) {
+                    return None;
+                }
+
                 match binop.node {
                     BiEq => Some(" != "),
                     BiNe => Some(" == "),
@@ -443,4 +453,11 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
+}
+
+
+fn implements_ord<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, expr: &Expr) -> bool {
+    let ty = cx.tables.expr_ty(expr);
+    get_trait_def_id(cx, &paths::ORD)
+        .map_or(false, |id| implements_trait(cx, ty, id, &[]))
 }
