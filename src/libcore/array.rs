@@ -285,4 +285,7 @@ macro_rules! array_impl_default {
     };
 }
 
-array_impl_default!{44, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
+array_impl_default!{
+    44,
+    T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T
+}
