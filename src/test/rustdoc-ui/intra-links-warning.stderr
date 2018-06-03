@@ -5,6 +5,11 @@ warning: [Foo::baz] cannot be resolved, ignoring it...
 14 | | //!
 15 | | //! and [Uniooon::X].
    | |_____________________^
+   |
+   = note: the link appears in this line:
+           
+            Test with [Foo::baz], [Bar::foo], ...
+                       ^^^^^^^^
 
 warning: [Bar::foo] cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:13:1
@@ -13,6 +18,11 @@ warning: [Bar::foo] cannot be resolved, ignoring it...
 14 | | //!
 15 | | //! and [Uniooon::X].
    | |_____________________^
+   |
+   = note: the link appears in this line:
+           
+            Test with [Foo::baz], [Bar::foo], ...
+                                   ^^^^^^^^
 
 warning: [Uniooon::X] cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:13:1
@@ -21,4 +31,9 @@ warning: [Uniooon::X] cannot be resolved, ignoring it...
 14 | | //!
 15 | | //! and [Uniooon::X].
    | |_____________________^
+   |
+   = note: the link appears in this line:
+           
+            and [Uniooon::X].
+                 ^^^^^^^^^^
 

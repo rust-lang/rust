@@ -32,6 +32,8 @@ use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::default::Default;
 use std::fmt::{self, Write};
+use std::borrow::Cow;
+use std::ops::Range;
 use std::str;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::codemap::Span;
@@ -747,7 +749,7 @@ pub fn plain_summary_line(md: &str) -> String {
     s
 }
 
-pub fn markdown_links(md: &str) -> Vec<String> {
+pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
     if md.is_empty() {
         return vec![];
     }
@@ -760,8 +762,22 @@ pub fn markdown_links(md: &str) -> Vec<String> {
     let shortcut_links = RefCell::new(vec![]);
 
     {
+        let locate = |s: &str| unsafe {
+            let s_start = s.as_ptr();
+            let s_end = s_start.add(s.len());
+            let md_start = md.as_ptr();
+            let md_end = md_start.add(md.len());
+            if md_start <= s_start && s_end <= md_end {
+                let start = s_start.offset_from(md_start) as usize;
+                let end = s_end.offset_from(md_start) as usize;
+                Some(start..end)
+            } else {
+                None
+            }
+        };
+
         let push = |_: &str, s: &str| {
-            shortcut_links.borrow_mut().push(s.to_owned());
+            shortcut_links.borrow_mut().push((s.to_owned(), locate(s)));
             None
         };
         let p = Parser::new_with_broken_link_callback(md, opts,
@@ -772,7 +788,10 @@ pub fn markdown_links(md: &str) -> Vec<String> {
         for ev in iter {
             if let Event::Start(Tag::Link(dest, _)) = ev {
                 debug!("found link: {}", dest);
-                links.push(dest.into_owned());
+                links.push(match dest {
+                    Cow::Borrowed(s) => (s.to_owned(), locate(s)),
+                    Cow::Owned(s) => (s, None),
+                });
             }
         }
     }
