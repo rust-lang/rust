@@ -11,11 +11,11 @@
 extern crate cc;
 extern crate build_helper;
 
-use std::process::Command;
 use std::env;
 use std::path::{PathBuf, Path};
 
 use build_helper::output;
+use build_helper::command_ext::Command;
 
 fn detect_llvm_link() -> (&'static str, &'static str) {
     // Force the link mode we want, preferring static by default, but

@@ -18,11 +18,11 @@ use std::str;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::{SystemTime, Instant};
 
 use config::Config;
 use builder::Builder;
+use build_helper::command_ext::Command;
 
 /// Returns the `name` as the filename of a static library for `target`.
 pub fn staticlib(name: &str, target: &str) -> String {

@@ -16,9 +16,9 @@
 //! print out as part of its version information.
 
 use std::path::Path;
-use std::process::Command;
 
 use build_helper::output;
+use build_helper::command_ext::Command;
 
 use Build;
 use config::Config;

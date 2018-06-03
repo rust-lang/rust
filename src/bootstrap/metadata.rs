@@ -9,10 +9,10 @@
 // except according to those terms.
 
 use std::collections::HashMap;
-use std::process::Command;
 use std::path::PathBuf;
 
 use build_helper::output;
+use build_helper::command_ext::Command;
 use serde_json;
 
 use {Build, Crate};

@@ -22,9 +22,10 @@ use std::env;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{PathBuf, Path};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 use build_helper::output;
+use build_helper::command_ext::Command;
 
 use {Compiler, Mode};
 use channel;

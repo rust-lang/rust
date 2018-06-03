@@ -23,9 +23,9 @@ use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use build_helper::output;
+use build_helper::command_ext::Command;
 use cmake;
 use cc;
 
@@ -153,6 +153,11 @@ impl Step for Llvm {
            .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
+
+        if builder.config.llvm_thin_lto {
+            cfg.define("LLVM_ENABLE_LTO", "Thin")
+               .define("LLVM_ENABLE_LLD", "ON");
+        }
 
         // By default, LLVM will automatically find OCaml and, if it finds it,
         // install the LLVM bindings in LLVM_OCAML_INSTALL_PATH, which defaults
@@ -349,6 +354,14 @@ fn configure_cmake(builder: &Builder,
             // LLVM build breaks if `CMAKE_AR` is a relative path, for some reason it
             // tries to resolve this path in the LLVM build directory.
             cfg.define("CMAKE_AR", sanitize_cc(ar));
+        }
+    }
+
+    if let Some(ranlib) = builder.ranlib(target) {
+        if ranlib.is_absolute() {
+            // LLVM build breaks if `CMAKE_RANLIB` is a relative path, for some reason it
+            // tries to resolve this path in the LLVM build directory.
+            cfg.define("CMAKE_RANLIB", sanitize_cc(ranlib));
         }
     }
 

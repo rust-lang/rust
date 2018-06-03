@@ -30,6 +30,12 @@ curl https://releases.llvm.org/$LLVM/cfe-$LLVM.src.tar.xz | \
   xz -d | \
   tar xf - -C tools/clang --strip-components=1
 
+mkdir -p tools/lld
+
+curl https://releases.llvm.org/$LLVM/lld-$LLVM.src.tar.xz | \
+  xz -d | \
+  tar xf - -C tools/lld --strip-components=1
+
 mkdir ../clang-build
 cd ../clang-build
 

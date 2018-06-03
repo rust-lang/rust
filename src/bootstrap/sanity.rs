@@ -24,9 +24,9 @@ use std::ffi::{OsString, OsStr};
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::PathBuf;
-use std::process::Command;
 
 use build_helper::output;
+use build_helper::command_ext::Command;
 
 use Build;
 

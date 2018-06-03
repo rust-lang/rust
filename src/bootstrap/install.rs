@@ -16,11 +16,11 @@
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf, Component};
-use std::process::Command;
 
 use dist::{self, pkgname, sanitize_sh, tmpdir};
 
 use builder::{Builder, RunConfig, ShouldRun, Step};
+use build_helper::command_ext::Command;
 use cache::Interned;
 use config::Config;
 

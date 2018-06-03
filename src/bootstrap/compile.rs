@@ -22,11 +22,12 @@ use std::fs::{self, File};
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::str;
 use std::cmp::min;
 
 use build_helper::{output, mtime, up_to_date};
+use build_helper::command_ext::Command;
 use filetime::FileTime;
 use serde_json;
 
@@ -34,7 +35,6 @@ use util::{exe, libdir, is_dylib, CiEnv};
 use {Compiler, Mode};
 use native;
 use tool;
-
 use cache::{INTERNER, Interned};
 use builder::{Step, RunConfig, ShouldRun, Builder};
 
@@ -634,20 +634,34 @@ impl Step for CodegenBackend {
             return;
         }
 
-        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
+        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "rustc");
         let mut features = builder.rustc_features().to_string();
         cargo.arg("--manifest-path")
             .arg(builder.src.join("src/librustc_codegen_llvm/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo);
 
         features += &build_codegen_backend(&builder, &mut cargo, &compiler, target, backend);
+        cargo.arg("--features").arg(features);
 
         let tmp_stamp = builder.cargo_out(compiler, Mode::Librustc, target)
             .join(".tmp.stamp");
 
+        if builder.config.llvm_thin_lto {
+            cargo.deferred_arg("--")
+                 .deferred_arg("-Clink-arg=-fuse-ld=lld")
+                 .deferred_arg("-Clink-arg=-flto=thin")
+                 .deferred_arg("-Clink-arg=-O2");
+
+            // Let's make LLD respect the `-j` option. Also, LLD does not seem
+            // to use all CPU cores by default.
+            let num_jobs = builder.jobs();
+            let num_jobs_arg = format!("-Clink-arg=-Wl,--thinlto-jobs={}", num_jobs);
+            cargo.deferred_arg(&num_jobs_arg);
+        }
+
         let _folder = builder.fold_output(|| format!("stage{}-rustc_codegen_llvm", compiler.stage));
         let files = run_cargo(builder,
-                              cargo.arg("--features").arg(features),
+                              &mut cargo,
                               &tmp_stamp,
                               false);
         if builder.config.dry_run {
