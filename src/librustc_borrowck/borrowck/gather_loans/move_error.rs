@@ -112,15 +112,15 @@ fn group_errors_with_same_origin<'tcx>(errors: &Vec<MoveError<'tcx>>)
 
     fn append_to_grouped_errors<'tcx>(grouped_errors: &mut Vec<GroupedMoveErrors<'tcx>>,
                                       error: &MoveError<'tcx>) {
-        let move_from_id = error.move_from.id;
-        debug!("append_to_grouped_errors(move_from_id={})", move_from_id);
+        let move_from_id = error.move_from.hir_id;
+        debug!("append_to_grouped_errors(move_from_id={:?})", move_from_id);
         let move_to = if error.move_to.is_some() {
             vec![error.move_to.clone().unwrap()]
         } else {
             Vec::new()
         };
         for ge in &mut *grouped_errors {
-            if move_from_id == ge.move_from.id && error.move_to.is_some() {
+            if move_from_id == ge.move_from.hir_id && error.move_to.is_some() {
                 debug!("appending move_to to list");
                 ge.move_to_places.extend(move_to);
                 return

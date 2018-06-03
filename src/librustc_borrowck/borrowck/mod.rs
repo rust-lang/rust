@@ -899,7 +899,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 };
 
                 self.note_and_explain_mutbl_error(&mut db, &err, &error_span);
-                self.note_immutability_blame(&mut db, err.cmt.immutability_blame(), err.cmt.id);
+                self.note_immutability_blame(
+                    &mut db,
+                    err.cmt.immutability_blame(),
+                    self.tcx.hir.hir_to_node_id(err.cmt.hir_id)
+                );
                 db.emit();
             }
             err_out_of_scope(super_scope, sub_scope, cause) => {
@@ -1105,7 +1109,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                             Origin::Ast)
             }
         };
-        self.note_immutability_blame(&mut err, blame, cmt.id);
+        self.note_immutability_blame(
+            &mut err,
+            blame,
+            self.tcx.hir.hir_to_node_id(cmt.hir_id)
+        );
 
         if is_closure {
             err.help("closures behind references must be called via `&mut`");

@@ -1018,7 +1018,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             let arg_ty = self.node_ty(arg.hir_id);
             let re_scope = self.tcx.mk_region(ty::ReScope(body_scope));
             let arg_cmt = self.with_mc(|mc| {
-                Rc::new(mc.cat_rvalue(arg.id, arg.pat.span, re_scope, arg_ty))
+                Rc::new(mc.cat_rvalue(arg.hir_id, arg.pat.span, re_scope, arg_ty))
             });
             debug!("arg_ty={:?} arg_cmt={:?} arg={:?}",
                    arg_ty,

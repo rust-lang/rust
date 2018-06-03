@@ -189,7 +189,7 @@ pub enum Note {
 // fashion. For more details, see the method `cat_pattern`
 #[derive(Clone, Debug, PartialEq)]
 pub struct cmt_<'tcx> {
-    pub id: ast::NodeId,           // id of expr/pat producing this value
+    pub hir_id: hir::HirId,        // HIR id of expr/pat producing this value
     pub span: Span,                // span of same expr/pat
     pub cat: Categorization<'tcx>, // categorization of expr
     pub mutbl: MutabilityCategory, // mutability of expr as place
@@ -271,18 +271,18 @@ impl<'tcx> cmt_<'tcx> {
     }
 }
 
-pub trait ast_node {
-    fn id(&self) -> ast::NodeId;
+pub trait HirNode {
+    fn hir_id(&self) -> hir::HirId;
     fn span(&self) -> Span;
 }
 
-impl ast_node for hir::Expr {
-    fn id(&self) -> ast::NodeId { self.id }
+impl HirNode for hir::Expr {
+    fn hir_id(&self) -> hir::HirId { self.hir_id }
     fn span(&self) -> Span { self.span }
 }
 
-impl ast_node for hir::Pat {
-    fn id(&self) -> ast::NodeId { self.id }
+impl HirNode for hir::Pat {
+    fn hir_id(&self) -> hir::HirId { self.hir_id }
     fn span(&self) -> Span { self.span }
 }
 
@@ -610,7 +610,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                         ty: target,
                         mutbl: deref.mutbl,
                     });
-                    self.cat_rvalue_node(expr.id, expr.span, ref_ty)
+                    self.cat_rvalue_node(expr.hir_id, expr.span, ref_ty)
                 } else {
                     previous()?
                 });
@@ -625,7 +625,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             adjustment::Adjust::Borrow(_) |
             adjustment::Adjust::Unsize => {
                 // Result is an rvalue.
-                Ok(self.cat_rvalue_node(expr.id, expr.span, target))
+                Ok(self.cat_rvalue_node(expr.hir_id, expr.span, target))
             }
         }
     }
@@ -669,8 +669,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           }
 
           hir::ExprPath(ref qpath) => {
-            let def = self.tables.qpath_def(qpath, expr.hir_id);
-            self.cat_def(expr.id, expr.span, expr_ty, def)
+              let def = self.tables.qpath_def(qpath, expr.hir_id);
+              self.cat_def(expr.hir_id, expr.span, expr_ty, def)
           }
 
           hir::ExprType(ref e, _) => {
@@ -688,35 +688,35 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           hir::ExprLit(..) | hir::ExprBreak(..) |
           hir::ExprContinue(..) | hir::ExprStruct(..) | hir::ExprRepeat(..) |
           hir::ExprInlineAsm(..) | hir::ExprBox(..) => {
-            Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
+            Ok(self.cat_rvalue_node(expr.hir_id, expr.span, expr_ty))
           }
         }
     }
 
     pub fn cat_def(&self,
-                   id: ast::NodeId,
+                   hir_id: hir::HirId,
                    span: Span,
                    expr_ty: Ty<'tcx>,
                    def: Def)
                    -> McResult<cmt_<'tcx>> {
-        debug!("cat_def: id={} expr={:?} def={:?}",
-               id, expr_ty, def);
+        debug!("cat_def: id={:?} expr={:?} def={:?}",
+               hir_id, expr_ty, def);
 
         match def {
           Def::StructCtor(..) | Def::VariantCtor(..) | Def::Const(..) |
           Def::AssociatedConst(..) | Def::Fn(..) | Def::Method(..) => {
-                Ok(self.cat_rvalue_node(id, span, expr_ty))
+                Ok(self.cat_rvalue_node(hir_id, span, expr_ty))
           }
 
           Def::Static(def_id, mutbl) => {
             // `#[thread_local]` statics may not outlive the current function.
             for attr in &self.tcx.get_attrs(def_id)[..] {
                 if attr.check_name("thread_local") {
-                    return Ok(self.cat_rvalue_node(id, span, expr_ty));
+                    return Ok(self.cat_rvalue_node(hir_id, span, expr_ty));
                 }
             }
               Ok(cmt_ {
-                  id:id,
+                  hir_id,
                   span:span,
                   cat:Categorization::StaticItem,
                   mutbl: if mutbl { McDeclared } else { McImmutable},
@@ -726,12 +726,12 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           }
 
           Def::Upvar(var_id, _, fn_node_id) => {
-              self.cat_upvar(id, span, var_id, fn_node_id)
+              self.cat_upvar(hir_id, span, var_id, fn_node_id)
           }
 
           Def::Local(vid) => {
             Ok(cmt_ {
-                id,
+                hir_id,
                 span,
                 cat: Categorization::Local(vid),
                 mutbl: MutabilityCategory::from_local(self.tcx, self.tables, vid),
@@ -747,7 +747,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     // Categorize an upvar, complete with invisible derefs of closure
     // environment and upvar reference as appropriate.
     fn cat_upvar(&self,
-                 id: ast::NodeId,
+                 hir_id: hir::HirId,
                  span: Span,
                  var_id: ast::NodeId,
                  fn_node_id: ast::NodeId)
@@ -814,7 +814,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // from the environment (perhaps we should eventually desugar
         // this field further, but it will do for now).
         let cmt_result = cmt_ {
-            id,
+            hir_id,
             span,
             cat: Categorization::Upvar(Upvar {id: upvar_id, kind: kind}),
             mutbl: var_mutbl,
@@ -830,10 +830,10 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 cmt_result
             }
             ty::ClosureKind::FnMut => {
-                self.env_deref(id, span, upvar_id, var_mutbl, ty::MutBorrow, cmt_result)
+                self.env_deref(hir_id, span, upvar_id, var_mutbl, ty::MutBorrow, cmt_result)
             }
             ty::ClosureKind::Fn => {
-                self.env_deref(id, span, upvar_id, var_mutbl, ty::ImmBorrow, cmt_result)
+                self.env_deref(hir_id, span, upvar_id, var_mutbl, ty::ImmBorrow, cmt_result)
             }
         };
 
@@ -848,7 +848,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             ty::UpvarCapture::ByRef(upvar_borrow) => {
                 let ptr = BorrowedPtr(upvar_borrow.kind, upvar_borrow.region);
                 cmt_ {
-                    id,
+                    hir_id,
                     span,
                     cat: Categorization::Deref(Rc::new(cmt_result), ptr),
                     mutbl: MutabilityCategory::from_borrow_kind(upvar_borrow.kind),
@@ -864,7 +864,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     }
 
     fn env_deref(&self,
-                 id: ast::NodeId,
+                 hir_id: hir::HirId,
                  span: Span,
                  upvar_id: ty::UpvarId,
                  upvar_mutbl: MutabilityCategory,
@@ -908,7 +908,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         }
 
         let ret = cmt_ {
-            id,
+            hir_id,
             span,
             cat: Categorization::Deref(Rc::new(cmt_result), env_ptr),
             mutbl: deref_mutbl,
@@ -932,17 +932,16 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     }
 
     pub fn cat_rvalue_node(&self,
-                           id: ast::NodeId,
+                           hir_id: hir::HirId,
                            span: Span,
                            expr_ty: Ty<'tcx>)
                            -> cmt_<'tcx> {
         debug!(
             "cat_rvalue_node(id={:?}, span={:?}, expr_ty={:?})",
-            id,
+            hir_id,
             span,
             expr_ty,
         );
-        let hir_id = self.tcx.hir.node_to_hir_id(id);
         let promotable = self.rvalue_promotable_map.as_ref().map(|m| m.contains(&hir_id.local_id))
                                                             .unwrap_or(false);
 
@@ -970,18 +969,18 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         } else {
             self.temporary_scope(hir_id.local_id)
         };
-        let ret = self.cat_rvalue(id, span, re, expr_ty);
+        let ret = self.cat_rvalue(hir_id, span, re, expr_ty);
         debug!("cat_rvalue_node ret {:?}", ret);
         ret
     }
 
     pub fn cat_rvalue(&self,
-                      cmt_id: ast::NodeId,
+                      cmt_hir_id: hir::HirId,
                       span: Span,
                       temp_scope: ty::Region<'tcx>,
                       expr_ty: Ty<'tcx>) -> cmt_<'tcx> {
         let ret = cmt_ {
-            id:cmt_id,
+            hir_id: cmt_hir_id,
             span:span,
             cat:Categorization::Rvalue(temp_scope),
             mutbl:McDeclared,
@@ -992,7 +991,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         ret
     }
 
-    pub fn cat_field<N:ast_node>(&self,
+    pub fn cat_field<N: HirNode>(&self,
                                  node: &N,
                                  base_cmt: cmt<'tcx>,
                                  f_index: usize,
@@ -1000,7 +999,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                                  f_ty: Ty<'tcx>)
                                  -> cmt_<'tcx> {
         let ret = cmt_ {
-            id: node.id(),
+            hir_id: node.hir_id(),
             span: node.span(),
             mutbl: base_cmt.mutbl.inherit(),
             cat: Categorization::Interior(base_cmt,
@@ -1042,13 +1041,13 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             mutbl,
         });
 
-        let base_cmt = Rc::new(self.cat_rvalue_node(expr.id, expr.span, ref_ty));
+        let base_cmt = Rc::new(self.cat_rvalue_node(expr.hir_id, expr.span, ref_ty));
         self.cat_deref(expr, base_cmt, note)
     }
 
     pub fn cat_deref(
         &self,
-        node: &impl ast_node,
+        node: &impl HirNode,
         base_cmt: cmt<'tcx>,
         note: Note,
     ) -> McResult<cmt_<'tcx>> {
@@ -1074,7 +1073,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             ref ty => bug!("unexpected type in cat_deref: {:?}", ty)
         };
         let ret = cmt_ {
-            id: node.id(),
+            hir_id: node.hir_id(),
             span: node.span(),
             // For unique ptrs, we inherit mutability from the owning reference.
             mutbl: MutabilityCategory::from_pointer_kind(base_cmt.mutbl, ptr),
@@ -1086,7 +1085,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         Ok(ret)
     }
 
-    fn cat_index<N:ast_node>(&self,
+    fn cat_index<N: HirNode>(&self,
                              elt: &N,
                              base_cmt: cmt<'tcx>,
                              element_ty: Ty<'tcx>,
@@ -1106,7 +1105,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         //! presuming that `base_cmt` is not of fixed-length type.
         //!
         //! # Parameters
-        //! - `elt`: the AST node being indexed
+        //! - `elt`: the HIR node being indexed
         //! - `base_cmt`: the cmt of `elt`
 
         let interior_elem = InteriorElement(context);
@@ -1115,14 +1114,14 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         return Ok(ret);
     }
 
-    pub fn cat_imm_interior<N:ast_node>(&self,
+    pub fn cat_imm_interior<N:HirNode>(&self,
                                         node: &N,
                                         base_cmt: cmt<'tcx>,
                                         interior_ty: Ty<'tcx>,
                                         interior: InteriorKind)
                                         -> cmt_<'tcx> {
         let ret = cmt_ {
-            id: node.id(),
+            hir_id: node.hir_id(),
             span: node.span(),
             mutbl: base_cmt.mutbl.inherit(),
             cat: Categorization::Interior(base_cmt, interior),
@@ -1133,7 +1132,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         ret
     }
 
-    pub fn cat_downcast_if_needed<N:ast_node>(&self,
+    pub fn cat_downcast_if_needed<N:HirNode>(&self,
                                               node: &N,
                                               base_cmt: cmt<'tcx>,
                                               variant_did: DefId)
@@ -1143,7 +1142,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         if self.tcx.adt_def(base_did).variants.len() != 1 {
             let base_ty = base_cmt.ty;
             let ret = Rc::new(cmt_ {
-                id: node.id(),
+                hir_id: node.hir_id(),
                 span: node.span(),
                 mutbl: base_cmt.mutbl.inherit(),
                 cat: Categorization::Downcast(base_cmt, variant_did),
