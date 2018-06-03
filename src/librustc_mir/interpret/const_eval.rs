@@ -564,8 +564,7 @@ pub fn const_eval_provider<'a, 'tcx>(
             val = ecx.try_read_by_ref(val, miri_ty)?;
         }
         Ok(value_to_const_value(&ecx, val, miri_ty))
-    }).map_err(|mut err| {
-        err.print_backtrace();
+    }).map_err(|err| {
         let (trace, span) = ecx.generate_stacktrace(None);
         let err = ErrKind::Miri(err, trace);
         let err = ConstEvalErr {

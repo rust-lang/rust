@@ -24,6 +24,7 @@ impl<T: C> Foo<T> for A<T> {
 
 fn foo<T: C>() -> &'static usize {
     &<A<T> as Foo<T>>::BAR //~ ERROR erroneous constant used
+//~| ERROR E0080
 }
 
 impl C for () {

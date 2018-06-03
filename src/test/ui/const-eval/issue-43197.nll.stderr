@@ -32,17 +32,46 @@ LL |     const Y: u32 = foo(0-1);
    |                        |
    |                        attempt to subtract with overflow
 
+warning: referenced constant
+  --> $DIR/issue-43197.rs:26:23
+   |
+LL |     const X: u32 = 0-1;
+   |                    --- attempt to subtract with overflow
+...
+LL |     println!("{} {}", X, Y);
+   |                       ^
+
 warning: this expression will panic at runtime
   --> $DIR/issue-43197.rs:26:23
    |
 LL |     println!("{} {}", X, Y);
    |                       ^ referenced constant has errors
 
+warning: referenced constant
+  --> $DIR/issue-43197.rs:26:26
+   |
+LL |     const Y: u32 = foo(0-1);
+   |                        --- attempt to subtract with overflow
+...
+LL |     println!("{} {}", X, Y);
+   |                          ^
+
 warning: this expression will panic at runtime
   --> $DIR/issue-43197.rs:26:26
    |
 LL |     println!("{} {}", X, Y);
    |                          ^ referenced constant has errors
+
+error[E0080]: referenced constant
+  --> $DIR/issue-43197.rs:26:5
+   |
+LL |     const X: u32 = 0-1;
+   |                    --- attempt to subtract with overflow
+...
+LL |     println!("{} {}", X, Y);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error[E0080]: erroneous constant used
   --> $DIR/issue-43197.rs:26:5
@@ -54,11 +83,29 @@ LL |     println!("{} {}", X, Y);
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
+error[E0080]: referenced constant
+  --> $DIR/issue-43197.rs:26:26
+   |
+LL |     const Y: u32 = foo(0-1);
+   |                        --- attempt to subtract with overflow
+...
+LL |     println!("{} {}", X, Y);
+   |                          ^
+
 error[E0080]: erroneous constant used
   --> $DIR/issue-43197.rs:26:26
    |
 LL |     println!("{} {}", X, Y);
    |                          ^ referenced constant has errors
+
+error[E0080]: referenced constant
+  --> $DIR/issue-43197.rs:26:23
+   |
+LL |     const X: u32 = 0-1;
+   |                    --- attempt to subtract with overflow
+...
+LL |     println!("{} {}", X, Y);
+   |                       ^
 
 error[E0080]: erroneous constant used
   --> $DIR/issue-43197.rs:26:23
@@ -66,6 +113,6 @@ error[E0080]: erroneous constant used
 LL |     println!("{} {}", X, Y);
    |                       ^ referenced constant has errors
 
-error: aborting due to 3 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

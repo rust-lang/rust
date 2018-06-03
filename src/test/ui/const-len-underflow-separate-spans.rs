@@ -21,4 +21,5 @@ const LEN: usize = ONE - TWO;
 fn main() {
     let a: [i8; LEN] = unimplemented!();
 //~^ ERROR E0080
+//~| ERROR E0080
 }

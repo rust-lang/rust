@@ -1201,7 +1201,7 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 use rustc::middle::const_val::ErrKind;
                 use rustc::mir::interpret::EvalErrorKind;
                 if let ErrKind::Miri(ref miri, ..) = *err.kind {
-                    if let EvalErrorKind::ReferencedConstant = miri.kind {
+                    if let EvalErrorKind::ReferencedConstant(_) = miri.kind {
                         err.report_as_error(
                             tcx.at(mir.promoted[i].span),
                             "erroneous constant used",

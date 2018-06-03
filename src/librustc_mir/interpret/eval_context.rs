@@ -3,7 +3,7 @@ use std::fmt::Write;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
 use rustc::hir::map::definitions::DefPathData;
-use rustc::middle::const_val::{ConstVal, ErrKind};
+use rustc::middle::const_val::ConstVal;
 use rustc::mir;
 use rustc::ty::layout::{self, Size, Align, HasDataLayout, IntegerExt, LayoutOf, TyLayout};
 use rustc::ty::subst::{Subst, Substs};
@@ -1056,15 +1056,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         } else {
             self.param_env
         };
-        self.tcx.const_eval(param_env.and(gid)).map_err(|err| match *err.kind {
-            ErrKind::Miri(ref err, _) => match err.kind {
-                EvalErrorKind::TypeckError |
-                EvalErrorKind::Layout(_) => EvalErrorKind::TypeckError.into(),
-                _ => EvalErrorKind::ReferencedConstant.into(),
-            },
-            ErrKind::TypeckError => EvalErrorKind::TypeckError.into(),
-            ref other => bug!("const eval returned {:?}", other),
-        })
+        self.tcx.const_eval(param_env.and(gid)).map_err(|err| EvalErrorKind::ReferencedConstant(err).into())
     }
 
     pub fn force_allocation(&mut self, place: Place) -> EvalResult<'tcx, Place> {

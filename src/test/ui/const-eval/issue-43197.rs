@@ -28,4 +28,8 @@ fn main() {
     //~| WARN this expression will panic at runtime
     //~| ERROR erroneous constant used
     //~| ERROR erroneous constant used
+    //~| ERROR E0080
+    //~| ERROR E0080
+    //~| WARN referenced constant
+    //~| WARN referenced constant
 }

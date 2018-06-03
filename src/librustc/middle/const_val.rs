@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use ty::{self, layout};
+use ty;
 use ty::subst::Substs;
 use ty::maps::TyCtxtAt;
 use mir::interpret::ConstValue;
@@ -30,27 +30,25 @@ pub enum ConstVal<'tcx> {
     Value(ConstValue<'tcx>),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ConstEvalErr<'tcx> {
     pub span: Span,
     pub kind: Lrc<ErrKind<'tcx>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum ErrKind<'tcx> {
 
     NonConstPath,
-    UnimplementedConstVal(&'static str),
+    CouldNotResolve,
     IndexOutOfBounds { len: u64, index: u64 },
-
-    LayoutError(layout::LayoutError<'tcx>),
 
     TypeckError,
     CheckMatchError,
     Miri(::mir::interpret::EvalError<'tcx>, Vec<FrameInfo>),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct FrameInfo {
     pub span: Span,
     pub location: String,
@@ -87,14 +85,11 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
 
         match *self.kind {
             NonConstPath        => simple!("non-constant path in constant expression"),
-            UnimplementedConstVal(what) =>
-                simple!("unimplemented constant expression: {}", what),
+            CouldNotResolve => simple!("could not resolve"),
             IndexOutOfBounds { len, index } => {
                 simple!("index out of bounds: the len is {} but the index is {}",
                         len, index)
             }
-
-            LayoutError(ref err) => Simple(err.to_string().into_cow()),
 
             TypeckError => simple!("type-checking failed"),
             CheckMatchError => simple!("match-checking failed"),
@@ -149,6 +144,10 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
                 match miri.kind {
                     ::mir::interpret::EvalErrorKind::TypeckError |
                     ::mir::interpret::EvalErrorKind::Layout(_) => return None,
+                    ::mir::interpret::EvalErrorKind::ReferencedConstant(ref inner) => {
+                        inner.struct_generic(tcx, "referenced constant", lint_root, as_err)?.emit();
+                        (miri.to_string(), frames)
+                    },
                     _ => (miri.to_string(), frames),
                 }
             }
