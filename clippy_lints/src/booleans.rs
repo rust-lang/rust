@@ -123,10 +123,9 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
             let negated = match e.node {
                 ExprBinary(binop, ref lhs, ref rhs) => {
  
-                    match implements_ord(self.cx, lhs) {
-                        Some(true) => (),
-                        _ => continue,
-                    };
+                    if !implements_ord(self.cx, lhs) {
+                        continue;
+                    }
 
                     let mk_expr = |op| {
                         Expr {
@@ -181,10 +180,9 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
         match expr.node {
             ExprBinary(binop, ref lhs, ref rhs) => {
 
-                match implements_ord(self.cx, lhs) {
-                    Some(true) => (),
-                    _ => return None,
-                };
+                if !implements_ord(self.cx, lhs) {
+                    return None;
+                }
 
                 match binop.node {
                     BiEq => Some(" != "),
@@ -458,12 +456,8 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
 }
 
 
-fn implements_ord<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, expr: &Expr) -> Option<bool> {
+fn implements_ord<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, expr: &Expr) -> bool {
     let ty = cx.tables.expr_ty(expr);
-
-    return if let Some(id) = get_trait_def_id(cx, &paths::ORD) {
-        Some(implements_trait(cx, ty, id, &[]))
-    } else {
-        None
-    };
+    get_trait_def_id(cx, &paths::ORD)
+        .map_or(false, |id| implements_trait(cx, ty, id, &[]))
 }
