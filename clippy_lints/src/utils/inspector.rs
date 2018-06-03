@@ -53,7 +53,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         println!("impl item `{}`", item.name);
         match item.vis {
             hir::Visibility::Public => println!("public"),
-            hir::Visibility::Crate => println!("visible crate wide"),
+            hir::Visibility::Crate(_) => println!("visible crate wide"),
             hir::Visibility::Restricted { ref path, .. } => println!(
                 "visible in module `{}`",
                 print::to_string(print::NO_ANN, |s| s.print_path(path, false))
@@ -345,7 +345,7 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
     println!("item `{}`", item.name);
     match item.vis {
         hir::Visibility::Public => println!("public"),
-        hir::Visibility::Crate => println!("visible crate wide"),
+        hir::Visibility::Crate(_) => println!("visible crate wide"),
         hir::Visibility::Restricted { ref path, .. } => println!(
             "visible in module `{}`",
             print::to_string(print::NO_ANN, |s| s.print_path(path, false))

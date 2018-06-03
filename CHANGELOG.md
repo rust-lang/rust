@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.207
+* Rustup to *rustc 1.28.0-nightly (4ecf12bf0 2018-06-02)*
+
 ## 0.0.206
 * Rustup to *rustc 1.28.0-nightly (5bf68db6e 2018-05-28)*
 
@@ -726,6 +729,7 @@ All notable changes to this project will be documented in this file.
 [`module_inception`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#module_inception
 [`modulo_one`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#modulo_one
 [`multiple_crate_versions`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#multiple_crate_versions
+[`multiple_inherent_impl`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#multiple_inherent_impl
 [`mut_from_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mut_from_ref
 [`mut_mut`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mut_mut
 [`mut_range_bound`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mut_range_bound
