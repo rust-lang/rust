@@ -958,7 +958,7 @@ impl Build {
     }
 
     fn llvm_tools_vers(&self) -> String {
-        // XXX should we use LLVM version here?
+        // japaric: should we use LLVM version here?
         // let stdout = build_helper::output(
         //     Command::new(self.llvm_out(self.config.build).join("build/bin/llvm-size"))
         //         .arg("--version"),
