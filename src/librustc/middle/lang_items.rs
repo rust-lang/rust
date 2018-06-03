@@ -185,6 +185,8 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
             if let Some(value) = attribute.value_str() {
                 return Some((value, attribute.span));
             }
+        } else if attribute.check_name("panic_implementation") {
+            return Some((Symbol::intern("panic_impl"), attribute.span))
         }
     }
 
@@ -299,7 +301,8 @@ language_item_table! {
     // lang item, but do not have it defined.
     PanicFnLangItem,                 "panic",                   panic_fn;
     PanicBoundsCheckFnLangItem,      "panic_bounds_check",      panic_bounds_check_fn;
-    PanicFmtLangItem,                "panic_fmt",               panic_fmt;
+    PanicInfoLangItem,               "panic_info",              panic_info;
+    PanicImplLangItem,               "panic_impl",              panic_impl;
 
     ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
     BoxFreeFnLangItem,               "box_free",                box_free_fn;

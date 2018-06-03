@@ -19,6 +19,7 @@ sugar for dynamic allocations via `malloc` and `free`:
 #![feature(lang_items, box_syntax, start, libc, core_intrinsics)]
 #![no_std]
 use core::intrinsics;
+use core::panic::PanicInfo;
 
 extern crate libc;
 
@@ -50,7 +51,7 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
 }
 
 #[lang = "eh_personality"] extern fn rust_eh_personality() {}
-#[lang = "panic_fmt"] extern fn rust_begin_panic() -> ! { unsafe { intrinsics::abort() } }
+#[lang = "panic_impl"] extern fn rust_begin_panic(info: &PanicInfo) -> ! { unsafe { intrinsics::abort() } }
 #[lang = "eh_unwind_resume"] extern fn rust_eh_unwind_resume() {}
 #[no_mangle] pub extern fn rust_eh_register_frames () {}
 #[no_mangle] pub extern fn rust_eh_unregister_frames () {}
@@ -110,6 +111,7 @@ in the same format as C:
 #![feature(start)]
 #![no_std]
 use core::intrinsics;
+use core::panic::PanicInfo;
 
 // Pull in the system libc library for what crt0.o likely requires.
 extern crate libc;
@@ -134,12 +136,9 @@ pub extern fn rust_eh_personality() {
 pub extern fn rust_eh_unwind_resume() {
 }
 
-#[lang = "panic_fmt"]
+#[lang = "panic_impl"]
 #[no_mangle]
-pub extern fn rust_begin_panic(_msg: core::fmt::Arguments,
-                               _file: &'static str,
-                               _line: u32,
-                               _column: u32) -> ! {
+pub extern fn rust_begin_panic(info: &PanicInfo) -> ! {
     unsafe { intrinsics::abort() }
 }
 ```
@@ -155,6 +154,7 @@ compiler's name mangling too:
 #![no_std]
 #![no_main]
 use core::intrinsics;
+use core::panic::PanicInfo;
 
 // Pull in the system libc library for what crt0.o likely requires.
 extern crate libc;
@@ -179,12 +179,9 @@ pub extern fn rust_eh_personality() {
 pub extern fn rust_eh_unwind_resume() {
 }
 
-#[lang = "panic_fmt"]
+#[lang = "panic_impl"]
 #[no_mangle]
-pub extern fn rust_begin_panic(_msg: core::fmt::Arguments,
-                               _file: &'static str,
-                               _line: u32,
-                               _column: u32) -> ! {
+pub extern fn rust_begin_panic(info: &PanicInfo) -> ! {
     unsafe { intrinsics::abort() }
 }
 ```
@@ -215,7 +212,7 @@ called. The language item's name is `eh_personality`.
 
 The second function, `rust_begin_panic`, is also used by the failure mechanisms of the
 compiler. When a panic happens, this controls the message that's displayed on
-the screen. While the language item's name is `panic_fmt`, the symbol name is
+the screen. While the language item's name is `panic_impl`, the symbol name is
 `rust_begin_panic`.
 
 A third function, `rust_eh_unwind_resume`, is also needed if the `custom_unwind_resume`
@@ -259,8 +256,8 @@ the source code.
   - `msvc_try_filter`: `libpanic_unwind/seh.rs` (SEH)
   - `panic`: `libcore/panicking.rs`
   - `panic_bounds_check`: `libcore/panicking.rs`
-  - `panic_fmt`: `libcore/panicking.rs`
-  - `panic_fmt`: `libstd/panicking.rs`
+  - `panic_impl`: `libcore/panicking.rs`
+  - `panic_impl`: `libstd/panicking.rs`
 - Allocations
   - `owned_box`: `liballoc/boxed.rs`
   - `exchange_malloc`: `liballoc/heap.rs`

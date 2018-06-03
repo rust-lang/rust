@@ -87,10 +87,12 @@ This condition can be met using `#[used]` and `#[link_section]` plus a linker
 script.
 
 ``` rust,ignore
-#![feature(lang_items)]
+#![feature(panic_implementation)]
 #![feature(used)]
 #![no_main]
 #![no_std]
+
+use core::panic::PanicInfo;
 
 extern "C" fn reset_handler() -> ! {
     loop {}
@@ -100,8 +102,10 @@ extern "C" fn reset_handler() -> ! {
 #[used]
 static RESET_HANDLER: extern "C" fn() -> ! = reset_handler;
 
-#[lang = "panic_fmt"]
-fn panic_fmt() {}
+#[panic_implementation]
+fn panic_impl(info: &PanicInfo) -> ! {
+    loop {}
+}
 ```
 
 ``` text
