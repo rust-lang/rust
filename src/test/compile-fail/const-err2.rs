@@ -31,6 +31,7 @@ fn main() {
     let d = 42u8 - (42u8 + 1);
     //~^ ERROR const_err
     let _e = [5u8][1];
+    //~^ ERROR const_err
     black_box(a);
     black_box(b);
     black_box(c);
