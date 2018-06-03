@@ -195,7 +195,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let ty_string = self.ty_to_string(actual);
                 let is_method = mode == Mode::MethodCall;
                 let mut suggestion = None;
-                let type_str = if is_method {
+                let item_kind = if is_method {
                     "method"
                 } else if actual.is_enum() {
                     if let TyAdt(ref adt_def, _) = actual.sty {
@@ -235,7 +235,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             span,
                             E0689,
                             "can't call {} `{}` on ambiguous numeric type `{}`",
-                            type_str,
+                            item_kind,
                             item_name,
                             ty_string
                         );
@@ -284,12 +284,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             span,
                             E0599,
                             "no {} named `{}` found for type `{}` in the current scope",
-                            type_str,
+                            item_kind,
                             item_name,
                             ty_string
                         );
                         if let Some(suggestion) = suggestion {
-                            err.note(&format!("did you mean `{}::{}`?", type_str, suggestion));
+                            err.note(&format!("did you mean `{}::{}`?", ty_string, suggestion));
                         }
                         err
                     }
@@ -301,7 +301,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let Some(full_sp) = tcx.hir.span_if_local(def.did) {
                         let def_sp = tcx.sess.codemap().def_span(full_sp);
                         err.span_label(def_sp, format!("{} `{}` not found {}",
-                                                       type_str,
+                                                       item_kind,
                                                        item_name,
                                                        if def.is_enum() && !is_method {
                                                            "here"
@@ -355,7 +355,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
                 } else {
-                    err.span_label(span, format!("{} not found in `{}`", type_str, ty_string));
+                    err.span_label(span, format!("{} not found in `{}`", item_kind, ty_string));
                 }
 
                 if self.is_fn_ty(&rcvr_ty, span) {
