@@ -194,7 +194,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
         match &link_name[..] {
             "malloc" => {
-                let size = self.value_to_scalar(args[0])?.to_u64()?;
+                let size = self.value_to_scalar(args[0])?.to_usize(self)?;
                 if size == 0 {
                     self.write_null(dest, dest_ty)?;
                 } else {
@@ -221,7 +221,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 //
                 // libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)
                 // is called if a `HashMap` is created the regular way.
-                match self.value_to_scalar(args[0])?.to_u64()? {
+                match self.value_to_scalar(args[0])?.to_usize(self)? {
                     318 | 511 => {
                         return err!(Unimplemented(
                             "miri does not support random number generators".to_owned(),
@@ -293,7 +293,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             "memcmp" => {
                 let left = self.into_ptr(args[0].value)?;
                 let right = self.into_ptr(args[1].value)?;
-                let n = Size::from_bytes(self.value_to_scalar(args[2])?.to_u64()?);
+                let n = Size::from_bytes(self.value_to_scalar(args[2])?.to_usize(self)?);
 
                 let result = {
                     let left_bytes = self.memory.read_bytes(left, n)?;
@@ -317,7 +317,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             "memrchr" => {
                 let ptr = self.into_ptr(args[0].value)?;
                 let val = self.value_to_scalar(args[1])?.to_bytes()? as u8;
-                let num = self.value_to_scalar(args[2])?.to_u64()?;
+                let num = self.value_to_scalar(args[2])?.to_usize(self)?;
                 if let Some(idx) = self.memory.read_bytes(ptr, Size::from_bytes(num))?.iter().rev().position(
                     |&c| c == val,
                 )
@@ -332,7 +332,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             "memchr" => {
                 let ptr = self.into_ptr(args[0].value)?;
                 let val = self.value_to_scalar(args[1])?.to_bytes()? as u8;
-                let num = self.value_to_scalar(args[2])?.to_u64()?;
+                let num = self.value_to_scalar(args[2])?.to_usize(self)?;
                 if let Some(idx) = self.memory.read_bytes(ptr, Size::from_bytes(num))?.iter().position(
                     |&c| c == val,
                 )
@@ -457,7 +457,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             }
 
             "sysconf" => {
-                let name = self.value_to_scalar(args[0])?.to_u64()?;
+                let name = self.value_to_scalar(args[0])?.to_usize(self)?;
 
                 trace!("sysconf() called with name {}", name);
                 // cache the sysconf integers via miri's global cache
@@ -646,8 +646,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
         match &path[..] {
             // Allocators are magic.  They have no MIR, even when the rest of libstd does.
             "alloc::alloc::::__rust_alloc" => {
-                let size = self.value_to_scalar(args[0])?.to_u64()?;
-                let align = self.value_to_scalar(args[1])?.to_u64()?;
+                let size = self.value_to_scalar(args[0])?.to_usize(self)?;
+                let align = self.value_to_scalar(args[1])?.to_usize(self)?;
                 if size == 0 {
                     return err!(HeapAllocZeroBytes);
                 }
@@ -660,8 +660,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 self.write_scalar(dest, Scalar::Ptr(ptr), dest_ty)?;
             }
             "alloc::alloc::::__rust_alloc_zeroed" => {
-                let size = self.value_to_scalar(args[0])?.to_u64()?;
-                let align = self.value_to_scalar(args[1])?.to_u64()?;
+                let size = self.value_to_scalar(args[0])?.to_usize(self)?;
+                let align = self.value_to_scalar(args[1])?.to_usize(self)?;
                 if size == 0 {
                     return err!(HeapAllocZeroBytes);
                 }
@@ -676,8 +676,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             }
             "alloc::alloc::::__rust_dealloc" => {
                 let ptr = self.into_ptr(args[0].value)?.to_ptr()?;
-                let old_size = self.value_to_scalar(args[1])?.to_u64()?;
-                let align = self.value_to_scalar(args[2])?.to_u64()?;
+                let old_size = self.value_to_scalar(args[1])?.to_usize(self)?;
+                let align = self.value_to_scalar(args[2])?.to_usize(self)?;
                 if old_size == 0 {
                     return err!(HeapAllocZeroBytes);
                 }
@@ -692,9 +692,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             }
             "alloc::alloc::::__rust_realloc" => {
                 let ptr = self.into_ptr(args[0].value)?.to_ptr()?;
-                let old_size = self.value_to_scalar(args[1])?.to_u64()?;
-                let align = self.value_to_scalar(args[2])?.to_u64()?;
-                let new_size = self.value_to_scalar(args[3])?.to_u64()?;
+                let old_size = self.value_to_scalar(args[1])?.to_usize(self)?;
+                let align = self.value_to_scalar(args[2])?.to_usize(self)?;
+                let new_size = self.value_to_scalar(args[3])?.to_usize(self)?;
                 if old_size == 0 || new_size == 0 {
                     return err!(HeapAllocZeroBytes);
                 }
