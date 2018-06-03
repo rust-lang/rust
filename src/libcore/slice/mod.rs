@@ -2513,6 +2513,12 @@ macro_rules! iterator {
                 accum
             }
         }
+
+        #[stable(feature = "fused", since = "1.26.0")]
+        impl<'a, T> FusedIterator for $name<'a, T> {}
+
+        #[unstable(feature = "trusted_len", issue = "37572")]
+        unsafe impl<'a, T> TrustedLen for $name<'a, T> {}
     }
 }
 
@@ -2639,12 +2645,6 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {
     }
 }
 
-#[stable(feature = "fused", since = "1.26.0")]
-impl<'a, T> FusedIterator for Iter<'a, T> {}
-
-#[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T> TrustedLen for Iter<'a, T> {}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> { Iter { ptr: self.ptr, end: self.end, _marker: self._marker } }
@@ -2766,13 +2766,6 @@ impl<'a, T> ExactSizeIterator for IterMut<'a, T> {
         self.ptr == self.end
     }
 }
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl<'a, T> FusedIterator for IterMut<'a, T> {}
-
-#[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T> TrustedLen for IterMut<'a, T> {}
-
 
 // Return the number of elements of `T` from `start` to `end`.
 // Return the arithmetic difference if `T` is zero size.
