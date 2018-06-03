@@ -905,7 +905,7 @@ pub struct GlobalCtxt<'tcx> {
     stability_interner: Lock<FxInterner<&'tcx attr::Stability>>,
 
     /// Stores the value of constants (and deduplicates the actual memory)
-    allocation_interner: Lock<FxHashSet<&'tcx Allocation>>,
+    allocation_interner: Lock<FxInterner<&'tcx Allocation>>,
 
     pub alloc_map: Lock<interpret::AllocMap<'tcx, &'tcx Allocation>>,
 
@@ -1138,7 +1138,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data_layout,
             layout_interner: Default::default(),
             stability_interner: Default::default(),
-            allocation_interner: Lock::new(FxHashSet()),
+            allocation_interner: Default::default(),
             alloc_map: Lock::new(interpret::AllocMap::new()),
             tx_to_llvm_workers: Lock::new(tx),
             output_filenames: Arc::new(output_filenames.clone()),

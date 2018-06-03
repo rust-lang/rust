@@ -11,6 +11,7 @@
 use std::collections::{HashMap, HashSet};
 use std::default::Default;
 use std::hash::Hash;
+use std::hash::BuildHasherDefault;
 use interner;
 
 pub use rustc_hash::FxHashMap;
