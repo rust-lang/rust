@@ -23,7 +23,6 @@
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
 #![feature(hashmap_internals)]
-#![feature(iterator_step_by)]
 #![feature(iterator_flatten)]
 #![feature(iterator_repeat_with)]
 #![feature(pattern)]

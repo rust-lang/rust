@@ -673,9 +673,7 @@ impl<I> FusedIterator for Cycle<I> where I: Clone + Iterator {}
 /// [`step_by`]: trait.Iterator.html#method.step_by
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[unstable(feature = "iterator_step_by",
-           reason = "unstable replacement of Range::step_by",
-           issue = "27741")]
+#[stable(feature = "iterator_step_by", since = "1.28.0")]
 #[derive(Clone, Debug)]
 pub struct StepBy<I> {
     iter: I,
@@ -683,9 +681,7 @@ pub struct StepBy<I> {
     first_take: bool,
 }
 
-#[unstable(feature = "iterator_step_by",
-           reason = "unstable replacement of Range::step_by",
-           issue = "27741")]
+#[stable(feature = "iterator_step_by", since = "1.28.0")]
 impl<I> Iterator for StepBy<I> where I: Iterator {
     type Item = I::Item;
 
@@ -757,9 +753,7 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
 }
 
 // StepBy can only make the iterator shorter, so the len will still fit.
-#[unstable(feature = "iterator_step_by",
-           reason = "unstable replacement of Range::step_by",
-           issue = "27741")]
+#[stable(feature = "iterator_step_by", since = "1.28.0")]
 impl<I> ExactSizeIterator for StepBy<I> where I: ExactSizeIterator {}
 
 /// An iterator that strings two iterators together.
