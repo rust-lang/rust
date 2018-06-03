@@ -3362,6 +3362,9 @@ impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Windows<'a, T> {}
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<'a, T> TrustedLen for Windows<'a, T> {}
+
 #[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T> FusedIterator for Windows<'a, T> {}
 
@@ -3481,6 +3484,9 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Chunks<'a, T> {}
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<'a, T> TrustedLen for Chunks<'a, T> {}
+
 #[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T> FusedIterator for Chunks<'a, T> {}
 
@@ -3597,6 +3603,9 @@ impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for ChunksMut<'a, T> {}
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<'a, T> TrustedLen for ChunksMut<'a, T> {}
+
 #[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T> FusedIterator for ChunksMut<'a, T> {}
 
@@ -3707,6 +3716,9 @@ impl<'a, T> ExactSizeIterator for ExactChunks<'a, T> {
     }
 }
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<'a, T> TrustedLen for ExactChunks<'a, T> {}
+
 #[unstable(feature = "exact_chunks", issue = "47115")]
 impl<'a, T> FusedIterator for ExactChunks<'a, T> {}
 
@@ -3803,6 +3815,9 @@ impl<'a, T> ExactSizeIterator for ExactChunksMut<'a, T> {
         self.v.is_empty()
     }
 }
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<'a, T> TrustedLen for ExactChunksMut<'a, T> {}
 
 #[unstable(feature = "exact_chunks", issue = "47115")]
 impl<'a, T> FusedIterator for ExactChunksMut<'a, T> {}
