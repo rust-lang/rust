@@ -59,6 +59,7 @@ fn build_krate(build: &mut Build, krate: &str) {
     // the dependency graph and what `-p` arguments there are.
     let mut cargo = Command::new(&build.initial_cargo);
     cargo.arg("metadata")
+         .env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "dev")
          .arg("--format-version").arg("1")
          .arg("--manifest-path").arg(build.src.join(krate).join("Cargo.toml"));
     let output = output(&mut cargo);

@@ -1878,6 +1878,7 @@ impl Step for Distcheck {
         let toml = dir.join("rust-src/lib/rustlib/src/rust/src/libstd/Cargo.toml");
         builder.run(
             Command::new(&builder.initial_cargo)
+                .env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "dev")
                 .arg("generate-lockfile")
                 .arg("--manifest-path")
                 .arg(&toml)
@@ -1899,6 +1900,7 @@ impl Step for Bootstrap {
         let mut cmd = Command::new(&builder.initial_cargo);
         cmd.arg("test")
             .current_dir(builder.src.join("src/bootstrap"))
+            .env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "dev")
             .env("RUSTFLAGS", "-Cdebuginfo=2")
             .env("CARGO_TARGET_DIR", builder.out.join("bootstrap"))
             .env("RUSTC_BOOTSTRAP", "1")
