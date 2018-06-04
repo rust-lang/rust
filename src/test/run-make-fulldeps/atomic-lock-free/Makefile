@@ -18,6 +18,8 @@ ifeq ($(filter arm,$(LLVM_COMPONENTS)),arm)
 	nm "$(TMPDIR)/libatomic_lock_free.rlib" | $(CGREP) -v __atomic_fetch_add
 	$(RUSTC) --target=armv7-unknown-linux-gnueabihf atomic_lock_free.rs
 	nm "$(TMPDIR)/libatomic_lock_free.rlib" | $(CGREP) -v __atomic_fetch_add
+	$(RUSTC) --target=thumbv7neon-unknown-linux-gnueabihf atomic_lock_free.rs
+	nm "$(TMPDIR)/libatomic_lock_free.rlib" | $(CGREP) -v __atomic_fetch_add
 endif
 ifeq ($(filter aarch64,$(LLVM_COMPONENTS)),aarch64)
 	$(RUSTC) --target=aarch64-unknown-linux-gnu atomic_lock_free.rs

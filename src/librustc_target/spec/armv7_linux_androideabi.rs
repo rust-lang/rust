@@ -10,6 +10,11 @@
 
 use spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
+// This target if is for the baseline of the Android v7a ABI
+// in thumb mode. It's named armv7-* instead of thumbv7-*
+// for historical reasons. See the thumbv7neon variant for
+// enabling NEON.
+
 // See https://developer.android.com/ndk/guides/abis.html#v7a
 // for target ABI requirements.
 
