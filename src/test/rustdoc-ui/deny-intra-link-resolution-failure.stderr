@@ -1,0 +1,16 @@
+warning: [v2] cannot be resolved, ignoring it...
+  --> src/test/rustdoc-ui/deny-intra-link-resolution-failure.rs:13:1
+   |
+LL | /// [v2] //~ ERROR
+   | ^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> src/test/rustdoc-ui/deny-intra-link-resolution-failure.rs:11:9
+   |
+LL | #![deny(intra_link_resolution_failure)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: the link appears in this line:
+
+            [v2] //~ ERROR
+             ^^
+

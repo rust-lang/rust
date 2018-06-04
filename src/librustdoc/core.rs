@@ -17,7 +17,7 @@ use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt, AllArenas};
 use rustc::hir::map as hir_map;
-use rustc::lint;
+use rustc::lint::{self, LintPass};
 use rustc::session::config::ErrorOutputType;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_resolve as resolve;
@@ -187,7 +187,23 @@ pub fn run_core(search_paths: SearchPaths,
         _ => None
     };
 
-    let warning_lint = lint::builtin::WARNINGS.name_lower();
+    let intra_link_resolution_failure_name = lint::builtin::INTRA_LINK_RESOLUTION_FAILURE.name;
+    let warnings_lint_name = lint::builtin::WARNINGS.name;
+    let lints = lint::builtin::HardwiredLints.get_lints()
+                    .iter()
+                    .filter_map(|lint| {
+                        if lint.name == warnings_lint_name {
+                            None
+                        } else {
+                            let level = if lint.name == intra_link_resolution_failure_name {
+                                lint::Warn
+                            } else {
+                                lint::Allow
+                            };
+                            Some((lint.name_lower(), level))
+                        }
+                    })
+                    .collect::<Vec<_>>();
 
     let host_triple = TargetTriple::from_triple(config::host_triple());
     // plays with error output here!
@@ -195,8 +211,12 @@ pub fn run_core(search_paths: SearchPaths,
         maybe_sysroot,
         search_paths,
         crate_types: vec![config::CrateTypeRlib],
-        lint_opts: if !allow_warnings { vec![(warning_lint, lint::Allow)] } else { vec![] },
-        lint_cap: Some(lint::Allow),
+        lint_opts: if !allow_warnings {
+            lints
+        } else {
+            vec![]
+        },
+        lint_cap: Some(lint::Warn),
         cg,
         externs,
         target_triple: triple.unwrap_or(host_triple),

@@ -298,6 +298,12 @@ declare_lint! {
     "detects duplicate macro exports"
 }
 
+declare_lint! {
+    pub INTRA_LINK_RESOLUTION_FAILURE,
+    Warn,
+    "warn about documentation intra links resolution failure"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -351,6 +357,7 @@ impl LintPass for HardwiredLints {
             UNSTABLE_NAME_COLLISIONS,
             DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
             DUPLICATE_MACRO_EXPORTS,
+            INTRA_LINK_RESOLUTION_FAILURE,
         )
     }
 }
