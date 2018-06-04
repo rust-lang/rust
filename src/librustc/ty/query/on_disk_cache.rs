@@ -979,7 +979,7 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<NodeId> for CacheEncoder<'enc, 'a, 't
 }
 
 impl<'enc, 'a, 'tcx> SpecializedEncoder<Fingerprint>
-for CacheEncoder<'enc, 'a, 'tcx, opaque::Encoder<'enc>>
+for CacheEncoder<'enc, 'a, 'tcx, opaque::Encoder>
 {
     fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
         f.encode_opaque(&mut self.encoder)
@@ -1057,7 +1057,7 @@ impl IntEncodedWithFixedSize {
 impl UseSpecializedEncodable for IntEncodedWithFixedSize {}
 impl UseSpecializedDecodable for IntEncodedWithFixedSize {}
 
-impl<'enc> SpecializedEncoder<IntEncodedWithFixedSize> for opaque::Encoder<'enc> {
+impl SpecializedEncoder<IntEncodedWithFixedSize> for opaque::Encoder {
     fn specialized_encode(&mut self, x: &IntEncodedWithFixedSize) -> Result<(), Self::Error> {
         let start_pos = self.position();
         for i in 0 .. IntEncodedWithFixedSize::ENCODED_SIZE {

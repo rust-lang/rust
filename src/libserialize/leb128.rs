@@ -9,12 +9,8 @@
 // except according to those terms.
 
 #[inline]
-pub fn write_to_vec(vec: &mut Vec<u8>, position: usize, byte: u8) {
-    if position == vec.len() {
-        vec.push(byte);
-    } else {
-        vec[position] = byte;
-    }
+pub fn write_to_vec(vec: &mut Vec<u8>, byte: u8) {
+    vec.push(byte);
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -33,8 +29,7 @@ macro_rules! leb128_size {
 macro_rules! impl_write_unsigned_leb128 {
     ($fn_name:ident, $int_ty:ident) => (
         #[inline]
-        pub fn $fn_name(out: &mut Vec<u8>, start_position: usize, mut value: $int_ty) -> usize {
-            let mut position = start_position;
+        pub fn $fn_name(out: &mut Vec<u8>, mut value: $int_ty) {
             for _ in 0 .. leb128_size!($int_ty) {
                 let mut byte = (value & 0x7F) as u8;
                 value >>= 7;
@@ -42,15 +37,12 @@ macro_rules! impl_write_unsigned_leb128 {
                     byte |= 0x80;
                 }
 
-                write_to_vec(out, position, byte);
-                position += 1;
+                write_to_vec(out, byte);
 
                 if value == 0 {
                     break;
                 }
             }
-
-            position - start_position
         }
     )
 }
@@ -105,11 +97,9 @@ impl_read_unsigned_leb128!(read_usize_leb128, usize);
 /// The callback `write` is called once for each position
 /// that is to be written to with the byte to be encoded
 /// at that position.
-pub fn write_signed_leb128_to<W>(mut value: i128, mut write: W) -> usize
-    where W: FnMut(usize, u8)
+pub fn write_signed_leb128_to<W>(mut value: i128, mut write: W)
+    where W: FnMut(u8)
 {
-    let mut position = 0;
-
     loop {
         let mut byte = (value as u8) & 0x7f;
         value >>= 7;
@@ -120,18 +110,16 @@ pub fn write_signed_leb128_to<W>(mut value: i128, mut write: W) -> usize
             byte |= 0x80; // Mark this byte to show that more bytes will follow.
         }
 
-        write(position, byte);
-        position += 1;
+        write(byte);
 
         if !more {
             break;
         }
     }
-    position
 }
 
-pub fn write_signed_leb128(out: &mut Vec<u8>, start_position: usize, value: i128) -> usize {
-    write_signed_leb128_to(value, |i, v| write_to_vec(out, start_position+i, v))
+pub fn write_signed_leb128(out: &mut Vec<u8>, value: i128) {
+    write_signed_leb128_to(value, |v| write_to_vec(out, v))
 }
 
 #[inline]
@@ -167,9 +155,7 @@ macro_rules! impl_test_unsigned_leb128 {
             let mut stream = Vec::new();
 
             for x in 0..62 {
-                let pos = stream.len();
-                let bytes_written = $write_fn_name(&mut stream, pos, (3u64 << x) as $int_ty);
-                assert_eq!(stream.len(), pos + bytes_written);
+                $write_fn_name(&mut stream, (3u64 << x) as $int_ty);
             }
 
             let mut position = 0;
@@ -195,9 +181,7 @@ fn test_signed_leb128() {
     let values: Vec<_> = (-500..500).map(|i| i * 0x12345789ABCDEF).collect();
     let mut stream = Vec::new();
     for &x in &values {
-        let pos = stream.len();
-        let bytes_written = write_signed_leb128(&mut stream, pos, x);
-        assert_eq!(stream.len(), pos + bytes_written);
+        write_signed_leb128(&mut stream, x);
     }
     let mut pos = 0;
     for &x in &values {

@@ -16,7 +16,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::join;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
-use std::io::{self, Cursor};
 use std::fs;
 use std::path::PathBuf;
 
@@ -98,7 +97,7 @@ pub fn save_work_product_index(sess: &Session,
 }
 
 fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
-    where F: FnOnce(&mut Encoder) -> io::Result<()>
+    where F: FnOnce(&mut Encoder)
 {
     debug!("save: storing data in {}", path_buf.display());
 
@@ -121,20 +120,12 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
     }
 
     // generate the data in a memory buffer
-    let mut wr = Cursor::new(Vec::new());
-    file_format::write_file_header(&mut wr).unwrap();
-    match encode(&mut Encoder::new(&mut wr)) {
-        Ok(()) => {}
-        Err(err) => {
-            sess.err(&format!("could not encode dep-graph to `{}`: {}",
-                              path_buf.display(),
-                              err));
-            return;
-        }
-    }
+    let mut encoder = Encoder::new(Vec::new());
+    file_format::write_file_header(&mut encoder);
+    encode(&mut encoder);
 
     // write the data out
-    let data = wr.into_inner();
+    let data = encoder.into_inner();
     match fs::write(&path_buf, data) {
         Ok(_) => {
             debug!("save: data written to disk successfully");
@@ -149,10 +140,9 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
 }
 
 fn encode_dep_graph(tcx: TyCtxt,
-                    encoder: &mut Encoder)
-                    -> io::Result<()> {
+                    encoder: &mut Encoder) {
     // First encode the commandline arguments hash
-    tcx.sess.opts.dep_tracking_hash().encode(encoder)?;
+    tcx.sess.opts.dep_tracking_hash().encode(encoder).unwrap();
 
     // Encode the graph data.
     let serialized_graph = time(tcx.sess, "getting serialized graph", || {
@@ -234,14 +224,12 @@ fn encode_dep_graph(tcx: TyCtxt,
     }
 
     time(tcx.sess, "encoding serialized graph", || {
-        serialized_graph.encode(encoder)
-    })?;
-
-    Ok(())
+        serialized_graph.encode(encoder).unwrap();
+    });
 }
 
 fn encode_work_product_index(work_products: &FxHashMap<WorkProductId, WorkProduct>,
-                             encoder: &mut Encoder) -> io::Result<()> {
+                             encoder: &mut Encoder) {
     let serialized_products: Vec<_> = work_products
         .iter()
         .map(|(id, work_product)| {
@@ -252,13 +240,12 @@ fn encode_work_product_index(work_products: &FxHashMap<WorkProductId, WorkProduc
         })
         .collect();
 
-    serialized_products.encode(encoder)
+    serialized_products.encode(encoder).unwrap();
 }
 
 fn encode_query_cache(tcx: TyCtxt,
-                      encoder: &mut Encoder)
-                      -> io::Result<()> {
+                      encoder: &mut Encoder) {
     time(tcx.sess, "serialize query result cache", || {
-        tcx.serialize_query_result_cache(encoder)
+        tcx.serialize_query_result_cache(encoder).unwrap();
     })
 }
