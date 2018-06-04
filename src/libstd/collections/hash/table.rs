@@ -15,6 +15,7 @@ use mem::{size_of, needs_drop};
 use mem;
 use ops::{Deref, DerefMut};
 use ptr::{self, Unique, NonNull};
+use hint;
 
 use self::BucketState::*;
 
@@ -655,7 +656,17 @@ impl<K, V, M> GapThenFull<K, V, M>
 fn calculate_layout<K, V>(capacity: usize) -> Result<(Layout, usize), LayoutErr> {
     let hashes = Layout::array::<HashUint>(capacity)?;
     let pairs = Layout::array::<(K, V)>(capacity)?;
-    hashes.extend(pairs)
+    hashes.extend(pairs).map(|(layout, _)| {
+        // LLVM seems to have trouble properly const-propagating pairs.align(),
+        // possibly due to the use of NonZeroUsize. This little hack allows it
+        // to generate optimal code.
+        //
+        // See https://github.com/rust-lang/rust/issues/51346 for more details.
+        (
+            layout,
+            hashes.size() + hashes.padding_needed_for(mem::align_of::<(K, V)>()),
+        )
+    })
 }
 
 pub(crate) enum Fallibility {
@@ -711,7 +722,8 @@ impl<K, V> RawTable<K, V> {
     }
 
     fn raw_bucket_at(&self, index: usize) -> RawBucket<K, V> {
-        let (_, pairs_offset) = calculate_layout::<K, V>(self.capacity()).unwrap();
+        let (_, pairs_offset) = calculate_layout::<K, V>(self.capacity())
+            .unwrap_or_else(|_| unsafe { hint::unreachable_unchecked() });
         let buffer = self.hashes.ptr() as *mut u8;
         unsafe {
             RawBucket {
@@ -1109,7 +1121,8 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for RawTable<K, V> {
             }
         }
 
-        let (layout, _) = calculate_layout::<K, V>(self.capacity()).unwrap();
+        let (layout, _) = calculate_layout::<K, V>(self.capacity())
+            .unwrap_or_else(|_| unsafe { hint::unreachable_unchecked() });
         unsafe {
             Global.dealloc(NonNull::new_unchecked(self.hashes.ptr()).as_opaque(), layout);
             // Remember how everything was allocated out of one buffer
