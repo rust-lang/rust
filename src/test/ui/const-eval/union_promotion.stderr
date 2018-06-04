@@ -1,0 +1,16 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/union_promotion.rs:19:29
+   |
+LL |       let x: &'static bool = &unsafe { //~ borrowed value does not live long enough
+   |  _____________________________^
+LL | |         Foo { a: &1 }.b == Foo { a: &2 }.b
+LL | |     };
+   | |_____^ temporary value does not live long enough
+LL |   }
+   |   - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.
