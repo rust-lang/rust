@@ -260,6 +260,13 @@ fn test_exact_chunks_last() {
 }
 
 #[test]
+fn test_exact_chunks_remainder() {
+    let v: &[i32] = &[0, 1, 2, 3, 4];
+    let c = v.exact_chunks(2);
+    assert_eq!(c.remainder(), &[4]);
+}
+
+#[test]
 fn test_exact_chunks_zip() {
     let v1: &[i32] = &[0, 1, 2, 3, 4];
     let v2: &[i32] = &[6, 7, 8, 9, 10];
@@ -308,6 +315,13 @@ fn test_exact_chunks_mut_last() {
     let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
     let c2 = v2.exact_chunks_mut(2);
     assert_eq!(c2.last().unwrap(), &[2, 3]);
+}
+
+#[test]
+fn test_exact_chunks_mut_remainder() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c = v.exact_chunks_mut(2);
+    assert_eq!(c.into_remainder(), &[4]);
 }
 
 #[test]
