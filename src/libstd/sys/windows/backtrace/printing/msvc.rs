@@ -69,24 +69,48 @@ where
     F: FnOnce(Option<&str>) -> io::Result<()>,
 {
     match context.StackWalkVariant {
-        StackWalkVariant::StackWalkEx(_, ref fns) => {
-            resolve_symname_internal(fns.resolve_symname, frame, callback, context)
-        }
-        StackWalkVariant::StackWalk64(_, ref fns) => {
-            resolve_symname_internal(fns.resolve_symname, frame, callback, context)
-        }
+        StackWalkVariant::StackWalkEx(_, ref fns) => resolve_symname_internal(
+            |process: c::HANDLE,
+             symbol_address: u64,
+             inline_context: c::ULONG,
+             info: *mut c::SYMBOL_INFO| unsafe {
+                let mut displacement = 0u64;
+                (fns.resolve_symname)(
+                    process,
+                    symbol_address,
+                    inline_context,
+                    &mut displacement,
+                    info,
+                )
+            },
+            frame,
+            callback,
+            context,
+        ),
+        StackWalkVariant::StackWalk64(_, ref fns) => resolve_symname_internal(
+            |process: c::HANDLE,
+             symbol_address: u64,
+             _inline_context: c::ULONG,
+             info: *mut c::SYMBOL_INFO| unsafe {
+                let mut displacement = 0u64;
+                (fns.resolve_symname)(process, symbol_address, &mut displacement, info)
+            },
+            frame,
+            callback,
+            context,
+        ),
     }
 }
 
 fn resolve_symname_internal<F, R>(
-    symbol_resolver: R,
+    mut symbol_resolver: R,
     frame: Frame,
     callback: F,
     context: &BacktraceContext,
 ) -> io::Result<()>
 where
     F: FnOnce(Option<&str>) -> io::Result<()>,
-    R: SymbolResolver,
+    R: FnMut(c::HANDLE, u64, c::ULONG, *mut c::SYMBOL_INFO) -> c::BOOL,
 {
     unsafe {
         let mut info: c::SYMBOL_INFO = mem::zeroed();
@@ -96,7 +120,7 @@ where
         // due to struct alignment.
         info.SizeOfStruct = 88;
 
-        let ret = symbol_resolver.resolve_symbol(
+        let ret = symbol_resolver(
             context.handle,
             frame.symbol_addr as u64,
             frame.inline_context,
@@ -121,52 +145,6 @@ where
     }
 }
 
-trait SymbolResolver {
-    fn resolve_symbol(
-        &self,
-        process: c::HANDLE,
-        symbol_address: u64,
-        inline_context: c::ULONG,
-        info: *mut c::SYMBOL_INFO,
-    ) -> c::BOOL;
-}
-
-impl SymbolResolver for SymFromAddrFn {
-    fn resolve_symbol(
-        &self,
-        process: c::HANDLE,
-        symbol_address: u64,
-        _inline_context: c::ULONG,
-        info: *mut c::SYMBOL_INFO,
-    ) -> c::BOOL {
-        unsafe {
-            let mut displacement = 0u64;
-            self(process, symbol_address, &mut displacement, info)
-        }
-    }
-}
-
-impl SymbolResolver for SymFromInlineContextFn {
-    fn resolve_symbol(
-        &self,
-        process: c::HANDLE,
-        symbol_address: u64,
-        inline_context: c::ULONG,
-        info: *mut c::SYMBOL_INFO,
-    ) -> c::BOOL {
-        unsafe {
-            let mut displacement = 0u64;
-            self(
-                process,
-                symbol_address,
-                inline_context,
-                &mut displacement,
-                info,
-            )
-        }
-    }
-}
-
 pub fn foreach_symbol_fileline<F>(
     frame: Frame,
     callback: F,
@@ -176,30 +154,55 @@ where
     F: FnMut(&[u8], u32) -> io::Result<()>,
 {
     match context.StackWalkVariant {
-        StackWalkVariant::StackWalkEx(_, ref fns) => {
-            foreach_symbol_fileline_iternal(fns.sym_get_line, frame, callback, context)
-        }
-        StackWalkVariant::StackWalk64(_, ref fns) => {
-            foreach_symbol_fileline_iternal(fns.sym_get_line, frame, callback, context)
-        }
+        StackWalkVariant::StackWalkEx(_, ref fns) => foreach_symbol_fileline_iternal(
+            |process: c::HANDLE,
+             frame_address: u64,
+             inline_context: c::ULONG,
+             line: *mut c::IMAGEHLP_LINE64| unsafe {
+                let mut displacement = 0u32;
+                (fns.sym_get_line)(
+                    process,
+                    frame_address,
+                    inline_context,
+                    0,
+                    &mut displacement,
+                    line,
+                )
+            },
+            frame,
+            callback,
+            context,
+        ),
+        StackWalkVariant::StackWalk64(_, ref fns) => foreach_symbol_fileline_iternal(
+            |process: c::HANDLE,
+             frame_address: u64,
+             _inline_context: c::ULONG,
+             line: *mut c::IMAGEHLP_LINE64| unsafe {
+                let mut displacement = 0u32;
+                (fns.sym_get_line)(process, frame_address, &mut displacement, line)
+            },
+            frame,
+            callback,
+            context,
+        ),
     }
 }
 
 fn foreach_symbol_fileline_iternal<F, G>(
-    line_getter: G,
+    mut line_getter: G,
     frame: Frame,
     mut callback: F,
     context: &BacktraceContext,
 ) -> io::Result<bool>
 where
     F: FnMut(&[u8], u32) -> io::Result<()>,
-    G: LineGetter,
+    G: FnMut(c::HANDLE, u64, c::ULONG, *mut c::IMAGEHLP_LINE64) -> c::BOOL,
 {
     unsafe {
         let mut line: c::IMAGEHLP_LINE64 = mem::zeroed();
         line.SizeOfStruct = ::mem::size_of::<c::IMAGEHLP_LINE64>() as u32;
 
-        let ret = line_getter.get_line(
+        let ret = line_getter(
             context.handle,
             frame.exact_position as u64,
             frame.inline_context,
@@ -210,52 +213,5 @@ where
             callback(name, line.LineNumber as u32)?;
         }
         Ok(false)
-    }
-}
-
-trait LineGetter {
-    fn get_line(
-        &self,
-        process: c::HANDLE,
-        frame_address: u64,
-        inline_context: c::ULONG,
-        line: *mut c::IMAGEHLP_LINE64,
-    ) -> c::BOOL;
-}
-
-impl LineGetter for SymGetLineFromAddr64Fn {
-    fn get_line(
-        &self,
-        process: c::HANDLE,
-        frame_address: u64,
-        _inline_context: c::ULONG,
-        line: *mut c::IMAGEHLP_LINE64,
-    ) -> c::BOOL {
-        unsafe {
-            let mut displacement = 0u32;
-            self(process, frame_address, &mut displacement, line)
-        }
-    }
-}
-
-impl LineGetter for SymGetLineFromInlineContextFn {
-    fn get_line(
-        &self,
-        process: c::HANDLE,
-        frame_address: u64,
-        inline_context: c::ULONG,
-        line: *mut c::IMAGEHLP_LINE64,
-    ) -> c::BOOL {
-        unsafe {
-            let mut displacement = 0u32;
-            self(
-                process,
-                frame_address,
-                inline_context,
-                0,
-                &mut displacement,
-                line,
-            )
-        }
     }
 }
