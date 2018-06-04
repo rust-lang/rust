@@ -194,3 +194,13 @@ macro_rules! m {
     ($x:) => {};
     ($($foo:expr)()?) => {};
 }
+
+// #2749
+macro_rules! foo {
+    ($(x)* {}) => {};
+    ($(x)* ()) => {};
+    ($(x)* []) => {};
+}
+macro_rules! __wundergraph_expand_sqlite_mutation {
+    ( $mutation_name:ident $((context = $($context:tt)*))*{ $( $entity_name:ident( $(insert = $insert:ident,)* $(update = $update:ident,)* $(delete = $($delete:tt)+)* ), )* } ) => {};
+}
