@@ -1,0 +1,14 @@
+error[E0080]: this static likely exhibits undefined behavior
+  --> $DIR/double_check2.rs:25:1
+   |
+LL | / static FOO: (&Foo, &Bar) = unsafe {( //~ undefined behavior
+LL | |     Union { usize: &BAR }.foo,
+LL | |     Union { usize: &BAR }.bar,
+LL | | )};
+   | |___^ type validation failed: encountered 5 at (*.1).TAG, but expected something in the range 42..=99
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

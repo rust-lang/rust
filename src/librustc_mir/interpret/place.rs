@@ -98,7 +98,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Reads a value from the place without going through the intermediate step of obtaining
     /// a `miri::Place`
     pub fn try_read_place(
-        &mut self,
+        &self,
         place: &mir::Place<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {
         use rustc::mir::Place::*;
@@ -120,19 +120,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         base: Value,
         variant: Option<usize>,
         field: mir::Field,
-        base_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, ValTy<'tcx>> {
-        let mut base_layout = self.layout_of(base_ty)?;
+        mut base_layout: TyLayout<'tcx>,
+    ) -> EvalResult<'tcx, (Value, TyLayout<'tcx>)> {
         if let Some(variant_index) = variant {
             base_layout = base_layout.for_variant(self, variant_index);
         }
         let field_index = field.index();
         let field = base_layout.field(self, field_index)?;
         if field.size.bytes() == 0 {
-            return Ok(ValTy {
-                value: Value::Scalar(Scalar::undef()),
-                ty: field.ty,
-            });
+            return Ok((
+                Value::Scalar(Scalar::undef()),
+                field,
+            ));
         }
         let offset = base_layout.fields.offset(field_index);
         let value = match base {
@@ -151,16 +150,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 assert!(!field.is_unsized());
                 Value::ByRef(ptr, align)
             },
-            Value::Scalar(val) => bug!("field access on non aggregate {:?}, {:?}", val, base_ty),
+            Value::Scalar(val) => bug!("field access on non aggregate {:#?}, {:#?}", val, base_layout),
         };
-        Ok(ValTy {
-            value,
-            ty: field.ty,
-        })
+        Ok((value, field))
     }
 
     fn try_read_place_projection(
-        &mut self,
+        &self,
         proj: &mir::PlaceProjection<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {
         use rustc::mir::ProjectionElem::*;
@@ -169,8 +165,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             None => return Ok(None),
         };
         let base_ty = self.place_ty(&proj.base);
+        let base_layout = self.layout_of(base_ty)?;
         match proj.elem {
-            Field(field, _) => Ok(Some(self.read_field(base, None, field, base_ty)?.value)),
+            Field(field, _) => Ok(Some(self.read_field(base, None, field, base_layout)?.0)),
             // The NullablePointer cases should work fine, need to take care for normal enums
             Downcast(..) |
             Subslice { .. } |

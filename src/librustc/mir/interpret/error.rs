@@ -47,7 +47,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
         message: &str
     ) {
-        let err = self.struct_generic(tcx, message, None);
+        let err = self.struct_error(tcx, message);
         if let Some(mut err) = err {
             err.emit();
         }
