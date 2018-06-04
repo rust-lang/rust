@@ -39,6 +39,20 @@ macro_rules! impl_float_math {
                 use coresimd::ppsv::codegen::fma::FloatFma;
                 FloatFma::fma(self, y, z)
             }
+
+            /// Sin
+            #[inline(always)]
+            pub fn sin(self) -> Self {
+                use coresimd::ppsv::codegen::sin::FloatSin;
+                FloatSin::sin(self)
+            }
+
+            /// Cos
+            #[inline]
+            pub fn cos(self) -> Self {
+                use coresimd::ppsv::codegen::cos::FloatCos;
+                FloatCos::cos(self)
+            }
         }
     };
 }
@@ -50,6 +64,14 @@ macro_rules! test_float_math {
             match ::mem::size_of::<$elem_ty>() {
                 4 => 1.4142135 as $elem_ty,
                 8 => 1.4142135623730951 as $elem_ty,
+                _ => unreachable!(),
+            }
+        }
+
+        fn pi() -> $elem_ty {
+            match ::mem::size_of::<$elem_ty>() {
+                4 => ::std::f32::consts::PI as $elem_ty,
+                8 => ::std::f64::consts::PI as $elem_ty,
                 _ => unreachable!(),
             }
         }
@@ -126,7 +148,36 @@ macro_rules! test_float_math {
 
             assert_eq!(f, t.fma(t, z));
             assert_eq!(f, t.fma(o, t));
-            assert_eq!(t3, t.fma(t, o));
+            assert_eq!(t3, t.fma(o, o));
+        }
+
+        #[test]
+        fn sin() {
+            use coresimd::simd::*;
+            let z = $id::splat(0 as $elem_ty);
+            let p = $id::splat(pi() as $elem_ty);
+            let ph = $id::splat(pi() as $elem_ty / 2.);
+            let o_r = $id::splat((pi() as $elem_ty / 2.).sin());
+            let z_r = $id::splat((pi() as $elem_ty).sin());
+
+            assert_eq!(z, z.sin());
+            assert_eq!(o_r, ph.sin());
+            assert_eq!(z_r, p.sin());
+        }
+
+        #[test]
+        fn cos() {
+            use coresimd::simd::*;
+            let z = $id::splat(0 as $elem_ty);
+            let o = $id::splat(1 as $elem_ty);
+            let p = $id::splat(pi() as $elem_ty);
+            let ph = $id::splat(pi() as $elem_ty / 2.);
+            let z_r = $id::splat((pi() as $elem_ty / 2.).cos());
+            let o_r = $id::splat((pi() as $elem_ty).cos());
+
+            assert_eq!(o, z.cos());
+            assert_eq!(z_r, ph.cos());
+            assert_eq!(o_r, p.cos());
         }
     };
 }
