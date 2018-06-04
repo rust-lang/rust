@@ -199,7 +199,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         });
 
         if let Some(data) = &drop_data.region_constraint_data {
-            self.cx.push_region_constraints(location.at_self(), data);
+            self.cx.push_region_constraints(location.boring(), data);
         }
 
         drop_data.dropck_result.report_overflows(
