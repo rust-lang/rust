@@ -84,6 +84,8 @@ mod default;
 #[macro_use]
 mod eq;
 #[macro_use]
+mod float_math;
+#[macro_use]
 mod fmt;
 #[macro_use]
 mod from;
@@ -128,7 +130,8 @@ pub trait Lanes<A> {}
 
 /// Defines a portable packed SIMD floating-point vector type.
 macro_rules! simd_f_ty {
-    ($id:ident : $elem_count:expr, $elem_ty:ident, $mask_ty:ident, $test_mod:ident, $test_macro:ident |
+    ($id:ident : $elem_count:expr, $elem_ty:ident, $mask_ty:ident, $test_mod:ident,
+     $test_macro:ident |
      $($elem_tys:ident),+ | $($elem_name:ident),+ | $(#[$doc:meta])*) => {
         vector_impl!(
             [define_ty, $id, $($elem_tys),+ | $(#[$doc])*],
@@ -142,7 +145,8 @@ macro_rules! simd_f_ty {
             [impl_neg_op, $id, $elem_ty],
             [impl_partial_eq, $id],
             [impl_default, $id, $elem_ty],
-            [impl_float_minmax_ops, $id]
+            [impl_float_minmax_ops, $id],
+            [impl_float_math, $id]
         );
 
         $test_macro!(
@@ -160,6 +164,7 @@ macro_rules! simd_f_ty {
                 test_default!($id, $elem_ty);
                 test_mask_select!($mask_ty, $id, $elem_ty);
                 test_float_minmax_ops!($id, $elem_ty);
+                test_float_math!($id, $elem_ty);
             }
         );
     }
@@ -167,7 +172,8 @@ macro_rules! simd_f_ty {
 
 /// Defines a portable packed SIMD signed-integer vector type.
 macro_rules! simd_i_ty {
-    ($id:ident : $elem_count:expr, $elem_ty:ident, $mask_ty:ident, $test_mod:ident, $test_macro:ident |
+    ($id:ident : $elem_count:expr, $elem_ty:ident, $mask_ty:ident, $test_mod:ident,
+     $test_macro:ident |
      $($elem_tys:ident),+ | $($elem_name:ident),+ | $(#[$doc:meta])*) => {
         vector_impl!(
             [define_ty, $id, $($elem_tys),+ | $(#[$doc])*],
@@ -221,7 +227,8 @@ macro_rules! simd_i_ty {
 
 /// Defines a portable packed SIMD unsigned-integer vector type.
 macro_rules! simd_u_ty {
-    ($id:ident : $elem_count:expr, $elem_ty:ident, $mask_ty:ident, $test_mod:ident, $test_macro:ident |
+    ($id:ident : $elem_count:expr, $elem_ty:ident, $mask_ty:ident, $test_mod:ident,
+     $test_macro:ident |
      $($elem_tys:ident),+ | $($elem_name:ident),+ | $(#[$doc:meta])*) => {
         vector_impl!(
             [define_ty, $id, $($elem_tys),+ | $(#[$doc])*],
