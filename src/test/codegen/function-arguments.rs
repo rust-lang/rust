@@ -65,7 +65,7 @@ pub fn mutable_unsafe_borrow(_: &mut UnsafeInner) {
 pub fn mutable_borrow(_: &mut i32) {
 }
 
-// CHECK: @indirect_struct(%S* noalias nocapture dereferenceable(32) %arg0)
+// CHECK: @indirect_struct(%S* noalias nocapture align 4 dereferenceable(32) %arg0)
 #[no_mangle]
 pub fn indirect_struct(_: S) {
 }
