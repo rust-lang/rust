@@ -120,7 +120,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         variant: Option<usize>,
         field: mir::Field,
         base_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, Option<(Value, Ty<'tcx>)>> {
+    ) -> EvalResult<'tcx, ValTy<'tcx>> {
         let mut base_layout = self.layout_of(base_ty)?;
         if let Some(variant_index) = variant {
             base_layout = base_layout.for_variant(self, variant_index);
@@ -128,21 +128,34 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let field_index = field.index();
         let field = base_layout.field(self, field_index)?;
         if field.size.bytes() == 0 {
-            return Ok(Some((Value::Scalar(Scalar::undef()), field.ty)))
+            return Ok(ValTy {
+                value: Value::Scalar(Scalar::undef()),
+                ty: field.ty,
+            });
         }
         let offset = base_layout.fields.offset(field_index);
-        match base {
+        let value = match base {
             // the field covers the entire type
             Value::ScalarPair(..) |
-            Value::Scalar(_) if offset.bytes() == 0 && field.size == base_layout.size => Ok(Some((base, field.ty))),
-            // split fat pointers, 2 element tuples, ...
+            Value::Scalar(_) if offset.bytes() == 0 && field.size == base_layout.size => base,
+            // extract fields from types with `ScalarPair` ABI
             Value::ScalarPair(a, b) => {
                 let val = if offset.bytes() == 0 { a } else { b };
-                Ok(Some((Value::Scalar(val), field.ty)))
+                Value::Scalar(val)
             },
-            // FIXME(oli-obk): figure out whether we should be calling `try_read_value` here
-            _ => Ok(None),
-        }
+            Value::ByRef(base_ptr, align) => {
+                let offset = base_layout.fields.offset(field_index);
+                let ptr = base_ptr.ptr_offset(offset, self)?;
+                let align = align.min(base_layout.align).min(field.align);
+                assert!(!field.is_unsized());
+                Value::ByRef(ptr, align)
+            },
+            Value::Scalar(val) => bug!("field access on non aggregate {:?}, {:?}", val, base_ty),
+        };
+        Ok(ValTy {
+            value,
+            ty: field.ty,
+        })
     }
 
     fn try_read_place_projection(
@@ -156,7 +169,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         };
         let base_ty = self.place_ty(&proj.base);
         match proj.elem {
-            Field(field, _) => Ok(self.read_field(base, None, field, base_ty)?.map(|(f, _)| f)),
+            Field(field, _) => Ok(Some(self.read_field(base, None, field, base_ty)?.value)),
             // The NullablePointer cases should work fine, need to take care for normal enums
             Downcast(..) |
             Subslice { .. } |

@@ -4,7 +4,7 @@ use rustc::ty::layout::LayoutOf;
 use syntax::codemap::Span;
 use rustc_target::spec::abi::Abi;
 
-use rustc::mir::interpret::{EvalResult, Value};
+use rustc::mir::interpret::EvalResult;
 use super::{EvalContext, Place, Machine, ValTy};
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -345,31 +345,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                             }
                             if self.frame().mir.args_iter().count() == layout.fields.count() + 1 {
                                 for (i, arg_local) in arg_locals.enumerate() {
-                                    let field = layout.field(&self, i)?;
-                                    if field.is_zst() {
-                                        continue;
-                                    }
-                                    let offset = layout.fields.offset(i);
-                                    let value = match args[1].value {
-                                        Value::ByRef(ptr, align) => Value::ByRef(
-                                            ptr.ptr_offset(offset, &self)?,
-                                            align.min(field.align),
-                                        ),
-                                        other if field.size == layout.size => {
-                                            // this is the case where the field covers the entire type
-                                            assert_eq!(offset.bytes(), 0);
-                                            other
-                                        },
-                                        Value::ScalarPair(a, _) if offset.bytes() == 0 => Value::Scalar(a),
-                                        Value::ScalarPair(_, b) => Value::Scalar(b),
-                                        Value::Scalar(_) => bug!("Scalar does not cover entire type"),
-                                    };
-                                    let dest =
-                                        self.eval_place(&mir::Place::Local(arg_local))?;
-                                    let valty = ValTy {
-                                        value,
-                                        ty: field.ty,
-                                    };
+                                    let field = mir::Field::new(i);
+                                    let valty = self.read_field(args[1].value, None, field, args[1].ty)?;
+                                    let dest = self.eval_place(&mir::Place::Local(arg_local))?;
                                     self.write_value(valty, dest)?;
                                 }
                             } else {

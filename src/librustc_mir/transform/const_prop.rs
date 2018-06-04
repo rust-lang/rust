@@ -214,10 +214,10 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 ProjectionElem::Field(field, _) => {
                     trace!("field proj on {:?}", proj.base);
                     let (base, ty, span) = self.eval_place(&proj.base)?;
-                    let (value, field_ty) = self.use_ecx(span, |this| {
+                    let valty = self.use_ecx(span, |this| {
                         this.ecx.read_field(base, None, field, ty)
-                    })??;
-                    Some((value, field_ty, span))
+                    })?;
+                    Some((valty.value, valty.ty, span))
                 },
                 _ => None,
             },
