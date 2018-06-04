@@ -2860,7 +2860,7 @@ impl<T: Sized> NonNull<T> {
     /// This is useful for initializing types which lazily allocate, like
     /// `Vec::new` does.
     #[stable(feature = "nonnull", since = "1.25.0")]
-    pub fn dangling() -> Self {
+    pub const fn dangling() -> Self {
         unsafe {
             let ptr = mem::align_of::<T>() as *mut T;
             NonNull::new_unchecked(ptr)
