@@ -634,6 +634,8 @@ impl Scalar {
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub enum FieldPlacement {
     /// All fields start at no offset. The `usize` is the field count.
+    ///
+    /// In the case of primitives the number of fields is `0`.
     Union(usize),
 
     /// Array/vector-like placement, with all fields of identical types.

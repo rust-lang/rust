@@ -75,6 +75,7 @@
 #![feature(in_band_lifetimes)]
 #![feature(macro_at_most_once_rep)]
 #![feature(inclusive_range_methods)]
+#![feature(crate_in_paths)]
 
 #![recursion_limit="512"]
 
