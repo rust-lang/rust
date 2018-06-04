@@ -196,7 +196,8 @@ Your PR will be enqueued by the triage team and the results will be posted when
 they are ready. Check runs will take around ~3-4 days, with the other two
 taking 5-6 days on average.
 
-While crater is really useful, it is also important to be aware of a few caveats:
+While crater is really useful, it is also important to be aware of a few
+caveats:
 
 - Not all code is on crates.io! There is a lot of code in repos on GitHub and
   elsewhere. Also, companies may not wish to publish their code. Thus, a
