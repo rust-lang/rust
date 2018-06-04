@@ -4,7 +4,7 @@ use rustc::ty::layout::LayoutOf;
 use syntax::codemap::Span;
 use rustc_target::spec::abi::Abi;
 
-use rustc::mir::interpret::{EvalResult, Scalar, Value};
+use rustc::mir::interpret::EvalResult;
 use super::{EvalContext, Place, Machine, ValTy};
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -338,65 +338,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
                         // unpack and write all other args
                         let layout = self.layout_of(args[1].ty)?;
-                        if let ty::TyTuple(..) = args[1].ty.sty {
+                        if let ty::TyTuple(_) = args[1].ty.sty {
+                            if layout.is_zst() {
+                                // Nothing to do, no need to unpack zsts
+                                return Ok(());
+                            }
                             if self.frame().mir.args_iter().count() == layout.fields.count() + 1 {
-                                match args[1].value {
-                                    Value::ByRef(ptr, align) => {
-                                        for (i, arg_local) in arg_locals.enumerate() {
-                                            let field = layout.field(&self, i)?;
-                                            let offset = layout.fields.offset(i);
-                                            let arg = Value::ByRef(ptr.ptr_offset(offset, &self)?,
-                                                                   align.min(field.align));
-                                            let dest =
-                                                self.eval_place(&mir::Place::Local(arg_local))?;
-                                            trace!(
-                                                "writing arg {:?} to {:?} (type: {})",
-                                                arg,
-                                                dest,
-                                                field.ty
-                                            );
-                                            let valty = ValTy {
-                                                value: arg,
-                                                ty: field.ty,
-                                            };
-                                            self.write_value(valty, dest)?;
-                                        }
-                                    }
-                                    Value::Scalar(Scalar::Bits { defined: 0, .. }) => {}
-                                    other => {
-                                        trace!("{:#?}, {:#?}", other, layout);
-                                        let mut layout = layout;
-                                        'outer: loop {
-                                            for i in 0..layout.fields.count() {
-                                                let field = layout.field(&self, i)?;
-                                                if layout.fields.offset(i).bytes() == 0 && layout.size == field.size {
-                                                    layout = field;
-                                                    continue 'outer;
-                                                }
-                                            }
-                                            break;
-                                        }
-                                        {
-                                            let mut write_next = |value| {
-                                                let dest = self.eval_place(&mir::Place::Local(
-                                                    arg_locals.next().unwrap(),
-                                                ))?;
-                                                let valty = ValTy {
-                                                    value: Value::Scalar(value),
-                                                    ty: layout.ty,
-                                                };
-                                                self.write_value(valty, dest)
-                                            };
-                                            match other {
-                                                Value::Scalar(value) | Value::ScalarPair(value, _) => write_next(value)?,
-                                                _ => unreachable!(),
-                                            }
-                                            if let Value::ScalarPair(_, value) = other {
-                                                write_next(value)?;
-                                            }
-                                        }
-                                        assert!(arg_locals.next().is_none());
-                                    }
+                                for (i, arg_local) in arg_locals.enumerate() {
+                                    let field = mir::Field::new(i);
+                                    let valty = self.read_field(args[1].value, None, field, args[1].ty)?;
+                                    let dest = self.eval_place(&mir::Place::Local(arg_local))?;
+                                    self.write_value(valty, dest)?;
                                 }
                             } else {
                                 trace!("manual impl of rust-call ABI");

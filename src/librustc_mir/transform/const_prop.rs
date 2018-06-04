@@ -29,7 +29,7 @@ use rustc::ty::subst::Substs;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::ty::ParamEnv;
 use rustc::ty::layout::{
-    LayoutOf, TyLayout, LayoutError, LayoutCx,
+    LayoutOf, TyLayout, LayoutError,
     HasTyCtxt, TargetDataLayout, HasDataLayout,
 };
 
@@ -214,24 +214,10 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 ProjectionElem::Field(field, _) => {
                     trace!("field proj on {:?}", proj.base);
                     let (base, ty, span) = self.eval_place(&proj.base)?;
-                    match base {
-                        Value::ScalarPair(a, b) => {
-                            trace!("by val pair: {:?}, {:?}", a, b);
-                            let base_layout = self.tcx.layout_of(self.param_env.and(ty)).ok()?;
-                            trace!("layout computed");
-                            use rustc_data_structures::indexed_vec::Idx;
-                            let field_index = field.index();
-                            let val = [a, b][field_index];
-                            let cx = LayoutCx {
-                                tcx: self.tcx,
-                                param_env: self.param_env,
-                            };
-                            let field = base_layout.field(cx, field_index).ok()?;
-                            trace!("projection resulted in: {:?}", val);
-                            Some((Value::Scalar(val), field.ty, span))
-                        },
-                        _ => None,
-                    }
+                    let valty = self.use_ecx(span, |this| {
+                        this.ecx.read_field(base, None, field, ty)
+                    })?;
+                    Some((valty.value, valty.ty, span))
                 },
                 _ => None,
             },
