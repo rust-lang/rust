@@ -191,14 +191,23 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
 
             mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
                 let discr = self.codegen_operand(&bx, discr);
-                if switch_ty == bx.tcx().types.bool {
+                if targets.len() == 2 {
+                    // If there are two targets, emit br instead of switch
                     let lltrue = llblock(self, targets[0]);
                     let llfalse = llblock(self, targets[1]);
-                    if let [0] = values[..] {
-                        bx.cond_br(discr.immediate(), llfalse, lltrue);
+                    if switch_ty == bx.tcx().types.bool {
+                        // Don't generate trivial icmps when switching on bool
+                        if let [0] = values[..] {
+                            bx.cond_br(discr.immediate(), llfalse, lltrue);
+                        } else {
+                            assert_eq!(&values[..], &[1]);
+                            bx.cond_br(discr.immediate(), lltrue, llfalse);
+                        }
                     } else {
-                        assert_eq!(&values[..], &[1]);
-                        bx.cond_br(discr.immediate(), lltrue, llfalse);
+                        let switch_llty = bx.cx.layout_of(switch_ty).immediate_llvm_type(bx.cx);
+                        let llval = C_uint_big(switch_llty, values[0]);
+                        let cmp = bx.icmp(llvm::IntEQ, discr.immediate(), llval);
+                        bx.cond_br(cmp, lltrue, llfalse);
                     }
                 } else {
                     let (otherwise, targets) = targets.split_last().unwrap();

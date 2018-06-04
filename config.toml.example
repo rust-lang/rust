@@ -279,6 +279,9 @@
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
 
+# Whether to always use incremental compilation when building rustc
+#incremental = false
+
 # Build rustc with experimental parallelization
 #experimental-parallel-queries = false
 

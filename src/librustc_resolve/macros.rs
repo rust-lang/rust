@@ -803,7 +803,6 @@ impl<'a> Resolver<'a> {
                     def: def,
                     vis: ty::Visibility::Public,
                     span: item.span,
-                    is_import: false,
                 });
             } else {
                 self.unused_macros.insert(def_id);
