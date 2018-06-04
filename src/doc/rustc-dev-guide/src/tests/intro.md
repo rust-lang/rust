@@ -203,6 +203,23 @@ While crater is really useful, it is also important to be aware of a few caveats
   that the crate doesn't compile any more (e.g. used old nightly features),
   has broken or flaky tests, requires network access, or other reasons.
 
+- Before crater can be run, `@bors try` needs to suceed. This means that if
+  your code doesn't compile or fails tests, you cannot run crater.
+
+## Perf runs
+
+A lot of work is put into improving the performance of the compiler and
+preventing performance regressions. A "perf run" is used to compare the
+performance of the compiler in different configurations for a large collection
+of popular crates. Different configurations include "fresh builds", builds
+with incremental compilation, etc.
+
+The result of a perf run is a comparison between two versions of the
+compiler (by their commit hashes).
+
+You should request a perf run if your PR may affect performance, especially
+if it can affect performance adversely.
+
 ## Further reading
 
 The following blog posts may also be of interest:
