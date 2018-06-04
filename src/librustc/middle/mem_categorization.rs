@@ -936,15 +936,31 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                            span: Span,
                            expr_ty: Ty<'tcx>)
                            -> cmt_<'tcx> {
+        debug!(
+            "cat_rvalue_node(id={:?}, span={:?}, expr_ty={:?})",
+            id,
+            span,
+            expr_ty,
+        );
         let hir_id = self.tcx.hir.node_to_hir_id(id);
         let promotable = self.rvalue_promotable_map.as_ref().map(|m| m.contains(&hir_id.local_id))
                                                             .unwrap_or(false);
+
+        debug!(
+            "cat_rvalue_node: promotable = {:?}",
+            promotable,
+        );
 
         // Always promote `[T; 0]` (even when e.g. borrowed mutably).
         let promotable = match expr_ty.sty {
             ty::TyArray(_, len) if len.assert_usize(self.tcx) == Some(0) => true,
             _ => promotable,
         };
+
+        debug!(
+            "cat_rvalue_node: promotable = {:?} (2)",
+            promotable,
+        );
 
         // Compute maximum lifetime of this rvalue. This is 'static if
         // we can promote to a constant, otherwise equal to enclosing temp

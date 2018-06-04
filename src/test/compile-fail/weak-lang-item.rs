@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:weak-lang-items.rs
-// error-pattern: language item required, but not found: `panic_fmt`
+// error-pattern: language item required, but not found: `panic_impl`
 // error-pattern: language item required, but not found: `eh_personality`
 // ignore-wasm32-bare compiled with panic=abort, personality not required
 

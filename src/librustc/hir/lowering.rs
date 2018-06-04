@@ -2433,7 +2433,7 @@ impl<'a> LoweringContext<'a> {
                     self.with_hir_id_owner(new_id, |this| {
                         let vis = match vis {
                             hir::Visibility::Public => hir::Visibility::Public,
-                            hir::Visibility::Crate => hir::Visibility::Crate,
+                            hir::Visibility::Crate(sugar) => hir::Visibility::Crate(sugar),
                             hir::Visibility::Inherited => hir::Visibility::Inherited,
                             hir::Visibility::Restricted { ref path, id: _ } => {
                                 hir::Visibility::Restricted {
@@ -3704,7 +3704,7 @@ impl<'a> LoweringContext<'a> {
     ) -> hir::Visibility {
         match v.node {
             VisibilityKind::Public => hir::Public,
-            VisibilityKind::Crate(..) => hir::Visibility::Crate,
+            VisibilityKind::Crate(sugar) => hir::Visibility::Crate(sugar),
             VisibilityKind::Restricted { ref path, id, .. } => hir::Visibility::Restricted {
                 path: P(self.lower_path(id, path, ParamMode::Explicit)),
                 id: if let Some(owner) = explicit_owner {

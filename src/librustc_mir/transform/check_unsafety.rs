@@ -362,8 +362,8 @@ fn unsafe_derive_on_repr_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: D
         format!("#[derive] can't be used on a #[repr(packed)] struct with \
                  type parameters (error E0133)")
     } else {
-        format!("#[derive] can't be used on a non-Copy #[repr(packed)] struct \
-                 (error E0133)")
+        format!("#[derive] can't be used on a #[repr(packed)] struct that \
+                 does not derive Copy (error E0133)")
     };
     tcx.lint_node(SAFE_PACKED_BORROWS,
                   lint_node_id,

@@ -722,7 +722,7 @@ impl Step for Analysis {
 
         let image = tmpdir(builder).join(format!("{}-{}-image", name, target));
 
-        let src = builder.stage_out(compiler, Mode::Libstd)
+        let src = builder.stage_out(compiler, Mode::Std)
             .join(target).join(builder.cargo_dir()).join("deps");
 
         let image_src = src.join("save-analysis");
@@ -951,13 +951,16 @@ impl Step for PlainSourceTarball {
                 has_cargo_vendor |= line.starts_with("cargo-vendor ");
             }
             if !has_cargo_vendor {
-                let mut cmd = Command::new(&builder.initial_cargo);
-                cmd.arg("install")
-                   .arg("--force")
+                let mut cmd = builder.cargo(
+                    builder.compiler(0, builder.config.build),
+                    Mode::ToolRustc,
+                    builder.config.build,
+                    "install"
+                );
+                cmd.arg("--force")
                    .arg("--debug")
                    .arg("--vers").arg(CARGO_VENDOR_VERSION)
-                   .arg("cargo-vendor")
-                   .env("RUSTC", &builder.initial_rustc);
+                   .arg("cargo-vendor");
                 if let Some(dir) = builder.openssl_install_dir(builder.config.build) {
                     builder.ensure(native::Openssl {
                         target: builder.config.build,

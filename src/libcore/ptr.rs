@@ -239,8 +239,9 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     }
 }
 
-/// Replaces the value at `dest` with `src`, returning the old
-/// value, without dropping either.
+/// Moves `src` into the pointed `dest`, returning the previous `dest` value.
+///
+/// Neither value is dropped.
 ///
 /// # Safety
 ///

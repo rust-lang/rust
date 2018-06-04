@@ -637,8 +637,8 @@ Erroneous code example:
 ```compile_fail,E0152
 #![feature(lang_items)]
 
-#[lang = "panic_fmt"]
-struct Foo; // error: duplicate lang item found: `panic_fmt`
+#[lang = "panic_impl"]
+struct Foo; // error: duplicate lang item found: `panic_impl`
 ```
 
 Lang items are already implemented in the standard library. Unless you are
@@ -824,7 +824,7 @@ A list of available external lang items is available in
 #![feature(lang_items)]
 
 extern "C" {
-    #[lang = "panic_fmt"] // ok!
+    #[lang = "panic_impl"] // ok!
     fn cake();
 }
 ```

@@ -121,7 +121,7 @@ pub use core::slice::{RSplit, RSplitMut};
 pub use core::slice::{from_raw_parts, from_raw_parts_mut};
 #[stable(feature = "from_ref", since = "1.28.0")]
 pub use core::slice::{from_ref, from_mut};
-#[unstable(feature = "slice_get_slice", issue = "35729")]
+#[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use core::slice::SliceIndex;
 #[unstable(feature = "exact_chunks", issue = "47115")]
 pub use core::slice::{ExactChunks, ExactChunksMut};

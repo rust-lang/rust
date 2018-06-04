@@ -801,15 +801,25 @@ impl<'a> State<'a> {
 
     pub fn print_visibility(&mut self, vis: &hir::Visibility) -> io::Result<()> {
         match *vis {
-            hir::Public => self.word_nbsp("pub"),
-            hir::Visibility::Crate => self.word_nbsp("pub(crate)"),
+            hir::Public => self.word_nbsp("pub")?,
+            hir::Visibility::Crate(ast::CrateSugar::JustCrate) => self.word_nbsp("crate")?,
+            hir::Visibility::Crate(ast::CrateSugar::PubCrate) => self.word_nbsp("pub(crate)")?,
             hir::Visibility::Restricted { ref path, .. } => {
                 self.s.word("pub(")?;
-                self.print_path(path, false)?;
-                self.word_nbsp(")")
+                if path.segments.len() == 1 && path.segments[0].name == keywords::Super.name() {
+                    // Special case: `super` can print like `pub(super)`.
+                    self.s.word("super")?;
+                } else {
+                    // Everything else requires `in` at present.
+                    self.word_nbsp("in")?;
+                    self.print_path(path, false)?;
+                }
+                self.word_nbsp(")")?;
             }
-            hir::Inherited => Ok(()),
+            hir::Inherited => ()
         }
+
+        Ok(())
     }
 
     pub fn print_defaultness(&mut self, defaultness: hir::Defaultness) -> io::Result<()> {

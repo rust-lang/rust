@@ -23,6 +23,7 @@
 #![feature(test)]
 #![feature(vec_remove_item)]
 #![feature(entry_and_modify)]
+#![feature(ptr_offset_from)]
 
 #![recursion_limit="256"]
 

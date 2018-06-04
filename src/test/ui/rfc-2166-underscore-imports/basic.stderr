@@ -20,7 +20,7 @@ warning: unused extern crate
   --> $DIR/basic.rs:33:5
    |
 LL |     extern crate core as _; //~ WARN unused extern crate
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
    |
 note: lint level defined here
   --> $DIR/basic.rs:14:25

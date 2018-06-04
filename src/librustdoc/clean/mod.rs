@@ -57,6 +57,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::sync::Arc;
 use std::u32;
+use std::ops::Range;
 
 use core::{self, DocContext};
 use doctree;
@@ -954,12 +955,20 @@ fn type_ns_kind(def: Def, path_str: &str) -> (&'static str, &'static str, String
     (kind, article, format!("{}@{}", kind, path_str))
 }
 
+fn span_of_attrs(attrs: &Attributes) -> syntax_pos::Span {
+    if attrs.doc_strings.is_empty() {
+        return DUMMY_SP;
+    }
+    let start = attrs.doc_strings[0].span();
+    let end = attrs.doc_strings.last().unwrap().span();
+    start.to(end)
+}
+
 fn ambiguity_error(cx: &DocContext, attrs: &Attributes,
                    path_str: &str,
                    article1: &str, kind1: &str, disambig1: &str,
                    article2: &str, kind2: &str, disambig2: &str) {
-    let sp = attrs.doc_strings.first()
-                  .map_or(DUMMY_SP, |a| a.span());
+    let sp = span_of_attrs(attrs);
     cx.sess()
       .struct_span_warn(sp,
                         &format!("`{}` is both {} {} and {} {}",
@@ -1174,8 +1183,39 @@ enum PathKind {
     Type,
 }
 
-fn resolution_failure(cx: &DocContext, path_str: &str) {
-    cx.sess().warn(&format!("[{}] cannot be resolved, ignoring it...", path_str));
+fn resolution_failure(
+    cx: &DocContext,
+    attrs: &Attributes,
+    path_str: &str,
+    dox: &str,
+    link_range: Option<Range<usize>>,
+) {
+    let sp = span_of_attrs(attrs);
+    let mut diag = cx.sess()
+        .struct_span_warn(sp, &format!("[{}] cannot be resolved, ignoring it...", path_str));
+
+    if let Some(link_range) = link_range {
+        // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
+        //                       ^    ~~~~~~
+        //                       |    link_range
+        //                       last_new_line_offset
+
+        let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
+        let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
+
+        // Print the line containing the `link_range` and manually mark it with '^'s
+        diag.note(&format!(
+            "the link appears in this line:\n\n{line}\n{indicator: <before$}{indicator:^<found$}",
+            line=line,
+            indicator="",
+            before=link_range.start - last_new_line_offset,
+            found=link_range.len(),
+        ));
+    } else {
+
+    }
+
+    diag.emit();
 }
 
 impl Clean<Attributes> for [ast::Attribute] {
@@ -1184,7 +1224,7 @@ impl Clean<Attributes> for [ast::Attribute] {
 
         if UnstableFeatures::from_environment().is_nightly_build() {
             let dox = attrs.collapsed_doc_value().unwrap_or_else(String::new);
-            for ori_link in markdown_links(&dox) {
+            for (ori_link, link_range) in markdown_links(&dox) {
                 // bail early for real links
                 if ori_link.contains('/') {
                     continue;
@@ -1228,7 +1268,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                             if let Ok(def) = resolve(cx, path_str, true) {
                                 def
                             } else {
-                                resolution_failure(cx, path_str);
+                                resolution_failure(cx, &attrs, path_str, &dox, link_range);
                                 // this could just be a normal link or a broken link
                                 // we could potentially check if something is
                                 // "intra-doc-link-like" and warn in that case
@@ -1239,7 +1279,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                             if let Ok(def) = resolve(cx, path_str, false) {
                                 def
                             } else {
-                                resolution_failure(cx, path_str);
+                                resolution_failure(cx, &attrs, path_str, &dox, link_range);
                                 // this could just be a normal link
                                 continue;
                             }
@@ -1284,7 +1324,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                             } else if let Ok(value_def) = resolve(cx, path_str, true) {
                                 value_def
                             } else {
-                                resolution_failure(cx, path_str);
+                                resolution_failure(cx, &attrs, path_str, &dox, link_range);
                                 // this could just be a normal link
                                 continue;
                             }
@@ -1293,7 +1333,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                             if let Some(def) = macro_resolve(cx, path_str) {
                                 (def, None)
                             } else {
-                                resolution_failure(cx, path_str);
+                                resolution_failure(cx, &attrs, path_str, &dox, link_range);
                                 continue
                             }
                         }
@@ -3030,7 +3070,7 @@ impl Clean<Option<Visibility>> for hir::Visibility {
         Some(match *self {
             hir::Visibility::Public => Visibility::Public,
             hir::Visibility::Inherited => Visibility::Inherited,
-            hir::Visibility::Crate => Visibility::Crate,
+            hir::Visibility::Crate(_) => Visibility::Crate,
             hir::Visibility::Restricted { ref path, .. } => {
                 let path = path.clean(cx);
                 let did = register_def(cx, path.def);
