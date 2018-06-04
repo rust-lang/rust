@@ -147,7 +147,6 @@ fn type_check_internal<'gcx, 'tcx>(
         region_bound_pairs,
         implicit_region_bound,
         borrowck_context,
-        mir,
     );
     let errors_reported = {
         let mut verifier = TypeVerifier::new(&mut checker, mir);
@@ -597,7 +596,6 @@ struct TypeChecker<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
     constraints: MirTypeckRegionConstraints<'tcx>,
     borrowck_context: Option<BorrowCheckContext<'a, 'tcx>>,
-    mir: &'a Mir<'tcx>,
 }
 
 struct BorrowCheckContext<'a, 'tcx: 'a> {
@@ -628,7 +626,7 @@ crate struct MirTypeckRegionConstraints<'tcx> {
 /// required to hold. Normally, this is at a particular point which
 /// created the obligation, but for constraints that the user gave, we
 /// want the constraint to hold at all points.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum Locations {
     /// Indicates that a type constraint should always be true. This
     /// is particularly important in the new borrowck analysis for
@@ -663,20 +661,41 @@ pub enum Locations {
     /// assigned to `x` are of `'static` lifetime.
     All,
 
-    Pair {
-        /// The location in the MIR that generated these constraints.
-        /// This is intended for error reporting and diagnosis; the
-        /// constraints may *take effect* at a distinct spot.
-        from_location: Location,
-    },
+    /// A "boring" constraint (caused by the given location) is one that
+    /// the user probably doesn't want to see described in diagnostics,
+    /// because it is kind of an artifact of the type system setup.
+    ///
+    /// Example: `x = Foo { field: y }` technically creates
+    /// intermediate regions representing the "type of `Foo { field: y
+    /// }`", and data flows from `y` into those variables, but they
+    /// are not very interesting. The assignment into `x` on the other
+    /// hand might be.
+    Boring(Location),
+
+    /// An *important* outlives constraint (caused by the given
+    /// location) is one that would be useful to highlight in
+    /// diagnostics, because it represents a point where references
+    /// flow from one spot to another (e.g., `x = y`)
+    Interesting(Location),
 }
 
 impl Locations {
     pub fn from_location(&self) -> Option<Location> {
         match self {
             Locations::All => None,
-            Locations::Pair { from_location, .. } => Some(*from_location),
+            Locations::Boring(from_location) | Locations::Interesting(from_location) => {
+                Some(*from_location)
+            }
         }
+    }
+
+    /// Gets a span representing the location.
+    pub fn span(&self, mir: &Mir<'_>) -> Span {
+        let span_location = match self {
+            Locations::All => Location::START,
+            Locations::Boring(l) | Locations::Interesting(l) => *l,
+        };
+        mir.source_info(span_location).span
     }
 }
 
@@ -688,7 +707,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
         implicit_region_bound: Option<ty::Region<'tcx>>,
         borrowck_context: Option<BorrowCheckContext<'a, 'tcx>>,
-        mir: &'a Mir<'tcx>,
     ) -> Self {
         TypeChecker {
             infcx,
@@ -698,7 +716,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             region_bound_pairs,
             implicit_region_bound,
             borrowck_context,
-            mir,
             reported_errors: FxHashSet(),
             constraints: MirTypeckRegionConstraints::default(),
         }
@@ -741,7 +758,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         if let Some(borrowck_context) = &mut self.borrowck_context {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx.tcx,
-                self.mir,
                 borrowck_context.universal_regions,
                 borrowck_context.location_table,
                 self.region_bound_pairs,
@@ -886,9 +902,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let place_ty = location.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = value.ty(mir, tcx);
 
-                let locations = Locations::Pair {
-                    from_location: term_location,
-                };
+                let locations = term_location.interesting();
                 if let Err(terr) = self.sub_types(rv_ty, place_ty, locations) {
                     span_mirbug!(
                         self,
@@ -988,7 +1002,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 match mir.yield_ty {
                     None => span_mirbug!(self, term, "yield in non-generator"),
                     Some(ty) => {
-                        if let Err(terr) = self.sub_types(value_ty, ty, term_location.interesting()) {
+                        if let Err(terr) = self.sub_types(value_ty, ty, term_location.interesting())
+                        {
                             span_mirbug!(
                                 self,
                                 term,
@@ -1016,9 +1031,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         match *destination {
             Some((ref dest, _target_block)) => {
                 let dest_ty = dest.ty(mir, tcx).to_ty(tcx);
-                let locations = Locations::Pair {
-                    from_location: term_location,
-                };
+                let locations = term_location.interesting();
                 if let Err(terr) = self.sub_types(sig.output(), dest_ty, locations) {
                     span_mirbug!(
                         self,
@@ -1630,7 +1643,7 @@ impl MirPass for TypeckMir {
     }
 }
 
-trait AtLocation {
+pub trait AtLocation {
     /// Indicates a "boring" constraint that the user probably
     /// woudln't want to see highlights.
     fn boring(self) -> Locations;
@@ -1642,13 +1655,11 @@ trait AtLocation {
 
 impl AtLocation for Location {
     fn boring(self) -> Locations {
-        Locations::Pair {
-            from_location: self,
-        }
+        Locations::Boring(self)
     }
 
     fn interesting(self) -> Locations {
-        self.boring()
+        Locations::Interesting(self)
     }
 }
 

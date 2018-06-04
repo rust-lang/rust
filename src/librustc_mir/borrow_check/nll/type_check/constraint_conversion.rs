@@ -19,14 +19,12 @@ use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc::infer::{self, SubregionOrigin};
-use rustc::mir::{Location, Mir};
 use rustc::ty::subst::UnpackedKind;
 use rustc::ty::{self, TyCtxt};
-use syntax::codemap::Span;
+use syntax_pos::DUMMY_SP;
 
 crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
     location_table: &'a LocationTable,
     region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
@@ -41,7 +39,6 @@ crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
     crate fn new(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        mir: &'a Mir<'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
         location_table: &'a LocationTable,
         region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
@@ -54,7 +51,6 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
     ) -> Self {
         Self {
             tcx,
-            mir,
             universal_regions,
             location_table,
             region_bound_pairs,
@@ -91,8 +87,7 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
         // will start to fail.
         let ty::OutlivesPredicate(k1, r2) =
             query_constraint.no_late_bound_regions().unwrap_or_else(|| {
-                span_bug!(
-                    self.span(),
+                bug!(
                     "query_constraint {:?} contained bound regions",
                     query_constraint,
                 );
@@ -125,7 +120,7 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
             UnpackedKind::Type(t1) => {
                 // we don't actually use this for anything, but
                 // the `TypeOutlives` code needs an origin.
-                let origin = infer::RelateParamBound(self.span(), t1);
+                let origin = infer::RelateParamBound(DUMMY_SP, t1);
 
                 TypeOutlives::new(
                     &mut *self,
@@ -146,15 +141,12 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
     ) -> TypeTest<'tcx> {
         let lower_bound = self.to_region_vid(region);
 
-        let point = self.locations.from_location().unwrap_or(Location::START);
-
         let test = self.verify_bound_to_region_test(&bound);
 
         TypeTest {
             generic_kind,
             lower_bound,
-            point,
-            span: self.span(),
+            locations: self.locations,
             test,
         }
     }
@@ -189,17 +181,9 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
         self.universal_regions.to_region_vid(r)
     }
 
-    fn span(&self) -> Span {
-        self.mir
-            .source_info(self.locations.from_location().unwrap_or(Location::START))
-            .span
-    }
-
     fn add_outlives(&mut self, sup: ty::RegionVid, sub: ty::RegionVid) {
-        let span = self.span();
-
         self.outlives_constraints.push(OutlivesConstraint {
-            span,
+            locations: self.locations,
             sub,
             sup,
             next: None,

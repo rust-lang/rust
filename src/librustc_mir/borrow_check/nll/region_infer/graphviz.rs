@@ -44,7 +44,7 @@ impl<'this, 'tcx> dot::Labeller<'this> for RegionInferenceContext<'tcx> {
         dot::LabelText::LabelStr(format!("{:?}", n).into_cow())
     }
     fn edge_label(&'this self, e: &OutlivesConstraint) -> dot::LabelText<'this> {
-        dot::LabelText::LabelStr(format!("{:?}", e.span).into_cow())
+        dot::LabelText::LabelStr(format!("{:?}", e.locations).into_cow())
     }
 }
 

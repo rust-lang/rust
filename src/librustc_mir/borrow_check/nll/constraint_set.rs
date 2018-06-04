@@ -10,9 +10,9 @@
 
 use rustc::ty::RegionVid;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use borrow_check::nll::type_check::Locations;
 
 use std::fmt;
-use syntax_pos::Span;
 use std::ops::Deref;
 
 #[derive(Clone, Default)]
@@ -23,8 +23,8 @@ crate struct ConstraintSet {
 impl ConstraintSet {
     pub fn push(&mut self, constraint: OutlivesConstraint) {
         debug!(
-            "add_outlives({:?}: {:?})",
-            constraint.sup, constraint.sub
+            "add_outlives({:?}: {:?} @ {:?})",
+            constraint.sup, constraint.sub, constraint.locations
         );
         if constraint.sup == constraint.sub {
             // 'a: 'a is pretty uninteresting
@@ -96,7 +96,7 @@ pub struct OutlivesConstraint {
     pub next: Option<ConstraintIndex>,
 
     /// Where did this constraint arise?
-    pub span: Span,
+    pub locations: Locations,
 }
 
 impl fmt::Debug for OutlivesConstraint {
@@ -104,7 +104,7 @@ impl fmt::Debug for OutlivesConstraint {
         write!(
             formatter,
             "({:?}: {:?}) due to {:?}",
-            self.sup, self.sub, self.span
+            self.sup, self.sub, self.locations
         )
     }
 }

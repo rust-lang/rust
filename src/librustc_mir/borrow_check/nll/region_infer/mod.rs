@@ -11,6 +11,7 @@
 use super::universal_regions::UniversalRegions;
 use borrow_check::nll::region_infer::values::ToElementIndex;
 use borrow_check::nll::constraint_set::{ConstraintIndex, ConstraintSet, OutlivesConstraint};
+use borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
@@ -154,11 +155,8 @@ pub struct TypeTest<'tcx> {
     /// The region `'x` that the type must outlive.
     pub lower_bound: RegionVid,
 
-    /// The point where the outlives relation must hold.
-    pub point: Location,
-
-    /// Where did this constraint arise?
-    pub span: Span,
+    /// Where did this constraint arise and why?
+    pub locations: Locations,
 
     /// A test which, if met by the region `'x`, proves that this type
     /// constraint is satisfied.
@@ -356,13 +354,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Indicates that the region variable `sup` must outlive `sub` is live at the point `point`.
     pub(super) fn add_outlives(
         &mut self,
-        span: Span,
+        locations: Locations,
         sup: RegionVid,
         sub: RegionVid,
     ) {
         assert!(self.inferred_values.is_none(), "values already inferred");
         self.constraints.push(OutlivesConstraint {
-            span,
+            locations,
             sup,
             sub,
             next: None,
@@ -408,7 +406,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         self.check_type_tests(infcx, mir, mir_def_id, outlives_requirements.as_mut());
 
-        self.check_universal_regions(infcx, mir_def_id, outlives_requirements.as_mut());
+        self.check_universal_regions(infcx, mir, mir_def_id, outlives_requirements.as_mut());
 
         let outlives_requirements = outlives_requirements.unwrap_or(vec![]);
 
@@ -506,7 +504,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             if let Some(propagated_outlives_requirements) = &mut propagated_outlives_requirements {
-                if self.try_promote_type_test(infcx, type_test, propagated_outlives_requirements) {
+                if self.try_promote_type_test(infcx, mir, type_test, propagated_outlives_requirements) {
                     continue;
                 }
             }
@@ -515,9 +513,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let lower_bound_region = self.to_error_region(type_test.lower_bound);
             if let Some(lower_bound_region) = lower_bound_region {
                 let region_scope_tree = &tcx.region_scope_tree(mir_def_id);
+                let type_test_span = type_test.locations.span(mir);
                 infcx.report_generic_bound_failure(
                     region_scope_tree,
-                    type_test.span,
+                    type_test_span,
                     None,
                     type_test.generic_kind,
                     lower_bound_region,
@@ -532,8 +531,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // to report it; we could probably handle it by
                 // iterating over the universal regions and reporting
                 // an error that multiple bounds are required.
+                let type_test_span = type_test.locations.span(mir);
                 tcx.sess.span_err(
-                    type_test.span,
+                    type_test_span,
                     &format!("`{}` does not live long enough", type_test.generic_kind,),
                 );
             }
@@ -566,6 +566,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn try_promote_type_test<'gcx>(
         &self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        mir: &Mir<'tcx>,
         type_test: &TypeTest<'tcx>,
         propagated_outlives_requirements: &mut Vec<ClosureOutlivesRequirement<'gcx>>,
     ) -> bool {
@@ -574,8 +575,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let TypeTest {
             generic_kind,
             lower_bound,
-            point: _,
-            span,
+            locations,
             test: _,
         } = type_test;
 
@@ -599,7 +599,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         propagated_outlives_requirements.push(ClosureOutlivesRequirement {
             subject,
             outlived_free_region: lower_bound_plus,
-            blame_span: *span,
+            blame_span: locations.span(mir),
         });
         true
     }
@@ -865,6 +865,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn check_universal_regions<'gcx>(
         &self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        mir: &Mir<'tcx>,
         mir_def_id: DefId,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
     ) {
@@ -881,6 +882,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for (fr, _) in universal_definitions {
             self.check_universal_region(
                 infcx,
+                mir,
                 mir_def_id,
                 fr,
                 &mut propagated_outlives_requirements,
@@ -899,6 +901,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn check_universal_region<'gcx>(
         &self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        mir: &Mir<'tcx>,
         mir_def_id: DefId,
         longer_fr: RegionVid,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
@@ -921,7 +924,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             );
 
             let blame_index = self.blame_constraint(longer_fr, shorter_fr);
-            let blame_span = self.constraints[blame_index].span;
+            let blame_span = self.constraints[blame_index].locations.span(mir);
 
             if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
                 // Shrink `fr` until we find a non-local region (if we do).
