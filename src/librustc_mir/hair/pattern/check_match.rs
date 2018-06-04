@@ -369,43 +369,56 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 NotUseful => {
                     match source {
                         hir::MatchSource::IfLetDesugar { .. } => {
-                            if printed_if_let_err {
-                                // we already printed an irrefutable if-let pattern error.
-                                // We don't want two, that's just confusing.
+                            if cx.tcx.features().irrefutable_let_pattern {
+                                cx.tcx.lint_node(
+                                    lint::builtin::IRREFUTABLE_LET_PATTERNS,
+                                    hir_pat.id, pat.span,
+                                    "irrefutable if-let pattern");
                             } else {
-                                // find the first arm pattern so we can use its span
-                                let &(ref first_arm_pats, _) = &arms[0];
-                                let first_pat = &first_arm_pats[0];
-                                let span = first_pat.0.span;
-                                struct_span_err!(cx.tcx.sess, span, E0162,
-                                                "irrefutable if-let pattern")
-                                    .span_label(span, "irrefutable pattern")
-                                    .emit();
-                                printed_if_let_err = true;
+                                if printed_if_let_err {
+                                    // we already printed an irrefutable if-let pattern error.
+                                    // We don't want two, that's just confusing.
+                                } else {
+                                    // find the first arm pattern so we can use its span
+                                    let &(ref first_arm_pats, _) = &arms[0];
+                                    let first_pat = &first_arm_pats[0];
+                                    let span = first_pat.0.span;
+                                    struct_span_err!(cx.tcx.sess, span, E0162,
+                                                    "irrefutable if-let pattern")
+                                        .span_label(span, "irrefutable pattern")
+                                        .emit();
+                                    printed_if_let_err = true;
+                                }
                             }
                         },
 
                         hir::MatchSource::WhileLetDesugar => {
-                            // find the first arm pattern so we can use its span
-                            let &(ref first_arm_pats, _) = &arms[0];
-                            let first_pat = &first_arm_pats[0];
-                            let span = first_pat.0.span;
-
                             // check which arm we're on.
                             match arm_index {
                                 // The arm with the user-specified pattern.
                                 0 => {
                                     cx.tcx.lint_node(
-                                            lint::builtin::UNREACHABLE_PATTERNS,
+                                        lint::builtin::UNREACHABLE_PATTERNS,
                                         hir_pat.id, pat.span,
                                         "unreachable pattern");
                                 },
                                 // The arm with the wildcard pattern.
                                 1 => {
-                                    struct_span_err!(cx.tcx.sess, span, E0165,
-                                                     "irrefutable while-let pattern")
-                                        .span_label(span, "irrefutable pattern")
-                                        .emit();
+                                    if cx.tcx.features().irrefutable_let_pattern {
+                                        cx.tcx.lint_node(
+                                            lint::builtin::IRREFUTABLE_LET_PATTERNS,
+                                            hir_pat.id, pat.span,
+                                            "irrefutable while-let pattern");
+                                    } else {
+                                        // find the first arm pattern so we can use its span
+                                        let &(ref first_arm_pats, _) = &arms[0];
+                                        let first_pat = &first_arm_pats[0];
+                                        let span = first_pat.0.span;
+                                        struct_span_err!(cx.tcx.sess, span, E0165,
+                                                         "irrefutable while-let pattern")
+                                            .span_label(span, "irrefutable pattern")
+                                            .emit();
+                                    }
                                 },
                                 _ => bug!(),
                             }

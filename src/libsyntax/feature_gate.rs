@@ -467,6 +467,9 @@ declare_features! (
     // Scoped attributes
     (active, tool_attributes, "1.25.0", Some(44690), None),
 
+    // allow irrefutable patterns in if-let and while-let statements (RFC 2086)
+    (active, irrefutable_let_pattern, "1.27.0", Some(44495), None),
+
     // Allows use of the :literal macro fragment specifier (RFC 1576)
     (active, macro_literal_matcher, "1.27.0", Some(35625), None),
 
