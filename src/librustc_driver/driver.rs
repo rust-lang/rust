@@ -414,6 +414,18 @@ impl<'a> CompileController<'a> {
     }
 }
 
+/// This implementation makes it easier to create a custom driver when you only want to hook
+/// into callbacks from `CompileController`.
+///
+/// # Example
+///
+/// ```no_run
+/// # extern crate rustc_driver;
+/// # use rustc_driver::driver::CompileController;
+/// let mut controller = CompileController::basic();
+/// controller.after_analysis.callback = Box::new(move |_state| {});
+/// rustc_driver::run_compiler(&[], Box::new(controller), None, None);
+/// ```
 impl<'a> ::CompilerCalls<'a> for CompileController<'a> {
     fn early_callback(
         &mut self,
