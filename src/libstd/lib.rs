@@ -252,7 +252,6 @@
 #![feature(char_error_internals)]
 #![feature(compiler_builtins_lib)]
 #![feature(const_fn)]
-#![feature(const_int_ops)]
 #![feature(const_ip)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
