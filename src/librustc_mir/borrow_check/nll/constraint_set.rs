@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::mir::Location;
 use rustc::ty::RegionVid;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
@@ -24,8 +23,8 @@ crate struct ConstraintSet {
 impl ConstraintSet {
     pub fn push(&mut self, constraint: OutlivesConstraint) {
         debug!(
-            "add_outlives({:?}: {:?} @ {:?}",
-            constraint.sup, constraint.sub, constraint.point
+            "add_outlives({:?}: {:?})",
+            constraint.sup, constraint.sub
         );
         if constraint.sup == constraint.sub {
             // 'a: 'a is pretty uninteresting
@@ -86,9 +85,6 @@ pub struct OutlivesConstraint {
     /// Region that must be outlived.
     pub sub: RegionVid,
 
-    /// At this location.
-    pub point: Location,
-
     /// Later on, we thread the constraints onto a linked list
     /// grouped by their `sub` field. So if you had:
     ///
@@ -107,8 +103,8 @@ impl fmt::Debug for OutlivesConstraint {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
             formatter,
-            "({:?}: {:?} @ {:?}) due to {:?}",
-            self.sup, self.sub, self.point, self.span
+            "({:?}: {:?}) due to {:?}",
+            self.sup, self.sub, self.span
         )
     }
 }

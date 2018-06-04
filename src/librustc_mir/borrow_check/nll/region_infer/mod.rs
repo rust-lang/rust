@@ -359,14 +359,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         span: Span,
         sup: RegionVid,
         sub: RegionVid,
-        point: Location,
     ) {
         assert!(self.inferred_values.is_none(), "values already inferred");
         self.constraints.push(OutlivesConstraint {
             span,
             sup,
             sub,
-            point,
             next: None,
         })
     }
@@ -503,7 +501,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
 
-            if self.eval_region_test(mir, type_test.point, type_test.lower_bound, &type_test.test) {
+            if self.eval_region_test(mir, type_test.lower_bound, &type_test.test) {
                 continue;
             }
 
@@ -765,31 +763,30 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn eval_region_test(
         &self,
         mir: &Mir<'tcx>,
-        point: Location,
         lower_bound: RegionVid,
         test: &RegionTest,
     ) -> bool {
         debug!(
-            "eval_region_test(point={:?}, lower_bound={:?}, test={:?})",
-            point, lower_bound, test
+            "eval_region_test(lower_bound={:?}, test={:?})",
+            lower_bound, test
         );
 
         match test {
             RegionTest::IsOutlivedByAllRegionsIn(regions) => regions
                 .iter()
-                .all(|&r| self.eval_outlives(mir, r, lower_bound, point)),
+                .all(|&r| self.eval_outlives(mir, r, lower_bound)),
 
             RegionTest::IsOutlivedByAnyRegionIn(regions) => regions
                 .iter()
-                .any(|&r| self.eval_outlives(mir, r, lower_bound, point)),
+                .any(|&r| self.eval_outlives(mir, r, lower_bound)),
 
             RegionTest::Any(tests) => tests
                 .iter()
-                .any(|test| self.eval_region_test(mir, point, lower_bound, test)),
+                .any(|test| self.eval_region_test(mir, lower_bound, test)),
 
             RegionTest::All(tests) => tests
                 .iter()
-                .all(|test| self.eval_region_test(mir, point, lower_bound, test)),
+                .all(|test| self.eval_region_test(mir, lower_bound, test)),
         }
     }
 
@@ -799,11 +796,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         _mir: &Mir<'tcx>,
         sup_region: RegionVid,
         sub_region: RegionVid,
-        point: Location,
     ) -> bool {
         debug!(
-            "eval_outlives({:?}: {:?} @ {:?})",
-            sup_region, sub_region, point
+            "eval_outlives({:?}: {:?})",
+            sup_region, sub_region
         );
 
         let inferred_values = self

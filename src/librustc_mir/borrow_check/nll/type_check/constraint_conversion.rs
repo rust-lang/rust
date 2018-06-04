@@ -146,7 +146,7 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
     ) -> TypeTest<'tcx> {
         let lower_bound = self.to_region_vid(region);
 
-        let point = self.locations.at_location().unwrap_or(Location::START);
+        let point = self.locations.from_location().unwrap_or(Location::START);
 
         let test = self.verify_bound_to_region_test(&bound);
 
@@ -197,13 +197,11 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
 
     fn add_outlives(&mut self, sup: ty::RegionVid, sub: ty::RegionVid) {
         let span = self.span();
-        let point = self.locations.at_location().unwrap_or(Location::START);
 
         self.outlives_constraints.push(OutlivesConstraint {
             span,
             sub,
             sup,
-            point,
             next: None,
         });
     }

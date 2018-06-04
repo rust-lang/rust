@@ -671,11 +671,6 @@ pub enum Locations {
         /// This is intended for error reporting and diagnosis; the
         /// constraints may *take effect* at a distinct spot.
         from_location: Location,
-
-        /// The constraints must be met at this location. In terms of the
-        /// NLL RFC, when you have a constraint `R1: R2 @ P`, this field
-        /// is the `P` value.
-        at_location: Location,
     },
 }
 
@@ -684,13 +679,6 @@ impl Locations {
         match self {
             Locations::All => None,
             Locations::Pair { from_location, .. } => Some(*from_location),
-        }
-    }
-
-    pub fn at_location(&self) -> Option<Location> {
-        match self {
-            Locations::All => None,
-            Locations::Pair { at_location, .. } => Some(*at_location),
         }
     }
 }
@@ -799,9 +787,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             StatementKind::Assign(ref place, ref rv) => {
                 let place_ty = place.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = rv.ty(mir, tcx);
-                if let Err(terr) =
-                    self.sub_types(rv_ty, place_ty, location.at_successor_within_block())
-                {
+                if let Err(terr) = self.sub_types(rv_ty, place_ty, location.at_self()) {
                     span_mirbug!(
                         self,
                         stmt,
@@ -897,15 +883,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             TerminatorKind::DropAndReplace {
                 ref location,
                 ref value,
-                target,
-                unwind,
+                target: _,
+                unwind: _,
             } => {
                 let place_ty = location.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = value.ty(mir, tcx);
 
                 let locations = Locations::Pair {
                     from_location: term_location,
-                    at_location: target.start_location(),
                 };
                 if let Err(terr) = self.sub_types(rv_ty, place_ty, locations) {
                     span_mirbug!(
@@ -916,26 +901,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         rv_ty,
                         terr
                     );
-                }
-
-                // Subtle: this assignment occurs at the start of
-                // *both* blocks, so we need to ensure that it holds
-                // at both locations.
-                if let Some(unwind) = unwind {
-                    let locations = Locations::Pair {
-                        from_location: term_location,
-                        at_location: unwind.start_location(),
-                    };
-                    if let Err(terr) = self.sub_types(rv_ty, place_ty, locations) {
-                        span_mirbug!(
-                            self,
-                            term,
-                            "bad DropAndReplace ({:?} = {:?}): {:?}",
-                            place_ty,
-                            rv_ty,
-                            terr
-                        );
-                    }
                 }
             }
             TerminatorKind::SwitchInt {
@@ -1052,11 +1017,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     ) {
         let tcx = self.tcx();
         match *destination {
-            Some((ref dest, target_block)) => {
+            Some((ref dest, _target_block)) => {
                 let dest_ty = dest.ty(mir, tcx).to_ty(tcx);
                 let locations = Locations::Pair {
                     from_location: term_location,
-                    at_location: target_block.start_location(),
                 };
                 if let Err(terr) = self.sub_types(sig.output(), dest_ty, locations) {
                     span_mirbug!(
@@ -1674,29 +1638,12 @@ trait AtLocation {
     /// indicated by `self`. This is typically used when processing
     /// "inputs" to the given location.
     fn at_self(self) -> Locations;
-
-    /// Creates a `Locations` where `self` is the from-location and
-    /// its successor within the block is the at-location. This means
-    /// that any required region relationships must hold only upon
-    /// **exiting** the statement/terminator indicated by `self`. This
-    /// is for example used when you have a `place = rv` statement: it
-    /// indicates that the `typeof(rv) <: typeof(place)` as of the
-    /// **next** statement.
-    fn at_successor_within_block(self) -> Locations;
 }
 
 impl AtLocation for Location {
     fn at_self(self) -> Locations {
         Locations::Pair {
             from_location: self,
-            at_location: self,
-        }
-    }
-
-    fn at_successor_within_block(self) -> Locations {
-        Locations::Pair {
-            from_location: self,
-            at_location: self.successor_within_block(),
         }
     }
 }

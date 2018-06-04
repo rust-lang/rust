@@ -82,15 +82,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let OutlivesConstraint {
                 sup,
                 sub,
-                point,
                 span,
                 next: _,
             } = constraint;
             with_msg(&format!(
-                "{:?}: {:?} @ {:?} due to {:?}",
+                "{:?}: {:?} due to {:?}",
                 sup,
                 sub,
-                point,
                 span
             ))?;
         }
