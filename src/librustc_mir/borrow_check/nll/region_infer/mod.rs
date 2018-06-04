@@ -68,7 +68,7 @@ pub struct RegionInferenceContext<'tcx> {
     dependency_map: Option<IndexVec<RegionVid, Option<ConstraintIndex>>>,
 
     /// The constraints we have accumulated and used during solving.
-    constraints: IndexVec<ConstraintIndex, Constraint>,
+    constraints: IndexVec<ConstraintIndex, OutlivesConstraint>,
 
     /// Type constraints that we check after solving.
     type_tests: Vec<TypeTest<'tcx>>,
@@ -118,11 +118,12 @@ pub(crate) enum Cause {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Constraint {
+pub struct OutlivesConstraint {
     // NB. The ordering here is not significant for correctness, but
     // it is for convenience. Before we dump the constraints in the
     // debugging logs, we sort them, and we'd like the "super region"
     // to be first, etc. (In particular, span should remain last.)
+
     /// The region SUP must outlive SUB...
     sup: RegionVid,
 
@@ -387,7 +388,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) {
         debug!("add_outlives({:?}: {:?} @ {:?}", sup, sub, point);
         assert!(self.inferred_values.is_none(), "values already inferred");
-        self.constraints.push(Constraint {
+        self.constraints.push(OutlivesConstraint {
             span,
             sup,
             sub,
@@ -1139,7 +1140,7 @@ impl<'tcx> RegionDefinition<'tcx> {
     }
 }
 
-impl fmt::Debug for Constraint {
+impl fmt::Debug for OutlivesConstraint {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
             formatter,
