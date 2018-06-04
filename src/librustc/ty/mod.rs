@@ -2748,10 +2748,9 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub fn is_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
-    if let Some(id) = tcx.hir.as_local_node_id(def_id) {
-        is_trait_node(tcx, id)
-    } else {
-        false
+    match tcx.def_key(def_id).disambiguated_data.data {
+        DefPathData::Trait(_) => true,
+        _ => false,
     }
 }
 
