@@ -1021,10 +1021,7 @@ fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, n
             return;
         }
 
-        let closure = match match_type(cx, self_type, &paths::OPTION) {
-            true => "||",
-            false => "|_|",
-        };
+        let closure = if match_type(cx, self_type, &paths::OPTION) { "||" } else { "|_|" };
 
         let sugg: Cow<_> = snippet(cx, arg.span, "..");
         let span_replace_word = method_span.with_hi(span.hi());
