@@ -13,6 +13,8 @@
 // ignore-emscripten
 // ignore-mips
 // ignore-mips64
+// ignore-sparc
+// ignore-sparc64
 // compile-flags: -O
 
 #![feature(repr_simd)]

@@ -14,6 +14,8 @@
 // ignore-mips64
 // ignore-powerpc
 // ignore-s390x
+// ignore-sparc
+// ignore-sparc64
 // ignore-wasm
 // ignore-emscripten
 // ignore-windows
