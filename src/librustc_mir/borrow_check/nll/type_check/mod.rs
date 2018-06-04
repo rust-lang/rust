@@ -1614,7 +1614,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn normalize<T>(&mut self, value: T, location: impl ToLocations) -> T
+    fn normalize<T>(&mut self, value: T, location: impl NormalizeLocation) -> T
     where
         T: type_op::normalize::Normalizable<'gcx, 'tcx> + Copy,
     {
@@ -1701,17 +1701,17 @@ impl AtLocation for Location {
     }
 }
 
-trait ToLocations: fmt::Debug + Copy {
+trait NormalizeLocation: fmt::Debug + Copy {
     fn to_locations(self) -> Locations;
 }
 
-impl ToLocations for Locations {
+impl NormalizeLocation for Locations {
     fn to_locations(self) -> Locations {
         self
     }
 }
 
-impl ToLocations for Location {
+impl NormalizeLocation for Location {
     fn to_locations(self) -> Locations {
         self.at_self()
     }
