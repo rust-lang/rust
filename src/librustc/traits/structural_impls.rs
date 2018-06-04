@@ -405,13 +405,37 @@ BraceStructTypeFoldableImpl! {
     } where T: TypeFoldable<'tcx>
 }
 
-impl<'tcx> fmt::Display for traits::WhereClauseAtom<'tcx> {
+impl<'tcx> fmt::Display for traits::WhereClause<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        use traits::WhereClauseAtom::*;
+        use traits::WhereClause::*;
 
         match self {
             Implemented(trait_ref) => write!(fmt, "Implemented({})", trait_ref),
             ProjectionEq(projection) => write!(fmt, "ProjectionEq({})", projection),
+            RegionOutlives(predicate) => write!(fmt, "RegionOutlives({})", predicate),
+            TypeOutlives(predicate) => write!(fmt, "TypeOutlives({})", predicate),
+        }
+    }
+}
+
+impl<'tcx> fmt::Display for traits::WellFormed<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::WellFormed::*;
+
+        match self {
+            Trait(trait_ref) => write!(fmt, "WellFormed({})", trait_ref),
+            Ty(ty) => write!(fmt, "WellFormed({})", ty),
+        }
+    }
+}
+
+impl<'tcx> fmt::Display for traits::FromEnv<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::FromEnv::*;
+
+        match self {
+            Trait(trait_ref) => write!(fmt, "FromEnv({})", trait_ref),
+            Ty(ty) => write!(fmt, "FromEnv({})", ty),
         }
     }
 }
@@ -419,19 +443,12 @@ impl<'tcx> fmt::Display for traits::WhereClauseAtom<'tcx> {
 impl<'tcx> fmt::Display for traits::DomainGoal<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         use traits::DomainGoal::*;
-        use traits::WhereClauseAtom::*;
 
         match self {
             Holds(wc) => write!(fmt, "{}", wc),
-            WellFormed(Implemented(trait_ref)) => write!(fmt, "WellFormed({})", trait_ref),
-            WellFormed(ProjectionEq(projection)) => write!(fmt, "WellFormed({})", projection),
-            FromEnv(Implemented(trait_ref)) => write!(fmt, "FromEnv({})", trait_ref),
-            FromEnv(ProjectionEq(projection)) => write!(fmt, "FromEnv({})", projection),
-            WellFormedTy(ty) => write!(fmt, "WellFormed({})", ty),
+            WellFormed(wf) => write!(fmt, "{}", wf),
+            FromEnv(from_env) => write!(fmt, "{}", from_env),
             Normalize(projection) => write!(fmt, "Normalize({})", projection),
-            FromEnvTy(ty) => write!(fmt, "FromEnv({})", ty),
-            RegionOutlives(predicate) => write!(fmt, "RegionOutlives({})", predicate),
-            TypeOutlives(predicate) => write!(fmt, "TypeOutlives({})", predicate),
         }
     }
 }
@@ -506,30 +523,60 @@ impl<'tcx> fmt::Display for traits::Clause<'tcx> {
 }
 
 EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for traits::WhereClauseAtom<'tcx> {
-        (traits::WhereClauseAtom::Implemented)(trait_ref),
-        (traits::WhereClauseAtom::ProjectionEq)(projection),
+    impl<'tcx> TypeFoldable<'tcx> for traits::WhereClause<'tcx> {
+        (traits::WhereClause::Implemented)(trait_ref),
+        (traits::WhereClause::ProjectionEq)(projection),
+        (traits::WhereClause::TypeOutlives)(ty_outlives),
+        (traits::WhereClause::RegionOutlives)(region_outlives),
     }
 }
 
 EnumLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for traits::WhereClauseAtom<'a> {
-        type Lifted = traits::WhereClauseAtom<'tcx>;
-        (traits::WhereClauseAtom::Implemented)(trait_ref),
-        (traits::WhereClauseAtom::ProjectionEq)(projection),
+    impl<'a, 'tcx> Lift<'tcx> for traits::WhereClause<'a> {
+        type Lifted = traits::WhereClause<'tcx>;
+        (traits::WhereClause::Implemented)(trait_ref),
+        (traits::WhereClause::ProjectionEq)(projection),
+        (traits::WhereClause::TypeOutlives)(ty_outlives),
+        (traits::WhereClause::RegionOutlives)(region_outlives),
+    }
+}
+
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for traits::WellFormed<'tcx> {
+        (traits::WellFormed::Trait)(trait_ref),
+        (traits::WellFormed::Ty)(ty),
+    }
+}
+
+EnumLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for traits::WellFormed<'a> {
+        type Lifted = traits::WellFormed<'tcx>;
+        (traits::WellFormed::Trait)(trait_ref),
+        (traits::WellFormed::Ty)(ty),
+    }
+}
+
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for traits::FromEnv<'tcx> {
+        (traits::FromEnv::Trait)(trait_ref),
+        (traits::FromEnv::Ty)(ty),
+    }
+}
+
+EnumLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for traits::FromEnv<'a> {
+        type Lifted = traits::FromEnv<'tcx>;
+        (traits::FromEnv::Trait)(trait_ref),
+        (traits::FromEnv::Ty)(ty),
     }
 }
 
 EnumTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for traits::DomainGoal<'tcx> {
         (traits::DomainGoal::Holds)(wc),
-        (traits::DomainGoal::WellFormed)(wc),
-        (traits::DomainGoal::FromEnv)(wc),
-        (traits::DomainGoal::WellFormedTy)(ty),
+        (traits::DomainGoal::WellFormed)(wf),
+        (traits::DomainGoal::FromEnv)(from_env),
         (traits::DomainGoal::Normalize)(projection),
-        (traits::DomainGoal::FromEnvTy)(ty),
-        (traits::DomainGoal::RegionOutlives)(predicate),
-        (traits::DomainGoal::TypeOutlives)(predicate),
     }
 }
 
@@ -537,13 +584,9 @@ EnumLiftImpl! {
     impl<'a, 'tcx> Lift<'tcx> for traits::DomainGoal<'a> {
         type Lifted = traits::DomainGoal<'tcx>;
         (traits::DomainGoal::Holds)(wc),
-        (traits::DomainGoal::WellFormed)(wc),
-        (traits::DomainGoal::FromEnv)(wc),
-        (traits::DomainGoal::WellFormedTy)(ty),
+        (traits::DomainGoal::WellFormed)(wf),
+        (traits::DomainGoal::FromEnv)(from_env),
         (traits::DomainGoal::Normalize)(projection),
-        (traits::DomainGoal::FromEnvTy)(ty),
-        (traits::DomainGoal::RegionOutlives)(predicate),
-        (traits::DomainGoal::TypeOutlives)(predicate),
     }
 }
 
