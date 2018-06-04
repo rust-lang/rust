@@ -303,6 +303,7 @@ struct Rust {
     dist_src: Option<bool>,
     quiet_tests: Option<bool>,
     test_miri: Option<bool>,
+    incremental: Option<bool>,
     save_toolstates: Option<String>,
     codegen_backends: Option<Vec<String>>,
     codegen_backends_dir: Option<String>,
@@ -529,6 +530,10 @@ impl Config {
             set(&mut config.rust_dist_src, rust.dist_src);
             set(&mut config.quiet_tests, rust.quiet_tests);
             set(&mut config.test_miri, rust.test_miri);
+            // in the case "false" is set explicitly, do not overwrite the command line args
+            if let Some(true) = rust.incremental {
+                config.incremental = true;
+            }
             set(&mut config.wasm_syscall, rust.wasm_syscall);
             set(&mut config.lld_enabled, rust.lld);
             config.rustc_parallel_queries = rust.experimental_parallel_queries.unwrap_or(false);
