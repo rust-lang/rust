@@ -240,16 +240,6 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
     ) -> Option<Const<'tcx>> {
         let span = source_info.span;
         match *rvalue {
-            // No need to overwrite an already evaluated constant
-            Rvalue::Use(Operand::Constant(box Constant {
-                literal: Literal::Value {
-                    value: &ty::Const {
-                        val: ConstVal::Value(_),
-                        ..
-                    },
-                },
-                ..
-            })) => None,
             // This branch exists for the sanity type check
             Rvalue::Use(Operand::Constant(ref c)) => {
                 assert_eq!(c.ty, place_ty);
