@@ -11,8 +11,10 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 #![allow(unreachable_code)]
 
+use borrow_check::location::LocationTable;
+use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::Cause;
-use borrow_check::nll::region_infer::ClosureRegionRequirementsExt;
+use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, OutlivesConstraint, TypeTest};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
@@ -63,6 +65,7 @@ macro_rules! span_mirbug_and_err {
     })
 }
 
+mod constraint_conversion;
 mod input_output;
 mod liveness;
 
@@ -101,7 +104,9 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     mir: &Mir<'tcx>,
     mir_def_id: DefId,
     universal_regions: &UniversalRegions<'tcx>,
+    location_table: &LocationTable,
     liveness: &LivenessResults,
+    all_facts: &mut Option<AllFacts>,
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) -> MirTypeckRegionConstraints<'tcx> {
@@ -114,6 +119,11 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         mir,
         &universal_regions.region_bound_pairs,
         Some(implicit_region_bound),
+        Some(BorrowCheckContext {
+            universal_regions,
+            location_table,
+            all_facts,
+        }),
         &mut |cx| {
             liveness::generate(cx, mir, liveness, flow_inits, move_data);
 
@@ -129,6 +139,7 @@ fn type_check_internal<'gcx, 'tcx>(
     mir: &Mir<'tcx>,
     region_bound_pairs: &[(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: Option<ty::Region<'tcx>>,
+    borrowck_context: Option<BorrowCheckContext<'_, 'tcx>>,
     extra: &mut dyn FnMut(&mut TypeChecker<'_, 'gcx, 'tcx>),
 ) -> MirTypeckRegionConstraints<'tcx> {
     let mut checker = TypeChecker::new(
@@ -137,6 +148,8 @@ fn type_check_internal<'gcx, 'tcx>(
         param_env,
         region_bound_pairs,
         implicit_region_bound,
+        borrowck_context,
+        mir,
     );
     let errors_reported = {
         let mut verifier = TypeVerifier::new(&mut checker, mir);
@@ -587,12 +600,20 @@ struct TypeChecker<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     implicit_region_bound: Option<ty::Region<'tcx>>,
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
     constraints: MirTypeckRegionConstraints<'tcx>,
+    borrowck_context: Option<BorrowCheckContext<'a, 'tcx>>,
+    mir: &'a Mir<'tcx>,
+}
+
+struct BorrowCheckContext<'a, 'tcx: 'a> {
+    universal_regions: &'a UniversalRegions<'tcx>,
+    location_table: &'a LocationTable,
+    all_facts: &'a mut Option<AllFacts>,
 }
 
 /// A collection of region constraints that must be satisfied for the
 /// program to be considered well-typed.
 #[derive(Default)]
-pub(crate) struct MirTypeckRegionConstraints<'tcx> {
+crate struct MirTypeckRegionConstraints<'tcx> {
     /// In general, the type-checker is not responsible for enforcing
     /// liveness constraints; this job falls to the region inferencer,
     /// which performs a liveness analysis. However, in some limited
@@ -600,24 +621,11 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     /// not otherwise appear in the MIR -- in particular, the
     /// late-bound regions that it instantiates at call-sites -- and
     /// hence it must report on their liveness constraints.
-    pub liveness_set: Vec<(ty::Region<'tcx>, Location, Cause)>,
+    crate liveness_set: Vec<(ty::Region<'tcx>, Location, Cause)>,
 
-    /// During the course of type-checking, we will accumulate region
-    /// constraints due to performing subtyping operations or solving
-    /// traits. These are accumulated into this vector for later use.
-    pub outlives_sets: Vec<OutlivesSet<'tcx>>,
-}
+    crate outlives_constraints: Vec<OutlivesConstraint>,
 
-/// Outlives relationships between regions and types created at a
-/// particular point within the control-flow graph.
-pub struct OutlivesSet<'tcx> {
-    /// The locations associated with these constraints.
-    pub locations: Locations,
-
-    /// Constraints generated. In terms of the NLL RFC, when you have
-    /// a constraint `R1: R2 @ P`, the data in there specifies things
-    /// like `R1: R2`.
-    pub data: Rc<RegionConstraintData<'tcx>>,
+    crate type_tests: Vec<TypeTest<'tcx>>,
 }
 
 /// The `Locations` type summarizes *where* region constraints are
@@ -695,6 +703,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         param_env: ty::ParamEnv<'gcx>,
         region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
         implicit_region_bound: Option<ty::Region<'tcx>>,
+        borrowck_context: Option<BorrowCheckContext<'a, 'tcx>>,
+        mir: &'a Mir<'tcx>,
     ) -> Self {
         TypeChecker {
             infcx,
@@ -703,6 +713,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             param_env,
             region_bound_pairs,
             implicit_region_bound,
+            borrowck_context,
+            mir,
             reported_errors: FxHashSet(),
             constraints: MirTypeckRegionConstraints::default(),
         }
@@ -750,9 +762,16 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             locations, data
         );
 
-        self.constraints
-            .outlives_sets
-            .push(OutlivesSet { locations, data });
+        if let Some(borrowck_context) = &mut self.borrowck_context {
+            constraint_conversion::ConstraintConversion::new(
+                self.mir,
+                borrowck_context.universal_regions,
+                borrowck_context.location_table,
+                &mut self.constraints.outlives_constraints,
+                &mut self.constraints.type_tests,
+                &mut borrowck_context.all_facts,
+            ).convert(locations, &data);
+        }
     }
 
     /// Helper for `fully_perform_op`, but also used on its own
@@ -1712,7 +1731,7 @@ impl MirPass for TypeckMir {
         }
         let param_env = tcx.param_env(def_id);
         tcx.infer_ctxt().enter(|infcx| {
-            let _ = type_check_internal(&infcx, id, param_env, mir, &[], None, &mut |_| ());
+            let _ = type_check_internal(&infcx, id, param_env, mir, &[], None, None, &mut |_| ());
 
             // For verification purposes, we just ignore the resulting
             // region constraint sets. Not our problem. =)
