@@ -211,8 +211,8 @@ caveats:
   that the crate doesn't compile any more (e.g. used old nightly features),
   has broken or flaky tests, requires network access, or other reasons.
 
-- Before crater can be run, `@bors try` needs to suceed. This means that if
-  your code doesn't compile or fails tests, you cannot run crater.
+- Before crater can be run, `@bors try` needs to suceed in building artifacts.
+  This means that if your code doesn't compile, you cannot run crater.
 
 ## Perf runs
 
