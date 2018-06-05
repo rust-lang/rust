@@ -75,9 +75,9 @@ internally. The result is the compiling `rustc` is done in stages.
 For hacking, often building the stage 1 compiler is enough, but for
 final testing and release, the stage 2 compiler is used.
 
-`./x.py check` is really fast to build the rust compiler. 
-It is, in particular, very useful when you're doing some kind of 
-"type-based refactoring", like renaming a method, or changing the 
+`./x.py check` is really fast to build the rust compiler.
+It is, in particular, very useful when you're doing some kind of
+"type-based refactoring", like renaming a method, or changing the
 signature of some function.
 
 Once you've created a config.toml, you are now ready to run
@@ -155,3 +155,21 @@ in other sections:
   more details):
   - `./x.py test --stage 1 src/libstd` – runs the `#[test]` tests from libstd
   - `./x.py test --stage 1 src/test/run-pass` – runs the `run-pass` test suite
+
+### ctags
+
+One of the challenges with rustc is that the RLS can't handle it, making code
+navigation difficult. One solution is to use `ctags`. The following script can
+be used to set it up: [https://github.com/nikomatsakis/rust-etags][etags].
+
+CTAGS integrates into emacs and vim quite easily. The following can then be
+used to build and generate tags:
+
+```
+rust-ctags src/lib* && ./x.py build <something>
+```
+
+This allows you to do "jump-to-def" with whatever functions were around when
+you last built, which is ridiculously useful.
+
+[etags]: https://github.com/nikomatsakis/rust-etags
