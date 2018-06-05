@@ -505,9 +505,16 @@ fn hide_sharp_behind_comment<'a>(s: &'a str) -> Cow<'a, str> {
     }
 }
 
-fn trim_custom_comment_prefix(s: String) -> String {
+fn trim_custom_comment_prefix(s: &str) -> String {
     s.lines()
-        .map(|line| line.trim_left_matches(RUSTFMT_CUSTOM_COMMENT_PREFIX))
+        .map(|line| {
+            let left_trimmed = line.trim_left();
+            if left_trimmed.starts_with(RUSTFMT_CUSTOM_COMMENT_PREFIX) {
+                left_trimmed.trim_left_matches(RUSTFMT_CUSTOM_COMMENT_PREFIX)
+            } else {
+                line
+            }
+        })
         .collect::<Vec<_>>()
         .join("\n")
 }
