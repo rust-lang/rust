@@ -530,10 +530,6 @@ for ::middle::const_val::ErrKind<'gcx> {
             CheckMatchError => {
                 // nothing to do
             }
-            IndexOutOfBounds { len, index } => {
-                len.hash_stable(hcx, hasher);
-                index.hash_stable(hcx, hasher);
-            }
             Miri(ref err, ref trace) => {
                 err.hash_stable(hcx, hasher);
                 trace.hash_stable(hcx, hasher);

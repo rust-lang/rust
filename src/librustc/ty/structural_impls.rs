@@ -596,8 +596,6 @@ impl<'a, 'tcx> Lift<'tcx> for const_val::ErrKind<'a> {
         Some(match *self {
             NonConstPath => NonConstPath,
             CouldNotResolve => CouldNotResolve,
-            IndexOutOfBounds { len, index } => IndexOutOfBounds { len, index },
-
             TypeckError => TypeckError,
             CheckMatchError => CheckMatchError,
             Miri(ref e, ref frames) => return tcx.lift(e).map(|e| Miri(e, frames.clone())),

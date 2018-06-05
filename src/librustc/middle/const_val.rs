@@ -41,8 +41,6 @@ pub enum ErrKind<'tcx> {
 
     NonConstPath,
     CouldNotResolve,
-    IndexOutOfBounds { len: u64, index: u64 },
-
     TypeckError,
     CheckMatchError,
     Miri(::mir::interpret::EvalError<'tcx>, Vec<FrameInfo>),
@@ -86,11 +84,6 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         match *self.kind {
             NonConstPath        => simple!("non-constant path in constant expression"),
             CouldNotResolve => simple!("could not resolve"),
-            IndexOutOfBounds { len, index } => {
-                simple!("index out of bounds: the len is {} but the index is {}",
-                        len, index)
-            }
-
             TypeckError => simple!("type-checking failed"),
             CheckMatchError => simple!("match-checking failed"),
             Miri(ref err, ref trace) => Backtrace(err, trace),
