@@ -19,6 +19,8 @@ pub enum DefinitiveListTactic {
     Vertical,
     Horizontal,
     Mixed,
+    /// Tactic for nested import.
+    NestedImport,
     /// Special case tactic for `format!()`, `write!()` style macros.
     SpecialMacro(usize),
 }

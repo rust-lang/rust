@@ -229,6 +229,7 @@ where
     let sep_place =
         SeparatorPlace::from_tactic(formatting.separator_place, tactic, formatting.separator);
     let mut prev_item_had_post_comment = false;
+    let mut prev_item_is_nested_import = false;
 
     let mut line_len = 0;
     let indent_str = &formatting.shape.indent.to_string(formatting.config);
@@ -281,12 +282,14 @@ where
                 result.push('\n');
                 result.push_str(indent_str);
             }
-            DefinitiveListTactic::Mixed => {
+            DefinitiveListTactic::Mixed | DefinitiveListTactic::NestedImport => {
                 let total_width = total_item_width(item) + item_sep_len;
 
                 // 1 is space between separator and item.
                 if (line_len > 0 && line_len + 1 + total_width > formatting.shape.width)
                     || prev_item_had_post_comment
+                    || (tactic == DefinitiveListTactic::NestedImport
+                        && (prev_item_is_nested_import || (!first && inner_item.contains("::"))))
                 {
                     result.push('\n');
                     result.push_str(indent_str);
@@ -452,6 +455,7 @@ where
         }
 
         prev_item_had_post_comment = item.post_comment.is_some();
+        prev_item_is_nested_import = inner_item.contains("::");
     }
 
     Some(result)
