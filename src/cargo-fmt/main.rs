@@ -149,8 +149,7 @@ fn format_crate(
     let rustfmt_args = get_fmt_args();
     let targets = if rustfmt_args
         .iter()
-        .any(|s| ["--print-config", "-h", "--help", "-V", "--verison"]
-             .contains(&s.as_str()))
+        .any(|s| ["--print-config", "-h", "--help", "-V", "--verison"].contains(&s.as_str()))
     {
         HashSet::new()
     } else {
