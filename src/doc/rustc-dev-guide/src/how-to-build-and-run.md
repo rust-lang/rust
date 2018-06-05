@@ -165,8 +165,8 @@ be used to set it up: [https://github.com/nikomatsakis/rust-etags][etags].
 CTAGS integrates into emacs and vim quite easily. The following can then be
 used to build and generate tags:
 
-```
-rust-ctags src/lib* && ./x.py build <something>
+```console
+$ rust-ctags src/lib* && ./x.py build <something>
 ```
 
 This allows you to do "jump-to-def" with whatever functions were around when
