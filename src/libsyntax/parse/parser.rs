@@ -2450,6 +2450,9 @@ impl<'a> Parser<'a> {
                     e.span_label(struct_sp, "while parsing this struct");
                     e.emit();
 
+                    // If the next token is a comma, then try to parse
+                    // what comes next as additional fields, rather than
+                    // bailing out until next `}`.
                     if self.token != token::Comma {
                         self.recover_stmt();
                         break;
