@@ -57,6 +57,8 @@ function to lookup the contents of `bar()` given its id; this gives the
 compiler a chance to observe that you accessed the data for `bar()`,
 and then record the dependency.
 
+<a name="hir-id"></a>
+
 ### Identifiers in the HIR
 
 Most of the code that has to deal with things in HIR tends not to
