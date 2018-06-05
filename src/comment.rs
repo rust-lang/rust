@@ -390,8 +390,10 @@ fn rewrite_comment_inner(
                 let code_block = {
                     let mut config = config.clone();
                     config.set().wrap_comments(false);
-                    ::format_code_block(&code_block_buffer, &config)
-                        .map_or_else(|| code_block_buffer.to_owned(), trim_custom_comment_prefix)
+                    match ::format_code_block(&code_block_buffer, &config) {
+                        Some(ref s) => trim_custom_comment_prefix(s),
+                        None => trim_custom_comment_prefix(&code_block_buffer),
+                    }
                 };
                 result.push_str(&join_code_block_with_comment_line_separator(&code_block));
                 code_block_buffer.clear();
@@ -406,7 +408,7 @@ fn rewrite_comment_inner(
                     // We will leave them untouched.
                     result.push_str(&comment_line_separator);
                     result.push_str(&join_code_block_with_comment_line_separator(
-                        &code_block_buffer,
+                        &trim_custom_comment_prefix(&code_block_buffer),
                     ));
                 }
             }
@@ -505,9 +507,16 @@ fn hide_sharp_behind_comment<'a>(s: &'a str) -> Cow<'a, str> {
     }
 }
 
-fn trim_custom_comment_prefix(s: String) -> String {
+fn trim_custom_comment_prefix(s: &str) -> String {
     s.lines()
-        .map(|line| line.trim_left_matches(RUSTFMT_CUSTOM_COMMENT_PREFIX))
+        .map(|line| {
+            let left_trimmed = line.trim_left();
+            if left_trimmed.starts_with(RUSTFMT_CUSTOM_COMMENT_PREFIX) {
+                left_trimmed.trim_left_matches(RUSTFMT_CUSTOM_COMMENT_PREFIX)
+            } else {
+                line
+            }
+        })
         .collect::<Vec<_>>()
         .join("\n")
 }
