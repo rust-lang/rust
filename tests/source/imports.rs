@@ -83,6 +83,8 @@ use foo::{a, bar::{baz, qux, xxxxxxxxxxx, yyyyyyyyyyyyy, zzzzzzzzzzzzzzzz, foo::
 
 use fooo::{baar::{foobar::{xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy, zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz}}, z, bar, bar::*, x, y};
 
+use exonum::{api::{Api, ApiError}, blockchain::{self, BlockProof, Blockchain, Transaction, TransactionSet}, crypto::{Hash, PublicKey}, helpers::Height, node::TransactionSend, storage::{ListProof, MapProof}};
+
 // nested imports with a single sub-tree.
 use a::{b::{c::*}};
 use a::{b::{c::{}}};

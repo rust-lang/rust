@@ -94,7 +94,18 @@ use fooo::{
         xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
         zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz,
     },
-    bar, bar::*, x, y, z,
+    bar,
+    bar::*,
+    x, y, z,
+};
+
+use exonum::{
+    api::{Api, ApiError},
+    blockchain::{self, BlockProof, Blockchain, Transaction, TransactionSet},
+    crypto::{Hash, PublicKey},
+    helpers::Height,
+    node::TransactionSend,
+    storage::{ListProof, MapProof},
 };
 
 // nested imports with a single sub-tree.
