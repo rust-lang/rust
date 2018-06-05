@@ -1010,7 +1010,7 @@ pub unsafe fn _mm_set_epi32(e3: i32, e2: i32, e1: i32, e0: i32) -> __m128i {
 // no particular instruction to test
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_set_epi16(
-    e7: i16, e6: i16, e5: i16, e4: i16, e3: i16, e2: i16, e1: i16, e0: i16
+    e7: i16, e6: i16, e5: i16, e4: i16, e3: i16, e2: i16, e1: i16, e0: i16,
 ) -> __m128i {
     mem::transmute(i16x8::new(e0, e1, e2, e3, e4, e5, e6, e7))
 }
@@ -1095,7 +1095,7 @@ pub unsafe fn _mm_setr_epi32(e3: i32, e2: i32, e1: i32, e0: i32) -> __m128i {
 // no particular instruction to test
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_setr_epi16(
-    e7: i16, e6: i16, e5: i16, e4: i16, e3: i16, e2: i16, e1: i16, e0: i16
+    e7: i16, e6: i16, e5: i16, e4: i16, e3: i16, e2: i16, e1: i16, e0: i16,
 ) -> __m128i {
     _mm_set_epi16(e0, e1, e2, e3, e4, e5, e6, e7)
 }
@@ -1134,10 +1134,15 @@ pub unsafe fn _mm_setzero_si128() -> __m128i {
 #[inline]
 #[target_feature(enable = "sse2")]
 // FIXME movsd on windows
-#[cfg_attr(all(test, not(windows),
-               not(all(target_os = "linux", target_arch = "x86_64")),
-               target_arch = "x86_64"),
-           assert_instr(movq))]
+#[cfg_attr(
+    all(
+        test,
+        not(windows),
+        not(all(target_os = "linux", target_arch = "x86_64")),
+        target_arch = "x86_64"
+    ),
+    assert_instr(movq)
+)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_loadl_epi64(mem_addr: *const __m128i) -> __m128i {
     _mm_set_epi64x(0, simd_extract((*mem_addr).as_i64x2(), 0))
@@ -1190,7 +1195,7 @@ pub unsafe fn _mm_loadu_si128(mem_addr: *const __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(maskmovdqu))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_maskmoveu_si128(
-    a: __m128i, mask: __m128i, mem_addr: *mut i8
+    a: __m128i, mask: __m128i, mem_addr: *mut i8,
 ) {
     maskmovdqu(a.as_i8x16(), mask.as_i8x16(), mem_addr)
 }
@@ -1229,10 +1234,15 @@ pub unsafe fn _mm_storeu_si128(mem_addr: *mut __m128i, a: __m128i) {
 #[inline]
 #[target_feature(enable = "sse2")]
 // FIXME mov on windows, movlps on i686
-#[cfg_attr(all(test, not(windows),
-               not(all(target_os = "linux", target_arch = "x86_64")),
-               target_arch = "x86_64"),
-           assert_instr(movq))]
+#[cfg_attr(
+    all(
+        test,
+        not(windows),
+        not(all(target_os = "linux", target_arch = "x86_64")),
+        target_arch = "x86_64"
+    ),
+    assert_instr(movq)
+)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_storel_epi64(mem_addr: *mut __m128i, a: __m128i) {
     ptr::copy_nonoverlapping(
@@ -1275,8 +1285,9 @@ pub unsafe fn _mm_stream_si32(mem_addr: *mut i32, a: i32) {
 #[inline]
 #[target_feature(enable = "sse2")]
 // FIXME movd on windows, movd on i686
-#[cfg_attr(all(test, not(windows), target_arch = "x86_64"),
-           assert_instr(movq))]
+#[cfg_attr(
+    all(test, not(windows), target_arch = "x86_64"), assert_instr(movq)
+)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_move_epi64(a: __m128i) -> __m128i {
     let zero = _mm_setzero_si128();
@@ -1341,11 +1352,7 @@ pub unsafe fn _mm_extract_epi16(a: __m128i, imm8: i32) -> i32 {
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_insert_epi16(a: __m128i, i: i32, imm8: i32) -> __m128i {
-    mem::transmute(simd_insert(
-        a.as_i16x8(),
-        (imm8 & 7) as u32,
-        i as i16,
-    ))
+    mem::transmute(simd_insert(a.as_i16x8(), (imm8 & 7) as u32, i as i16))
 }
 
 /// Return a mask of the most significant bit of each element in `a`.
@@ -1443,16 +1450,7 @@ pub unsafe fn _mm_shufflehi_epi16(a: __m128i, imm8: i32) -> __m128i {
             simd_shuffle8(
                 a,
                 a,
-                [
-                    0,
-                    1,
-                    2,
-                    3,
-                    $x01 + 4,
-                    $x23 + 4,
-                    $x45 + 4,
-                    $x67 + 4,
-                ],
+                [0, 1, 2, 3, $x01 + 4, $x23 + 4, $x45 + 4, $x67 + 4],
             )
         };
     }
@@ -1567,9 +1565,7 @@ pub unsafe fn _mm_unpackhi_epi8(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute::<i8x16, _>(simd_shuffle16(
         a.as_i8x16(),
         b.as_i8x16(),
-        [
-            8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31
-        ],
+        [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31],
     ))
 }
 
@@ -1630,9 +1626,7 @@ pub unsafe fn _mm_unpacklo_epi8(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute::<i8x16, _>(simd_shuffle16(
         a.as_i8x16(),
         b.as_i8x16(),
-        [
-            0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23
-        ],
+        [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23],
     ))
 }
 
@@ -1644,11 +1638,8 @@ pub unsafe fn _mm_unpacklo_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(punpcklwd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_unpacklo_epi16(a: __m128i, b: __m128i) -> __m128i {
-    let x = simd_shuffle8(
-        a.as_i16x8(),
-        b.as_i16x8(),
-        [0, 8, 1, 9, 2, 10, 3, 11],
-    );
+    let x =
+        simd_shuffle8(a.as_i16x8(), b.as_i16x8(), [0, 8, 1, 9, 2, 10, 3, 11]);
     mem::transmute::<i16x8, _>(x)
 }
 
@@ -1947,11 +1938,7 @@ pub unsafe fn _mm_cmple_sd(a: __m128d, b: __m128d) -> __m128d {
 #[cfg_attr(test, assert_instr(cmpltsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpgt_sd(a: __m128d, b: __m128d) -> __m128d {
-    simd_insert(
-        _mm_cmplt_sd(b, a),
-        1,
-        simd_extract::<_, f64>(a, 1),
-    )
+    simd_insert(_mm_cmplt_sd(b, a), 1, simd_extract::<_, f64>(a, 1))
 }
 
 /// Return a new vector with the low element of `a` replaced by the
@@ -1963,11 +1950,7 @@ pub unsafe fn _mm_cmpgt_sd(a: __m128d, b: __m128d) -> __m128d {
 #[cfg_attr(test, assert_instr(cmplesd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpge_sd(a: __m128d, b: __m128d) -> __m128d {
-    simd_insert(
-        _mm_cmple_sd(b, a),
-        1,
-        simd_extract::<_, f64>(a, 1),
-    )
+    simd_insert(_mm_cmple_sd(b, a), 1, simd_extract::<_, f64>(a, 1))
 }
 
 /// Return a new vector with the low element of `a` replaced by the result
@@ -2042,11 +2025,7 @@ pub unsafe fn _mm_cmpnle_sd(a: __m128d, b: __m128d) -> __m128d {
 #[cfg_attr(test, assert_instr(cmpnltsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpngt_sd(a: __m128d, b: __m128d) -> __m128d {
-    simd_insert(
-        _mm_cmpnlt_sd(b, a),
-        1,
-        simd_extract::<_, f64>(a, 1),
-    )
+    simd_insert(_mm_cmpnlt_sd(b, a), 1, simd_extract::<_, f64>(a, 1))
 }
 
 /// Return a new vector with the low element of `a` replaced by the
@@ -2058,11 +2037,7 @@ pub unsafe fn _mm_cmpngt_sd(a: __m128d, b: __m128d) -> __m128d {
 #[cfg_attr(test, assert_instr(cmpnlesd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpnge_sd(a: __m128d, b: __m128d) -> __m128d {
-    simd_insert(
-        _mm_cmpnle_sd(b, a),
-        1,
-        simd_extract::<_, f64>(a, 1),
-    )
+    simd_insert(_mm_cmpnle_sd(b, a), 1, simd_extract::<_, f64>(a, 1))
 }
 
 /// Compare corresponding elements in `a` and `b` for equality.
@@ -2881,8 +2856,9 @@ pub unsafe fn _mm_undefined_si128() -> __m128i {
 /// The resulting `__m128d` element is composed by the low-order values of
 /// the two `__m128d` interleaved input elements, i.e.:
 ///
-/// * The `[127:64]` bits are copied from the `[127:64]` bits of the second input
-/// * The `[63:0]` bits are copied from the `[127:64]` bits of the first input
+/// * The `[127:64]` bits are copied from the `[127:64]` bits of the second
+/// input * The `[63:0]` bits are copied from the `[127:64]` bits of the first
+/// input
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_unpackhi_pd)
 #[inline]
@@ -3223,22 +3199,7 @@ mod tests {
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_add_epi8() {
         let a = _mm_setr_epi8(
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
         );
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let b = _mm_setr_epi8(
@@ -3290,22 +3251,7 @@ mod tests {
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_adds_epi8() {
         let a = _mm_setr_epi8(
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
         );
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let b = _mm_setr_epi8(
@@ -3363,22 +3309,7 @@ mod tests {
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_adds_epu8() {
         let a = _mm_setr_epi8(
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
         );
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let b = _mm_setr_epi8(
@@ -3629,22 +3560,7 @@ mod tests {
         );
         let r = _mm_slli_si128(a, 1);
         let e = _mm_setr_epi8(
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
         );
         assert_eq_m128i(r, e);
 
@@ -3888,41 +3804,10 @@ mod tests {
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_cmpeq_epi8() {
         let a = _mm_setr_epi8(
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
         );
-        let b = _mm_setr_epi8(
-            15,
-            14,
-            2,
-            12,
-            11,
-            10,
-            9,
-            8,
-            7,
-            6,
-            5,
-            4,
-            3,
-            2,
-            1,
-            0,
-        );
+        let b =
+            _mm_setr_epi8(15, 14, 2, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
         let r = _mm_cmpeq_epi8(a, b);
         #[cfg_attr(rustfmt, rustfmt_skip)]
         assert_eq_m128i(
@@ -4869,9 +4754,7 @@ mod tests {
             pub data: [f64; 2],
         }
         let a = _mm_set1_pd(7.0);
-        let mut mem = Memory {
-            data: [-1.0; 2],
-        };
+        let mut mem = Memory { data: [-1.0; 2] };
 
         _mm_stream_pd(&mut mem.data[0] as *mut f64, a);
         for i in 0..2 {
@@ -4889,9 +4772,7 @@ mod tests {
 
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_store_pd() {
-        let mut mem = Memory {
-            data: [0.0f64; 4],
-        };
+        let mut mem = Memory { data: [0.0f64; 4] };
         let vals = &mut mem.data;
         let a = _mm_setr_pd(1.0, 2.0);
         let d = vals.as_mut_ptr();
@@ -4903,9 +4784,7 @@ mod tests {
 
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_storeu_pd() {
-        let mut mem = Memory {
-            data: [0.0f64; 4],
-        };
+        let mut mem = Memory { data: [0.0f64; 4] };
         let vals = &mut mem.data;
         let a = _mm_setr_pd(1.0, 2.0);
 
@@ -4929,9 +4808,7 @@ mod tests {
 
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_store1_pd() {
-        let mut mem = Memory {
-            data: [0.0f64; 4],
-        };
+        let mut mem = Memory { data: [0.0f64; 4] };
         let vals = &mut mem.data;
         let a = _mm_setr_pd(1.0, 2.0);
         let d = vals.as_mut_ptr();
@@ -4943,9 +4820,7 @@ mod tests {
 
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_store_pd1() {
-        let mut mem = Memory {
-            data: [0.0f64; 4],
-        };
+        let mut mem = Memory { data: [0.0f64; 4] };
         let vals = &mut mem.data;
         let a = _mm_setr_pd(1.0, 2.0);
         let d = vals.as_mut_ptr();
@@ -4957,9 +4832,7 @@ mod tests {
 
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_storer_pd() {
-        let mut mem = Memory {
-            data: [0.0f64; 4],
-        };
+        let mut mem = Memory { data: [0.0f64; 4] };
         let vals = &mut mem.data;
         let a = _mm_setr_pd(1.0, 2.0);
         let d = vals.as_mut_ptr();
@@ -5013,10 +4886,7 @@ mod tests {
         }
 
         let r = _mm_loadu_pd(d);
-        let e = _mm_add_pd(
-            _mm_setr_pd(1.0, 2.0),
-            _mm_set1_pd(offset as f64),
-        );
+        let e = _mm_add_pd(_mm_setr_pd(1.0, 2.0), _mm_set1_pd(offset as f64));
         assert_eq_m128d(r, e);
     }
 
@@ -5091,12 +4961,8 @@ mod tests {
 
         assert_eq_m128(r, _mm_setr_ps(2.0, -2.2, 3.3, 4.4));
 
-        let a = _mm_setr_ps(
-            -1.1,
-            f32::NEG_INFINITY,
-            f32::MAX,
-            f32::NEG_INFINITY,
-        );
+        let a =
+            _mm_setr_ps(-1.1, f32::NEG_INFINITY, f32::MAX, f32::NEG_INFINITY);
         let b = _mm_setr_pd(f64::INFINITY, -5.0);
 
         let r = _mm_cvtsd_ss(a, b);
@@ -5161,12 +5027,8 @@ mod tests {
         let r = _mm_cvttps_epi32(a);
         assert_eq_m128i(r, _mm_setr_epi32(-1, 2, -3, 6));
 
-        let a = _mm_setr_ps(
-            f32::NEG_INFINITY,
-            f32::INFINITY,
-            f32::MIN,
-            f32::MAX,
-        );
+        let a =
+            _mm_setr_ps(f32::NEG_INFINITY, f32::INFINITY, f32::MIN, f32::MAX);
         let r = _mm_cvttps_epi32(a);
         assert_eq_m128i(
             r,

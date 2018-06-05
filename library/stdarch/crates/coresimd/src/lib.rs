@@ -9,29 +9,35 @@
 #![cfg_attr(stdsimd_strict, deny(warnings))]
 #![allow(dead_code)]
 #![allow(unused_features)]
-#![feature(const_fn, link_llvm_intrinsics, platform_intrinsics, repr_simd,
-           simd_ffi, asm, proc_macro_gen,
-           integer_atomics, stmt_expr_attributes, core_intrinsics,
-           crate_in_paths, no_core, attr_literals, rustc_attrs, stdsimd,
-           staged_api, core_float, core_slice_ext, align_offset,
-           doc_cfg, mmx_target_feature, tbm_target_feature,
-           sse4a_target_feature, arm_target_feature, aarch64_target_feature,
-           mips_target_feature, powerpc_target_feature)]
-#![cfg_attr(test,
-            feature(proc_macro, test, attr_literals, abi_vectorcall,
-                    untagged_unions))]
-#![cfg_attr(feature = "cargo-clippy",
-            allow(inline_always, too_many_arguments, cast_sign_loss,
-                  cast_lossless, cast_possible_wrap,
-                  cast_possible_truncation, cast_precision_loss,
-                  shadow_reuse, cyclomatic_complexity, similar_names,
-                  many_single_char_names))]
+#![feature(
+    const_fn, link_llvm_intrinsics, platform_intrinsics, repr_simd, simd_ffi,
+    asm, proc_macro_gen, integer_atomics, stmt_expr_attributes,
+    core_intrinsics, crate_in_paths, no_core, attr_literals, rustc_attrs,
+    stdsimd, staged_api, core_float, core_slice_ext, align_offset, doc_cfg,
+    mmx_target_feature, tbm_target_feature, sse4a_target_feature,
+    arm_target_feature, aarch64_target_feature, mips_target_feature,
+    powerpc_target_feature
+)]
+#![cfg_attr(
+    test,
+    feature(proc_macro, test, attr_literals, abi_vectorcall, untagged_unions)
+)]
+#![cfg_attr(
+    feature = "cargo-clippy",
+    allow(
+        inline_always, too_many_arguments, cast_sign_loss, cast_lossless,
+        cast_possible_wrap, cast_possible_truncation, cast_precision_loss,
+        shadow_reuse, cyclomatic_complexity, similar_names,
+        many_single_char_names
+    )
+)]
 #![cfg_attr(test, allow(unused_imports))]
 #![no_core]
 #![unstable(feature = "stdsimd", issue = "27731")]
-#![doc(test(attr(deny(warnings))),
-       test(attr(allow(dead_code, deprecated, unused_variables,
-                       unused_mut))))]
+#![doc(
+    test(attr(deny(warnings))),
+    test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
+)]
 
 #[cfg_attr(not(test), macro_use)]
 extern crate core as _core;

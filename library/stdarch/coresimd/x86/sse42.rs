@@ -151,7 +151,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 ///     let b = _mm_loadu_si128(chunk.as_ptr() as *const _);
 ///     let idx = _mm_cmpistri(a, b, _SIDD_CMP_EQUAL_ORDERED);
 ///     if idx != 16 {
-///        indexes.push((idx as usize) + (i * hop));
+///         indexes.push((idx as usize) + (i * hop));
 ///     }
 /// }
 /// assert_eq!(indexes, vec![34]);
@@ -439,7 +439,7 @@ pub unsafe fn _mm_cmpistra(a: __m128i, b: __m128i, imm8: i32) -> i32 {
 #[rustc_args_required_const(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpestrm(
-    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32
+    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32,
 ) -> __m128i {
     let a = a.as_i8x16();
     let b = b.as_i8x16();
@@ -544,7 +544,7 @@ pub unsafe fn _mm_cmpestrm(
 #[rustc_args_required_const(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpestri(
-    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32
+    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32,
 ) -> i32 {
     let a = a.as_i8x16();
     let b = b.as_i8x16();
@@ -567,7 +567,7 @@ pub unsafe fn _mm_cmpestri(
 #[rustc_args_required_const(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpestrz(
-    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32
+    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32,
 ) -> i32 {
     let a = a.as_i8x16();
     let b = b.as_i8x16();
@@ -590,7 +590,7 @@ pub unsafe fn _mm_cmpestrz(
 #[rustc_args_required_const(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpestrc(
-    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32
+    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32,
 ) -> i32 {
     let a = a.as_i8x16();
     let b = b.as_i8x16();
@@ -613,7 +613,7 @@ pub unsafe fn _mm_cmpestrc(
 #[rustc_args_required_const(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpestrs(
-    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32
+    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32,
 ) -> i32 {
     let a = a.as_i8x16();
     let b = b.as_i8x16();
@@ -636,7 +636,7 @@ pub unsafe fn _mm_cmpestrs(
 #[rustc_args_required_const(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpestro(
-    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32
+    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32,
 ) -> i32 {
     let a = a.as_i8x16();
     let b = b.as_i8x16();
@@ -660,7 +660,7 @@ pub unsafe fn _mm_cmpestro(
 #[rustc_args_required_const(4)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpestra(
-    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32
+    a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i32,
 ) -> i32 {
     let a = a.as_i8x16();
     let b = b.as_i8x16();
@@ -917,13 +917,8 @@ mod tests {
     unsafe fn test_mm_cmpestra() {
         let a = str_to_m128i(b"Cannot match a");
         let b = str_to_m128i(b"Null after 14");
-        let i = _mm_cmpestra(
-            a,
-            14,
-            b,
-            16,
-            _SIDD_CMP_EQUAL_EACH | _SIDD_UNIT_MASK,
-        );
+        let i =
+            _mm_cmpestra(a, 14, b, 16, _SIDD_CMP_EQUAL_EACH | _SIDD_UNIT_MASK);
         assert_eq!(1, i);
     }
 

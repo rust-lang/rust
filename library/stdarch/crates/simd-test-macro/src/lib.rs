@@ -12,7 +12,7 @@ extern crate quote;
 
 use std::env;
 
-use proc_macro2::{Literal, Span, Ident, TokenStream, TokenTree};
+use proc_macro2::{Ident, Literal, Span, TokenStream, TokenTree};
 
 fn string(s: &str) -> TokenTree {
     Literal::string(s).into()
@@ -20,11 +20,9 @@ fn string(s: &str) -> TokenTree {
 
 #[proc_macro_attribute]
 pub fn simd_test(
-    attr: proc_macro::TokenStream, item: proc_macro::TokenStream
+    attr: proc_macro::TokenStream, item: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    let tokens = TokenStream::from(attr)
-        .into_iter()
-        .collect::<Vec<_>>();
+    let tokens = TokenStream::from(attr).into_iter().collect::<Vec<_>>();
     if tokens.len() != 3 {
         panic!("expected #[simd_test(enable = \"feature\")]");
     }
@@ -53,18 +51,19 @@ pub fn simd_test(
     let item = TokenStream::from(item);
     let name = find_name(item.clone());
 
-    let name: TokenStream = name.to_string().parse().expect(&format!(
-        "failed to parse name: {}",
-        name.to_string()
-    ));
+    let name: TokenStream = name
+        .to_string()
+        .parse()
+        .expect(&format!("failed to parse name: {}", name.to_string()));
 
     let target = env::var("TARGET")
         .expect("TARGET environment variable should be set for rustc");
     let mut force_test = false;
-    let macro_test = match target.split('-').next().expect(&format!(
-        "target triple contained no \"-\": {}",
-        target
-    )) {
+    let macro_test = match target
+        .split('-')
+        .next()
+        .expect(&format!("target triple contained no \"-\": {}", target))
+    {
         "i686" | "x86_64" | "i586" => "is_x86_feature_detected",
         "arm" | "armv7" => "is_arm_feature_detected",
         "aarch64" => "is_aarch64_feature_detected",

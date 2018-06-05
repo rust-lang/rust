@@ -165,7 +165,6 @@ macro_rules! impl_float_arithmetic_reductions {
     };
 }
 
-
 #[cfg(test)]
 macro_rules! test_int_arithmetic_reductions {
     ($id:ident, $elem_ty:ident) => {
@@ -237,10 +236,7 @@ macro_rules! test_float_arithmetic_reductions {
             let v = $id::splat(1 as $elem_ty);
             assert_eq!(v.sum(), $id::lanes() as $elem_ty);
             let v = alternating(2);
-            assert_eq!(
-                v.sum(),
-                ($id::lanes() / 2 + $id::lanes()) as $elem_ty
-            );
+            assert_eq!(v.sum(), ($id::lanes() / 2 + $id::lanes()) as $elem_ty);
         }
         #[test]
         fn product() {

@@ -21,7 +21,7 @@ use proc_macro2::TokenStream;
 
 #[proc_macro_attribute]
 pub fn assert_instr(
-    attr: proc_macro::TokenStream, item: proc_macro::TokenStream
+    attr: proc_macro::TokenStream, item: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let invoc = syn::parse::<Invoc>(attr)
         .expect("expected #[assert_instr(instr, a = b, ...)]");
@@ -36,9 +36,10 @@ pub fn assert_instr(
     let name = &func.ident;
 
     // Disable assert_instr for x86 targets compiled with avx enabled, which
-    // causes LLVM to generate different intrinsics that the ones we are testing
-    // for.
-    let disable_assert_instr = std::env::var("STDSIMD_DISABLE_ASSERT_INSTR").is_ok();
+    // causes LLVM to generate different intrinsics that the ones we are
+    // testing for.
+    let disable_assert_instr =
+        std::env::var("STDSIMD_DISABLE_ASSERT_INSTR").is_ok();
     let maybe_ignore = if cfg!(optimized) && !disable_assert_instr {
         TokenStream::new()
     } else {
@@ -72,11 +73,7 @@ pub fn assert_instr(
             syn::Pat::Ident(ref i) => &i.ident,
             _ => panic!("must have bare arguments"),
         };
-        match invoc
-            .args
-            .iter()
-            .find(|a| *ident == a.0)
-        {
+        match invoc.args.iter().find(|a| *ident == a.0) {
             Some(&(_, ref tts)) => {
                 input_vals.push(quote! { #tts });
             }
@@ -87,7 +84,8 @@ pub fn assert_instr(
         };
     }
 
-    let attrs = func.attrs
+    let attrs = func
+        .attrs
         .iter()
         .filter(|attr| {
             attr.path
@@ -142,9 +140,8 @@ pub fn assert_instr(
         }
     }.into();
     // why? necessary now to get tests to work?
-    let tts: TokenStream = tts.to_string()
-        .parse()
-        .expect("cannot parse tokenstream");
+    let tts: TokenStream =
+        tts.to_string().parse().expect("cannot parse tokenstream");
 
     let tts: TokenStream = quote! {
         #item

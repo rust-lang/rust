@@ -5,17 +5,19 @@
 
 #![cfg_attr(stdsimd_strict, deny(warnings))]
 #![feature(stdsimd)]
-#![cfg_attr(feature = "cargo-clippy",
-            allow(similar_names, missing_docs_in_private_items,
-                  shadow_reuse, print_stdout))]
+#![cfg_attr(
+    feature = "cargo-clippy",
+    allow(
+        similar_names, missing_docs_in_private_items, shadow_reuse,
+        print_stdout
+    )
+)]
 
 extern crate stdsimd;
 #[macro_use]
 extern crate cfg_if;
 
 use stdsimd::simd::*;
-
-
 
 const PI: f64 = std::f64::consts::PI;
 const SOLAR_MASS: f64 = 4.0 * PI * PI;
@@ -81,7 +83,7 @@ struct Body {
 
 impl Body {
     fn new(
-        x0: f64, x1: f64, x2: f64, v0: f64, v1: f64, v2: f64, mass: f64
+        x0: f64, x1: f64, x2: f64, v0: f64, v1: f64, v2: f64, mass: f64,
     ) -> Self {
         Self {
             x: [x0, x1, x2],

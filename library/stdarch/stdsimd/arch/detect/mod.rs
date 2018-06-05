@@ -60,8 +60,8 @@ cfg_if! {
 }
 pub use self::arch::Feature;
 
-mod cache;
 mod bit;
+mod cache;
 
 cfg_if! {
     if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {

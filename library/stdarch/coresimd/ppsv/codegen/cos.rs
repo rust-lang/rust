@@ -25,13 +25,13 @@ pub(crate) trait FloatCos {
 }
 
 macro_rules! impl_fcos {
-    ($id:ident: $fn:ident) => {
+    ($id:ident : $fn:ident) => {
         impl FloatCos for $id {
             fn cos(self) -> Self {
                 unsafe { $fn(self) }
             }
         }
-    }
+    };
 }
 
 impl_fcos!(f32x2: cos_v2f32);

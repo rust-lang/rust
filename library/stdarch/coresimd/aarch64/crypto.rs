@@ -16,36 +16,36 @@ extern "C" {
     fn vsha1h_u32_(hash_e: u32) -> u32;
     #[link_name = "llvm.aarch64.crypto.sha1su0"]
     fn vsha1su0q_u32_(
-        w0_3: uint32x4_t, w4_7: uint32x4_t, w8_11: uint32x4_t
+        w0_3: uint32x4_t, w4_7: uint32x4_t, w8_11: uint32x4_t,
     ) -> uint32x4_t;
     #[link_name = "llvm.aarch64.crypto.sha1su1"]
     fn vsha1su1q_u32_(tw0_3: uint32x4_t, w12_15: uint32x4_t) -> uint32x4_t;
     #[link_name = "llvm.aarch64.crypto.sha1c"]
     fn vsha1cq_u32_(
-        hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t
+        hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t,
     ) -> uint32x4_t;
     #[link_name = "llvm.aarch64.crypto.sha1p"]
     fn vsha1pq_u32_(
-        hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t
+        hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t,
     ) -> uint32x4_t;
     #[link_name = "llvm.aarch64.crypto.sha1m"]
     fn vsha1mq_u32_(
-        hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t
+        hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t,
     ) -> uint32x4_t;
 
     #[link_name = "llvm.aarch64.crypto.sha256h"]
     fn vsha256hq_u32_(
-        hash_abcd: uint32x4_t, hash_efgh: uint32x4_t, wk: uint32x4_t
+        hash_abcd: uint32x4_t, hash_efgh: uint32x4_t, wk: uint32x4_t,
     ) -> uint32x4_t;
     #[link_name = "llvm.aarch64.crypto.sha256h2"]
     fn vsha256h2q_u32_(
-        hash_efgh: uint32x4_t, hash_abcd: uint32x4_t, wk: uint32x4_t
+        hash_efgh: uint32x4_t, hash_abcd: uint32x4_t, wk: uint32x4_t,
     ) -> uint32x4_t;
     #[link_name = "llvm.aarch64.crypto.sha256su0"]
     fn vsha256su0q_u32_(w0_3: uint32x4_t, w4_7: uint32x4_t) -> uint32x4_t;
     #[link_name = "llvm.aarch64.crypto.sha256su1"]
     fn vsha256su1q_u32_(
-        tw0_3: uint32x4_t, w8_11: uint32x4_t, w12_15: uint32x4_t
+        tw0_3: uint32x4_t, w8_11: uint32x4_t, w12_15: uint32x4_t,
     ) -> uint32x4_t;
 }
 
@@ -97,7 +97,7 @@ pub unsafe fn vsha1h_u32(hash_e: u32) -> u32 {
 #[target_feature(enable = "crypto")]
 #[cfg_attr(test, assert_instr(sha1c))]
 pub unsafe fn vsha1cq_u32(
-    hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t
+    hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t,
 ) -> uint32x4_t {
     vsha1cq_u32_(hash_abcd, hash_e, wk)
 }
@@ -107,7 +107,7 @@ pub unsafe fn vsha1cq_u32(
 #[target_feature(enable = "crypto")]
 #[cfg_attr(test, assert_instr(sha1m))]
 pub unsafe fn vsha1mq_u32(
-    hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t
+    hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t,
 ) -> uint32x4_t {
     vsha1mq_u32_(hash_abcd, hash_e, wk)
 }
@@ -117,7 +117,7 @@ pub unsafe fn vsha1mq_u32(
 #[target_feature(enable = "crypto")]
 #[cfg_attr(test, assert_instr(sha1p))]
 pub unsafe fn vsha1pq_u32(
-    hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t
+    hash_abcd: uint32x4_t, hash_e: u32, wk: uint32x4_t,
 ) -> uint32x4_t {
     vsha1pq_u32_(hash_abcd, hash_e, wk)
 }
@@ -127,7 +127,7 @@ pub unsafe fn vsha1pq_u32(
 #[target_feature(enable = "crypto")]
 #[cfg_attr(test, assert_instr(sha1su0))]
 pub unsafe fn vsha1su0q_u32(
-    w0_3: uint32x4_t, w4_7: uint32x4_t, w8_11: uint32x4_t
+    w0_3: uint32x4_t, w4_7: uint32x4_t, w8_11: uint32x4_t,
 ) -> uint32x4_t {
     vsha1su0q_u32_(w0_3, w4_7, w8_11)
 }
@@ -137,7 +137,7 @@ pub unsafe fn vsha1su0q_u32(
 #[target_feature(enable = "crypto")]
 #[cfg_attr(test, assert_instr(sha1su1))]
 pub unsafe fn vsha1su1q_u32(
-    tw0_3: uint32x4_t, w12_15: uint32x4_t
+    tw0_3: uint32x4_t, w12_15: uint32x4_t,
 ) -> uint32x4_t {
     vsha1su1q_u32_(tw0_3, w12_15)
 }
@@ -147,7 +147,7 @@ pub unsafe fn vsha1su1q_u32(
 #[target_feature(enable = "crypto")]
 #[cfg_attr(test, assert_instr(sha256h))]
 pub unsafe fn vsha256hq_u32(
-    hash_abcd: uint32x4_t, hash_efgh: uint32x4_t, wk: uint32x4_t
+    hash_abcd: uint32x4_t, hash_efgh: uint32x4_t, wk: uint32x4_t,
 ) -> uint32x4_t {
     vsha256hq_u32_(hash_abcd, hash_efgh, wk)
 }
@@ -157,7 +157,7 @@ pub unsafe fn vsha256hq_u32(
 #[target_feature(enable = "crypto")]
 #[cfg_attr(test, assert_instr(sha256h2))]
 pub unsafe fn vsha256h2q_u32(
-    hash_efgh: uint32x4_t, hash_abcd: uint32x4_t, wk: uint32x4_t
+    hash_efgh: uint32x4_t, hash_abcd: uint32x4_t, wk: uint32x4_t,
 ) -> uint32x4_t {
     vsha256h2q_u32_(hash_efgh, hash_abcd, wk)
 }
@@ -167,7 +167,7 @@ pub unsafe fn vsha256h2q_u32(
 #[target_feature(enable = "crypto")]
 #[cfg_attr(test, assert_instr(sha256su0))]
 pub unsafe fn vsha256su0q_u32(
-    w0_3: uint32x4_t, w4_7: uint32x4_t
+    w0_3: uint32x4_t, w4_7: uint32x4_t,
 ) -> uint32x4_t {
     vsha256su0q_u32_(w0_3, w4_7)
 }
@@ -177,7 +177,7 @@ pub unsafe fn vsha256su0q_u32(
 #[target_feature(enable = "crypto")]
 #[cfg_attr(test, assert_instr(sha256su1))]
 pub unsafe fn vsha256su1q_u32(
-    tw0_3: uint32x4_t, w8_11: uint32x4_t, w12_15: uint32x4_t
+    tw0_3: uint32x4_t, w8_11: uint32x4_t, w12_15: uint32x4_t,
 ) -> uint32x4_t {
     vsha256su1q_u32_(tw0_3, w8_11, w12_15)
 }
@@ -199,22 +199,8 @@ mod tests {
         assert_eq!(
             r,
             u8x16::new(
-                124,
-                123,
-                124,
-                118,
-                124,
-                123,
-                124,
-                197,
-                124,
-                123,
-                124,
-                118,
-                124,
-                123,
-                124,
-                197
+                124, 123, 124, 118, 124, 123, 124, 197, 124, 123, 124, 118,
+                124, 123, 124, 197
             )
         );
     }
@@ -229,22 +215,7 @@ mod tests {
         assert_eq!(
             r,
             u8x16::new(
-                9,
-                213,
-                9,
-                251,
-                9,
-                213,
-                9,
-                56,
-                9,
-                213,
-                9,
-                251,
-                9,
-                213,
-                9,
-                56
+                9, 213, 9, 251, 9, 213, 9, 56, 9, 213, 9, 251, 9, 213, 9, 56
             )
         );
     }
@@ -256,24 +227,7 @@ mod tests {
         let r: u8x16 = vaesmcq_u8(data).into_bits();
         assert_eq!(
             r,
-            u8x16::new(
-                3,
-                4,
-                9,
-                10,
-                15,
-                8,
-                21,
-                30,
-                3,
-                4,
-                9,
-                10,
-                15,
-                8,
-                21,
-                30
-            )
+            u8x16::new(3, 4, 9, 10, 15, 8, 21, 30, 3, 4, 9, 10, 15, 8, 21, 30)
         );
     }
 
@@ -285,22 +239,8 @@ mod tests {
         assert_eq!(
             r,
             u8x16::new(
-                43,
-                60,
-                33,
-                50,
-                103,
-                80,
-                125,
-                70,
-                43,
-                60,
-                33,
-                50,
-                103,
-                80,
-                125,
-                70
+                43, 60, 33, 50, 103, 80, 125, 70, 43, 60, 33, 50, 103, 80,
+                125, 70
             )
         );
     }

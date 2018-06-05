@@ -25,13 +25,13 @@ pub(crate) trait FloatAbs {
 }
 
 macro_rules! impl_fabs {
-    ($id:ident: $fn:ident) => {
+    ($id:ident : $fn:ident) => {
         impl FloatAbs for $id {
             fn abs(self) -> Self {
                 unsafe { $fn(self) }
             }
         }
-    }
+    };
 }
 
 impl_fabs!(f32x2: abs_v2f32);

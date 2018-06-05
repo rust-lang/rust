@@ -46,7 +46,7 @@ macro_rules! impl_load_store {
             /// undefined.
             #[inline]
             pub unsafe fn store_aligned_unchecked(
-                self, slice: &mut [$elem_ty]
+                self, slice: &mut [$elem_ty],
             ) {
                 *(slice.get_unchecked_mut(0) as *mut $elem_ty as *mut Self) =
                     self;
@@ -59,7 +59,7 @@ macro_rules! impl_load_store {
             /// If `slice.len() < Self::lanes()` the behavior is undefined.
             #[inline]
             pub unsafe fn store_unaligned_unchecked(
-                self, slice: &mut [$elem_ty]
+                self, slice: &mut [$elem_ty],
             ) {
                 let target_ptr =
                     slice.get_unchecked_mut(0) as *mut $elem_ty as *mut u8;
@@ -121,7 +121,7 @@ macro_rules! impl_load_store {
             /// If `slice.len() < Self::lanes()` the behavior is undefined.
             #[inline]
             pub unsafe fn load_unaligned_unchecked(
-                slice: &[$elem_ty]
+                slice: &[$elem_ty],
             ) -> Self {
                 use mem::size_of;
                 let target_ptr =
@@ -238,7 +238,8 @@ macro_rules! test_load_store {
                     data: [0 as $elem_ty; 2 * $id::lanes()],
                 };
                 // offset the aligned data by one byte:
-                let s: &mut [u8; 2 * $id::lanes()
+                let s: &mut [u8; 2
+                                * $id::lanes()
                                 * mem::size_of::<$elem_ty>()] =
                     mem::transmute(&mut aligned.data);
                 let s: &mut [$elem_ty] = slice::from_raw_parts_mut(
@@ -296,7 +297,8 @@ macro_rules! test_load_store {
                     data: [0 as $elem_ty; 2 * $id::lanes()],
                 };
                 // offset the aligned data by one byte:
-                let s: &[u8; 2 * $id::lanes()
+                let s: &[u8; 2
+                            * $id::lanes()
                             * mem::size_of::<$elem_ty>()] =
                     mem::transmute(&aligned.data);
                 let s: &[$elem_ty] = slice::from_raw_parts(

@@ -14,10 +14,13 @@
 
 #![feature(stdsimd)]
 #![cfg_attr(test, feature(test))]
-#![cfg_attr(feature = "cargo-clippy",
-            allow(result_unwrap_used, print_stdout, option_unwrap_used,
-                  shadow_reuse, cast_possible_wrap, cast_sign_loss,
-                  missing_docs_in_private_items))]
+#![cfg_attr(
+    feature = "cargo-clippy",
+    allow(
+        result_unwrap_used, print_stdout, option_unwrap_used, shadow_reuse,
+        cast_possible_wrap, cast_sign_loss, missing_docs_in_private_items
+    )
+)]
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[macro_use]
@@ -68,7 +71,7 @@ fn hex_encode<'a>(src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
 #[target_feature(enable = "avx2")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 unsafe fn hex_encode_avx2<'a>(
-    mut src: &[u8], dst: &'a mut [u8]
+    mut src: &[u8], dst: &'a mut [u8],
 ) -> Result<&'a str, usize> {
     let ascii_zero = _mm256_set1_epi8(b'0' as i8);
     let nines = _mm256_set1_epi8(9);
@@ -115,16 +118,14 @@ unsafe fn hex_encode_avx2<'a>(
     let i = i as usize;
     let _ = hex_encode_sse41(src, &mut dst[i * 2..]);
 
-    Ok(str::from_utf8_unchecked(
-        &dst[..src.len() * 2 + i * 2],
-    ))
+    Ok(str::from_utf8_unchecked(&dst[..src.len() * 2 + i * 2]))
 }
 
 // copied from https://github.com/Matherunner/bin2hex-sse/blob/master/base16_sse4.cpp
 #[target_feature(enable = "sse4.1")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 unsafe fn hex_encode_sse41<'a>(
-    mut src: &[u8], dst: &'a mut [u8]
+    mut src: &[u8], dst: &'a mut [u8],
 ) -> Result<&'a str, usize> {
     let ascii_zero = _mm_set1_epi8(b'0' as i8);
     let nines = _mm_set1_epi8(9);
@@ -157,10 +158,7 @@ unsafe fn hex_encode_sse41<'a>(
         let res2 = _mm_unpackhi_epi8(masked2, masked1);
 
         _mm_storeu_si128(dst.as_mut_ptr().offset(i * 2) as *mut _, res1);
-        _mm_storeu_si128(
-            dst.as_mut_ptr().offset(i * 2 + 16) as *mut _,
-            res2,
-        );
+        _mm_storeu_si128(dst.as_mut_ptr().offset(i * 2 + 16) as *mut _, res2);
         src = &src[16..];
         i += 16;
     }
@@ -168,13 +166,11 @@ unsafe fn hex_encode_sse41<'a>(
     let i = i as usize;
     let _ = hex_encode_fallback(src, &mut dst[i * 2..]);
 
-    Ok(str::from_utf8_unchecked(
-        &dst[..src.len() * 2 + i * 2],
-    ))
+    Ok(str::from_utf8_unchecked(&dst[..src.len() * 2 + i * 2]))
 }
 
 fn hex_encode_fallback<'a>(
-    src: &[u8], dst: &'a mut [u8]
+    src: &[u8], dst: &'a mut [u8],
 ) -> Result<&'a str, usize> {
     fn hex(byte: u8) -> u8 {
         static TABLE: &[u8] = b"0123456789abcdef";
@@ -199,10 +195,7 @@ mod tests {
     fn test(input: &[u8], output: &str) {
         let tmp = || vec![0; input.len() * 2];
 
-        assert_eq!(
-            hex_encode_fallback(input, &mut tmp()).unwrap(),
-            output
-        );
+        assert_eq!(hex_encode_fallback(input, &mut tmp()).unwrap(), output);
         assert_eq!(hex_encode(input, &mut tmp()).unwrap(), output);
 
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
@@ -239,9 +232,7 @@ mod tests {
     fn odd() {
         test(
             &[0; 313],
-            &iter::repeat('0')
-                .take(313 * 2)
-                .collect::<String>(),
+            &iter::repeat('0').take(313 * 2).collect::<String>(),
         );
     }
 

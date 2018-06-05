@@ -25,11 +25,13 @@ macro_rules! default_impl {
         impl All for $id {
             #[inline]
             unsafe fn all(self) -> bool {
-                #[cfg(not(target_arch = "aarch64"))] {
+                #[cfg(not(target_arch = "aarch64"))]
+                {
                     use coresimd::simd_llvm::simd_reduce_all;
                     simd_reduce_all(self)
                 }
-                #[cfg(target_arch = "aarch64")] {
+                #[cfg(target_arch = "aarch64")]
+                {
                     // FIXME: Broken on AArch64
                     // https://bugs.llvm.org/show_bug.cgi?id=36796
                     self.and()
@@ -40,11 +42,13 @@ macro_rules! default_impl {
         impl Any for $id {
             #[inline]
             unsafe fn any(self) -> bool {
-                #[cfg(not(target_arch = "aarch64"))] {
+                #[cfg(not(target_arch = "aarch64"))]
+                {
                     use coresimd::simd_llvm::simd_reduce_any;
                     simd_reduce_any(self)
                 }
-                #[cfg(target_arch = "aarch64")] {
+                #[cfg(target_arch = "aarch64")]
+                {
                     // FIXME: Broken on AArch64
                     // https://bugs.llvm.org/show_bug.cgi?id=36796
                     self.or()
@@ -63,7 +67,12 @@ macro_rules! default_impl {
 // or floating point vectors, we can't currently work around this yet. The
 // performance impact for this shouldn't be large, but this is filled as:
 // https://bugs.llvm.org/show_bug.cgi?id=37087
-#[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "sse2"))]
+#[cfg(
+    all(
+        any(target_arch = "x86", target_arch = "x86_64"),
+        target_feature = "sse2"
+    )
+)]
 macro_rules! x86_128_sse2_movemask_impl {
     ($id:ident) => {
         impl All for $id {
@@ -71,13 +80,15 @@ macro_rules! x86_128_sse2_movemask_impl {
             #[target_feature(enable = "sse2")]
             unsafe fn all(self) -> bool {
                 #[cfg(target_arch = "x86")]
-                use ::coresimd::arch::x86::_mm_movemask_epi8;
+                use coresimd::arch::x86::_mm_movemask_epi8;
                 #[cfg(target_arch = "x86_64")]
-                use ::coresimd::arch::x86_64::_mm_movemask_epi8;
-                // _mm_movemask_epi8(a) creates a 16bit mask containing the most
-                // significant bit of each byte of `a`. If all bits are set,
-                // then all 16 lanes of the mask are true.
-                _mm_movemask_epi8(::mem::transmute(self)) == u16::max_value() as i32
+                use coresimd::arch::x86_64::_mm_movemask_epi8;
+                // _mm_movemask_epi8(a) creates a 16bit mask containing the
+                // most significant bit of each byte of `a`. If all
+                // bits are set, then all 16 lanes of the mask are
+                // true.
+                _mm_movemask_epi8(::mem::transmute(self))
+                    == u16::max_value() as i32
             }
         }
         impl Any for $id {
@@ -85,14 +96,14 @@ macro_rules! x86_128_sse2_movemask_impl {
             #[target_feature(enable = "sse2")]
             unsafe fn any(self) -> bool {
                 #[cfg(target_arch = "x86")]
-                use ::coresimd::arch::x86::_mm_movemask_epi8;
+                use coresimd::arch::x86::_mm_movemask_epi8;
                 #[cfg(target_arch = "x86_64")]
-                use ::coresimd::arch::x86_64::_mm_movemask_epi8;
+                use coresimd::arch::x86_64::_mm_movemask_epi8;
 
                 _mm_movemask_epi8(::mem::transmute(self)) != 0
             }
         }
-    }
+    };
 }
 
 // On x86 with AVX we use _mm256_testc_si256 and _mm256_testz_si256.
@@ -103,7 +114,12 @@ macro_rules! x86_128_sse2_movemask_impl {
 // integer or floating point vectors, we can't currently work around this yet.
 //
 // TODO: investigate perf impact and fill LLVM bugs as necessary.
-#[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "avx"))]
+#[cfg(
+    all(
+        any(target_arch = "x86", target_arch = "x86_64"),
+        target_feature = "avx"
+    )
+)]
 macro_rules! x86_256_avx_test_impl {
     ($id:ident) => {
         impl All for $id {
@@ -111,11 +127,13 @@ macro_rules! x86_256_avx_test_impl {
             #[target_feature(enable = "avx")]
             unsafe fn all(self) -> bool {
                 #[cfg(target_arch = "x86")]
-                use ::coresimd::arch::x86::_mm256_testc_si256;
+                use coresimd::arch::x86::_mm256_testc_si256;
                 #[cfg(target_arch = "x86_64")]
-                use ::coresimd::arch::x86_64::_mm256_testc_si256;
-                _mm256_testc_si256(::mem::transmute(self),
-                                   ::mem::transmute($id::splat(true))) != 0
+                use coresimd::arch::x86_64::_mm256_testc_si256;
+                _mm256_testc_si256(
+                    ::mem::transmute(self),
+                    ::mem::transmute($id::splat(true)),
+                ) != 0
             }
         }
         impl Any for $id {
@@ -123,20 +141,27 @@ macro_rules! x86_256_avx_test_impl {
             #[target_feature(enable = "avx")]
             unsafe fn any(self) -> bool {
                 #[cfg(target_arch = "x86")]
-                use ::coresimd::arch::x86::_mm256_testz_si256;
+                use coresimd::arch::x86::_mm256_testz_si256;
                 #[cfg(target_arch = "x86_64")]
-                use ::coresimd::arch::x86_64::_mm256_testz_si256;
-                _mm256_testz_si256(::mem::transmute(self),
-                                   ::mem::transmute(self)) == 0
+                use coresimd::arch::x86_64::_mm256_testz_si256;
+                _mm256_testz_si256(
+                    ::mem::transmute(self),
+                    ::mem::transmute(self),
+                ) == 0
             }
         }
-    }
+    };
 }
 
-// On x86 with SSE2 all/any for 256-bit wide vectors is implemented by executing
-// the algorithm for 128-bit on the higher and lower elements of the vector
-// independently.
-#[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "sse2"))]
+// On x86 with SSE2 all/any for 256-bit wide vectors is implemented by
+// executing the algorithm for 128-bit on the higher and lower elements of the
+// vector independently.
+#[cfg(
+    all(
+        any(target_arch = "x86", target_arch = "x86_64"),
+        target_feature = "sse2"
+    )
+)]
 macro_rules! x86_256_sse2_impl {
     ($id:ident, $v128:ident) => {
         impl All for $id {
@@ -146,9 +171,9 @@ macro_rules! x86_256_sse2_impl {
                 unsafe {
                     union U {
                         halves: ($v128, $v128),
-                        vec: $id
+                        vec: $id,
                     }
-                    let halves = U {vec: self}.halves;
+                    let halves = U { vec: self }.halves;
                     halves.0.all() && halves.1.all()
                 }
             }
@@ -160,14 +185,14 @@ macro_rules! x86_256_sse2_impl {
                 unsafe {
                     union U {
                         halves: ($v128, $v128),
-                        vec: $id
+                        vec: $id,
                     }
-                    let halves = U {vec: self}.halves;
+                    let halves = U { vec: self }.halves;
                     halves.0.any() || halves.1.any()
                 }
             }
         }
-    }
+    };
 }
 
 // Implementation for 64-bit wide masks on x86.
@@ -179,13 +204,14 @@ macro_rules! x86_64_mmx_movemask_impl {
             #[target_feature(enable = "mmx")]
             unsafe fn all(self) -> bool {
                 #[cfg(target_arch = "x86")]
-                use ::coresimd::arch::x86::_mm_movemask_pi8;
+                use coresimd::arch::x86::_mm_movemask_pi8;
                 #[cfg(target_arch = "x86_64")]
-                use ::coresimd::arch::x86_64::_mm_movemask_pi8;
+                use coresimd::arch::x86_64::_mm_movemask_pi8;
                 // _mm_movemask_pi8(a) creates an 8bit mask containing the most
                 // significant bit of each byte of `a`. If all bits are set,
                 // then all 8 lanes of the mask are true.
-                 _mm_movemask_pi8(::mem::transmute(self)) == u8::max_value() as i32
+                _mm_movemask_pi8(::mem::transmute(self))
+                    == u8::max_value() as i32
             }
         }
         impl Any for $id {
@@ -193,14 +219,14 @@ macro_rules! x86_64_mmx_movemask_impl {
             #[target_feature(enable = "mmx")]
             unsafe fn any(self) -> bool {
                 #[cfg(target_arch = "x86")]
-                use ::coresimd::arch::x86::_mm_movemask_pi8;
+                use coresimd::arch::x86::_mm_movemask_pi8;
                 #[cfg(target_arch = "x86_64")]
-                use ::coresimd::arch::x86_64::_mm_movemask_pi8;
+                use coresimd::arch::x86_64::_mm_movemask_pi8;
 
                 _mm_movemask_pi8(::mem::transmute(self)) != 0
             }
         }
-    }
+    };
 }
 
 // Implementation for 128-bit wide masks on x86
@@ -214,7 +240,7 @@ macro_rules! x86_128_impl {
                 default_impl!($id);
             }
         }
-    }
+    };
 }
 
 // Implementation for 256-bit wide masks on x86
@@ -230,22 +256,25 @@ macro_rules! x86_256_impl {
                 default_impl!($id);
             }
         }
-    }
+    };
 }
 
 // Implementation for ARM + v7 + NEON using vpmin and vpmax (folding
 // minimum/maximum of adjacent pairs) for 64-bit wide two-element vectors.
-#[cfg(all(target_arch = "arm", target_feature = "v7", target_feature = "neon"))]
+#[cfg(
+    all(target_arch = "arm", target_feature = "v7", target_feature = "neon")
+)]
 macro_rules! arm_64_x2_v7_neon_impl {
     ($id:ident, $vpmin:ident, $vpmax:ident) => {
         impl All for $id {
             #[inline]
             #[target_feature(enable = "v7,neon")]
             unsafe fn all(self) -> bool {
-                use ::coresimd::arch::arm::$vpmin;
-                use ::mem::transmute;
+                use coresimd::arch::arm::$vpmin;
+                use mem::transmute;
                 // pmin((a, b), (-,-)) => (b, -).0 => b
-                let tmp: $id = transmute($vpmin(transmute(self), ::mem::uninitialized()));
+                let tmp: $id =
+                    transmute($vpmin(transmute(self), ::mem::uninitialized()));
                 tmp.extract(0)
             }
         }
@@ -253,27 +282,30 @@ macro_rules! arm_64_x2_v7_neon_impl {
             #[inline]
             #[target_feature(enable = "v7,neon")]
             unsafe fn any(self) -> bool {
-                use ::coresimd::arch::arm::$vpmax;
-                use ::mem::transmute;
+                use coresimd::arch::arm::$vpmax;
+                use mem::transmute;
                 // pmax((a, b), (-,-)) => (b, -).0 => b
-                let tmp: $id = transmute($vpmax(transmute(self), ::mem::uninitialized()));
+                let tmp: $id =
+                    transmute($vpmax(transmute(self), ::mem::uninitialized()));
                 tmp.extract(0)
             }
         }
-    }
+    };
 }
 
 // Implementation for ARM + v7 + NEON using vpmin and vpmax (folding
 // minimum/maximum of adjacent pairs) for 64-bit wide four-element vectors.
-#[cfg(all(target_arch = "arm", target_feature = "v7", target_feature = "neon"))]
+#[cfg(
+    all(target_arch = "arm", target_feature = "v7", target_feature = "neon")
+)]
 macro_rules! arm_64_x4_v7_neon_impl {
     ($id:ident, $vpmin:ident, $vpmax:ident) => {
         impl All for $id {
             #[inline]
             #[target_feature(enable = "v7,neon")]
             unsafe fn all(self) -> bool {
-                use ::coresimd::arch::arm::$vpmin;
-                use ::mem::transmute;
+                use coresimd::arch::arm::$vpmin;
+                use mem::transmute;
                 // tmp = pmin((a, b, c, d), (-,-,-,-)) => (a, c, -, -)
                 let tmp = $vpmin(transmute(self), ::mem::uninitialized());
                 // tmp = pmin((a, b, -, -), (-,-,-,-)) => (c, -, -, -).0 => c
@@ -285,29 +317,31 @@ macro_rules! arm_64_x4_v7_neon_impl {
             #[inline]
             #[target_feature(enable = "v7,neon")]
             unsafe fn any(self) -> bool {
-                use ::coresimd::arch::arm::$vpmax;
-                use ::mem::transmute;
+                use coresimd::arch::arm::$vpmax;
+                use mem::transmute;
                 // tmp = pmax((a, b, c, d), (-,-,-,-)) => (a, c, -, -)
-                let tmp =  $vpmax(transmute(self), ::mem::uninitialized());
+                let tmp = $vpmax(transmute(self), ::mem::uninitialized());
                 // tmp = pmax((a, b, -, -), (-,-,-,-)) => (c, -, -, -).0 => c
                 let tmp: $id = transmute($vpmax(tmp, ::mem::uninitialized()));
                 tmp.extract(0)
             }
         }
-    }
+    };
 }
 
 // Implementation for ARM + v7 + NEON using vpmin and vpmax (folding
 // minimum/maximum of adjacent pairs) for 64-bit wide eight-element vectors.
-#[cfg(all(target_arch = "arm", target_feature = "v7", target_feature = "neon"))]
+#[cfg(
+    all(target_arch = "arm", target_feature = "v7", target_feature = "neon")
+)]
 macro_rules! arm_64_x8_v7_neon_impl {
     ($id:ident, $vpmin:ident, $vpmax:ident) => {
         impl All for $id {
             #[inline]
             #[target_feature(enable = "v7,neon")]
             unsafe fn all(self) -> bool {
-                use ::coresimd::arch::arm::$vpmin;
-                use ::mem::transmute;
+                use coresimd::arch::arm::$vpmin;
+                use mem::transmute;
                 // tmp = pmin(
                 //     (a, b, c, d, e, f, g, h),
                 //     (-, -, -, -, -, -, -, -)
@@ -330,8 +364,8 @@ macro_rules! arm_64_x8_v7_neon_impl {
             #[inline]
             #[target_feature(enable = "v7,neon")]
             unsafe fn any(self) -> bool {
-                use ::coresimd::arch::arm::$vpmax;
-                use ::mem::transmute;
+                use coresimd::arch::arm::$vpmax;
+                use mem::transmute;
                 // tmp = pmax(
                 //     (a, b, c, d, e, f, g, h),
                 //     (-, -, -, -, -, -, -, -)
@@ -350,28 +384,32 @@ macro_rules! arm_64_x8_v7_neon_impl {
                 tmp.extract(0)
             }
         }
-    }
+    };
 }
-
 
 // Implementation for ARM + v7 + NEON using vpmin and vpmax (folding
 // minimum/maximum of adjacent pairs) for 64-bit or 128-bit wide vectors with
 // more than two elements.
-#[cfg(all(target_arch = "arm", target_feature = "v7", target_feature = "neon"))]
+#[cfg(
+    all(target_arch = "arm", target_feature = "v7", target_feature = "neon")
+)]
 macro_rules! arm_128_v7_neon_impl {
     ($id:ident, $half:ident, $vpmin:ident, $vpmax:ident) => {
         impl All for $id {
             #[inline]
             #[target_feature(enable = "v7,neon")]
             unsafe fn all(self) -> bool {
-                use ::coresimd::arch::arm::$vpmin;
-                use ::mem::transmute;
+                use coresimd::arch::arm::$vpmin;
+                use mem::transmute;
                 union U {
                     halves: ($half, $half),
-                    vec: $id
+                    vec: $id,
                 }
                 let halves = U { vec: self }.halves;
-                let h: $half = transmute($vpmin(transmute(halves.0), transmute(halves.1)));
+                let h: $half = transmute($vpmin(
+                    transmute(halves.0),
+                    transmute(halves.1),
+                ));
                 h.all()
             }
         }
@@ -379,18 +417,21 @@ macro_rules! arm_128_v7_neon_impl {
             #[inline]
             #[target_feature(enable = "v7,neon")]
             unsafe fn any(self) -> bool {
-                use ::coresimd::arch::arm::$vpmax;
-                use ::mem::transmute;
+                use coresimd::arch::arm::$vpmax;
+                use mem::transmute;
                 union U {
                     halves: ($half, $half),
-                    vec: $id
+                    vec: $id,
                 }
                 let halves = U { vec: self }.halves;
-                let h: $half = transmute($vpmax(transmute(halves.0), transmute(halves.1)));
+                let h: $half = transmute($vpmax(
+                    transmute(halves.0),
+                    transmute(halves.1),
+                ));
                 h.any()
             }
         }
-    }
+    };
 }
 
 // Implementation for AArch64 + NEON using vmin and vmax (horizontal vector
@@ -402,7 +443,7 @@ macro_rules! aarch64_128_neon_impl {
             #[inline]
             #[target_feature(enable = "neon")]
             unsafe fn all(self) -> bool {
-                use ::coresimd::arch::aarch64::$vmin;
+                use coresimd::arch::aarch64::$vmin;
                 $vmin(::mem::transmute(self)) != 0
             }
         }
@@ -410,11 +451,11 @@ macro_rules! aarch64_128_neon_impl {
             #[inline]
             #[target_feature(enable = "neon")]
             unsafe fn any(self) -> bool {
-                use ::coresimd::arch::aarch64::$vmax;
+                use coresimd::arch::aarch64::$vmax;
                 $vmax(::mem::transmute(self)) != 0
             }
         }
-    }
+    };
 }
 
 // Implementation for AArch64 + NEON using vmin and vmax (horizontal vector
@@ -431,9 +472,12 @@ macro_rules! aarch64_64_neon_impl {
             unsafe fn all(self) -> bool {
                 union U {
                     halves: ($id, $id),
-                    vec: $vec128
+                    vec: $vec128,
                 }
-                U { halves: (self, self) }.vec.all()
+                U {
+                    halves: (self, self),
+                }.vec
+                    .all()
             }
         }
         impl Any for $id {
@@ -442,12 +486,15 @@ macro_rules! aarch64_64_neon_impl {
             unsafe fn any(self) -> bool {
                 union U {
                     halves: ($id, $id),
-                    vec: $vec128
+                    vec: $vec128,
                 }
-                U { halves: (self, self) }.vec.any()
+                U {
+                    halves: (self, self),
+                }.vec
+                    .any()
             }
         }
-    }
+    };
 }
 
 macro_rules! impl_mask_all_any {

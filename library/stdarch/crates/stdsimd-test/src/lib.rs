@@ -5,8 +5,10 @@
 //! assertions about the disassembly of a function.
 
 #![feature(proc_macro)]
-#![cfg_attr(feature = "cargo-clippy",
-            allow(missing_docs_in_private_items, print_stdout))]
+#![cfg_attr(
+    feature = "cargo-clippy",
+    allow(missing_docs_in_private_items, print_stdout)
+)]
 
 extern crate assert_instr_macro;
 extern crate backtrace;
@@ -25,7 +27,8 @@ pub use assert_instr_macro::*;
 pub use simd_test_macro::*;
 
 lazy_static! {
-    static ref DISASSEMBLY: HashMap<String, Vec<Function>> = disassemble_myself();
+    static ref DISASSEMBLY: HashMap<String, Vec<Function>> =
+        disassemble_myself();
 }
 
 struct Function {
@@ -39,14 +42,16 @@ struct Instruction {
 fn disassemble_myself() -> HashMap<String, Vec<Function>> {
     let me = env::current_exe().expect("failed to get current exe");
 
-    if cfg!(target_arch = "x86_64") && cfg!(target_os = "windows")
+    if cfg!(target_arch = "x86_64")
+        && cfg!(target_os = "windows")
         && cfg!(target_env = "msvc")
     {
         let mut cmd = cc::windows_registry::find(
             "x86_64-pc-windows-msvc",
             "dumpbin.exe",
         ).expect("failed to find `dumpbin` tool");
-        let output = cmd.arg("/DISASM")
+        let output = cmd
+            .arg("/DISASM")
             .arg(&me)
             .output()
             .expect("failed to execute dumpbin");
@@ -257,9 +262,7 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
     // in the disassembly.
     let mut sym = None;
     backtrace::resolve(fnptr as *mut _, |name| {
-        sym = name.name()
-            .and_then(|s| s.as_str())
-            .map(normalize);
+        sym = name.name().and_then(|s| s.as_str()).map(normalize);
     });
 
     let functions =
@@ -270,26 +273,17 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
                 println!("assumed symbol name: `{}`", sym);
             }
             println!("maybe related functions");
-            for f in DISASSEMBLY
-                .keys()
-                .filter(|k| k.contains(fnname))
-            {
+            for f in DISASSEMBLY.keys().filter(|k| k.contains(fnname)) {
                 println!("\t- {}", f);
             }
-            panic!(
-                "failed to find disassembly of {:#x} ({})",
-                fnptr, fnname
-            );
+            panic!("failed to find disassembly of {:#x} ({})", fnptr, fnname);
         };
 
     assert_eq!(functions.len(), 1);
     let function = &functions[0];
 
     let mut instrs = &function.instrs[..];
-    while instrs
-        .last()
-        .map_or(false, |s| s.parts == ["nop"])
-    {
+    while instrs.last().map_or(false, |s| s.parts == ["nop"]) {
         instrs = &instrs[..instrs.len() - 1];
     }
 
@@ -400,10 +394,7 @@ pub fn assert_skip_test_ok(name: &str) {
     if env::var("STDSIMD_TEST_EVERYTHING").is_err() {
         return;
     }
-    panic!(
-        "skipped test `{}` when it shouldn't be skipped",
-        name
-    );
+    panic!("skipped test `{}` when it shouldn't be skipped", name);
 }
 
 // See comment in `assert-instr-macro` crate for why this exists

@@ -25,13 +25,13 @@ pub(crate) trait FloatFma {
 }
 
 macro_rules! impl_fma {
-    ($id:ident: $fn:ident) => {
+    ($id:ident : $fn:ident) => {
         impl FloatFma for $id {
             fn fma(self, y: Self, z: Self) -> Self {
                 unsafe { $fn(self, y, z) }
             }
         }
-    }
+    };
 }
 
 impl_fma!(f32x2: fma_v2f32);

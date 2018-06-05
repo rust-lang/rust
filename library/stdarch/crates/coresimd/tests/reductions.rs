@@ -253,11 +253,7 @@ macro_rules! product_nan_test {
                     }
                 }
                 let v = $id::splat(n0);
-                assert!(
-                    v.product().is_nan(),
-                    "all nans | {:?}",
-                    v
-                );
+                assert!(v.product().is_nan(), "all nans | {:?}", v);
             }
             unsafe { test_fn() };
         }
@@ -355,8 +351,7 @@ mod offset {
                     // tolerate 1 ULP difference:
                     if vsum.as_int() > tsum.as_int() {
                         assert!(
-                            vsum.as_int() - tsum.as_int()
-                                < 2,
+                            vsum.as_int() - tsum.as_int() < 2,
                             "v: {:?} | vsum: {} | tsum: {}",
                             v,
                             vsum,
@@ -364,8 +359,7 @@ mod offset {
                         );
                     } else {
                         assert!(
-                            tsum.as_int() - vsum.as_int()
-                                < 2,
+                            tsum.as_int() - vsum.as_int() < 2,
                             "v: {:?} | vsum: {} | tsum: {}",
                             v,
                             vsum,

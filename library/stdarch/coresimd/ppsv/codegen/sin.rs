@@ -25,13 +25,13 @@ pub(crate) trait FloatSin {
 }
 
 macro_rules! impl_fsin {
-    ($id:ident: $fn:ident) => {
+    ($id:ident : $fn:ident) => {
         impl FloatSin for $id {
             fn sin(self) -> Self {
                 unsafe { $fn(self) }
             }
         }
-    }
+    };
 }
 
 impl_fsin!(f32x2: sin_v2f32);

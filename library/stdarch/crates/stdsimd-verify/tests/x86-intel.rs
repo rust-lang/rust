@@ -1,9 +1,12 @@
 #![feature(proc_macro)]
 #![allow(bad_style)]
-#![cfg_attr(feature = "cargo-clippy",
-            allow(shadow_reuse, cast_lossless, match_same_arms,
-                  nonminimal_bool, print_stdout, use_debug, eq_op,
-                  useless_format))]
+#![cfg_attr(
+    feature = "cargo-clippy",
+    allow(
+        shadow_reuse, cast_lossless, match_same_arms, nonminimal_bool,
+        print_stdout, use_debug, eq_op, useless_format
+    )
+)]
 
 #[macro_use]
 extern crate serde_derive;
@@ -249,10 +252,9 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             .flat_map(|c| c.to_lowercase())
             .collect::<String>();
 
-        let rust_feature = rust.target_feature.expect(&format!(
-            "no target feature listed for {}",
-            rust.name
-        ));
+        let rust_feature = rust
+            .target_feature
+            .expect(&format!("no target feature listed for {}", rust.name));
         if rust_feature.contains(&cpuid) {
             continue;
         }
@@ -314,25 +316,20 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         if rust.arguments.len() != intel.parameters.len() {
             bail!("wrong number of arguments on {}", rust.name)
         }
-        for (i, (a, b)) in intel
-            .parameters
-            .iter()
-            .zip(rust.arguments)
-            .enumerate()
+        for (i, (a, b)) in
+            intel.parameters.iter().zip(rust.arguments).enumerate()
         {
             let is_const = rust.required_const.contains(&i);
             equate(b, &a.type_, &intel.name, is_const)?;
         }
     }
 
-    let any_i64 = rust.arguments
-        .iter()
-        .cloned()
-        .chain(rust.ret)
-        .any(|arg| match *arg {
+    let any_i64 = rust.arguments.iter().cloned().chain(rust.ret).any(|arg| {
+        match *arg {
             Type::PrimSigned(64) | Type::PrimUnsigned(64) => true,
             _ => false,
-        });
+        }
+    });
     let any_i64_exempt = match rust.name {
         // These intrinsics have all been manually verified against Clang's
         // headers to be available on x86, and the u64 arguments seem
@@ -363,7 +360,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
 }
 
 fn equate(
-    t: &Type, intel: &str, intrinsic: &str, is_const: bool
+    t: &Type, intel: &str, intrinsic: &str, is_const: bool,
 ) -> Result<(), String> {
     let intel = intel.replace(" *", "*");
     let intel = intel.replace(" const*", "*");
@@ -371,9 +368,7 @@ fn equate(
         if is_const {
             return Ok(());
         }
-        Err(format!(
-            "argument required to be const but isn't"
-        ))
+        Err(format!("argument required to be const but isn't"))
     };
     match (t, &intel[..]) {
         (&Type::PrimFloat(32), "float") => {}

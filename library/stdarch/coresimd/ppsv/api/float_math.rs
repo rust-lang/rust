@@ -59,7 +59,6 @@ macro_rules! impl_float_math {
 
 macro_rules! test_float_math {
     ($id:ident, $elem_ty:ident) => {
-
         fn sqrt2() -> $elem_ty {
             match ::mem::size_of::<$elem_ty>() {
                 4 => 1.4142135 as $elem_ty,

@@ -36,11 +36,7 @@ extern "C" {
 #[cfg_attr(test, assert_instr(xsave64))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _xsave64(mem_addr: *mut u8, save_mask: u64) {
-    xsave64(
-        mem_addr,
-        (save_mask >> 32) as u32,
-        save_mask as u32,
-    );
+    xsave64(mem_addr, (save_mask >> 32) as u32, save_mask as u32);
 }
 
 /// Perform a full or partial restore of the enabled processor states using
@@ -73,11 +69,7 @@ pub unsafe fn _xrstor64(mem_addr: *const u8, rs_mask: u64) {
 #[cfg_attr(test, assert_instr(xsaveopt64))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _xsaveopt64(mem_addr: *mut u8, save_mask: u64) {
-    xsaveopt64(
-        mem_addr,
-        (save_mask >> 32) as u32,
-        save_mask as u32,
-    );
+    xsaveopt64(mem_addr, (save_mask >> 32) as u32, save_mask as u32);
 }
 
 /// Perform a full or partial save of the enabled processor states to memory
@@ -93,11 +85,7 @@ pub unsafe fn _xsaveopt64(mem_addr: *mut u8, save_mask: u64) {
 #[cfg_attr(test, assert_instr(xsavec64))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _xsavec64(mem_addr: *mut u8, save_mask: u64) {
-    xsavec64(
-        mem_addr,
-        (save_mask >> 32) as u32,
-        save_mask as u32,
-    );
+    xsavec64(mem_addr, (save_mask >> 32) as u32, save_mask as u32);
 }
 
 /// Perform a full or partial save of the enabled processor states to memory at
@@ -114,11 +102,7 @@ pub unsafe fn _xsavec64(mem_addr: *mut u8, save_mask: u64) {
 #[cfg_attr(test, assert_instr(xsaves64))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _xsaves64(mem_addr: *mut u8, save_mask: u64) {
-    xsaves64(
-        mem_addr,
-        (save_mask >> 32) as u32,
-        save_mask as u32,
-    );
+    xsaves64(mem_addr, (save_mask >> 32) as u32, save_mask as u32);
 }
 
 /// Perform a full or partial restore of the enabled processor states using the

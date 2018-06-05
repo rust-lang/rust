@@ -21,17 +21,14 @@ use stdsimd_test::assert_instr;
 #[cfg_attr(test, assert_instr(bextr))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
-    _bextr2_u32(
-        a,
-        (start & 0xff_u32) | ((len & 0xff_u32) << 8_u32),
-    )
+    _bextr2_u32(a, (start & 0xff_u32) | ((len & 0xff_u32) << 8_u32))
 }
 
 /// Extracts bits of `a` specified by `control` into
 /// the least significant bits of the result.
 ///
-/// Bits `[7,0]` of `control` specify the index to the first bit in the range to
-/// be extracted, and bits `[15,8]` specify the length of the range.
+/// Bits `[7,0]` of `control` specify the index to the first bit in the range
+/// to be extracted, and bits `[15,8]` specify the length of the range.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_bextr2_u32)
 #[inline]

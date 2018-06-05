@@ -444,11 +444,12 @@ impl m256iExt for __m256i {
     }
 }
 
-use coresimd::simd::{f32x2, f32x4, f32x8, f64x2, f64x4, i16x16, i16x4, i16x8,
-                     i32x2, i32x4, i32x8, i64x2, i64x4, i8x16, i8x32, i8x8,
-                     m16x16, m16x4, m16x8, m32x2, m32x4, m32x8, m64x2, m64x4,
-                     m8x16, m8x32, m8x8, u16x16, u16x4, u16x8, u32x2, u32x4,
-                     u32x8, u64x2, u64x4, u8x16, u8x32, u8x8};
+use coresimd::simd::{
+    f32x2, f32x4, f32x8, f64x2, f64x4, i16x16, i16x4, i16x8, i32x2, i32x4,
+    i32x8, i64x2, i64x4, i8x16, i8x32, i8x8, m16x16, m16x4, m16x8, m32x2,
+    m32x4, m32x8, m64x2, m64x4, m8x16, m8x32, m8x8, u16x16, u16x4, u16x8,
+    u32x2, u32x4, u32x8, u64x2, u64x4, u8x16, u8x32, u8x8,
+};
 
 impl_from_bits_!(
     __m64: u32x2,

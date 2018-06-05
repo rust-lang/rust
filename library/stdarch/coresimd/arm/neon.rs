@@ -366,52 +366,82 @@ impl_from_bits_!(
 
 #[allow(improper_ctypes)]
 extern "C" {
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frsqrte.v2f32")]
+    #[cfg_attr(
+        target_arch = "aarch64", link_name = "llvm.aarch64.neon.frsqrte.v2f32"
+    )]
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v2f32")]
     fn frsqrte_v2f32(a: float32x2_t) -> float32x2_t;
 
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmins.v8i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sminp.v8i8")]
+    #[cfg_attr(
+        target_arch = "aarch64", link_name = "llvm.aarch64.neon.sminp.v8i8"
+    )]
     fn vpmins_v8i8(a: int8x8_t, b: int8x8_t) -> int8x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmins.v4i16")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sminp.v4i16")]
+    #[cfg_attr(
+        target_arch = "aarch64", link_name = "llvm.aarch64.neon.sminp.v4i16"
+    )]
     fn vpmins_v4i16(a: int16x4_t, b: int16x4_t) -> int16x4_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmins.v2i32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sminp.v2i32")]
+    #[cfg_attr(
+        target_arch = "aarch64", link_name = "llvm.aarch64.neon.sminp.v2i32"
+    )]
     fn vpmins_v2i32(a: int32x2_t, b: int32x2_t) -> int32x2_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpminu.v8i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uminp.v8i8")]
+    #[cfg_attr(
+        target_arch = "aarch64", link_name = "llvm.aarch64.neon.uminp.v8i8"
+    )]
     fn vpminu_v8i8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpminu.v4i16")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uminp.v4i16")]
+    #[cfg_attr(
+        target_arch = "aarch64", link_name = "llvm.aarch64.neon.uminp.v4i16"
+    )]
     fn vpminu_v4i16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpminu.v2i32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uminp.v2i32")]
+    #[cfg_attr(
+        target_arch = "aarch64", link_name = "llvm.aarch64.neon.uminp.v2i32"
+    )]
     fn vpminu_v2i32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmins.v2f32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fminp.v2f32")]
+    #[cfg_attr(
+        target_arch = "aarch64", link_name = "llvm.aarch64.neon.fminp.v2f32"
+    )]
     fn vpminf_v2f32(a: float32x2_t, b: float32x2_t) -> float32x2_t;
 
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmaxs.v8i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smaxp.v8i8")]
+    #[cfg_attr(
+        target_arch = "aarch64", link_name = "llvm.aarch64.neon.smaxp.v8i8"
+    )]
     fn vpmaxs_v8i8(a: int8x8_t, b: int8x8_t) -> int8x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmaxs.v4i16")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smaxp.v4i16")]
+    #[cfg_attr(
+        target_arch = "aarch64", link_name = "llvm.aarch64.neon.smaxp.v4i16"
+    )]
     fn vpmaxs_v4i16(a: int16x4_t, b: int16x4_t) -> int16x4_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmaxs.v2i32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.smaxp.v2i32")]
+    #[cfg_attr(
+        target_arch = "aarch64", link_name = "llvm.aarch64.neon.smaxp.v2i32"
+    )]
     fn vpmaxs_v2i32(a: int32x2_t, b: int32x2_t) -> int32x2_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmaxu.v8i8")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umaxp.v8i8")]
+    #[cfg_attr(
+        target_arch = "aarch64", link_name = "llvm.aarch64.neon.umaxp.v8i8"
+    )]
     fn vpmaxu_v8i8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmaxu.v4i16")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umaxp.v4i16")]
+    #[cfg_attr(
+        target_arch = "aarch64", link_name = "llvm.aarch64.neon.umaxp.v4i16"
+    )]
     fn vpmaxu_v4i16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmaxu.v2i32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.umaxp.v2i32")]
+    #[cfg_attr(
+        target_arch = "aarch64", link_name = "llvm.aarch64.neon.umaxp.v2i32"
+    )]
     fn vpmaxu_v2i32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t;
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmaxs.v2f32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmaxp.v2f32")]
+    #[cfg_attr(
+        target_arch = "aarch64", link_name = "llvm.aarch64.neon.fmaxp.v2f32"
+    )]
     fn vpmaxf_v2f32(a: float32x2_t, b: float32x2_t) -> float32x2_t;
 }
 
@@ -782,7 +812,7 @@ pub unsafe fn vrsqrte_f32(a: float32x2_t) -> float32x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sminp))]
-pub unsafe fn vpmin_s8 (a: int8x8_t, b: int8x8_t) -> int8x8_t {
+pub unsafe fn vpmin_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     vpmins_v8i8(a, b)
 }
 
@@ -792,7 +822,7 @@ pub unsafe fn vpmin_s8 (a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sminp))]
-pub unsafe fn vpmin_s16 (a: int16x4_t, b: int16x4_t) -> int16x4_t {
+pub unsafe fn vpmin_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     vpmins_v4i16(a, b)
 }
 
@@ -802,7 +832,7 @@ pub unsafe fn vpmin_s16 (a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sminp))]
-pub unsafe fn vpmin_s32 (a: int32x2_t, b: int32x2_t) -> int32x2_t {
+pub unsafe fn vpmin_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     vpmins_v2i32(a, b)
 }
 
@@ -812,7 +842,7 @@ pub unsafe fn vpmin_s32 (a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uminp))]
-pub unsafe fn vpmin_u8 (a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
+pub unsafe fn vpmin_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     vpminu_v8i8(a, b)
 }
 
@@ -822,7 +852,7 @@ pub unsafe fn vpmin_u8 (a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uminp))]
-pub unsafe fn vpmin_u16 (a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
+pub unsafe fn vpmin_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     vpminu_v4i16(a, b)
 }
 
@@ -832,7 +862,7 @@ pub unsafe fn vpmin_u16 (a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uminp))]
-pub unsafe fn vpmin_u32 (a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
+pub unsafe fn vpmin_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     vpminu_v2i32(a, b)
 }
 
@@ -842,7 +872,7 @@ pub unsafe fn vpmin_u32 (a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmin))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fminp))]
-pub unsafe fn vpmin_f32 (a: float32x2_t, b: float32x2_t) -> float32x2_t {
+pub unsafe fn vpmin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     vpminf_v2f32(a, b)
 }
 
@@ -852,7 +882,7 @@ pub unsafe fn vpmin_f32 (a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smaxp))]
-pub unsafe fn vpmax_s8 (a: int8x8_t, b: int8x8_t) -> int8x8_t {
+pub unsafe fn vpmax_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     vpmaxs_v8i8(a, b)
 }
 
@@ -862,7 +892,7 @@ pub unsafe fn vpmax_s8 (a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smaxp))]
-pub unsafe fn vpmax_s16 (a: int16x4_t, b: int16x4_t) -> int16x4_t {
+pub unsafe fn vpmax_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     vpmaxs_v4i16(a, b)
 }
 
@@ -872,7 +902,7 @@ pub unsafe fn vpmax_s16 (a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(smaxp))]
-pub unsafe fn vpmax_s32 (a: int32x2_t, b: int32x2_t) -> int32x2_t {
+pub unsafe fn vpmax_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     vpmaxs_v2i32(a, b)
 }
 
@@ -882,7 +912,7 @@ pub unsafe fn vpmax_s32 (a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umaxp))]
-pub unsafe fn vpmax_u8 (a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
+pub unsafe fn vpmax_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     vpmaxu_v8i8(a, b)
 }
 
@@ -892,7 +922,7 @@ pub unsafe fn vpmax_u8 (a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umaxp))]
-pub unsafe fn vpmax_u16 (a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
+pub unsafe fn vpmax_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     vpmaxu_v4i16(a, b)
 }
 
@@ -902,7 +932,7 @@ pub unsafe fn vpmax_u16 (a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(umaxp))]
-pub unsafe fn vpmax_u32 (a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
+pub unsafe fn vpmax_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     vpmaxu_v2i32(a, b)
 }
 
@@ -912,10 +942,9 @@ pub unsafe fn vpmax_u32 (a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vpmax))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmaxp))]
-pub unsafe fn vpmax_f32 (a: float32x2_t, b: float32x2_t) -> float32x2_t {
+pub unsafe fn vpmax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     vpmaxf_v2f32(a, b)
 }
-
 
 #[cfg(test)]
 mod tests {

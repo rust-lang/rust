@@ -25,13 +25,13 @@ pub(crate) trait FloatSqrt {
 }
 
 macro_rules! impl_fsqrt {
-    ($id:ident: $fn:ident) => {
+    ($id:ident : $fn:ident) => {
         impl FloatSqrt for $id {
             fn sqrt(self) -> Self {
                 unsafe { $fn(self) }
             }
         }
-    }
+    };
 }
 
 impl_fsqrt!(f32x2: sqrt_v2f32);

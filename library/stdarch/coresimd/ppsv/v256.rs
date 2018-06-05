@@ -465,25 +465,8 @@ impl_from!(
 
 impl_from!(m8x32: i8, m8x32_from, test_v256 | m1x32);
 
-impl_from!(
-    m16x16: i16,
-    m16x16_from,
-    test_v256 | m1x16,
-    m8x16
-);
+impl_from!(m16x16: i16, m16x16_from, test_v256 | m1x16, m8x16);
 
-impl_from!(
-    m32x8: i32,
-    m32x8_from,
-    test_v256 | m1x8,
-    m16x8,
-    m8x8
-);
+impl_from!(m32x8: i32, m32x8_from, test_v256 | m1x8, m16x8, m8x8);
 
-impl_from!(
-    m64x4: i64,
-    m64x4_from,
-    test_v256 | m32x4,
-    m16x4,
-    m8x4
-);
+impl_from!(m64x4: i64, m64x4_from, test_v256 | m32x4, m16x4, m8x4);

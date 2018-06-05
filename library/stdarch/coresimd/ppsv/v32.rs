@@ -151,18 +151,6 @@ impl_from!(
     m8x4
 );
 
-impl_from!(
-    m8x4: i8,
-    m8x4_from,
-    test_v32 | m64x4,
-    m32x4,
-    m16x4
-);
+impl_from!(m8x4: i8, m8x4_from, test_v32 | m64x4, m32x4, m16x4);
 
-impl_from!(
-    m16x2: i16,
-    m16x2_from,
-    test_v32 | m64x2,
-    m32x2,
-    m8x2
-);
+impl_from!(m16x2: i16, m16x2_from, test_v32 | m64x2, m32x2, m8x2);

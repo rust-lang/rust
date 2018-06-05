@@ -121,7 +121,7 @@ mod x86_polyfill {
 
     #[target_feature(enable = "avx2")]
     pub unsafe fn _mm256_insert_epi64(
-        a: __m256i, val: i64, idx: i32
+        a: __m256i, val: i64, idx: i32,
     ) -> __m256i {
         union A {
             a: __m256i,

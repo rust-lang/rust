@@ -230,8 +230,10 @@ pub unsafe fn _mm_max_ps(a: __m128, b: __m128) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse")]
 // i586 only seems to generate plain `and` instructions, so ignore it.
-#[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
-           assert_instr(andps))]
+#[cfg_attr(
+    all(test, any(target_arch = "x86_64", target_feature = "sse2")),
+    assert_instr(andps)
+)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_and_ps(a: __m128, b: __m128) -> __m128 {
     let a: __m128i = mem::transmute(a);
@@ -249,8 +251,10 @@ pub unsafe fn _mm_and_ps(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse")]
 // i586 only seems to generate plain `not` and `and` instructions, so ignore
 // it.
-#[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
-           assert_instr(andnps))]
+#[cfg_attr(
+    all(test, any(target_arch = "x86_64", target_feature = "sse2")),
+    assert_instr(andnps)
+)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_andnot_ps(a: __m128, b: __m128) -> __m128 {
     let a: __m128i = mem::transmute(a);
@@ -265,8 +269,10 @@ pub unsafe fn _mm_andnot_ps(a: __m128, b: __m128) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse")]
 // i586 only seems to generate plain `or` instructions, so we ignore it.
-#[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
-           assert_instr(orps))]
+#[cfg_attr(
+    all(test, any(target_arch = "x86_64", target_feature = "sse2")),
+    assert_instr(orps)
+)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_or_ps(a: __m128, b: __m128) -> __m128 {
     let a: __m128i = mem::transmute(a);
@@ -281,8 +287,10 @@ pub unsafe fn _mm_or_ps(a: __m128, b: __m128) -> __m128 {
 #[inline]
 #[target_feature(enable = "sse")]
 // i586 only seems to generate plain `xor` instructions, so we ignore it.
-#[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
-           assert_instr(xorps))]
+#[cfg_attr(
+    all(test, any(target_arch = "x86_64", target_feature = "sse2")),
+    assert_instr(xorps)
+)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_xor_ps(a: __m128, b: __m128) -> __m128 {
     let a: __m128i = mem::transmute(a);
@@ -1117,7 +1125,7 @@ pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
 /// #
 /// let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
 /// let data: [f32; 4] = [5.0, 6.0, 7.0, 8.0];
-/// let r = _mm_loadh_pi(a, data[..].as_ptr() as *const _) ;
+/// let r = _mm_loadh_pi(a, data[..].as_ptr() as *const _);
 /// // assert_eq!(r, _mm_setr_ps(1.0, 2.0, 5.0, 6.0));
 /// #
 /// #         }
@@ -1132,10 +1140,14 @@ pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
 #[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(movhpd))]
 // 32-bit codegen does not generate `movhps` or `movhpd`, but instead
 // `movsd` followed by `unpcklpd` (or `movss'/`unpcklps` if there's no SSE2).
-#[cfg_attr(all(test, target_arch = "x86", target_feature = "sse2"),
-           assert_instr(movlhps))]
-#[cfg_attr(all(test, target_arch = "x86", not(target_feature = "sse2")),
-           assert_instr(unpcklps))]
+#[cfg_attr(
+    all(test, target_arch = "x86", target_feature = "sse2"),
+    assert_instr(movlhps)
+)]
+#[cfg_attr(
+    all(test, target_arch = "x86", not(target_feature = "sse2")),
+    assert_instr(unpcklps)
+)]
 // TODO: This function is actually not limited to floats, but that's what
 // what matches the C type most closely: (__m128, *const __m64) -> __m128
 pub unsafe fn _mm_loadh_pi(a: __m128, p: *const __m64) -> __m128 {
@@ -1171,7 +1183,7 @@ pub unsafe fn _mm_loadh_pi(a: __m128, p: *const __m64) -> __m128 {
 /// #
 /// let a = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
 /// let data: [f32; 4] = [5.0, 6.0, 7.0, 8.0];
-/// let r = _mm_loadh_pi(a, data[..].as_ptr() as *const _) ;
+/// let r = _mm_loadh_pi(a, data[..].as_ptr() as *const _);
 /// // assert_eq!(r, _mm_setr_ps(5.0, 6.0, 3.0, 4.0));
 /// #
 /// #         }
@@ -1185,11 +1197,15 @@ pub unsafe fn _mm_loadh_pi(a: __m128, p: *const __m64) -> __m128 {
 // #[cfg_attr(test, assert_instr(movlps))]
 #[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(movlpd))]
 // On 32-bit targets with SSE2, it just generates two `movsd`.
-#[cfg_attr(all(test, target_arch = "x86", target_feature = "sse2"),
-           assert_instr(movsd))]
+#[cfg_attr(
+    all(test, target_arch = "x86", target_feature = "sse2"),
+    assert_instr(movsd)
+)]
 // It should really generate "movlps", but oh well...
-#[cfg_attr(all(test, target_arch = "x86", not(target_feature = "sse2")),
-           assert_instr(movss))]
+#[cfg_attr(
+    all(test, target_arch = "x86", not(target_feature = "sse2")),
+    assert_instr(movss)
+)]
 // TODO: Like _mm_loadh_pi, this also isn't limited to floats.
 pub unsafe fn _mm_loadl_pi(a: __m128, p: *const __m64) -> __m128 {
     let q = p as *const f32x2;
@@ -1321,8 +1337,10 @@ pub unsafe fn _mm_loadr_ps(p: *const f32) -> __m128 {
 // On i686 and up LLVM actually generates MOVHPD instead of MOVHPS, that's
 // fine.
 // On i586 (no SSE2) it just generates plain MOV instructions.
-#[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
-           assert_instr(movhpd))]
+#[cfg_attr(
+    all(test, any(target_arch = "x86_64", target_feature = "sse2")),
+    assert_instr(movhpd)
+)]
 pub unsafe fn _mm_storeh_pi(p: *mut __m64, a: __m128) {
     #[cfg(target_arch = "x86")]
     {
@@ -1349,8 +1367,10 @@ pub unsafe fn _mm_storeh_pi(p: *mut __m64, a: __m128) {
 #[inline]
 #[target_feature(enable = "sse")]
 // On i586 the codegen just generates plane MOVs. No need to test for that.
-#[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
-           assert_instr(movlps))]
+#[cfg_attr(
+    all(test, any(target_arch = "x86_64", target_feature = "sse2")),
+    assert_instr(movlps)
+)]
 pub unsafe fn _mm_storel_pi(p: *mut __m64, a: __m128) {
     #[cfg(target_arch = "x86")]
     {
@@ -1929,7 +1949,7 @@ pub unsafe fn _mm_undefined_ps() -> __m128 {
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _MM_TRANSPOSE4_PS(
-    row0: &mut __m128, row1: &mut __m128, row2: &mut __m128, row3: &mut __m128
+    row0: &mut __m128, row1: &mut __m128, row2: &mut __m128, row3: &mut __m128,
 ) {
     let tmp0 = _mm_unpacklo_ps(*row0, *row1);
     let tmp2 = _mm_unpacklo_ps(*row2, *row3);
@@ -2734,12 +2754,8 @@ mod tests {
 
         let b2 = _mm_setr_ps(1.0, 5.0, 6.0, 7.0);
         let r2: u32x4 = transmute(_mm_cmpeq_ss(a, b2));
-        let e2: u32x4 = transmute(_mm_setr_ps(
-            transmute(0xffffffffu32),
-            2.0,
-            3.0,
-            4.0,
-        ));
+        let e2: u32x4 =
+            transmute(_mm_setr_ps(transmute(0xffffffffu32), 2.0, 3.0, 4.0));
         assert_eq!(r2, e2);
     }
 
@@ -3453,22 +3469,9 @@ mod tests {
 
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_cvtss_si32() {
-        let inputs = &[
-            42.0f32,
-            -3.1,
-            4.0e10,
-            4.0e-20,
-            NAN,
-            2147483500.1,
-        ];
-        let result = &[
-            42i32,
-            -3,
-            i32::min_value(),
-            0,
-            i32::min_value(),
-            2147483520,
-        ];
+        let inputs = &[42.0f32, -3.1, 4.0e10, 4.0e-20, NAN, 2147483500.1];
+        let result =
+            &[42i32, -3, i32::min_value(), 0, i32::min_value(), 2147483520];
         for i in 0..inputs.len() {
             let x = _mm_setr_ps(inputs[i], 1.0, 3.0, 4.0);
             let e = result[i];
@@ -3672,10 +3675,8 @@ mod tests {
         }
 
         let r = _mm_load_ps(p);
-        let e = _mm_add_ps(
-            _mm_setr_ps(1.0, 2.0, 3.0, 4.0),
-            _mm_set1_ps(fixup),
-        );
+        let e =
+            _mm_add_ps(_mm_setr_ps(1.0, 2.0, 3.0, 4.0), _mm_set1_ps(fixup));
         assert_eq_m128(r, e);
     }
 
@@ -3705,10 +3706,8 @@ mod tests {
         }
 
         let r = _mm_loadr_ps(p);
-        let e = _mm_add_ps(
-            _mm_setr_ps(4.0, 3.0, 2.0, 1.0),
-            _mm_set1_ps(fixup),
-        );
+        let e =
+            _mm_add_ps(_mm_setr_ps(4.0, 3.0, 2.0, 1.0), _mm_set1_ps(fixup));
         assert_eq_m128(r, e);
     }
 
@@ -3947,9 +3946,7 @@ mod tests {
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_stream_ps() {
         let a = _mm_set1_ps(7.0);
-        let mut mem = Memory {
-            data: [-1.0; 4],
-        };
+        let mut mem = Memory { data: [-1.0; 4] };
 
         _mm_stream_ps(&mut mem.data[0] as *mut f32, a);
         for i in 0..4 {
@@ -4157,12 +4154,8 @@ mod tests {
 
     #[simd_test(enable = "sse,mmx")]
     unsafe fn test_mm_movemask_pi8() {
-        let a = _mm_setr_pi16(
-            0b1000_0000,
-            0b0100_0000,
-            0b1000_0000,
-            0b0100_0000,
-        );
+        let a =
+            _mm_setr_pi16(0b1000_0000, 0b0100_0000, 0b1000_0000, 0b0100_0000);
         let r = _mm_movemask_pi8(a);
         assert_eq!(r, 0b10001);
 

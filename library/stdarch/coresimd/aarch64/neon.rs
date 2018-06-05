@@ -546,7 +546,6 @@ pub unsafe fn vpmaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     vpmaxq_f64_(a, b)
 }
 
-
 #[cfg(test)]
 mod tests {
     use coresimd::aarch64::*;
@@ -800,20 +799,11 @@ mod tests {
     #[simd_test(enable = "neon")]
     unsafe fn test_vpminq_s8() {
         #[cfg_attr(rustfmt, skip)]
-        let a = i8x16::new(
-            1, -2, 3, -4, 5, 6, 7, 8,
-            1, 2, 3, 4, 5, 6, 7, 8
-        );
+        let a = i8x16::new(1, -2, 3, -4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
         #[cfg_attr(rustfmt, skip)]
-        let b = i8x16::new(
-            0, 3, 2, 5, 4, 7, 6, 9,
-            0, 3, 2, 5, 4, 7, 6, 9
-        );
+        let b = i8x16::new(0, 3, 2, 5, 4, 7, 6, 9, 0, 3, 2, 5, 4, 7, 6, 9);
         #[cfg_attr(rustfmt, skip)]
-        let e = i8x16::new(
-            -2, -4, 5, 7, 1, 3, 5, 7,
-            0, 2, 4, 6, 0, 2, 4, 6,
-        );
+        let e = i8x16::new(-2, -4, 5, 7, 1, 3, 5, 7, 0, 2, 4, 6, 0, 2, 4, 6);
         let r: i8x16 = vpminq_s8(a.into_bits(), b.into_bits()).into_bits();
         assert_eq!(r, e);
     }
@@ -839,20 +829,11 @@ mod tests {
     #[simd_test(enable = "neon")]
     unsafe fn test_vpminq_u8() {
         #[cfg_attr(rustfmt, skip)]
-        let a = u8x16::new(
-            1, 2, 3, 4, 5, 6, 7, 8,
-            1, 2, 3, 4, 5, 6, 7, 8
-        );
+        let a = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
         #[cfg_attr(rustfmt, skip)]
-        let b = u8x16::new(
-            0, 3, 2, 5, 4, 7, 6, 9,
-            0, 3, 2, 5, 4, 7, 6, 9
-        );
+        let b = u8x16::new(0, 3, 2, 5, 4, 7, 6, 9, 0, 3, 2, 5, 4, 7, 6, 9);
         #[cfg_attr(rustfmt, skip)]
-        let e = u8x16::new(
-            1, 3, 5, 7, 1, 3, 5, 7,
-            0, 2, 4, 6, 0, 2, 4, 6,
-        );
+        let e = u8x16::new(1, 3, 5, 7, 1, 3, 5, 7, 0, 2, 4, 6, 0, 2, 4, 6);
         let r: u8x16 = vpminq_u8(a.into_bits(), b.into_bits()).into_bits();
         assert_eq!(r, e);
     }
@@ -896,20 +877,11 @@ mod tests {
     #[simd_test(enable = "neon")]
     unsafe fn test_vpmaxq_s8() {
         #[cfg_attr(rustfmt, skip)]
-        let a = i8x16::new(
-            1, -2, 3, -4, 5, 6, 7, 8,
-            1, 2, 3, 4, 5, 6, 7, 8
-        );
+        let a = i8x16::new(1, -2, 3, -4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
         #[cfg_attr(rustfmt, skip)]
-        let b = i8x16::new(
-            0, 3, 2, 5, 4, 7, 6, 9,
-            0, 3, 2, 5, 4, 7, 6, 9
-        );
+        let b = i8x16::new(0, 3, 2, 5, 4, 7, 6, 9, 0, 3, 2, 5, 4, 7, 6, 9);
         #[cfg_attr(rustfmt, skip)]
-        let e = i8x16::new(
-            1, 3, 6, 8, 2, 4, 6, 8,
-            3, 5, 7, 9, 3, 5, 7, 9,
-        );
+        let e = i8x16::new(1, 3, 6, 8, 2, 4, 6, 8, 3, 5, 7, 9, 3, 5, 7, 9);
         let r: i8x16 = vpmaxq_s8(a.into_bits(), b.into_bits()).into_bits();
         assert_eq!(r, e);
     }
@@ -935,20 +907,11 @@ mod tests {
     #[simd_test(enable = "neon")]
     unsafe fn test_vpmaxq_u8() {
         #[cfg_attr(rustfmt, skip)]
-        let a = u8x16::new(
-            1, 2, 3, 4, 5, 6, 7, 8,
-            1, 2, 3, 4, 5, 6, 7, 8
-        );
+        let a = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8);
         #[cfg_attr(rustfmt, skip)]
-        let b = u8x16::new(
-            0, 3, 2, 5, 4, 7, 6, 9,
-            0, 3, 2, 5, 4, 7, 6, 9
-        );
+        let b = u8x16::new(0, 3, 2, 5, 4, 7, 6, 9, 0, 3, 2, 5, 4, 7, 6, 9);
         #[cfg_attr(rustfmt, skip)]
-        let e = u8x16::new(
-            2, 4, 6, 8, 2, 4, 6, 8,
-            3, 5, 7, 9, 3, 5, 7, 9,
-        );
+        let e = u8x16::new(2, 4, 6, 8, 2, 4, 6, 8, 3, 5, 7, 9, 3, 5, 7, 9);
         let r: u8x16 = vpmaxq_u8(a.into_bits(), b.into_bits()).into_bits();
         assert_eq!(r, e);
     }

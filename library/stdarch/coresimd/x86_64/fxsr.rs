@@ -58,7 +58,7 @@ pub unsafe fn _fxrstor64(mem_addr: *const u8) {
 #[cfg(test)]
 mod tests {
     use coresimd::x86_64::*;
-    use std::{fmt, cmp::PartialEq};
+    use std::{cmp::PartialEq, fmt};
     use stdsimd_test::simd_test;
 
     #[repr(align(16))]

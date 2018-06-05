@@ -63,8 +63,7 @@ impl_from_bits_!(
     vector_double
 );
 impl_from_bits_!(
-    i64x2:
-    vector_signed_char,
+    i64x2: vector_signed_char,
     vector_unsigned_char,
     vector_bool_char,
     vector_signed_short,
@@ -109,8 +108,7 @@ impl_from_bits_!(
     vector_double
 );
 impl_from_bits_!(
-    u64x2:
-    vector_signed_char,
+    u64x2: vector_signed_char,
     vector_unsigned_char,
     vector_bool_char,
     vector_signed_short,
@@ -155,8 +153,7 @@ impl_from_bits_!(
     vector_bool_long
 );
 impl_from_bits_!(
-    f64x2:
-    vector_signed_char,
+    f64x2: vector_signed_char,
     vector_unsigned_char,
     vector_bool_char,
     vector_signed_short,
@@ -234,8 +231,12 @@ mod sealed {
     // xxpermdi has an big-endian bias and extended mnemonics
     #[inline]
     #[target_feature(enable = "vsx")]
-    #[cfg_attr(all(test, target_endian="little"), assert_instr(xxmrgld, dm = 0x0))]
-    #[cfg_attr(all(test, target_endian="big"), assert_instr(xxspltd, dm = 0x0))]
+    #[cfg_attr(
+        all(test, target_endian = "little"), assert_instr(xxmrgld, dm = 0x0)
+    )]
+    #[cfg_attr(
+        all(test, target_endian = "big"), assert_instr(xxspltd, dm = 0x0)
+    )]
     unsafe fn xxpermdi(a: i64x2, b: i64x2, dm: u8) -> i64x2 {
         match dm & 0b11 {
             0 => simd_shuffle2(a, b, [0b00, 0b10]),
