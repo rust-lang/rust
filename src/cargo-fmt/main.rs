@@ -147,7 +147,11 @@ fn format_crate(
     strategy: &CargoFmtStrategy,
 ) -> Result<ExitStatus, io::Error> {
     let rustfmt_args = get_fmt_args();
-    let targets = if rustfmt_args.iter().any(|s| s == "--dump-default-config") {
+    let targets = if rustfmt_args
+        .iter()
+        .any(|s| ["--print-config", "-h", "--help", "-V", "--verison"]
+             .contains(&s.as_str()))
+    {
         HashSet::new()
     } else {
         get_targets(strategy)?
