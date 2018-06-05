@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
 #![warn(const_err)]
 
 #![feature(const_fn)]
@@ -25,6 +24,12 @@ fn main() {
     //~^ WARN attempt to subtract with overflow
     //~| WARN this constant cannot be used
     println!("{} {}", X, Y);
-    //~^ WARN constant evaluation error
-    //~| WARN constant evaluation error
+    //~^ WARN this expression will panic at runtime
+    //~| WARN this expression will panic at runtime
+    //~| ERROR erroneous constant used
+    //~| ERROR erroneous constant used
+    //~| ERROR E0080
+    //~| ERROR E0080
+    //~| WARN referenced constant
+    //~| WARN referenced constant
 }

@@ -655,6 +655,9 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
         f(self);
         self.param_env = old_param_env;
     }
+    pub fn current_lint_root(&self) -> ast::NodeId {
+        self.last_ast_node_with_lint_attrs
+    }
 }
 
 impl<'a, 'tcx> LayoutOf for &'a LateContext<'a, 'tcx> {

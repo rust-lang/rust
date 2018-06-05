@@ -3,7 +3,7 @@ use std::fmt::Write;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
 use rustc::hir::map::definitions::DefPathData;
-use rustc::middle::const_val::{ConstVal, ErrKind};
+use rustc::middle::const_val::ConstVal;
 use rustc::mir;
 use rustc::ty::layout::{self, Size, Align, HasDataLayout, IntegerExt, LayoutOf, TyLayout};
 use rustc::ty::subst::{Subst, Substs};
@@ -15,7 +15,7 @@ use syntax::codemap::{self, Span};
 use syntax::ast::Mutability;
 use rustc::mir::interpret::{
     GlobalId, Value, Scalar,
-    EvalError, EvalResult, EvalErrorKind, Pointer, ConstValue,
+    EvalResult, EvalErrorKind, Pointer, ConstValue,
 };
 use std::mem;
 
@@ -1056,15 +1056,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         } else {
             self.param_env
         };
-        self.tcx.const_eval(param_env.and(gid)).map_err(|err| match *err.kind {
-            ErrKind::Miri(ref err, _) => match err.kind {
-                EvalErrorKind::TypeckError |
-                EvalErrorKind::Layout(_) => EvalErrorKind::TypeckError.into(),
-                _ => EvalErrorKind::ReferencedConstant.into(),
-            },
-            ErrKind::TypeckError => EvalErrorKind::TypeckError.into(),
-            ref other => bug!("const eval returned {:?}", other),
-        })
+        self.tcx.const_eval(param_env.and(gid)).map_err(|err| EvalErrorKind::ReferencedConstant(err).into())
     }
 
     pub fn force_allocation(&mut self, place: Place) -> EvalResult<'tcx, Place> {
@@ -1626,7 +1618,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         let mut last_span = None;
         let mut frames = Vec::new();
         // skip 1 because the last frame is just the environment of the constant
-        for &Frame { instance, span, .. } in self.stack().iter().skip(1).rev() {
+        for &Frame { instance, span, mir, block, stmt, .. } in self.stack().iter().skip(1).rev() {
             // make sure we don't emit frames that are duplicates of the previous
             if explicit_span == Some(span) {
                 last_span = Some(span);
@@ -1644,82 +1636,20 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             } else {
                 instance.to_string()
             };
-            frames.push(FrameInfo { span, location });
+            let block = &mir.basic_blocks()[block];
+            let source_info = if stmt < block.statements.len() {
+                block.statements[stmt].source_info
+            } else {
+                block.terminator().source_info
+            };
+            let lint_root = match mir.source_scope_local_data {
+                mir::ClearCrossCrate::Set(ref ivs) => Some(ivs[source_info.scope].lint_root),
+                mir::ClearCrossCrate::Clear => None,
+            };
+            frames.push(FrameInfo { span, location, lint_root });
         }
         trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
         (frames, self.tcx.span)
-    }
-
-    pub fn report(&self, e: &mut EvalError, as_err: bool, explicit_span: Option<Span>) {
-        match e.kind {
-            EvalErrorKind::Layout(_) |
-            EvalErrorKind::TypeckError => return,
-            _ => {},
-        }
-        if let Some(ref mut backtrace) = e.backtrace {
-            let mut trace_text = "\n\nAn error occurred in miri:\n".to_string();
-            backtrace.resolve();
-            write!(trace_text, "backtrace frames: {}\n", backtrace.frames().len()).unwrap();
-            'frames: for (i, frame) in backtrace.frames().iter().enumerate() {
-                if frame.symbols().is_empty() {
-                    write!(trace_text, "{}: no symbols\n", i).unwrap();
-                }
-                for symbol in frame.symbols() {
-                    write!(trace_text, "{}: ", i).unwrap();
-                    if let Some(name) = symbol.name() {
-                        write!(trace_text, "{}\n", name).unwrap();
-                    } else {
-                        write!(trace_text, "<unknown>\n").unwrap();
-                    }
-                    write!(trace_text, "\tat ").unwrap();
-                    if let Some(file_path) = symbol.filename() {
-                        write!(trace_text, "{}", file_path.display()).unwrap();
-                    } else {
-                        write!(trace_text, "<unknown_file>").unwrap();
-                    }
-                    if let Some(line) = symbol.lineno() {
-                        write!(trace_text, ":{}\n", line).unwrap();
-                    } else {
-                        write!(trace_text, "\n").unwrap();
-                    }
-                }
-            }
-            error!("{}", trace_text);
-        }
-        if let Some(frame) = self.stack().last() {
-            let block = &frame.mir.basic_blocks()[frame.block];
-            let span = explicit_span.unwrap_or_else(|| if frame.stmt < block.statements.len() {
-                block.statements[frame.stmt].source_info.span
-            } else {
-                block.terminator().source_info.span
-            });
-            trace!("reporting const eval failure at {:?}", span);
-            let mut err = if as_err {
-                ::rustc::middle::const_val::struct_error(*self.tcx, span, "constant evaluation error")
-            } else {
-                let node_id = self
-                    .stack()
-                    .iter()
-                    .rev()
-                    .filter_map(|frame| self.tcx.hir.as_local_node_id(frame.instance.def_id()))
-                    .next()
-                    .expect("some part of a failing const eval must be local");
-                self.tcx.struct_span_lint_node(
-                    ::rustc::lint::builtin::CONST_ERR,
-                    node_id,
-                    span,
-                    "constant evaluation error",
-                )
-            };
-            let (frames, span) = self.generate_stacktrace(explicit_span);
-            err.span_label(span, e.to_string());
-            for FrameInfo { span, location } in frames {
-                err.span_note(span, &format!("inside call to `{}`", location));
-            }
-            err.emit();
-        } else {
-            self.tcx.sess.err(&e.to_string());
-        }
     }
 
     pub fn sign_extend(&self, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {

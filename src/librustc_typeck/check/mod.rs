@@ -4040,7 +4040,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let count = tcx.const_eval(param_env.and(global_id));
 
             if let Err(ref err) = count {
-                err.report(tcx, tcx.def_span(count_def_id), "constant expression");
+                err.report_as_error(
+                    tcx.at(tcx.def_span(count_def_id)),
+                    "could not evaluate repeat length",
+                );
             }
 
             let uty = match expected {

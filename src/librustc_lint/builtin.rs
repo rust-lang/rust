@@ -1501,24 +1501,11 @@ fn check_const(cx: &LateContext, body_id: hir::BodyId, what: &str) {
     };
     if let Err(err) = cx.tcx.const_eval(param_env.and(cid)) {
         let span = cx.tcx.def_span(def_id);
-        let mut diag = cx.struct_span_lint(
-            CONST_ERR,
-            span,
+        err.report_as_lint(
+            cx.tcx.at(span),
             &format!("this {} cannot be used", what),
+            cx.current_lint_root(),
         );
-        use rustc::middle::const_val::ConstEvalErrDescription;
-        match err.description() {
-            ConstEvalErrDescription::Simple(message) => {
-                diag.span_label(span, message);
-            }
-            ConstEvalErrDescription::Backtrace(miri, frames) => {
-                diag.span_label(span, format!("{}", miri));
-                for frame in frames {
-                    diag.span_label(frame.span, format!("inside call to `{}`", frame.location));
-                }
-            }
-        }
-        diag.emit()
     }
 }
 
