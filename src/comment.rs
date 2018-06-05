@@ -406,7 +406,7 @@ fn rewrite_comment_inner(
                     // We will leave them untouched.
                     result.push_str(&comment_line_separator);
                     result.push_str(&join_code_block_with_comment_line_separator(
-                        &code_block_buffer,
+                        &trim_custom_comment_prefix(&code_block_buffer),
                     ));
                 }
             }
