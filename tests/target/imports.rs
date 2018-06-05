@@ -82,8 +82,9 @@ use self::unix::{};
 use foo::{
     a, b,
     bar::{
-        baz, foo::{a, b, cxxxxxxxxxxxxx, yyyyyyyyyyyyyy, zzzzzzzzzzzzzzzz}, qux, xxxxxxxxxxx,
-        yyyyyyyyyyyyy, zzzzzzzzzzzzzzzz,
+        baz,
+        foo::{a, b, cxxxxxxxxxxxxx, yyyyyyyyyyyyyy, zzzzzzzzzzzzzzzz},
+        qux, xxxxxxxxxxx, yyyyyyyyyyyyy, zzzzzzzzzzzzzzzz,
     },
     boo, c,
 };
