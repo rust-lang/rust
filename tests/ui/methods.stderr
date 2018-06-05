@@ -427,7 +427,7 @@ error: use of `expect` followed by a function call
    --> $DIR/methods.rs:365:26
     |
 365 |     with_none_and_format.expect(&format!("Error {}: fake error", error_code));
-    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!(&format!("Error {}: fake error", error_code)))`
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("Error {}: fake error", error_code))`
     |
     = note: `-D expect-fun-call` implied by `-D warnings`
 
@@ -441,7 +441,7 @@ error: use of `expect` followed by a function call
    --> $DIR/methods.rs:378:25
     |
 378 |     with_err_and_format.expect(&format!("Error {}: fake error", error_code));
-    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| panic!(&format!("Error {}: fake error", error_code)))`
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| panic!("Error {}: fake error", error_code))`
 
 error: use of `expect` followed by a function call
    --> $DIR/methods.rs:381:25

@@ -1022,9 +1022,47 @@ fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, n
         }
 
         let closure = if match_type(cx, self_type, &paths::OPTION) { "||" } else { "|_|" };
+        let span_replace_word = method_span.with_hi(span.hi());
+
+        if let hir::ExprAddrOf(_, ref addr_of) = arg.node {
+            if let hir::ExprCall(ref _inner_fun, ref inner_args) = addr_of.node {
+                // TODO: check if inner_fun is call to format!
+                if inner_args.len() == 1 {
+                    if let hir::ExprCall(_, ref format_args) = inner_args[0].node {
+                        let args_len = format_args.len();
+                        let args: Vec<String> = format_args
+                            .into_iter()
+                            .take(args_len - 1)
+                            .map(|a| {
+                                if let hir::ExprAddrOf(_, ref format_arg) = a.node {
+                                    if let hir::ExprMatch(ref format_arg_expr, _, _) = format_arg.node {
+                                        if let hir::ExprTup(ref format_arg_expr_tup) = format_arg_expr.node {
+                                            return snippet(cx, format_arg_expr_tup[0].span, "..").into_owned();
+                                        }
+                                    }
+                                };
+                                snippet(cx, a.span, "..").into_owned()
+                            })
+                            .collect();
+
+                        let sugg = args.join(", ");
+
+                        span_lint_and_sugg(
+                            cx,
+                            EXPECT_FUN_CALL,
+                            span_replace_word,
+                            &format!("use of `{}` followed by a function call", name),
+                            "try this",
+                            format!("unwrap_or_else({} panic!({}))", closure, sugg),
+                        );
+
+                        return;
+                    }
+                }
+            }
+        }
 
         let sugg: Cow<_> = snippet(cx, arg.span, "..");
-        let span_replace_word = method_span.with_hi(span.hi());
         
         span_lint_and_sugg(
             cx,
