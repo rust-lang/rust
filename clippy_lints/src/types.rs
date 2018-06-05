@@ -679,6 +679,40 @@ declare_clippy_lint! {
     "cast to the same type, e.g. `x as i32` where `x: i32`"
 }
 
+/// **What it does:** Checks for casts of a function pointer to a numeric type not enough to store address.
+///
+/// **Why is this bad?** Casting a function pointer to not eligable type could truncate the address value.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// fn test_fn() -> i16;
+/// let _ = test_fn as i32
+/// ```
+declare_clippy_lint! {
+    pub FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
+    correctness,
+    "cast function pointer to the numeric type with value truncation"
+}
+
+/// **What it does:** Checks for casts of a function pointer to a numeric type except `usize`.
+///
+/// **Why is this bad?** Casting a function pointer to something other than `usize` is not a good style.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// fn test_fn() -> i16;
+/// let _ = test_fn as i128
+/// ```
+declare_clippy_lint! {
+    pub FN_TO_NUMERIC_CAST,
+    style,
+    "cast function pointer to the numeric type"
+}
+
 /// **What it does:** Checks for casts from a less-strictly-aligned pointer to a
 /// more-strictly-aligned pointer
 ///
@@ -891,7 +925,9 @@ impl LintPass for CastPass {
             CAST_POSSIBLE_WRAP,
             CAST_LOSSLESS,
             UNNECESSARY_CAST,
-            CAST_PTR_ALIGNMENT
+            CAST_PTR_ALIGNMENT,
+            FN_TO_NUMERIC_CAST,
+            FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
         )
     }
 }
@@ -975,6 +1011,38 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                     },
                 }
             }
+
+            match &cast_from.sty {
+                ty::TyFnDef(..) |
+                ty::TyFnPtr(..) => {
+                    if cast_to.is_numeric() && cast_to.sty != ty::TyUint(UintTy::Usize){
+                        let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
+                        let pointer_nbits = cx.tcx.data_layout.pointer_size.bits();
+                        if to_nbits < pointer_nbits || (to_nbits == pointer_nbits && cast_to.is_signed()) {
+                            span_lint_and_sugg(
+                                cx,
+                                FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
+                                expr.span,
+                                &format!("casting a `{}` to `{}` may truncate the function address value.", cast_from, cast_to),
+                                "if you need the address of the function, consider",
+                                format!("{} as usize", &snippet(cx, ex.span, "x"))
+                            );
+                        } else {
+                            span_lint_and_sugg(
+                                cx,
+                                FN_TO_NUMERIC_CAST,
+                                expr.span,
+                                &format!("casting a `{}` to `{}` is bad style.", cast_from, cast_to),
+                                "if you need the address of the function, consider",
+                                format!("{} as usize", &snippet(cx, ex.span, "x"))
+                            );
+
+                        };
+                    }
+                }
+                _ => ()
+            }
+
             if_chain!{
                 if let ty::TyRawPtr(from_ptr_ty) = &cast_from.sty;
                 if let ty::TyRawPtr(to_ptr_ty) = &cast_to.sty;

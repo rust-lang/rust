@@ -678,6 +678,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         types::UNIT_ARG,
         types::UNIT_CMP,
         types::UNNECESSARY_CAST,
+        types::FN_TO_NUMERIC_CAST,
         unicode::ZERO_WIDTH_SPACE,
         unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
         unused_io_amount::UNUSED_IO_AMOUNT,
