@@ -79,8 +79,9 @@ from your example, but are important to make the tests work. Consider
 an example block that looks like this:
 
 ```text
-/// Some documentation.
-# fn foo() {}
+/// /// Some documentation.
+/// # fn foo() {} // this function will be hidden
+/// println!("Hello, World!");
 ```
 
 It will render like this:
@@ -88,6 +89,7 @@ It will render like this:
 ```rust
 /// Some documentation.
 # fn foo() {}
+println!("Hello, World!");
 ```
 
 Yes, that's right: you can add lines that start with `# `, and they will
