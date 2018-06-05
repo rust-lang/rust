@@ -203,7 +203,7 @@ fn run_pass_rustc() {
 }
 
 #[test]
-#[ignore] // TODO: update test errors
+#[should_panic] // TODO: update test errors
 fn compile_fail_miri() {
     let sysroot = get_sysroot();
     let host = get_host();

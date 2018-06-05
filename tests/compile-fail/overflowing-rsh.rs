@@ -11,5 +11,6 @@
 #![allow(exceeding_bitshifts)]
 
 fn main() {
-    let _n = 1i64 >> 64; //~ Overflow(Shr)
+    let _n = 1i64 >> 64; //~ ERROR constant evaluation error [E0080]
+    //~^ NOTE attempt to shift right with overflow
 }

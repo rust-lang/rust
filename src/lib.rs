@@ -249,6 +249,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
         Ok(()) => {
             let leaks = ecx.memory().leak_report();
             if leaks != 0 {
+                // TODO: Prevent leaks which aren't supposed to be there
                 //tcx.sess.err("the evaluated program leaked memory");
             }
         }

@@ -2,13 +2,14 @@
 
 extern crate alloc;
 
-use alloc::heap::Heap;
-use alloc::allocator::*;
+use alloc::alloc::Global;
+use std::alloc::*;
 
 fn main() {
     unsafe {
-        let x = Heap.alloc(Layout::from_size_align_unchecked(1, 1)).unwrap();
-        let _y = Heap.realloc(x, Layout::from_size_align_unchecked(1, 1), Layout::from_size_align_unchecked(1, 1)).unwrap();
-        let _z = *x; //~ ERROR: dangling pointer was dereferenced
+        let x = Global.alloc(Layout::from_size_align_unchecked(1, 1));
+        let _y = Global.realloc(x, Layout::from_size_align_unchecked(1, 1), 1);
+        let _z = *(x as *mut u8); //~ ERROR constant evaluation error [E0080]
+        //~^ NOTE dangling pointer was dereferenced
     }
 }

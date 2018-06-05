@@ -1,6 +1,5 @@
 // This should fail even without validation
 // compile-flags: -Zmir-emit-validate=0
-#![feature(i128_type)]
 
 fn main() {
     #[cfg(target_pointer_width="64")]
@@ -11,5 +10,6 @@ fn main() {
     let bad = unsafe {
         std::mem::transmute::<&[u8], u64>(&[1u8])
     };
-    bad + 1; //~ ERROR a raw memory access tried to access part of a pointer value as raw bytes
+    let _ = bad + 1; //~ ERROR constant evaluation error [E0080]
+    //~^ NOTE a raw memory access tried to access part of a pointer value as raw bytes
 }

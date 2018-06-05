@@ -11,5 +11,6 @@
 #![allow(const_err)]
 
 fn main() {
-    let _n = 1 / 0; //~ ERROR: DivisionByZero
+    let _n = 1 / 0; //~ ERROR constant evaluation error [E0080]
+    //~^ NOTE attempt to divide by zero
 }

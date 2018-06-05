@@ -1,3 +1,5 @@
+// ignore-test validation_op is disabled
+
 // Make sure validation can handle many overlapping shared borrows for different parts of a data structure
 #![allow(unused_variables)]
 use std::cell::RefCell;

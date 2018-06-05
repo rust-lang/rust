@@ -9,7 +9,8 @@ struct Human;
 
 fn main() {
     let x: ! = unsafe {
-        std::mem::transmute::<Human, !>(Human) //~ ERROR entered unreachable code
+        std::mem::transmute::<Human, !>(Human) //~ ERROR constant evaluation error [E0080]
+        //^~ NOTE entered unreachable code
     };
     f(x)
 }

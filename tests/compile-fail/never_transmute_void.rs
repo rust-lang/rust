@@ -8,12 +8,13 @@
 enum Void {}
 
 fn f(v: Void) -> ! {
-    match v {} //~ ERROR entered unreachable code
+    match v {} //~ ERROR constant evaluation error [E0080]
+    //~^ NOTE entered unreachable code
 }
 
 fn main() {
     let v: Void = unsafe {
         std::mem::transmute::<(), Void>(())
     };
-    f(v);
+    f(v); //~ inside call to `f`
 }

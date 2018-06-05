@@ -1,4 +1,4 @@
-// error-pattern: overflowing math
+// error-pattern: attempt to add with overflow
 fn main() {
     let v = [0i8; 4];
     let x = &v as *const i8;
