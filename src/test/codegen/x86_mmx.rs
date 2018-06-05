@@ -13,6 +13,9 @@
 // ignore-emscripten
 // ignore-mips
 // ignore-mips64
+// ignore-powerpc
+// ignore-powerpc64
+// ignore-powerpc64le
 // ignore-sparc
 // ignore-sparc64
 // compile-flags: -O
