@@ -649,8 +649,20 @@ pub fn format_impl(
         } else {
             context.budget(last_line_width(&result))
         };
-        let option = WhereClauseOption::snuggled(&ref_and_type);
-        let where_clause_str = rewrite_where_clause(
+
+        let mut option = WhereClauseOption::snuggled(&ref_and_type);
+        let snippet = context.snippet(item.span);
+        let open_pos = snippet.find_uncommented("{")? + 1;
+        if !contains_comment(&snippet[open_pos..])
+            && items.is_empty()
+            && generics.where_clause.predicates.len() == 1
+        {
+            option.suppress_comma();
+            option.snuggle();
+            option.compress_where();
+        }
+
+        let mut where_clause_str = rewrite_where_clause(
             context,
             &generics.where_clause,
             context.config.brace_style(),
@@ -684,6 +696,12 @@ pub fn format_impl(
         if is_impl_single_line(context, items, &result, &where_clause_str, item)? {
             result.push_str(&where_clause_str);
             if where_clause_str.contains('\n') || last_line_contains_single_line_comment(&result) {
+                // if the where_clause contains extra comments AND
+                // there is only one where clause predicate
+                // recover the suppressed comma in single line where_clause formatting
+                if generics.where_clause.predicates.len() == 1 {
+                    result.push_str(",");
+                }
                 result.push_str(&format!("{}{{{}}}", &sep, &sep));
             } else {
                 result.push_str(" {}");
@@ -2132,6 +2150,18 @@ impl WhereClauseOption {
             snuggle: trimmed_last_line_width(current) == 1,
             compress_where: false,
         }
+    }
+
+    pub fn suppress_comma(&mut self) {
+        self.suppress_comma = true
+    }
+
+    pub fn compress_where(&mut self) {
+        self.compress_where = true
+    }
+
+    pub fn snuggle(&mut self) {
+        self.snuggle = true
     }
 }
 
