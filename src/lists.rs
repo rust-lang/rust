@@ -228,6 +228,7 @@ where
     let mut item_max_width: Option<usize> = None;
     let sep_place =
         SeparatorPlace::from_tactic(formatting.separator_place, tactic, formatting.separator);
+    let mut prev_item_had_post_comment = false;
 
     let mut line_len = 0;
     let indent_str = &formatting.shape.indent.to_string(formatting.config);
@@ -284,7 +285,9 @@ where
                 let total_width = total_item_width(item) + item_sep_len;
 
                 // 1 is space between separator and item.
-                if line_len > 0 && line_len + 1 + total_width > formatting.shape.width {
+                if (line_len > 0 && line_len + 1 + total_width > formatting.shape.width)
+                    || prev_item_had_post_comment
+                {
                     result.push('\n');
                     result.push_str(indent_str);
                     line_len = 0;
@@ -310,14 +313,15 @@ where
         // Pre-comments
         if let Some(ref comment) = item.pre_comment {
             // Block style in non-vertical mode.
-            let block_mode = tactic != DefinitiveListTactic::Vertical;
+            let block_mode = tactic == DefinitiveListTactic::Horizontal;
             // Width restriction is only relevant in vertical mode.
             let comment =
                 rewrite_comment(comment, block_mode, formatting.shape, formatting.config)?;
             result.push_str(&comment);
 
             if !inner_item.is_empty() {
-                if tactic == DefinitiveListTactic::Vertical {
+                if tactic == DefinitiveListTactic::Vertical || tactic == DefinitiveListTactic::Mixed
+                {
                     // We cannot keep pre-comments on the same line if the comment if normalized.
                     let keep_comment = if formatting.config.normalize_comments()
                         || item.pre_comment_style == ListItemCommentStyle::DifferentLine
@@ -349,7 +353,7 @@ where
         result.push_str(inner_item);
 
         // Post-comments
-        if tactic != DefinitiveListTactic::Vertical && item.post_comment.is_some() {
+        if tactic == DefinitiveListTactic::Horizontal && item.post_comment.is_some() {
             let comment = item.post_comment.as_ref().unwrap();
             let formatted_comment = rewrite_comment(
                 comment,
@@ -366,7 +370,7 @@ where
             result.push_str(formatting.separator);
         }
 
-        if tactic == DefinitiveListTactic::Vertical && item.post_comment.is_some() {
+        if tactic != DefinitiveListTactic::Horizontal && item.post_comment.is_some() {
             let comment = item.post_comment.as_ref().unwrap();
             let overhead = last_line_width(&result) + first_line_width(comment.trim());
 
@@ -446,6 +450,8 @@ where
             item_max_width = None;
             result.push('\n');
         }
+
+        prev_item_had_post_comment = item.post_comment.is_some();
     }
 
     Some(result)
