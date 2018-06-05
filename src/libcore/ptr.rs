@@ -25,10 +25,10 @@
 //!   freed).
 //! * The pointer satisfies [LLVM's pointer aliasing rules].
 //!
-//! Valid pointers are not necessarily properly aligned. However, except for
-//! [`read_unaligned`] and [`write_unaligned`], most functions require their
-//! arguments to be aligned. Any alignment requirements will be explicitly
-//! stated in the function's documentation.
+//! Valid pointers are not necessarily properly aligned. However, most functions
+//! require their arguments to be properly aligned, and will explicitly state
+//! this requirement in the `Safety` section. Notable exceptions to this are
+//! [`read_unaligned`] and [`write_unaligned`].
 //!
 //! [LLVM's pointer aliasing rules]: https://llvm.org/docs/LangRef.html#pointer-aliasing-rules
 //! [`read_unaligned`]: ./fn.read_unaligned.html
