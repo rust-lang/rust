@@ -347,6 +347,7 @@ impl Config {
         config.backtrace = true;
         config.rust_optimize = true;
         config.rust_optimize_tests = true;
+        config.quiet_tests = true;
         config.submodules = true;
         config.fast_submodules = true;
         config.docs = true;

@@ -303,7 +303,7 @@
 
 # Suppresses extraneous output from tests to ensure the output of the test
 # harness is relatively clean.
-#quiet-tests = false
+#quiet-tests = true
 
 # Flag indicating whether tests are compiled with optimizations (the -O flag) or
 # with debuginfo (the -g flag)
