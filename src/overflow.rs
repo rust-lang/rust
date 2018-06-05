@@ -530,5 +530,5 @@ fn shape_from_indent_style(
 
 fn no_long_items(list: &[ListItem]) -> bool {
     list.iter()
-        .all(|item| !item.has_comment() && item.inner_as_ref().len() <= SHORT_ITEM_THRESHOLD)
+        .all(|item| item.inner_as_ref().len() <= SHORT_ITEM_THRESHOLD)
 }
