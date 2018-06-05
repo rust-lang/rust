@@ -798,9 +798,21 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         let tcx = self.tcx();
         match stmt.kind {
             StatementKind::Assign(ref place, ref rv) => {
+                // Assignments to temporaries are not "interesting";
+                // they are not caused by the user, but rather artifacts
+                // of lowering. Assignments to other sorts of places *are* interesting
+                // though.
+                let is_temp = if let Place::Local(l) = place {
+                    !mir.local_decls[*l].is_user_variable.is_some()
+                } else {
+                    false
+                };
+
+                let locations = if is_temp { location.boring() } else { location.interesting() };
+
                 let place_ty = place.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = rv.ty(mir, tcx);
-                if let Err(terr) = self.sub_types(rv_ty, place_ty, location.interesting()) {
+                if let Err(terr) = self.sub_types(rv_ty, place_ty, locations) {
                     span_mirbug!(
                         self,
                         stmt,
