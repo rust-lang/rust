@@ -363,6 +363,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             )
         );
 
+        self.sess.profiler(|p| p.record_query(Q::CATEGORY));
+
         let job = match JobOwner::try_get(self, span, &key) {
             TryGetJob::NotYetStarted(job) => job,
             TryGetJob::JobCompleted(result) => {
@@ -384,10 +386,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         if dep_node.kind.is_anon() {
             profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
-            self.sess.profiler(|p| {
-                p.start_activity(Q::CATEGORY);
-                p.record_query(Q::CATEGORY);
-            });
+            self.sess.profiler(|p| p.start_activity(Q::CATEGORY));
 
             let res = job.start(self, |tcx| {
                 tcx.dep_graph.with_anon_task(dep_node.kind, || {
