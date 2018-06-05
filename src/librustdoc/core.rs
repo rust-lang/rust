@@ -230,7 +230,10 @@ pub fn run_core(search_paths: SearchPaths,
 
         let krate = panictry!(driver::phase_1_parse_input(control, &sess, &input));
 
-        let name = ::rustc_codegen_utils::link::find_crate_name(Some(&sess), &krate.attrs, &input);
+        let name = match crate_name {
+            Some(ref crate_name) => crate_name.clone(),
+            None => ::rustc_codegen_utils::link::find_crate_name(Some(&sess), &krate.attrs, &input),
+        };
 
         let mut crate_loader = CrateLoader::new(&sess, &cstore, &name);
 
