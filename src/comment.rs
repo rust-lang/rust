@@ -390,8 +390,10 @@ fn rewrite_comment_inner(
                 let code_block = {
                     let mut config = config.clone();
                     config.set().wrap_comments(false);
-                    ::format_code_block(&code_block_buffer, &config)
-                        .map_or_else(|| code_block_buffer.to_owned(), trim_custom_comment_prefix)
+                    match ::format_code_block(&code_block_buffer, &config) {
+                        Some(ref s) => trim_custom_comment_prefix(s),
+                        None => trim_custom_comment_prefix(&code_block_buffer),
+                    }
                 };
                 result.push_str(&join_code_block_with_comment_line_separator(&code_block));
                 code_block_buffer.clear();
