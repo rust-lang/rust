@@ -610,7 +610,7 @@ declare_features! (
     // Allows use of the :lifetime macro fragment specifier
     (accepted, macro_lifetime_matcher, "1.27.0", Some(34303), None),
     // Termination trait in tests (RFC 1937)
-    (accepted, termination_trait_test, "1.27.0", Some(48854), Some(Edition::Edition2018)),
+    (accepted, termination_trait_test, "1.27.0", Some(48854), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
