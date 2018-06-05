@@ -1287,7 +1287,7 @@ impl EmitterWriter {
                         });
 
                         // length of the code to be substituted
-                        let snippet_len = (span_end_pos - span_start_pos) as isize;
+                        let snippet_len = span_end_pos as isize - span_start_pos as isize;
                         // For multiple substitutions, use the position *after* the previous
                         // substitutions have happened.
                         offset += full_sub_len - snippet_len;
