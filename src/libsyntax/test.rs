@@ -358,7 +358,6 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
                     } else {
                         Yes
                     },
-                    (true, _) => No(BadTestSignature::WrongTypeSignature),
                     (false, _) => Yes
                 }
             }
