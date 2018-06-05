@@ -233,14 +233,14 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
         }
     }
 
-    fn eval_place(&mut self, place: &Place<'tcx>) -> Option<Const<'tcx>> {
+    fn eval_place(&mut self, place: &Place<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
         match *place {
             Place::Local(loc) => self.places[loc].clone(),
             Place::Projection(ref proj) => match proj.elem {
                 ProjectionElem::Field(field, _) => {
                     trace!("field proj on {:?}", proj.base);
-                    let (base, ty, span) = self.eval_place(&proj.base)?;
-                    let valty = self.use_ecx(span, |this| {
+                    let (base, ty, span) = self.eval_place(&proj.base, source_info)?;
+                    let valty = self.use_ecx(source_info, |this| {
                         this.ecx.read_field(base, None, field, ty)
                     })?;
                     Some((valty.value, valty.ty, span))
@@ -254,7 +254,8 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
     fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
         match *op {
             Operand::Constant(ref c) => self.eval_constant(c, source_info),
-            Operand::Move(ref place) | Operand::Copy(ref place) => self.eval_place(place),
+            | Operand::Move(ref place)
+            | Operand::Copy(ref place) => self.eval_place(place, source_info),
         }
     }
 
