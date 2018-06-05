@@ -92,7 +92,7 @@ impl CategoryData {
             ($name:tt, $rustic_name:ident) => {
                 let (hits, total) = self.query_counts.$rustic_name;
                 let (hits, total) = if total > 0 {
-                    (format!("{:.2}%", (((hits as f32) / (total as f32)) * 100.0)), total.to_string())
+                    (format!("{:.2}", (((hits as f32) / (total as f32)) * 100.0)), total.to_string())
                 } else {
                     ("".into(), "".into())
                 };
