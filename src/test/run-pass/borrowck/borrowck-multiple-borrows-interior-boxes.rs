@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:index out of bounds: the len is 5 but the index is 10
+// Test case from #39963.
 
-const C: &'static [u8; 5] = b"hello";
+#![feature(nll)]
 
-#[allow(const_err)]
-fn mir() -> u8 {
-    C[10]
+#[derive(Clone)]
+struct Foo(Option<Box<Foo>>, Option<Box<Foo>>);
+
+fn test(f: &mut Foo) {
+  match *f {
+    Foo(Some(ref mut left), Some(ref mut right)) => match **left {
+      Foo(Some(ref mut left), Some(ref mut right)) => panic!(),
+      _ => panic!(),
+    },
+    _ => panic!(),
+  }
 }
 
 fn main() {
-    mir();
 }

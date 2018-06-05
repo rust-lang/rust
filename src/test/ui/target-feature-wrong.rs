@@ -15,6 +15,8 @@
 // ignore-mips
 // ignore-powerpc
 // ignore-s390x
+// ignore-sparc
+// ignore-sparc64
 
 #![feature(target_feature)]
 

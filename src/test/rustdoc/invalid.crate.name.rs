@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static FOO: i32 = [][0];
-//~^ ERROR E0080
+// compile-flags: --crate-name foo
 
-fn main() {}
+pub fn foo() {}

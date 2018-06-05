@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:index out of bounds: the len is 5 but the index is 10
-
-const C: &'static [u8; 5] = b"hello";
-
-#[allow(const_err)]
-fn mir() -> u8 {
-    C[10]
-}
+static FOO: i32 = [][0];
+//~^ ERROR E0080
 
 fn main() {
-    mir();
+    let array = [std::env::args().len()];
+    array[1]; //~ ERROR index out of bounds
 }

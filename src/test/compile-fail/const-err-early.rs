@@ -19,8 +19,8 @@ pub const C: u8 = 200u8 * 4; //~ ERROR const_err
 //~^ ERROR this constant cannot be used
 pub const D: u8 = 42u8 - (42u8 + 1); //~ ERROR const_err
 //~^ ERROR this constant cannot be used
-pub const E: u8 = [5u8][1];
-//~^ ERROR const_err
+pub const E: u8 = [5u8][1]; //~ ERROR const_err
+//~| ERROR this constant cannot be used
 
 fn main() {
     let _a = A;

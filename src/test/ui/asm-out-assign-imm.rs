@@ -12,6 +12,7 @@
 // ignore-emscripten
 // ignore-powerpc
 // ignore-sparc
+// ignore-sparc64
 // ignore-mips
 
 #![feature(asm)]

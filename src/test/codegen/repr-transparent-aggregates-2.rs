@@ -14,6 +14,8 @@
 // ignore-asmjs
 // ignore-mips64
 // ignore-s390x
+// ignore-sparc
+// ignore-sparc64
 // ignore-wasm
 // ignore-x86
 // ignore-x86_64
