@@ -31,7 +31,7 @@ types! {
     /// ARM-specific 64-bit wide vector of one packed `u64`.
     pub struct uint64x1_t(u64);
 
-    /// ARM-specific 128-bit wide vector of sixteem packed `i8`.
+    /// ARM-specific 128-bit wide vector of sixteen packed `i8`.
     pub struct int8x16_t(
         i8, i8 ,i8, i8, i8, i8 ,i8, i8,
         i8, i8 ,i8, i8, i8, i8 ,i8, i8,
