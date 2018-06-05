@@ -10,10 +10,12 @@ LL |         (&mut self).bar(); //~ ERROR cannot borrow
 error[E0596]: cannot borrow immutable argument `self` as mutable
   --> $DIR/issue-31424.rs:23:15
    |
-LL |     fn bar(self: &mut Self) {
-   |            --------------- consider changing this to `mut self: &mut Self`
 LL |         (&mut self).bar(); //~ ERROR cannot borrow
    |               ^^^^ cannot borrow mutably
+help: consider removing the `&mut`, as it is an immutable binding to a mutable reference
+   |
+LL |         self.bar(); //~ ERROR cannot borrow
+   |         ^^^^
 
 error: aborting due to 2 previous errors
 
