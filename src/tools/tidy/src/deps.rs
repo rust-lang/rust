@@ -285,6 +285,7 @@ fn extract_license(line: &str) -> String {
 fn get_deps(path: &Path, cargo: &Path) -> Resolve {
     // Run `cargo metadata` to get the set of dependencies
     let output = Command::new(cargo)
+        .env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "dev")
         .arg("metadata")
         .arg("--format-version")
         .arg("1")

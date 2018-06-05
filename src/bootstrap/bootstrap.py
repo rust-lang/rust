@@ -607,6 +607,7 @@ class RustBuild(object):
             (os.pathsep + env["LIBRARY_PATH"]) \
             if "LIBRARY_PATH" in env else ""
         env["RUSTFLAGS"] = "-Cdebuginfo=2 "
+        env["__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS"] = "dev"
 
         build_section = "target.{}".format(self.build_triple())
         target_features = []

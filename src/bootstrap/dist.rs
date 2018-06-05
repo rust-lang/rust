@@ -947,6 +947,7 @@ impl Step for PlainSourceTarball {
             // Get cargo-vendor installed, if it isn't already.
             let mut has_cargo_vendor = false;
             let mut cmd = Command::new(&builder.initial_cargo);
+            cmd.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "dev");
             for line in output(cmd.arg("install").arg("--list")).lines() {
                 has_cargo_vendor |= line.starts_with("cargo-vendor ");
             }
@@ -973,6 +974,7 @@ impl Step for PlainSourceTarball {
             // Vendor all Cargo dependencies
             let mut cmd = Command::new(&builder.initial_cargo);
             cmd.arg("vendor")
+               .env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "dev")
                .current_dir(&plain_dst_src.join("src"));
             builder.run(&mut cmd);
         }

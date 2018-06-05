@@ -729,6 +729,8 @@ impl<'a> Builder<'a> {
             &self.config.channel
         };
         cargo.env("__CARGO_DEFAULT_LIB_METADATA", &metadata);
+        // HACK: we do want to be able to compile edition crates, even though that isn't stable yet
+        cargo.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "dev");
 
         let stage;
         if compiler.stage == 0 && self.local_rebuild {
