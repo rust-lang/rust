@@ -237,11 +237,11 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 ///
 /// * Both `x` and `y` must be properly aligned.
 ///
-/// * `x.offset(count)` must be [valid]. In other words, the region of memory
+/// * `x.offset(count-1)` must be [valid]. In other words, the region of memory
 ///   which begins at `x` and has a length of `count * size_of::<T>()` bytes
 ///   must belong to a single, live allocation.
 ///
-/// * `y.offset(count)` must be [valid]. In other words, the region of memory
+/// * `y.offset(count-1)` must be [valid]. In other words, the region of memory
 ///   which begins at `y` and has a length of `count * size_of::<T>()` bytes
 ///   must belong to a single, live allocation.
 ///

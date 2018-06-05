@@ -980,11 +980,11 @@ extern "rust-intrinsic" {
     ///
     /// * Both `src` and `dst` must be properly aligned.
     ///
-    /// * `src.offset(count)` must be [valid]. In other words, the region of
+    /// * `src.offset(count-1)` must be [valid]. In other words, the region of
     ///   memory which begins at `src` and has a length of `count *
     ///   size_of::<T>()` bytes must belong to a single, live allocation.
     ///
-    /// * `dst.offset(count)` must be [valid]. In other words, the region of
+    /// * `dst.offset(count-1)` must be [valid]. In other words, the region of
     ///   memory which begins at `dst` and has a length of `count *
     ///   size_of::<T>()` bytes must belong to a single, live allocation.
     ///
@@ -1068,11 +1068,11 @@ extern "rust-intrinsic" {
     ///
     /// * Both `src` and `dst` must be properly aligned.
     ///
-    /// * `src.offset(count)` must be [valid]. In other words, the region of
+    /// * `src.offset(count-1)` must be [valid]. In other words, the region of
     ///   memory which begins at `src` and has a length of `count *
     ///   size_of::<T>()` bytes must belong to a single, live allocation.
     ///
-    /// * `dst.offset(count)` must be [valid]. In other words, the region of
+    /// * `dst.offset(count-1)` must be [valid]. In other words, the region of
     ///   memory which begins at `dst` and has a length of `count *
     ///   size_of::<T>()` bytes must belong to a single, live allocation.
     ///
@@ -1118,7 +1118,7 @@ extern "rust-intrinsic" {
     ///
     /// * `dst` must be [valid].
     ///
-    /// * `dst.offset(count)` must be [valid]. In other words, the region of
+    /// * `dst.offset(count-1)` must be [valid]. In other words, the region of
     ///   memory which begins at `dst` and has a length of `count *
     ///   size_of::<T>()` bytes must belong to a single, live allocation.
     ///
