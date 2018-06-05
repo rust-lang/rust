@@ -524,7 +524,6 @@ for ::middle::const_val::ErrKind<'gcx> {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
-            NonConstPath |
             TypeckError |
             CouldNotResolve |
             CheckMatchError => {

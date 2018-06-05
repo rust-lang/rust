@@ -594,7 +594,6 @@ impl<'a, 'tcx> Lift<'tcx> for const_val::ErrKind<'a> {
         use middle::const_val::ErrKind::*;
 
         Some(match *self {
-            NonConstPath => NonConstPath,
             CouldNotResolve => CouldNotResolve,
             TypeckError => TypeckError,
             CheckMatchError => CheckMatchError,

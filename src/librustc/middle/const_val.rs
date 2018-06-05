@@ -39,7 +39,6 @@ pub struct ConstEvalErr<'tcx> {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum ErrKind<'tcx> {
 
-    NonConstPath,
     CouldNotResolve,
     TypeckError,
     CheckMatchError,
@@ -82,7 +81,6 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         }
 
         match *self.kind {
-            NonConstPath        => simple!("non-constant path in constant expression"),
             CouldNotResolve => simple!("could not resolve"),
             TypeckError => simple!("type-checking failed"),
             CheckMatchError => simple!("match-checking failed"),
