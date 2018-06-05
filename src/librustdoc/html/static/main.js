@@ -38,7 +38,8 @@
                      "constant",
                      "associatedconstant",
                      "union",
-                     "foreigntype"];
+                     "foreigntype",
+                     "keyword"];
 
     var search_input = document.getElementsByClassName('search-input')[0];
 
@@ -158,6 +159,7 @@
 
     // used for special search precedence
     var TY_PRIMITIVE = itemTypes.indexOf("primitive");
+    var TY_KEYWORD = itemTypes.indexOf("keyword");
 
     onEach(document.getElementsByClassName('js-only'), function(e) {
         removeClass(e, 'js-only');
@@ -530,11 +532,13 @@
                     b = bbb.index;
                     if (a !== b) { return a - b; }
 
-                    // special precedence for primitive pages
-                    if ((aaa.item.ty === TY_PRIMITIVE) && (bbb.item.ty !== TY_PRIMITIVE)) {
+                    // special precedence for primitive and keyword pages
+                    if ((aaa.item.ty === TY_PRIMITIVE && bbb.item.ty !== TY_KEYWORD) ||
+                        (aaa.item.ty === TY_KEYWORD && bbb.item.ty !== TY_PRIMITIVE)) {
                         return -1;
                     }
-                    if ((bbb.item.ty === TY_PRIMITIVE) && (aaa.item.ty !== TY_PRIMITIVE)) {
+                    if ((bbb.item.ty === TY_PRIMITIVE && aaa.item.ty !== TY_PRIMITIVE) ||
+                        (bbb.item.ty === TY_KEYWORD && aaa.item.ty !== TY_KEYWORD)) {
                         return 1;
                     }
 
@@ -1206,7 +1210,7 @@
                 displayPath = item.path + '::';
                 href = rootPath + item.path.replace(/::/g, '/') + '/' +
                        name + '/index.html';
-            } else if (type === "primitive") {
+            } else if (type === "primitive" || type === "keyword") {
                 displayPath = "";
                 href = rootPath + item.path.replace(/::/g, '/') +
                        '/' + type + '.' + name + '.html';
@@ -1700,6 +1704,7 @@
         block("fn", "Functions");
         block("type", "Type Definitions");
         block("foreigntype", "Foreign Types");
+        block("keyword", "Keywords");
     }
 
     window.initSidebarItems = initSidebarItems;

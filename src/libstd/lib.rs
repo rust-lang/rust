@@ -316,6 +316,7 @@
 #![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(windows, feature(used))]
 #![feature(doc_alias)]
+#![feature(doc_keyword)]
 #![feature(float_internals)]
 #![feature(panic_info_message)]
 #![cfg_attr(not(stage0), feature(panic_implementation))]
