@@ -416,7 +416,10 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                                 // FIXME: generate a panic here
                             },
                             mir::Literal::Value { .. } => {
-                                err.report(bx.tcx(), constant.span, "const operand");
+                                err.report_as_error(
+                                    bx.tcx().at(constant.span),
+                                    "could not evaluate constant operand",
+                                );
                             },
                         }
                         // We've errored, so we don't have to produce working code.

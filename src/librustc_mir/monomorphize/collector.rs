@@ -388,7 +388,10 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Ok(val) => collect_const(tcx, val, instance.substs, &mut neighbors),
                 Err(err) => {
                     let span = tcx.def_span(def_id);
-                    err.report(tcx, span, "static");
+                    err.report_as_error(
+                        tcx.at(span),
+                        "could not evaluate static initializer",
+                    );
                 }
             }
         }
@@ -1187,13 +1190,25 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let param_env = ty::ParamEnv::reveal_all();
     for i in 0..mir.promoted.len() {
         use rustc_data_structures::indexed_vec::Idx;
+        let i = Promoted::new(i);
         let cid = GlobalId {
             instance,
-            promoted: Some(Promoted::new(i)),
+            promoted: Some(i),
         };
         match tcx.const_eval(param_env.and(cid)) {
             Ok(val) => collect_const(tcx, val, instance.substs, output),
-            Err(_) => {},
+            Err(err) => {
+                use rustc::middle::const_val::ErrKind;
+                use rustc::mir::interpret::EvalErrorKind;
+                if let ErrKind::Miri(ref miri, ..) = *err.kind {
+                    if let EvalErrorKind::ReferencedConstant(_) = miri.kind {
+                        err.report_as_error(
+                            tcx.at(mir.promoted[i].span),
+                            "erroneous constant used",
+                        );
+                    }
+                }
+            },
         }
     }
 }
@@ -1236,7 +1251,10 @@ fn collect_const<'a, 'tcx>(
                 Ok(val) => val.val,
                 Err(err) => {
                     let span = tcx.def_span(def_id);
-                    err.report(tcx, span, "constant");
+                    err.report_as_error(
+                        tcx.at(span),
+                        "constant evaluation error",
+                    );
                     return;
                 }
             }

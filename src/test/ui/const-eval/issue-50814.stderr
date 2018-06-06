@@ -1,0 +1,20 @@
+error[E0080]: referenced constant
+  --> $DIR/issue-50814.rs:27:5
+   |
+LL |     const MAX: u8 = A::MAX + B::MAX;
+   |                     --------------- attempt to add with overflow
+...
+LL |     &Sum::<U8,U8>::MAX //~ ERROR erroneous constant used
+   |     ^^^^^^^^^^^^^^^^^^
+
+error[E0080]: erroneous constant used
+  --> $DIR/issue-50814.rs:27:5
+   |
+LL |     &Sum::<U8,U8>::MAX //~ ERROR erroneous constant used
+   |     ^-----------------
+   |      |
+   |      referenced constant has errors
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

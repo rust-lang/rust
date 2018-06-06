@@ -695,7 +695,10 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                 return self.const_to_pat(instance, value, id, span)
                             },
                             Err(err) => {
-                                err.report(self.tcx, span, "pattern");
+                                err.report_as_error(
+                                    self.tcx.at(span),
+                                    "could not evaluate constant pattern",
+                                );
                                 PatternKind::Wild
                             },
                         }

@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that a constant-evaluation underflow highlights the correct
-// spot (where the underflow occurred).
+trait Unsigned {
+    const MAX: u8;
+}
 
-const ONE: usize = 1;
-const TWO: usize = 2;
+struct U8(u8);
+impl Unsigned for U8 {
+    const MAX: u8 = 0xff;
+}
+
+struct Sum<A,B>(A,B);
+
+impl<A: Unsigned, B: Unsigned> Unsigned for Sum<A,B> {
+    const MAX: u8 = A::MAX + B::MAX;
+}
+
+fn foo<T>(_: T) -> &'static u8 {
+    &Sum::<U8,U8>::MAX //~ ERROR erroneous constant used
+//~| ERROR E0080
+}
 
 fn main() {
-    let a: [i8; ONE - TWO] = unimplemented!();
-    //~^ ERROR could not evaluate constant expression
-    //~| attempt to subtract with overflow
+    foo(0);
 }

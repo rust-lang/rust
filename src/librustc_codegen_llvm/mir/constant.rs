@@ -217,7 +217,10 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 Ok((llval, constant.ty))
             })
             .unwrap_or_else(|e| {
-                e.report(bx.tcx(), constant.span, "shuffle_indices");
+                e.report_as_error(
+                    bx.tcx().at(constant.span),
+                    "could not evaluate shuffle_indices at compile time",
+                );
                 // We've errored, so we don't have to produce working code.
                 let ty = self.monomorphize(&constant.ty);
                 let llty = bx.cx.layout_of(ty).llvm_type(bx.cx);

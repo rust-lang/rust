@@ -476,7 +476,6 @@ impl<'a, 'tcx> Lift<'tcx> for interpret::EvalError<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         Some(interpret::EvalError {
             kind: tcx.lift(&self.kind)?,
-            backtrace: self.backtrace.clone(),
         })
     }
 }
@@ -578,7 +577,7 @@ impl<'a, 'tcx, O: Lift<'tcx>> Lift<'tcx> for interpret::EvalErrorKind<'a, O> {
             PathNotFound(ref v) => PathNotFound(v.clone()),
             UnimplementedTraitSelection => UnimplementedTraitSelection,
             TypeckError => TypeckError,
-            ReferencedConstant => ReferencedConstant,
+            ReferencedConstant(ref err) => ReferencedConstant(tcx.lift(err)?),
             OverflowNeg => OverflowNeg,
             Overflow(op) => Overflow(op),
             DivisionByZero => DivisionByZero,
@@ -595,14 +594,7 @@ impl<'a, 'tcx> Lift<'tcx> for const_val::ErrKind<'a> {
         use middle::const_val::ErrKind::*;
 
         Some(match *self {
-            NonConstPath => NonConstPath,
-            UnimplementedConstVal(s) => UnimplementedConstVal(s),
-            IndexOutOfBounds { len, index } => IndexOutOfBounds { len, index },
-
-            LayoutError(ref e) => {
-                return tcx.lift(e).map(LayoutError)
-            }
-
+            CouldNotResolve => CouldNotResolve,
             TypeckError => TypeckError,
             CheckMatchError => CheckMatchError,
             Miri(ref e, ref frames) => return tcx.lift(e).map(|e| Miri(e, frames.clone())),

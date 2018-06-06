@@ -1,12 +1,9 @@
-error[E0080]: constant evaluation error
-  --> $DIR/const-eval-overflow-2.rs:21:25
+error[E0080]: could not evaluate constant pattern
+  --> $DIR/const-eval-overflow-2.rs:25:9
    |
 LL | const NEG_NEG_128: i8 = -NEG_128;
-   |                         ^^^^^^^^ attempt to negate with overflow
-   |
-note: for pattern here
-  --> $DIR/const-eval-overflow-2.rs:26:9
-   |
+   |                         -------- attempt to negate with overflow
+...
 LL |         NEG_NEG_128 => println!("A"),
    |         ^^^^^^^^^^^
 

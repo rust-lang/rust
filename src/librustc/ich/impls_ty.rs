@@ -510,6 +510,7 @@ impl_stable_hash_for!(struct ::middle::const_val::ConstEvalErr<'tcx> {
 
 impl_stable_hash_for!(struct ::middle::const_val::FrameInfo {
     span,
+    lint_root,
     location
 });
 
@@ -523,20 +524,10 @@ for ::middle::const_val::ErrKind<'gcx> {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
-            NonConstPath |
             TypeckError |
+            CouldNotResolve |
             CheckMatchError => {
                 // nothing to do
-            }
-            UnimplementedConstVal(s) => {
-                s.hash_stable(hcx, hasher);
-            }
-            IndexOutOfBounds { len, index } => {
-                len.hash_stable(hcx, hasher);
-                index.hash_stable(hcx, hasher);
-            }
-            LayoutError(ref layout_error) => {
-                layout_error.hash_stable(hcx, hasher);
             }
             Miri(ref err, ref trace) => {
                 err.hash_stable(hcx, hasher);
@@ -608,8 +599,8 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             RemainderByZero |
             DivisionByZero |
             GeneratorResumedAfterReturn |
-            GeneratorResumedAfterPanic |
-            ReferencedConstant => {}
+            GeneratorResumedAfterPanic => {}
+            ReferencedConstant(ref err) => err.hash_stable(hcx, hasher),
             MachineError(ref err) => err.hash_stable(hcx, hasher),
             FunctionPointerTyMismatch(a, b) => {
                 a.hash_stable(hcx, hasher);
