@@ -3,5 +3,6 @@
 // rustfmt-imports_layout: Mixed
 
 use std::{
-    fmt, io, str::{self, FromStr},
+    fmt, io,
+    str::{self, FromStr},
 };
