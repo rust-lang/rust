@@ -266,6 +266,10 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
     /// - `Ok(Some(v))` if the predicate is true, presuming that `v` are also true
     /// - `Ok(None)` if we don't have enough info to be sure
     /// - `Err` if the predicate does not hold
+    ///
+    /// This is always inlined, despite its size, because it has a single
+    /// callsite and it is called *very* frequently.
+    #[inline(always)]
     fn process_obligation(&mut self,
                           pending_obligation: &mut Self::Obligation)
                           -> Result<Option<Vec<Self::Obligation>>, Self::Error>
