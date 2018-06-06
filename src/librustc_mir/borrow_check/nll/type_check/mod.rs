@@ -15,13 +15,14 @@ use borrow_check::location::LocationTable;
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, OutlivesConstraint, TypeTest};
+use borrow_check::nll::type_check::type_op::{CustomTypeOp, TypeOp};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;
 use rustc::hir::def_id::DefId;
 use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
-use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
+use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, UnitResult};
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
@@ -67,6 +68,7 @@ macro_rules! span_mirbug_and_err {
 mod constraint_conversion;
 mod input_output;
 mod liveness;
+mod type_op;
 
 /// Type checks the given `mir` in the context of the inference
 /// context `infcx`. Returns any region constraints that have yet to
@@ -732,7 +734,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         &mut self,
         locations: Locations,
         describe_op: impl Fn() -> String,
-        op: impl FnOnce(&mut Self) -> InferResult<'tcx, R>,
+        op: impl TypeOp<'gcx, 'tcx, Output = R>,
     ) -> Result<R, TypeError<'tcx>> {
         let (r, opt_data) = self.fully_perform_op_and_get_region_constraint_data(
             || format!("{} at {:?}", describe_op(), locations),
@@ -777,7 +779,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn fully_perform_op_and_get_region_constraint_data<R>(
         &mut self,
         describe_op: impl Fn() -> String,
-        op: impl FnOnce(&mut Self) -> InferResult<'tcx, R>,
+        op: impl TypeOp<'gcx, 'tcx, Output = R>,
     ) -> Result<(R, Option<Rc<RegionConstraintData<'tcx>>>), TypeError<'tcx>> {
         if cfg!(debug_assertions) {
             info!(
@@ -788,7 +790,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
         let mut fulfill_cx = TraitEngine::new(self.infcx.tcx);
         let dummy_body_id = ObligationCause::dummy().body_id;
-        let InferOk { value, obligations } = self.infcx.commit_if_ok(|_| op(self))?;
+        let InferOk { value, obligations } = self.infcx.commit_if_ok(|_| op.perform(self))?;
         debug_assert!(obligations.iter().all(|o| o.cause.body_id == dummy_body_id));
         fulfill_cx.register_predicate_obligations(self.infcx, obligations);
         if let Err(e) = fulfill_cx.select_all_or_error(self.infcx) {
@@ -824,11 +826,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         self.fully_perform_op(
             locations,
             || format!("sub_types({:?} <: {:?})", sub, sup),
-            |this| {
+            CustomTypeOp::new(|this| {
                 this.infcx
                     .at(&ObligationCause::dummy(), this.param_env)
                     .sup(sup, sub)
-            },
+            }),
         )
     }
 
@@ -841,11 +843,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         self.fully_perform_op(
             locations,
             || format!("eq_types({:?} = {:?})", a, b),
-            |this| {
+            CustomTypeOp::new(|this| {
                 this.infcx
                     .at(&ObligationCause::dummy(), this.param_env)
                     .eq(b, a)
-            },
+            }),
         )
     }
 
@@ -1635,12 +1637,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         self.fully_perform_op(
             location.at_self(),
             || format!("prove_predicates({:?})", predicates_vec),
-            |_this| {
+            CustomTypeOp::new(|_this| {
                 Ok(InferOk {
                     value: (),
                     obligations,
                 })
-            },
+            }),
         ).unwrap()
     }
 
@@ -1683,7 +1685,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         self.fully_perform_op(
             location.to_locations(),
             || format!("normalize(value={:?})", value),
-            |this| {
+            CustomTypeOp::new(|this| {
                 let Normalized { value, obligations } = this
                     .infcx
                     .at(&ObligationCause::dummy(), this.param_env)
@@ -1697,7 +1699,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         );
                     });
                 Ok(InferOk { value, obligations })
-            },
+            }),
         ).unwrap()
     }
 }

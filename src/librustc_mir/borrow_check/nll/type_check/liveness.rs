@@ -10,6 +10,7 @@
 
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::nll::type_check::AtLocation;
+use borrow_check::nll::type_check::type_op::CustomTypeOp;
 use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow::MaybeInitializedPlaces;
 use dataflow::{FlowAtLocation, FlowsAtLocation};
@@ -220,12 +221,12 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         let (dropped_kinds, region_constraint_data) =
             cx.fully_perform_op_and_get_region_constraint_data(
                 || format!("compute_drop_data(dropped_ty={:?})", dropped_ty),
-                |cx| {
+                CustomTypeOp::new(|cx| {
                     Ok(cx
                         .infcx
                         .at(&ObligationCause::dummy(), cx.param_env)
                         .dropck_outlives(dropped_ty))
-                },
+                }),
             ).unwrap();
 
         DropData {

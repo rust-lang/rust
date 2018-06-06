@@ -18,6 +18,7 @@
 //! contain revealed `impl Trait` values).
 
 use borrow_check::nll::renumber;
+use borrow_check::nll::type_check::type_op::CustomTypeOp;
 use borrow_check::nll::universal_regions::UniversalRegions;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferOk;
@@ -80,7 +81,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             self.fully_perform_op(
                 Locations::All,
                 || format!("input_output"),
-                |cx| {
+                CustomTypeOp::new(|cx| {
                     let mut obligations = ObligationAccumulator::default();
 
                     let dummy_body_id = ObligationCause::dummy().body_id;
@@ -135,7 +136,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         value: Some(anon_type_map),
                         obligations: obligations.into_vec(),
                     })
-                },
+                }),
             ).unwrap_or_else(|terr| {
                 span_mirbug!(
                     self,
@@ -156,13 +157,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             self.fully_perform_op(
                 Locations::All,
                 || format!("anon_type_map"),
-                |_cx| {
+                CustomTypeOp::new(|_cx| {
                     infcx.constrain_anon_types(&anon_type_map, universal_regions);
                     Ok(InferOk {
                         value: (),
                         obligations: vec![],
                     })
-                },
+                }),
             ).unwrap();
         }
     }
