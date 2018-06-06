@@ -170,6 +170,11 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
         info!("exit submodule");
         ret
     }
+
+    // `fold_mac` is disabled by default. Enable it here.
+    fn fold_mac(&mut self, mac: Mac) -> Mac {
+        fold::noop_fold_mac(mac, self)
+    }
 }
 
 struct AllocFnFactory<'a> {
