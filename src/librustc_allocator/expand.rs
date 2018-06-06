@@ -13,7 +13,7 @@ use rustc_errors;
 use syntax::{
     ast::{
         self, Arg, Attribute, Crate, Expr, FnHeader, Generics, Ident, Item, ItemKind,
-        LitKind, Mod, Mutability, StrStyle, Ty, TyKind, Unsafety, VisibilityKind,
+        LitKind, Mac, Mod, Mutability, StrStyle, Ty, TyKind, Unsafety, VisibilityKind,
     },
     attr,
     codemap::{
@@ -166,6 +166,11 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
         self.in_submod -= 1;
         info!("exit submodule");
         ret
+    }
+
+    // `fold_mac` is disabled by default. Enable it here.
+    fn fold_mac(&mut self, mac: Mac) -> Mac {
+        fold::noop_fold_mac(mac, self)
     }
 }
 
