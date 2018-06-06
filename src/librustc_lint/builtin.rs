@@ -697,8 +697,8 @@ impl EarlyLintPass for BadRepr {
                     // avoid warning about empty `repr` on `#[repr = "foo"]`
                     let sp = match format!("{}", lit).as_ref() {
                         | "C" | "packed" | "rust" | "transparent"
-                        | "u8" | "u16" | "u32" | "u64" | "u128"
-                        | "i8" | "i16" | "i32" | "i64" | "i128" => {
+                        | "u8" | "u16" | "u32" | "u64" | "u128" | "usize"
+                        | "i8" | "i16" | "i32" | "i64" | "i128" | "isize" => {
                             let lo = attr.span.lo() + BytePos(2);
                             let hi = attr.span.hi() - BytePos(1);
                             suggested = true;
