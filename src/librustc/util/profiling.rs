@@ -10,6 +10,7 @@
 
 use session::config::Options;
 
+use std::fs;
 use std::io::{self, StdoutLock, Write};
 use std::time::Instant;
 
@@ -118,6 +119,46 @@ impl CategoryData {
         p!("Codegen", codegen);
         p!("Linking", linking);
         p!("Other", other);
+    }
+
+    fn json(&self) -> String {
+        format!("[
+            {{
+                \"category\": \"Parsing\",
+                \"time_ms\": {}
+            }},
+            {{
+                \"category\": \"Expansion\",
+                \"time_ms\": {}
+            }},
+            {{
+                \"category\": \"TypeChecking\",
+                \"time_ms\": {}
+            }},
+            {{
+                \"category\": \"BorrowChecking\",
+                \"time_ms\": {}
+            }},
+            {{
+                \"category\": \"Codegen\",
+                \"time_ms\": {}
+            }},
+            {{
+                \"category\": \"Linking\",
+                \"time_ms\": {}
+            }},
+            {{
+                \"category\": \"Other\",
+                \"time_ms\": {}
+            }}
+        ]",
+        self.times.parsing / 1_000_000,
+        self.times.expansion / 1_000_000,
+        self.times.type_checking / 1_000_000,
+        self.times.borrow_checking / 1_000_000,
+        self.times.codegen / 1_000_000,
+        self.times.linking / 1_000_000,
+        self.times.other / 1_000_000)
     }
 }
 
@@ -233,6 +274,10 @@ impl SelfProfiler {
 
         let incremental = if opts.incremental.is_some() { "on" } else { "off" };
         writeln!(lock, "Incremental: {}", incremental).unwrap();
+    }
+
+    pub fn save_results(&self) {
+        fs::write("self_profiler_results.json", self.data.json()).unwrap();
     }
 
     pub fn record_activity<'a>(&'a mut self, category: ProfileCategory) -> ProfilerActivity<'a> {

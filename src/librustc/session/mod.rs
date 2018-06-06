@@ -839,6 +839,11 @@ impl Session {
         profiler.print_results(&self.opts);
     }
 
+    pub fn save_json_results(&self) {
+        let profiler = self.self_profiling.borrow();
+        profiler.save_results();
+    }
+
     pub fn print_perf_stats(&self) {
         println!(
             "Total time spent computing symbol hashes:      {}",

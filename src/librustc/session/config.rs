@@ -1369,6 +1369,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "inject the given attribute in the crate"),
     self_profile: bool = (false, parse_bool, [UNTRACKED],
           "run the self profiler"),
+    profile_json: bool = (false, parse_bool, [UNTRACKED],
+          "output a json file with profiler results"),
 }
 
 pub fn default_lib_output() -> CrateType {
