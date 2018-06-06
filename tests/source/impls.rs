@@ -157,3 +157,6 @@ impl Foo {
 impl<'a, 'b, 'c> SomeThing<Something> for (&'a mut SomethingLong, &'b mut SomethingLong, &'c mut SomethingLong) {
     fn foo() {}
 }
+
+// #2746
+impl<'seq1, 'seq2, 'body, 'scope, Channel> Adc12< Dual, MasterRunningDma<'seq1, 'body, 'scope, Channel>, SlaveRunningDma<'seq2, 'body, 'scope>, > where Channel: DmaChannel, {}
