@@ -335,7 +335,7 @@ enum BadTestSignature {
 fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
     let has_test_attr = attr::contains_name(&i.attrs, "test");
 
-    fn has_test_signature(cx: &TestCtxt, i: &ast::Item) -> HasTestSignature {
+    fn has_test_signature(_cx: &TestCtxt, i: &ast::Item) -> HasTestSignature {
         let has_should_panic_attr = attr::contains_name(&i.attrs, "should_panic");
         match i.node {
             ast::ItemKind::Fn(ref decl, _, _, _, ref generics, _) => {
@@ -394,9 +394,9 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
 fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
     let has_bench_attr = attr::contains_name(&i.attrs, "bench");
 
-    fn has_bench_signature(cx: &TestCtxt, i: &ast::Item) -> bool {
+    fn has_bench_signature(_cx: &TestCtxt, i: &ast::Item) -> bool {
         match i.node {
-            ast::ItemKind::Fn(ref decl, _, _, _, ref generics, _) => {
+            ast::ItemKind::Fn(ref decl, _, _, _, _, _) => {
                 // NB: inadequate check, but we're running
                 // well before resolve, can't get too deep.
                 decl.inputs.len() == 1
