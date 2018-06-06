@@ -67,3 +67,25 @@ impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Subtype<'tcx> {
     }
 }
 
+pub(super) struct Eq<'tcx> {
+    a: Ty<'tcx>,
+    b: Ty<'tcx>,
+}
+
+impl<'tcx> Eq<'tcx> {
+    pub(super) fn new(a: Ty<'tcx>, b: Ty<'tcx>) -> Self {
+        Self { a, b }
+    }
+}
+
+impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Eq<'tcx> {
+    type Output = ();
+
+    fn perform(self, type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
+        type_checker.infcx
+            .at(&ObligationCause::dummy(), type_checker.param_env)
+            .eq(self.a, self.b)
+    }
+}
+
+

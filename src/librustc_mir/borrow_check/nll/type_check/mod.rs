@@ -839,11 +839,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         self.fully_perform_op(
             locations,
             || format!("eq_types({:?} = {:?})", a, b),
-            CustomTypeOp::new(|this| {
-                this.infcx
-                    .at(&ObligationCause::dummy(), this.param_env)
-                    .eq(b, a)
-            }),
+            type_op::Eq::new(b, a)
         )
     }
 
