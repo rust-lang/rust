@@ -11,32 +11,95 @@ warning: `[Bar::foo]` cannot be resolved, ignoring it...
    |                                   ^^^^^^^^ cannot be resolved, ignoring
 
 warning: `[Uniooon::X]` cannot be resolved, ignoring it...
-  --> $DIR/intra-links-warning.rs:14:15
+  --> $DIR/intra-links-warning.rs:14:13
    |
-14 |        //! , [Uniooon::X] and [Qux::Z].
-   |               ^^^^^^^^^^ cannot be resolved, ignoring
+14 |      //! , [Uniooon::X] and [Qux::Z].
+   |             ^^^^^^^^^^ cannot be resolved, ignoring
 
 warning: `[Qux::Z]` cannot be resolved, ignoring it...
-  --> $DIR/intra-links-warning.rs:14:32
+  --> $DIR/intra-links-warning.rs:14:30
    |
-14 |        //! , [Uniooon::X] and [Qux::Z].
-   |                                ^^^^^^ cannot be resolved, ignoring
+14 |      //! , [Uniooon::X] and [Qux::Z].
+   |                              ^^^^^^ cannot be resolved, ignoring
 
 warning: `[Uniooon::X]` cannot be resolved, ignoring it...
-  --> $DIR/intra-links-warning.rs:16:15
+  --> $DIR/intra-links-warning.rs:16:14
    |
-16 |        //! , [Uniooon::X] and [Qux::Z].
-   |               ^^^^^^^^^^ cannot be resolved, ignoring
+16 |       //! , [Uniooon::X] and [Qux::Z].
+   |              ^^^^^^^^^^ cannot be resolved, ignoring
 
 warning: `[Qux::Z]` cannot be resolved, ignoring it...
-  --> $DIR/intra-links-warning.rs:16:32
+  --> $DIR/intra-links-warning.rs:16:31
    |
-16 |        //! , [Uniooon::X] and [Qux::Z].
-   |                                ^^^^^^ cannot be resolved, ignoring
+16 |       //! , [Uniooon::X] and [Qux::Z].
+   |                               ^^^^^^ cannot be resolved, ignoring
 
 warning: `[Qux:Y]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:18:13
    |
 18 |        /// [Qux:Y]
    |             ^^^^^ cannot be resolved, ignoring
+
+warning: `[BarA]` cannot be resolved, ignoring it...
+  --> $DIR/intra-links-warning.rs:24:10
+   |
+24 | /// bar [BarA] bar
+   |          ^^^^ cannot be resolved, ignoring
+
+warning: `[BarB]` cannot be resolved, ignoring it...
+  --> $DIR/intra-links-warning.rs:28:1
+   |
+28 | / /**
+29 | |  * Foo
+30 | |  * bar [BarB] bar
+31 | |  * baz
+32 | |  */
+   | |___^
+   |
+   = note: the link appears in this line:
+           
+            bar [BarB] bar
+                 ^^^^
+
+warning: `[BarC]` cannot be resolved, ignoring it...
+  --> $DIR/intra-links-warning.rs:35:1
+   |
+35 | / /** Foo
+36 | |
+37 | | bar [BarC] bar
+38 | | baz
+...  |
+44 | |
+45 | | */
+   | |__^
+   |
+   = note: the link appears in this line:
+           
+           bar [BarC] bar
+                ^^^^
+
+warning: `[BarD]` cannot be resolved, ignoring it...
+  --> $DIR/intra-links-warning.rs:48:1
+   |
+48 | #[doc = "Foo/nbar [BarD] bar/nbaz"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the link appears in this line:
+           
+           bar [BarD] bar
+                ^^^^
+
+warning: `[BarF]` cannot be resolved, ignoring it...
+  --> $DIR/intra-links-warning.rs:53:9
+   |
+53 |         #[doc = $f]
+   |         ^^^^^^^^^^^
+...
+57 | f!("Foo/nbar [BarF] bar/nbaz");
+   | ------------------------------- in this macro invocation
+   |
+   = note: the link appears in this line:
+           
+           bar [BarF] bar
+                ^^^^
 

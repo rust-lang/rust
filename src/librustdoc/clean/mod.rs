@@ -1194,9 +1194,6 @@ fn resolution_failure(
     let msg = format!("`[{}]` cannot be resolved, ignoring it...", path_str);
 
     let code_dox = sp.to_src(cx);
-    // The whitespace before the `///` to properly find the original span location.
-    let dox_leading_whitespace = code_dox.lines().nth(1)
-        .map(|x| x.len() - x.trim_left().len()).unwrap_or(0);
 
     let doc_comment_padding = 3;
     let mut diag = if let Some(link_range) = link_range {
@@ -1205,26 +1202,44 @@ fn resolution_failure(
         //                       |    link_range
         //                       last_new_line_offset
 
-        let line_offset = dox[..link_range.start].lines().count();
-        let code_dox_len = if line_offset <= 1 {
+        let mut diag;
+        if dox.lines().count() == code_dox.lines().count() {
+            let line_offset = dox[..link_range.start].lines().count();
             // The span starts in the `///`, so we don't have to account for the leading whitespace
-            doc_comment_padding
+            let code_dox_len = if line_offset <= 1 {
+                doc_comment_padding
+            } else {
+                // The first `///`
+                doc_comment_padding +
+                    // Each subsequent leading whitespace and `///`
+                    code_dox.lines().skip(1).take(line_offset - 1).fold(0, |sum, line| {
+                        sum + doc_comment_padding + line.len() - line.trim().len()
+                    })
+            };
+
+            // Extract the specific span
+            let lo = sp.lo() + syntax_pos::BytePos((link_range.start + code_dox_len) as u32);
+            let hi = lo + syntax_pos::BytePos(link_range.len() as u32);
+            let sp = sp.with_lo(lo).with_hi(hi);
+
+            diag = cx.sess().struct_span_warn(sp, &msg);
+            diag.span_label(sp, "cannot be resolved, ignoring");
         } else {
-            // The first `///`
-            doc_comment_padding +
-                // Each subsequent leading whitespace and `///`
-                (doc_comment_padding + dox_leading_whitespace)
-                // The line position inside the doc string
-                * (line_offset - 1)
-        };
+            diag = cx.sess().struct_span_warn(sp, &msg);
 
-        // Extract the specific span
-        let lo = sp.lo() + syntax_pos::BytePos((link_range.start + code_dox_len) as u32);
-        let hi = lo + syntax_pos::BytePos(link_range.len() as u32);
-        let sp = sp.with_lo(lo).with_hi(hi);
+            let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
+            let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
-        let mut diag = cx.sess().struct_span_warn(sp, &msg);
-        diag.span_label(sp, "cannot be resolved, ignoring");
+            // Print the line containing the `link_range` and manually mark it with '^'s
+            diag.note(&format!(
+                "the link appears in this line:\n\n{line}\n\
+                 {indicator: <before$}{indicator:^<found$}",
+                line=line,
+                indicator="",
+                before=link_range.start - last_new_line_offset,
+                found=link_range.len(),
+            ));
+        }
         diag
     } else {
         cx.sess().struct_span_warn(sp, &msg)
