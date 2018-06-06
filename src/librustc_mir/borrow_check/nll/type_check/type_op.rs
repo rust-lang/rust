@@ -13,11 +13,12 @@ use rustc::infer::{InferOk, InferResult};
 use rustc::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc::ty::{ParamEnv, Predicate, Ty};
 
-pub(super) trait TypeOp<'gcx, 'tcx> {
+pub(super) trait TypeOp<'gcx, 'tcx>: Sized {
     type Output;
 
-    /// Micro-optimization point: true if this is trivially true.
-    fn trivial_noop(&self) -> Option<Self::Output>;
+    /// Micro-optimization: returns `Ok(x)` if we can trivially
+    /// produce the output, else returns `Err(self)` back.
+    fn trivial_noop(self) -> Result<Self::Output, Self>;
 
     /// Produce a description of the operation for the debug logs.
     fn perform(
@@ -45,8 +46,8 @@ where
 {
     type Output = R;
 
-    fn trivial_noop(&self) -> Option<Self::Output> {
-        None
+    fn trivial_noop(self) -> Result<Self::Output, Self> {
+        Err(self)
     }
 
     fn perform(self, type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>) -> InferResult<'tcx, R> {
@@ -68,11 +69,11 @@ impl<'tcx> Subtype<'tcx> {
 impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Subtype<'tcx> {
     type Output = ();
 
-    fn trivial_noop(&self) -> Option<Self::Output> {
+    fn trivial_noop(self) -> Result<Self::Output, Self> {
         if self.sub == self.sup {
-            Some(())
+            Ok(())
         } else {
-            None
+            Err(self)
         }
     }
 
@@ -101,11 +102,11 @@ impl<'tcx> Eq<'tcx> {
 impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Eq<'tcx> {
     type Output = ();
 
-    fn trivial_noop(&self) -> Option<Self::Output> {
+    fn trivial_noop(self) -> Result<Self::Output, Self> {
         if self.a == self.b {
-            Some(())
+            Ok(())
         } else {
-            None
+            Err(self)
         }
     }
 
@@ -141,11 +142,11 @@ impl<'tcx> ProvePredicates<'tcx> {
 impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for ProvePredicates<'tcx> {
     type Output = ();
 
-    fn trivial_noop(&self) -> Option<Self::Output> {
+    fn trivial_noop(self) -> Result<Self::Output, Self> {
         if self.obligations.is_empty() {
-            Some(())
+            Ok(())
         } else {
-            None
+            Err(self)
         }
     }
 

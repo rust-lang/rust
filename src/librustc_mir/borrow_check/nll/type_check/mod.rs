@@ -736,20 +736,21 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         describe_op: impl Fn() -> String,
         op: impl TypeOp<'gcx, 'tcx, Output = R>,
     ) -> Result<R, TypeError<'tcx>> {
-        if let Some(r) = op.trivial_noop() {
-            return Ok(r);
+        match op.trivial_noop() {
+            Ok(r) => Ok(r),
+            Err(op) => {
+                let (r, opt_data) = self.fully_perform_op_and_get_region_constraint_data(
+                    || format!("{} at {:?}", describe_op(), locations),
+                    op,
+                )?;
+
+                if let Some(data) = opt_data {
+                    self.push_region_constraints(locations, data);
+                }
+
+                Ok(r)
+            }
         }
-
-        let (r, opt_data) = self.fully_perform_op_and_get_region_constraint_data(
-            || format!("{} at {:?}", describe_op(), locations),
-            op,
-        )?;
-
-        if let Some(data) = opt_data {
-            self.push_region_constraints(locations, data);
-        }
-
-        Ok(r)
     }
 
     fn push_region_constraints(
