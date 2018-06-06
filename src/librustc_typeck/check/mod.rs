@@ -3571,7 +3571,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.diverges.set(Diverges::Maybe);
         self.has_errors.set(false);
 
-        let ty = self.check_expr_kind(expr, expected, needs);
+        let ty = self.check_expr_kind(expr, expected, needs, old_diverges);
 
         // Warn for non-block expressions with diverging children.
         match expr.node {
@@ -3605,7 +3605,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_expr_kind(&self,
                        expr: &'gcx hir::Expr,
                        expected: Expectation<'tcx>,
-                       needs: Needs) -> Ty<'tcx> {
+                       needs: Needs,
+                       prev_diverges: Diverges)
+                       -> Ty<'tcx> {
         let tcx = self.tcx;
         let id = expr.id;
         match expr.node {
@@ -3803,7 +3805,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           coerce.coerce(self, &cause, e, e_ty);
                       } else {
                           assert!(e_ty.is_nil());
-                          coerce.coerce_forced_unit(self, &cause, &mut |_| (), true);
+                          // If we're breaking without a value, then the break
+                          // implicitly carries a `()` value. Unless, that is,
+                          // the function is already diverging. In this case, we
+                          // don't need to supply any value (in which case, the
+                          // value will be considered to have type `!`).
+                          if !prev_diverges.always() {
+                              coerce.coerce_forced_unit(self, &cause, &mut |_| (), true);
+                          }
                       }
                   } else {
                       // If `ctxt.coerce` is `None`, we can just ignore
