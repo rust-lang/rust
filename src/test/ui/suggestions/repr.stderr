@@ -1,0 +1,24 @@
+warning: `repr` attribute must have a hint
+  --> $DIR/repr.rs:13:1
+   |
+LL | #[repr]
+   | ^^^^^^^ needs a hint
+   |
+   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]` and `#[repr(rust)]`
+   = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
+
+warning: `repr` attribute isn't configurable with a literal
+  --> $DIR/repr.rs:17:1
+   |
+LL | #[repr = "B"]
+   | ^^^^^^^^^^^^^ needs a hint
+   |
+   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]` and `#[repr(rust)]`
+   = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
+
+warning: `repr` attribute isn't configurable with a literal
+  --> $DIR/repr.rs:21:3
+   |
+LL | #[repr = "C"]
+   |   ^^^^^^^^^^ help: give `repr` a hint: `repr(C)`
+

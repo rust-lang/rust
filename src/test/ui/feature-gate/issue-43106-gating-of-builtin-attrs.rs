@@ -309,20 +309,25 @@ mod bench {
 
 #[repr = "3900"]
 //~^ WARN unused attribute
+//~| WARN `repr` attribute isn't configurable with a literal
 mod repr {
     mod inner { #![repr="3900"] }
     //~^ WARN unused attribute
+    //~| WARN `repr` attribute isn't configurable with a literal
 
     #[repr = "3900"] fn f() { }
     //~^ WARN unused attribute
+    //~| WARN `repr` attribute isn't configurable with a literal
 
     struct S;
 
     #[repr = "3900"] type T = S;
     //~^ WARN unused attribute
+    //~| WARN `repr` attribute isn't configurable with a literal
 
     #[repr = "3900"] impl S { }
     //~^ WARN unused attribute
+    //~| WARN `repr` attribute isn't configurable with a literal
 }
 
 #[path = "3800"]
