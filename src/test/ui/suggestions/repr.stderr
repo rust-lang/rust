@@ -18,8 +18,8 @@ LL | #[repr = "B"]
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html>
 
 warning: `repr` attribute isn't configurable with a literal
-  --> $DIR/repr.rs:21:3
+  --> $DIR/repr.rs:21:1
    |
 LL | #[repr = "C"]
-   |   ^^^^^^^^^^ help: give `repr` a hint: `repr(C)`
+   | ^^^^^^^^^^^^^ help: give `repr` a hint: `#[repr(C)]`
 

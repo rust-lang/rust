@@ -687,6 +687,18 @@ impl EarlyLintPass for BadRepr {
     fn check_attribute(&mut self, cx: &EarlyContext, attr: &ast::Attribute) {
         if attr.name() == "repr" {
             let list = attr.meta_item_list();
+            let outer = match attr.style {
+                ast::AttrStyle::Outer => true,
+                ast::AttrStyle::Inner => false,
+            };
+
+            let repr_str = move |lit: &str| {
+                if outer {
+                    format!("#[repr({})]", lit)
+                } else {
+                    format!("#![repr({})]", lit)
+                }
+            };
 
             // Emit warnings with `repr` either has a literal assignment (`#[repr = "C"]`) or
             // no hints (``#[repr]`)
@@ -695,33 +707,28 @@ impl EarlyLintPass for BadRepr {
                 let mut suggested = false;
                 let mut warn = if let Some(ref lit) = attr.value_str() {
                     // avoid warning about empty `repr` on `#[repr = "foo"]`
-                    let sp = match format!("{}", lit).as_ref() {
+                    let mut warn = cx.struct_span_lint(
+                        BAD_REPR,
+                        attr.span,
+                        "`repr` attribute isn't configurable with a literal",
+                    );
+                    match format!("{}", lit).as_ref() {
                         | "C" | "packed" | "rust" | "transparent"
                         | "u8" | "u16" | "u32" | "u64" | "u128" | "usize"
                         | "i8" | "i16" | "i32" | "i64" | "i128" | "isize" => {
-                            let lo = attr.span.lo() + BytePos(2);
-                            let hi = attr.span.hi() - BytePos(1);
+                            // if the literal could have been a valid `repr` arg,
+                            // suggest the correct syntax
+                            warn.span_suggestion(
+                                attr.span,
+                                "give `repr` a hint",
+                                repr_str(&lit.as_str()),
+                            );
                             suggested = true;
-                            attr.span.with_lo(lo).with_hi(hi)
                         }
-                        _ => attr.span,  // the literal wasn't a valid `repr` arg
+                        _ => {  // the literal wasn't a valid `repr` arg
+                            warn.span_label(attr.span, "needs a hint");
+                        }
                     };
-                    let mut warn = cx.struct_span_lint(
-                        BAD_REPR,
-                        sp,
-                        "`repr` attribute isn't configurable with a literal",
-                    );
-                    if suggested {
-                        // if the literal could have been a valid `repr` arg,
-                        // suggest the correct syntax
-                        warn.span_suggestion(
-                            sp,
-                            "give `repr` a hint",
-                            format!("repr({})", lit),
-                        );
-                    } else {
-                        warn.span_label(attr.span, "needs a hint");
-                    }
                     warn
                 } else {
                     let mut warn = cx.struct_span_lint(
@@ -733,8 +740,13 @@ impl EarlyLintPass for BadRepr {
                     warn
                 };
                 if !suggested {
-                    warn.help("valid hints include `#[repr(C)]`, `#[repr(packed)]`, \
-                               `#[repr(rust)]` and `#[repr(transparent)]`");
+                    warn.help(&format!(
+                        "valid hints include `{}`, `{}`, `{}` and `{}`",
+                        repr_str("C"),
+                        repr_str("packed"),
+                        repr_str("rust"),
+                        repr_str("transparent"),
+                    ));
                     warn.note("for more information, visit \
                                <https://doc.rust-lang.org/reference/type-layout.html>");
                 }
