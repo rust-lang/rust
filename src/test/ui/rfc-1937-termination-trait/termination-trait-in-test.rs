@@ -11,7 +11,6 @@
 // compile-flags: --test
 // run-pass
 
-#![feature(termination_trait_test)]
 #![feature(test)]
 
 extern crate test;
