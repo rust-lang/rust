@@ -696,7 +696,7 @@ impl EarlyLintPass for BadRepr {
                 let mut warn = if let Some(ref lit) = attr.value_str() {
                     // avoid warning about empty `repr` on `#[repr = "foo"]`
                     let sp = match format!("{}", lit).as_ref() {
-                        "C" | "packed" | "rust" | "u*" | "i*" => {
+                        "C" | "packed" | "rust" | "u*" | "i*" | "transparent" => {
                             let lo = attr.span.lo() + BytePos(2);
                             let hi = attr.span.hi() - BytePos(1);
                             suggested = true;
@@ -731,8 +731,8 @@ impl EarlyLintPass for BadRepr {
                     warn
                 };
                 if !suggested {
-                    warn.help("valid hints include `#[repr(C)]`, `#[repr(packed)]` and \
-                               `#[repr(rust)]`");
+                    warn.help("valid hints include `#[repr(C)]`, `#[repr(packed)]`, \
+                               `#[repr(rust)]` and `#[repr(transparent)]`");
                     warn.note("for more information, visit \
                                <https://doc.rust-lang.org/nomicon/other-reprs.html>");
                 }

@@ -193,7 +193,7 @@ LL |     mod inner { #![repr="3900"] }
    |                 ^^^^^^^^^^^^^^^ needs a hint
    |
    = note: #[warn(bad_repr)] on by default
-   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]` and `#[repr(rust)]`
+   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
    = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
 
 warning: `repr` attribute isn't configurable with a literal
@@ -202,7 +202,7 @@ warning: `repr` attribute isn't configurable with a literal
 LL |     #[repr = "3900"] fn f() { }
    |     ^^^^^^^^^^^^^^^^ needs a hint
    |
-   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]` and `#[repr(rust)]`
+   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
    = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
 
 warning: `repr` attribute isn't configurable with a literal
@@ -211,7 +211,7 @@ warning: `repr` attribute isn't configurable with a literal
 LL |     #[repr = "3900"] type T = S;
    |     ^^^^^^^^^^^^^^^^ needs a hint
    |
-   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]` and `#[repr(rust)]`
+   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
    = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
 
 warning: `repr` attribute isn't configurable with a literal
@@ -220,7 +220,7 @@ warning: `repr` attribute isn't configurable with a literal
 LL |     #[repr = "3900"] impl S { }
    |     ^^^^^^^^^^^^^^^^ needs a hint
    |
-   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]` and `#[repr(rust)]`
+   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
    = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
 
 warning: `repr` attribute isn't configurable with a literal
@@ -229,7 +229,7 @@ warning: `repr` attribute isn't configurable with a literal
 LL | #[repr = "3900"]
    | ^^^^^^^^^^^^^^^^ needs a hint
    |
-   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]` and `#[repr(rust)]`
+   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
    = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
 
 warning: `repr` attribute isn't configurable with a literal
@@ -238,7 +238,7 @@ warning: `repr` attribute isn't configurable with a literal
 LL | #![repr                       = "3900"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ needs a hint
    |
-   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]` and `#[repr(rust)]`
+   = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
    = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
 
 warning: unused attribute
