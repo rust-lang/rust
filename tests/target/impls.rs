@@ -134,13 +134,11 @@ mod m {
 
 impl<BorrowType, K, V, NodeType, HandleType>
     Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType>
-{
-}
+{}
 
 impl<BorrowType, K, V, NodeType, HandleType> PartialEq
     for Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType>
-{
-}
+{}
 
 mod x {
     impl<A, B, C, D> Foo
@@ -149,8 +147,7 @@ mod x {
         B: 'static,
         C: 'static,
         D: 'static,
-    {
-    }
+    {}
 }
 
 impl<ConcreteThreadSafeLayoutNode: ThreadSafeLayoutNodeFoo>
@@ -222,3 +219,14 @@ impl<'a, 'b, 'c> SomeThing<Something>
 {
     fn foo() {}
 }
+
+// #2746
+impl<'seq1, 'seq2, 'body, 'scope, Channel>
+    Adc12<
+        Dual,
+        MasterRunningDma<'seq1, 'body, 'scope, Channel>,
+        SlaveRunningDma<'seq2, 'body, 'scope>,
+    >
+where
+    Channel: DmaChannel,
+{}

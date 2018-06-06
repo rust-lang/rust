@@ -656,6 +656,7 @@ pub fn format_impl(
         if !contains_comment(&snippet[open_pos..])
             && items.is_empty()
             && generics.where_clause.predicates.len() == 1
+            && !result.contains('\n')
         {
             option.suppress_comma();
             option.snuggle();
@@ -709,11 +710,6 @@ pub fn format_impl(
             return Some(result);
         }
 
-        if !where_clause_str.is_empty() && !where_clause_str.contains('\n') {
-            let width = offset.block_indent + context.config.tab_spaces() - 1;
-            let where_indent = Indent::new(0, width);
-            result.push_str(&where_indent.to_string_with_newline(context.config));
-        }
         result.push_str(&where_clause_str);
 
         let need_newline = last_line_contains_single_line_comment(&result) || result.contains('\n');
@@ -754,7 +750,7 @@ pub fn format_impl(
             result.push_str(&outer_indent_str);
         }
 
-        if result.ends_with('{') {
+        if result.ends_with('{') && !context.config.empty_item_single_line() {
             result.push_str(&sep);
         }
         result.push('}');
@@ -2147,7 +2143,7 @@ impl WhereClauseOption {
     pub fn snuggled(current: &str) -> WhereClauseOption {
         WhereClauseOption {
             suppress_comma: false,
-            snuggle: trimmed_last_line_width(current) == 1,
+            snuggle: last_line_width(current) == 1,
             compress_where: false,
         }
     }
