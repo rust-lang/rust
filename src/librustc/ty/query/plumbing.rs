@@ -369,6 +369,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             TryGetJob::NotYetStarted(job) => job,
             TryGetJob::JobCompleted(result) => {
                 return result.map(|(v, index)| {
+                    self.sess.profiler(|p| p.record_query_hit(Q::CATEGORY));
                     self.dep_graph.read_index(index);
                     v
                 })
@@ -592,7 +593,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             // DepNodeIndex. We must invoke the query itself. The performance cost
             // this introduces should be negligible as we'll immediately hit the
             // in-memory cache, or another query down the line will.
+
+            self.sess.profiler(|p| {
+                p.start_activity(Q::CATEGORY);
+                p.record_query(Q::CATEGORY);
+            });
+
             let _ = self.get_query::<Q>(DUMMY_SP, key);
+
+            self.sess.profiler(|p| p.end_activity(Q::CATEGORY));
         }
     }
 
