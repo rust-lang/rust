@@ -18,6 +18,9 @@ lazy_static = "1.0.0"
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
 polonius-engine = "0.5.0"
 proc_macro = { path = "../libproc_macro" }
+rustc-rayon = { git = "https://github.com/Zoxc/rayon.git", branch = "fiber" }
+rustc-rayon-core = { git = "https://github.com/Zoxc/rayon.git", branch = "fiber", features=["tlv"] }
+scoped-tls = { version = "0.1.1", features = ["nightly"] }
 rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_target = { path = "../librustc_target" }
 rustc_data_structures = { path = "../librustc_data_structures" }
@@ -59,4 +62,6 @@ chalk-engine = { version = "0.6.0", default-features=false }
 flate2 = "1.0"
 tempdir = "0.3"
 
-
+[target.'cfg(windows)'.dependencies]
+kernel32-sys = "0.2.2"
+winapi = "0.2.8"

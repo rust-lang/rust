@@ -57,8 +57,7 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 // Main entry point
 
 pub fn collect_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut visitor = CollectItemTypesVisitor { tcx: tcx };
-    tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+    tcx.hir.krate().par_deep_visit_items(CollectItemTypesVisitor { tcx: tcx });
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -98,6 +97,7 @@ pub struct ItemCtxt<'a,'tcx:'a> {
 
 ///////////////////////////////////////////////////////////////////////////
 
+#[derive(Clone)]
 struct CollectItemTypesVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>
 }

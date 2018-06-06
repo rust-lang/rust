@@ -51,10 +51,7 @@ pub fn provide(providers: &mut Providers) {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    for &body_id in &tcx.hir.krate().body_ids {
-        let def_id = tcx.hir.body_owner_def_id(body_id);
-        tcx.const_is_rvalue_promotable_to_static(def_id);
-    }
+    tcx.par_body_owners(|def_id| { tcx.const_is_rvalue_promotable_to_static(def_id); });
     tcx.sess.abort_if_errors();
 }
 

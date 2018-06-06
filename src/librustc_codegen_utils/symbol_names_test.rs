@@ -33,10 +33,12 @@ pub fn report_symbol_names<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     tcx.dep_graph.with_ignore(|| {
         let mut visitor = SymbolNamesTest { tcx: tcx };
+        // FIXME: Try parallel version
         tcx.hir.krate().visit_all_item_likes(&mut visitor);
     })
 }
 
+#[derive(Clone)]
 struct SymbolNamesTest<'a, 'tcx:'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }

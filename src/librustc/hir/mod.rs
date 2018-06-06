@@ -758,6 +758,13 @@ impl Crate {
         });
     }
 
+    pub fn par_deep_visit_items<'hir, V>(&'hir self, visitor: V)
+        where V: intravisit::Visitor<'hir> + Clone + Sync + Send
+    {
+        let visitor = itemlikevisit::ClonableVisitor(visitor);
+        self.par_visit_all_item_likes(&itemlikevisit::ParDeepVisitor(visitor));
+    }
+
     pub fn body(&self, id: BodyId) -> &Body {
         &self.bodies[&id]
     }

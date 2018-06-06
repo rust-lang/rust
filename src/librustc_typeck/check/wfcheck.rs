@@ -727,6 +727,7 @@ fn check_false_global_bounds<'a, 'gcx, 'tcx>(
     fcx.select_all_obligations_or_error();
 }
 
+#[derive(Clone)]
 pub struct CheckTypeWellFormedVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }

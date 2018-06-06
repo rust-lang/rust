@@ -63,10 +63,10 @@ use syntax::symbol::Symbol;
 #[macro_use]
 mod plumbing;
 use self::plumbing::*;
-pub use self::plumbing::force_from_dep_node;
+pub use self::plumbing::{force_from_dep_node, CycleError};
 
 mod job;
-pub use self::job::{QueryJob, QueryInfo};
+pub use self::job::{QueryJob, QueryInfo, deadlock};
 
 mod keys;
 pub use self::keys::Key;

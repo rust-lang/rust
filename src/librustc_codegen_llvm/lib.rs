@@ -30,6 +30,8 @@
 #![feature(slice_sort_by_cached_key)]
 #![feature(optin_builtin_traits)]
 
+#![recursion_limit="256"]
+
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
 

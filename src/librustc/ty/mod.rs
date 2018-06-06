@@ -44,7 +44,7 @@ use std::cmp::{self, Ordering};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{ParallelIterator, par_iter, Send, Sync, Lrc};
 use std::slice;
 use std::vec::IntoIter;
 use std::mem;
@@ -2434,6 +2434,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 .body_ids
                 .iter()
                 .map(move |&body_id| self.hir.body_owner_def_id(body_id))
+    }
+
+    pub fn par_body_owners<F: Fn(DefId) + Sync + Send>(self, f: F) {
+        par_iter(&self.hir.krate().body_ids).for_each(|&body_id| {
+            f(self.hir.body_owner_def_id(body_id))
+        });
     }
 
     pub fn expr_span(self, id: NodeId) -> Span {

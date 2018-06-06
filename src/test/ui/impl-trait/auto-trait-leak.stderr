@@ -52,7 +52,6 @@ note: ...which requires processing `cycle1::{{impl-Trait}}`...
 LL | fn cycle1() -> impl Clone {
    |                ^^^^^^^^^^
    = note: ...which again requires processing `cycle1`, completing the cycle
-note: cycle used when type-checking all item bodies
 
 error: aborting due to 3 previous errors
 

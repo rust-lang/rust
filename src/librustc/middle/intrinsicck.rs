@@ -19,12 +19,10 @@ use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut visitor = ItemVisitor {
-        tcx,
-    };
-    tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+    tcx.hir.krate().par_deep_visit_items(ItemVisitor { tcx });
 }
 
+#[derive(Clone)]
 struct ItemVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>
 }

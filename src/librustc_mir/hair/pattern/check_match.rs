@@ -37,6 +37,7 @@ use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP};
 
+#[derive(Clone)]
 struct OuterVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
 
 impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
@@ -52,7 +53,7 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.hir.krate().visit_all_item_likes(&mut OuterVisitor { tcx: tcx }.as_deep_visitor());
+    tcx.hir.krate().par_deep_visit_items(OuterVisitor { tcx: tcx });
     tcx.sess.abort_if_errors();
 }
 

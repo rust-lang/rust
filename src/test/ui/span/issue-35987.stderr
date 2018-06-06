@@ -8,6 +8,15 @@ help: possible better candidate is found in another module, you can import it in
 LL | use std::ops::Add;
    |
 
-error: aborting due to previous error
+error[E0223]: ambiguous associated type
+  --> $DIR/issue-35987.rs:19:32
+   |
+LL |     fn add(self, rhs: Self) -> Self::Output {
+   |                                ^^^^^^^^^^^^ ambiguous associated type
+   |
+   = note: specify the type using the syntax `<Foo<T> as Trait>::Output`
 
-For more information about this error, try `rustc --explain E0404`.
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0223, E0404.
+For more information about an error, try `rustc --explain E0223`.

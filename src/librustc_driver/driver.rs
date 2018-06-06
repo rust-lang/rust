@@ -49,7 +49,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
-use rustc_data_structures::sync::{self, Lrc};
+use rustc_data_structures::sync::{self, Lrc, Lock};
 use std::sync::mpsc;
 use syntax::{self, ast, attr, diagnostics, visit};
 use syntax::ext::base::ExtCtxt;
@@ -69,7 +69,9 @@ pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::
     opts: config::Options,
     f: F
 ) -> R {
-    f(opts)
+    ty::tls::GCX_PTR.set(&Lock::new(0), || {
+        f(opts)
+    })
 }
 
 #[cfg(parallel_queries)]
@@ -79,10 +81,13 @@ pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::
 ) -> R {
     use syntax;
     use syntax_pos;
-    use rayon::{ThreadPoolBuilder, ThreadPool};
+    use rayon::{Configuration, ThreadPool};
 
-    let config = ThreadPoolBuilder::new().num_threads(Session::query_threads_from_opts(&opts))
-                                         .stack_size(16 * 1024 * 1024);
+    let gcx_ptr = &Lock::new(0);
+
+    let config = Configuration::new().num_threads(Session::query_threads_from_opts(&opts))
+                                     .deadlock_handler(ty::maps::deadlock)
+                                     .stack_size(16 * 1024 * 1024);
 
     let with_pool = move |pool: &ThreadPool| {
         pool.install(move || f(opts))
@@ -98,7 +103,9 @@ pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::
                 syntax::GLOBALS.set(syntax_globals, || {
                     syntax_pos::GLOBALS.set(syntax_pos_globals, || {
                         ty::tls::with_thread_locals(|| {
-                            worker()
+                            ty::tls::GCX_PTR.set(gcx_ptr, || {
+                                worker()
+                            })
                         })
                     })
                 })
@@ -1264,21 +1271,20 @@ where
 
             time(sess, "borrow checking", || borrowck::check_crate(tcx));
 
-            time(sess, "MIR borrow checking", || {
-                for def_id in tcx.body_owners() {
-                    tcx.mir_borrowck(def_id);
-                }
-            });
+            time(sess,
+                 "MIR borrow checking",
+                 || tcx.par_body_owners(|def_id| { tcx.mir_borrowck(def_id); }));
 
             time(sess, "dumping chalk-like clauses", || {
                 rustc_traits::lowering::dump_program_clauses(tcx);
             });
 
-            time(sess, "MIR effect checking", || {
-                for def_id in tcx.body_owners() {
-                    mir::transform::check_unsafety::check_unsafety(tcx, def_id)
-                }
-            });
+            time(sess,
+                 "MIR effect checking",
+                 || tcx.par_body_owners(|def_id| {
+                     mir::transform::check_unsafety::check_unsafety(tcx.global_tcx(), def_id)
+                 }));
+
             // Avoid overwhelming user with errors if type checking failed.
             // I'm not sure how helpful this is, to be honest, but it avoids
             // a
