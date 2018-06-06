@@ -826,11 +826,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         self.fully_perform_op(
             locations,
             || format!("sub_types({:?} <: {:?})", sub, sup),
-            CustomTypeOp::new(|this| {
-                this.infcx
-                    .at(&ObligationCause::dummy(), this.param_env)
-                    .sup(sup, sub)
-            }),
+            type_op::Subtype::new(sub, sup),
         )
     }
 
