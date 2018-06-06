@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![deny(improper_ctypes)]
-#![feature(libc, repr_transparent)]
+#![feature(libc)]
 
 extern crate libc;
 

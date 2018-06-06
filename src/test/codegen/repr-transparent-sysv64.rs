@@ -13,7 +13,6 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type="lib"]
-#![feature(repr_transparent)]
 
 #[repr(C)]
 pub struct Rgb8 { r: u8, g: u8, b: u8 }

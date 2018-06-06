@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(repr_transparent)]
-
 // See also repr-transparent.rs
 
 #[repr(transparent)] //~ ERROR unsupported representation for zero-variant enum
