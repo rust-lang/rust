@@ -656,6 +656,7 @@ pub fn format_impl(
         if !contains_comment(&snippet[open_pos..])
             && items.is_empty()
             && generics.where_clause.predicates.len() == 1
+            && !result.contains('\n')
         {
             option.suppress_comma();
             option.snuggle();
