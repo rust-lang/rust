@@ -1,39 +1,42 @@
-warning: [Foo::baz] cannot be resolved, ignoring it...
-  --> $DIR/intra-links-warning.rs:13:1
+warning: `[Foo::baz]` cannot be resolved, ignoring it...
+  --> $DIR/intra-links-warning.rs:13:23
    |
-13 | / //! Test with [Foo::baz], [Bar::foo], ...
-14 | | //!
-15 | | //! and [Uniooon::X].
-   | |_____________________^
-   |
-   = note: the link appears in this line:
-           
-            Test with [Foo::baz], [Bar::foo], ...
-                       ^^^^^^^^
+13 |        //! Test with [Foo::baz], [Bar::foo], ...
+   |                       ^^^^^^^^ cannot be resolved, ignoring
 
-warning: [Bar::foo] cannot be resolved, ignoring it...
-  --> $DIR/intra-links-warning.rs:13:1
+warning: `[Bar::foo]` cannot be resolved, ignoring it...
+  --> $DIR/intra-links-warning.rs:13:35
    |
-13 | / //! Test with [Foo::baz], [Bar::foo], ...
-14 | | //!
-15 | | //! and [Uniooon::X].
-   | |_____________________^
-   |
-   = note: the link appears in this line:
-           
-            Test with [Foo::baz], [Bar::foo], ...
-                                   ^^^^^^^^
+13 |        //! Test with [Foo::baz], [Bar::foo], ...
+   |                                   ^^^^^^^^ cannot be resolved, ignoring
 
-warning: [Uniooon::X] cannot be resolved, ignoring it...
-  --> $DIR/intra-links-warning.rs:13:1
+warning: `[Uniooon::X]` cannot be resolved, ignoring it...
+  --> $DIR/intra-links-warning.rs:14:15
    |
-13 | / //! Test with [Foo::baz], [Bar::foo], ...
-14 | | //!
-15 | | //! and [Uniooon::X].
-   | |_____________________^
+14 |        //! , [Uniooon::X] and [Qux::Z].
+   |               ^^^^^^^^^^ cannot be resolved, ignoring
+
+warning: `[Qux::Z]` cannot be resolved, ignoring it...
+  --> $DIR/intra-links-warning.rs:14:32
    |
-   = note: the link appears in this line:
-           
-            and [Uniooon::X].
-                 ^^^^^^^^^^
+14 |        //! , [Uniooon::X] and [Qux::Z].
+   |                                ^^^^^^ cannot be resolved, ignoring
+
+warning: `[Uniooon::X]` cannot be resolved, ignoring it...
+  --> $DIR/intra-links-warning.rs:16:15
+   |
+16 |        //! , [Uniooon::X] and [Qux::Z].
+   |               ^^^^^^^^^^ cannot be resolved, ignoring
+
+warning: `[Qux::Z]` cannot be resolved, ignoring it...
+  --> $DIR/intra-links-warning.rs:16:32
+   |
+16 |        //! , [Uniooon::X] and [Qux::Z].
+   |                                ^^^^^^ cannot be resolved, ignoring
+
+warning: `[Qux:Y]` cannot be resolved, ignoring it...
+  --> $DIR/intra-links-warning.rs:18:13
+   |
+18 |        /// [Qux:Y]
+   |             ^^^^^ cannot be resolved, ignoring
 
