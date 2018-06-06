@@ -23,7 +23,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::InferOk;
 use rustc::mir::visit::TyContext;
 use rustc::mir::*;
-use rustc::traits::PredicateObligations;
+use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::subst::Subst;
 use rustc::ty::Ty;
 
@@ -84,9 +84,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 |cx| {
                     let mut obligations = ObligationAccumulator::default();
 
+                    let dummy_body_id = ObligationCause::dummy().body_id;
                     let (output_ty, anon_type_map) = obligations.add(infcx.instantiate_anon_types(
                         mir_def_id,
-                        cx.body_id,
+                        dummy_body_id,
                         cx.param_env,
                         &output_ty,
                     ));
@@ -105,7 +106,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     );
                     obligations.add(
                         infcx
-                            .at(&cx.misc(cx.last_span), cx.param_env)
+                            .at(&ObligationCause::dummy(), cx.param_env)
                             .eq(output_ty, mir_output_ty)?,
                     );
 
@@ -124,7 +125,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         debug!("equate_inputs_and_outputs: anon_defn_ty={:?}", anon_defn_ty);
                         obligations.add(
                             infcx
-                                .at(&cx.misc(cx.last_span), cx.param_env)
+                                .at(&ObligationCause::dummy(), cx.param_env)
                                 .eq(anon_decl.concrete_ty, anon_defn_ty)?,
                         );
                     }

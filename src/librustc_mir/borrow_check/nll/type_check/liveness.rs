@@ -16,11 +16,11 @@ use dataflow::{FlowAtLocation, FlowsAtLocation};
 use rustc::infer::region_constraints::RegionConstraintData;
 use rustc::mir::Local;
 use rustc::mir::{BasicBlock, Location, Mir};
+use rustc::traits::ObligationCause;
 use rustc::ty::subst::Kind;
 use rustc::ty::{Ty, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use std::rc::Rc;
-use syntax::codemap::DUMMY_SP;
 use util::liveness::LivenessResults;
 
 use super::TypeChecker;
@@ -223,11 +223,9 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
             cx.fully_perform_op_and_get_region_constraint_data(
                 || format!("compute_drop_data(dropped_ty={:?})", dropped_ty),
                 |cx| {
-                    // crappy span, but I don't think it really matters
-                    let span = DUMMY_SP;
                     Ok(cx
                         .infcx
-                        .at(&cx.misc(span), cx.param_env)
+                        .at(&ObligationCause::dummy(), cx.param_env)
                         .dropck_outlives(dropped_ty))
                 },
             ).unwrap();

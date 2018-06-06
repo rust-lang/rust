@@ -27,13 +27,12 @@ use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::*;
 use rustc::traits::query::NoSolution;
-use rustc::traits::{self, Normalized, TraitEngine};
+use rustc::traits::{self, ObligationCause, Normalized, TraitEngine};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
 use std::fmt;
 use std::rc::Rc;
-use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use transform::{MirPass, MirSource};
 use util::liveness::LivenessResults;
@@ -48,7 +47,7 @@ macro_rules! span_mirbug {
             $context.last_span,
             &format!(
                 "broken MIR in {:?} ({:?}): {}",
-                $context.body_id,
+                $context.mir_def_id,
                 $elem,
                 format_args!($($message)*),
             ),
@@ -110,11 +109,10 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) -> MirTypeckRegionConstraints<'tcx> {
-    let body_id = infcx.tcx.hir.as_local_node_id(mir_def_id).unwrap();
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     type_check_internal(
         infcx,
-        body_id,
+        mir_def_id,
         param_env,
         mir,
         &universal_regions.region_bound_pairs,
@@ -134,7 +132,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
 
 fn type_check_internal<'gcx, 'tcx>(
     infcx: &InferCtxt<'_, 'gcx, 'tcx>,
-    body_id: ast::NodeId,
+    mir_def_id: DefId,
     param_env: ty::ParamEnv<'gcx>,
     mir: &Mir<'tcx>,
     region_bound_pairs: &[(ty::Region<'tcx>, GenericKind<'tcx>)],
@@ -144,7 +142,7 @@ fn type_check_internal<'gcx, 'tcx>(
 ) -> MirTypeckRegionConstraints<'tcx> {
     let mut checker = TypeChecker::new(
         infcx,
-        body_id,
+        mir_def_id,
         param_env,
         region_bound_pairs,
         implicit_region_bound,
@@ -187,7 +185,7 @@ struct TypeVerifier<'a, 'b: 'a, 'gcx: 'b + 'tcx, 'tcx: 'b> {
     cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     last_span: Span,
-    body_id: ast::NodeId,
+    mir_def_id: DefId,
     errors_reported: bool,
 }
 
@@ -235,7 +233,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn new(cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
         TypeVerifier {
             mir,
-            body_id: cx.body_id,
+            mir_def_id: cx.mir_def_id,
             cx,
             last_span: mir.span,
             errors_reported: false,
@@ -595,7 +593,7 @@ struct TypeChecker<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'gcx>,
     last_span: Span,
-    body_id: ast::NodeId,
+    mir_def_id: DefId,
     region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: Option<ty::Region<'tcx>>,
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
@@ -699,7 +697,7 @@ impl Locations {
 impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn new(
         infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-        body_id: ast::NodeId,
+        mir_def_id: DefId,
         param_env: ty::ParamEnv<'gcx>,
         region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
         implicit_region_bound: Option<ty::Region<'tcx>>,
@@ -709,7 +707,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         TypeChecker {
             infcx,
             last_span: DUMMY_SP,
-            body_id,
+            mir_def_id,
             param_env,
             region_bound_pairs,
             implicit_region_bound,
@@ -718,10 +716,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             reported_errors: FxHashSet(),
             constraints: MirTypeckRegionConstraints::default(),
         }
-    }
-
-    fn misc(&self, span: Span) -> traits::ObligationCause<'tcx> {
-        traits::ObligationCause::misc(span, self.body_id)
     }
 
     /// Given some operation `op` that manipulates types, proves
@@ -794,7 +788,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
 
         let mut fulfill_cx = TraitEngine::new(self.infcx.tcx);
+        let dummy_body_id = ObligationCause::dummy().body_id;
         let InferOk { value, obligations } = self.infcx.commit_if_ok(|_| op(self))?;
+        debug_assert!(obligations.iter().all(|o| o.cause.body_id == dummy_body_id));
         fulfill_cx.register_predicate_obligations(self.infcx, obligations);
         if let Err(e) = fulfill_cx.select_all_or_error(self.infcx) {
             span_mirbug!(self, "", "errors selecting obligation: {:?}", e);
@@ -804,7 +800,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             self.region_bound_pairs,
             self.implicit_region_bound,
             self.param_env,
-            self.body_id,
+            dummy_body_id,
         );
 
         let data = self.infcx.take_and_reset_region_constraints();
@@ -832,7 +828,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             || format!("sub_types({:?} <: {:?})", sub, sup),
             |this| {
                 this.infcx
-                    .at(&this.misc(this.last_span), this.param_env)
+                    .at(&ObligationCause::dummy(), this.param_env)
                     .sup(sup, sub)
             },
         )
@@ -850,7 +846,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             || format!("eq_types({:?} = {:?})", a, b),
             |this| {
                 this.infcx
-                    .at(&this.misc(this.last_span), this.param_env)
+                    .at(&ObligationCause::dummy(), this.param_env)
                     .eq(b, a)
             },
         )
@@ -1575,9 +1571,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 if let Some(closure_region_requirements) =
                     tcx.mir_borrowck(*def_id).closure_requirements
                 {
+                    let dummy_body_id = ObligationCause::dummy().body_id;
                     closure_region_requirements.apply_requirements(
                         self.infcx,
-                        self.body_id,
+                        dummy_body_id,
                         location,
                         *def_id,
                         *substs,
@@ -1613,7 +1610,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     where
         T: IntoIterator<Item = ty::Predicate<'tcx>> + Clone,
     {
-        let cause = self.misc(self.last_span);
+        let cause = ObligationCause::dummy();
         let obligations: Vec<_> = predicates
             .into_iter()
             .map(|p| traits::Obligation::new(cause.clone(), self.param_env, p))
@@ -1694,7 +1691,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             |this| {
                 let Normalized { value, obligations } = this
                     .infcx
-                    .at(&this.misc(this.last_span), this.param_env)
+                    .at(&ObligationCause::dummy(), this.param_env)
                     .normalize(value)
                     .unwrap_or_else(|NoSolution| {
                         span_bug!(
@@ -1715,7 +1712,6 @@ pub struct TypeckMir;
 impl MirPass for TypeckMir {
     fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
         let def_id = src.def_id;
-        let id = tcx.hir.as_local_node_id(def_id).unwrap();
         debug!("run_pass: {:?}", def_id);
 
         // When NLL is enabled, the borrow checker runs the typeck
@@ -1731,7 +1727,16 @@ impl MirPass for TypeckMir {
         }
         let param_env = tcx.param_env(def_id);
         tcx.infer_ctxt().enter(|infcx| {
-            let _ = type_check_internal(&infcx, id, param_env, mir, &[], None, None, &mut |_| ());
+            let _ = type_check_internal(
+                &infcx,
+                def_id,
+                param_env,
+                mir,
+                &[],
+                None,
+                None,
+                &mut |_| (),
+            );
 
             // For verification purposes, we just ignore the resulting
             // region constraint sets. Not our problem. =)
