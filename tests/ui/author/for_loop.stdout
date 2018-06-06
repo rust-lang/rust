@@ -5,7 +5,13 @@ if_chain! {
     if let Some(ref init) = local.init
     if let Expr_::ExprMatch(ref expr, ref arms, MatchSource::ForLoopDesugar) = init.node;
     if let Expr_::ExprCall(ref func, ref args) = expr.node;
-    // unimplemented: `ExprCall` is not further destructured at the moment
+    if let Expr_::ExprPath(ref path) = func.node;
+    if match_qpath(path, &["{{root}}", "std", "iter", "IntoIterator", "into_iter"]);
+    if args.len() == 1;
+    if let Expr_::ExprStruct(ref path1, ref fields, None) = args[0].node;
+    if match_qpath(path1, &["{{root}}", "std", "ops", "Range"]);
+    if fields.len() == 2;
+    // unimplemented: field checks
     if arms.len() == 1;
     if let Expr_::ExprLoop(ref body, ref label, LoopSource::ForLoop) = arms[0].body.node;
     if let Stmt_::StmtDecl(ref decl1, _) = body.node
@@ -14,28 +20,33 @@ if_chain! {
     if name.node.as_str() == "__next";
     if let Stmt_::StmtExpr(ref e, _) = local1.pat.node
     if let Expr_::ExprMatch(ref expr1, ref arms1, MatchSource::ForLoopDesugar) = e.node;
-    if let Expr_::ExprCall(ref func, ref args) = expr1.node;
-    // unimplemented: `ExprCall` is not further destructured at the moment
+    if let Expr_::ExprCall(ref func1, ref args1) = expr1.node;
+    if let Expr_::ExprPath(ref path2) = func1.node;
+    if match_qpath(path2, &["{{root}}", "std", "iter", "Iterator", "next"]);
+    if args1.len() == 1;
+    if let Expr_::ExprAddrOf(MutMutable, ref inner) = args1[0].node;
+    if let Expr_::ExprPath(ref path3) = inner.node;
+    if match_qpath(path3, &["iter"]);
     if arms1.len() == 2;
     if let Expr_::ExprAssign(ref target, ref value) = arms1[0].body.node;
-    if let Expr_::ExprPath(ref path) = target.node;
-    if match_qpath(path, &["__next"]);
-    if let Expr_::ExprPath(ref path1) = value.node;
-    if match_qpath(path1, &["val"]);
+    if let Expr_::ExprPath(ref path4) = target.node;
+    if match_qpath(path4, &["__next"]);
+    if let Expr_::ExprPath(ref path5) = value.node;
+    if match_qpath(path5, &["val"]);
     if arms1[0].pats.len() == 1;
-    if let PatKind::TupleStruct(ref path2, ref fields, None) = arms1[0].pats[0].node;
-    if match_qpath(path2, &["{{root}}", "std", "option", "Option", "Some"]);
-    if fields.len() == 1;
+    if let PatKind::TupleStruct(ref path6, ref fields1, None) = arms1[0].pats[0].node;
+    if match_qpath(path6, &["{{root}}", "std", "option", "Option", "Some"]);
+    if fields1.len() == 1;
     // unimplemented: field checks
     if let Expr_::ExprBreak(ref destination, None) = arms1[1].body.node;
     if arms1[1].pats.len() == 1;
-    if let PatKind::Path(ref path3) = arms1[1].pats[0].node;
-    if match_qpath(path3, &["{{root}}", "std", "option", "Option", "None"]);
-    if let Stmt_::StmtDecl(ref decl2, _) = path3.node
+    if let PatKind::Path(ref path7) = arms1[1].pats[0].node;
+    if match_qpath(path7, &["{{root}}", "std", "option", "Option", "None"]);
+    if let Stmt_::StmtDecl(ref decl2, _) = path7.node
     if let Decl_::DeclLocal(ref local2) = decl2.node;
     if let Some(ref init1) = local2.init
-    if let Expr_::ExprPath(ref path4) = init1.node;
-    if match_qpath(path4, &["__next"]);
+    if let Expr_::ExprPath(ref path8) = init1.node;
+    if match_qpath(path8, &["__next"]);
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name1, None) = local2.pat.node;
     if name1.node.as_str() == "y";
     if let Stmt_::StmtExpr(ref e1, _) = local2.pat.node
@@ -43,8 +54,8 @@ if_chain! {
     if let Stmt_::StmtDecl(ref decl3, _) = block1.node
     if let Decl_::DeclLocal(ref local3) = decl3.node;
     if let Some(ref init2) = local3.init
-    if let Expr_::ExprPath(ref path5) = init2.node;
-    if match_qpath(path5, &["y"]);
+    if let Expr_::ExprPath(ref path9) = init2.node;
+    if match_qpath(path9, &["y"]);
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name2, None) = local3.pat.node;
     if name2.node.as_str() == "z";
     if arms[0].pats.len() == 1;
@@ -52,8 +63,8 @@ if_chain! {
     if name3.node.as_str() == "iter";
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name4, None) = local.pat.node;
     if name4.node.as_str() == "_result";
-    if let Expr_::ExprPath(ref path6) = local.pat.node;
-    if match_qpath(path6, &["_result"]);
+    if let Expr_::ExprPath(ref path10) = local.pat.node;
+    if match_qpath(path10, &["_result"]);
     then {
         // report your lint here
     }

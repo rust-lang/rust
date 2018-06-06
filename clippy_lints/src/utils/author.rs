@@ -210,9 +210,17 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     self.visit_expr(element);
                 }
             },
-            Expr_::ExprCall(ref _func, ref _args) => {
-                println!("Call(ref func, ref args) = {};", current);
-                println!("    // unimplemented: `ExprCall` is not further destructured at the moment");
+            Expr_::ExprCall(ref func, ref args) => {
+                let func_pat = self.next("func");
+                let args_pat = self.next("args");
+                println!("Call(ref {}, ref {}) = {};", func_pat, args_pat, current);
+                self.current = func_pat;
+                self.visit_expr(func);
+                println!("    if {}.len() == {};", args_pat, args.len());
+                for (i, arg) in args.iter().enumerate() {
+                    self.current = format!("{}[{}]", args_pat, i);
+                    self.visit_expr(arg);
+                }
             },
             Expr_::ExprMethodCall(ref _method_name, ref _generics, ref _args) => {
                 println!("MethodCall(ref method_name, ref generics, ref args) = {};", current);
