@@ -91,7 +91,7 @@ macro_rules! step_impl_unsigned {
             #[inline]
             #[allow(unreachable_patterns)]
             fn add_usize(&self, n: usize) -> Option<Self> {
-                match <$t>::private_try_from(n) {
+                match <$t>::try_from(n) {
                     Ok(n_as_t) => self.checked_add(n_as_t),
                     Err(_) => None,
                 }
@@ -123,7 +123,7 @@ macro_rules! step_impl_signed {
             #[inline]
             #[allow(unreachable_patterns)]
             fn add_usize(&self, n: usize) -> Option<Self> {
-                match <$unsigned>::private_try_from(n) {
+                match <$unsigned>::try_from(n) {
                     Ok(n_as_unsigned) => {
                         // Wrapping in unsigned space handles cases like
                         // `-120_i8.add_usize(200) == Some(80_i8)`,
@@ -461,74 +461,3 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A: Step> FusedIterator for ops::RangeInclusive<A> {}
-
-/// Compensate removal of some impls per
-/// https://github.com/rust-lang/rust/pull/49305#issuecomment-376293243
-trait PrivateTryFromUsize: Sized {
-    fn private_try_from(n: usize) -> Result<Self, ()>;
-}
-
-impl<T> PrivateTryFromUsize for T where T: TryFrom<usize> {
-    #[inline]
-    fn private_try_from(n: usize) -> Result<Self, ()> {
-        T::try_from(n).map_err(|_| ())
-    }
-}
-
-// no possible bounds violation
-macro_rules! try_from_unbounded {
-    ($($target:ty),*) => {$(
-        impl PrivateTryFromUsize for $target {
-            #[inline]
-            fn private_try_from(value: usize) -> Result<Self, ()> {
-                Ok(value as $target)
-            }
-        }
-    )*}
-}
-
-// unsigned to signed (only positive bound)
-#[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
-macro_rules! try_from_upper_bounded {
-    ($($target:ty),*) => {$(
-        impl PrivateTryFromUsize for $target {
-            #[inline]
-            fn private_try_from(u: usize) -> Result<$target, ()> {
-                if u > (<$target>::max_value() as usize) {
-                    Err(())
-                } else {
-                    Ok(u as $target)
-                }
-            }
-        }
-    )*}
-}
-
-
-#[cfg(target_pointer_width = "16")]
-mod ptr_try_from_impls {
-    use super::PrivateTryFromUsize;
-
-    try_from_unbounded!(u16, u32, u64, u128);
-    try_from_unbounded!(i32, i64, i128);
-}
-
-#[cfg(target_pointer_width = "32")]
-mod ptr_try_from_impls {
-    use super::PrivateTryFromUsize;
-
-    try_from_upper_bounded!(u16);
-    try_from_unbounded!(u32, u64, u128);
-    try_from_upper_bounded!(i32);
-    try_from_unbounded!(i64, i128);
-}
-
-#[cfg(target_pointer_width = "64")]
-mod ptr_try_from_impls {
-    use super::PrivateTryFromUsize;
-
-    try_from_upper_bounded!(u16, u32);
-    try_from_unbounded!(u64, u128);
-    try_from_upper_bounded!(i32, i64);
-    try_from_unbounded!(i128);
-}
