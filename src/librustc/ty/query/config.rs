@@ -68,8 +68,53 @@ impl<'tcx, M: QueryAccessors<'tcx, Key=DefId>> QueryDescription<'tcx> for M {
             format!("processing `{}`", tcx.item_path_str(def_id)).into()
         } else {
             let name = unsafe { ::std::intrinsics::type_name::<M>() };
-            format!("processing `{}` applied to `{:?}`", name, def_id).into()
+            format!("processing {:?} with query `{}`", def_id, name).into()
         }
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::check_mod_attrs<'tcx> {
+    fn describe(
+        tcx: TyCtxt<'_, '_, '_>,
+        key: DefId,
+    ) -> Cow<'static, str> {
+        format!("checking attributes in {}", key.describe_as_module(tcx)).into()
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::check_mod_unstable_api_usage<'tcx> {
+    fn describe(
+        tcx: TyCtxt<'_, '_, '_>,
+        key: DefId,
+    ) -> Cow<'static, str> {
+        format!("checking for unstable API usage in {}", key.describe_as_module(tcx)).into()
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::check_mod_loops<'tcx> {
+    fn describe(
+        tcx: TyCtxt<'_, '_, '_>,
+        key: DefId,
+    ) -> Cow<'static, str> {
+        format!("checking loops in {}", key.describe_as_module(tcx)).into()
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::check_mod_item_types<'tcx> {
+    fn describe(
+        tcx: TyCtxt<'_, '_, '_>,
+        key: DefId,
+    ) -> Cow<'static, str> {
+        format!("checking item types in {}", key.describe_as_module(tcx)).into()
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::collect_mod_item_types<'tcx> {
+    fn describe(
+        tcx: TyCtxt<'_, '_, '_>,
+        key: DefId,
+    ) -> Cow<'static, str> {
+        format!("collecting item types in {}", key.describe_as_module(tcx)).into()
     }
 }
 

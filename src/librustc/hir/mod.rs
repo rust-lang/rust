@@ -33,7 +33,7 @@ use rustc_data_structures::sync::{ParallelIterator, par_iter, Send, Sync, scope}
 use rustc_data_structures::thin_vec::ThinVec;
 
 use serialize::{self, Encoder, Encodable, Decoder, Decodable};
-use std::collections::BTreeMap;
+use std::collections::{BTreeSet, BTreeMap};
 use std::fmt;
 
 /// HIR doesn't commit to a concrete storage type and has its own alias for a vector.
@@ -676,6 +676,15 @@ pub struct WhereEqPredicate {
     pub rhs_ty: P<Ty>,
 }
 
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct ModuleItems {
+    // Use BTreeSets here so items are in the same order as in the
+    // list of all items in Crate
+    pub items: BTreeSet<NodeId>,
+    pub trait_items: BTreeSet<TraitItemId>,
+    pub impl_items: BTreeSet<ImplItemId>,
+}
+
 /// The top-level data structure that stores the entire contents of
 /// the crate currently being compiled.
 ///
@@ -708,6 +717,10 @@ pub struct Crate {
     /// in the crate, you should iterate over this list rather than the keys
     /// of bodies.
     pub body_ids: Vec<BodyId>,
+
+    /// A list of modules written out in the order in which they
+    /// appear in the crate. This includes the main crate module.
+    pub modules: BTreeMap<NodeId, ModuleItems>,
 }
 
 impl Crate {
@@ -2408,6 +2421,7 @@ pub type GlobMap = NodeMap<FxHashSet<Name>>;
 
 
 pub fn provide(providers: &mut Providers<'_>) {
+    check_attr::provide(providers);
     providers.describe_def = map::describe_def;
 }
 

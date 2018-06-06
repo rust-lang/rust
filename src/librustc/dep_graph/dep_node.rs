@@ -472,6 +472,12 @@ define_dep_nodes!( <'tcx>
     [] UnsafetyCheckResult(DefId),
     [] UnsafeDeriveOnReprPacked(DefId),
 
+    [] CheckModAttrs(DefId),
+    [] CheckModLoops(DefId),
+    [] CheckModUnstableApiUsage(DefId),
+    [] CheckModItemTypes(DefId),
+    [] CollectModItemTypes(DefId),
+
     [] Reachability,
     [] MirKeys,
     [eval_always] CrateVariances,
