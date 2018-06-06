@@ -15,7 +15,7 @@ use rustc::infer::canonical::{
 };
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc::traits::{
-    WellFormed, 
+    WellFormed,
     FromEnv,
     DomainGoal,
     ExClauseFold,

@@ -134,6 +134,8 @@ crate fn program_clauses_for<'a, 'tcx>(
         DefPathData::Trait(_) => program_clauses_for_trait(tcx, def_id),
         DefPathData::Impl => program_clauses_for_impl(tcx, def_id),
         DefPathData::AssocTypeInImpl(..) => program_clauses_for_associated_type_value(tcx, def_id),
+        DefPathData::AssocTypeInTrait(..) => program_clauses_for_associated_type_def(tcx, def_id),
+        DefPathData::TypeNs(..) => program_clauses_for_type_def(tcx, def_id),
         _ => Slice::empty(),
     }
 }
@@ -224,10 +226,10 @@ fn program_clauses_for_trait<'a, 'tcx>(
     let impl_trait: DomainGoal = trait_pred.lower();
 
      // `FromEnv(Self: Trait<P1..Pn>)`
-    let from_env = impl_trait.into_from_env_goal().into_goal();
+    let from_env_goal = impl_trait.into_from_env_goal().into_goal();
+    let hypotheses = tcx.intern_goals(&[from_env_goal]);
 
     // `Implemented(Self: Trait<P1..Pn>) :- FromEnv(Self: Trait<P1..Pn>)`
-    let hypotheses = tcx.intern_goals(&[from_env]);
     let implemented_from_env = ProgramClause {
         goal: impl_trait,
         hypotheses,
@@ -298,6 +300,72 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
     tcx.intern_clauses(&[Clause::ForAll(ty::Binder::dummy(clause))])
 }
 
+pub fn program_clauses_for_type_def<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+) -> Clauses<'tcx> {
+
+    // Rule WellFormed-Type
+    //
+    // `struct Ty<P1..Pn> where WC1, ..., WCm`
+    //
+    // ```
+    // forall<P1..Pn> {
+    //   WellFormed(Ty<...>) :- WC1, ..., WCm`
+    // }
+    // ```
+
+    // `Ty<...>`
+    let ty = tcx.type_of(def_id);
+
+    // `WC`
+    let where_clauses = tcx.predicates_of(def_id).predicates.lower();
+
+    // `WellFormed(Ty<...>) :- WC1, ..., WCm`
+    let well_formed = ProgramClause {
+        goal: DomainGoal::WellFormed(WellFormed::Ty(ty)),
+        hypotheses: tcx.mk_goals(
+            where_clauses.iter().cloned().map(|wc| Goal::from_poly_domain_goal(wc, tcx))
+        ),
+    };
+
+    let well_formed_clause = iter::once(Clause::ForAll(ty::Binder::dummy(well_formed)));
+
+    // Rule FromEnv-Type
+    //
+    // For each where clause `WC`:
+    // ```
+    // forall<P1..Pn> {
+    //   FromEnv(WC) :- FromEnv(Ty<...>)
+    // }
+    // ```
+
+    // `FromEnv(Ty<...>)`
+    let from_env_goal = DomainGoal::FromEnv(FromEnv::Ty(ty)).into_goal();
+    let hypotheses = tcx.intern_goals(&[from_env_goal]);
+
+    // For each where clause `WC`:
+    let from_env_clauses = where_clauses
+        .into_iter()
+
+        // `FromEnv(WC) :- FromEnv(Ty<...>)`
+        .map(|wc| wc.map_bound(|goal| ProgramClause {
+            goal: goal.into_from_env_goal(),
+            hypotheses,
+        }))
+
+        .map(Clause::ForAll);
+
+    tcx.mk_clauses(well_formed_clause.chain(from_env_clauses))
+}
+
+pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
+    _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    _item_id: DefId,
+) -> Clauses<'tcx> {
+    unimplemented!()
+}
+
 pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     item_id: DefId,
@@ -309,6 +377,8 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     //     type AssocType<Pn+1..Pm> = T;
     // }```
     //
+    // FIXME: For the moment, we don't account for where clauses written on the associated
+    // ty definition (i.e. in the trait def, as in `type AssocType<T> where T: Sized`).
     // ```
     // forall<P0..Pm> {
     //   forall<Pn+1..Pm> {
@@ -324,7 +394,7 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
         ty::AssociatedItemContainer::ImplContainer(impl_id) => impl_id,
         _ => bug!("not an impl container"),
     };
-    
+
     // `A0 as Trait<A1..An>`
     let trait_ref = tcx.impl_trait_ref(impl_id).unwrap();
 
