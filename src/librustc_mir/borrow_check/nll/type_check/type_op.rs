@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use borrow_check::nll::type_check::TypeChecker;
-use rustc::infer::InferResult;
-use rustc::traits::ObligationCause;
-use rustc::ty::Ty;
+use rustc::infer::{InferOk, InferResult};
+use rustc::traits::{Obligation, ObligationCause, PredicateObligation};
+use rustc::ty::{ParamEnv, Predicate, Ty};
 
 pub(super) trait TypeOp<'gcx, 'tcx> {
     type Output;
@@ -75,8 +75,12 @@ impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Subtype<'tcx> {
         }
     }
 
-    fn perform(self, type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
-        type_checker.infcx
+    fn perform(
+        self,
+        type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>,
+    ) -> InferResult<'tcx, Self::Output> {
+        type_checker
+            .infcx
             .at(&ObligationCause::dummy(), type_checker.param_env)
             .sup(self.sup, self.sub)
     }
@@ -104,9 +108,53 @@ impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Eq<'tcx> {
         }
     }
 
-    fn perform(self, type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
-        type_checker.infcx
+    fn perform(
+        self,
+        type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>,
+    ) -> InferResult<'tcx, Self::Output> {
+        type_checker
+            .infcx
             .at(&ObligationCause::dummy(), type_checker.param_env)
             .eq(self.a, self.b)
+    }
+}
+
+pub(super) struct ProvePredicates<'tcx> {
+    obligations: Vec<PredicateObligation<'tcx>>,
+}
+
+impl<'tcx> ProvePredicates<'tcx> {
+    pub(super) fn new(
+        param_env: ParamEnv<'tcx>,
+        predicates: impl IntoIterator<Item = Predicate<'tcx>>,
+    ) -> Self {
+        ProvePredicates {
+            obligations: predicates
+                .into_iter()
+                .map(|p| Obligation::new(ObligationCause::dummy(), param_env, p))
+                .collect(),
+        }
+    }
+}
+
+impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for ProvePredicates<'tcx> {
+    type Output = ();
+
+    fn trivial_noop(&self) -> Option<Self::Output> {
+        if self.obligations.is_empty() {
+            Some(())
+        } else {
+            None
+        }
+    }
+
+    fn perform(
+        self,
+        _type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>,
+    ) -> InferResult<'tcx, Self::Output> {
+        Ok(InferOk {
+            value: (),
+            obligations: self.obligations,
+        })
     }
 }

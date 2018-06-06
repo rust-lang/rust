@@ -28,7 +28,7 @@ use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::*;
 use rustc::traits::query::NoSolution;
-use rustc::traits::{self, ObligationCause, Normalized, TraitEngine};
+use rustc::traits::{ObligationCause, Normalized, TraitEngine};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
@@ -833,7 +833,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         self.fully_perform_op(
             locations,
             || format!("eq_types({:?} = {:?})", a, b),
-            type_op::Eq::new(b, a)
+            type_op::Eq::new(b, a),
         )
     }
 
@@ -1590,27 +1590,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         );
     }
 
-    fn prove_predicates<T>(&mut self, predicates: T, location: Location)
-    where
-        T: IntoIterator<Item = ty::Predicate<'tcx>> + Clone,
-    {
-        let cause = ObligationCause::dummy();
-        let obligations: Vec<_> = predicates
-            .into_iter()
-            .map(|p| traits::Obligation::new(cause.clone(), self.param_env, p))
-            .collect();
-
-        // Micro-optimization
-        if obligations.is_empty() {
-            return;
-        }
-
+    fn prove_predicates(
+        &mut self,
+        predicates: impl IntoIterator<Item = ty::Predicate<'tcx>> + Clone,
+        location: Location,
+    ) {
         // This intermediate vector is mildly unfortunate, in that we
         // sometimes create it even when logging is disabled, but only
         // if debug-info is enabled, and I doubt it is actually
         // expensive. -nmatsakis
         let predicates_vec: Vec<_> = if cfg!(debug_assertions) {
-            obligations.iter().map(|o| o.predicate).collect()
+            predicates.clone().into_iter().collect()
         } else {
             Vec::new()
         };
@@ -1620,15 +1610,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             predicates_vec, location,
         );
 
+        let param_env = self.param_env;
         self.fully_perform_op(
             location.at_self(),
             || format!("prove_predicates({:?})", predicates_vec),
-            CustomTypeOp::new(|_this| {
-                Ok(InferOk {
-                    value: (),
-                    obligations,
-                })
-            }),
+            type_op::ProvePredicates::new(param_env, predicates),
         ).unwrap()
     }
 
