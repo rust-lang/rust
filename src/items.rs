@@ -2143,7 +2143,7 @@ impl WhereClauseOption {
     pub fn snuggled(current: &str) -> WhereClauseOption {
         WhereClauseOption {
             suppress_comma: false,
-            snuggle: trimmed_last_line_width(current) == 1,
+            snuggle: last_line_width(current) == 1,
             compress_where: false,
         }
     }
