@@ -39,10 +39,10 @@ macro_rules! nonzero_integers {
         $(
             /// An integer that is known not to equal zero.
             ///
-            /// This may enable some memory layout optimization such as:
+            /// This enables some memory layout optimization.
+            /// For example, `Option<NonZeroU32>` is the same size as `u32`:
             ///
             /// ```rust
-            /// # #![feature(nonzero)]
             /// use std::mem::size_of;
             /// assert_eq!(size_of::<Option<std::num::NonZeroU32>>(), size_of::<u32>());
             /// ```
