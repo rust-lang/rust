@@ -6,13 +6,6 @@ LL |     const l: usize = v.count(); //~ ERROR can't capture dynamic environment
    |
    = help: use the `|| { ... }` closure form instead
 
-error[E0080]: constant evaluation error
-  --> $DIR/type-dependent-def-issue-49241.rs:14:18
-   |
-LL |     let s: [u32; l] = v.into_iter().collect(); //~ ERROR constant evaluation error
-   |                  ^ encountered constants with type errors, stopping evaluation
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors occurred: E0080, E0434.
-For more information about an error, try `rustc --explain E0080`.
+For more information about this error, try `rustc --explain E0434`.

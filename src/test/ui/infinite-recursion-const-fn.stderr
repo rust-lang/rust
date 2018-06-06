@@ -1,8 +1,8 @@
-error[E0080]: constant evaluation error
-  --> $DIR/infinite-recursion-const-fn.rs:14:25
+error[E0080]: could not evaluate constant expression
+  --> $DIR/infinite-recursion-const-fn.rs:16:1
    |
-LL | const fn a() -> usize { b() } //~ ERROR constant evaluation error
-   |                         ^^^
+LL | const fn a() -> usize { b() }
+   |                         ---
    |                         |
    |                         reached the configured maximum number of stack frames
    |                         inside call to `b`
@@ -58,14 +58,10 @@ LL | const fn b() -> usize { a() }
    |                         inside call to `a`
    |                         inside call to `a`
    |                         inside call to `a`
-LL | const ARR: [i32; a()] = [5; 6];
-   |                  --- inside call to `a`
-   |
-note: for constant expression here
-  --> $DIR/infinite-recursion-const-fn.rs:16:1
-   |
-LL | const ARR: [i32; a()] = [5; 6];
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | const ARR: [i32; a()] = [5; 6]; //~ ERROR could not evaluate constant expression
+   | ^^^^^^^^^^^^^^^^^---^^^^^^^^^^^
+   |                  |
+   |                  inside call to `a`
 
 error: aborting due to previous error
 

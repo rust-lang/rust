@@ -12,7 +12,7 @@
 
 pub const A: i8 = -std::i8::MIN; //~ ERROR const_err
 //~^ ERROR this constant cannot be used
-//~| ERROR constant evaluation error
+//~| ERROR this expression will panic at runtime
 pub const B: u8 = 200u8 + 200u8; //~ ERROR const_err
 //~^ ERROR this constant cannot be used
 pub const C: u8 = 200u8 * 4; //~ ERROR const_err

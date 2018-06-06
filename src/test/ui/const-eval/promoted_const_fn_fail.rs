@@ -23,8 +23,8 @@ const fn bar() -> u8 {
         // is run on a system whose pointers need more
         // than 8 bits
         Bar { a: &42 }.b as u8
-        //~^ constant evaluation error
-        //~| constant evaluation error
+        //~^ ERROR this expression will panic at runtime
+        //~| ERROR this expression will panic at runtime
     }
 }
 

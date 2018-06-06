@@ -147,7 +147,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &'a BorrowckCtxt<'a, 'tcx>,
         }
         Categorization::Interior(ref b, mc::InteriorElement(ik)) => {
             bccx.cannot_move_out_of_interior_noncopy(
-                move_from.span, b.ty, ik == Kind::Index, Origin::Ast)
+                move_from.span, b.ty, Some(ik == Kind::Index), Origin::Ast)
         }
 
         Categorization::Downcast(ref b, _) |

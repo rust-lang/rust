@@ -1,0 +1,39 @@
+error[E0080]: referenced constant
+  --> $DIR/issue-44578.rs:35:5
+   |
+LL |     const AMT: usize = [A::AMT][(A::AMT > B::AMT) as usize];
+   |                        ------------------------------------ index out of bounds: the len is 1 but the index is 1
+...
+LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error[E0080]: erroneous constant used
+  --> $DIR/issue-44578.rs:35:5
+   |
+LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);
+   |     ^^^^^^^^^^^^^^^--------------------------^^
+   |                    |
+   |                    referenced constant has errors
+   |
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error[E0080]: referenced constant
+  --> $DIR/issue-44578.rs:35:20
+   |
+LL |     const AMT: usize = [A::AMT][(A::AMT > B::AMT) as usize];
+   |                        ------------------------------------ index out of bounds: the len is 1 but the index is 1
+...
+LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0080]: erroneous constant used
+  --> $DIR/issue-44578.rs:35:20
+   |
+LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

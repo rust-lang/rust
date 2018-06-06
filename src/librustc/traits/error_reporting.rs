@@ -827,10 +827,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
 
             ConstEvalFailure(ref err) => {
-                if let ::middle::const_val::ErrKind::TypeckError = *err.kind {
-                    return;
+                match err.struct_error(
+                    self.tcx.at(span),
+                    "could not evaluate constant expression",
+                ) {
+                    Some(err) => err,
+                    None => return,
                 }
-                err.struct_error(self.tcx, span, "constant expression")
             }
 
             Overflow => {

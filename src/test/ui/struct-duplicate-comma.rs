@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that a constant-evaluation underflow highlights the correct
-// spot (where the underflow occurred).
+// compile-flags: -Z parse-only
 
-const ONE: usize = 1;
-const TWO: usize = 2;
+// Issue #50974
+
+struct Foo {
+    a: u8,
+    b: u8
+}
 
 fn main() {
-    let a: [i8; ONE - TWO] = unimplemented!();
-    //~^ ERROR could not evaluate constant expression
-    //~| attempt to subtract with overflow
+    let bar = Foo {
+        a: 0,,
+          //~^ ERROR expected identifier
+        b: 42
+    };
 }
+

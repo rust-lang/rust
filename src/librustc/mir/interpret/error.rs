@@ -1,6 +1,7 @@
 use std::{fmt, env};
 
 use mir;
+use middle::const_val::ConstEvalErr;
 use ty::{FnSig, Ty, layout};
 use ty::layout::{Size, Align};
 
@@ -10,21 +11,50 @@ use super::{
 
 use backtrace::Backtrace;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 pub struct EvalError<'tcx> {
     pub kind: EvalErrorKind<'tcx, u64>,
-    pub backtrace: Option<Backtrace>,
 }
 
 impl<'tcx> From<EvalErrorKind<'tcx, u64>> for EvalError<'tcx> {
     fn from(kind: EvalErrorKind<'tcx, u64>) -> Self {
-        let backtrace = match env::var("MIRI_BACKTRACE") {
-            Ok(ref val) if !val.is_empty() => Some(Backtrace::new_unresolved()),
-            _ => None
-        };
+        match env::var("MIRI_BACKTRACE") {
+            Ok(ref val) if !val.is_empty() => {
+                let backtrace = Backtrace::new();
+
+                use std::fmt::Write;
+                let mut trace_text = "\n\nAn error occurred in miri:\n".to_string();
+                write!(trace_text, "backtrace frames: {}\n", backtrace.frames().len()).unwrap();
+                'frames: for (i, frame) in backtrace.frames().iter().enumerate() {
+                    if frame.symbols().is_empty() {
+                        write!(trace_text, "{}: no symbols\n", i).unwrap();
+                    }
+                    for symbol in frame.symbols() {
+                        write!(trace_text, "{}: ", i).unwrap();
+                        if let Some(name) = symbol.name() {
+                            write!(trace_text, "{}\n", name).unwrap();
+                        } else {
+                            write!(trace_text, "<unknown>\n").unwrap();
+                        }
+                        write!(trace_text, "\tat ").unwrap();
+                        if let Some(file_path) = symbol.filename() {
+                            write!(trace_text, "{}", file_path.display()).unwrap();
+                        } else {
+                            write!(trace_text, "<unknown_file>").unwrap();
+                        }
+                        if let Some(line) = symbol.lineno() {
+                            write!(trace_text, ":{}\n", line).unwrap();
+                        } else {
+                            write!(trace_text, "\n").unwrap();
+                        }
+                    }
+                }
+                error!("{}", trace_text);
+            },
+            _ => {},
+        }
         EvalError {
             kind,
-            backtrace,
         }
     }
 }
@@ -122,7 +152,7 @@ pub enum EvalErrorKind<'tcx, O> {
     TypeckError,
     /// Cannot compute this constant because it depends on another one
     /// which already produced an error
-    ReferencedConstant,
+    ReferencedConstant(ConstEvalErr<'tcx>),
     GeneratorResumedAfterReturn,
     GeneratorResumedAfterPanic,
 }
@@ -238,7 +268,7 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
                 "there were unresolved type arguments during trait selection",
             TypeckError =>
                 "encountered constants with type errors, stopping evaluation",
-            ReferencedConstant =>
+            ReferencedConstant(_) =>
                 "referenced constant has errors",
             Overflow(mir::BinOp::Add) => "attempt to add with overflow",
             Overflow(mir::BinOp::Sub) => "attempt to subtract with overflow",

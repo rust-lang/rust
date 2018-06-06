@@ -7,7 +7,7 @@ use rustc::ty::ParamEnv;
 use rustc::ty::maps::TyCtxtAt;
 use rustc::ty::layout::{self, Align, TargetDataLayout, Size};
 use syntax::ast::Mutability;
-use rustc::middle::const_val::{ConstVal, ErrKind};
+use rustc::middle::const_val::ConstVal;
 
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc::mir::interpret::{Pointer, AllocId, Allocation, AccessKind, Value,
@@ -285,16 +285,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             instance,
             promoted: None,
         };
-        self.tcx.const_eval(ParamEnv::reveal_all().and(gid)).map_err(|err| {
-            match *err.kind {
-                ErrKind::Miri(ref err, _) => match err.kind {
-                    EvalErrorKind::TypeckError |
-                    EvalErrorKind::Layout(_) => EvalErrorKind::TypeckError.into(),
-                    _ => EvalErrorKind::ReferencedConstant.into(),
-                },
-                ErrKind::TypeckError => EvalErrorKind::TypeckError.into(),
-                ref other => bug!("const eval returned {:?}", other),
-            }
+        self.tcx.const_eval(ParamEnv::reveal_all().and(gid)).map_err(|_| {
+            // no need to report anything, the const_eval call takes care of that for statics
+            assert!(self.tcx.is_static(def_id).is_some());
+            EvalErrorKind::TypeckError.into()
         }).map(|val| {
             let const_val = match val.val {
                 ConstVal::Value(val) => val,

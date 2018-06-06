@@ -1,0 +1,20 @@
+error[E0080]: referenced constant
+  --> $DIR/issue-50814-2.rs:26:5
+   |
+LL |     const BAR: usize = [5, 6, 7][T::BOO];
+   |                        ----------------- index out of bounds: the len is 3 but the index is 42
+...
+LL |     &<A<T> as Foo<T>>::BAR //~ ERROR erroneous constant used
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0080]: erroneous constant used
+  --> $DIR/issue-50814-2.rs:26:5
+   |
+LL |     &<A<T> as Foo<T>>::BAR //~ ERROR erroneous constant used
+   |     ^---------------------
+   |      |
+   |      referenced constant has errors
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
