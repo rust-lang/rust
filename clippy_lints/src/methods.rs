@@ -997,11 +997,9 @@ fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, n
     fn extract_format_args(arg: &hir::Expr) -> Option<&hir::HirVec<hir::Expr>> {
         if let hir::ExprAddrOf(_, ref addr_of) = arg.node {
             if let hir::ExprCall(ref inner_fun, ref inner_args) = addr_of.node {
-                if is_expn_of(inner_fun.span, "format").is_some() {
-                    if inner_args.len() == 1 {
-                        if let hir::ExprCall(_, ref format_args) = inner_args[0].node {
-                            return Some(format_args);
-                        }
+                if is_expn_of(inner_fun.span, "format").is_some() && inner_args.len() == 1 {
+                    if let hir::ExprCall(_, ref format_args) = inner_args[0].node {
+                        return Some(format_args);
                     }
                 }
             }
