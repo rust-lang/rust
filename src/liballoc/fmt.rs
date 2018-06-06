@@ -531,6 +531,8 @@ pub use core::fmt::Error;
 pub use core::fmt::{write, ArgumentV1, Arguments};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
+#[stable(feature = "fmt_flags_align", since = "1.28.0")]
+pub use core::fmt::{Alignment};
 
 use string;
 

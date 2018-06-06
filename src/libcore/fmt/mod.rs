@@ -1436,8 +1436,7 @@ impl<'a> Formatter<'a> {
     /// ```
     /// extern crate core;
     ///
-    /// use std::fmt;
-    /// use core::fmt::Alignment;
+    /// use std::fmt::{self, Alignment};
     ///
     /// struct Foo;
     ///
