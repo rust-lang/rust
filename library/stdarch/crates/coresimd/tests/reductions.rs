@@ -186,7 +186,7 @@ fn max_nan() {
     finvoke!(max_nan_test);
 }
 
-macro_rules! wrapping_sum_nan_test {
+macro_rules! sum_nan_test {
     ($feature:tt, $feature_macro:ident, $id:ident, $elem_ty:ident) => {
         if $feature_macro!($feature) {
             #[target_feature(enable = $feature)]
@@ -202,19 +202,19 @@ macro_rules! wrapping_sum_nan_test {
                     let mut v = v0.replace(i, n0);
                     // If the vector contains a NaN the result is NaN:
                     assert!(
-                        v.wrapping_sum().is_nan(),
+                        v.sum().is_nan(),
                         "nan at {} => {} | {:?}",
                         i,
-                        v.wrapping_sum(),
+                        v.sum(),
                         v
                     );
                     for j in 0..i {
                         v = v.replace(j, n0);
-                        assert!(v.wrapping_sum().is_nan());
+                        assert!(v.sum().is_nan());
                     }
                 }
                 let v = $id::splat(n0);
-                assert!(v.wrapping_sum().is_nan(), "all nans | {:?}", v);
+                assert!(v.sum().is_nan(), "all nans | {:?}", v);
             }
             unsafe { test_fn() };
         }
@@ -222,11 +222,11 @@ macro_rules! wrapping_sum_nan_test {
 }
 
 #[test]
-fn wrapping_sum_nan() {
-    finvoke!(wrapping_sum_nan_test);
+fn sum_nan() {
+    finvoke!(sum_nan_test);
 }
 
-macro_rules! wrapping_product_nan_test {
+macro_rules! product_nan_test {
     ($feature:tt, $feature_macro:ident, $id:ident, $elem_ty:ident) => {
         if $feature_macro!($feature) {
             #[target_feature(enable = $feature)]
@@ -242,19 +242,19 @@ macro_rules! wrapping_product_nan_test {
                     let mut v = v0.replace(i, n0);
                     // If the vector contains a NaN the result is NaN:
                     assert!(
-                        v.wrapping_product().is_nan(),
+                        v.product().is_nan(),
                         "nan at {} | {:?}",
                         i,
                         v
                     );
                     for j in 0..i {
                         v = v.replace(j, n0);
-                        assert!(v.wrapping_sum().is_nan());
+                        assert!(v.product().is_nan());
                     }
                 }
                 let v = $id::splat(n0);
                 assert!(
-                    v.wrapping_product().is_nan(),
+                    v.product().is_nan(),
                     "all nans | {:?}",
                     v
                 );
@@ -265,8 +265,8 @@ macro_rules! wrapping_product_nan_test {
 }
 
 #[test]
-fn wrapping_product_nan() {
-    finvoke!(wrapping_product_nan_test);
+fn product_nan() {
+    finvoke!(product_nan_test);
 }
 
 trait AsInt {
@@ -304,133 +304,111 @@ as_int!(f64x8, i64x8);
 mod offset {
     use super::*;
 
-    trait TreeReduceAdd {
+    trait TreeSum {
         type R;
-        fn tree_reduce_add(self) -> Self::R;
+        fn tree_sum(self) -> Self::R;
     }
 
-    macro_rules! tree_reduce_add_f {
-    ($elem_ty:ident) => {
-        impl<'a> TreeReduceAdd for &'a [$elem_ty] {
-            type R = $elem_ty;
-            fn tree_reduce_add(self) -> $elem_ty {
-                if self.len() == 2 {
-                    println!("  lv: {}, rv: {} => {}", self[0], self[1], self[0] + self[1]);
-                    self[0] + self[1]
-                } else {
-                    let mid = self.len() / 2;
-                    let (left, right) = self.split_at(mid);
-                    println!("  splitting self: {:?} at mid {} into left: {:?}, right: {:?}", self, mid, self[0], self[1]);
-                    Self::tree_reduce_add(left) + Self::tree_reduce_add(right)
+    macro_rules! tree_sum_f {
+        ($elem_ty:ident) => {
+            impl<'a> TreeSum for &'a [$elem_ty] {
+                type R = $elem_ty;
+                fn tree_sum(self) -> $elem_ty {
+                    if self.len() == 2 {
+                        self[0] + self[1]
+                    } else {
+                        let mid = self.len() / 2;
+                        let (left, right) = self.split_at(mid);
+                        Self::tree_sum(left) + Self::tree_sum(right)
+                    }
                 }
             }
-        }
-    };
-}
-    tree_reduce_add_f!(f32);
-    tree_reduce_add_f!(f64);
+        };
+    }
+    tree_sum_f!(f32);
+    tree_sum_f!(f64);
 
-    macro_rules! wrapping_sum_roundoff_test {
-    ($feature:tt, $feature_macro:ident, $id:ident, $elem_ty:ident) => {
-        if $feature_macro!($feature) {
-            #[target_feature(enable = $feature)]
-            unsafe fn test_fn() {
-                let mut start = std::$elem_ty::EPSILON;
-                let mut wrapping_sum = 0. as $elem_ty;
+    macro_rules! sum_roundoff_test {
+        ($feature:tt, $feature_macro:ident, $id:ident, $elem_ty:ident) => {
+            if $feature_macro!($feature) {
+                #[target_feature(enable = $feature)]
+                unsafe fn test_fn() {
+                    let mut start = std::$elem_ty::EPSILON;
+                    let mut sum = 0. as $elem_ty;
 
-                let mut v = $id::splat(0. as $elem_ty);
-                for i in 0..$id::lanes() {
-                    let c = if i % 2 == 0 { 1e3 } else { -1. };
-                    start *= 3.14 * c;
-                    wrapping_sum += start;
-                    // println!("{} | start: {}", stringify!($id), start);
-                    v = v.replace(i, start);
+                    let mut v = $id::splat(0. as $elem_ty);
+                    for i in 0..$id::lanes() {
+                        let c = if i % 2 == 0 { 1e3 } else { -1. };
+                        start *= 3.14 * c;
+                        sum += start;
+                        v = v.replace(i, start);
+                    }
+                    let vsum = v.sum();
+                    let r = vsum.as_int() == sum.as_int();
+                    // This is false in general; the intrinsic performs a
+                    // tree-reduce:
+                    let mut a = [0. as $elem_ty; $id::lanes()];
+                    v.store_unaligned(&mut a);
+
+                    let tsum = a.tree_sum();
+
+                    // tolerate 1 ULP difference:
+                    if vsum.as_int() > tsum.as_int() {
+                        assert!(
+                            vsum.as_int() - tsum.as_int()
+                                < 2,
+                            "v: {:?} | vsum: {} | tsum: {}",
+                            v,
+                            vsum,
+                            tsum
+                        );
+                    } else {
+                        assert!(
+                            tsum.as_int() - vsum.as_int()
+                                < 2,
+                            "v: {:?} | vsum: {} | tsum: {}",
+                            v,
+                            vsum,
+                            tsum
+                        );
+                    }
                 }
-                let vwrapping_sum = v.wrapping_sum();
-                println!(
-                    "{} | lwrapping_sum: {}",
-                    stringify!($id),
-                    wrapping_sum
-                );
-                println!(
-                    "{} | vwrapping_sum: {}",
-                    stringify!($id),
-                    vwrapping_sum
-                );
-                let r = vwrapping_sum.as_int() == wrapping_sum.as_int();
-                // This is false in general; the intrinsic performs a
-                // tree-reduce:
-                println!("{} | equal: {}", stringify!($id), r);
-
-                let mut a = [0. as $elem_ty; $id::lanes()];
-                v.store_unaligned(&mut a);
-
-                let twrapping_sum = a.tree_reduce_add();
-                println!(
-                    "{} | twrapping_sum: {}",
-                    stringify!($id),
-                    twrapping_sum
-                );
-
-                // tolerate 1 ULP difference:
-                if vwrapping_sum.as_int() > twrapping_sum.as_int() {
-                    assert!(
-                        vwrapping_sum.as_int() - twrapping_sum.as_int()
-                            < 2,
-                        "v: {:?} | vwrapping_sum: {} | twrapping_sum: {}",
-                        v,
-                        vwrapping_sum,
-                        twrapping_sum
-                    );
-                } else {
-                    assert!(
-                        twrapping_sum.as_int() - vwrapping_sum.as_int()
-                            < 2,
-                        "v: {:?} | vwrapping_sum: {} | twrapping_sum: {}",
-                        v,
-                        vwrapping_sum,
-                        twrapping_sum
-                    );
-                }
+                unsafe { test_fn() };
             }
-            unsafe { test_fn() };
-        }
-    };
-}
+        };
+    }
 
     #[test]
-    fn wrapping_sum_roundoff_test() {
-        finvoke!(wrapping_sum_roundoff_test);
+    fn sum_roundoff_test() {
+        finvoke!(sum_roundoff_test);
     }
 
-    trait TreeReduceMul {
+    trait TreeProduct {
         type R;
-        fn tree_reduce_mul(self) -> Self::R;
+        fn tree_product(self) -> Self::R;
     }
 
-    macro_rules! tree_reduce_mul_f {
-    ($elem_ty:ident) => {
-        impl<'a> TreeReduceMul for &'a [$elem_ty] {
-            type R = $elem_ty;
-            fn tree_reduce_mul(self) -> $elem_ty {
-                if self.len() == 2 {
-                    println!("  lv: {}, rv: {} => {}", self[0], self[1], self[0] * self[1]);
-                    self[0] * self[1]
-                } else {
-                    let mid = self.len() / 2;
-                    let (left, right) = self.split_at(mid);
-                    println!("  splitting self: {:?} at mid {} into left: {:?}, right: {:?}", self, mid, self[0], self[1]);
-                    Self::tree_reduce_mul(left) * Self::tree_reduce_mul(right)
+    macro_rules! tree_product_f {
+        ($elem_ty:ident) => {
+            impl<'a> TreeProduct for &'a [$elem_ty] {
+                type R = $elem_ty;
+                fn tree_product(self) -> $elem_ty {
+                    if self.len() == 2 {
+                        self[0] * self[1]
+                    } else {
+                        let mid = self.len() / 2;
+                        let (left, right) = self.split_at(mid);
+                        Self::tree_product(left) * Self::tree_product(right)
+                    }
                 }
             }
-        }
-    };
-}
+        };
+    }
 
-    tree_reduce_mul_f!(f32);
-    tree_reduce_mul_f!(f64);
+    tree_product_f!(f32);
+    tree_product_f!(f64);
 
-    macro_rules! wrapping_product_roundoff_test {
+    macro_rules! product_roundoff_test {
         ($feature:tt, $feature_macro:ident, $id:ident, $elem_ty:ident) => {
             if $feature_macro!($feature) {
                 #[target_feature(enable = $feature)]
@@ -443,23 +421,16 @@ mod offset {
                         let c = if i % 2 == 0 { 1e3 } else { -1. };
                         start *= 3.14 * c;
                         mul *= start;
-                        println!("{} | start: {}", stringify!($id), start);
                         v = v.replace(i, start);
                     }
-                    let vmul = v.wrapping_product();
-                    println!("{} | lmul: {}", stringify!($id), mul);
-                    println!("{} | vmul: {}", stringify!($id), vmul);
+                    let vmul = v.product();
                     let r = vmul.as_int() == mul.as_int();
                     // This is false in general; the intrinsic performs a
                     // tree-reduce:
-                    println!("{} | equal: {}", stringify!($id), r);
-
                     let mut a = [0. as $elem_ty; $id::lanes()];
                     v.store_unaligned(&mut a);
 
-                    let tmul = a.tree_reduce_mul();
-                    println!("{} | tmul: {}", stringify!($id), tmul);
-
+                    let tmul = a.tree_product();
                     // tolerate 1 ULP difference:
                     if vmul.as_int() > tmul.as_int() {
                         assert!(
@@ -485,8 +456,8 @@ mod offset {
     }
 
     #[test]
-    fn wrapping_product_roundoff_test() {
-        finvoke!(wrapping_product_roundoff_test);
+    fn product_roundoff_test() {
+        finvoke!(product_roundoff_test);
     }
 
     macro_rules! wrapping_sum_overflow_test {
@@ -516,7 +487,7 @@ mod offset {
         iinvoke!(wrapping_sum_overflow_test);
     }
 
-    macro_rules! mul_overflow_test {
+    macro_rules! product_overflow_test {
         ($feature:tt, $feature_macro:ident, $id:ident, $elem_ty:ident) => {
             if $feature_macro!($feature) {
                 #[target_feature(enable = $feature)]
@@ -539,8 +510,7 @@ mod offset {
     }
 
     #[test]
-    fn mul_overflow_test() {
-        iinvoke!(mul_overflow_test);
+    fn product_overflow_test() {
+        iinvoke!(product_overflow_test);
     }
-
 }
