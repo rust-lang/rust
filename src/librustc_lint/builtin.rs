@@ -673,6 +673,75 @@ impl EarlyLintPass for AnonymousParameters {
     }
 }
 
+/// Checks for incorrect use use of `repr` attributes.
+#[derive(Clone)]
+pub struct BadRepr;
+
+impl LintPass for BadRepr {
+    fn get_lints(&self) -> LintArray {
+        lint_array!()
+    }
+}
+
+impl EarlyLintPass for BadRepr {
+    fn check_attribute(&mut self, cx: &EarlyContext, attr: &ast::Attribute) {
+        if attr.name() == "repr" {
+            let list = attr.meta_item_list();
+
+            // Emit warnings with `repr` either has a literal assignment (`#[repr = "C"]`) or
+            // no hints (``#[repr]`)
+            let has_hints = list.as_ref().map(|ref list| !list.is_empty()).unwrap_or(false);
+            if !has_hints {
+                let mut suggested = false;
+                let mut warn = if let Some(ref lit) = attr.value_str() {
+                    // avoid warning about empty `repr` on `#[repr = "foo"]`
+                    let sp = match format!("{}", lit).as_ref() {
+                        "C" | "packed" | "rust" | "u*" | "i*" => {
+                            let lo = attr.span.lo() + BytePos(2);
+                            let hi = attr.span.hi() - BytePos(1);
+                            suggested = true;
+                            attr.span.with_lo(lo).with_hi(hi)
+                        }
+                        _ => attr.span,  // the literal wasn't a valid `repr` arg
+                    };
+                    let mut warn = cx.struct_span_lint(
+                        BAD_REPR,
+                        sp,
+                        "`repr` attribute isn't configurable with a literal",
+                    );
+                    if suggested {
+                        // if the literal could have been a valid `repr` arg,
+                        // suggest the correct syntax
+                        warn.span_suggestion(
+                            sp,
+                            "give `repr` a hint",
+                            format!("repr({})", lit),
+                        );
+                    } else {
+                        warn.span_label(attr.span, "needs a hint");
+                    }
+                    warn
+                } else {
+                    let mut warn = cx.struct_span_lint(
+                        BAD_REPR,
+                        attr.span,
+                        "`repr` attribute must have a hint",
+                    );
+                    warn.span_label(attr.span, "needs a hint");
+                    warn
+                };
+                if !suggested {
+                    warn.help("valid hints include `#[repr(C)]`, `#[repr(packed)]` and \
+                               `#[repr(rust)]`");
+                    warn.note("for more information, visit \
+                               <https://doc.rust-lang.org/nomicon/other-reprs.html>");
+                }
+                warn.emit();
+            }
+        }
+    }
+}
+
 /// Checks for use of attributes which have been deprecated.
 #[derive(Clone)]
 pub struct DeprecatedAttr {

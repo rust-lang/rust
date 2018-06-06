@@ -14,7 +14,7 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use syntax_pos::{BytePos, Span};
+use syntax_pos::Span;
 use ty::TyCtxt;
 
 use hir;
@@ -154,59 +154,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         let hints: Vec<_> = item.attrs
             .iter()
             .filter(|attr| attr.name() == "repr")
-            .filter_map(|attr| {
-                let list = attr.meta_item_list();
-
-                // Emit warnings with `repr` either has a literal assignment (`#[repr = "C"]`) or
-                // no hints (``#[repr]`)
-                let has_hints = list.as_ref().map(|ref list| !list.is_empty()).unwrap_or(false);
-                if !has_hints {
-                    let mut suggested = false;
-                    let mut warn = if let Some(ref lit) = attr.value_str() {
-                        // avoid warning about empty `repr` on `#[repr = "foo"]`
-                        let sp = match format!("{}", lit).as_ref() {
-                            "C" | "packed" | "rust" | "u*" | "i*" => {
-                                let lo = attr.span.lo() + BytePos(2);
-                                let hi = attr.span.hi() - BytePos(1);
-                                suggested = true;
-                                attr.span.with_lo(lo).with_hi(hi)
-                            }
-                            _ => attr.span,  // the literal wasn't a valid `repr` arg
-                        };
-                        let mut warn = self.tcx.sess.struct_span_warn(
-                            sp,
-                            "`repr` attribute isn't configurable with a literal",
-                        );
-                        if suggested {
-                            // if the literal could have been a valid `repr` arg,
-                            // suggest the correct syntax
-                            warn.span_suggestion(
-                                sp,
-                                "give `repr` a hint",
-                                format!("repr({})", lit),
-                            );
-                        } else {
-                            warn.span_label(attr.span, "needs a hint");
-                        }
-                        warn
-                    } else {
-                        let mut warn = self.tcx.sess.struct_span_warn(
-                            attr.span,
-                            "`repr` attribute must have a hint",
-                        );
-                        warn.span_label(attr.span, "needs a hint");
-                        warn
-                    };
-                    if !suggested {
-                        warn.help("valid hints include `#[repr(C)]`, `#[repr(packed)]` and \
-                                   `#[repr(rust)]`");
-                        warn.note("for more information, visit \
-                                   <https://doc.rust-lang.org/nomicon/other-reprs.html>");
-                    }
-                    warn.emit();
-                }
-                list
-            })
+            .filter_map(|attr| attr.meta_item_list())
             .flat_map(|hints| hints)
             .collect();
 

@@ -4,6 +4,7 @@ warning: `repr` attribute must have a hint
 LL | #[repr]
    | ^^^^^^^ needs a hint
    |
+   = note: #[warn(bad_repr)] on by default
    = help: valid hints include `#[repr(C)]`, `#[repr(packed)]` and `#[repr(rust)]`
    = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
 

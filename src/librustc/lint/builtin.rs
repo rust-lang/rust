@@ -207,6 +207,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub BAD_REPR,
+    Warn,
+    "detects incorrect use of `repr` attribute"
+}
+
+declare_lint! {
     pub DEPRECATED,
     Warn,
     "detects use of deprecated items"

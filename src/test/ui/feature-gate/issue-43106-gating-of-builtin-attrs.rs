@@ -59,7 +59,9 @@
 #![start                     = "x4300"] //~ WARN unused attribute
 // see issue-43106-gating-of-test.rs for crate-level; but non crate-level is below at "4200"
 // see issue-43106-gating-of-bench.rs for crate-level; but non crate-level is below at "4100"
-#![repr                       = "3900"] //~ WARN unused attribute
+#![repr                       = "3900"]
+//~^ WARN unused attribute
+//~| WARN `repr` attribute isn't configurable with a literal
 #![path                       = "3800"] //~ WARN unused attribute
 #![abi                        = "3700"] //~ WARN unused attribute
 #![automatically_derived      = "3600"] //~ WARN unused attribute
