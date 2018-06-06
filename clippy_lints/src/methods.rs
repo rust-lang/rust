@@ -7,8 +7,8 @@ use std::fmt;
 use std::iter;
 use syntax::ast;
 use syntax::codemap::{Span, BytePos};
-use crate::utils::{get_arg_name, get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, is_self, is_self_ty,
-            iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method,
+use crate::utils::{get_arg_name, get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, is_expn_of, is_self, 
+            is_self_ty, iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method,
             match_type, method_chain_args, match_var, return_ty, remove_blocks, same_tys, single_segment_path, snippet,
             span_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
 use crate::utils::paths;
@@ -994,6 +994,34 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, name:
 
 /// Checks for the `EXPECT_FUN_CALL` lint.
 fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, name: &str, args: &[hir::Expr]) {
+    fn extract_format_args(arg: &hir::Expr) -> Option<&hir::HirVec<hir::Expr>> {
+        if let hir::ExprAddrOf(_, ref addr_of) = arg.node {
+            if let hir::ExprCall(ref inner_fun, ref inner_args) = addr_of.node {
+                if let Some(_) = is_expn_of(inner_fun.span, "format") {
+                    if inner_args.len() == 1 {
+                        if let hir::ExprCall(_, ref format_args) = inner_args[0].node {
+                            return Some(format_args);
+                        }
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    fn generate_format_arg_snippet(cx: &LateContext, a: &hir::Expr) -> String {
+        if let hir::ExprAddrOf(_, ref format_arg) = a.node {
+            if let hir::ExprMatch(ref format_arg_expr, _, _) = format_arg.node {
+                if let hir::ExprTup(ref format_arg_expr_tup) = format_arg_expr.node {
+                    return snippet(cx, format_arg_expr_tup[0].span, "..").into_owned();
+                }
+            }
+        };
+        
+        snippet(cx, a.span, "..").into_owned()
+    }
+
     fn check_general_case(
         cx: &LateContext,
         name: &str,
@@ -1024,42 +1052,26 @@ fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, n
         let closure = if match_type(cx, self_type, &paths::OPTION) { "||" } else { "|_|" };
         let span_replace_word = method_span.with_hi(span.hi());
 
-        if let hir::ExprAddrOf(_, ref addr_of) = arg.node {
-            if let hir::ExprCall(ref _inner_fun, ref inner_args) = addr_of.node {
-                // TODO: check if inner_fun is call to format!
-                if inner_args.len() == 1 {
-                    if let hir::ExprCall(_, ref format_args) = inner_args[0].node {
-                        let args_len = format_args.len();
-                        let args: Vec<String> = format_args
-                            .into_iter()
-                            .take(args_len - 1)
-                            .map(|a| {
-                                if let hir::ExprAddrOf(_, ref format_arg) = a.node {
-                                    if let hir::ExprMatch(ref format_arg_expr, _, _) = format_arg.node {
-                                        if let hir::ExprTup(ref format_arg_expr_tup) = format_arg_expr.node {
-                                            return snippet(cx, format_arg_expr_tup[0].span, "..").into_owned();
-                                        }
-                                    }
-                                };
-                                snippet(cx, a.span, "..").into_owned()
-                            })
-                            .collect();
+        if let Some(format_args) = extract_format_args(arg) {
+            let args_len = format_args.len();
+            let args: Vec<String> = format_args
+                .into_iter()
+                .take(args_len - 1)
+                .map(|a| generate_format_arg_snippet(cx, a))
+                .collect();
 
-                        let sugg = args.join(", ");
+            let sugg = args.join(", ");
 
-                        span_lint_and_sugg(
-                            cx,
-                            EXPECT_FUN_CALL,
-                            span_replace_word,
-                            &format!("use of `{}` followed by a function call", name),
-                            "try this",
-                            format!("unwrap_or_else({} panic!({}))", closure, sugg),
-                        );
+            span_lint_and_sugg(
+                cx,
+                EXPECT_FUN_CALL,
+                span_replace_word,
+                &format!("use of `{}` followed by a function call", name),
+                "try this",
+                format!("unwrap_or_else({} panic!({}))", closure, sugg),
+            );
 
-                        return;
-                    }
-                }
-            }
+            return;
         }
 
         let sugg: Cow<_> = snippet(cx, arg.span, "..");
