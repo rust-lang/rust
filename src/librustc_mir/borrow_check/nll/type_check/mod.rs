@@ -289,7 +289,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                     let instantiated_predicates =
                         tcx.predicates_of(def_id).instantiate(tcx, substs);
                     let predicates =
-                        type_checker.normalize(&instantiated_predicates.predicates, location);
+                        type_checker.normalize(instantiated_predicates.predicates, location);
                     type_checker.prove_predicates(predicates, location);
                 }
 
@@ -346,7 +346,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             Place::Static(box Static { def_id, ty: sty }) => {
                 let sty = self.sanitize_type(place, sty);
                 let ty = self.tcx().type_of(def_id);
-                let ty = self.cx.normalize(&ty, location);
+                let ty = self.cx.normalize(ty, location);
                 if let Err(terr) = self.cx.eq_types(ty, sty, location.at_self()) {
                     span_mirbug!(
                         self,
@@ -1023,7 +1023,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     LateBoundRegionConversionTime::FnCall,
                     &sig,
                 );
-                let sig = self.normalize(&sig, term_location);
+                let sig = self.normalize(sig, term_location);
                 self.check_call_dest(mir, term, &sig, destination, term_location);
 
                 self.prove_predicates(
@@ -1311,7 +1311,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let variant = &def.variants[variant_index];
                 let adj_field_index = active_field_index.unwrap_or(field_index);
                 if let Some(field) = variant.fields.get(adj_field_index) {
-                    Ok(self.normalize(&field.ty(tcx, substs), location))
+                    Ok(self.normalize(field.ty(tcx, substs), location))
                 } else {
                     Err(FieldAccessError::OutOfRange {
                         field_count: variant.fields.len(),
@@ -1385,7 +1385,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     // function definition. When we extract the
                     // signature, it comes from the `fn_sig` query,
                     // and hence may contain unnormalized results.
-                    let fn_sig = self.normalize(&fn_sig, location);
+                    let fn_sig = self.normalize(fn_sig, location);
 
                     let ty_fn_ptr_from = tcx.mk_fn_ptr(fn_sig);
 
@@ -1430,7 +1430,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     // function definition. When we extract the
                     // signature, it comes from the `fn_sig` query,
                     // and hence may contain unnormalized results.
-                    let fn_sig = self.normalize(&fn_sig, location);
+                    let fn_sig = self.normalize(fn_sig, location);
 
                     let ty_fn_ptr_from = tcx.safe_to_unsafe_fn_ty(fn_sig);
 
@@ -1576,7 +1576,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             AggregateKind::Array(_) | AggregateKind::Tuple => ty::InstantiatedPredicates::empty(),
         };
 
-        let predicates = self.normalize(&instantiated_predicates.predicates, location);
+        let predicates = self.normalize(instantiated_predicates.predicates, location);
         debug!("prove_aggregate_predicates: predicates={:?}", predicates);
         self.prove_predicates(predicates, location);
     }
@@ -1644,7 +1644,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn normalize<T>(&mut self, value: &T, location: impl ToLocations) -> T
+    fn normalize<T>(&mut self, value: T, location: impl ToLocations) -> T
     where
         T: fmt::Debug + TypeFoldable<'tcx>,
     {
@@ -1661,7 +1661,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let Normalized { value, obligations } = this
                     .infcx
                     .at(&ObligationCause::dummy(), this.param_env)
-                    .normalize(value)
+                    .normalize(&value)
                     .unwrap_or_else(|NoSolution| {
                         span_bug!(
                             this.last_span,

@@ -51,7 +51,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         // Equate expected input tys with those in the MIR.
         let argument_locals = (1..).map(Local::new);
         for (&unnormalized_input_ty, local) in unnormalized_input_tys.iter().zip(argument_locals) {
-            let input_ty = self.normalize(&unnormalized_input_ty, Locations::All);
+            let input_ty = self.normalize(unnormalized_input_ty, Locations::All);
             let mir_input_ty = mir.local_decls[local].ty;
             self.equate_normalized_input_or_output(input_ty, mir_input_ty);
         }
@@ -71,7 +71,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             "equate_inputs_and_outputs: unnormalized_output_ty={:?}",
             unnormalized_output_ty
         );
-        let output_ty = self.normalize(&unnormalized_output_ty, Locations::All);
+        let output_ty = self.normalize(unnormalized_output_ty, Locations::All);
         debug!(
             "equate_inputs_and_outputs: normalized output_ty={:?}",
             output_ty

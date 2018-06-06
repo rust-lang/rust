@@ -19,6 +19,7 @@ pub(super) trait TypeOp<'gcx, 'tcx> {
     /// Micro-optimization point: true if this is trivially true.
     fn trivial_noop(&self) -> Option<Self::Output>;
 
+    /// Produce a description of the operation for the debug logs.
     fn perform(
         self,
         type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>,
