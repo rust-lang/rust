@@ -59,12 +59,14 @@ use core::any::Any;
 use core::borrow;
 use core::cmp::Ordering;
 use core::fmt;
+use core::future::Future;
 use core::hash::{Hash, Hasher};
 use core::iter::FusedIterator;
 use core::marker::{Unpin, Unsize};
 use core::mem::{self, PinMut};
 use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
 use core::ptr::{self, NonNull, Unique};
+use core::task::{Context, Poll, UnsafePoll, TaskObj};
 use core::convert::From;
 
 use raw_vec::RawVec;
@@ -755,6 +757,7 @@ impl<T> Generator for Box<T>
 /// A pinned, heap allocated reference.
 #[unstable(feature = "pin", issue = "49150")]
 #[fundamental]
+#[repr(transparent)]
 pub struct PinBox<T: ?Sized> {
     inner: Box<T>,
 }
@@ -771,14 +774,72 @@ impl<T> PinBox<T> {
 #[unstable(feature = "pin", issue = "49150")]
 impl<T: ?Sized> PinBox<T> {
     /// Get a pinned reference to the data in this PinBox.
+    #[inline]
     pub fn as_pin_mut<'a>(&'a mut self) -> PinMut<'a, T> {
         unsafe { PinMut::new_unchecked(&mut *self.inner) }
+    }
+
+    /// Constructs a `PinBox` from a raw pointer.
+    ///
+    /// After calling this function, the raw pointer is owned by the
+    /// resulting `PinBox`. Specifically, the `PinBox` destructor will call
+    /// the destructor of `T` and free the allocated memory. Since the
+    /// way `PinBox` allocates and releases memory is unspecified, the
+    /// only valid pointer to pass to this function is the one taken
+    /// from another `PinBox` via the [`PinBox::into_raw`] function.
+    ///
+    /// This function is unsafe because improper use may lead to
+    /// memory problems. For example, a double-free may occur if the
+    /// function is called twice on the same raw pointer.
+    ///
+    /// [`PinBox::into_raw`]: struct.PinBox.html#method.into_raw
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(pin)]
+    /// use std::boxed::PinBox;
+    /// let x = PinBox::new(5);
+    /// let ptr = PinBox::into_raw(x);
+    /// let x = unsafe { PinBox::from_raw(ptr) };
+    /// ```
+    #[inline]
+    pub unsafe fn from_raw(raw: *mut T) -> Self {
+        PinBox { inner: Box::from_raw(raw) }
+    }
+
+    /// Consumes the `PinBox`, returning the wrapped raw pointer.
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `PinBox`. In particular, the
+    /// caller should properly destroy `T` and release the memory. The
+    /// proper way to do so is to convert the raw pointer back into a
+    /// `PinBox` with the [`PinBox::from_raw`] function.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `PinBox::into_raw(b)` instead of `b.into_raw()`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// [`PinBox::from_raw`]: struct.PinBox.html#method.from_raw
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(pin)]
+    /// use std::boxed::PinBox;
+    /// let x = PinBox::new(5);
+    /// let ptr = PinBox::into_raw(x);
+    /// ```
+    #[inline]
+    pub fn into_raw(b: PinBox<T>) -> *mut T {
+        Box::into_raw(b.inner)
     }
 
     /// Get a mutable reference to the data inside this PinBox.
     ///
     /// This function is unsafe. Users must guarantee that the data is never
     /// moved out of this reference.
+    #[inline]
     pub unsafe fn get_mut<'a>(this: &'a mut PinBox<T>) -> &'a mut T {
         &mut *this.inner
     }
@@ -787,6 +848,7 @@ impl<T: ?Sized> PinBox<T> {
     ///
     /// This function is unsafe. Users must guarantee that the data is never
     /// moved out of the box.
+    #[inline]
     pub unsafe fn unpin(this: PinBox<T>) -> Box<T> {
         this.inner
     }
@@ -851,3 +913,34 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<PinBox<U>> for PinBox<T> {}
 
 #[unstable(feature = "pin", issue = "49150")]
 impl<T: ?Sized> Unpin for PinBox<T> {}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+unsafe impl<F: Future<Output = ()> + Send + 'static> UnsafePoll for PinBox<F> {
+    fn into_raw(self) -> *mut () {
+        PinBox::into_raw(self) as *mut ()
+    }
+
+    unsafe fn poll(task: *mut (), cx: &mut Context) -> Poll<()> {
+        let ptr = task as *mut F;
+        let pin: PinMut<F> = PinMut::new_unchecked(&mut *ptr);
+        pin.poll(cx)
+    }
+
+    unsafe fn drop(task: *mut ()) {
+        drop(PinBox::from_raw(task as *mut F))
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+impl<F: Future<Output = ()> + Send + 'static> From<PinBox<F>> for TaskObj {
+    fn from(boxed: PinBox<F>) -> Self {
+        TaskObj::from_poll_task(boxed)
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+impl<F: Future<Output = ()> + Send + 'static> From<Box<F>> for TaskObj {
+    fn from(boxed: Box<F>) -> Self {
+        TaskObj::from_poll_task(PinBox::from(boxed))
+    }
+}
