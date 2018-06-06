@@ -251,6 +251,13 @@ struct FulfillProcessor<'a, 'b: 'a, 'gcx: 'tcx, 'tcx: 'b> {
     register_region_obligations: bool
 }
 
+fn mk_pending(os: Vec<PredicateObligation<'tcx>>) -> Vec<PendingPredicateObligation<'tcx>> {
+    os.into_iter().map(|o| PendingPredicateObligation {
+        obligation: o,
+        stalled_on: vec![]
+    }).collect()
+}
+
 impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 'tcx> {
     type Obligation = PendingPredicateObligation<'tcx>;
     type Error = FulfillmentErrorCode<'tcx>;
@@ -260,10 +267,6 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                           -> Result<Option<Vec<Self::Obligation>>, Self::Error>
     {
         process_predicate(self.selcx, obligation, self.register_region_obligations)
-            .map(|os| os.map(|os| os.into_iter().map(|o| PendingPredicateObligation {
-                obligation: o,
-                stalled_on: vec![]
-            }).collect()))
     }
 
     fn process_backedge<'c, I>(&mut self, cycle: I,
@@ -300,7 +303,7 @@ fn process_predicate<'a, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'a, 'gcx, 'tcx>,
     pending_obligation: &mut PendingPredicateObligation<'tcx>,
     register_region_obligations: bool)
-    -> Result<Option<Vec<PredicateObligation<'tcx>>>,
+    -> Result<Option<Vec<PendingPredicateObligation<'tcx>>>,
               FulfillmentErrorCode<'tcx>>
 {
     // if we were stalled on some unresolved variables, first check
@@ -343,7 +346,7 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                 Ok(Some(vtable)) => {
                     debug!("selecting trait `{:?}` at depth {} yielded Ok(Some)",
                            data, obligation.recursion_depth);
-                    Ok(Some(vtable.nested_obligations()))
+                    Ok(Some(mk_pending(vtable.nested_obligations())))
                 }
                 Ok(None) => {
                     debug!("selecting trait `{:?}` at depth {} yielded Ok(None)",
@@ -444,7 +447,7 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                         trait_ref_type_vars(selcx, data.to_poly_trait_ref(tcx));
                     Ok(None)
                 }
-                Ok(v) => Ok(v),
+                Ok(Some(os)) => Ok(Some(mk_pending(os))),
                 Err(e) => Err(CodeProjectionError(e))
             }
         }
@@ -481,7 +484,7 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                     pending_obligation.stalled_on = vec![ty];
                     Ok(None)
                 }
-                s => Ok(s)
+                Some(os) => Ok(Some(mk_pending(os)))
             }
         }
 
@@ -496,7 +499,7 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                     Ok(None)
                 }
                 Some(Ok(ok)) => {
-                    Ok(Some(ok.obligations))
+                    Ok(Some(mk_pending(ok.obligations)))
                 }
                 Some(Err(err)) => {
                     let expected_found = ExpectedFound::new(subtype.skip_binder().a_is_expected,
