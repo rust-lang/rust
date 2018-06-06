@@ -19,6 +19,7 @@ fn a() {
         //~^ borrow of `vec[..]` occurs here
             vec[0] = box 4; //~ ERROR cannot assign
             //~^ assignment to borrowed `vec[..]` occurs here
+            _a.use_ref();
         }
     }
 }
@@ -31,6 +32,7 @@ fn b() {
         //~^ borrow of `vec[..]` occurs here
             vec[0] = box 4; //~ ERROR cannot assign
             //~^ assignment to borrowed `vec[..]` occurs here
+            _b.use_ref();
         }
     }
 }
@@ -82,3 +84,6 @@ fn e() {
 }
 
 fn main() {}
+
+trait Fake { fn use_mut(&mut self) { } fn use_ref(&self) { }  }
+impl<T> Fake for T { }
