@@ -158,6 +158,10 @@ pub fn opts() -> Vec<RustcOptGroup> {
         stable("extern", |o| {
             o.optmulti("", "extern", "pass an --extern to rustc", "NAME=PATH")
         }),
+        unstable("extern-html-root-url", |o| {
+            o.optmulti("", "extern-html-root-url",
+                       "base URL to use for dependencies", "NAME=URL")
+        }),
         stable("plugin-path", |o| {
             o.optmulti("", "plugin-path", "directory to load plugins from", "DIR")
         }),
@@ -423,6 +427,13 @@ pub fn main_args(args: &[String]) -> isize {
             return 1;
         }
     };
+    let extern_urls = match parse_extern_html_roots(&matches) {
+        Ok(ex) => ex,
+        Err(err) => {
+            diag.struct_err(err).emit();
+            return 1;
+        }
+    };
 
     let test_args = matches.opt_strs("test-args");
     let test_args: Vec<String> = test_args.iter()
@@ -521,7 +532,7 @@ pub fn main_args(args: &[String]) -> isize {
         info!("going to format");
         match output_format.as_ref().map(|s| &**s) {
             Some("html") | None => {
-                html::render::run(krate, &external_html, playground_url,
+                html::render::run(krate, extern_urls, &external_html, playground_url,
                                   output.unwrap_or(PathBuf::from("doc")),
                                   resource_suffix.unwrap_or(String::new()),
                                   passes.into_iter().collect(),
@@ -578,6 +589,23 @@ fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
         externs.entry(name).or_insert_with(BTreeSet::new).insert(location.to_string());
     }
     Ok(Externs::new(externs))
+}
+
+/// Extracts `--extern-html-root-url` arguments from `matches` and returns a map of crate names to
+/// the given URLs. If an `--extern-html-root-url` argument was ill-formed, returns an error
+/// describing the issue.
+fn parse_extern_html_roots(matches: &getopts::Matches)
+    -> Result<BTreeMap<String, String>, &'static str>
+{
+    let mut externs = BTreeMap::new();
+    for arg in &matches.opt_strs("extern-html-root-url") {
+        let mut parts = arg.splitn(2, '=');
+        let name = parts.next().ok_or("--extern-html-root-url must not be empty")?;
+        let url = parts.next().ok_or("--extern-html-root-url must be of the form name=url")?;
+        externs.insert(name.to_string(), url.to_string());
+    }
+
+    Ok(externs)
 }
 
 /// Interprets the input file as a rust source file, passing it through the

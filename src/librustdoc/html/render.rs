@@ -507,6 +507,7 @@ pub fn derive_id(candidate: String) -> String {
 
 /// Generates the documentation for `crate` into the directory `dst`
 pub fn run(mut krate: clean::Crate,
+           extern_urls: BTreeMap<String, String>,
            external_html: &ExternalHtml,
            playground_url: Option<String>,
            dst: PathBuf,
@@ -636,8 +637,9 @@ pub fn run(mut krate: clean::Crate,
             },
             _ => PathBuf::new(),
         };
+        let extern_url = extern_urls.get(&e.name).map(|u| &**u);
         cache.extern_locations.insert(n, (e.name.clone(), src_root,
-                                          extern_location(e, &cx.dst)));
+                                          extern_location(e, extern_url, &cx.dst)));
 
         let did = DefId { krate: n, index: CRATE_DEF_INDEX };
         cache.external_paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
@@ -1088,11 +1090,21 @@ fn clean_srcpath<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F) wh
 
 /// Attempts to find where an external crate is located, given that we're
 /// rendering in to the specified source destination.
-fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
+fn extern_location(e: &clean::ExternalCrate, extern_url: Option<&str>, dst: &Path)
+    -> ExternalLocation
+{
     // See if there's documentation generated into the local directory
     let local_location = dst.join(&e.name);
     if local_location.is_dir() {
         return Local;
+    }
+
+    if let Some(url) = extern_url {
+        let mut url = url.to_string();
+        if !url.ends_with("/") {
+            url.push('/');
+        }
+        return Remote(url);
     }
 
     // Failing that, see if there's an attribute specifying where to find this
