@@ -15,7 +15,6 @@ use borrow_check::location::LocationTable;
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, OutlivesConstraint, TypeTest};
-use borrow_check::nll::type_check::type_op::{CustomTypeOp, TypeOp};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
@@ -27,8 +26,7 @@ use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::*;
-use rustc::traits::query::NoSolution;
-use rustc::traits::{ObligationCause, Normalized, TraitEngine};
+use rustc::traits::{ObligationCause, TraitEngine};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
@@ -734,7 +732,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         &mut self,
         locations: Locations,
         describe_op: impl Fn() -> String,
-        op: impl TypeOp<'gcx, 'tcx, Output = R>,
+        op: impl type_op::TypeOp<'gcx, 'tcx, Output = R>,
     ) -> Result<R, TypeError<'tcx>> {
         match op.trivial_noop() {
             Ok(r) => Ok(r),
@@ -784,7 +782,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn fully_perform_op_and_get_region_constraint_data<R>(
         &mut self,
         describe_op: impl Fn() -> String,
-        op: impl TypeOp<'gcx, 'tcx, Output = R>,
+        op: impl type_op::TypeOp<'gcx, 'tcx, Output = R>,
     ) -> Result<(R, Option<Rc<RegionConstraintData<'tcx>>>), TypeError<'tcx>> {
         if cfg!(debug_assertions) {
             info!(
@@ -1649,30 +1647,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     where
         T: fmt::Debug + TypeFoldable<'tcx>,
     {
-        // Micro-optimization: avoid work when we don't have to
-        if !value.has_projections() {
-            return value.clone();
-        }
-
         debug!("normalize(value={:?}, location={:?})", value, location);
+        let value1 = value.clone(); // FIXME move describe into type_op
         self.fully_perform_op(
             location.to_locations(),
-            || format!("normalize(value={:?})", value),
-            CustomTypeOp::new(|this| {
-                let Normalized { value, obligations } = this
-                    .infcx
-                    .at(&ObligationCause::dummy(), this.param_env)
-                    .normalize(&value)
-                    .unwrap_or_else(|NoSolution| {
-                        span_bug!(
-                            this.last_span,
-                            "normalization of `{:?}` failed at {:?}",
-                            value,
-                            location,
-                        );
-                    });
-                Ok(InferOk { value, obligations })
-            }),
+            || format!("normalize(value={:?})", value1),
+            type_op::Normalize::new(value),
         ).unwrap()
     }
 }

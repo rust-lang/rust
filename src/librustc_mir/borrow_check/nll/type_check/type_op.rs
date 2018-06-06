@@ -10,8 +10,11 @@
 
 use borrow_check::nll::type_check::TypeChecker;
 use rustc::infer::{InferOk, InferResult};
-use rustc::traits::{Obligation, ObligationCause, PredicateObligation};
+use rustc::traits::{Normalized, Obligation, ObligationCause, PredicateObligation};
+use rustc::traits::query::NoSolution;
 use rustc::ty::{ParamEnv, Predicate, Ty};
+use rustc::ty::fold::TypeFoldable;
+use std::fmt;
 
 pub(super) trait TypeOp<'gcx, 'tcx>: Sized {
     type Output;
@@ -158,5 +161,53 @@ impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for ProvePredicates<'tcx> {
             value: (),
             obligations: self.obligations,
         })
+    }
+}
+
+pub(super) struct Normalize<T> {
+    value: T
+}
+
+impl<'tcx, T> Normalize<T>
+where
+    T: fmt::Debug + TypeFoldable<'tcx>,
+{
+    pub(super) fn new(
+        value: T
+    ) -> Self {
+        Self { value }
+    }
+}
+
+impl<'gcx, 'tcx, T> TypeOp<'gcx, 'tcx> for Normalize<T>
+where
+    T: fmt::Debug + TypeFoldable<'tcx>,
+{
+    type Output = T;
+
+    fn trivial_noop(self) -> Result<Self::Output, Self> {
+        if !self.value.has_projections() {
+            Ok(self.value)
+        } else {
+            Err(self)
+        }
+    }
+
+    fn perform(
+        self,
+        type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>,
+    ) -> InferResult<'tcx, Self::Output> {
+        let Normalized { value, obligations } = type_checker
+            .infcx
+            .at(&ObligationCause::dummy(), type_checker.param_env)
+            .normalize(&self.value)
+            .unwrap_or_else(|NoSolution| {
+                span_bug!(
+                    type_checker.last_span,
+                    "normalization of `{:?}` failed",
+                    self.value,
+                );
+            });
+        Ok(InferOk { value, obligations })
     }
 }
