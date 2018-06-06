@@ -696,7 +696,9 @@ impl EarlyLintPass for BadRepr {
                 let mut warn = if let Some(ref lit) = attr.value_str() {
                     // avoid warning about empty `repr` on `#[repr = "foo"]`
                     let sp = match format!("{}", lit).as_ref() {
-                        "C" | "packed" | "rust" | "u*" | "i*" | "transparent" => {
+                        | "C" | "packed" | "rust" | "transparent"
+                        | "u8" | "u16" | "u32" | "u64" | "u128"
+                        | "i8" | "i16" | "i32" | "i64" | "i128" => {
                             let lo = attr.span.lo() + BytePos(2);
                             let hi = attr.span.hi() - BytePos(1);
                             suggested = true;
