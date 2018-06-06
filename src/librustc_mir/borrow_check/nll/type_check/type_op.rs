@@ -16,6 +16,9 @@ use rustc::ty::Ty;
 pub(super) trait TypeOp<'gcx, 'tcx> {
     type Output;
 
+    /// Micro-optimization point: true if this is trivially true.
+    fn trivial_noop(&self) -> Option<Self::Output>;
+
     fn perform(
         self,
         type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>,
@@ -41,6 +44,10 @@ where
 {
     type Output = R;
 
+    fn trivial_noop(&self) -> Option<Self::Output> {
+        None
+    }
+
     fn perform(self, type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>) -> InferResult<'tcx, R> {
         (self.closure)(type_checker)
     }
@@ -59,6 +66,14 @@ impl<'tcx> Subtype<'tcx> {
 
 impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Subtype<'tcx> {
     type Output = ();
+
+    fn trivial_noop(&self) -> Option<Self::Output> {
+        if self.sub == self.sup {
+            Some(())
+        } else {
+            None
+        }
+    }
 
     fn perform(self, type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
         type_checker.infcx
@@ -81,11 +96,17 @@ impl<'tcx> Eq<'tcx> {
 impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Eq<'tcx> {
     type Output = ();
 
+    fn trivial_noop(&self) -> Option<Self::Output> {
+        if self.a == self.b {
+            Some(())
+        } else {
+            None
+        }
+    }
+
     fn perform(self, type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
         type_checker.infcx
             .at(&ObligationCause::dummy(), type_checker.param_env)
             .eq(self.a, self.b)
     }
 }
-
-

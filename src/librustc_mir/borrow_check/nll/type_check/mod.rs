@@ -736,6 +736,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         describe_op: impl Fn() -> String,
         op: impl TypeOp<'gcx, 'tcx, Output = R>,
     ) -> Result<R, TypeError<'tcx>> {
+        if let Some(r) = op.trivial_noop() {
+            return Ok(r);
+        }
+
         let (r, opt_data) = self.fully_perform_op_and_get_region_constraint_data(
             || format!("{} at {:?}", describe_op(), locations),
             op,
@@ -818,11 +822,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         sup: Ty<'tcx>,
         locations: Locations,
     ) -> UnitResult<'tcx> {
-        // Micro-optimization.
-        if sub == sup {
-            return Ok(());
-        }
-
         self.fully_perform_op(
             locations,
             || format!("sub_types({:?} <: {:?})", sub, sup),
@@ -831,11 +830,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     }
 
     fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> UnitResult<'tcx> {
-        // Micro-optimization.
-        if a == b {
-            return Ok(());
-        }
-
         self.fully_perform_op(
             locations,
             || format!("eq_types({:?} = {:?})", a, b),
