@@ -15,9 +15,12 @@ fmt_macros = { path = "../libfmt_macros" }
 graphviz = { path = "../libgraphviz" }
 jobserver = "0.1"
 lazy_static = "1.0.0"
+scoped-tls = { version = "0.1.1", features = ["nightly"] }
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
 polonius-engine = "0.5.0"
 proc_macro = { path = "../libproc_macro" }
+rustc-rayon = "0.1.1"
+rustc-rayon-core = "0.1.1"
 rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_target = { path = "../librustc_target" }
 rustc_data_structures = { path = "../librustc_data_structures" }
@@ -26,6 +29,7 @@ serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
 backtrace = "0.3.3"
+parking_lot = "0.5.5"
 byteorder = { version = "1.1", features = ["i128"]}
 chalk-engine = { version = "0.6.0", default-features=false }
 
