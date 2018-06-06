@@ -194,7 +194,7 @@ LL |     mod inner { #![repr="3900"] }
    |
    = note: #[warn(bad_repr)] on by default
    = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
-   = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html>
 
 warning: `repr` attribute isn't configurable with a literal
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:320:5
@@ -203,7 +203,7 @@ LL |     #[repr = "3900"] fn f() { }
    |     ^^^^^^^^^^^^^^^^ needs a hint
    |
    = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
-   = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html>
 
 warning: `repr` attribute isn't configurable with a literal
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:326:5
@@ -212,7 +212,7 @@ LL |     #[repr = "3900"] type T = S;
    |     ^^^^^^^^^^^^^^^^ needs a hint
    |
    = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
-   = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html>
 
 warning: `repr` attribute isn't configurable with a literal
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:330:5
@@ -221,7 +221,7 @@ LL |     #[repr = "3900"] impl S { }
    |     ^^^^^^^^^^^^^^^^ needs a hint
    |
    = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
-   = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html>
 
 warning: `repr` attribute isn't configurable with a literal
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:312:1
@@ -230,7 +230,7 @@ LL | #[repr = "3900"]
    | ^^^^^^^^^^^^^^^^ needs a hint
    |
    = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
-   = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html>
 
 warning: `repr` attribute isn't configurable with a literal
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:62:1
@@ -239,7 +239,7 @@ LL | #![repr                       = "3900"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ needs a hint
    |
    = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
-   = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html>
 
 warning: unused attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:194:5

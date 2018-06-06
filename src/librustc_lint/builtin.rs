@@ -736,7 +736,7 @@ impl EarlyLintPass for BadRepr {
                     warn.help("valid hints include `#[repr(C)]`, `#[repr(packed)]`, \
                                `#[repr(rust)]` and `#[repr(transparent)]`");
                     warn.note("for more information, visit \
-                               <https://doc.rust-lang.org/nomicon/other-reprs.html>");
+                               <https://doc.rust-lang.org/reference/type-layout.html>");
                 }
                 warn.emit();
             }

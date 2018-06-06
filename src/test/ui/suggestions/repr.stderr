@@ -6,7 +6,7 @@ LL | #[repr]
    |
    = note: #[warn(bad_repr)] on by default
    = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
-   = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html>
 
 warning: `repr` attribute isn't configurable with a literal
   --> $DIR/repr.rs:17:1
@@ -15,7 +15,7 @@ LL | #[repr = "B"]
    | ^^^^^^^^^^^^^ needs a hint
    |
    = help: valid hints include `#[repr(C)]`, `#[repr(packed)]`, `#[repr(rust)]` and `#[repr(transparent)]`
-   = note: for more information, visit <https://doc.rust-lang.org/nomicon/other-reprs.html>
+   = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html>
 
 warning: `repr` attribute isn't configurable with a literal
   --> $DIR/repr.rs:21:3
