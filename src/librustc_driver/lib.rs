@@ -454,7 +454,7 @@ fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<CodegenBackend> {
 // See comments on CompilerCalls below for details about the callbacks argument.
 // The FileLoader provides a way to load files from sources other than the file system.
 pub fn run_compiler<'a>(args: &[String],
-                        callbacks: &mut (CompilerCalls<'a> + sync::Send),
+                        callbacks: Box<CompilerCalls<'a> + sync::Send + 'a>,
                         file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
                         emitter_dest: Option<Box<Write + Send>>)
                         -> (CompileResult, Option<Session>)
@@ -478,7 +478,7 @@ fn run_compiler_with_pool<'a>(
     matches: getopts::Matches,
     sopts: config::Options,
     cfg: ast::CrateConfig,
-    callbacks: &mut (CompilerCalls<'a> + sync::Send),
+    mut callbacks: Box<CompilerCalls<'a> + sync::Send + 'a>,
     file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
     emitter_dest: Option<Box<Write + Send>>
 ) -> (CompileResult, Option<Session>) {
@@ -642,12 +642,12 @@ impl Compilation {
     }
 }
 
-// A trait for customising the compilation process. Offers a number of hooks for
-// executing custom code or customising input.
+/// A trait for customising the compilation process. Offers a number of hooks for
+/// executing custom code or customising input.
 pub trait CompilerCalls<'a> {
-    // Hook for a callback early in the process of handling arguments. This will
-    // be called straight after options have been parsed but before anything
-    // else (e.g., selecting input and output).
+    /// Hook for a callback early in the process of handling arguments. This will
+    /// be called straight after options have been parsed but before anything
+    /// else (e.g., selecting input and output).
     fn early_callback(&mut self,
                       _: &getopts::Matches,
                       _: &config::Options,
@@ -658,9 +658,9 @@ pub trait CompilerCalls<'a> {
         Compilation::Continue
     }
 
-    // Hook for a callback late in the process of handling arguments. This will
-    // be called just before actual compilation starts (and before build_controller
-    // is called), after all arguments etc. have been completely handled.
+    /// Hook for a callback late in the process of handling arguments. This will
+    /// be called just before actual compilation starts (and before build_controller
+    /// is called), after all arguments etc. have been completely handled.
     fn late_callback(&mut self,
                      _: &CodegenBackend,
                      _: &getopts::Matches,
@@ -673,9 +673,9 @@ pub trait CompilerCalls<'a> {
         Compilation::Continue
     }
 
-    // Called after we extract the input from the arguments. Gives the implementer
-    // an opportunity to change the inputs or to add some custom input handling.
-    // The default behaviour is to simply pass through the inputs.
+    /// Called after we extract the input from the arguments. Gives the implementer
+    /// an opportunity to change the inputs or to add some custom input handling.
+    /// The default behaviour is to simply pass through the inputs.
     fn some_input(&mut self,
                   input: Input,
                   input_path: Option<PathBuf>)
@@ -683,11 +683,11 @@ pub trait CompilerCalls<'a> {
         (input, input_path)
     }
 
-    // Called after we extract the input from the arguments if there is no valid
-    // input. Gives the implementer an opportunity to supply alternate input (by
-    // returning a Some value) or to add custom behaviour for this error such as
-    // emitting error messages. Returning None will cause compilation to stop
-    // at this point.
+    /// Called after we extract the input from the arguments if there is no valid
+    /// input. Gives the implementer an opportunity to supply alternate input (by
+    /// returning a Some value) or to add custom behaviour for this error such as
+    /// emitting error messages. Returning None will cause compilation to stop
+    /// at this point.
     fn no_input(&mut self,
                 _: &getopts::Matches,
                 _: &config::Options,
@@ -701,10 +701,14 @@ pub trait CompilerCalls<'a> {
 
     // Create a CompilController struct for controlling the behaviour of
     // compilation.
-    fn build_controller(&mut self, _: &Session, _: &getopts::Matches) -> CompileController<'a>;
+    fn build_controller(
+        self: Box<Self>,
+        _: &Session,
+        _: &getopts::Matches
+    ) -> CompileController<'a>;
 }
 
-// CompilerCalls instance for a regular rustc build.
+/// CompilerCalls instance for a regular rustc build.
 #[derive(Copy, Clone)]
 pub struct RustcDefaultCalls;
 
@@ -878,7 +882,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             .and_then(|| RustcDefaultCalls::list_metadata(sess, cstore, matches, input))
     }
 
-    fn build_controller(&mut self,
+    fn build_controller(self: Box<Self>,
                         sess: &Session,
                         matches: &getopts::Matches)
                         -> CompileController<'a> {
@@ -1693,7 +1697,7 @@ pub fn main() {
             }))
             .collect::<Vec<_>>();
         run_compiler(&args,
-                     &mut RustcDefaultCalls,
+                     Box::new(RustcDefaultCalls),
                      None,
                      None)
     });

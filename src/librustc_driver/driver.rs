@@ -414,6 +414,75 @@ impl<'a> CompileController<'a> {
     }
 }
 
+/// This implementation makes it easier to create a custom driver when you only want to hook
+/// into callbacks from `CompileController`.
+///
+/// # Example
+///
+/// ```no_run
+/// # extern crate rustc_driver;
+/// # use rustc_driver::driver::CompileController;
+/// let mut controller = CompileController::basic();
+/// controller.after_analysis.callback = Box::new(move |_state| {});
+/// rustc_driver::run_compiler(&[], Box::new(controller), None, None);
+/// ```
+impl<'a> ::CompilerCalls<'a> for CompileController<'a> {
+    fn early_callback(
+        &mut self,
+        matches: &::getopts::Matches,
+        sopts: &config::Options,
+        cfg: &ast::CrateConfig,
+        descriptions: &::errors::registry::Registry,
+        output: ::ErrorOutputType,
+    ) -> Compilation {
+        ::RustcDefaultCalls.early_callback(
+            matches,
+            sopts,
+            cfg,
+            descriptions,
+            output,
+        )
+    }
+    fn no_input(
+        &mut self,
+        matches: &::getopts::Matches,
+        sopts: &config::Options,
+        cfg: &ast::CrateConfig,
+        odir: &Option<PathBuf>,
+        ofile: &Option<PathBuf>,
+        descriptions: &::errors::registry::Registry,
+    ) -> Option<(Input, Option<PathBuf>)> {
+        ::RustcDefaultCalls.no_input(
+            matches,
+            sopts,
+            cfg,
+            odir,
+            ofile,
+            descriptions,
+        )
+    }
+    fn late_callback(
+        &mut self,
+        codegen_backend: &::CodegenBackend,
+        matches: &::getopts::Matches,
+        sess: &Session,
+        cstore: &::CrateStore,
+        input: &Input,
+        odir: &Option<PathBuf>,
+        ofile: &Option<PathBuf>,
+    ) -> Compilation {
+        ::RustcDefaultCalls
+            .late_callback(codegen_backend, matches, sess, cstore, input, odir, ofile)
+    }
+    fn build_controller(
+        self: Box<Self>,
+        _: &Session,
+        _: &::getopts::Matches
+    ) -> CompileController<'a> {
+        *self
+    }
+}
+
 pub struct PhaseController<'a> {
     pub stop: Compilation,
     // If true then the compiler will try to run the callback even if the phase
