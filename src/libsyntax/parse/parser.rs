@@ -3710,26 +3710,89 @@ impl<'a> Parser<'a> {
         Ok((before, slice, after))
     }
 
+    fn parse_pat_field(
+        &mut self,
+        lo: Span,
+        attrs: Vec<Attribute>
+    ) -> PResult<'a, codemap::Spanned<ast::FieldPat>> {
+        // Check if a colon exists one ahead. This means we're parsing a fieldname.
+        let hi;
+        let (subpat, fieldname, is_shorthand) = if self.look_ahead(1, |t| t == &token::Colon) {
+            // Parsing a pattern of the form "fieldname: pat"
+            let fieldname = self.parse_field_name()?;
+            self.bump();
+            let pat = self.parse_pat()?;
+            hi = pat.span;
+            (pat, fieldname, false)
+        } else {
+            // Parsing a pattern of the form "(box) (ref) (mut) fieldname"
+            let is_box = self.eat_keyword(keywords::Box);
+            let boxed_span = self.span;
+            let is_ref = self.eat_keyword(keywords::Ref);
+            let is_mut = self.eat_keyword(keywords::Mut);
+            let fieldname = self.parse_ident()?;
+            hi = self.prev_span;
+
+            let bind_type = match (is_ref, is_mut) {
+                (true, true) => BindingMode::ByRef(Mutability::Mutable),
+                (true, false) => BindingMode::ByRef(Mutability::Immutable),
+                (false, true) => BindingMode::ByValue(Mutability::Mutable),
+                (false, false) => BindingMode::ByValue(Mutability::Immutable),
+            };
+            let fieldpat = P(Pat {
+                id: ast::DUMMY_NODE_ID,
+                node: PatKind::Ident(bind_type, fieldname, None),
+                span: boxed_span.to(hi),
+            });
+
+            let subpat = if is_box {
+                P(Pat {
+                    id: ast::DUMMY_NODE_ID,
+                    node: PatKind::Box(fieldpat),
+                    span: lo.to(hi),
+                })
+            } else {
+                fieldpat
+            };
+            (subpat, fieldname, true)
+        };
+
+        Ok(codemap::Spanned {
+            span: lo.to(hi),
+            node: ast::FieldPat {
+                ident: fieldname,
+                pat: subpat,
+                is_shorthand,
+                attrs: attrs.into(),
+           }
+        })
+    }
+
     /// Parse the fields of a struct-like pattern
     fn parse_pat_fields(&mut self) -> PResult<'a, (Vec<codemap::Spanned<ast::FieldPat>>, bool)> {
         let mut fields = Vec::new();
         let mut etc = false;
-        let mut first = true;
-        while self.token != token::CloseDelim(token::Brace) {
-            if first {
-                first = false;
-            } else {
-                self.expect(&token::Comma)?;
-                // accept trailing commas
-                if self.check(&token::CloseDelim(token::Brace)) { break }
-            }
+        let mut ate_comma = true;
+        let mut delayed_err: Option<DiagnosticBuilder<'a>> = None;
+        let mut etc_span = None;
 
+        while self.token != token::CloseDelim(token::Brace) {
             let attrs = self.parse_outer_attributes()?;
             let lo = self.span;
-            let hi;
+
+            // check that a comma comes after every field
+            if !ate_comma {
+                let err = self.struct_span_err(self.prev_span, "expected `,`");
+                return Err(err);
+            }
+            ate_comma = false;
 
             if self.check(&token::DotDot) || self.token == token::DotDotDot {
+                etc = true;
+                let mut etc_sp = self.span;
+
                 if self.token == token::DotDotDot { // Issue #46718
+                    // Accept `...` as if it were `..` to avoid further errors
                     let mut err = self.struct_span_err(self.span,
                                                        "expected field pattern, found `...`");
                     err.span_suggestion_with_applicability(
@@ -3740,73 +3803,76 @@ impl<'a> Parser<'a> {
                     );
                     err.emit();
                 }
+                self.bump();  // `..` || `...`:w
 
-                self.bump();
-                if self.token != token::CloseDelim(token::Brace) {
-                    let token_str = self.this_token_to_string();
-                    let mut err = self.fatal(&format!("expected `{}`, found `{}`", "}", token_str));
-                    if self.token == token::Comma { // Issue #49257
-                        err.span_label(self.span,
-                                       "`..` must be in the last position, \
-                                        and cannot have a trailing comma");
+                if self.token == token::CloseDelim(token::Brace) {
+                    etc_span = Some(etc_sp);
+                    break;
+                }
+                let token_str = self.this_token_to_string();
+                let mut err = self.fatal(&format!("expected `}}`, found `{}`", token_str));
+
+                err.span_label(self.span, "expected `}`");
+                let mut comma_sp = None;
+                if self.token == token::Comma { // Issue #49257
+                    etc_sp = etc_sp.to(self.sess.codemap().span_until_non_whitespace(self.span));
+                    err.span_label(etc_sp,
+                                   "`..` must be at the end and cannot have a trailing comma");
+                    comma_sp = Some(self.span);
+                    self.bump();
+                    ate_comma = true;
+                }
+
+                etc_span = Some(etc_sp);
+                if self.token == token::CloseDelim(token::Brace) {
+                    // If the struct looks otherwise well formed, recover and continue.
+                    if let Some(sp) = comma_sp {
+                        err.span_suggestion_short(sp, "remove this comma", "".into());
+                    }
+                    err.emit();
+                    break;
+                } else if self.token.is_ident() && ate_comma {
+                    // Accept fields coming after `..,`.
+                    // This way we avoid "pattern missing fields" errors afterwards.
+                    // We delay this error until the end in order to have a span for a
+                    // suggested fix.
+                    if let Some(mut delayed_err) = delayed_err {
+                        delayed_err.emit();
+                        return Err(err);
                     } else {
-                        err.span_label(self.span, "expected `}`");
+                        delayed_err = Some(err);
+                    }
+                } else {
+                    if let Some(mut err) = delayed_err {
+                        err.emit();
                     }
                     return Err(err);
                 }
-                etc = true;
-                break;
             }
 
-            // Check if a colon exists one ahead. This means we're parsing a fieldname.
-            let (subpat, fieldname, is_shorthand) = if self.look_ahead(1, |t| t == &token::Colon) {
-                // Parsing a pattern of the form "fieldname: pat"
-                let fieldname = self.parse_field_name()?;
-                self.bump();
-                let pat = self.parse_pat()?;
-                hi = pat.span;
-                (pat, fieldname, false)
-            } else {
-                // Parsing a pattern of the form "(box) (ref) (mut) fieldname"
-                let is_box = self.eat_keyword(keywords::Box);
-                let boxed_span = self.span;
-                let is_ref = self.eat_keyword(keywords::Ref);
-                let is_mut = self.eat_keyword(keywords::Mut);
-                let fieldname = self.parse_ident()?;
-                hi = self.prev_span;
-
-                let bind_type = match (is_ref, is_mut) {
-                    (true, true) => BindingMode::ByRef(Mutability::Mutable),
-                    (true, false) => BindingMode::ByRef(Mutability::Immutable),
-                    (false, true) => BindingMode::ByValue(Mutability::Mutable),
-                    (false, false) => BindingMode::ByValue(Mutability::Immutable),
-                };
-                let fieldpat = P(Pat {
-                    id: ast::DUMMY_NODE_ID,
-                    node: PatKind::Ident(bind_type, fieldname, None),
-                    span: boxed_span.to(hi),
-                });
-
-                let subpat = if is_box {
-                    P(Pat {
-                        id: ast::DUMMY_NODE_ID,
-                        node: PatKind::Box(fieldpat),
-                        span: lo.to(hi),
-                    })
-                } else {
-                    fieldpat
-                };
-                (subpat, fieldname, true)
-            };
-
-            fields.push(codemap::Spanned { span: lo.to(hi),
-                                           node: ast::FieldPat {
-                                               ident: fieldname,
-                                               pat: subpat,
-                                               is_shorthand,
-                                               attrs: attrs.into(),
-                                           }
+            fields.push(match self.parse_pat_field(lo, attrs) {
+                Ok(field) => field,
+                Err(err) => {
+                    if let Some(mut delayed_err) = delayed_err {
+                        delayed_err.emit();
+                    }
+                    return Err(err);
+                }
             });
+            ate_comma = self.eat(&token::Comma);
+        }
+
+        if let Some(mut err) = delayed_err {
+            if let Some(etc_span) = etc_span {
+                err.multipart_suggestion(
+                    "move the `..` to the end of the field list",
+                    vec![
+                        (etc_span, "".into()),
+                        (self.span, format!("{}.. }}", if ate_comma { "" } else { ", " })),
+                    ],
+                );
+            }
+            err.emit();
         }
         return Ok((fields, etc));
     }
