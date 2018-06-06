@@ -709,11 +709,6 @@ pub fn format_impl(
             return Some(result);
         }
 
-        if !where_clause_str.is_empty() && !where_clause_str.contains('\n') {
-            let width = offset.block_indent + context.config.tab_spaces() - 1;
-            let where_indent = Indent::new(0, width);
-            result.push_str(&where_indent.to_string_with_newline(context.config));
-        }
         result.push_str(&where_clause_str);
 
         let need_newline = last_line_contains_single_line_comment(&result) || result.contains('\n');
