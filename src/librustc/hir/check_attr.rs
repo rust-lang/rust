@@ -154,7 +154,22 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         let hints: Vec<_> = item.attrs
             .iter()
             .filter(|attr| attr.name() == "repr")
-            .filter_map(|attr| attr.meta_item_list())
+            .filter_map(|attr| {
+                let list = attr.meta_item_list();
+                let mut has_hints = false;
+                if let Some(ref list) = list {
+                    has_hints = !list.is_empty();
+                }
+                if !has_hints {
+                    span_warn!(
+                        self.tcx.sess,
+                        item.span,
+                        E0689,
+                        "`repr` attribute cannot be empty",
+                    );
+                }
+                list
+            })
             .flat_map(|hints| hints)
             .collect();
 
