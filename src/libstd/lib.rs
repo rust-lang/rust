@@ -263,6 +263,7 @@
 #![feature(fn_traits)]
 #![feature(fnbox)]
 #![feature(futures_api)]
+#![feature(generator_trait)]
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
 #![feature(integer_atomics)]
@@ -410,8 +411,6 @@ pub use core::ops;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ptr;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::raw;
-#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::option;
@@ -496,6 +495,7 @@ pub mod os;
 pub mod panic;
 pub mod path;
 pub mod process;
+pub mod raw;
 pub mod sync;
 pub mod time;
 

@@ -127,11 +127,17 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                 ast::ItemKind::Fn(_, header, _, _) => {
                     if header.unsafety == ast::Unsafety::Unsafe {
                         let diag = self.cx.span_diagnostic;
-                        diag.span_fatal(i.span, "unsafe functions cannot be used for tests").raise();
+                        diag.span_fatal(
+                            i.span,
+                            "unsafe functions cannot be used for tests"
+                        ).raise();
                     }
-                    if header.asyncness == ast::IsAsync::Async {
+                    if header.asyncness.is_async() {
                         let diag = self.cx.span_diagnostic;
-                        diag.span_fatal(i.span, "async functions cannot be used for tests").raise();
+                        diag.span_fatal(
+                            i.span,
+                            "async functions cannot be used for tests"
+                        ).raise();
                     }
                 }
                 _ => {},

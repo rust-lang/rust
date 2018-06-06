@@ -987,6 +987,7 @@ impl Expr {
             ExprKind::Closure(..) => ExprPrecedence::Closure,
             ExprKind::Block(..) => ExprPrecedence::Block,
             ExprKind::Catch(..) => ExprPrecedence::Catch,
+            ExprKind::Async(..) => ExprPrecedence::Async,
             ExprKind::Assign(..) => ExprPrecedence::Assign,
             ExprKind::AssignOp(..) => ExprPrecedence::AssignOp,
             ExprKind::Field(..) => ExprPrecedence::Field,
@@ -1094,9 +1095,18 @@ pub enum ExprKind {
     /// A closure (for example, `move |a, b, c| a + b + c`)
     ///
     /// The final span is the span of the argument block `|...|`
-    Closure(CaptureBy, Movability, P<FnDecl>, P<Expr>, Span),
+    Closure(CaptureBy, IsAsync, Movability, P<FnDecl>, P<Expr>, Span),
     /// A block (`'label: { ... }`)
     Block(P<Block>, Option<Label>),
+    /// An async block (`async move { ... }`)
+    ///
+    /// The `NodeId` is the `NodeId` for the closure that results from
+    /// desugaring an async block, just like the NodeId field in the
+    /// `IsAsync` enum. This is necessary in order to create a def for the
+    /// closure which can be used as a parent of any child defs. Defs
+    /// created during lowering cannot be made the parent of any other
+    /// preexisting defs.
+    Async(CaptureBy, NodeId, P<Block>),
     /// A catch block (`catch { ... }`)
     Catch(P<Block>),
 
@@ -1708,8 +1718,18 @@ pub enum Unsafety {
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum IsAsync {
-    Async,
+    Async(NodeId),
     NotAsync,
+}
+
+impl IsAsync {
+    pub fn is_async(self) -> bool {
+        if let IsAsync::Async(_) = self {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

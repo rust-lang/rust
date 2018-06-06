@@ -493,12 +493,14 @@ pub enum CompilerDesugaringKind {
     /// to an `existential type Foo: Trait;` + replacing the
     /// `impl Trait` with `Foo`.
     ExistentialReturnType,
+    Async,
 }
 
 impl CompilerDesugaringKind {
     pub fn as_symbol(&self) -> Symbol {
         use CompilerDesugaringKind::*;
         let s = match *self {
+            Async => "async",
             DotFill => "...",
             QuestionMark => "?",
             Catch => "do catch",

@@ -277,6 +277,7 @@ pub enum ExprPrecedence {
     Block,
     Catch,
     Struct,
+    Async,
 }
 
 impl PartialOrd for ExprPrecedence {
@@ -346,6 +347,7 @@ impl ExprPrecedence {
             ExprPrecedence::Match |
             ExprPrecedence::Block |
             ExprPrecedence::Catch |
+            ExprPrecedence::Async |
             ExprPrecedence::Struct => PREC_PAREN,
         }
     }

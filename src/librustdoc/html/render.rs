@@ -2585,7 +2585,8 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     write!(w, "{}<pre class='rust fn'>", render_spotlight_traits(it)?)?;
     render_attributes(w, it)?;
     write!(w,
-           "{vis}{constness}{asyncness}{unsafety}{abi}fn {name}{generics}{decl}{where_clause}</pre>",
+           "{vis}{constness}{asyncness}{unsafety}{abi}fn \
+           {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(&it.visibility),
            constness = ConstnessSpace(f.header.constness),
            asyncness = AsyncSpace(f.header.asyncness),

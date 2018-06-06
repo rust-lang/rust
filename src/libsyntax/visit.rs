@@ -235,7 +235,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         }
         ItemKind::Fn(ref declaration, header, ref generics, ref body) => {
             visitor.visit_generics(generics);
-            visitor.visit_fn(FnKind::ItemFn(item.ident, header, 
+            visitor.visit_fn(FnKind::ItemFn(item.ident, header,
                                             &item.vis, body),
                              declaration,
                              item.span,
@@ -735,7 +735,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             walk_list!(visitor, visit_arm, arms);
         }
-        ExprKind::Closure(_, _, ref function_declaration, ref body, _decl_span) => {
+        ExprKind::Closure(_, _, _, ref function_declaration, ref body, _decl_span) => {
             visitor.visit_fn(FnKind::Closure(body),
                              function_declaration,
                              expression.span,
@@ -744,6 +744,9 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Block(ref block, ref opt_label) => {
             walk_list!(visitor, visit_label, opt_label);
             visitor.visit_block(block);
+        }
+        ExprKind::Async(_, _, ref body) => {
+            visitor.visit_block(body);
         }
         ExprKind::Assign(ref left_hand_expression, ref right_hand_expression) => {
             visitor.visit_expr(left_hand_expression);

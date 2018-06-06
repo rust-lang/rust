@@ -915,6 +915,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                       fn_decl_span: Span) // span of the `|...|` part
                       -> P<ast::Expr> {
         self.expr(span, ast::ExprKind::Closure(ast::CaptureBy::Ref,
+                                               ast::IsAsync::NotAsync,
                                                ast::Movability::Movable,
                                                fn_decl,
                                                body,
@@ -935,6 +936,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         // the entire lambda body. Probably we should extend the API
         // here, but that's not entirely clear.
         self.expr(span, ast::ExprKind::Closure(ast::CaptureBy::Ref,
+                                               ast::IsAsync::NotAsync,
                                                ast::Movability::Movable,
                                                fn_decl,
                                                body,

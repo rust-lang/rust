@@ -2171,8 +2171,10 @@ impl<'a> State<'a> {
                 }
                 self.bclose_(expr.span, INDENT_UNIT)?;
             }
-            ast::ExprKind::Closure(capture_clause, movability, ref decl, ref body, _) => {
+            ast::ExprKind::Closure(
+                capture_clause, asyncness, movability, ref decl, ref body, _) => {
                 self.print_movability(movability)?;
+                self.print_asyncness(asyncness)?;
                 self.print_capture_clause(capture_clause)?;
 
                 self.print_fn_block_args(decl)?;
@@ -2194,6 +2196,12 @@ impl<'a> State<'a> {
                 self.cbox(INDENT_UNIT)?;
                 // head-box, will be closed by print-block after {
                 self.ibox(0)?;
+                self.print_block_with_attrs(blk, attrs)?;
+            }
+            ast::ExprKind::Async(capture_clause, _, ref blk) => {
+                self.word_nbsp("async")?;
+                self.print_capture_clause(capture_clause)?;
+                self.s.space()?;
                 self.print_block_with_attrs(blk, attrs)?;
             }
             ast::ExprKind::Assign(ref lhs, ref rhs) => {
@@ -2792,6 +2800,14 @@ impl<'a> State<'a> {
         }
     }
 
+    pub fn print_asyncness(&mut self, asyncness: ast::IsAsync)
+                                -> io::Result<()> {
+        if asyncness.is_async() {
+            self.word_nbsp("async")?;
+        }
+        Ok(())
+    }
+
     pub fn print_capture_clause(&mut self, capture_clause: ast::CaptureBy)
                                 -> io::Result<()> {
         match capture_clause {
@@ -3122,11 +3138,7 @@ impl<'a> State<'a> {
             ast::Constness::Const => self.word_nbsp("const")?
         }
 
-        match header.asyncness {
-            ast::IsAsync::NotAsync => {}
-            ast::IsAsync::Async => self.word_nbsp("async")?
-        }
-
+        self.print_asyncness(header.asyncness)?;
         self.print_unsafety(header.unsafety)?;
 
         if header.abi != Abi::Rust {

@@ -43,7 +43,7 @@ use ast::{BinOpKind, UnOp};
 use ast::{RangeEnd, RangeSyntax};
 use {ast, attr};
 use codemap::{self, CodeMap, Spanned, respan};
-use syntax_pos::{self, Span, MultiSpan, BytePos, FileName, DUMMY_SP};
+use syntax_pos::{self, Span, MultiSpan, BytePos, FileName, DUMMY_SP, edition::Edition};
 use errors::{self, Applicability, DiagnosticBuilder};
 use parse::{self, SeqSep, classify, token};
 use parse::lexer::TokenAndSpan;
@@ -2258,6 +2258,15 @@ impl<'a> Parser<'a> {
                     hi = path.span;
                     return Ok(self.mk_expr(lo.to(hi), ExprKind::Path(Some(qself), path), attrs));
                 }
+                if syntax_pos::hygiene::default_edition() >= Edition::Edition2018 &&
+                    self.check_keyword(keywords::Async)
+                {
+                    if self.is_async_block() { // check for `async {` and `async move {`
+                        return self.parse_async_block(attrs);
+                    } else {
+                        return self.parse_lambda_expr(attrs);
+                    }
+                }
                 if self.check_keyword(keywords::Move) || self.check_keyword(keywords::Static) {
                     return self.parse_lambda_expr(attrs);
                 }
@@ -3252,6 +3261,13 @@ impl<'a> Parser<'a> {
         } else {
             Movability::Movable
         };
+        let asyncness = if syntax_pos::hygiene::default_edition() >= Edition::Edition2018
+            && self.eat_keyword(keywords::Async)
+        {
+            IsAsync::Async(ast::DUMMY_NODE_ID)
+        } else {
+            IsAsync::NotAsync
+        };
         let capture_clause = if self.eat_keyword(keywords::Move) {
             CaptureBy::Value
         } else {
@@ -3274,7 +3290,7 @@ impl<'a> Parser<'a> {
 
         Ok(self.mk_expr(
             lo.to(body.span),
-            ExprKind::Closure(capture_clause, movability, decl, body, lo.to(decl_hi)),
+            ExprKind::Closure(capture_clause, asyncness, movability, decl, body, lo.to(decl_hi)),
             attrs))
     }
 
@@ -3350,6 +3366,24 @@ impl<'a> Parser<'a> {
         attrs.extend(iattrs);
         let span = span_lo.to(body.span);
         Ok(self.mk_expr(span, ExprKind::Loop(body, opt_label), attrs))
+    }
+
+    /// Parse an `async move {...}` expression
+    pub fn parse_async_block(&mut self, mut attrs: ThinVec<Attribute>)
+        -> PResult<'a, P<Expr>>
+    {
+        let span_lo = self.span;
+        self.expect_keyword(keywords::Async)?;
+        let capture_clause = if self.eat_keyword(keywords::Move) {
+            CaptureBy::Value
+        } else {
+            CaptureBy::Ref
+        };
+        let (iattrs, body) = self.parse_inner_attrs_and_block()?;
+        attrs.extend(iattrs);
+        Ok(self.mk_expr(
+            span_lo.to(body.span),
+            ExprKind::Async(capture_clause, ast::DUMMY_NODE_ID, body), attrs))
     }
 
     /// Parse a `do catch {...}` expression (`do catch` token already eaten)
@@ -4284,6 +4318,18 @@ impl<'a> Parser<'a> {
             self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
             None
         })
+    }
+
+    fn is_async_block(&mut self) -> bool {
+        self.token.is_keyword(keywords::Async) &&
+        (
+            ( // `async move {`
+                self.look_ahead(1, |t| t.is_keyword(keywords::Move)) &&
+                self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))
+            ) || ( // `async {`
+                self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace))
+            )
+        )
     }
 
     fn is_catch_expr(&mut self) -> bool {
@@ -6698,14 +6744,18 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return Ok(Some(item));
         }
-        if self.eat_keyword(keywords::Async) {
+        if self.check_keyword(keywords::Async) &&
+            (self.look_ahead(1, |t| t.is_keyword(keywords::Fn)) ||
+             self.look_ahead(1, |t| t.is_keyword(keywords::Unsafe)))
+        {
             // ASYNC FUNCTION ITEM
+            self.expect_keyword(keywords::Async)?;
             let unsafety = self.parse_unsafety();
             self.expect_keyword(keywords::Fn)?;
             let fn_span = self.prev_span;
             let (ident, item_, extra_attrs) =
                 self.parse_item_fn(unsafety,
-                                   IsAsync::Async,
+                                   IsAsync::Async(ast::DUMMY_NODE_ID),
                                    respan(fn_span, Constness::NotConst),
                                    Abi::Rust)?;
             let prev_span = self.prev_span;

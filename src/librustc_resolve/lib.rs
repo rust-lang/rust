@@ -55,7 +55,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 
 use syntax::visit::{self, FnKind, Visitor};
 use syntax::attr;
-use syntax::ast::{Arm, BindingMode, Block, Crate, Expr, ExprKind};
+use syntax::ast::{Arm, IsAsync, BindingMode, Block, Crate, Expr, ExprKind, FnHeader};
 use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParamKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
@@ -2054,13 +2054,54 @@ impl<'a> Resolver<'a> {
         self.check_proc_macro_attrs(&item.attrs);
 
         match item.node {
+            ItemKind::Fn(ref declaration,
+                         FnHeader { asyncness: IsAsync::Async(async_closure_id), .. },
+                         ref generics,
+                         ref body) => {
+                // Async functions are desugared from `async fn foo() { .. }`
+                // to `fn foo() { future_from_generator(move || ... ) }`,
+                // so we have to visit the body inside the closure scope
+                self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
+                    this.visit_vis(&item.vis);
+                    this.visit_ident(item.ident);
+                    this.visit_generics(generics);
+                    let rib_kind = ItemRibKind;
+                    this.ribs[ValueNS].push(Rib::new(rib_kind));
+                    this.label_ribs.push(Rib::new(rib_kind));
+                    let mut bindings_list = FxHashMap();
+                    for argument in &declaration.inputs {
+                        this.resolve_pattern(
+                            &argument.pat, PatternSource::FnParam, &mut bindings_list);
+                        this.visit_ty(&*argument.ty);
+                    }
+                    visit::walk_fn_ret_ty(this, &declaration.output);
+
+                    // Now resolve the inner closure
+                    {
+                        let rib_kind = ClosureRibKind(async_closure_id);
+                        this.ribs[ValueNS].push(Rib::new(rib_kind));
+                        this.label_ribs.push(Rib::new(rib_kind));
+                        // No need to resolve either arguments nor return type,
+                        // as this closure has neither
+
+                        // Resolve the body
+                        this.visit_block(body);
+                        this.label_ribs.pop();
+                        this.ribs[ValueNS].pop();
+                    }
+                    this.label_ribs.pop();
+                    this.ribs[ValueNS].pop();
+
+                    walk_list!(this, visit_attribute, &item.attrs);
+                })
+            }
             ItemKind::Enum(_, ref generics) |
             ItemKind::Ty(_, ref generics) |
             ItemKind::Struct(_, ref generics) |
             ItemKind::Union(_, ref generics) |
-            ItemKind::Fn(.., ref generics, _) => {
+            ItemKind::Fn(_, _, ref generics, _) => {
                 self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind),
-                                             |this| visit::walk_item(this, item));
+                                         |this| visit::walk_item(this, item));
             }
 
             ItemKind::Impl(.., ref generics, ref opt_trait_ref, ref self_type, ref impl_items) =>
@@ -3887,6 +3928,49 @@ impl<'a> Resolver<'a> {
                 self.current_type_ascription.push(type_expr.span);
                 visit::walk_expr(self, expr);
                 self.current_type_ascription.pop();
+            }
+            // Resolve the body of async exprs inside the async closure to which they desugar
+            ExprKind::Async(_, async_closure_id, ref block) => {
+                let rib_kind = ClosureRibKind(async_closure_id);
+                self.ribs[ValueNS].push(Rib::new(rib_kind));
+                self.label_ribs.push(Rib::new(rib_kind));
+                self.visit_block(&block);
+                self.label_ribs.pop();
+                self.ribs[ValueNS].pop();
+            }
+            // `async |x| ...` gets desugared to `|x| future_from_generator(|| ...)`, so we need to
+            // resolve the arguments within the proper scopes so that usages of them inside the
+            // closure are detected as upvars rather than normal closure arg usages.
+            ExprKind::Closure(
+                _, IsAsync::Async(inner_closure_id), _, ref fn_decl, ref body, _span) =>
+            {
+                let rib_kind = ClosureRibKind(expr.id);
+                self.ribs[ValueNS].push(Rib::new(rib_kind));
+                self.label_ribs.push(Rib::new(rib_kind));
+                // Resolve arguments:
+                let mut bindings_list = FxHashMap();
+                for argument in &fn_decl.inputs {
+                    self.resolve_pattern(&argument.pat, PatternSource::FnParam, &mut bindings_list);
+                    self.visit_ty(&argument.ty);
+                }
+                // No need to resolve return type-- the outer closure return type is
+                // FunctionRetTy::Default
+
+                // Now resolve the inner closure
+                {
+                    let rib_kind = ClosureRibKind(inner_closure_id);
+                    self.ribs[ValueNS].push(Rib::new(rib_kind));
+                    self.label_ribs.push(Rib::new(rib_kind));
+                    // No need to resolve arguments: the inner closure has none.
+                    // Resolve the return type:
+                    visit::walk_fn_ret_ty(self, &fn_decl.output);
+                    // Resolve the body
+                    self.visit_expr(body);
+                    self.label_ribs.pop();
+                    self.ribs[ValueNS].pop();
+                }
+                self.label_ribs.pop();
+                self.ribs[ValueNS].pop();
             }
             _ => {
                 visit::walk_expr(self, expr);

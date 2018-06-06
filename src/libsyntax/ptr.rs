@@ -95,6 +95,16 @@ impl<T: 'static> P<T> {
     }
 }
 
+impl<T: 'static> P<[T]> {
+    pub fn map_slice<F>(self, f: F) -> P<[T]> where
+        F: FnOnce(Vec<T>) -> Vec<T>
+    {
+        P {
+            ptr: f(self.ptr.into()).into(),
+        }
+    }
+}
+
 impl<T: ?Sized> Deref for P<T> {
     type Target = T;
 

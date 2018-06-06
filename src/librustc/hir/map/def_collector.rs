@@ -99,6 +99,21 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             ItemKind::Mod(..) if i.ident == keywords::Invalid.ident() => {
                 return visit::walk_item(self, i);
             }
+            ItemKind::Fn(_, FnHeader { asyncness: IsAsync::Async(async_node_id), .. }, ..) => {
+                // For async functions, we need to create their inner defs inside of a
+                // closure to match their desugared representation.
+                let fn_def_data = DefPathData::ValueNs(i.ident.name.as_interned_str());
+                let fn_def = self.create_def(i.id, fn_def_data, ITEM_LIKE_SPACE, i.span);
+                return self.with_parent(fn_def, |this| {
+                    let closure_def = this.create_def(async_node_id,
+                                          DefPathData::ClosureExpr,
+                                          REGULAR_SPACE,
+                                          i.span);
+                    this.with_parent(closure_def, |this| {
+                        visit::walk_item(this, i);
+                    })
+                });
+            }
             ItemKind::Mod(..) => DefPathData::Module(i.ident.name.as_interned_str()),
             ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) =>
                 DefPathData::ValueNs(i.ident.name.as_interned_str()),
@@ -227,15 +242,32 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
         match expr.node {
             ExprKind::Mac(..) => return self.visit_macro_invoc(expr.id),
-            ExprKind::Closure(..) => {
-                let def = self.create_def(expr.id,
+            ExprKind::Closure(_, asyncness, ..) => {
+                let closure_def = self.create_def(expr.id,
                                           DefPathData::ClosureExpr,
                                           REGULAR_SPACE,
                                           expr.span);
-                self.parent_def = Some(def);
+                self.parent_def = Some(closure_def);
+
+                // Async closures desugar to closures inside of closures, so
+                // we must create two defs.
+                if let IsAsync::Async(async_id) = asyncness {
+                    let async_def = self.create_def(async_id,
+                                                    DefPathData::ClosureExpr,
+                                                    REGULAR_SPACE,
+                                                    expr.span);
+                    self.parent_def = Some(async_def);
+                }
+            }
+            ExprKind::Async(_, async_id, _) => {
+                let async_def = self.create_def(async_id,
+                                                DefPathData::ClosureExpr,
+                                                REGULAR_SPACE,
+                                                expr.span);
+                self.parent_def = Some(async_def);
             }
             _ => {}
-        }
+        };
 
         visit::walk_expr(self, expr);
         self.parent_def = parent_def;

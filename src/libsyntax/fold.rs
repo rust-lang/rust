@@ -76,6 +76,10 @@ pub trait Folder : Sized {
         noop_fold_item_simple(i, self)
     }
 
+    fn fold_fn_header(&mut self, header: FnHeader) -> FnHeader {
+        noop_fold_fn_header(header, self)
+    }
+
     fn fold_struct_field(&mut self, sf: StructField) -> StructField {
         noop_fold_struct_field(sf, self)
     }
@@ -883,6 +887,7 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
         }
         ItemKind::Fn(decl, header, generics, body) => {
             let generics = folder.fold_generics(generics);
+            let header = folder.fold_fn_header(header);
             let decl = folder.fold_fn_decl(decl);
             let body = folder.fold_block(body);
             ItemKind::Fn(decl, header, generics, body)
@@ -990,6 +995,14 @@ pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T)
     })
 }
 
+pub fn noop_fold_fn_header<T: Folder>(mut header: FnHeader, folder: &mut T) -> FnHeader {
+    header.asyncness = match header.asyncness {
+        IsAsync::Async(node_id) => IsAsync::Async(folder.new_id(node_id)),
+        IsAsync::NotAsync => IsAsync::NotAsync,
+    };
+    header
+}
+
 pub fn noop_fold_mod<T: Folder>(Mod {inner, items}: Mod, folder: &mut T) -> Mod {
     Mod {
         inner: folder.new_span(inner),
@@ -1082,7 +1095,7 @@ pub fn noop_fold_foreign_item_simple<T: Folder>(ni: ForeignItem, folder: &mut T)
 
 pub fn noop_fold_method_sig<T: Folder>(sig: MethodSig, folder: &mut T) -> MethodSig {
     MethodSig {
-        header: sig.header,
+        header: folder.fold_fn_header(sig.header),
         decl: folder.fold_fn_decl(sig.decl)
     }
 }
@@ -1235,8 +1248,13 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 ExprKind::Match(folder.fold_expr(expr),
                           arms.move_map(|x| folder.fold_arm(x)))
             }
-            ExprKind::Closure(capture_clause, movability, decl, body, span) => {
+            ExprKind::Closure(capture_clause, asyncness, movability, decl, body, span) => {
+                let asyncness = match asyncness {
+                    IsAsync::Async(node_id) => IsAsync::Async(folder.new_id(node_id)),
+                    IsAsync::NotAsync => IsAsync::NotAsync,
+                };
                 ExprKind::Closure(capture_clause,
+                                  asyncness,
                                   movability,
                                   folder.fold_fn_decl(decl),
                                   folder.fold_expr(body),
@@ -1245,6 +1263,9 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
             ExprKind::Block(blk, opt_label) => {
                 ExprKind::Block(folder.fold_block(blk),
                                 opt_label.map(|label| folder.fold_label(label)))
+            }
+            ExprKind::Async(capture_clause, node_id, body) => {
+                ExprKind::Async(capture_clause, folder.new_id(node_id), folder.fold_block(body))
             }
             ExprKind::Assign(el, er) => {
                 ExprKind::Assign(folder.fold_expr(el), folder.fold_expr(er))

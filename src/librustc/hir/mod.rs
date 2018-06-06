@@ -245,6 +245,16 @@ pub enum LifetimeName {
 }
 
 impl LifetimeName {
+    pub fn is_elided(self) -> bool {
+        match self {
+            LifetimeName::Implicit
+            | LifetimeName::Underscore => true,
+            LifetimeName::Fresh(_)
+            | LifetimeName::Static
+            | LifetimeName::Name(_) => false,
+        }
+    }
+
     pub fn name(&self) -> Name {
         use self::LifetimeName::*;
         match *self {

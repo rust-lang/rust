@@ -2131,5 +2131,10 @@ register_diagnostics! {
     E0657, // `impl Trait` can only capture lifetimes bound at the fn level
     E0687, // in-band lifetimes cannot be used in `fn`/`Fn` syntax
     E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
-    E0697, // closures cannot be static
+
+    E0906, // closures cannot be static
+
+    E0703, // multiple different lifetimes used in arguments of `async fn`
+    E0704, // multiple elided lifetimes used in arguments of `async fn`
+    E0705, // `async` non-`move` closures with arguments are not currently supported
 }

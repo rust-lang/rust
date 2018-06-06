@@ -1245,7 +1245,10 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                         (has_types || tcx.codegen_fn_attrs(def_id).requests_inline()) &&
                             !self.metadata_output_only();
                     let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
-                    if needs_inline || header.constness == hir::Constness::Const || always_encode_mir {
+                    if needs_inline
+                        || header.constness == hir::Constness::Const
+                        || always_encode_mir
+                    {
                         self.encode_optimized_mir(def_id)
                     } else {
                         None
