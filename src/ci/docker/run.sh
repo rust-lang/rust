@@ -118,6 +118,10 @@ fi
 # goes ahead and sets it for all builders.
 args="$args --privileged"
 
+if [ "$CI" != "" ]; then
+    args="$args --dns 8.8.8.8 --dns 8.8.4.4 --dns 1.1.1.1 --dns 1.0.0.1"
+fi
+
 exec docker \
   run \
   --volume "$root_dir:/checkout:ro" \
