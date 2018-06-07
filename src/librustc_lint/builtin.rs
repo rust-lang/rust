@@ -687,18 +687,8 @@ impl EarlyLintPass for BadRepr {
     fn check_attribute(&mut self, cx: &EarlyContext, attr: &ast::Attribute) {
         if attr.name() == "repr" {
             let list = attr.meta_item_list();
-            let outer = match attr.style {
-                ast::AttrStyle::Outer => true,
-                ast::AttrStyle::Inner => false,
-            };
 
-            let repr_str = move |lit: &str| {
-                if outer {
-                    format!("#[repr({})]", lit)
-                } else {
-                    format!("#![repr({})]", lit)
-                }
-            };
+            let repr_str = |lit: &str| { format!("#[repr({})]", lit) };
 
             // Emit warnings with `repr` either has a literal assignment (`#[repr = "C"]`) or
             // no hints (``#[repr]`)
