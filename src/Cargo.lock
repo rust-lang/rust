@@ -2311,7 +2311,6 @@ name = "rustc_typeck"
 version = "0.0.0"
 dependencies = [
  "arena 0.0.0",
- "fmt_macros 0.0.0",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
