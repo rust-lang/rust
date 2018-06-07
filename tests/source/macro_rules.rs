@@ -204,3 +204,30 @@ macro_rules! foo {
 macro_rules! __wundergraph_expand_sqlite_mutation {
     ( $mutation_name:ident $((context = $($context:tt)*))*{ $( $entity_name:ident( $(insert = $insert:ident,)* $(update = $update:ident,)* $(delete = $($delete:tt)+)* ), )* } ) => {};
 }
+
+// #2607
+macro_rules! bench {
+    ($ty:ident) => {
+        criterion_group!(
+            name = benches;
+            config = ::common_bench::reduced_samples();
+            targets = call, map;
+        );
+    };
+}
+
+// #2770
+macro_rules! save_regs {
+    () => {
+        asm!("push rax
+              push rcx
+              push rdx
+              push rsi
+              push rdi
+              push r8
+              push r9
+              push r10
+              push r11"
+             :::: "intel", "volatile");
+    };
+}
