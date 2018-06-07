@@ -307,7 +307,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         assert!(!(visibility_scope.is_some() && lint_level.is_explicit()),
                 "can't have both a visibility and a lint scope at the same time");
         let mut scope = self.source_scope;
-        self.visit_bindings(pattern, &mut |this, mutability, name, var, span, ty| {
+        self.visit_bindings(pattern, &mut |this, mutability, name, mode, var, span, ty| {
             if visibility_scope.is_none() {
                 visibility_scope = Some(this.new_source_scope(scope_span,
                                                            LintLevel::Inherited,
@@ -325,7 +325,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 scope,
             };
             let visibility_scope = visibility_scope.unwrap();
-            this.declare_binding(source_info, visibility_scope, mutability, name, var,
+            this.declare_binding(source_info, visibility_scope, mutability, name, mode, var,
                                  ty, has_guard);
         });
         visibility_scope
@@ -359,11 +359,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub fn visit_bindings<F>(&mut self, pattern: &Pattern<'tcx>, f: &mut F)
-        where F: FnMut(&mut Self, Mutability, Name, NodeId, Span, Ty<'tcx>)
+        where F: FnMut(&mut Self, Mutability, Name, BindingMode, NodeId, Span, Ty<'tcx>)
     {
         match *pattern.kind {
-            PatternKind::Binding { mutability, name, var, ty, ref subpattern, .. } => {
-                f(self, mutability, name, var, pattern.span, ty);
+            PatternKind::Binding { mutability, name, mode, var, ty, ref subpattern, .. } => {
+                f(self, mutability, name, mode, var, pattern.span, ty);
                 if let Some(subpattern) = subpattern.as_ref() {
                     self.visit_bindings(subpattern, f);
                 }
@@ -1118,15 +1118,20 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                        visibility_scope: SourceScope,
                        mutability: Mutability,
                        name: Name,
+                       mode: BindingMode,
                        var_id: NodeId,
                        var_ty: Ty<'tcx>,
                        has_guard: ArmHasGuard)
     {
-        debug!("declare_binding(var_id={:?}, name={:?}, var_ty={:?}, visibility_scope={:?}, \
-                source_info={:?})",
-               var_id, name, var_ty, visibility_scope, source_info);
+        debug!("declare_binding(var_id={:?}, name={:?}, mode={:?}, var_ty={:?}, \
+                visibility_scope={:?}, source_info={:?})",
+               var_id, name, mode, var_ty, visibility_scope, source_info);
 
         let tcx = self.hir.tcx();
+        let binding_mode = match mode {
+            BindingMode::ByValue => ty::BindingMode::BindByValue(mutability.into()),
+            BindingMode::ByRef { .. } => ty::BindingMode::BindByReference(mutability.into()),
+        };
         let local = LocalDecl::<'tcx> {
             mutability,
             ty: var_ty.clone(),
@@ -1134,7 +1139,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             source_info,
             visibility_scope,
             internal: false,
-            is_user_variable: true,
+            is_user_variable: Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+                binding_mode,
+                // hypothetically, `visit_bindings` could try to unzip
+                // an outermost hir::Ty as we descend, matching up
+                // idents in pat; but complex w/ unclear UI payoff.
+                // Instead, just abandon providing diagnostic info.
+                opt_ty_info: None,
+            }))),
         };
         let for_arm_body = self.local_decls.push(local.clone());
         let locals = if has_guard.0 && tcx.all_pat_vars_are_implicit_refs_within_guards() {
@@ -1145,8 +1157,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 name: Some(name),
                 source_info,
                 visibility_scope,
+                // FIXME: should these secretly injected ref_for_guard's be marked as `internal`?
                 internal: false,
-                is_user_variable: true,
+                is_user_variable: None,
             });
             LocalsForNode::Three { val_for_guard, ref_for_guard, for_arm_body }
         } else {

@@ -668,7 +668,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 visibility_scope: source_info.scope,
                 name,
                 internal: false,
-                is_user_variable: false,
+                is_user_variable: None,
             });
         }
 

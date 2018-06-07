@@ -278,7 +278,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     // to the set.
     let temporary_used_locals: FxHashSet<Local> =
         mbcx.used_mut.iter()
-            .filter(|&local| !mbcx.mir.local_decls[*local].is_user_variable)
+            .filter(|&local| !mbcx.mir.local_decls[*local].is_user_variable.is_some())
             .cloned()
             .collect();
 

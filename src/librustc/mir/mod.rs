@@ -228,7 +228,7 @@ impl<'tcx> Mir<'tcx> {
     pub fn temps_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
         (self.arg_count+1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
-            if self.local_decls[local].is_user_variable {
+            if self.local_decls[local].is_user_variable.is_some() {
                 None
             } else {
                 Some(local)
@@ -241,7 +241,7 @@ impl<'tcx> Mir<'tcx> {
     pub fn vars_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
         (self.arg_count+1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
-            if self.local_decls[local].is_user_variable {
+            if self.local_decls[local].is_user_variable.is_some() {
                 Some(local)
             } else {
                 None
@@ -255,7 +255,7 @@ impl<'tcx> Mir<'tcx> {
         (1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
             let decl = &self.local_decls[local];
-            if (decl.is_user_variable || index < self.arg_count + 1)
+            if (decl.is_user_variable.is_some() || index < self.arg_count + 1)
                && decl.mutability == Mutability::Mut
             {
                 Some(local)
@@ -351,7 +351,7 @@ impl<'tcx> IndexMut<BasicBlock> for Mir<'tcx> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum ClearCrossCrate<T> {
     Clear,
     Set(T)
@@ -381,6 +381,16 @@ pub enum Mutability {
     Mut,
     Not,
 }
+
+impl From<Mutability> for hir::Mutability {
+    fn from(m: Mutability) -> Self {
+        match m {
+            Mutability::Mut => hir::MutMutable,
+            Mutability::Not => hir::MutImmutable,
+        }
+    }
+}
+
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum BorrowKind {
@@ -463,6 +473,33 @@ pub enum LocalKind {
     ReturnPointer,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub struct VarBindingForm {
+    /// Is variable bound via `x`, `mut x`, `ref x`, or `ref mut x`?
+    pub binding_mode: ty::BindingMode,
+    /// If an explicit type was provided for this variable binding,
+    /// this holds the source Span of that type.
+    ///
+    /// NOTE: If you want to change this to a `HirId`, be wary that
+    /// doing so breaks incremental compilation (as of this writing),
+    /// while a `Span` does not cause our tests to fail.
+    pub opt_ty_info: Option<Span>,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub enum BindingForm {
+    /// This is a binding for a non-`self` binding, or a `self` that has an explicit type.
+    Var(VarBindingForm),
+    /// Binding for a `self`/`&self`/`&mut self` binding where the type is implicit.
+    ImplicitSelf,
+}
+
+CloneTypeFoldableAndLiftImpls! { BindingForm, }
+
+impl_stable_hash_for!(struct self::VarBindingForm { binding_mode, opt_ty_info });
+
+impl_stable_hash_for!(enum self::BindingForm { Var(binding), ImplicitSelf, });
+
 /// A MIR local.
 ///
 /// This can be a binding declared by the user, a temporary inserted by the compiler, a function
@@ -474,8 +511,14 @@ pub struct LocalDecl<'tcx> {
     /// Temporaries and the return place are always mutable.
     pub mutability: Mutability,
 
-    /// True if this corresponds to a user-declared local variable.
-    pub is_user_variable: bool,
+    /// Some(binding_mode) if this corresponds to a user-declared local variable.
+    ///
+    /// This is solely used for local diagnostics when generating
+    /// warnings/errors when compiling the current crate, and
+    /// therefore it need not be visible across crates. pnkfelix
+    /// currently hypothesized we *need* to wrap this in a
+    /// `ClearCrossCrate` as long as it carries as `HirId`.
+    pub is_user_variable: Option<ClearCrossCrate<BindingForm>>,
 
     /// True if this is an internal local
     ///
@@ -605,7 +648,7 @@ impl<'tcx> LocalDecl<'tcx> {
             },
             visibility_scope: OUTERMOST_SOURCE_SCOPE,
             internal: false,
-            is_user_variable: false
+            is_user_variable: None,
         }
     }
 
@@ -622,7 +665,7 @@ impl<'tcx> LocalDecl<'tcx> {
             },
             visibility_scope: OUTERMOST_SOURCE_SCOPE,
             internal: true,
-            is_user_variable: false
+            is_user_variable: None,
         }
     }
 
@@ -641,7 +684,7 @@ impl<'tcx> LocalDecl<'tcx> {
             visibility_scope: OUTERMOST_SOURCE_SCOPE,
             internal: false,
             name: None,     // FIXME maybe we do want some name here?
-            is_user_variable: false
+            is_user_variable: None,
         }
     }
 }
