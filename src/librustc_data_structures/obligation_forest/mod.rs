@@ -193,15 +193,18 @@ impl<O: ForestObligation> ObligationForest<O> {
             Entry::Occupied(o) => {
                 debug!("register_obligation_at({:?}, {:?}) - duplicate of {:?}!",
                        obligation, parent, o.get());
+                let node = &mut self.nodes[o.get().get()];
                 if let Some(parent) = parent {
-                    if self.nodes[o.get().get()].dependents.contains(&parent) {
-                        debug!("register_obligation_at({:?}, {:?}) - duplicate subobligation",
-                               obligation, parent);
-                    } else {
-                        self.nodes[o.get().get()].dependents.push(parent);
+                    // If the node is already in `waiting_cache`, it's already
+                    // been marked with a parent. (It's possible that parent
+                    // has been cleared by `apply_rewrites`, though.) So just
+                    // dump `parent` into `node.dependents`... unless it's
+                    // already in `node.dependents` or `node.parent`.
+                    if !node.dependents.contains(&parent) && Some(parent) != node.parent {
+                        node.dependents.push(parent);
                     }
                 }
-                if let NodeState::Error = self.nodes[o.get().get()].state.get() {
+                if let NodeState::Error = node.state.get() {
                     Err(())
                 } else {
                     Ok(())
