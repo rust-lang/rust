@@ -21,14 +21,14 @@ use std::process::Command;
 use syntax::ast;
 
 struct ClippyCompilerCalls {
-    default: RustcDefaultCalls,
+    default: Box<RustcDefaultCalls>,
     run_lints: bool,
 }
 
 impl ClippyCompilerCalls {
     fn new(run_lints: bool) -> Self {
         Self {
-            default: RustcDefaultCalls,
+            default: Box::new(RustcDefaultCalls),
             run_lints,
         }
     }
@@ -69,8 +69,8 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
         self.default
             .late_callback(trans_crate, matches, sess, crate_stores, input, odir, ofile)
     }
-    fn build_controller(&mut self, sess: &Session, matches: &getopts::Matches) -> driver::CompileController<'a> {
-        let mut control = self.default.build_controller(sess, matches);
+    fn build_controller(self: Box<Self>, sess: &Session, matches: &getopts::Matches) -> driver::CompileController<'a> {
+        let mut control = self.default.clone().build_controller(sess, matches);
 
         if self.run_lints {
             let old = std::mem::replace(&mut control.after_parse.callback, box |_| {});
@@ -198,6 +198,6 @@ pub fn main() {
         }
     }
 
-    let mut ccc = ClippyCompilerCalls::new(clippy_enabled);
-    rustc_driver::run(move || rustc_driver::run_compiler(&args, &mut ccc, None, None));
+    let ccc = ClippyCompilerCalls::new(clippy_enabled);
+    rustc_driver::run(move || rustc_driver::run_compiler(&args, Box::new(ccc), None, None));
 }
