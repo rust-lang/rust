@@ -39,6 +39,8 @@ pub struct RewriteContext<'a> {
     // When rewriting chain, veto going multi line except the last element
     pub force_one_line_chain: RefCell<bool>,
     pub snippet_provider: &'a SnippetProvider<'a>,
+    // Used for `format_snippet`
+    pub(crate) macro_rewrite_failure: RefCell<bool>,
     pub(crate) report: FormatReport,
 }
 
