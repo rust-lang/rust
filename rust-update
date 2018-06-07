@@ -2,7 +2,7 @@
 
 if [ "$1" = '-h' ] ; then
 	echo 'Updates rustc & clippy'
-	echo 'It first checks if clippy would compile at currentl nightly and if so, it updates.'
+	echo 'It first checks if clippy would compile at current nightly and if so, it updates.'
 	echo 'Options:'
 	echo '-h: This help message'
 	echo '-f: Skips the check and just updates'
