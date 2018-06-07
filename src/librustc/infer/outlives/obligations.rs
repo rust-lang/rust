@@ -159,8 +159,13 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             }
         }
 
-        let outlives =
-            TypeOutlives::new(self, region_bound_pairs, implicit_region_bound, param_env);
+        let outlives = &mut TypeOutlives::new(
+            self,
+            self.tcx,
+            region_bound_pairs,
+            implicit_region_bound,
+            param_env,
+        );
 
         for RegionObligation {
             sup_type,
@@ -193,32 +198,68 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
     ) {
-        let outlives =
-            TypeOutlives::new(self, region_bound_pairs, implicit_region_bound, param_env);
+        let outlives = &mut TypeOutlives::new(
+            self,
+            self.tcx,
+            region_bound_pairs,
+            implicit_region_bound,
+            param_env,
+        );
         let ty = self.resolve_type_vars_if_possible(&ty);
         outlives.type_must_outlive(origin, ty, region);
     }
 }
 
-#[must_use] // you ought to invoke `into_accrued_obligations` when you are done =)
-struct TypeOutlives<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
+/// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
+/// obligation into a series of `'a: 'b` constraints and "verifys", as
+/// described on the module comment. The final constraints are emitted
+/// via a "delegate" of type `D` -- this is usually the `infcx`, which
+/// accrues them into the `region_obligations` code, but for NLL we
+/// use something else.
+pub struct TypeOutlives<'cx, 'gcx: 'tcx, 'tcx: 'cx, D>
+where
+    D: TypeOutlivesDelegate<'tcx>,
+{
     // See the comments on `process_registered_region_obligations` for the meaning
     // of these fields.
-    infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+    delegate: D,
+    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     region_bound_pairs: &'cx [(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
 }
 
-impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
+pub trait TypeOutlivesDelegate<'tcx> {
+    fn push_sub_region_constraint(
+        &mut self,
+        origin: SubregionOrigin<'tcx>,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>,
+    );
+
+    fn push_verify(
+        &mut self,
+        origin: SubregionOrigin<'tcx>,
+        kind: GenericKind<'tcx>,
+        a: ty::Region<'tcx>,
+        bound: VerifyBound<'tcx>,
+    );
+}
+
+impl<'cx, 'gcx, 'tcx, D> TypeOutlives<'cx, 'gcx, 'tcx, D>
+where
+    D: TypeOutlivesDelegate<'tcx>,
+{
     fn new(
-        infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+        delegate: D,
+        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
         region_bound_pairs: &'cx [(ty::Region<'tcx>, GenericKind<'tcx>)],
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
         Self {
-            infcx,
+            delegate,
+            tcx,
             region_bound_pairs,
             implicit_region_bound,
             param_env,
@@ -234,7 +275,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
     /// - `ty`, the type `T`
     /// - `region`, the region `'a`
     fn type_must_outlive(
-        &self,
+        &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
@@ -246,16 +287,12 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
 
         assert!(!ty.has_escaping_regions());
 
-        let components = self.tcx().outlives_components(ty);
+        let components = self.tcx.outlives_components(ty);
         self.components_must_outlive(origin, components, region);
     }
 
-    fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
-        self.infcx.tcx
-    }
-
     fn components_must_outlive(
-        &self,
+        &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         components: Vec<Component<'tcx>>,
         region: ty::Region<'tcx>,
@@ -264,7 +301,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
             let origin = origin.clone();
             match component {
                 Component::Region(region1) => {
-                    self.infcx.sub_regions(origin, region, region1);
+                    self.delegate.push_sub_region_constraint(origin, region, region1);
                 }
                 Component::Param(param_ty) => {
                     self.param_ty_must_outlive(origin, region, param_ty);
@@ -279,7 +316,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
                     // ignore this, we presume it will yield an error
                     // later, since if a type variable is not resolved by
                     // this point it never will be
-                    self.infcx.tcx.sess.delay_span_bug(
+                    self.tcx.sess.delay_span_bug(
                         origin.span(),
                         &format!("unresolved inference variable in outlives: {:?}", v),
                     );
@@ -289,7 +326,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
     }
 
     fn param_ty_must_outlive(
-        &self,
+        &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
         param_ty: ty::ParamTy,
@@ -301,12 +338,12 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
 
         let verify_bound = self.param_bound(param_ty);
         let generic = GenericKind::Param(param_ty);
-        self.infcx
-            .verify_generic_bound(origin, generic, region, verify_bound);
+        self.delegate
+            .push_verify(origin, generic, region, verify_bound);
     }
 
     fn projection_must_outlive(
-        &self,
+        &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
         projection_ty: ty::ProjectionTy<'tcx>,
@@ -367,7 +404,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
             }
 
             for r in projection_ty.substs.regions() {
-                self.infcx.sub_regions(origin.clone(), region, r);
+                self.delegate.push_sub_region_constraint(origin.clone(), region, r);
             }
 
             return;
@@ -393,7 +430,8 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
                 .any(|r| env_bounds.contains(&r))
             {
                 debug!("projection_must_outlive: unique declared bound appears in trait ref");
-                self.infcx.sub_regions(origin.clone(), region, unique_bound);
+                self.delegate
+                    .push_sub_region_constraint(origin.clone(), region, unique_bound);
                 return;
             }
         }
@@ -405,8 +443,8 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
         // even though a satisfactory solution exists.
         let verify_bound = self.projection_bound(env_bounds, projection_ty);
         let generic = GenericKind::Projection(projection_ty);
-        self.infcx
-            .verify_generic_bound(origin, generic.clone(), region, verify_bound);
+        self.delegate
+            .push_verify(origin, generic.clone(), region, verify_bound);
     }
 
     fn type_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
@@ -459,7 +497,6 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
 
         // see the extensive comment in projection_must_outlive
         let ty = self
-            .infcx
             .tcx
             .mk_projection(projection_ty.item_def_id, projection_ty.substs);
         let recursive_bound = self.recursive_type_bound(ty);
@@ -492,7 +529,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
         &self,
         generic: GenericKind<'tcx>,
     ) -> Vec<ty::Region<'tcx>> {
-        let tcx = self.tcx();
+        let tcx = self.tcx;
 
         // To start, collect bounds from user environment. Note that
         // parameter environments are already elaborated, so we don't
@@ -544,7 +581,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
         debug!("projection_bounds(projection_ty={:?})", projection_ty);
         let mut bounds = self.region_bounds_declared_on_associated_item(projection_ty.item_def_id);
         for r in &mut bounds {
-            *r = r.subst(self.tcx(), projection_ty.substs);
+            *r = r.subst(self.tcx, projection_ty.substs);
         }
         bounds
     }
@@ -583,7 +620,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
         &self,
         assoc_item_def_id: DefId,
     ) -> Vec<ty::Region<'tcx>> {
-        let tcx = self.tcx();
+        let tcx = self.tcx;
         let assoc_item = tcx.associated_item(assoc_item_def_id);
         let trait_def_id = assoc_item.container.assert_trait();
         let trait_predicates = tcx.predicates_of(trait_def_id);
@@ -619,3 +656,25 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
             .collect()
     }
 }
+
+impl<'cx, 'gcx, 'tcx> TypeOutlivesDelegate<'tcx> for &'cx InferCtxt<'cx, 'gcx, 'tcx> {
+    fn push_sub_region_constraint(
+        &mut self,
+        origin: SubregionOrigin<'tcx>,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>,
+    ) {
+        self.sub_regions(origin, a, b)
+    }
+
+    fn push_verify(
+        &mut self,
+        origin: SubregionOrigin<'tcx>,
+        kind: GenericKind<'tcx>,
+        a: ty::Region<'tcx>,
+        bound: VerifyBound<'tcx>,
+    ) {
+        self.verify_generic_bound(origin, kind, a, bound)
+    }
+}
+
