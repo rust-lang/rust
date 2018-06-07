@@ -21,6 +21,13 @@ libc = { path = "../rustc/libc_shim" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
 
+[dependencies.addr2line]
+git = "https://github.com/est31/addr2line"
+branch = "no_std_prototype"
+default-features = false
+features = ["cpp_demangle"]
+optional = true
+
 [dev-dependencies]
 rand = "0.4"
 
@@ -39,7 +46,7 @@ cc = "1.0"
 build_helper = { path = "../build_helper" }
 
 [features]
-backtrace = []
+backtrace = ["addr2line"]
 debug-jemalloc = ["alloc_jemalloc/debug"]
 jemalloc = ["alloc_jemalloc"]
 force_alloc_system = []
