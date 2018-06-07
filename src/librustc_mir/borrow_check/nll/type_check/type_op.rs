@@ -13,6 +13,7 @@ use rustc::infer::{InferCtxt, InferOk, InferResult};
 use rustc::traits::query::NoSolution;
 use rustc::traits::{Normalized, Obligation, ObligationCause, PredicateObligation};
 use rustc::ty::fold::TypeFoldable;
+use rustc::ty::subst::Kind;
 use rustc::ty::{ParamEnv, Predicate, Ty};
 use std::fmt;
 
@@ -240,5 +241,34 @@ where
                 bug!("normalization of `{:?}` failed", self.value,);
             });
         Ok(InferOk { value, obligations })
+    }
+}
+
+#[derive(Debug)]
+pub(super) struct DropckOutlives<'tcx> {
+    param_env: ParamEnv<'tcx>,
+    dropped_ty: Ty<'tcx>,
+}
+
+impl<'tcx> DropckOutlives<'tcx> {
+    pub(super) fn new(
+        param_env: ParamEnv<'tcx>,
+        dropped_ty: Ty<'tcx>,
+    ) -> Self {
+        DropckOutlives { param_env, dropped_ty }
+    }
+}
+
+impl<'gcx, 'tcx> InfcxTypeOp<'gcx, 'tcx> for DropckOutlives<'tcx> {
+    type Output = Vec<Kind<'tcx>>;
+
+    fn trivial_noop(self) -> Result<Self::Output, Self> {
+        Err(self)
+    }
+
+    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
+        Ok(infcx
+           .at(&ObligationCause::dummy(), self.param_env)
+           .dropck_outlives(self.dropped_ty))
     }
 }
