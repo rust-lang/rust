@@ -70,6 +70,7 @@ pub struct FmtVisitor<'a> {
     pub snippet_provider: &'a SnippetProvider<'a>,
     pub line_number: usize,
     pub skipped_range: Vec<(usize, usize)>,
+    pub macro_rewrite_failure: bool,
     pub(crate) report: FormatReport,
 }
 
@@ -519,7 +520,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
         // 1 = ;
         let shape = self.shape().sub_width(1).unwrap();
-        let rewrite = rewrite_macro(mac, ident, &self.get_context(), shape, pos);
+        let rewrite = self.with_context(|ctx| rewrite_macro(mac, ident, ctx, shape, pos));
         self.push_rewrite(mac.span, rewrite);
     }
 
@@ -578,6 +579,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             snippet_provider,
             line_number: 0,
             skipped_range: vec![],
+            macro_rewrite_failure: false,
             report,
         }
     }
@@ -736,6 +738,20 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         }
     }
 
+    pub fn with_context<F>(&mut self, f: F) -> Option<String>
+    where
+        F: Fn(&RewriteContext) -> Option<String>,
+    {
+        let mut result;
+        let macro_rewrite_failure = {
+            let context = self.get_context();
+            result = f(&context);
+            unsafe { *context.macro_rewrite_failure.as_ptr() }
+        };
+        self.macro_rewrite_failure |= macro_rewrite_failure;
+        result
+    }
+
     pub fn get_context(&self) -> RewriteContext {
         RewriteContext {
             parse_session: self.parse_session,
@@ -746,6 +762,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             is_if_else_block: RefCell::new(false),
             force_one_line_chain: RefCell::new(false),
             snippet_provider: self.snippet_provider,
+            macro_rewrite_failure: RefCell::new(false),
             report: self.report.clone(),
         }
     }
