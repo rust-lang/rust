@@ -10,11 +10,11 @@
 
 use {ast, attr};
 use ext::tt::macro_parser;
-use feature_gate::{self, emit_feature_err, Features, GateIssue};
+use feature_gate::Features;
 use parse::{token, ParseSess};
 use print::pprust;
 use symbol::keywords;
-use syntax_pos::{BytePos, Span, DUMMY_SP};
+use syntax_pos::{BytePos, Span, DUMMY_SP, edition::Edition};
 use tokenstream;
 
 use std::iter::Peekable;
@@ -184,6 +184,7 @@ pub fn parse(
     sess: &ParseSess,
     features: &Features,
     attrs: &[ast::Attribute],
+    edition: Edition,
 ) -> Vec<TokenTree> {
     // Will contain the final collection of `self::TokenTree`
     let mut result = Vec::new();
@@ -194,7 +195,7 @@ pub fn parse(
     while let Some(tree) = trees.next() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e. in `$id:ident` this would parse the `:` and `ident`).
-        let tree = parse_tree(tree, &mut trees, expect_matchers, sess, features, attrs);
+        let tree = parse_tree(tree, &mut trees, expect_matchers, sess, features, attrs, edition);
         match tree {
             TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
                 let span = match trees.next() {
@@ -252,6 +253,7 @@ fn parse_tree<I>(
     sess: &ParseSess,
     features: &Features,
     attrs: &[ast::Attribute],
+    edition: Edition,
 ) -> TokenTree
 where
     I: Iterator<Item = tokenstream::TokenTree>,
@@ -270,9 +272,23 @@ where
                     sess.span_diagnostic.span_err(span, &msg);
                 }
                 // Parse the contents of the sequence itself
-                let sequence = parse(delimited.tts.into(), expect_matchers, sess, features, attrs);
+                let sequence = parse(
+                    delimited.tts.into(),
+                    expect_matchers,
+                    sess,
+                    features,
+                    attrs,
+                    edition,
+                );
                 // Get the Kleene operator and optional separator
-                let (separator, op) = parse_sep_and_kleene_op(trees, span, sess, features, attrs);
+                let (separator, op) = parse_sep_and_kleene_op(
+                    trees,
+                    span,
+                    sess,
+                    features,
+                    attrs,
+                    edition
+                );
                 // Count the number of captured "names" (i.e. named metavars)
                 let name_captures = macro_parser::count_names(&sequence);
                 TokenTree::Sequence(
@@ -322,19 +338,46 @@ where
             span,
             Lrc::new(Delimited {
                 delim: delimited.delim,
-                tts: parse(delimited.tts.into(), expect_matchers, sess, features, attrs),
+                tts: parse(
+                    delimited.tts.into(),
+                    expect_matchers,
+                    sess,
+                    features,
+                    attrs,
+                    edition
+                ),
             }),
         ),
     }
 }
 
 /// Takes a token and returns `Some(KleeneOp)` if the token is `+` `*` or `?`. Otherwise, return
-/// `None`.
-fn kleene_op(token: &token::Token) -> Option<KleeneOp> {
+/// `None`. This function takes into account what edition and feature flags are enabled.
+fn kleene_op(
+    token: &token::Token,
+    span: Span,
+    sess: &ParseSess,
+    edition: Edition,
+    features: &Features,
+    attrs: &[ast::Attribute],
+) -> Option<KleeneOp> {
     match *token {
         token::BinOp(token::Star) => Some(KleeneOp::ZeroOrMore),
         token::BinOp(token::Plus) => Some(KleeneOp::OneOrMore),
-        token::Question => Some(KleeneOp::ZeroOrOne),
+        token::Question =>
+            if edition >= Edition::Edition2018
+               || (features.macro_at_most_once_rep
+                   && attr::contains_name(attrs, "allow_internal_unstable")) {
+                Some(KleeneOp::ZeroOrOne)
+            } else {
+                sess.span_diagnostic
+                    .span_warn(
+                        span,
+                        "`?` as a separator is deprecated and \
+                        will be removed in an upcoming edition."
+                    );
+                None
+            },
         _ => None,
     }
 }
@@ -347,14 +390,20 @@ fn kleene_op(token: &token::Token) -> Option<KleeneOp> {
 fn parse_kleene_op<I>(
     input: &mut I,
     span: Span,
+    sess: &ParseSess,
+    edition: Edition,
+    features: &Features,
+    attrs: &[ast::Attribute],
 ) -> Result<Result<KleeneOp, (token::Token, Span)>, Span>
 where
     I: Iterator<Item = tokenstream::TokenTree>,
 {
     match input.next() {
-        Some(tokenstream::TokenTree::Token(span, tok)) => match kleene_op(&tok) {
-            Some(op) => Ok(Ok(op)),
-            None => Ok(Err((tok, span))),
+        Some(tokenstream::TokenTree::Token(span, tok)) => {
+            match kleene_op(&tok, span, sess, edition, features, attrs) {
+                Some(op) => Ok(Ok(op)),
+                None => Ok(Err((tok, span))),
+            }
         },
         tree => Err(tree.as_ref()
             .map(tokenstream::TokenTree::span)
@@ -380,51 +429,22 @@ fn parse_sep_and_kleene_op<I>(
     sess: &ParseSess,
     features: &Features,
     attrs: &[ast::Attribute],
+    edition: Edition,
 ) -> (Option<token::Token>, KleeneOp)
 where
     I: Iterator<Item = tokenstream::TokenTree>,
 {
     // We basically look at two token trees here, denoted as #1 and #2 below
-    let span = match parse_kleene_op(input, span) {
-        // #1 is any KleeneOp (`?`)
-        Ok(Ok(op)) if op == KleeneOp::ZeroOrOne => {
-            if !features.macro_at_most_once_rep
-                && !attr::contains_name(attrs, "allow_internal_unstable")
-            {
-                let explain = feature_gate::EXPLAIN_MACRO_AT_MOST_ONCE_REP;
-                emit_feature_err(
-                    sess,
-                    "macro_at_most_once_rep",
-                    span,
-                    GateIssue::Language,
-                    explain,
-                );
-            }
-            return (None, op);
-        }
-
-        // #1 is any KleeneOp (`+`, `*`)
+    let span = match parse_kleene_op(input, span, sess, edition, features, attrs) {
+        // #1 is any KleeneOp (`+`, `*`, or `?` (on editions > 2015))
         Ok(Ok(op)) => return (None, op),
 
         // #1 is a separator followed by #2, a KleeneOp
-        Ok(Err((tok, span))) => match parse_kleene_op(input, span) {
+        Ok(Err((tok, span))) => match parse_kleene_op(input, span, sess, edition, features, attrs) {
             // #2 is a KleeneOp :D
             Ok(Ok(op)) if op == KleeneOp::ZeroOrOne => {
-                if !features.macro_at_most_once_rep
-                    && !attr::contains_name(attrs, "allow_internal_unstable")
-                {
-                    let explain = feature_gate::EXPLAIN_MACRO_AT_MOST_ONCE_REP;
-                    emit_feature_err(
-                        sess,
-                        "macro_at_most_once_rep",
-                        span,
-                        GateIssue::Language,
-                        explain,
-                    );
-                } else {
-                    sess.span_diagnostic
-                        .span_err(span, "`?` macro repetition does not allow a separator");
-                }
+                sess.span_diagnostic
+                    .span_err(span, "`?` macro repetition does not allow a separator");
                 return (None, op);
             }
             Ok(Ok(op)) => return (Some(tok), op),
