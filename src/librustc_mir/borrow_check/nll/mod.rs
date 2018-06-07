@@ -91,9 +91,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
     Option<ClosureRegionRequirements<'gcx>>,
 ) {
-    let mut all_facts = if infcx.tcx.sess.opts.debugging_opts.nll_facts
-        || infcx.tcx.sess.opts.debugging_opts.polonius
-    {
+    let mut all_facts = if AllFacts::enabled(infcx.tcx) {
         Some(AllFacts::default())
     } else {
         None
