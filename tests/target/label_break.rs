@@ -1,8 +1,8 @@
 // format with label break value.
 fn main() {
-    {}
+    'emty_block: {}
 
-    {
+    'block: {
         do_thing();
         if condition_not_met() {
             break 'block;
