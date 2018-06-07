@@ -70,11 +70,11 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                     // HACK(eddyb) Avoid having RustCall on closures,
                     // as it adds unnecessary (and wrong) auto-tupling.
                     abi = Abi::Rust;
-                    Some((liberated_closure_env_ty(tcx, id, body_id), None))
+                    Some(ArgInfo(liberated_closure_env_ty(tcx, id, body_id), None))
                 }
                 ty::TyGenerator(..) => {
                     let gen_ty = tcx.body_tables(body_id).node_id_to_type(fn_hir_id);
-                    Some((gen_ty, None))
+                    Some(ArgInfo(gen_ty, None))
                 }
                 _ => None,
             };
@@ -91,7 +91,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                     .iter()
                     .enumerate()
                     .map(|(index, arg)| {
-                        (fn_sig.inputs()[index], Some(&*arg.pat))
+                        ArgInfo(fn_sig.inputs()[index], Some(&*arg.pat))
                     });
 
             let arguments = implicit_argument.into_iter().chain(explicit_arguments);
@@ -433,6 +433,8 @@ fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
+struct ArgInfo<'gcx>(Ty<'gcx>, Option<&'gcx hir::Pat>);
+
 fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                    fn_id: ast::NodeId,
                                    arguments: A,
@@ -442,7 +444,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                                    yield_ty: Option<Ty<'gcx>>,
                                    body: &'gcx hir::Body)
                                    -> Mir<'tcx>
-    where A: Iterator<Item=(Ty<'gcx>, Option<&'gcx hir::Pat>)>
+    where A: Iterator<Item=ArgInfo<'gcx>>
 {
     let arguments: Vec<_> = arguments.collect();
 
@@ -642,13 +644,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn args_and_body(&mut self,
                      mut block: BasicBlock,
-                     arguments: &[(Ty<'gcx>, Option<&'gcx hir::Pat>)],
+                     arguments: &[ArgInfo<'gcx>],
                      argument_scope: region::Scope,
                      ast_body: &'gcx hir::Expr)
                      -> BlockAnd<()>
     {
         // Allocate locals for the function arguments
-        for &(ty, pattern) in arguments.iter() {
+        for &ArgInfo(ty, pattern) in arguments.iter() {
             // If this is a simple binding pattern, give the local a nice name for debuginfo.
             let mut name = None;
             if let Some(pat) = pattern {
@@ -674,7 +676,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         let mut scope = None;
         // Bind the argument patterns
-        for (index, &(ty, pattern)) in arguments.iter().enumerate() {
+        for (index, &ArgInfo(ty, pattern)) in arguments.iter().enumerate() {
             // Function arguments always get the first Local indices after the return place
             let local = Local::new(index + 1);
             let place = Place::Local(local);
