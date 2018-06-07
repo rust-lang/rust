@@ -244,10 +244,10 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                         def_id,
                         attrs: def.attrs.clone().into(),
                         name: def.ident.name,
-                        whence: def.span,
+                        whence: self.cx.tcx.def_span(def_id),
                         matchers,
-                        stab: self.stability(def.id),
-                        depr: self.deprecation(def.id),
+                        stab: self.cx.tcx.lookup_stability(def_id).cloned(),
+                        depr: self.cx.tcx.lookup_deprecation(def_id),
                         imported_from: Some(imported_from),
                     })
                 }
