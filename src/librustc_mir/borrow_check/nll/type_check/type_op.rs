@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use borrow_check::nll::type_check::TypeChecker;
-use rustc::infer::{InferOk, InferResult};
-use rustc::traits::{Normalized, Obligation, ObligationCause, PredicateObligation};
+use rustc::infer::{InferCtxt, InferOk, InferResult};
 use rustc::traits::query::NoSolution;
-use rustc::ty::{ParamEnv, Predicate, Ty};
+use rustc::traits::{Normalized, Obligation, ObligationCause, PredicateObligation};
 use rustc::ty::fold::TypeFoldable;
+use rustc::ty::{ParamEnv, Predicate, Ty};
 use std::fmt;
 
 pub(super) trait TypeOp<'gcx, 'tcx>: Sized {
@@ -58,18 +58,52 @@ where
     }
 }
 
+pub(super) trait InfcxTypeOp<'gcx, 'tcx>: Sized {
+    type Output;
+
+    /// Micro-optimization: returns `Ok(x)` if we can trivially
+    /// produce the output, else returns `Err(self)` back.
+    fn trivial_noop(self) -> Result<Self::Output, Self>;
+
+    /// Produce a description of the operation for the debug logs.
+    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output>;
+}
+
+impl<'gcx, 'tcx, OP> TypeOp<'gcx, 'tcx> for OP
+where
+    OP: InfcxTypeOp<'gcx, 'tcx>,
+{
+    type Output = OP::Output;
+
+    fn trivial_noop(self) -> Result<Self::Output, Self> {
+        InfcxTypeOp::trivial_noop(self)
+    }
+
+    fn perform(
+        self,
+        type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>,
+    ) -> InferResult<'tcx, OP::Output> {
+        InfcxTypeOp::perform(self, type_checker.infcx)
+    }
+}
+
 pub(super) struct Subtype<'tcx> {
+    param_env: ParamEnv<'tcx>,
     sub: Ty<'tcx>,
     sup: Ty<'tcx>,
 }
 
 impl<'tcx> Subtype<'tcx> {
-    pub(super) fn new(sub: Ty<'tcx>, sup: Ty<'tcx>) -> Self {
-        Self { sub, sup }
+    pub(super) fn new(param_env: ParamEnv<'tcx>, sub: Ty<'tcx>, sup: Ty<'tcx>) -> Self {
+        Self {
+            param_env,
+            sub,
+            sup,
+        }
     }
 }
 
-impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Subtype<'tcx> {
+impl<'gcx, 'tcx> InfcxTypeOp<'gcx, 'tcx> for Subtype<'tcx> {
     type Output = ();
 
     fn trivial_noop(self) -> Result<Self::Output, Self> {
@@ -80,29 +114,26 @@ impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Subtype<'tcx> {
         }
     }
 
-    fn perform(
-        self,
-        type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>,
-    ) -> InferResult<'tcx, Self::Output> {
-        type_checker
-            .infcx
-            .at(&ObligationCause::dummy(), type_checker.param_env)
+    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
+        infcx
+            .at(&ObligationCause::dummy(), self.param_env)
             .sup(self.sup, self.sub)
     }
 }
 
 pub(super) struct Eq<'tcx> {
+    param_env: ParamEnv<'tcx>,
     a: Ty<'tcx>,
     b: Ty<'tcx>,
 }
 
 impl<'tcx> Eq<'tcx> {
-    pub(super) fn new(a: Ty<'tcx>, b: Ty<'tcx>) -> Self {
-        Self { a, b }
+    pub(super) fn new(param_env: ParamEnv<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> Self {
+        Self { param_env, a, b }
     }
 }
 
-impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Eq<'tcx> {
+impl<'gcx, 'tcx> InfcxTypeOp<'gcx, 'tcx> for Eq<'tcx> {
     type Output = ();
 
     fn trivial_noop(self) -> Result<Self::Output, Self> {
@@ -113,13 +144,9 @@ impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Eq<'tcx> {
         }
     }
 
-    fn perform(
-        self,
-        type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>,
-    ) -> InferResult<'tcx, Self::Output> {
-        type_checker
-            .infcx
-            .at(&ObligationCause::dummy(), type_checker.param_env)
+    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
+        infcx
+            .at(&ObligationCause::dummy(), self.param_env)
             .eq(self.a, self.b)
     }
 }
@@ -142,7 +169,7 @@ impl<'tcx> ProvePredicates<'tcx> {
     }
 }
 
-impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for ProvePredicates<'tcx> {
+impl<'gcx, 'tcx> InfcxTypeOp<'gcx, 'tcx> for ProvePredicates<'tcx> {
     type Output = ();
 
     fn trivial_noop(self) -> Result<Self::Output, Self> {
@@ -153,10 +180,7 @@ impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for ProvePredicates<'tcx> {
         }
     }
 
-    fn perform(
-        self,
-        _type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>,
-    ) -> InferResult<'tcx, Self::Output> {
+    fn perform(self, _infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
         Ok(InferOk {
             value: (),
             obligations: self.obligations,
@@ -164,22 +188,21 @@ impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for ProvePredicates<'tcx> {
     }
 }
 
-pub(super) struct Normalize<T> {
-    value: T
+pub(super) struct Normalize<'tcx, T> {
+    param_env: ParamEnv<'tcx>,
+    value: T,
 }
 
-impl<'tcx, T> Normalize<T>
+impl<'tcx, T> Normalize<'tcx, T>
 where
     T: fmt::Debug + TypeFoldable<'tcx>,
 {
-    pub(super) fn new(
-        value: T
-    ) -> Self {
-        Self { value }
+    pub(super) fn new(param_env: ParamEnv<'tcx>, value: T) -> Self {
+        Self { param_env, value }
     }
 }
 
-impl<'gcx, 'tcx, T> TypeOp<'gcx, 'tcx> for Normalize<T>
+impl<'gcx, 'tcx, T> InfcxTypeOp<'gcx, 'tcx> for Normalize<'tcx, T>
 where
     T: fmt::Debug + TypeFoldable<'tcx>,
 {
@@ -193,17 +216,12 @@ where
         }
     }
 
-    fn perform(
-        self,
-        type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>,
-    ) -> InferResult<'tcx, Self::Output> {
-        let Normalized { value, obligations } = type_checker
-            .infcx
-            .at(&ObligationCause::dummy(), type_checker.param_env)
+    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
+        let Normalized { value, obligations } = infcx
+            .at(&ObligationCause::dummy(), self.param_env)
             .normalize(&self.value)
             .unwrap_or_else(|NoSolution| {
-                span_bug!(
-                    type_checker.last_span,
+                bug!(
                     "normalization of `{:?}` failed",
                     self.value,
                 );

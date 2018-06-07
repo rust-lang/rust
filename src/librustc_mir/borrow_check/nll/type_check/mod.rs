@@ -821,18 +821,20 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         sup: Ty<'tcx>,
         locations: Locations,
     ) -> UnitResult<'tcx> {
+        let param_env = self.param_env;
         self.fully_perform_op(
             locations,
             || format!("sub_types({:?} <: {:?})", sub, sup),
-            type_op::Subtype::new(sub, sup),
+            type_op::Subtype::new(param_env, sub, sup),
         )
     }
 
     fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> UnitResult<'tcx> {
+        let param_env = self.param_env;
         self.fully_perform_op(
             locations,
             || format!("eq_types({:?} = {:?})", a, b),
-            type_op::Eq::new(b, a),
+            type_op::Eq::new(param_env, b, a),
         )
     }
 
@@ -1648,11 +1650,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         T: fmt::Debug + TypeFoldable<'tcx>,
     {
         debug!("normalize(value={:?}, location={:?})", value, location);
+        let param_env = self.param_env;
         let value1 = value.clone(); // FIXME move describe into type_op
         self.fully_perform_op(
             location.to_locations(),
             || format!("normalize(value={:?})", value1),
-            type_op::Normalize::new(value),
+            type_op::Normalize::new(param_env, value),
         ).unwrap()
     }
 }
