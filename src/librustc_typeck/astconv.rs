@@ -30,7 +30,7 @@ use util::common::ErrorReported;
 use util::nodemap::{FxHashSet, FxHashMap};
 use errors::FatalError;
 
-use std::cmp::Ordering;
+// use std::cmp::Ordering;
 use std::iter;
 use syntax::ast;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
@@ -646,7 +646,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                             &mut vec![]);
         }
 
-        let (auto_traits, trait_bounds) = split_auto_traits(tcx, &trait_bounds[1..]);
+        let (mut auto_traits, trait_bounds) = split_auto_traits(tcx, &trait_bounds[1..]);
 
         if !trait_bounds.is_empty() {
             let b = &trait_bounds[0];
@@ -708,15 +708,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
 
         // Dedup auto traits so that `dyn Trait + Send + Send` is the same as `dyn Trait + Send`.
-        let mut auto_traits =
-            auto_traits.into_iter().map(ty::ExistentialPredicate::AutoTrait).collect::<Vec<_>>();
-        auto_traits.sort_by(|a, b| a.cmp(tcx, b));
-        auto_traits.dedup_by(|a, b| (&*a).cmp(tcx, b) == Ordering::Equal);
+        auto_traits.sort();
+        auto_traits.dedup();
 
         // skip_binder is okay, because the predicates are re-bound.
         let mut v =
             iter::once(ty::ExistentialPredicate::Trait(*existential_principal.skip_binder()))
-            .chain(auto_traits.into_iter())
+            .chain(auto_traits.into_iter().map(ty::ExistentialPredicate::AutoTrait))
             .chain(existential_projections
                    .map(|x| ty::ExistentialPredicate::Projection(*x.skip_binder())))
             .collect::<AccumulateVec<[_; 8]>>();
