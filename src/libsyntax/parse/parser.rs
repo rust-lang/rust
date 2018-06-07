@@ -2597,7 +2597,7 @@ impl<'a> Parser<'a> {
                 attrs.extend::<Vec<_>>(expr.attrs.into());
                 expr.attrs = attrs;
                 match expr.node {
-                    ExprKind::If(..) | ExprKind::IfLet(..) => {
+                    ExprKind::If(..) => {
                         if !expr.attrs.is_empty() {
                             // Just point to the first attribute in there...
                             let span = expr.attrs[0].span;
