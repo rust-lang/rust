@@ -71,11 +71,11 @@
 
 use hir::def_id::DefId;
 use infer::{self, GenericKind, InferCtxt, RegionObligation, SubregionOrigin, VerifyBound};
-use traits;
-use ty::{self, Ty, TyCtxt, TypeFoldable};
-use ty::subst::{Subst, Substs};
-use ty::outlives::Component;
 use syntax::ast;
+use traits;
+use ty::outlives::Component;
+use ty::subst::{Subst, Substs};
+use ty::{self, Ty, TyCtxt, TypeFoldable};
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// Registers that the given region obligation must be resolved
@@ -90,8 +90,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ) {
         debug!(
             "register_region_obligation(body_id={:?}, obligation={:?})",
-            body_id,
-            obligation
+            body_id, obligation
         );
 
         self.region_obligations
@@ -100,13 +99,8 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// Trait queries just want to pass back type obligations "as is"
-    pub fn take_registered_region_obligations(
-        &self,
-    ) -> Vec<(ast::NodeId, RegionObligation<'tcx>)> {
-        ::std::mem::replace(
-            &mut *self.region_obligations.borrow_mut(),
-            vec![],
-        )
+    pub fn take_registered_region_obligations(&self) -> Vec<(ast::NodeId, RegionObligation<'tcx>)> {
+        ::std::mem::replace(&mut *self.region_obligations.borrow_mut(), vec![])
     }
 
     /// Process the region obligations that must be proven (during
@@ -176,15 +170,12 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         {
             debug!(
                 "process_registered_region_obligations: sup_type={:?} sub_region={:?} cause={:?}",
-                sup_type,
-                sub_region,
-                cause
+                sup_type, sub_region, cause
             );
 
-            let origin = SubregionOrigin::from_obligation_cause(
-                &cause,
-                || infer::RelateParamBound(cause.span, sup_type),
-            );
+            let origin = SubregionOrigin::from_obligation_cause(&cause, || {
+                infer::RelateParamBound(cause.span, sup_type)
+            });
 
             let sup_type = self.resolve_type_vars_if_possible(&sup_type);
             outlives.type_must_outlive(origin, sup_type, sub_region);
@@ -250,9 +241,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
     ) {
         debug!(
             "type_must_outlive(ty={:?}, region={:?}, origin={:?})",
-            ty,
-            region,
-            origin
+            ty, region, origin
         );
 
         assert!(!ty.has_escaping_regions());
@@ -307,9 +296,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
     ) {
         debug!(
             "param_ty_must_outlive(region={:?}, param_ty={:?}, origin={:?})",
-            region,
-            param_ty,
-            origin
+            region, param_ty, origin
         );
 
         let verify_bound = self.param_bound(param_ty);
@@ -326,9 +313,7 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
     ) {
         debug!(
             "projection_must_outlive(region={:?}, projection_ty={:?}, origin={:?})",
-            region,
-            projection_ty,
-            origin
+            region, projection_ty, origin
         );
 
         // This case is thorny for inference. The fundamental problem is
@@ -469,12 +454,12 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
     ) -> VerifyBound<'tcx> {
         debug!(
             "projection_bound(declared_bounds={:?}, projection_ty={:?})",
-            declared_bounds,
-            projection_ty
+            declared_bounds, projection_ty
         );
 
         // see the extensive comment in projection_must_outlive
-        let ty = self.infcx
+        let ty = self
+            .infcx
             .tcx
             .mk_projection(projection_ty.item_def_id, projection_ty.substs);
         let recursive_bound = self.recursive_type_bound(ty);
