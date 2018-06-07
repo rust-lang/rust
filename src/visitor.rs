@@ -742,7 +742,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     where
         F: Fn(&RewriteContext) -> Option<String>,
     {
-        let mut result;
+        let result;
         let macro_rewrite_failure = {
             let context = self.get_context();
             result = f(&context);

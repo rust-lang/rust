@@ -130,7 +130,10 @@ fn rewrite_macro_name(path: &ast::Path, extra_ident: Option<ast::Ident>) -> Stri
 }
 
 // Use this on failing to format the macro call.
-fn return_original_snippet_with_failure_marked(context: &RewriteContext, span: Span) -> Option<String> {
+fn return_original_snippet_with_failure_marked(
+    context: &RewriteContext,
+    span: Span,
+) -> Option<String> {
     context.macro_rewrite_failure.replace(true);
     Some(context.snippet(span).to_owned())
 }
@@ -225,7 +228,11 @@ pub fn rewrite_macro_inner(
                                         break;
                                     }
                                 }
-                                None => return return_original_snippet_with_failure_marked(context, mac.span),
+                                None => {
+                                    return return_original_snippet_with_failure_marked(
+                                        context, mac.span,
+                                    )
+                                }
                             }
                         }
                     }
