@@ -689,6 +689,7 @@ fn format_snippet(snippet: &str, config: &Config) -> Option<String> {
     config.set().hide_parse_errors(true);
     match format_input(input, &config, Some(&mut out)) {
         // `format_input()` returns an empty string on parsing error.
+        Ok((summary, _)) if summary.has_macro_formatting_failure() => None,
         Ok(..) if out.is_empty() && !snippet.is_empty() => None,
         Ok(..) => String::from_utf8(out).ok(),
         Err(..) => None,
