@@ -140,7 +140,7 @@ fn rewrite_closure_with_block(
         span: body.span,
         recovered: false,
     };
-    let block = ::expr::rewrite_block_with_visitor(context, "", &block, None, shape, false)?;
+    let block = ::expr::rewrite_block_with_visitor(context, "", &block, None, None, shape, false)?;
     Some(format!("{} {}", prefix, block))
 }
 

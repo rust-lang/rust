@@ -124,7 +124,7 @@ pub fn format_expr(
                     if is_unsafe_block(block) {
                         rewrite_block(block, Some(&expr.attrs), opt_label, context, shape)
                     } else if let rw @ Some(_) =
-                        rewrite_empty_block(context, block, Some(&expr.attrs), "", shape)
+                        rewrite_empty_block(context, block, Some(&expr.attrs), opt_label, "", shape)
                     {
                         // Rewrite block without trying to put it in a single line.
                         rw
@@ -136,6 +136,7 @@ pub fn format_expr(
                             &prefix,
                             block,
                             Some(&expr.attrs),
+                            opt_label,
                             shape,
                             true,
                         )
@@ -316,9 +317,14 @@ pub fn format_expr(
         // satisfy our width restrictions.
         ast::ExprKind::InlineAsm(..) => Some(context.snippet(expr.span).to_owned()),
         ast::ExprKind::Catch(ref block) => {
-            if let rw @ Some(_) =
-                rewrite_single_line_block(context, "do catch ", block, Some(&expr.attrs), shape)
-            {
+            if let rw @ Some(_) = rewrite_single_line_block(
+                context,
+                "do catch ",
+                block,
+                Some(&expr.attrs),
+                None,
+                shape,
+            ) {
                 rw
             } else {
                 // 9 = `do catch `
@@ -543,16 +549,18 @@ fn rewrite_empty_block(
     context: &RewriteContext,
     block: &ast::Block,
     attrs: Option<&[ast::Attribute]>,
+    label: Option<ast::Label>,
     prefix: &str,
     shape: Shape,
 ) -> Option<String> {
+    let label_str = rewrite_label(label);
     if attrs.map_or(false, |a| !inner_attributes(a).is_empty()) {
         return None;
     }
 
     if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) && shape.width >= 2
     {
-        return Some(format!("{}{{}}", prefix));
+        return Some(format!("{}{}{{}}", prefix, label_str));
     }
 
     // If a block contains only a single-line comment, then leave it on one line.
@@ -565,7 +573,7 @@ fn rewrite_empty_block(
             && !comment_str.starts_with("//")
             && comment_str.len() + 4 <= shape.width
         {
-            return Some(format!("{}{{ {} }}", prefix, comment_str));
+            return Some(format!("{}{}{{ {} }}", prefix, label_str, comment_str));
         }
     }
 
@@ -605,12 +613,14 @@ fn rewrite_single_line_block(
     prefix: &str,
     block: &ast::Block,
     attrs: Option<&[ast::Attribute]>,
+    label: Option<ast::Label>,
     shape: Shape,
 ) -> Option<String> {
     if is_simple_block(block, attrs, context.codemap) {
         let expr_shape = shape.offset_left(last_line_width(prefix))?;
         let expr_str = block.stmts[0].rewrite(context, expr_shape)?;
-        let result = format!("{}{{ {} }}", prefix, expr_str);
+        let label_str = rewrite_label(label);
+        let result = format!("{}{}{{ {} }}", prefix, label_str, expr_str);
         if result.len() <= shape.width && !result.contains('\n') {
             return Some(result);
         }
@@ -623,10 +633,11 @@ pub fn rewrite_block_with_visitor(
     prefix: &str,
     block: &ast::Block,
     attrs: Option<&[ast::Attribute]>,
+    label: Option<ast::Label>,
     shape: Shape,
     has_braces: bool,
 ) -> Option<String> {
-    if let rw @ Some(_) = rewrite_empty_block(context, block, attrs, prefix, shape) {
+    if let rw @ Some(_) = rewrite_empty_block(context, block, attrs, label, prefix, shape) {
         return rw;
     }
 
@@ -643,8 +654,9 @@ pub fn rewrite_block_with_visitor(
     }
 
     let inner_attrs = attrs.map(inner_attributes);
+    let label_str = rewrite_label(label);
     visitor.visit_block(block, inner_attrs.as_ref().map(|a| &**a), has_braces);
-    Some(format!("{}{}", prefix, visitor.buffer))
+    Some(format!("{}{}{}", prefix, label_str, visitor.buffer))
 }
 
 impl Rewrite for ast::Block {
@@ -660,20 +672,20 @@ fn rewrite_block(
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
-    let unsafe_string = block_prefix(context, block, shape)?;
-    let label_string = rewrite_label(label);
-    let prefix = format!("{}{}", unsafe_string, label_string);
+    let prefix = block_prefix(context, block, shape)?;
 
     // shape.width is used only for the single line case: either the empty block `{}`,
     // or an unsafe expression `unsafe { e }`.
-    if let rw @ Some(_) = rewrite_empty_block(context, block, attrs, &prefix, shape) {
+    if let rw @ Some(_) = rewrite_empty_block(context, block, attrs, label, &prefix, shape) {
         return rw;
     }
 
-    let result = rewrite_block_with_visitor(context, &prefix, block, attrs, shape, true);
+    let result = rewrite_block_with_visitor(context, &prefix, block, attrs, label, shape, true);
     if let Some(ref result_str) = result {
         if result_str.lines().count() <= 3 {
-            if let rw @ Some(_) = rewrite_single_line_block(context, &prefix, block, attrs, shape) {
+            if let rw @ Some(_) =
+                rewrite_single_line_block(context, &prefix, block, attrs, label, shape)
+            {
                 return rw;
             }
         }
@@ -1125,7 +1137,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
         let block_str = {
             let old_val = context.is_if_else_block.replace(self.else_block.is_some());
             let result =
-                rewrite_block_with_visitor(context, "", self.block, None, block_shape, true);
+                rewrite_block_with_visitor(context, "", self.block, None, None, block_shape, true);
             context.is_if_else_block.replace(old_val);
             result?
         };

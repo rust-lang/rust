@@ -1,8 +1,8 @@
 // format with label break value.
 fn main() {
-    {}
+    'empty_block: {}
 
-    {
+    'block: {
         do_thing();
         if condition_not_met() {
             break 'block;
