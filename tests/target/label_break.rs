@@ -1,6 +1,6 @@
 // format with label break value.
 fn main() {
-    'emty_block: {}
+    'empty_block: {}
 
     'block: {
         do_thing();
