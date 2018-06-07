@@ -9,12 +9,16 @@
 // except according to those terms.
 
 use rustc::infer::{InferCtxt, InferOk, InferResult};
+use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
 use rustc::traits::query::NoSolution;
-use rustc::traits::{Normalized, Obligation, ObligationCause, PredicateObligation};
+use rustc::traits::{Normalized, Obligation, ObligationCause, PredicateObligation, TraitEngine};
+use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Kind;
-use rustc::ty::{ParamEnv, Predicate, Ty};
+use rustc::ty::{self, ParamEnv, Predicate, Ty};
+use std::rc::Rc;
 use std::fmt;
+use syntax::codemap::DUMMY_SP;
 
 pub(super) trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     type Output;
@@ -23,8 +27,64 @@ pub(super) trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     /// produce the output, else returns `Err(self)` back.
     fn trivial_noop(self) -> Result<Self::Output, Self>;
 
+    /// Given an infcx, performs **the kernel** of the operation: this does the
+    /// key action and then, optionally, returns a set of obligations which must be proven.
+    ///
+    /// This method is not meant to be invoked directly: instead, one
+    /// should use `fully_perform`, which will take those resulting
+    /// obligations and prove them, and then process the combined
+    /// results into region obligations which are returned.
     fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output>;
+
+    /// Processes the operation and all resulting obligations,
+    /// returning the final result along with any region constraints
+    /// (they will be given over to the NLL region solver).
+    #[inline(never)]
+    fn fully_perform(
+        self,
+        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        region_bound_pairs: &[(ty::Region<'tcx>, GenericKind<'tcx>)],
+        implicit_region_bound: Option<ty::Region<'tcx>>,
+        param_env: ParamEnv<'tcx>,
+    ) -> Result<(Self::Output, Option<Rc<RegionConstraintData<'tcx>>>), TypeError<'tcx>> {
+        let op = match self.trivial_noop() {
+            Ok(r) => return Ok((r, None)),
+            Err(op) => op,
+        };
+
+        if cfg!(debug_assertions) {
+            info!("fully_perform_op_and_get_region_constraint_data({:?})", op);
+        }
+
+        let mut fulfill_cx = TraitEngine::new(infcx.tcx);
+        let dummy_body_id = ObligationCause::dummy().body_id;
+        let InferOk { value, obligations } = infcx.commit_if_ok(|_| op.perform(infcx))?;
+        debug_assert!(obligations.iter().all(|o| o.cause.body_id == dummy_body_id));
+        fulfill_cx.register_predicate_obligations(infcx, obligations);
+        if let Err(e) = fulfill_cx.select_all_or_error(infcx) {
+            infcx.tcx.sess.diagnostic().delay_span_bug(
+                DUMMY_SP,
+                &format!("errors selecting obligation during MIR typeck: {:?}", e)
+            );
+        }
+
+        infcx.process_registered_region_obligations(
+            region_bound_pairs,
+            implicit_region_bound,
+            param_env,
+            dummy_body_id,
+        );
+
+        let data = infcx.take_and_reset_region_constraints();
+        if data.is_empty() {
+            Ok((value, None))
+        } else {
+            Ok((value, Some(Rc::new(data))))
+        }
+    }
 }
+
+
 
 pub(super) struct CustomTypeOp<F, G> {
     closure: F,

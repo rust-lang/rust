@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use borrow_check::nll::region_infer::Cause;
-use borrow_check::nll::type_check::type_op::DropckOutlives;
+use borrow_check::nll::type_check::type_op::{DropckOutlives, TypeOp};
 use borrow_check::nll::type_check::AtLocation;
 use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow::MaybeInitializedPlaces;
@@ -218,10 +218,15 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
 
         let param_env = cx.param_env;
         let (dropped_kinds, region_constraint_data) =
-            cx.fully_perform_op_and_get_region_constraint_data(DropckOutlives::new(
+            DropckOutlives::new(
                 param_env,
                 dropped_ty,
-            )).unwrap();
+            ).fully_perform(
+                cx.infcx,
+                cx.region_bound_pairs,
+                cx.implicit_region_bound,
+                cx.param_env,
+            ).unwrap();
 
         DropData {
             dropped_kinds,

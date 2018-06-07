@@ -21,12 +21,12 @@ use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;
 use rustc::hir::def_id::DefId;
 use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
-use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, UnitResult};
+use rustc::infer::{InferCtxt, LateBoundRegionConversionTime, UnitResult};
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::*;
-use rustc::traits::{ObligationCause, TraitEngine};
+use rustc::traits::ObligationCause;
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
@@ -733,18 +733,18 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         locations: Locations,
         op: impl type_op::TypeOp<'gcx, 'tcx, Output = R>,
     ) -> Result<R, TypeError<'tcx>> {
-        match op.trivial_noop() {
-            Ok(r) => Ok(r),
-            Err(op) => {
-                let (r, opt_data) = self.fully_perform_op_and_get_region_constraint_data(op)?;
+        let (r, opt_data) = op.fully_perform(
+            self.infcx,
+            self.region_bound_pairs,
+            self.implicit_region_bound,
+            self.param_env,
+        )?;
 
-                if let Some(data) = opt_data {
-                    self.push_region_constraints(locations, data);
-                }
-
-                Ok(r)
-            }
+        if let Some(data) = opt_data {
+            self.push_region_constraints(locations, data);
         }
+
+        Ok(r)
     }
 
     fn push_region_constraints(
@@ -766,45 +766,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 &mut self.constraints.type_tests,
                 &mut borrowck_context.all_facts,
             ).convert(locations, &data);
-        }
-    }
-
-    /// Helper for `fully_perform_op`, but also used on its own
-    /// sometimes to enable better caching: executes `op` fully (along
-    /// with resulting obligations) and returns the full set of region
-    /// obligations. If the same `op` were to be performed at some
-    /// other location, then the same set of region obligations would
-    /// be generated there, so this can be useful for caching.
-    fn fully_perform_op_and_get_region_constraint_data<R>(
-        &mut self,
-        op: impl type_op::TypeOp<'gcx, 'tcx, Output = R>,
-    ) -> Result<(R, Option<Rc<RegionConstraintData<'tcx>>>), TypeError<'tcx>> {
-        if cfg!(debug_assertions) {
-            info!("fully_perform_op_and_get_region_constraint_data({:?})", op,);
-        }
-
-        let infcx = self.infcx;
-        let mut fulfill_cx = TraitEngine::new(infcx.tcx);
-        let dummy_body_id = ObligationCause::dummy().body_id;
-        let InferOk { value, obligations } = infcx.commit_if_ok(|_| op.perform(infcx))?;
-        debug_assert!(obligations.iter().all(|o| o.cause.body_id == dummy_body_id));
-        fulfill_cx.register_predicate_obligations(infcx, obligations);
-        if let Err(e) = fulfill_cx.select_all_or_error(infcx) {
-            span_mirbug!(self, "", "errors selecting obligation: {:?}", e);
-        }
-
-        infcx.process_registered_region_obligations(
-            self.region_bound_pairs,
-            self.implicit_region_bound,
-            self.param_env,
-            dummy_body_id,
-        );
-
-        let data = infcx.take_and_reset_region_constraints();
-        if data.is_empty() {
-            Ok((value, None))
-        } else {
-            Ok((value, Some(Rc::new(data))))
         }
     }
 
