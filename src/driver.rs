@@ -12,117 +12,8 @@ extern crate rustc_errors;
 extern crate rustc_plugin;
 extern crate syntax;
 
-use rustc::session::config::{ErrorOutputType, Input};
-use rustc::session::{config, Session};
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_driver::{driver, Compilation, CompilerCalls, RustcDefaultCalls};
-use std::path::PathBuf;
+use rustc_driver::{driver::CompileController, Compilation};
 use std::process::Command;
-use syntax::ast;
-
-struct ClippyCompilerCalls {
-    default: Box<RustcDefaultCalls>,
-    run_lints: bool,
-}
-
-impl ClippyCompilerCalls {
-    fn new(run_lints: bool) -> Self {
-        Self {
-            default: Box::new(RustcDefaultCalls),
-            run_lints,
-        }
-    }
-}
-
-impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
-    fn early_callback(
-        &mut self,
-        matches: &getopts::Matches,
-        sopts: &config::Options,
-        cfg: &ast::CrateConfig,
-        descriptions: &rustc_errors::registry::Registry,
-        output: ErrorOutputType,
-    ) -> Compilation {
-        self.default.early_callback(matches, sopts, cfg, descriptions, output)
-    }
-    fn no_input(
-        &mut self,
-        matches: &getopts::Matches,
-        sopts: &config::Options,
-        cfg: &ast::CrateConfig,
-        odir: &Option<PathBuf>,
-        ofile: &Option<PathBuf>,
-        descriptions: &rustc_errors::registry::Registry,
-    ) -> Option<(Input, Option<PathBuf>)> {
-        self.default.no_input(matches, sopts, cfg, odir, ofile, descriptions)
-    }
-    fn late_callback(
-        &mut self,
-        trans_crate: &CodegenBackend,
-        matches: &getopts::Matches,
-        sess: &Session,
-        crate_stores: &rustc::middle::cstore::CrateStore,
-        input: &Input,
-        odir: &Option<PathBuf>,
-        ofile: &Option<PathBuf>,
-    ) -> Compilation {
-        self.default
-            .late_callback(trans_crate, matches, sess, crate_stores, input, odir, ofile)
-    }
-    fn build_controller(self: Box<Self>, sess: &Session, matches: &getopts::Matches) -> driver::CompileController<'a> {
-        let mut control = self.default.clone().build_controller(sess, matches);
-
-        if self.run_lints {
-            let old = std::mem::replace(&mut control.after_parse.callback, box |_| {});
-            control.after_parse.callback = Box::new(move |state| {
-                {
-                    let mut registry = rustc_plugin::registry::Registry::new(
-                        state.session,
-                        state
-                            .krate
-                            .as_ref()
-                            .expect(
-                                "at this compilation stage \
-                                 the crate must be parsed",
-                            )
-                            .span,
-                    );
-                    registry.args_hidden = Some(Vec::new());
-                    clippy_lints::register_plugins(&mut registry);
-
-                    let rustc_plugin::registry::Registry {
-                        early_lint_passes,
-                        late_lint_passes,
-                        lint_groups,
-                        llvm_passes,
-                        attributes,
-                        ..
-                    } = registry;
-                    let sess = &state.session;
-                    let mut ls = sess.lint_store.borrow_mut();
-                    for pass in early_lint_passes {
-                        ls.register_early_pass(Some(sess), true, pass);
-                    }
-                    for pass in late_lint_passes {
-                        ls.register_late_pass(Some(sess), true, pass);
-                    }
-
-                    for (name, to) in lint_groups {
-                        ls.register_group(Some(sess), true, name, to);
-                    }
-
-                    sess.plugin_llvm_passes.borrow_mut().extend(llvm_passes);
-                    sess.plugin_attributes.borrow_mut().extend(attributes);
-                }
-                old(state);
-            });
-
-            control.compilation_done.stop = Compilation::Stop;
-        }
-
-        control
-    }
-}
 
 #[allow(print_stdout)]
 fn show_version() {
@@ -198,6 +89,49 @@ pub fn main() {
         }
     }
 
-    let ccc = ClippyCompilerCalls::new(clippy_enabled);
-    rustc_driver::run(move || rustc_driver::run_compiler(&args, Box::new(ccc), None, None));
+    let mut controller = CompileController::basic();
+    if clippy_enabled {
+        controller.after_parse.callback = Box::new(move |state| {
+            let mut registry = rustc_plugin::registry::Registry::new(
+                state.session,
+                state
+                    .krate
+                    .as_ref()
+                    .expect(
+                        "at this compilation stage \
+                         the crate must be parsed",
+                    )
+                    .span,
+            );
+            registry.args_hidden = Some(Vec::new());
+            clippy_lints::register_plugins(&mut registry);
+
+            let rustc_plugin::registry::Registry {
+                early_lint_passes,
+                late_lint_passes,
+                lint_groups,
+                llvm_passes,
+                attributes,
+                ..
+            } = registry;
+            let sess = &state.session;
+            let mut ls = sess.lint_store.borrow_mut();
+            for pass in early_lint_passes {
+                ls.register_early_pass(Some(sess), true, pass);
+            }
+            for pass in late_lint_passes {
+                ls.register_late_pass(Some(sess), true, pass);
+            }
+
+            for (name, to) in lint_groups {
+                ls.register_group(Some(sess), true, name, to);
+            }
+
+            sess.plugin_llvm_passes.borrow_mut().extend(llvm_passes);
+            sess.plugin_attributes.borrow_mut().extend(attributes);
+        });
+    }
+    controller.compilation_done.stop = Compilation::Stop;
+
+    rustc_driver::run_compiler(&args, Box::new(controller), None, None);
 }
