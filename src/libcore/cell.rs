@@ -559,6 +559,16 @@ impl<T> Deref for Cell<[T]> {
     }
 }
 
+#[unstable(feature = "as_cell", issue="43038")]
+impl<T> DerefMut for Cell<[T]> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut [Cell<T>] {
+        unsafe {
+            &mut *(self as *mut Cell<[T]> as *mut [Cell<T>])
+        }
+    }
+}
+
 /// A mutable memory location with dynamically checked borrow rules
 ///
 /// See the [module-level documentation](index.html) for more.
