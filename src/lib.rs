@@ -422,13 +422,14 @@ fn format_ast<F>(
     config: &Config,
     report: FormatReport,
     mut after_file: F,
-) -> Result<(FileMap, bool), io::Error>
+) -> Result<(FileMap, bool, bool), io::Error>
 where
     F: FnMut(&FileName, &mut String, &[(usize, usize)], &FormatReport) -> Result<bool, io::Error>,
 {
     let mut result = FileMap::new();
     // diff mode: check if any files are differing
     let mut has_diff = false;
+    let mut has_macro_rewrite_failure = false;
 
     let skip_children = config.skip_children();
     for (path, module) in modules::list_files(krate, parse_session.codemap())? {
@@ -472,10 +473,12 @@ where
             }
         };
 
+        has_macro_rewrite_failure |= visitor.macro_rewrite_failure;
+
         result.push((path.clone(), visitor.buffer));
     }
 
-    Ok((result, has_diff))
+    Ok((result, has_diff, has_macro_rewrite_failure))
 }
 
 /// Returns true if the line with the given line number was skipped by `#[rustfmt::skip]`.
@@ -686,6 +689,7 @@ fn format_snippet(snippet: &str, config: &Config) -> Option<String> {
     config.set().hide_parse_errors(true);
     match format_input(input, &config, Some(&mut out)) {
         // `format_input()` returns an empty string on parsing error.
+        Ok((summary, _)) if summary.has_macro_formatting_failure() => None,
         Ok(..) if out.is_empty() && !snippet.is_empty() => None,
         Ok(..) => String::from_utf8(out).ok(),
         Err(..) => None,
@@ -902,13 +906,17 @@ fn format_input_inner<T: Write>(
     }
 
     match format_result {
-        Ok((file_map, has_diff)) => {
+        Ok((file_map, has_diff, has_macro_rewrite_failure)) => {
             if report.has_warnings() {
                 summary.add_formatting_error();
             }
 
             if has_diff {
                 summary.add_diff();
+            }
+
+            if has_macro_rewrite_failure {
+                summary.add_macro_foramt_failure();
             }
 
             Ok((summary, file_map, report))

@@ -129,6 +129,15 @@ fn rewrite_macro_name(path: &ast::Path, extra_ident: Option<ast::Ident>) -> Stri
     }
 }
 
+// Use this on failing to format the macro call.
+fn return_original_snippet_with_failure_marked(
+    context: &RewriteContext,
+    span: Span,
+) -> Option<String> {
+    context.macro_rewrite_failure.replace(true);
+    Some(context.snippet(span).to_owned())
+}
+
 pub fn rewrite_macro(
     mac: &ast::Mac,
     extra_ident: Option<ast::Ident>,
@@ -138,6 +147,9 @@ pub fn rewrite_macro(
 ) -> Option<String> {
     context.inside_macro.replace(true);
     let result = rewrite_macro_inner(mac, extra_ident, context, shape, position);
+    if result.is_none() {
+        context.macro_rewrite_failure.replace(true);
+    }
     context.inside_macro.replace(false);
     result
 }
@@ -196,7 +208,7 @@ pub fn rewrite_macro_inner(
         loop {
             match parse_macro_arg(&mut parser) {
                 Some(arg) => arg_vec.push(arg),
-                None => return Some(context.snippet(mac.span).to_owned()),
+                None => return return_original_snippet_with_failure_marked(context, mac.span),
             }
 
             match parser.token {
@@ -216,13 +228,17 @@ pub fn rewrite_macro_inner(
                                         break;
                                     }
                                 }
-                                None => return Some(context.snippet(mac.span).to_owned()),
+                                None => {
+                                    return return_original_snippet_with_failure_marked(
+                                        context, mac.span,
+                                    )
+                                }
                             }
                         }
                     }
-                    return Some(context.snippet(mac.span).to_owned());
+                    return return_original_snippet_with_failure_marked(context, mac.span);
                 }
-                _ => return Some(context.snippet(mac.span).to_owned()),
+                _ => return return_original_snippet_with_failure_marked(context, mac.span),
             }
 
             parser.bump();

@@ -23,6 +23,9 @@ pub struct Summary {
     // Code is valid, but it is impossible to format it properly.
     has_formatting_errors: bool,
 
+    // Code contains macro call that was unable to format.
+    pub(crate) has_macro_format_failure: bool,
+
     // Failed a check, such as the license check or other opt-in checking.
     has_check_errors: bool,
 
@@ -80,6 +83,10 @@ impl Summary {
         self.has_check_errors
     }
 
+    pub(crate) fn has_macro_formatting_failure(&self) -> bool {
+        self.has_macro_format_failure
+    }
+
     pub fn add_operational_error(&mut self) {
         self.has_operational_errors = true;
     }
@@ -98,6 +105,10 @@ impl Summary {
 
     pub(crate) fn add_diff(&mut self) {
         self.has_diff = true;
+    }
+
+    pub(crate) fn add_macro_foramt_failure(&mut self) {
+        self.has_macro_format_failure = true;
     }
 
     pub fn has_no_errors(&self) -> bool {
