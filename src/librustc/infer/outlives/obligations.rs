@@ -186,6 +186,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 || infer::RelateParamBound(cause.span, sup_type),
             );
 
+            let sup_type = self.resolve_type_vars_if_possible(&sup_type);
             outlives.type_must_outlive(origin, sup_type, sub_region);
         }
     }
@@ -203,6 +204,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ) {
         let outlives =
             TypeOutlives::new(self, region_bound_pairs, implicit_region_bound, param_env);
+        let ty = self.resolve_type_vars_if_possible(&ty);
         outlives.type_must_outlive(origin, ty, region);
     }
 }
@@ -246,8 +248,6 @@ impl<'cx, 'gcx, 'tcx> TypeOutlives<'cx, 'gcx, 'tcx> {
         ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
     ) {
-        let ty = self.infcx.resolve_type_vars_if_possible(&ty);
-
         debug!(
             "type_must_outlive(ty={:?}, region={:?}, origin={:?})",
             ty,
