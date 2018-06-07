@@ -8,11 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --test
+// compile-pass
 
-use std::num::ParseIntError;
+#![crate_type = "rlib"]
+#![no_std]
+#![feature(panic_implementation)]
 
-#[test]
-fn can_parse_zero_as_f32() -> Result<f32, ParseIntError> { //~ ERROR
-    "0".parse()
+#[panic_implementation]
+pub fn panic_fmt(_: &::core::panic::PanicInfo) -> ! {
+    |x: u8| x;
+    loop {}
 }

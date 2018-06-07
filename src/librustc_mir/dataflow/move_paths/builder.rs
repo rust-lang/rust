@@ -119,8 +119,8 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
     }
 
     fn create_move_path(&mut self, place: &Place<'tcx>) {
-        // This is an assignment, not a move, so this not being a valid
-        // move path is OK.
+        // This is an non-moving access (such as an overwrite or
+        // drop), so this not being a valid move path is OK.
         let _ = self.move_path_for(place);
     }
 
@@ -135,8 +135,9 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
         let place_ty = proj.base.ty(mir, tcx).to_ty(tcx);
         match place_ty.sty {
             ty::TyRef(..) | ty::TyRawPtr(..) =>
-                return Err(MoveError::cannot_move_out_of(mir.source_info(self.loc).span,
-                                                         BorrowedContent)),
+                return Err(MoveError::cannot_move_out_of(
+                    mir.source_info(self.loc).span,
+                    BorrowedContent { target_ty: place.ty(mir, tcx).to_ty(tcx) })),
             ty::TyAdt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() =>
                 return Err(MoveError::cannot_move_out_of(mir.source_info(self.loc).span,
                                                          InteriorOfTypeWithDestructor {

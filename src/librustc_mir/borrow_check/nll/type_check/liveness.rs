@@ -104,13 +104,15 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
                     location, live_local
                 );
 
-                self.flow_inits.each_state_bit(|mpi_init| {
-                    debug!(
-                        "add_liveness_constraints: location={:?} initialized={:?}",
-                        location,
-                        &self.flow_inits.operator().move_data().move_paths[mpi_init]
-                    );
-                });
+                if log_enabled!(::log::Level::Debug) {
+                    self.flow_inits.each_state_bit(|mpi_init| {
+                        debug!(
+                            "add_liveness_constraints: location={:?} initialized={:?}",
+                            location,
+                            &self.flow_inits.operator().move_data().move_paths[mpi_init]
+                        );
+                    });
+                }
 
                 let mpi = self.move_data.rev_lookup.find_local(live_local);
                 if let Some(initialized_child) = self.flow_inits.has_any_child_of(mpi) {
