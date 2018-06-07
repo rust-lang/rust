@@ -16,7 +16,7 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{ParamEnv, Predicate, Ty};
 use std::fmt;
 
-pub(super) trait TypeOp<'gcx, 'tcx>: Sized {
+pub(super) trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     type Output;
 
     /// Micro-optimization: returns `Ok(x)` if we can trivially
@@ -30,22 +30,25 @@ pub(super) trait TypeOp<'gcx, 'tcx>: Sized {
     ) -> InferResult<'tcx, Self::Output>;
 }
 
-pub(super) struct CustomTypeOp<F> {
+pub(super) struct CustomTypeOp<F, G> {
     closure: F,
+    description: G,
 }
 
-impl<F> CustomTypeOp<F> {
-    pub(super) fn new<'gcx, 'tcx, R>(closure: F) -> Self
+impl<F, G> CustomTypeOp<F, G> {
+    pub(super) fn new<'gcx, 'tcx, R>(closure: F, description: G) -> Self
     where
         F: FnOnce(&mut TypeChecker<'_, 'gcx, 'tcx>) -> InferResult<'tcx, R>,
+        G: Fn() -> String,
     {
-        CustomTypeOp { closure }
+        CustomTypeOp { closure, description }
     }
 }
 
-impl<'gcx, 'tcx, F, R> TypeOp<'gcx, 'tcx> for CustomTypeOp<F>
+impl<'gcx, 'tcx, F, R, G> TypeOp<'gcx, 'tcx> for CustomTypeOp<F, G>
 where
     F: FnOnce(&mut TypeChecker<'_, 'gcx, 'tcx>) -> InferResult<'tcx, R>,
+    G: Fn() -> String,
 {
     type Output = R;
 
@@ -58,7 +61,16 @@ where
     }
 }
 
-pub(super) trait InfcxTypeOp<'gcx, 'tcx>: Sized {
+impl<F, G> fmt::Debug for CustomTypeOp<F, G>
+where
+    G: Fn() -> String,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", (self.description)())
+    }
+}
+
+pub(super) trait InfcxTypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     type Output;
 
     /// Micro-optimization: returns `Ok(x)` if we can trivially
@@ -87,6 +99,7 @@ where
     }
 }
 
+#[derive(Debug)]
 pub(super) struct Subtype<'tcx> {
     param_env: ParamEnv<'tcx>,
     sub: Ty<'tcx>,
@@ -121,6 +134,7 @@ impl<'gcx, 'tcx> InfcxTypeOp<'gcx, 'tcx> for Subtype<'tcx> {
     }
 }
 
+#[derive(Debug)]
 pub(super) struct Eq<'tcx> {
     param_env: ParamEnv<'tcx>,
     a: Ty<'tcx>,
@@ -151,6 +165,7 @@ impl<'gcx, 'tcx> InfcxTypeOp<'gcx, 'tcx> for Eq<'tcx> {
     }
 }
 
+#[derive(Debug)]
 pub(super) struct ProvePredicates<'tcx> {
     obligations: Vec<PredicateObligation<'tcx>>,
 }
@@ -188,6 +203,7 @@ impl<'gcx, 'tcx> InfcxTypeOp<'gcx, 'tcx> for ProvePredicates<'tcx> {
     }
 }
 
+#[derive(Debug)]
 pub(super) struct Normalize<'tcx, T> {
     param_env: ParamEnv<'tcx>,
     value: T,
@@ -221,10 +237,7 @@ where
             .at(&ObligationCause::dummy(), self.param_env)
             .normalize(&self.value)
             .unwrap_or_else(|NoSolution| {
-                bug!(
-                    "normalization of `{:?}` failed",
-                    self.value,
-                );
+                bug!("normalization of `{:?}` failed", self.value,);
             });
         Ok(InferOk { value, obligations })
     }

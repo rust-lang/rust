@@ -731,16 +731,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn fully_perform_op<R>(
         &mut self,
         locations: Locations,
-        describe_op: impl Fn() -> String,
         op: impl type_op::TypeOp<'gcx, 'tcx, Output = R>,
     ) -> Result<R, TypeError<'tcx>> {
         match op.trivial_noop() {
             Ok(r) => Ok(r),
             Err(op) => {
-                let (r, opt_data) = self.fully_perform_op_and_get_region_constraint_data(
-                    || format!("{} at {:?}", describe_op(), locations),
-                    op,
-                )?;
+                let (r, opt_data) = self.fully_perform_op_and_get_region_constraint_data(op)?;
 
                 if let Some(data) = opt_data {
                     self.push_region_constraints(locations, data);
@@ -781,14 +777,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     /// be generated there, so this can be useful for caching.
     fn fully_perform_op_and_get_region_constraint_data<R>(
         &mut self,
-        describe_op: impl Fn() -> String,
         op: impl type_op::TypeOp<'gcx, 'tcx, Output = R>,
     ) -> Result<(R, Option<Rc<RegionConstraintData<'tcx>>>), TypeError<'tcx>> {
         if cfg!(debug_assertions) {
-            info!(
-                "fully_perform_op_and_get_region_constraint_data({})",
-                describe_op(),
-            );
+            info!("fully_perform_op_and_get_region_constraint_data({:?})", op,);
         }
 
         let mut fulfill_cx = TraitEngine::new(self.infcx.tcx);
@@ -822,20 +814,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         locations: Locations,
     ) -> UnitResult<'tcx> {
         let param_env = self.param_env;
-        self.fully_perform_op(
-            locations,
-            || format!("sub_types({:?} <: {:?})", sub, sup),
-            type_op::Subtype::new(param_env, sub, sup),
-        )
+        self.fully_perform_op(locations, type_op::Subtype::new(param_env, sub, sup))
     }
 
     fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> UnitResult<'tcx> {
         let param_env = self.param_env;
-        self.fully_perform_op(
-            locations,
-            || format!("eq_types({:?} = {:?})", a, b),
-            type_op::Eq::new(param_env, b, a),
-        )
+        self.fully_perform_op(locations, type_op::Eq::new(param_env, b, a))
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
@@ -1614,7 +1598,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         let param_env = self.param_env;
         self.fully_perform_op(
             location.at_self(),
-            || format!("prove_predicates({:?})", predicates_vec),
             type_op::ProvePredicates::new(param_env, predicates),
         ).unwrap()
     }
@@ -1651,10 +1634,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     {
         debug!("normalize(value={:?}, location={:?})", value, location);
         let param_env = self.param_env;
-        let value1 = value.clone(); // FIXME move describe into type_op
         self.fully_perform_op(
             location.to_locations(),
-            || format!("normalize(value={:?})", value1),
             type_op::Normalize::new(param_env, value),
         ).unwrap()
     }

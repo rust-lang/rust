@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use borrow_check::nll::region_infer::Cause;
-use borrow_check::nll::type_check::AtLocation;
 use borrow_check::nll::type_check::type_op::CustomTypeOp;
+use borrow_check::nll::type_check::AtLocation;
 use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow::MaybeInitializedPlaces;
 use dataflow::{FlowAtLocation, FlowsAtLocation};
@@ -171,8 +171,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         );
 
         cx.tcx().for_each_free_region(&value, |live_region| {
-            cx
-                .constraints
+            cx.constraints
                 .liveness_set
                 .push((live_region, location, cause.clone()));
         });
@@ -219,15 +218,15 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
 
         let (dropped_kinds, region_constraint_data) =
-            cx.fully_perform_op_and_get_region_constraint_data(
-                || format!("compute_drop_data(dropped_ty={:?})", dropped_ty),
-                CustomTypeOp::new(|cx| {
+            cx.fully_perform_op_and_get_region_constraint_data(CustomTypeOp::new(
+                |cx| {
                     Ok(cx
                         .infcx
                         .at(&ObligationCause::dummy(), cx.param_env)
                         .dropck_outlives(dropped_ty))
-                }),
-            ).unwrap();
+                },
+                || format!("compute_drop_data(dropped_ty={:?})", dropped_ty),
+            )).unwrap();
 
         DropData {
             dropped_kinds,
