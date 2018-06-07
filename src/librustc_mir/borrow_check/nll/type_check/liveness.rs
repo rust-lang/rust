@@ -10,11 +10,10 @@
 
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::nll::type_check::type_op::{DropckOutlives, TypeOp};
-use borrow_check::nll::type_check::AtLocation;
+use borrow_check::nll::type_check::{AtLocation, LexicalRegionConstraintData};
 use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow::MaybeInitializedPlaces;
 use dataflow::{FlowAtLocation, FlowsAtLocation};
-use rustc::infer::region_constraints::RegionConstraintData;
 use rustc::mir::Local;
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::ty::subst::Kind;
@@ -71,7 +70,7 @@ where
 
 struct DropData<'tcx> {
     dropped_kinds: Vec<Kind<'tcx>>,
-    region_constraint_data: Option<Rc<RegionConstraintData<'tcx>>>,
+    region_constraint_data: Option<Rc<LexicalRegionConstraintData<'tcx>>>,
 }
 
 impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flow, 'gcx, 'tcx> {
@@ -198,8 +197,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         });
 
         if let Some(data) = &drop_data.region_constraint_data {
-            self.cx
-                .push_region_constraints(location.at_self(), data.clone());
+            self.cx.push_region_constraints(location.at_self(), data);
         }
 
         // All things in the `outlives` array may be touched by
@@ -217,16 +215,9 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
 
         let param_env = cx.param_env;
-        let (dropped_kinds, region_constraint_data) =
-            DropckOutlives::new(
-                param_env,
-                dropped_ty,
-            ).fully_perform(
-                cx.infcx,
-                cx.region_bound_pairs,
-                cx.implicit_region_bound,
-                cx.param_env,
-            ).unwrap();
+        let (dropped_kinds, region_constraint_data) = DropckOutlives::new(param_env, dropped_ty)
+            .fully_perform(cx.infcx)
+            .unwrap();
 
         DropData {
             dropped_kinds,

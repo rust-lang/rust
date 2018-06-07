@@ -250,7 +250,7 @@ impl<'cx, 'gcx, 'tcx, D> TypeOutlives<'cx, 'gcx, 'tcx, D>
 where
     D: TypeOutlivesDelegate<'tcx>,
 {
-    fn new(
+    pub fn new(
         delegate: D,
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
         region_bound_pairs: &'cx [(ty::Region<'tcx>, GenericKind<'tcx>)],
@@ -274,7 +274,7 @@ where
     /// - `origin`, the reason we need this constraint
     /// - `ty`, the type `T`
     /// - `region`, the region `'a`
-    fn type_must_outlive(
+    pub fn type_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         ty: Ty<'tcx>,

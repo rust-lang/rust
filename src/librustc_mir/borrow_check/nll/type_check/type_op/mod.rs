@@ -8,16 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use borrow_check::nll::type_check::LexicalRegionConstraintData;
+use rustc::infer::region_constraints::RegionConstraintData;
 use rustc::infer::{InferCtxt, InferOk, InferResult};
-use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
 use rustc::traits::query::NoSolution;
 use rustc::traits::{Normalized, Obligation, ObligationCause, PredicateObligation, TraitEngine};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Kind;
-use rustc::ty::{self, ParamEnv, Predicate, Ty};
-use std::rc::Rc;
+use rustc::ty::{ParamEnv, Predicate, Ty};
 use std::fmt;
+use std::rc::Rc;
 use syntax::codemap::DUMMY_SP;
 
 pub(super) trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
@@ -43,10 +44,7 @@ pub(super) trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     fn fully_perform(
         self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
-        region_bound_pairs: &[(ty::Region<'tcx>, GenericKind<'tcx>)],
-        implicit_region_bound: Option<ty::Region<'tcx>>,
-        param_env: ParamEnv<'tcx>,
-    ) -> Result<(Self::Output, Option<Rc<RegionConstraintData<'tcx>>>), TypeError<'tcx>> {
+    ) -> Result<(Self::Output, Option<Rc<LexicalRegionConstraintData<'tcx>>>), TypeError<'tcx>> {
         let op = match self.trivial_noop() {
             Ok(r) => return Ok((r, None)),
             Err(op) => op,
@@ -68,14 +66,29 @@ pub(super) trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
             );
         }
 
-        infcx.process_registered_region_obligations(
-            region_bound_pairs,
-            implicit_region_bound,
-            param_env,
-            dummy_body_id,
-        );
+        let region_obligations: Vec<_> = infcx
+            .take_registered_region_obligations()
+            .into_iter()
+            .map(|(_node_id, region_obligation)| region_obligation)
+            .collect();
 
-        let data = infcx.take_and_reset_region_constraints();
+        let RegionConstraintData {
+            constraints,
+            verifys,
+            givens,
+        } = infcx.take_and_reset_region_constraints();
+
+        // These are created when we "process" the registered region
+        // obliations, and that hasn't happened yet.
+        assert!(verifys.is_empty());
+
+        // NLL doesn't use givens (and thank goodness!).
+        assert!(givens.is_empty());
+
+        let data = LexicalRegionConstraintData {
+            constraints: constraints.keys().cloned().collect(),
+            region_obligations,
+        };
         if data.is_empty() {
             Ok((value, None))
         } else {
@@ -83,8 +96,6 @@ pub(super) trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
         }
     }
 }
-
-
 
 pub(super) struct CustomTypeOp<F, G> {
     closure: F,
@@ -97,7 +108,10 @@ impl<F, G> CustomTypeOp<F, G> {
         F: FnOnce(&InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, R>,
         G: Fn() -> String,
     {
-        CustomTypeOp { closure, description }
+        CustomTypeOp {
+            closure,
+            description,
+        }
     }
 }
 
@@ -277,11 +291,11 @@ pub(super) struct DropckOutlives<'tcx> {
 }
 
 impl<'tcx> DropckOutlives<'tcx> {
-    pub(super) fn new(
-        param_env: ParamEnv<'tcx>,
-        dropped_ty: Ty<'tcx>,
-    ) -> Self {
-        DropckOutlives { param_env, dropped_ty }
+    pub(super) fn new(param_env: ParamEnv<'tcx>, dropped_ty: Ty<'tcx>) -> Self {
+        DropckOutlives {
+            param_env,
+            dropped_ty,
+        }
     }
 }
 
@@ -294,7 +308,7 @@ impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for DropckOutlives<'tcx> {
 
     fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
         Ok(infcx
-           .at(&ObligationCause::dummy(), self.param_env)
-           .dropck_outlives(self.dropped_ty))
+            .at(&ObligationCause::dummy(), self.param_env)
+            .dropck_outlives(self.dropped_ty))
     }
 }

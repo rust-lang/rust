@@ -20,8 +20,8 @@ use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;
 use rustc::hir::def_id::DefId;
-use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
-use rustc::infer::{InferCtxt, LateBoundRegionConversionTime, UnitResult};
+use rustc::infer::region_constraints::{Constraint, GenericKind};
+use rustc::infer::{InferCtxt, LateBoundRegionConversionTime, RegionObligation, UnitResult};
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
@@ -31,7 +31,6 @@ use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
 use std::fmt;
-use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
 use transform::{MirPass, MirSource};
 use util::liveness::LivenessResults;
@@ -626,6 +625,21 @@ crate struct MirTypeckRegionConstraints<'tcx> {
     crate type_tests: Vec<TypeTest<'tcx>>,
 }
 
+/// The type checker layers on top of the "old" inference engine.  The
+/// idea is that we run some operations, like trait selection, and
+/// then we "scrape out" the region constraints that have accumulated
+/// from the old lexical solver. This struct just collects the bits of
+/// that data that we care about into one place.
+#[derive(Debug)]
+struct LexicalRegionConstraintData<'tcx> {
+    /// The `'a <= 'b` constraints extracted from `RegionConstraintData`.
+    constraints: Vec<Constraint<'tcx>>,
+
+    /// The `T: 'a` (and `'a: 'b`, in some cases) constraints
+    /// extracted from the pending "region obligations".
+    region_obligations: Vec<RegionObligation<'tcx>>,
+}
+
 /// The `Locations` type summarizes *where* region constraints are
 /// required to hold. Normally, this is at a particular point which
 /// created the obligation, but for constraints that the user gave, we
@@ -733,14 +747,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         locations: Locations,
         op: impl type_op::TypeOp<'gcx, 'tcx, Output = R>,
     ) -> Result<R, TypeError<'tcx>> {
-        let (r, opt_data) = op.fully_perform(
-            self.infcx,
-            self.region_bound_pairs,
-            self.implicit_region_bound,
-            self.param_env,
-        )?;
+        let (r, opt_data) = op.fully_perform(self.infcx)?;
 
-        if let Some(data) = opt_data {
+        if let Some(data) = &opt_data {
             self.push_region_constraints(locations, data);
         }
 
@@ -750,7 +759,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn push_region_constraints(
         &mut self,
         locations: Locations,
-        data: Rc<RegionConstraintData<'tcx>>,
+        data: &LexicalRegionConstraintData<'tcx>,
     ) {
         debug!(
             "push_region_constraints: constraints generated at {:?} are {:#?}",
@@ -759,13 +768,18 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
         if let Some(borrowck_context) = &mut self.borrowck_context {
             constraint_conversion::ConstraintConversion::new(
+                self.infcx.tcx,
                 self.mir,
                 borrowck_context.universal_regions,
                 borrowck_context.location_table,
+                self.region_bound_pairs,
+                self.implicit_region_bound,
+                self.param_env,
+                locations,
                 &mut self.constraints.outlives_constraints,
                 &mut self.constraints.type_tests,
                 &mut borrowck_context.all_facts,
-            ).convert(locations, &data);
+            ).convert(&data);
         }
     }
 
@@ -1687,5 +1701,12 @@ impl ToLocations for Locations {
 impl ToLocations for Location {
     fn to_locations(self) -> Locations {
         self.at_self()
+    }
+}
+
+impl<'tcx> LexicalRegionConstraintData<'tcx> {
+    fn is_empty(&self) -> bool {
+        let LexicalRegionConstraintData { constraints, region_obligations } = self;
+        constraints.is_empty() && region_obligations.is_empty()
     }
 }

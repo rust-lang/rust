@@ -11,64 +11,66 @@
 use borrow_check::location::LocationTable;
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::{OutlivesConstraint, RegionTest, TypeTest};
-use borrow_check::nll::type_check::Locations;
+use borrow_check::nll::type_check::{Locations, LexicalRegionConstraintData};
 use borrow_check::nll::universal_regions::UniversalRegions;
-use rustc::infer::region_constraints::Constraint;
-use rustc::infer::region_constraints::RegionConstraintData;
-use rustc::infer::region_constraints::{Verify, VerifyBound};
+use rustc::infer::{self, RegionObligation, SubregionOrigin};
+use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
+use rustc::infer::region_constraints::{Constraint, GenericKind, VerifyBound};
 use rustc::mir::{Location, Mir};
-use rustc::ty;
+use rustc::ty::{self, TyCtxt};
 use syntax::codemap::Span;
 
-crate struct ConstraintConversion<'a, 'tcx: 'a> {
+crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
     location_table: &'a LocationTable,
+    region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
+    implicit_region_bound: Option<ty::Region<'tcx>>,
+    param_env: ty::ParamEnv<'tcx>,
+    locations: Locations,
     outlives_constraints: &'a mut Vec<OutlivesConstraint>,
     type_tests: &'a mut Vec<TypeTest<'tcx>>,
     all_facts: &'a mut Option<AllFacts>,
-
 }
 
-impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
     crate fn new(
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
         mir: &'a Mir<'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
         location_table: &'a LocationTable,
+        region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
+        implicit_region_bound: Option<ty::Region<'tcx>>,
+        param_env: ty::ParamEnv<'tcx>,
+        locations: Locations,
         outlives_constraints: &'a mut Vec<OutlivesConstraint>,
         type_tests: &'a mut Vec<TypeTest<'tcx>>,
         all_facts: &'a mut Option<AllFacts>,
     ) -> Self {
         Self {
+            tcx,
             mir,
             universal_regions,
             location_table,
+            region_bound_pairs,
+            implicit_region_bound,
+            param_env,
+            locations,
             outlives_constraints,
             type_tests,
             all_facts,
         }
     }
 
-    crate fn convert(
-        &mut self,
-        locations: Locations,
-        data: &RegionConstraintData<'tcx>,
-    ) {
-        debug!("generate: constraints at: {:#?}", locations);
-        let RegionConstraintData {
+    pub(super) fn convert(&mut self, data: &LexicalRegionConstraintData<'tcx>) {
+        debug!("generate: constraints at: {:#?}", self.locations);
+        let LexicalRegionConstraintData {
             constraints,
-            verifys,
-            givens,
+            region_obligations,
         } = data;
 
-        let span = self
-            .mir
-            .source_info(locations.from_location().unwrap_or(Location::START))
-            .span;
-
-        let at_location = locations.at_location().unwrap_or(Location::START);
-
-        for constraint in constraints.keys() {
+        for constraint in constraints {
             debug!("generate: constraint: {:?}", constraint);
             let (a_vid, b_vid) = match constraint {
                 Constraint::VarSubVar(a_vid, b_vid) => (*a_vid, *b_vid),
@@ -84,13 +86,13 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             // reverse direction, because `regioncx` talks about
             // "outlives" (`>=`) whereas the region constraints
             // talk about `<=`.
-            self.add_outlives(span, b_vid, a_vid, at_location);
+            self.add_outlives(b_vid, a_vid);
 
             // In the new analysis, all outlives relations etc
             // "take effect" at the mid point of the statement
             // that requires them, so ignore the `at_location`.
             if let Some(all_facts) = &mut self.all_facts {
-                if let Some(from_location) = locations.from_location() {
+                if let Some(from_location) = self.locations.from_location() {
                     all_facts.outlives.push((
                         b_vid,
                         a_vid,
@@ -104,36 +106,50 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             }
         }
 
-        for verify in verifys {
-            let type_test = self.verify_to_type_test(verify, span, locations);
-            self.add_type_test(type_test);
-        }
+        let ConstraintConversion {
+            tcx,
+            region_bound_pairs,
+            implicit_region_bound,
+            param_env,
+            ..
+        } = *self;
+        for r_o in region_obligations {
+            let RegionObligation {
+                sup_type,
+                sub_region,
+                cause,
+            } = r_o;
 
-        assert!(
-            givens.is_empty(),
-            "MIR type-checker does not use givens (thank goodness)"
-        );
+            // we don't actually use this for anything.
+            let origin = infer::RelateParamBound(cause.span, sup_type);
+
+            TypeOutlives::new(
+                &mut *self,
+                tcx,
+                region_bound_pairs,
+                implicit_region_bound,
+                param_env,
+            ).type_must_outlive(origin, sup_type, sub_region);
+        }
     }
 
     fn verify_to_type_test(
         &self,
-        verify: &Verify<'tcx>,
-        span: Span,
-        locations: Locations,
+        generic_kind: GenericKind<'tcx>,
+        region: ty::Region<'tcx>,
+        bound: VerifyBound<'tcx>,
     ) -> TypeTest<'tcx> {
-        let generic_kind = verify.kind;
+        let lower_bound = self.to_region_vid(region);
 
-        let lower_bound = self.to_region_vid(verify.region);
+        let point = self.locations.at_location().unwrap_or(Location::START);
 
-        let point = locations.at_location().unwrap_or(Location::START);
-
-        let test = self.verify_bound_to_region_test(&verify.bound);
+        let test = self.verify_bound_to_region_test(&bound);
 
         TypeTest {
             generic_kind,
             lower_bound,
             point,
-            span,
+            span: self.span(),
             test,
         }
     }
@@ -168,13 +184,21 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         self.universal_regions.to_region_vid(r)
     }
 
+    fn span(&self) -> Span {
+        self
+            .mir
+            .source_info(self.locations.from_location().unwrap_or(Location::START))
+            .span
+    }
+
     fn add_outlives(
         &mut self,
-        span: Span,
         sup: ty::RegionVid,
         sub: ty::RegionVid,
-        point: Location,
     ) {
+        let span = self.span();
+        let point = self.locations.at_location().unwrap_or(Location::START);
+
         self.outlives_constraints.push(OutlivesConstraint {
             span,
             sub,
@@ -186,5 +210,29 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     fn add_type_test(&mut self, type_test: TypeTest<'tcx>) {
         self.type_tests.push(type_test);
+    }
+}
+
+impl<'a, 'b, 'gcx, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'b, 'gcx, 'tcx> {
+    fn push_sub_region_constraint(
+        &mut self,
+        _origin: SubregionOrigin<'tcx>,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>,
+    ) {
+        let b = self.universal_regions.to_region_vid(b);
+        let a = self.universal_regions.to_region_vid(a);
+        self.add_outlives(b, a);
+    }
+
+    fn push_verify(
+        &mut self,
+        _origin: SubregionOrigin<'tcx>,
+        kind: GenericKind<'tcx>,
+        a: ty::Region<'tcx>,
+        bound: VerifyBound<'tcx>,
+    ) {
+        let type_test = self.verify_to_type_test(kind, a, bound);
+        self.add_type_test(type_test);
     }
 }
