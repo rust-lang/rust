@@ -32,13 +32,25 @@ macro_rules! foo {
     } }
 }
 
+macro_rules! baz {
+    ($($a:ident),? ; $num:expr) => { { // comma separator is meaningless for `?`
+        let mut x = 0;
+
+        $(
+            x += $a;
+         )?
+
+        assert_eq!(x, $num);
+    } }
+}
+
 macro_rules! barplus {
     ($($a:ident)?+ ; $num:expr) => { {
         let mut x = 0;
 
         $(
             x += $a;
-         )?
+         )+
 
         assert_eq!(x, $num);
     } }
@@ -50,7 +62,7 @@ macro_rules! barstar {
 
         $(
             x += $a;
-         )?
+         )*
 
         assert_eq!(x, $num);
     } }
@@ -62,10 +74,15 @@ pub fn main() {
     // accept 0 or 1 repetitions
     foo!( ; 0);
     foo!(a ; 1);
+    baz!( ; 0);
+    baz!(a ; 1);
 
     // Make sure using ? as a separator works as before
-    barplus!(+ ; 0);
-    barplus!(a + ; 1);
-    barstar!(* ; 0);
-    barstar!(a * ; 1);
+    barplus!(a ; 1);
+    barplus!(a?a ; 2);
+    barplus!(a?a?a ; 3);
+    barstar!( ; 0);
+    barstar!(a ; 1);
+    barstar!(a?a ; 2);
+    barstar!(a?a?a ; 3);
 }
