@@ -1,9 +1,9 @@
+use crate::utils::{get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, SpanlessEq};
+use crate::utils::{higher, sugg};
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::*;
 use syntax::ast;
-use crate::utils::{get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, SpanlessEq};
-use crate::utils::{higher, sugg};
 
 /// **What it does:** Checks for compound assignment operations (`+=` and
 /// similar).
