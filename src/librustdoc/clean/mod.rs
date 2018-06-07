@@ -1218,9 +1218,10 @@ fn resolution_failure(
             };
 
             // Extract the specific span
-            let lo = sp.lo() + syntax_pos::BytePos((link_range.start + code_dox_len) as u32);
-            let hi = lo + syntax_pos::BytePos(link_range.len() as u32);
-            let sp = sp.with_lo(lo).with_hi(hi);
+            let sp = sp.from_inner_byte_pos(
+                link_range.start + code_dox_len,
+                link_range.end + code_dox_len,
+            );
 
             diag = cx.sess().struct_span_warn(sp, &msg);
             diag.span_label(sp, "cannot be resolved, ignoring");
