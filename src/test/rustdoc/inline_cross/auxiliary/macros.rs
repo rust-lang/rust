@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --test
+#![feature(staged_api)]
 
-fn main() {}
+#![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() -> Result<(), ()> {
-    //~^ ERROR functions used as tests must have signature fn() -> ()
-        Ok(())
-    }
+/// docs for my_macro
+#[unstable(feature = "macro_test", issue = "0")]
+#[rustc_deprecated(since = "1.2.3", reason = "text")]
+#[macro_export]
+macro_rules! my_macro {
+    () => ()
 }
