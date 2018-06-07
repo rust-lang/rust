@@ -174,6 +174,80 @@ we must show that `WellFormed(TraitRef)`. This in turn justifies the
 implied bounds rules that allow us to extend the set of `FromEnv`
 items.
 
+## Lowering type definitions
+
+We also want to have some rules which define when a type is well-formed.
+For example, given this type:
+
+```rust,ignore
+struct Set<K> where K: Hash { ... }
+```
+
+then `Set<i32>` is well-formed because `i32` implements `Hash`, but
+`Set<NotHash>` would not be well-formed. Basically, a type is well-formed
+if its parameters verify the where clauses written on the type definition.
+
+Hence, for every type definition:
+
+```rust, ignore
+struct Type<P1..Pn> where WC { ... }
+```
+
+we produce the following rule:
+
+```text
+// Rule WellFormed-Type
+forall<P1..Pn> {
+  WellFormed(Type<P1..Pn>) :- WC
+}
+```
+
+Note that we use `struct` for defining a type, but this should be understood
+as a general type definition (it could be e.g. a generic `enum`).
+
+Conversely, we define rules which say that if we assume that a type is
+well-formed, we can also assume that its where clauses hold. That is,
+we produce the following family of rules:
+
+```text
+// Rule FromEnv-Type
+//
+// For each where clause `WC`
+forall<P1..Pn> {
+  FromEnv(WC) :- FromEnv(Type<P1..Pn>)
+}
+```
+
+As for the implied bounds RFC, functions will *assume* that their arguments
+are well-formed. For example, suppose we have the following bit of code:
+
+```rust,ignore
+trait Hash: Eq { }
+struct Set<K: Hash> { ... }
+
+fn foo<K>(collection: Set<K>, x: K, y: K) {
+    // `x` and `y` can be equalized even if we did not explicitly write
+    // `where K: Eq`
+    if x == y {
+        ...
+    }
+}
+```
+
+in the `foo` function, we assume that `Set<K>` is well-formed, i.e. we have
+`FromEnv(Set<K>)` in our environment. Because of the previous rule, we get
+ `FromEnv(K: Hash)` without needing an explicit where clause. And because
+of the `Hash` trait definition, there also exists a rule which says:
+
+```text
+forall<K> {
+  FromEnv(K: Eq) :- FromEnv(K: Hash)
+}
+```
+
+which means that we finally get `FromEnv(K: Eq)` and then can compare `x`
+and `y` without needing an explicit where clause.
+
 <a name="trait-items"></a>
 
 ## Lowering trait items
