@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::nll::type_check::TypeChecker;
 use rustc::infer::{InferCtxt, InferOk, InferResult};
 use rustc::traits::query::NoSolution;
 use rustc::traits::{Normalized, Obligation, ObligationCause, PredicateObligation};
@@ -24,11 +23,7 @@ pub(super) trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     /// produce the output, else returns `Err(self)` back.
     fn trivial_noop(self) -> Result<Self::Output, Self>;
 
-    /// Produce a description of the operation for the debug logs.
-    fn perform(
-        self,
-        type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>,
-    ) -> InferResult<'tcx, Self::Output>;
+    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output>;
 }
 
 pub(super) struct CustomTypeOp<F, G> {
@@ -39,7 +34,7 @@ pub(super) struct CustomTypeOp<F, G> {
 impl<F, G> CustomTypeOp<F, G> {
     pub(super) fn new<'gcx, 'tcx, R>(closure: F, description: G) -> Self
     where
-        F: FnOnce(&mut TypeChecker<'_, 'gcx, 'tcx>) -> InferResult<'tcx, R>,
+        F: FnOnce(&InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, R>,
         G: Fn() -> String,
     {
         CustomTypeOp { closure, description }
@@ -48,7 +43,7 @@ impl<F, G> CustomTypeOp<F, G> {
 
 impl<'gcx, 'tcx, F, R, G> TypeOp<'gcx, 'tcx> for CustomTypeOp<F, G>
 where
-    F: FnOnce(&mut TypeChecker<'_, 'gcx, 'tcx>) -> InferResult<'tcx, R>,
+    F: FnOnce(&InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, R>,
     G: Fn() -> String,
 {
     type Output = R;
@@ -57,8 +52,8 @@ where
         Err(self)
     }
 
-    fn perform(self, type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>) -> InferResult<'tcx, R> {
-        (self.closure)(type_checker)
+    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, R> {
+        (self.closure)(infcx)
     }
 }
 
@@ -68,35 +63,6 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", (self.description)())
-    }
-}
-
-pub(super) trait InfcxTypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
-    type Output;
-
-    /// Micro-optimization: returns `Ok(x)` if we can trivially
-    /// produce the output, else returns `Err(self)` back.
-    fn trivial_noop(self) -> Result<Self::Output, Self>;
-
-    /// Produce a description of the operation for the debug logs.
-    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output>;
-}
-
-impl<'gcx, 'tcx, OP> TypeOp<'gcx, 'tcx> for OP
-where
-    OP: InfcxTypeOp<'gcx, 'tcx>,
-{
-    type Output = OP::Output;
-
-    fn trivial_noop(self) -> Result<Self::Output, Self> {
-        InfcxTypeOp::trivial_noop(self)
-    }
-
-    fn perform(
-        self,
-        type_checker: &mut TypeChecker<'_, 'gcx, 'tcx>,
-    ) -> InferResult<'tcx, OP::Output> {
-        InfcxTypeOp::perform(self, type_checker.infcx)
     }
 }
 
@@ -117,7 +83,7 @@ impl<'tcx> Subtype<'tcx> {
     }
 }
 
-impl<'gcx, 'tcx> InfcxTypeOp<'gcx, 'tcx> for Subtype<'tcx> {
+impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Subtype<'tcx> {
     type Output = ();
 
     fn trivial_noop(self) -> Result<Self::Output, Self> {
@@ -148,7 +114,7 @@ impl<'tcx> Eq<'tcx> {
     }
 }
 
-impl<'gcx, 'tcx> InfcxTypeOp<'gcx, 'tcx> for Eq<'tcx> {
+impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Eq<'tcx> {
     type Output = ();
 
     fn trivial_noop(self) -> Result<Self::Output, Self> {
@@ -185,7 +151,7 @@ impl<'tcx> ProvePredicates<'tcx> {
     }
 }
 
-impl<'gcx, 'tcx> InfcxTypeOp<'gcx, 'tcx> for ProvePredicates<'tcx> {
+impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for ProvePredicates<'tcx> {
     type Output = ();
 
     fn trivial_noop(self) -> Result<Self::Output, Self> {
@@ -219,7 +185,7 @@ where
     }
 }
 
-impl<'gcx, 'tcx, T> InfcxTypeOp<'gcx, 'tcx> for Normalize<'tcx, T>
+impl<'gcx, 'tcx, T> TypeOp<'gcx, 'tcx> for Normalize<'tcx, T>
 where
     T: fmt::Debug + TypeFoldable<'tcx>,
 {
@@ -259,7 +225,7 @@ impl<'tcx> DropckOutlives<'tcx> {
     }
 }
 
-impl<'gcx, 'tcx> InfcxTypeOp<'gcx, 'tcx> for DropckOutlives<'tcx> {
+impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for DropckOutlives<'tcx> {
     type Output = Vec<Kind<'tcx>>;
 
     fn trivial_noop(self) -> Result<Self::Output, Self> {

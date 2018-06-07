@@ -76,12 +76,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             "equate_inputs_and_outputs: normalized output_ty={:?}",
             output_ty
         );
+        let param_env = self.param_env;
         let mir_output_ty = mir.local_decls[RETURN_PLACE].ty;
         let anon_type_map =
             self.fully_perform_op(
                 Locations::All,
                 CustomTypeOp::new(
-                    |cx| {
+                    |infcx| {
                         let mut obligations = ObligationAccumulator::default();
 
                         let dummy_body_id = ObligationCause::dummy().body_id;
@@ -89,7 +90,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                             obligations.add(infcx.instantiate_anon_types(
                                 mir_def_id,
                                 dummy_body_id,
-                                cx.param_env,
+                                param_env,
                                 &output_ty,
                             ));
                         debug!(
@@ -107,7 +108,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         );
                         obligations.add(
                             infcx
-                                .at(&ObligationCause::dummy(), cx.param_env)
+                                .at(&ObligationCause::dummy(), param_env)
                                 .eq(output_ty, mir_output_ty)?,
                         );
 
@@ -115,7 +116,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                             let anon_defn_ty = tcx.type_of(anon_def_id);
                             let anon_defn_ty = anon_defn_ty.subst(tcx, anon_decl.substs);
                             let anon_defn_ty = renumber::renumber_regions(
-                                cx.infcx,
+                                infcx,
                                 TyContext::Location(Location::START),
                                 &anon_defn_ty,
                             );
@@ -126,7 +127,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                             debug!("equate_inputs_and_outputs: anon_defn_ty={:?}", anon_defn_ty);
                             obligations.add(
                                 infcx
-                                    .at(&ObligationCause::dummy(), cx.param_env)
+                                    .at(&ObligationCause::dummy(), param_env)
                                     .eq(anon_decl.concrete_ty, anon_defn_ty)?,
                             );
                         }

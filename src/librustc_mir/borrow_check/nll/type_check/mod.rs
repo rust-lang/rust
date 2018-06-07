@@ -783,23 +783,24 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             info!("fully_perform_op_and_get_region_constraint_data({:?})", op,);
         }
 
-        let mut fulfill_cx = TraitEngine::new(self.infcx.tcx);
+        let infcx = self.infcx;
+        let mut fulfill_cx = TraitEngine::new(infcx.tcx);
         let dummy_body_id = ObligationCause::dummy().body_id;
-        let InferOk { value, obligations } = self.infcx.commit_if_ok(|_| op.perform(self))?;
+        let InferOk { value, obligations } = infcx.commit_if_ok(|_| op.perform(infcx))?;
         debug_assert!(obligations.iter().all(|o| o.cause.body_id == dummy_body_id));
-        fulfill_cx.register_predicate_obligations(self.infcx, obligations);
-        if let Err(e) = fulfill_cx.select_all_or_error(self.infcx) {
+        fulfill_cx.register_predicate_obligations(infcx, obligations);
+        if let Err(e) = fulfill_cx.select_all_or_error(infcx) {
             span_mirbug!(self, "", "errors selecting obligation: {:?}", e);
         }
 
-        self.infcx.process_registered_region_obligations(
+        infcx.process_registered_region_obligations(
             self.region_bound_pairs,
             self.implicit_region_bound,
             self.param_env,
             dummy_body_id,
         );
 
-        let data = self.infcx.take_and_reset_region_constraints();
+        let data = infcx.take_and_reset_region_constraints();
         if data.is_empty() {
             Ok((value, None))
         } else {
