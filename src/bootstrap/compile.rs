@@ -133,15 +133,19 @@ fn copy_musl_third_party_objects(builder: &Builder,
     }
 }
 
+fn mac_os_deployment_env_var(cargo: &mut Command) {
+    if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
+        cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
+    }
+}
+
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
 pub fn std_cargo(builder: &Builder,
                  compiler: &Compiler,
                  target: Interned<String>,
                  cargo: &mut Command) {
-    if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
-        cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
-    }
+    mac_os_deployment_env_var(cargo);
 
     if builder.no_std(target) == Some(true) {
         // for no-std targets we only compile a few no_std crates
@@ -394,9 +398,7 @@ pub fn test_cargo(builder: &Builder,
                   _compiler: &Compiler,
                   _target: Interned<String>,
                   cargo: &mut Command) {
-    if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
-        cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
-    }
+    mac_os_deployment_env_var(cargo);
     cargo.arg("--manifest-path")
         .arg(builder.src.join("src/libtest/Cargo.toml"));
 }
