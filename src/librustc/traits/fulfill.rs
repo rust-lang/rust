@@ -241,8 +241,8 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         self.select(&mut selcx)
     }
 
-    fn pending_obligations(&self) -> Vec<PendingPredicateObligation<'tcx>> {
-        self.predicates.pending_obligations()
+    fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
+        self.predicates.map_pending_obligations(|o| o.obligation.clone())
     }
 }
 
