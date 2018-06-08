@@ -17,6 +17,7 @@
 use errors::{Applicability, DiagnosticBuilder};
 use lint::{LintPass, LateLintPass, LintArray};
 use session::Session;
+use syntax::ast;
 use syntax::codemap::Span;
 
 declare_lint! {
@@ -207,6 +208,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub BAD_REPR,
+    Warn,
+    "detects incorrect use of `repr` attribute"
+}
+
+declare_lint! {
     pub DEPRECATED,
     Warn,
     "detects use of deprecated items"
@@ -285,6 +292,12 @@ declare_lint! {
     "warns about duplicate associated type bindings in generics"
 }
 
+declare_lint! {
+    pub DUPLICATE_MACRO_EXPORTS,
+    Deny,
+    "detects duplicate macro exports"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -337,6 +350,7 @@ impl LintPass for HardwiredLints {
             ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
             UNSTABLE_NAME_COLLISIONS,
             DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
+            DUPLICATE_MACRO_EXPORTS,
         )
     }
 }
@@ -348,6 +362,7 @@ pub enum BuiltinLintDiagnostics {
     Normal,
     BareTraitObject(Span, /* is_global */ bool),
     AbsPathWithModule(Span),
+    DuplicatedMacroExports(ast::Ident, Span, Span),
 }
 
 impl BuiltinLintDiagnostics {
@@ -379,6 +394,10 @@ impl BuiltinLintDiagnostics {
                     Err(_) => (format!("crate::<path>"), Applicability::HasPlaceholders)
                 };
                 db.span_suggestion_with_applicability(span, "use `crate`", sugg, app);
+            }
+            BuiltinLintDiagnostics::DuplicatedMacroExports(ident, earlier_span, later_span) => {
+                db.span_label(later_span, format!("`{}` already exported", ident));
+                db.span_note(earlier_span, "previous macro export is now shadowed");
             }
         }
     }

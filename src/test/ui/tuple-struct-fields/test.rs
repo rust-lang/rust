@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --test
-
-fn main() {}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() -> Result<(), ()> {
-    //~^ ERROR functions used as tests must have signature fn() -> ()
-        Ok(())
-    }
+mod foo {
+    type T = ();
+    struct S1(pub(in foo) (), pub(T), pub(crate) (), pub(((), T)));
+    struct S2(pub((foo)) ());
+    //~^ ERROR expected one of `)` or `,`, found `(`
+    //~| ERROR cannot find type `foo` in this scope
 }

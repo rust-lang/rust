@@ -225,7 +225,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let expected_sig = fulfillment_cx
             .pending_obligations()
             .iter()
-            .map(|obligation| &obligation.obligation)
             .filter_map(|obligation| {
                 debug!(
                     "deduce_expectations_from_obligations: obligation.predicate={:?}",
@@ -257,7 +256,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let expected_kind = fulfillment_cx
             .pending_obligations()
             .iter()
-            .map(|obligation| &obligation.obligation)
             .filter_map(|obligation| {
                 let opt_trait_ref = match obligation.predicate {
                     ty::Predicate::Projection(ref data) => Some(data.to_poly_trait_ref(self.tcx)),

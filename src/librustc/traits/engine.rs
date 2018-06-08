@@ -13,7 +13,7 @@ use ty::{self, Ty, TyCtxt};
 use hir::def_id::DefId;
 
 use super::{FulfillmentContext, FulfillmentError};
-use super::{ObligationCause, PendingPredicateObligation, PredicateObligation};
+use super::{ObligationCause, PredicateObligation};
 
 pub trait TraitEngine<'tcx>: 'tcx {
     fn normalize_projection_type<'a, 'gcx>(
@@ -49,7 +49,7 @@ pub trait TraitEngine<'tcx>: 'tcx {
         infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     ) -> Result<(), Vec<FulfillmentError<'tcx>>>;
 
-    fn pending_obligations(&self) -> Vec<PendingPredicateObligation<'tcx>>;
+    fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>>;
 }
 
 impl<'a, 'gcx, 'tcx> dyn TraitEngine<'tcx> {

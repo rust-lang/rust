@@ -280,7 +280,8 @@ pub struct Build {
 struct Crate {
     name: Interned<String>,
     version: String,
-    deps: Vec<Interned<String>>,
+    deps: HashSet<Interned<String>>,
+    id: String,
     path: PathBuf,
     doc_step: String,
     build_step: String,

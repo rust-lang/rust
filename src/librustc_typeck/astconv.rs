@@ -30,6 +30,7 @@ use util::common::ErrorReported;
 use util::nodemap::{FxHashSet, FxHashMap};
 use errors::FatalError;
 
+// use std::cmp::Ordering;
 use std::iter;
 use syntax::ast;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
@@ -646,7 +647,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                             &mut vec![]);
         }
 
-        let (auto_traits, trait_bounds) = split_auto_traits(tcx, &trait_bounds[1..]);
+        let (mut auto_traits, trait_bounds) = split_auto_traits(tcx, &trait_bounds[1..]);
 
         if !trait_bounds.is_empty() {
             let b = &trait_bounds[0];
@@ -706,6 +707,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                             "missing associated type `{}` value", assoc_item.name))
                         .emit();
         }
+
+        // Dedup auto traits so that `dyn Trait + Send + Send` is the same as `dyn Trait + Send`.
+        auto_traits.sort();
+        auto_traits.dedup();
 
         // skip_binder is okay, because the predicates are re-bound.
         let mut v =
@@ -1319,7 +1324,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     }
 }
 
-/// Divides a list of general trait bounds into two groups: builtin bounds (Sync/Send) and the
+/// Divides a list of general trait bounds into two groups: auto traits (e.g. Sync and Send) and the
 /// remaining general trait bounds.
 fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                          trait_bounds: &'b [hir::PolyTraitRef])

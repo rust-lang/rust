@@ -2934,8 +2934,38 @@ impl<'a> Resolver<'a> {
                                                               here due to private fields"));
                             }
                         } else {
-                            err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?",
-                                                         path_str));
+                            // HACK(estebank): find a better way to figure out that this was a
+                            // parser issue where a struct literal is being used on an expression
+                            // where a brace being opened means a block is being started. Look
+                            // ahead for the next text to see if `span` is followed by a `{`.
+                            let cm = this.session.codemap();
+                            let mut sp = span;
+                            loop {
+                                sp = cm.next_point(sp);
+                                match cm.span_to_snippet(sp) {
+                                    Ok(ref snippet) => {
+                                        if snippet.chars().any(|c| { !c.is_whitespace() }) {
+                                            break;
+                                        }
+                                    }
+                                    _ => break,
+                                }
+                            }
+                            let followed_by_brace = match cm.span_to_snippet(sp) {
+                                Ok(ref snippet) if snippet == "{" => true,
+                                _ => false,
+                            };
+                            if let (PathSource::Expr(None), true) = (source, followed_by_brace) {
+                                err.span_label(
+                                    span,
+                                    format!("did you mean `({} {{ /* fields */ }})`?", path_str),
+                                );
+                            } else {
+                                err.span_label(
+                                    span,
+                                    format!("did you mean `{} {{ /* fields */ }}`?", path_str),
+                                );
+                            }
                         }
                         return (err, candidates);
                     }

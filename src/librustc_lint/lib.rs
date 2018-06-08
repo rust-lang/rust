@@ -107,6 +107,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                        UnusedImportBraces,
                        AnonymousParameters,
                        UnusedDocComment,
+                       BadRepr,
                        );
 
     add_early_builtin_with_new!(sess,
@@ -210,6 +211,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             id: LintId::of(PATTERNS_IN_FNS_WITHOUT_BODY),
             reference: "issue #35203 <https://github.com/rust-lang/rust/issues/35203>",
             edition: None,
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(DUPLICATE_MACRO_EXPORTS),
+            reference: "issue #35896 <https://github.com/rust-lang/rust/issues/35896>",
+            edition: Some(Edition::Edition2018),
         },
         FutureIncompatibleInfo {
             id: LintId::of(SAFE_EXTERN_STATICS),

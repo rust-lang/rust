@@ -229,13 +229,13 @@ impl<O: ForestObligation> ObligationForest<O> {
     }
 
     /// Returns the set of obligations that are in a pending state.
-    pub fn pending_obligations(&self) -> Vec<O>
-        where O: Clone
+    pub fn map_pending_obligations<P, F>(&self, f: F) -> Vec<P>
+        where F: Fn(&O) -> P
     {
         self.nodes
             .iter()
             .filter(|n| n.state.get() == NodeState::Pending)
-            .map(|n| n.obligation.clone())
+            .map(|n| f(&n.obligation))
             .collect()
     }
 

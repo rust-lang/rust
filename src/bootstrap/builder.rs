@@ -800,10 +800,7 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_ERROR_FORMAT", error_format);
         }
         if cmd != "build" && cmd != "check" && want_rustdoc {
-            cargo.env(
-                "RUSTDOC_LIBDIR",
-                self.rustc_libdir(self.compiler(2, self.config.build)),
-            );
+            cargo.env("RUSTDOC_LIBDIR", self.sysroot_libdir(compiler, self.config.build));
         }
 
         if mode.is_tool() {

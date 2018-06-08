@@ -8,15 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! define_struct {
-    ($t:ty) => {
-        struct S1(pub($t));
-        struct S2(pub (in foo) ());
-        struct S3(pub($t) ());
-        //~^ ERROR expected `,`, found `(`
-    }
-}
+#[macro_export]
+macro_rules! foo { ($i:ident) => {} }
 
-mod foo {
-    define_struct! { foo }
-}
+#[macro_export]
+macro_rules! foo { () => {} } //~ ERROR a macro named `foo` has already been exported
+                              //~| WARN this was previously accepted
