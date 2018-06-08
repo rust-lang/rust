@@ -11,6 +11,7 @@
 use ast;
 use attr;
 use std::cell::Cell;
+use edition::Edition;
 use ext::hygiene::{Mark, SyntaxContext};
 use symbol::{Symbol, keywords};
 use syntax_pos::{DUMMY_SP, Span};
@@ -44,7 +45,11 @@ thread_local! {
     static INJECTED_CRATE_NAME: Cell<Option<&'static str>> = Cell::new(None);
 }
 
-pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<&str>) -> ast::Crate {
+pub fn maybe_inject_crates_ref(
+    edition: Edition,
+    mut krate: ast::Crate,
+    alt_std_name: Option<&str>,
+) -> ast::Crate {
     // the first name in this list is the crate name of the crate with the prelude
     let names: &[&str] = if attr::contains_name(&krate.attrs, "no_core") {
         return krate;
@@ -92,7 +97,7 @@ pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<&str>
         vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
         node: ast::ItemKind::Use(P(ast::UseTree {
             prefix: ast::Path {
-                segments: [name, "prelude", "v1"].into_iter().map(|name| {
+                segments: [name, "prelude", edition.prelude_module()].into_iter().map(|name| {
                     ast::PathSegment::from_ident(ast::Ident::from_str(name))
                 }).collect(),
                 span,
