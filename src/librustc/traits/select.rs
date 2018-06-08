@@ -2011,9 +2011,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     // attempt to evaluate recursive bounds to see if they are
     // satisfied.
 
-    /// Returns true if `candidate_i` should be dropped in favor of
-    /// `candidate_j`.  Generally speaking we will drop duplicate
-    /// candidates and prefer where-clause candidates.
     /// Returns true if `victim` should be dropped in favor of
     /// `other`.  Generally speaking we will drop duplicate
     /// candidates and prefer where-clause candidates.
@@ -2025,13 +2022,19 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         other: &EvaluatedCandidate<'tcx>)
         -> bool
     {
+        // Check if a bound would previously have been removed when normalizing
+        // the param_env so that it can be given the lowest priority. See
+        // #50825 for the motivation for this.
+        let is_global = |cand: &ty::PolyTraitRef<'_>| {
+            cand.is_global() && !cand.has_late_bound_regions()
+        };
+
         if victim.candidate == other.candidate {
             return true;
         }
 
         match other.candidate {
-            ObjectCandidate |
-            ParamCandidate(_) | ProjectionCandidate => match victim.candidate {
+            ParamCandidate(ref cand) => match victim.candidate {
                 AutoImplCandidate(..) => {
                     bug!(
                         "default implementations shouldn't be recorded \
@@ -2044,8 +2047,33 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 BuiltinObjectCandidate |
                 BuiltinUnsizeCandidate |
                 BuiltinCandidate { .. } => {
-                    // We have a where-clause so don't go around looking
-                    // for impls.
+                    // Global bounds from the where clause should be ignored
+                    // here (see issue #50825). Otherwise, we have a where
+                    // clause so don't go around looking for impls.
+                    !is_global(cand)
+                }
+                ObjectCandidate |
+                ProjectionCandidate => {
+                    // Arbitrarily give param candidates priority
+                    // over projection and object candidates.
+                    !is_global(cand)
+                },
+                ParamCandidate(..) => false,
+            },
+            ObjectCandidate |
+            ProjectionCandidate => match victim.candidate {
+                AutoImplCandidate(..) => {
+                    bug!(
+                        "default implementations shouldn't be recorded \
+                         when there are other valid candidates");
+                }
+                ImplCandidate(..) |
+                ClosureCandidate |
+                GeneratorCandidate |
+                FnPointerCandidate |
+                BuiltinObjectCandidate |
+                BuiltinUnsizeCandidate |
+                BuiltinCandidate { .. } => {
                     true
                 }
                 ObjectCandidate |
@@ -2054,22 +2082,44 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     // over projection and object candidates.
                     true
                 },
-                ParamCandidate(..) => false,
+                ParamCandidate(ref cand) => is_global(cand),
             },
             ImplCandidate(other_def) => {
                 // See if we can toss out `victim` based on specialization.
                 // This requires us to know *for sure* that the `other` impl applies
                 // i.e. EvaluatedToOk:
                 if other.evaluation == EvaluatedToOk {
-                    if let ImplCandidate(victim_def) = victim.candidate {
-                        let tcx = self.tcx().global_tcx();
-                        return tcx.specializes((other_def, victim_def)) ||
-                            tcx.impls_are_allowed_to_overlap(other_def, victim_def);
+                    match victim.candidate {
+                        ImplCandidate(victim_def) => {
+                            let tcx = self.tcx().global_tcx();
+                            return tcx.specializes((other_def, victim_def)) ||
+                                tcx.impls_are_allowed_to_overlap(other_def, victim_def);
+                        }
+                        ParamCandidate(ref cand) => {
+                            // Prefer the impl to a global where clause candidate.
+                            return is_global(cand);
+                        }
+                        _ => ()
                     }
                 }
 
                 false
             },
+            ClosureCandidate |
+            GeneratorCandidate |
+            FnPointerCandidate |
+            BuiltinObjectCandidate |
+            BuiltinUnsizeCandidate |
+            BuiltinCandidate { .. } => {
+                match victim.candidate {
+                    ParamCandidate(ref cand) => {
+                        // Prefer these to a global where-clause bound
+                        // (see issue #50825)
+                        is_global(cand) && other.evaluation == EvaluatedToOk
+                    }
+                    _ => false,
+                }
+            }
             _ => false
         }
     }

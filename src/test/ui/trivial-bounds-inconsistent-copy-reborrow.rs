@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test FIXME(#50825)
 // Check that reborrows are still illegal with Copy mutable references
 #![feature(trivial_bounds)]
 #![allow(unused)]
