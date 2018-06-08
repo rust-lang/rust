@@ -559,6 +559,9 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                     om.impls.push(i);
                 }
             },
+            hir::ItemExistential(_) => {
+                // FIXME(oli-obk): actually generate docs for real existential items
+            }
         }
     }
 
