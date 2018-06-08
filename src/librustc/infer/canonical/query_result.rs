@@ -22,15 +22,16 @@ use infer::canonical::{
     Canonical, CanonicalVarValues, Canonicalize, Certainty, QueryRegionConstraint, QueryResult,
 };
 use infer::region_constraints::{Constraint, RegionConstraintData};
-use infer::{InferCtxt, InferOk, InferResult};
+use infer::{InferCtxt, InferOk, InferResult, RegionObligation};
 use rustc_data_structures::indexed_vec::Idx;
 use std::fmt::Debug;
+use syntax::ast;
 use traits::query::NoSolution;
 use traits::{FulfillmentContext, TraitEngine};
 use traits::{Obligation, ObligationCause, PredicateObligation};
 use ty::fold::TypeFoldable;
 use ty::subst::{Kind, UnpackedKind};
-use ty::{self, CanonicalVar};
+use ty::{self, CanonicalVar, TyCtxt};
 
 use rustc_data_structures::indexed_vec::IndexVec;
 
@@ -120,45 +121,8 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         debug!("ambig_errors = {:#?}", ambig_errors);
 
         let region_obligations = self.take_registered_region_obligations();
-
         let region_constraints = self.with_region_constraints(|region_constraints| {
-            let RegionConstraintData {
-                constraints,
-                verifys,
-                givens,
-            } = region_constraints;
-
-            assert!(verifys.is_empty());
-            assert!(givens.is_empty());
-
-            let mut outlives: Vec<_> = constraints
-            .into_iter()
-            .map(|(k, _)| match *k {
-                // Swap regions because we are going from sub (<=) to outlives
-                // (>=).
-                Constraint::VarSubVar(v1, v2) => ty::OutlivesPredicate(
-                    tcx.mk_region(ty::ReVar(v2)).into(),
-                    tcx.mk_region(ty::ReVar(v1)),
-                ),
-                Constraint::VarSubReg(v1, r2) => {
-                    ty::OutlivesPredicate(r2.into(), tcx.mk_region(ty::ReVar(v1)))
-                }
-                Constraint::RegSubVar(r1, v2) => {
-                    ty::OutlivesPredicate(tcx.mk_region(ty::ReVar(v2)).into(), r1)
-                }
-                Constraint::RegSubReg(r1, r2) => ty::OutlivesPredicate(r2.into(), r1),
-            })
-            .map(ty::Binder::dummy) // no bound regions in the code above
-            .collect();
-
-            outlives.extend(
-                region_obligations
-                    .into_iter()
-                    .map(|(_, r_o)| ty::OutlivesPredicate(r_o.sup_type.into(), r_o.sub_region))
-                    .map(ty::Binder::dummy), // no bound regions in the code above
-            );
-
-            outlives
+            make_query_outlives(tcx, region_obligations, region_constraints)
         });
 
         let certainty = if ambig_errors.is_empty() {
@@ -357,4 +321,50 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             })
         })
     }
+}
+
+/// Given the region obligations and constraints scraped from the infcx,
+/// creates query region constraints.
+fn make_query_outlives<'tcx>(
+    tcx: TyCtxt<'_, '_, 'tcx>,
+    region_obligations: Vec<(ast::NodeId, RegionObligation<'tcx>)>,
+    region_constraints: &RegionConstraintData<'tcx>,
+) -> Vec<QueryRegionConstraint<'tcx>> {
+    let RegionConstraintData {
+        constraints,
+        verifys,
+        givens,
+    } = region_constraints;
+
+    assert!(verifys.is_empty());
+    assert!(givens.is_empty());
+
+    let mut outlives: Vec<_> = constraints
+            .into_iter()
+            .map(|(k, _)| match *k {
+                // Swap regions because we are going from sub (<=) to outlives
+                // (>=).
+                Constraint::VarSubVar(v1, v2) => ty::OutlivesPredicate(
+                    tcx.mk_region(ty::ReVar(v2)).into(),
+                    tcx.mk_region(ty::ReVar(v1)),
+                ),
+                Constraint::VarSubReg(v1, r2) => {
+                    ty::OutlivesPredicate(r2.into(), tcx.mk_region(ty::ReVar(v1)))
+                }
+                Constraint::RegSubVar(r1, v2) => {
+                    ty::OutlivesPredicate(tcx.mk_region(ty::ReVar(v2)).into(), r1)
+                }
+                Constraint::RegSubReg(r1, r2) => ty::OutlivesPredicate(r2.into(), r1),
+            })
+            .map(ty::Binder::dummy) // no bound regions in the code above
+            .collect();
+
+    outlives.extend(
+        region_obligations
+            .into_iter()
+            .map(|(_, r_o)| ty::OutlivesPredicate(r_o.sup_type.into(), r_o.sub_region))
+            .map(ty::Binder::dummy), // no bound regions in the code above
+    );
+
+    outlives
 }
