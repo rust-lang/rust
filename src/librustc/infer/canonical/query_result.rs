@@ -63,7 +63,6 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ) -> Result<CanonicalizedQueryResult<'gcx, T>, NoSolution>
     where
         T: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
-        T::Lifted: Debug,
     {
         let query_result = self.make_query_result(inference_vars, answer, fulfill_cx)?;
         let (canonical_result, _) = self.canonicalize_response(&query_result);

@@ -348,7 +348,6 @@ impl<'tcx> Index<CanonicalVar> for CanonicalVarValues<'tcx> {
 impl<'gcx: 'tcx, 'tcx, T> Canonicalize<'gcx, 'tcx> for QueryResult<'tcx, T>
 where
     T: TypeFoldable<'tcx> + Lift<'gcx>,
-    T::Lifted: Debug,
 {
     // we ought to intern this, but I'm too lazy just now
     type Canonicalized = Lrc<Canonical<'gcx, QueryResult<'gcx, T::Lifted>>>;
