@@ -1754,6 +1754,13 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    pub fn is_impl_trait(&self) -> bool {
+        match self.sty {
+            TyAnon(..) => true,
+            _ => false,
+        }
+    }
+
     pub fn ty_to_def_id(&self) -> Option<DefId> {
         match self.sty {
             TyDynamic(ref tt, ..) => tt.principal().map(|p| p.def_id()),

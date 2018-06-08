@@ -179,7 +179,7 @@ pub enum Note {
 // and how it is located, as well as the mutability of the memory in
 // which the value is stored.
 //
-// *WARNING* The field `cmt.type` is NOT necessarily the same as the
+// *WARNING* The field `cmt.ty` is NOT necessarily the same as the
 // result of `node_id_to_type(cmt.id)`. This is because the `id` is
 // always the `id` of the node producing the type; in an expression
 // like `*x`, the type of this deref node is the deref'd type (`T`),

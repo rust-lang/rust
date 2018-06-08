@@ -19,6 +19,7 @@ mod different_lifetimes;
 mod find_anon_type;
 mod named_anon_conflict;
 mod outlives_closure;
+mod static_impl_trait;
 mod util;
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
@@ -67,6 +68,7 @@ impl<'cx, 'gcx, 'tcx> NiceRegionError<'cx, 'gcx, 'tcx> {
         self.try_report_named_anon_conflict()
             .or_else(|| self.try_report_anon_anon_conflict())
             .or_else(|| self.try_report_outlives_closure())
+            .or_else(|| self.try_report_static_impl_trait())
     }
 
     pub fn get_regions(&self) -> (Span, ty::Region<'tcx>, ty::Region<'tcx>) {
