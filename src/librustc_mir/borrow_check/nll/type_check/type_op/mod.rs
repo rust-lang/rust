@@ -11,12 +11,13 @@
 use rustc::infer::canonical::query_result;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::{InferCtxt, InferOk, InferResult};
+use rustc::traits::query::dropck_outlives::trivial_dropck_outlives;
 use rustc::traits::query::NoSolution;
 use rustc::traits::{Normalized, Obligation, ObligationCause, PredicateObligation, TraitEngine};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Kind;
-use rustc::ty::{ParamEnv, Predicate, Ty};
+use rustc::ty::{ParamEnv, Predicate, Ty, TyCtxt};
 use std::fmt;
 use std::rc::Rc;
 use syntax::codemap::DUMMY_SP;
@@ -26,7 +27,7 @@ pub(super) trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
 
     /// Micro-optimization: returns `Ok(x)` if we can trivially
     /// produce the output, else returns `Err(self)` back.
-    fn trivial_noop(self) -> Result<Self::Output, Self>;
+    fn trivial_noop(self, tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self>;
 
     /// Given an infcx, performs **the kernel** of the operation: this does the
     /// key action and then, optionally, returns a set of obligations which must be proven.
@@ -40,29 +41,35 @@ pub(super) trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     /// Processes the operation and all resulting obligations,
     /// returning the final result along with any region constraints
     /// (they will be given over to the NLL region solver).
-    #[inline(never)]
     fn fully_perform(
         self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
     ) -> Result<(Self::Output, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>), TypeError<'tcx>> {
-        let op = match self.trivial_noop() {
-            Ok(r) => return Ok((r, None)),
-            Err(op) => op,
-        };
+        match self.trivial_noop(infcx.tcx) {
+            Ok(r) => Ok((r, None)),
+            Err(op) => op.fully_perform_nontrivial(infcx),
+        }
+    }
 
+    /// Helper for `fully_perform` that handles the nontrivial cases.
+    #[inline(never)] // just to help with profiling
+    fn fully_perform_nontrivial(
+        self,
+        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+    ) -> Result<(Self::Output, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>), TypeError<'tcx>> {
         if cfg!(debug_assertions) {
-            info!("fully_perform_op_and_get_region_constraint_data({:?})", op);
+            info!("fully_perform_op_and_get_region_constraint_data({:?})", self);
         }
 
         let mut fulfill_cx = TraitEngine::new(infcx.tcx);
         let dummy_body_id = ObligationCause::dummy().body_id;
-        let InferOk { value, obligations } = infcx.commit_if_ok(|_| op.perform(infcx))?;
+        let InferOk { value, obligations } = infcx.commit_if_ok(|_| self.perform(infcx))?;
         debug_assert!(obligations.iter().all(|o| o.cause.body_id == dummy_body_id));
         fulfill_cx.register_predicate_obligations(infcx, obligations);
         if let Err(e) = fulfill_cx.select_all_or_error(infcx) {
             infcx.tcx.sess.diagnostic().delay_span_bug(
                 DUMMY_SP,
-                &format!("errors selecting obligation during MIR typeck: {:?}", e)
+                &format!("errors selecting obligation during MIR typeck: {:?}", e),
             );
         }
 
@@ -109,7 +116,7 @@ where
 {
     type Output = R;
 
-    fn trivial_noop(self) -> Result<Self::Output, Self> {
+    fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self> {
         Err(self)
     }
 
@@ -147,7 +154,7 @@ impl<'tcx> Subtype<'tcx> {
 impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Subtype<'tcx> {
     type Output = ();
 
-    fn trivial_noop(self) -> Result<Self::Output, Self> {
+    fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self> {
         if self.sub == self.sup {
             Ok(())
         } else {
@@ -178,7 +185,7 @@ impl<'tcx> Eq<'tcx> {
 impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Eq<'tcx> {
     type Output = ();
 
-    fn trivial_noop(self) -> Result<Self::Output, Self> {
+    fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self> {
         if self.a == self.b {
             Ok(())
         } else {
@@ -215,7 +222,7 @@ impl<'tcx> ProvePredicates<'tcx> {
 impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for ProvePredicates<'tcx> {
     type Output = ();
 
-    fn trivial_noop(self) -> Result<Self::Output, Self> {
+    fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self> {
         if self.obligations.is_empty() {
             Ok(())
         } else {
@@ -252,7 +259,7 @@ where
 {
     type Output = T;
 
-    fn trivial_noop(self) -> Result<Self::Output, Self> {
+    fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self> {
         if !self.value.has_projections() {
             Ok(self.value)
         } else {
@@ -289,8 +296,12 @@ impl<'tcx> DropckOutlives<'tcx> {
 impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for DropckOutlives<'tcx> {
     type Output = Vec<Kind<'tcx>>;
 
-    fn trivial_noop(self) -> Result<Self::Output, Self> {
-        Err(self)
+    fn trivial_noop(self, tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self> {
+        if trivial_dropck_outlives(tcx, self.dropped_ty) {
+            Ok(vec![])
+        } else {
+            Err(self)
+        }
     }
 
     fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
