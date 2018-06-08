@@ -16,9 +16,7 @@ bench = false
 doc = false
 
 [dependencies]
-core = { path = "../libcore" }
 libc = { version = "0.2.43", features = ['rustc-dep-of-std'], default-features = false }
-compiler_builtins = "0.1.0"
 cfg-if = "0.1.8"
 
 [build-dependencies]
@@ -26,3 +24,4 @@ cc = { optional = true, version = "1.0.1" }
 
 [features]
 llvm-libunwind = ["cc"]
+

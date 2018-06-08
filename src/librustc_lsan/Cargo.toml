@@ -15,6 +15,4 @@ build_helper = { path = "../build_helper" }
 cmake = "0.1.38"
 
 [dependencies]
-alloc = { path = "../liballoc" }
-core = { path = "../libcore" }
-compiler_builtins = "0.1.0"
+alloc_system = { path = "../liballoc_system" }

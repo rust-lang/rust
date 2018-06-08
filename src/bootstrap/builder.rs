@@ -781,6 +781,11 @@ impl<'a> Builder<'a> {
         // we copy the libs forward.
         let cmp = self.compiler_for(compiler.stage, compiler.host, target);
 
+        let libcore_stamp = match cmd {
+            "check" | "clippy" | "fix" => check::libcore_stamp(self, cmp, target),
+            _ => compile::libcore_stamp(self, cmp, target),
+        };
+
         let libstd_stamp = match cmd {
             "check" | "clippy" | "fix" => check::libstd_stamp(self, cmp, target),
             _ => compile::libstd_stamp(self, cmp, target),
@@ -816,6 +821,7 @@ impl<'a> Builder<'a> {
                 },
                 Mode::Rustc => {
                     self.clear_if_dirty(&my_out, &self.rustc(compiler));
+                    self.clear_if_dirty(&my_out, &libcore_stamp);
                     self.clear_if_dirty(&my_out, &libstd_stamp);
                     self.clear_if_dirty(&my_out, &libtest_stamp);
                 },
