@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 //! The first version of the prelude of The Rust Standard Library.
 //!
 //! See the [module-level documentation](../index.html) for more.
+
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -25,10 +27,6 @@
 #[doc(no_inline)] pub use mem::drop;
 
 // Re-exported types and traits
-#[stable(feature = "rust1", since = "1.0.0")]
-#[doc(no_inline)] pub use boxed::Box;
-#[stable(feature = "rust1", since = "1.0.0")]
-#[doc(no_inline)] pub use borrow::ToOwned;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use clone::Clone;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -45,6 +43,16 @@
 #[doc(no_inline)] pub use option::Option::{self, Some, None};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use result::Result::{self, Ok, Err};
+
+
+// Contents so far are equivalent to src/libcore/prelude/v1.rs
+
+
+// Re-exported types and traits that involve memory allocation
+#[stable(feature = "rust1", since = "1.0.0")]
+#[doc(no_inline)] pub use boxed::Box;
+#[stable(feature = "rust1", since = "1.0.0")]
+#[doc(no_inline)] pub use borrow::ToOwned;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use slice::SliceConcatExt;
 #[stable(feature = "rust1", since = "1.0.0")]
