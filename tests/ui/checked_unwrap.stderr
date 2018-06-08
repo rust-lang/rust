@@ -7,10 +7,10 @@ error: You checked before that `unwrap()` cannot fail. Instead of checking and u
   |         ^^^^^^^^^^
   |
 note: lint level defined here
- --> $DIR/checked_unwrap.rs:1:9
+ --> $DIR/checked_unwrap.rs:1:27
   |
-1 | #![deny(unnecessary_unwrap)]
-  |         ^^^^^^^^^^^^^^^^^^
+1 | #![deny(panicking_unwrap, unnecessary_unwrap)]
+  |                           ^^^^^^^^^^^^^^^^^^
 
 error: This call to `unwrap()` will always panic.
  --> $DIR/checked_unwrap.rs:9:9
@@ -20,6 +20,12 @@ error: This call to `unwrap()` will always panic.
 ...
 9 |         x.unwrap(); // will panic
   |         ^^^^^^^^^^
+  |
+note: lint level defined here
+ --> $DIR/checked_unwrap.rs:1:9
+  |
+1 | #![deny(panicking_unwrap, unnecessary_unwrap)]
+  |         ^^^^^^^^^^^^^^^^
 
 error: This call to `unwrap()` will always panic.
   --> $DIR/checked_unwrap.rs:12:9

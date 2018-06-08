@@ -161,7 +161,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                     } else {
                         span_lint_and_then(
                             self.cx,
-                            UNNECESSARY_UNWRAP,
+                            PANICKING_UNWRAP,
                             expr.span,
                             &format!("This call to `{}()` will always panic.",
                             method_name.name),
@@ -181,7 +181,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
 
 impl<'a> LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNNECESSARY_UNWRAP)
+        lint_array!(PANICKING_UNWRAP, UNNECESSARY_UNWRAP)
     }
 }
 

@@ -1,4 +1,4 @@
-#![deny(unnecessary_unwrap)]
+#![deny(panicking_unwrap, unnecessary_unwrap)]
 #![allow(if_same_then_else)]
 
 fn main() {
