@@ -1,3 +1,5 @@
+#![deny(unnecessary_unwrap)]
+
 fn main() {
     let x = Some(());
     if x.is_some() {

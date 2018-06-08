@@ -1,10 +1,10 @@
 use rustc::lint::*;
 
+use crate::utils::{in_macro, match_type, paths, span_lint_and_then, usage::is_potentially_mutated};
 use rustc::hir::intravisit::*;
 use rustc::hir::*;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
-use crate::utils::{in_macro, match_type, paths, usage::is_potentially_mutated};
 
 /// **What it does:** Checks for calls of unwrap[_err]() that cannot fail.
 ///
@@ -28,7 +28,7 @@ use crate::utils::{in_macro, match_type, paths, usage::is_potentially_mutated};
 /// ```
 declare_clippy_lint! {
     pub UNNECESSARY_UNWRAP,
-    complexity,
+    nursery,
     "checks for calls of unwrap[_err]() that cannot fail"
 }
 
@@ -126,14 +126,14 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                 if let Some(unwrappable) = self.unwrappables.iter()
                     .find(|u| u.ident.def == path.def && call_to_unwrap == u.safe_to_unwrap);
                 then {
-                    self.cx.span_lint_note(
+                    span_lint_and_then(
+                        self.cx,
                         UNNECESSARY_UNWRAP,
                         expr.span,
                         &format!("You checked before that `{}()` cannot fail. \
                         Instead of checking and unwrapping, it's better to use `if let` or `match`.",
                         method_name.name),
-                        unwrappable.check.span,
-                        "the check is happening here",
+                        |db| { db.span_label(unwrappable.check.span, "the check is happening here"); },
                     );
                 }
             }
