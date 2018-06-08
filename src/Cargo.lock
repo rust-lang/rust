@@ -21,8 +21,6 @@ version = "0.0.0"
 dependencies = [
  "build_helper 0.1.0",
  "cc 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.0.0",
- "core 0.0.0",
  "libc 0.0.0",
 ]
 
@@ -30,8 +28,6 @@ dependencies = [
 name = "alloc_system"
 version = "0.0.0"
 dependencies = [
- "compiler_builtins 0.0.0",
- "core 0.0.0",
  "dlmalloc 0.0.0",
  "libc 0.0.0",
 ]
@@ -598,10 +594,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "dlmalloc"
 version = "0.0.0"
-dependencies = [
- "compiler_builtins 0.0.0",
- "core 0.0.0",
-]
 
 [[package]]
 name = "dtoa"
@@ -1060,10 +1052,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "libc"
 version = "0.0.0"
-dependencies = [
- "compiler_builtins 0.0.0",
- "core 0.0.0",
-]
 
 [[package]]
 name = "libc"
@@ -1350,8 +1338,6 @@ dependencies = [
 name = "panic_abort"
 version = "0.0.0"
 dependencies = [
- "compiler_builtins 0.0.0",
- "core 0.0.0",
  "libc 0.0.0",
 ]
 
@@ -1359,9 +1345,6 @@ dependencies = [
 name = "panic_unwind"
 version = "0.0.0"
 dependencies = [
- "alloc 0.0.0",
- "compiler_builtins 0.0.0",
- "core 0.0.0",
  "libc 0.0.0",
  "unwind 0.0.0",
 ]
@@ -1501,8 +1484,6 @@ name = "profiler_builtins"
 version = "0.0.0"
 dependencies = [
  "cc 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.0.0",
- "core 0.0.0",
 ]
 
 [[package]]
@@ -2054,12 +2035,9 @@ dependencies = [
 name = "rustc_asan"
 version = "0.0.0"
 dependencies = [
- "alloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.0.0",
- "core 0.0.0",
 ]
 
 [[package]]
@@ -2235,12 +2213,9 @@ dependencies = [
 name = "rustc_lsan"
 version = "0.0.0"
 dependencies = [
- "alloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.0.0",
- "core 0.0.0",
 ]
 
 [[package]]
@@ -2286,12 +2261,9 @@ dependencies = [
 name = "rustc_msan"
 version = "0.0.0"
 dependencies = [
- "alloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.0.0",
- "core 0.0.0",
 ]
 
 [[package]]
@@ -2390,12 +2362,9 @@ dependencies = [
 name = "rustc_tsan"
 version = "0.0.0"
 dependencies = [
- "alloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.0.0",
- "core 0.0.0",
 ]
 
 [[package]]
@@ -2632,13 +2601,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "std"
 version = "0.0.0"
 dependencies = [
- "alloc 0.0.0",
  "alloc_jemalloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cc 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.0.0",
- "core 0.0.0",
  "libc 0.0.0",
  "panic_abort 0.0.0",
  "panic_unwind 0.0.0",
@@ -2648,7 +2614,6 @@ dependencies = [
  "rustc_lsan 0.0.0",
  "rustc_msan 0.0.0",
  "rustc_tsan 0.0.0",
- "std_unicode 0.0.0",
  "unwind 0.0.0",
 ]
 
@@ -3037,8 +3002,6 @@ dependencies = [
 name = "unwind"
 version = "0.0.0"
 dependencies = [
- "compiler_builtins 0.0.0",
- "core 0.0.0",
  "libc 0.0.0",
 ]
 
