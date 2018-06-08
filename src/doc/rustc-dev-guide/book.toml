@@ -1,7 +1,7 @@
 [book]
 title = "Guide to Rustc Development"
 author = "Rustc developers"
-description = "A guide to developing rustc "
+description = "A guide to developing rustc"
 
 [output.html]
 
