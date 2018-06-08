@@ -131,7 +131,7 @@ existentially quantified, the `Assoc` is as well. Semantically speaking,
 fn printables() -> impl Iterator<Item = impl Display> { .. }
 ```
 
-For `arg: impl Trait<Assoc: Bound>`, it can likewise be seen as:
+For `arg: impl Trait<Assoc: Bound>`, it is semantically equivalent to:
 `arg: impl Trait<Assoc = impl Bound>`.
 
 ## Meaning of `existential type Foo: Trait<Assoc: Bound>`
