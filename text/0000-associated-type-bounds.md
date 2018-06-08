@@ -123,9 +123,9 @@ trait TraitA {
 
 ## Notes on the meaning of `impl Trait<Assoc: Bound>`
 
-Note that in the context `-> impl Trait<Assoc: Bound>`, since the
-`Trait` is existentially quantified, so is in effect also the `Assoc`.
-Semantically speaking, `fn printables..` is equivalent to:
+Note that in the context `-> impl Trait<Assoc: Bound>`, since the Trait is
+existentially quantified, the `Assoc` is as well. Semantically speaking,
+`fn printables..` is equivalent to:
 
 ```rust
 fn printables() -> impl Iterator<Item = impl Display> { .. }
@@ -148,6 +148,11 @@ it can be seen as the same as:
 existential type Foo: Trait<Assoc = _0>;
 existential type _0: Bound;
 ```
+
+[RFC 2071]: https://github.com/rust-lang/rfcs/blob/master/text/2071-impl-trait-type-alias.md
+
+This syntax is specified in [RFC 2071]. As in that RFC, this documentation
+uses the non-final syntax for existential type aliases.
 
 # Drawbacks
 [drawbacks]: #drawbacks
