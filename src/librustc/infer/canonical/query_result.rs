@@ -67,10 +67,33 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         T: Debug,
         QueryResult<'tcx, T>: Canonicalize<'gcx, 'tcx>,
     {
+        let query_result = self.make_query_result(inference_vars, answer, fulfill_cx)?;
+        let (canonical_result, _) = self.canonicalize_response(&query_result);
+
+        debug!(
+            "make_canonicalized_query_result: canonical_result = {:#?}",
+            canonical_result
+        );
+
+        Ok(canonical_result)
+    }
+
+    /// Helper for `make_canonicalized_query_result` that does
+    /// everything up until the final canonicalization.
+    fn make_query_result<T>(
+        &self,
+        inference_vars: CanonicalVarValues<'tcx>,
+        answer: T,
+        fulfill_cx: &mut FulfillmentContext<'tcx>,
+    ) -> Result<QueryResult<'tcx, T>, NoSolution>
+    where
+        T: Debug,
+        QueryResult<'tcx, T>: Canonicalize<'gcx, 'tcx>,
+    {
         let tcx = self.tcx;
 
         debug!(
-            "make_query_response(\
+            "make_query_result(\
              inference_vars={:?}, \
              answer={:?})",
             inference_vars, answer,
@@ -85,7 +108,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
         if !true_errors.is_empty() {
             // FIXME -- we don't indicate *why* we failed to solve
-            debug!("make_query_response: true_errors={:#?}", true_errors);
+            debug!("make_query_result: true_errors={:#?}", true_errors);
             return Err(NoSolution);
         }
 
@@ -144,19 +167,12 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             Certainty::Ambiguous
         };
 
-        let (canonical_result, _) = self.canonicalize_response(&QueryResult {
+        Ok(QueryResult {
             var_values: inference_vars,
             region_constraints,
             certainty,
             value: answer,
-        });
-
-        debug!(
-            "make_query_response: canonical_result = {:#?}",
-            canonical_result
-        );
-
-        Ok(canonical_result)
+        })
     }
 
     /// Given the (canonicalized) result to a canonical query,
