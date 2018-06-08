@@ -9,13 +9,12 @@
 // except according to those terms.
 
 use infer::at::At;
-use infer::canonical::{Canonical, Canonicalize, QueryResult};
+use infer::canonical::{Canonical, Canonicalize};
 use infer::InferOk;
 use std::iter::FromIterator;
 use traits::query::CanonicalTyGoal;
 use ty::{self, Ty, TyCtxt};
 use ty::subst::Kind;
-use rustc_data_structures::sync::Lrc;
 
 impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
     /// Given a type `ty` of some value being dropped, computes a set
@@ -180,18 +179,6 @@ BraceStructLiftImpl! {
 impl_stable_hash_for!(struct DropckOutlivesResult<'tcx> {
     kinds, overflows
 });
-
-impl<'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for QueryResult<'tcx, DropckOutlivesResult<'tcx>> {
-    // we ought to intern this, but I'm too lazy just now
-    type Canonicalized = Lrc<Canonical<'gcx, QueryResult<'gcx, DropckOutlivesResult<'gcx>>>>;
-
-    fn intern(
-        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
-        value: Canonical<'gcx, Self::Lifted>,
-    ) -> Self::Canonicalized {
-        Lrc::new(value)
-    }
-}
 
 impl_stable_hash_for!(struct DtorckConstraint<'tcx> {
     outlives,

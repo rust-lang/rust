@@ -32,15 +32,15 @@
 //! [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html
 
 use infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin};
+use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::sync::Lrc;
 use serialize::UseSpecializedDecodable;
 use std::fmt::Debug;
 use std::ops::Index;
 use syntax::codemap::Span;
-use ty::{self, CanonicalVar, Lift, Region, Slice, TyCtxt};
-use ty::subst::Kind;
 use ty::fold::TypeFoldable;
-
-use rustc_data_structures::indexed_vec::IndexVec;
+use ty::subst::Kind;
+use ty::{self, CanonicalVar, Lift, Region, Slice, TyCtxt};
 
 mod canonicalizer;
 
@@ -59,7 +59,7 @@ pub struct Canonical<'gcx, V> {
 
 pub type CanonicalVarInfos<'gcx> = &'gcx Slice<CanonicalVarInfo>;
 
-impl<'gcx> UseSpecializedDecodable for CanonicalVarInfos<'gcx> { }
+impl<'gcx> UseSpecializedDecodable for CanonicalVarInfos<'gcx> {}
 
 /// A set of values corresponding to the canonical variables from some
 /// `Canonical`. You can give these values to
@@ -123,6 +123,9 @@ pub struct QueryResult<'tcx, R> {
     pub certainty: Certainty,
     pub value: R,
 }
+
+pub type CanonicalizedQueryResult<'gcx, T> =
+    Lrc<Canonical<'gcx, QueryResult<'gcx, <T as Lift<'gcx>>::Lifted>>>;
 
 /// Indicates whether or not we were able to prove the query to be
 /// true.
@@ -246,9 +249,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             CanonicalVarKind::Ty(ty_kind) => {
                 let ty = match ty_kind {
                     CanonicalTyVarKind::General => {
-                        self.next_ty_var(
-                            TypeVariableOrigin::MiscVariable(span),
-                        )
+                        self.next_ty_var(TypeVariableOrigin::MiscVariable(span))
                     }
 
                     CanonicalTyVarKind::Int => self.tcx.mk_int_var(self.next_int_var_id()),
@@ -258,9 +259,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 ty.into()
             }
 
-            CanonicalVarKind::Region => {
-                self.next_region_var(RegionVariableOrigin::MiscVariable(span)).into()
-            }
+            CanonicalVarKind::Region => self
+                .next_region_var(RegionVariableOrigin::MiscVariable(span))
+                .into(),
         }
     }
 }
@@ -341,5 +342,21 @@ impl<'tcx> Index<CanonicalVar> for CanonicalVarValues<'tcx> {
 
     fn index(&self, value: CanonicalVar) -> &Kind<'tcx> {
         &self.var_values[value]
+    }
+}
+
+impl<'gcx: 'tcx, 'tcx, T> Canonicalize<'gcx, 'tcx> for QueryResult<'tcx, T>
+where
+    T: TypeFoldable<'tcx> + Lift<'gcx>,
+    T::Lifted: Debug,
+{
+    // we ought to intern this, but I'm too lazy just now
+    type Canonicalized = Lrc<Canonical<'gcx, QueryResult<'gcx, T::Lifted>>>;
+
+    fn intern(
+        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
+        value: Canonical<'gcx, Self::Lifted>,
+    ) -> Self::Canonicalized {
+        Lrc::new(value)
     }
 }

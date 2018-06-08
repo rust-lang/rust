@@ -19,11 +19,13 @@
 
 use infer::canonical::substitute::substitute_value;
 use infer::canonical::{
-    Canonical, CanonicalVarValues, Canonicalize, Certainty, QueryRegionConstraint, QueryResult,
+    Canonical, CanonicalVarValues, Canonicalize, CanonicalizedQueryResult, Certainty,
+    QueryRegionConstraint, QueryResult,
 };
 use infer::region_constraints::{Constraint, RegionConstraintData};
 use infer::{InferCtxt, InferOk, InferResult, RegionObligation};
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt::Debug;
 use syntax::ast;
 use traits::query::NoSolution;
@@ -31,12 +33,7 @@ use traits::{FulfillmentContext, TraitEngine};
 use traits::{Obligation, ObligationCause, PredicateObligation};
 use ty::fold::TypeFoldable;
 use ty::subst::{Kind, UnpackedKind};
-use ty::{self, CanonicalVar, TyCtxt};
-
-use rustc_data_structures::indexed_vec::IndexVec;
-
-type CanonicalizedQueryResult<'gcx, 'tcx, T> =
-    <QueryResult<'tcx, T> as Canonicalize<'gcx, 'tcx>>::Canonicalized;
+use ty::{self, CanonicalVar, Lift, TyCtxt};
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// This method is meant to be invoked as the final step of a canonical query
@@ -63,10 +60,10 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
         fulfill_cx: &mut FulfillmentContext<'tcx>,
-    ) -> Result<CanonicalizedQueryResult<'gcx, 'tcx, T>, NoSolution>
+    ) -> Result<CanonicalizedQueryResult<'gcx, T>, NoSolution>
     where
-        T: Debug,
-        QueryResult<'tcx, T>: Canonicalize<'gcx, 'tcx>,
+        T: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
+        T::Lifted: Debug,
     {
         let query_result = self.make_query_result(inference_vars, answer, fulfill_cx)?;
         let (canonical_result, _) = self.canonicalize_response(&query_result);
