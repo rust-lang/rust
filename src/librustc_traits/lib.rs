@@ -33,7 +33,6 @@ mod dropck_outlives;
 mod evaluate_obligation;
 mod normalize_projection_ty;
 mod normalize_erasing_regions;
-mod util;
 pub mod lowering;
 
 use rustc::ty::query::Providers;

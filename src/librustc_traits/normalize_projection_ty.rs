@@ -15,7 +15,6 @@ use rustc::ty::{ParamEnvAnd, TyCtxt};
 use rustc_data_structures::sync::Lrc;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::DUMMY_SP;
-use util;
 use std::sync::atomic::Ordering;
 
 crate fn normalize_projection_ty<'tcx>(
@@ -43,8 +42,7 @@ crate fn normalize_projection_ty<'tcx>(
 
         // Now that we have fulfilled as much as we can, create a solution
         // from what we've learned.
-        util::make_query_response(
-            infcx,
+        infcx.make_canonicalized_query_result(
             canonical_inference_vars,
             NormalizationResult { normalized_ty: answer },
             fulfill_cx,

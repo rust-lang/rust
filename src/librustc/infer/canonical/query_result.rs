@@ -17,11 +17,16 @@
 //!
 //! [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html
 
-use infer::canonical::{Canonical, CanonicalVarValues, QueryRegionConstraint, QueryResult};
 use infer::canonical::substitute::substitute_value;
+use infer::canonical::{
+    Canonical, CanonicalVarValues, Canonicalize, Certainty, QueryRegionConstraint, QueryResult,
+};
+use infer::region_constraints::{Constraint, RegionConstraintData};
 use infer::{InferCtxt, InferOk, InferResult};
 use rustc_data_structures::indexed_vec::Idx;
 use std::fmt::Debug;
+use traits::query::NoSolution;
+use traits::{FulfillmentContext, TraitEngine};
 use traits::{Obligation, ObligationCause, PredicateObligation};
 use ty::fold::TypeFoldable;
 use ty::subst::{Kind, UnpackedKind};
@@ -29,7 +34,131 @@ use ty::{self, CanonicalVar};
 
 use rustc_data_structures::indexed_vec::IndexVec;
 
+type CanonicalizedQueryResult<'gcx, 'tcx, T> =
+    <QueryResult<'tcx, T> as Canonicalize<'gcx, 'tcx>>::Canonicalized;
+
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
+    /// This method is meant to be invoked as the final step of a canonical query
+    /// implementation. It is given:
+    ///
+    /// - the instantiated variables `inference_vars` created from the query key
+    /// - the result `answer` of the query
+    /// - a fulfillment context `fulfill_cx` that may contain various obligations which
+    ///   have yet to be proven.
+    ///
+    /// Given this, the function will process the obligations pending
+    /// in `fulfill_cx`:
+    ///
+    /// - If all the obligations can be proven successfully, it will
+    ///   package up any resulting region obligations (extracted from
+    ///   `infcx`) along with the fully resolved value `answer` into a
+    ///   query result (which is then itself canonicalized).
+    /// - If some obligations can be neither proven nor disproven, then
+    ///   the same thing happens, but the resulting query is marked as ambiguous.
+    /// - Finally, if any of the obligations result in a hard error,
+    ///   then `Err(NoSolution)` is returned.
+    pub fn make_canonicalized_query_result<T>(
+        &self,
+        inference_vars: CanonicalVarValues<'tcx>,
+        answer: T,
+        fulfill_cx: &mut FulfillmentContext<'tcx>,
+    ) -> Result<CanonicalizedQueryResult<'gcx, 'tcx, T>, NoSolution>
+    where
+        T: Debug,
+        QueryResult<'tcx, T>: Canonicalize<'gcx, 'tcx>,
+    {
+        let tcx = self.tcx;
+
+        debug!(
+            "make_query_response(\
+             inference_vars={:?}, \
+             answer={:?})",
+            inference_vars, answer,
+        );
+
+        // Select everything, returning errors.
+        let true_errors = match fulfill_cx.select_where_possible(self) {
+            Ok(()) => vec![],
+            Err(errors) => errors,
+        };
+        debug!("true_errors = {:#?}", true_errors);
+
+        if !true_errors.is_empty() {
+            // FIXME -- we don't indicate *why* we failed to solve
+            debug!("make_query_response: true_errors={:#?}", true_errors);
+            return Err(NoSolution);
+        }
+
+        // Anything left unselected *now* must be an ambiguity.
+        let ambig_errors = match fulfill_cx.select_all_or_error(self) {
+            Ok(()) => vec![],
+            Err(errors) => errors,
+        };
+        debug!("ambig_errors = {:#?}", ambig_errors);
+
+        let region_obligations = self.take_registered_region_obligations();
+
+        let region_constraints = self.with_region_constraints(|region_constraints| {
+            let RegionConstraintData {
+                constraints,
+                verifys,
+                givens,
+            } = region_constraints;
+
+            assert!(verifys.is_empty());
+            assert!(givens.is_empty());
+
+            let mut outlives: Vec<_> = constraints
+            .into_iter()
+            .map(|(k, _)| match *k {
+                // Swap regions because we are going from sub (<=) to outlives
+                // (>=).
+                Constraint::VarSubVar(v1, v2) => ty::OutlivesPredicate(
+                    tcx.mk_region(ty::ReVar(v2)).into(),
+                    tcx.mk_region(ty::ReVar(v1)),
+                ),
+                Constraint::VarSubReg(v1, r2) => {
+                    ty::OutlivesPredicate(r2.into(), tcx.mk_region(ty::ReVar(v1)))
+                }
+                Constraint::RegSubVar(r1, v2) => {
+                    ty::OutlivesPredicate(tcx.mk_region(ty::ReVar(v2)).into(), r1)
+                }
+                Constraint::RegSubReg(r1, r2) => ty::OutlivesPredicate(r2.into(), r1),
+            })
+            .map(ty::Binder::dummy) // no bound regions in the code above
+            .collect();
+
+            outlives.extend(
+                region_obligations
+                    .into_iter()
+                    .map(|(_, r_o)| ty::OutlivesPredicate(r_o.sup_type.into(), r_o.sub_region))
+                    .map(ty::Binder::dummy), // no bound regions in the code above
+            );
+
+            outlives
+        });
+
+        let certainty = if ambig_errors.is_empty() {
+            Certainty::Proven
+        } else {
+            Certainty::Ambiguous
+        };
+
+        let (canonical_result, _) = self.canonicalize_response(&QueryResult {
+            var_values: inference_vars,
+            region_constraints,
+            certainty,
+            value: answer,
+        });
+
+        debug!(
+            "make_query_response: canonical_result = {:#?}",
+            canonical_result
+        );
+
+        Ok(canonical_result)
+    }
+
     /// Given the (canonicalized) result to a canonical query,
     /// instantiates the result so it can be used, plugging in the
     /// values from the canonical query. (Note that the result may
