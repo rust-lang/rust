@@ -35,9 +35,8 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                         let return_sp = sub_origin.span();
                         let mut err = self.tcx.sess.struct_span_err(
                             sp,
-                            "can't infer an appropriate lifetime",
+                            "cannot infer an appropriate lifetime",
                         );
-                        err.span_label(sp, "can't infer an appropriate lifetime");
                         err.span_label(
                             return_sp,
                             "this return type evaluates to the `'static` lifetime...",

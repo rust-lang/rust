@@ -16,11 +16,11 @@ impl A {
     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
         self.x.iter().map(|a| a.0)
     }
-    //~^^^ ERROR can't infer an appropriate lifetime
+    //~^^ ERROR cannot infer an appropriate lifetime
     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
         self.x.iter().map(|a| a.0)
     }
-    //~^^^ ERROR can't infer an appropriate lifetime
+    //~^^ ERROR cannot infer an appropriate lifetime
 }
 
 fn main() {}
