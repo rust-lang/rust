@@ -20,8 +20,9 @@ use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;
 use rustc::hir::def_id::DefId;
-use rustc::infer::region_constraints::{Constraint, GenericKind};
-use rustc::infer::{InferCtxt, LateBoundRegionConversionTime, RegionObligation, UnitResult};
+use rustc::infer::canonical::QueryRegionConstraint;
+use rustc::infer::region_constraints::GenericKind;
+use rustc::infer::{InferCtxt, LateBoundRegionConversionTime, UnitResult};
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
@@ -625,21 +626,6 @@ crate struct MirTypeckRegionConstraints<'tcx> {
     crate type_tests: Vec<TypeTest<'tcx>>,
 }
 
-/// The type checker layers on top of the "old" inference engine.  The
-/// idea is that we run some operations, like trait selection, and
-/// then we "scrape out" the region constraints that have accumulated
-/// from the old lexical solver. This struct just collects the bits of
-/// that data that we care about into one place.
-#[derive(Debug)]
-struct LexicalRegionConstraintData<'tcx> {
-    /// The `'a <= 'b` constraints extracted from `RegionConstraintData`.
-    constraints: Vec<Constraint<'tcx>>,
-
-    /// The `T: 'a` (and `'a: 'b`, in some cases) constraints
-    /// extracted from the pending "region obligations".
-    region_obligations: Vec<RegionObligation<'tcx>>,
-}
-
 /// The `Locations` type summarizes *where* region constraints are
 /// required to hold. Normally, this is at a particular point which
 /// created the obligation, but for constraints that the user gave, we
@@ -759,7 +745,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn push_region_constraints(
         &mut self,
         locations: Locations,
-        data: &LexicalRegionConstraintData<'tcx>,
+        data: &[QueryRegionConstraint<'tcx>],
     ) {
         debug!(
             "push_region_constraints: constraints generated at {:?} are {:#?}",
@@ -1701,12 +1687,5 @@ impl ToLocations for Locations {
 impl ToLocations for Location {
     fn to_locations(self) -> Locations {
         self.at_self()
-    }
-}
-
-impl<'tcx> LexicalRegionConstraintData<'tcx> {
-    fn is_empty(&self) -> bool {
-        let LexicalRegionConstraintData { constraints, region_obligations } = self;
-        constraints.is_empty() && region_obligations.is_empty()
     }
 }

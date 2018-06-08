@@ -44,7 +44,7 @@ use rustc_data_structures::indexed_vec::IndexVec;
 
 mod canonicalizer;
 
-mod query_result;
+pub mod query_result;
 
 mod substitute;
 

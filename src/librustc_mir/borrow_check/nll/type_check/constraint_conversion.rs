@@ -11,13 +11,15 @@
 use borrow_check::location::LocationTable;
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::{OutlivesConstraint, RegionTest, TypeTest};
-use borrow_check::nll::type_check::{Locations, LexicalRegionConstraintData};
+use borrow_check::nll::type_check::Locations;
 use borrow_check::nll::universal_regions::UniversalRegions;
-use rustc::infer::{self, RegionObligation, SubregionOrigin};
+use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
-use rustc::infer::region_constraints::{Constraint, GenericKind, VerifyBound};
+use rustc::infer::region_constraints::{GenericKind, VerifyBound};
+use rustc::infer::{self, SubregionOrigin};
 use rustc::mir::{Location, Mir};
 use rustc::ty::{self, TyCtxt};
+use rustc::ty::subst::UnpackedKind;
 use syntax::codemap::Span;
 
 crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
@@ -63,49 +65,10 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub(super) fn convert(&mut self, data: &LexicalRegionConstraintData<'tcx>) {
+    pub(super) fn convert(&mut self, query_constraints: &[QueryRegionConstraint<'tcx>]) {
         debug!("generate: constraints at: {:#?}", self.locations);
-        let LexicalRegionConstraintData {
-            constraints,
-            region_obligations,
-        } = data;
 
-        for constraint in constraints {
-            debug!("generate: constraint: {:?}", constraint);
-            let (a_vid, b_vid) = match constraint {
-                Constraint::VarSubVar(a_vid, b_vid) => (*a_vid, *b_vid),
-                Constraint::RegSubVar(a_r, b_vid) => (self.to_region_vid(a_r), *b_vid),
-                Constraint::VarSubReg(a_vid, b_r) => (*a_vid, self.to_region_vid(b_r)),
-                Constraint::RegSubReg(a_r, b_r) => {
-                    (self.to_region_vid(a_r), self.to_region_vid(b_r))
-                }
-            };
-
-            // We have the constraint that `a_vid <= b_vid`. Add
-            // `b_vid: a_vid` to our region checker. Note that we
-            // reverse direction, because `regioncx` talks about
-            // "outlives" (`>=`) whereas the region constraints
-            // talk about `<=`.
-            self.add_outlives(b_vid, a_vid);
-
-            // In the new analysis, all outlives relations etc
-            // "take effect" at the mid point of the statement
-            // that requires them, so ignore the `at_location`.
-            if let Some(all_facts) = &mut self.all_facts {
-                if let Some(from_location) = self.locations.from_location() {
-                    all_facts.outlives.push((
-                        b_vid,
-                        a_vid,
-                        self.location_table.mid_index(from_location),
-                    ));
-                } else {
-                    for location in self.location_table.all_points() {
-                        all_facts.outlives.push((b_vid, a_vid, location));
-                    }
-                }
-            }
-        }
-
+        // Extract out various useful fields we'll need below.
         let ConstraintConversion {
             tcx,
             region_bound_pairs,
@@ -113,23 +76,59 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
             param_env,
             ..
         } = *self;
-        for r_o in region_obligations {
-            let RegionObligation {
-                sup_type,
-                sub_region,
-                cause,
-            } = r_o;
 
-            // we don't actually use this for anything.
-            let origin = infer::RelateParamBound(cause.span, sup_type);
+        for query_constraint in query_constraints {
+            // At the moment, we never generate any "higher-ranked"
+            // region constraints like `for<'a> 'a: 'b`. At some point
+            // when we move to universes, we will, and this assertion
+            // will start to fail.
+            let ty::OutlivesPredicate(k1, r2) =
+                query_constraint.no_late_bound_regions().unwrap_or_else(|| {
+                    span_bug!(
+                        self.span(),
+                        "query_constraint {:?} contained bound regions",
+                        query_constraint,
+                    );
+                });
 
-            TypeOutlives::new(
-                &mut *self,
-                tcx,
-                region_bound_pairs,
-                implicit_region_bound,
-                param_env,
-            ).type_must_outlive(origin, sup_type, sub_region);
+            match k1.unpack() {
+                UnpackedKind::Lifetime(r1) => {
+                    let r1_vid = self.to_region_vid(r1);
+                    let r2_vid = self.to_region_vid(r2);
+                    self.add_outlives(r1_vid, r2_vid);
+
+                    // In the new analysis, all outlives relations etc
+                    // "take effect" at the mid point of the statement
+                    // that requires them, so ignore the `at_location`.
+                    if let Some(all_facts) = &mut self.all_facts {
+                        if let Some(from_location) = self.locations.from_location() {
+                            all_facts.outlives.push((
+                                r1_vid,
+                                r2_vid,
+                                self.location_table.mid_index(from_location),
+                            ));
+                        } else {
+                            for location in self.location_table.all_points() {
+                                all_facts.outlives.push((r1_vid, r2_vid, location));
+                            }
+                        }
+                    }
+                }
+
+                UnpackedKind::Type(t1) => {
+                    // we don't actually use this for anything, but
+                    // the `TypeOutlives` code needs an origin.
+                    let origin = infer::RelateParamBound(self.span(), t1);
+
+                    TypeOutlives::new(
+                        &mut *self,
+                        tcx,
+                        region_bound_pairs,
+                        implicit_region_bound,
+                        param_env,
+                    ).type_must_outlive(origin, t1, r2);
+                }
+            }
         }
     }
 
@@ -185,17 +184,12 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
     }
 
     fn span(&self) -> Span {
-        self
-            .mir
+        self.mir
             .source_info(self.locations.from_location().unwrap_or(Location::START))
             .span
     }
 
-    fn add_outlives(
-        &mut self,
-        sup: ty::RegionVid,
-        sub: ty::RegionVid,
-    ) {
+    fn add_outlives(&mut self, sup: ty::RegionVid, sub: ty::RegionVid) {
         let span = self.span();
         let point = self.locations.at_location().unwrap_or(Location::START);
 
@@ -213,7 +207,9 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'gcx, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'b, 'gcx, 'tcx> {
+impl<'a, 'b, 'gcx, 'tcx> TypeOutlivesDelegate<'tcx>
+    for &'a mut ConstraintConversion<'b, 'gcx, 'tcx>
+{
     fn push_sub_region_constraint(
         &mut self,
         _origin: SubregionOrigin<'tcx>,

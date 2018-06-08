@@ -10,10 +10,11 @@
 
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::nll::type_check::type_op::{DropckOutlives, TypeOp};
-use borrow_check::nll::type_check::{AtLocation, LexicalRegionConstraintData};
+use borrow_check::nll::type_check::AtLocation;
 use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow::MaybeInitializedPlaces;
 use dataflow::{FlowAtLocation, FlowsAtLocation};
+use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::mir::Local;
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::ty::subst::Kind;
@@ -70,7 +71,7 @@ where
 
 struct DropData<'tcx> {
     dropped_kinds: Vec<Kind<'tcx>>,
-    region_constraint_data: Option<Rc<LexicalRegionConstraintData<'tcx>>>,
+    region_constraint_data: Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>,
 }
 
 impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flow, 'gcx, 'tcx> {

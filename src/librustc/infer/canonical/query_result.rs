@@ -325,7 +325,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
 /// Given the region obligations and constraints scraped from the infcx,
 /// creates query region constraints.
-fn make_query_outlives<'tcx>(
+pub fn make_query_outlives<'tcx>(
     tcx: TyCtxt<'_, '_, 'tcx>,
     region_obligations: Vec<(ast::NodeId, RegionObligation<'tcx>)>,
     region_constraints: &RegionConstraintData<'tcx>,

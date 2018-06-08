@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::nll::type_check::LexicalRegionConstraintData;
-use rustc::infer::region_constraints::RegionConstraintData;
+use rustc::infer::canonical::query_result;
+use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::{InferCtxt, InferOk, InferResult};
 use rustc::traits::query::NoSolution;
 use rustc::traits::{Normalized, Obligation, ObligationCause, PredicateObligation, TraitEngine};
@@ -44,7 +44,7 @@ pub(super) trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     fn fully_perform(
         self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
-    ) -> Result<(Self::Output, Option<Rc<LexicalRegionConstraintData<'tcx>>>), TypeError<'tcx>> {
+    ) -> Result<(Self::Output, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>), TypeError<'tcx>> {
         let op = match self.trivial_noop() {
             Ok(r) => return Ok((r, None)),
             Err(op) => op,
@@ -66,33 +66,20 @@ pub(super) trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
             );
         }
 
-        let region_obligations: Vec<_> = infcx
-            .take_registered_region_obligations()
-            .into_iter()
-            .map(|(_node_id, region_obligation)| region_obligation)
-            .collect();
+        let region_obligations = infcx.take_registered_region_obligations();
 
-        let RegionConstraintData {
-            constraints,
-            verifys,
-            givens,
-        } = infcx.take_and_reset_region_constraints();
+        let region_constraint_data = infcx.take_and_reset_region_constraints();
 
-        // These are created when we "process" the registered region
-        // obliations, and that hasn't happened yet.
-        assert!(verifys.is_empty());
-
-        // NLL doesn't use givens (and thank goodness!).
-        assert!(givens.is_empty());
-
-        let data = LexicalRegionConstraintData {
-            constraints: constraints.keys().cloned().collect(),
+        let outlives = query_result::make_query_outlives(
+            infcx.tcx,
             region_obligations,
-        };
-        if data.is_empty() {
+            &region_constraint_data,
+        );
+
+        if outlives.is_empty() {
             Ok((value, None))
         } else {
-            Ok((value, Some(Rc::new(data))))
+            Ok((value, Some(Rc::new(outlives))))
         }
     }
 }
