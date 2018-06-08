@@ -18,6 +18,7 @@ use std::iter::{once, Iterator};
 use syntax::ast;
 use syntax::codemap::Span;
 use crate::utils::{sugg, sext};
+use crate::utils::usage::mutated_variables;
 use crate::consts::{constant, Constant};
 
 use crate::utils::{get_enclosing_block, get_parent_expr, higher, in_external_macro, is_integer_literal, is_refutable,
@@ -504,8 +505,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         }
 
         // check for while loops which conditions never change
-        if let ExprWhile(ref cond, ref block, _) = expr.node {
-            check_infinite_loop(cx, cond, block, expr);
+        if let ExprWhile(ref cond, _, _) = expr.node {
+            check_infinite_loop(cx, cond, expr);
         }
     }
 
@@ -2145,35 +2146,30 @@ fn path_name(e: &Expr) -> Option<Name> {
     None
 }
 
-fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, block: &'tcx Block, expr: &'tcx Expr) {
+fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, expr: &'tcx Expr) {
     if constant(cx, cx.tables, cond).is_some() {
         // A pure constant condition (e.g. while false) is not linted.
         return;
     }
 
-    let mut mut_var_visitor = VarCollectorVisitor {
+    let mut var_visitor = VarCollectorVisitor {
         cx,
-        ids: HashMap::new(),
+        ids: HashSet::new(),
         def_ids: HashMap::new(),
         skip: false,
     };
-    mut_var_visitor.visit_expr(cond);
-    if mut_var_visitor.skip {
+    var_visitor.visit_expr(cond);
+    if var_visitor.skip {
         return;
     }
-
-    let mut delegate = MutVarsDelegate {
-        used_mutably: mut_var_visitor.ids,
-        skip: false,
+    let used_in_condition = &var_visitor.ids;
+    let no_cond_variable_mutated = if let Some(used_mutably) = mutated_variables(expr, cx) {
+        used_in_condition.is_disjoint(&used_mutably)
+    } else {
+        return
     };
-    let def_id = def_id::DefId::local(block.hir_id.owner);
-    let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
-    ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_scope_tree, cx.tables, None).walk_expr(expr);
-
-    if delegate.skip {
-        return;
-    }
-    if !(delegate.used_mutably.iter().any(|(_, v)| *v) || mut_var_visitor.def_ids.iter().any(|(_, v)| *v)) {
+    let mutable_static_in_cond = var_visitor.def_ids.iter().any(|(_, v)| *v);
+    if no_cond_variable_mutated && !mutable_static_in_cond {
         span_lint(
             cx,
             WHILE_IMMUTABLE_CONDITION,
@@ -2189,7 +2185,7 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, b
 /// All variables definition IDs are collected
 struct VarCollectorVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    ids: HashMap<NodeId, bool>,
+    ids: HashSet<NodeId>,
     def_ids: HashMap<def_id::DefId, bool>,
     skip: bool,
 }
@@ -2203,7 +2199,7 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
             then {
                 match def {
                     Def::Local(node_id) | Def::Upvar(node_id, ..) => {
-                        self.ids.insert(node_id, false);
+                        self.ids.insert(node_id);
                     },
                     Def::Static(def_id, mutable) => {
                         self.def_ids.insert(def_id, mutable);
@@ -2229,49 +2225,4 @@ impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
     }
-}
-
-struct MutVarsDelegate {
-    used_mutably: HashMap<NodeId, bool>,
-    skip: bool,
-}
-
-impl<'tcx> MutVarsDelegate {
-    fn update(&mut self, cat: &'tcx Categorization) {
-        match *cat {
-            Categorization::Local(id) =>
-                if let Some(used) = self.used_mutably.get_mut(&id) {
-                    *used = true;
-                },
-            Categorization::Upvar(_) => {
-                //FIXME: This causes false negatives. We can't get the `NodeId` from
-                //`Categorization::Upvar(_)`. So we search for any `Upvar`s in the
-                //`while`-body, not just the ones in the condition.
-                self.skip = true
-            },
-            Categorization::Deref(ref cmt, _) | Categorization::Interior(ref cmt, _) => self.update(&cmt.cat),
-            _ => {}
-        }
-    }
-}
-
-
-impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
-    fn consume(&mut self, _: NodeId, _: Span, _: &cmt_<'tcx>, _: ConsumeMode) {}
-
-    fn matched_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: MatchMode) {}
-
-    fn consume_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: ConsumeMode) {}
-
-    fn borrow(&mut self, _: NodeId, _: Span, cmt: &cmt_<'tcx>, _: ty::Region, bk: ty::BorrowKind, _: LoanCause) {
-        if let ty::BorrowKind::MutBorrow = bk {
-            self.update(&cmt.cat)
-        }
-    }
-
-    fn mutate(&mut self, _: NodeId, _: Span, cmt: &cmt_<'tcx>, _: MutateMode) {
-        self.update(&cmt.cat)
-    }
-
-    fn decl_without_init(&mut self, _: NodeId, _: Span) {}
 }

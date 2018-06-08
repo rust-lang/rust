@@ -1,0 +1,155 @@
+error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+ --> $DIR/checked_unwrap.rs:6:9
+  |
+5 |     if x.is_some() {
+  |        ----------- the check is happening here
+6 |         x.unwrap();
+  |         ^^^^^^^^^^
+  |
+note: lint level defined here
+ --> $DIR/checked_unwrap.rs:1:9
+  |
+1 | #![deny(unnecessary_unwrap)]
+  |         ^^^^^^^^^^^^^^^^^^
+
+error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/checked_unwrap.rs:11:9
+   |
+8  |     if x.is_none() {
+   |        ----------- the check is happening here
+...
+11 |         x.unwrap();
+   |         ^^^^^^^^^^
+
+error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/checked_unwrap.rs:15:9
+   |
+14 |     if x.is_ok() {
+   |        --------- the check is happening here
+15 |         x.unwrap();
+   |         ^^^^^^^^^^
+
+error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/checked_unwrap.rs:17:9
+   |
+14 |     if x.is_ok() {
+   |        --------- the check is happening here
+...
+17 |         x.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+
+error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/checked_unwrap.rs:20:9
+   |
+19 |     if x.is_err() {
+   |        ---------- the check is happening here
+20 |         x.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+
+error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/checked_unwrap.rs:22:9
+   |
+19 |     if x.is_err() {
+   |        ---------- the check is happening here
+...
+22 |         x.unwrap();
+   |         ^^^^^^^^^^
+
+error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/checked_unwrap.rs:37:9
+   |
+36 |     if x.is_ok() && y.is_err() {
+   |        --------- the check is happening here
+37 |         x.unwrap();
+   |         ^^^^^^^^^^
+
+error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/checked_unwrap.rs:38:9
+   |
+36 |     if x.is_ok() && y.is_err() {
+   |                     ---------- the check is happening here
+37 |         x.unwrap();
+38 |         y.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+
+error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/checked_unwrap.rs:50:9
+   |
+45 |     if x.is_ok() || y.is_ok() {
+   |        --------- the check is happening here
+...
+50 |         x.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+
+error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/checked_unwrap.rs:51:9
+   |
+45 |     if x.is_ok() || y.is_ok() {
+   |                     --------- the check is happening here
+...
+51 |         y.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+
+error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/checked_unwrap.rs:55:9
+   |
+54 |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
+   |        --------- the check is happening here
+55 |         x.unwrap();
+   |         ^^^^^^^^^^
+
+error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/checked_unwrap.rs:56:9
+   |
+54 |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
+   |                       --------- the check is happening here
+55 |         x.unwrap();
+56 |         y.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+
+error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/checked_unwrap.rs:57:9
+   |
+54 |     if x.is_ok() && !(y.is_ok() || z.is_err()) {
+   |                                    ---------- the check is happening here
+...
+57 |         z.unwrap();
+   |         ^^^^^^^^^^
+
+error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/checked_unwrap.rs:62:9
+   |
+59 |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
+   |        --------- the check is happening here
+...
+62 |         x.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+
+error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/checked_unwrap.rs:63:9
+   |
+59 |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
+   |                       --------- the check is happening here
+...
+63 |         y.unwrap();
+   |         ^^^^^^^^^^
+
+error: You checked before that `unwrap_err()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/checked_unwrap.rs:64:9
+   |
+59 |     if x.is_ok() || !(y.is_ok() && z.is_err()) {
+   |                                    ---------- the check is happening here
+...
+64 |         z.unwrap_err();
+   |         ^^^^^^^^^^^^^^
+
+error: You checked before that `unwrap()` cannot fail. Instead of checking and unwrapping, it's better to use `if let` or `match`.
+  --> $DIR/checked_unwrap.rs:72:13
+   |
+71 |         if x.is_some() {
+   |            ----------- the check is happening here
+72 |             x.unwrap();
+   |             ^^^^^^^^^^
+
+error: aborting due to 17 previous errors
+
