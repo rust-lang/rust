@@ -294,7 +294,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         },
         FutureIncompatibleInfo {
             id: LintId::of(WHERE_CLAUSES_OBJECT_SAFETY),
-            reference: "issue TBD",
+            reference: "issue #51443 <https://github.com/rust-lang/rust/issues/51443>",
             edition: None,
         },
         FutureIncompatibleInfo {
