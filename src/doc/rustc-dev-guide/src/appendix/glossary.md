@@ -12,11 +12,14 @@ bound variable          |  a "bound variable" is one that is declared within an 
 codegen unit            |  when we produce LLVM IR, we group the Rust code into a number of codegen units. Each of these units is processed by LLVM independently from one another, enabling parallelism. They are also the unit of incremental re-use.
 completeness            |  completeness is a technical term in type theory. Completeness means that every type-safe program also type-checks. Having both soundness and completeness is very hard, and usually soundness is more important. (see "soundness").
 control-flow graph      |  a representation of the control-flow of a program; see [the background chapter for more](./appendix/background.html#cfg)
+CTFE                    |  Compile-Time Function Evaluation. This is the ability of the compiler to evaluate `const fn`s at compile time. This is part of the compiler's constant evaluation system. ([see more](./const-eval.html))
 cx                      |  we tend to use "cx" as an abbrevation for context. See also `tcx`, `infcx`, etc.
 DAG                     |  a directed acyclic graph is used during compilation to keep track of dependencies between queries. ([see more](incremental-compilation.html))
 data-flow analysis      |  a static analysis that figures out what properties are true at each point in the control-flow of a program; see [the background chapter for more](./appendix/background.html#dataflow)
 DefId                   |  an index identifying a definition (see `librustc/hir/def_id.rs`). Uniquely identifies a `DefPath`.
 Double pointer          |  a pointer with additional metadata. See "fat pointer" for more.
+DST                     |  Dynamically-Sized Type. A type for which the compiler cannot statically know the size in memory (e.g. `str` or `[u8]`). Such types don't implement `Sized` and cannot be allocated on the stack. They can only occur as the last field in a struct. They can only be used behind a pointer (e.g. `&str` or `&[u8]`).
+empty type              |  see "uninhabited type".
 Fat pointer             |  a two word value carrying the address of some value, along with some further information necessary to put the value to use. Rust includes two kinds of "fat pointers": references to slices, and trait objects. A reference to a slice carries the starting address of the slice and its length. A trait object carries a value's address and a pointer to the trait's implementation appropriate to that value. "Fat pointers" are also known as "wide pointers", and "double pointers".
 free variable           |  a "free variable" is one that is not bound within an expression or term; see [the background chapter for more](./appendix/background.html#free-vs-bound)
 'gcx                    |  the lifetime of the global arena ([see more](ty.html))
@@ -45,6 +48,7 @@ provider                |  the function that executes a query ([see more](query.
 quantified              |  in math or logic, existential and universal quantification are used to ask questions like "is there any type T for which is true?" or "is this true for all types T?"; see [the background chapter for more](./appendix/background.html#quantified)
 query                   |  perhaps some sub-computation during compilation ([see more](query.html))
 region                  |  another term for "lifetime" often used in the literature and in the borrow checker.
+rib                     |  a data structure in the name resolver that keeps track of a single scope for names. ([see more](./name-resolution.html))
 sess                    |  the compiler session, which stores global data used throughout compilation
 side tables             |  because the AST and HIR are immutable once created, we often carry extra information about them in the form of hashtables, indexed by the id of a particular node.
 sigil                   |  like a keyword but composed entirely of non-alphanumeric tokens. For example, `&` is a sigil for references.
@@ -61,8 +65,11 @@ trans                   |  the code to translate MIR into LLVM IR.
 trait reference         |  a trait and values for its type parameters ([see more](ty.html)).
 ty                      |  the internal representation of a type ([see more](ty.html)).
 UFCS                    |  Universal Function Call Syntax. An unambiguous syntax for calling a method ([see more](type-checking.html)).
+uninhabited type        |  a type which has _no_ values. This is not the same as a ZST, which has exactly 1 value. An example of an uninhabited type is `enum Foo {}`, which has no variants, and so, can never be created. The compiler can treat code that deals with uninhabited types as dead code, since there is no such value to be manipulated. `!` (the never type) is an uninhabited type. Uninhabited types are also called "empty types".
+upvar                   |  a variable captured by a closure from outside the closure.
 variance                |  variance determines how changes to a generic type/lifetime parameter affect subtyping; for example, if `T` is a subtype of `U`, then `Vec<T>` is a subtype `Vec<U>` because `Vec` is *covariant* in its generic parameter. See [the background chapter](./appendix/background.html#variance) for a more general explanation. See the [variance chapter](./variance.html) for an explanation of how type checking handles variance.
 Wide pointer            |  a pointer with additional metadata. See "fat pointer" for more.
+ZST                     |  Zero-Sized Type. A type whose values have size 0 bytes. Since `2^0 = 1`, such types can have exactly one value. For example, `()` (unit) is a ZST. `struct Foo;` is also a ZST. The compiler can do some nice optimizations around ZSTs.
 
 [LLVM]: https://llvm.org/
 [lto]: https://llvm.org/docs/LinkTimeOptimization.html
