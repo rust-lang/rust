@@ -1,0 +1,11 @@
+error: expected one of `)` or `,`, found `(`
+  --> $DIR/test2.rs:15:26
+   |
+LL |         struct S3(pub $t ());
+   |                          ^ expected one of `)` or `,` here
+...
+LL |     define_struct! { (foo) }
+   |     ------------------------ in this macro invocation
+
+error: aborting due to previous error
+
