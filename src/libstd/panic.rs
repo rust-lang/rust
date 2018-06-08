@@ -15,11 +15,14 @@
 use any::Any;
 use cell::UnsafeCell;
 use fmt;
+use future::Future;
+use mem::PinMut;
 use ops::{Deref, DerefMut};
 use panicking;
 use ptr::{Unique, NonNull};
 use rc::Rc;
 use sync::{Arc, Mutex, RwLock, atomic};
+use task::{self, Poll};
 use thread::Result;
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
@@ -312,6 +315,21 @@ impl<T: fmt::Debug> fmt::Debug for AssertUnwindSafe<T> {
         f.debug_tuple("AssertUnwindSafe")
             .field(&self.0)
             .finish()
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+impl<'a, F: Future> Future for AssertUnwindSafe<F> {
+    type Output = F::Output;
+
+    fn poll(mut self: PinMut<Self>, cx: &mut task::Context) -> Poll<Self::Output> {
+        unsafe {
+            let pinned_field = PinMut::new_unchecked(
+                &mut PinMut::get_mut(self.reborrow()).0
+            ); 
+
+            pinned_field.poll(cx) 
+        }
     }
 }
 

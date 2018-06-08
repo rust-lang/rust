@@ -915,6 +915,45 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<PinBox<U>> for PinBox<T> {}
 impl<T: ?Sized> Unpin for PinBox<T> {}
 
 #[unstable(feature = "futures_api", issue = "50547")]
+impl<'a, F: ?Sized + Future + Unpin> Future for Box<F> {
+    type Output = F::Output;
+
+    fn poll(mut self: PinMut<Self>, cx: &mut Context) -> Poll<Self::Output> {
+        PinMut::new(&mut **self).poll(cx)
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+impl<'a, F: ?Sized + Future> Future for PinBox<F> {
+    type Output = F::Output;
+
+    fn poll(mut self: PinMut<Self>, cx: &mut Context) -> Poll<Self::Output> {
+        self.as_pin_mut().poll(cx)
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+unsafe impl<F: Future<Output = ()> + Send + 'static> UnsafePoll for Box<F> {
+    fn into_raw(self) -> *mut () {
+        unsafe {
+            mem::transmute(self)
+        }
+    }
+
+    unsafe fn poll(task: *mut (), cx: &mut Context) -> Poll<()> {
+        let ptr: *mut F = mem::transmute(task);
+        let pin: PinMut<F> = PinMut::new_unchecked(&mut *ptr);
+        pin.poll(cx)
+    }
+
+    unsafe fn drop(task: *mut ()) {
+        let ptr: *mut F = mem::transmute(task);
+        let boxed = Box::from_raw(ptr);
+        drop(boxed)
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
 unsafe impl<F: Future<Output = ()> + Send + 'static> UnsafePoll for PinBox<F> {
     fn into_raw(self) -> *mut () {
         PinBox::into_raw(self) as *mut ()

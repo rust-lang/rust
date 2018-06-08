@@ -32,6 +32,12 @@ pub enum Poll<T> {
     Pending,
 }
 
+impl<T> From<T> for Poll<T> {
+    fn from(t: T) -> Poll<T> {
+        Poll::Ready(t)
+    }
+}
+
 /// A `Waker` is a handle for waking up a task by notifying its executor that it
 /// is ready to be run.
 ///

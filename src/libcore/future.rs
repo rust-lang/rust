@@ -15,6 +15,7 @@
 //! Asynchronous values.
 
 use mem::PinMut;
+use marker::Unpin;
 use task::{self, Poll};
 
 /// A future represents an asychronous computation.
@@ -90,4 +91,20 @@ pub trait Future {
     /// cause bad behavior. The `Future` trait itself provides no guarantees
     /// about the behavior of `poll` after a future has completed.
     fn poll(self: PinMut<Self>, cx: &mut task::Context) -> Poll<Self::Output>;
+}
+
+impl<'a, F: ?Sized + Future + Unpin> Future for &'a mut F {
+    type Output = F::Output;
+
+    fn poll(mut self: PinMut<Self>, cx: &mut task::Context) -> Poll<Self::Output> {
+        F::poll(PinMut::new(&mut **self), cx)
+    }
+}
+
+impl<'a, F: ?Sized + Future> Future for PinMut<'a, F> {
+    type Output = F::Output;
+
+    fn poll(mut self: PinMut<Self>, cx: &mut task::Context) -> Poll<Self::Output> {
+        F::poll((*self).reborrow(), cx)
+    }
 }

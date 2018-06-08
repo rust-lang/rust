@@ -239,6 +239,7 @@
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(align_offset)]
+#![feature(arbitrary_self_types)]
 #![feature(array_error_internals)]
 #![feature(ascii_ctype)]
 #![feature(asm)]
