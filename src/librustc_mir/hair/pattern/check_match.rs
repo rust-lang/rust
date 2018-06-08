@@ -369,7 +369,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 NotUseful => {
                     match source {
                         hir::MatchSource::IfLetDesugar { .. } => {
-                            if cx.tcx.features().irrefutable_let_pattern {
+                            if cx.tcx.features().irrefutable_let_patterns {
                                 cx.tcx.lint_node(
                                     lint::builtin::IRREFUTABLE_LET_PATTERNS,
                                     hir_pat.id, pat.span,
@@ -404,7 +404,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                 },
                                 // The arm with the wildcard pattern.
                                 1 => {
-                                    if cx.tcx.features().irrefutable_let_pattern {
+                                    if cx.tcx.features().irrefutable_let_patterns {
                                         cx.tcx.lint_node(
                                             lint::builtin::IRREFUTABLE_LET_PATTERNS,
                                             hir_pat.id, pat.span,

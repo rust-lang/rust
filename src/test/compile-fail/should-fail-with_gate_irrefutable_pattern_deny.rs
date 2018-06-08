@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(irrefutable_let_pattern)]
+#![feature(irrefutable_let_patterns)]
 
-// should-fail-irrefutable_let_pattern_with_gate
+// should-fail-irrefutable_let_patterns_with_gate
 fn main() {
     if let _ = 5 {}
-    //~^ ERROR irrefutable if-let pattern [irrefutable_let_pattern]
+    //~^ ERROR irrefutable if-let pattern [irrefutable_let_patterns]
 }

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// should-fail-irrefutable_let_pattern
+// should-fail-irrefutable_let_patterns
 fn main() {
     if let _ = 5 {}
     //~^ ERROR irrefutable if-let pattern [E0162]

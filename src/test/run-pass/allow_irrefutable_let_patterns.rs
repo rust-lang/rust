@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(irrefutable_let_pattern)]
+#![feature(irrefutable_let_patterns)]
 
-// must-compile-successfully-irrefutable_let_pattern_with_gate
+// must-compile-successfully-irrefutable_let_patterns_with_gate
 fn main() {
-    #[allow(irrefutable_let_pattern)]
+    #[allow(irrefutable_let_patterns)]
     if let _ = 5 {}
 
-    #[allow(irrefutable_let_pattern)]
+    #[allow(irrefutable_let_patterns)]
     while let _ = 5 {
         break;
     }

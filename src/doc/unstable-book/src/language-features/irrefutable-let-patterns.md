@@ -1,4 +1,4 @@
-# `irrefutable_let_pattern`
+# `irrefutable_let_patterns`
 
 The tracking issue for this feature is: [#44495]
 
@@ -11,13 +11,13 @@ in the `if let` and `while let` forms. The old way was to always error
 but now with a tag the error-by-default lint can be switched off.
 
 ```rust
-#![feature(irrefutable_let_pattern)]
+#![feature(irrefutable_let_patterns)]
 
 fn main() {
-    #[allow(irrefutable_let_pattern)]
+    #[allow(irrefutable_let_patterns)]
     if let _ = 5 {}
 
-    #[allow(irrefutable_let_pattern)]
+    #[allow(irrefutable_let_patterns)]
     while let _ = 5 {}
 }
 ```

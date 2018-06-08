@@ -1,4 +1,4 @@
-// gate-test-irrefutable_let_pattern
+// gate-test-irrefutable_let_patterns
 
 // Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -11,7 +11,7 @@
 // except according to those terms.
 
 fn main() {
-    #[allow(irrefutable_let_pattern)]
+    #[allow(irrefutable_let_patterns)]
     if let _ = 5 {}
     //~^ ERROR 15:12: 15:13: irrefutable if-let pattern [E0162]
 }
