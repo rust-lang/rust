@@ -10,8 +10,6 @@
 
 // compile-flags: --test
 
-#![feature(termination_trait_test)]
-
 use std::num::ParseIntError;
 
 #[test]
