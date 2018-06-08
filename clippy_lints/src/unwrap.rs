@@ -36,7 +36,8 @@ declare_clippy_lint! {
 ///
 /// **Why is this bad?** If panicking is desired, an explicit `panic!()` should be used.
 ///
-/// **Known problems:** None.
+/// **Known problems:** This lint only checks `if` conditions not assignments.
+/// So something like `let x: Option<()> = None; x.unwrap();` will not be recognized.
 ///
 /// **Example:**
 /// ```rust
