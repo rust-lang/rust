@@ -191,11 +191,12 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn create_region_hierarchy(&mut self, rh: &RH, parent: region::Scope) {
+    pub fn create_region_hierarchy(&mut self, rh: &RH,
+                                   parent: (region::Scope, region::ScopeDepth)) {
         let me = region::Scope::Node(rh.id);
         self.region_scope_tree.record_scope_parent(me, Some(parent));
         for child_rh in rh.sub {
-            self.create_region_hierarchy(child_rh, me);
+            self.create_region_hierarchy(child_rh, (me, parent.1 + 1));
         }
     }
 
@@ -215,7 +216,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
                 id: hir::ItemLocalId(11),
                 sub: &[],
             }],
-        }, dscope);
+        }, (dscope, 1));
     }
 
     #[allow(dead_code)] // this seems like it could be useful, even if we don't use it now
