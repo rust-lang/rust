@@ -711,6 +711,7 @@ fn check_false_global_bounds<'a, 'gcx, 'tcx>(
     for pred in implied_obligations {
         // Match the existing behavior.
         if pred.is_global() && !pred.has_late_bound_regions() {
+            let pred = fcx.normalize_associated_types_in(span, &pred);
             let obligation = traits::Obligation::new(
                 traits::ObligationCause::new(
                     span,
