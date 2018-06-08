@@ -1251,30 +1251,60 @@ fn resolution_failure(
     link_range: Option<Range<usize>>,
 ) {
     let sp = span_of_attrs(attrs);
-    let mut diag = cx.sess()
-        .struct_span_warn(sp, &format!("[{}] cannot be resolved, ignoring it...", path_str));
+    let msg = format!("`[{}]` cannot be resolved, ignoring it...", path_str);
 
-    if let Some(link_range) = link_range {
+    let code_dox = sp.to_src(cx);
+
+    let doc_comment_padding = 3;
+    let mut diag = if let Some(link_range) = link_range {
         // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
         //                       ^    ~~~~~~
         //                       |    link_range
         //                       last_new_line_offset
 
-        let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
-        let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
+        let mut diag;
+        if dox.lines().count() == code_dox.lines().count() {
+            let line_offset = dox[..link_range.start].lines().count();
+            // The span starts in the `///`, so we don't have to account for the leading whitespace
+            let code_dox_len = if line_offset <= 1 {
+                doc_comment_padding
+            } else {
+                // The first `///`
+                doc_comment_padding +
+                    // Each subsequent leading whitespace and `///`
+                    code_dox.lines().skip(1).take(line_offset - 1).fold(0, |sum, line| {
+                        sum + doc_comment_padding + line.len() - line.trim().len()
+                    })
+            };
 
-        // Print the line containing the `link_range` and manually mark it with '^'s
-        diag.note(&format!(
-            "the link appears in this line:\n\n{line}\n{indicator: <before$}{indicator:^<found$}",
-            line=line,
-            indicator="",
-            before=link_range.start - last_new_line_offset,
-            found=link_range.len(),
-        ));
+            // Extract the specific span
+            let sp = sp.from_inner_byte_pos(
+                link_range.start + code_dox_len,
+                link_range.end + code_dox_len,
+            );
+
+            diag = cx.sess().struct_span_warn(sp, &msg);
+            diag.span_label(sp, "cannot be resolved, ignoring");
+        } else {
+            diag = cx.sess().struct_span_warn(sp, &msg);
+
+            let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
+            let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
+
+            // Print the line containing the `link_range` and manually mark it with '^'s
+            diag.note(&format!(
+                "the link appears in this line:\n\n{line}\n\
+                 {indicator: <before$}{indicator:^<found$}",
+                line=line,
+                indicator="",
+                before=link_range.start - last_new_line_offset,
+                found=link_range.len(),
+            ));
+        }
+        diag
     } else {
-
-    }
-
+        cx.sess().struct_span_warn(sp, &msg)
+    };
     diag.emit();
 }
 
