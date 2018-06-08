@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use common::CompareMode;
-use common::{expected_output_path, UI_FIXED, UI_STDERR, UI_STDOUT};
+use common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
 use common::{output_base_dir, output_base_name, output_testname_unique};
 use common::{Codegen, CodegenUnits, DebugInfoGdb, DebugInfoLldb, Rustdoc};
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
@@ -2609,6 +2609,9 @@ impl<'test> TestCx<'test> {
         errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
         errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
 
+        let modes_to_prune = vec![CompareMode::Nll];
+        self.prune_duplicate_outputs(&modes_to_prune);
+
         if self.config.compare_mode.is_some() {
             // don't test rustfix with nll right now
         } else if self.props.run_rustfix {
@@ -2971,6 +2974,16 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn delete_file(&self, file: &PathBuf) {
+        if let Err(e) = ::std::fs::remove_file(file) {
+            self.fatal(&format!(
+                "failed to delete `{}`: {}",
+                file.display(),
+                e,
+            ));
+        }
+    }
+
     fn compare_output(&self, kind: &str, actual: &str, expected: &str) -> usize {
         if actual == expected {
             return 0;
@@ -3023,13 +3036,7 @@ impl<'test> TestCx<'test> {
 
         for output_file in &files {
             if actual.is_empty() {
-                if let Err(e) = ::std::fs::remove_file(output_file) {
-                    self.fatal(&format!(
-                        "failed to delete `{}`: {}",
-                        output_file.display(),
-                        e,
-                    ));
-                }
+                self.delete_file(output_file);
             } else {
                 match File::create(&output_file).and_then(|mut f| f.write_all(actual.as_bytes())) {
                     Ok(()) => {}
@@ -3051,6 +3058,42 @@ impl<'test> TestCx<'test> {
             0
         } else {
             1
+        }
+    }
+
+    fn prune_duplicate_output(&self, mode: CompareMode, kind: &str, canon_content: &str) {
+        let examined_path = expected_output_path(
+            &self.testpaths,
+            self.revision,
+            &Some(mode),
+            kind,
+        );
+
+        let examined_content = self
+            .load_expected_output_from_path(&examined_path)
+            .unwrap_or_else(|_| String::new());
+
+        if examined_path.exists() && canon_content == &examined_content {
+            self.delete_file(&examined_path);
+        }
+    }
+
+    fn prune_duplicate_outputs(&self, modes: &[CompareMode]) {
+        if self.config.bless {
+            for kind in UI_EXTENSIONS {
+                let canon_comparison_path = expected_output_path(
+                    &self.testpaths,
+                    self.revision,
+                    &None,
+                    kind,
+                );
+
+                if let Ok(canon) = self.load_expected_output_from_path(&canon_comparison_path) {
+                    for mode in modes {
+                        self.prune_duplicate_output(mode.clone(), kind, &canon);
+                    }
+                }
+            }
         }
     }
 
