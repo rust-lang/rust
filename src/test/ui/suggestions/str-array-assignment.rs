@@ -15,7 +15,7 @@ fn main() {
   let u: &str = if true { s[..2] } else { s };
   //~^ ERROR mismatched types
   let v = s[..2];
-  //~^ ERROR the trait bound `str: std::marker::Sized` is not satisfied
+  //~^ ERROR `str` does not have a constant size known at compile-time
   let w: &str = s[..2];
   //~^ ERROR mismatched types
 }

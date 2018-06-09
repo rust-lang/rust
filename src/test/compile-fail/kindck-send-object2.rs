@@ -19,7 +19,8 @@ fn test50() {
 }
 
 fn test53() {
-    assert_send::<Box<Dummy>>(); //~ ERROR : std::marker::Send` is not satisfied
+    assert_send::<Box<Dummy>>();
+    //~^ ERROR `Dummy` cannot be sent between threads safely
 }
 
 // ...unless they are properly bounded

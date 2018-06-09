@@ -10,7 +10,7 @@
 
 #[repr(packed)]
 pub struct Bad<T: ?Sized> {
-    data: T, //~ ERROR `T: std::marker::Sized` is not satisfied
+    data: T, //~ ERROR `T` does not have a constant size known at compile-time
 }
 
 fn main() {}

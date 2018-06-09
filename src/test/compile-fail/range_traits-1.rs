@@ -13,23 +13,23 @@ use std::ops::*;
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 struct AllTheRanges {
     a: Range<usize>,
-    //~^ ERROR PartialOrd
-    //~^^ ERROR Ord
+    //~^ ERROR can't compare
+    //~| ERROR Ord
     b: RangeTo<usize>,
-    //~^ ERROR PartialOrd
-    //~^^ ERROR Ord
+    //~^ ERROR can't compare
+    //~| ERROR Ord
     c: RangeFrom<usize>,
-    //~^ ERROR PartialOrd
-    //~^^ ERROR Ord
+    //~^ ERROR can't compare
+    //~| ERROR Ord
     d: RangeFull,
-    //~^ ERROR PartialOrd
-    //~^^ ERROR Ord
+    //~^ ERROR can't compare
+    //~| ERROR Ord
     e: RangeInclusive<usize>,
-    //~^ ERROR PartialOrd
-    //~^^ ERROR Ord
+    //~^ ERROR can't compare
+    //~| ERROR Ord
     f: RangeToInclusive<usize>,
-    //~^ ERROR PartialOrd
-    //~^^ ERROR Ord
+    //~^ ERROR can't compare
+    //~| ERROR Ord
 }
 
 fn main() {}

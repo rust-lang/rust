@@ -13,5 +13,5 @@
 
 fn main() {
     (|| Box::new(*(&[0][..])))();
-    //~^ ERROR `[{integer}]: std::marker::Sized` is not satisfied
+    //~^ ERROR `[{integer}]` does not have a constant size known at compile-time
 }

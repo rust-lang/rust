@@ -11,16 +11,19 @@
 #![feature(untagged_unions)]
 
 union Foo<T: ?Sized> {
-    value: T, //~ ERROR the trait bound `T: std::marker::Sized` is not satisfied
+    value: T,
+    //~^ ERROR `T` does not have a constant size known at compile-time
 }
 
 struct Foo2<T: ?Sized> {
-    value: T, //~ ERROR the trait bound `T: std::marker::Sized` is not satisfied
+    value: T,
+    //~^ ERROR `T` does not have a constant size known at compile-time
     t: u32,
 }
 
 enum Foo3<T: ?Sized> {
-    Value(T), //~ ERROR the trait bound `T: std::marker::Sized` is not satisfied
+    Value(T),
+    //~^ ERROR `T` does not have a constant size known at compile-time
 }
 
 fn main() {}

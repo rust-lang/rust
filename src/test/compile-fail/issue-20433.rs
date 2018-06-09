@@ -14,5 +14,5 @@ struct The;
 
 impl The {
     fn iceman(c: Vec<[i32]>) {}
-    //~^ ERROR the trait bound `[i32]: std::marker::Sized` is not satisfied
+    //~^ ERROR `[i32]` does not have a constant size known at compile-time
 }

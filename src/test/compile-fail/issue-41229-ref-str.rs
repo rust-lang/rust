@@ -9,8 +9,6 @@
 // except according to those terms.
 
 pub fn example(ref s: str) {}
-//~^ ERROR the trait bound `str: std::marker::Sized` is not satisfied
-//~| `str` does not have a constant size known at compile-time
-//~| the trait `std::marker::Sized` is not implemented for `str`
+//~^ ERROR `str` does not have a constant size known at compile-time
 
 fn main() {}

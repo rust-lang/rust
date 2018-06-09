@@ -14,8 +14,10 @@ use std::ops::Generator;
 
 fn main() {
    let s = String::from("foo");
-   let mut gen = move || { //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
+   let mut gen = move || {
+   //~^ ERROR `str` does not have a constant size known at compile-time
        yield s[..];
    };
-   unsafe { gen.resume(); } //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
+   unsafe { gen.resume(); }
+   //~^ ERROR `str` does not have a constant size known at compile-time
 }

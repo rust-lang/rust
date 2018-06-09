@@ -9,5 +9,6 @@
 // except according to those terms.
 
 fn bar<T: Sized>() { }
-fn foo<T: ?Sized>() { bar::<T>() } //~ ERROR `T: std::marker::Sized` is not satisfied
+fn foo<T: ?Sized>() { bar::<T>() }
+//~^ ERROR `T` does not have a constant size known at compile-time
 fn main() { }

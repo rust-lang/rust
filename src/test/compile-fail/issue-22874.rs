@@ -10,7 +10,7 @@
 
 struct Table {
     rows: [[String]],
-    //~^ ERROR the trait bound `[std::string::String]: std::marker::Sized` is not satisfied [E0277]
+    //~^ ERROR `[std::string::String]` does not have a constant size known at compile-time
 }
 
 fn f(table: &Table) -> &[String] {

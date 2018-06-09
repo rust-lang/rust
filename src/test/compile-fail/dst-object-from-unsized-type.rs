@@ -16,22 +16,22 @@ impl Foo for [u8] {}
 
 fn test1<T: ?Sized + Foo>(t: &T) {
     let u: &Foo = t;
-    //~^ ERROR `T: std::marker::Sized` is not satisfied
+    //~^ ERROR `T` does not have a constant size known at compile-time
 }
 
 fn test2<T: ?Sized + Foo>(t: &T) {
     let v: &Foo = t as &Foo;
-    //~^ ERROR `T: std::marker::Sized` is not satisfied
+    //~^ ERROR `T` does not have a constant size known at compile-time
 }
 
 fn test3() {
     let _: &[&Foo] = &["hi"];
-    //~^ ERROR `str: std::marker::Sized` is not satisfied
+    //~^ ERROR `str` does not have a constant size known at compile-time
 }
 
 fn test4(x: &[u8]) {
     let _: &Foo = x as &Foo;
-    //~^ ERROR `[u8]: std::marker::Sized` is not satisfied
+    //~^ ERROR `[u8]` does not have a constant size known at compile-time
 }
 
 fn main() { }

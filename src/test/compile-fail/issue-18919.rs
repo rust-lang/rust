@@ -11,7 +11,7 @@
 type FuncType<'f> = Fn(&isize) -> isize + 'f;
 
 fn ho_func(f: Option<FuncType>) {
-    //~^ ERROR: `for<'r> std::ops::Fn(&'r isize) -> isize: std::marker::Sized` is not satisfied
+    //~^ ERROR: `for<'r> std::ops::Fn(&'r isize) -> isize` does not have a constant size known at
 }
 
 fn main() {}

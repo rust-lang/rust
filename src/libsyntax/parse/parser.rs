@@ -1204,14 +1204,6 @@ impl<'a> Parser<'a> {
     fn span_fatal_err<S: Into<MultiSpan>>(&self, sp: S, err: Error) -> DiagnosticBuilder<'a> {
         err.span_err(sp, self.diagnostic())
     }
-    fn span_fatal_help<S: Into<MultiSpan>>(&self,
-                                            sp: S,
-                                            m: &str,
-                                            help: &str) -> DiagnosticBuilder<'a> {
-        let mut err = self.sess.span_diagnostic.struct_span_fatal(sp, m);
-        err.help(help);
-        err
-    }
     fn bug(&self, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(self.span, m)
     }

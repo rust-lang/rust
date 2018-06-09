@@ -11,6 +11,7 @@
 trait I {}
 type K = I+'static;
 
-fn foo(_x: K) {} //~ ERROR: `I + 'static: std::marker::Sized` is not satisfied
+fn foo(_x: K) {}
+//~^ ERROR `I + 'static` does not have a constant size known at compile-time
 
 fn main() {}

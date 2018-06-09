@@ -14,7 +14,7 @@ trait Get {
 }
 
 fn foo<T:Get>(t: T) {
-    let x = t.get(); //~ ERROR `<T as Get>::Value: std::marker::Sized` is not
+    let x = t.get(); //~ ERROR `<T as Get>::Value` does not have a constant size known at compile-time
 }
 
 fn main() {

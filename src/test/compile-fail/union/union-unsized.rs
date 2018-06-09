@@ -11,13 +11,15 @@
 #![feature(untagged_unions)]
 
 union U {
-    a: str, //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
+    a: str,
+    //~^ ERROR `str` does not have a constant size known at compile-time
     b: u8,
 }
 
 union W {
     a: u8,
-    b: str, //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
+    b: str,
+    //~^ ERROR `str` does not have a constant size known at compile-time
 }
 
 fn main() {}

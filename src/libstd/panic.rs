@@ -110,8 +110,10 @@ pub use core::panic::{PanicInfo, Location};
 ///
 /// [`AssertUnwindSafe`]: ./struct.AssertUnwindSafe.html
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-#[rustc_on_unimplemented = "the type {Self} may not be safely transferred \
-                            across an unwind boundary"]
+#[rustc_on_unimplemented(
+    message="the type `{Self}` may not be safely transferred across an unwind boundary",
+    label="`{Self}` may not be safely transferred across an unwind boundary",
+)]
 pub auto trait UnwindSafe {}
 
 /// A marker trait representing types where a shared reference is considered
@@ -126,9 +128,12 @@ pub auto trait UnwindSafe {}
 /// [`UnsafeCell`]: ../cell/struct.UnsafeCell.html
 /// [`UnwindSafe`]: ./trait.UnwindSafe.html
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-#[rustc_on_unimplemented = "the type {Self} may contain interior mutability \
-                            and a reference may not be safely transferrable \
-                            across a catch_unwind boundary"]
+#[rustc_on_unimplemented(
+    message="the type `{Self}` may contain interior mutability and a reference may not be safely \
+             transferrable across a catch_unwind boundary",
+    label="`{Self}` may contain interior mutability and a reference may not be safely \
+           transferrable across a catch_unwind boundary",
+)]
 pub auto trait RefUnwindSafe {}
 
 /// A simple wrapper around a type to assert that it is unwind safe.

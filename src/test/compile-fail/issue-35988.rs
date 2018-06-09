@@ -10,7 +10,7 @@
 
 enum E {
     V([Box<E>]),
-    //~^ ERROR the trait bound `[std::boxed::Box<E>]: std::marker::Sized` is not satisfied [E0277]
+    //~^ ERROR `[std::boxed::Box<E>]` does not have a constant size known at compile-time
 }
 
 fn main() {}

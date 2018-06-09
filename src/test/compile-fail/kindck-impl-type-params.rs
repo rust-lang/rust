@@ -26,15 +26,15 @@ impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
 fn f<T>(val: T) {
     let t: S<T> = S(marker::PhantomData);
     let a = &t as &Gettable<T>;
-    //~^ ERROR : std::marker::Send` is not satisfied
-    //~^^ ERROR : std::marker::Copy` is not satisfied
+    //~^ ERROR `T` cannot be sent between threads safely
+    //~| ERROR : std::marker::Copy` is not satisfied
 }
 
 fn g<T>(val: T) {
     let t: S<T> = S(marker::PhantomData);
     let a: &Gettable<T> = &t;
-    //~^ ERROR : std::marker::Send` is not satisfied
-    //~^^ ERROR : std::marker::Copy` is not satisfied
+    //~^ ERROR `T` cannot be sent between threads safely
+    //~| ERROR : std::marker::Copy` is not satisfied
 }
 
 fn foo<'a>() {

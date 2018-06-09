@@ -14,7 +14,7 @@ fn assert_send<T:Send>() { }
 
 fn test71<'a>() {
     assert_send::<*mut &'a isize>();
-    //~^ ERROR `*mut &'a isize: std::marker::Send` is not satisfied
+    //~^ ERROR `*mut &'a isize` cannot be sent between threads safely
 }
 
 fn main() {

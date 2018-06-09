@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` is not satisfied in `impl std::ops::Fn<(i32,)>`
+error[E0277]: `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
   --> $DIR/auto-trait-leak2.rs:25:5
    |
 LL |     send(before());
@@ -13,7 +13,7 @@ note: required by `send`
 LL | fn send<T: Send>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` is not satisfied in `impl std::ops::Fn<(i32,)>`
+error[E0277]: `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
   --> $DIR/auto-trait-leak2.rs:28:5
    |
 LL |     send(after());

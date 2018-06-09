@@ -39,7 +39,10 @@ use hash::Hasher;
 /// [arc]: ../../std/sync/struct.Arc.html
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
+#[rustc_on_unimplemented(
+    message="`{Self}` cannot be sent between threads safely",
+    label="`{Self}` cannot be sent between threads safely"
+)]
 pub unsafe auto trait Send {
     // empty.
 }
@@ -88,7 +91,10 @@ impl<T: ?Sized> !Send for *mut T { }
 /// [trait object]: ../../book/first-edition/trait-objects.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sized"]
-#[rustc_on_unimplemented = "`{Self}` does not have a constant size known at compile-time"]
+#[rustc_on_unimplemented(
+    message="`{Self}` does not have a constant size known at compile-time",
+    label="`{Self}` does not have a constant size known at compile-time"
+)]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 pub trait Sized {
     // Empty.

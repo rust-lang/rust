@@ -19,7 +19,7 @@ LL |   let u: &str = if true { s[..2] } else { s };
    = note: expected type `&str`
               found type `str`
 
-error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
+error[E0277]: `str` does not have a constant size known at compile-time
   --> $DIR/str-array-assignment.rs:17:7
    |
 LL |   let v = s[..2];

@@ -12,10 +12,10 @@ use std::ops::Deref;
 
 pub trait Foo {
     fn baz(_: Self::Target) where Self: Deref {}
-    //~^ ERROR `<Self as std::ops::Deref>::Target: std::marker::Sized` is not satisfied
+    //~^ ERROR `<Self as std::ops::Deref>::Target` does not have a constant size known at
 }
 
 pub fn f(_: ToString) {}
-//~^ ERROR the trait bound `std::string::ToString + 'static: std::marker::Sized` is not satisfied
+//~^ ERROR `std::string::ToString + 'static` does not have a constant size known at compile-time
 
 fn main() { }

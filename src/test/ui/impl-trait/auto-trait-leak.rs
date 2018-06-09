@@ -25,7 +25,7 @@ fn cycle1() -> impl Clone {
     //~^ ERROR cycle detected
     //~| ERROR cycle detected
     send(cycle2().clone());
-    //~^ ERROR Send` is not satisfied
+    //~^ ERROR `std::rc::Rc<std::string::String>` cannot be sent between threads safely
 
     Rc::new(Cell::new(5))
 }

@@ -15,7 +15,7 @@ fn dft_iter<'a, T>(arg1: Chunks<'a,T>, arg2: ChunksMut<'a,T>)
 {
     for
     &mut something
-//~^ ERROR `[T]: std::marker::Sized` is not satisfied
+    //~^ ERROR `[T]` does not have a constant size known at compile-time
     in arg2
     {
     }

@@ -216,19 +216,19 @@ LL |     let _ = cf as *const Bar; //~ ERROR is invalid
    |
    = note: vtable kinds may not match
 
-error[E0277]: the trait bound `[u8]: std::marker::Sized` is not satisfied
+error[E0277]: `[u8]` does not have a constant size known at compile-time
   --> $DIR/cast-rfc0401.rs:63:13
    |
-LL |     let _ = fat_v as *const Foo; //~ ERROR is not satisfied
+LL |     let _ = fat_v as *const Foo; //~ ERROR `[u8]` does not have a constant size known at compile-time
    |             ^^^^^ `[u8]` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u8]`
    = note: required for the cast to the object type `Foo`
 
-error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
+error[E0277]: `str` does not have a constant size known at compile-time
   --> $DIR/cast-rfc0401.rs:72:13
    |
-LL |     let _ = a as *const Foo; //~ ERROR is not satisfied
+LL |     let _ = a as *const Foo; //~ ERROR `str` does not have a constant size known at compile-time
    |             ^ `str` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`

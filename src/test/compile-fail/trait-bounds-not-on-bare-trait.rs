@@ -15,7 +15,7 @@ trait Foo {
 // This should emit the less confusing error, not the more confusing one.
 
 fn foo(_x: Foo + Send) {
-    //~^ ERROR the trait bound `Foo + std::marker::Send + 'static: std::marker::Sized` is not
+    //~^ ERROR `Foo + std::marker::Send + 'static` does not have a constant size known at compile-time
 }
 
 fn main() { }

@@ -12,10 +12,10 @@ fn bot<T>() -> T { loop {} }
 
 fn mutate(s: &mut str) {
     s[1..2] = bot();
-    //~^ ERROR `str: std::marker::Sized` is not satisfied
-    //~| ERROR `str: std::marker::Sized` is not satisfied
+    //~^ ERROR `str` does not have a constant size known at compile-time
+    //~| ERROR `str` does not have a constant size known at compile-time
     s[1usize] = bot();
-    //~^ ERROR `str: std::ops::IndexMut<usize>` is not satisfied
+    //~^ ERROR the type `str` cannot be mutably indexed by `usize`
 }
 
 pub fn main() {}

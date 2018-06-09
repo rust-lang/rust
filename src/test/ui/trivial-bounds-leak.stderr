@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
+error[E0277]: `str` does not have a constant size known at compile-time
   --> $DIR/trivial-bounds-leak.rs:22:25
    |
 LL | fn cant_return_str() -> str { //~ ERROR

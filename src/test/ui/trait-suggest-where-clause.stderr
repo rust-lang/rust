@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `U: std::marker::Sized` is not satisfied
+error[E0277]: `U` does not have a constant size known at compile-time
   --> $DIR/trait-suggest-where-clause.rs:17:5
    |
 LL |     mem::size_of::<U>();
@@ -8,7 +8,7 @@ LL |     mem::size_of::<U>();
    = help: consider adding a `where U: std::marker::Sized` bound
    = note: required by `std::mem::size_of`
 
-error[E0277]: the trait bound `U: std::marker::Sized` is not satisfied in `Misc<U>`
+error[E0277]: `U` does not have a constant size known at compile-time
   --> $DIR/trait-suggest-where-clause.rs:20:5
    |
 LL |     mem::size_of::<Misc<U>>();
@@ -45,7 +45,7 @@ LL |     <Misc<_> as From<T>>::from;
    |
    = note: required by `std::convert::From::from`
 
-error[E0277]: the trait bound `[T]: std::marker::Sized` is not satisfied
+error[E0277]: `[T]` does not have a constant size known at compile-time
   --> $DIR/trait-suggest-where-clause.rs:38:5
    |
 LL |     mem::size_of::<[T]>();
@@ -54,7 +54,7 @@ LL |     mem::size_of::<[T]>();
    = help: the trait `std::marker::Sized` is not implemented for `[T]`
    = note: required by `std::mem::size_of`
 
-error[E0277]: the trait bound `[&U]: std::marker::Sized` is not satisfied
+error[E0277]: `[&U]` does not have a constant size known at compile-time
   --> $DIR/trait-suggest-where-clause.rs:41:5
    |
 LL |     mem::size_of::<[&U]>();

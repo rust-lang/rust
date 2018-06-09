@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `[u8]: std::marker::Sized` is not satisfied in `std::path::Path`
+error[E0277]: `[u8]` does not have a constant size known at compile-time
   --> $DIR/E0277.rs:23:6
    |
 LL | fn f(p: Path) { }

@@ -15,7 +15,7 @@ use std::marker;
 // Unbounded.
 fn f1<X: ?Sized>(x: &X) {
     f2::<X>(x);
-    //~^ ERROR `X: std::marker::Sized` is not satisfied
+    //~^ ERROR `X` does not have a constant size known at compile-time
 }
 fn f2<X>(x: &X) {
 }
@@ -26,7 +26,7 @@ trait T {
 }
 fn f3<X: ?Sized + T>(x: &X) {
     f4::<X>(x);
-    //~^ ERROR `X: std::marker::Sized` is not satisfied
+    //~^ ERROR `X` does not have a constant size known at compile-time
 }
 fn f4<X: T>(x: &X) {
 }
@@ -41,20 +41,20 @@ struct S<X: ?Sized> {
 
 fn f8<X: ?Sized>(x1: &S<X>, x2: &S<X>) {
     f5(x1);
-    //~^ ERROR `X: std::marker::Sized` is not satisfied
+    //~^ ERROR `X` does not have a constant size known at compile-time
     f6(x2); // ok
 }
 
 // Test some tuples.
 fn f9<X: ?Sized>(x1: Box<S<X>>) {
     f5(&(*x1, 34));
-    //~^ ERROR `X: std::marker::Sized` is not satisfied
+    //~^ ERROR `X` does not have a constant size known at compile-time
 }
 
 fn f10<X: ?Sized>(x1: Box<S<X>>) {
     f5(&(32, *x1));
-    //~^ ERROR `X: std::marker::Sized` is not satisfied
-    //~| ERROR `X: std::marker::Sized` is not satisfied
+    //~^ ERROR `X` does not have a constant size known at compile-time
+    //~| ERROR `X` does not have a constant size known at compile-time
 }
 
 pub fn main() {

@@ -15,8 +15,8 @@ struct Struct {
 }
 
 fn new_struct(r: A+'static)
-    -> Struct { //~^  ERROR `A + 'static: std::marker::Sized` is not satisfied
-    //~^ ERROR `A + 'static: std::marker::Sized` is not satisfied
+    -> Struct { //~^  ERROR `A + 'static` does not have a constant size known at compile-time
+    //~^ ERROR `A + 'static` does not have a constant size known at compile-time
     Struct { r: r }
 }
 

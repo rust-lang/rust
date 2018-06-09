@@ -10,7 +10,7 @@
 
 fn changer<'a>(mut things: Box<Iterator<Item=&'a mut u8>>) {
     for item in *things { *item = 0 }
-//~^ ERROR the trait bound `std::iter::Iterator<Item=&mut u8>: std::marker::Sized` is not satisfied
+//~^ ERROR `std::iter::Iterator<Item=&mut u8>` does not have a constant size known at compile-time
 }
 
 fn main() {}

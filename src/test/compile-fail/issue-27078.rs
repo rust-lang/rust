@@ -13,7 +13,7 @@
 trait Foo {
     const BAR: i32;
     fn foo(self) -> &'static i32 {
-        //~^ ERROR the trait bound `Self: std::marker::Sized` is not satisfied
+        //~^ ERROR `Self` does not have a constant size known at compile-time
         &<Self>::BAR
     }
 }

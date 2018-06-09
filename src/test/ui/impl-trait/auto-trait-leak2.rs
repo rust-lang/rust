@@ -23,10 +23,10 @@ fn send<T: Send>(_: T) {}
 
 fn main() {
     send(before());
-    //~^ ERROR the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` is not satisfied
+    //~^ ERROR `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
 
     send(after());
-    //~^ ERROR the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` is not satisfied
+    //~^ ERROR `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
 }
 
 // Deferred path, main has to wait until typeck finishes,

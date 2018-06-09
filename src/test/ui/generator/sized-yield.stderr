@@ -1,8 +1,9 @@
-error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
+error[E0277]: `str` does not have a constant size known at compile-time
   --> $DIR/sized-yield.rs:17:26
    |
-LL |      let mut gen = move || { //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
+LL |      let mut gen = move || {
    |  __________________________^
+LL | |    //~^ ERROR `str` does not have a constant size known at compile-time
 LL | |        yield s[..];
 LL | |    };
    | |____^ `str` does not have a constant size known at compile-time
@@ -10,10 +11,10 @@ LL | |    };
    = help: the trait `std::marker::Sized` is not implemented for `str`
    = note: the yield type of a generator must have a statically known size
 
-error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
-  --> $DIR/sized-yield.rs:20:17
+error[E0277]: `str` does not have a constant size known at compile-time
+  --> $DIR/sized-yield.rs:21:17
    |
-LL |    unsafe { gen.resume(); } //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
+LL |    unsafe { gen.resume(); }
    |                 ^^^^^^ `str` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`

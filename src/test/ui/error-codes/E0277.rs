@@ -21,7 +21,7 @@ fn some_func<T: Foo>(foo: T) {
 }
 
 fn f(p: Path) { }
-//~^ ERROR the trait bound `[u8]: std::marker::Sized` is not satisfied in `std::path::Path`
+//~^ ERROR `[u8]` does not have a constant size known at compile-time
 
 fn main() {
     some_func(5i32);

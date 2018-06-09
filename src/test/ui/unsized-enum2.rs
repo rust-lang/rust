@@ -30,37 +30,54 @@ struct Path4(PathHelper4);
 
 enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
     // parameter
-    VA(W), //~ ERROR `W: std::marker::Sized` is not satisfied
-    VB{x: X}, //~ ERROR `X: std::marker::Sized` is not satisfied
-    VC(isize, Y), //~ ERROR `Y: std::marker::Sized` is not satisfied
-    VD{u: isize, x: Z}, //~ ERROR `Z: std::marker::Sized` is not satisfied
+    VA(W),
+    //~^ ERROR `W` does not have a constant size known at compile-time
+    VB{x: X},
+    //~^ ERROR `X` does not have a constant size known at compile-time
+    VC(isize, Y),
+    //~^ ERROR `Y` does not have a constant size known at compile-time
+    VD{u: isize, x: Z},
+    //~^ ERROR `Z` does not have a constant size known at compile-time
 
     // slice / str
-    VE([u8]), //~ ERROR `[u8]: std::marker::Sized` is not satisfied
-    VF{x: str}, //~ ERROR `str: std::marker::Sized` is not satisfied
-    VG(isize, [f32]), //~ ERROR `[f32]: std::marker::Sized` is not satisfied
-    VH{u: isize, x: [u32]}, //~ ERROR `[u32]: std::marker::Sized` is not satisfied
+    VE([u8]),
+    //~^ ERROR `[u8]` does not have a constant size known at compile-time
+    VF{x: str},
+    //~^ ERROR `str` does not have a constant size known at compile-time
+    VG(isize, [f32]),
+    //~^ ERROR `[f32]` does not have a constant size known at compile-time
+    VH{u: isize, x: [u32]},
+    //~^ ERROR `[u32]` does not have a constant size known at compile-time
 
     // unsized struct
-    VI(Path1), //~ ERROR `PathHelper1 + 'static: std::marker::Sized` is not satisfied
-    VJ{x: Path2}, //~ ERROR `PathHelper2 + 'static: std::marker::Sized` is not satisfied
-    VK(isize, Path3), //~ ERROR `PathHelper3 + 'static: std::marker::Sized` is not satisfied
-    VL{u: isize, x: Path4}, //~ ERROR `PathHelper4 + 'static: std::marker::Sized` is not satisfied
+    VI(Path1),
+    //~^ ERROR `PathHelper1 + 'static` does not have a constant size known at compile-time
+    VJ{x: Path2},
+    //~^ ERROR `PathHelper2 + 'static` does not have a constant size known at compile-time
+    VK(isize, Path3),
+    //~^ ERROR `PathHelper3 + 'static` does not have a constant size known at compile-time
+    VL{u: isize, x: Path4},
+    //~^ ERROR `PathHelper4 + 'static` does not have a constant size known at compile-time
 
     // plain trait
-    VM(Foo),  //~ ERROR `Foo + 'static: std::marker::Sized` is not satisfied
-    VN{x: Bar}, //~ ERROR `Bar + 'static: std::marker::Sized` is not satisfied
-    VO(isize, FooBar), //~ ERROR `FooBar + 'static: std::marker::Sized` is not satisfied
-    VP{u: isize, x: BarFoo}, //~ ERROR `BarFoo + 'static: std::marker::Sized` is not satisfied
+    VM(Foo),
+    //~^ ERROR `Foo + 'static` does not have a constant size known at compile-time
+    VN{x: Bar},
+    //~^ ERROR `Bar + 'static` does not have a constant size known at compile-time
+    VO(isize, FooBar),
+    //~^ ERROR `FooBar + 'static` does not have a constant size known at compile-time
+    VP{u: isize, x: BarFoo},
+    //~^ ERROR `BarFoo + 'static` does not have a constant size known at compile-time
 
     // projected
-    VQ(<&'static [i8] as Deref>::Target), //~ ERROR `[i8]: std::marker::Sized` is not satisfied
+    VQ(<&'static [i8] as Deref>::Target),
+    //~^ ERROR `[i8]` does not have a constant size known at compile-time
     VR{x: <&'static [char] as Deref>::Target},
-    //~^ ERROR `[char]: std::marker::Sized` is not satisfied
+    //~^ ERROR `[char]` does not have a constant size known at compile-time
     VS(isize, <&'static [f64] as Deref>::Target),
-    //~^ ERROR `[f64]: std::marker::Sized` is not satisfied
+    //~^ ERROR `[f64]` does not have a constant size known at compile-time
     VT{u: isize, x: <&'static [i32] as Deref>::Target},
-    //~^ ERROR `[i32]: std::marker::Sized` is not satisfied
+    //~^ ERROR `[i32]` does not have a constant size known at compile-time
 }
 
 

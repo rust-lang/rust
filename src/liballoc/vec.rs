@@ -1693,7 +1693,10 @@ impl<T: Hash> Hash for Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "vector indices are of type `usize` or ranges of `usize`"]
+#[rustc_on_unimplemented(
+    message="vector indices are of type `usize` or ranges of `usize`",
+    label="vector indices are of type `usize` or ranges of `usize`",
+)]
 impl<T, I> Index<I> for Vec<T>
 where
     I: ::core::slice::SliceIndex<[T]>,
@@ -1707,7 +1710,10 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented = "vector indices are of type `usize` or ranges of `usize`"]
+#[rustc_on_unimplemented(
+    message="vector indices are of type `usize` or ranges of `usize`",
+    label="vector indices are of type `usize` or ranges of `usize`",
+)]
 impl<T, I> IndexMut<I> for Vec<T>
 where
     I: ::core::slice::SliceIndex<[T]>,

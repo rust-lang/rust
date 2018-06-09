@@ -14,7 +14,8 @@
 
 struct S5<Y>(Y);
 
-impl<X: ?Sized> S5<X> { //~ ERROR E0277
+impl<X: ?Sized> S5<X> {
+    //~^ ERROR `X` does not have a constant size known at compile-time
 }
 
 fn main() { }

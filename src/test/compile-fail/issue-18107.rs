@@ -12,7 +12,7 @@ pub trait AbstractRenderer {}
 
 fn _create_render(_: &()) ->
     AbstractRenderer
-//~^ ERROR: `AbstractRenderer + 'static: std::marker::Sized` is not satisfied
+//~^ ERROR: `AbstractRenderer + 'static` does not have a constant size known at compile-time
 {
     match 0 {
         _ => unimplemented!()

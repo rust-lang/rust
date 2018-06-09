@@ -87,7 +87,7 @@ LL | | }
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
+error[E0277]: `str` does not have a constant size known at compile-time
   --> $DIR/feature-gate-trivial_bounds.rs:62:1
    |
 LL | struct TwoStrs(str, str) where str: Sized; //~ ERROR
@@ -97,7 +97,7 @@ LL | struct TwoStrs(str, str) where str: Sized; //~ ERROR
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: the trait bound `A + 'static: std::marker::Sized` is not satisfied in `Dst<A + 'static>`
+error[E0277]: `A + 'static` does not have a constant size known at compile-time
   --> $DIR/feature-gate-trivial_bounds.rs:65:1
    |
 LL | / fn unsized_local() where Dst<A>: Sized { //~ ERROR
@@ -110,7 +110,7 @@ LL | | }
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
+error[E0277]: `str` does not have a constant size known at compile-time
   --> $DIR/feature-gate-trivial_bounds.rs:69:1
    |
 LL | / fn return_str() -> str where str: Sized { //~ ERROR
