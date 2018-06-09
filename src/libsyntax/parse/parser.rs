@@ -6535,12 +6535,15 @@ impl<'a> Parser<'a> {
                     Some(abi) => Ok(Some(abi)),
                     None => {
                         let prev_span = self.prev_span;
-                        self.span_err(
+                        let mut err = struct_span_err!(
+                            self.sess.span_diagnostic,
                             prev_span,
-                            &format!("invalid ABI: expected one of [{}], \
-                                     found `{}`",
-                                    abi::all_names().join(", "),
-                                    s));
+                            E0697,
+                            "invalid ABI: found `{}`",
+                            s);
+                        err.span_label(prev_span, "invalid ABI");
+                        err.help(&format!("valid ABIs: {}", abi::all_names().join(", ")));
+                        err.emit();
                         Ok(None)
                     }
                 }
