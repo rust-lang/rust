@@ -56,68 +56,49 @@ impl Command {
                       -> io::Result<zx_handle_t> {
         use sys::process::zircon::*;
 
-        let job_handle = zx_job_default();
         let envp = match maybe_envp {
             Some(envp) => envp.as_ptr(),
             None => ptr::null(),
         };
 
-        // To make sure launchpad_destroy gets called on the launchpad if this function fails
-        struct LaunchpadDestructor(*mut launchpad_t);
-        impl Drop for LaunchpadDestructor {
-            fn drop(&mut self) { unsafe { launchpad_destroy(self.0); } }
-        }
-
-        // Duplicate the job handle
-        let mut job_copy: zx_handle_t = ZX_HANDLE_INVALID;
-        zx_cvt(zx_handle_duplicate(job_handle, ZX_RIGHT_SAME_RIGHTS, &mut job_copy))?;
-        // Create a launchpad
-        let mut launchpad: *mut launchpad_t = ptr::null_mut();
-        zx_cvt(launchpad_create(job_copy, self.get_argv()[0], &mut launchpad))?;
-        let launchpad_destructor = LaunchpadDestructor(launchpad);
-
-        // Set the process argv
-        zx_cvt(launchpad_set_args(launchpad, self.get_argv().len() as i32 - 1,
-                                  self.get_argv().as_ptr()))?;
-        // Setup the environment vars
-        zx_cvt(launchpad_set_environ(launchpad, envp))?;
-        zx_cvt(launchpad_add_vdso_vmo(launchpad))?;
-        // Load the executable
-        zx_cvt(launchpad_elf_load(launchpad, launchpad_vmo_from_file(self.get_argv()[0])))?;
-        zx_cvt(launchpad_load_vdso(launchpad, ZX_HANDLE_INVALID))?;
-        zx_cvt(launchpad_clone(launchpad, LP_CLONE_FDIO_NAMESPACE | LP_CLONE_FDIO_CWD))?;
+        let transfer_or_clone = |opt_fd, target_fd| if let Some(local_fd) = opt_fd {
+            fdio_spawn_action_t {
+                action: FDIO_SPAWN_ACTION_TRANSFER_FD,
+                local_fd,
+                target_fd,
+                ..Default::default()
+            }
+        } else {
+            fdio_spawn_action_t {
+                action: FDIO_SPAWN_ACTION_CLONE_FD,
+                local_fd: target_fd,
+                target_fd,
+                ..Default::default()
+            }
+        };
 
         // Clone stdin, stdout, and stderr
-        if let Some(fd) = stdio.stdin.fd() {
-            zx_cvt(launchpad_transfer_fd(launchpad, fd, 0))?;
-        } else {
-            zx_cvt(launchpad_clone_fd(launchpad, 0, 0))?;
-        }
-        if let Some(fd) = stdio.stdout.fd() {
-            zx_cvt(launchpad_transfer_fd(launchpad, fd, 1))?;
-        } else {
-            zx_cvt(launchpad_clone_fd(launchpad, 1, 1))?;
-        }
-        if let Some(fd) = stdio.stderr.fd() {
-            zx_cvt(launchpad_transfer_fd(launchpad, fd, 2))?;
-        } else {
-            zx_cvt(launchpad_clone_fd(launchpad, 2, 2))?;
-        }
+        let action1 = transfer_or_clone(stdio.stdin.fd(), 0);
+        let action2 = transfer_or_clone(stdio.stdout.fd(), 1);
+        let action3 = transfer_or_clone(stdio.stderr.fd(), 2);
+        let actions = [action1, action2, action3];
 
-        // We don't want FileDesc::drop to be called on any stdio. It would close their fds. The
-        // fds will be closed once the child process finishes.
+        // We don't want FileDesc::drop to be called on any stdio. fdio_spawn_etc
+        // always consumes transferred file descriptors.
         mem::forget(stdio);
 
         for callback in self.get_closures().iter_mut() {
             callback()?;
         }
 
-        // `launchpad_go` destroys the launchpad, so we must not
-        mem::forget(launchpad_destructor);
-
         let mut process_handle: zx_handle_t = 0;
-        let mut err_msg: *const libc::c_char = ptr::null();
-        zx_cvt(launchpad_go(launchpad, &mut process_handle, &mut err_msg))?;
+        zx_cvt(fdio_spawn_etc(
+            0,
+            FDIO_SPAWN_CLONE_JOB | FDIO_SPAWN_CLONE_LDSVC | FDIO_SPAWN_CLONE_NAMESPACE,
+            self.get_argv()[0], self.get_argv().as_ptr(), envp, 3, actions.as_ptr(),
+            &mut process_handle,
+            ptr::null_mut(),
+        ))?;
         // FIXME: See if we want to do something with that err_msg
 
         Ok(process_handle)
