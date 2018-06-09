@@ -4886,6 +4886,8 @@ impl<'a> Parser<'a> {
                     bounds.push(RegionTyParamBound(self.expect_lifetime()));
                     if has_parens {
                         self.expect(&token::CloseDelim(token::Paren))?;
+                        self.span_err(self.prev_span,
+                                      "parenthesized lifetime bounds are not supported");
                     }
                 } else {
                     let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
@@ -4900,12 +4902,6 @@ impl<'a> Parser<'a> {
                         TraitBoundModifier::None
                     };
                     bounds.push(TraitTyParamBound(poly_trait, modifier));
-                }
-                if has_parens {
-                    if let Some(&RegionTyParamBound(..)) = bounds.last() {
-                        self.span_err(self.prev_span,
-                                      "parenthesized lifetime bounds are not supported");
-                    }
                 }
             } else {
                 break
