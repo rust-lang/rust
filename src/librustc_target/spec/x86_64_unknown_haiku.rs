@@ -16,6 +16,8 @@ pub fn target() -> TargetResult {
     base.max_atomic_width = Some(64);
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m64".to_string()]);
     base.stack_probes = true;
+    // This option is required to build executables on Haiku x86_64
+    base.position_independent_executables = true;
 
     Ok(Target {
         llvm_target: "x86_64-unknown-haiku".to_string(),
