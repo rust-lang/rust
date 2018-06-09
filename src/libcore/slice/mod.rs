@@ -1985,6 +1985,8 @@ mod private_slice_index {
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
     impl Sealed for usize {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
+    impl<R: ops::RangeBounds<usize>> Sealed for R {}
+    #[stable(feature = "slice_get_slice", since = "1.28.0")]
     impl Sealed for ops::Range<usize> {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
     impl Sealed for ops::RangeTo<usize> {}
@@ -2086,10 +2088,61 @@ impl<T> SliceIndex<[T]> for usize {
     }
 }
 
+// Given a RangeBounds, pick the appropriate concrete RangeXXX type and call the
+// given method on an instance of that concrete type.
+macro_rules! call_method_on_range_bounds {
+    ($slf:ident, $method:ident, $slc:ident) => (
+        match ($slf.start_bound(), $slf.end_bound()) {
+            (ops::Bound::Included(x), ops::Bound::Included(y)) => (*x..=*y).$method($slc),
+            (ops::Bound::Included(x), ops::Bound::Excluded(y)) => (*x..*y).$method($slc),
+            (ops::Bound::Included(x), ops::Bound::Unbounded) => (*x..).$method($slc),
+            (ops::Bound::Excluded(x), ops::Bound::Included(y)) => ((x+1)..=*y).$method($slc),
+            (ops::Bound::Excluded(x), ops::Bound::Excluded(y)) => ((x+1)..*y).$method($slc),
+            (ops::Bound::Excluded(x), ops::Bound::Unbounded) => ((x+1)..).$method($slc),
+            (ops::Bound::Unbounded, ops::Bound::Included(y)) => (..=*y).$method($slc),
+            (ops::Bound::Unbounded, ops::Bound::Excluded(y)) => (..*y).$method($slc),
+            (ops::Bound::Unbounded, ops::Bound::Unbounded) => (..).$method($slc),
+        }
+    );
+}
+
 #[stable(feature = "slice-get-slice-impls", since = "1.15.0")]
-impl<T> SliceIndex<[T]> for  ops::Range<usize> {
+impl<T, R: ops::RangeBounds<usize>> SliceIndex<[T]> for R {
     type Output = [T];
 
+    #[inline]
+    default fn get(self, slice: &[T]) -> Option<&[T]> {
+        call_method_on_range_bounds!(self, get, slice)
+    }
+
+    #[inline]
+    default fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
+        call_method_on_range_bounds!(self, get_mut, slice)
+    }
+
+    #[inline]
+    default unsafe fn get_unchecked(self, slice: &[T]) -> &[T] {
+        call_method_on_range_bounds!(self, get_unchecked, slice)
+    }
+
+    #[inline]
+    default unsafe fn get_unchecked_mut(self, slice: &mut [T]) -> &mut [T] {
+        call_method_on_range_bounds!(self, get_unchecked_mut, slice)
+    }
+
+    #[inline]
+    default fn index(self, slice: &[T]) -> &[T] {
+        call_method_on_range_bounds!(self, index, slice)
+    }
+
+    #[inline]
+    default fn index_mut(self, slice: &mut [T]) -> &mut [T] {
+        call_method_on_range_bounds!(self, index_mut, slice)
+    }
+}
+
+#[stable(feature = "slice-get-slice-impls", since = "1.15.0")]
+impl<T> SliceIndex<[T]> for ops::Range<usize> {
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
         if self.start > self.end || self.end > slice.len() {
@@ -2149,8 +2202,6 @@ impl<T> SliceIndex<[T]> for  ops::Range<usize> {
 
 #[stable(feature = "slice-get-slice-impls", since = "1.15.0")]
 impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
-    type Output = [T];
-
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
         (0..self.end).get(slice)
@@ -2184,8 +2235,6 @@ impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
 
 #[stable(feature = "slice-get-slice-impls", since = "1.15.0")]
 impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
-    type Output = [T];
-
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
         (self.start..slice.len()).get(slice)
@@ -2219,8 +2268,6 @@ impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
 
 #[stable(feature = "slice-get-slice-impls", since = "1.15.0")]
 impl<T> SliceIndex<[T]> for ops::RangeFull {
-    type Output = [T];
-
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
         Some(slice)
@@ -2255,8 +2302,6 @@ impl<T> SliceIndex<[T]> for ops::RangeFull {
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
-    type Output = [T];
-
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
         if self.end == usize::max_value() { None }
@@ -2294,8 +2339,6 @@ impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
-    type Output = [T];
-
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
         (0..=self.end).get(slice)
