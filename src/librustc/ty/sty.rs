@@ -496,7 +496,9 @@ pub enum ExistentialPredicate<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> ExistentialPredicate<'tcx> {
-    pub fn cmp(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, other: &Self) -> Ordering {
+    /// Compares via an ordering that will not change if modules are reordered or other changes are
+    /// made to the tree. In particular, this ordering is preserved across incremental compilations.
+    pub fn stable_cmp(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, other: &Self) -> Ordering {
         use self::ExistentialPredicate::*;
         match (*self, *other) {
             (Trait(_), Trait(_)) => Ordering::Equal,

@@ -2514,7 +2514,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn intern_existential_predicates(self, eps: &[ExistentialPredicate<'tcx>])
         -> &'tcx Slice<ExistentialPredicate<'tcx>> {
         assert!(!eps.is_empty());
-        assert!(eps.windows(2).all(|w| w[0].cmp(self, &w[1]) != Ordering::Greater));
+        assert!(eps.windows(2).all(|w| w[0].stable_cmp(self, &w[1]) != Ordering::Greater));
         self._intern_existential_predicates(eps)
     }
 
