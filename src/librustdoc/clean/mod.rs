@@ -1664,7 +1664,7 @@ impl Clean<Lifetime> for hir::Lifetime {
                 _ => {}
             }
         }
-        Lifetime(self.name.name().to_string())
+        Lifetime(self.name.ident().to_string())
     }
 }
 
@@ -1677,14 +1677,14 @@ impl Clean<Lifetime> for hir::GenericParam {
                         hir::GenericBound::Outlives(lt) => lt,
                         _ => panic!(),
                     });
-                    let name = bounds.next().unwrap().name.name();
-                    let mut s = format!("{}: {}", self.name.name(), name);
+                    let name = bounds.next().unwrap().name.ident();
+                    let mut s = format!("{}: {}", self.name.ident(), name);
                     for bound in bounds {
-                        s.push_str(&format!(" + {}", bound.name.name()));
+                        s.push_str(&format!(" + {}", bound.name.ident()));
                     }
                     Lifetime(s)
                 } else {
-                    Lifetime(self.name.name().to_string())
+                    Lifetime(self.name.ident().to_string())
                 }
             }
             _ => panic!(),

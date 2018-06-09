@@ -953,8 +953,8 @@ impl<'hir> Map<'hir> {
             NodeTraitItem(ti) => ti.name,
             NodeVariant(v) => v.node.name,
             NodeField(f) => f.ident.name,
-            NodeLifetime(lt) => lt.name.name(),
-            NodeGenericParam(param) => param.name.name(),
+            NodeLifetime(lt) => lt.name.ident().name,
+            NodeGenericParam(param) => param.name.ident().name,
             NodeBinding(&Pat { node: PatKind::Binding(_,_,l,_), .. }) => l.node,
             NodeStructCtor(_) => self.name(self.get_parent(id)),
             _ => bug!("no name for {}", self.node_to_string(id))

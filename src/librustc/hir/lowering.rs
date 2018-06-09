@@ -138,7 +138,7 @@ pub struct LoweringContext<'a> {
     // When `is_collectin_in_band_lifetimes` is true, each lifetime is checked
     // against this list to see if it is already in-scope, or if a definition
     // needs to be created for it.
-    in_scope_lifetimes: Vec<Name>,
+    in_scope_lifetimes: Vec<Ident>,
 
     type_def_lifetime_params: DefIdMap<usize>,
 
@@ -678,15 +678,15 @@ impl<'a> LoweringContext<'a> {
                 // that collisions are ok here and this shouldn't
                 // really show up for end-user.
                 let str_name = match hir_name {
-                    ParamName::Plain(name) => name.as_str(),
-                    ParamName::Fresh(_) => keywords::UnderscoreLifetime.name().as_str(),
+                    ParamName::Plain(ident) => name.as_interned_str(),
+                    ParamName::Fresh(_) => keywords::UnderscoreLifetime.name().as_interned_str(),
                 };
 
                 // Add a definition for the in-band lifetime def
                 self.resolver.definitions().create_def_with_parent(
                     parent_id.index,
                     def_node_id,
-                    DefPathData::LifetimeParam(str_name.as_interned_str()),
+                    DefPathData::LifetimeDef(str_name),
                     DefIndexAddressSpace::High,
                     Mark::root(),
                     span,
@@ -712,22 +712,23 @@ impl<'a> LoweringContext<'a> {
     /// lifetimes are enabled, then we want to push that lifetime into
     /// the vector of names to define later. In that case, it will get
     /// added to the appropriate generics.
-    fn maybe_collect_in_band_lifetime(&mut self, span: Span, name: Name) {
+    fn maybe_collect_in_band_lifetime(&mut self, ident: Ident) {
         if !self.is_collecting_in_band_lifetimes {
             return;
         }
 
-        if self.in_scope_lifetimes.contains(&name) {
+        if self.in_scope_lifetimes.contains(&ident.modern()) {
             return;
         }
 
         let hir_name = ParamName::Plain(name);
 
-        if self.lifetimes_to_define.iter().any(|(_, lt_name)| *lt_name == hir_name) {
+        if self.lifetimes_to_define.iter()
+                                   .any(|(_, lt_name)| *lt_name.modern() == hir_name.modern()) {
             return;
         }
 
-        self.lifetimes_to_define.push((span, hir_name));
+        self.lifetimes_to_define.push((ident.span, hir_name));
     }
 
     /// When we have either an elided or `'_` lifetime in an impl
@@ -750,7 +751,7 @@ impl<'a> LoweringContext<'a> {
     {
         let old_len = self.in_scope_lifetimes.len();
         let lt_def_names = params.iter().filter_map(|param| match param.kind {
-            GenericParamKind::Lifetime { .. } => Some(param.ident.name),
+            GenericParamKind::Lifetime { .. } => Some(param.ident.modern()),
             _ => None,
         });
         self.in_scope_lifetimes.extend(lt_def_names);
@@ -774,7 +775,7 @@ impl<'a> LoweringContext<'a> {
     {
         let old_len = self.in_scope_lifetimes.len();
         let lt_def_names = params.iter().filter_map(|param| match param.kind {
-            hir::GenericParamKind::Lifetime { .. } => Some(param.name.name()),
+            hir::GenericParamKind::Lifetime { .. } => Some(param.name.ident().modern()),
             _ => None,
         });
         self.in_scope_lifetimes.extend(lt_def_names);
@@ -1443,7 +1444,7 @@ impl<'a> LoweringContext<'a> {
                     self.context.resolver.definitions().create_def_with_parent(
                         self.parent,
                         def_node_id,
-                        DefPathData::LifetimeParam(name.name().as_interned_str()),
+                        DefPathData::LifetimeParam(name.ident().as_interned_str()),
                         DefIndexAddressSpace::High,
                         Mark::root(),
                         lifetime.span,
@@ -2177,20 +2178,22 @@ impl<'a> LoweringContext<'a> {
     fn lower_lifetime(&mut self, l: &Lifetime) -> hir::Lifetime {
         let span = l.ident.span;
         match self.lower_ident(l.ident) {
-            x if x == "'static" => self.new_named_lifetime(l.id, span, hir::LifetimeName::Static),
-            x if x == "'_" => match self.anonymous_lifetime_mode {
-                AnonymousLifetimeMode::CreateParameter => {
-                    let fresh_name = self.collect_fresh_in_band_lifetime(span);
-                    self.new_named_lifetime(l.id, span, hir::LifetimeName::Param(fresh_name))
-                }
+            ident if ident.name == keywords::StaticLifetime.name() =>
+                self.new_named_lifetime(l.id, span, hir::LifetimeName::Static),
+            ident if ident.name == keywords::UnderscoreLifetime.name() =>
+                match self.anonymous_lifetime_mode {
+                    AnonymousLifetimeMode::CreateParameter => {
+                        let fresh_name = self.collect_fresh_in_band_lifetime(span);
+                        self.new_named_lifetime(l.id, span, hir::LifetimeName::Param(fresh_name))
+                    }
 
-                AnonymousLifetimeMode::PassThrough => {
-                    self.new_named_lifetime(l.id, span, hir::LifetimeName::Underscore)
-                }
-            },
-            name => {
-                self.maybe_collect_in_band_lifetime(span, name);
-                let param_name = ParamName::Plain(name);
+                    AnonymousLifetimeMode::PassThrough => {
+                        self.new_named_lifetime(l.id, span, hir::LifetimeName::Underscore)
+                    }
+                },
+            ident => {
+                self.maybe_collect_in_band_lifetime(ident);
+                let param_name = ParamName::Plain(ident);
                 self.new_named_lifetime(l.id, span, hir::LifetimeName::Param(param_name))
             }
         }

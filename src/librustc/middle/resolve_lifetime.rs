@@ -94,7 +94,7 @@ impl Region {
         let def_id = hir_map.local_def_id(param.id);
         let origin = LifetimeDefOrigin::from_param(param);
         debug!("Region::early: index={} def_id={:?}", i, def_id);
-        (param.name, Region::EarlyBound(i, def_id, origin))
+        (param.name.modern(), Region::EarlyBound(i, def_id, origin))
     }
 
     fn late(hir_map: &Map, param: &GenericParam) -> (ParamName, Region) {
@@ -108,7 +108,7 @@ impl Region {
             def_id,
             origin,
         );
-        (param.name, Region::LateBound(depth, def_id, origin))
+        (param.name.modern(), Region::LateBound(depth, def_id, origin))
     }
 
     fn late_anon(index: &Cell<u32>) -> Region {
@@ -1177,7 +1177,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
                     ref lifetimes, s, ..
                 } => {
                     // FIXME (#24278): non-hygienic comparison
-                    let param_name = hir::ParamName::Plain(label);
+                    let param_name = hir::ParamName::Plain(ast::Ident::with_empty_ctxt(label));
                     if let Some(def) = lifetimes.get(&param_name) {
                         let node_id = tcx.hir.as_local_node_id(def.id().unwrap()).unwrap();
 
@@ -1220,7 +1220,7 @@ fn compute_object_lifetime_defaults(
                                 generics.params.iter().find_map(|param| match param.kind {
                                         GenericParamKind::Lifetime { .. } => {
                                             if i == 0 {
-                                                return Some(param.name.name().to_string());
+                                                return Some(param.name.ident().to_string());
                                             }
                                             i -= 1;
                                             None
@@ -1254,7 +1254,7 @@ fn object_lifetime_defaults_for_item(
     fn add_bounds(set: &mut Set1<hir::LifetimeName>, bounds: &[hir::GenericBound]) {
         for bound in bounds {
             if let hir::GenericBound::Outlives(ref lifetime) = *bound {
-                set.insert(lifetime.name);
+                set.insert(lifetime.name.modern());
             }
         }
     }
@@ -1582,7 +1582,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         LifetimeName::Param(param_name) => param_name,
                         _ => bug!("expected LifetimeName::Param"),
                     };
-                    if let Some(&def) = lifetimes.get(&name) {
+                    if let Some(&def) = lifetimes.get(&name.modern()) {
                         break Some(def.shifted(late_depth));
                     } else {
                         late_depth += 1;
@@ -1651,7 +1651,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 lifetime_ref.span,
                 E0261,
                 "use of undeclared lifetime name `{}`",
-                lifetime_ref.name.name()
+                lifetime_ref
             ).span_label(lifetime_ref.span, "undeclared lifetime")
                 .emit();
         }
@@ -2254,7 +2254,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         lifetime_i.span,
                         E0262,
                         "invalid lifetime parameter name: `{}`",
-                        name
+                        lifetime
                     );
                     err.span_label(
                         lifetime_i.span,
@@ -2327,7 +2327,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     ) {
         for &(label, label_span) in &self.labels_in_fn {
             // FIXME (#24278): non-hygienic comparison
-            if param.name.name() == label {
+            if param.name.ident().name == label {
                 signal_shadowing_problem(
                     self.tcx,
                     label,
@@ -2353,12 +2353,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 Scope::Binder {
                     ref lifetimes, s, ..
                 } => {
-                    if let Some(&def) = lifetimes.get(&param.name) {
+                    if let Some(&def) = lifetimes.get(&param.name.modern()) {
                         let node_id = self.tcx.hir.as_local_node_id(def.id().unwrap()).unwrap();
 
                         signal_shadowing_problem(
                             self.tcx,
-                            param.name.name(),
+                            param.name.ident().name,
                             original_lifetime(self.tcx.hir.span(node_id)),
                             shadower_lifetime(&param),
                         );
@@ -2520,7 +2520,8 @@ fn insert_late_bound_lifetimes(
             hir::GenericParamKind::Lifetime { .. } => {
                 if !param.bounds.is_empty() {
                     // `'a: 'b` means both `'a` and `'b` are referenced
-                    appears_in_where_clause.regions.insert(hir::LifetimeName::Param(param.name));
+                    appears_in_where_clause
+                        .regions.insert(hir::LifetimeName::Param(param.name.modern()));
                 }
             }
             hir::GenericParamKind::Type { .. } => {}
@@ -2537,7 +2538,7 @@ fn insert_late_bound_lifetimes(
     // - do not appear in the where-clauses
     // - are not implicitly captured by `impl Trait`
     for param in &generics.params {
-        let lt_name = hir::LifetimeName::Param(param.name);
+        let lt_name = hir::LifetimeName::Param(param.name.modern());
         // appears in the where clauses? early-bound.
         if appears_in_where_clause.regions.contains(&lt_name) {
             continue;
@@ -2596,7 +2597,7 @@ fn insert_late_bound_lifetimes(
         }
 
         fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
-            self.regions.insert(lifetime_ref.name);
+            self.regions.insert(lifetime_ref.name.modern());
         }
     }
 
@@ -2610,7 +2611,7 @@ fn insert_late_bound_lifetimes(
         }
 
         fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
-            self.regions.insert(lifetime_ref.name);
+            self.regions.insert(lifetime_ref.name.modern());
         }
     }
 }

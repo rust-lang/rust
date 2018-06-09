@@ -245,13 +245,13 @@ pub enum LifetimeName {
 }
 
 impl LifetimeName {
-    pub fn name(&self) -> Name {
-        use self::LifetimeName::*;
+    pub fn ident(&self) -> Ident {
         match *self {
-            Implicit => keywords::Invalid.name(),
-            Underscore => keywords::UnderscoreLifetime.name(),
-            Static => keywords::StaticLifetime.name(),
-            Param(param_name) => param_name.name(),
+            LifetimeName::Implicit => keywords::Invalid.ident(),
+            LifetimeName::Fresh(_) | LifetimeName::Underscore =>
+                keywords::UnderscoreLifetime.ident(),
+            LifetimeName::Static => keywords::StaticLifetime.ident(),
+            LifetimeName::Ident(ident) => ident,
         }
     }
 
@@ -271,6 +271,19 @@ impl LifetimeName {
 
     fn is_static(&self) -> bool {
         self == &LifetimeName::Static
+    }
+
+    pub fn modern(&self) -> LifetimeName {
+        match *self {
+            LifetimeName::Ident(ident) => LifetimeName::Ident(ident.modern()),
+            lifetime_name => lifetime_name,
+        }
+    }
+}
+
+impl fmt::Display for Lifetime {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.name.ident().fmt(f)
     }
 }
 

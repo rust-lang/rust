@@ -258,7 +258,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     fn check_generic_param(&mut self, cx: &LateContext, param: &hir::GenericParam) {
         match param.kind {
             GenericParamKind::Lifetime { .. } => {
-                let name = param.name.name().as_str();
+                let name = param.name.ident().as_str();
                 self.check_snake_case(cx, "lifetime", &name, Some(param.span));
             }
             GenericParamKind::Type { .. } => {}

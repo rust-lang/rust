@@ -70,6 +70,10 @@ impl Ident {
     pub fn as_str(self) -> LocalInternedString {
         self.name.as_str()
     }
+
+    pub fn as_interned_str(self) -> InternedString {
+        self.name.as_interned_str()
+    }
 }
 
 impl PartialEq for Ident {
