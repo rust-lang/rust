@@ -3,10 +3,10 @@
 extern crate compiletest_rs as compiletest;
 extern crate test;
 
-use std::io;
+use std::env::{set_var, var};
 use std::ffi::OsStr;
 use std::fs;
-use std::env::{set_var, var};
+use std::io;
 use std::path::{Path, PathBuf};
 
 fn clippy_driver_path() -> PathBuf {
@@ -93,12 +93,11 @@ fn run_ui_toml_tests(config: &compiletest::Config, mut tests: Vec<test::TestDesc
                 relative_dir: dir_path.file_name().unwrap().into(),
             };
             let test_name = compiletest::make_test_name(&config, &paths);
-            let index = tests.iter()
+            let index = tests
+                .iter()
                 .position(|test| test.desc.name == test_name)
                 .expect("The test should be in there");
-            result &= test::run_tests_console(
-                &opts,
-                vec![tests.swap_remove(index)])?;
+            result &= test::run_tests_console(&opts, vec![tests.swap_remove(index)])?;
         }
     }
     Ok(result)
@@ -111,11 +110,11 @@ fn run_ui_toml() {
 
     let res = run_ui_toml_tests(&config, tests);
     match res {
-        Ok(true) => {}
+        Ok(true) => {},
         Ok(false) => panic!("Some tests failed"),
         Err(e) => {
             println!("I/O failure during tests: {:?}", e);
-        }
+        },
     }
 }
 

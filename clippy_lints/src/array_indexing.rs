@@ -1,10 +1,10 @@
 use crate::consts::{constant, Constant};
+use crate::utils::higher::Range;
+use crate::utils::{self, higher};
 use rustc::hir;
 use rustc::lint::*;
 use rustc::ty;
 use syntax::ast::RangeLimits;
-use crate::utils::higher::Range;
-use crate::utils::{self, higher};
 
 /// **What it does:** Checks for out of bounds array indexing with a constant
 /// index.
