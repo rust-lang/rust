@@ -933,27 +933,6 @@ impl<'a, F: ?Sized + Future> Future for PinBox<F> {
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-unsafe impl<F: Future<Output = ()> + Send + 'static> UnsafePoll for Box<F> {
-    fn into_raw(self) -> *mut () {
-        unsafe {
-            mem::transmute(self)
-        }
-    }
-
-    unsafe fn poll(task: *mut (), cx: &mut Context) -> Poll<()> {
-        let ptr: *mut F = mem::transmute(task);
-        let pin: PinMut<F> = PinMut::new_unchecked(&mut *ptr);
-        pin.poll(cx)
-    }
-
-    unsafe fn drop(task: *mut ()) {
-        let ptr: *mut F = mem::transmute(task);
-        let boxed = Box::from_raw(ptr);
-        drop(boxed)
-    }
-}
-
-#[unstable(feature = "futures_api", issue = "50547")]
 unsafe impl<F: Future<Output = ()> + Send + 'static> UnsafePoll for PinBox<F> {
     fn into_raw(self) -> *mut () {
         PinBox::into_raw(self) as *mut ()
