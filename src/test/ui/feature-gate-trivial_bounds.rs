@@ -28,7 +28,7 @@ union U where i32: Foo { f: i32 } //~ ERROR
 type Y where i32: Foo = (); // OK - bound is ignored
 
 impl Foo for () where i32: Foo { //~ ERROR
-    fn test(&self) { //~ ERROR
+    fn test(&self) {
         3i32.test();
         Foo::test(&4i32);
         generic_function(5i32);
@@ -60,7 +60,7 @@ struct Dst<X: ?Sized> {
 }
 
 struct TwoStrs(str, str) where str: Sized; //~ ERROR
-//~^ ERROR
+
 
 fn unsized_local() where Dst<A>: Sized { //~ ERROR
     let x: Dst<A> = *(Box::new(Dst { x: 1 }) as Box<Dst<A>>);

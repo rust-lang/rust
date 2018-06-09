@@ -8,27 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-pass
-// Check tautalogically false `Sized` bounds
 #![feature(trivial_bounds)]
 #![allow(unused)]
 
-trait A {}
+struct B;
 
-impl A for i32 {}
-
-struct T<X: ?Sized> {
-    x: X,
+trait A {
+    type X;
+    fn get_x() -> Self::X;
 }
 
-struct S(str, str) where str: Sized;
-
-fn unsized_local() where for<'a> T<A + 'a>: Sized {
-    let x: T<A> = *(Box::new(T { x: 1 }) as Box<T<A>>);
+impl A for B {
+    type X = u8;
+    fn get_x() -> u8 { 0 }
 }
 
-fn return_str() -> str where str: Sized {
-    *"Sized".to_string().into_boxed_str()
+fn global_bound_is_hidden() -> u8
+where
+    B: A<X = i32>
+{
+    B::get_x() //~ ERROR
 }
 
-fn main() {}
+fn main () {}

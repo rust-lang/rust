@@ -38,7 +38,7 @@ error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/feature-gate-trivial_bounds.rs:30:1
    |
 LL | / impl Foo for () where i32: Foo { //~ ERROR
-LL | |     fn test(&self) { //~ ERROR
+LL | |     fn test(&self) {
 LL | |         3i32.test();
 LL | |         Foo::test(&4i32);
 LL | |         generic_function(5i32);
@@ -97,15 +97,6 @@ LL | struct TwoStrs(str, str) where str: Sized; //~ ERROR
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
-  --> $DIR/feature-gate-trivial_bounds.rs:62:16
-   |
-LL | struct TwoStrs(str, str) where str: Sized; //~ ERROR
-   |                ^^^ `str` does not have a constant size known at compile-time
-   |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: only the last field of a struct may have a dynamically sized type
-
 error[E0277]: the trait bound `A + 'static: std::marker::Sized` is not satisfied in `Dst<A + 'static>`
   --> $DIR/feature-gate-trivial_bounds.rs:65:1
    |
@@ -131,22 +122,6 @@ LL | | }
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: the trait bound `i32: Foo` is not satisfied
-  --> $DIR/feature-gate-trivial_bounds.rs:31:5
-   |
-LL | /     fn test(&self) { //~ ERROR
-LL | |         3i32.test();
-LL | |         Foo::test(&4i32);
-LL | |         generic_function(5i32);
-LL | |     }
-   | |_____^ the trait `Foo` is not implemented for `i32`
-   |
-note: required by `Foo`
-  --> $DIR/feature-gate-trivial_bounds.rs:14:1
-   |
-LL | pub trait Foo {
-   | ^^^^^^^^^^^^^
-
-error: aborting due to 13 previous errors
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

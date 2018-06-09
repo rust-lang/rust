@@ -9,26 +9,20 @@
 // except according to those terms.
 
 // run-pass
-// Check tautalogically false `Sized` bounds
-#![feature(trivial_bounds)]
+// Check that the object bound dyn A + 'a: A is preferred over the
+// where clause bound dyn A + 'static: A.
+
 #![allow(unused)]
 
-trait A {}
-
-impl A for i32 {}
-
-struct T<X: ?Sized> {
-    x: X,
+trait A {
+    fn test(&self);
 }
 
-struct S(str, str) where str: Sized;
-
-fn unsized_local() where for<'a> T<A + 'a>: Sized {
-    let x: T<A> = *(Box::new(T { x: 1 }) as Box<T<A>>);
+fn foo(x: &dyn A)
+where
+    dyn A + 'static: A, // Using this bound would lead to a lifetime error.
+{
+    x.test();
 }
 
-fn return_str() -> str where str: Sized {
-    *"Sized".to_string().into_boxed_str()
-}
-
-fn main() {}
+fn main () {}

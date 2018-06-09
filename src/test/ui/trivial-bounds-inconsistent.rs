@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test FIXME(#50825)
 // run-pass
 
 // Check that tautalogically false bounds are accepted, and are used

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test FIXME(#50825)
 // run-pass
 // Test that inconsistent bounds are used in well-formedness checks
 #![feature(trivial_bounds)]

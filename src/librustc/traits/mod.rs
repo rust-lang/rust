@@ -648,12 +648,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let predicates: Vec<_> =
         util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.to_vec())
-        .filter(|p| !p.is_global() || p.has_late_bound_regions()) // (*)
         .collect();
-
-    // (*) FIXME(#50825) This shouldn't be needed.
-    // Removing the bounds here stopped them from being prefered in selection.
-    // See the issue-50825 ui tests for examples
 
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}",
            predicates);

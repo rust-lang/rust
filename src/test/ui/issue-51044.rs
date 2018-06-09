@@ -9,26 +9,32 @@
 // except according to those terms.
 
 // run-pass
-// Check tautalogically false `Sized` bounds
-#![feature(trivial_bounds)]
-#![allow(unused)]
+// regression test for issue #50825
+// Check that the feature gate normalizes associated types.
 
-trait A {}
+#![allow(dead_code)]
+struct Foo<T>(T);
+struct Duck;
+struct Quack;
 
-impl A for i32 {}
-
-struct T<X: ?Sized> {
-    x: X,
+trait Hello<A> where A: Animal {
 }
 
-struct S(str, str) where str: Sized;
-
-fn unsized_local() where for<'a> T<A + 'a>: Sized {
-    let x: T<A> = *(Box::new(T { x: 1 }) as Box<T<A>>);
+trait Animal {
+    type Noise;
 }
 
-fn return_str() -> str where str: Sized {
-    *"Sized".to_string().into_boxed_str()
+trait Loud<R>  {
+}
+
+impl Loud<Quack> for f32 {
+}
+
+impl Animal for Duck {
+    type Noise = Quack;
+}
+
+impl Hello<Duck> for Foo<f32> where f32: Loud<<Duck as Animal>::Noise> {
 }
 
 fn main() {}
