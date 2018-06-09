@@ -191,16 +191,13 @@ pub fn run_core(search_paths: SearchPaths,
     let warnings_lint_name = lint::builtin::WARNINGS.name;
     let lints = lint::builtin::HardwiredLints.get_lints()
                     .iter()
+                    .chain(rustc_lint::SoftLints.get_lints())
                     .filter_map(|lint| {
-                        if lint.name == warnings_lint_name {
+                        if lint.name == warnings_lint_name ||
+                           lint.name == intra_link_resolution_failure_name {
                             None
                         } else {
-                            let level = if lint.name == intra_link_resolution_failure_name {
-                                lint::Warn
-                            } else {
-                                lint::Allow
-                            };
-                            Some((lint.name_lower(), level))
+                            Some((lint.name_lower(), lint::Allow))
                         }
                     })
                     .collect::<Vec<_>>();
@@ -216,7 +213,7 @@ pub fn run_core(search_paths: SearchPaths,
         } else {
             vec![]
         },
-        lint_cap: Some(lint::Warn),
+        lint_cap: Some(lint::Forbid),
         cg,
         externs,
         target_triple: triple.unwrap_or(host_triple),
