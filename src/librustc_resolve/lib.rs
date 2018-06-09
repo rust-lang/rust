@@ -4488,7 +4488,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         for UseError { mut err, candidates, node_id, better } in self.use_injections.drain(..) {
             let (span, found_use) = UsePlacementFinder::check(krate, node_id);
             if !candidates.is_empty() {
-                show_candidates(&mut err, span, &candidates, better, found_use, self.session.features_untracked().crate_in_paths);
+                let crate_in_paths = self.session.features_untracked().crate_in_paths;
+                show_candidates(&mut err, span, &candidates, better, found_use, crate_in_paths);
             }
             err.emit();
         }
