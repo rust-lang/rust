@@ -53,7 +53,7 @@ pub enum MarkKind {
 }
 
 impl Mark {
-    pub fn fresh(_parent: Mark) -> Self {
+    pub fn fresh() -> Self {
         HygieneData::with(|data| {
             data.marks.push(MarkData { kind: MarkKind::Legacy, expn_info: None });
             Mark(data.marks.len() as u32 - 1)
@@ -92,7 +92,6 @@ impl Mark {
                 if self == Mark::root() || data.marks[self.0 as usize].kind == MarkKind::Modern {
                     return self;
                 }
-
                 self = self.call_site_mark(data);
             }
         })
@@ -114,7 +113,6 @@ impl Mark {
                 if self == Mark::root() {
                     return false;
                 }
-
                 self = self.call_site_mark(data);
             }
             true
@@ -135,7 +133,6 @@ impl Mark {
             let mut a_path = FxHashSet::<Mark>();
             while a != Mark::root() {
                 a_path.insert(a);
-
                 a = a.call_site_mark(data);
             }
 

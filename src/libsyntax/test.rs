@@ -275,7 +275,7 @@ fn generate_test_harness(sess: &ParseSess,
     let mut cleaner = EntryPointCleaner { depth: 0 };
     let krate = cleaner.fold_crate(krate);
 
-    let mark = Mark::fresh(Mark::root());
+    let mark = Mark::fresh();
 
     let mut econfig = ExpansionConfig::default("test".to_string());
     econfig.features = Some(features);

@@ -580,7 +580,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn allow_internal_unstable(&self, reason: CompilerDesugaringKind, span: Span) -> Span {
-        let mark = Mark::fresh(Mark::root());
+        let mark = Mark::fresh();
         mark.set_expn_info(codemap::ExpnInfo {
             call_site: span,
             callee: codemap::NameAndSpan {
