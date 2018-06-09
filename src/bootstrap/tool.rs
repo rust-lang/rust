@@ -340,6 +340,9 @@ macro_rules! tool {
     }
 }
 
+// FIXME(#51459): We have only checked that RustInstaller does not require
+// the LLVM binaries when running. We should go through all tools to determine
+// if they really need LLVM binaries, and make `llvm_tools` a required argument.
 tool!(
     Rustbook, "src/tools/rustbook", "rustbook", Mode::ToolRustc;
     ErrorIndex, "src/tools/error_index_generator", "error_index_generator", Mode::ToolRustc;
