@@ -881,6 +881,40 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Expect and consume a `+`. if `+=` is seen, replace it with a `=`
+    /// and continue. If a `+` is not seen, return false.
+    ///
+    /// This is using when token splitting += into +.
+    /// See issue 47856 for an example of when this may occur.
+    fn eat_plus(&mut self) -> bool {
+        self.expected_tokens.push(TokenType::Token(token::BinOp(token::Plus)));
+        match self.token {
+            token::BinOp(token::Plus) => {
+                self.bump();
+                true
+            }
+            token::BinOpEq(token::Plus) => {
+                let span = self.span.with_lo(self.span.lo() + BytePos(1));
+                self.bump_with(token::Eq, span);
+                true
+            }
+            _ => false,
+        }
+    }
+
+
+    /// Checks to see if the next token is either `+` or `+=`.
+    /// Otherwise returns false.
+    fn check_plus(&mut self) -> bool {
+        if self.token.is_like_plus() {
+            true
+        }
+        else {
+            self.expected_tokens.push(TokenType::Token(token::BinOp(token::Plus)));
+            false
+        }
+    }
+
     /// Expect and consume an `&`. If `&&` is seen, replace it with a single
     /// `&` and continue. If an `&` is not seen, signal an error.
     fn expect_and(&mut self) -> PResult<'a, ()> {
@@ -1517,7 +1551,7 @@ impl<'a> Parser<'a> {
 
             if ts.len() == 1 && !last_comma {
                 let ty = ts.into_iter().nth(0).unwrap().into_inner();
-                let maybe_bounds = allow_plus && self.token == token::BinOp(token::Plus);
+                let maybe_bounds = allow_plus && self.token.is_like_plus();
                 match ty.node {
                     // `(TY_BOUND_NOPAREN) + BOUND + ...`.
                     TyKind::Path(None, ref path) if maybe_bounds => {
@@ -1586,7 +1620,7 @@ impl<'a> Parser<'a> {
                 self.parse_ty_bare_fn(lifetime_defs)?
             } else {
                 let path = self.parse_path(PathStyle::Type)?;
-                let parse_plus = allow_plus && self.check(&token::BinOp(token::Plus));
+                let parse_plus = allow_plus && self.check_plus();
                 self.parse_remaining_bounds(lifetime_defs, path, lo, parse_plus)?
             }
         } else if self.eat_keyword(keywords::Impl) {
@@ -1603,7 +1637,7 @@ impl<'a> Parser<'a> {
             impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
             TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn)
         } else if self.check(&token::Question) ||
-                  self.check_lifetime() && self.look_ahead(1, |t| t == &token::BinOp(token::Plus)) {
+                  self.check_lifetime() && self.look_ahead(1, |t| t.is_like_plus()) {
             // Bound list (trait object type)
             TyKind::TraitObject(self.parse_ty_param_bounds_common(allow_plus)?,
                                 TraitObjectSyntax::None)
@@ -1623,7 +1657,7 @@ impl<'a> Parser<'a> {
                 // Just a type path or bound list (trait object type) starting with a trait.
                 //   `Type`
                 //   `Trait1 + Trait2 + 'a`
-                if allow_plus && self.check(&token::BinOp(token::Plus)) {
+                if allow_plus && self.check_plus() {
                     self.parse_remaining_bounds(Vec::new(), path, lo, true)?
                 } else {
                     TyKind::Path(None, path)
@@ -1650,7 +1684,7 @@ impl<'a> Parser<'a> {
         let poly_trait_ref = PolyTraitRef::new(generic_params, path, lo.to(self.prev_span));
         let mut bounds = vec![TraitTyParamBound(poly_trait_ref, TraitBoundModifier::None)];
         if parse_plus {
-            self.bump(); // `+`
+            self.eat_plus(); // `+`, or `+=` gets split and `+` is discarded
             bounds.append(&mut self.parse_ty_param_bounds()?);
         }
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
@@ -1671,7 +1705,7 @@ impl<'a> Parser<'a> {
 
     fn maybe_recover_from_bad_type_plus(&mut self, allow_plus: bool, ty: &Ty) -> PResult<'a, ()> {
         // Do not add `+` to expected tokens.
-        if !allow_plus || self.token != token::BinOp(token::Plus) {
+        if !allow_plus || !self.token.is_like_plus() {
             return Ok(())
         }
 
@@ -4872,7 +4906,7 @@ impl<'a> Parser<'a> {
                 break
             }
 
-            if !allow_plus || !self.eat(&token::BinOp(token::Plus)) {
+            if !allow_plus || !self.eat_plus() {
                 break
             }
         }
@@ -4891,7 +4925,7 @@ impl<'a> Parser<'a> {
         while self.check_lifetime() {
             lifetimes.push(self.expect_lifetime());
 
-            if !self.eat(&token::BinOp(token::Plus)) {
+            if !self.eat_plus() {
                 break
             }
         }
@@ -5037,7 +5071,7 @@ impl<'a> Parser<'a> {
         let mut seen_type = false;
         let mut seen_binding = false;
         loop {
-            if self.check_lifetime() && self.look_ahead(1, |t| t != &token::BinOp(token::Plus)) {
+            if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 // Parse lifetime argument.
                 lifetimes.push(self.expect_lifetime());
                 if seen_type || seen_binding {
@@ -5106,7 +5140,7 @@ impl<'a> Parser<'a> {
 
         loop {
             let lo = self.span;
-            if self.check_lifetime() && self.look_ahead(1, |t| t != &token::BinOp(token::Plus)) {
+            if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 let lifetime = self.expect_lifetime();
                 // Bounds starting with a colon are mandatory, but possibly empty.
                 self.expect(&token::Colon)?;

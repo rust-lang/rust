@@ -225,6 +225,13 @@ impl Token {
         }
     }
 
+    pub fn is_like_plus(&self) -> bool {
+        match *self {
+            BinOp(Plus) | BinOpEq(Plus) => true,
+            _ => false,
+        }
+    }
+
     /// Returns `true` if the token can appear at the start of an expression.
     pub fn can_begin_expr(&self) -> bool {
         match *self {
