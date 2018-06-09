@@ -155,6 +155,8 @@ source.
   lint/warning is generated. Then, it applies the suggestion and
   compares against `.fixed` (they must match). Finally, the fixed
   source is compiled, and this compilation is required to succeed.
+  The `.fixed` file can also be generated automatically with the
+  `--bless` option, discussed [below](#bless).
 * `min-{gdb,lldb}-version`
 * `min-llvm-version`
 * `compile-pass` for UI tests, indicates that the test is
@@ -269,6 +271,8 @@ you can even run the resulting program. Just add one of the following
   not run the resulting binary
 - `// run-pass` -- compilation should succeed and we should run the
   resulting binary
+
+<a name="bless"></a>
 
 ### Editing and updating the reference files
 
