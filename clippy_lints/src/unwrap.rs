@@ -6,7 +6,7 @@ use rustc::hir::*;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
 
-/// **What it does:** Checks for calls of unwrap[_err]() that cannot fail.
+/// **What it does:** Checks for calls of `unwrap[_err]()` that cannot fail.
 ///
 /// **Why is this bad?** Using `if let` or `match` is more idiomatic.
 ///
@@ -32,7 +32,7 @@ declare_clippy_lint! {
     "checks for calls of unwrap[_err]() that cannot fail"
 }
 
-/// **What it does:** Checks for calls of unwrap[_err]() that will always fail.
+/// **What it does:** Checks for calls of `unwrap[_err]()` that will always fail.
 ///
 /// **Why is this bad?** If panicking is desired, an explicit `panic!()` should be used.
 ///
