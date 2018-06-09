@@ -115,7 +115,7 @@ impl Step for Std {
                 &compiler.host, target));
         run_cargo(builder,
                   &mut core_cargo_invoc,
-                  &libstd_stamp(builder, compiler, target),
+                  &libcore_stamp(builder, compiler, target),
                   false);
         builder.ensure(CoreLink {
             compiler: builder.compiler(compiler.stage, builder.config.build),
@@ -262,7 +262,7 @@ impl Step for CoreLink {
                 target_compiler.host,
                 target));
         let libdir = builder.sysroot_libdir(target_compiler, target);
-        add_to_sysroot(builder, &libdir, &libstd_stamp(builder, compiler, target));
+        add_to_sysroot(builder, &libdir, &libcore_stamp(builder, compiler, target));
     }
 }
 
@@ -434,6 +434,7 @@ impl Step for Test {
         }
 
         let out_dir = builder.cargo_out(compiler, Mode::Test, target);
+        builder.clear_if_dirty(&out_dir, &libcore_stamp(builder, compiler, target));
         builder.clear_if_dirty(&out_dir, &libstd_stamp(builder, compiler, target));
         let mut cargo = builder.cargo(compiler, Mode::Test, target, "build");
         test_cargo(builder, &compiler, target, &mut cargo);
@@ -553,6 +554,7 @@ impl Step for Rustc {
             target: builder.config.build,
         });
         let cargo_out = builder.cargo_out(compiler, Mode::Rustc, target);
+        builder.clear_if_dirty(&cargo_out, &libcore_stamp(builder, compiler, target));
         builder.clear_if_dirty(&cargo_out, &libstd_stamp(builder, compiler, target));
         builder.clear_if_dirty(&cargo_out, &libtest_stamp(builder, compiler, target));
 
@@ -851,6 +853,12 @@ fn copy_lld_to_sysroot(builder: &Builder,
 
     let exe = exe("lld", &target);
     builder.copy(&lld_install_root.join("bin").join(&exe), &dst.join(&exe));
+}
+
+/// Cargo's output path for libcore in a given stage, compiled
+/// by a particular compiler for the specified target.
+pub fn libcore_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
+    builder.cargo_out(compiler, Mode::Std, target).join(".libcore.stamp")
 }
 
 /// Cargo's output path for the standard library in a given stage, compiled
