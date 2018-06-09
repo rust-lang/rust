@@ -41,7 +41,6 @@ pub struct SyntaxContextData {
 pub struct Mark(u32);
 
 struct MarkData {
-    parent: Mark,
     kind: MarkKind,
     expn_info: Option<ExpnInfo>,
 }
@@ -54,9 +53,9 @@ pub enum MarkKind {
 }
 
 impl Mark {
-    pub fn fresh(parent: Mark) -> Self {
+    pub fn fresh(_parent: Mark) -> Self {
         HygieneData::with(|data| {
-            data.marks.push(MarkData { parent: parent, kind: MarkKind::Legacy, expn_info: None });
+            data.marks.push(MarkData { kind: MarkKind::Legacy, expn_info: None });
             Mark(data.marks.len() as u32 - 1)
         })
     }
@@ -93,7 +92,8 @@ impl Mark {
                 if self == Mark::root() || data.marks[self.0 as usize].kind == MarkKind::Modern {
                     return self;
                 }
-                self = data.marks[self.0 as usize].parent;
+
+                self = self.call_site_mark(data);
             }
         })
     }
@@ -114,7 +114,8 @@ impl Mark {
                 if self == Mark::root() {
                     return false;
                 }
-                self = data.marks[self.0 as usize].parent;
+
+                self = self.call_site_mark(data);
             }
             true
         })
@@ -134,16 +135,24 @@ impl Mark {
             let mut a_path = FxHashSet::<Mark>();
             while a != Mark::root() {
                 a_path.insert(a);
-                a = data.marks[a.0 as usize].parent;
+
+                a = a.call_site_mark(data);
             }
 
             // While the path from b to the root hasn't intersected, move up the tree
             while !a_path.contains(&b) {
-                b = data.marks[b.0 as usize].parent;
+                b = b.call_site_mark(data);
             }
 
             b
         })
+    }
+
+    /// Private helpers not acquiring a lock around global data
+    fn call_site_mark(self, data: &HygieneData) -> Mark {
+        data.marks[self.0 as usize].expn_info.as_ref()
+            .map(|einfo| data.syntax_contexts[einfo.call_site.ctxt().0 as usize].outer_mark)
+            .unwrap_or(Mark::root())
     }
 }
 
@@ -159,7 +168,6 @@ impl HygieneData {
     pub fn new() -> Self {
         HygieneData {
             marks: vec![MarkData {
-                parent: Mark::root(),
                 kind: MarkKind::Builtin,
                 expn_info: None,
             }],
@@ -198,14 +206,13 @@ impl SyntaxContext {
 
     // Allocate a new SyntaxContext with the given ExpnInfo. This is used when
     // deserializing Spans from the incr. comp. cache.
-    // FIXME(mw): This method does not restore MarkData::parent or
-    // SyntaxContextData::prev_ctxt or SyntaxContextData::modern. These things
+    // FIXME(mw): This method does not restore SyntaxContextData::prev_ctxt or
+    // SyntaxContextData::modern. These things
     // don't seem to be used after HIR lowering, so everything should be fine
     // as long as incremental compilation does not kick in before that.
     pub fn allocate_directly(expansion_info: ExpnInfo) -> Self {
         HygieneData::with(|data| {
             data.marks.push(MarkData {
-                parent: Mark::root(),
                 kind: MarkKind::Legacy,
                 expn_info: Some(expansion_info)
             });
