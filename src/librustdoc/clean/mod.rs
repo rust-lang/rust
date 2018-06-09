@@ -1315,8 +1315,8 @@ fn resolution_failure(
                                      sp,
                                      &msg)
     };
-    diag.help("to escape `[` and `]` characters, either put them into \"`[]`\" or \
-               use HTML values `&#91;` and `&#93;`");
+    diag.help("to escape `[` and `]` characters, just add '\\' before them like \
+               `\\[` or `\\]`");
     diag.emit();
 }
 
