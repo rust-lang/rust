@@ -424,9 +424,16 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
 
-        hir::ExprBlock(_) |
+        hir::ExprField(ref expr, _) => {
+            if let Some(def) = v.tables.expr_ty(expr).ty_adt_def() {
+                if def.is_union() {
+                    v.promotable = false
+                }
+            }
+        }
+
+        hir::ExprBlock(..) |
         hir::ExprIndex(..) |
-        hir::ExprField(..) |
         hir::ExprArray(_) |
         hir::ExprType(..) |
         hir::ExprTup(..) => {}

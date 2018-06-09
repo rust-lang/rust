@@ -1350,6 +1350,11 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         }
     }
 
+    fn fold_generic_param(&mut self, param: ast::GenericParam) -> ast::GenericParam {
+        self.cfg.disallow_cfg_on_generic_param(&param);
+        noop_fold_generic_param(param, self)
+    }
+
     fn fold_attribute(&mut self, at: ast::Attribute) -> Option<ast::Attribute> {
         // turn `#[doc(include="filename")]` attributes into `#[doc(include(file="filename",
         // contents="file contents")]` attributes
