@@ -327,7 +327,7 @@ impl<'a, F: Future> Future for AssertUnwindSafe<F> {
             let pinned_field = PinMut::new_unchecked(
                 &mut PinMut::get_mut(self.reborrow()).0
             );
-            
+
             pinned_field.poll(cx)
         }
     }
