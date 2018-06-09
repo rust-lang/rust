@@ -155,6 +155,49 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     where
         R: Debug + TypeFoldable<'tcx>,
     {
+        let InferOk { value: result_subst, mut obligations } = self.query_result_substitution(
+            cause,
+            param_env,
+            original_values,
+            query_result,
+        )?;
+
+        obligations.extend(self.query_region_constraints_into_obligations(
+            cause,
+            param_env,
+            &query_result.value.region_constraints,
+            &result_subst,
+        ));
+
+        let user_result: R =
+            query_result.substitute_projected(self.tcx, &result_subst, |q_r| &q_r.value);
+
+        Ok(InferOk {
+            value: user_result,
+            obligations,
+        })
+    }
+
+    /// Given the original values and the (canonicalized) result from
+    /// computing a query, returns a substitution that can be applied
+    /// to the query result to convert the result back into the
+    /// original namespace.
+    ///
+    /// The substitution also comes accompanied with subobligations
+    /// that arose from unification; these might occur if (for
+    /// example) we are doing lazy normalization and the value
+    /// assigned to a type variable is unified with an unnormalized
+    /// projection.
+    pub fn query_result_substitution<R>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        original_values: &CanonicalVarValues<'tcx>,
+        query_result: &Canonical<'tcx, QueryResult<'tcx, R>>,
+    ) -> InferResult<'tcx, CanonicalVarValues<'tcx>>
+    where
+        R: Debug + TypeFoldable<'tcx>,
+    {
         debug!(
             "instantiate_query_result(original_values={:#?}, query_result={:#?})",
             original_values, query_result,
@@ -201,7 +244,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         // Create a result substitution: if we found a value for a
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
-        let result_subst = &CanonicalVarValues {
+        let result_subst = CanonicalVarValues {
             var_values: query_result
                 .variables
                 .iter()
@@ -217,25 +260,16 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         // the input with the value found in the query
         // post-substitution. Often, but not always, this is a no-op,
         // because we already found the mapping in the first step.
-        let substituted_values = |index: CanonicalVar| -> Kind<'tcx> {
-            query_result.substitute_projected(self.tcx, result_subst, |v| &v.var_values[index])
+        let obligations = {
+            let substituted_values = |index: CanonicalVar| -> Kind<'tcx> {
+                query_result.substitute_projected(self.tcx, &result_subst, |v| &v.var_values[index])
+            };
+            self.unify_canonical_vars(cause, param_env, original_values, substituted_values)?
+                .into_obligations()
         };
-        let mut obligations = self
-            .unify_canonical_vars(cause, param_env, original_values, substituted_values)?
-            .into_obligations();
-
-        obligations.extend(self.query_region_constraints_into_obligations(
-            cause,
-            param_env,
-            &query_result.value.region_constraints,
-            result_subst,
-        ));
-
-        let user_result: R =
-            query_result.substitute_projected(self.tcx, result_subst, |q_r| &q_r.value);
 
         Ok(InferOk {
-            value: user_result,
+            value: result_subst,
             obligations,
         })
     }
