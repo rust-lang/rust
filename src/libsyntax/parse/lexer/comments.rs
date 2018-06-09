@@ -40,7 +40,7 @@ pub struct Comment {
     pub pos: BytePos,
 }
 
-pub fn is_doc_comment(s: &str) -> bool {
+fn is_doc_comment(s: &str) -> bool {
     (s.starts_with("///") && super::is_doc_comment(s)) || s.starts_with("//!") ||
     (s.starts_with("/**") && is_block_doc_comment(s)) || s.starts_with("/*!")
 }

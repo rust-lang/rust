@@ -333,7 +333,7 @@ const ASCII_ARRAY: &'static [(char, &'static str)] = &[
     ('=', "Equals Sign"),
     ('>', "Greater-Than Sign"), ];
 
-pub fn check_for_substitution<'a>(reader: &StringReader<'a>,
+crate fn check_for_substitution<'a>(reader: &StringReader<'a>,
                                   ch: char,
                                   err: &mut DiagnosticBuilder<'a>) -> bool {
     UNICODE_ARRAY
