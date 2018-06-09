@@ -254,7 +254,7 @@ pub fn prepare_tool_cargo(
 }
 
 macro_rules! tool {
-    ($($name:ident, $path:expr, $tool_name:expr, $mode:expr;)+) => {
+    ($($name:ident, $path:expr, $tool_name:expr, $mode:expr $(,llvm_tools = $llvm:expr)*;)+) => {
         #[derive(Copy, Clone)]
         pub enum Tool {
             $(
@@ -268,6 +268,13 @@ macro_rules! tool {
                     $(Tool::$name => $mode,)+
                 };
                 mode
+            }
+
+            /// Whether this tool requires LLVM to run
+            pub fn uses_llvm_tools(&self) -> bool {
+                match self {
+                    $(Tool::$name => true $(&& $llvm)*,)+
+                }
             }
         }
 
@@ -333,6 +340,9 @@ macro_rules! tool {
     }
 }
 
+// FIXME(#51459): We have only checked that RustInstaller does not require
+// the LLVM binaries when running. We should go through all tools to determine
+// if they really need LLVM binaries, and make `llvm_tools` a required argument.
 tool!(
     Rustbook, "src/tools/rustbook", "rustbook", Mode::ToolRustc;
     ErrorIndex, "src/tools/error_index_generator", "error_index_generator", Mode::ToolRustc;
@@ -343,7 +353,7 @@ tool!(
     Compiletest, "src/tools/compiletest", "compiletest", Mode::ToolTest;
     BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::ToolStd;
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::ToolStd;
-    RustInstaller, "src/tools/rust-installer", "fabricate", Mode::ToolStd;
+    RustInstaller, "src/tools/rust-installer", "fabricate", Mode::ToolStd, llvm_tools = false;
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes", Mode::ToolStd;
 );
 
@@ -586,7 +596,7 @@ impl<'a> Builder<'a> {
     pub fn tool_cmd(&self, tool: Tool) -> Command {
         let mut cmd = Command::new(self.tool_exe(tool));
         let compiler = self.compiler(self.tool_default_stage(tool), self.config.build);
-        self.prepare_tool_cmd(compiler, tool.get_mode(), &mut cmd);
+        self.prepare_tool_cmd(compiler, tool, &mut cmd);
         cmd
     }
 
@@ -594,11 +604,11 @@ impl<'a> Builder<'a> {
     ///
     /// Notably this munges the dynamic library lookup path to point to the
     /// right location to run `compiler`.
-    fn prepare_tool_cmd(&self, compiler: Compiler, mode: Mode, cmd: &mut Command) {
+    fn prepare_tool_cmd(&self, compiler: Compiler, tool: Tool, cmd: &mut Command) {
         let host = &compiler.host;
         let mut lib_paths: Vec<PathBuf> = vec![
             PathBuf::from(&self.sysroot_libdir(compiler, compiler.host)),
-            self.cargo_out(compiler, mode, *host).join("deps"),
+            self.cargo_out(compiler, tool.get_mode(), *host).join("deps"),
         ];
 
         // On MSVC a tool may invoke a C compiler (e.g. compiletest in run-make
@@ -621,17 +631,19 @@ impl<'a> Builder<'a> {
 
         // Add the llvm/bin directory to PATH since it contains lots of
         // useful, platform-independent tools
-        if let Some(llvm_bin_path) = self.llvm_bin_path() {
-            if host.contains("windows") {
-                // On Windows, PATH and the dynamic library path are the same,
-                // so we just add the LLVM bin path to lib_path
-                lib_paths.push(llvm_bin_path);
-            } else {
-                let old_path = env::var_os("PATH").unwrap_or_default();
-                let new_path = env::join_paths(iter::once(llvm_bin_path)
-                        .chain(env::split_paths(&old_path)))
-                    .expect("Could not add LLVM bin path to PATH");
-                cmd.env("PATH", new_path);
+        if tool.uses_llvm_tools() {
+            if let Some(llvm_bin_path) = self.llvm_bin_path() {
+                if host.contains("windows") {
+                    // On Windows, PATH and the dynamic library path are the same,
+                    // so we just add the LLVM bin path to lib_path
+                    lib_paths.push(llvm_bin_path);
+                } else {
+                    let old_path = env::var_os("PATH").unwrap_or_default();
+                    let new_path = env::join_paths(iter::once(llvm_bin_path)
+                            .chain(env::split_paths(&old_path)))
+                        .expect("Could not add LLVM bin path to PATH");
+                    cmd.env("PATH", new_path);
+                }
             }
         }
 

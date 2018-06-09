@@ -339,6 +339,7 @@ impl<'a> Builder<'a> {
                 compile::Std,
                 compile::Test,
                 compile::Rustc,
+                compile::CodegenBackend,
                 compile::StartupObjects,
                 tool::BuildManifest,
                 tool::Rustbook,

@@ -284,6 +284,9 @@ after_failure:
       -exec head -750 {} \;
       -exec echo travis_fold":"end:crashlog \; || true
 
+  # see #50887
+  - head -30 ./obj/build/x86_64-unknown-linux-gnu/native/asan/build/lib/asan/clang_rt.asan-dynamic-i386.vers || true
+
   # attempt to debug anything killed by the oom killer on linux, just to see if
   # it happened
   - dmesg | grep -i kill
