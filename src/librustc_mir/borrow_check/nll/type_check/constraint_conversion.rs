@@ -18,8 +18,8 @@ use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc::infer::{self, SubregionOrigin};
 use rustc::mir::{Location, Mir};
-use rustc::ty::{self, TyCtxt};
 use rustc::ty::subst::UnpackedKind;
+use rustc::ty::{self, TyCtxt};
 use syntax::codemap::Span;
 
 crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
@@ -65,7 +65,13 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub(super) fn convert(&mut self, query_constraints: &[QueryRegionConstraint<'tcx>]) {
+    pub(super) fn convert_all(&mut self, query_constraints: &[QueryRegionConstraint<'tcx>]) {
+        for query_constraint in query_constraints {
+            self.convert(query_constraint);
+        }
+    }
+
+    pub(super) fn convert(&mut self, query_constraint: &QueryRegionConstraint<'tcx>) {
         debug!("generate: constraints at: {:#?}", self.locations);
 
         // Extract out various useful fields we'll need below.
@@ -77,57 +83,55 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
             ..
         } = *self;
 
-        for query_constraint in query_constraints {
-            // At the moment, we never generate any "higher-ranked"
-            // region constraints like `for<'a> 'a: 'b`. At some point
-            // when we move to universes, we will, and this assertion
-            // will start to fail.
-            let ty::OutlivesPredicate(k1, r2) =
-                query_constraint.no_late_bound_regions().unwrap_or_else(|| {
-                    span_bug!(
-                        self.span(),
-                        "query_constraint {:?} contained bound regions",
-                        query_constraint,
-                    );
-                });
+        // At the moment, we never generate any "higher-ranked"
+        // region constraints like `for<'a> 'a: 'b`. At some point
+        // when we move to universes, we will, and this assertion
+        // will start to fail.
+        let ty::OutlivesPredicate(k1, r2) =
+            query_constraint.no_late_bound_regions().unwrap_or_else(|| {
+                span_bug!(
+                    self.span(),
+                    "query_constraint {:?} contained bound regions",
+                    query_constraint,
+                );
+            });
 
-            match k1.unpack() {
-                UnpackedKind::Lifetime(r1) => {
-                    let r1_vid = self.to_region_vid(r1);
-                    let r2_vid = self.to_region_vid(r2);
-                    self.add_outlives(r1_vid, r2_vid);
+        match k1.unpack() {
+            UnpackedKind::Lifetime(r1) => {
+                let r1_vid = self.to_region_vid(r1);
+                let r2_vid = self.to_region_vid(r2);
+                self.add_outlives(r1_vid, r2_vid);
 
-                    // In the new analysis, all outlives relations etc
-                    // "take effect" at the mid point of the statement
-                    // that requires them, so ignore the `at_location`.
-                    if let Some(all_facts) = &mut self.all_facts {
-                        if let Some(from_location) = self.locations.from_location() {
-                            all_facts.outlives.push((
-                                r1_vid,
-                                r2_vid,
-                                self.location_table.mid_index(from_location),
-                            ));
-                        } else {
-                            for location in self.location_table.all_points() {
-                                all_facts.outlives.push((r1_vid, r2_vid, location));
-                            }
+                // In the new analysis, all outlives relations etc
+                // "take effect" at the mid point of the statement
+                // that requires them, so ignore the `at_location`.
+                if let Some(all_facts) = &mut self.all_facts {
+                    if let Some(from_location) = self.locations.from_location() {
+                        all_facts.outlives.push((
+                            r1_vid,
+                            r2_vid,
+                            self.location_table.mid_index(from_location),
+                        ));
+                    } else {
+                        for location in self.location_table.all_points() {
+                            all_facts.outlives.push((r1_vid, r2_vid, location));
                         }
                     }
                 }
+            }
 
-                UnpackedKind::Type(t1) => {
-                    // we don't actually use this for anything, but
-                    // the `TypeOutlives` code needs an origin.
-                    let origin = infer::RelateParamBound(self.span(), t1);
+            UnpackedKind::Type(t1) => {
+                // we don't actually use this for anything, but
+                // the `TypeOutlives` code needs an origin.
+                let origin = infer::RelateParamBound(self.span(), t1);
 
-                    TypeOutlives::new(
-                        &mut *self,
-                        tcx,
-                        region_bound_pairs,
-                        implicit_region_bound,
-                        param_env,
-                    ).type_must_outlive(origin, t1, r2);
-                }
+                TypeOutlives::new(
+                    &mut *self,
+                    tcx,
+                    region_bound_pairs,
+                    implicit_region_bound,
+                    param_env,
+                ).type_must_outlive(origin, t1, r2);
             }
         }
     }

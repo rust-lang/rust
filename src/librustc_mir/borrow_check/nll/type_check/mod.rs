@@ -765,7 +765,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 &mut self.constraints.outlives_constraints,
                 &mut self.constraints.type_tests,
                 &mut borrowck_context.all_facts,
-            ).convert(&data);
+            ).convert_all(&data);
         }
     }
 
