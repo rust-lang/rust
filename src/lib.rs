@@ -132,6 +132,9 @@ pub enum ErrorKind {
     /// An io error during reading or writing.
     #[fail(display = "io error: {}", _0)]
     IoError(io::Error),
+    /// Parse error occured when parsing the Input.
+    #[fail(display = "parse error")]
+    ParseError,
     /// The user mandated a version and the current version of Rustfmt does not
     /// satisfy that requirement.
     #[fail(display = "Version mismatch")]
@@ -172,9 +175,10 @@ impl FormattingError {
     }
     fn msg_prefix(&self) -> &str {
         match self.kind {
-            ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace | ErrorKind::IoError(_) => {
-                "internal error:"
-            }
+            ErrorKind::LineOverflow(..)
+            | ErrorKind::TrailingWhitespace
+            | ErrorKind::IoError(_)
+            | ErrorKind::ParseError => "internal error:",
             ErrorKind::LicenseCheck | ErrorKind::BadAttr | ErrorKind::VersionMismatch => "error:",
             ErrorKind::BadIssue(_) | ErrorKind::DeprecatedAttr => "warning:",
         }
@@ -844,7 +848,7 @@ fn format_input_inner<T: Write>(
                 ParseError::Recovered => {}
             }
             summary.add_parsing_error();
-            return Ok((summary, FileMap::new(), FormatReport::new()));
+            return Err((ErrorKind::ParseError, summary));
         }
     };
 
