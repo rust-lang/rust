@@ -774,7 +774,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     /// obligations. If the same `op` were to be performed at some
     /// other location, then the same set of region obligations would
     /// be generated there, so this can be useful for caching.
-    #[inline(never)]
     fn fully_perform_op_and_get_region_constraint_data<R>(
         &mut self,
         describe_op: impl Fn() -> String,
@@ -811,7 +810,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    #[inline(never)]
     fn sub_types(
         &mut self,
         sub: Ty<'tcx>,
@@ -834,7 +832,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         )
     }
 
-    #[inline(never)]
     fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> UnitResult<'tcx> {
         // Micro-optimization.
         if a == b {
@@ -1605,7 +1602,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         );
     }
 
-    #[inline(never)]
     fn prove_predicates<T>(&mut self, predicates: T, location: Location)
     where
         T: IntoIterator<Item = ty::Predicate<'tcx>> + Clone,
@@ -1674,7 +1670,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    #[inline(never)]
     fn normalize<T>(&mut self, value: &T, location: impl ToLocations) -> T
     where
         T: fmt::Debug + TypeFoldable<'tcx>,

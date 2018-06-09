@@ -182,7 +182,6 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
     /// the regions in its type must be live at `location`. The
     /// precise set will depend on the dropck constraints, and in
     /// particular this takes `#[may_dangle]` into account.
-    #[inline(never)]
     fn add_drop_live_constraint(
         &mut self,
         dropped_local: Local,
@@ -212,7 +211,6 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         }
     }
 
-    #[inline(never)]
     fn compute_drop_data(
         cx: &mut TypeChecker<'_, 'gcx, 'tcx>,
         dropped_ty: Ty<'tcx>,

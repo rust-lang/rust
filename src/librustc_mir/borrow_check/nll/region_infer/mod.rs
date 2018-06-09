@@ -470,7 +470,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.inferred_values = Some(inferred_values);
     }
 
-    #[inline(never)] // ensure dfs is identifiable in profiles
     fn compute_region_values(&self, _mir: &Mir<'tcx>) -> RegionValues {
         debug!("compute_region_values()");
         debug!("compute_region_values: constraints={:#?}", {
@@ -521,7 +520,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// indices of constraints that need to be re-evaluated when X changes.
     /// These are constraints like Y: X @ P -- so if X changed, we may
     /// need to grow Y.
-    #[inline(never)] // ensure dfs is identifiable in profiles
     fn build_dependency_map(&mut self) -> IndexVec<RegionVid, Option<ConstraintIndex>> {
         let mut map = IndexVec::from_elem(None, &self.definitions);
 

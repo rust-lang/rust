@@ -32,7 +32,6 @@ use rustc_data_structures::indexed_vec::Idx;
 use super::{Locations, TypeChecker};
 
 impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
-    #[inline(never)]
     pub(super) fn equate_inputs_and_outputs(
         &mut self,
         mir: &Mir<'tcx>,
