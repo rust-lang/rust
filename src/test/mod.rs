@@ -22,7 +22,6 @@ use std::str::Chars;
 
 use config::summary::Summary;
 use config::{Color, Config, ReportTactic};
-use filemap::write_system_newlines;
 use rustfmt_diff::*;
 use *;
 
@@ -401,14 +400,9 @@ fn idempotent_check(
     }
 
     let mut write_result = HashMap::new();
-    for &(ref filename, ref text) in &file_map {
-        let mut v = Vec::new();
-        // Won't panic, as we're not doing any IO.
-        write_system_newlines(&mut v, text, &config).unwrap();
-        // Won't panic, we are writing correct utf8.
-        let one_result = String::from_utf8(v).unwrap();
-        if let FileName::Real(ref filename) = *filename {
-            write_result.insert(filename.to_owned(), one_result);
+    for (filename, text) in file_map {
+        if let FileName::Real(ref filename) = filename {
+            write_result.insert(filename.to_owned(), text);
         }
     }
 

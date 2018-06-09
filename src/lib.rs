@@ -60,7 +60,8 @@ use visitor::{FmtVisitor, SnippetProvider};
 pub use checkstyle::{footer as checkstyle_footer, header as checkstyle_header};
 pub use config::summary::Summary;
 pub use config::{
-    load_config, CliOptions, Color, Config, EmitMode, FileLines, FileName, Range, Verbosity,
+    load_config, CliOptions, Color, Config, EmitMode, FileLines, FileName, NewlineStyle, Range,
+    Verbosity,
 };
 
 #[macro_use]
@@ -877,6 +878,7 @@ fn format_input_inner<T: Write>(
             filemap::append_newline(file);
 
             format_lines(file, file_name, skipped_range, config, report);
+            replace_with_system_newlines(file, config);
 
             if let Some(ref mut out) = out {
                 return filemap::write_file(file, file_name, out, config);
@@ -926,6 +928,34 @@ fn format_input_inner<T: Write>(
             Ok((summary, file_map, report))
         }
         Err(e) => Err((From::from(e), summary)),
+    }
+}
+
+pub fn replace_with_system_newlines(text: &mut String, config: &Config) -> () {
+    let style = if config.newline_style() == NewlineStyle::Native {
+        if cfg!(windows) {
+            NewlineStyle::Windows
+        } else {
+            NewlineStyle::Unix
+        }
+    } else {
+        config.newline_style()
+    };
+
+    match style {
+        NewlineStyle::Unix => return,
+        NewlineStyle::Windows => {
+            let mut transformed = String::with_capacity(text.capacity());
+            for c in text.chars() {
+                match c {
+                    '\n' => transformed.push_str("\r\n"),
+                    '\r' => continue,
+                    c => transformed.push(c),
+                }
+            }
+            *text = transformed;
+        }
+        NewlineStyle::Native => unreachable!(),
     }
 }
 
