@@ -789,6 +789,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
         double_comparison::DOUBLE_COMPARISONS,
         double_parens::DOUBLE_PARENS,
+        duration_subsec::DURATION_SUBSEC,
         eval_order_dependence::DIVERGING_SUB_EXPRESSION,
         eval_order_dependence::EVAL_ORDER_DEPENDENCE,
         explicit_write::EXPLICIT_WRITE,

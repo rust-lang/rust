@@ -20,9 +20,9 @@ use crate::utils::{match_type, snippet, span_lint_and_sugg, walk_ptrs_ty};
 /// let _micros = dur.subsec_nanos() / 1_000;
 /// let _millis = dur.subsec_nanos() / 1_000_000;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub DURATION_SUBSEC,
-    Warn,
+    complexity,
     "checks for `dur.subsec_nanos() / 1_000` or `dur.subsec_nanos() / 1_000_000`"
 }
 
