@@ -53,7 +53,7 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
         debug!("c_ty = {:?}", c_ty);
         match &gcx.dropck_outlives(c_ty) {
             Ok(result) if result.is_proven() => {
-                match self.infcx.instantiate_query_result(
+                match self.infcx.instantiate_query_result_and_region_obligations(
                     self.cause,
                     self.param_env,
                     &orig_values,
