@@ -85,6 +85,12 @@ impl Step for Std {
                 copy_musl_third_party_objects(builder, target, &libdir);
             }
 
+            builder.ensure(CoreLink {
+                compiler: from,
+                target_compiler: compiler,
+                target,
+            });
+
             builder.ensure(StdLink {
                 compiler: from,
                 target_compiler: compiler,
