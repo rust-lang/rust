@@ -1,0 +1,16 @@
+error: cannot test inner function
+  --> $DIR/test-inner-fn.rs:15:5
+   |
+LL |     #[test] //~ ERROR cannot test inner function [untestable_method]
+   |     ^^^^^^^
+   |
+   = note: requested on the command line with `-D untestable-method`
+
+error: cannot test inner function
+  --> $DIR/test-inner-fn.rs:23:9
+   |
+LL |         #[test] //~ ERROR cannot test inner function [untestable_method]
+   |         ^^^^^^^
+
+error: aborting due to 2 previous errors
+
