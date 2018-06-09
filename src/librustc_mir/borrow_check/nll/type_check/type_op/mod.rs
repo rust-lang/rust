@@ -22,7 +22,7 @@ use std::fmt;
 use std::rc::Rc;
 use syntax::codemap::DUMMY_SP;
 
-pub(super) trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
+crate trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     type Output;
 
     /// Micro-optimization: returns `Ok(x)` if we can trivially
@@ -91,7 +91,7 @@ pub(super) trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     }
 }
 
-pub(super) struct CustomTypeOp<F, G> {
+crate struct CustomTypeOp<F, G> {
     closure: F,
     description: G,
 }
@@ -135,14 +135,14 @@ where
 }
 
 #[derive(Debug)]
-pub(super) struct Subtype<'tcx> {
+crate struct Subtype<'tcx> {
     param_env: ParamEnv<'tcx>,
     sub: Ty<'tcx>,
     sup: Ty<'tcx>,
 }
 
 impl<'tcx> Subtype<'tcx> {
-    pub(super) fn new(param_env: ParamEnv<'tcx>, sub: Ty<'tcx>, sup: Ty<'tcx>) -> Self {
+    crate fn new(param_env: ParamEnv<'tcx>, sub: Ty<'tcx>, sup: Ty<'tcx>) -> Self {
         Self {
             param_env,
             sub,
@@ -170,14 +170,14 @@ impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Subtype<'tcx> {
 }
 
 #[derive(Debug)]
-pub(super) struct Eq<'tcx> {
+crate struct Eq<'tcx> {
     param_env: ParamEnv<'tcx>,
     a: Ty<'tcx>,
     b: Ty<'tcx>,
 }
 
 impl<'tcx> Eq<'tcx> {
-    pub(super) fn new(param_env: ParamEnv<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> Self {
+    crate fn new(param_env: ParamEnv<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> Self {
         Self { param_env, a, b }
     }
 }
@@ -201,12 +201,12 @@ impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for Eq<'tcx> {
 }
 
 #[derive(Debug)]
-pub(super) struct ProvePredicates<'tcx> {
+crate struct ProvePredicates<'tcx> {
     obligations: Vec<PredicateObligation<'tcx>>,
 }
 
 impl<'tcx> ProvePredicates<'tcx> {
-    pub(super) fn new(
+    crate fn new(
         param_env: ParamEnv<'tcx>,
         predicates: impl IntoIterator<Item = Predicate<'tcx>>,
     ) -> Self {
@@ -239,7 +239,7 @@ impl<'gcx, 'tcx> TypeOp<'gcx, 'tcx> for ProvePredicates<'tcx> {
 }
 
 #[derive(Debug)]
-pub(super) struct Normalize<'tcx, T> {
+crate struct Normalize<'tcx, T> {
     param_env: ParamEnv<'tcx>,
     value: T,
 }
@@ -248,7 +248,7 @@ impl<'tcx, T> Normalize<'tcx, T>
 where
     T: fmt::Debug + TypeFoldable<'tcx>,
 {
-    pub(super) fn new(param_env: ParamEnv<'tcx>, value: T) -> Self {
+    crate fn new(param_env: ParamEnv<'tcx>, value: T) -> Self {
         Self { param_env, value }
     }
 }
@@ -279,13 +279,13 @@ where
 }
 
 #[derive(Debug)]
-pub(super) struct DropckOutlives<'tcx> {
+crate struct DropckOutlives<'tcx> {
     param_env: ParamEnv<'tcx>,
     dropped_ty: Ty<'tcx>,
 }
 
 impl<'tcx> DropckOutlives<'tcx> {
-    pub(super) fn new(param_env: ParamEnv<'tcx>, dropped_ty: Ty<'tcx>) -> Self {
+    crate fn new(param_env: ParamEnv<'tcx>, dropped_ty: Ty<'tcx>) -> Self {
         DropckOutlives {
             param_env,
             dropped_ty,
