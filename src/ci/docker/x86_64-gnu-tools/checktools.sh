@@ -91,19 +91,26 @@ status_check() {
 
 status_check "submodule_changed"
 
+CHECK_NOT="$(dirname $0)/checkregression.py"
+change_toolstate() {
+    # only update the history
+    if python2.7 "$CHECK_NOT" "$OS" "$TOOLSTATE_FILE" "_data/latest.json" changed; then
+        echo 'Toolstate is not changed. Not updating.'
+    else
+        if [ $SIX_WEEK_CYCLE -eq 5 ]; then
+            python2.7 "$CHECK_NOT" "$OS" "$TOOLSTATE_FILE" "_data/latest.json" regressed
+        fi
+        sed -i "1 a\\
+$COMMIT\t$(cat "$TOOLSTATE_FILE")
+" "history/$OS.tsv"
+    fi
+}
+
 if [ "$RUST_RELEASE_CHANNEL" = nightly -a -n "${TOOLSTATE_REPO_ACCESS_TOKEN+is_set}" ]; then
     . "$(dirname $0)/repo.sh"
     MESSAGE_FILE=$(mktemp -t msg.XXXXXX)
     echo "($OS CI update)" > "$MESSAGE_FILE"
-    commit_toolstate_change "$MESSAGE_FILE" \
-        sed -i "1 a\\
-$COMMIT\t$(cat "$TOOLSTATE_FILE")
-" "history/$OS.tsv"
-    # if we are at the last week in the 6-week release cycle, reject any kind of regression.
-    if [ $SIX_WEEK_CYCLE -eq 5 ]; then
-        python2.7 "$(dirname $0)/checkregression.py" \
-            "$OS" "$TOOLSTATE_FILE" "rust-toolstate/_data/latest.json"
-    fi
+    commit_toolstate_change "$MESSAGE_FILE" change_toolstate
     rm -f "$MESSAGE_FILE"
     exit 0
 fi
