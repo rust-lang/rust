@@ -5986,12 +5986,13 @@ impl<'a> Parser<'a> {
 `pub(super)`: visible only in the current module's parent
 `pub(in path::to::module)`: visible only on the specified path"##;
                 let path = self.parse_path(PathStyle::Mod)?;
-                let path_span = self.prev_span;
+                let sp = self.prev_span;
                 let help_msg = format!("make this visible only to module `{}` with `in`", path);
                 self.expect(&token::CloseDelim(token::Paren))?;  // `)`
-                let mut err = self.span_fatal_help(path_span, msg, suggestion);
+                let mut err = struct_span_err!(self.sess.span_diagnostic, sp, E0698, "{}", msg);
+                err.help(suggestion);
                 err.span_suggestion_with_applicability(
-                    path_span, &help_msg, format!("in {}", path), Applicability::MachineApplicable
+                    sp, &help_msg, format!("in {}", path), Applicability::MachineApplicable
                 );
                 err.emit();  // emit diagnostic, but continue with public visibility
             }

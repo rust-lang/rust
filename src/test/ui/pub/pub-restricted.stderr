@@ -1,4 +1,4 @@
-error: incorrect visibility restriction
+error[E0698]: incorrect visibility restriction
   --> $DIR/pub-restricted.rs:15:6
    |
 LL | pub (a) fn afn() {} //~ incorrect visibility restriction
@@ -9,7 +9,7 @@ LL | pub (a) fn afn() {} //~ incorrect visibility restriction
            `pub(super)`: visible only in the current module's parent
            `pub(in path::to::module)`: visible only on the specified path
 
-error: incorrect visibility restriction
+error[E0698]: incorrect visibility restriction
   --> $DIR/pub-restricted.rs:16:6
    |
 LL | pub (b) fn bfn() {} //~ incorrect visibility restriction
@@ -20,7 +20,7 @@ LL | pub (b) fn bfn() {} //~ incorrect visibility restriction
            `pub(super)`: visible only in the current module's parent
            `pub(in path::to::module)`: visible only on the specified path
 
-error: incorrect visibility restriction
+error[E0698]: incorrect visibility restriction
   --> $DIR/pub-restricted.rs:32:14
    |
 LL |         pub (a) invalid: usize, //~ incorrect visibility restriction
@@ -31,7 +31,7 @@ LL |         pub (a) invalid: usize, //~ incorrect visibility restriction
            `pub(super)`: visible only in the current module's parent
            `pub(in path::to::module)`: visible only on the specified path
 
-error: incorrect visibility restriction
+error[E0698]: incorrect visibility restriction
   --> $DIR/pub-restricted.rs:41:6
    |
 LL | pub (xyz) fn xyz() {} //~ incorrect visibility restriction
@@ -50,3 +50,4 @@ LL |         pub (in x) non_parent_invalid: usize, //~ ERROR visibilities can on
 
 error: aborting due to 5 previous errors
 
+For more information about this error, try `rustc --explain E0698`.

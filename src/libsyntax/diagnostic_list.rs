@@ -398,4 +398,5 @@ register_diagnostics! {
     E0693, // incorrect `repr(align)` attribute format
     E0694, // an unknown tool name found in scoped attributes
     E0697, // invalid ABI
+    E0698, // incorrect visibility restriction
 }
