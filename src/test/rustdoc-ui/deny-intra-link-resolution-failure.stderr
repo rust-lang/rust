@@ -9,4 +9,5 @@ note: lint level defined here
    |
 11 | #![deny(intra_link_resolution_failure)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: to escape `[` and `]` characters, either put them into "`[]`" or use HTML values `&#91;` and `&#93;`
 

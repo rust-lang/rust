@@ -1311,10 +1311,12 @@ fn resolution_failure(
         diag
     } else {
         cx.tcx.struct_span_lint_node(lint::builtin::INTRA_LINK_RESOLUTION_FAILURE,
-                                                NodeId::new(0),
-                                                sp,
-                                                &msg)
+                                     NodeId::new(0),
+                                     sp,
+                                     &msg)
     };
+    diag.help("to escape `[` and `]` characters, either put them into \"`[]`\" or \
+               use HTML values `&#91;` and `&#93;`");
     diag.emit();
 }
 
