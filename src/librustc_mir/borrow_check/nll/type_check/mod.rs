@@ -776,12 +776,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         locations: Locations,
     ) -> UnitResult<'tcx> {
         let param_env = self.param_env;
-        self.fully_perform_op(locations, type_op::Subtype::new(param_env, sub, sup))
+        self.fully_perform_op(locations, type_op::subtype::Subtype::new(param_env, sub, sup))
     }
 
     fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> UnitResult<'tcx> {
         let param_env = self.param_env;
-        self.fully_perform_op(locations, type_op::Eq::new(param_env, b, a))
+        self.fully_perform_op(locations, type_op::eq::Eq::new(param_env, b, a))
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
@@ -1560,7 +1560,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         let param_env = self.param_env;
         self.fully_perform_op(
             location.at_self(),
-            type_op::ProvePredicates::new(param_env, predicates),
+            type_op::predicates::ProvePredicates::new(param_env, predicates),
         ).unwrap()
     }
 
@@ -1598,7 +1598,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         let param_env = self.param_env;
         self.fully_perform_op(
             location.to_locations(),
-            type_op::Normalize::new(param_env, value),
+            type_op::normalize::Normalize::new(param_env, value),
         ).unwrap()
     }
 }

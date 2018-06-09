@@ -9,7 +9,8 @@
 // except according to those terms.
 
 use borrow_check::nll::region_infer::Cause;
-use borrow_check::nll::type_check::type_op::{DropckOutlives, TypeOp};
+use borrow_check::nll::type_check::type_op::TypeOp;
+use borrow_check::nll::type_check::type_op::outlives::DropckOutlives;
 use borrow_check::nll::type_check::AtLocation;
 use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow::MaybeInitializedPlaces;
