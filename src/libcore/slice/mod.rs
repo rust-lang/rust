@@ -3873,7 +3873,7 @@ unsafe impl<'a, T> TrustedRandomAccess for ExactChunksMut<'a, T> {
 /// valid for `len` elements, nor whether the lifetime inferred is a suitable
 /// lifetime for the returned slice.
 ///
-/// `data` must be non-null and aligned, even for zero-length slices. The
+/// `data` must be non-null and aligned, even for zero-length slices. One
 /// reason for this is that enum layout optimizations may rely on references
 /// (including slices of any length) being aligned and non-null to distinguish
 /// them from other data. You can obtain a pointer that is usable as `data`
