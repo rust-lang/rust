@@ -724,7 +724,7 @@ impl Step for CodegenBackend {
         if builder.config.dry_run {
             return;
         }
-        let mut files = files.into_iter()
+        let mut files = files.iter()
             .filter(|f| {
                 let filename = f.file_name().unwrap().to_str().unwrap();
                 is_dylib(filename) && filename.contains("rustc_codegen_llvm-")

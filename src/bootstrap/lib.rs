@@ -332,6 +332,18 @@ impl Mode {
             _ => false
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Mode::Std => "std",
+            Mode::Test => "test",
+            Mode::Rustc => "rustc",
+            Mode::Codegen => "codegen",
+            Mode::ToolStd => "tool",
+            Mode::ToolTest => "tool",
+            Mode::ToolRustc => "tool",
+        }
+    }
 }
 
 impl Build {
@@ -534,8 +546,8 @@ impl Build {
         let suffix = match mode {
             Mode::Std => "-std",
             Mode::Test => "-test",
-            Mode::Codegen => "-rustc",
             Mode::Rustc => "-rustc",
+            Mode::Codegen => "-codegen",
             Mode::ToolStd | Mode::ToolTest | Mode::ToolRustc => "-tools",
         };
         self.out.join(&*compiler.host)

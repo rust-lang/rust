@@ -729,7 +729,7 @@ impl<'a> Builder<'a> {
         } else {
             &self.config.channel
         };
-        cargo.env("__CARGO_DEFAULT_LIB_METADATA", &metadata);
+        cargo.env("__CARGO_DEFAULT_LIB_METADATA", &format!("{}-{}", metadata, mode.as_str()));
 
         let stage;
         if compiler.stage == 0 && self.local_rebuild {
