@@ -3093,7 +3093,7 @@ impl<'a> LoweringContext<'a> {
                             span_err!(
                                 this.sess,
                                 fn_decl_span,
-                                E0906,
+                                E0697,
                                 "closures cannot be static"
                             );
                         }

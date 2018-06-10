@@ -556,7 +556,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
                         let mut err = struct_span_err!(
                             self.tcx.sess,
                             span,
-                            E0909,
+                            E0700,
                             "hidden type for `impl Trait` captures lifetime that \
                              does not appear in bounds",
                         );

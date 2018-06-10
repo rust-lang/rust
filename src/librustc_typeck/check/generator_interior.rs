@@ -65,7 +65,7 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
                    expr, scope, ty, self.expr_count, yield_span);
 
             if self.fcx.any_unresolved_type_vars(&ty) {
-                let mut err = struct_span_err!(self.fcx.tcx.sess, source_span, E0907,
+                let mut err = struct_span_err!(self.fcx.tcx.sess, source_span, E0698,
                     "type inside generator must be known in this context");
                 err.span_note(yield_span,
                               "the type is part of the generator because of this `yield`");
