@@ -841,7 +841,8 @@ impl<'a> Builder<'a> {
             let suffix = match mode {
                 Mode::Std => "rustc-std",
                 Mode::Test => "rustc-test",
-                Mode::Codegen | Mode::Rustc => "rustc-rustc",
+                Mode::Codegen => "rustc-codegen",
+                Mode::Rustc => "rustc-rustc",
                 Mode::ToolStd | Mode::ToolTest | Mode::ToolRustc => "rustc-tools",
             };
             cargo.env("RUSTC_METADATA_SUFFIX", suffix);

@@ -20,6 +20,15 @@ panic_abort = { path = "../libpanic_abort" }
 libc = { path = "../rustc/libc_shim" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
+object = { version = "0.9", default-features = false, optional = true }
+
+[dependencies.gimli]
+version = "0.16"
+default-features = false
+features = ["alloc"]
+git = "https://github.com/est31/gimli"
+rev = "304caacf8b73f117813b1a0d436ce24403459bf2"
+optional = true
 
 [dependencies.addr2line]
 git = "https://github.com/est31/addr2line"
@@ -46,7 +55,7 @@ cc = "1.0"
 build_helper = { path = "../build_helper" }
 
 [features]
-backtrace = ["addr2line"]
+backtrace = ["addr2line", "object", "gimli"]
 debug-jemalloc = ["alloc_jemalloc/debug"]
 jemalloc = ["alloc_jemalloc"]
 force_alloc_system = []
