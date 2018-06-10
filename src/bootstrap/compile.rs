@@ -1121,28 +1121,28 @@ pub fn run_cargo(builder: &Builder, cargo: &mut Command, stamp: &Path, is_check:
             CargoMessage::CompilerArtifact { filenames, .. } => filenames,
             _ => return,
         };
-        for filename in filenames {
+        for filename in filenames.iter() {
             // Skip files like executables
             if !filename.ends_with(".rlib") &&
                !filename.ends_with(".lib") &&
                !is_dylib(&filename) &&
                !(is_check && filename.ends_with(".rmeta")) {
-                return;
+                break;
             }
 
-            let filename = Path::new(&*filename);
+            let filename = Path::new(&**filename);
 
             // If this was an output file in the "host dir" we don't actually
             // worry about it, it's not relevant for us.
             if filename.starts_with(&host_root_dir) {
-                return;
+                break;
             }
 
             // If this was output in the `deps` dir then this is a precise file
             // name (hash included) so we start tracking it.
             if filename.starts_with(&target_deps_dir) {
                 deps.push(filename.to_path_buf());
-                return;
+                break;
             }
 
             // Otherwise this was a "top level artifact" which right now doesn't
@@ -1162,6 +1162,33 @@ pub fn run_cargo(builder: &Builder, cargo: &mut Command, stamp: &Path, is_check:
             let extension = parts.next().unwrap().to_owned();
 
             toplevel.push((file_stem, extension, expected_len));
+        }
+        for filename in filenames {
+            // Skip files like executables
+            if !filename.ends_with(".rlib") &&
+               !filename.ends_with(".lib") &&
+               !is_dylib(&filename) &&
+               !(is_check && filename.ends_with(".rmeta")) {
+                break;
+            }
+
+            let filename = Path::new(&*filename);
+
+            // If this was an output file in the "host dir" we don't actually
+            // worry about it, it's not relevant for us.
+            if filename.starts_with(&host_root_dir) {
+                let f = filename.file_name();
+                if deps.iter().find(|v| v.file_name() == f).is_none() {
+                    deps.push(filename.to_path_buf());
+                }
+                continue;
+            }
+
+            // If this was output in the `deps` dir then this is a precise file
+            // name (hash included) so we start tracking it.
+            if filename.starts_with(&target_deps_dir) {
+                break;
+            }
         }
     });
 

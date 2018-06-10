@@ -838,7 +838,13 @@ impl<'a> Builder<'a> {
             // already-passed -C metadata flag with our own. Our rustc.rs
             // wrapper around the actual rustc will detect -C metadata being
             // passed and frob it with this extra string we're passing in.
-            cargo.env("RUSTC_METADATA_SUFFIX", "rustc");
+            let suffix = match mode {
+                Mode::Std => "rustc-std",
+                Mode::Test => "rustc-test",
+                Mode::Codegen | Mode::Rustc => "rustc-rustc",
+                Mode::ToolStd | Mode::ToolTest | Mode::ToolRustc => "rustc-tools",
+            };
+            cargo.env("RUSTC_METADATA_SUFFIX", suffix);
         }
 
         if let Some(x) = self.crt_static(target) {
