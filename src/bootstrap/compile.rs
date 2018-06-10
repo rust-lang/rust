@@ -50,6 +50,10 @@ impl Step for Std {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.all_krates("std")
+            .path("src/libcore")
+            .path("src/liballoc")
+            .path("src/libstd_unicode")
+            .path("src/rustc/compiler_builtins_shim")
     }
 
     fn make_run(run: RunConfig) {

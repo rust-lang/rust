@@ -1526,7 +1526,10 @@ impl Step for Crate {
                 run = run.path(krate.local_path(&builder).to_str().unwrap());
             }
         }
-        run
+        run.path("src/libcore")
+            .path("src/liballoc")
+            .path("src/libstd_unicode")
+            .path("src/rustc/compiler_builtins_shim")
     }
 
     fn make_run(run: RunConfig) {
