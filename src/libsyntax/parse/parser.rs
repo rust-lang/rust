@@ -4746,6 +4746,7 @@ impl<'a> Parser<'a> {
                                  self.check_keyword(keywords::For) ||
                                  self.check(&token::OpenDelim(token::Paren));
             if is_bound_start {
+                let lo = self.span;
                 let has_parens = self.eat(&token::OpenDelim(token::Paren));
                 let question = if self.eat(&token::Question) { Some(self.prev_span) } else { None };
                 if self.token.is_lifetime() {
@@ -4754,10 +4755,17 @@ impl<'a> Parser<'a> {
                                       "`?` may only modify trait bounds, not lifetime bounds");
                     }
                     bounds.push(RegionTyParamBound(self.expect_lifetime()));
+                    if has_parens {
+                        self.expect(&token::CloseDelim(token::Paren))?;
+                        self.span_err(self.prev_span,
+                                      "parenthesized lifetime bounds are not supported");
+                    }
                 } else {
-                    let lo = self.span;
                     let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
                     let path = self.parse_path(PathStyle::Type)?;
+                    if has_parens {
+                        self.expect(&token::CloseDelim(token::Paren))?;
+                    }
                     let poly_trait = PolyTraitRef::new(lifetime_defs, path, lo.to(self.prev_span));
                     let modifier = if question.is_some() {
                         TraitBoundModifier::Maybe
@@ -4765,13 +4773,6 @@ impl<'a> Parser<'a> {
                         TraitBoundModifier::None
                     };
                     bounds.push(TraitTyParamBound(poly_trait, modifier));
-                }
-                if has_parens {
-                    self.expect(&token::CloseDelim(token::Paren))?;
-                    if let Some(&RegionTyParamBound(..)) = bounds.last() {
-                        self.span_err(self.prev_span,
-                                      "parenthesized lifetime bounds are not supported");
-                    }
                 }
             } else {
                 break
