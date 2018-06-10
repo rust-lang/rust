@@ -1023,6 +1023,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
 /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
 newtype_index!(DebruijnIndex
     {
+        DEBUG_FORMAT = "DebrujinIndex({})",
         const INNERMOST = 0,
     });
 
