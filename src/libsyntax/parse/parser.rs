@@ -637,7 +637,26 @@ impl<'a> Parser<'a> {
                 let mut err = self.fatal(&format!("expected `{}`, found `{}`",
                                                   token_str,
                                                   this_token_str));
-                err.span_label(self.span, format!("expected `{}`", token_str));
+
+                let sp = if self.token == token::Token::Eof {
+                    // EOF, don't want to point at the following char, but rather the last token
+                    self.prev_span
+                } else {
+                    self.sess.codemap().next_point(self.prev_span)
+                };
+                let label_exp = format!("expected `{}`", token_str);
+                let cm = self.sess.codemap();
+                match (cm.lookup_line(self.span.lo()), cm.lookup_line(sp.lo())) {
+                    (Ok(ref a), Ok(ref b)) if a.line == b.line => {
+                        // When the spans are in the same line, it means that the only content between
+                        // them is whitespace, point only at the found token.
+                        err.span_label(self.span, label_exp);
+                    }
+                    _ => {
+                        err.span_label(sp, label_exp);
+                        err.span_label(self.span, "unexpected token");
+                    }
+                }
                 Err(err)
             }
         } else {
