@@ -23,7 +23,7 @@ use syntax::ast;
 use std::path::PathBuf;
 
 struct MiriCompilerCalls {
-    default: RustcDefaultCalls,
+    default: Box<RustcDefaultCalls>,
     /// Whether to begin interpretation at the start_fn lang item or not
     /// 
     /// If false, the interpretation begins at the `main` function
@@ -78,13 +78,14 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         self.default.late_callback(codegen_backend, matches, sess, cstore, input, odir, ofile)
     }
     fn build_controller(
-        &mut self,
+        self: Box<Self>,
         sess: &Session,
         matches: &getopts::Matches,
     ) -> CompileController<'a> {
-        let mut control = self.default.build_controller(sess, matches);
+        let this = *self;
+        let mut control = this.default.build_controller(sess, matches);
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
-        let start_fn = self.start_fn;
+        let start_fn = this.start_fn;
         control.after_analysis.callback = Box::new(move |state| after_analysis(state, start_fn));
         if sess.target.target != sess.host {
             // only fully compile targets on the host. linking will fail for cross-compilation.
@@ -234,8 +235,8 @@ fn main() {
     // Make sure we always have all the MIR (e.g. for auxilary builds in unit tests).
     args.push("-Zalways-encode-mir".to_owned());
 
-    rustc_driver::run_compiler(&args, &mut MiriCompilerCalls {
-        default: RustcDefaultCalls,
+    rustc_driver::run_compiler(&args, Box::new(MiriCompilerCalls {
+        default: Box::new(RustcDefaultCalls),
         start_fn,
-    }, None, None);
+    }), None, None);
 }

@@ -24,7 +24,7 @@ use rustc::ty::TyCtxt;
 use syntax::ast;
 
 struct MiriCompilerCalls {
-    default: RustcDefaultCalls,
+    default: Box<RustcDefaultCalls>,
     /// whether we are building for the host
     host_target: bool,
 }
@@ -63,11 +63,12 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
     ) -> Compilation {
         self.default.late_callback(trans, matches, sess, cstore, input, odir, ofile)
     }
-    fn build_controller(&mut self, sess: &Session, matches: &getopts::Matches) -> CompileController<'a> {
-        let mut control = self.default.build_controller(sess, matches);
+    fn build_controller(self: Box<Self>, sess: &Session, matches: &getopts::Matches) -> CompileController<'a> {
+        let this = *self;
+        let mut control = this.default.build_controller(sess, matches);
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
         control.after_analysis.callback = Box::new(after_analysis);
-        if !self.host_target {
+        if !this.host_target {
             // only fully compile targets on the host
             control.after_analysis.stop = Compilation::Stop;
         }
@@ -182,10 +183,10 @@ fn main() {
         let buf = BufWriter::default();
         let output = buf.clone();
         let result = std::panic::catch_unwind(|| {
-            rustc_driver::run_compiler(&args, &mut MiriCompilerCalls {
-                default: RustcDefaultCalls,
+            rustc_driver::run_compiler(&args, Box::new(MiriCompilerCalls {
+                default: Box::new(RustcDefaultCalls),
                 host_target,
-            }, None, Some(Box::new(buf)));
+            }), None, Some(Box::new(buf)));
         });
 
         match result {
