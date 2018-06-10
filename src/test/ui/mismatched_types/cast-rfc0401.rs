@@ -60,7 +60,7 @@ fn main()
 
     let _ = 42usize as *const [u8]; //~ ERROR is invalid
     let _ = v as *const [u8]; //~ ERROR cannot cast
-    let _ = fat_v as *const Foo; //~ ERROR `[u8]` does not have a constant size known at compile-time
+    let _ = fat_v as *const Foo; //~ ERROR `[u8]` does not have a constant size known at
     let _ = foo as *const str; //~ ERROR is invalid
     let _ = foo as *mut str; //~ ERROR is invalid
     let _ = main as *mut str; //~ ERROR is invalid

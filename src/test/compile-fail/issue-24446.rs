@@ -11,7 +11,7 @@
 fn main() {
     static foo: Fn() -> u32 = || -> u32 {
         //~^ ERROR: mismatched types
-        //~| ERROR: `std::ops::Fn() -> u32 + 'static` does not have a constant size known at compile-time
+        //~| ERROR: `std::ops::Fn() -> u32 + 'static` does not have a constant size known at
         0
     };
 }

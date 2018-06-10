@@ -14,7 +14,7 @@ trait Get {
 }
 
 fn foo<T:Get>(t: T) {
-    let x = t.get(); //~ ERROR `<T as Get>::Value` does not have a constant size known at compile-time
+    let x = t.get(); //~ ERROR `<T as Get>::Value` does not have a constant size known at
 }
 
 fn main() {

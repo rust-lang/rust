@@ -648,8 +648,8 @@ impl<'a> Parser<'a> {
                 let cm = self.sess.codemap();
                 match (cm.lookup_line(self.span.lo()), cm.lookup_line(sp.lo())) {
                     (Ok(ref a), Ok(ref b)) if a.line == b.line => {
-                        // When the spans are in the same line, it means that the only content between
-                        // them is whitespace, point only at the found token.
+                        // When the spans are in the same line, it means that the only content
+                        // between them is whitespace, point only at the found token.
                         err.span_label(self.span, label_exp);
                     }
                     _ => {
