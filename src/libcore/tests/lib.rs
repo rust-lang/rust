@@ -24,7 +24,6 @@
 #![feature(fmt_internals)]
 #![feature(hashmap_internals)]
 #![feature(iterator_flatten)]
-#![feature(iterator_repeat_with)]
 #![feature(pattern)]
 #![feature(range_is_empty)]
 #![feature(raw)]

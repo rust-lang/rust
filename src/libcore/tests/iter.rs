@@ -1723,18 +1723,6 @@ fn test_repeat_with() {
 }
 
 #[test]
-fn test_repeat_with_rev() {
-    let mut curr = 1;
-    let mut pow2 = repeat_with(|| { let tmp = curr; curr *= 2; tmp })
-                    .rev().take(4);
-    assert_eq!(pow2.next(), Some(1));
-    assert_eq!(pow2.next(), Some(2));
-    assert_eq!(pow2.next(), Some(4));
-    assert_eq!(pow2.next(), Some(8));
-    assert_eq!(pow2.next(), None);
-}
-
-#[test]
 fn test_repeat_with_take() {
     let mut it = repeat_with(|| 42).take(3);
     assert_eq!(it.next(), Some(42));
