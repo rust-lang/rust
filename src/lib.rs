@@ -24,6 +24,7 @@ use rustc::ty::layout::{TyLayout, LayoutOf, Size};
 use rustc::ty::subst::Subst;
 use rustc::hir::def_id::DefId;
 use rustc::mir;
+use rustc::middle::const_val;
 
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
@@ -253,9 +254,26 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 //tcx.sess.err("the evaluated program leaked memory");
             }
         }
-        Err(mut e) => {
-            ecx.tcx.sess.err(&e.to_string());
-            ecx.report(&mut e, true, None);
+        Err(e) => {
+            if let Some(frame) = ecx.stack().last() {
+                let block = &frame.mir.basic_blocks()[frame.block];
+                let span = if frame.stmt < block.statements.len() {
+                    block.statements[frame.stmt].source_info.span
+                } else {
+                    block.terminator().source_info.span
+                };
+
+                let mut err = const_val::struct_error(ecx.tcx.tcx.at(span), "constant evaluation error");
+                let (frames, span) = ecx.generate_stacktrace(None);
+                err.span_label(span, e.to_string());
+                for const_val::FrameInfo { span, location, .. } in frames {
+                    err.span_note(span, &format!("inside call to `{}`", location));
+                }
+                err.emit();
+            } else {
+                ecx.tcx.sess.err(&e.to_string());
+            }
+
             for (i, frame) in ecx.stack().iter().enumerate() {
                 trace!("-------------------");
                 trace!("Frame {}", i);
