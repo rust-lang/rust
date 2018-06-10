@@ -72,7 +72,7 @@ fn callback(state: &driver::CompileState, version: &str, verbose: bool) {
 /// A wrapper to control compilation.
 struct SemVerVerCompilerCalls {
     /// The wrapped compilation handle.
-    default: RustcDefaultCalls,
+    default: Box<RustcDefaultCalls>,
     /// The version of the old crate.
     version: String,
     /// The output mode.
@@ -81,12 +81,20 @@ struct SemVerVerCompilerCalls {
 
 impl SemVerVerCompilerCalls {
     /// Construct a new compilation wrapper, given a version string.
-    pub fn new(version: String, verbose: bool) -> SemVerVerCompilerCalls {
-        SemVerVerCompilerCalls {
-            default: RustcDefaultCalls,
+    pub fn new(version: String, verbose: bool) -> Box<SemVerVerCompilerCalls> {
+        Box::new(SemVerVerCompilerCalls {
+            default: Box::new(RustcDefaultCalls),
             version,
             verbose,
-        }
+        })
+    }
+
+    pub fn get_default(&self) -> Box<RustcDefaultCalls> {
+        self.default.clone()
+    }
+
+    pub fn get_version(&self) -> &String {
+        &self.version
     }
 }
 
@@ -130,15 +138,16 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
             .late_callback(trans_crate, matches, sess, cstore, input, odir, ofile)
     }
 
-    fn build_controller(&mut self,
+    fn build_controller(self: Box<SemVerVerCompilerCalls>,
                         sess: &Session,
                         matches: &getopts::Matches)
                         -> driver::CompileController<'a> {
-        let mut controller = self.default.build_controller(sess, matches);
+        let default = self.get_default();
+        let version = self.get_version().clone();
+        let SemVerVerCompilerCalls { verbose, .. } = *self;
+        let mut controller = CompilerCalls::build_controller(default, sess, matches);
         let old_callback =
             std::mem::replace(&mut controller.after_analysis.callback, box |_| {});
-        let version = self.version.clone();
-        let verbose = self.verbose;
 
         controller.after_analysis.callback = box move |state| {
             debug!("running rust-semverver after_analysis callback");
@@ -199,8 +208,8 @@ fn main() {
 
         let verbose = std::env::var("RUST_SEMVER_VERBOSE") == Ok("true".to_string());
 
-        let mut cc = SemVerVerCompilerCalls::new(version, verbose);
-        rustc_driver::run_compiler(&args, &mut cc, None, None)
+        let cc = SemVerVerCompilerCalls::new(version, verbose);
+        rustc_driver::run_compiler(&args, cc, None, None)
     });
 
     std::process::exit(result as i32);
