@@ -32,6 +32,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub CONST_TIME_LIMIT,
+    Warn,
+    "constant evaluating a complex constant, this might take some time"
+}
+
+declare_lint! {
     pub UNUSED_IMPORTS,
     Warn,
     "imports that are never used"
