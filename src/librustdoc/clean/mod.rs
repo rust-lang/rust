@@ -1146,7 +1146,7 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
             Def::Struct(did) | Def::Union(did) | Def::Enum(did) | Def::TyAlias(did) => {
                 let item = cx.tcx.inherent_impls(did).iter()
                                  .flat_map(|imp| cx.tcx.associated_items(*imp))
-                                 .find(|item| item.name == item_name);
+                                 .find(|item| item.ident.name == item_name);
                 if let Some(item) = item {
                     let out = match item.kind {
                         ty::AssociatedKind::Method if is_val => "method",
@@ -1181,7 +1181,7 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
             Def::Trait(did) => {
                 let item = cx.tcx.associated_item_def_ids(did).iter()
                              .map(|item| cx.tcx.associated_item(*item))
-                             .find(|item| item.name == item_name);
+                             .find(|item| item.ident.name == item_name);
                 if let Some(item) = item {
                     let kind = match item.kind {
                         ty::AssociatedKind::Const if is_val => "associatedconstant",
@@ -1823,7 +1823,7 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
             GenericBound::Outlives(_) => panic!("cleaning a trait got a lifetime"),
         };
         Type::QPath {
-            name: cx.tcx.associated_item(self.item_def_id).name.clean(cx),
+            name: cx.tcx.associated_item(self.item_def_id).ident.name.clean(cx),
             self_type: box self.self_ty().clean(cx),
             trait_: box trait_
         }
@@ -2360,7 +2360,7 @@ impl Clean<Item> for hir::TraitItem {
             }
         };
         Item {
-            name: Some(self.name.clean(cx)),
+            name: Some(self.ident.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
             def_id: cx.tcx.hir.local_def_id(self.id),
@@ -2388,7 +2388,7 @@ impl Clean<Item> for hir::ImplItem {
             }, true),
         };
         Item {
-            name: Some(self.name.clean(cx)),
+            name: Some(self.ident.name.clean(cx)),
             source: self.span.clean(cx),
             attrs: self.attrs.clean(cx),
             def_id: cx.tcx.hir.local_def_id(self.id),
@@ -2474,7 +2474,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                 }
             }
             ty::AssociatedKind::Type => {
-                let my_name = self.name.clean(cx);
+                let my_name = self.ident.name.clean(cx);
 
                 if let ty::TraitContainer(did) = self.container {
                     // When loading a cross-crate associated type, the bounds for this type
@@ -2537,7 +2537,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
         };
 
         Item {
-            name: Some(self.name.clean(cx)),
+            name: Some(self.ident.name.clean(cx)),
             visibility,
             stability: get_stability(cx, self.def_id),
             deprecation: get_deprecation(cx, self.def_id),
@@ -3099,7 +3099,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     let mut bindings = vec![];
                     for pb in obj.projection_bounds() {
                         bindings.push(TypeBinding {
-                            name: cx.tcx.associated_item(pb.item_def_id()).name.clean(cx),
+                            name: cx.tcx.associated_item(pb.item_def_id()).ident.name.clean(cx),
                             ty: pb.skip_binder().ty.clean(cx)
                         });
                     }
@@ -3156,7 +3156,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                             if proj.projection_ty.trait_ref(cx.tcx) == *trait_ref.skip_binder() {
                                 Some(TypeBinding {
                                     name: cx.tcx.associated_item(proj.projection_ty.item_def_id)
-                                                .name.clean(cx),
+                                                .ident.name.clean(cx),
                                     ty: proj.ty.clean(cx),
                                 })
                             } else {
@@ -3823,7 +3823,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
         let provided = trait_.def_id().map(|did| {
             cx.tcx.provided_trait_methods(did)
                   .into_iter()
-                  .map(|meth| meth.name.to_string())
+                  .map(|meth| meth.ident.to_string())
                   .collect()
         }).unwrap_or(FxHashSet());
 

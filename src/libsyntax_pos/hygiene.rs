@@ -18,7 +18,7 @@
 use GLOBALS;
 use Span;
 use edition::Edition;
-use symbol::{Ident, Symbol};
+use symbol::Symbol;
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::collections::HashMap;
@@ -190,7 +190,6 @@ pub struct HygieneData {
     marks: Vec<MarkData>,
     syntax_contexts: Vec<SyntaxContextData>,
     markings: HashMap<(SyntaxContext, Mark), SyntaxContext>,
-    gensym_to_ctxt: HashMap<Symbol, Span>,
     default_edition: Edition,
 }
 
@@ -211,7 +210,6 @@ impl HygieneData {
                 modern: SyntaxContext(0),
             }],
             markings: HashMap::new(),
-            gensym_to_ctxt: HashMap::new(),
             default_edition: Edition::Edition2015,
         }
     }
@@ -557,24 +555,5 @@ impl Encodable for SyntaxContext {
 impl Decodable for SyntaxContext {
     fn decode<D: Decoder>(_: &mut D) -> Result<SyntaxContext, D::Error> {
         Ok(SyntaxContext::empty()) // FIXME(jseyfried) intercrate hygiene
-    }
-}
-
-impl Symbol {
-    pub fn from_ident(ident: Ident) -> Symbol {
-        HygieneData::with(|data| {
-            let gensym = ident.name.gensymed();
-            data.gensym_to_ctxt.insert(gensym, ident.span);
-            gensym
-        })
-    }
-
-    pub fn to_ident(self) -> Ident {
-        HygieneData::with(|data| {
-            match data.gensym_to_ctxt.get(&self) {
-                Some(&span) => Ident::new(self.interned(), span),
-                None => Ident::with_empty_ctxt(self),
-            }
-        })
     }
 }

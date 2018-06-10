@@ -810,7 +810,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     true
                 }
             })
-            .map(|candidate| candidate.item.name.to_ident())
+            .map(|candidate| candidate.item.ident)
             .filter(|&name| set.insert(name))
             .collect();
 
@@ -1309,14 +1309,14 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 Ok(None)
             } else {
                 let best_name = {
-                    let names = applicable_close_candidates.iter().map(|cand| &cand.name);
+                    let names = applicable_close_candidates.iter().map(|cand| &cand.ident.name);
                     find_best_match_for_name(names,
                                              &self.method_name.unwrap().as_str(),
                                              None)
                 }.unwrap();
                 Ok(applicable_close_candidates
                    .into_iter()
-                   .find(|method| method.name == best_name))
+                   .find(|method| method.ident.name == best_name))
             }
         })
     }
@@ -1456,7 +1456,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 let max_dist = max(name.as_str().len(), 3) / 3;
                 self.tcx.associated_items(def_id)
                     .filter(|x| {
-                        let dist = lev_distance(&*name.as_str(), &x.name.as_str());
+                        let dist = lev_distance(&*name.as_str(), &x.ident.as_str());
                         Namespace::from(x.kind) == Namespace::Value && dist > 0
                         && dist <= max_dist
                     })

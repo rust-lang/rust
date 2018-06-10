@@ -130,7 +130,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             .filter(|item| item.kind == ty::AssociatedKind::Method)
             .filter_map(|item| {
                 self.object_safety_violation_for_method(trait_def_id, &item)
-                    .map(|code| ObjectSafetyViolation::Method(item.name, code))
+                    .map(|code| ObjectSafetyViolation::Method(item.ident.name, code))
             }).filter(|violation| {
                 if let ObjectSafetyViolation::Method(_,
                                 MethodViolationCode::WhereClauseReferencesSelf(span)) = violation {
@@ -159,7 +159,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         violations.extend(self.associated_items(trait_def_id)
             .filter(|item| item.kind == ty::AssociatedKind::Const)
-            .map(|item| ObjectSafetyViolation::AssociatedConst(item.name)));
+            .map(|item| ObjectSafetyViolation::AssociatedConst(item.ident.name)));
 
         debug!("object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",
                trait_def_id,

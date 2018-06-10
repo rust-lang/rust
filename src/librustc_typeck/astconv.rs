@@ -490,7 +490,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     {
         self.tcx().associated_items(trait_def_id).any(|item| {
             item.kind == ty::AssociatedKind::Type &&
-            self.tcx().hygienic_eq(assoc_name, item.name.to_ident(), trait_def_id)
+            self.tcx().hygienic_eq(assoc_name, item.ident, trait_def_id)
         })
     }
 
@@ -571,7 +571,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let (assoc_ident, def_scope) =
             tcx.adjust_ident(binding.item_name, candidate.def_id(), ref_id);
         let assoc_ty = tcx.associated_items(candidate.def_id()).find(|i| {
-            i.kind == ty::AssociatedKind::Type && i.name.to_ident() == assoc_ident
+            i.kind == ty::AssociatedKind::Type && i.ident.modern() == assoc_ident
         }).expect("missing associated type");
 
         if !assoc_ty.vis.is_accessible_from(def_scope, tcx) {
@@ -711,10 +711,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             let trait_def_id = assoc_item.container.id();
             struct_span_err!(tcx.sess, span, E0191,
                 "the value of the associated type `{}` (from the trait `{}`) must be specified",
-                        assoc_item.name,
+                        assoc_item.ident,
                         tcx.item_path_str(trait_def_id))
                         .span_label(span, format!(
-                            "missing associated type `{}` value", assoc_item.name))
+                            "missing associated type `{}` value", assoc_item.ident))
                         .emit();
         }
 
@@ -837,7 +837,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             for bound in bounds {
                 let bound_span = self.tcx().associated_items(bound.def_id()).find(|item| {
                     item.kind == ty::AssociatedKind::Type &&
-                    self.tcx().hygienic_eq(assoc_name, item.name.to_ident(), bound.def_id())
+                    self.tcx().hygienic_eq(assoc_name, item.ident, bound.def_id())
                 })
                 .and_then(|item| self.tcx().hir.span_if_local(item.def_id));
 
@@ -925,7 +925,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let (assoc_ident, def_scope) = tcx.adjust_ident(assoc_name, trait_did, ref_id);
         let item = tcx.associated_items(trait_did).find(|i| {
             Namespace::from(i.kind) == Namespace::Type &&
-            i.name.to_ident() == assoc_ident
+            i.ident.modern() == assoc_ident
         })
         .expect("missing associated type");
 

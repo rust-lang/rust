@@ -18,7 +18,7 @@ use traits;
 use ty::{self, TyCtxt, TypeFoldable};
 use ty::fast_reject::{self, SimplifiedType};
 use rustc_data_structures::sync::Lrc;
-use syntax::ast::Name;
+use syntax::ast::Ident;
 use util::captures::Captures;
 use util::nodemap::{DefIdMap, FxHashMap};
 
@@ -372,14 +372,14 @@ impl<'a, 'gcx, 'tcx> Ancestors {
     pub fn defs(
         self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        trait_item_name: Name,
+        trait_item_name: Ident,
         trait_item_kind: ty::AssociatedKind,
         trait_def_id: DefId,
     ) -> impl Iterator<Item = NodeItem<ty::AssociatedItem>> + Captures<'gcx> + Captures<'tcx> + 'a {
         self.flat_map(move |node| {
             node.items(tcx).filter(move |impl_item| {
                 impl_item.kind == trait_item_kind &&
-                tcx.hygienic_eq(impl_item.name.to_ident(), trait_item_name.to_ident(), trait_def_id)
+                tcx.hygienic_eq(impl_item.ident, trait_item_name, trait_def_id)
             }).map(move |item| NodeItem { node: node, item: item })
         })
     }

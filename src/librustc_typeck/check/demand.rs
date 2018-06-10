@@ -146,7 +146,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let methods = self.get_conversion_methods(expr.span, expected, checked_ty);
             if let Ok(expr_text) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
                 let suggestions = iter::repeat(expr_text).zip(methods.iter())
-                    .map(|(receiver, method)| format!("{}.{}()", receiver, method.name))
+                    .map(|(receiver, method)| format!("{}.{}()", receiver, method.ident))
                     .collect::<Vec<_>>();
                 if !suggestions.is_empty() {
                     err.span_suggestions(expr.span,

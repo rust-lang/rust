@@ -438,7 +438,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                 qualname.push_str(&self.tcx.item_path_str(def_id));
                                 self.tcx
                                     .associated_items(def_id)
-                                    .find(|item| item.name == name)
+                                    .find(|item| item.ident.name == name)
                                     .map(|item| decl_id = Some(item.def_id));
                             }
                             qualname.push_str(">");
@@ -775,7 +775,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     let ti = self.tcx.associated_item(decl_id);
                     self.tcx
                         .associated_items(ti.container.id())
-                        .find(|item| item.name == ti.name && item.defaultness.has_value())
+                        .find(|item| item.ident.name == ti.ident.name &&
+                                     item.defaultness.has_value())
                         .map(|item| item.def_id)
                 } else {
                     None

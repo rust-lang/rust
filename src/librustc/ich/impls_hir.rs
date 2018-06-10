@@ -705,7 +705,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem {
         let hir::TraitItem {
             id: _,
             hir_id: _,
-            name,
+            ident,
             ref attrs,
             ref generics,
             ref node,
@@ -713,7 +713,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem {
         } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
-            name.hash_stable(hcx, hasher);
+            ident.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
             generics.hash_stable(hcx, hasher);
             node.hash_stable(hcx, hasher);
@@ -740,7 +740,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem {
         let hir::ImplItem {
             id: _,
             hir_id: _,
-            name,
+            ident,
             ref vis,
             defaultness,
             ref attrs,
@@ -750,7 +750,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem {
         } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
-            name.hash_stable(hcx, hasher);
+            ident.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);
             defaultness.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
@@ -916,7 +916,7 @@ impl_stable_hash_for!(enum hir::Item_ {
 
 impl_stable_hash_for!(struct hir::TraitItemRef {
     id,
-    name,
+    ident,
     kind,
     span,
     defaultness
@@ -924,7 +924,7 @@ impl_stable_hash_for!(struct hir::TraitItemRef {
 
 impl_stable_hash_for!(struct hir::ImplItemRef {
     id,
-    name,
+    ident,
     kind,
     span,
     vis,

@@ -244,7 +244,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// of this method is basically the same as confirmation.
     pub fn lookup_method_in_trait(&self,
                                   span: Span,
-                                  m_name: ast::Name,
+                                  m_name: ast::Ident,
                                   trait_def_id: DefId,
                                   self_ty: Ty<'tcx>,
                                   opt_input_types: Option<&[Ty<'tcx>]>)
@@ -290,7 +290,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // type parameters or early-bound regions.
         let tcx = self.tcx;
         let method_item =
-            self.associated_item(trait_def_id, m_name.to_ident(), Namespace::Value).unwrap();
+            self.associated_item(trait_def_id, m_name, Namespace::Value).unwrap();
         let def_id = method_item.def_id;
         let generics = tcx.generics_of(def_id);
         assert_eq!(generics.params.len(), 0);
@@ -390,7 +390,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                            -> Option<ty::AssociatedItem> {
         self.tcx.associated_items(def_id).find(|item| {
             Namespace::from(item.kind) == ns &&
-            self.tcx.hygienic_eq(item_name, item.name.to_ident(), def_id)
+            self.tcx.hygienic_eq(item_name, item.ident, def_id)
         })
     }
 }

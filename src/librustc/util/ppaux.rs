@@ -429,7 +429,7 @@ impl PrintContext {
             ty::tls::with(|tcx|
                 print!(f, self,
                        write("{}=",
-                             tcx.associated_item(projection.projection_ty.item_def_id).name),
+                             tcx.associated_item(projection.projection_ty.item_def_id).ident),
                        print_display(projection.ty))
             )?;
         }
@@ -1286,7 +1286,7 @@ define_print! {
             //   parameterized(f, self.substs, self.item_def_id, &[])
             // (which currently ICEs).
             let (trait_ref, item_name) = ty::tls::with(|tcx|
-                (self.trait_ref(tcx), tcx.associated_item(self.item_def_id).name)
+                (self.trait_ref(tcx), tcx.associated_item(self.item_def_id).ident)
             );
             print!(f, cx, print_debug(trait_ref), write("::{}", item_name))
         }

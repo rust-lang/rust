@@ -391,7 +391,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     let provided = trait_.def_id().map(|did| {
         tcx.provided_trait_methods(did)
            .into_iter()
-           .map(|meth| meth.name.to_string())
+           .map(|meth| meth.ident.to_string())
            .collect()
     }).unwrap_or(FxHashSet());
 

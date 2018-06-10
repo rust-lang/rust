@@ -744,7 +744,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     for impl_item_ref in impl_item_refs {
                         let impl_item = self.tcx.hir.impl_item(impl_item_ref.id);
                         let trait_item_def_id = self.tcx.associated_items(trait_did)
-                            .find(|item| item.name == impl_item.name).map(|item| item.def_id);
+                            .find(|item| item.ident.name == impl_item.ident.name)
+                            .map(|item| item.def_id);
                         if let Some(def_id) = trait_item_def_id {
                             // Pass `None` to skip deprecation warnings.
                             self.tcx.check_stability(def_id, None, impl_item.span);

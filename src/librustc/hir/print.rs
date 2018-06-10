@@ -497,14 +497,14 @@ impl<'a> State<'a> {
     }
 
     fn print_associated_const(&mut self,
-                              name: ast::Name,
+                              ident: ast::Ident,
                               ty: &hir::Ty,
                               default: Option<hir::BodyId>,
                               vis: &hir::Visibility)
                               -> io::Result<()> {
         self.s.word(&visibility_qualified(vis, ""))?;
         self.word_space("const")?;
-        self.print_name(name)?;
+        self.print_ident(ident)?;
         self.word_space(":")?;
         self.print_type(ty)?;
         if let Some(expr) = default {
@@ -516,12 +516,12 @@ impl<'a> State<'a> {
     }
 
     fn print_associated_type(&mut self,
-                             name: ast::Name,
+                             ident: ast::Ident,
                              bounds: Option<&hir::GenericBounds>,
                              ty: Option<&hir::Ty>)
                              -> io::Result<()> {
         self.word_space("type")?;
-        self.print_name(name)?;
+        self.print_ident(ident)?;
         if let Some(bounds) = bounds {
             self.print_bounds(":", bounds)?;
         }
@@ -929,7 +929,7 @@ impl<'a> State<'a> {
         Ok(())
     }
     pub fn print_method_sig(&mut self,
-                            name: ast::Name,
+                            ident: ast::Ident,
                             m: &hir::MethodSig,
                             generics: &hir::Generics,
                             vis: &hir::Visibility,
@@ -938,7 +938,7 @@ impl<'a> State<'a> {
                             -> io::Result<()> {
         self.print_fn(&m.decl,
                       m.header,
-                      Some(name),
+                      Some(ident.name),
                       generics,
                       vis,
                       arg_names,
@@ -952,16 +952,16 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&ti.attrs)?;
         match ti.node {
             hir::TraitItemKind::Const(ref ty, default) => {
-                self.print_associated_const(ti.name, &ty, default, &hir::Inherited)?;
+                self.print_associated_const(ti.ident, &ty, default, &hir::Inherited)?;
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref arg_names)) => {
-                self.print_method_sig(ti.name, sig, &ti.generics, &hir::Inherited, arg_names,
+                self.print_method_sig(ti.ident, sig, &ti.generics, &hir::Inherited, arg_names,
                     None)?;
                 self.s.word(";")?;
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
                 self.head("")?;
-                self.print_method_sig(ti.name, sig, &ti.generics, &hir::Inherited, &[],
+                self.print_method_sig(ti.ident, sig, &ti.generics, &hir::Inherited, &[],
                     Some(body))?;
                 self.nbsp()?;
                 self.end()?; // need to close a box
@@ -969,7 +969,7 @@ impl<'a> State<'a> {
                 self.ann.nested(self, Nested::Body(body))?;
             }
             hir::TraitItemKind::Type(ref bounds, ref default) => {
-                self.print_associated_type(ti.name,
+                self.print_associated_type(ti.ident,
                                            Some(bounds),
                                            default.as_ref().map(|ty| &**ty))?;
             }
@@ -986,18 +986,18 @@ impl<'a> State<'a> {
 
         match ii.node {
             hir::ImplItemKind::Const(ref ty, expr) => {
-                self.print_associated_const(ii.name, &ty, Some(expr), &ii.vis)?;
+                self.print_associated_const(ii.ident, &ty, Some(expr), &ii.vis)?;
             }
             hir::ImplItemKind::Method(ref sig, body) => {
                 self.head("")?;
-                self.print_method_sig(ii.name, sig, &ii.generics, &ii.vis, &[], Some(body))?;
+                self.print_method_sig(ii.ident, sig, &ii.generics, &ii.vis, &[], Some(body))?;
                 self.nbsp()?;
                 self.end()?; // need to close a box
                 self.end()?; // need to close a box
                 self.ann.nested(self, Nested::Body(body))?;
             }
             hir::ImplItemKind::Type(ref ty) => {
-                self.print_associated_type(ii.name, None, Some(ty))?;
+                self.print_associated_type(ii.ident, None, Some(ty))?;
             }
         }
         self.ann.post(self, NodeSubItem(ii.id))
@@ -1615,7 +1615,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_name(&mut self, name: ast::Name) -> io::Result<()> {
-        self.print_ident(name.to_ident())
+        self.print_ident(ast::Ident::with_empty_ctxt(name))
     }
 
     pub fn print_for_decl(&mut self, loc: &hir::Local, coll: &hir::Expr) -> io::Result<()> {

@@ -1078,7 +1078,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                                 let container = ty::ImplContainer(vtable_impl.impl_def_id);
                                 // It matches if it comes from the same impl,
                                 // and has the same method name.
-                                container == method.container && callee_item.name == method.name
+                                container == method.container &&
+                                callee_item.ident.name == method.ident.name
                             }
 
                             // There's no way to know if this call is

@@ -3505,7 +3505,7 @@ impl<'a> Resolver<'a> {
 
         match path.get(1) {
             // If this import looks like `crate::...` it's already good
-            Some(name) if name.name == keywords::Crate.name() => return,
+            Some(ident) if ident.name == keywords::Crate.name() => return,
             // Otherwise go below to see if it's an extern crate
             Some(_) => {}
             // If the path has length one (and it's `CrateRoot` most likely)

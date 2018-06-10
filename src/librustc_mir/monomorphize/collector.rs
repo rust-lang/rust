@@ -1115,10 +1115,10 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
                 let overridden_methods: FxHashSet<_> =
                     impl_item_refs.iter()
-                                  .map(|iiref| iiref.name)
+                                  .map(|iiref| iiref.ident.modern())
                                   .collect();
                 for method in tcx.provided_trait_methods(trait_ref.def_id) {
-                    if overridden_methods.contains(&method.name) {
+                    if overridden_methods.contains(&method.ident.modern()) {
                         continue;
                     }
 

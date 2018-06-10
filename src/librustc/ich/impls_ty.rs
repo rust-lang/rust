@@ -1133,7 +1133,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::CratePredicatesMap<'
 
 impl_stable_hash_for!(struct ty::AssociatedItem {
     def_id,
-    name,
+    ident,
     kind,
     vis,
     defaultness,
