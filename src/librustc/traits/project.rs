@@ -31,6 +31,7 @@ use infer::type_variable::TypeVariableOrigin;
 use middle::const_val::ConstVal;
 use mir::interpret::{GlobalId};
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
+use syntax::ast::Ident;
 use syntax::symbol::Symbol;
 use ty::subst::{Subst, Substs};
 use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
@@ -1452,7 +1453,7 @@ fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
                 projection_ty: ty::ProjectionTy::from_ref_and_name(
                     tcx,
                     trait_ref,
-                    Symbol::intern(FN_OUTPUT_NAME),
+                    Ident::from_str(FN_OUTPUT_NAME),
                 ),
                 ty: ret_type
             }
@@ -1546,7 +1547,7 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
     let impl_node = specialization_graph::Node::Impl(impl_def_id);
     for item in impl_node.items(tcx) {
         if item.kind == ty::AssociatedKind::Type &&
-                tcx.hygienic_eq(item.name, assoc_ty_name, trait_def_id) {
+                tcx.hygienic_eq(item.name.to_ident(), assoc_ty_name.to_ident(), trait_def_id) {
             return specialization_graph::NodeItem {
                 node: specialization_graph::Node::Impl(impl_def_id),
                 item,

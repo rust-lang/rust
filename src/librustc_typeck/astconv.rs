@@ -83,7 +83,7 @@ pub trait AstConv<'gcx, 'tcx> {
 }
 
 struct ConvertedBinding<'tcx> {
-    item_name: ast::Name,
+    item_name: ast::Ident,
     ty: Ty<'tcx>,
     span: Span,
 }
@@ -342,7 +342,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let assoc_bindings = generic_args.bindings.iter().map(|binding| {
             ConvertedBinding {
-                item_name: binding.name,
+                item_name: binding.ident,
                 ty: self.ast_ty_to_ty(&binding.ty),
                 span: binding.span,
             }
@@ -485,12 +485,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     fn trait_defines_associated_type_named(&self,
                                            trait_def_id: DefId,
-                                           assoc_name: ast::Name)
+                                           assoc_name: ast::Ident)
                                            -> bool
     {
         self.tcx().associated_items(trait_def_id).any(|item| {
             item.kind == ty::AssociatedKind::Type &&
-            self.tcx().hygienic_eq(assoc_name, item.name, trait_def_id)
+            self.tcx().hygienic_eq(assoc_name, item.name.to_ident(), trait_def_id)
         })
     }
 
@@ -569,7 +569,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }?;
 
         let (assoc_ident, def_scope) =
-            tcx.adjust_ident(binding.item_name.to_ident(), candidate.def_id(), ref_id);
+            tcx.adjust_ident(binding.item_name, candidate.def_id(), ref_id);
         let assoc_ty = tcx.associated_items(candidate.def_id()).find(|i| {
             i.kind == ty::AssociatedKind::Type && i.name.to_ident() == assoc_ident
         }).expect("missing associated type");
@@ -778,7 +778,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     // any ambiguity.
     fn find_bound_for_assoc_item(&self,
                                  ty_param_def_id: DefId,
-                                 assoc_name: ast::Name,
+                                 assoc_name: ast::Ident,
                                  span: Span)
                                  -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
     {
@@ -807,7 +807,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     fn one_bound_for_assoc_type<I>(&self,
                                 mut bounds: I,
                                 ty_param_name: &str,
-                                assoc_name: ast::Name,
+                                assoc_name: ast::Ident,
                                 span: Span)
         -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
         where I: Iterator<Item=ty::PolyTraitRef<'tcx>>
@@ -837,7 +837,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             for bound in bounds {
                 let bound_span = self.tcx().associated_items(bound.def_id()).find(|item| {
                     item.kind == ty::AssociatedKind::Type &&
-                    self.tcx().hygienic_eq(assoc_name, item.name, bound.def_id())
+                    self.tcx().hygienic_eq(assoc_name, item.name.to_ident(), bound.def_id())
                 })
                 .and_then(|item| self.tcx().hir.span_if_local(item.def_id));
 
@@ -873,7 +873,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                      -> (Ty<'tcx>, Def)
     {
         let tcx = self.tcx();
-        let assoc_name = item_segment.name;
+        let assoc_name = item_segment.name.to_ident();
 
         debug!("associated_path_def_to_ty: {:?}::{}", ty, assoc_name);
 
@@ -895,8 +895,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
                 let candidates =
                     traits::supertraits(tcx, ty::Binder::bind(trait_ref))
-                    .filter(|r| self.trait_defines_associated_type_named(r.def_id(),
-                                                                         assoc_name));
+                    .filter(|r| self.trait_defines_associated_type_named(r.def_id(), assoc_name));
 
                 match self.one_bound_for_assoc_type(candidates, "Self", assoc_name, span) {
                     Ok(bound) => bound,
@@ -923,7 +922,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         };
 
         let trait_did = bound.def_id();
-        let (assoc_ident, def_scope) = tcx.adjust_ident(assoc_name.to_ident(), trait_did, ref_id);
+        let (assoc_ident, def_scope) = tcx.adjust_ident(assoc_name, trait_did, ref_id);
         let item = tcx.associated_items(trait_did).find(|i| {
             Namespace::from(i.kind) == Namespace::Type &&
             i.name.to_ident() == assoc_ident

@@ -379,7 +379,7 @@ impl<'a, 'gcx, 'tcx> Ancestors {
         self.flat_map(move |node| {
             node.items(tcx).filter(move |impl_item| {
                 impl_item.kind == trait_item_kind &&
-                tcx.hygienic_eq(impl_item.name, trait_item_name, trait_def_id)
+                tcx.hygienic_eq(impl_item.name.to_ident(), trait_item_name.to_ident(), trait_def_id)
             }).map(move |item| NodeItem { node: node, item: item })
         })
     }

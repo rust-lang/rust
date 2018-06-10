@@ -660,7 +660,7 @@ pub fn walk_generic_args<'v, V: Visitor<'v>>(visitor: &mut V,
 pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(visitor: &mut V,
                                                    type_binding: &'v TypeBinding) {
     visitor.visit_id(type_binding.id);
-    visitor.visit_name(type_binding.span, type_binding.name);
+    visitor.visit_ident(type_binding.ident);
     visitor.visit_ty(&type_binding.ty);
 }
 

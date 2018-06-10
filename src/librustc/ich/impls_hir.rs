@@ -278,7 +278,7 @@ impl_stable_hash_for!(struct hir::MethodSig {
 
 impl_stable_hash_for!(struct hir::TypeBinding {
     id,
-    name,
+    ident,
     ty,
     span
 });

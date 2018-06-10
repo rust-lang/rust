@@ -1064,7 +1064,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_ty_binding(&mut self, b: &TypeBinding, itctx: ImplTraitContext) -> hir::TypeBinding {
         hir::TypeBinding {
             id: self.lower_node_id(b.id).node_id,
-            name: self.lower_ident(b.ident),
+            ident: b.ident,
             ty: self.lower_ty(&b.ty, itctx),
             span: b.span,
         }
@@ -1820,7 +1820,7 @@ impl<'a> LoweringContext<'a> {
                         bindings: hir_vec![
                             hir::TypeBinding {
                                 id: this.next_id().node_id,
-                                name: Symbol::intern(FN_OUTPUT_NAME),
+                                ident: Ident::from_str(FN_OUTPUT_NAME),
                                 ty: output
                                     .as_ref()
                                     .map(|ty| this.lower_ty(&ty, DISALLOWED))

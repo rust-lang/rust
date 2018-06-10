@@ -1607,7 +1607,7 @@ pub enum ImplItemKind {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TypeBinding {
     pub id: NodeId,
-    pub name: Name,
+    pub ident: Ident,
     pub ty: P<Ty>,
     pub span: Span,
 }

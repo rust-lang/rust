@@ -387,8 +387,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// and return it, or `None`, if no such item was defined there.
     pub fn associated_item(&self, def_id: DefId, item_name: ast::Name, ns: Namespace)
                            -> Option<ty::AssociatedItem> {
-        self.tcx.associated_items(def_id)
-                .find(|item| Namespace::from(item.kind) == ns &&
-                             self.tcx.hygienic_eq(item_name, item.name, def_id))
+        self.tcx.associated_items(def_id).find(|item| {
+            Namespace::from(item.kind) == ns &&
+            self.tcx.hygienic_eq(item_name.to_ident(), item.name.to_ident(), def_id)
+        })
     }
 }
