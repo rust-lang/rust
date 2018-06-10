@@ -5,6 +5,7 @@ LL |     mem::size_of::<U>();
    |     ^^^^^^^^^^^^^^^^^ `U` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `U`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = help: consider adding a `where U: std::marker::Sized` bound
    = note: required by `std::mem::size_of`
 
@@ -15,6 +16,7 @@ LL |     mem::size_of::<Misc<U>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ `U` does not have a constant size known at compile-time
    |
    = help: within `Misc<U>`, the trait `std::marker::Sized` is not implemented for `U`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = help: consider adding a `where U: std::marker::Sized` bound
    = note: required because it appears within the type `Misc<U>`
    = note: required by `std::mem::size_of`
@@ -52,6 +54,7 @@ LL |     mem::size_of::<[T]>();
    |     ^^^^^^^^^^^^^^^^^^^ `[T]` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[T]`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: required by `std::mem::size_of`
 
 error[E0277]: `[&U]` does not have a constant size known at compile-time
@@ -61,6 +64,7 @@ LL |     mem::size_of::<[&U]>();
    |     ^^^^^^^^^^^^^^^^^^^^ `[&U]` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[&U]`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: required by `std::mem::size_of`
 
 error: aborting due to 7 previous errors

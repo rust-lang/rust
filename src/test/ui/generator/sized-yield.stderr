@@ -9,6 +9,7 @@ LL | |    };
    | |____^ `str` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: the yield type of a generator must have a statically known size
 
 error[E0277]: `str` does not have a constant size known at compile-time
@@ -18,6 +19,7 @@ LL |    unsafe { gen.resume(); }
    |                 ^^^^^^ `str` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
 
 error: aborting due to 2 previous errors
 

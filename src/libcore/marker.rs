@@ -93,7 +93,9 @@ impl<T: ?Sized> !Send for *mut T { }
 #[lang = "sized"]
 #[rustc_on_unimplemented(
     message="`{Self}` does not have a constant size known at compile-time",
-    label="`{Self}` does not have a constant size known at compile-time"
+    label="`{Self}` does not have a constant size known at compile-time",
+    note="to learn more, visit <https://doc.rust-lang.org/book/second-edition/\
+          ch19-04-advanced-types.html#dynamically-sized-types--sized>",
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 pub trait Sized {

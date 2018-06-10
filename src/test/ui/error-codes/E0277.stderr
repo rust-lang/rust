@@ -5,6 +5,7 @@ LL | fn f(p: Path) { }
    |      ^ `[u8]` does not have a constant size known at compile-time
    |
    = help: within `std::path::Path`, the trait `std::marker::Sized` is not implemented for `[u8]`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: required because it appears within the type `std::path::Path`
    = note: all local variables must have a statically known size
 

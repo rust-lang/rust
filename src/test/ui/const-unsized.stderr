@@ -5,6 +5,7 @@ LL | const CONST_0: Debug+Sync = *(&0 as &(Debug+Sync));
    |                             ^^^^^^^^^^^^^^^^^^^^^^ `std::fmt::Debug + std::marker::Sync + 'static` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `std::fmt::Debug + std::marker::Sync + 'static`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: constant expressions must have a statically known size
 
 error[E0277]: `str` does not have a constant size known at compile-time
@@ -14,6 +15,7 @@ LL | const CONST_FOO: str = *"foo";
    |                        ^^^^^^ `str` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: constant expressions must have a statically known size
 
 error[E0277]: `std::fmt::Debug + std::marker::Sync + 'static` does not have a constant size known at compile-time
@@ -23,6 +25,7 @@ LL | static STATIC_1: Debug+Sync = *(&1 as &(Debug+Sync));
    |                               ^^^^^^^^^^^^^^^^^^^^^^ `std::fmt::Debug + std::marker::Sync + 'static` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `std::fmt::Debug + std::marker::Sync + 'static`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: constant expressions must have a statically known size
 
 error[E0277]: `str` does not have a constant size known at compile-time
@@ -32,6 +35,7 @@ LL | static STATIC_BAR: str = *"bar";
    |                          ^^^^^^ `str` does not have a constant size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: constant expressions must have a statically known size
 
 error: aborting due to 4 previous errors
