@@ -744,7 +744,7 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         -> Option<Span> {
         let mut visitor = LateBoundRegionsDetector {
             tcx,
-            outer_index: ty::DebruijnIndex::INNERMOST,
+            outer_index: ty::INNERMOST,
             has_late_bound_regions: None,
         };
         for lifetime in generics.lifetimes() {
