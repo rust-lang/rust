@@ -467,7 +467,9 @@ pub use core::hint;
            issue = "50547")]
 pub mod task {
     //! Types and Traits for working with asynchronous tasks.
+    #[doc(inline)]
     pub use core::task::*;
+    #[doc(inline)]
     pub use alloc_crate::task::*;
 }
 
