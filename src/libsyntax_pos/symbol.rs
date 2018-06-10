@@ -384,34 +384,30 @@ declare_keywords! {
 
     // Keywords reserved for future use.
     (40, Abstract,           "abstract")
-    (41, Alignof,            "alignof")
-    (42, Become,             "become")
-    (43, Do,                 "do")
-    (44, Final,              "final")
-    (45, Macro,              "macro")
-    (46, Offsetof,           "offsetof")
-    (47, Override,           "override")
-    (48, Priv,               "priv")
-    (49, Pure,               "pure")
-    (50, Sizeof,             "sizeof")
-    (51, Typeof,             "typeof")
-    (52, Unsized,            "unsized")
-    (53, Virtual,            "virtual")
-    (54, Yield,              "yield")
+    (41, Become,             "become")
+    (42, Do,                 "do")
+    (43, Final,              "final")
+    (44, Macro,              "macro")
+    (45, Override,           "override")
+    (46, Priv,               "priv")
+    (47, Typeof,             "typeof")
+    (48, Unsized,            "unsized")
+    (49, Virtual,            "virtual")
+    (50, Yield,              "yield")
 
     // Edition-specific keywords reserved for future use.
-    (55, Async,              "async") // >= 2018 Edition Only
+    (51, Async,              "async") // >= 2018 Edition Only
 
     // Special lifetime names
-    (56, UnderscoreLifetime, "'_")
-    (57, StaticLifetime,     "'static")
+    (52, UnderscoreLifetime, "'_")
+    (53, StaticLifetime,     "'static")
 
     // Weak keywords, have special meaning only in specific contexts.
-    (58, Auto,               "auto")
-    (59, Catch,              "catch")
-    (60, Default,            "default")
-    (61, Dyn,                "dyn")
-    (62, Union,              "union")
+    (54, Auto,               "auto")
+    (55, Catch,              "catch")
+    (56, Default,            "default")
+    (57, Dyn,                "dyn")
+    (58, Union,              "union")
 }
 
 impl Symbol {
