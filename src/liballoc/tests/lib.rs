@@ -15,7 +15,6 @@
 #![feature(const_fn)]
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
-#![feature(iterator_step_by)]
 #![feature(pattern)]
 #![feature(rand)]
 #![feature(slice_sort_by_cached_key)]

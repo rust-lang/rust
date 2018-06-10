@@ -283,7 +283,6 @@ pub trait Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(iterator_step_by)]
     /// let a = [0, 1, 2, 3, 4, 5];
     /// let mut iter = a.into_iter().step_by(2);
     ///
@@ -293,9 +292,7 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_step_by",
-               reason = "unstable replacement of Range::step_by",
-               issue = "27741")]
+    #[stable(feature = "iterator_step_by", since = "1.28.0")]
     fn step_by(self, step: usize) -> StepBy<Self> where Self: Sized {
         assert!(step != 0);
         StepBy{iter: self, step: step - 1, first_take: true}
