@@ -95,10 +95,10 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             }
         }
 
-        let (error_var, span_label_var) = if let Some(simple_name) = arg.pat.simple_name() {
+        let (error_var, span_label_var) = if let Some(simple_ident) = arg.pat.simple_ident() {
             (
-                format!("the type of `{}`", simple_name),
-                format!("the type of `{}`", simple_name),
+                format!("the type of `{}`", simple_ident),
+                format!("the type of `{}`", simple_ident),
             )
         } else {
             ("parameter type".to_owned(), "type".to_owned())

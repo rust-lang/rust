@@ -960,14 +960,14 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
 
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &'gcx hir::Pat) {
-        if let PatKind::Binding(_, _, ref path1, _) = p.node {
+        if let PatKind::Binding(_, _, ident, _) = p.node {
             let var_ty = self.assign(p.span, p.id, None);
 
             self.fcx.require_type_is_sized(var_ty, p.span,
                                            traits::VariableType(p.id));
 
             debug!("Pattern binding {} is assigned to {} with type {:?}",
-                   path1.node,
+                   ident,
                    self.fcx.ty_to_string(
                        self.fcx.locals.borrow().get(&p.id).unwrap().clone()),
                    var_ty);
@@ -1050,7 +1050,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
-        if arg.pat.simple_name().is_none() {
+        if arg.pat.simple_ident().is_none() {
             fcx.require_type_is_sized(arg_ty, decl.output.span(), traits::MiscObligation);
         }
 

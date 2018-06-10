@@ -538,8 +538,8 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                 mutability: Mutability::Not,
             };
             if let Some(hir::map::NodeBinding(pat)) = tcx.hir.find(var_id) {
-                if let hir::PatKind::Binding(_, _, ref name, _) = pat.node {
-                    decl.debug_name = name.node;
+                if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
+                    decl.debug_name = ident.name;
 
                     let bm = *hir.tables.pat_binding_modes()
                                         .get(pat.hir_id)
@@ -675,8 +675,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // If this is a simple binding pattern, give the local a nice name for debuginfo.
             let mut name = None;
             if let Some(pat) = pattern {
-                if let hir::PatKind::Binding(_, _, ref ident, _) = pat.node {
-                    name = Some(ident.node);
+                if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
+                    name = Some(ident.name);
                 }
             }
 

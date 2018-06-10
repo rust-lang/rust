@@ -969,8 +969,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_label(&mut self, label: Option<Label>) -> Option<hir::Label> {
         label.map(|label| hir::Label {
-            name: label.ident.name,
-            span: label.ident.span,
+            ident: label.ident,
         })
     }
 
@@ -1195,11 +1194,10 @@ impl<'a> LoweringContext<'a> {
 
                         let hir_bounds = self.lower_param_bounds(bounds, itctx);
                         // Set the name to `impl Bound1 + Bound2`
-                        let ident = Ident::from_str(&pprust::ty_to_string(t));
+                        let ident = Ident::from_str(&pprust::ty_to_string(t)).with_span_pos(span);
                         self.in_band_ty_params.push(hir::GenericParam {
                             id: def_node_id,
-                            name: ParamName::Plain(name),
-                            span,
+                            ident: ParamName::Plain(ident),
                             pure_wrt_drop: false,
                             attrs: hir_vec![],
                             bounds: hir_bounds,
@@ -1868,12 +1866,12 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_fn_args_to_names(&mut self, decl: &FnDecl) -> hir::HirVec<Spanned<Name>> {
+    fn lower_fn_args_to_names(&mut self, decl: &FnDecl) -> hir::HirVec<Ident> {
         decl.inputs
             .iter()
             .map(|arg| match arg.pat.node {
-                PatKind::Ident(_, ident, None) => respan(ident.span, ident.name),
-                _ => respan(arg.pat.span, keywords::Invalid.name()),
+                PatKind::Ident(_, ident, _) => ident,
+                _ => Ident::new(keywords::Invalid.name(), arg.pat.span),
             })
             .collect()
     }
@@ -3298,7 +3296,7 @@ impl<'a> LoweringContext<'a> {
                         hir::PatKind::Binding(
                             self.lower_binding_mode(binding_mode),
                             canonical_id,
-                            respan(ident.span, ident.name),
+                            ident,
                             sub.as_ref().map(|x| self.lower_pat(x)),
                         )
                     }
@@ -4524,7 +4522,7 @@ impl<'a> LoweringContext<'a> {
         P(hir::Pat {
             id: node_id,
             hir_id,
-            node: hir::PatKind::Binding(bm, node_id, Spanned { span, node: ident.name }, None),
+            node: hir::PatKind::Binding(bm, node_id, ident.with_span_pos(span), None),
             span,
         })
     }

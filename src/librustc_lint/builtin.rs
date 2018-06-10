@@ -182,18 +182,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                     // (Issue #49588)
                     continue;
                 }
-                if let PatKind::Binding(_, _, name, None) = fieldpat.node.pat.node {
-                    let binding_ident = ast::Ident::new(name.node, name.span);
-                    if cx.tcx.find_field_index(binding_ident, &variant) ==
+                if let PatKind::Binding(_, _, ident, None) = fieldpat.node.pat.node {
+                    if cx.tcx.find_field_index(ident, &variant) ==
                        Some(cx.tcx.field_index(fieldpat.node.id, cx.tables)) {
                         let mut err = cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS,
                                      fieldpat.span,
-                                     &format!("the `{}:` in this pattern is redundant",
-                                              name.node));
+                                     &format!("the `{}:` in this pattern is redundant", ident));
                         let subspan = cx.tcx.sess.codemap().span_through_char(fieldpat.span, ':');
-                        err.span_suggestion_short(subspan,
-                                                  "remove this",
-                                                  format!("{}", name.node));
+                        err.span_suggestion_short(subspan, "remove this", format!("{}", ident));
                         err.emit();
                     }
                 }

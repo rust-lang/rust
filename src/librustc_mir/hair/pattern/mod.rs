@@ -461,7 +461,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 }
             }
 
-            PatKind::Binding(_, id, ref name, ref sub) => {
+            PatKind::Binding(_, id, ident, ref sub) => {
                 let var_ty = self.tables.node_id_to_type(pat.hir_id);
                 let region = match var_ty.sty {
                     ty::TyRef(r, _, _) => Some(r),
@@ -491,14 +491,14 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     if let ty::TyRef(_, rty, _) = ty.sty {
                         ty = rty;
                     } else {
-                        bug!("`ref {}` has wrong type {}", name.node, ty);
+                        bug!("`ref {}` has wrong type {}", ident, ty);
                     }
                 }
 
                 PatternKind::Binding {
                     mutability,
                     mode,
-                    name: name.node,
+                    name: ident.name,
                     var: id,
                     ty: var_ty,
                     subpattern: self.lower_opt_pattern(sub),

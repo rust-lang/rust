@@ -151,7 +151,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
             GenericParamKind::Lifetime { .. } => {}
             GenericParamKind::Type { synthetic, .. } => {
                 if synthetic.is_none() {
-                    self.check_case(cx, "type parameter", param.name.name(), param.span);
+                    self.check_case(cx, "type parameter", param.name.ident().name, param.span);
                 }
             }
         }
@@ -302,20 +302,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
-        if let hir::TraitItemKind::Method(_, hir::TraitMethod::Required(ref names)) = item.node {
+        if let hir::TraitItemKind::Method(_, hir::TraitMethod::Required(ref pnames)) = item.node {
             self.check_snake_case(cx,
                                   "trait method",
                                   &item.name.as_str(),
                                   Some(item.span));
-            for name in names {
-                self.check_snake_case(cx, "variable", &name.node.as_str(), Some(name.span));
+            for param_name in pnames {
+                self.check_snake_case(cx, "variable", &param_name.as_str(), Some(param_name.span));
             }
         }
     }
 
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
-        if let &PatKind::Binding(_, _, ref path1, _) = &p.node {
-            self.check_snake_case(cx, "variable", &path1.node.as_str(), Some(p.span));
+        if let &PatKind::Binding(_, _, ref ident, _) = &p.node {
+            self.check_snake_case(cx, "variable", &ident.as_str(), Some(p.span));
         }
     }
 

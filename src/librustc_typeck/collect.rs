@@ -914,7 +914,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut i = 0;
     params.extend(ast_generics.params.iter().filter_map(|param| match param.kind {
         GenericParamKind::Type { ref default, synthetic, .. } => {
-            if param.name.name() == keywords::SelfType.name() {
+            if param.name.ident().name == keywords::SelfType.name() {
                 span_bug!(param.span,  "`Self` should not be the name of a regular parameter");
             }
 
@@ -931,7 +931,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             let ty_param = ty::GenericParamDef {
                 index: type_start + i as u32,
-                name: param.name.name().as_interned_str(),
+                name: param.name.ident().as_interned_str(),
                 def_id: tcx.hir.local_def_id(param.id),
                 pure_wrt_drop: param.pure_wrt_drop,
                 kind: ty::GenericParamDefKind::Type {
@@ -1461,7 +1461,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     for param in &ast_generics.params {
         match param.kind {
             GenericParamKind::Type { .. } => {
-                let name = param.name.name().as_interned_str();
+                let name = param.name.ident().as_interned_str();
                 let param_ty = ty::ParamTy::new(index, name).to_ty(tcx);
                 index += 1;
 

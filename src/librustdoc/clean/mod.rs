@@ -2150,11 +2150,11 @@ pub struct Arguments {
     pub values: Vec<Argument>,
 }
 
-impl<'a> Clean<Arguments> for (&'a [hir::Ty], &'a [Spanned<ast::Name>]) {
+impl<'a> Clean<Arguments> for (&'a [hir::Ty], &'a [ast::Ident]) {
     fn clean(&self, cx: &DocContext) -> Arguments {
         Arguments {
             values: self.0.iter().enumerate().map(|(i, ty)| {
-                let mut name = self.1.get(i).map(|n| n.node.to_string())
+                let mut name = self.1.get(i).map(|ident| ident.to_string())
                                             .unwrap_or(String::new());
                 if name.is_empty() {
                     name = "_".to_string();
@@ -4064,7 +4064,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
 
     match p.node {
         PatKind::Wild => "_".to_string(),
-        PatKind::Binding(_, _, ref p, _) => p.node.to_string(),
+        PatKind::Binding(_, _, ident, _) => ident.to_string(),
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
         PatKind::Struct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", qpath_to_string(name),

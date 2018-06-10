@@ -616,7 +616,7 @@ impl<'hir> Map<'hir> {
             NodeItem(&Item { node: ItemTrait(..), .. }) => {
                 keywords::SelfType.name()
             }
-            NodeGenericParam(param) => param.name.name(),
+            NodeGenericParam(param) => param.name.ident(),
             _ => bug!("ty_param_name: {} not a type parameter", self.node_to_string(id)),
         }
     }
@@ -1021,7 +1021,7 @@ impl<'hir> Map<'hir> {
             Some(EntryBlock(_, _, block)) => block.span,
             Some(EntryStructCtor(_, _, _)) => self.expect_item(self.get_parent(id)).span,
             Some(EntryLifetime(_, _, lifetime)) => lifetime.span,
-            Some(EntryGenericParam(_, _, param)) => param.span,
+            Some(EntryGenericParam(_, _, param)) => param.ident.span,
             Some(EntryVisibility(_, _, &Visibility::Restricted { ref path, .. })) => path.span,
             Some(EntryVisibility(_, _, v)) => bug!("unexpected Visibility {:?}", v),
             Some(EntryLocal(_, _, local)) => local.span,

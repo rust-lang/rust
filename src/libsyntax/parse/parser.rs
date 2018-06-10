@@ -7325,7 +7325,7 @@ impl<'a> Parser<'a> {
             match self.token {
                 token::Ident(ident, false) if ident.name == keywords::Underscore.name() => {
                     self.bump(); // `_`
-                    Ok(Some(Ident::new(ident.name.gensymed(), ident.span)))
+                    Ok(Some(ident.gensym()))
                 }
                 _ => self.parse_ident().map(Some),
             }
