@@ -65,7 +65,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
 
     /// True if `self` has any late-bound regions that are either
     /// bound by `binder` or bound by some binder outside of `binder`.
-    /// If `binder` is `ty::DebruijnIndex::INNERMOST`, this indicates whether
+    /// If `binder` is `ty::INNERMOST`, this indicates whether
     /// there are any late-bound regions that appear free.
     fn has_regions_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
         self.visit_with(&mut HasEscapingRegionsVisitor { outer_index: binder })
