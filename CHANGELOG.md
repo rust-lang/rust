@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 
 ## 0.0.207
-* Rustup to *rustc 1.28.0-nightly (4ecf12bf0 2018-06-02)*
+* Rustup to *rustc 1.28.0-nightly (2a0062974 2018-06-09)*
 
 ## 0.0.206
 * Rustup to *rustc 1.28.0-nightly (5bf68db6e 2018-05-28)*
@@ -667,6 +667,8 @@ All notable changes to this project will be documented in this file.
 [`float_arithmetic`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#float_arithmetic
 [`float_cmp`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#float_cmp
 [`float_cmp_const`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#float_cmp_const
+[`fn_to_numeric_cast`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#fn_to_numeric_cast
+[`fn_to_numeric_cast_with_truncation`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#fn_to_numeric_cast_with_truncation
 [`for_kv_map`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#for_kv_map
 [`for_loop_over_option`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#for_loop_over_option
 [`for_loop_over_result`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#for_loop_over_result
@@ -745,6 +747,7 @@ All notable changes to this project will be documented in this file.
 [`needless_range_loop`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#needless_range_loop
 [`needless_return`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#needless_return
 [`needless_update`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#needless_update
+[`neg_cmp_op_on_partial_ord`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#neg_cmp_op_on_partial_ord
 [`neg_multiply`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#neg_multiply
 [`never_loop`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#never_loop
 [`new_ret_no_self`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#new_ret_no_self
@@ -835,6 +838,7 @@ All notable changes to this project will be documented in this file.
 [`unnecessary_fold`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_fold
 [`unnecessary_mut_passed`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_mut_passed
 [`unnecessary_operation`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_operation
+[`unnecessary_unwrap`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_unwrap
 [`unneeded_field_pattern`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unneeded_field_pattern
 [`unreadable_literal`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unreadable_literal
 [`unsafe_removed_from_name`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unsafe_removed_from_name

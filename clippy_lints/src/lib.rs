@@ -505,7 +505,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         booleans::LOGIC_BUG,
         booleans::NONMINIMAL_BOOL,
         bytecount::NAIVE_BYTECOUNT,
-        neg_cmp_op_on_partial_ord::NEG_CMP_OP_ON_PARTIAL_ORD,
         collapsible_if::COLLAPSIBLE_IF,
         const_static_lifetime::CONST_STATIC_LIFETIME,
         copies::IF_SAME_THEN_ELSE,
@@ -624,6 +623,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE,
         needless_pass_by_value::NEEDLESS_PASS_BY_VALUE,
         needless_update::NEEDLESS_UPDATE,
+        neg_cmp_op_on_partial_ord::NEG_CMP_OP_ON_PARTIAL_ORD,
         neg_multiply::NEG_MULTIPLY,
         new_without_default::NEW_WITHOUT_DEFAULT,
         new_without_default::NEW_WITHOUT_DEFAULT_DERIVE,
@@ -674,6 +674,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         types::CAST_LOSSLESS,
         types::CAST_PTR_ALIGNMENT,
         types::CHAR_LIT_AS_U8,
+        types::FN_TO_NUMERIC_CAST,
+        types::FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
         types::IMPLICIT_HASHER,
         types::LET_UNIT_VALUE,
         types::OPTION_OPTION,
@@ -681,7 +683,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         types::UNIT_ARG,
         types::UNIT_CMP,
         types::UNNECESSARY_CAST,
-        types::FN_TO_NUMERIC_CAST,
         unicode::ZERO_WIDTH_SPACE,
         unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
         unused_io_amount::UNUSED_IO_AMOUNT,
@@ -769,6 +770,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
         strings::STRING_LIT_AS_BYTES,
+        types::FN_TO_NUMERIC_CAST,
         types::IMPLICIT_HASHER,
         types::LET_UNIT_VALUE,
         unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
@@ -814,6 +816,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         needless_bool::NEEDLESS_BOOL,
         needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE,
         needless_update::NEEDLESS_UPDATE,
+        neg_cmp_op_on_partial_ord::NEG_CMP_OP_ON_PARTIAL_ORD,
         no_effect::NO_EFFECT,
         no_effect::UNNECESSARY_OPERATION,
         overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL,
@@ -840,7 +843,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         types::UNIT_ARG,
         types::UNNECESSARY_CAST,
         unused_label::UNUSED_LABEL,
-        unwrap::UNNECESSARY_UNWRAP,
         zero_div_zero::ZERO_DIVIDED_BY_ZERO,
     ]);
 
@@ -890,6 +892,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         transmute::WRONG_TRANSMUTE,
         types::ABSURD_EXTREME_COMPARISONS,
         types::CAST_PTR_ALIGNMENT,
+        types::FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
         types::UNIT_CMP,
         unicode::ZERO_WIDTH_SPACE,
         unused_io_amount::UNUSED_IO_AMOUNT,
@@ -921,6 +924,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         mutex_atomic::MUTEX_INTEGER,
         needless_borrow::NEEDLESS_BORROW,
         ranges::RANGE_PLUS_ONE,
+        unwrap::UNNECESSARY_UNWRAP,
     ]);
 }
 
