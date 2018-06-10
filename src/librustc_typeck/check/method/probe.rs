@@ -47,7 +47,7 @@ struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     span: Span,
     mode: Mode,
-    method_name: Option<ast::Name>,
+    method_name: Option<ast::Ident>,
     return_type: Option<Ty<'tcx>>,
     steps: Rc<Vec<CandidateStep<'tcx>>>,
     inherent_candidates: Vec<Candidate<'tcx>>,
@@ -213,7 +213,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn probe_for_name(&self,
                           span: Span,
                           mode: Mode,
-                          item_name: ast::Name,
+                          item_name: ast::Ident,
                           is_suggestion: IsSuggestion,
                           self_ty: Ty<'tcx>,
                           scope_expr_id: ast::NodeId,
@@ -237,7 +237,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn probe_op<OP,R>(&'a self,
                       span: Span,
                       mode: Mode,
-                      method_name: Option<ast::Name>,
+                      method_name: Option<ast::Ident>,
                       return_type: Option<Ty<'tcx>>,
                       is_suggestion: IsSuggestion,
                       self_ty: Ty<'tcx>,
@@ -382,7 +382,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     fn new(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
            span: Span,
            mode: Mode,
-           method_name: Option<ast::Name>,
+           method_name: Option<ast::Ident>,
            return_type: Option<Ty<'tcx>>,
            steps: Rc<Vec<CandidateStep<'tcx>>>,
            is_suggestion: IsSuggestion)
@@ -422,8 +422,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     {
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
-            let def_scope =
-                self.tcx.adjust_ident(name.to_ident(), item.container.id(), self.body_id).1;
+            let def_scope = self.tcx.adjust_ident(name, item.container.id(), self.body_id).1;
             item.vis.is_accessible_from(def_scope, self.tcx)
         } else {
             true
@@ -799,7 +798,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         Ok(())
     }
 
-    fn candidate_method_names(&self) -> Vec<ast::Name> {
+    fn candidate_method_names(&self) -> Vec<ast::Ident> {
         let mut set = FxHashSet();
         let mut names: Vec<_> = self.inherent_candidates
             .iter()
@@ -811,7 +810,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     true
                 }
             })
-            .map(|candidate| candidate.item.name)
+            .map(|candidate| candidate.item.name.to_ident())
             .filter(|&name| set.insert(name))
             .collect();
 

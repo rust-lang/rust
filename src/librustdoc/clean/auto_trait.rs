@@ -200,10 +200,10 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             let mut segments = path.segments.into_vec();
             let last = segments.pop().unwrap();
 
-            let real_name = name.map(|name| Symbol::intern(&name));
+            let real_name = name.map(|name| Ident::from_str(&name));
 
             segments.push(hir::PathSegment::new(
-                real_name.unwrap_or(last.name),
+                real_name.unwrap_or(last.ident),
                 self.generics_to_path_params(generics.clone()),
                 false,
             ));
@@ -285,7 +285,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                     span: DUMMY_SP,
                     def: Def::TyParam(param.def_id),
                     segments: HirVec::from_vec(vec![
-                        hir::PathSegment::from_name(param.name.as_symbol())
+                        hir::PathSegment::from_ident(Ident::from_interned_str(param.name))
                     ]),
                 }),
             )),

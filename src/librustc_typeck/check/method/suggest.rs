@@ -77,7 +77,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn report_method_error(&self,
                                span: Span,
                                rcvr_ty: Ty<'tcx>,
-                               item_name: ast::Name,
+                               item_name: ast::Ident,
                                rcvr_expr: Option<&hir::Expr>,
                                error: MethodError<'tcx>,
                                args: Option<&'gcx [hir::Expr]>) {
@@ -340,8 +340,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         match ty.sty {
                             ty::TyAdt(def, substs) if !def.is_enum() => {
                                 let variant = &def.non_enum_variant();
-                                if let Some(index) =
-                                        self.tcx.find_field_index(item_name.to_ident(), variant) {
+                                if let Some(index) = self.tcx.find_field_index(item_name, variant) {
                                     let field = &variant.fields[index];
                                     let snippet = tcx.sess.codemap().span_to_snippet(expr.span);
                                     let expr_string = match snippet {
@@ -393,7 +392,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             report_function!(expr.span, expr_string);
                         } else if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = expr.node {
                             if let Some(segment) = path.segments.last() {
-                                report_function!(expr.span, segment.name);
+                                report_function!(expr.span, segment.ident);
                             }
                         }
                     }
@@ -565,7 +564,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 err: &mut DiagnosticBuilder,
                                 span: Span,
                                 rcvr_ty: Ty<'tcx>,
-                                item_name: ast::Name,
+                                item_name: ast::Ident,
                                 rcvr_expr: Option<&hir::Expr>,
                                 valid_out_of_scope_traits: Vec<DefId>) {
         if self.suggest_valid_traits(err, valid_out_of_scope_traits) {

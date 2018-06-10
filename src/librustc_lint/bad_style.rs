@@ -407,7 +407,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
                 if path.segments.len() == 1 {
                     NonUpperCaseGlobals::check_upper_case(cx,
                                                           "constant in pattern",
-                                                          path.segments[0].name,
+                                                          path.segments[0].ident.name,
                                                           path.span);
                 }
             }

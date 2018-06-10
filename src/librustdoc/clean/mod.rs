@@ -2949,7 +2949,7 @@ impl Clean<Type> for hir::Ty {
                     segments: segments.into(),
                 };
                 Type::QPath {
-                    name: p.segments.last().unwrap().name.clean(cx),
+                    name: p.segments.last().unwrap().ident.name.clean(cx),
                     self_type: box qself.clean(cx),
                     trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
                 }
@@ -2966,7 +2966,7 @@ impl Clean<Type> for hir::Ty {
                     segments: vec![].into(),
                 };
                 Type::QPath {
-                    name: segment.name.clean(cx),
+                    name: segment.ident.name.clean(cx),
                     self_type: box qself.clean(cx),
                     trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
                 }
@@ -3575,7 +3575,7 @@ pub struct PathSegment {
 impl Clean<PathSegment> for hir::PathSegment {
     fn clean(&self, cx: &DocContext) -> PathSegment {
         PathSegment {
-            name: self.name.clean(cx),
+            name: self.ident.name.clean(cx),
             args: self.with_generic_args(|generic_args| generic_args.clean(cx))
         }
     }
@@ -3628,7 +3628,7 @@ fn strip_path(path: &Path) -> Path {
 fn qpath_to_string(p: &hir::QPath) -> String {
     let segments = match *p {
         hir::QPath::Resolved(_, ref path) => &path.segments,
-        hir::QPath::TypeRelative(_, ref segment) => return segment.name.to_string(),
+        hir::QPath::TypeRelative(_, ref segment) => return segment.ident.to_string(),
     };
 
     let mut s = String::new();
@@ -3636,8 +3636,8 @@ fn qpath_to_string(p: &hir::QPath) -> String {
         if i > 0 {
             s.push_str("::");
         }
-        if seg.name != keywords::CrateRoot.name() {
-            s.push_str(&*seg.name.as_str());
+        if seg.ident.name != keywords::CrateRoot.name() {
+            s.push_str(&*seg.ident.as_str());
         }
     }
     s
@@ -4427,7 +4427,7 @@ where F: Fn(DefId) -> Def {
         span: DUMMY_SP,
         def: def_ctor(def_id),
         segments: hir::HirVec::from_vec(apb.names.iter().map(|s| hir::PathSegment {
-            name: ast::Name::intern(&s),
+            ident: ast::Ident::from_str(&s),
             args: None,
             infer_types: false,
         }).collect())

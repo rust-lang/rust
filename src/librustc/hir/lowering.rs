@@ -604,8 +604,8 @@ impl<'a> LoweringContext<'a> {
         self.sess.diagnostic()
     }
 
-    fn str_to_ident(&self, s: &'static str) -> Name {
-        Symbol::gensym(s)
+    fn str_to_ident(&self, s: &'static str) -> Ident {
+        Ident::with_empty_ctxt(Symbol::gensym(s))
     }
 
     fn allow_internal_unstable(&self, reason: CompilerDesugaringKind, span: Span) -> Span {
@@ -1139,7 +1139,7 @@ impl<'a> LoweringContext<'a> {
                 None,
                 P(hir::Path {
                     def: self.expect_full_def(t.id),
-                    segments: hir_vec![hir::PathSegment::from_name(keywords::SelfType.name())],
+                    segments: hir_vec![hir::PathSegment::from_ident(keywords::SelfType.ident())],
                     span: t.span,
                 }),
             )),
@@ -1195,7 +1195,7 @@ impl<'a> LoweringContext<'a> {
 
                         let hir_bounds = self.lower_param_bounds(bounds, itctx);
                         // Set the name to `impl Bound1 + Bound2`
-                        let name = Symbol::intern(&pprust::ty_to_string(t));
+                        let ident = Ident::from_str(&pprust::ty_to_string(t));
                         self.in_band_ty_params.push(hir::GenericParam {
                             id: def_node_id,
                             name: ParamName::Plain(name),
@@ -1214,7 +1214,7 @@ impl<'a> LoweringContext<'a> {
                             P(hir::Path {
                                 span,
                                 def: Def::TyParam(DefId::local(def_index)),
-                                segments: hir_vec![hir::PathSegment::from_name(name)],
+                                segments: hir_vec![hir::PathSegment::from_ident(ident)],
                             }),
                         ))
                     }
@@ -1689,7 +1689,7 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         def: Def,
         p: &Path,
-        name: Option<Name>,
+        ident: Option<Ident>,
         param_mode: ParamMode,
     ) -> hir::Path {
         hir::Path {
@@ -1706,7 +1706,7 @@ impl<'a> LoweringContext<'a> {
                         ImplTraitContext::Disallowed,
                     )
                 })
-                .chain(name.map(|name| hir::PathSegment::from_name(name)))
+                .chain(ident.map(|ident| hir::PathSegment::from_ident(ident)))
                 .collect(),
             span: p.span,
         }
@@ -1769,7 +1769,7 @@ impl<'a> LoweringContext<'a> {
         }
 
         hir::PathSegment::new(
-            self.lower_ident(segment.ident),
+            segment.ident,
             generic_args,
             infer_types,
         )
@@ -3307,7 +3307,7 @@ impl<'a> LoweringContext<'a> {
                         P(hir::Path {
                             span: ident.span,
                             def,
-                            segments: hir_vec![hir::PathSegment::from_name(ident.name)],
+                            segments: hir_vec![hir::PathSegment::from_ident(ident)],
                         }),
                     )),
                 }
@@ -3670,7 +3670,7 @@ impl<'a> LoweringContext<'a> {
                 let e2 = self.lower_expr(e2);
                 let ty_path = P(self.std_path(span, &["ops", "RangeInclusive"], None, false));
                 let ty = P(self.ty_path(id, span, hir::QPath::Resolved(None, ty_path)));
-                let new_seg = P(hir::PathSegment::from_name(Symbol::intern("new")));
+                let new_seg = P(hir::PathSegment::from_name(Ident::from_str("new")));
                 let new_path = hir::QPath::TypeRelative(ty, new_seg);
                 let new = P(self.expr(span, hir::ExprPath(new_path), ThinVec::new()));
                 hir::ExprCall(new, hir_vec![e1, e2])
@@ -4340,14 +4340,14 @@ impl<'a> LoweringContext<'a> {
         self.expr(span, hir::ExprCall(e, args), ThinVec::new())
     }
 
-    fn expr_ident(&mut self, span: Span, id: Name, binding: NodeId) -> hir::Expr {
-        self.expr_ident_with_attrs(span, id, binding, ThinVec::new())
+    fn expr_ident(&mut self, span: Span, ident: Ident, binding: NodeId) -> hir::Expr {
+        self.expr_ident_with_attrs(span, ident, binding, ThinVec::new())
     }
 
     fn expr_ident_with_attrs(
         &mut self,
         span: Span,
-        id: Name,
+        ident: Ident,
         binding: NodeId,
         attrs: ThinVec<Attribute>,
     ) -> hir::Expr {
@@ -4356,7 +4356,7 @@ impl<'a> LoweringContext<'a> {
             P(hir::Path {
                 span,
                 def: Def::Local(binding),
-                segments: hir_vec![hir::PathSegment::from_name(id)],
+                segments: hir_vec![hir::PathSegment::from_ident(ident)],
             }),
         ));
 
@@ -4438,7 +4438,7 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         sp: Span,
         mutbl: bool,
-        ident: Name,
+        ident: Ident,
         ex: P<hir::Expr>,
     ) -> (hir::Stmt, NodeId) {
         let pat = if mutbl {
@@ -4509,14 +4509,14 @@ impl<'a> LoweringContext<'a> {
         self.pat(span, pt)
     }
 
-    fn pat_ident(&mut self, span: Span, name: Name) -> P<hir::Pat> {
-        self.pat_ident_binding_mode(span, name, hir::BindingAnnotation::Unannotated)
+    fn pat_ident(&mut self, span: Span, ident: Ident) -> P<hir::Pat> {
+        self.pat_ident_binding_mode(span, ident, hir::BindingAnnotation::Unannotated)
     }
 
     fn pat_ident_binding_mode(
         &mut self,
         span: Span,
-        name: Name,
+        ident: Ident,
         bm: hir::BindingAnnotation,
     ) -> P<hir::Pat> {
         let LoweredNodeId { node_id, hir_id } = self.next_id();
@@ -4524,7 +4524,7 @@ impl<'a> LoweringContext<'a> {
         P(hir::Pat {
             id: node_id,
             hir_id,
-            node: hir::PatKind::Binding(bm, node_id, Spanned { span, node: name }, None),
+            node: hir::PatKind::Binding(bm, node_id, Spanned { span, node: ident.name }, None),
             span,
         })
     }

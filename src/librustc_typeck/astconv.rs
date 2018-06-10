@@ -873,7 +873,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                      -> (Ty<'tcx>, Def)
     {
         let tcx = self.tcx();
-        let assoc_name = item_segment.name.to_ident();
+        let assoc_name = item_segment.ident;
 
         debug!("associated_path_def_to_ty: {:?}::{}", ty, assoc_name);
 
@@ -962,7 +962,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             self.report_ambiguous_associated_type(span,
                                                   "Type",
                                                   &path_str,
-                                                  &item_segment.name.as_str());
+                                                  &item_segment.ident.as_str());
             return tcx.types.err;
         };
 

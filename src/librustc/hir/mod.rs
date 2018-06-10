@@ -320,7 +320,7 @@ pub struct Path {
 
 impl Path {
     pub fn is_global(&self) -> bool {
-        !self.segments.is_empty() && self.segments[0].name == keywords::CrateRoot.name()
+        !self.segments.is_empty() && self.segments[0].ident.name == keywords::CrateRoot.name()
     }
 }
 
@@ -341,7 +341,7 @@ impl fmt::Display for Path {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct PathSegment {
     /// The identifier portion of this path segment.
-    pub name: Name,
+    pub ident: Ident,
 
     /// Type/lifetime parameters attached to this path. They come in
     /// two flavors: `Path<A,B,C>` and `Path(A,B) -> C`. Note that
@@ -359,17 +359,17 @@ pub struct PathSegment {
 
 impl PathSegment {
     /// Convert an identifier to the corresponding segment.
-    pub fn from_name(name: Name) -> PathSegment {
+    pub fn from_ident(ident: Ident) -> PathSegment {
         PathSegment {
-            name,
+            ident,
             infer_types: true,
             args: None,
         }
     }
 
-    pub fn new(name: Name, args: GenericArgs, infer_types: bool) -> Self {
+    pub fn new(ident: Ident, args: GenericArgs, infer_types: bool) -> Self {
         PathSegment {
-            name,
+            ident,
             infer_types,
             args: if args.is_empty() {
                 None

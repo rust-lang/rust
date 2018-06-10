@@ -559,7 +559,7 @@ impl<'a> State<'a> {
 
                 match kind {
                     hir::UseKind::Single => {
-                        if path.segments.last().unwrap().name != item.name {
+                        if path.segments.last().unwrap().ident.name != item.name {
                             self.s.space()?;
                             self.word_space("as")?;
                             self.print_name(item.name)?;
@@ -845,7 +845,8 @@ impl<'a> State<'a> {
             hir::Visibility::Crate(ast::CrateSugar::PubCrate) => self.word_nbsp("pub(crate)")?,
             hir::Visibility::Restricted { ref path, .. } => {
                 self.s.word("pub(")?;
-                if path.segments.len() == 1 && path.segments[0].name == keywords::Super.name() {
+                if path.segments.len() == 1 &&
+                   path.segments[0].ident.name == keywords::Super.name() {
                     // Special case: `super` can print like `pub(super)`.
                     self.s.word("super")?;
                 } else {
@@ -1266,7 +1267,7 @@ impl<'a> State<'a> {
         let base_args = &args[1..];
         self.print_expr_maybe_paren(&args[0], parser::PREC_POSTFIX)?;
         self.s.word(".")?;
-        self.print_name(segment.name)?;
+        self.print_ident(segment.ident)?;
 
         segment.with_generic_args(|generic_args| {
             if !generic_args.args.is_empty() || !generic_args.bindings.is_empty() {
@@ -1634,9 +1635,9 @@ impl<'a> State<'a> {
             if i > 0 {
                 self.s.word("::")?
             }
-            if segment.name != keywords::CrateRoot.name() &&
-               segment.name != keywords::DollarCrate.name() {
-               self.print_name(segment.name)?;
+            if segment.ident.name != keywords::CrateRoot.name() &&
+               segment.ident.name != keywords::DollarCrate.name() {
+               self.print_ident(segment.ident)?;
                segment.with_generic_args(|generic_args| {
                    self.print_generic_args(generic_args, segment.infer_types,
                                            colons_before_params)
@@ -1665,9 +1666,9 @@ impl<'a> State<'a> {
                     if i > 0 {
                         self.s.word("::")?
                     }
-                    if segment.name != keywords::CrateRoot.name() &&
-                       segment.name != keywords::DollarCrate.name() {
-                        self.print_name(segment.name)?;
+                    if segment.ident.name != keywords::CrateRoot.name() &&
+                       segment.ident.name != keywords::DollarCrate.name() {
+                        self.print_ident(segment.ident)?;
                         segment.with_generic_args(|generic_args| {
                             self.print_generic_args(generic_args,
                                                     segment.infer_types,
@@ -1679,7 +1680,7 @@ impl<'a> State<'a> {
                 self.s.word(">")?;
                 self.s.word("::")?;
                 let item_segment = path.segments.last().unwrap();
-                self.print_name(item_segment.name)?;
+                self.print_ident(item_segment.ident)?;
                 item_segment.with_generic_args(|generic_args| {
                     self.print_generic_args(generic_args,
                                             item_segment.infer_types,
@@ -1691,7 +1692,7 @@ impl<'a> State<'a> {
                 self.print_type(qself)?;
                 self.s.word(">")?;
                 self.s.word("::")?;
-                self.print_name(item_segment.name)?;
+                self.print_ident(item_segment.ident)?;
                 item_segment.with_generic_args(|generic_args| {
                     self.print_generic_args(generic_args,
                                             item_segment.infer_types,

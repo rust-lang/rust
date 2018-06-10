@@ -172,7 +172,7 @@ impl_stable_hash_for!(struct hir::Path {
 });
 
 impl_stable_hash_for!(struct hir::PathSegment {
-    name,
+    ident,
     infer_types,
     args
 });
