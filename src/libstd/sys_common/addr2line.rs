@@ -16,6 +16,7 @@ use libc::{mmap, size_t, PROT_READ, MAP_SHARED, MAP_FAILED};
 
 use io;
 use ptr;
+use env;
 
 use cell::UnsafeCell;
 use marker::Sync;
@@ -47,7 +48,8 @@ struct Ctx {
 
 impl Ctx {
     fn init() -> io::Result<Ctx> {
-        let (_filename, file) = ::sys::backtrace::gnu::get_executable_filename()?;
+        let filename = env::current_exe()?;
+        let file = File::open(&filename)?;
         let file_len = file.metadata()?.len();
 
         let map_ptr = unsafe {
