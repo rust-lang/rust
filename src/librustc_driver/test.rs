@@ -183,7 +183,7 @@ fn test_env_with_pool<F>(
     });
 }
 
-const D1: ty::DebruijnIndex = ty::DebruijnIndex::INNERMOST;
+const D1: ty::DebruijnIndex = ty::INNERMOST;
 const D2: ty::DebruijnIndex = D1.shifted_in(1);
 
 impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
