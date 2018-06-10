@@ -4709,30 +4709,56 @@ pub use num::dec2flt::ParseFloatError;
 // Conversions T -> T are covered by a blanket impl and therefore excluded
 // Some conversions from and to usize/isize are not implemented due to portability concerns
 macro_rules! impl_from {
-    ($Small: ty, $Large: ty, #[$attr:meta]) => {
+    ($Small: ty, $Large: ty, #[$attr:meta], $doc: expr) => {
         #[$attr]
+        #[doc = $doc]
         impl From<$Small> for $Large {
             #[inline]
             fn from(small: $Small) -> $Large {
                 small as $Large
             }
         }
+    };
+    ($Small: ty, $Large: ty, #[$attr:meta]) => {
+        impl_from!($Small,
+                   $Large,
+                   #[$attr],
+                   concat!("Converts `",
+                           stringify!($Small),
+                           "` to `",
+                           stringify!($Large),
+                           "` losslessly."));
     }
 }
 
+macro_rules! impl_from_bool {
+    ($target: ty, #[$attr:meta]) => {
+        impl_from!(bool, $target, #[$attr], concat!("Converts a `bool` to a `",
+            stringify!($target), "`. The resulting value is `0` for `false` and `1` for `true`
+values.
+
+# Examples
+
+```
+assert_eq!(", stringify!($target), "::from(true), 1);
+assert_eq!(", stringify!($target), "::from(false), 0);
+```"));
+    };
+}
+
 // Bool -> Any
-impl_from! { bool, u8, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from! { bool, u16, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from! { bool, u32, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from! { bool, u64, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from! { bool, u128, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from! { bool, usize, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from! { bool, i8, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from! { bool, i16, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from! { bool, i32, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from! { bool, i64, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from! { bool, i128, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from! { bool, isize, #[stable(feature = "from_bool", since = "1.28.0")] }
+impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
+impl_from_bool! { u16, #[stable(feature = "from_bool", since = "1.28.0")] }
+impl_from_bool! { u32, #[stable(feature = "from_bool", since = "1.28.0")] }
+impl_from_bool! { u64, #[stable(feature = "from_bool", since = "1.28.0")] }
+impl_from_bool! { u128, #[stable(feature = "from_bool", since = "1.28.0")] }
+impl_from_bool! { usize, #[stable(feature = "from_bool", since = "1.28.0")] }
+impl_from_bool! { i8, #[stable(feature = "from_bool", since = "1.28.0")] }
+impl_from_bool! { i16, #[stable(feature = "from_bool", since = "1.28.0")] }
+impl_from_bool! { i32, #[stable(feature = "from_bool", since = "1.28.0")] }
+impl_from_bool! { i64, #[stable(feature = "from_bool", since = "1.28.0")] }
+impl_from_bool! { i128, #[stable(feature = "from_bool", since = "1.28.0")] }
+impl_from_bool! { isize, #[stable(feature = "from_bool", since = "1.28.0")] }
 
 // Unsigned -> Unsigned
 impl_from! { u8, u16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
