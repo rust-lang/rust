@@ -1,4 +1,4 @@
-error[E0909]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
   --> $DIR/region-escape-via-bound.rs:26:29
    |
 LL | fn foo(x: Cell<&'x u32>) -> impl Trait<'y>
@@ -8,7 +8,7 @@ note: hidden type `std::cell::Cell<&'x u32>` captures the lifetime 'x as defined
   --> $DIR/region-escape-via-bound.rs:26:1
    |
 LL | / fn foo(x: Cell<&'x u32>) -> impl Trait<'y>
-LL | |     //~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds [E0909]
+LL | |     //~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds [E0700]
 LL | | where 'x: 'y
 LL | | {
 LL | |     x
@@ -17,4 +17,4 @@ LL | | }
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0909`.
+For more information about this error, try `rustc --explain E0700`.

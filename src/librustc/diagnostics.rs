@@ -2011,13 +2011,13 @@ a (non-transparent) struct containing a single float, while `Grams` is a
 transparent wrapper around a float. This can make a difference for the ABI.
 "##,
 
-E0909: r##"
+E0700: r##"
 The `impl Trait` return type captures lifetime parameters that do not
 appear within the `impl Trait` itself.
 
 Erroneous code example:
 
-```compile-fail,E0909
+```compile-fail,E0700
 use std::cell::Cell;
 
 trait Trait<'a> { }
@@ -2058,13 +2058,13 @@ where 'x: 'y
 ```
 "##,
 
-E0910: r##"
+E0701: r##"
 This error indicates that a `#[non_exhaustive]` attribute was incorrectly placed
 on something other than a struct or enum.
 
 Examples of erroneous code:
 
-```compile_fail,E0910
+```compile_fail,E0701
 # #![feature(non_exhaustive)]
 
 #[non_exhaustive]
@@ -2072,13 +2072,13 @@ trait Foo { }
 ```
 "##,
 
-E0911: r##"
+E0702: r##"
 This error indicates that a `#[non_exhaustive]` attribute had a value. The
 `#[non_exhaustive]` should be empty.
 
 Examples of erroneous code:
 
-```compile_fail,E0911
+```compile_fail,E0702
 # #![feature(non_exhaustive)]
 
 #[non_exhaustive(anything)]
@@ -2139,6 +2139,5 @@ register_diagnostics! {
     E0657, // `impl Trait` can only capture lifetimes bound at the fn level
     E0687, // in-band lifetimes cannot be used in `fn`/`Fn` syntax
     E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
-
-    E0906, // closures cannot be static
+    E0697, // closures cannot be static
 }

@@ -126,7 +126,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
             _ => {
                 struct_span_err!(self.tcx.sess,
                                  attr.span,
-                                 E0910,
+                                 E0701,
                                  "attribute can only be applied to a struct or enum")
                     .span_label(item.span, "not a struct or enum")
                     .emit();
@@ -137,7 +137,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         if attr.meta_item_list().is_some() || attr.value_str().is_some() {
             struct_span_err!(self.tcx.sess,
                              attr.span,
-                             E0911,
+                             E0702,
                              "attribute should be empty")
                 .span_label(item.span, "not empty")
                 .emit();
