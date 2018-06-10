@@ -2184,14 +2184,13 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
 }
 
 impl<'a, K: Ord, V: Default> Entry<'a, K, V> {
-    #[unstable(feature = "entry_or_default", issue = "44324")]
+    #[stable(feature = "entry_or_default", since = "1.28.0")]
     /// Ensures a value is in the entry by inserting the default value if empty,
     /// and returns a mutable reference to the value in the entry.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(entry_or_default)]
     /// # fn main() {
     /// use std::collections::BTreeMap;
     ///
