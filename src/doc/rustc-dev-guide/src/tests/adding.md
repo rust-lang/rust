@@ -149,9 +149,14 @@ exhaustive. Header commands can generally be found by browsing the
 source.
 
 * `run-rustfix` for UI tests, indicates that the test produces
-  structured suggestions, which are then applied and the final
-  source is stored in a `.fixed` file and compiled again. The final
-  compilation is required to succeed.
+  structured suggestions. The test writer should create a `.fixed`
+  file, which contains the source with the suggestions applied.
+  When the test is run, compiletest first checks that the correct
+  lint/warning is generated. Then, it applies the suggestion and
+  compares against `.fixed` (they must match). Finally, the fixed
+  source is compiled, and this compilation is required to succeed.
+  The `.fixed` file can also be generated automatically with the
+  `--bless` option, discussed [below](#bless).
 * `min-{gdb,lldb}-version`
 * `min-llvm-version`
 * `compile-pass` for UI tests, indicates that the test is
@@ -266,6 +271,8 @@ you can even run the resulting program. Just add one of the following
   not run the resulting binary
 - `// run-pass` -- compilation should succeed and we should run the
   resulting binary
+
+<a name="bless"></a>
 
 ### Editing and updating the reference files
 
