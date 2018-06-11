@@ -3873,9 +3873,11 @@ unsafe impl<'a, T> TrustedRandomAccess for ExactChunksMut<'a, T> {
 /// valid for `len` elements, nor whether the lifetime inferred is a suitable
 /// lifetime for the returned slice.
 ///
-/// `p` must be non-null and aligned, even for zero-length slices, as is
-/// required for all references. However, for zero-length slices, `p` can be
-/// a bogus non-dereferencable pointer such as [`NonNull::dangling()`].
+/// `data` must be non-null and aligned, even for zero-length slices. One
+/// reason for this is that enum layout optimizations may rely on references
+/// (including slices of any length) being aligned and non-null to distinguish
+/// them from other data. You can obtain a pointer that is usable as `data`
+/// for zero-length slices using [`NonNull::dangling()`].
 ///
 /// # Caveat
 ///
@@ -3910,8 +3912,8 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 ///
 /// This function is unsafe for the same reasons as `from_raw_parts`, as well
 /// as not being able to provide a non-aliasing guarantee of the returned
-/// mutable slice. `p` must be non-null and aligned even for zero-length slices as with
-/// `from_raw_parts`.
+/// mutable slice. `data` must be non-null and aligned even for zero-length
+/// slices as with `from_raw_parts`.
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
