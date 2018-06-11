@@ -14,11 +14,9 @@
 
 use infer::{InferCtxt, InferOk};
 use infer::at::At;
-use infer::canonical::{Canonical, Canonicalize};
 use middle::const_val::ConstVal;
 use mir::interpret::GlobalId;
 use traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
-use traits::query::CanonicalProjectionGoal;
 use traits::project::Normalized;
 use ty::{self, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder};
@@ -247,17 +245,6 @@ BraceStructLiftImpl! {
     impl<'a, 'tcx> Lift<'tcx> for NormalizationResult<'a> {
         type Lifted = NormalizationResult<'tcx>;
         normalized_ty
-    }
-}
-
-impl<'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for ty::ParamEnvAnd<'tcx, ty::ProjectionTy<'tcx>> {
-    type Canonicalized = CanonicalProjectionGoal<'gcx>;
-
-    fn intern(
-        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
-        value: Canonical<'gcx, Self::Lifted>,
-    ) -> Self::Canonicalized {
-        value
     }
 }
 

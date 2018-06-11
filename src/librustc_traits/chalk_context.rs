@@ -10,9 +10,7 @@
 
 use chalk_engine::fallible::Fallible as ChalkEngineFallible;
 use chalk_engine::{context, hh::HhGoal, DelayedLiteral, ExClause};
-use rustc::infer::canonical::{
-    Canonical, CanonicalVarValues, Canonicalize, QueryRegionConstraint, QueryResult,
-};
+use rustc::infer::canonical::{Canonical, CanonicalVarValues, QueryRegionConstraint, QueryResult};
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc::traits::{
     WellFormed,
@@ -517,16 +515,5 @@ BraceStructLiftImpl! {
         type Lifted = ConstrainedSubst<'tcx>;
 
         subst, constraints
-    }
-}
-
-impl<'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for ConstrainedSubst<'tcx> {
-    type Canonicalized = Canonical<'gcx, ConstrainedSubst<'gcx>>;
-
-    fn intern(
-        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
-        value: Canonical<'gcx, ConstrainedSubst<'gcx>>,
-    ) -> Self::Canonicalized {
-        value
     }
 }

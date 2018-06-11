@@ -35,7 +35,6 @@ use infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 use serialize::UseSpecializedDecodable;
-use std::fmt::Debug;
 use std::ops::Index;
 use syntax::codemap::Span;
 use ty::fold::TypeFoldable;
@@ -124,6 +123,8 @@ pub struct QueryResult<'tcx, R> {
     pub value: R,
 }
 
+pub type Canonicalized<'gcx, V> = Canonical<'gcx, <V as Lift<'gcx>>::Lifted>;
+
 pub type CanonicalizedQueryResult<'gcx, T> =
     Lrc<Canonical<'gcx, QueryResult<'gcx, <T as Lift<'gcx>>::Lifted>>>;
 
@@ -183,19 +184,6 @@ impl<'tcx, R> Canonical<'tcx, QueryResult<'tcx, R>> {
 }
 
 pub type QueryRegionConstraint<'tcx> = ty::Binder<ty::OutlivesPredicate<Kind<'tcx>, Region<'tcx>>>;
-
-/// Trait implemented by values that can be canonicalized. It mainly
-/// serves to identify the interning table we will use.
-pub trait Canonicalize<'gcx: 'tcx, 'tcx>: TypeFoldable<'tcx> + Lift<'gcx> {
-    type Canonicalized: 'gcx + Debug;
-
-    /// After a value has been fully canonicalized and lifted, this
-    /// method will allocate it in a global arena.
-    fn intern(
-        gcx: TyCtxt<'_, 'gcx, 'gcx>,
-        value: Canonical<'gcx, Self::Lifted>,
-    ) -> Self::Canonicalized;
-}
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// Creates a substitution S for the canonical value with fresh
@@ -342,20 +330,5 @@ impl<'tcx> Index<CanonicalVar> for CanonicalVarValues<'tcx> {
 
     fn index(&self, value: CanonicalVar) -> &Kind<'tcx> {
         &self.var_values[value]
-    }
-}
-
-impl<'gcx: 'tcx, 'tcx, T> Canonicalize<'gcx, 'tcx> for QueryResult<'tcx, T>
-where
-    T: TypeFoldable<'tcx> + Lift<'gcx>,
-{
-    // we ought to intern this, but I'm too lazy just now
-    type Canonicalized = Lrc<Canonical<'gcx, QueryResult<'gcx, T::Lifted>>>;
-
-    fn intern(
-        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
-        value: Canonical<'gcx, Self::Lifted>,
-    ) -> Self::Canonicalized {
-        Lrc::new(value)
     }
 }

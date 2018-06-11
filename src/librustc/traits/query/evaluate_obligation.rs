@@ -9,11 +9,8 @@
 // except according to those terms.
 
 use infer::InferCtxt;
-use infer::canonical::{Canonical, Canonicalize};
 use traits::{EvaluationResult, PredicateObligation, SelectionContext,
              TraitQueryMode, OverflowError};
-use traits::query::CanonicalPredicateGoal;
-use ty::{ParamEnvAnd, Predicate, TyCtxt};
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// Evaluates whether the predicate can be satisfied (by any means)
@@ -55,16 +52,5 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                      .expect("Overflow should be caught earlier in standard query mode")
             }
         }
-    }
-}
-
-impl<'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for ParamEnvAnd<'tcx, Predicate<'tcx>> {
-    type Canonicalized = CanonicalPredicateGoal<'gcx>;
-
-    fn intern(
-        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
-        value: Canonical<'gcx, Self::Lifted>,
-    ) -> Self::Canonicalized {
-        value
     }
 }

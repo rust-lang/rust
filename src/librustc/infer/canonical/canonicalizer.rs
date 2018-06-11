@@ -17,13 +17,13 @@
 
 use infer::canonical::{
     Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, CanonicalVarValues,
-    Canonicalize,
+    Canonicalized,
 };
 use infer::InferCtxt;
 use std::sync::atomic::Ordering;
 use ty::fold::{TypeFoldable, TypeFolder};
 use ty::subst::Kind;
-use ty::{self, CanonicalVar, Slice, Ty, TyCtxt, TypeFlags};
+use ty::{self, CanonicalVar, Lift, Slice, Ty, TyCtxt, TypeFlags};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -44,9 +44,12 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// out the [chapter in the rustc guide][c].
     ///
     /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html#canonicalizing-the-query
-    pub fn canonicalize_query<V>(&self, value: &V) -> (V::Canonicalized, CanonicalVarValues<'tcx>)
+    pub fn canonicalize_query<V>(
+        &self,
+        value: &V,
+    ) -> (Canonicalized<'gcx, V>, CanonicalVarValues<'tcx>)
     where
-        V: Canonicalize<'gcx, 'tcx>,
+        V: TypeFoldable<'tcx> + Lift<'gcx>,
     {
         self.tcx
             .sess
@@ -90,9 +93,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn canonicalize_response<V>(
         &self,
         value: &V,
-    ) -> (V::Canonicalized, CanonicalVarValues<'tcx>)
+    ) -> (Canonicalized<'gcx, V>, CanonicalVarValues<'tcx>)
     where
-        V: Canonicalize<'gcx, 'tcx>,
+        V: TypeFoldable<'tcx> + Lift<'gcx>,
     {
         Canonicalizer::canonicalize(
             value,
@@ -233,9 +236,9 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         infcx: Option<&'cx InferCtxt<'cx, 'gcx, 'tcx>>,
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
         canonicalize_all_free_regions: CanonicalizeAllFreeRegions,
-    ) -> (V::Canonicalized, CanonicalVarValues<'tcx>)
+    ) -> (Canonicalized<'gcx, V>, CanonicalVarValues<'tcx>)
     where
-        V: Canonicalize<'gcx, 'tcx>,
+        V: TypeFoldable<'tcx> + Lift<'gcx>,
     {
         debug_assert!(
             !value.has_type_flags(TypeFlags::HAS_CANONICAL_VARS),
@@ -254,13 +257,10 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         // Fast path: nothing that needs to be canonicalized.
         if !value.has_type_flags(needs_canonical_flags) {
             let out_value = gcx.lift(value).unwrap();
-            let canon_value = V::intern(
-                gcx,
-                Canonical {
-                    variables: Slice::empty(),
-                    value: out_value,
-                },
-            );
+            let canon_value = Canonical {
+                variables: Slice::empty(),
+                value: out_value,
+            };
             let values = CanonicalVarValues {
                 var_values: IndexVec::default(),
             };
@@ -291,13 +291,10 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
 
         let canonical_variables = tcx.intern_canonical_var_infos(&canonicalizer.variables.raw);
 
-        let canonical_value = V::intern(
-            gcx,
-            Canonical {
-                variables: canonical_variables,
-                value: out_value,
-            },
-        );
+        let canonical_value = Canonical {
+            variables: canonical_variables,
+            value: out_value,
+        };
         let canonical_var_values = CanonicalVarValues {
             var_values: canonicalizer.var_values,
         };

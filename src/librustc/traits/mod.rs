@@ -27,7 +27,6 @@ use ty::subst::Substs;
 use ty::{self, AdtKind, Slice, Ty, TyCtxt, GenericParamDefKind, ToPredicate};
 use ty::error::{ExpectedFound, TypeError};
 use ty::fold::{TypeFolder, TypeFoldable, TypeVisitor};
-use infer::canonical::{Canonical, Canonicalize};
 use infer::{InferCtxt};
 
 use rustc_data_structures::sync::Lrc;
@@ -1015,18 +1014,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
     };
 }
 
-impl<'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for ty::ParamEnvAnd<'tcx, Goal<'tcx>> {
-    // we ought to intern this, but I'm too lazy just now
-    type Canonicalized = Canonical<'gcx, ty::ParamEnvAnd<'gcx, Goal<'gcx>>>;
-
-    fn intern(
-        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
-        value: Canonical<'gcx, Self::Lifted>,
-    ) -> Self::Canonicalized {
-        value
-    }
-}
-
 pub trait ExClauseFold<'tcx>
 where
     Self: chalk_engine::context::Context + Clone,
@@ -1052,21 +1039,4 @@ where
         ex_clause: &chalk_engine::ExClause<Self>,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
     ) -> Option<Self::LiftedExClause>;
-}
-
-impl<'gcx: 'tcx, 'tcx, C> Canonicalize<'gcx, 'tcx> for chalk_engine::ExClause<C>
-where
-    C: chalk_engine::context::Context + Clone,
-    C: ExClauseLift<'gcx> + ExClauseFold<'tcx>,
-    C::Substitution: Clone,
-    C::RegionConstraint: Clone,
-{
-    type Canonicalized = Canonical<'gcx, C::LiftedExClause>;
-
-    fn intern(
-        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
-        value: Canonical<'gcx, Self::Lifted>,
-    ) -> Self::Canonicalized {
-        value
-    }
 }

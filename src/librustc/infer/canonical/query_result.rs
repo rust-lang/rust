@@ -19,13 +19,14 @@
 
 use infer::canonical::substitute::substitute_value;
 use infer::canonical::{
-    Canonical, CanonicalVarValues, Canonicalize, CanonicalizedQueryResult, Certainty,
+    Canonical, CanonicalVarValues, CanonicalizedQueryResult, Certainty,
     QueryRegionConstraint, QueryResult,
 };
 use infer::region_constraints::{Constraint, RegionConstraintData};
 use infer::{InferCtxt, InferOk, InferResult, RegionObligation};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::sync::Lrc;
 use std::fmt::Debug;
 use syntax::ast;
 use traits::query::NoSolution;
@@ -72,7 +73,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             canonical_result
         );
 
-        Ok(canonical_result)
+        Ok(Lrc::new(canonical_result))
     }
 
     /// Helper for `make_canonicalized_query_result` that does
@@ -84,8 +85,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         fulfill_cx: &mut FulfillmentContext<'tcx>,
     ) -> Result<QueryResult<'tcx, T>, NoSolution>
     where
-        T: Debug,
-        QueryResult<'tcx, T>: Canonicalize<'gcx, 'tcx>,
+        T: Debug + TypeFoldable<'tcx> + Lift<'gcx>,
     {
         let tcx = self.tcx;
 
