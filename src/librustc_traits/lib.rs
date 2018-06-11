@@ -35,6 +35,7 @@ mod normalize_projection_ty;
 mod normalize_erasing_regions;
 pub mod lowering;
 mod type_op_eq;
+mod type_op_subtype;
 
 use rustc::ty::query::Providers;
 
@@ -49,6 +50,7 @@ pub fn provide(p: &mut Providers) {
         program_clauses_for_env: lowering::program_clauses_for_env,
         evaluate_obligation: evaluate_obligation::evaluate_obligation,
         type_op_eq: type_op_eq::type_op_eq,
+        type_op_subtype: type_op_subtype::type_op_subtype,
         ..*p
     };
 }

@@ -71,7 +71,8 @@ use std::fmt;
 use std::hash::Hash;
 use syntax_pos::symbol::InternedString;
 use traits::query::{
-    CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpEqGoal, CanonicalPredicateGoal,
+    CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal,
+    CanonicalPredicateGoal,
 };
 use ty::{TyCtxt, Instance, InstanceDef, ParamEnv, ParamEnvAnd, PolyTraitRef, Ty};
 use ty::subst::Substs;
@@ -649,6 +650,7 @@ define_dep_nodes!( <'tcx>
     [] DropckOutlives(CanonicalTyGoal<'tcx>),
     [] EvaluateObligation(CanonicalPredicateGoal<'tcx>),
     [] TypeOpEq(CanonicalTypeOpEqGoal<'tcx>),
+    [] TypeOpSubtype(CanonicalTypeOpSubtypeGoal<'tcx>),
 
     [] SubstituteNormalizeAndTestPredicates { key: (DefId, &'tcx Substs<'tcx>) },
 

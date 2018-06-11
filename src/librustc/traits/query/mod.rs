@@ -35,6 +35,9 @@ pub type CanonicalPredicateGoal<'tcx> =
 pub type CanonicalTypeOpEqGoal<'tcx> =
     Canonical<'tcx, type_op::eq::Eq<'tcx>>;
 
+pub type CanonicalTypeOpSubtypeGoal<'tcx> =
+    Canonical<'tcx, type_op::subtype::Subtype<'tcx>>;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NoSolution;
 

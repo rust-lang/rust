@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::{InferCtxt, InferResult};
-use traits::ObligationCause;
+use infer::canonical::{Canonical, CanonicalizedQueryResult};
 use ty::{ParamEnv, Ty, TyCtxt};
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Subtype<'tcx> {
-    param_env: ParamEnv<'tcx>,
-    sub: Ty<'tcx>,
-    sup: Ty<'tcx>,
+    pub param_env: ParamEnv<'tcx>,
+    pub sub: Ty<'tcx>,
+    pub sup: Ty<'tcx>,
 }
 
 impl<'tcx> Subtype<'tcx> {
@@ -29,10 +28,10 @@ impl<'tcx> Subtype<'tcx> {
     }
 }
 
-impl<'gcx, 'tcx> super::TypeOp<'gcx, 'tcx> for Subtype<'tcx> {
-    type Output = ();
+impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Subtype<'tcx> {
+    type QueryResult = ();
 
-    fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self> {
+    fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<(), Self> {
         if self.sub == self.sup {
             Ok(())
         } else {
@@ -40,9 +39,35 @@ impl<'gcx, 'tcx> super::TypeOp<'gcx, 'tcx> for Subtype<'tcx> {
         }
     }
 
-    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
-        infcx
-            .at(&ObligationCause::dummy(), self.param_env)
-            .sup(self.sup, self.sub)
+    fn param_env(&self) -> ParamEnv<'tcx> {
+        self.param_env
     }
+
+    fn perform_query(
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        canonicalized: Canonical<'gcx, Subtype<'gcx>>,
+    ) -> CanonicalizedQueryResult<'gcx, ()> {
+        tcx.type_op_subtype(canonicalized).unwrap()
+    }
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for Subtype<'tcx> {
+        param_env,
+        sub,
+        sup,
+    }
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for Subtype<'a> {
+        type Lifted = Subtype<'tcx>;
+        param_env,
+        sub,
+        sup,
+    }
+}
+
+impl_stable_hash_for! {
+    struct Subtype<'tcx> { param_env, sub, sup }
 }
