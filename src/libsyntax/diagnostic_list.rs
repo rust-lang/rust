@@ -93,6 +93,36 @@ For more information about the cfg attribute, read:
 https://doc.rust-lang.org/reference.html#conditional-compilation
 "##,
 
+E0538: r##"
+Attribute contains multiple of the same meta item.
+
+Erroneous code example:
+
+```compile_fail,E0538
+#[deprecated(
+    since="1.0.0",
+    note="First deprecation note.",
+    note="Second deprecation note." // error: multiple same meta item
+)]
+fn deprecated_function() {}
+```
+
+Meta items are the key-value pairs inside of an attribute. Each key may only be
+used once in each attribute.
+
+To fix the problem, remove all but one of the meta items with the same key.
+
+Example:
+
+```
+#[deprecated(
+    since="1.0.0",
+    note="First deprecation note."
+)]
+fn deprecated_function() {}
+```
+"##,
+
 E0541: r##"
 An unknown meta item was used.
 
@@ -347,7 +377,6 @@ and likely to change in the future.
 }
 
 register_diagnostics! {
-    E0538, // multiple [same] items
     E0539, // incorrect meta item
     E0540, // multiple rustc_deprecated attributes
     E0542, // missing 'since'
