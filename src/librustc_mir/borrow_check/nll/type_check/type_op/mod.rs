@@ -9,11 +9,12 @@
 // except according to those terms.
 
 use rustc::infer::canonical::query_result;
-use rustc::infer::canonical::QueryRegionConstraint;
+use rustc::infer::canonical::{Canonicalized, CanonicalizedQueryResult, QueryRegionConstraint};
 use rustc::infer::{InferCtxt, InferOk, InferResult};
 use rustc::traits::{ObligationCause, TraitEngine};
 use rustc::ty::error::TypeError;
-use rustc::ty::TyCtxt;
+use rustc::ty::fold::TypeFoldable;
+use rustc::ty::{Lift, ParamEnv, TyCtxt};
 use std::fmt;
 use std::rc::Rc;
 use syntax::codemap::DUMMY_SP;
@@ -21,8 +22,8 @@ use syntax::codemap::DUMMY_SP;
 crate mod custom;
 crate mod eq;
 crate mod normalize;
-crate mod predicates;
 crate mod outlives;
+crate mod predicates;
 crate mod subtype;
 
 crate trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
@@ -94,5 +95,60 @@ crate trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
         } else {
             Ok((value, Some(Rc::new(outlives))))
         }
+    }
+}
+
+type Lifted<'gcx, T> = <T as Lift<'gcx>>::Lifted;
+
+crate trait QueryTypeOp<'gcx: 'tcx, 'tcx>: TypeFoldable<'tcx> + Lift<'gcx> {
+    type QueryResult: TypeFoldable<'tcx> + Lift<'gcx>;
+
+    /// Micro-optimization: returns `Ok(x)` if we can trivially
+    /// produce the output, else returns `Err(self)` back.
+    fn trivial_noop(
+        self,
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+    ) -> Result<Lifted<'gcx, Self::QueryResult>, Self>;
+
+    fn param_env(&self) -> ParamEnv<'tcx>;
+
+    fn perform_query(
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        canonicalized: Canonicalized<'gcx, Self>,
+    ) -> CanonicalizedQueryResult<'gcx, Self::QueryResult>;
+}
+
+impl<'gcx: 'tcx, 'tcx, Q> TypeOp<'gcx, 'tcx> for Q
+where
+    Q: QueryTypeOp<'gcx, 'tcx>,
+    Lifted<'gcx, Q::QueryResult>: TypeFoldable<'tcx>,
+{
+    type Output = Lifted<'gcx, Q::QueryResult>;
+
+    fn trivial_noop(self, tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self> {
+        QueryTypeOp::trivial_noop(self, tcx)
+    }
+
+    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
+        let param_env = self.param_env();
+
+        let (canonical_self, canonical_var_values) = infcx.canonicalize_query(&self);
+        let canonical_result = Q::perform_query(infcx.tcx, canonical_self);
+
+        // FIXME: This is not the most efficient setup. The
+        // `instantiate_query_result_and_region_obligations` basically
+        // takes the `QueryRegionConstraint` values that we ultimately
+        // want to use and converts them into obligations. We return
+        // those to our caller, which will convert them into AST
+        // region constraints; we then convert *those* back into
+        // `QueryRegionConstraint` and ultimately into NLL
+        // constraints. We should cut out the middleman but that will
+        // take a bit of refactoring.
+        infcx.instantiate_query_result_and_region_obligations(
+            &ObligationCause::dummy(),
+            param_env,
+            &canonical_var_values,
+            &canonical_result,
+        )
     }
 }
