@@ -500,6 +500,7 @@ define_dep_nodes!( <'tcx>
     [] TypeOfItem(DefId),
     [] GenericsOfItem(DefId),
     [] PredicatesOfItem(DefId),
+    [] ExplicitPredicatesOfItem(DefId),
     [] InferredOutlivesOf(DefId),
     [] InferredOutlivesCrate(CrateNum),
     [] SuperPredicatesOfItem(DefId),

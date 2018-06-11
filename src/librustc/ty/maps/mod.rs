@@ -102,7 +102,7 @@ define_maps! { <'tcx>
     /// associated generics and predicates.
     [] fn generics_of: GenericsOfItem(DefId) -> &'tcx ty::Generics,
     [] fn predicates_of: PredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
-    [] fn explicit_predicates_of: PredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
+    [] fn explicit_predicates_of: ExplicitPredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
 
     /// Maps from the def-id of a trait to the list of
     /// super-predicates. This is a subset of the full list of
