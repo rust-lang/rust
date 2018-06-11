@@ -132,107 +132,116 @@ impl ScalarExt for Scalar {
     }
 }
 
+fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    main_id: DefId,
+    start_wrapper: Option<DefId>,
+) -> EvalResult<'tcx, (EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>, Option<Pointer>)> {
+    let mut ecx = EvalContext::new(tcx.at(syntax::codemap::DUMMY_SP), ty::ParamEnv::reveal_all(), Default::default(), Default::default());
+
+    let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
+    let main_mir = ecx.load_mir(main_instance.def)?;
+    let mut cleanup_ptr = None; // Scalar to be deallocated when we are done
+
+    if !main_mir.return_ty().is_nil() || main_mir.arg_count != 0 {
+        return err!(Unimplemented(
+            "miri does not support main functions without `fn()` type signatures"
+                .to_owned(),
+        ));
+    }
+
+    if let Some(start_id) = start_wrapper {
+        let main_ret_ty = ecx.tcx.fn_sig(main_id).output();
+        let main_ret_ty = main_ret_ty.no_late_bound_regions().unwrap();
+        let start_instance = ty::Instance::resolve(
+            ecx.tcx.tcx,
+            ty::ParamEnv::reveal_all(),
+            start_id,
+            ecx.tcx.mk_substs(
+                ::std::iter::once(ty::subst::Kind::from(main_ret_ty)))
+            ).unwrap();
+        let start_mir = ecx.load_mir(start_instance.def)?;
+
+        if start_mir.arg_count != 3 {
+            return err!(AbiViolation(format!(
+                "'start' lang item should have three arguments, but has {}",
+                start_mir.arg_count
+            )));
+        }
+
+        // Return value
+        let size = ecx.tcx.data_layout.pointer_size;
+        let align = ecx.tcx.data_layout.pointer_align;
+        let ret_ptr = ecx.memory_mut().allocate(size, align, Some(MemoryKind::Stack))?;
+        cleanup_ptr = Some(ret_ptr);
+
+        // Push our stack frame
+        ecx.push_stack_frame(
+            start_instance,
+            start_mir.span,
+            start_mir,
+            Place::from_ptr(ret_ptr, align),
+            StackPopCleanup::None,
+        )?;
+
+        let mut args = ecx.frame().mir.args_iter();
+
+        // First argument: pointer to main()
+        let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance);
+        let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
+        let main_ty = main_instance.ty(ecx.tcx.tcx);
+        let main_ptr_ty = ecx.tcx.mk_fn_ptr(main_ty.fn_sig(ecx.tcx.tcx));
+        ecx.write_value(
+            ValTy {
+                value: Value::Scalar(Scalar::Ptr(main_ptr)),
+                ty: main_ptr_ty,
+            },
+            dest,
+        )?;
+
+        // Second argument (argc): 1
+        let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
+        let ty = ecx.tcx.types.isize;
+        ecx.write_scalar(dest, Scalar::from_u128(1), ty)?;
+
+        // FIXME: extract main source file path
+        // Third argument (argv): &[b"foo"]
+        let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
+        let ty = ecx.tcx.mk_imm_ptr(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8));
+        let foo = ecx.memory.allocate_bytes(b"foo\0");
+        let ptr_size = ecx.memory.pointer_size();
+        let ptr_align = ecx.tcx.data_layout.pointer_align;
+        let foo_ptr = ecx.memory.allocate(ptr_size, ptr_align, None)?;
+        ecx.memory.write_scalar(foo_ptr.into(), ptr_align, Scalar::Ptr(foo), ptr_size, false)?;
+        ecx.memory.mark_static_initialized(foo_ptr.alloc_id, Mutability::Immutable)?;
+        ecx.write_ptr(dest, foo_ptr.into(), ty)?;
+
+        assert!(args.next().is_none(), "start lang item has more arguments than expected");
+    } else {
+        ecx.push_stack_frame(
+            main_instance,
+            main_mir.span,
+            main_mir,
+            Place::from_scalar_ptr(Scalar::from_u128(1), ty::layout::Align::from_bytes(1, 1).unwrap()),
+            StackPopCleanup::None,
+        )?;
+
+        // No arguments
+        let mut args = ecx.frame().mir.args_iter();
+        assert!(args.next().is_none(), "main function must not have arguments");
+    }
+
+    Ok((ecx, cleanup_ptr))
+}
+
 pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     main_id: DefId,
     start_wrapper: Option<DefId>,
 ) {
-    fn run_main<'a, 'mir: 'a, 'tcx: 'mir>(
-        ecx: &mut rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>,
-        main_id: DefId,
-        start_wrapper: Option<DefId>,
-    ) -> EvalResult<'tcx> {
-        let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
-        let main_mir = ecx.load_mir(main_instance.def)?;
-        let mut cleanup_ptr = None; // Scalar to be deallocated when we are done
+    let (mut ecx, cleanup_ptr) = create_ecx(tcx, main_id, start_wrapper).expect("Couldn't create ecx");
 
-        if !main_mir.return_ty().is_nil() || main_mir.arg_count != 0 {
-            return err!(Unimplemented(
-                "miri does not support main functions without `fn()` type signatures"
-                    .to_owned(),
-            ));
-        }
-
-        if let Some(start_id) = start_wrapper {
-            let main_ret_ty = ecx.tcx.fn_sig(main_id).output();
-            let main_ret_ty = main_ret_ty.no_late_bound_regions().unwrap();
-            let start_instance = ty::Instance::resolve(
-                ecx.tcx.tcx,
-                ty::ParamEnv::reveal_all(),
-                start_id,
-                ecx.tcx.mk_substs(
-                    ::std::iter::once(ty::subst::Kind::from(main_ret_ty)))).unwrap();
-            let start_mir = ecx.load_mir(start_instance.def)?;
-
-            if start_mir.arg_count != 3 {
-                return err!(AbiViolation(format!(
-                    "'start' lang item should have three arguments, but has {}",
-                    start_mir.arg_count
-                )));
-            }
-
-            // Return value
-            let size = ecx.tcx.data_layout.pointer_size;
-            let align = ecx.tcx.data_layout.pointer_align;
-            let ret_ptr = ecx.memory_mut().allocate(size, align, Some(MemoryKind::Stack))?;
-            cleanup_ptr = Some(ret_ptr);
-
-            // Push our stack frame
-            ecx.push_stack_frame(
-                start_instance,
-                start_mir.span,
-                start_mir,
-                Place::from_ptr(ret_ptr, align),
-                StackPopCleanup::None,
-            )?;
-
-            let mut args = ecx.frame().mir.args_iter();
-
-            // First argument: pointer to main()
-            let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance);
-            let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-            let main_ty = main_instance.ty(ecx.tcx.tcx);
-            let main_ptr_ty = ecx.tcx.mk_fn_ptr(main_ty.fn_sig(ecx.tcx.tcx));
-            ecx.write_value(
-                ValTy {
-                    value: Value::Scalar(Scalar::Ptr(main_ptr)),
-                    ty: main_ptr_ty,
-                },
-                dest,
-            )?;
-
-            // Second argument (argc): 1
-            let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-            let ty = ecx.tcx.types.isize;
-            ecx.write_scalar(dest, Scalar::from_u128(1), ty)?;
-
-            // FIXME: extract main source file path
-            // Third argument (argv): &[b"foo"]
-            let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-            let ty = ecx.tcx.mk_imm_ptr(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8));
-            let foo = ecx.memory.allocate_bytes(b"foo\0");
-            let ptr_size = ecx.memory.pointer_size();
-            let ptr_align = ecx.tcx.data_layout.pointer_align;
-            let foo_ptr = ecx.memory.allocate(ptr_size, ptr_align, None)?;
-            ecx.memory.write_scalar(foo_ptr.into(), ptr_align, Scalar::Ptr(foo), ptr_size, false)?;
-            ecx.memory.mark_static_initialized(foo_ptr.alloc_id, Mutability::Immutable)?;
-            ecx.write_ptr(dest, foo_ptr.into(), ty)?;
-
-            assert!(args.next().is_none(), "start lang item has more arguments than expected");
-        } else {
-            ecx.push_stack_frame(
-                main_instance,
-                main_mir.span,
-                main_mir,
-                Place::from_scalar_ptr(Scalar::from_u128(1), ty::layout::Align::from_bytes(1, 1).unwrap()),
-                StackPopCleanup::None,
-            )?;
-
-            // No arguments
-            let mut args = ecx.frame().mir.args_iter();
-            assert!(args.next().is_none(), "main function must not have arguments");
-        }
-
+    let res: EvalResult = do catch {
         while ecx.step()? {}
         ecx.run_tls_dtors()?;
         if let Some(cleanup_ptr) = cleanup_ptr {
@@ -242,11 +251,9 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 MemoryKind::Stack,
             )?;
         }
-        Ok(())
-    }
+    };
 
-    let mut ecx = EvalContext::new(tcx.at(syntax::codemap::DUMMY_SP), ty::ParamEnv::reveal_all(), Default::default(), Default::default());
-    match run_main(&mut ecx, main_id, start_wrapper) {
+    match res {
         Ok(()) => {
             let leaks = ecx.memory().leak_report();
             if leaks != 0 {
