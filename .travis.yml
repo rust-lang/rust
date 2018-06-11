@@ -17,6 +17,9 @@ script:
   - git fetch upstream
   - git reset upstream/gh-pages
   - touch .
+  # We don't use jekyll. Disable it so it doesn't assign special meaning to any
+  # of our files (e.g. ignoring directories with a leading '_').
+  - touch .nojekyll
   - git add -A .
   - git commit -m "Rebuild book at ${rev}"
   - git push -q upstream HEAD:gh-pages > /dev/null 2>&1
