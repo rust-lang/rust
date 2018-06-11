@@ -255,6 +255,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
                 hir::ItemFn(..) |
                 hir::ItemForeignMod(..) |
                 hir::ItemGlobalAsm(..) |
+                hir::ItemExistential(..) |
                 hir::ItemTy(..) => None,
 
                 hir::ItemEnum(..) |
