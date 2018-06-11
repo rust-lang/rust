@@ -621,6 +621,9 @@ pub enum SyntaxExtension {
         /// Whether the contents of the macro can use `unsafe`
         /// without triggering the `unsafe_code` lint.
         allow_internal_unsafe: bool,
+        /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`)
+        /// for a given macro.
+        local_inner_macros: bool,
         /// The macro's feature name if it is unstable, and the stability feature
         unstable_feature: Option<(Symbol, u32)>,
         /// Edition of the crate in which the macro is defined
