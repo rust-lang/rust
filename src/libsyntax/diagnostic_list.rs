@@ -104,11 +104,12 @@ Erroneous code example:
     reason="Example invalid meta item. Should be 'note'") // error: unknown meta item
 ]
 fn deprecated_function() {}
+```
 
 Meta items are the key/value pairs inside of an attribute. The keys provided must be one of the
 valid keys for the specified attribute.
 
-To fix the problem, either remove the unknown meta item, or rename it it you provided the wrong
+To fix the problem, either remove the unknown meta item, or rename it if you provided the wrong
 name.
 
 In the erroneous code example above, the wrong name was provided, so changing it to the right name
@@ -120,6 +121,7 @@ fixes the error.
     note="This is a valid meta item for the deprecated attribute."
 )]
 fn deprecated_function() {}
+```
 "##,
 
 E0552: r##"
