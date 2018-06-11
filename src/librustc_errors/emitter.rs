@@ -963,6 +963,11 @@ impl EmitterWriter {
                             is_secondary: bool)
                             -> io::Result<()> {
         let mut buffer = StyledBuffer::new();
+        let header_style = if is_secondary {
+            Style::HeaderMsg
+        } else {
+            Style::MainHeaderMsg
+        };
 
         if msp.primary_spans().is_empty() && msp.span_labels().is_empty() && is_secondary
            && !self.short_message {
@@ -973,7 +978,7 @@ impl EmitterWriter {
             draw_note_separator(&mut buffer, 0, max_line_num_len + 1);
             let level_str = level.to_string();
             if !level_str.is_empty() {
-                buffer.append(0, &level_str, Style::HeaderMsg);
+                buffer.append(0, &level_str, Style::MainHeaderMsg);
                 buffer.append(0, ": ", Style::NoStyle);
             }
             self.msg_to_buffer(&mut buffer, msg, max_line_num_len, "note", None);
@@ -989,10 +994,10 @@ impl EmitterWriter {
                 buffer.append(0, "]", Style::Level(level.clone()));
             }
             if !level_str.is_empty() {
-                buffer.append(0, ": ", Style::HeaderMsg);
+                buffer.append(0, ": ", header_style);
             }
             for &(ref text, _) in msg.iter() {
-                buffer.append(0, text, Style::HeaderMsg);
+                buffer.append(0, text, header_style);
             }
         }
 
@@ -1521,7 +1526,7 @@ impl<'a> WritableDst<'a> {
                 }
             }
             Style::Quotation => {}
-            Style::OldSchoolNoteText | Style::HeaderMsg => {
+            Style::OldSchoolNoteText | Style::MainHeaderMsg => {
                 spec.set_bold(true);
                 if cfg!(windows) {
                     spec.set_intense(true)
@@ -1542,6 +1547,7 @@ impl<'a> WritableDst<'a> {
                     spec.set_fg(Some(Color::Blue));
                 }
             }
+            Style::HeaderMsg |
             Style::NoStyle => {}
             Style::Level(lvl) => {
                 spec = lvl.color();
