@@ -15,17 +15,38 @@
 macro_rules! define_field {
     () => {
         struct S { field: u8 }
+    };
+    ($field: ident) => {
+        struct Z { $field: u8 }
+    };
+}
+
+mod modern {
+    macro use_field($define_field1: item, $define_field2: item) {
+        $define_field1
+        $define_field2
+
+        // OK, both struct name `S` and field `name` resolve to definitions
+        // produced by `define_field` and living in the "root" context
+        // that is in scope at `use_field`'s def-site.
+        fn f() { S { field: 0 }; }
+        fn g() { Z { field: 0 }; }
     }
+
+    use_field!(define_field!{}, define_field!{ field });
 }
 
-macro use_field($define_field: item) {
-    $define_field
+mod legacy {
+    macro_rules! use_field {($define_field1: item, $define_field2: item) => {
+        $define_field1
+        $define_field2
 
-    // OK, both struct name `S` and field `name` resolve to definitions produced by `define_field`
-    // and living in the "root" context that is in scope at `use_field`'s def-site.
-    fn f() { S { field: 0 }; }
+        // OK, everything is at the same call-site.
+        fn f() { S { field: 0 }; }
+        fn g() { Z { field: 0 }; }
+    }}
+
+    use_field!(define_field!{}, define_field!{ field });
 }
-
-use_field!(define_field!{});
 
 fn main() {}
