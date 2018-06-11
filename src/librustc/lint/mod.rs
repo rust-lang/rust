@@ -824,6 +824,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'a, 'tcx> {
 
 pub fn provide(providers: &mut Providers<'_>) {
     providers.lint_levels = lint_levels;
+    context::provide(providers);
 }
 
 /// Returns whether `span` originates in a foreign crate's external macro.

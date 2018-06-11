@@ -125,37 +125,74 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         store.register_early_pass(sess, false, true, box BuiltinCombinedEarlyLintPass::new());
     }
 
-    late_lint_methods!(declare_combined_late_lint_pass, [BuiltinCombinedLateLintPass, [
+    // FIXME: Make a separate lint type which do not require typeck tables
+
+    late_lint_methods!(declare_combined_late_lint_pass, [BuiltinCombinedModuleLateLintPass, [
         HardwiredLints: HardwiredLints,
         WhileTrue: WhileTrue,
         ImproperCTypes: ImproperCTypes,
         VariantSizeDifferences: VariantSizeDifferences,
         BoxPointers: BoxPointers,
-        UnusedAttributes: UnusedAttributes,
         PathStatements: PathStatements,
         UnusedResults: UnusedResults,
-        NonSnakeCase: NonSnakeCase,
         NonUpperCaseGlobals: NonUpperCaseGlobals,
         NonShorthandFieldPatterns: NonShorthandFieldPatterns,
         UnusedAllocation: UnusedAllocation,
+
+        // Depends on types used in type definitions
         MissingCopyImplementations: MissingCopyImplementations,
-        UnstableFeatures: UnstableFeatures,
-        InvalidNoMangleItems: InvalidNoMangleItems,
+
         PluginAsLibrary: PluginAsLibrary,
+
+        // Depends on referenced function signatures in expressions
         MutableTransmutes: MutableTransmutes,
+
+        // Depends on types of fields, checks if they implement Drop
         UnionsWithDropFields: UnionsWithDropFields,
-        UnreachablePub: UnreachablePub,
-        UnnameableTestItems: UnnameableTestItems::new(),
+
         TypeAliasBounds: TypeAliasBounds,
+
+        // May Depend on constants elsewhere
         UnusedBrokenConst: UnusedBrokenConst,
+
         TrivialConstraints: TrivialConstraints,
         TypeLimits: TypeLimits::new(),
+    ]], ['tcx]);
+
+    store.register_late_pass(sess, false, true, box BuiltinCombinedModuleLateLintPass::new());
+
+    late_lint_methods!(declare_combined_late_lint_pass, [BuiltinCombinedLateLintPass, [
+
+        // Uses attr::is_used which is untracked, can't be an incremental module pass.
+        // Doesn't require type tables. Make a separate combined pass for that?
+        UnusedAttributes: UnusedAttributes,
+
+
+        // Checks crate attributes. Find out how that would work.
+        NonSnakeCase: NonSnakeCase,
+
+
+        // Needs to look at crate attributes. Make sure that works
+        UnstableFeatures: UnstableFeatures,
+
+        // Depends on access levels
+        InvalidNoMangleItems: InvalidNoMangleItems,
+
+        // Depends on access levels
+        UnreachablePub: UnreachablePub,
+
+        UnnameableTestItems: UnnameableTestItems::new(),
+
+        // Tracks attributes of parents
         MissingDoc: MissingDoc::new(),
+
+        // Depends on access levels
         MissingDebugImplementations: MissingDebugImplementations::new(),
+
         ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
     ]], ['tcx]);
 
-    store.register_late_pass(sess, false, box BuiltinCombinedLateLintPass::new());
+    store.register_late_pass(sess, false, false, box BuiltinCombinedLateLintPass::new());
 
     add_lint_group!(sess,
                     "nonstandard_style",
