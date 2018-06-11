@@ -1,7 +1,7 @@
-rustc 1.28.0-nightly (4ecf12bf0 2018-06-02)
+rustc 1.28.0-nightly (2a0062974 2018-06-09)
 binary: rustc
-commit-hash: 4ecf12bf0eb8386626ccdb5f721a7183ccc4eba6
-commit-date: 2018-06-02
+commit-hash: 2a0062974a5225847fc43d5522c4dc3718173fe5
+commit-date: 2018-06-09
 host: x86_64-unknown-linux-gnu
 release: 1.28.0-nightly
 LLVM version: 6.0
