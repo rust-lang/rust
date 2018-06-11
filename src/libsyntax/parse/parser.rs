@@ -760,7 +760,7 @@ impl<'a> Parser<'a> {
         err
     }
 
-    fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
+    pub fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
         self.parse_ident_common(true)
     }
 
