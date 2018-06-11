@@ -16,5 +16,5 @@ macro_rules! m { ($x:lifetime) => { } }
 
 fn main() {
     m!(a);
-    //~^ ERROR expected a lifetime, found `a`
+    //~^ ERROR no rules expected the token `a`
 }
