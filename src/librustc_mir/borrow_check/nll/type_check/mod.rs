@@ -286,9 +286,10 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
                     let instantiated_predicates =
                         tcx.predicates_of(def_id).instantiate(tcx, substs);
-                    let predicates =
-                        type_checker.normalize(instantiated_predicates.predicates, location);
-                    type_checker.prove_predicates(predicates, location);
+                    type_checker.normalize_and_prove_instantiated_predicates(
+                        instantiated_predicates,
+                        location,
+                    );
                 }
 
                 value.ty
@@ -1526,9 +1527,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             AggregateKind::Array(_) | AggregateKind::Tuple => ty::InstantiatedPredicates::empty(),
         };
 
-        let predicates = self.normalize(instantiated_predicates.predicates, location);
-        debug!("prove_aggregate_predicates: predicates={:?}", predicates);
-        self.prove_predicates(predicates, location);
+        self.normalize_and_prove_instantiated_predicates(instantiated_predicates, location);
     }
 
     fn prove_trait_ref(&mut self, trait_ref: ty::TraitRef<'tcx>, location: Location) {
@@ -1540,12 +1539,22 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         );
     }
 
-    fn prove_predicates(
+    fn normalize_and_prove_instantiated_predicates(
         &mut self,
-        predicates: impl IntoIterator<Item = ty::Predicate<'tcx>> + Clone,
+        instantiated_predicates: ty::InstantiatedPredicates<'tcx>,
         location: Location,
     ) {
+        for predicate in instantiated_predicates.predicates {
+            let predicate = self.normalize(predicate, location);
+            self.prove_predicate(predicate, location);
+        }
+    }
 
+    fn prove_predicates(
+        &mut self,
+        predicates: impl IntoIterator<Item = ty::Predicate<'tcx>>,
+        location: Location,
+    ) {
         for predicate in predicates {
             debug!(
                 "prove_predicates(predicate={:?}, location={:?})",
@@ -1558,6 +1567,19 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 type_op::prove_predicate::ProvePredicate::new(param_env, predicate),
             ).unwrap()
         }
+    }
+
+    fn prove_predicate(&mut self, predicate: ty::Predicate<'tcx>, location: Location) {
+        debug!(
+            "prove_predicate(predicate={:?}, location={:?})",
+            predicate, location,
+        );
+
+        let param_env = self.param_env;
+        self.fully_perform_op(
+            location.at_self(),
+            type_op::prove_predicate::ProvePredicate::new(param_env, predicate),
+        ).unwrap()
     }
 
     fn typeck_mir(&mut self, mir: &Mir<'tcx>) {
@@ -1588,7 +1610,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn normalize<T>(&mut self, value: T, location: impl ToLocations) -> T
     where
-        T: fmt::Debug + TypeFoldable<'tcx>,
+        T: type_op::normalize::Normalizable<'gcx, 'tcx>,
     {
         debug!("normalize(value={:?}, location={:?})", value, location);
         let param_env = self.param_env;

@@ -14,7 +14,7 @@ use hir::def_id::{CrateNum, DefId, DefIndex};
 use mir::interpret::{GlobalId, ConstValue};
 use traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpEqGoal,
-    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
+    CanonicalTypeOpNormalizeGoal, CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
 };
 use ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use ty::subst::Substs;
@@ -120,6 +120,36 @@ impl<'tcx> QueryDescription<'tcx> for queries::type_op_subtype<'tcx> {
 impl<'tcx> QueryDescription<'tcx> for queries::type_op_prove_predicate<'tcx> {
     fn describe(_tcx: TyCtxt, goal: CanonicalTypeOpProvePredicateGoal<'tcx>) -> String {
         format!("evaluating `type_op_prove_predicate` `{:?}`", goal)
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::type_op_normalize_ty<'tcx> {
+    fn describe(_tcx: TyCtxt, goal: CanonicalTypeOpNormalizeGoal<'tcx, Ty<'tcx>>) -> String {
+        format!("normalizing `{:?}`", goal)
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::type_op_normalize_predicate<'tcx> {
+    fn describe(
+        _tcx: TyCtxt,
+        goal: CanonicalTypeOpNormalizeGoal<'tcx, ty::Predicate<'tcx>>,
+    ) -> String {
+        format!("normalizing `{:?}`", goal)
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::type_op_normalize_poly_fn_sig<'tcx> {
+    fn describe(
+        _tcx: TyCtxt,
+        goal: CanonicalTypeOpNormalizeGoal<'tcx, ty::PolyFnSig<'tcx>>,
+    ) -> String {
+        format!("normalizing `{:?}`", goal)
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::type_op_normalize_fn_sig<'tcx> {
+    fn describe(_tcx: TyCtxt, goal: CanonicalTypeOpNormalizeGoal<'tcx, ty::FnSig<'tcx>>) -> String {
+        format!("normalizing `{:?}`", goal)
     }
 }
 

@@ -72,9 +72,10 @@ use std::hash::Hash;
 use syntax_pos::symbol::InternedString;
 use traits::query::{
     CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal,
-    CanonicalPredicateGoal, CanonicalTypeOpProvePredicateGoal,
+    CanonicalPredicateGoal, CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpNormalizeGoal,
 };
-use ty::{TyCtxt, Instance, InstanceDef, ParamEnv, ParamEnvAnd, PolyTraitRef, Ty};
+use ty::{TyCtxt, FnSig, Instance, InstanceDef,
+         ParamEnv, ParamEnvAnd, Predicate, PolyFnSig, PolyTraitRef, Ty};
 use ty::subst::Substs;
 
 // erase!() just makes tokens go away. It's used to specify which macro argument
@@ -652,6 +653,10 @@ define_dep_nodes!( <'tcx>
     [] TypeOpEq(CanonicalTypeOpEqGoal<'tcx>),
     [] TypeOpSubtype(CanonicalTypeOpSubtypeGoal<'tcx>),
     [] TypeOpProvePredicate(CanonicalTypeOpProvePredicateGoal<'tcx>),
+    [] TypeOpNormalizeTy(CanonicalTypeOpNormalizeGoal<'tcx, Ty<'tcx>>),
+    [] TypeOpNormalizePredicate(CanonicalTypeOpNormalizeGoal<'tcx, Predicate<'tcx>>),
+    [] TypeOpNormalizePolyFnSig(CanonicalTypeOpNormalizeGoal<'tcx, PolyFnSig<'tcx>>),
+    [] TypeOpNormalizeFnSig(CanonicalTypeOpNormalizeGoal<'tcx, FnSig<'tcx>>),
 
     [] SubstituteNormalizeAndTestPredicates { key: (DefId, &'tcx Substs<'tcx>) },
 

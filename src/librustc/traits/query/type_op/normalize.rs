@@ -8,17 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::{InferCtxt, InferOk, InferResult};
-use traits::query::NoSolution;
-use traits::{Normalized, ObligationCause};
-use ty::fold::TypeFoldable;
-use ty::{ParamEnv, TyCtxt};
+use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResult, QueryResult};
 use std::fmt;
+use ty::fold::TypeFoldable;
+use ty::{self, Lift, ParamEnv, Ty, TyCtxt};
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Normalize<'tcx, T> {
-    param_env: ParamEnv<'tcx>,
-    value: T,
+    pub param_env: ParamEnv<'tcx>,
+    pub value: T,
 }
 
 impl<'tcx, T> Normalize<'tcx, T>
@@ -30,13 +28,13 @@ where
     }
 }
 
-impl<'gcx, 'tcx, T> super::TypeOp<'gcx, 'tcx> for Normalize<'tcx, T>
+impl<'gcx: 'tcx, 'tcx, T> super::QueryTypeOp<'gcx, 'tcx> for Normalize<'tcx, T>
 where
-    T: fmt::Debug + TypeFoldable<'tcx>,
+    T: Normalizable<'gcx, 'tcx>,
 {
-    type Output = T;
+    type QueryResult = T;
 
-    fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self> {
+    fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<T, Self> {
         if !self.value.has_projections() {
             Ok(self.value)
         } else {
@@ -44,13 +42,126 @@ where
         }
     }
 
-    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
-        let Normalized { value, obligations } = infcx
-            .at(&ObligationCause::dummy(), self.param_env)
-            .normalize(&self.value)
-            .unwrap_or_else(|NoSolution| {
-                bug!("normalization of `{:?}` failed", self.value,);
-            });
-        Ok(InferOk { value, obligations })
+    fn param_env(&self) -> ParamEnv<'tcx> {
+        self.param_env
+    }
+
+    fn perform_query(
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        canonicalized: Canonicalized<'gcx, Self>,
+    ) -> CanonicalizedQueryResult<'gcx, Self::QueryResult> {
+        T::type_op_method(tcx, canonicalized)
+    }
+
+    fn upcast_result(
+        v: &'a CanonicalizedQueryResult<'gcx, T>,
+    ) -> &'a Canonical<'tcx, QueryResult<'tcx, T>> {
+        T::upcast_result(v)
+    }
+}
+
+pub trait Normalizable<'gcx, 'tcx>: fmt::Debug + TypeFoldable<'tcx> + Lift<'gcx> {
+    fn type_op_method(
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        canonicalized: Canonicalized<'gcx, Normalize<'gcx, Self>>,
+    ) -> CanonicalizedQueryResult<'gcx, Self>;
+
+    /// Convert from the `'gcx` (lifted) form of `Self` into the `tcx`
+    /// form of `Self`.
+    fn upcast_result(
+        v: &'a CanonicalizedQueryResult<'gcx, Self>,
+    ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self>>;
+}
+
+impl Normalizable<'gcx, 'tcx> for Ty<'tcx>
+where
+    'gcx: 'tcx,
+{
+    fn type_op_method(
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        canonicalized: Canonicalized<'gcx, Normalize<'gcx, Self>>,
+    ) -> CanonicalizedQueryResult<'gcx, Self> {
+        tcx.type_op_normalize_ty(canonicalized).unwrap()
+    }
+
+    fn upcast_result(
+        v: &'a CanonicalizedQueryResult<'gcx, Self>,
+    ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self>> {
+        v
+    }
+}
+
+impl Normalizable<'gcx, 'tcx> for ty::Predicate<'tcx>
+where
+    'gcx: 'tcx,
+{
+    fn type_op_method(
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        canonicalized: Canonicalized<'gcx, Normalize<'gcx, Self>>,
+    ) -> CanonicalizedQueryResult<'gcx, Self> {
+        tcx.type_op_normalize_predicate(canonicalized).unwrap()
+    }
+
+    fn upcast_result(
+        v: &'a CanonicalizedQueryResult<'gcx, Self>,
+    ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self>> {
+        v
+    }
+}
+
+impl Normalizable<'gcx, 'tcx> for ty::PolyFnSig<'tcx>
+where
+    'gcx: 'tcx,
+{
+    fn type_op_method(
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        canonicalized: Canonicalized<'gcx, Normalize<'gcx, Self>>,
+    ) -> CanonicalizedQueryResult<'gcx, Self> {
+        tcx.type_op_normalize_poly_fn_sig(canonicalized).unwrap()
+    }
+
+    fn upcast_result(
+        v: &'a CanonicalizedQueryResult<'gcx, Self>,
+    ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self>> {
+        v
+    }
+}
+
+impl Normalizable<'gcx, 'tcx> for ty::FnSig<'tcx>
+where
+    'gcx: 'tcx,
+{
+    fn type_op_method(
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        canonicalized: Canonicalized<'gcx, Normalize<'gcx, Self>>,
+    ) -> CanonicalizedQueryResult<'gcx, Self> {
+        tcx.type_op_normalize_fn_sig(canonicalized).unwrap()
+    }
+
+    fn upcast_result(
+        v: &'a CanonicalizedQueryResult<'gcx, Self>,
+    ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self>> {
+        v
+    }
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx, T> TypeFoldable<'tcx> for Normalize<'tcx, T> {
+        param_env,
+        value,
+    } where T: TypeFoldable<'tcx>,
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx, T> Lift<'tcx> for Normalize<'a, T> {
+        type Lifted = Normalize<'tcx, T::Lifted>;
+        param_env,
+        value,
+    } where T: Lift<'tcx>,
+}
+
+impl_stable_hash_for! {
+    impl<'tcx, T> for struct Normalize<'tcx, T> {
+        param_env, value
     }
 }

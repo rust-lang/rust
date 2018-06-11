@@ -41,6 +41,9 @@ pub type CanonicalTypeOpSubtypeGoal<'tcx> =
 pub type CanonicalTypeOpProvePredicateGoal<'tcx> =
     Canonical<'tcx, type_op::prove_predicate::ProvePredicate<'tcx>>;
 
+pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
+    Canonical<'tcx, type_op::normalize::Normalize<'tcx, T>>;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NoSolution;
 

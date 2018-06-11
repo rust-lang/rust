@@ -9,15 +9,17 @@
 // except according to those terms.
 
 use infer::canonical::query_result;
-use infer::canonical::{Canonicalized, CanonicalizedQueryResult, QueryRegionConstraint};
+use infer::canonical::{
+    Canonical, Canonicalized, CanonicalizedQueryResult, QueryRegionConstraint, QueryResult,
+};
 use infer::{InferCtxt, InferOk, InferResult};
+use std::fmt;
+use std::rc::Rc;
+use syntax::codemap::DUMMY_SP;
 use traits::{ObligationCause, TraitEngine};
 use ty::error::TypeError;
 use ty::fold::TypeFoldable;
 use ty::{Lift, ParamEnv, TyCtxt};
-use std::fmt;
-use std::rc::Rc;
-use syntax::codemap::DUMMY_SP;
 
 pub mod custom;
 pub mod eq;
@@ -98,17 +100,12 @@ pub trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     }
 }
 
-type Lifted<'gcx, T> = <T as Lift<'gcx>>::Lifted;
-
 pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>: TypeFoldable<'tcx> + Lift<'gcx> {
     type QueryResult: TypeFoldable<'tcx> + Lift<'gcx>;
 
     /// Micro-optimization: returns `Ok(x)` if we can trivially
     /// produce the output, else returns `Err(self)` back.
-    fn trivial_noop(
-        self,
-        tcx: TyCtxt<'_, 'gcx, 'tcx>,
-    ) -> Result<Lifted<'gcx, Self::QueryResult>, Self>;
+    fn trivial_noop(self, tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::QueryResult, Self>;
 
     fn param_env(&self) -> ParamEnv<'tcx>;
 
@@ -116,14 +113,24 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>: TypeFoldable<'tcx> + Lift<'gcx> {
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, Self>,
     ) -> CanonicalizedQueryResult<'gcx, Self::QueryResult>;
+
+    /// "Upcasts" a lifted query result (which is in the gcx lifetime)
+    /// into the tcx lifetime. This is always just an identity cast,
+    /// but the generic code does't realize it, so we have to push the
+    /// operation into the impls that know more specifically what
+    /// `QueryResult` is. This operation would (maybe) be nicer with
+    /// something like HKTs or GATs, since then we could make
+    /// `QueryResult` parametric and `'gcx` and `'tcx` etc.
+    fn upcast_result(
+        lifted_query_result: &'a CanonicalizedQueryResult<'gcx, Self::QueryResult>,
+    ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self::QueryResult>>;
 }
 
 impl<'gcx: 'tcx, 'tcx, Q> TypeOp<'gcx, 'tcx> for Q
 where
     Q: QueryTypeOp<'gcx, 'tcx>,
-    Lifted<'gcx, Q::QueryResult>: TypeFoldable<'tcx>,
 {
-    type Output = Lifted<'gcx, Q::QueryResult>;
+    type Output = Q::QueryResult;
 
     fn trivial_noop(self, tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self> {
         QueryTypeOp::trivial_noop(self, tcx)
@@ -152,7 +159,7 @@ where
             &ObligationCause::dummy(),
             param_env,
             &canonical_var_values,
-            &canonical_result,
+            Q::upcast_result(&canonical_result),
         )
     }
 }

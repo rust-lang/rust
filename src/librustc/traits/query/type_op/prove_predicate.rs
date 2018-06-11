@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::canonical::{Canonical, CanonicalizedQueryResult};
+use infer::canonical::{Canonical, CanonicalizedQueryResult, QueryResult};
 use ty::{ParamEnv, Predicate, TyCtxt};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -18,11 +18,11 @@ pub struct ProvePredicate<'tcx> {
 }
 
 impl<'tcx> ProvePredicate<'tcx> {
-    pub fn new(
-        param_env: ParamEnv<'tcx>,
-        predicate: Predicate<'tcx>,
-    ) -> Self {
-        ProvePredicate { param_env, predicate }
+    pub fn new(param_env: ParamEnv<'tcx>, predicate: Predicate<'tcx>) -> Self {
+        ProvePredicate {
+            param_env,
+            predicate,
+        }
     }
 }
 
@@ -42,6 +42,12 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for ProvePredicate<'tcx> {
         canonicalized: Canonical<'gcx, ProvePredicate<'gcx>>,
     ) -> CanonicalizedQueryResult<'gcx, ()> {
         tcx.type_op_prove_predicate(canonicalized).unwrap()
+    }
+
+    fn upcast_result(
+        v: &'a CanonicalizedQueryResult<'gcx, ()>,
+    ) -> &'a Canonical<'tcx, QueryResult<'tcx, ()>> {
+        v
     }
 }
 
