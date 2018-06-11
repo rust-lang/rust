@@ -915,6 +915,24 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<PinBox<U>> for PinBox<T> {}
 impl<T: ?Sized> Unpin for PinBox<T> {}
 
 #[unstable(feature = "futures_api", issue = "50547")]
+impl<'a, F: ?Sized + Future + Unpin> Future for Box<F> {
+    type Output = F::Output;
+
+    fn poll(mut self: PinMut<Self>, cx: &mut Context) -> Poll<Self::Output> {
+        PinMut::new(&mut **self).poll(cx)
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+impl<'a, F: ?Sized + Future> Future for PinBox<F> {
+    type Output = F::Output;
+
+    fn poll(mut self: PinMut<Self>, cx: &mut Context) -> Poll<Self::Output> {
+        self.as_pin_mut().poll(cx)
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
 unsafe impl<F: Future<Output = ()> + Send + 'static> UnsafePoll for PinBox<F> {
     fn into_raw(self) -> *mut () {
         PinBox::into_raw(self) as *mut ()
