@@ -107,14 +107,14 @@ Erroneous code example:
 fn deprecated_function() {}
 ```
 
-Meta items are the key/value pairs inside of an attribute. The keys provided
+Meta items are the key-value pairs inside of an attribute. The keys provided
 must be one of the valid keys for the specified attribute.
 
 To fix the problem, either remove the unknown meta item, or rename it if you
 provided the wrong name.
 
-In the erroneous code example above, the wrong name was provided, so changing it
-to the right name fixes the error.
+In the erroneous code example above, the wrong name was provided, so changing
+to a correct one it will fix the error. Example:
 
 ```
 #[deprecated(
