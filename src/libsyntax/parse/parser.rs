@@ -1022,7 +1022,7 @@ impl<'a> Parser<'a> {
     /// Parse a sequence, including the closing delimiter. The function
     /// f must consume tokens until reaching the next separator or
     /// closing bracket.
-    crate fn parse_seq_to_end<T, F>(&mut self,
+    pub fn parse_seq_to_end<T, F>(&mut self,
                                   ket: &token::Token,
                                   sep: SeqSep,
                                   f: F)
@@ -1886,7 +1886,7 @@ impl<'a> Parser<'a> {
     /// `a::b::C::<D>` (with disambiguator)
     /// `Fn(Args)` (without disambiguator)
     /// `Fn::(Args)` (with disambiguator)
-    crate fn parse_path(&mut self, style: PathStyle) -> PResult<'a, ast::Path> {
+    pub fn parse_path(&mut self, style: PathStyle) -> PResult<'a, ast::Path> {
         self.parse_path_common(style, true)
     }
 
