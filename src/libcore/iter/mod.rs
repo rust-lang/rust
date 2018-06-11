@@ -2524,13 +2524,13 @@ impl<I, U, F> FusedIterator for FlatMap<I, U, F>
 /// [`flatten`]: trait.Iterator.html#method.flatten
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[unstable(feature = "iterator_flatten", issue = "48213")]
+#[stable(feature = "iterator_flatten", since = "1.29")]
 pub struct Flatten<I: Iterator>
 where I::Item: IntoIterator {
     inner: FlattenCompat<I, <I::Item as IntoIterator>::IntoIter>,
 }
 
-#[unstable(feature = "iterator_flatten", issue = "48213")]
+#[stable(feature = "iterator_flatten", since = "1.29")]
 impl<I, U> fmt::Debug for Flatten<I>
     where I: Iterator + fmt::Debug, U: Iterator + fmt::Debug,
           I::Item: IntoIterator<IntoIter = U, Item = U::Item>,
@@ -2540,7 +2540,7 @@ impl<I, U> fmt::Debug for Flatten<I>
     }
 }
 
-#[unstable(feature = "iterator_flatten", issue = "48213")]
+#[stable(feature = "iterator_flatten", since = "1.29")]
 impl<I, U> Clone for Flatten<I>
     where I: Iterator + Clone, U: Iterator + Clone,
           I::Item: IntoIterator<IntoIter = U, Item = U::Item>,
@@ -2548,7 +2548,7 @@ impl<I, U> Clone for Flatten<I>
     fn clone(&self) -> Self { Flatten { inner: self.inner.clone() } }
 }
 
-#[unstable(feature = "iterator_flatten", issue = "48213")]
+#[stable(feature = "iterator_flatten", since = "1.29")]
 impl<I, U> Iterator for Flatten<I>
     where I: Iterator, U: Iterator,
           I::Item: IntoIterator<IntoIter = U, Item = U::Item>
@@ -2576,7 +2576,7 @@ impl<I, U> Iterator for Flatten<I>
     }
 }
 
-#[unstable(feature = "iterator_flatten", issue = "48213")]
+#[stable(feature = "iterator_flatten", since = "1.29")]
 impl<I, U> DoubleEndedIterator for Flatten<I>
     where I: DoubleEndedIterator, U: DoubleEndedIterator,
           I::Item: IntoIterator<IntoIter = U, Item = U::Item>
@@ -2599,7 +2599,7 @@ impl<I, U> DoubleEndedIterator for Flatten<I>
     }
 }
 
-#[unstable(feature = "iterator_flatten", issue = "48213")]
+#[stable(feature = "iterator_flatten", since = "1.29")]
 impl<I, U> FusedIterator for Flatten<I>
     where I: FusedIterator, U: Iterator,
           I::Item: IntoIterator<IntoIter = U, Item = U::Item> {}

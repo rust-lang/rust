@@ -1036,8 +1036,6 @@ pub trait Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(iterator_flatten)]
-    ///
     /// let data = vec![vec![1, 2, 3, 4], vec![5, 6]];
     /// let flattened = data.into_iter().flatten().collect::<Vec<u8>>();
     /// assert_eq!(flattened, &[1, 2, 3, 4, 5, 6]);
@@ -1046,8 +1044,6 @@ pub trait Iterator {
     /// Mapping and then flattening:
     ///
     /// ```
-    /// #![feature(iterator_flatten)]
-    ///
     /// let words = ["alpha", "beta", "gamma"];
     ///
     /// // chars() returns an iterator
@@ -1074,8 +1070,6 @@ pub trait Iterator {
     /// Flattening once only removes one level of nesting:
     ///
     /// ```
-    /// #![feature(iterator_flatten)]
-    ///
     /// let d3 = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]];
     ///
     /// let d2 = d3.iter().flatten().collect::<Vec<_>>();
@@ -1093,7 +1087,7 @@ pub trait Iterator {
     ///
     /// [`flat_map()`]: #method.flat_map
     #[inline]
-    #[unstable(feature = "iterator_flatten", issue = "48213")]
+    #[stable(feature = "iterator_flatten", since = "1.29")]
     fn flatten(self) -> Flatten<Self>
     where Self: Sized, Self::Item: IntoIterator {
         Flatten { inner: flatten_compat(self) }
