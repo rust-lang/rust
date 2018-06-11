@@ -1702,7 +1702,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "check_access_permissions({:?}, {:?}, {:?})",
             place, kind, is_local_mutation_allowed
         );
-        let mut error_reported = false;
+
         match kind {
             Reservation(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Unique))
             | Reservation(WriteKind::MutableBorrow(borrow_kind @ BorrowKind::Mut { .. }))
@@ -1715,9 +1715,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     BorrowKind::Shared => unreachable!(),
                 };
                 match self.is_mutable(place, is_local_mutation_allowed) {
-                    Ok(root_place) => self.add_used_mut(root_place, flow_state),
+                    Ok(root_place) => {
+                        self.add_used_mut(root_place, flow_state);
+                        return false;
+                    }
                     Err(place_err) => {
-                        error_reported = true;
                         let item_msg = self.get_default_err_msg(place);
                         let mut err = self.tcx
                             .cannot_borrow_path_as_mutable(span, &item_msg, Origin::Mir);
@@ -1731,15 +1733,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         }
 
                         err.emit();
+                        return true;
                     }
                 }
             }
             Reservation(WriteKind::Mutate) | Write(WriteKind::Mutate) => {
                 match self.is_mutable(place, is_local_mutation_allowed) {
-                    Ok(root_place) => self.add_used_mut(root_place, flow_state),
+                    Ok(root_place) => {
+                        self.add_used_mut(root_place, flow_state);
+                        return false;
+                    }
                     Err(place_err) => {
-                        error_reported = true;
-
                         let err_info = if let Place::Projection(
                             box Projection {
                                 base: Place::Local(local),
@@ -1748,11 +1752,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         ) = *place_err {
                             let locations = self.mir.find_assignments(local);
                             if locations.len() > 0 {
-                                let item_msg = if error_reported {
-                                    self.get_secondary_err_msg(&Place::Local(local))
-                                } else {
-                                    self.get_default_err_msg(place)
-                                };
+                                let item_msg = self.get_secondary_err_msg(&Place::Local(local));
                                 let sp = self.mir.source_info(locations[0]).span;
                                 let mut to_suggest_span = String::new();
                                 if let Ok(src) =
@@ -1797,6 +1797,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             }
                             err.emit();
                         }
+
+                        return true;
                     }
                 }
             }
@@ -1815,15 +1817,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         ),
                     );
                 }
+                return false;
             }
-            Activation(..) => {} // permission checks are done at Reservation point.
+            Activation(..) => {
+                // permission checks are done at Reservation point.
+                return false;
+            }
             Read(ReadKind::Borrow(BorrowKind::Unique))
             | Read(ReadKind::Borrow(BorrowKind::Mut { .. }))
             | Read(ReadKind::Borrow(BorrowKind::Shared))
-            | Read(ReadKind::Copy) => {} // Access authorized
+            | Read(ReadKind::Copy) => {
+                // Access authorized
+                return false;
+            }
         }
-
-        error_reported
     }
 
     /// Adds the place into the used mutable variables set
