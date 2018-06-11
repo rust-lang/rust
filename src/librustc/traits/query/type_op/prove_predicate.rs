@@ -9,43 +9,36 @@
 // except according to those terms.
 
 use infer::{InferCtxt, InferOk, InferResult};
-use traits::{Obligation, ObligationCause, PredicateObligation};
+use traits::{Obligation, ObligationCause};
 use ty::{ParamEnv, Predicate, TyCtxt};
 
 #[derive(Debug)]
-pub struct ProvePredicates<'tcx> {
-    obligations: Vec<PredicateObligation<'tcx>>,
+pub struct ProvePredicate<'tcx> {
+    param_env: ParamEnv<'tcx>,
+    predicate: Predicate<'tcx>,
 }
 
-impl<'tcx> ProvePredicates<'tcx> {
+impl<'tcx> ProvePredicate<'tcx> {
     pub fn new(
         param_env: ParamEnv<'tcx>,
-        predicates: impl IntoIterator<Item = Predicate<'tcx>>,
+        predicate: Predicate<'tcx>,
     ) -> Self {
-        ProvePredicates {
-            obligations: predicates
-                .into_iter()
-                .map(|p| Obligation::new(ObligationCause::dummy(), param_env, p))
-                .collect(),
-        }
+        ProvePredicate { param_env, predicate }
     }
 }
 
-impl<'gcx, 'tcx> super::TypeOp<'gcx, 'tcx> for ProvePredicates<'tcx> {
+impl<'gcx, 'tcx> super::TypeOp<'gcx, 'tcx> for ProvePredicate<'tcx> {
     type Output = ();
 
     fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self> {
-        if self.obligations.is_empty() {
-            Ok(())
-        } else {
-            Err(self)
-        }
+        Err(self)
     }
 
     fn perform(self, _infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
+        let obligation = Obligation::new(ObligationCause::dummy(), self.param_env, self.predicate);
         Ok(InferOk {
             value: (),
-            obligations: self.obligations,
+            obligations: vec![obligation],
         })
     }
 }

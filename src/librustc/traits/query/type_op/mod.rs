@@ -23,7 +23,7 @@ pub mod custom;
 pub mod eq;
 pub mod normalize;
 pub mod outlives;
-pub mod predicates;
+pub mod prove_predicate;
 pub mod subtype;
 
 pub trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {

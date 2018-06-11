@@ -1545,26 +1545,19 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         predicates: impl IntoIterator<Item = ty::Predicate<'tcx>> + Clone,
         location: Location,
     ) {
-        // This intermediate vector is mildly unfortunate, in that we
-        // sometimes create it even when logging is disabled, but only
-        // if debug-info is enabled, and I doubt it is actually
-        // expensive. -nmatsakis
-        let predicates_vec: Vec<_> = if cfg!(debug_assertions) {
-            predicates.clone().into_iter().collect()
-        } else {
-            Vec::new()
-        };
 
-        debug!(
-            "prove_predicates(predicates={:?}, location={:?})",
-            predicates_vec, location,
-        );
+        for predicate in predicates {
+            debug!(
+                "prove_predicates(predicate={:?}, location={:?})",
+                predicate, location,
+            );
 
-        let param_env = self.param_env;
-        self.fully_perform_op(
-            location.at_self(),
-            type_op::predicates::ProvePredicates::new(param_env, predicates),
-        ).unwrap()
+            let param_env = self.param_env;
+            self.fully_perform_op(
+                location.at_self(),
+                type_op::prove_predicate::ProvePredicate::new(param_env, predicate),
+            ).unwrap()
+        }
     }
 
     fn typeck_mir(&mut self, mir: &Mir<'tcx>) {
