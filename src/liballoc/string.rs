@@ -381,6 +381,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_string_new")]
+    #[promotable_const_fn]
     pub const fn new() -> String {
         String { vec: Vec::new() }
     }

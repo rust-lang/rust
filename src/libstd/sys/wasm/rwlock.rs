@@ -18,6 +18,7 @@ unsafe impl Send for RWLock {}
 unsafe impl Sync for RWLock {} // no threads on wasm
 
 impl RWLock {
+    #[promotable_const_fn]
     pub const fn new() -> RWLock {
         RWLock {
             mode: UnsafeCell::new(0),

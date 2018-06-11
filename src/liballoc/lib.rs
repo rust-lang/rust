@@ -103,6 +103,7 @@
 #![feature(optin_builtin_traits)]
 #![feature(pattern)]
 #![feature(pin)]
+#![feature(promotable_const_fn)]
 #![feature(ptr_internals)]
 #![feature(ptr_offset_from)]
 #![feature(repr_transparent)]

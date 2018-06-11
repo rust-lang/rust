@@ -157,6 +157,7 @@ struct Finish {
 impl Once {
     /// Creates a new `Once` value.
     #[stable(feature = "once_new", since = "1.2.0")]
+    #[promotable_const_fn]
     pub const fn new() -> Once {
         Once {
             state: AtomicUsize::new(INCOMPLETE),

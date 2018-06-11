@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(const_fn)]
+#![unstable(feature = "humans",
+            reason = "who ever let humans program computers,
+            we're apparently really bad at it",
+            issue = "0")]
+
+#![feature(const_fn, promotable_const_fn, staged_api)]
 
 #![deny(const_err)]
 
@@ -17,6 +22,8 @@ union Bar {
     b: usize,
 }
 
+#[stable(feature="zing", since="1.0.0")]
+#[promotable_const_fn]
 const fn bar() -> u8 {
     unsafe {
         // this will error as long as this test

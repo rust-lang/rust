@@ -314,6 +314,7 @@ pub fn forget<T>(t: T) {
 /// [alignment]: ./fn.align_of.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[promotable_const_fn]
 pub const fn size_of<T>() -> usize {
     unsafe { intrinsics::size_of::<T>() }
 }
@@ -405,6 +406,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[promotable_const_fn]
 pub const fn align_of<T>() -> usize {
     unsafe { intrinsics::min_align_of::<T>() }
 }
@@ -966,6 +968,7 @@ impl<T> ManuallyDrop<T> {
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[rustc_const_unstable(feature = "const_manually_drop_new")]
     #[inline]
+    #[promotable_const_fn]
     pub const fn new(value: T) -> ManuallyDrop<T> {
         ManuallyDrop { value: value }
     }

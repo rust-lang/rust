@@ -99,6 +99,7 @@
 #![feature(on_unimplemented)]
 #![feature(optin_builtin_traits)]
 #![feature(prelude_import)]
+#![feature(promotable_const_fn)]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(repr_transparent)]
 #![feature(rustc_attrs)]

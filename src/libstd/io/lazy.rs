@@ -23,6 +23,7 @@ pub struct Lazy<T> {
 unsafe impl<T> Sync for Lazy<T> {}
 
 impl<T: Send + Sync + 'static> Lazy<T> {
+    #[promotable_const_fn]
     pub const fn new(init: fn() -> Arc<T>) -> Lazy<T> {
         Lazy {
             lock: Mutex::new(),

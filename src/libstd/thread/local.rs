@@ -320,6 +320,7 @@ pub mod statik {
     }
 
     impl<T> Key<T> {
+        #[promotable_const_fn]
         pub const fn new() -> Key<T> {
             Key {
                 inner: UnsafeCell::new(None),
@@ -357,6 +358,7 @@ pub mod fast {
     }
 
     impl<T> Key<T> {
+        #[promotable_const_fn]
         pub const fn new() -> Key<T> {
             Key {
                 inner: UnsafeCell::new(None),
@@ -432,6 +434,7 @@ pub mod os {
     }
 
     impl<T: 'static> Key<T> {
+        #[promotable_const_fn]
         pub const fn new() -> Key<T> {
             Key {
                 os: OsStaticKey::new(Some(destroy_value::<T>)),

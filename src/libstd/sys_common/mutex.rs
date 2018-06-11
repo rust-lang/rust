@@ -24,6 +24,7 @@ impl Mutex {
     ///
     /// Behavior is undefined if the mutex is moved after it is
     /// first used with any of the functions below.
+    #[promotable_const_fn]
     pub const fn new() -> Mutex { Mutex(imp::Mutex::new()) }
 
     /// Prepare the mutex for use.

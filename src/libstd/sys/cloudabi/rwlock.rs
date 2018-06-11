@@ -33,6 +33,7 @@ unsafe impl Send for RWLock {}
 unsafe impl Sync for RWLock {}
 
 impl RWLock {
+    #[promotable_const_fn]
     pub const fn new() -> RWLock {
         RWLock {
             lock: UnsafeCell::new(AtomicU32::new(abi::LOCK_UNLOCKED.0)),

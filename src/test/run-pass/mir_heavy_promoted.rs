@@ -16,5 +16,8 @@ const TEST_DATA: [u8; 32 * 1024 * 1024] = [42; 32 * 1024 * 1024];
 // leave an alloca from an unused temp behind, which,
 // without optimizations, can still blow the stack.
 fn main() {
-    println!("{}", TEST_DATA.len());
+    // use intermediate variable, otherwise the entire `TEST_DATA.len()` call could get promoted
+    // resulting in just a `usize` promoted
+    let promoted: &'static [u8; 32 * 1024 * 1024] = &TEST_DATA;
+    println!("{}", promoted.len());
 }

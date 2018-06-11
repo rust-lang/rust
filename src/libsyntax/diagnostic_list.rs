@@ -366,6 +366,8 @@ register_diagnostics! {
     E0584, // file for module `..` found at both .. and ..
     E0629, // missing 'feature' (rustc_const_unstable)
     E0630, // rustc_const_unstable attribute must be paired with stable/unstable attribute
+    E0635, // multiple #[promotable_const_fn]
+    E0636, // promotable_const_fn attribute must be paired with stable/unstable attribute
     E0693, // incorrect `repr(align)` attribute format
     E0694, // an unknown tool name found in scoped attributes
 }

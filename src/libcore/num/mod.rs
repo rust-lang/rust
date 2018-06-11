@@ -200,6 +200,7 @@ $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
+            #[promotable_const_fn]
             pub const fn min_value() -> Self {
                 !0 ^ ((!0 as $UnsignedT) >> 1) as Self
             }
@@ -218,6 +219,7 @@ $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
+            #[promotable_const_fn]
             pub const fn max_value() -> Self {
                 !Self::min_value()
             }
@@ -2103,6 +2105,7 @@ Basic usage:
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
+            #[promotable_const_fn]
             pub const fn min_value() -> Self { 0 }
         }
 
@@ -2119,6 +2122,7 @@ stringify!($MaxV), ");", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
+            #[promotable_const_fn]
             pub const fn max_value() -> Self { !0 }
         }
 

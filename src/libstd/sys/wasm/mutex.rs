@@ -18,6 +18,7 @@ unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {} // no threads on wasm
 
 impl Mutex {
+    #[promotable_const_fn]
     pub const fn new() -> Mutex {
         Mutex { locked: UnsafeCell::new(false) }
     }

@@ -24,6 +24,7 @@ unsafe impl Sync for Mutex {}
 
 #[allow(dead_code)] // sys isn't exported yet
 impl Mutex {
+    #[promotable_const_fn]
     pub const fn new() -> Mutex {
         // Might be moved and address is changing it is better to avoid
         // initialization of potentially opaque OS data before it landed

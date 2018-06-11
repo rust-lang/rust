@@ -374,6 +374,7 @@ impl<T> Cell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[promotable_const_fn]
     pub const fn new(value: T) -> Cell<T> {
         Cell {
             value: UnsafeCell::new(value),
@@ -588,6 +589,7 @@ impl<T> RefCell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[promotable_const_fn]
     pub const fn new(value: T) -> RefCell<T> {
         RefCell {
             value: UnsafeCell::new(value),
@@ -1304,6 +1306,7 @@ impl<T> UnsafeCell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[promotable_const_fn]
     pub const fn new(value: T) -> UnsafeCell<T> {
         UnsafeCell { value: value }
     }

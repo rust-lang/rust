@@ -14,6 +14,7 @@ use time::Duration;
 pub struct Condvar { }
 
 impl Condvar {
+    #[promotable_const_fn]
     pub const fn new() -> Condvar {
         Condvar { }
     }
