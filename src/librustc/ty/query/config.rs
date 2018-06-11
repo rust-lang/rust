@@ -14,7 +14,7 @@ use hir::def_id::{CrateNum, DefId, DefIndex};
 use mir::interpret::{GlobalId, ConstValue};
 use traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpEqGoal,
-    CanonicalTypeOpSubtypeGoal,
+    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
 };
 use ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use ty::subst::Substs;
@@ -114,6 +114,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::type_op_eq<'tcx> {
 impl<'tcx> QueryDescription<'tcx> for queries::type_op_subtype<'tcx> {
     fn describe(_tcx: TyCtxt, goal: CanonicalTypeOpSubtypeGoal<'tcx>) -> String {
         format!("evaluating `type_op_eq` `{:?}`", goal)
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::type_op_prove_predicate<'tcx> {
+    fn describe(_tcx: TyCtxt, goal: CanonicalTypeOpProvePredicateGoal<'tcx>) -> String {
+        format!("evaluating `type_op_prove_predicate` `{:?}`", goal)
     }
 }
 

@@ -1030,6 +1030,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::EvaluateObligation |
         DepKind::TypeOpEq |
         DepKind::TypeOpSubtype |
+        DepKind::TypeOpProvePredicate |
         DepKind::SubstituteNormalizeAndTestPredicates |
         DepKind::InstanceDefSizeEstimate |
         DepKind::ProgramClausesForEnv |

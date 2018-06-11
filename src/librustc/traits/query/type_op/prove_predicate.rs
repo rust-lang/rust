@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::{InferCtxt, InferOk, InferResult};
-use traits::{Obligation, ObligationCause};
+use infer::canonical::{Canonical, CanonicalizedQueryResult};
 use ty::{ParamEnv, Predicate, TyCtxt};
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct ProvePredicate<'tcx> {
-    param_env: ParamEnv<'tcx>,
-    predicate: Predicate<'tcx>,
+    pub param_env: ParamEnv<'tcx>,
+    pub predicate: Predicate<'tcx>,
 }
 
 impl<'tcx> ProvePredicate<'tcx> {
@@ -27,18 +26,40 @@ impl<'tcx> ProvePredicate<'tcx> {
     }
 }
 
-impl<'gcx, 'tcx> super::TypeOp<'gcx, 'tcx> for ProvePredicate<'tcx> {
-    type Output = ();
+impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for ProvePredicate<'tcx> {
+    type QueryResult = ();
 
-    fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self> {
+    fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::QueryResult, Self> {
         Err(self)
     }
 
-    fn perform(self, _infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
-        let obligation = Obligation::new(ObligationCause::dummy(), self.param_env, self.predicate);
-        Ok(InferOk {
-            value: (),
-            obligations: vec![obligation],
-        })
+    fn param_env(&self) -> ParamEnv<'tcx> {
+        self.param_env
     }
+
+    fn perform_query(
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        canonicalized: Canonical<'gcx, ProvePredicate<'gcx>>,
+    ) -> CanonicalizedQueryResult<'gcx, ()> {
+        tcx.type_op_prove_predicate(canonicalized).unwrap()
+    }
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for ProvePredicate<'tcx> {
+        param_env,
+        predicate,
+    }
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for ProvePredicate<'a> {
+        type Lifted = ProvePredicate<'tcx>;
+        param_env,
+        predicate,
+    }
+}
+
+impl_stable_hash_for! {
+    struct ProvePredicate<'tcx> { param_env, predicate }
 }

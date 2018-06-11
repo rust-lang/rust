@@ -34,7 +34,8 @@ use session::{CompileResult, CrateDisambiguator};
 use session::config::OutputFilenames;
 use traits::{self, Vtable};
 use traits::query::{CanonicalPredicateGoal, CanonicalProjectionGoal,
-                    CanonicalTyGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal, NoSolution};
+                    CanonicalTyGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal,
+                    CanonicalTypeOpProvePredicateGoal, NoSolution};
 use traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
 use traits::query::normalize::NormalizationResult;
 use traits::specialization_graph;
@@ -457,6 +458,14 @@ define_queries! { <'tcx>
     /// Do not call this query directly: invoke `infcx.at().subtype()` instead.
     [] fn type_op_subtype: TypeOpSubtype(
         CanonicalTypeOpSubtypeGoal<'tcx>
+    ) -> Result<
+        Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, ()>>>,
+        NoSolution,
+    >,
+
+    /// Do not call this query directly: invoke `infcx.at().prove_predicates()` instead.
+    [] fn type_op_prove_predicate: TypeOpProvePredicate(
+        CanonicalTypeOpProvePredicateGoal<'tcx>
     ) -> Result<
         Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, ()>>>,
         NoSolution,
