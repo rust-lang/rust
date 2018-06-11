@@ -26,6 +26,7 @@ use rustc::mir::{
 use rustc::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::{self, ErrorReported};
 use rustc_data_structures::bitvec::BitVector;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use std::rc::Rc;
 use syntax_pos::Span;
@@ -504,7 +505,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             if let Some(propagated_outlives_requirements) = &mut propagated_outlives_requirements {
-                if self.try_promote_type_test(infcx, mir, type_test, propagated_outlives_requirements) {
+                if self.try_promote_type_test(infcx, mir, type_test,
+                                              propagated_outlives_requirements) {
                     continue;
                 }
             }
@@ -963,6 +965,104 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
+    fn find_constraint_paths_from_region(
+        &self,
+        r0: RegionVid
+    ) -> Vec<Vec<ConstraintIndex>> {
+        let constraints = self.constraints.clone();
+
+        // Mapping of regions to the previous region and constraint index that led to it.
+        let mut previous = FxHashMap();
+        // Current region in traversal.
+        let mut current = r0;
+        // Regions yet to be visited.
+        let mut next = vec! [ current ];
+        // Regions that have been visited.
+        let mut visited = FxHashSet();
+        // Ends of paths.
+        let mut end_regions: Vec<RegionVid> = Vec::new();
+
+        // When we've still got points to visit...
+        while !next.is_empty() {
+            // ...take the next point...
+            debug!("find_constraint_paths_from_region: next={:?}", next);
+            current = next.pop().unwrap(); // Can unwrap here as we know the vector is not empty.
+
+            // ...find the edges containing it...
+            let mut upcoming = Vec::new();
+            for (index, constraint) in constraints.iter_enumerated() {
+                if constraint.sub == current {
+                    // ...add the regions that join us with to the path we've taken...
+                    debug!("find_constraint_paths_from_region: index={:?} constraint={:?}",
+                           index, constraint);
+                    let next_region = constraint.sup.clone();
+
+                    // ...unless we've visited it since this was added...
+                    if visited.contains(&next_region) {
+                        debug!("find_constraint_paths_from_region: skipping as visited");
+                        continue;
+                    }
+
+                    previous.insert(next_region, (index, Some(current)));
+                    upcoming.push(next_region);
+                }
+            }
+
+            if upcoming.is_empty() {
+                // If we didn't find any edges then this is the end of a path...
+                debug!("find_constraint_paths_from_region: new end region current={:?}", current);
+                end_regions.push(current);
+            } else {
+                // ...but, if we did find edges, then add these to the regions yet to visit...
+                debug!("find_constraint_paths_from_region: extend next upcoming={:?}", upcoming);
+                next.extend(upcoming);
+            }
+
+            // ...and don't visit it again.
+            visited.insert(current.clone());
+            debug!("find_constraint_paths_from_region: next={:?} visited={:?}", next, visited);
+        }
+
+        // Now we've visited each point, compute the final paths.
+        let mut paths: Vec<Vec<ConstraintIndex>> = Vec::new();
+        debug!("find_constraint_paths_from_region: end_regions={:?}", end_regions);
+        for end_region in end_regions {
+            debug!("find_constraint_paths_from_region: end_region={:?}", end_region);
+
+            // Get the constraint and region that led to this end point.
+            // We can unwrap as we know if end_point was in the vector that it
+            // must also be in our previous map.
+            let (mut index, mut region) = previous.get(&end_region).unwrap();
+            debug!("find_constraint_paths_from_region: index={:?} region={:?}", index, region);
+
+            // Keep track of the indices.
+            let mut path: Vec<ConstraintIndex> = vec![index];
+
+            while region.is_some() && region != Some(r0) {
+                let p = previous.get(&region.unwrap()).unwrap();
+                index = p.0;
+                region = p.1;
+
+                debug!("find_constraint_paths_from_region: index={:?} region={:?}", index, region);
+                path.push(index);
+            }
+
+            // Add to our paths.
+            paths.push(path);
+        }
+
+        debug!("find_constraint_paths_from_region: paths={:?}", paths);
+        paths
+    }
+
+    fn constraint_is_interesting(&self, index: &ConstraintIndex) -> bool {
+        self.constraints.get(*index).filter(|constraint| {
+            debug!("constraint_is_interesting: locations={:?} constraint={:?}",
+                   constraint.locations, constraint);
+            if let Locations::Interesting(_) = constraint.locations { true } else { false }
+        }).is_some()
+    }
+
     /// Report an error because the universal region `fr` was required to outlive
     /// `outlived_fr` but it is not known to do so. For example:
     ///
@@ -991,6 +1091,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 return;
             }
         }
+
+        let constraints = self.find_constraint_paths_from_region(fr.clone());
+        let path = constraints.iter().min_by_key(|p| p.len()).unwrap();
+        debug!("report_error: path={:?}", path);
+        let path = path.iter()
+            .filter(|index| self.constraint_is_interesting(index))
+            .collect::<Vec<&ConstraintIndex>>();
+        debug!("report_error: path={:?}", path);
 
         let fr_string = match fr_name {
             Some(r) => format!("free region `{}`", r),
