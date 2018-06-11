@@ -8,21 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::infer::canonical::{CanonicalizedQueryResult, Canonical};
-use rustc::traits::query::NoSolution;
-use rustc::traits::{FulfillmentContext, ObligationCause};
-use rustc::ty::{self, ParamEnv, Ty, TyCtxt};
+use infer::canonical::{CanonicalizedQueryResult, Canonical};
+use traits::query::NoSolution;
+use traits::{FulfillmentContext, ObligationCause};
+use ty::{self, ParamEnv, Ty, TyCtxt};
 use syntax::codemap::DUMMY_SP;
 
 #[derive(Copy, Clone, Debug)]
-crate struct Eq<'tcx> {
+pub struct Eq<'tcx> {
     param_env: ParamEnv<'tcx>,
     a: Ty<'tcx>,
     b: Ty<'tcx>,
 }
 
 impl<'tcx> Eq<'tcx> {
-    crate fn new(param_env: ParamEnv<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> Self {
+    pub fn new(param_env: ParamEnv<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> Self {
         Self { param_env, a, b }
     }
 }

@@ -8,25 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::infer::canonical::query_result;
-use rustc::infer::canonical::{Canonicalized, CanonicalizedQueryResult, QueryRegionConstraint};
-use rustc::infer::{InferCtxt, InferOk, InferResult};
-use rustc::traits::{ObligationCause, TraitEngine};
-use rustc::ty::error::TypeError;
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::{Lift, ParamEnv, TyCtxt};
+use infer::canonical::query_result;
+use infer::canonical::{Canonicalized, CanonicalizedQueryResult, QueryRegionConstraint};
+use infer::{InferCtxt, InferOk, InferResult};
+use traits::{ObligationCause, TraitEngine};
+use ty::error::TypeError;
+use ty::fold::TypeFoldable;
+use ty::{Lift, ParamEnv, TyCtxt};
 use std::fmt;
 use std::rc::Rc;
 use syntax::codemap::DUMMY_SP;
 
-crate mod custom;
-crate mod eq;
-crate mod normalize;
-crate mod outlives;
-crate mod predicates;
-crate mod subtype;
+pub mod custom;
+pub mod eq;
+pub mod normalize;
+pub mod outlives;
+pub mod predicates;
+pub mod subtype;
 
-crate trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
+pub trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     type Output;
 
     /// Micro-optimization: returns `Ok(x)` if we can trivially
@@ -100,7 +100,7 @@ crate trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
 
 type Lifted<'gcx, T> = <T as Lift<'gcx>>::Lifted;
 
-crate trait QueryTypeOp<'gcx: 'tcx, 'tcx>: TypeFoldable<'tcx> + Lift<'gcx> {
+pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>: TypeFoldable<'tcx> + Lift<'gcx> {
     type QueryResult: TypeFoldable<'tcx> + Lift<'gcx>;
 
     /// Micro-optimization: returns `Ok(x)` if we can trivially

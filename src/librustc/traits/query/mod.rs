@@ -22,6 +22,7 @@ pub mod dropck_outlives;
 pub mod evaluate_obligation;
 pub mod normalize;
 pub mod normalize_erasing_regions;
+pub mod type_op;
 
 pub type CanonicalProjectionGoal<'tcx> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::ProjectionTy<'tcx>>>;

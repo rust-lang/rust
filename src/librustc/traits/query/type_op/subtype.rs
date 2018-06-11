@@ -8,41 +8,41 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::infer::{InferCtxt, InferResult};
-use rustc::traits::query::dropck_outlives::trivial_dropck_outlives;
-use rustc::traits::ObligationCause;
-use rustc::ty::subst::Kind;
-use rustc::ty::{ParamEnv, Ty, TyCtxt};
+use infer::{InferCtxt, InferResult};
+use traits::ObligationCause;
+use ty::{ParamEnv, Ty, TyCtxt};
 
 #[derive(Debug)]
-crate struct DropckOutlives<'tcx> {
+pub struct Subtype<'tcx> {
     param_env: ParamEnv<'tcx>,
-    dropped_ty: Ty<'tcx>,
+    sub: Ty<'tcx>,
+    sup: Ty<'tcx>,
 }
 
-impl<'tcx> DropckOutlives<'tcx> {
-    crate fn new(param_env: ParamEnv<'tcx>, dropped_ty: Ty<'tcx>) -> Self {
-        DropckOutlives {
+impl<'tcx> Subtype<'tcx> {
+    pub fn new(param_env: ParamEnv<'tcx>, sub: Ty<'tcx>, sup: Ty<'tcx>) -> Self {
+        Self {
             param_env,
-            dropped_ty,
+            sub,
+            sup,
         }
     }
 }
 
-impl<'gcx, 'tcx> super::TypeOp<'gcx, 'tcx> for DropckOutlives<'tcx> {
-    type Output = Vec<Kind<'tcx>>;
+impl<'gcx, 'tcx> super::TypeOp<'gcx, 'tcx> for Subtype<'tcx> {
+    type Output = ();
 
-    fn trivial_noop(self, tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self> {
-        if trivial_dropck_outlives(tcx, self.dropped_ty) {
-            Ok(vec![])
+    fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self> {
+        if self.sub == self.sup {
+            Ok(())
         } else {
             Err(self)
         }
     }
 
     fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
-        Ok(infcx
+        infcx
             .at(&ObligationCause::dummy(), self.param_env)
-            .dropck_outlives(self.dropped_ty))
+            .sup(self.sup, self.sub)
     }
 }

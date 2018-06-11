@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::infer::{InferCtxt, InferResult};
-use rustc::ty::TyCtxt;
+use infer::{InferCtxt, InferResult};
+use ty::TyCtxt;
 use std::fmt;
 
-crate struct CustomTypeOp<F, G> {
+pub struct CustomTypeOp<F, G> {
     closure: F,
     description: G,
 }
 
 impl<F, G> CustomTypeOp<F, G> {
-    crate fn new<'gcx, 'tcx, R>(closure: F, description: G) -> Self
+    pub fn new<'gcx, 'tcx, R>(closure: F, description: G) -> Self
     where
         F: FnOnce(&InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, R>,
         G: Fn() -> String,
@@ -32,7 +32,7 @@ impl<F, G> CustomTypeOp<F, G> {
 
 impl<'gcx, 'tcx, F, R, G> super::TypeOp<'gcx, 'tcx> for CustomTypeOp<F, G>
 where
-    F: FnOnce(&InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, R>,
+    F: for<'a, 'cx> FnOnce(&'a InferCtxt<'cx, 'gcx, 'tcx>) -> InferResult<'tcx, R>,
     G: Fn() -> String,
 {
     type Output = R;

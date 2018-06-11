@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::infer::{InferCtxt, InferOk, InferResult};
-use rustc::traits::query::NoSolution;
-use rustc::traits::{Normalized, ObligationCause};
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::{ParamEnv, TyCtxt};
+use infer::{InferCtxt, InferOk, InferResult};
+use traits::query::NoSolution;
+use traits::{Normalized, ObligationCause};
+use ty::fold::TypeFoldable;
+use ty::{ParamEnv, TyCtxt};
 use std::fmt;
 
 #[derive(Debug)]
-crate struct Normalize<'tcx, T> {
+pub struct Normalize<'tcx, T> {
     param_env: ParamEnv<'tcx>,
     value: T,
 }
@@ -25,7 +25,7 @@ impl<'tcx, T> Normalize<'tcx, T>
 where
     T: fmt::Debug + TypeFoldable<'tcx>,
 {
-    crate fn new(param_env: ParamEnv<'tcx>, value: T) -> Self {
+    pub fn new(param_env: ParamEnv<'tcx>, value: T) -> Self {
         Self { param_env, value }
     }
 }

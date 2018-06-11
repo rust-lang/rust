@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::infer::{InferCtxt, InferOk, InferResult};
-use rustc::traits::{Obligation, ObligationCause, PredicateObligation};
-use rustc::ty::{ParamEnv, Predicate, TyCtxt};
+use infer::{InferCtxt, InferOk, InferResult};
+use traits::{Obligation, ObligationCause, PredicateObligation};
+use ty::{ParamEnv, Predicate, TyCtxt};
 
 #[derive(Debug)]
-crate struct ProvePredicates<'tcx> {
+pub struct ProvePredicates<'tcx> {
     obligations: Vec<PredicateObligation<'tcx>>,
 }
 
 impl<'tcx> ProvePredicates<'tcx> {
-    crate fn new(
+    pub fn new(
         param_env: ParamEnv<'tcx>,
         predicates: impl IntoIterator<Item = Predicate<'tcx>>,
     ) -> Self {

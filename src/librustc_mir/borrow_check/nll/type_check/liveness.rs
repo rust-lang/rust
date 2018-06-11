@@ -9,8 +9,6 @@
 // except according to those terms.
 
 use borrow_check::nll::region_infer::Cause;
-use borrow_check::nll::type_check::type_op::TypeOp;
-use borrow_check::nll::type_check::type_op::outlives::DropckOutlives;
 use borrow_check::nll::type_check::AtLocation;
 use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow::MaybeInitializedPlaces;
@@ -18,6 +16,8 @@ use dataflow::{FlowAtLocation, FlowsAtLocation};
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::mir::Local;
 use rustc::mir::{BasicBlock, Location, Mir};
+use rustc::traits::query::type_op::outlives::DropckOutlives;
+use rustc::traits::query::type_op::TypeOp;
 use rustc::ty::subst::Kind;
 use rustc::ty::{Ty, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;

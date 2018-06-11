@@ -27,6 +27,7 @@ use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::*;
+use rustc::traits::query::type_op;
 use rustc::traits::ObligationCause;
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
@@ -66,7 +67,6 @@ macro_rules! span_mirbug_and_err {
 mod constraint_conversion;
 mod input_output;
 mod liveness;
-mod type_op;
 
 /// Type checks the given `mir` in the context of the inference
 /// context `infcx`. Returns any region constraints that have yet to
@@ -776,7 +776,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         locations: Locations,
     ) -> UnitResult<'tcx> {
         let param_env = self.param_env;
-        self.fully_perform_op(locations, type_op::subtype::Subtype::new(param_env, sub, sup))
+        self.fully_perform_op(
+            locations,
+            type_op::subtype::Subtype::new(param_env, sub, sup),
+        )
     }
 
     fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> UnitResult<'tcx> {
@@ -1623,16 +1626,8 @@ impl MirPass for TypeckMir {
         }
         let param_env = tcx.param_env(def_id);
         tcx.infer_ctxt().enter(|infcx| {
-            let _ = type_check_internal(
-                &infcx,
-                def_id,
-                param_env,
-                mir,
-                &[],
-                None,
-                None,
-                &mut |_| (),
-            );
+            let _ =
+                type_check_internal(&infcx, def_id, param_env, mir, &[], None, None, &mut |_| ());
 
             // For verification purposes, we just ignore the resulting
             // region constraint sets. Not our problem. =)

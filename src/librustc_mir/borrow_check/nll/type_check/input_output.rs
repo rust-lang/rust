@@ -18,12 +18,12 @@
 //! contain revealed `impl Trait` values).
 
 use borrow_check::nll::renumber;
-use borrow_check::nll::type_check::type_op::custom::CustomTypeOp;
 use borrow_check::nll::universal_regions::UniversalRegions;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferOk;
 use rustc::mir::visit::TyContext;
 use rustc::mir::*;
+use rustc::traits::query::type_op::custom::CustomTypeOp;
 use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::subst::Subst;
 use rustc::ty::Ty;
