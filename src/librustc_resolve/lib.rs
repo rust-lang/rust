@@ -1437,6 +1437,9 @@ pub struct Resolver<'a> {
     current_type_ascription: Vec<Span>,
 
     injected_crate: Option<Module<'a>>,
+
+    /// Only supposed to be used by rustdoc, otherwise should be false.
+    pub ignore_extern_prelude_feature: bool,
 }
 
 /// Nothing really interesting here, it just provides memory for the rest of the crate.
@@ -1718,6 +1721,7 @@ impl<'a> Resolver<'a> {
             unused_macros: FxHashSet(),
             current_type_ascription: Vec::new(),
             injected_crate: None,
+            ignore_extern_prelude_feature: false,
         }
     }
 
@@ -1891,7 +1895,8 @@ impl<'a> Resolver<'a> {
         if !module.no_implicit_prelude {
             // `record_used` means that we don't try to load crates during speculative resolution
             if record_used && ns == TypeNS && self.extern_prelude.contains(&ident.name) {
-                if !self.session.features_untracked().extern_prelude {
+                if !self.session.features_untracked().extern_prelude &&
+                   !self.ignore_extern_prelude_feature {
                     feature_err(&self.session.parse_sess, "extern_prelude",
                                 ident.span, GateIssue::Language,
                                 "access to extern crates through prelude is experimental").emit();

@@ -1103,7 +1103,7 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
             // early return and try looking for the trait
             let value = match result.def {
                 Def::Method(_) | Def::AssociatedConst(_) => true,
-                Def::AssociatedTy(_)  => false,
+                Def::AssociatedTy(_) => false,
                 Def::Variant(_) => return handle_variant(cx, result.def),
                 // not a trait item, just return what we found
                 _ => return Ok((result.def, None))

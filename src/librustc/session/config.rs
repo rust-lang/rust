@@ -494,6 +494,13 @@ impl Input {
             Input::Str { .. } => "rust_out".to_string(),
         }
     }
+
+    pub fn get_input(&mut self) -> Option<&mut String> {
+        match *self {
+            Input::File(_) => None,
+            Input::Str { ref mut input, .. } => Some(input),
+        }
+    }
 }
 
 #[derive(Clone)]
