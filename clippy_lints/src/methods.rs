@@ -347,7 +347,11 @@ declare_clippy_lint! {
 /// ```
 /// this can instead be written:
 /// ```rust
-/// foo.unwrap_or_else(|_| panic!(&format("Err {}: {}", err_code, err_msg)))
+/// foo.unwrap_or_else(|_| panic!("Err {}: {}", err_code, err_msg))
+/// ```
+/// or
+/// ```rust
+/// foo.unwrap_or_else(|_| panic!(format("Err {}: {}", err_code, err_msg).as_str()))
 /// ```
 declare_clippy_lint! {
     pub EXPECT_FUN_CALL,
