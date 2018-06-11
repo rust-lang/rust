@@ -192,7 +192,6 @@ pub fn clear_markings() {
 }
 
 impl SyntaxContext {
-    #[promotable_const_fn]
     pub const fn empty() -> Self {
         SyntaxContext(0)
     }
