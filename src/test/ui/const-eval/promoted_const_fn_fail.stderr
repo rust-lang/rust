@@ -1,20 +1,9 @@
-error: this expression will panic at runtime
+error[E0019]: promotable constant function contains unimplemented expression type
   --> $DIR/promoted_const_fn_fail.rs:32:9
    |
 LL |         Bar { a: &42 }.b as u8
-   |         ^^^^^^^^^^^^^^^^^^^^^^ a raw memory access tried to access part of a pointer value as raw bytes
-   |
-note: lint level defined here
-  --> $DIR/promoted_const_fn_fail.rs:18:9
-   |
-LL | #![deny(const_err)]
-   |         ^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^
 
-error: this expression will panic at runtime
-  --> $DIR/promoted_const_fn_fail.rs:32:9
-   |
-LL |         Bar { a: &42 }.b as u8
-   |         ^^^^^^^^^^^^^^^^^^^^^^ a raw memory access tried to access part of a pointer value as raw bytes
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
+For more information about this error, try `rustc --explain E0019`.

@@ -17,6 +17,18 @@ const fn foo() {}
 #[promotable_const_fn]
 const fn bar() {}
 
+union Foo {
+    a: &'static u32,
+    b: usize,
+}
+
+#[promotable_const_fn]
+const fn boo() -> bool {
+    unsafe {
+        Foo { a: &1 }.b == 42 //~ ERROR promotable constant function contains
+    }
+}
+
 fn main() {
     let x: &'static () = &foo(); //~ borrowed value does not live long enough
     let x: &'static () = &bar();

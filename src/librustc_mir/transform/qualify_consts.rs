@@ -570,7 +570,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                         ProjectionElem::Field(..) |
                         ProjectionElem::Index(_) => {
-                            if this.mode == Mode::Fn {
+                            if this.mode == Mode::Fn ||
+                               this.mode == (Mode::ConstFn { promotable: true }) {
                                 let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
                                 if let Some(def) = base_ty.ty_adt_def() {
                                     if def.is_union() {

@@ -30,15 +30,11 @@ const fn bar() -> u8 {
         // is run on a system whose pointers need more
         // than 8 bits
         Bar { a: &42 }.b as u8
-        //~^ ERROR this expression will panic at runtime
-        //~| ERROR this expression will panic at runtime
+        //~^ ERROR promotable constant function
     }
 }
 
 fn main() {
-    // FIXME(oli-obk): this should compile but panic at runtime
-    // if we change the `const_err` lint to allow this will actually compile, but then
-    // continue with undefined values.
     let x: &'static u8 = &(bar() + 1);
     let y = *x;
     unreachable!();

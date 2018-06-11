@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(attr_literals, rustc_attrs, const_fn)]
+#![feature(attr_literals, rustc_attrs, const_fn, promotable_const_fn)]
 
 #[rustc_args_required_const(0)]
 fn foo(_a: i32) {
@@ -20,6 +20,7 @@ fn bar(_a: i32, _b: i32) {
 
 const A: i32 = 3;
 
+#[promotable_const_fn]
 const fn baz() -> i32 {
     3
 }
