@@ -32,6 +32,9 @@ pub type CanonicalTyGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, Ty<'tcx>>
 pub type CanonicalPredicateGoal<'tcx> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::Predicate<'tcx>>>;
 
+pub type CanonicalTypeOpEqGoal<'tcx> =
+    Canonical<'tcx, type_op::eq::Eq<'tcx>>;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NoSolution;
 

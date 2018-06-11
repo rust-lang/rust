@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::canonical::{CanonicalizedQueryResult, Canonical};
-use traits::query::NoSolution;
-use traits::{FulfillmentContext, ObligationCause};
+use infer::canonical::{Canonical, CanonicalizedQueryResult};
 use ty::{self, ParamEnv, Ty, TyCtxt};
-use syntax::codemap::DUMMY_SP;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Eq<'tcx> {
-    param_env: ParamEnv<'tcx>,
-    a: Ty<'tcx>,
-    b: Ty<'tcx>,
+    pub param_env: ParamEnv<'tcx>,
+    pub a: Ty<'tcx>,
+    pub b: Ty<'tcx>,
 }
 
 impl<'tcx> Eq<'tcx> {
@@ -46,20 +43,7 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Eq<'tcx> {
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonical<'gcx, Eq<'gcx>>,
     ) -> CanonicalizedQueryResult<'gcx, ()> {
-        let tcx = tcx.global_tcx();
-        tcx.infer_ctxt()
-            .enter(|ref infcx| {
-                let (Eq { param_env, a, b }, canonical_inference_vars) =
-                    infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonicalized);
-                let fulfill_cx = &mut FulfillmentContext::new();
-                let obligations = match infcx.at(&ObligationCause::dummy(), param_env).eq(a, b) {
-                    Ok(v) => v.into_obligations(),
-                    Err(_) => return Err(NoSolution),
-                };
-                fulfill_cx.register_predicate_obligations(infcx, obligations);
-                infcx.make_canonicalized_query_result(canonical_inference_vars, (), fulfill_cx)
-            })
-            .unwrap()
+        tcx.type_op_eq(canonicalized).unwrap()
     }
 }
 
@@ -78,4 +62,8 @@ BraceStructLiftImpl! {
         a,
         b,
     }
+}
+
+impl_stable_hash_for! {
+    struct Eq<'tcx> { param_env, a, b }
 }

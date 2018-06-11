@@ -10,8 +10,8 @@
 
 //! Defines the set of legal keys that can be used in queries.
 
+use infer::canonical::Canonical;
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE, DefIndex};
-use traits::query::{CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal};
 use ty::{self, Ty, TyCtxt};
 use ty::subst::Substs;
 use ty::fast_reject::SimplifiedType;
@@ -190,27 +190,12 @@ impl Key for InternedString {
     }
 }
 
-impl<'tcx> Key for CanonicalProjectionGoal<'tcx> {
-    fn query_crate(&self) -> CrateNum {
-        LOCAL_CRATE
-    }
-
-    fn default_span(&self, _tcx: TyCtxt) -> Span {
-        DUMMY_SP
-    }
-}
-
-impl<'tcx> Key for CanonicalTyGoal<'tcx> {
-    fn query_crate(&self) -> CrateNum {
-        LOCAL_CRATE
-    }
-
-    fn default_span(&self, _tcx: TyCtxt) -> Span {
-        DUMMY_SP
-    }
-}
-
-impl<'tcx> Key for CanonicalPredicateGoal<'tcx> {
+/// Canonical query goals correspond to abstract trait operations that
+/// are not tied to any crate in particular.
+impl<'tcx, T> Key for Canonical<'tcx, T>
+where
+    T: Debug + Hash + Clone + Eq,
+{
     fn query_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }

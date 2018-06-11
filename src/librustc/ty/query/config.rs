@@ -12,7 +12,9 @@ use dep_graph::SerializedDepNodeIndex;
 use dep_graph::DepNode;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use mir::interpret::{GlobalId, ConstValue};
-use traits::query::{CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal};
+use traits::query::{
+    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpEqGoal,
+};
 use ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use ty::subst::Substs;
 use ty::query::queries;
@@ -99,6 +101,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::normalize_ty_after_erasing_region
 impl<'tcx> QueryDescription<'tcx> for queries::evaluate_obligation<'tcx> {
     fn describe(_tcx: TyCtxt, goal: CanonicalPredicateGoal<'tcx>) -> String {
         format!("evaluating trait selection obligation `{}`", goal.value.value)
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::type_op_eq<'tcx> {
+    fn describe(_tcx: TyCtxt, goal: CanonicalTypeOpEqGoal<'tcx>) -> String {
+        format!("evaluating `type_op_eq` `{:?}`", goal)
     }
 }
 

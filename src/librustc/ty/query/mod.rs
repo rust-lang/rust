@@ -34,7 +34,7 @@ use session::{CompileResult, CrateDisambiguator};
 use session::config::OutputFilenames;
 use traits::{self, Vtable};
 use traits::query::{CanonicalPredicateGoal, CanonicalProjectionGoal,
-                    CanonicalTyGoal, NoSolution};
+                    CanonicalTyGoal, CanonicalTypeOpEqGoal, NoSolution};
 use traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
 use traits::query::normalize::NormalizationResult;
 use traits::specialization_graph;
@@ -445,6 +445,14 @@ define_queries! { <'tcx>
     [] fn evaluate_obligation: EvaluateObligation(
         CanonicalPredicateGoal<'tcx>
     ) -> Result<traits::EvaluationResult, traits::OverflowError>,
+
+    /// Do not call this query directly: invoke `infcx.eq()` instead.
+    [] fn type_op_eq: TypeOpEq(
+        CanonicalTypeOpEqGoal<'tcx>
+    ) -> Result<
+        Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, ()>>>,
+        NoSolution,
+    >,
 
     [] fn substitute_normalize_and_test_predicates:
         substitute_normalize_and_test_predicates_node((DefId, &'tcx Substs<'tcx>)) -> bool,
