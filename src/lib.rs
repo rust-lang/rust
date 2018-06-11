@@ -516,8 +516,7 @@ fn format_lines(
     config: &Config,
     report: &FormatReport,
 ) {
-    let mut trims = vec![];
-    let mut last_wspace: Option<usize> = None;
+    let mut last_was_space = false;
     let mut line_len = 0;
     let mut cur_line = 1;
     let mut newline_count = 0;
@@ -542,7 +541,7 @@ fn format_lines(
     }
 
     // Iterate over the chars in the file map.
-    for (kind, (b, c)) in CharClasses::new(text.chars().enumerate()) {
+    for (kind, c) in CharClasses::new(text.chars()) {
         if c == '\r' {
             continue;
         }
@@ -563,10 +562,17 @@ fn format_lines(
         if c == '\n' {
             if format_line {
                 // Check for (and record) trailing whitespace.
-                if let Some(..) = last_wspace {
+                if last_was_space {
                     if should_report_error(config, kind, is_string, &ErrorKind::TrailingWhitespace)
+                        && !is_skipped_line(cur_line, skipped_range)
                     {
-                        trims.push((cur_line, kind, line_buffer.clone()));
+                        errors.push(FormattingError {
+                            line: cur_line,
+                            kind: ErrorKind::TrailingWhitespace,
+                            is_comment: kind.is_comment(),
+                            is_string: kind.is_string(),
+                            line_buffer: line_buffer.clone(),
+                        });
                     }
                     line_len -= 1;
                 }
@@ -591,19 +597,13 @@ fn format_lines(
             cur_line += 1;
             format_line = config.file_lines().contains_line(name, cur_line);
             newline_count += 1;
-            last_wspace = None;
+            last_was_space = false;
             line_buffer.clear();
             is_string = false;
         } else {
             newline_count = 0;
             line_len += if c == '\t' { config.tab_spaces() } else { 1 };
-            if c.is_whitespace() {
-                if last_wspace.is_none() {
-                    last_wspace = Some(b);
-                }
-            } else {
-                last_wspace = None;
-            }
+            last_was_space = c.is_whitespace();
             line_buffer.push(c);
             if kind.is_string() {
                 is_string = true;
@@ -615,18 +615,6 @@ fn format_lines(
         debug!("track truncate: {} {}", text.len(), newline_count);
         let line = text.len() - newline_count + 1;
         text.truncate(line);
-    }
-
-    for &(l, kind, ref b) in &trims {
-        if !is_skipped_line(l, skipped_range) {
-            errors.push(FormattingError {
-                line: l,
-                kind: ErrorKind::TrailingWhitespace,
-                is_comment: kind.is_comment(),
-                is_string: kind.is_string(),
-                line_buffer: b.clone(),
-            });
-        }
     }
 
     report.append(name.clone(), errors);
