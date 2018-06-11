@@ -423,83 +423,109 @@ error: use of `unwrap_or` followed by a function call
 342 |     let _ = stringy.unwrap_or("".to_owned());
     |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| "".to_owned())`
 
-error: called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:353:23
+error: use of `expect` followed by a function call
+   --> $DIR/methods.rs:365:26
     |
-353 |         let bad_vec = some_vec.iter().nth(3);
+365 |     with_none_and_format.expect(&format!("Error {}: fake error", error_code));
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("Error {}: fake error", error_code))`
+    |
+    = note: `-D expect-fun-call` implied by `-D warnings`
+
+error: use of `expect` followed by a function call
+   --> $DIR/methods.rs:368:26
+    |
+368 |     with_none_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!(format!("Error {}: fake error", error_code).as_str()))`
+
+error: use of `expect` followed by a function call
+   --> $DIR/methods.rs:378:25
+    |
+378 |     with_err_and_format.expect(&format!("Error {}: fake error", error_code));
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| panic!("Error {}: fake error", error_code))`
+
+error: use of `expect` followed by a function call
+   --> $DIR/methods.rs:381:25
+    |
+381 |     with_err_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| panic!(format!("Error {}: fake error", error_code).as_str()))`
+
+error: called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
+   --> $DIR/methods.rs:401:23
+    |
+401 |         let bad_vec = some_vec.iter().nth(3);
     |                       ^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D iter-nth` implied by `-D warnings`
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:354:26
+   --> $DIR/methods.rs:402:26
     |
-354 |         let bad_slice = &some_vec[..].iter().nth(3);
+402 |         let bad_slice = &some_vec[..].iter().nth(3);
     |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:355:31
+   --> $DIR/methods.rs:403:31
     |
-355 |         let bad_boxed_slice = boxed_slice.iter().nth(3);
+403 |         let bad_boxed_slice = boxed_slice.iter().nth(3);
     |                               ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter().nth()` on a VecDeque. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:356:29
+   --> $DIR/methods.rs:404:29
     |
-356 |         let bad_vec_deque = some_vec_deque.iter().nth(3);
+404 |         let bad_vec_deque = some_vec_deque.iter().nth(3);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a Vec. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:361:23
+   --> $DIR/methods.rs:409:23
     |
-361 |         let bad_vec = some_vec.iter_mut().nth(3);
+409 |         let bad_vec = some_vec.iter_mut().nth(3);
     |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a slice. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:364:26
+   --> $DIR/methods.rs:412:26
     |
-364 |         let bad_slice = &some_vec[..].iter_mut().nth(3);
+412 |         let bad_slice = &some_vec[..].iter_mut().nth(3);
     |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a VecDeque. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:367:29
+   --> $DIR/methods.rs:415:29
     |
-367 |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
+415 |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:379:13
+   --> $DIR/methods.rs:427:13
     |
-379 |     let _ = some_vec.iter().skip(42).next();
+427 |     let _ = some_vec.iter().skip(42).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D iter-skip-next` implied by `-D warnings`
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:380:13
+   --> $DIR/methods.rs:428:13
     |
-380 |     let _ = some_vec.iter().cycle().skip(42).next();
+428 |     let _ = some_vec.iter().cycle().skip(42).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:381:13
+   --> $DIR/methods.rs:429:13
     |
-381 |     let _ = (1..10).skip(10).next();
+429 |     let _ = (1..10).skip(10).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:382:14
+   --> $DIR/methods.rs:430:14
     |
-382 |     let _ = &some_vec[..].iter().skip(3).next();
+430 |     let _ = &some_vec[..].iter().skip(3).next();
     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:391:13
+   --> $DIR/methods.rs:439:13
     |
-391 |     let _ = opt.unwrap();
+439 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`
 
-error: aborting due to 66 previous errors
+error: aborting due to 70 previous errors
 
