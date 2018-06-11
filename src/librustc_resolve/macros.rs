@@ -138,7 +138,23 @@ impl<'a> base::Resolver for Resolver<'a> {
         struct EliminateCrateVar<'b, 'a: 'b>(&'b mut Resolver<'a>, Span);
 
         impl<'a, 'b> Folder for EliminateCrateVar<'a, 'b> {
-            fn fold_path(&mut self, mut path: ast::Path) -> ast::Path {
+            fn fold_path(&mut self, path: ast::Path) -> ast::Path {
+                match self.fold_qpath(None, path) {
+                    (None, path) => path,
+                    _ => unreachable!(),
+                }
+            }
+
+            fn fold_qpath(&mut self, mut qself: Option<ast::QSelf>, mut path: ast::Path)
+                          -> (Option<ast::QSelf>, ast::Path) {
+                qself = qself.map(|ast::QSelf { ty, path_span, position }| {
+                    ast::QSelf {
+                        ty: self.fold_ty(ty),
+                        path_span: self.new_span(path_span),
+                        position,
+                    }
+                });
+
                 let ident = path.segments[0].ident;
                 if ident.name == keywords::DollarCrate.name() {
                     path.segments[0].ident.name = keywords::CrateRoot.name();
@@ -150,10 +166,13 @@ impl<'a> base::Resolver for Resolver<'a> {
                                 ast::Ident::with_empty_ctxt(name).with_span_pos(span)
                             ),
                             _ => unreachable!(),
-                        })
+                        });
+                        if let Some(qself) = &mut qself {
+                            qself.position += 1;
+                        }
                     }
                 }
-                path
+                (qself, path)
             }
 
             fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
