@@ -93,6 +93,38 @@ For more information about the cfg attribute, read:
 https://doc.rust-lang.org/reference.html#conditional-compilation
 "##,
 
+E0541: r##"
+An unknown meta item was used.
+
+Erroneous code example:
+
+```compile_fail,E0541
+#[deprecated(
+    since="1.0.0",
+    // error: unknown meta item
+    reason="Example invalid meta item. Should be 'note'")
+]
+fn deprecated_function() {}
+```
+
+Meta items are the key-value pairs inside of an attribute. The keys provided
+must be one of the valid keys for the specified attribute.
+
+To fix the problem, either remove the unknown meta item, or rename it if you
+provided the wrong name.
+
+In the erroneous code example above, the wrong name was provided, so changing
+to a correct one it will fix the error. Example:
+
+```
+#[deprecated(
+    since="1.0.0",
+    note="This is a valid meta item for the deprecated attribute."
+)]
+fn deprecated_function() {}
+```
+"##,
+
 E0552: r##"
 A unrecognized representation attribute was used.
 
@@ -318,7 +350,6 @@ register_diagnostics! {
     E0538, // multiple [same] items
     E0539, // incorrect meta item
     E0540, // multiple rustc_deprecated attributes
-    E0541, // unknown meta item
     E0542, // missing 'since'
     E0543, // missing 'reason'
     E0544, // multiple stability levels
