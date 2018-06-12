@@ -50,7 +50,7 @@ macro_rules! is_aarch64_feature_detected {
             $crate::arch::detect::check_for($crate::arch::detect::Feature::rcpc)
     };
     ("dotprod") => {
-        cfg!(target_feature = "dotprot") ||
+        cfg!(target_feature = "dotprod") ||
             $crate::arch::detect::check_for($crate::arch::detect::Feature::dotprod)
     };
     ("ras") => {
