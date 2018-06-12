@@ -131,7 +131,6 @@ Cargo
 - [Cargo will now output path to custom commands when `-v` is
   passed with `--list`][cargo/5041]
 - [The Cargo binary version is now the same as the Rust version][cargo/5083]
-- [`Cargo.lock` files are now included in published crates.][cargo/5093]
 
 Misc
 ----
@@ -235,7 +234,6 @@ Compatibility Notes
 [`String::retain`]: https://doc.rust-lang.org/std/string/struct.String.html#method.retain
 [cargo/5041]: https://github.com/rust-lang/cargo/pull/5041
 [cargo/5083]: https://github.com/rust-lang/cargo/pull/5083
-[cargo/5093]: https://github.com/rust-lang/cargo/pull/5093
 
 
 Version 1.25.0 (2018-03-29)
