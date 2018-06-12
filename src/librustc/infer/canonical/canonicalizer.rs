@@ -61,7 +61,10 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             value,
             Some(self),
             self.tcx,
-            CanonicalizeAllFreeRegions(true),
+            CanonicalizeRegionMode {
+                static_region: true,
+                other_free_regions: true,
+            },
         )
     }
 
@@ -101,7 +104,43 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             value,
             Some(self),
             self.tcx,
-            CanonicalizeAllFreeRegions(false),
+            CanonicalizeRegionMode {
+                static_region: false,
+                other_free_regions: false,
+            },
+        )
+    }
+
+    /// A hacky variant of `canonicalize_query` that does not
+    /// canonicalize `'static`.  Unfortunately, the existing leak
+    /// check treaks `'static` differently in some cases (see also
+    /// #33684), so if we are performing an operation that may need to
+    /// prove "leak-check" related things, we leave `'static`
+    /// alone.
+    ///
+    /// FIXME(#48536) -- once we have universes, we can remove this and just use
+    /// `canonicalize_query`.
+    pub fn canonicalize_hr_query_hack<V>(
+        &self,
+        value: &V,
+    ) -> (Canonicalized<'gcx, V>, CanonicalVarValues<'tcx>)
+    where
+        V: TypeFoldable<'tcx> + Lift<'gcx>,
+    {
+        self.tcx
+            .sess
+            .perf_stats
+            .queries_canonicalized
+            .fetch_add(1, Ordering::Relaxed);
+
+        Canonicalizer::canonicalize(
+            value,
+            Some(self),
+            self.tcx,
+            CanonicalizeRegionMode {
+                static_region: false,
+                other_free_regions: true,
+            },
         )
     }
 }
@@ -110,7 +149,16 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 /// a canonical var. This is used to make queries as generic as
 /// possible. For example, the query `F: Foo<'static>` would be
 /// canonicalized to `F: Foo<'0>`.
-struct CanonicalizeAllFreeRegions(pub bool);
+struct CanonicalizeRegionMode {
+    static_region: bool,
+    other_free_regions: bool,
+}
+
+impl CanonicalizeRegionMode {
+    fn any(&self) -> bool {
+        self.static_region || self.other_free_regions
+    }
+}
 
 struct Canonicalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     infcx: Option<&'cx InferCtxt<'cx, 'gcx, 'tcx>>,
@@ -118,7 +166,7 @@ struct Canonicalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     variables: IndexVec<CanonicalVar, CanonicalVarInfo>,
     indices: FxHashMap<Kind<'tcx>, CanonicalVar>,
     var_values: IndexVec<CanonicalVar, Kind<'tcx>>,
-    canonicalize_all_free_regions: CanonicalizeAllFreeRegions,
+    canonicalize_region_mode: CanonicalizeRegionMode,
     needs_canonical_flags: TypeFlags,
 }
 
@@ -152,14 +200,25 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                 self.tcx().mk_region(ty::ReCanonical(cvar))
             }
 
-            ty::ReStatic
-            | ty::ReEarlyBound(..)
+            ty::ReStatic => {
+                if self.canonicalize_region_mode.static_region {
+                    let info = CanonicalVarInfo {
+                        kind: CanonicalVarKind::Region,
+                    };
+                    let cvar = self.canonical_var(info, r.into());
+                    self.tcx().mk_region(ty::ReCanonical(cvar))
+                } else {
+                    r
+                }
+            }
+
+            ty::ReEarlyBound(..)
             | ty::ReFree(_)
             | ty::ReScope(_)
             | ty::ReSkolemized(..)
             | ty::ReEmpty
             | ty::ReErased => {
-                if self.canonicalize_all_free_regions.0 {
+                if self.canonicalize_region_mode.other_free_regions {
                     let info = CanonicalVarInfo {
                         kind: CanonicalVarKind::Region,
                     };
@@ -235,7 +294,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         value: &V,
         infcx: Option<&'cx InferCtxt<'cx, 'gcx, 'tcx>>,
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-        canonicalize_all_free_regions: CanonicalizeAllFreeRegions,
+        canonicalize_region_mode: CanonicalizeRegionMode,
     ) -> (Canonicalized<'gcx, V>, CanonicalVarValues<'tcx>)
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
@@ -246,7 +305,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             value,
         );
 
-        let needs_canonical_flags = if canonicalize_all_free_regions.0 {
+        let needs_canonical_flags = if canonicalize_region_mode.any() {
             TypeFlags::HAS_FREE_REGIONS | TypeFlags::KEEP_IN_LOCAL_TCX
         } else {
             TypeFlags::KEEP_IN_LOCAL_TCX
@@ -270,7 +329,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         let mut canonicalizer = Canonicalizer {
             infcx,
             tcx,
-            canonicalize_all_free_regions,
+            canonicalize_region_mode,
             needs_canonical_flags,
             variables: IndexVec::default(),
             indices: FxHashMap::default(),

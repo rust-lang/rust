@@ -132,7 +132,11 @@ where
     fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
         let param_env = self.param_env();
 
-        let (canonical_self, canonical_var_values) = infcx.canonicalize_query(&self);
+        // FIXME(#33684) -- We need to use
+        // `canonicalize_hr_query_hack` here because of things like
+        // the subtype query, which go awry around `'static`
+        // otherwise.
+        let (canonical_self, canonical_var_values) = infcx.canonicalize_hr_query_hack(&self);
         let canonical_result = Q::perform_query(infcx.tcx, canonical_self);
 
         // FIXME: This is not the most efficient setup. The
