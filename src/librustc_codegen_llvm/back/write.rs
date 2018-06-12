@@ -232,7 +232,7 @@ pub struct ModuleConfig {
     emit_obj: bool,
     // Miscellaneous flags.  These are mostly copied from command-line
     // options.
-    pub no_verify: bool,
+    pub verify_llvm_ir: bool,
     no_prepopulate_passes: bool,
     no_builtins: bool,
     time_passes: bool,
@@ -271,7 +271,7 @@ impl ModuleConfig {
             embed_bitcode_marker: false,
             no_integrated_as: false,
 
-            no_verify: false,
+            verify_llvm_ir: false,
             no_prepopulate_passes: false,
             no_builtins: false,
             time_passes: false,
@@ -283,7 +283,7 @@ impl ModuleConfig {
     }
 
     fn set_flags(&mut self, sess: &Session, no_builtins: bool) {
-        self.no_verify = sess.no_verify();
+        self.verify_llvm_ir = sess.verify_llvm_ir();
         self.no_prepopulate_passes = sess.opts.cg.no_prepopulate_passes;
         self.no_builtins = no_builtins || sess.target.target.options.no_builtins;
         self.time_passes = sess.time_passes();
@@ -542,7 +542,7 @@ unsafe fn optimize(cgcx: &CodegenContext,
             true
         };
 
-        if !config.no_verify { assert!(addpass("verify")); }
+        if config.verify_llvm_ir { assert!(addpass("verify")); }
         if !config.no_prepopulate_passes {
             llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
             llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);

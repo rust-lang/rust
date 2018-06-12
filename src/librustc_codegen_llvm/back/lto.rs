@@ -462,7 +462,7 @@ fn run_pass_manager(cgcx: &CodegenContext,
         let pm = llvm::LLVMCreatePassManager();
         llvm::LLVMRustAddAnalysisPasses(tm, pm, llmod);
 
-        if !config.no_verify {
+        if config.verify_llvm_ir {
             let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);
             assert!(!pass.is_null());
             llvm::LLVMRustAddPass(pm, pass);
@@ -497,7 +497,7 @@ fn run_pass_manager(cgcx: &CodegenContext,
             }
         });
 
-        if !config.no_verify {
+        if config.verify_llvm_ir {
             let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);
             assert!(!pass.is_null());
             llvm::LLVMRustAddPass(pm, pass);
