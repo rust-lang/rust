@@ -234,7 +234,7 @@ fn foo<K>(collection: Set<K>, x: K, y: K) {
 }
 ```
 
-in the `foo` function, we assume that `Set<K>` is well-formed, i.e. we have
+In the `foo` function, we assume that `Set<K>` is well-formed, i.e. we have
 `FromEnv(Set<K>)` in our environment. Because of the previous rule, we get
  `FromEnv(K: Hash)` without needing an explicit where clause. And because
 of the `Hash` trait definition, there also exists a rule which says:
