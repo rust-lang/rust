@@ -122,43 +122,29 @@ impl CategoryData {
     }
 
     fn json(&self) -> String {
+        macro_rules! j {
+            ($category:tt, $rustic_name:ident) => {
+                format!("{{ \"category\": {}, \"time_ms\": {} }}", stringify!($category), self.times.$rustic_name / 1_000_000)
+            }
+        }
+
         format!("[
-            {{
-                \"category\": \"Parsing\",
-                \"time_ms\": {}
-            }},
-            {{
-                \"category\": \"Expansion\",
-                \"time_ms\": {}
-            }},
-            {{
-                \"category\": \"TypeChecking\",
-                \"time_ms\": {}
-            }},
-            {{
-                \"category\": \"BorrowChecking\",
-                \"time_ms\": {}
-            }},
-            {{
-                \"category\": \"Codegen\",
-                \"time_ms\": {}
-            }},
-            {{
-                \"category\": \"Linking\",
-                \"time_ms\": {}
-            }},
-            {{
-                \"category\": \"Other\",
-                \"time_ms\": {}
-            }}
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
         ]",
-        self.times.parsing / 1_000_000,
-        self.times.expansion / 1_000_000,
-        self.times.type_checking / 1_000_000,
-        self.times.borrow_checking / 1_000_000,
-        self.times.codegen / 1_000_000,
-        self.times.linking / 1_000_000,
-        self.times.other / 1_000_000)
+            j!("Parsing", parsing),
+            j!("Expansion", expansion),
+            j!("TypeChecking", type_checking),
+            j!("BorrowChecking", borrow_checking),
+            j!("Codegen", codegen),
+            j!("Linking", linking),
+            j!("Other", other)
+        )
     }
 }
 
