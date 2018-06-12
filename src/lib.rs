@@ -132,7 +132,7 @@ impl ScalarExt for Scalar {
     }
 }
 
-fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
+pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     main_id: DefId,
     start_wrapper: Option<DefId>,
