@@ -289,6 +289,8 @@
 #![feature(ptr_internals)]
 #![feature(rand)]
 #![feature(raw)]
+#![feature(hash_raw_entry)]
+#![feature(hash_raw_entry_immut)]
 #![feature(rustc_attrs)]
 #![feature(std_internals)]
 #![feature(stdsimd)]
