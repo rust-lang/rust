@@ -1198,7 +1198,7 @@ impl<'a> Parser<'a> {
     pub fn fatal(&self, m: &str) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_fatal(self.span, m)
     }
-    fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
+    pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_fatal(sp, m)
     }
     fn span_fatal_err<S: Into<MultiSpan>>(&self, sp: S, err: Error) -> DiagnosticBuilder<'a> {
@@ -2469,7 +2469,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a block or unsafe block
-    fn parse_block_expr(&mut self, opt_label: Option<Label>,
+    pub fn parse_block_expr(&mut self, opt_label: Option<Label>,
                             lo: Span, blk_mode: BlockCheckMode,
                             outer_attrs: ThinVec<Attribute>)
                             -> PResult<'a, P<Expr>> {
