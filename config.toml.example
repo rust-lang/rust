@@ -356,6 +356,9 @@
 # Print backtrace on internal compiler errors during bootstrap
 #backtrace-on-ice = false
 
+# Whether to verify generated LLVM IR
+#verify-llvm-ir = false
+
 # =============================================================================
 # Options for specific targets
 #

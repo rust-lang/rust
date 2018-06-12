@@ -898,6 +898,10 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_BACKTRACE_ON_ICE", "1");
         }
 
+        if self.config.rust_verify_llvm_ir {
+            cargo.env("RUSTC_VERIFY_LLVM_IR", "1");
+        }
+
         cargo.env("RUSTC_VERBOSE", format!("{}", self.verbosity));
 
         // in std, we want to avoid denying warnings for stage 0 as that makes cfg's painful.
