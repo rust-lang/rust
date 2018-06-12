@@ -531,7 +531,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     s: ROOT_SCOPE,
                 };
                 self.with(scope, |old_scope, this| {
-                    this.check_lifetime_params(old_scope, &generics.params);
+                    this.check_lifetime_params(
+                        old_scope,
+                        &generics.params,
+                        Some(generics.span),
+                        &[],
+                    );
                     intravisit::walk_item(this, item);
                 });
             }
@@ -574,7 +579,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 self.with(scope, |old_scope, this| {
                     // a bare fn has no bounds, so everything
                     // contained within is scoped within its binder.
-                    this.check_lifetime_params(old_scope, &c.generic_params);
+                    this.check_lifetime_params(old_scope, &c.generic_params, None, &[]);
                     intravisit::walk_ty(this, ty);
                 });
                 self.is_in_fn_syntax = was_in_fn_syntax;
@@ -871,7 +876,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             abstract_type_parent: false,
                         };
                         let result = self.with(scope, |old_scope, this| {
-                            this.check_lifetime_params(old_scope, &bound_generic_params);
+                            this.check_lifetime_params(old_scope, &bound_generic_params, None, &[]);
                             this.visit_ty(&bounded_ty);
                             walk_list!(this, visit_ty_param_bound, bounds);
                         });
@@ -938,7 +943,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 abstract_type_parent: false,
             };
             self.with(scope, |old_scope, this| {
-                this.check_lifetime_params(old_scope, &trait_ref.bound_generic_params);
+                this.check_lifetime_params(old_scope, &trait_ref.bound_generic_params, None, &[]);
                 walk_list!(this, visit_generic_param, &trait_ref.bound_generic_params);
                 this.visit_trait_ref(&trait_ref.trait_ref)
             })
@@ -1441,6 +1446,18 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             .collect();
 
         let next_early_index = index + generics.ty_params().count() as u32;
+        let mut arg_lifetimes = vec![];
+        for input in &decl.inputs {
+            for lt in input.lifetimes() {
+                arg_lifetimes.push(lt);
+            }
+        }
+        if let hir::FunctionRetTy::Return(ref output) = decl.output {
+            for lt in output.lifetimes() {
+                arg_lifetimes.push(lt);
+            }
+        }
+
 
         let scope = Scope::Binder {
             lifetimes,
@@ -1450,7 +1467,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             track_lifetime_uses: false,
         };
         self.with(scope, move |old_scope, this| {
-            this.check_lifetime_params(old_scope, &generics.params);
+            this.check_lifetime_params(
+                old_scope,
+                &generics.params,
+                Some(generics.span),
+                &arg_lifetimes,
+            );
             this.hack(walk); // FIXME(#37666) workaround in place of `walk(this)`
         });
     }
@@ -2031,7 +2053,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
         if let Some(params) = error {
             if lifetime_refs.len() == 1 {
-                self.report_elision_failure(&mut err, params);
+                self.report_elision_failure(&mut err, params, span);
             }
         }
 
@@ -2042,6 +2064,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         &mut self,
         db: &mut DiagnosticBuilder,
         params: &[ElisionFailureInfo],
+        span: Span,
     ) {
         let mut m = String::new();
         let len = params.len();
@@ -2097,7 +2120,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 "this function's return type contains a borrowed value, but \
                  there is no value for it to be borrowed from"
             );
-            help!(db, "consider giving it a 'static lifetime");
+            db.span_suggestion(
+                span,
+                "consider giving it a `'static` lifetime",
+                "&'static ".to_owned(),
+            );
         } else if elided_len == 0 {
             help!(
                 db,
@@ -2105,10 +2132,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                  an elided lifetime, but the lifetime cannot be derived from \
                  the arguments"
             );
-            help!(
-                db,
-                "consider giving it an explicit bounded or 'static \
-                 lifetime"
+            db.span_suggestion(
+                span,
+                "consider giving it an explicit bound  or `'static` lifetime",
+                "&'static ".to_owned(),
             );
         } else if elided_len == 1 {
             help!(
@@ -2149,82 +2176,131 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         self.insert_lifetime(lifetime_ref, lifetime.shifted(late_depth));
     }
 
-    fn check_lifetime_params(&mut self, old_scope: ScopeRef, params: &'tcx [hir::GenericParam]) {
-        for (i, lifetime_i) in params.lifetimes().enumerate() {
-            match lifetime_i.lifetime.name {
-                hir::LifetimeName::Static | hir::LifetimeName::Underscore => {
-                    let lifetime = lifetime_i.lifetime;
-                    let name = lifetime.name.name();
-                    let mut err = struct_span_err!(
-                        self.tcx.sess,
-                        lifetime.span,
-                        E0262,
-                        "invalid lifetime parameter name: `{}`",
-                        name
-                    );
-                    err.span_label(
-                        lifetime.span,
-                        format!("{} is a reserved lifetime name", name),
-                    );
-                    err.emit();
-                }
-                hir::LifetimeName::Fresh(_)
-                | hir::LifetimeName::Implicit
-                | hir::LifetimeName::Name(_) => {}
-            }
-
-            // It is a hard error to shadow a lifetime within the same scope.
-            for lifetime_j in params.lifetimes().skip(i + 1) {
-                if lifetime_i.lifetime.name == lifetime_j.lifetime.name {
-                    struct_span_err!(
-                        self.tcx.sess,
-                        lifetime_j.lifetime.span,
-                        E0263,
-                        "lifetime name `{}` declared twice in the same scope",
-                        lifetime_j.lifetime.name.name()
-                    ).span_label(lifetime_j.lifetime.span, "declared twice")
-                        .span_label(lifetime_i.lifetime.span, "previous declaration here")
-                        .emit();
-                }
-            }
-
-            // It is a soft error to shadow a lifetime within a parent scope.
-            self.check_lifetime_def_for_shadowing(old_scope, &lifetime_i.lifetime);
-
-            for bound in &lifetime_i.bounds {
-                match bound.name {
-                    hir::LifetimeName::Underscore => {
+    fn check_lifetime_params(
+        &mut self,
+        old_scope: ScopeRef,
+        params: &'tcx [hir::GenericParam],
+        generics_span: Option<Span>,
+        arg_lifetimes: &[hir::Lifetime],
+    ) {
+        for (i, param_i) in params.iter().enumerate() {
+                if let hir::GenericParam::Lifetime(lifetime_i) = param_i {
+                match lifetime_i.lifetime.name {
+                    hir::LifetimeName::Static | hir::LifetimeName::Underscore => {
+                        let lifetime = lifetime_i.lifetime;
+                        let name = lifetime.name.name();
                         let mut err = struct_span_err!(
                             self.tcx.sess,
-                            bound.span,
-                            E0637,
-                            "invalid lifetime bound name: `'_`"
+                            lifetime.span,
+                            E0262,
+                            "invalid lifetime parameter name: `{}`",
+                            name
                         );
-                        err.span_label(bound.span, "`'_` is a reserved lifetime name");
+                        err.span_label(
+                            lifetime.span,
+                            format!("{} is a reserved lifetime name", name),
+                        );
                         err.emit();
                     }
-                    hir::LifetimeName::Static => {
-                        self.insert_lifetime(bound, Region::Static);
-                        self.tcx
-                            .sess
-                            .struct_span_warn(
-                                lifetime_i.lifetime.span.to(bound.span),
+                    hir::LifetimeName::Fresh(_)
+                    | hir::LifetimeName::Implicit
+                    | hir::LifetimeName::Name(_) => {}
+                }
+
+                // It is a hard error to shadow a lifetime within the same scope.
+                for param_j in params.iter().skip(i + 1) {
+                    if let hir::GenericParam::Lifetime(lifetime_j) = param_j {
+                        if lifetime_i.lifetime.name == lifetime_j.lifetime.name {
+                            struct_span_err!(
+                                self.tcx.sess,
+                                lifetime_j.lifetime.span,
+                                E0263,
+                                "lifetime name `{}` declared twice in the same scope",
+                                lifetime_j.lifetime.name.name()
+                            ).span_label(lifetime_j.lifetime.span, "declared twice")
+                                .span_label(lifetime_i.lifetime.span, "previous declaration here")
+                                .emit();
+                        }
+                    }
+                }
+
+                // It is a soft error to shadow a lifetime within a parent scope.
+                self.check_lifetime_def_for_shadowing(old_scope, &lifetime_i.lifetime);
+
+                for bound in &lifetime_i.bounds {
+                    match bound.name {
+                        hir::LifetimeName::Underscore => {
+                            let mut err = struct_span_err!(
+                                self.tcx.sess,
+                                bound.span,
+                                E0637,
+                                "invalid lifetime bound name: `'_`"
+                            );
+                            err.span_label(bound.span, "`'_` is a reserved lifetime name");
+                            err.emit();
+                        }
+                        hir::LifetimeName::Static => {
+                            self.insert_lifetime(bound, Region::Static);
+                            let sp = lifetime_i.lifetime.span.to(bound.span);
+                            let mut warn = self.tcx.sess.struct_span_warn(
+                                sp,
                                 &format!(
                                     "unnecessary lifetime parameter `{}`",
                                     lifetime_i.lifetime.name.name()
                                 ),
-                            )
-                            .help(&format!(
-                                "you can use the `'static` lifetime directly, in place \
-                                 of `{}`",
-                                lifetime_i.lifetime.name.name()
-                            ))
-                            .emit();
-                    }
-                    hir::LifetimeName::Fresh(_)
-                    | hir::LifetimeName::Implicit
-                    | hir::LifetimeName::Name(_) => {
-                        self.resolve_lifetime_ref(bound);
+                            );
+                            let mut spans_to_replace = arg_lifetimes.iter().filter_map(|lifetime| {
+                                if lifetime.name.name() == lifetime_i.lifetime.name.name() {
+                                    Some((lifetime.span, "'static".to_owned()))
+                                } else {
+                                    None
+                                }
+                            }).collect::<Vec<_>>();
+                            if let (1, Some(sp)) = (params.len(), generics_span) {
+                                spans_to_replace.push((sp, "".into()));
+                                warn.multipart_suggestion(
+                                    &format!(
+                                        "you can use the `'static` lifetime directly, \
+                                         in place of `{}`",
+                                        lifetime_i.lifetime.name.name(),
+                                    ),
+                                    spans_to_replace,
+                                );
+                            } else if params.len() > 1 {
+                                let sp = if let Some(next_param) = params.iter().nth(i + 1) {
+                                    // we'll remove everything until the next parameter
+                                    lifetime_i.lifetime.span.until(next_param.span())
+                                } else if let Some(prev_param) = params.iter().nth(i - 1) {
+                                    // this must be the last argument, include the previous comma
+                                    self.tcx.sess.codemap()
+                                        .next_point(prev_param.span())
+                                        .to(sp)
+                                } else {  // THIS SHOULDN'T HAPPEN :|
+                                    sp
+                                };
+
+                                spans_to_replace.push((sp, "".into()));
+                                warn.multipart_suggestion(
+                                    &format!(
+                                        "you can use the `'static` lifetime directly, \
+                                         in place of `{}`",
+                                        lifetime_i.lifetime.name.name(),
+                                    ),
+                                    spans_to_replace,
+                                );
+                            } else {
+                                warn.help(&format!(
+                                    "you can use the `'static` lifetime directly, in place of `{}`",
+                                    lifetime_i.lifetime.name.name(),
+                                ));
+                            }
+                            warn.emit();
+                        }
+                        hir::LifetimeName::Fresh(_)
+                        | hir::LifetimeName::Implicit
+                        | hir::LifetimeName::Name(_) => {
+                            self.resolve_lifetime_ref(bound);
+                        }
                     }
                 }
             }

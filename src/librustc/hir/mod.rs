@@ -475,6 +475,13 @@ impl GenericParam {
             _ => false,
         }
     }
+
+    pub fn span(&self) -> Span {
+        match *self {
+            GenericParam::Lifetime(ref lifetime) => lifetime.lifetime.span,
+            GenericParam::Type(ref typaram) => typaram.span,
+        }
+    }
 }
 
 pub trait GenericParamsExt {
@@ -1660,6 +1667,16 @@ pub struct Ty {
     pub node: Ty_,
     pub span: Span,
     pub hir_id: HirId,
+}
+
+impl Ty {
+    pub fn lifetimes(&self) -> Vec<Lifetime> {
+        // FIXME(estebank): expand to all `Ty_`s
+        match self.node {
+            TyRptr(lifetime, _) => vec![lifetime],
+            _ => vec![],
+        }
+    }
 }
 
 impl fmt::Debug for Ty {

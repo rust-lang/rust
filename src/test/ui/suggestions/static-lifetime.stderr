@@ -1,0 +1,67 @@
+error[E0601]: `main` function not found in crate `static_lifetime`
+   |
+   = note: consider adding a `main` function to `$DIR/static-lifetime.rs`
+
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/static-lifetime.rs:11:9
+   |
+LL | fn _foo<'a: 'static, 'b>(_x: &'a str, _y: &'b str) -> &'a str {
+   |         ^^^^^^^^^^^
+help: you can use the `'static` lifetime directly, in place of `'a`
+   |
+LL | fn _foo<'b>(_x: &'static str, _y: &'b str) -> &'static str {
+   |        --        ^^^^^^^                       ^^^^^^^
+
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/static-lifetime.rs:16:14
+   |
+LL | fn _foo1<'b, 'a: 'static>(_x: &'a str, _y: &'b str) -> &'a str {
+   |              ^^^^^^^^^^^
+help: you can use the `'static` lifetime directly, in place of `'a`
+   |
+LL | fn _foo1<'b>(_x: &'static str, _y: &'b str) -> &'static str {
+   |           --      ^^^^^^^                       ^^^^^^^
+
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/static-lifetime.rs:21:14
+   |
+LL | fn _foo2<'c, 'a: 'static, 'b>(_x: &'a str, _y: &'b str) -> &'a str {
+   |              ^^^^^^^^^^^
+help: you can use the `'static` lifetime directly, in place of `'a`
+   |
+LL | fn _foo2<'c, 'b>(_x: &'static str, _y: &'b str) -> &'static str {
+   |             --        ^^^^^^^                       ^^^^^^^
+
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/static-lifetime.rs:26:14
+   |
+LL | fn _foo3<'c, 'a: 'static, 'b, 'd>(_x: &'a str, _y: &'b str) -> &'a str {
+   |              ^^^^^^^^^^^
+help: you can use the `'static` lifetime directly, in place of `'a`
+   |
+LL | fn _foo3<'c, 'b, 'd>(_x: &'static str, _y: &'b str) -> &'static str {
+   |             --            ^^^^^^^                       ^^^^^^^
+
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/static-lifetime.rs:31:10
+   |
+LL | fn _foo4<'a: 'static>(_x: &'a str, _y: &str) -> &'a str {
+   |          ^^^^^^^^^^^
+help: you can use the `'static` lifetime directly, in place of `'a`
+   |
+LL | fn _foo4(_x: &'static str, _y: &str) -> &'static str {
+   |        --     ^^^^^^^                    ^^^^^^^
+
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/static-lifetime.rs:36:10
+   |
+LL | fn _foo5<'a: 'static, 'b>(_x: &'a str, _y: &'b str) -> &'b str {
+   |          ^^^^^^^^^^^
+help: you can use the `'static` lifetime directly, in place of `'a`
+   |
+LL | fn _foo5<'b>(_x: &'static str, _y: &'b str) -> &'b str {
+   |         --        ^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0601`.
