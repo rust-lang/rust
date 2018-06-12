@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::{InferCtxt, InferResult};
+use infer::{InferCtxt, InferOk};
+use traits::query::Fallible;
 use ty::TyCtxt;
 use std::fmt;
 
@@ -20,7 +21,7 @@ pub struct CustomTypeOp<F, G> {
 impl<F, G> CustomTypeOp<F, G> {
     pub fn new<'gcx, 'tcx, R>(closure: F, description: G) -> Self
     where
-        F: FnOnce(&InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, R>,
+        F: FnOnce(&InferCtxt<'_, 'gcx, 'tcx>) -> Fallible<InferOk<'tcx, R>>,
         G: Fn() -> String,
     {
         CustomTypeOp {
@@ -32,7 +33,7 @@ impl<F, G> CustomTypeOp<F, G> {
 
 impl<'gcx, 'tcx, F, R, G> super::TypeOp<'gcx, 'tcx> for CustomTypeOp<F, G>
 where
-    F: for<'a, 'cx> FnOnce(&'a InferCtxt<'cx, 'gcx, 'tcx>) -> InferResult<'tcx, R>,
+    F: for<'a, 'cx> FnOnce(&'a InferCtxt<'cx, 'gcx, 'tcx>) -> Fallible<InferOk<'tcx, R>>,
     G: Fn() -> String,
 {
     type Output = R;
@@ -41,8 +42,8 @@ where
         Err(self)
     }
 
-    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, R> {
-        (self.closure)(infcx)
+    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> Fallible<InferOk<'tcx, R>> {
+        Ok((self.closure)(infcx)?)
     }
 }
 

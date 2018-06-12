@@ -12,12 +12,12 @@ use infer::canonical::query_result;
 use infer::canonical::{
     Canonical, Canonicalized, CanonicalizedQueryResult, QueryRegionConstraint, QueryResult,
 };
-use infer::{InferCtxt, InferOk, InferResult};
+use infer::{InferCtxt, InferOk};
 use std::fmt;
 use std::rc::Rc;
 use syntax::codemap::DUMMY_SP;
+use traits::query::Fallible;
 use traits::{ObligationCause, TraitEngine};
-use ty::error::TypeError;
 use ty::fold::TypeFoldable;
 use ty::{Lift, ParamEnv, TyCtxt};
 
@@ -42,7 +42,10 @@ pub trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     /// should use `fully_perform`, which will take those resulting
     /// obligations and prove them, and then process the combined
     /// results into region obligations which are returned.
-    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output>;
+    fn perform(
+        self,
+        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+    ) -> Fallible<InferOk<'tcx, Self::Output>>;
 
     /// Processes the operation and all resulting obligations,
     /// returning the final result along with any region constraints
@@ -50,7 +53,7 @@ pub trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     fn fully_perform(
         self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
-    ) -> Result<(Self::Output, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>), TypeError<'tcx>> {
+    ) -> Fallible<(Self::Output, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>)> {
         match self.trivial_noop(infcx.tcx) {
             Ok(r) => Ok((r, None)),
             Err(op) => op.fully_perform_nontrivial(infcx),
@@ -62,7 +65,7 @@ pub trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     fn fully_perform_nontrivial(
         self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
-    ) -> Result<(Self::Output, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>), TypeError<'tcx>> {
+    ) -> Fallible<(Self::Output, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>)> {
         if cfg!(debug_assertions) {
             info!(
                 "fully_perform_op_and_get_region_constraint_data({:?})",
@@ -112,7 +115,7 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>: TypeFoldable<'tcx> + Lift<'gcx> {
     fn perform_query(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, Self>,
-    ) -> CanonicalizedQueryResult<'gcx, Self::QueryResult>;
+    ) -> Fallible<CanonicalizedQueryResult<'gcx, Self::QueryResult>>;
 
     /// "Upcasts" a lifted query result (which is in the gcx lifetime)
     /// into the tcx lifetime. This is always just an identity cast,
@@ -136,7 +139,10 @@ where
         QueryTypeOp::trivial_noop(self, tcx)
     }
 
-    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
+    fn perform(
+        self,
+        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+    ) -> Fallible<InferOk<'tcx, Self::Output>> {
         let param_env = self.param_env();
 
         // FIXME(#33684) -- We need to use
@@ -144,7 +150,7 @@ where
         // the subtype query, which go awry around `'static`
         // otherwise.
         let (canonical_self, canonical_var_values) = infcx.canonicalize_hr_query_hack(&self);
-        let canonical_result = Q::perform_query(infcx.tcx, canonical_self);
+        let canonical_result = Q::perform_query(infcx.tcx, canonical_self)?;
 
         // FIXME: This is not the most efficient setup. The
         // `instantiate_query_result_and_region_obligations` basically
@@ -155,11 +161,11 @@ where
         // `QueryRegionConstraint` and ultimately into NLL
         // constraints. We should cut out the middleman but that will
         // take a bit of refactoring.
-        infcx.instantiate_query_result_and_region_obligations(
+        Ok(infcx.instantiate_query_result_and_region_obligations(
             &ObligationCause::dummy(),
             param_env,
             &canonical_var_values,
             Q::upcast_result(&canonical_result),
-        )
+        )?)
     }
 }

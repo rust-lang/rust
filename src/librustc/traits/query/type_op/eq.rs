@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use infer::canonical::{Canonical, CanonicalizedQueryResult, QueryResult};
+use traits::query::Fallible;
 use ty::{self, ParamEnv, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -42,8 +43,8 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Eq<'tcx> {
     fn perform_query(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonical<'gcx, Eq<'gcx>>,
-    ) -> CanonicalizedQueryResult<'gcx, ()> {
-        tcx.type_op_eq(canonicalized).unwrap()
+    ) -> Fallible<CanonicalizedQueryResult<'gcx, ()>> {
+        tcx.type_op_eq(canonicalized)
     }
 
     fn upcast_result(

@@ -22,14 +22,14 @@ use dataflow::MaybeInitializedPlaces;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::region_constraints::GenericKind;
-use rustc::infer::{InferCtxt, LateBoundRegionConversionTime, UnitResult};
+use rustc::infer::{InferCtxt, LateBoundRegionConversionTime};
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::*;
 use rustc::traits::query::type_op;
+use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::ObligationCause;
-use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
 use std::fmt;
@@ -733,7 +733,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         &mut self,
         locations: Locations,
         op: impl type_op::TypeOp<'gcx, 'tcx, Output = R>,
-    ) -> Result<R, TypeError<'tcx>> {
+    ) -> Fallible<R> {
         let (r, opt_data) = op.fully_perform(self.infcx)?;
 
         if let Some(data) = &opt_data {
@@ -775,7 +775,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         sub: Ty<'tcx>,
         sup: Ty<'tcx>,
         locations: Locations,
-    ) -> UnitResult<'tcx> {
+    ) -> Fallible<()> {
         let param_env = self.param_env;
         self.fully_perform_op(
             locations,
@@ -783,7 +783,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         )
     }
 
-    fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> UnitResult<'tcx> {
+    fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> Fallible<()> {
         let param_env = self.param_env;
         self.fully_perform_op(locations, type_op::eq::Eq::new(param_env, b, a))
     }
@@ -1561,11 +1561,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 predicate, location,
             );
 
-            let param_env = self.param_env;
-            self.fully_perform_op(
-                location.at_self(),
-                type_op::prove_predicate::ProvePredicate::new(param_env, predicate),
-            ).unwrap()
+            self.prove_predicate(predicate, location);
         }
     }
 
@@ -1579,7 +1575,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         self.fully_perform_op(
             location.at_self(),
             type_op::prove_predicate::ProvePredicate::new(param_env, predicate),
-        ).unwrap()
+        ).unwrap_or_else(|NoSolution| {
+            span_mirbug!(self, NoSolution, "could not prove {:?}", predicate);
+        })
     }
 
     fn typeck_mir(&mut self, mir: &Mir<'tcx>) {
@@ -1610,14 +1608,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn normalize<T>(&mut self, value: T, location: impl ToLocations) -> T
     where
-        T: type_op::normalize::Normalizable<'gcx, 'tcx>,
+        T: type_op::normalize::Normalizable<'gcx, 'tcx> + Copy,
     {
         debug!("normalize(value={:?}, location={:?})", value, location);
         let param_env = self.param_env;
         self.fully_perform_op(
             location.to_locations(),
             type_op::normalize::Normalize::new(param_env, value),
-        ).unwrap()
+        ).unwrap_or_else(|NoSolution| {
+            span_mirbug!(self, NoSolution, "failed to normalize `{:?}`", value);
+            value
+        })
     }
 }
 

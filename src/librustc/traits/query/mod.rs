@@ -16,6 +16,7 @@
 //! `librustc_traits`.
 
 use infer::canonical::Canonical;
+use ty::error::TypeError;
 use ty::{self, Ty};
 
 pub mod dropck_outlives;
@@ -48,5 +49,11 @@ pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
 pub struct NoSolution;
 
 pub type Fallible<T> = Result<T, NoSolution>;
+
+impl<'tcx> From<TypeError<'tcx>> for NoSolution {
+    fn from(_: TypeError<'tcx>) -> NoSolution {
+        NoSolution
+    }
+}
 
 impl_stable_hash_for!(struct NoSolution { });

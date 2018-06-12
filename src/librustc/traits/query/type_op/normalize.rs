@@ -10,6 +10,7 @@
 
 use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResult, QueryResult};
 use std::fmt;
+use traits::query::Fallible;
 use ty::fold::TypeFoldable;
 use ty::{self, Lift, ParamEnv, Ty, TyCtxt};
 
@@ -49,7 +50,7 @@ where
     fn perform_query(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, Self>,
-    ) -> CanonicalizedQueryResult<'gcx, Self::QueryResult> {
+    ) -> Fallible<CanonicalizedQueryResult<'gcx, Self::QueryResult>> {
         T::type_op_method(tcx, canonicalized)
     }
 
@@ -64,7 +65,7 @@ pub trait Normalizable<'gcx, 'tcx>: fmt::Debug + TypeFoldable<'tcx> + Lift<'gcx>
     fn type_op_method(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, Normalize<'gcx, Self>>,
-    ) -> CanonicalizedQueryResult<'gcx, Self>;
+    ) -> Fallible<CanonicalizedQueryResult<'gcx, Self>>;
 
     /// Convert from the `'gcx` (lifted) form of `Self` into the `tcx`
     /// form of `Self`.
@@ -80,8 +81,8 @@ where
     fn type_op_method(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, Normalize<'gcx, Self>>,
-    ) -> CanonicalizedQueryResult<'gcx, Self> {
-        tcx.type_op_normalize_ty(canonicalized).unwrap()
+    ) -> Fallible<CanonicalizedQueryResult<'gcx, Self>> {
+        tcx.type_op_normalize_ty(canonicalized)
     }
 
     fn upcast_result(
@@ -98,8 +99,8 @@ where
     fn type_op_method(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, Normalize<'gcx, Self>>,
-    ) -> CanonicalizedQueryResult<'gcx, Self> {
-        tcx.type_op_normalize_predicate(canonicalized).unwrap()
+    ) -> Fallible<CanonicalizedQueryResult<'gcx, Self>> {
+        tcx.type_op_normalize_predicate(canonicalized)
     }
 
     fn upcast_result(
@@ -116,8 +117,8 @@ where
     fn type_op_method(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, Normalize<'gcx, Self>>,
-    ) -> CanonicalizedQueryResult<'gcx, Self> {
-        tcx.type_op_normalize_poly_fn_sig(canonicalized).unwrap()
+    ) -> Fallible<CanonicalizedQueryResult<'gcx, Self>> {
+        tcx.type_op_normalize_poly_fn_sig(canonicalized)
     }
 
     fn upcast_result(
@@ -134,8 +135,8 @@ where
     fn type_op_method(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, Normalize<'gcx, Self>>,
-    ) -> CanonicalizedQueryResult<'gcx, Self> {
-        tcx.type_op_normalize_fn_sig(canonicalized).unwrap()
+    ) -> Fallible<CanonicalizedQueryResult<'gcx, Self>> {
+        tcx.type_op_normalize_fn_sig(canonicalized)
     }
 
     fn upcast_result(

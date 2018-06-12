@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use infer::canonical::{Canonical, CanonicalizedQueryResult, QueryResult};
+use traits::query::Fallible;
 use ty::{ParamEnv, Predicate, TyCtxt};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -40,8 +41,8 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for ProvePredicate<'tcx> {
     fn perform_query(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonical<'gcx, ProvePredicate<'gcx>>,
-    ) -> CanonicalizedQueryResult<'gcx, ()> {
-        tcx.type_op_prove_predicate(canonicalized).unwrap()
+    ) -> Fallible<CanonicalizedQueryResult<'gcx, ()>> {
+        tcx.type_op_prove_predicate(canonicalized)
     }
 
     fn upcast_result(

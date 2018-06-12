@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::{InferCtxt, InferResult};
+use infer::{InferCtxt, InferOk};
 use traits::query::dropck_outlives::trivial_dropck_outlives;
+use traits::query::Fallible;
 use traits::ObligationCause;
 use ty::subst::Kind;
 use ty::{ParamEnv, Ty, TyCtxt};
@@ -40,7 +41,10 @@ impl<'gcx, 'tcx> super::TypeOp<'gcx, 'tcx> for DropckOutlives<'tcx> {
         }
     }
 
-    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> InferResult<'tcx, Self::Output> {
+    fn perform(
+        self,
+        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+    ) -> Fallible<InferOk<'tcx, Vec<Kind<'tcx>>>> {
         Ok(infcx
             .at(&ObligationCause::dummy(), self.param_env)
             .dropck_outlives(self.dropped_ty))
