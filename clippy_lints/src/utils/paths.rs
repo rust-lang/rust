@@ -27,6 +27,7 @@ pub const DEFAULT_TRAIT: [&str; 3] = ["core", "default", "Default"];
 pub const DISPLAY_FMT_METHOD: [&str; 4] = ["core", "fmt", "Display", "fmt"];
 pub const DOUBLE_ENDED_ITERATOR: [&str; 4] = ["core", "iter", "traits", "DoubleEndedIterator"];
 pub const DROP: [&str; 3] = ["core", "mem", "drop"];
+pub const DURATION: [&str; 3] = ["core", "time", "Duration"];
 pub const FMT_ARGUMENTS_NEWV1: [&str; 4] = ["core", "fmt", "Arguments", "new_v1"];
 pub const FMT_ARGUMENTS_NEWV1FORMATTED: [&str; 4] = ["core", "fmt", "Arguments", "new_v1_formatted"];
 pub const FMT_ARGUMENTV1_NEW: [&str; 4] = ["core", "fmt", "ArgumentV1", "new"];
