@@ -57,7 +57,10 @@ struct InnerReadDir {
 }
 
 #[derive(Clone)]
-pub struct ReadDir(Arc<InnerReadDir>);
+pub struct ReadDir {
+    inner: Arc<InnerReadDir>,
+    end_of_stream: bool,
+}
 
 struct Dir(*mut libc::DIR);
 
@@ -213,7 +216,7 @@ impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // This will only be called from std::fs::ReadDir, which will add a "ReadDir()" frame.
         // Thus the result will be e g 'ReadDir("/home")'
-        fmt::Debug::fmt(&*self.0.root, f)
+        fmt::Debug::fmt(&*self.inner.root, f)
     }
 }
 
@@ -229,7 +232,7 @@ impl Iterator for ReadDir {
                 // is safe to use in threaded applications and it is generally preferred
                 // over the readdir_r(3C) function.
                 super::os::set_errno(0);
-                let entry_ptr = libc::readdir(self.0.dirp.0);
+                let entry_ptr = libc::readdir(self.inner.dirp.0);
                 if entry_ptr.is_null() {
                     // NULL can mean either the end is reached or an error occurred.
                     // So we had to clear errno beforehand to check for an error now.
@@ -257,6 +260,10 @@ impl Iterator for ReadDir {
 
     #[cfg(not(any(target_os = "solaris", target_os = "fuchsia")))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
+        if self.end_of_stream {
+            return None;
+        }
+
         unsafe {
             let mut ret = DirEntry {
                 entry: mem::zeroed(),
@@ -264,7 +271,14 @@ impl Iterator for ReadDir {
             };
             let mut entry_ptr = ptr::null_mut();
             loop {
-                if readdir64_r(self.0.dirp.0, &mut ret.entry, &mut entry_ptr) != 0 {
+                if readdir64_r(self.inner.dirp.0, &mut ret.entry, &mut entry_ptr) != 0 {
+                    if entry_ptr.is_null() {
+                        // We encountered an error (which will be returned in this iteration), but
+                        // we also reached the end of the directory stream. The `end_of_stream`
+                        // flag is enabled to make sure that we return `None` in the next iteration
+                        // (instead of looping forever)
+                        self.end_of_stream = true;
+                    }
                     return Some(Err(Error::last_os_error()))
                 }
                 if entry_ptr.is_null() {
@@ -287,7 +301,7 @@ impl Drop for Dir {
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        self.dir.0.root.join(OsStr::from_bytes(self.name_bytes()))
+        self.dir.inner.root.join(OsStr::from_bytes(self.name_bytes()))
     }
 
     pub fn file_name(&self) -> OsString {
@@ -296,7 +310,7 @@ impl DirEntry {
 
     #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        let fd = cvt(unsafe {dirfd(self.dir.0.dirp.0)})?;
+        let fd = cvt(unsafe {dirfd(self.dir.inner.dirp.0)})?;
         let mut stat: stat64 = unsafe { mem::zeroed() };
         cvt(unsafe {
             fstatat(fd,
@@ -692,7 +706,10 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
             Err(Error::last_os_error())
         } else {
             let inner = InnerReadDir { dirp: Dir(ptr), root };
-            Ok(ReadDir(Arc::new(inner)))
+            Ok(ReadDir{
+                inner: Arc::new(inner),
+                end_of_stream: false,
+            })
         }
     }
 }
