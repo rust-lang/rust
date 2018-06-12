@@ -64,7 +64,7 @@ unsafe fn test_triangle() -> bool {
             println!("deallocate({:?}, {:?}", ptr, layout);
         }
 
-        Global.dealloc(NonNull::new_unchecked(ptr).as_opaque(), layout);
+        Global.dealloc(NonNull::new_unchecked(ptr), layout);
     }
 
     unsafe fn reallocate(ptr: *mut u8, old: Layout, new: Layout) -> *mut u8 {
@@ -72,7 +72,7 @@ unsafe fn test_triangle() -> bool {
             println!("reallocate({:?}, old={:?}, new={:?})", ptr, old, new);
         }
 
-        let ret = Global.realloc(NonNull::new_unchecked(ptr).as_opaque(), old, new.size())
+        let ret = Global.realloc(NonNull::new_unchecked(ptr), old, new.size())
             .unwrap_or_else(|_| oom(Layout::from_size_align_unchecked(new.size(), old.align())));
 
         if PRINT {

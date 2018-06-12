@@ -264,7 +264,6 @@
 #![feature(fnbox)]
 #![feature(futures_api)]
 #![feature(hashmap_internals)]
-#![feature(heap_api)]
 #![feature(int_error_internals)]
 #![feature(integer_atomics)]
 #![feature(into_cow)]
@@ -499,13 +498,6 @@ pub mod path;
 pub mod process;
 pub mod sync;
 pub mod time;
-
-#[unstable(feature = "allocator_api", issue = "32838")]
-#[rustc_deprecated(since = "1.27.0", reason = "module renamed to `alloc`")]
-/// Use the `alloc` module instead.
-pub mod heap {
-    pub use alloc::*;
-}
 
 // Platform-abstraction modules
 #[macro_use]

@@ -11,9 +11,8 @@
 #![no_std]
 #![allow(unused_attributes)]
 #![unstable(feature = "alloc_jemalloc",
-            reason = "this library is unlikely to be stabilized in its current \
-                      form or name",
-            issue = "27783")]
+            reason = "implementation detail of std, does not provide any public API",
+            issue = "0")]
 #![feature(core_intrinsics)]
 #![feature(libc)]
 #![feature(linkage)]

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(global_allocator, allocator_api)]
-
 use std::alloc::System;
 
 #[global_allocator]

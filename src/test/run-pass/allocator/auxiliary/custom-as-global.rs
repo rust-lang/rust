@@ -10,7 +10,6 @@
 
 // no-prefer-dynamic
 
-#![feature(global_allocator)]
 #![crate_type = "rlib"]
 
 extern crate custom;

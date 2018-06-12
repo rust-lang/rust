@@ -23,13 +23,13 @@
 // coherence challenge (e.g., specialization, neg impls, etc) we can
 // reconsider what crate these items belong in.
 
+use alloc::{AllocErr, LayoutErr, CannotReallocInPlace};
 use any::TypeId;
 use borrow::Cow;
 use cell;
 use char;
 use core::array;
 use fmt::{self, Debug, Display};
-use heap::{AllocErr, LayoutErr, CannotReallocInPlace};
 use mem::transmute;
 use num;
 use str;
