@@ -6,11 +6,11 @@ use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::{match_type, snippet, span_lint_and_sugg, walk_ptrs_ty};
 
-/// **What it does:** Checks for calculation of subsecond microseconds or milliseconds from
-/// `Duration::subsec_nanos()`.
+/// **What it does:** Checks for calculation of subsecond microseconds or milliseconds
+/// from other `Duration` methods.
 ///
 /// **Why is this bad?** It's more concise to call `Duration::subsec_micros()` or
-/// `Duration::subsec_millis()`.
+/// `Duration::subsec_millis()` than to calculate them.
 ///
 /// **Known problems:** None.
 ///
@@ -23,7 +23,7 @@ use crate::utils::{match_type, snippet, span_lint_and_sugg, walk_ptrs_ty};
 declare_clippy_lint! {
     pub DURATION_SUBSEC,
     complexity,
-    "checks for `dur.subsec_nanos() / 1_000` or `dur.subsec_nanos() / 1_000_000`"
+    "checks for calculation of subsecond microseconds or milliseconds"
 }
 
 #[derive(Copy, Clone)]
@@ -40,16 +40,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DurationSubsec {
         if_chain! {
             if let ExprBinary(Spanned { node: BiDiv, .. }, ref left, ref right) = expr.node;
             if let ExprMethodCall(ref method_path, _ , ref args) = left.node;
-            if method_path.name == "subsec_nanos";
             if match_type(cx, walk_ptrs_ty(cx.tables.expr_ty(&args[0])), &paths::DURATION);
             if let Some((Constant::Int(divisor), _)) = constant(cx, cx.tables, right);
             then {
-                let suggested_fn = match divisor {
-                    1_000 => "subsec_micros",
-                    1_000_000 => "subsec_millis",
+                let suggested_fn = match (method_path.name.as_str().as_ref(), divisor) {
+                    ("subsec_micros", 1_000) => "subsec_millis",
+                    ("subsec_nanos", 1_000) => "subsec_micros",
+                    ("subsec_nanos", 1_000_000) => "subsec_millis",
                     _ => return,
                 };
-
                 span_lint_and_sugg(
                     cx,
                     DURATION_SUBSEC,
