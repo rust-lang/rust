@@ -47,7 +47,6 @@ declare_clippy_lint! {
 /// ```
 ///
 /// This code will always panic. The if condition should probably be inverted.
-/// ```
 declare_clippy_lint! {
     pub PANICKING_UNWRAP,
     nursery,
