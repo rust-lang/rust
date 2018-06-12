@@ -1,10 +1,10 @@
 error[E0596]: cannot borrow immutable item `f.v` as mutable
   --> $DIR/issue-35937.rs:17:5
    |
+LL |     let f = Foo { v: Vec::new() };
+   |         - help: consider changing this to be mutable: `mut f`
 LL |     f.v.push("cat".to_string()); //~ ERROR cannot borrow
    |     ^^^ cannot borrow as mutable
-   |
-   = note: the value which is causing this path not to be mutable is...: `f`
 
 error[E0384]: cannot assign twice to immutable variable `s.x`
   --> $DIR/issue-35937.rs:26:5

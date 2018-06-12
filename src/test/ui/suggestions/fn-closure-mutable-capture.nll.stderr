@@ -1,8 +1,8 @@
-error[E0594]: cannot assign to immutable item `x`
+error[E0594]: cannot assign to `x` which is behind a `&` reference
   --> $DIR/fn-closure-mutable-capture.rs:15:17
    |
 LL |     bar(move || x = 1);
-   |                 ^^^^^ cannot mutate
+   |                 ^^^^^ cannot assign
 
 error: aborting due to previous error
 
