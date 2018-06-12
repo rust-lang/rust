@@ -10,7 +10,8 @@
 
 use super::universal_regions::UniversalRegions;
 use borrow_check::nll::region_infer::values::ToElementIndex;
-use borrow_check::nll::constraint_set::{ConstraintIndex, ConstraintSet, OutlivesConstraint};
+use borrow_check::nll::constraint_set::{ConstraintIndex, ConstraintCategory, ConstraintSet};
+use borrow_check::nll::constraint_set::{OutlivesConstraint};
 use borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
@@ -21,13 +22,14 @@ use rustc::infer::NLLRegionVariableOrigin;
 use rustc::infer::RegionVariableOrigin;
 use rustc::mir::{
     ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements, Local, Location,
-    Mir,
+    Mir, StatementKind, TerminatorKind, Rvalue
 };
 use rustc::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::{self, ErrorReported};
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+
 use std::rc::Rc;
 use syntax_pos::Span;
 
@@ -961,10 +963,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Note: in this case, we use the unapproximated regions
             // to report the error. This gives better error messages
             // in some cases.
-            self.report_error(infcx, mir_def_id, longer_fr, shorter_fr, blame_span);
+            self.report_error(mir, infcx, mir_def_id, longer_fr, shorter_fr, blame_span);
         }
     }
 
+    /// When reporting an error, it is useful to be able to determine which constraints influenced
+    /// the region being reported as an error. This function finds all of the paths from the
+    /// constraint.
     fn find_constraint_paths_from_region(
         &self,
         r0: RegionVid
@@ -1055,12 +1060,40 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         paths
     }
 
+    /// This function will return true if a constraint is interesting and false if a constraint
+    /// is not. It is useful in filtering constraint paths to only interesting points.
     fn constraint_is_interesting(&self, index: &ConstraintIndex) -> bool {
         self.constraints.get(*index).filter(|constraint| {
             debug!("constraint_is_interesting: locations={:?} constraint={:?}",
                    constraint.locations, constraint);
             if let Locations::Interesting(_) = constraint.locations { true } else { false }
         }).is_some()
+    }
+
+    /// This function classifies a constraint from a location.
+    fn classify_constraint(&self, location: Location, mir: &Mir<'tcx>) -> ConstraintCategory {
+        let data = &mir[location.block];
+        if location.statement_index == data.statements.len() {
+            if let Some(ref terminator) = data.terminator {
+                match terminator.kind {
+                    TerminatorKind::DropAndReplace { .. } => ConstraintCategory::Assignment,
+                    TerminatorKind::Call { .. } => ConstraintCategory::CallArgument,
+                    _ => ConstraintCategory::Other,
+                }
+            } else {
+                ConstraintCategory::Other
+            }
+        } else {
+            let statement = &data.statements[location.statement_index];
+            match statement.kind {
+                StatementKind::Assign(_, ref rvalue) => match rvalue {
+                    Rvalue::Cast(..) => ConstraintCategory::Cast,
+                    Rvalue::Use(..) => ConstraintCategory::Assignment,
+                    _ => ConstraintCategory::Other,
+                },
+                _ => ConstraintCategory::Other,
+            }
+        }
     }
 
     /// Report an error because the universal region `fr` was required to outlive
@@ -1073,6 +1106,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Here we would be invoked with `fr = 'a` and `outlived_fr = `'b`.
     fn report_error(
         &self,
+        mir: &Mir<'tcx>,
         infcx: &InferCtxt<'_, '_, 'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
@@ -1095,27 +1129,57 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let constraints = self.find_constraint_paths_from_region(fr.clone());
         let path = constraints.iter().min_by_key(|p| p.len()).unwrap();
         debug!("report_error: path={:?}", path);
+
         let path = path.iter()
             .filter(|index| self.constraint_is_interesting(index))
             .collect::<Vec<&ConstraintIndex>>();
         debug!("report_error: path={:?}", path);
 
-        let fr_string = match fr_name {
-            Some(r) => format!("free region `{}`", r),
-            None => format!("free region `{:?}`", fr),
-        };
+        let mut categorized_path = path.iter().filter_map(|index| {
+            self.constraints.get(**index).iter().filter_map(|constraint| {
+                let span = constraint.locations.span(mir);
+                constraint.locations.from_location().iter().filter_map(|location| {
+                    let classification = self.classify_constraint(*location, mir);
+                    Some((classification, span))
+                }).next()
+            }).next()
+        }).collect::<Vec<(ConstraintCategory, Span)>>();
+        debug!("report_error: categorized_path={:?}", categorized_path);
 
-        let outlived_fr_string = match outlived_fr_name {
-            Some(r) => format!("free region `{}`", r),
-            None => format!("free region `{:?}`", outlived_fr),
-        };
+        categorized_path.sort_by(|p0, p1| p0.0.cmp(&p1.0));
+        debug!("report_error: sorted_path={:?}", categorized_path);
 
-        let mut diag = infcx.tcx.sess.struct_span_err(
-            blame_span,
-            &format!("{} does not outlive {}", fr_string, outlived_fr_string,),
-        );
+        if categorized_path.len() > 0 {
+            let blame_constraint = &categorized_path[0];
 
-        diag.emit();
+            let mut diag = infcx.tcx.sess.struct_span_err(
+                blame_constraint.1,
+                &format!("{:?}", blame_constraint.0),
+            );
+
+            for secondary in categorized_path.iter().skip(1) {
+                diag.span_label(secondary.1, format!("{:?}", secondary.0));
+            }
+
+            diag.emit();
+        } else {
+            let fr_string = match fr_name {
+                Some(r) => format!("free region `{}`", r),
+                None => format!("free region `{:?}`", fr),
+            };
+
+            let outlived_fr_string = match outlived_fr_name {
+                Some(r) => format!("free region `{}`", r),
+                None => format!("free region `{:?}`", outlived_fr),
+            };
+
+            let mut diag = infcx.tcx.sess.struct_span_err(
+                blame_span,
+                &format!("{} does not outlive {}", fr_string, outlived_fr_string,),
+            );
+
+            diag.emit();
+        }
     }
 
     crate fn why_region_contains_point(&self, fr1: RegionVid, elem: Location) -> Option<Cause> {
