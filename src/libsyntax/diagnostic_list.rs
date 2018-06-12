@@ -94,7 +94,7 @@ https://doc.rust-lang.org/reference.html#conditional-compilation
 "##,
 
 E0538: r##"
-Attribute contains multiple of the same meta item.
+Attribute contains same meta item more than once.
 
 Erroneous code example:
 
