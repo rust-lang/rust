@@ -6,18 +6,23 @@ The tracking issue for this feature is: [#44495]
 
 ------------------------
 
-This feature changes the way that the irrefutable pattern is handled
-in the `if let` and `while let` forms. The old way was to always error
-but now with a tag the error-by-default lint can be switched off.
+This feature changes the way that "irrefutable patterns" are handled
+in the `if let` and `while let` forms. An *irrefutable pattern* is one
+that cannot fail to match -- for example, the `_` pattern matches any
+value, and hence it is "irrefutable". Without this feature, using an
+irrefutable pattern in an `if let` gives a hard error (since often
+this indicates programmer error). But when the feature is enabled, the
+error becomes a lint (since in some cases irrefutable patterns are
+expected). This means you can use `#[allow]` to silence the lint:
 
 ```rust
 #![feature(irrefutable_let_patterns)]
 
+#[allow(irrefutable_let_patterns)]
 fn main() {
-    #[allow(irrefutable_let_patterns)]
+    // These two examples used to be errors, but now they
+    // trigger a lint (that is allowed):
     if let _ = 5 {}
-
-    #[allow(irrefutable_let_patterns)]
     while let _ = 5 {}
 }
 ```
