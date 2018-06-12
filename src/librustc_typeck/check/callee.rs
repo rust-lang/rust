@@ -12,6 +12,7 @@ use super::{Expectation, FnCtxt, Needs, TupleArgumentsFlag};
 use super::autoderef::Autoderef;
 use super::method::MethodCallee;
 
+use errors::Applicability;
 use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::{infer, traits};
@@ -231,8 +232,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         None => format!("`{}`", callee_ty),
                     });
 
-                err.span_label(call_expr.span, "not a function");
-
                 if let Some(ref path) = unit_variant {
                     err.span_suggestion(call_expr.span,
                                         &format!("`{}` is a unit variant, you need to write it \
@@ -240,12 +239,34 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         path.to_string());
                 }
 
-                if let hir::ExprCall(ref expr, _) = call_expr.node {
-                    let def = if let hir::ExprPath(ref qpath) = expr.node {
-                        self.tables.borrow().qpath_def(qpath, expr.hir_id)
-                    } else {
-                        Def::Err
+                if let hir::ExprCall(ref callee, _) = call_expr.node {
+                    let (def, label_not_a_fn) = match callee.node {
+                        hir::ExprPath(ref qpath) => {
+                            (self.tables.borrow().qpath_def(qpath, callee.hir_id), true)
+                        },
+                        hir::ExprCall(..) => {
+                            // If the callee kind is itself another `ExprCall`, that's a clue
+                            // that we might just be missing a semicolon (Issue #51055)
+                            let span = self.tcx.sess.codemap().next_point(callee.span);
+                            err.span_suggestion_with_applicability(
+                                span,
+                                "try adding a semicolon",
+                                ";".to_string(),
+                                // test/ui/block-result/issue-20862.rs is an example of a
+                                // false-positive where the real problem lies elsewhere
+                                Applicability::MaybeIncorrect
+                            );
+                            (Def::Err,
+                             // It'd be confusing to say `not a function` while pointing to a
+                             // function call, even with technical justification (it's the
+                             // non-function-ness of the value that's at issue)
+                             false)
+                        },
+                        _ => (Def::Err, true)
                     };
+                    if label_not_a_fn {
+                        err.span_label(call_expr.span, "not a function");
+                    }
                     let def_span = match def {
                         Def::Err => None,
                         Def::Local(id) | Def::Upvar(id, ..) => {
