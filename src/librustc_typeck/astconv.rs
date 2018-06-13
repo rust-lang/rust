@@ -30,7 +30,6 @@ use util::common::ErrorReported;
 use util::nodemap::{FxHashSet, FxHashMap};
 use errors::FatalError;
 
-// use std::cmp::Ordering;
 use std::iter;
 use syntax::ast;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
