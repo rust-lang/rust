@@ -15,7 +15,7 @@
 
 #![feature(heap_api, allocator_api)]
 
-use std::alloc::{Global, Alloc, Layout, oom};
+use std::alloc::{Global, Alloc, Layout, handle_alloc_error};
 use std::ptr::{self, NonNull};
 
 fn main() {
@@ -50,7 +50,7 @@ unsafe fn test_triangle() -> bool {
             println!("allocate({:?})", layout);
         }
 
-        let ret = Global.alloc(layout).unwrap_or_else(|_| oom(layout));
+        let ret = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
 
         if PRINT {
             println!("allocate({:?}) = {:?}", layout, ret);
@@ -73,7 +73,9 @@ unsafe fn test_triangle() -> bool {
         }
 
         let ret = Global.realloc(NonNull::new_unchecked(ptr), old, new.size())
-            .unwrap_or_else(|_| oom(Layout::from_size_align_unchecked(new.size(), old.align())));
+            .unwrap_or_else(|_| handle_alloc_error(
+                Layout::from_size_align_unchecked(new.size(), old.align())
+            ));
 
         if PRINT {
             println!("reallocate({:?}, old={:?}, new={:?}) = {:?}",
