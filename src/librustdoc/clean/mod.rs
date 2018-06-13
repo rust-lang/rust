@@ -1284,13 +1284,13 @@ fn resolution_failure(
                 link_range.end + code_dox_len,
             );
 
-            diag = cx.tcx.struct_span_lint_node(lint::builtin::INTRA_LINK_RESOLUTION_FAILURE,
+            diag = cx.tcx.struct_span_lint_node(lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
                                                 NodeId::new(0),
                                                 sp,
                                                 &msg);
             diag.span_label(sp, "cannot be resolved, ignoring");
         } else {
-            diag = cx.tcx.struct_span_lint_node(lint::builtin::INTRA_LINK_RESOLUTION_FAILURE,
+            diag = cx.tcx.struct_span_lint_node(lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
                                                 NodeId::new(0),
                                                 sp,
                                                 &msg);
@@ -1310,7 +1310,7 @@ fn resolution_failure(
         }
         diag
     } else {
-        cx.tcx.struct_span_lint_node(lint::builtin::INTRA_LINK_RESOLUTION_FAILURE,
+        cx.tcx.struct_span_lint_node(lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
                                      NodeId::new(0),
                                      sp,
                                      &msg)

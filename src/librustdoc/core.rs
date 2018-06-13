@@ -187,7 +187,7 @@ pub fn run_core(search_paths: SearchPaths,
         _ => None
     };
 
-    let intra_link_resolution_failure_name = lint::builtin::INTRA_LINK_RESOLUTION_FAILURE.name;
+    let intra_link_resolution_failure_name = lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE.name;
     let warnings_lint_name = lint::builtin::WARNINGS.name;
     let lints = lint::builtin::HardwiredLints.get_lints()
                     .iter()

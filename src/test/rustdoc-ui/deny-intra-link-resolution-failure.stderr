@@ -7,7 +7,7 @@ error: `[v2]` cannot be resolved, ignoring it...
 note: lint level defined here
   --> $DIR/deny-intra-link-resolution-failure.rs:11:9
    |
-11 | #![deny(intra_link_resolution_failure)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+11 | #![deny(intra_doc_link_resolution_failure)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
 

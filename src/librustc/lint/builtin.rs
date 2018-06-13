@@ -299,7 +299,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub INTRA_LINK_RESOLUTION_FAILURE,
+    pub INTRA_DOC_LINK_RESOLUTION_FAILURE,
     Warn,
     "warn about documentation intra links resolution failure"
 }
@@ -357,7 +357,7 @@ impl LintPass for HardwiredLints {
             UNSTABLE_NAME_COLLISIONS,
             DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
             DUPLICATE_MACRO_EXPORTS,
-            INTRA_LINK_RESOLUTION_FAILURE,
+            INTRA_DOC_LINK_RESOLUTION_FAILURE,
         )
     }
 }

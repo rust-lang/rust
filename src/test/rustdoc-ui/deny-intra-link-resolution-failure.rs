@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(intra_link_resolution_failure)]
+#![deny(intra_doc_link_resolution_failure)]
 
 /// [v2] //~ ERROR
 pub fn foo() {}
