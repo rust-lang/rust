@@ -15,7 +15,7 @@ use native_libs;
 use foreign_modules;
 use schema;
 
-use rustc::ty::maps::QueryConfig;
+use rustc::ty::query::QueryConfig;
 use rustc::middle::cstore::{CrateStore, DepKind,
                             MetadataLoader, LinkMeta,
                             LoadedMacro, EncodedMetadata, NativeLibraryKind};
@@ -24,7 +24,7 @@ use rustc::middle::stability::DeprecationEntry;
 use rustc::hir::def;
 use rustc::session::{CrateDisambiguator, Session};
 use rustc::ty::{self, TyCtxt};
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc::hir::map::{DefKey, DefPath, DefPathHash};
 use rustc::hir::map::blocks::FnLikeNode;

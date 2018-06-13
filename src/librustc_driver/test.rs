@@ -20,7 +20,7 @@ use rustc::middle::region;
 use rustc::ty::subst::Subst;
 use rustc::traits::ObligationCause;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::ty::maps::OnDiskCache;
+use rustc::ty::query::OnDiskCache;
 use rustc::infer::{self, InferOk, InferResult};
 use rustc::infer::outlives::env::OutlivesEnvironment;
 use rustc::infer::type_variable::TypeVariableOrigin;
@@ -157,8 +157,8 @@ fn test_env_with_pool<F>(
     };
     TyCtxt::create_and_enter(&sess,
                              &cstore,
-                             ty::maps::Providers::default(),
-                             ty::maps::Providers::default(),
+                             ty::query::Providers::default(),
+                             ty::query::Providers::default(),
                              &arenas,
                              resolutions,
                              hir_map,

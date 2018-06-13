@@ -19,10 +19,9 @@ use errors::Diagnostic;
 use errors::FatalError;
 use ty::tls;
 use ty::{TyCtxt};
-use ty::maps::Query;
-use ty::maps::config::QueryConfig;
-use ty::maps::config::QueryDescription;
-use ty::maps::job::{QueryJob, QueryResult, QueryInfo};
+use ty::query::Query;
+use ty::query::config::{QueryConfig, QueryDescription};
+use ty::query::job::{QueryJob, QueryResult, QueryInfo};
 use ty::item_path;
 
 use util::common::{profq_msg, ProfileQueriesMsg, QueryMsg};
@@ -35,7 +34,7 @@ use std::collections::hash_map::Entry;
 use syntax_pos::Span;
 use syntax::codemap::DUMMY_SP;
 
-pub struct QueryMap<'tcx, D: QueryConfig<'tcx> + ?Sized> {
+pub struct QueryCache<'tcx, D: QueryConfig<'tcx> + ?Sized> {
     pub(super) results: FxHashMap<D::Key, QueryValue<D::Value>>,
     pub(super) active: FxHashMap<D::Key, QueryResult<'tcx>>,
 }
@@ -56,9 +55,9 @@ impl<T> QueryValue<T> {
     }
 }
 
-impl<'tcx, M: QueryConfig<'tcx>> QueryMap<'tcx, M> {
-    pub(super) fn new() -> QueryMap<'tcx, M> {
-        QueryMap {
+impl<'tcx, M: QueryConfig<'tcx>> QueryCache<'tcx, M> {
+    pub(super) fn new() -> QueryCache<'tcx, M> {
+        QueryCache {
             results: FxHashMap(),
             active: FxHashMap(),
         }
@@ -95,7 +94,7 @@ macro_rules! profq_query_msg {
 /// A type representing the responsibility to execute the job in the `job` field.
 /// This will poison the relevant query if dropped.
 pub(super) struct JobOwner<'a, 'tcx: 'a, Q: QueryDescription<'tcx> + 'a> {
-    map: &'a Lock<QueryMap<'tcx, Q>>,
+    cache: &'a Lock<QueryCache<'tcx, Q>>,
     key: Q::Key,
     job: Lrc<QueryJob<'tcx>>,
 }
@@ -114,9 +113,9 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
         span: Span,
         key: &Q::Key,
     ) -> TryGetJob<'a, 'tcx, Q> {
-        let map = Q::query_map(tcx);
+        let cache = Q::query_cache(tcx);
         loop {
-            let mut lock = map.borrow_mut();
+            let mut lock = cache.borrow_mut();
             if let Some(value) = lock.results.get(key) {
                 profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
                 let result = Ok((value.value.clone(), value.index));
@@ -138,7 +137,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                         };
                         let job = Lrc::new(QueryJob::new(info, icx.query.clone()));
                         let owner = JobOwner {
-                            map,
+                            cache,
                             job: job.clone(),
                             key: (*key).clone(),
                         };
@@ -155,20 +154,20 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
         }
     }
 
-    /// Completes the query by updating the query map with the `result`,
+    /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
     pub(super) fn complete(self, result: &Q::Value, dep_node_index: DepNodeIndex) {
         // We can move out of `self` here because we `mem::forget` it below
         let key = unsafe { ptr::read(&self.key) };
         let job = unsafe { ptr::read(&self.job) };
-        let map = self.map;
+        let cache = self.cache;
 
         // Forget ourself so our destructor won't poison the query
         mem::forget(self);
 
         let value = QueryValue::new(result.clone(), dep_node_index);
         {
-            let mut lock = map.borrow_mut();
+            let mut lock = cache.borrow_mut();
             lock.active.remove(&key);
             lock.results.insert(key, value);
         }
@@ -215,7 +214,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
 impl<'a, 'tcx, Q: QueryDescription<'tcx>> Drop for JobOwner<'a, 'tcx, Q> {
     fn drop(&mut self) {
         // Poison the query so jobs waiting on it panic
-        self.map.borrow_mut().active.insert(self.key.clone(), QueryResult::Poisoned);
+        self.cache.borrow_mut().active.insert(self.key.clone(), QueryResult::Poisoned);
         // Also signal the completion of the job, so waiters
         // will continue execution
         self.job.signal_complete();
@@ -231,7 +230,7 @@ pub struct CycleError<'tcx> {
 
 /// The result of `try_get_lock`
 pub(super) enum TryGetJob<'a, 'tcx: 'a, D: QueryDescription<'tcx> + 'a> {
-    /// The query is not yet started. Contains a guard to the map eventually used to start it.
+    /// The query is not yet started. Contains a guard to the cache eventually used to start it.
     NotYetStarted(JobOwner<'a, 'tcx, D>),
 
     /// The query was already completed.
@@ -392,7 +391,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             self.dep_graph.read_index(dep_node_index);
 
-            self.on_disk_query_result_cache
+            self.queries.on_disk_cache
                 .store_diagnostics_for_anon_node(dep_node_index, diagnostics);
 
             job.complete(&result, dep_node_index);
@@ -546,7 +545,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         if dep_node.kind != ::dep_graph::DepKind::Null {
-            self.on_disk_query_result_cache
+            self.queries.on_disk_cache
                 .store_diagnostics(dep_node_index, diagnostics);
         }
 
@@ -562,7 +561,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// side-effects -- e.g., in order to report errors for erroneous programs.
     ///
     /// Note: The optimization is only available during incr. comp.
-    pub fn ensure_query<Q: QueryDescription<'gcx>>(self, key: Q::Key) -> () {
+    pub(super) fn ensure_query<Q: QueryDescription<'gcx>>(self, key: Q::Key) -> () {
         let dep_node = Q::to_dep_node(self, &key);
 
         // Ensuring an "input" or anonymous query makes no sense
@@ -595,10 +594,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.force_query_with_job::<Q>(key, job, dep_node)
     }
 
-    pub fn try_get_query<Q: QueryDescription<'gcx>>(
+    pub(super) fn try_get_query<Q: QueryDescription<'gcx>>(
         self,
         span: Span,
-        key: Q::Key
+        key: Q::Key,
     ) -> Result<Q::Value, DiagnosticBuilder<'a>> {
         match self.try_get_with::<Q>(span, key) {
             Ok(e) => Ok(e),
@@ -606,7 +605,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn get_query<Q: QueryDescription<'gcx>>(self, span: Span, key: Q::Key) -> Q::Value {
+    pub(super) fn get_query<Q: QueryDescription<'gcx>>(
+        self,
+        span: Span,
+        key: Q::Key,
+    ) -> Q::Value {
         self.try_get_query::<Q>(span, key).unwrap_or_else(|mut e| {
             e.emit();
             Q::handle_cycle_error(self)
@@ -627,13 +630,14 @@ macro_rules! handle_cycle_error {
     };
 }
 
-macro_rules! define_maps {
+macro_rules! define_queries {
     (<$tcx:tt>
      $($(#[$attr:meta])*
        [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
 
         use std::mem;
-        use ty::maps::job::QueryResult;
+        #[cfg(parallel_queries)]
+        use ty::query::job::QueryResult;
         use rustc_data_structures::sync::Lock;
         use {
             rustc_data_structures::stable_hasher::HashStable,
@@ -642,20 +646,24 @@ macro_rules! define_maps {
             ich::StableHashingContext
         };
 
-        define_map_struct! {
+        define_queries_struct! {
             tcx: $tcx,
             input: ($(([$($modifiers)*] [$($attr)*] [$name]))*)
         }
 
-        impl<$tcx> Maps<$tcx> {
-            pub fn new(providers: IndexVec<CrateNum, Providers<$tcx>>)
-                       -> Self {
-                Maps {
+        impl<$tcx> Queries<$tcx> {
+            pub fn new(
+                providers: IndexVec<CrateNum, Providers<$tcx>>,
+                on_disk_cache: OnDiskCache<'tcx>,
+            ) -> Self {
+                Queries {
                     providers,
-                    $($name: Lock::new(QueryMap::new())),*
+                    on_disk_cache,
+                    $($name: Lock::new(QueryCache::new())),*
                 }
             }
 
+            #[cfg(parallel_queries)]
             pub fn collect_active_jobs(&self) -> Vec<Lrc<QueryJob<$tcx>>> {
                 let mut jobs = Vec::new();
 
@@ -750,13 +758,15 @@ macro_rules! define_maps {
             type Value = $V;
 
             const NAME: &'static str = stringify!($name);
+        }
 
+        impl<$tcx> QueryAccessors<$tcx> for queries::$name<$tcx> {
             fn query(key: Self::Key) -> Query<'tcx> {
                 Query::$name(key)
             }
 
-            fn query_map<'a>(tcx: TyCtxt<'a, $tcx, '_>) -> &'a Lock<QueryMap<$tcx, Self>> {
-                &tcx.maps.$name
+            fn query_cache<'a>(tcx: TyCtxt<'a, $tcx, '_>) -> &'a Lock<QueryCache<$tcx, Self>> {
+                &tcx.queries.$name
             }
 
             #[allow(unused)]
@@ -769,7 +779,7 @@ macro_rules! define_maps {
             #[inline]
             fn compute(tcx: TyCtxt<'_, 'tcx, '_>, key: Self::Key) -> Self::Value {
                 __query_compute::$name(move || {
-                    let provider = tcx.maps.providers[key.map_crate()].$name;
+                    let provider = tcx.queries.providers[key.query_crate()].$name;
                     provider(tcx.global_tcx(), key)
                 })
             }
@@ -840,12 +850,18 @@ macro_rules! define_maps {
     }
 }
 
-macro_rules! define_map_struct {
+macro_rules! define_queries_struct {
     (tcx: $tcx:tt,
      input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
-        pub struct Maps<$tcx> {
+        pub(crate) struct Queries<$tcx> {
+            /// This provides access to the incr. comp. on-disk cache for query results.
+            /// Do not access this directly. It is only meant to be used by
+            /// `DepGraph::try_mark_green()` and the query infrastructure.
+            pub(crate) on_disk_cache: OnDiskCache<'tcx>,
+
             providers: IndexVec<CrateNum, Providers<$tcx>>,
-            $($(#[$attr])*  $name: Lock<QueryMap<$tcx, queries::$name<$tcx>>>,)*
+
+            $($(#[$attr])*  $name: Lock<QueryCache<$tcx, queries::$name<$tcx>>>,)*
         }
     };
 }
@@ -860,7 +876,7 @@ macro_rules! define_provider_struct {
         impl<$tcx> Default for Providers<$tcx> {
             fn default() -> Self {
                 $(fn $name<'a, $tcx>(_: TyCtxt<'a, $tcx, $tcx>, key: $K) -> $R {
-                    bug!("tcx.maps.{}({:?}) unsupported by its crate",
+                    bug!("tcx.{}({:?}) unsupported by its crate",
                          stringify!($name), key);
                 })*
                 Providers { $($name),* }
@@ -960,11 +976,11 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
                 profq_msg!(tcx,
                     ProfileQueriesMsg::QueryBegin(
                         DUMMY_SP.data(),
-                        profq_query_msg!(::ty::maps::queries::$query::NAME, tcx, $key),
+                        profq_query_msg!(::ty::query::queries::$query::NAME, tcx, $key),
                     )
                 );
 
-                match tcx.force_query::<::ty::maps::queries::$query>($key, DUMMY_SP, *dep_node) {
+                match tcx.force_query::<::ty::query::queries::$query>($key, DUMMY_SP, *dep_node) {
                     Ok(_) => {},
                     Err(e) => {
                         tcx.report_cycle(e).emit();
@@ -1201,15 +1217,15 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
 
 
 // FIXME(#45015): Another piece of boilerplate code that could be generated in
-//                a combined define_dep_nodes!()/define_maps!() macro.
+//                a combined define_dep_nodes!()/define_queries!() macro.
 macro_rules! impl_load_from_cache {
     ($($dep_kind:ident => $query_name:ident,)*) => {
         impl DepNode {
             // Check whether the query invocation corresponding to the given
             // DepNode is eligible for on-disk-caching.
             pub fn cache_on_disk(&self, tcx: TyCtxt) -> bool {
-                use ty::maps::queries;
-                use ty::maps::QueryDescription;
+                use ty::query::queries;
+                use ty::query::QueryDescription;
 
                 match self.kind {
                     $(DepKind::$dep_kind => {

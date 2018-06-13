@@ -4,7 +4,7 @@ use std::ptr;
 use rustc::hir::def_id::DefId;
 use rustc::ty::Instance;
 use rustc::ty::ParamEnv;
-use rustc::ty::maps::TyCtxtAt;
+use rustc::ty::query::TyCtxtAt;
 use rustc::ty::layout::{self, Align, TargetDataLayout, Size};
 use syntax::ast::Mutability;
 use rustc::middle::const_val::ConstVal;

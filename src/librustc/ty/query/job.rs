@@ -15,8 +15,8 @@ use rustc_data_structures::sync::{Lock, LockGuard, Lrc, Weak};
 use rustc_data_structures::OnDrop;
 use syntax_pos::Span;
 use ty::tls;
-use ty::maps::Query;
-use ty::maps::plumbing::CycleError;
+use ty::query::Query;
+use ty::query::plumbing::CycleError;
 use ty::context::TyCtxt;
 use errors::Diagnostic;
 use std::process;
@@ -497,7 +497,7 @@ fn deadlock(tcx: TyCtxt<'_, '_, '_>, registry: &rayon_core::Registry) {
     });
 
     let mut wakelist = Vec::new();
-    let mut jobs: Vec<_> = tcx.maps.collect_active_jobs();
+    let mut jobs: Vec<_> = tcx.queries.collect_active_jobs();
 
     let mut found_cycle = false;
 

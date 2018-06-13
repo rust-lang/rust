@@ -36,7 +36,7 @@ mod normalize_erasing_regions;
 mod util;
 pub mod lowering;
 
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 
 pub fn provide(p: &mut Providers) {
     *p = Providers {

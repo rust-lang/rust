@@ -85,7 +85,7 @@ pub use self::instance::{Instance, InstanceDef};
 
 pub use self::trait_def::TraitDef;
 
-pub use self::maps::queries;
+pub use self::query::queries;
 
 pub mod adjustment;
 pub mod binding;
@@ -100,8 +100,8 @@ pub mod inhabitedness;
 pub mod item_path;
 pub mod layout;
 pub mod _match;
-pub mod maps;
 pub mod outlives;
+pub mod query;
 pub mod relate;
 pub mod steal;
 pub mod subst;
@@ -2175,7 +2175,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     /// Due to normalization being eager, this applies even if
     /// the associated type is behind a pointer, e.g. issue #31299.
     pub fn sized_constraint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &'tcx [Ty<'tcx>] {
-        match tcx.try_get_query::<queries::adt_sized_constraint>(DUMMY_SP, self.did) {
+        match tcx.try_adt_sized_constraint(DUMMY_SP, self.did) {
             Ok(tys) => tys,
             Err(mut bug) => {
                 debug!("adt_sized_constraint: {:?} is recursive", self);
@@ -2917,12 +2917,12 @@ fn instance_def_size_estimate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-pub fn provide(providers: &mut ty::maps::Providers) {
+pub fn provide(providers: &mut ty::query::Providers) {
     context::provide(providers);
     erase_regions::provide(providers);
     layout::provide(providers);
     util::provide(providers);
-    *providers = ty::maps::Providers {
+    *providers = ty::query::Providers {
         associated_item,
         associated_item_def_ids,
         adt_sized_constraint,

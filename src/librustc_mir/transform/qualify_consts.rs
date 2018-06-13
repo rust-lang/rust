@@ -24,7 +24,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::traits::{self, TraitEngine};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::cast::CastTy;
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::mir::*;
 use rustc::mir::traversal::ReversePostorder;
 use rustc::mir::visit::{PlaceContext, Visitor};

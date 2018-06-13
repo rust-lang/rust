@@ -126,9 +126,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     continue;
                 }
 
-                let callee_mir = match self.tcx.try_get_query::<ty::queries::optimized_mir>(
-                                                                           callsite.location.span,
-                                                                           callsite.callee) {
+                let callee_mir = match self.tcx.try_optimized_mir(callsite.location.span,
+                                                                  callsite.callee) {
                     Ok(callee_mir) if self.should_inline(callsite, callee_mir) => {
                         self.tcx.subst_and_normalize_erasing_regions(
                             &callsite.substs,

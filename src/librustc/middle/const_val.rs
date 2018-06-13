@@ -11,7 +11,7 @@
 use hir::def_id::DefId;
 use ty;
 use ty::subst::Substs;
-use ty::maps::TyCtxtAt;
+use ty::query::TyCtxtAt;
 use mir::interpret::ConstValue;
 use errors::DiagnosticBuilder;
 

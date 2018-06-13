@@ -31,7 +31,7 @@ use rustc::lint;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable, GenericParamDefKind};
 use rustc::ty::fold::TypeVisitor;
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::ty::subst::UnpackedKind;
 use rustc::util::nodemap::NodeSet;
 use syntax::ast::{self, CRATE_NODE_ID, Ident};

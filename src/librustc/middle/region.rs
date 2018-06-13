@@ -27,7 +27,7 @@ use syntax::codemap;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use ty::TyCtxt;
-use ty::maps::Providers;
+use ty::query::Providers;
 
 use hir;
 use hir::def_id::DefId;

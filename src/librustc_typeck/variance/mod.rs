@@ -17,7 +17,7 @@ use arena;
 use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::ty::{self, CrateVariancesMap, TyCtxt};
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc_data_structures::sync::Lrc;
 
 /// Defines the `TermsContext` basically houses an arena where we can

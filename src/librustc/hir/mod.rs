@@ -45,7 +45,7 @@ use syntax::tokenstream::TokenStream;
 use syntax::util::ThinVec;
 use syntax::util::parser::ExprPrecedence;
 use ty::AdtKind;
-use ty::maps::Providers;
+use ty::query::Providers;
 
 use rustc_data_structures::indexed_vec;
 use rustc_data_structures::sync::{ParallelIterator, par_iter, Send, Sync, scope};

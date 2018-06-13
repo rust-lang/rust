@@ -46,7 +46,7 @@ use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
 use ty::GenericParamDefKind;
 use ty::layout::{LayoutDetails, TargetDataLayout};
-use ty::maps;
+use ty::query;
 use ty::steal::Steal;
 use ty::BindingMode;
 use ty::CanonicalTy;
@@ -863,11 +863,6 @@ pub struct GlobalCtxt<'tcx> {
 
     pub dep_graph: DepGraph,
 
-    /// This provides access to the incr. comp. on-disk cache for query results.
-    /// Do not access this directly. It is only meant to be used by
-    /// `DepGraph::try_mark_green()` and the query infrastructure in `ty::maps`.
-    pub(crate) on_disk_query_result_cache: maps::OnDiskCache<'tcx>,
-
     /// Common types, pre-interned for your convenience.
     pub types: CommonTypes<'tcx>,
 
@@ -886,7 +881,7 @@ pub struct GlobalCtxt<'tcx> {
     /// as well as all upstream crates. Only populated in incremental mode.
     pub def_path_hash_to_def_id: Option<FxHashMap<DefPathHash, DefId>>,
 
-    pub maps: maps::Maps<'tcx>,
+    pub(crate) queries: query::Queries<'tcx>,
 
     // Records the free variables refrenced by every closure
     // expression. Do not track deps for this, just recompute it from
@@ -1074,12 +1069,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// reference to the context, to allow formatting values that need it.
     pub fn create_and_enter<F, R>(s: &'tcx Session,
                                   cstore: &'tcx CrateStoreDyn,
-                                  local_providers: ty::maps::Providers<'tcx>,
-                                  extern_providers: ty::maps::Providers<'tcx>,
+                                  local_providers: ty::query::Providers<'tcx>,
+                                  extern_providers: ty::query::Providers<'tcx>,
                                   arenas: &'tcx AllArenas<'tcx>,
                                   resolutions: ty::Resolutions,
                                   hir: hir_map::Map<'tcx>,
-                                  on_disk_query_result_cache: maps::OnDiskCache<'tcx>,
+                                  on_disk_query_result_cache: query::OnDiskCache<'tcx>,
                                   crate_name: &str,
                                   tx: mpsc::Sender<Box<dyn Any + Send>>,
                                   output_filenames: &OutputFilenames,
@@ -1144,7 +1139,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             global_arenas: &arenas.global,
             global_interners: interners,
             dep_graph: dep_graph.clone(),
-            on_disk_query_result_cache,
             types: common_types,
             trait_map,
             export_map: resolutions.export_map.into_iter().map(|(k, v)| {
@@ -1165,7 +1159,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     .collect(),
             hir,
             def_path_hash_to_def_id,
-            maps: maps::Maps::new(providers),
+            queries: query::Queries::new(providers, on_disk_query_result_cache),
             rcache: Lock::new(FxHashMap()),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
@@ -1343,7 +1337,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                            -> Result<(), E::Error>
         where E: ty::codec::TyEncoder
     {
-        self.on_disk_query_result_cache.serialize(self.global_tcx(), encoder)
+        self.queries.on_disk_cache.serialize(self.global_tcx(), encoder)
     }
 
     /// If true, we should use a naive AST walk to determine if match
@@ -1702,7 +1696,7 @@ pub mod tls {
     use std::fmt;
     use std::mem;
     use syntax_pos;
-    use ty::maps;
+    use ty::query;
     use errors::{Diagnostic, TRACK_DIAGNOSTICS};
     use rustc_data_structures::OnDrop;
     use rustc_data_structures::sync::{self, Lrc, Lock};
@@ -1726,8 +1720,8 @@ pub mod tls {
         pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
         /// The current query job, if any. This is updated by start_job in
-        /// ty::maps::plumbing when executing a query
-        pub query: Option<Lrc<maps::QueryJob<'gcx>>>,
+        /// ty::query::plumbing when executing a query
+        pub query: Option<Lrc<query::QueryJob<'gcx>>>,
 
         /// Used to prevent layout from recursing too deeply.
         pub layout_depth: usize,
@@ -2792,7 +2786,7 @@ impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
     }
 }
 
-pub fn provide(providers: &mut ty::maps::Providers) {
+pub fn provide(providers: &mut ty::query::Providers) {
     // FIXME(#44234) - almost all of these queries have no sub-queries and
     // therefore no actual inputs, they're just reading tables calculated in
     // resolve! Does this work? Unsure! That's what the issue is about

@@ -104,7 +104,7 @@ use hir::map as hir_map;
 use rustc::infer::InferOk;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::traits::{ObligationCause, ObligationCauseCode, TraitEngine};
 use session::{CompileIncomplete, config};
 use util::common::time;

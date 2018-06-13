@@ -18,7 +18,7 @@ use ich::NodeIdHashingMode;
 use traits::{self, ObligationCause};
 use ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
 use ty::subst::{Substs, UnpackedKind};
-use ty::maps::TyCtxtAt;
+use ty::query::TyCtxtAt;
 use ty::TypeVariants::*;
 use ty::layout::{Integer, IntegerExt};
 use util::common::ErrorReported;
@@ -415,7 +415,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return None;
         };
 
-        ty::maps::queries::coherent_trait::ensure(self, drop_trait);
+        ty::query::queries::coherent_trait::ensure(self, drop_trait);
 
         let mut dtor_did = None;
         let ty = self.type_of(adt_did);
@@ -883,7 +883,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (param_env, ty) = query.into_parts();
 
     let needs_drop = |ty: Ty<'tcx>| -> bool {
-        match tcx.try_get_query::<ty::queries::needs_drop_raw>(DUMMY_SP, param_env.and(ty)) {
+        match tcx.try_needs_drop_raw(DUMMY_SP, param_env.and(ty)) {
             Ok(v) => v,
             Err(mut bug) => {
                 // Cycles should be reported as an error by `check_representable`.
@@ -1014,8 +1014,8 @@ impl<'tcx> ExplicitSelf<'tcx> {
     }
 }
 
-pub fn provide(providers: &mut ty::maps::Providers) {
-    *providers = ty::maps::Providers {
+pub fn provide(providers: &mut ty::query::Providers) {
+    *providers = ty::query::Providers {
         is_copy_raw,
         is_sized_raw,
         is_freeze_raw,

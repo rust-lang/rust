@@ -33,7 +33,7 @@ use rustc::mir::mono::Linkage;
 use rustc::ty::subst::Substs;
 use rustc::ty::{ToPredicate, ReprOptions};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::util::Discr;
 use rustc::util::captures::Captures;

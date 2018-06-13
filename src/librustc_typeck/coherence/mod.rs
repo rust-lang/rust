@@ -18,7 +18,7 @@
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::traits;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 
 use syntax::ast;
 
@@ -127,15 +127,15 @@ fn coherent_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
 
 pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &trait_def_id in tcx.hir.krate().trait_impls.keys() {
-        ty::maps::queries::coherent_trait::ensure(tcx, trait_def_id);
+        ty::query::queries::coherent_trait::ensure(tcx, trait_def_id);
     }
 
     unsafety::check(tcx);
     orphan::check(tcx);
 
     // these queries are executed for side-effects (error reporting):
-    ty::maps::queries::crate_inherent_impls::ensure(tcx, LOCAL_CRATE);
-    ty::maps::queries::crate_inherent_impls_overlap_check::ensure(tcx, LOCAL_CRATE);
+    ty::query::queries::crate_inherent_impls::ensure(tcx, LOCAL_CRATE);
+    ty::query::queries::crate_inherent_impls_overlap_check::ensure(tcx, LOCAL_CRATE);
 }
 
 /// Overlap: No two impls for the same trait are implemented for the

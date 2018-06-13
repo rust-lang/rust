@@ -11,7 +11,7 @@
 use hir::map as hir_map;
 use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::ty::subst::UnpackedKind;
 use rustc::ty::{self, CratePredicatesMap, TyCtxt};
 use rustc_data_structures::sync::Lrc;

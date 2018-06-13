@@ -39,7 +39,7 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::session::{Session, CompileIncomplete};
 use rustc::session::config::{CrateType, OutputFilenames, PrintRequest};
 use rustc::ty::TyCtxt;
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
