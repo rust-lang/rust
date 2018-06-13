@@ -1860,7 +1860,10 @@ pub type Variant = Spanned<Variant_>;
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum UseTreeKind {
     /// `use prefix` or `use prefix as rename`
-    Simple(Option<Ident>),
+    ///
+    /// The extra `NodeId`s are for HIR lowering, when additional statements are created for each
+    /// namespace.
+    Simple(Option<Ident>, NodeId, NodeId),
     /// `use prefix::{...}`
     Nested(Vec<(UseTree, NodeId)>),
     /// `use prefix::*`
@@ -1879,8 +1882,8 @@ pub struct UseTree {
 impl UseTree {
     pub fn ident(&self) -> Ident {
         match self.kind {
-            UseTreeKind::Simple(Some(rename)) => rename,
-            UseTreeKind::Simple(None) =>
+            UseTreeKind::Simple(Some(rename), ..) => rename,
+            UseTreeKind::Simple(None, ..) =>
                 self.prefix.segments.last().expect("empty prefix in a simple import").ident,
             _ => panic!("`UseTree::ident` can only be used on a simple import"),
         }

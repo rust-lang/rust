@@ -393,7 +393,7 @@ impl UnusedImportBraces {
             // Trigger the lint if the nested item is a non-self single item
             let node_ident;
             match items[0].0.kind {
-                ast::UseTreeKind::Simple(rename) => {
+                ast::UseTreeKind::Simple(rename, ..) => {
                     let orig_ident = items[0].0.prefix.segments.last().unwrap().ident;
                     if orig_ident.name == keywords::SelfValue.name() {
                         return;

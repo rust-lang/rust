@@ -492,7 +492,7 @@ fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
         (ast::ItemKind::Use(P(ast::UseTree {
             span: DUMMY_SP,
             prefix: path_node(vec![id_test]),
-            kind: ast::UseTreeKind::Simple(None),
+            kind: ast::UseTreeKind::Simple(None, ast::DUMMY_NODE_ID, ast::DUMMY_NODE_ID),
         })),
          ast::VisibilityKind::Public, keywords::Invalid.ident())
     } else {
@@ -588,7 +588,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
         let use_path = ast::UseTree {
             span: DUMMY_SP,
             prefix: path_node(vec![mod_ident, Ident::from_str("main")]),
-            kind: ast::UseTreeKind::Simple(Some(rename)),
+            kind: ast::UseTreeKind::Simple(Some(rename), ast::DUMMY_NODE_ID, ast::DUMMY_NODE_ID),
         };
 
         expander.fold_item(P(ast::Item {

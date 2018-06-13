@@ -118,7 +118,7 @@ impl<'a> Resolver<'a> {
             .collect();
 
         match use_tree.kind {
-            ast::UseTreeKind::Simple(rename) => {
+            ast::UseTreeKind::Simple(rename, ..) => {
                 let mut ident = use_tree.ident();
                 let mut source = module_path.pop().unwrap();
                 let mut type_ns_only = false;
