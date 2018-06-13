@@ -16,6 +16,8 @@
 
 use fmt;
 use ptr::NonNull;
+use future::Future;
+use mem::PinMut;
 
 /// Indicates whether a value is available or if the current task has been
 /// scheduled to receive a wakeup instead.
@@ -455,8 +457,8 @@ pub trait Executor {
 /// `Box<Future<Output = ()> + Send>`.
 pub struct TaskObj {
     ptr: *mut (),
-    poll: unsafe fn(*mut (), &mut Context) -> Poll<()>,
-    drop: unsafe fn(*mut ()),
+    poll_fn: unsafe fn(*mut (), &mut Context) -> Poll<()>,
+    drop_fn: unsafe fn(*mut ()),
 }
 
 impl fmt::Debug for TaskObj {
@@ -467,7 +469,6 @@ impl fmt::Debug for TaskObj {
 }
 
 unsafe impl Send for TaskObj {}
-unsafe impl Sync for TaskObj {}
 
 /// A custom implementation of a task trait object for `TaskObj`, providing
 /// a hand-rolled vtable.
@@ -478,7 +479,7 @@ unsafe impl Sync for TaskObj {}
 /// The implementor must guarantee that it is safe to call `poll` repeatedly (in
 /// a non-concurrent fashion) with the result of `into_raw` until `drop` is
 /// called.
-pub unsafe trait UnsafePoll: Send + 'static {
+pub unsafe trait UnsafeTask: Send + 'static {
     /// Convert a owned instance into a (conceptually owned) void pointer.
     fn into_raw(self) -> *mut ();
 
@@ -504,22 +505,22 @@ pub unsafe trait UnsafePoll: Send + 'static {
 impl TaskObj {
     /// Create a `TaskObj` from a custom trait object representation.
     #[inline]
-    pub fn from_poll_task<T: UnsafePoll>(t: T) -> TaskObj {
+    pub fn new<T: UnsafeTask>(t: T) -> TaskObj {
         TaskObj {
             ptr: t.into_raw(),
-            poll: T::poll,
-            drop: T::drop,
+            poll_fn: T::poll,
+            drop_fn: T::drop,
         }
     }
+}
 
-    /// Poll the task.
-    ///
-    /// The semantics here are identical to that for futures, but unlike
-    /// futures only an `&mut self` reference is needed here.
+impl Future for TaskObj {
+    type Output = ();
+
     #[inline]
-    pub fn poll_task(&mut self, cx: &mut Context) -> Poll<()> {
+    fn poll(self: PinMut<Self>, cx: &mut Context) -> Poll<()> {
         unsafe {
-            (self.poll)(self.ptr, cx)
+            (self.poll_fn)(self.ptr, cx)
         }
     }
 }
@@ -527,7 +528,7 @@ impl TaskObj {
 impl Drop for TaskObj {
     fn drop(&mut self) {
         unsafe {
-            (self.drop)(self.ptr)
+            (self.drop_fn)(self.ptr)
         }
     }
 }

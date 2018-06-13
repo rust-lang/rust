@@ -66,7 +66,7 @@ use core::marker::{Unpin, Unsize};
 use core::mem::{self, PinMut};
 use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
 use core::ptr::{self, NonNull, Unique};
-use core::task::{Context, Poll, UnsafePoll, TaskObj};
+use core::task::{Context, Poll, UnsafeTask, TaskObj};
 use core::convert::From;
 
 use raw_vec::RawVec;
@@ -933,7 +933,7 @@ impl<'a, F: ?Sized + Future> Future for PinBox<F> {
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-unsafe impl<F: Future<Output = ()> + Send + 'static> UnsafePoll for PinBox<F> {
+unsafe impl<F: Future<Output = ()> + Send + 'static> UnsafeTask for PinBox<F> {
     fn into_raw(self) -> *mut () {
         PinBox::into_raw(self) as *mut ()
     }
@@ -952,13 +952,13 @@ unsafe impl<F: Future<Output = ()> + Send + 'static> UnsafePoll for PinBox<F> {
 #[unstable(feature = "futures_api", issue = "50547")]
 impl<F: Future<Output = ()> + Send + 'static> From<PinBox<F>> for TaskObj {
     fn from(boxed: PinBox<F>) -> Self {
-        TaskObj::from_poll_task(boxed)
+        TaskObj::new(boxed)
     }
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
 impl<F: Future<Output = ()> + Send + 'static> From<Box<F>> for TaskObj {
     fn from(boxed: Box<F>) -> Self {
-        TaskObj::from_poll_task(PinBox::from(boxed))
+        TaskObj::new(PinBox::from(boxed))
     }
 }
