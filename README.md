@@ -122,7 +122,7 @@ shell with:
 
 Currently, building Rust only works with some known versions of Visual Studio. If
 you have a more recent version installed the build system doesn't understand
-then you may need to force rust build to use an older version. This can be done
+then you may need to force rustbuild to use an older version. This can be done
 by manually calling the appropriate vcvars file before running the bootstrap.
 
 ```
@@ -159,7 +159,7 @@ $ ./configure
 $ make && sudo make install
 ```
 
-When using the configure script, the generated `config.mk` the file may override the
+When using the configure script, the generated `config.mk` file may override the
 `config.toml` file. To go back to the `config.toml` file, delete the generated
 `config.mk` file.
 
@@ -182,7 +182,7 @@ the ABI used. I.e., if the ABI was `x86_64-pc-windows-msvc`, the directory will 
 Since the Rust compiler is written in Rust, it must be built by a
 precompiled "snapshot" version of itself (made in an earlier stage of
 development). As such, source builds require a connection to the Internet, to
-fetch snapshots and an OS that can execute the available snapshot binaries.
+fetch snapshots, and an OS that can execute the available snapshot binaries.
 
 Snapshot binaries are currently built and tested on several platforms:
 
