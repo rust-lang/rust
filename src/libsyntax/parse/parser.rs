@@ -4752,7 +4752,7 @@ impl<'a> Parser<'a> {
                         self.span_err(question_span,
                                       "`?` may only modify trait bounds, not lifetime bounds");
                     }
-                    bounds.push(Outlives(RegionTyParamBound(self.expect_lifetime())));
+                    bounds.push(Outlives(self.expect_lifetime()));
                     if has_parens {
                         self.expect(&token::CloseDelim(token::Paren))?;
                         self.span_err(self.prev_span,

@@ -1446,17 +1446,12 @@ impl HasAttrs for Stmt {
 
 impl HasAttrs for GenericParam {
     fn attrs(&self) -> &[ast::Attribute] {
-        match self {
-            GenericParam::Lifetime(lifetime) => lifetime.attrs(),
-            GenericParam::Type(ty) => ty.attrs(),
-        }
+        &self.attrs
     }
 
-    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
-        match self {
-            GenericParam::Lifetime(lifetime) => GenericParam::Lifetime(lifetime.map_attrs(f)),
-            GenericParam::Type(ty) => GenericParam::Type(ty.map_attrs(f)),
-        }
+    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(mut self, f: F) -> Self {
+        self.attrs = self.attrs.map_attrs(f);
+        self
     }
 }
 
@@ -1479,5 +1474,5 @@ macro_rules! derive_has_attrs {
 
 derive_has_attrs! {
     Item, Expr, Local, ast::ForeignItem, ast::StructField, ast::ImplItem, ast::TraitItem, ast::Arm,
-    ast::Field, ast::FieldPat, ast::Variant_, ast::LifetimeDef, ast::TyParam
+    ast::Field, ast::FieldPat, ast::Variant_
 }
