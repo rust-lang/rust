@@ -919,9 +919,17 @@ This does not pose a problem by itself because they can't be accessed directly."
                     Abi::PlatformIntrinsic => {
                         assert!(!self.tcx.is_const_fn(def_id));
                         match &self.tcx.item_name(def_id).as_str()[..] {
+                            // Do not add anything to this list without consulting
+                            // @eddyb, @oli-obk and @nikomatsakis
                             | "size_of"
                             | "min_align_of"
-                            | "type_id"
+                            | "type_id" => {
+                                is_const_fn = Some(def_id);
+                                promotable = true;
+                            },
+                            // When adding something to this list, make sure to also implement
+                            // the corresponding entry in the `call_intrinsic` method in
+                            // rustc_mir::interpret::const_eval
                             | "bswap"
                             | "ctpop"
                             | "cttz"
@@ -935,9 +943,6 @@ This does not pose a problem by itself because they can't be accessed directly."
 
                             _ => {}
                         }
-                        // we can always mark intrinsics as promotable as they are inherently
-                        // unstable
-                        promotable = true;
                     }
                     _ => {
                         if self.tcx.is_const_fn(def_id) {
