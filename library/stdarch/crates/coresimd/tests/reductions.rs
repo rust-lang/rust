@@ -344,7 +344,7 @@ mod offset {
                         v = v.replace(i, start);
                     }
                     let vsum = v.sum();
-                    let r = vsum.as_int() == sum.as_int();
+                    let _r = vsum.as_int() == sum.as_int();
                     // This is false in general; the intrinsic performs a
                     // tree-reduce:
                     let mut a = [0. as $elem_ty; $id::lanes()];
@@ -424,7 +424,7 @@ mod offset {
                         v = v.replace(i, start);
                     }
                     let vmul = v.product();
-                    let r = vmul.as_int() == mul.as_int();
+                    let _r = vmul.as_int() == mul.as_int();
                     // This is false in general; the intrinsic performs a
                     // tree-reduce:
                     let mut a = [0. as $elem_ty; $id::lanes()];
