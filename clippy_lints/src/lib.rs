@@ -431,7 +431,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box unwrap::Pass);
     reg.register_late_lint_pass(box duration_subsec::DurationSubsec);
     reg.register_late_lint_pass(box default_trait_access::DefaultTraitAccess);
-    reg.register_late_lint_pass(box indexing_slicing::IndexingSlicingPass);
+    reg.register_late_lint_pass(box indexing_slicing::IndexingSlicing);
 
     reg.register_lint_group("clippy_restriction", vec![
         arithmetic::FLOAT_ARITHMETIC,

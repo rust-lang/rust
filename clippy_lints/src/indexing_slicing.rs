@@ -59,30 +59,30 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub INDEXING_SLICING,
-    restriction,
+    pedantic,
     "indexing/slicing usage"
 }
 
 #[derive(Copy, Clone)]
-pub struct IndexingSlicingPass;
+pub struct IndexingSlicing;
 
-impl LintPass for IndexingSlicingPass {
+impl LintPass for IndexingSlicing {
     fn get_lints(&self) -> LintArray {
         lint_array!(INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING)
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicingPass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprIndex(ref a, ref b) = &expr.node {
-            match &b.node {
+        if let ExprIndex(ref array, ref index) = &expr.node {
+            match &index.node {
                 // Both ExprStruct and ExprPath require this approach's checks
-                // on the `range` returned by `higher::range(cx, b)`.
+                // on the `range` returned by `higher::range(cx, index)`.
                 // ExprStruct handles &x[n..m], &x[n..] and &x[..n].
                 // ExprPath handles &x[..] and x[var]
-                ExprStruct(_, _, _) | ExprPath(_) => {
-                    if let Some(range) = higher::range(cx, b) {
-                        let ty = cx.tables.expr_ty(a);
+                ExprStruct(..) | ExprPath(..) => {
+                    if let Some(range) = higher::range(cx, index) {
+                        let ty = cx.tables.expr_ty(array);
                         if let ty::TyArray(_, s) = ty.sty {
                             let size: u128 = s.assert_usize(cx.tcx).unwrap().into();
                             // Index is a constant range.
@@ -100,49 +100,48 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicingPass {
                                 }
                             }
                         }
+
+                        let help_msg;
                         match (range.start, range.end) {
                             (None, Some(_)) => {
-                                cx.span_lint(
-                                    INDEXING_SLICING,
-                                    expr.span,
-                                    "slicing may panic. Consider using \
-                                     `.get(..n)`or `.get_mut(..n)` instead",
-                                );
+                                help_msg = "Consider using `.get(..n)`or `.get_mut(..n)` instead";
                             }
                             (Some(_), None) => {
-                                cx.span_lint(
-                                    INDEXING_SLICING,
-                                    expr.span,
-                                    "slicing may panic. Consider using \
-                                     `.get(n..)` or .get_mut(n..)` instead",
-                                );
+                                help_msg = "Consider using `.get(n..)` or .get_mut(n..)` instead";
                             }
                             (Some(_), Some(_)) => {
-                                cx.span_lint(
-                                    INDEXING_SLICING,
-                                    expr.span,
-                                    "slicing may panic. Consider using \
-                                     `.get(n..m)` or `.get_mut(n..m)` instead",
-                                );
+                                help_msg =
+                                    "Consider using `.get(n..m)` or `.get_mut(n..m)` instead";
                             }
-                            (None, None) => (),
+                            (None, None) => return, // [..] is ok
                         }
-                    } else {
-                        cx.span_lint(
+
+                        utils::span_help_and_lint(
+                            cx,
                             INDEXING_SLICING,
                             expr.span,
-                            "indexing may panic. Consider using `.get(n)` or \
-                             `.get_mut(n)` instead",
+                            "slicing may panic.",
+                            help_msg,
+                        );
+                    } else {
+                        utils::span_help_and_lint(
+                            cx,
+                            INDEXING_SLICING,
+                            expr.span,
+                            "indexing may panic.",
+                            "Consider using `.get(n)` or `.get_mut(n)` instead",
                         );
                     }
                 }
-                ExprLit(_) => {
+                ExprLit(..) => {
                     // [n]
-                    let ty = cx.tables.expr_ty(a);
+                    let ty = cx.tables.expr_ty(array);
                     if let ty::TyArray(_, s) = ty.sty {
                         let size: u128 = s.assert_usize(cx.tcx).unwrap().into();
                         // Index is a constant uint.
-                        if let Some((Constant::Int(const_index), _)) = constant(cx, cx.tables, b) {
+                        if let Some((Constant::Int(const_index), _)) =
+                            constant(cx, cx.tables, index)
+                        {
                             if size <= const_index {
                                 utils::span_lint(
                                     cx,
@@ -154,11 +153,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicingPass {
                             // Else index is in bounds, ok.
                         }
                     } else {
-                        cx.span_lint(
+                        utils::span_help_and_lint(
+                            cx,
                             INDEXING_SLICING,
                             expr.span,
-                            "indexing may panic. Consider using `.get(n)` or \
-                             `.get_mut(n)` instead",
+                            "indexing may panic.",
+                            "Consider using `.get(n)` or `.get_mut(n)` instead",
                         );
                     }
                 }
