@@ -302,6 +302,19 @@ impl<'tcx> Mir<'tcx> {
         }
     }
 
+    /// Check if `sub` is a sub scope of `sup`
+    pub fn is_sub_scope(&self, mut sub: SourceScope, sup: SourceScope) -> bool {
+        loop {
+            if sub == sup {
+                return true;
+            }
+            match self.source_scopes[sub].parent_scope {
+                None => return false,
+                Some(p) => sub = p,
+            }
+        }
+    }
+
     /// Return the return type, it always return first element from `local_decls` array
     pub fn return_ty(&self) -> Ty<'tcx> {
         self.local_decls[RETURN_PLACE].ty

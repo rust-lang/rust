@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use borrow_check::WriteKind;
 use syntax_pos::Span;
 use rustc::middle::region::ScopeTree;
 use rustc::mir::{BorrowKind, Field, Local, LocalKind, Location, Operand};
@@ -162,7 +163,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             format!("borrow of {} occurs here", borrow_msg),
         );
         err.span_label(span, format!("move out of {} occurs here", value_msg));
-        self.explain_why_borrow_contains_point(context, borrow, &mut err);
+        self.explain_why_borrow_contains_point(context, borrow, None, &mut err);
         err.emit();
     }
 
@@ -182,7 +183,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Origin::Mir,
         );
 
-        self.explain_why_borrow_contains_point(context, borrow, &mut err);
+        self.explain_why_borrow_contains_point(context, borrow, None, &mut err);
 
         err.emit();
     }
@@ -380,7 +381,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             );
         }
 
-        self.explain_why_borrow_contains_point(context, issued_borrow, &mut err);
+        self.explain_why_borrow_contains_point(context, issued_borrow, None, &mut err);
 
         err.emit();
     }
@@ -389,8 +390,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &mut self,
         context: Context,
         borrow: &BorrowData<'tcx>,
-        drop_span: Span,
+        place_span: (&Place<'tcx>, Span),
+        kind: Option<WriteKind>,
     ) {
+        let drop_span = place_span.1;
         let scope_tree = self.tcx.region_scope_tree(self.mir_def_id);
         let root_place = self.prefixes(&borrow.borrowed_place, PrefixSet::All)
             .last()
@@ -450,6 +453,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     drop_span,
                     borrow_span,
                     proper_span,
+                    kind.map(|k| (k, place_span.0)),
                 );
             }
             (RegionKind::ReEarlyBound(_), None)
@@ -495,7 +499,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             drop_span,
             format!("`{}` dropped here while still borrowed", name),
         );
-        self.explain_why_borrow_contains_point(context, borrow, &mut err);
+        self.explain_why_borrow_contains_point(context, borrow, None, &mut err);
         err.emit();
     }
 
@@ -517,7 +521,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "temporary value dropped here while still borrowed",
         );
         err.note("consider using a `let` binding to increase its lifetime");
-        self.explain_why_borrow_contains_point(context, borrow, &mut err);
+        self.explain_why_borrow_contains_point(context, borrow, None, &mut err);
         err.emit();
     }
 
@@ -530,6 +534,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         drop_span: Span,
         borrow_span: Span,
         _proper_span: Span,
+        kind_place: Option<(WriteKind, &Place<'tcx>)>,
     ) {
         debug!(
             "report_unscoped_local_value_does_not_live_long_enough(\
@@ -544,7 +549,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err.span_label(borrow_span, "borrowed value does not live long enough");
         err.span_label(drop_span, "borrowed value only lives until here");
 
-        self.explain_why_borrow_contains_point(context, borrow, &mut err);
+        self.explain_why_borrow_contains_point(context, borrow, kind_place, &mut err);
         err.emit();
     }
 
@@ -570,7 +575,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err.span_label(proper_span, "temporary value does not live long enough");
         err.span_label(drop_span, "temporary value only lives until here");
 
-        self.explain_why_borrow_contains_point(context, borrow, &mut err);
+        self.explain_why_borrow_contains_point(context, borrow, None, &mut err);
         err.emit();
     }
 
@@ -588,7 +593,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Origin::Mir,
         );
 
-        self.explain_why_borrow_contains_point(context, loan, &mut err);
+        self.explain_why_borrow_contains_point(context, loan, None, &mut err);
 
         err.emit();
     }
