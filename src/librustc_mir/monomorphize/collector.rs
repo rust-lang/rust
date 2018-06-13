@@ -944,6 +944,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             hir::ItemTy(..)          |
             hir::ItemTrait(..)       |
             hir::ItemTraitAlias(..)  |
+            hir::ItemExistential(..) |
             hir::ItemMod(..)         => {
                 // Nothing to do, just keep recursing...
             }
@@ -958,7 +959,6 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
 
             hir::ItemEnum(_, ref generics) |
             hir::ItemStruct(_, ref generics) |
-            hir::ItemExistential(hir::ExistTy { ref generics, .. }) |
             hir::ItemUnion(_, ref generics) => {
                 if generics.params.is_empty() {
                     if self.mode == MonoItemCollectionMode::Eager {

@@ -797,7 +797,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         NodeItem(item) => {
             match item.node {
-                ItemExistential(hir::ExistTy { impl_trait_fn: parent_did, .. }) => parent_did,
+                ItemExistential(hir::ExistTy { impl_trait_fn, .. }) => impl_trait_fn,
                 _ => None,
             }
         },
@@ -1352,8 +1352,6 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 tcx.def_span(def_id));
 
                     let predicates = bounds.predicates(tcx, anon_ty);
-
-                    debug!("explicit_predicates_of: predicates={:?}", predicates);
 
                     return ty::GenericPredicates {
                         parent: None,

@@ -558,12 +558,6 @@ impl<'hir> Map<'hir> {
     pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
         match self.get(id) {
             NodeItem(&Item { node: ItemTrait(..), .. }) => id,
-            NodeItem(&Item {
-                node: ItemExistential(ExistTy {
-                    impl_trait_fn: Some(did),
-                    ..
-                }), ..
-            }) => self.def_index_to_node_id(did.index),
             NodeTyParam(_) => self.get_parent_node(id),
             _ => {
                 bug!("ty_param_owner: {} not a type parameter",
@@ -774,7 +768,7 @@ impl<'hir> Map<'hir> {
 
     /// Retrieve the NodeId for `id`'s parent item, or `id` itself if no
     /// parent item is in this map. The "parent item" is the closest parent node
-    /// in the AST which is recorded by the map and is an item, either an item
+    /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
     pub fn get_parent(&self, id: NodeId) -> NodeId {
         match self.walk_parent_nodes(id, |node| match *node {
