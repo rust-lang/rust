@@ -120,7 +120,7 @@ shell with:
 > python x.py build
 ```
 
-Currently building Rust only works with some known versions of Visual Studio. If
+Currently, building Rust only works with some known versions of Visual Studio. If
 you have a more recent version installed the build system doesn't understand
 then you may need to force rustbuild to use an older version. This can be done
 by manually calling the appropriate vcvars file before running the bootstrap.
@@ -134,7 +134,7 @@ python x.py build
 [specifying-an-abi]: #specifying-an-abi
 
 Each specific ABI can also be used from either environment (for example, using
-the GNU ABI in powershell) by using an explicit build triple. The available
+the GNU ABI in PowerShell) by using an explicit build triple. The available
 Windows build triples are:
 - GNU ABI (using GCC)
     - `i686-pc-windows-gnu`
@@ -180,7 +180,7 @@ the ABI used. I.e., if the ABI was `x86_64-pc-windows-msvc`, the directory will 
 [notes]: #notes
 
 Since the Rust compiler is written in Rust, it must be built by a
-precompiled "snapshot" version of itself (made in an earlier state of
+precompiled "snapshot" version of itself (made in an earlier stage of
 development). As such, source builds require a connection to the Internet, to
 fetch snapshots, and an OS that can execute the available snapshot binaries.
 
