@@ -695,9 +695,10 @@ impl<'a> LoweringContext<'a> {
                 hir::GenericParam {
                     id: def_node_id,
                     name: hir_name,
+                    attrs: hir_vec![],
+                    bounds: hir_vec![],
                     span,
                     pure_wrt_drop: false,
-                    bounds: vec![].into(),
                     kind: hir::GenericParamKind::Lifetime { in_band: true }
                 }
             })
@@ -1239,11 +1240,11 @@ impl<'a> LoweringContext<'a> {
                             name: ParamName::Plain(name),
                             span,
                             pure_wrt_drop: false,
+                            attrs: hir_vec![],
                             bounds: hir_bounds,
                             kind: hir::GenericParamKind::Type {
                                 default: None,
                                 synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                                attrs: P::new(),
                             }
                         });
 
@@ -1413,7 +1414,8 @@ impl<'a> LoweringContext<'a> {
                         name,
                         span: lifetime.span,
                         pure_wrt_drop: false,
-                        bounds: vec![].into(),
+                        attrs: hir_vec![],
+                        bounds: hir_vec![],
                         kind: hir::GenericParamKind::Lifetime {
                             in_band: false,
                         }
@@ -1950,6 +1952,7 @@ impl<'a> LoweringContext<'a> {
                     name: param_name,
                     span: lt.span,
                     pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
+                    attrs: self.lower_attrs(&param.attrs),
                     bounds,
                     kind: hir::GenericParamKind::Lifetime { in_band: false }
                 };
@@ -1980,6 +1983,7 @@ impl<'a> LoweringContext<'a> {
                     name: hir::ParamName::Plain(name),
                     span: param.ident.span,
                     pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
+                    attrs: self.lower_attrs(&param.attrs),
                     bounds,
                     kind: hir::GenericParamKind::Type {
                         default: default.as_ref().map(|x| {
@@ -1989,7 +1993,6 @@ impl<'a> LoweringContext<'a> {
                                               .filter(|attr| attr.check_name("rustc_synthetic"))
                                               .map(|_| hir::SyntheticTyParamKind::ImplTrait)
                                               .next(),
-                        attrs: self.lower_attrs(&param.attrs),
                     }
                 }
             }

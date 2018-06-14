@@ -471,7 +471,6 @@ pub enum GenericParamKind {
     Type {
         default: Option<P<Ty>>,
         synthetic: Option<SyntheticTyParamKind>,
-        attrs: HirVec<Attribute>,
     }
 }
 
@@ -479,6 +478,7 @@ pub enum GenericParamKind {
 pub struct GenericParam {
     pub id: NodeId,
     pub name: ParamName,
+    pub attrs: HirVec<Attribute>,
     pub bounds: ParamBounds,
     pub span: Span,
     pub pure_wrt_drop: bool,

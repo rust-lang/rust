@@ -203,6 +203,7 @@ impl_stable_hash_for!(struct hir::GenericParam {
     name,
     span,
     pure_wrt_drop,
+    attrs,
     bounds,
     kind
 });
@@ -216,10 +217,9 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::GenericParamKind {
             hir::GenericParamKind::Lifetime { in_band } => {
                 in_band.hash_stable(hcx, hasher);
             }
-            hir::GenericParamKind::Type { ref default, synthetic, attrs } => {
+            hir::GenericParamKind::Type { ref default, synthetic } => {
                 default.hash_stable(hcx, hasher);
                 synthetic.hash_stable(hcx, hasher);
-                attrs.hash_stable(hcx, hasher);
             }
         }
     }

@@ -974,10 +974,7 @@ impl<'hir> Map<'hir> {
             Some(NodeField(ref f)) => Some(&f.attrs[..]),
             Some(NodeExpr(ref e)) => Some(&*e.attrs),
             Some(NodeStmt(ref s)) => Some(s.node.attrs()),
-            Some(NodeGenericParam(param)) => match param.kind {
-                GenericParamKind::Lifetime { .. } => None,
-                GenericParamKind::Type { ref attrs, .. } => Some(&attrs[..]),
-            }
+            Some(NodeGenericParam(param)) => Some(&param.attrs[..]),
             // unit/tuple structs take the attributes straight from
             // the struct definition.
             Some(NodeStructCtor(_)) => {
