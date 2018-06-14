@@ -12,7 +12,7 @@ pub use self::AnnNode::*;
 
 use rustc_target::spec::abi::{self, Abi};
 use ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
-use ast::{SelfKind, Outlives, Trait, TraitBoundModifier};
+use ast::{SelfKind, GenericBound, TraitBoundModifier};
 use ast::{Attribute, MacDelimiter, GenericArg};
 use util::parser::{self, AssocOp, Fixity};
 use attr;
@@ -1364,7 +1364,7 @@ impl<'a> State<'a> {
                 self.print_generic_params(&generics.params)?;
                 let mut real_bounds = Vec::with_capacity(bounds.len());
                 for b in bounds.iter() {
-                    if let Trait(ref ptr, ast::TraitBoundModifier::Maybe) = *b {
+                    if let GenericBound::Trait(ref ptr, ast::TraitBoundModifier::Maybe) = *b {
                         self.s.space()?;
                         self.word_space("for ?")?;
                         self.print_trait_ref(&ptr.trait_ref)?;
@@ -1390,7 +1390,7 @@ impl<'a> State<'a> {
                 let mut real_bounds = Vec::with_capacity(bounds.len());
                 // FIXME(durka) this seems to be some quite outdated syntax
                 for b in bounds.iter() {
-                    if let Trait(ref ptr, ast::TraitBoundModifier::Maybe) = *b {
+                    if let GenericBound::Trait(ref ptr, ast::TraitBoundModifier::Maybe) = *b {
                         self.s.space()?;
                         self.word_space("for ?")?;
                         self.print_trait_ref(&ptr.trait_ref)?;
@@ -2826,13 +2826,13 @@ impl<'a> State<'a> {
                 }
 
                 match bound {
-                    Trait(tref, modifier) => {
+                    GenericBound::Trait(tref, modifier) => {
                         if modifier == &TraitBoundModifier::Maybe {
                             self.s.word("?")?;
                         }
                         self.print_poly_trait_ref(tref)?;
                     }
-                    Outlives(lt) => self.print_lifetime(*lt)?,
+                    GenericBound::Outlives(lt) => self.print_lifetime(*lt)?,
                 }
             }
         }

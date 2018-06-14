@@ -14,7 +14,6 @@
 pub use self::Type::*;
 pub use self::Mutability::*;
 pub use self::ItemEnum::*;
-pub use self::GenericBound::*;
 pub use self::SelfTy::*;
 pub use self::FunctionRetTy::*;
 pub use self::Visibility::{Public, Inherited};
@@ -1470,7 +1469,7 @@ impl GenericBound {
         let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
             Some(did), false, vec![], empty);
         inline::record_extern_fqn(cx, did, TypeKind::Trait);
-        TraitBound(PolyTrait {
+        GenericBound::TraitBound(PolyTrait {
             trait_: ResolvedPath {
                 path,
                 typarams: None,
@@ -1510,8 +1509,10 @@ impl GenericBound {
 impl Clean<GenericBound> for hir::GenericBound {
     fn clean(&self, cx: &DocContext) -> GenericBound {
         match *self {
-            hir::GenericBound::Outlives(lt) => Outlives(lt.clean(cx)),
-            hir::GenericBound::Trait(ref t, modifier) => TraitBound(t.clean(cx), modifier),
+            hir::GenericBound::Outlives(lt) => GenericBound::Outlives(lt.clean(cx)),
+            hir::GenericBound::Trait(ref t, modifier) => {
+                GenericBound::TraitBound(t.clean(cx), modifier)
+            }
         }
     }
 }
@@ -1599,7 +1600,7 @@ impl<'a, 'tcx> Clean<GenericBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>
             }
         }
 
-        TraitBound(
+        GenericBound::TraitBound(
             PolyTrait {
                 trait_: ResolvedPath {
                     path,
@@ -1623,9 +1624,8 @@ impl<'tcx> Clean<GenericBound> for ty::TraitRef<'tcx> {
 impl<'tcx> Clean<Option<Vec<GenericBound>>> for Substs<'tcx> {
     fn clean(&self, cx: &DocContext) -> Option<Vec<GenericBound>> {
         let mut v = Vec::new();
-        v.extend(self.regions().filter_map(|r| r.clean(cx))
-                     .map(GenericBound::Outlives));
-        v.extend(self.types().map(|t| TraitBound(PolyTrait {
+        v.extend(self.regions().filter_map(|r| r.clean(cx)).map(GenericBound::Outlives));
+        v.extend(self.types().map(|t| GenericBound::TraitBound(PolyTrait {
             trait_: t.clean(cx),
             generic_params: Vec::new(),
         }, hir::TraitBoundModifier::None)));
@@ -2978,10 +2978,11 @@ impl Clean<Type> for hir::Ty {
                 match bounds[0].clean(cx).trait_ {
                     ResolvedPath { path, typarams: None, did, is_generic } => {
                         let mut bounds: Vec<self::GenericBound> = bounds[1..].iter().map(|bound| {
-                            TraitBound(bound.clean(cx), hir::TraitBoundModifier::None)
+                            self::GenericBound::TraitBound(bound.clean(cx),
+                                                           hir::TraitBoundModifier::None)
                         }).collect();
                         if !lifetime.is_elided() {
-                            bounds.push(self::Outlives(lifetime.clean(cx)));
+                            bounds.push(self::GenericBound::Outlives(lifetime.clean(cx)));
                         }
                         ResolvedPath { path, typarams: Some(bounds), did, is_generic, }
                     }
@@ -3086,7 +3087,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                         let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
                             Some(did), false, vec![], empty);
                         inline::record_extern_fqn(cx, did, TypeKind::Trait);
-                        let bound = TraitBound(PolyTrait {
+                        let bound = GenericBound::TraitBound(PolyTrait {
                             trait_: ResolvedPath {
                                 path,
                                 typarams: None,

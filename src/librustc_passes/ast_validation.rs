@@ -101,7 +101,7 @@ impl<'a> AstValidator<'a> {
 
     fn no_questions_in_bounds(&self, bounds: &GenericBounds, where_: &str, is_trait: bool) {
         for bound in bounds {
-            if let Trait(ref poly, TraitBoundModifier::Maybe) = *bound {
+            if let GenericBound::Trait(ref poly, TraitBoundModifier::Maybe) = *bound {
                 let mut err = self.err_handler().struct_span_err(poly.span,
                                     &format!("`?Trait` is not permitted in {}", where_));
                 if is_trait {
@@ -190,7 +190,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             TyKind::TraitObject(ref bounds, ..) => {
                 let mut any_lifetime_bounds = false;
                 for bound in bounds {
-                    if let Outlives(ref lifetime) = *bound {
+                    if let GenericBound::Outlives(ref lifetime) = *bound {
                         if any_lifetime_bounds {
                             span_err!(self.session, lifetime.ident.span, E0226,
                                       "only a single explicit lifetime bound is permitted");
@@ -203,7 +203,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             TyKind::ImplTrait(ref bounds) => {
                 if !bounds.iter()
-                          .any(|b| if let Trait(..) = *b { true } else { false }) {
+                          .any(|b| if let GenericBound::Trait(..) = *b { true } else { false }) {
                     self.err_handler().span_err(ty.span, "at least one trait must be specified");
                 }
             }

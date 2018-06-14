@@ -270,10 +270,10 @@ impl fmt::Display for clean::PolyTrait {
 impl fmt::Display for clean::GenericBound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            clean::Outlives(ref lt) => {
+            clean::GenericBound::Outlives(ref lt) => {
                 write!(f, "{}", *lt)
             }
-            clean::TraitBound(ref ty, modifier) => {
+            clean::GenericBound::TraitBound(ref ty, modifier) => {
                 let modifier_str = match modifier {
                     hir::TraitBoundModifier::None => "",
                     hir::TraitBoundModifier::Maybe => "?",

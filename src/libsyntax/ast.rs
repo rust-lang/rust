@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::GenericBound::*;
 pub use self::UnsafeSource::*;
 pub use self::GenericArgs::*;
 pub use symbol::{Ident, Symbol as Name};
@@ -290,8 +289,8 @@ pub enum GenericBound {
 impl GenericBound {
     pub fn span(&self) -> Span {
         match self {
-            &Trait(ref t, ..) => t.span,
-            &Outlives(ref l) => l.ident.span,
+            &GenericBound::Trait(ref t, ..) => t.span,
+            &GenericBound::Outlives(ref l) => l.ident.span,
         }
     }
 }
@@ -930,8 +929,8 @@ impl Expr {
     fn to_bound(&self) -> Option<GenericBound> {
         match &self.node {
             ExprKind::Path(None, path) =>
-                Some(Trait(PolyTraitRef::new(Vec::new(), path.clone(), self.span),
-                                       TraitBoundModifier::None)),
+                Some(GenericBound::Trait(PolyTraitRef::new(Vec::new(), path.clone(), self.span),
+                                         TraitBoundModifier::None)),
             _ => None,
         }
     }

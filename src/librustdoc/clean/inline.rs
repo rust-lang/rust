@@ -374,8 +374,8 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     let polarity = tcx.impl_polarity(did);
     let trait_ = associated_trait.clean(cx).map(|bound| {
         match bound {
-            clean::TraitBound(polyt, _) => polyt.trait_,
-            clean::Outlives(..) => unreachable!(),
+            clean::GenericBound::TraitBound(polyt, _) => polyt.trait_,
+            clean::GenericBound::Outlives(..) => unreachable!(),
         }
     });
     if trait_.def_id() == tcx.lang_items().deref_trait() {
@@ -387,9 +387,9 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
 
     let provided = trait_.def_id().map(|did| {
         tcx.provided_trait_methods(did)
-            .into_iter()
-            .map(|meth| meth.name.to_string())
-            .collect()
+           .into_iter()
+           .map(|meth| meth.name.to_string())
+           .collect()
     }).unwrap_or(FxHashSet());
 
     ret.push(clean::Item {

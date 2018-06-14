@@ -10,7 +10,7 @@
 
 use rustc_target::spec::abi::{self, Abi};
 use ast::{AngleBracketedArgs, ParenthesizedArgData, AttrStyle, BareFnTy};
-use ast::{Outlives, Trait, TraitBoundModifier};
+use ast::{GenericBound, TraitBoundModifier};
 use ast::Unsafety;
 use ast::{Mod, AnonConst, Arg, Arm, Attribute, BindingMode, TraitItemKind};
 use ast::Block;
@@ -1444,7 +1444,7 @@ impl<'a> Parser<'a> {
                     TyKind::TraitObject(ref bounds, TraitObjectSyntax::None)
                             if maybe_bounds && bounds.len() == 1 && !trailing_plus => {
                         let path = match bounds[0] {
-                            Trait(ref pt, ..) => pt.trait_ref.path.clone(),
+                            GenericBound::Trait(ref pt, ..) => pt.trait_ref.path.clone(),
                             _ => self.bug("unexpected lifetime bound"),
                         };
                         self.parse_remaining_bounds(Vec::new(), path, lo, true)?
@@ -1566,7 +1566,7 @@ impl<'a> Parser<'a> {
     fn parse_remaining_bounds(&mut self, generic_params: Vec<GenericParam>, path: ast::Path,
                               lo: Span, parse_plus: bool) -> PResult<'a, TyKind> {
         let poly_trait_ref = PolyTraitRef::new(generic_params, path, lo.to(self.prev_span));
-        let mut bounds = vec![Trait(poly_trait_ref, TraitBoundModifier::None)];
+        let mut bounds = vec![GenericBound::Trait(poly_trait_ref, TraitBoundModifier::None)];
         if parse_plus {
             self.eat_plus(); // `+`, or `+=` gets split and `+` is discarded
             bounds.append(&mut self.parse_ty_param_bounds()?);
@@ -4752,7 +4752,7 @@ impl<'a> Parser<'a> {
                         self.span_err(question_span,
                                       "`?` may only modify trait bounds, not lifetime bounds");
                     }
-                    bounds.push(Outlives(self.expect_lifetime()));
+                    bounds.push(GenericBound::Outlives(self.expect_lifetime()));
                     if has_parens {
                         self.expect(&token::CloseDelim(token::Paren))?;
                         self.span_err(self.prev_span,
@@ -4770,7 +4770,7 @@ impl<'a> Parser<'a> {
                     } else {
                         TraitBoundModifier::None
                     };
-                    bounds.push(Trait(poly_trait, modifier));
+                    bounds.push(GenericBound::Trait(poly_trait, modifier));
                 }
             } else {
                 break

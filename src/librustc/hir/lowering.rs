@@ -1109,11 +1109,11 @@ impl<'a> LoweringContext<'a> {
                 let bounds = bounds
                     .iter()
                     .filter_map(|bound| match *bound {
-                        Trait(ref ty, TraitBoundModifier::None) => {
+                        GenericBound::Trait(ref ty, TraitBoundModifier::None) => {
                             Some(self.lower_poly_trait_ref(ty, itctx))
                         }
-                        Trait(_, TraitBoundModifier::Maybe) => None,
-                        Outlives(ref lifetime) => {
+                        GenericBound::Trait(_, TraitBoundModifier::Maybe) => None,
+                        GenericBound::Outlives(ref lifetime) => {
                             if lifetime_bound.is_none() {
                                 lifetime_bound = Some(self.lower_lifetime(lifetime));
                             }
