@@ -2040,6 +2040,8 @@ extern "C" {
     fn pminub(a: __m64, b: __m64) -> __m64;
     #[link_name = "llvm.x86.mmx.pmulhu.w"]
     fn pmulhuw(a: __m64, b: __m64) -> __m64;
+    #[link_name = "llvm.x86.mmx.pmull.w"]
+    fn pmullw(a: __m64, b: __m64) -> __m64;
     #[link_name = "llvm.x86.mmx.pavg.b"]
     fn pavgb(a: __m64, b: __m64) -> __m64;
     #[link_name = "llvm.x86.mmx.pavg.w"]
@@ -2155,6 +2157,16 @@ pub unsafe fn _m_pminub(a: __m64, b: __m64) -> __m64 {
 #[cfg_attr(test, assert_instr(pmulhuw))]
 pub unsafe fn _mm_mulhi_pu16(a: __m64, b: __m64) -> __m64 {
     pmulhuw(a, b)
+}
+
+/// Multiplies packed 16-bit integer values and writes the
+/// low-order 16 bits of each 32-bit product to the corresponding bits in
+/// the destination.
+#[inline]
+#[target_feature(enable = "sse,mmx")]
+#[cfg_attr(test, assert_instr(pmullw))]
+pub unsafe fn _mm_mullo_pi16(a: __m64, b: __m64) -> __m64 {
+    pmullw(a, b)
 }
 
 /// Multiplies packed 16-bit unsigned integer values and writes the
@@ -3999,6 +4011,13 @@ mod tests {
         let (a, b) = (_mm_set1_pi16(1000), _mm_set1_pi16(1001));
         let r = _mm_mulhi_pu16(a, b);
         assert_eq_m64(r, _mm_set1_pi16(15));
+    }
+
+    #[simd_test(enable = "sse,mmx")]
+    unsafe fn test_mm_mullo_pi16() {
+        let (a, b) = (_mm_set1_pi16(1000), _mm_set1_pi16(1001));
+        let r = _mm_mullo_pi16(a, b);
+        assert_eq_m64(r, _mm_set1_pi16(17960));
     }
 
     #[simd_test(enable = "sse,mmx")]
