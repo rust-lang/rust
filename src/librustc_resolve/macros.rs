@@ -123,7 +123,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn get_module_scope(&mut self, id: ast::NodeId) -> Mark {
-        let mark = Mark::fresh(Mark::root());
+        let mark = Mark::fresh();
         let module = self.module_map[&self.definitions.local_def_id(id)];
         self.invocations.insert(mark, self.arenas.alloc_invocation_data(InvocationData {
             module: Cell::new(module),

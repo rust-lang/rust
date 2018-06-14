@@ -123,7 +123,7 @@ impl FromStr for TokenStream {
             let expn_info = mark.expn_info().unwrap();
             let call_site = expn_info.call_site;
             // notify the expansion info that it is unhygienic
-            let mark = Mark::fresh(mark);
+            let mark = Mark::fresh();
             mark.set_expn_info(expn_info);
             let span = call_site.with_ctxt(SyntaxContext::empty().apply_mark(mark));
             let stream = parse::parse_stream_from_source_str(name, src, sess, Some(span));

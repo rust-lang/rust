@@ -78,7 +78,7 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
         }
         self.found = true;
 
-        let mark = Mark::fresh(Mark::root());
+        let mark = Mark::fresh();
         mark.set_expn_info(ExpnInfo {
             call_site: DUMMY_SP,
             callee: NameAndSpan {

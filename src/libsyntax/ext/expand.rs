@@ -347,7 +347,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let derives = derives.entry(invoc.expansion_data.mark).or_insert_with(Vec::new);
 
                     for path in &traits {
-                        let mark = Mark::fresh(self.cx.current_expansion.mark);
+                        let mark = Mark::fresh();
                         derives.push(mark);
                         let item = match self.cx.resolver.resolve_macro(
                                 Mark::root(), path, MacroKind::Derive, false) {
@@ -999,7 +999,7 @@ struct InvocationCollector<'a, 'b: 'a> {
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect(&mut self, expansion_kind: ExpansionKind, kind: InvocationKind) -> Expansion {
-        let mark = Mark::fresh(self.cx.current_expansion.mark);
+        let mark = Mark::fresh();
         self.invocations.push(Invocation {
             kind,
             expansion_kind,
