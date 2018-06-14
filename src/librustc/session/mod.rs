@@ -841,7 +841,7 @@ impl Session {
 
     pub fn save_json_results(&self) {
         let profiler = self.self_profiling.borrow();
-        profiler.save_results();
+        profiler.save_results(&self.opts);
     }
 
     pub fn print_perf_stats(&self) {

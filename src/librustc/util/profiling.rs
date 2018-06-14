@@ -269,8 +269,17 @@ impl SelfProfiler {
         writeln!(lock, "Incremental: {}", incremental).unwrap();
     }
 
-    pub fn save_results(&self) {
-        fs::write("self_profiler_results.json", self.data.json()).unwrap();
+    pub fn save_results(&self, opts: &Options) {
+        let category_data = self.data.json();
+        let compilation_options = format!("{{ \"optimization_level\": \"{:?}\", \"incremental\": {} }}",
+                                    opts.optimize,
+                                    if opts.incremental.is_some() { "true" } else { "false" });
+
+        let json = format!("{{ \"category_data\": {}, \"compilation_options\": {} }}",
+                        category_data,
+                        compilation_options);
+
+        fs::write("self_profiler_results.json", json).unwrap();
     }
 
     pub fn record_activity<'a>(&'a mut self, category: ProfileCategory) -> ProfilerActivity<'a> {
