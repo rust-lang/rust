@@ -91,7 +91,7 @@ status_check() {
 
 status_check "submodule_changed"
 
-CHECK_NOT="$(dirname $0)/checkregression.py"
+CHECK_NOT="$(readlink -f "$(dirname $0)/checkregression.py")"
 change_toolstate() {
     # only update the history
     if python2.7 "$CHECK_NOT" "$OS" "$TOOLSTATE_FILE" "_data/latest.json" changed; then
