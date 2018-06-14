@@ -30,12 +30,12 @@ impl Foo<i16> for HashMap<String, String> {
 
 impl<K: Hash + Eq, V, S: BuildHasher + Default> Foo<i32> for HashMap<K, V, S> {
     fn make() -> (Self, Self) {
-        (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
+        (HashMap::default(), HashMap::with_capacity_and_hasher(10, S::default()))
     }
 }
 impl<S: BuildHasher + Default> Foo<i64> for HashMap<String, String, S> {
     fn make() -> (Self, Self) {
-        (HashMap::default(), HashMap::with_capacity_and_hasher(10, Default::default()))
+        (HashMap::default(), HashMap::with_capacity_and_hasher(10, S::default()))
     }
 }
 
@@ -53,12 +53,12 @@ impl Foo<i16> for HashSet<String> {
 
 impl<T: Hash + Eq, S: BuildHasher + Default> Foo<i32> for HashSet<T, S> {
     fn make() -> (Self, Self) {
-        (HashSet::default(), HashSet::with_capacity_and_hasher(10, Default::default()))
+        (HashSet::default(), HashSet::with_capacity_and_hasher(10, S::default()))
     }
 }
 impl<S: BuildHasher + Default> Foo<i64> for HashSet<String, S> {
     fn make() -> (Self, Self) {
-        (HashSet::default(), HashSet::with_capacity_and_hasher(10, Default::default()))
+        (HashSet::default(), HashSet::with_capacity_and_hasher(10, S::default()))
     }
 }
 
