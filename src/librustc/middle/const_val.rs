@@ -93,14 +93,14 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         message: &str)
         -> Option<DiagnosticBuilder<'tcx>>
     {
-        self.struct_generic(tcx, message, None, true)
+        self.struct_generic(tcx, message, None)
     }
 
     pub fn report_as_error(&self,
         tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
         message: &str
     ) {
-        let err = self.struct_generic(tcx, message, None, true);
+        let err = self.struct_generic(tcx, message, None);
         if let Some(mut err) = err {
             err.emit();
         }
@@ -115,7 +115,6 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             tcx,
             message,
             Some(lint_root),
-            false,
         );
         if let Some(mut lint) = lint {
             lint.emit();
@@ -127,7 +126,6 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
         message: &str,
         lint_root: Option<ast::NodeId>,
-        as_err: bool,
     ) -> Option<DiagnosticBuilder<'tcx>> {
         let (msg, frames): (_, &[_]) = match *self.kind {
             ErrKind::TypeckError | ErrKind::CheckMatchError => return None,
@@ -136,7 +134,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
                     ::mir::interpret::EvalErrorKind::TypeckError |
                     ::mir::interpret::EvalErrorKind::Layout(_) => return None,
                     ::mir::interpret::EvalErrorKind::ReferencedConstant(ref inner) => {
-                        inner.struct_generic(tcx, "referenced constant", lint_root, as_err)?.emit();
+                        inner.struct_generic(tcx, "referenced constant", lint_root)?.emit();
                         (miri.to_string(), frames)
                     },
                     _ => (miri.to_string(), frames),
@@ -145,22 +143,21 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             _ => (self.description().into_oneline().to_string(), &[]),
         };
         trace!("reporting const eval failure at {:?}", self.span);
-        let mut err = if as_err {
-            struct_error(tcx, message)
-        } else {
+        let mut err = if let Some(lint_root) = lint_root {
             let node_id = frames
                 .iter()
                 .rev()
                 .filter_map(|frame| frame.lint_root)
                 .next()
-                .or(lint_root)
-                .expect("some part of a failing const eval must be local");
+                .unwrap_or(lint_root);
             tcx.struct_span_lint_node(
                 ::rustc::lint::builtin::CONST_ERR,
                 node_id,
                 tcx.span,
                 message,
             )
+        } else {
+            struct_error(tcx, message)
         };
         err.span_label(self.span, msg);
         for FrameInfo { span, location, .. } in frames {
