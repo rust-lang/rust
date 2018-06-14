@@ -9,55 +9,63 @@ fn main() {
     let index_from: usize = 2;
     let index_to: usize = 3;
     x[index];
-    &x[index_from..index_to];
-    &x[index_from..][..index_to];
     &x[index..];
     &x[..index];
-    x[0];
-    x[3];
+    &x[index_from..index_to];
+    &x[index_from..][..index_to]; // Two lint reports, one for [index_from..] and another for [..index_to].
     x[4];
     x[1 << 3];
-    &x[1..5];
-    &x[1..][..5];
-    &x[0..3];
-    &x[0..][..3];
-    &x[0..].get(..3); // Ok
-    &x[0..=4];
     &x[..=4];
-    &x[..];
-    &x[1..];
-    &x[4..];
+    &x[1..5];
+    &x[5..][..10]; // Two lint reports, one for [5..] and another for [..10].
     &x[5..];
-    &x[..4];
     &x[..5];
     &x[5..].iter().map(|x| 2 * x).collect::<Vec<i32>>();
-    &x[2..].iter().map(|x| 2 * x).collect::<Vec<i32>>(); // Ok
+    &x[0..=4];
+    &x[0..][..3];
+    &x[1..][..5];
+
+    &x[4..]; // Ok, should not produce stderr.
+    &x[..4]; // Ok, should not produce stderr.
+    &x[..]; // Ok, should not produce stderr.
+    &x[1..]; // Ok, should not produce stderr.
+    &x[2..].iter().map(|x| 2 * x).collect::<Vec<i32>>(); // Ok, should not produce stderr.
+    &x[0..].get(..3); // Ok, should not produce stderr.
+    x[0]; // Ok, should not produce stderr.
+    x[3]; // Ok, should not produce stderr.
+    &x[0..3]; // Ok, should not produce stderr.
 
     let y = &x;
     y[0];
     &y[1..2];
-    &y[..];
     &y[0..=4];
     &y[..=4];
+
+    &y[..]; // Ok, should not produce stderr.
 
     let empty: [i8; 0] = [];
     empty[0];
     &empty[1..5];
     &empty[0..=4];
     &empty[..=4];
-    &empty[..];
-    &empty[0..];
-    &empty[0..0];
-    &empty[0..=0];
-    &empty[..=0];
-    &empty[..0];
     &empty[1..];
     &empty[..4];
+    &empty[0..=0];
+    &empty[..=0];
+
+    &empty[0..]; // Ok, should not produce stderr.
+    &empty[0..0]; // Ok, should not produce stderr.
+    &empty[..0]; // Ok, should not produce stderr.
+    &empty[..]; // Ok, should not produce stderr.
 
     let v = vec![0; 5];
     v[0];
     v[10];
+    v[1 << 3];
     &v[10..100];
+    &x[10..][..100]; // Two lint reports, one for [10..] and another for [..100].
     &v[10..];
     &v[..100];
+
+    &v[..]; // Ok, should not produce stderr.
 }

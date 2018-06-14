@@ -1,8 +1,9 @@
 //! lint on indexing and slicing operations
 
 use crate::consts::{constant, Constant};
+use crate::utils;
+use crate::utils::higher;
 use crate::utils::higher::Range;
-use crate::utils::{self, higher};
 use rustc::hir::*;
 use rustc::lint::*;
 use rustc::ty;
@@ -97,89 +98,65 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprIndex(ref array, ref index) = &expr.node {
             let ty = cx.tables.expr_ty(array);
-            match &index.node {
-                // Both ExprStruct and ExprPath require this approach's checks
-                // on the `range` returned by `higher::range(cx, index)`.
-                // ExprStruct handles &x[n..m], &x[n..] and &x[..n].
-                // ExprPath handles &x[..] and x[var]
-                ExprStruct(..) | ExprPath(..) => {
-                    if let Some(range) = higher::range(cx, index) {
-                        if let ty::TyArray(_, s) = ty.sty {
-                            let size: u128 = s.assert_usize(cx.tcx).unwrap().into();
-                            // Index is a constant range.
-                            if let Some((start, end)) = to_const_range(cx, range, size) {
-                                if start > size || end > size {
-                                    utils::span_lint(
-                                        cx,
-                                        OUT_OF_BOUNDS_INDEXING,
-                                        expr.span,
-                                        "range is out of bounds",
-                                    );
-                                } // Else range is in bounds, ok.
-
-                                return;
-                            }
+            if let Some(range) = higher::range(cx, index) {
+                // Ranged indexes, i.e. &x[n..m], &x[n..], &x[..n] and &x[..]
+                if let ty::TyArray(_, s) = ty.sty {
+                    let size: u128 = s.assert_usize(cx.tcx).unwrap().into();
+                    // Index is a constant range.
+                    if let Some((start, end)) = to_const_range(cx, range, size) {
+                        if start > size || end > size {
+                            utils::span_lint(
+                                cx,
+                                OUT_OF_BOUNDS_INDEXING,
+                                expr.span,
+                                "range is out of bounds",
+                            );
                         }
-
-                        let help_msg = match (range.start, range.end) {
-                            (None, Some(_)) => {
-                                "Consider using `.get(..n)`or `.get_mut(..n)` instead"
-                            }
-                            (Some(_), None) => {
-                                "Consider using `.get(n..)` or .get_mut(n..)` instead"
-                            }
-                            (Some(_), Some(_)) => {
-                                "Consider using `.get(n..m)` or `.get_mut(n..m)` instead"
-                            }
-                            (None, None) => return, // [..] is ok.
-                        };
-
-                        utils::span_help_and_lint(
-                            cx,
-                            INDEXING_SLICING,
-                            expr.span,
-                            "slicing may panic.",
-                            help_msg,
-                        );
-                    } else {
-                        utils::span_help_and_lint(
-                            cx,
-                            INDEXING_SLICING,
-                            expr.span,
-                            "indexing may panic.",
-                            "Consider using `.get(n)` or `.get_mut(n)` instead",
-                        );
+                        return;
                     }
                 }
-                ExprLit(..) => {
-                    // [n]
-                    if let ty::TyArray(_, s) = ty.sty {
-                        let size: u128 = s.assert_usize(cx.tcx).unwrap().into();
-                        // Index is a constant uint.
-                        if let Some((Constant::Int(const_index), _)) =
-                            constant(cx, cx.tables, index)
-                        {
-                            if size <= const_index {
-                                utils::span_lint(
-                                    cx,
-                                    OUT_OF_BOUNDS_INDEXING,
-                                    expr.span,
-                                    "const index is out of bounds",
-                                );
-                            }
-                            // Else index is in bounds, ok.
+
+                let help_msg = match (range.start, range.end) {
+                    (None, Some(_)) => "Consider using `.get(..n)`or `.get_mut(..n)` instead",
+                    (Some(_), None) => "Consider using `.get(n..)` or .get_mut(n..)` instead",
+                    (Some(_), Some(_)) => "Consider using `.get(n..m)` or `.get_mut(n..m)` instead",
+                    (None, None) => return, // [..] is ok.
+                };
+
+                utils::span_help_and_lint(
+                    cx,
+                    INDEXING_SLICING,
+                    expr.span,
+                    "slicing may panic.",
+                    help_msg,
+                );
+            } else {
+                // Catchall non-range index, i.e. [n] or [n << m]
+                if let ty::TyArray(_, s) = ty.sty {
+                    let size: u128 = s.assert_usize(cx.tcx).unwrap().into();
+                    // Index is a constant uint.
+                    if let Some((Constant::Int(const_index), _)) = constant(cx, cx.tables, index) {
+                        if size <= const_index {
+                            utils::span_lint(
+                                cx,
+                                OUT_OF_BOUNDS_INDEXING,
+                                expr.span,
+                                "const index is out of bounds",
+                            );
                         }
-                    } else {
-                        utils::span_help_and_lint(
-                            cx,
-                            INDEXING_SLICING,
-                            expr.span,
-                            "indexing may panic.",
-                            "Consider using `.get(n)` or `.get_mut(n)` instead",
-                        );
+                        // Else index is in bounds, ok.
+
+                        return;
                     }
                 }
-                _ => (),
+
+                utils::span_help_and_lint(
+                    cx,
+                    INDEXING_SLICING,
+                    expr.span,
+                    "indexing may panic.",
+                    "Consider using `.get(n)` or `.get_mut(n)` instead",
+                );
             }
         }
     }
