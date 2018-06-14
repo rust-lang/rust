@@ -615,10 +615,17 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         }
 
         if let PassMode::Pair(..) = arg.mode {
-            match op.val {
-                Pair(a, b) => {
-                    llargs.push(a);
-                    llargs.push(b);
+            let imm = |val, scalar: &layout::Scalar| {
+                if scalar.is_bool() {
+                    bx.trunc(val, Type::i1(bx.cx))
+                } else {
+                    val
+                }
+            };
+            match (op.val, &arg.layout.abi) {
+                (Pair(a_llval, b_llval), layout::Abi::ScalarPair(a, b)) => {
+                    llargs.push(imm(a_llval, a));
+                    llargs.push(imm(b_llval, b));
                     return;
                 }
                 _ => bug!("codegen_argument: {:?} invalid for pair arugment", op)

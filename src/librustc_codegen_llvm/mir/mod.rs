@@ -516,6 +516,8 @@ fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                     bx.set_value_name(b, &(name + ".1"));
                     llarg_idx += 1;
 
+                    let a = base::from_immediate(bx, a);
+                    let b = base::from_immediate(bx, b);
                     return local(OperandRef {
                         val: OperandValue::Pair(a, b),
                         layout: arg.layout

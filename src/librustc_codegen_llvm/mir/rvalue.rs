@@ -651,7 +651,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         // while the current crate doesn't use overflow checks.
         if !bx.cx.check_overflow {
             let val = self.codegen_scalar_binop(bx, op, lhs, rhs, input_ty);
-            return OperandValue::Pair(val, C_bool(bx.cx, false));
+            return OperandValue::Pair(val, C_u8(bx.cx, 0));
         }
 
         let (val, of) = match op {
@@ -685,7 +685,9 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
             }
         };
 
-        OperandValue::Pair(val, of)
+        // Scalar pairs store `bool` in its `i8` memory storage, so
+        // we need to zero-extend `of` from `i1`.
+        OperandValue::Pair(val, bx.zext(of, Type::i8(bx.cx)))
     }
 
     pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>) -> bool {
