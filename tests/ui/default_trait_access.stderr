@@ -1,0 +1,34 @@
+error: Calling std::string::String::default() is more clear than this expression
+ --> $DIR/default_trait_access.rs:8:22
+  |
+8 |     let s1: String = Default::default();
+  |                      ^^^^^^^^^^^^^^^^^^ help: try: `std::string::String::default()`
+  |
+  = note: `-D default-trait-access` implied by `-D warnings`
+
+error: Calling std::string::String::default() is more clear than this expression
+  --> $DIR/default_trait_access.rs:12:22
+   |
+12 |     let s3: String = D2::default();
+   |                      ^^^^^^^^^^^^^ help: try: `std::string::String::default()`
+
+error: Calling std::string::String::default() is more clear than this expression
+  --> $DIR/default_trait_access.rs:14:22
+   |
+14 |     let s4: String = std::default::Default::default();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::string::String::default()`
+
+error: Calling std::string::String::default() is more clear than this expression
+  --> $DIR/default_trait_access.rs:18:22
+   |
+18 |     let s6: String = default::Default::default();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::string::String::default()`
+
+error: Calling T::default() is more clear than this expression
+  --> $DIR/default_trait_access.rs:33:9
+   |
+33 |         Default::default()
+   |         ^^^^^^^^^^^^^^^^^^ help: try: `T::default()`
+
+error: aborting due to 5 previous errors
+

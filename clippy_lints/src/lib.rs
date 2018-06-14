@@ -111,6 +111,7 @@ pub mod collapsible_if;
 pub mod const_static_lifetime;
 pub mod copies;
 pub mod cyclomatic_complexity;
+pub mod default_trait_access;
 pub mod derive;
 pub mod doc;
 pub mod double_comparison;
@@ -425,6 +426,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box neg_cmp_op_on_partial_ord::NoNegCompOpForPartialOrd);
     reg.register_late_lint_pass(box unwrap::Pass);
     reg.register_late_lint_pass(box duration_subsec::DurationSubsec);
+    reg.register_late_lint_pass(box default_trait_access::DefaultTraitAccess);
 
 
     reg.register_lint_group("clippy_restriction", vec![
@@ -512,6 +514,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         copies::IF_SAME_THEN_ELSE,
         copies::IFS_SAME_COND,
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
+        default_trait_access::DEFAULT_TRAIT_ACCESS,
         derive::DERIVE_HASH_XOR_EQ,
         double_comparison::DOUBLE_COMPARISONS,
         double_parens::DOUBLE_PARENS,
@@ -709,6 +712,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
         collapsible_if::COLLAPSIBLE_IF,
         const_static_lifetime::CONST_STATIC_LIFETIME,
+        default_trait_access::DEFAULT_TRAIT_ACCESS,
         enum_variants::ENUM_VARIANT_NAMES,
         enum_variants::MODULE_INCEPTION,
         eq_op::OP_REF,
