@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+struct Foo<'a>(&'a str);
+
 fn _foo<'a: 'static, 'b>(_x: &'a str, _y: &'b str) -> &'a str {
 //~^ WARNING unnecessary lifetime parameter `'a`
     ""
 }
 
-fn _foo1<'b, 'a: 'static>(_x: &'a str, _y: &'b str) -> &'a str {
+fn _foo1<'b, 'a: 'static>(_x: &'a str, _y: Foo<'a>) -> &'a str {
 //~^ WARNING unnecessary lifetime parameter `'a`
     ""
 }
@@ -23,7 +25,7 @@ fn _foo2<'c, 'a: 'static, 'b>(_x: &'a str, _y: &'b str) -> &'a str {
     ""
 }
 
-fn _foo3<'c, 'a: 'static, 'b, 'd>(_x: &'a str, _y: &'b str) -> &'a str {
+fn _foo3<'c, 'a: 'static, 'b: 'a, 'd>(_x: &'a str, _y: &'b str) -> &'a str {
 //~^ WARNING unnecessary lifetime parameter `'a`
     ""
 }

@@ -2249,6 +2249,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                     lifetime_i.lifetime.name.name()
                                 ),
                             );
+
+                            // all the use spans for this lifetime in arguments to be replaced
+                            // with `'static`
                             let mut spans_to_replace = arg_lifetimes.iter().filter_map(|lifetime| {
                                 if lifetime.name.name() == lifetime_i.lifetime.name.name() {
                                     Some((lifetime.span, "'static".to_owned()))
@@ -2256,6 +2259,18 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                     None
                                 }
                             }).collect::<Vec<_>>();
+                            // all the use spans for this lifetime in lifetime bounds
+                            for param in params.iter() {
+                                if let hir::GenericParam::Lifetime(lifetime_def) = param {
+                                    for lifetime in &lifetime_def.bounds {
+                                        if lifetime.name.name() == lifetime_i.lifetime.name.name() {
+                                            spans_to_replace.push((lifetime.span,
+                                                                   "'static".to_owned()));
+                                        }
+                                    }
+                                }
+                            }
+
                             if let (1, Some(sp)) = (params.len(), generics_span) {
                                 spans_to_replace.push((sp, "".into()));
                                 warn.multipart_suggestion(
@@ -2280,6 +2295,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                 };
 
                                 spans_to_replace.push((sp, "".into()));
+
                                 warn.multipart_suggestion(
                                     &format!(
                                         "you can use the `'static` lifetime directly, \
