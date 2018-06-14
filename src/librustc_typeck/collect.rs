@@ -117,7 +117,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
         for param in &generics.params {
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } => {}
-                hir::GenericParamKind::Type { ref default, .. } if default.is_some() => {
+                hir::GenericParamKind::Type { default: Some(_), .. } => {
                     let def_id = self.tcx.hir.local_def_id(param.id);
                     self.tcx.type_of(def_id);
                 }

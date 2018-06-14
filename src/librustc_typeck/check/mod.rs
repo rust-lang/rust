@@ -4782,7 +4782,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // errors if type parameters are provided in an inappropriate place.
         let poly_segments = type_segment.is_some() as usize +
                             fn_segment.is_some() as usize;
-        AstConv::prohibit_type_params(self, &segments[..segments.len() - poly_segments]);
+        AstConv::prohibit_generics(self, &segments[..segments.len() - poly_segments]);
 
         match def {
             Def::Local(nid) | Def::Upvar(nid, ..) => {

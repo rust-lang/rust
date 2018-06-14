@@ -379,7 +379,7 @@ impl<'a> LoweringContext<'a> {
                 });
 
                 if item_lowered {
-                    let item_lifetimes = match self.lctx.items.get(&item.id).unwrap().node {
+                    let item_generics = match self.lctx.items.get(&item.id).unwrap().node {
                         hir::Item_::ItemImpl(_, _, _, ref generics, ..)
                         | hir::Item_::ItemTrait(_, _, ref generics, ..) => {
                             generics.params.clone()
@@ -387,7 +387,7 @@ impl<'a> LoweringContext<'a> {
                         _ => HirVec::new(),
                     };
 
-                    self.lctx.with_parent_impl_lifetime_defs(&item_lifetimes, |this| {
+                    self.lctx.with_parent_impl_lifetime_defs(&item_generics, |this| {
                         let this = &mut ItemLowerer { lctx: this };
                         if let ItemKind::Impl(_, _, _, _, ref opt_trait_ref, _, _) = item.node {
                             this.with_trait_impl_ref(opt_trait_ref, |this| {

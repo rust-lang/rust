@@ -49,11 +49,16 @@ pub enum LifetimeDefOrigin {
 }
 
 impl LifetimeDefOrigin {
-    fn from_is_in_band(is_in_band: bool) -> Self {
-        if is_in_band {
-            LifetimeDefOrigin::InBand
-        } else {
-            LifetimeDefOrigin::Explicit
+    fn from_param(param: &GenericParam) -> Self {
+        match param.kind {
+            GenericParamKind::Lifetime { in_band } => {
+                if in_band {
+                    LifetimeDefOrigin::InBand
+                } else {
+                    LifetimeDefOrigin::Explicit
+                }
+            }
+            _ => bug!("expected a lifetime param"),
         }
     }
 }
@@ -82,29 +87,20 @@ pub enum Region {
     Free(DefId, /* lifetime decl */ DefId),
 }
 
-fn new_region(hir_map: &Map, param: &GenericParam) -> (DefId, LifetimeDefOrigin) {
-    let def_id = hir_map.local_def_id(param.id);
-    let origin = match param.kind {
-        GenericParamKind::Lifetime { in_band, .. } => {
-            LifetimeDefOrigin::from_is_in_band(in_band)
-        }
-        _ => bug!("expected a lifetime param"),
-    };
-    (def_id, origin)
-}
-
 impl Region {
     fn early(hir_map: &Map, index: &mut u32, param: &GenericParam) -> (ParamName, Region) {
         let i = *index;
         *index += 1;
-        let (def_id, origin) = new_region(hir_map, param);
+        let def_id = hir_map.local_def_id(param.id);
+        let origin = LifetimeDefOrigin::from_param(param);
         debug!("Region::early: index={} def_id={:?}", i, def_id);
         (param.name, Region::EarlyBound(i, def_id, origin))
     }
 
     fn late(hir_map: &Map, param: &GenericParam) -> (ParamName, Region) {
         let depth = ty::INNERMOST;
-        let (def_id, origin) = new_region(hir_map, param);
+        let def_id = hir_map.local_def_id(param.id);
+        let origin = LifetimeDefOrigin::from_param(param);
         debug!(
             "Region::late: param={:?} depth={:?} def_id={:?} origin={:?}",
             param,
@@ -1300,16 +1296,19 @@ fn object_lifetime_defaults_for_item(
                         Set1::One(Region::Static)
                     } else {
                         generics.params.iter().filter_map(|param| match param.kind {
-                            GenericParamKind::Lifetime { in_band } => {
-                                Some((param.id, hir::LifetimeName::Param(param.name), in_band))
+                            GenericParamKind::Lifetime { .. } => {
+                                Some((
+                                    param.id,
+                                    hir::LifetimeName::Param(param.name),
+                                    LifetimeDefOrigin::from_param(param),
+                                ))
                             }
                             _ => None,
                         })
                         .enumerate()
                         .find(|&(_, (_, lt_name, _))| lt_name == name)
-                        .map_or(Set1::Many, |(i, (id, _, in_band))| {
+                        .map_or(Set1::Many, |(i, (id, _, origin))| {
                             let def_id = tcx.hir.local_def_id(id);
-                            let origin = LifetimeDefOrigin::from_is_in_band(in_band);
                             Set1::One(Region::EarlyBound(i as u32, def_id, origin))
                         })
                     }

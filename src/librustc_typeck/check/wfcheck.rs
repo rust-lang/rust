@@ -602,8 +602,8 @@ fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
 }
 
 fn check_variances_for_type_defn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    item: &hir::Item,
-                                    ast_generics: &hir::Generics)
+                                           item: &hir::Item,
+                                           hir_generics: &hir::Generics)
 {
     let item_def_id = tcx.hir.local_def_id(item.id);
     let ty = tcx.type_of(item_def_id);
@@ -631,7 +631,7 @@ fn check_variances_for_type_defn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             continue;
         }
 
-        let param = &ast_generics.params[index];
+        let param = &hir_generics.params[index];
         report_bivariance(tcx, param.span, param.name.name());
     }
 }

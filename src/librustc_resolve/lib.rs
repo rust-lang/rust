@@ -2208,26 +2208,26 @@ impl<'a> Resolver<'a> {
                 let mut function_type_rib = Rib::new(rib_kind);
                 let mut seen_bindings = FxHashMap();
                 generics.params.iter().for_each(|param| match param.kind {
-                        GenericParamKind::Type { .. } => {
-                            let ident = param.ident.modern();
-                            debug!("with_type_parameter_rib: {}", param.id);
+                    GenericParamKind::Lifetime { .. } => {}
+                    GenericParamKind::Type { .. } => {
+                        let ident = param.ident.modern();
+                        debug!("with_type_parameter_rib: {}", param.id);
 
-                            if seen_bindings.contains_key(&ident) {
-                                let span = seen_bindings.get(&ident).unwrap();
-                                let err = ResolutionError::NameAlreadyUsedInTypeParameterList(
-                                    ident.name,
-                                    span,
-                                );
-                                resolve_error(self, param.ident.span, err);
-                            }
-                            seen_bindings.entry(ident).or_insert(param.ident.span);
-
-                        // Plain insert (no renaming).
-                        let def = Def::TyParam(self.definitions.local_def_id(param.id));
-                            function_type_rib.bindings.insert(ident, def);
-                            self.record_def(param.id, PathResolution::new(def));
+                        if seen_bindings.contains_key(&ident) {
+                            let span = seen_bindings.get(&ident).unwrap();
+                            let err = ResolutionError::NameAlreadyUsedInTypeParameterList(
+                                ident.name,
+                                span,
+                            );
+                            resolve_error(self, param.ident.span, err);
                         }
-                        _ => {}
+                        seen_bindings.entry(ident).or_insert(param.ident.span);
+
+                    // Plain insert (no renaming).
+                    let def = Def::TyParam(self.definitions.local_def_id(param.id));
+                        function_type_rib.bindings.insert(ident, def);
+                        self.record_def(param.id, PathResolution::new(def));
+                    }
                 });
                 self.ribs[TypeNS].push(function_type_rib);
             }

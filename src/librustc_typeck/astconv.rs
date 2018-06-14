@@ -379,7 +379,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         self_ty: Ty<'tcx>)
         -> ty::TraitRef<'tcx>
     {
-        self.prohibit_type_params(trait_ref.path.segments.split_last().unwrap().1);
+        self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1);
 
         let trait_def_id = self.trait_def_id(trait_ref);
         self.ast_path_to_mono_trait_ref(trait_ref.path.span,
@@ -413,7 +413,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         debug!("ast_path_to_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
 
-        self.prohibit_type_params(trait_ref.path.segments.split_last().unwrap().1);
+        self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1);
 
         let (substs, assoc_bindings) =
             self.create_substs_for_ast_trait_ref(trait_ref.path.span,
@@ -891,7 +891,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         debug!("associated_path_def_to_ty: {:?}::{}", ty, assoc_name);
 
-        self.prohibit_type_params(slice::from_ref(item_segment));
+        self.prohibit_generics(slice::from_ref(item_segment));
 
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
@@ -968,7 +968,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let tcx = self.tcx();
         let trait_def_id = tcx.parent_def_id(item_def_id).unwrap();
 
-        self.prohibit_type_params(slice::from_ref(item_segment));
+        self.prohibit_generics(slice::from_ref(item_segment));
 
         let self_ty = if let Some(ty) = opt_self_ty {
             ty
@@ -993,7 +993,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         self.normalize_ty(span, tcx.mk_projection(item_def_id, trait_ref.substs))
     }
 
-    pub fn prohibit_type_params(&self, segments: &[hir::PathSegment]) {
+    pub fn prohibit_generics(&self, segments: &[hir::PathSegment]) {
         for segment in segments {
             segment.with_generic_args(|generic_args| {
                 let (mut err_for_lt, mut err_for_ty) = (false, false);
@@ -1053,21 +1053,21 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) |
             Def::Union(did) | Def::TyForeign(did) => {
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_type_params(path.segments.split_last().unwrap().1);
+                self.prohibit_generics(path.segments.split_last().unwrap().1);
                 self.ast_path_to_ty(span, did, path.segments.last().unwrap())
             }
             Def::Variant(did) if permit_variants => {
                 // Convert "variant type" as if it were a real type.
                 // The resulting `Ty` is type of the variant's enum for now.
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_type_params(path.segments.split_last().unwrap().1);
+                self.prohibit_generics(path.segments.split_last().unwrap().1);
                 self.ast_path_to_ty(span,
                                     tcx.parent_def_id(did).unwrap(),
                                     path.segments.last().unwrap())
             }
             Def::TyParam(did) => {
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_type_params(&path.segments);
+                self.prohibit_generics(&path.segments);
 
                 let node_id = tcx.hir.as_local_node_id(did).unwrap();
                 let item_id = tcx.hir.get_parent_node(node_id);
@@ -1080,18 +1080,18 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // Self in impl (we know the concrete type).
 
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_type_params(&path.segments);
+                self.prohibit_generics(&path.segments);
 
                 tcx.at(span).type_of(def_id)
             }
             Def::SelfTy(Some(_), None) => {
                 // Self in trait.
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_type_params(&path.segments);
+                self.prohibit_generics(&path.segments);
                 tcx.mk_self_type()
             }
             Def::AssociatedTy(def_id) => {
-                self.prohibit_type_params(&path.segments[..path.segments.len()-2]);
+                self.prohibit_generics(&path.segments[..path.segments.len()-2]);
                 self.qpath_to_ty(span,
                                  opt_self_ty,
                                  def_id,
@@ -1100,7 +1100,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             Def::PrimTy(prim_ty) => {
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_type_params(&path.segments);
+                self.prohibit_generics(&path.segments);
                 match prim_ty {
                     hir::TyBool => tcx.types.bool,
                     hir::TyChar => tcx.types.char,
