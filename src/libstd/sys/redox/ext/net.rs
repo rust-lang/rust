@@ -352,7 +352,7 @@ impl UnixStream {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        Err(Error::new(ErrorKind::Other, "UnixStream::take_error unimplemented on redox"))
+        Ok(None)
     }
 
     /// Shuts down the read, write, or both halves of this connection.
@@ -373,7 +373,7 @@ impl UnixStream {
     /// socket.shutdown(Shutdown::Both).expect("shutdown function failed");
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
+    pub fn shutdown(&self, _how: Shutdown) -> io::Result<()> {
         Err(Error::new(ErrorKind::Other, "UnixStream::shutdown unimplemented on redox"))
     }
 }
@@ -607,7 +607,7 @@ impl UnixListener {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        Err(Error::new(ErrorKind::Other, "UnixListener::take_error unimplemented on redox"))
+        Ok(None)
     }
 
     /// Returns an iterator over incoming connections.
