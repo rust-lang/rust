@@ -40,7 +40,7 @@ def collect(deprecated_lints, clippy_lints, fn):
         deprecated_lints.append((os.path.splitext(os.path.basename(fn))[0],
                                 match.group('name').lower(),
                                 desc.replace('\\"', '"')))
-    
+
     for match in declare_clippy_lint_re.finditer(code):
         # remove \-newline escapes from description string
         desc = nl_escape_re.sub('', match.group('desc'))
@@ -51,10 +51,8 @@ def collect(deprecated_lints, clippy_lints, fn):
                                   desc.replace('\\"', '"')))
 
 
-def gen_group(lints, levels=None):
+def gen_group(lints):
     """Write lint group (list of all lints in the form module::NAME)."""
-    if levels:
-        lints = [tup for tup in lints if tup[2] in levels]
     for (module, name, _, _) in sorted(lints):
         yield '        %s::%s,\n' % (module, name.upper())
 
@@ -168,7 +166,19 @@ def main(print_only=False, check=False):
         all_lints += value
 
     if print_only:
-        sys.stdout.writelines(gen_table(all_lints))
+        print_clippy_lint_groups = [
+            "correctness",
+            "style",
+            "complexity",
+            "perf",
+            "pedantic",
+            "nursery",
+            "restriction"
+        ]
+        for group in print_clippy_lint_groups:
+            sys.stdout.write('\n## ' + group + '\n')
+            for (_, name, _, descr) in sorted(clippy_lints[x]):
+                sys.stdout.write('* [' + name + '](https://rust-lang-nursery.github.io/rust-clippy/master/index.html#' + name + ') (' + descr + ')\n')
         return
 
     # update the lint counter in README.md
