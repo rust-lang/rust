@@ -558,11 +558,11 @@ impl<'a> TraitDef<'a> {
                     // extra restrictions on the generics parameters to the
                     // type being derived upon
                     self.additional_bounds.iter().map(|p| {
-                        cx.ty_param_bound(p.to_path(cx, self.span, type_ident, generics))
+                        cx.trait_bound(p.to_path(cx, self.span, type_ident, generics))
                     }).collect();
 
                 // require the current trait
-                bounds.push(cx.ty_param_bound(trait_path.clone()));
+                bounds.push(cx.trait_bound(trait_path.clone()));
 
                 // also add in any bounds from the declaration
                 for declared_bound in &param.bounds {
@@ -634,12 +634,12 @@ impl<'a> TraitDef<'a> {
                         let mut bounds: Vec<_> = self.additional_bounds
                             .iter()
                             .map(|p| {
-                                cx.ty_param_bound(p.to_path(cx, self.span, type_ident, generics))
+                                cx.trait_bound(p.to_path(cx, self.span, type_ident, generics))
                             })
                             .collect();
 
                         // require the current trait
-                        bounds.push(cx.ty_param_bound(trait_path.clone()));
+                        bounds.push(cx.trait_bound(trait_path.clone()));
 
                         let predicate = ast::WhereBoundPredicate {
                             span: self.span,

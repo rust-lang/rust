@@ -219,7 +219,7 @@ fn mk_ty_param(cx: &ExtCtxt,
     let bounds = bounds.iter()
         .map(|b| {
             let path = b.to_path(cx, span, self_ident, self_generics);
-            cx.ty_param_bound(path)
+            cx.trait_bound(path)
         })
         .collect();
     cx.typaram(span, cx.ident_of(name), attrs.to_owned(), bounds, None)

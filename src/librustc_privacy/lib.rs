@@ -1037,9 +1037,8 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         self.access_levels.is_public(trait_id)
     }
 
-    fn check_ty_param_bound(&mut self,
-                            ty_param_bound: &hir::GenericBound) {
-        if let hir::GenericBound::Trait(ref trait_ref, _) = *ty_param_bound {
+    fn check_ty_param_bound(&mut self, bound: &hir::GenericBound) {
+        if let hir::GenericBound::Trait(ref trait_ref, _) = *bound {
             if self.path_is_private_type(&trait_ref.trait_ref.path) {
                 self.old_error_set.insert(trait_ref.trait_ref.ref_id);
             }
