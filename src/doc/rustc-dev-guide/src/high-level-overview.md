@@ -85,7 +85,7 @@ input, running the type-checker, and so forth. This on-demand model
 permits us to do exciting things like only do the minimal amount of
 work needed to type-check a single function. It also helps with
 incremental compilation. (For details on defining queries, check out
-`src/librustc/ty/maps/README.md`.)
+`src/librustc/ty/query/README.md`.)
 
 Regardless of the general setup, the basic operations that the
 compiler must perform are the same. The only thing that changes is

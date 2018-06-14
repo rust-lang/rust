@@ -63,7 +63,7 @@ get to use the nice method-call-style syntax. Instead, you invoke
 using the `try_get` method, which looks roughly like this:
 
 ```rust,ignore
-use ty::maps::queries;
+use ty::queries;
 ...
 match queries::type_of::try_get(tcx, DUMMY_SP, self.did) {
   Ok(result) => {
@@ -215,14 +215,14 @@ Well, defining a query takes place in two steps:
 
 To specify the query name and arguments, you simply add an entry to
 the big macro invocation in
-[`src/librustc/ty/maps/mod.rs`][maps-mod]. This will probably have
+[`src/librustc/ty/query/mod.rs`][query-mod]. This will probably have
 changed by the time you read this README, but at present it looks
 something like:
 
-[maps-mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/maps/index.html
+[query-mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/query/index.html
 
 ```rust,ignore
-define_maps! { <'tcx>
+define_queries! { <'tcx>
     /// Records the type of every item.
     [] fn type_of: TypeOfItem(DefId) -> Ty<'tcx>,
 
@@ -250,7 +250,7 @@ Let's go over them one by one:
   processed.
 - **Name of query:** the name of the query method
   (`tcx.type_of(..)`). Also used as the name of a struct
-  (`ty::maps::queries::type_of`) that will be generated to represent
+  (`ty::queries::type_of`) that will be generated to represent
   this query.
 - **Dep-node constructor:** indicates the constructor function that
   connects this query to incremental compilation. Typically, this is a
@@ -262,7 +262,7 @@ Let's go over them one by one:
     bottom of the file. This is typically used when the query key is
     not a def-id, or just not the type that the dep-node expects.
 - **Query key type:** the type of the argument to this query.
-  This type must implement the `ty::maps::keys::Key` trait, which
+  This type must implement the `ty::query::keys::Key` trait, which
   defines (for example) how to map it to a crate, and so forth.
 - **Result type of query:** the type produced by this query. This type
   should (a) not use `RefCell` or other interior mutability and (b) be
@@ -277,14 +277,14 @@ Let's go over them one by one:
 
 So, to add a query:
 
-- Add an entry to `define_maps!` using the format above.
+- Add an entry to `define_queries!` using the format above.
 - Possibly add a corresponding entry to the dep-node macro.
 - Link the provider by modifying the appropriate `provide` method;
   or add a new one if needed and ensure that `rustc_driver` is invoking it.
 
 #### Query structs and descriptions
 
-For each kind, the `define_maps` macro will generate a "query struct"
+For each kind, the `define_queries` macro will generate a "query struct"
 named after the query. This struct is a kind of a place-holder
 describing the query. Each such struct implements the
 `self::config::QueryConfig` trait, which has associated types for the
