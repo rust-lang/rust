@@ -261,7 +261,7 @@ impl<'a> LifetimeBounds<'a> {
             .iter()
             .map(|&(lt, ref bounds)| {
                 let bounds = bounds.iter()
-                    .map(|b| ast::ParamBound::Outlives(cx.lifetime(span, Ident::from_str(b))));
+                    .map(|b| ast::GenericBound::Outlives(cx.lifetime(span, Ident::from_str(b))));
                 cx.lifetime_def(span, Ident::from_str(lt), vec![], bounds.collect())
             })
             .chain(self.bounds

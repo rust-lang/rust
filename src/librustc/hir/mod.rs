@@ -443,21 +443,21 @@ pub enum TraitBoundModifier {
 /// the "special" built-in traits (see middle::lang_items) and
 /// detects Copy, Send and Sync.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum ParamBound {
+pub enum GenericBound {
     Trait(PolyTraitRef, TraitBoundModifier),
     Outlives(Lifetime),
 }
 
-impl ParamBound {
+impl GenericBound {
     pub fn span(&self) -> Span {
         match self {
-            &ParamBound::Trait(ref t, ..) => t.span,
-            &ParamBound::Outlives(ref l) => l.span,
+            &GenericBound::Trait(ref t, ..) => t.span,
+            &GenericBound::Outlives(ref l) => l.span,
         }
     }
 }
 
-pub type ParamBounds = HirVec<ParamBound>;
+pub type GenericBounds = HirVec<GenericBound>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum GenericParamKind {
@@ -479,7 +479,7 @@ pub struct GenericParam {
     pub id: NodeId,
     pub name: ParamName,
     pub attrs: HirVec<Attribute>,
-    pub bounds: ParamBounds,
+    pub bounds: GenericBounds,
     pub span: Span,
     pub pure_wrt_drop: bool,
 
@@ -588,7 +588,7 @@ pub struct WhereBoundPredicate {
     /// The type being bounded
     pub bounded_ty: P<Ty>,
     /// Trait and lifetime bounds (`Clone+Send+'static`)
-    pub bounds: ParamBounds,
+    pub bounds: GenericBounds,
 }
 
 /// A lifetime predicate, e.g. `'a: 'b+'c`
@@ -596,7 +596,7 @@ pub struct WhereBoundPredicate {
 pub struct WhereRegionPredicate {
     pub span: Span,
     pub lifetime: Lifetime,
-    pub bounds: ParamBounds,
+    pub bounds: GenericBounds,
 }
 
 /// An equality predicate (unsupported), e.g. `T=int`
@@ -1555,7 +1555,7 @@ pub enum TraitItemKind {
     Method(MethodSig, TraitMethod),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type
-    Type(ParamBounds, Option<P<Ty>>),
+    Type(GenericBounds, Option<P<Ty>>),
 }
 
 // The bodies for items are stored "out of line", in a separate
@@ -1640,7 +1640,7 @@ pub struct BareFnTy {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct ExistTy {
     pub generics: Generics,
-    pub bounds: ParamBounds,
+    pub bounds: GenericBounds,
     pub impl_trait_fn: Option<DefId>,
 }
 
@@ -2049,9 +2049,9 @@ pub enum Item_ {
     /// A union definition, e.g. `union Foo<A, B> {x: A, y: B}`
     ItemUnion(VariantData, Generics),
     /// Represents a Trait Declaration
-    ItemTrait(IsAuto, Unsafety, Generics, ParamBounds, HirVec<TraitItemRef>),
+    ItemTrait(IsAuto, Unsafety, Generics, GenericBounds, HirVec<TraitItemRef>),
     /// Represents a Trait Alias Declaration
-    ItemTraitAlias(Generics, ParamBounds),
+    ItemTraitAlias(Generics, GenericBounds),
 
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,

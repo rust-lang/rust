@@ -1285,7 +1285,7 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         exist_ty_id: NodeId,
         parent_index: DefIndex,
-        bounds: &hir::ParamBounds,
+        bounds: &hir::GenericBounds,
     ) -> (HirVec<hir::Lifetime>, HirVec<hir::GenericParam>) {
         // This visitor walks over impl trait bounds and creates defs for all lifetimes which
         // appear in the bounds, excluding lifetimes that are created within the bounds.
@@ -1873,16 +1873,16 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_param_bound(
         &mut self,
-        tpb: &ParamBound,
+        tpb: &GenericBound,
         itctx: ImplTraitContext,
-    ) -> hir::ParamBound {
+    ) -> hir::GenericBound {
         match *tpb {
-            ParamBound::Trait(ref ty, modifier) => hir::ParamBound::Trait(
+            GenericBound::Trait(ref ty, modifier) => hir::GenericBound::Trait(
                 self.lower_poly_trait_ref(ty, itctx),
                 self.lower_trait_bound_modifier(modifier),
             ),
-            ParamBound::Outlives(ref lifetime) => {
-                hir::ParamBound::Outlives(self.lower_lifetime(lifetime))
+            GenericBound::Outlives(ref lifetime) => {
+                hir::GenericBound::Outlives(self.lower_lifetime(lifetime))
             }
         }
     }
@@ -1925,7 +1925,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_generic_params(
         &mut self,
         params: &Vec<GenericParam>,
-        add_bounds: &NodeMap<Vec<ParamBound>>,
+        add_bounds: &NodeMap<Vec<GenericBound>>,
         itctx: ImplTraitContext,
     ) -> hir::HirVec<hir::GenericParam> {
         params.iter().map(|param| self.lower_generic_param(param, add_bounds, itctx)).collect()
@@ -1933,7 +1933,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_generic_param(&mut self,
                            param: &GenericParam,
-                           add_bounds: &NodeMap<Vec<ParamBound>>,
+                           add_bounds: &NodeMap<Vec<GenericBound>>,
                            itctx: ImplTraitContext)
                            -> hir::GenericParam {
         let mut bounds = self.lower_param_bounds(&param.bounds, itctx);
@@ -2013,7 +2013,7 @@ impl<'a> LoweringContext<'a> {
         for pred in &generics.where_clause.predicates {
             if let WherePredicate::BoundPredicate(ref bound_pred) = *pred {
                 'next_bound: for bound in &bound_pred.bounds {
-                    if let ParamBound::Trait(_, TraitBoundModifier::Maybe) = *bound {
+                    if let GenericBound::Trait(_, TraitBoundModifier::Maybe) = *bound {
                         let report_error = |this: &mut Self| {
                             this.diagnostic().span_err(
                                 bound_pred.bounded_ty.span,
@@ -2098,7 +2098,7 @@ impl<'a> LoweringContext<'a> {
                                 .filter_map(|bound| match *bound {
                                     // Ignore `?Trait` bounds.
                                     // Tthey were copied into type parameters already.
-                                    ParamBound::Trait(_, TraitBoundModifier::Maybe) => None,
+                                    GenericBound::Trait(_, TraitBoundModifier::Maybe) => None,
                                     _ => Some(this.lower_param_bound(
                                         bound,
                                         ImplTraitContext::Disallowed,
@@ -2217,8 +2217,8 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_param_bounds(&mut self, bounds: &[ParamBound], itctx: ImplTraitContext)
-        -> hir::ParamBounds {
+    fn lower_param_bounds(&mut self, bounds: &[GenericBound], itctx: ImplTraitContext)
+        -> hir::GenericBounds {
         bounds.iter().map(|bound| self.lower_param_bound(bound, itctx)).collect()
     }
 

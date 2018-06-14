@@ -68,18 +68,18 @@ pub trait AstBuilder {
                span: Span,
                id: ast::Ident,
                attrs: Vec<ast::Attribute>,
-               bounds: ast::ParamBounds,
+               bounds: ast::GenericBounds,
                default: Option<P<ast::Ty>>) -> ast::GenericParam;
 
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef;
     fn poly_trait_ref(&self, span: Span, path: ast::Path) -> ast::PolyTraitRef;
-    fn ty_param_bound(&self, path: ast::Path) -> ast::ParamBound;
+    fn ty_param_bound(&self, path: ast::Path) -> ast::GenericBound;
     fn lifetime(&self, span: Span, ident: ast::Ident) -> ast::Lifetime;
     fn lifetime_def(&self,
                     span: Span,
                     ident: ast::Ident,
                     attrs: Vec<ast::Attribute>,
-                    bounds: ast::ParamBounds)
+                    bounds: ast::GenericBounds)
                     -> ast::GenericParam;
 
     // statements
@@ -436,7 +436,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                span: Span,
                ident: ast::Ident,
                attrs: Vec<ast::Attribute>,
-               bounds: ast::ParamBounds,
+               bounds: ast::GenericBounds,
                default: Option<P<ast::Ty>>) -> ast::GenericParam {
         ast::GenericParam {
             ident: ident.with_span_pos(span),
@@ -464,7 +464,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         }
     }
 
-    fn ty_param_bound(&self, path: ast::Path) -> ast::ParamBound {
+    fn ty_param_bound(&self, path: ast::Path) -> ast::GenericBound {
         ast::Trait(self.poly_trait_ref(path.span, path), ast::TraitBoundModifier::None)
     }
 
@@ -476,7 +476,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                     span: Span,
                     ident: ast::Ident,
                     attrs: Vec<ast::Attribute>,
-                    bounds: ast::ParamBounds)
+                    bounds: ast::GenericBounds)
                     -> ast::GenericParam {
         let lifetime = self.lifetime(span, ident);
         ast::GenericParam {

@@ -718,7 +718,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         &mut self,
         item: &'l ast::Item,
         generics: &'l ast::Generics,
-        trait_refs: &'l ast::ParamBounds,
+        trait_refs: &'l ast::GenericBounds,
         methods: &'l [ast::TraitItem],
     ) {
         let name = item.ident.to_string();

@@ -553,7 +553,7 @@ impl<'a> TraitDef<'a> {
             GenericParamKind::Lifetime { .. } => param.clone(),
             GenericParamKind::Type { .. } => {
                 // I don't think this can be moved out of the loop, since
-                // a ParamBound requires an ast id
+                // a GenericBound requires an ast id
                 let mut bounds: Vec<_> =
                     // extra restrictions on the generics parameters to the
                     // type being derived upon

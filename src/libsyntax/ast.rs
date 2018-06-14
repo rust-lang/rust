@@ -10,7 +10,7 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::ParamBound::*;
+pub use self::GenericBound::*;
 pub use self::UnsafeSource::*;
 pub use self::GenericArgs::*;
 pub use symbol::{Ident, Symbol as Name};
@@ -282,12 +282,12 @@ pub enum TraitBoundModifier {
 /// the "special" built-in traits (see middle::lang_items) and
 /// detects Copy, Send and Sync.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum ParamBound {
+pub enum GenericBound {
     Trait(PolyTraitRef, TraitBoundModifier),
     Outlives(Lifetime)
 }
 
-impl ParamBound {
+impl GenericBound {
     pub fn span(&self) -> Span {
         match self {
             &Trait(ref t, ..) => t.span,
@@ -296,7 +296,7 @@ impl ParamBound {
     }
 }
 
-pub type ParamBounds = Vec<ParamBound>;
+pub type GenericBounds = Vec<GenericBound>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum GenericParamKind {
@@ -312,7 +312,7 @@ pub struct GenericParam {
     pub id: NodeId,
     pub ident: Ident,
     pub attrs: ThinVec<Attribute>,
-    pub bounds: ParamBounds,
+    pub bounds: GenericBounds,
 
     pub kind: GenericParamKind,
 }
@@ -381,7 +381,7 @@ pub struct WhereBoundPredicate {
     /// The type being bounded
     pub bounded_ty: P<Ty>,
     /// Trait and lifetime bounds (`Clone+Send+'static`)
-    pub bounds: ParamBounds,
+    pub bounds: GenericBounds,
 }
 
 /// A lifetime predicate.
@@ -391,7 +391,7 @@ pub struct WhereBoundPredicate {
 pub struct WhereRegionPredicate {
     pub span: Span,
     pub lifetime: Lifetime,
-    pub bounds: ParamBounds,
+    pub bounds: GenericBounds,
 }
 
 /// An equality predicate (unsupported).
@@ -927,7 +927,7 @@ impl Expr {
         }
     }
 
-    fn to_bound(&self) -> Option<ParamBound> {
+    fn to_bound(&self) -> Option<GenericBound> {
         match &self.node {
             ExprKind::Path(None, path) =>
                 Some(Trait(PolyTraitRef::new(Vec::new(), path.clone(), self.span),
@@ -1352,7 +1352,7 @@ pub struct TraitItem {
 pub enum TraitItemKind {
     Const(P<Ty>, Option<P<Expr>>),
     Method(MethodSig, Option<P<Block>>),
-    Type(ParamBounds, Option<P<Ty>>),
+    Type(GenericBounds, Option<P<Ty>>),
     Macro(Mac),
 }
 
@@ -1537,10 +1537,10 @@ pub enum TyKind {
     Path(Option<QSelf>, Path),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TraitObject(ParamBounds, TraitObjectSyntax),
+    TraitObject(GenericBounds, TraitObjectSyntax),
     /// An `impl Bound1 + Bound2 + Bound3` type
     /// where `Bound` is a trait or a lifetime.
-    ImplTrait(ParamBounds),
+    ImplTrait(GenericBounds),
     /// No-op; kept solely so that we can pretty-print faithfully
     Paren(P<Ty>),
     /// Unused for now
@@ -2061,11 +2061,11 @@ pub enum ItemKind {
     /// A Trait declaration (`trait` or `pub trait`).
     ///
     /// E.g. `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`
-    Trait(IsAuto, Unsafety, Generics, ParamBounds, Vec<TraitItem>),
+    Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<TraitItem>),
     /// Trait alias
     ///
     /// E.g. `trait Foo = Bar + Quux;`
-    TraitAlias(Generics, ParamBounds),
+    TraitAlias(Generics, GenericBounds),
     /// An implementation.
     ///
     /// E.g. `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`

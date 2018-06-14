@@ -268,15 +268,15 @@ pub trait Folder : Sized {
         noop_fold_interpolated(nt, self)
     }
 
-    fn fold_opt_bounds(&mut self, b: Option<ParamBounds>) -> Option<ParamBounds> {
+    fn fold_opt_bounds(&mut self, b: Option<GenericBounds>) -> Option<GenericBounds> {
         noop_fold_opt_bounds(b, self)
     }
 
-    fn fold_bounds(&mut self, b: ParamBounds) -> ParamBounds {
+    fn fold_bounds(&mut self, b: GenericBounds) -> GenericBounds {
         noop_fold_bounds(b, self)
     }
 
-    fn fold_param_bound(&mut self, tpb: ParamBound) -> ParamBound {
+    fn fold_param_bound(&mut self, tpb: GenericBound) -> GenericBound {
         noop_fold_param_bound(tpb, self)
     }
 
@@ -676,7 +676,7 @@ pub fn noop_fold_fn_decl<T: Folder>(decl: P<FnDecl>, fld: &mut T) -> P<FnDecl> {
     })
 }
 
-pub fn noop_fold_param_bound<T>(pb: ParamBound, fld: &mut T) -> ParamBound where T: Folder {
+pub fn noop_fold_param_bound<T>(pb: GenericBound, fld: &mut T) -> GenericBound where T: Folder {
     match pb {
         Trait(ty, modifier) => {
             Trait(fld.fold_poly_trait_ref(ty), modifier)
@@ -847,13 +847,13 @@ pub fn noop_fold_mt<T: Folder>(MutTy {ty, mutbl}: MutTy, folder: &mut T) -> MutT
     }
 }
 
-pub fn noop_fold_opt_bounds<T: Folder>(b: Option<ParamBounds>, folder: &mut T)
-                                       -> Option<ParamBounds> {
+pub fn noop_fold_opt_bounds<T: Folder>(b: Option<GenericBounds>, folder: &mut T)
+                                       -> Option<GenericBounds> {
     b.map(|bounds| folder.fold_bounds(bounds))
 }
 
-fn noop_fold_bounds<T: Folder>(bounds: ParamBounds, folder: &mut T)
-                          -> ParamBounds {
+fn noop_fold_bounds<T: Folder>(bounds: GenericBounds, folder: &mut T)
+                          -> GenericBounds {
     bounds.move_map(|bound| folder.fold_param_bound(bound))
 }
 

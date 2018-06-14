@@ -314,7 +314,7 @@ pub trait Visitor<'v> : Sized {
     fn visit_trait_ref(&mut self, t: &'v TraitRef) {
         walk_trait_ref(self, t)
     }
-    fn visit_param_bound(&mut self, bounds: &'v ParamBound) {
+    fn visit_param_bound(&mut self, bounds: &'v GenericBound) {
         walk_param_bound(self, bounds)
     }
     fn visit_poly_trait_ref(&mut self, t: &'v PolyTraitRef, m: TraitBoundModifier) {
@@ -731,12 +731,12 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v 
     walk_list!(visitor, visit_attribute, &foreign_item.attrs);
 }
 
-pub fn walk_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v ParamBound) {
+pub fn walk_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v GenericBound) {
     match *bound {
-        ParamBound::Trait(ref typ, modifier) => {
+        GenericBound::Trait(ref typ, modifier) => {
             visitor.visit_poly_trait_ref(typ, modifier);
         }
-        ParamBound::Outlives(ref lifetime) => visitor.visit_lifetime(lifetime),
+        GenericBound::Outlives(ref lifetime) => visitor.visit_lifetime(lifetime),
     }
 }
 

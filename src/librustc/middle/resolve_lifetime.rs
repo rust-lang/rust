@@ -1250,9 +1250,9 @@ fn object_lifetime_defaults_for_item(
     tcx: TyCtxt<'_, '_, '_>,
     generics: &hir::Generics,
 ) -> Vec<ObjectLifetimeDefault> {
-    fn add_bounds(set: &mut Set1<hir::LifetimeName>, bounds: &[hir::ParamBound]) {
+    fn add_bounds(set: &mut Set1<hir::LifetimeName>, bounds: &[hir::GenericBound]) {
         for bound in bounds {
-            if let hir::ParamBound::Outlives(ref lifetime) = *bound {
+            if let hir::GenericBound::Outlives(ref lifetime) = *bound {
                 set.insert(lifetime.name);
             }
         }
@@ -2280,7 +2280,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             for bound in &lifetime_i.bounds {
                 match bound {
-                    hir::ParamBound::Outlives(lt) => match lt.name {
+                    hir::GenericBound::Outlives(lt) => match lt.name {
                         hir::LifetimeName::Underscore => {
                             let mut err = struct_span_err!(
                                 self.tcx.sess,

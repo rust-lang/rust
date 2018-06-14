@@ -86,7 +86,7 @@ pub trait Visitor<'ast>: Sized {
     fn visit_trait_item(&mut self, ti: &'ast TraitItem) { walk_trait_item(self, ti) }
     fn visit_impl_item(&mut self, ii: &'ast ImplItem) { walk_impl_item(self, ii) }
     fn visit_trait_ref(&mut self, t: &'ast TraitRef) { walk_trait_ref(self, t) }
-    fn visit_param_bound(&mut self, bounds: &'ast ParamBound) {
+    fn visit_param_bound(&mut self, bounds: &'ast GenericBound) {
         walk_param_bound(self, bounds)
     }
     fn visit_poly_trait_ref(&mut self, t: &'ast PolyTraitRef, m: &'ast TraitBoundModifier) {
@@ -479,7 +479,7 @@ pub fn walk_global_asm<'a, V: Visitor<'a>>(_: &mut V, _: &'a GlobalAsm) {
     // Empty!
 }
 
-pub fn walk_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a ParamBound) {
+pub fn walk_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a GenericBound) {
     match *bound {
         Trait(ref typ, ref modifier) => {
             visitor.visit_poly_trait_ref(typ, modifier);

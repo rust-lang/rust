@@ -36,7 +36,7 @@ use ast::{VariantData, StructField};
 use ast::StrStyle;
 use ast::SelfKind;
 use ast::{TraitItem, TraitRef, TraitObjectSyntax};
-use ast::{Ty, TyKind, TypeBinding, ParamBounds};
+use ast::{Ty, TyKind, TypeBinding, GenericBounds};
 use ast::{Visibility, VisibilityKind, WhereClause, CrateSugar};
 use ast::{UseTree, UseTreeKind};
 use ast::{BinOpKind, UnOp};
@@ -4735,7 +4735,7 @@ impl<'a> Parser<'a> {
     // LT_BOUND = LIFETIME (e.g. `'a`)
     // TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
     // TY_BOUND_NOPAREN = [?] [for<LT_PARAM_DEFS>] SIMPLE_PATH (e.g. `?for<'a: 'b> m::Trait<'a>`)
-    fn parse_ty_param_bounds_common(&mut self, allow_plus: bool) -> PResult<'a, ParamBounds> {
+    fn parse_ty_param_bounds_common(&mut self, allow_plus: bool) -> PResult<'a, GenericBounds> {
         let mut bounds = Vec::new();
         loop {
             // This needs to be syncronized with `Token::can_begin_bound`.
@@ -4784,16 +4784,16 @@ impl<'a> Parser<'a> {
         return Ok(bounds);
     }
 
-    fn parse_ty_param_bounds(&mut self) -> PResult<'a, ParamBounds> {
+    fn parse_ty_param_bounds(&mut self) -> PResult<'a, GenericBounds> {
         self.parse_ty_param_bounds_common(true)
     }
 
     // Parse bounds of a lifetime parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
     // BOUND = LT_BOUND (e.g. `'a`)
-    fn parse_lt_param_bounds(&mut self) -> ParamBounds {
+    fn parse_lt_param_bounds(&mut self) -> GenericBounds {
         let mut lifetimes = Vec::new();
         while self.check_lifetime() {
-            lifetimes.push(ast::ParamBound::Outlives(self.expect_lifetime()));
+            lifetimes.push(ast::GenericBound::Outlives(self.expect_lifetime()));
 
             if !self.eat_plus() {
                 break
@@ -4833,7 +4833,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the following grammar:
-    ///     TraitItemAssocTy = Ident ["<"...">"] [":" [ParamBounds]] ["where" ...] ["=" Ty]
+    ///     TraitItemAssocTy = Ident ["<"...">"] [":" [GenericBounds]] ["where" ...] ["=" Ty]
     fn parse_trait_item_assoc_ty(&mut self)
         -> PResult<'a, (Ident, TraitItemKind, ast::Generics)> {
         let ident = self.parse_ident()?;

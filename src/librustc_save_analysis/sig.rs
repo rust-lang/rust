@@ -104,7 +104,7 @@ pub fn assoc_const_signature(
 pub fn assoc_type_signature(
     id: NodeId,
     ident: ast::Ident,
-    bounds: Option<&ast::ParamBounds>,
+    bounds: Option<&ast::GenericBounds>,
     default: Option<&ast::Ty>,
     scx: &SaveContext,
 ) -> Option<Signature> {
@@ -629,7 +629,7 @@ impl Sig for ast::Generics {
                     ast::GenericParamKind::Lifetime { .. } => {
                         let bounds = param.bounds.iter()
                             .map(|bound| match bound {
-                                ast::ParamBound::Outlives(lt) => lt.ident.to_string(),
+                                ast::GenericBound::Outlives(lt) => lt.ident.to_string(),
                                 _ => panic!(),
                             })
                             .collect::<Vec<_>>()
@@ -841,7 +841,7 @@ fn name_and_generics(
 fn make_assoc_type_signature(
     id: NodeId,
     ident: ast::Ident,
-    bounds: Option<&ast::ParamBounds>,
+    bounds: Option<&ast::GenericBounds>,
     default: Option<&ast::Ty>,
     scx: &SaveContext,
 ) -> Result {

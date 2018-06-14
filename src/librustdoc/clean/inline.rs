@@ -474,7 +474,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
             } if *s == "Self" => {
                 bounds.retain(|bound| {
                     match *bound {
-                        clean::ParamBound::TraitBound(clean::PolyTrait {
+                        clean::GenericBound::TraitBound(clean::PolyTrait {
                             trait_: clean::ResolvedPath { did, .. },
                             ..
                         }, _) => did != trait_did,
@@ -505,7 +505,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
 /// the metadata for a crate, so we want to separate those out and create a new
 /// list of explicit supertrait bounds to render nicely.
 fn separate_supertrait_bounds(mut g: clean::Generics)
-                              -> (clean::Generics, Vec<clean::ParamBound>) {
+                              -> (clean::Generics, Vec<clean::GenericBound>) {
     let mut ty_bounds = Vec::new();
     g.where_predicates.retain(|pred| {
         match *pred {

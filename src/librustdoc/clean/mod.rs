@@ -14,7 +14,7 @@
 pub use self::Type::*;
 pub use self::Mutability::*;
 pub use self::ItemEnum::*;
-pub use self::ParamBound::*;
+pub use self::GenericBound::*;
 pub use self::SelfTy::*;
 pub use self::FunctionRetTy::*;
 pub use self::Visibility::{Public, Inherited};
@@ -532,7 +532,7 @@ pub enum ItemEnum {
     MacroItem(Macro),
     PrimitiveItem(PrimitiveType),
     AssociatedConstItem(Type, Option<String>),
-    AssociatedTypeItem(Vec<ParamBound>, Option<Type>),
+    AssociatedTypeItem(Vec<GenericBound>, Option<Type>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemEnum>),
     KeywordItem(String),
@@ -1458,13 +1458,13 @@ impl Clean<Attributes> for [ast::Attribute] {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
-pub enum ParamBound {
+pub enum GenericBound {
     TraitBound(PolyTrait, hir::TraitBoundModifier),
     Outlives(Lifetime),
 }
 
-impl ParamBound {
-    fn maybe_sized(cx: &DocContext) -> ParamBound {
+impl GenericBound {
+    fn maybe_sized(cx: &DocContext) -> GenericBound {
         let did = cx.tcx.require_lang_item(lang_items::SizedTraitLangItem);
         let empty = cx.tcx.intern_substs(&[]);
         let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
@@ -1483,7 +1483,7 @@ impl ParamBound {
 
     fn is_sized_bound(&self, cx: &DocContext) -> bool {
         use rustc::hir::TraitBoundModifier as TBM;
-        if let ParamBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
+        if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
             if trait_.def_id() == cx.tcx.lang_items().sized_trait() {
                 return true;
             }
@@ -1492,7 +1492,7 @@ impl ParamBound {
     }
 
     fn get_poly_trait(&self) -> Option<PolyTrait> {
-        if let ParamBound::TraitBound(ref p, _) = *self {
+        if let GenericBound::TraitBound(ref p, _) = *self {
             return Some(p.clone())
         }
         None
@@ -1500,18 +1500,18 @@ impl ParamBound {
 
     fn get_trait_type(&self) -> Option<Type> {
 
-        if let ParamBound::TraitBound(PolyTrait { ref trait_, .. }, _) = *self {
+        if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, _) = *self {
             return Some(trait_.clone());
         }
         None
     }
 }
 
-impl Clean<ParamBound> for hir::ParamBound {
-    fn clean(&self, cx: &DocContext) -> ParamBound {
+impl Clean<GenericBound> for hir::GenericBound {
+    fn clean(&self, cx: &DocContext) -> GenericBound {
         match *self {
-            hir::ParamBound::Outlives(lt) => Outlives(lt.clean(cx)),
-            hir::ParamBound::Trait(ref t, modifier) => TraitBound(t.clean(cx), modifier),
+            hir::GenericBound::Outlives(lt) => Outlives(lt.clean(cx)),
+            hir::GenericBound::Trait(ref t, modifier) => TraitBound(t.clean(cx), modifier),
         }
     }
 }
@@ -1570,8 +1570,8 @@ fn external_path(cx: &DocContext, name: &str, trait_did: Option<DefId>, has_self
     }
 }
 
-impl<'a, 'tcx> Clean<ParamBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>) {
-    fn clean(&self, cx: &DocContext) -> ParamBound {
+impl<'a, 'tcx> Clean<GenericBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>) {
+    fn clean(&self, cx: &DocContext) -> GenericBound {
         let (trait_ref, ref bounds) = *self;
         inline::record_extern_fqn(cx, trait_ref.def_id, TypeKind::Trait);
         let path = external_path(cx, &cx.tcx.item_name(trait_ref.def_id).as_str(),
@@ -1614,17 +1614,17 @@ impl<'a, 'tcx> Clean<ParamBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>) 
     }
 }
 
-impl<'tcx> Clean<ParamBound> for ty::TraitRef<'tcx> {
-    fn clean(&self, cx: &DocContext) -> ParamBound {
+impl<'tcx> Clean<GenericBound> for ty::TraitRef<'tcx> {
+    fn clean(&self, cx: &DocContext) -> GenericBound {
         (self, vec![]).clean(cx)
     }
 }
 
-impl<'tcx> Clean<Option<Vec<ParamBound>>> for Substs<'tcx> {
-    fn clean(&self, cx: &DocContext) -> Option<Vec<ParamBound>> {
+impl<'tcx> Clean<Option<Vec<GenericBound>>> for Substs<'tcx> {
+    fn clean(&self, cx: &DocContext) -> Option<Vec<GenericBound>> {
         let mut v = Vec::new();
         v.extend(self.regions().filter_map(|r| r.clean(cx))
-                     .map(ParamBound::Outlives));
+                     .map(GenericBound::Outlives));
         v.extend(self.types().map(|t| TraitBound(PolyTrait {
             trait_: t.clean(cx),
             generic_params: Vec::new(),
@@ -1674,7 +1674,7 @@ impl Clean<Lifetime> for hir::GenericParam {
             hir::GenericParamKind::Lifetime { .. } => {
                 if self.bounds.len() > 0 {
                     let mut bounds = self.bounds.iter().map(|bound| match bound {
-                        hir::ParamBound::Outlives(lt) => lt,
+                        hir::GenericBound::Outlives(lt) => lt,
                         _ => panic!(),
                     });
                     let name = bounds.next().unwrap().name.name();
@@ -1720,8 +1720,8 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum WherePredicate {
-    BoundPredicate { ty: Type, bounds: Vec<ParamBound> },
-    RegionPredicate { lifetime: Lifetime, bounds: Vec<ParamBound> },
+    BoundPredicate { ty: Type, bounds: Vec<GenericBound> },
+    RegionPredicate { lifetime: Lifetime, bounds: Vec<GenericBound> },
     EqPredicate { lhs: Type, rhs: Type },
 }
 
@@ -1791,7 +1791,7 @@ impl<'tcx> Clean<WherePredicate> for ty::OutlivesPredicate<ty::Region<'tcx>, ty:
         let ty::OutlivesPredicate(ref a, ref b) = *self;
         WherePredicate::RegionPredicate {
             lifetime: a.clean(cx).unwrap(),
-            bounds: vec![ParamBound::Outlives(b.clean(cx).unwrap())]
+            bounds: vec![GenericBound::Outlives(b.clean(cx).unwrap())]
         }
     }
 }
@@ -1802,7 +1802,7 @@ impl<'tcx> Clean<WherePredicate> for ty::OutlivesPredicate<Ty<'tcx>, ty::Region<
 
         WherePredicate::BoundPredicate {
             ty: ty.clean(cx),
-            bounds: vec![ParamBound::Outlives(lt.clean(cx).unwrap())]
+            bounds: vec![GenericBound::Outlives(lt.clean(cx).unwrap())]
         }
     }
 }
@@ -1819,8 +1819,8 @@ impl<'tcx> Clean<WherePredicate> for ty::ProjectionPredicate<'tcx> {
 impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
     fn clean(&self, cx: &DocContext) -> Type {
         let trait_ = match self.trait_ref(cx.tcx).clean(cx) {
-            ParamBound::TraitBound(t, _) => t.trait_,
-            ParamBound::Outlives(_) => panic!("cleaning a trait got a lifetime"),
+            GenericBound::TraitBound(t, _) => t.trait_,
+            GenericBound::Outlives(_) => panic!("cleaning a trait got a lifetime"),
         };
         Type::QPath {
             name: cx.tcx.associated_item(self.item_def_id).name.clean(cx),
@@ -1835,7 +1835,7 @@ pub enum GenericParamDefKind {
     Lifetime,
     Type {
         did: DefId,
-        bounds: Vec<ParamBound>,
+        bounds: Vec<GenericBound>,
         default: Option<Type>,
         synthetic: Option<hir::SyntheticTyParamKind>,
     },
@@ -1893,7 +1893,7 @@ impl Clean<GenericParamDef> for hir::GenericParam {
             hir::GenericParamKind::Lifetime { .. } => {
                 let name = if self.bounds.len() > 0 {
                     let mut bounds = self.bounds.iter().map(|bound| match bound {
-                        hir::ParamBound::Outlives(lt) => lt,
+                        hir::GenericBound::Outlives(lt) => lt,
                         _ => panic!(),
                     });
                     let name = bounds.next().unwrap().name.name();
@@ -2049,7 +2049,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
             if !sized_params.contains(&tp.name) {
                 where_predicates.push(WP::BoundPredicate {
                     ty: Type::Generic(tp.name.clone()),
-                    bounds: vec![ParamBound::maybe_sized(cx)],
+                    bounds: vec![GenericBound::maybe_sized(cx)],
                 })
             }
         }
@@ -2290,7 +2290,7 @@ pub struct Trait {
     pub unsafety: hir::Unsafety,
     pub items: Vec<Item>,
     pub generics: Generics,
-    pub bounds: Vec<ParamBound>,
+    pub bounds: Vec<GenericBound>,
     pub is_spotlight: bool,
     pub is_auto: bool,
 }
@@ -2512,7 +2512,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     // at the end.
                     match bounds.iter().position(|b| b.is_sized_bound(cx)) {
                         Some(i) => { bounds.remove(i); }
-                        None => bounds.push(ParamBound::maybe_sized(cx)),
+                        None => bounds.push(GenericBound::maybe_sized(cx)),
                     }
 
                     let ty = if self.defaultness.has_value() {
@@ -2567,7 +2567,7 @@ pub enum Type {
     /// structs/enums/traits (most that'd be an hir::TyPath)
     ResolvedPath {
         path: Path,
-        typarams: Option<Vec<ParamBound>>,
+        typarams: Option<Vec<GenericBound>>,
         did: DefId,
         /// true if is a `T::Name` path for associated types
         is_generic: bool,
@@ -2603,7 +2603,7 @@ pub enum Type {
     Infer,
 
     // impl TraitA+TraitB
-    ImplTrait(Vec<ParamBound>),
+    ImplTrait(Vec<GenericBound>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Copy, Debug)]
@@ -2977,7 +2977,7 @@ impl Clean<Type> for hir::Ty {
             TyTraitObject(ref bounds, ref lifetime) => {
                 match bounds[0].clean(cx).trait_ {
                     ResolvedPath { path, typarams: None, did, is_generic } => {
-                        let mut bounds: Vec<self::ParamBound> = bounds[1..].iter().map(|bound| {
+                        let mut bounds: Vec<self::GenericBound> = bounds[1..].iter().map(|bound| {
                             TraitBound(bound.clean(cx), hir::TraitBoundModifier::None)
                         }).collect();
                         if !lifetime.is_elided() {
@@ -3080,7 +3080,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     inline::record_extern_fqn(cx, did, TypeKind::Trait);
 
                     let mut typarams = vec![];
-                    reg.clean(cx).map(|b| typarams.push(ParamBound::Outlives(b)));
+                    reg.clean(cx).map(|b| typarams.push(GenericBound::Outlives(b)));
                     for did in obj.auto_traits() {
                         let empty = cx.tcx.intern_substs(&[]);
                         let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
@@ -3138,7 +3138,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     } else if let ty::Predicate::TypeOutlives(pred) = *predicate {
                         // these should turn up at the end
                         pred.skip_binder().1.clean(cx).map(|r| {
-                            regions.push(ParamBound::Outlives(r))
+                            regions.push(GenericBound::Outlives(r))
                         });
                         return None;
                     } else {
@@ -3173,7 +3173,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 }).collect::<Vec<_>>();
                 bounds.extend(regions);
                 if !has_sized && !bounds.is_empty() {
-                    bounds.insert(0, ParamBound::maybe_sized(cx));
+                    bounds.insert(0, GenericBound::maybe_sized(cx));
                 }
                 ImplTrait(bounds)
             }
@@ -4469,11 +4469,11 @@ impl AutoTraitResult {
     }
 }
 
-impl From<ParamBound> for SimpleBound {
-    fn from(bound: ParamBound) -> Self {
+impl From<GenericBound> for SimpleBound {
+    fn from(bound: GenericBound) -> Self {
         match bound.clone() {
-            ParamBound::Outlives(l) => SimpleBound::Outlives(l),
-            ParamBound::TraitBound(t, mod_) => match t.trait_ {
+            GenericBound::Outlives(l) => SimpleBound::Outlives(l),
+            GenericBound::TraitBound(t, mod_) => match t.trait_ {
                 Type::ResolvedPath { path, typarams, .. } => {
                     SimpleBound::TraitBound(path.segments,
                                             typarams

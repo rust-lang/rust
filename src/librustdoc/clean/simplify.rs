@@ -147,7 +147,7 @@ pub fn ty_params(mut params: Vec<clean::GenericParamDef>) -> Vec<clean::GenericP
     params
 }
 
-fn ty_bounds(bounds: Vec<clean::ParamBound>) -> Vec<clean::ParamBound> {
+fn ty_bounds(bounds: Vec<clean::GenericBound>) -> Vec<clean::GenericBound> {
     bounds
 }
 

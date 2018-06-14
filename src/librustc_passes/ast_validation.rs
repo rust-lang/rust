@@ -99,7 +99,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn no_questions_in_bounds(&self, bounds: &ParamBounds, where_: &str, is_trait: bool) {
+    fn no_questions_in_bounds(&self, bounds: &GenericBounds, where_: &str, is_trait: bool) {
         for bound in bounds {
             if let Trait(ref poly, TraitBoundModifier::Maybe) = *bound {
                 let mut err = self.err_handler().struct_span_err(poly.span,

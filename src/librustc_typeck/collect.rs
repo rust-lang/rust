@@ -1249,7 +1249,7 @@ fn impl_polarity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 // Is it marked with ?Sized
 fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
-                                ast_bounds: &[hir::ParamBound],
+                                ast_bounds: &[hir::GenericBound],
                                 span: Span) -> bool
 {
     let tcx = astconv.tcx();
@@ -1257,7 +1257,7 @@ fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     // Try to find an unbound in bounds.
     let mut unbound = None;
     for ab in ast_bounds {
-        if let &hir::ParamBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = ab  {
+        if let &hir::GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = ab  {
             if unbound.is_none() {
                 unbound = Some(ptr.trait_ref.clone());
             } else {
@@ -1444,7 +1444,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         match param.kind {
             GenericParamKind::Lifetime { .. } => {
                 param.bounds.iter().for_each(|bound| match bound {
-                    hir::ParamBound::Outlives(lt) => {
+                    hir::GenericBound::Outlives(lt) => {
                         let bound = AstConv::ast_region_to_region(&icx, &lt, None);
                         let outlives = ty::Binder::bind(ty::OutlivesPredicate(region, bound));
                         predicates.push(outlives.to_predicate());
@@ -1482,7 +1482,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                 for bound in bound_pred.bounds.iter() {
                     match bound {
-                        &hir::ParamBound::Trait(ref poly_trait_ref, _) => {
+                        &hir::GenericBound::Trait(ref poly_trait_ref, _) => {
                             let mut projections = Vec::new();
 
                             let trait_ref =
@@ -1498,7 +1498,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             }
                         }
 
-                        &hir::ParamBound::Outlives(ref lifetime) => {
+                        &hir::GenericBound::Outlives(ref lifetime) => {
                             let region = AstConv::ast_region_to_region(&icx,
                                                                        lifetime,
                                                                        None);
@@ -1513,7 +1513,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 let r1 = AstConv::ast_region_to_region(&icx, &region_pred.lifetime, None);
                 for bound in &region_pred.bounds {
                     let r2 = match bound {
-                        hir::ParamBound::Outlives(lt) => {
+                        hir::GenericBound::Outlives(lt) => {
                             AstConv::ast_region_to_region(&icx, lt, None)
                         }
                         _ => bug!(),
@@ -1582,7 +1582,7 @@ pub enum SizedByDefault { Yes, No, }
 /// built-in trait (formerly known as kind): Send.
 pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
                                         param_ty: Ty<'tcx>,
-                                        ast_bounds: &[hir::ParamBound],
+                                        ast_bounds: &[hir::GenericBound],
                                         sized_by_default: SizedByDefault,
                                         span: Span)
                                         -> Bounds<'tcx>
@@ -1591,9 +1591,9 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     let mut trait_bounds = vec![];
     for ast_bound in ast_bounds {
         match *ast_bound {
-            hir::ParamBound::Trait(ref b, hir::TraitBoundModifier::None) => trait_bounds.push(b),
-            hir::ParamBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
-            hir::ParamBound::Outlives(ref l) => region_bounds.push(l),
+            hir::GenericBound::Trait(ref b, hir::TraitBoundModifier::None) => trait_bounds.push(b),
+            hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
+            hir::GenericBound::Outlives(ref l) => region_bounds.push(l),
         }
     }
 
@@ -1623,18 +1623,18 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     }
 }
 
-/// Converts a specific ParamBound from the AST into a set of
+/// Converts a specific GenericBound from the AST into a set of
 /// predicates that apply to the self-type. A vector is returned
 /// because this can be anywhere from 0 predicates (`T:?Sized` adds no
 /// predicates) to 1 (`T:Foo`) to many (`T:Bar<X=i32>` adds `T:Bar`
 /// and `<T as Bar>::X == i32`).
 fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
                                param_ty: Ty<'tcx>,
-                               bound: &hir::ParamBound)
+                               bound: &hir::GenericBound)
                                -> Vec<ty::Predicate<'tcx>>
 {
     match *bound {
-        hir::ParamBound::Trait(ref tr, hir::TraitBoundModifier::None) => {
+        hir::GenericBound::Trait(ref tr, hir::TraitBoundModifier::None) => {
             let mut projections = Vec::new();
             let pred = astconv.instantiate_poly_trait_ref(tr,
                                                           param_ty,
@@ -1644,12 +1644,12 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
                        .chain(Some(pred.to_predicate()))
                        .collect()
         }
-        hir::ParamBound::Outlives(ref lifetime) => {
+        hir::GenericBound::Outlives(ref lifetime) => {
             let region = astconv.ast_region_to_region(lifetime, None);
             let pred = ty::Binder::bind(ty::OutlivesPredicate(param_ty, region));
             vec![ty::Predicate::TypeOutlives(pred)]
         }
-        hir::ParamBound::Trait(_, hir::TraitBoundModifier::Maybe) => vec![],
+        hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => vec![],
     }
 }
 

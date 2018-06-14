@@ -292,7 +292,7 @@ pub fn ty_to_string(ty: &ast::Ty) -> String {
     to_string(|s| s.print_type(ty))
 }
 
-pub fn bounds_to_string(bounds: &[ast::ParamBound]) -> String {
+pub fn bounds_to_string(bounds: &[ast::GenericBound]) -> String {
     to_string(|s| s.print_type_bounds("", bounds))
 }
 
@@ -1177,7 +1177,7 @@ impl<'a> State<'a> {
 
     fn print_associated_type(&mut self,
                              ident: ast::Ident,
-                             bounds: Option<&ast::ParamBounds>,
+                             bounds: Option<&ast::GenericBounds>,
                              ty: Option<&ast::Ty>)
                              -> io::Result<()> {
         self.word_space("type")?;
@@ -2810,7 +2810,7 @@ impl<'a> State<'a> {
 
     pub fn print_type_bounds(&mut self,
                         prefix: &str,
-                        bounds: &[ast::ParamBound])
+                        bounds: &[ast::GenericBound])
                         -> io::Result<()> {
         if !bounds.is_empty() {
             self.s.word(prefix)?;
@@ -2843,7 +2843,7 @@ impl<'a> State<'a> {
         self.print_name(lifetime.ident.name)
     }
 
-    pub fn print_lifetime_bounds(&mut self, lifetime: ast::Lifetime, bounds: &ast::ParamBounds)
+    pub fn print_lifetime_bounds(&mut self, lifetime: ast::Lifetime, bounds: &ast::GenericBounds)
         -> io::Result<()>
     {
         self.print_lifetime(lifetime)?;
@@ -2854,7 +2854,7 @@ impl<'a> State<'a> {
                     self.s.word(" + ")?;
                 }
                 match bound {
-                    ast::ParamBound::Outlives(lt) => self.print_lifetime(*lt)?,
+                    ast::GenericBound::Outlives(lt) => self.print_lifetime(*lt)?,
                     _ => panic!(),
                 }
             }

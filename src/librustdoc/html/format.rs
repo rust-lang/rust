@@ -46,7 +46,7 @@ pub struct MutableSpace(pub clean::Mutability);
 #[derive(Copy, Clone)]
 pub struct RawMutableSpace(pub clean::Mutability);
 /// Wrapper struct for emitting type parameter bounds.
-pub struct ParamBounds<'a>(pub &'a [clean::ParamBound]);
+pub struct GenericBounds<'a>(pub &'a [clean::GenericBound]);
 /// Wrapper struct for emitting a comma-separated list of items
 pub struct CommaSep<'a, T: 'a>(pub &'a [T]);
 pub struct AbiSpace(pub Abi);
@@ -104,9 +104,9 @@ impl<'a, T: fmt::Display> fmt::Display for CommaSep<'a, T> {
     }
 }
 
-impl<'a> fmt::Display for ParamBounds<'a> {
+impl<'a> fmt::Display for GenericBounds<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let &ParamBounds(bounds) = self;
+        let &GenericBounds(bounds) = self;
         for (i, bound) in bounds.iter().enumerate() {
             if i > 0 {
                 f.write_str(" + ")?;
@@ -126,9 +126,9 @@ impl fmt::Display for clean::GenericParamDef {
 
                 if !bounds.is_empty() {
                     if f.alternate() {
-                        write!(f, ": {:#}", ParamBounds(bounds))?;
+                        write!(f, ": {:#}", GenericBounds(bounds))?;
                     } else {
-                        write!(f, ":&nbsp;{}", ParamBounds(bounds))?;
+                        write!(f, ":&nbsp;{}", GenericBounds(bounds))?;
                     }
                 }
 
@@ -190,9 +190,9 @@ impl<'a> fmt::Display for WhereClause<'a> {
                 &clean::WherePredicate::BoundPredicate { ref ty, ref bounds } => {
                     let bounds = bounds;
                     if f.alternate() {
-                        clause.push_str(&format!("{:#}: {:#}", ty, ParamBounds(bounds)));
+                        clause.push_str(&format!("{:#}: {:#}", ty, GenericBounds(bounds)));
                     } else {
-                        clause.push_str(&format!("{}: {}", ty, ParamBounds(bounds)));
+                        clause.push_str(&format!("{}: {}", ty, GenericBounds(bounds)));
                     }
                 }
                 &clean::WherePredicate::RegionPredicate { ref lifetime,
@@ -267,7 +267,7 @@ impl fmt::Display for clean::PolyTrait {
     }
 }
 
-impl fmt::Display for clean::ParamBound {
+impl fmt::Display for clean::GenericBound {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             clean::Outlives(ref lt) => {
@@ -512,7 +512,7 @@ fn primitive_link(f: &mut fmt::Formatter,
 
 /// Helper to render type parameters
 fn tybounds(w: &mut fmt::Formatter,
-            typarams: &Option<Vec<clean::ParamBound>>) -> fmt::Result {
+            typarams: &Option<Vec<clean::GenericBound>>) -> fmt::Result {
     match *typarams {
         Some(ref params) => {
             for param in params {
@@ -667,7 +667,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
             }
         }
         clean::ImplTrait(ref bounds) => {
-            write!(f, "impl {}", ParamBounds(bounds))
+            write!(f, "impl {}", GenericBounds(bounds))
         }
         clean::QPath { ref name, ref self_type, ref trait_ } => {
             let should_show_cast = match *trait_ {
