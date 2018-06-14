@@ -123,9 +123,16 @@ impl CategoryData {
 
     fn json(&self) -> String {
         macro_rules! j {
-            ($category:tt, $rustic_name:ident) => {
-                format!("{{ \"category\": {}, \"time_ms\": {} }}", stringify!($category), self.times.$rustic_name / 1_000_000)
-            }
+            ($category:tt, $rustic_name:ident) => {{
+                let (hits, total) = self.query_counts.$rustic_name;
+
+                format!("{{ \"category\": {}, \"time_ms\": {}, \"query_count\": {}, \"query_hits\": {} }}",
+                    stringify!($category),
+                    self.times.$rustic_name / 1_000_000,
+                    total,
+                    format!("{:.2}", (((hits as f32) / (total as f32)) * 100.0))
+                )
+            }}
         }
 
         format!("[
