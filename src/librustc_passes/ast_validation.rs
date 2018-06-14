@@ -101,7 +101,7 @@ impl<'a> AstValidator<'a> {
 
     fn no_questions_in_bounds(&self, bounds: &ParamBounds, where_: &str, is_trait: bool) {
         for bound in bounds {
-            if let TraitTyParamBound(ref poly, TraitBoundModifier::Maybe) = *bound {
+            if let Trait(ref poly, TraitBoundModifier::Maybe) = *bound {
                 let mut err = self.err_handler().struct_span_err(poly.span,
                                     &format!("`?Trait` is not permitted in {}", where_));
                 if is_trait {
@@ -203,7 +203,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             TyKind::ImplTrait(ref bounds) => {
                 if !bounds.iter()
-                          .any(|b| if let TraitTyParamBound(..) = *b { true } else { false }) {
+                          .any(|b| if let Trait(..) = *b { true } else { false }) {
                     self.err_handler().span_err(ty.span, "at least one trait must be specified");
                 }
             }

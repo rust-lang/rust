@@ -24,7 +24,7 @@ use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
 
 use hir;
-use hir::{PatKind, Outlives, TraitTyParamBound, TraitBoundModifier, RangeEnd};
+use hir::{PatKind, ParamBound, TraitBoundModifier, RangeEnd};
 use hir::{GenericParam, GenericParamKind, GenericArg};
 
 use std::cell::Cell;
@@ -740,7 +740,7 @@ impl<'a> State<'a> {
                 self.print_generic_params(&generics.params)?;
                 let mut real_bounds = Vec::with_capacity(bounds.len());
                 for b in bounds.iter() {
-                    if let TraitTyParamBound(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
+                    if let ParamBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
                         self.s.space()?;
                         self.word_space("for ?")?;
                         self.print_trait_ref(&ptr.trait_ref)?;
@@ -766,7 +766,7 @@ impl<'a> State<'a> {
                 let mut real_bounds = Vec::with_capacity(bounds.len());
                 // FIXME(durka) this seems to be some quite outdated syntax
                 for b in bounds.iter() {
-                    if let TraitTyParamBound(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
+                    if let ParamBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
                         self.s.space()?;
                         self.word_space("for ?")?;
                         self.print_trait_ref(&ptr.trait_ref)?;
@@ -2086,13 +2086,13 @@ impl<'a> State<'a> {
                 }
 
                 match bound {
-                    TraitTyParamBound(tref, modifier) => {
+                    ParamBound::Trait(tref, modifier) => {
                         if modifier == &TraitBoundModifier::Maybe {
                             self.s.word("?")?;
                         }
                         self.print_poly_trait_ref(tref)?;
                     }
-                    Outlives(lt) => {
+                    ParamBound::Outlives(lt) => {
                         self.print_lifetime(lt)?;
                     }
                 }
@@ -2121,7 +2121,7 @@ impl<'a> State<'a> {
                 let mut sep = ":";
                 for bound in &param.bounds {
                     match bound {
-                        hir::ParamBound::Outlives(lt) => {
+                        ParamBound::Outlives(lt) => {
                             self.s.word(sep)?;
                             self.print_lifetime(lt)?;
                             sep = "+";
@@ -2181,7 +2181,7 @@ impl<'a> State<'a> {
 
                     for (i, bound) in bounds.iter().enumerate() {
                         match bound {
-                            hir::ParamBound::Outlives(lt) => {
+                            ParamBound::Outlives(lt) => {
                                 self.print_lifetime(lt)?;
                             }
                             _ => bug!(),

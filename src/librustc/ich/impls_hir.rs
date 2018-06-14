@@ -189,7 +189,7 @@ impl_stable_hash_for!(struct hir::GenericArgs {
 });
 
 impl_stable_hash_for!(enum hir::ParamBound {
-    TraitTyParamBound(poly_trait_ref, trait_bound_modifier),
+    Trait(poly_trait_ref, trait_bound_modifier),
     Outlives(lifetime)
 });
 

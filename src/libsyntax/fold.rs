@@ -678,8 +678,8 @@ pub fn noop_fold_fn_decl<T: Folder>(decl: P<FnDecl>, fld: &mut T) -> P<FnDecl> {
 
 pub fn noop_fold_param_bound<T>(pb: ParamBound, fld: &mut T) -> ParamBound where T: Folder {
     match pb {
-        TraitTyParamBound(ty, modifier) => {
-            TraitTyParamBound(fld.fold_poly_trait_ref(ty), modifier)
+        Trait(ty, modifier) => {
+            Trait(fld.fold_poly_trait_ref(ty), modifier)
         }
         Outlives(lifetime) => Outlives(noop_fold_lifetime(lifetime, fld)),
     }

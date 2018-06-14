@@ -481,7 +481,7 @@ pub fn walk_global_asm<'a, V: Visitor<'a>>(_: &mut V, _: &'a GlobalAsm) {
 
 pub fn walk_param_bound<'a, V: Visitor<'a>>(visitor: &mut V, bound: &'a ParamBound) {
     match *bound {
-        TraitTyParamBound(ref typ, ref modifier) => {
+        Trait(ref typ, ref modifier) => {
             visitor.visit_poly_trait_ref(typ, modifier);
         }
         Outlives(ref lifetime) => {

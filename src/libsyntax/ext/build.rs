@@ -465,7 +465,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn ty_param_bound(&self, path: ast::Path) -> ast::ParamBound {
-        ast::TraitTyParamBound(self.poly_trait_ref(path.span, path), ast::TraitBoundModifier::None)
+        ast::Trait(self.poly_trait_ref(path.span, path), ast::TraitBoundModifier::None)
     }
 
     fn lifetime(&self, span: Span, ident: ast::Ident) -> ast::Lifetime {

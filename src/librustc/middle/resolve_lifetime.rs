@@ -1256,7 +1256,7 @@ fn object_lifetime_defaults_for_item(
 ) -> Vec<ObjectLifetimeDefault> {
     fn add_bounds(set: &mut Set1<hir::LifetimeName>, bounds: &[hir::ParamBound]) {
         for bound in bounds {
-            if let hir::Outlives(ref lifetime) = *bound {
+            if let hir::ParamBound::Outlives(ref lifetime) = *bound {
                 set.insert(lifetime.name);
             }
         }

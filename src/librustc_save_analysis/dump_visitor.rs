@@ -761,7 +761,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         // super-traits
         for super_bound in trait_refs.iter() {
             let trait_ref = match *super_bound {
-                ast::TraitTyParamBound(ref trait_ref, _) => trait_ref,
+                ast::Trait(ref trait_ref, _) => trait_ref,
                 ast::Outlives(..) => {
                     continue;
                 }
@@ -1489,7 +1489,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
             ast::GenericParamKind::Lifetime { .. } => {}
             ast::GenericParamKind::Type { ref default, .. } => {
                 for bound in &param.bounds {
-                    if let ast::TraitTyParamBound(ref trait_ref, _) = *bound {
+                    if let ast::Trait(ref trait_ref, _) = *bound {
                         self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)
                     }
                 }

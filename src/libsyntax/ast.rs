@@ -283,14 +283,14 @@ pub enum TraitBoundModifier {
 /// detects Copy, Send and Sync.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum ParamBound {
-    TraitTyParamBound(PolyTraitRef, TraitBoundModifier),
+    Trait(PolyTraitRef, TraitBoundModifier),
     Outlives(Lifetime)
 }
 
 impl ParamBound {
     pub fn span(&self) -> Span {
         match self {
-            &TraitTyParamBound(ref t, ..) => t.span,
+            &Trait(ref t, ..) => t.span,
             &Outlives(ref l) => l.ident.span,
         }
     }
@@ -930,7 +930,7 @@ impl Expr {
     fn to_bound(&self) -> Option<ParamBound> {
         match &self.node {
             ExprKind::Path(None, path) =>
-                Some(TraitTyParamBound(PolyTraitRef::new(Vec::new(), path.clone(), self.span),
+                Some(Trait(PolyTraitRef::new(Vec::new(), path.clone(), self.span),
                                        TraitBoundModifier::None)),
             _ => None,
         }

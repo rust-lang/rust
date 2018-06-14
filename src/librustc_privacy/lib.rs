@@ -1039,7 +1039,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
 
     fn check_ty_param_bound(&mut self,
                             ty_param_bound: &hir::ParamBound) {
-        if let hir::TraitTyParamBound(ref trait_ref, _) = *ty_param_bound {
+        if let hir::ParamBound::Trait(ref trait_ref, _) = *ty_param_bound {
             if self.path_is_private_type(&trait_ref.trait_ref.path) {
                 self.old_error_set.insert(trait_ref.trait_ref.ref_id);
             }

@@ -1257,7 +1257,7 @@ fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     // Try to find an unbound in bounds.
     let mut unbound = None;
     for ab in ast_bounds {
-        if let &hir::TraitTyParamBound(ref ptr, hir::TraitBoundModifier::Maybe) = ab  {
+        if let &hir::ParamBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = ab  {
             if unbound.is_none() {
                 unbound = Some(ptr.trait_ref.clone());
             } else {
@@ -1482,7 +1482,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                 for bound in bound_pred.bounds.iter() {
                     match bound {
-                        &hir::ParamBound::TraitTyParamBound(ref poly_trait_ref, _) => {
+                        &hir::ParamBound::Trait(ref poly_trait_ref, _) => {
                             let mut projections = Vec::new();
 
                             let trait_ref =
@@ -1591,22 +1591,16 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     let mut trait_bounds = vec![];
     for ast_bound in ast_bounds {
         match *ast_bound {
-            hir::TraitTyParamBound(ref b, hir::TraitBoundModifier::None) => {
-                trait_bounds.push(b);
-            }
-            hir::TraitTyParamBound(_, hir::TraitBoundModifier::Maybe) => {}
-            hir::Outlives(ref l) => {
-                region_bounds.push(l);
-            }
+            hir::ParamBound::Trait(ref b, hir::TraitBoundModifier::None) => trait_bounds.push(b),
+            hir::ParamBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
+            hir::ParamBound::Outlives(ref l) => region_bounds.push(l),
         }
     }
 
     let mut projection_bounds = vec![];
 
     let mut trait_bounds: Vec<_> = trait_bounds.iter().map(|&bound| {
-        astconv.instantiate_poly_trait_ref(bound,
-                                           param_ty,
-                                           &mut projection_bounds)
+        astconv.instantiate_poly_trait_ref(bound, param_ty, &mut projection_bounds)
     }).collect();
 
     let region_bounds = region_bounds.into_iter().map(|r| {
@@ -1640,7 +1634,7 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
                                -> Vec<ty::Predicate<'tcx>>
 {
     match *bound {
-        hir::TraitTyParamBound(ref tr, hir::TraitBoundModifier::None) => {
+        hir::ParamBound::Trait(ref tr, hir::TraitBoundModifier::None) => {
             let mut projections = Vec::new();
             let pred = astconv.instantiate_poly_trait_ref(tr,
                                                           param_ty,
@@ -1650,14 +1644,12 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
                        .chain(Some(pred.to_predicate()))
                        .collect()
         }
-        hir::Outlives(ref lifetime) => {
+        hir::ParamBound::Outlives(ref lifetime) => {
             let region = astconv.ast_region_to_region(lifetime, None);
             let pred = ty::Binder::bind(ty::OutlivesPredicate(param_ty, region));
             vec![ty::Predicate::TypeOutlives(pred)]
         }
-        hir::TraitTyParamBound(_, hir::TraitBoundModifier::Maybe) => {
-            Vec::new()
-        }
+        hir::ParamBound::Trait(_, hir::TraitBoundModifier::Maybe) => vec![],
     }
 }
 

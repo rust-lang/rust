@@ -1510,8 +1510,8 @@ impl ParamBound {
 impl Clean<ParamBound> for hir::ParamBound {
     fn clean(&self, cx: &DocContext) -> ParamBound {
         match *self {
-            hir::Outlives(lt) => Outlives(lt.clean(cx)),
-            hir::TraitTyParamBound(ref t, modifier) => TraitBound(t.clean(cx), modifier),
+            hir::ParamBound::Outlives(lt) => Outlives(lt.clean(cx)),
+            hir::ParamBound::Trait(ref t, modifier) => TraitBound(t.clean(cx), modifier),
         }
     }
 }
@@ -1624,7 +1624,7 @@ impl<'tcx> Clean<Option<Vec<ParamBound>>> for Substs<'tcx> {
     fn clean(&self, cx: &DocContext) -> Option<Vec<ParamBound>> {
         let mut v = Vec::new();
         v.extend(self.regions().filter_map(|r| r.clean(cx))
-                     .map(Outlives));
+                     .map(ParamBound::Outlives));
         v.extend(self.types().map(|t| TraitBound(PolyTrait {
             trait_: t.clean(cx),
             generic_params: Vec::new(),
@@ -3080,7 +3080,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     inline::record_extern_fqn(cx, did, TypeKind::Trait);
 
                     let mut typarams = vec![];
-                    reg.clean(cx).map(|b| typarams.push(Outlives(b)));
+                    reg.clean(cx).map(|b| typarams.push(ParamBound::Outlives(b)));
                     for did in obj.auto_traits() {
                         let empty = cx.tcx.intern_substs(&[]);
                         let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
@@ -3137,7 +3137,9 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                         tr
                     } else if let ty::Predicate::TypeOutlives(pred) = *predicate {
                         // these should turn up at the end
-                        pred.skip_binder().1.clean(cx).map(|r| regions.push(Outlives(r)));
+                        pred.skip_binder().1.clean(cx).map(|r| {
+                            regions.push(ParamBound::Outlives(r))
+                        });
                         return None;
                     } else {
                         return None;

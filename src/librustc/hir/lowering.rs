@@ -1108,10 +1108,10 @@ impl<'a> LoweringContext<'a> {
                 let bounds = bounds
                     .iter()
                     .filter_map(|bound| match *bound {
-                        TraitTyParamBound(ref ty, TraitBoundModifier::None) => {
+                        Trait(ref ty, TraitBoundModifier::None) => {
                             Some(self.lower_poly_trait_ref(ty, itctx))
                         }
-                        TraitTyParamBound(_, TraitBoundModifier::Maybe) => None,
+                        Trait(_, TraitBoundModifier::Maybe) => None,
                         Outlives(ref lifetime) => {
                             if lifetime_bound.is_none() {
                                 lifetime_bound = Some(self.lower_lifetime(lifetime));
@@ -1875,12 +1875,12 @@ impl<'a> LoweringContext<'a> {
         itctx: ImplTraitContext,
     ) -> hir::ParamBound {
         match *tpb {
-            TraitTyParamBound(ref ty, modifier) => hir::TraitTyParamBound(
+            ParamBound::Trait(ref ty, modifier) => hir::ParamBound::Trait(
                 self.lower_poly_trait_ref(ty, itctx),
                 self.lower_trait_bound_modifier(modifier),
             ),
-            Outlives(ref lifetime) => {
-                hir::Outlives(self.lower_lifetime(lifetime))
+            ParamBound::Outlives(ref lifetime) => {
+                hir::ParamBound::Outlives(self.lower_lifetime(lifetime))
             }
         }
     }
@@ -2010,7 +2010,7 @@ impl<'a> LoweringContext<'a> {
         for pred in &generics.where_clause.predicates {
             if let WherePredicate::BoundPredicate(ref bound_pred) = *pred {
                 'next_bound: for bound in &bound_pred.bounds {
-                    if let TraitTyParamBound(_, TraitBoundModifier::Maybe) = *bound {
+                    if let ParamBound::Trait(_, TraitBoundModifier::Maybe) = *bound {
                         let report_error = |this: &mut Self| {
                             this.diagnostic().span_err(
                                 bound_pred.bounded_ty.span,
@@ -2095,7 +2095,7 @@ impl<'a> LoweringContext<'a> {
                                 .filter_map(|bound| match *bound {
                                     // Ignore `?Trait` bounds.
                                     // Tthey were copied into type parameters already.
-                                    TraitTyParamBound(_, TraitBoundModifier::Maybe) => None,
+                                    ParamBound::Trait(_, TraitBoundModifier::Maybe) => None,
                                     _ => Some(this.lower_param_bound(
                                         bound,
                                         ImplTraitContext::Disallowed,

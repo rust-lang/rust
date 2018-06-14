@@ -22,7 +22,6 @@ pub use self::Mutability::*;
 pub use self::PrimTy::*;
 pub use self::Stmt_::*;
 pub use self::Ty_::*;
-pub use self::ParamBound::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 pub use self::Visibility::{Public, Inherited};
@@ -445,15 +444,15 @@ pub enum TraitBoundModifier {
 /// detects Copy, Send and Sync.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum ParamBound {
-    TraitTyParamBound(PolyTraitRef, TraitBoundModifier),
+    Trait(PolyTraitRef, TraitBoundModifier),
     Outlives(Lifetime),
 }
 
 impl ParamBound {
     pub fn span(&self) -> Span {
         match self {
-            &TraitTyParamBound(ref t, ..) => t.span,
-            &Outlives(ref l) => l.span,
+            &ParamBound::Trait(ref t, ..) => t.span,
+            &ParamBound::Outlives(ref l) => l.span,
         }
     }
 }
