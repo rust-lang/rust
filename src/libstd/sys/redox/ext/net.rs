@@ -132,7 +132,10 @@ impl UnixStream {
                 .map(FileDesc::new)
                 .map(UnixStream)
         } else {
-            Err(Error::new(ErrorKind::Other, "UnixStream::connect: non-utf8 paths not supported on redox"))
+            Err(Error::new(
+                ErrorKind::Other,
+                "UnixStream::connect: non-utf8 paths not supported on redox"
+            ))
         }
     }
 
@@ -155,7 +158,8 @@ impl UnixStream {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn pair() -> io::Result<(UnixStream, UnixStream)> {
-        let server = cvt(syscall::open("chan:", syscall::O_CREAT | syscall::O_CLOEXEC)).map(FileDesc::new)?;
+        let server = cvt(syscall::open("chan:", syscall::O_CREAT | syscall::O_CLOEXEC))
+            .map(FileDesc::new)?;
         let client = server.duplicate_path(b"connect")?;
         let stream = server.duplicate_path(b"listen")?;
         Ok((UnixStream(client), UnixStream(stream)))
@@ -511,7 +515,10 @@ impl UnixListener {
                 .map(FileDesc::new)
                 .map(UnixListener)
         } else {
-            Err(Error::new(ErrorKind::Other, "UnixListener::bind: non-utf8 paths not supported on redox"))
+            Err(Error::new(
+                ErrorKind::Other,
+                "UnixListener::bind: non-utf8 paths not supported on redox"
+            ))
         }
     }
 
