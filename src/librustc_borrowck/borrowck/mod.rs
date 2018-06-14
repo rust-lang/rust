@@ -1202,9 +1202,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             } else {
                                 snippet
                             };
-                            db.span_label(
+                            db.span_suggestion(
                                 let_span,
-                                format!("consider changing this to `{}`", replace_str)
+                                "use a mutable reference instead",
+                                replace_str,
                             );
                         };
                     }
