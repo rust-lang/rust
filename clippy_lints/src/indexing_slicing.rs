@@ -34,7 +34,7 @@ declare_clippy_lint! {
 }
 
 /// **What it does:** Checks for usage of indexing or slicing. Does not report
-/// if we can tell that the indexing or slicing operations on an array are in
+/// on arrays if we can tell that the indexing or slicing operations are in
 /// bounds.
 ///
 /// **Why is this bad?** Indexing and slicing can panic at runtime and there are
@@ -44,7 +44,9 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
+/// // Vector
 /// let x = vec![0; 5];
+///
 /// // Bad
 /// x[2];
 /// &x[2..100];
@@ -52,10 +54,29 @@ declare_clippy_lint! {
 /// &x[..100];
 ///
 /// // Good
-/// x.get(2)
-/// x.get(2..100)
-/// x.get(2..)
-/// x.get(..100)
+/// x.get(2);
+/// x.get(2..100);
+/// x.get(2..);
+/// x.get(..100);
+///
+/// // Array
+/// let y = [0, 1, 2, 3];
+///
+/// // Bad
+/// y[10];
+/// &y[10..100];
+/// &y[10..];
+/// &y[..100];
+///
+/// // Good
+/// y[2];
+/// &y[2..];
+/// &y[..2];
+/// &y[0..3];
+/// y.get(10);
+/// y.get(10..100);
+/// y.get(10..);
+/// y.get(..100);
 /// ```
 declare_clippy_lint! {
     pub INDEXING_SLICING,
@@ -75,6 +96,7 @@ impl LintPass for IndexingSlicing {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprIndex(ref array, ref index) = &expr.node {
+            let ty = cx.tables.expr_ty(array);
             match &index.node {
                 // Both ExprStruct and ExprPath require this approach's checks
                 // on the `range` returned by `higher::range(cx, index)`.
@@ -82,7 +104,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
                 // ExprPath handles &x[..] and x[var]
                 ExprStruct(..) | ExprPath(..) => {
                     if let Some(range) = higher::range(cx, index) {
-                        let ty = cx.tables.expr_ty(array);
                         if let ty::TyArray(_, s) = ty.sty {
                             let size: u128 = s.assert_usize(cx.tcx).unwrap().into();
                             // Index is a constant range.
@@ -94,27 +115,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
                                         expr.span,
                                         "range is out of bounds",
                                     );
-                                } else {
-                                    // Range is in bounds, ok.
-                                    return;
-                                }
+                                } // Else range is in bounds, ok.
+
+                                return;
                             }
                         }
 
-                        let help_msg;
-                        match (range.start, range.end) {
+                        let help_msg = match (range.start, range.end) {
                             (None, Some(_)) => {
-                                help_msg = "Consider using `.get(..n)`or `.get_mut(..n)` instead";
+                                "Consider using `.get(..n)`or `.get_mut(..n)` instead"
                             }
                             (Some(_), None) => {
-                                help_msg = "Consider using `.get(n..)` or .get_mut(n..)` instead";
+                                "Consider using `.get(n..)` or .get_mut(n..)` instead"
                             }
                             (Some(_), Some(_)) => {
-                                help_msg =
-                                    "Consider using `.get(n..m)` or `.get_mut(n..m)` instead";
+                                "Consider using `.get(n..m)` or `.get_mut(n..m)` instead"
                             }
-                            (None, None) => return, // [..] is ok
-                        }
+                            (None, None) => return, // [..] is ok.
+                        };
 
                         utils::span_help_and_lint(
                             cx,
@@ -135,7 +153,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
                 }
                 ExprLit(..) => {
                     // [n]
-                    let ty = cx.tables.expr_ty(array);
                     if let ty::TyArray(_, s) = ty.sty {
                         let size: u128 = s.assert_usize(cx.tcx).unwrap().into();
                         // Index is a constant uint.

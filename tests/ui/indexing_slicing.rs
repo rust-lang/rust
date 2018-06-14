@@ -30,6 +30,8 @@ fn main() {
     &x[5..];
     &x[..4];
     &x[..5];
+    &x[5..].iter().map(|x| 2 * x).collect::<Vec<i32>>();
+    &x[2..].iter().map(|x| 2 * x).collect::<Vec<i32>>(); // Ok
 
     let y = &x;
     y[0];
