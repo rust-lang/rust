@@ -51,7 +51,6 @@ use boxed::Box;
 use slice::{SliceConcatExt, SliceIndex};
 use string::String;
 use vec::Vec;
-use vec_deque::VecDeque;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{FromStr, Utf8Error};

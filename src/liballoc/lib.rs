@@ -162,59 +162,24 @@ mod boxed {
 }
 #[cfg(test)]
 mod boxed_test;
+pub mod collections;
 #[cfg(target_has_atomic = "ptr")]
 pub mod arc;
 pub mod rc;
 pub mod raw_vec;
 
-// collections modules
-pub mod binary_heap;
-mod btree;
 pub mod borrow;
 pub mod fmt;
-pub mod linked_list;
 pub mod slice;
 pub mod str;
 pub mod string;
 pub mod vec;
-pub mod vec_deque;
-
-#[stable(feature = "rust1", since = "1.0.0")]
-pub mod btree_map {
-    //! A map based on a B-Tree.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub use btree::map::*;
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-pub mod btree_set {
-    //! A set based on a B-Tree.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub use btree::set::*;
-}
 
 #[cfg(not(test))]
 mod std {
     pub use core::ops;      // RangeFull
 }
 
-/// An intermediate trait for specialization of `Extend`.
-#[doc(hidden)]
-trait SpecExtend<I: IntoIterator> {
-    /// Extends `self` with the contents of the given iterator.
-    fn spec_extend(&mut self, iter: I);
-}
-
-#[doc(no_inline)]
-pub use binary_heap::BinaryHeap;
-#[doc(no_inline)]
-pub use btree_map::BTreeMap;
-#[doc(no_inline)]
-pub use btree_set::BTreeSet;
-#[doc(no_inline)]
-pub use linked_list::LinkedList;
-#[doc(no_inline)]
-pub use vec_deque::VecDeque;
 #[doc(no_inline)]
 pub use string::String;
 #[doc(no_inline)]
