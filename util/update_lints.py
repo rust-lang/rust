@@ -177,7 +177,7 @@ def main(print_only=False, check=False):
         ]
         for group in print_clippy_lint_groups:
             sys.stdout.write('\n## ' + group + '\n')
-            for (_, name, _, descr) in sorted(clippy_lints[x]):
+            for (_, name, _, descr) in sorted(clippy_lints[group]):
                 sys.stdout.write('* [' + name + '](https://rust-lang-nursery.github.io/rust-clippy/master/index.html#' + name + ') (' + descr + ')\n')
         return
 
