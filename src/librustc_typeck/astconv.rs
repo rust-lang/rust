@@ -718,7 +718,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             .chain(existential_projections
                    .map(|x| ty::ExistentialPredicate::Projection(*x.skip_binder())))
             .collect::<AccumulateVec<[_; 8]>>();
-        v.sort_by(|a, b| a.cmp(tcx, b));
+        v.sort_by(|a, b| a.stable_cmp(tcx, b));
         let existential_predicates = ty::Binder::bind(tcx.mk_existential_predicates(v.into_iter()));
 
 
