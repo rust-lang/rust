@@ -179,8 +179,3 @@ pub mod vec;
 mod std {
     pub use core::ops;      // RangeFull
 }
-
-#[doc(no_inline)]
-pub use string::String;
-#[doc(no_inline)]
-pub use vec::Vec;
