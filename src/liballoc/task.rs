@@ -18,10 +18,10 @@ pub use self::if_arc::*;
 #[cfg(target_has_atomic = "ptr")]
 mod if_arc {
     use super::*;
-    use arc::Arc;
     use core::marker::PhantomData;
     use core::mem;
     use core::ptr::{self, NonNull};
+    use sync::Arc;
 
     /// A way of waking up a specific task.
     ///

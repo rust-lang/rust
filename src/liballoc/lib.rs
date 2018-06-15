@@ -40,7 +40,7 @@
 //!
 //! ## Atomically reference counted pointers
 //!
-//! The [`Arc`](arc/index.html) type is the threadsafe equivalent of the `Rc`
+//! The [`Arc`](sync/index.html) type is the threadsafe equivalent of the `Rc`
 //! type. It provides all the same functionality of `Rc`, except it requires
 //! that the contained type `T` is shareable. Additionally, `Arc<T>` is itself
 //! sendable while `Rc<T>` is not.
@@ -164,7 +164,7 @@ mod boxed {
 mod boxed_test;
 pub mod collections;
 #[cfg(target_has_atomic = "ptr")]
-pub mod arc;
+pub mod sync;
 pub mod rc;
 pub mod raw_vec;
 
