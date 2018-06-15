@@ -11,11 +11,10 @@
 #![feature(irrefutable_let_patterns)]
 
 // must-compile-successfully-irrefutable_let_patterns_with_gate
+#[allow(irrefutable_let_patterns)]
 fn main() {
-    #[allow(irrefutable_let_patterns)]
     if let _ = 5 {}
 
-    #[allow(irrefutable_let_patterns)]
     while let _ = 5 {
         break;
     }
