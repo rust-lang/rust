@@ -141,13 +141,6 @@ extern crate rand;
 #[macro_use]
 mod macros;
 
-#[rustc_deprecated(since = "1.27.0", reason = "use the heap module in core, alloc, or std instead")]
-#[unstable(feature = "allocator_api", issue = "32838")]
-/// Use the `alloc` module instead.
-pub mod allocator {
-    pub use alloc::*;
-}
-
 // Heaps provided for low-level allocation strategies
 
 pub mod alloc;
