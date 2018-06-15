@@ -20,6 +20,11 @@ cargo install --force
 echo "Integration tests for: ${INTEGRATION}"
 cargo fmt -- --version
 
+# Checks that:
+#
+# * `cargo fmt --all` succeeds without any warnings or errors
+# * `cargo test -all` still passes (formatting did not break the build)
+# * `cargo fmt --all -- --check` after formatting returns success
 function check_fmt {
     touch rustfmt.toml
     cargo fmt --all -v 2>&1 | tee rustfmt_output
@@ -43,6 +48,12 @@ function check_fmt {
     cargo test --all
     if [[ $? != 0 ]]; then
         return $?
+    fi
+
+    cargo fmt --all -- --check 2>&1 | tee rustfmt_check_output
+    if [[ $? != 0 ]]; then
+        cat rustfmt_check_output
+        return 1
     fi
 }
 
