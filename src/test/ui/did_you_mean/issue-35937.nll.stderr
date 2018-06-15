@@ -10,7 +10,9 @@ error[E0384]: cannot assign twice to immutable variable `s.x`
   --> $DIR/issue-35937.rs:26:5
    |
 LL |     let s = S { x: 42 };
-   |             ----------- first assignment to `s.x`
+   |         -   ----------- first assignment to `s.x`
+   |         |
+   |         consider changing this to `mut s`
 LL |     s.x += 1; //~ ERROR cannot assign
    |     ^^^^^^^^ cannot assign twice to immutable variable
 
@@ -18,7 +20,10 @@ error[E0384]: cannot assign twice to immutable variable `s.x`
   --> $DIR/issue-35937.rs:30:5
    |
 LL | fn bar(s: S) {
-   |        - first assignment to `s.x`
+   |        -
+   |        |
+   |        first assignment to `s.x`
+   |        consider changing this to `mut s`
 LL |     s.x += 1; //~ ERROR cannot assign
    |     ^^^^^^^^ cannot assign twice to immutable variable
 
