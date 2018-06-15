@@ -1,0 +1,14 @@
+error: unused `IGuessICanMakeNewFriends` which must be used
+  --> $DIR/issue-51560-must-use-impl-trait.rs:28:5
+   |
+LL |     its_not_fair();
+   |     ^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/issue-51560-must-use-impl-trait.rs:12:9
+   |
+LL | #![deny(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
