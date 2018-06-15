@@ -1261,10 +1261,11 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
       hir::ItemUnion(..) => {
         check_union(tcx, it.id, it.span);
       }
-      hir::ItemTy(_, ref generics) => {
+      hir::ItemTy(..) => {
         let def_id = tcx.hir.local_def_id(it.id);
         let pty_ty = tcx.type_of(def_id);
-        check_bounds_are_used(tcx, generics, pty_ty);
+        let generics = tcx.generics_of(def_id);
+        check_bounds_are_used(tcx, &generics, pty_ty);
       }
       hir::ItemForeignMod(ref m) => {
         check_abi(tcx, it.span, m.abi);
@@ -5178,7 +5179,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 }
 
 pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                       generics: &hir::Generics,
+                                       generics: &ty::Generics,
                                        ty: Ty<'tcx>) {
     let own_counts = generics.own_counts();
     debug!("check_bounds_are_used(n_tps={}, ty={:?})", own_counts.types, ty);
@@ -5202,14 +5203,15 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let types = generics.params.iter().filter(|param| match param.kind {
-        hir::GenericParamKind::Type { .. } => true,
+        ty::GenericParamDefKind::Type { .. } => true,
         _ => false,
     });
     for (&used, param) in types_used.iter().zip(types) {
         if !used {
-            struct_span_err!(tcx.sess, param.span, E0091, "type parameter `{}` is unused",
-                             param.name.name())
-                .span_label(param.span, "unused type parameter")
+            let id = tcx.hir.as_local_node_id(param.def_id).unwrap();
+            let span = tcx.hir.span(id);
+            struct_span_err!(tcx.sess, span, E0091, "type parameter `{}` is unused", param.name)
+                .span_label(span, "unused type parameter")
                 .emit();
         }
     }

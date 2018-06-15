@@ -1235,9 +1235,10 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     self.encode_optimized_mir(def_id)
                 }
                 hir::ItemConst(..) => self.encode_optimized_mir(def_id),
-                hir::ItemFn(_, _, constness, _, ref generics, _) => {
+                hir::ItemFn(_, _, constness, ..) => {
+                    let generics = tcx.generics_of(def_id);
                     let has_types = generics.params.iter().any(|param| match param.kind {
-                        hir::GenericParamKind::Type { .. } => true,
+                        ty::GenericParamDefKind::Type { .. } => true,
                         _ => false,
                     });
                     let needs_inline =
