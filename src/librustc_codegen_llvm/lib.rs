@@ -79,6 +79,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc_mir::monomorphize;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_codegen_utils::time_graph;
 
 mod diagnostics;
 
@@ -114,7 +115,6 @@ mod llvm_util;
 mod metadata;
 mod meth;
 mod mir;
-mod time_graph;
 mod mono_item;
 mod type_;
 mod type_of;
@@ -368,7 +368,7 @@ struct CodegenResults {
     crate_info: CrateInfo,
 }
 
-// Misc info we load from metadata to persist beyond the tcx
+/// Misc info we load from metadata to persist beyond the tcx
 struct CrateInfo {
     panic_runtime: Option<CrateNum>,
     compiler_builtins: Option<CrateNum>,

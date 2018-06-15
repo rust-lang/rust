@@ -182,11 +182,13 @@ pub fn std_cargo(builder: &Builder,
             // missing
             // We also only build the runtimes when --enable-sanitizers (or its
             // config.toml equivalent) is used
-            let llvm_config = builder.ensure(native::Llvm {
-                target: builder.config.build,
-                emscripten: false,
-            });
-            cargo.env("LLVM_CONFIG", llvm_config);
+            if !builder.config.rust_codegen_backends.is_empty() {
+                let llvm_config = builder.ensure(native::Llvm {
+                    target: builder.config.build,
+                    emscripten: false,
+                });
+                cargo.env("LLVM_CONFIG", llvm_config);
+            }
         }
 
         cargo.arg("--features").arg(features)
@@ -675,7 +677,9 @@ impl Step for CodegenBackend {
             .arg(builder.src.join("src/librustc_codegen_llvm/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo);
 
-        features += &build_codegen_backend(&builder, &mut cargo, &compiler, target, backend);
+        if !backend.is_empty() {
+            features += &build_codegen_backend(&builder, &mut cargo, &compiler, target, backend);
+        }
 
         let tmp_stamp = builder.cargo_out(compiler, Mode::Codegen, target)
             .join(".tmp.stamp");

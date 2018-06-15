@@ -114,6 +114,10 @@ fn main() {
 
     cmd.env("RUSTC_BREAK_ON_ICE", "1");
 
+    if args.iter().find(|s| **s == OsString::from("___")).is_some() {
+        cmd.arg("-Zcodegen-backend=metadata_only");
+    }
+
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option.

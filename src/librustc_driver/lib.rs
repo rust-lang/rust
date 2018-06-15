@@ -375,10 +375,20 @@ fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<CodegenBackend> {
     match file {
         Some(ref s) => return load_backend_from_dylib(s),
         None => {
-            let err = format!("failed to load default codegen backend for `{}`, \
+            if !::rustc::session::config::nightly_options::is_nightly_build() {
+                let err = format!("failed to load default codegen backend for `{}`, \
                                no appropriate codegen dylib found in `{}`",
                                backend_name, sysroot.display());
-            early_error(ErrorOutputType::default(), &err);
+                early_error(ErrorOutputType::default(), &err);
+            } else {
+                let warn = format!("no codegen-backend `{}`, \
+                               no appropriate dylib in `{}`. \
+                               Falling back to metadata_only codegen backend. \
+                               **This is suitable for dev purposes only**",
+                               backend_name, sysroot.display());
+                early_warn(ErrorOutputType::default(), &warn);
+                return rustc_codegen_utils::codegen_backend::MetadataOnlyCodegenBackend::new;
+            }
         }
     }
 

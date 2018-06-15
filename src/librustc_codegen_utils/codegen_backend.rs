@@ -26,7 +26,7 @@ use std::io::prelude::*;
 use std::io::{self, Cursor};
 use std::fs::File;
 use std::path::Path;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::sync::Lrc;
@@ -44,7 +44,6 @@ use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
 use rustc_target::spec::Target;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_mir::monomorphize::collector;
 use link::{build_link_meta, out_filename};
 
@@ -203,10 +202,17 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         ::symbol_names::provide(providers);
 
         providers.target_features_whitelist = |_tcx, _cnum| {
-            Lrc::new(FxHashMap()) // Just a dummy
+            Lrc::new(::llvm_target_features::all_known_features()
+                .map(|(a, b)| (a.to_string(), b.map(|s| s.to_string())))
+                .collect())
         };
+        providers.is_reachable_non_generic = |_tcx, _defid| true;
+        providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());
+        providers.wasm_custom_sections = |_tcx, _crate| Lrc::new(Vec::new());
     }
-    fn provide_extern(&self, _providers: &mut Providers) {}
+    fn provide_extern(&self, providers: &mut Providers) {
+        providers.is_reachable_non_generic = |_tcx, _defid| true;
+    }
 
     fn codegen_crate<'a, 'tcx>(
         &self,
@@ -225,7 +231,7 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
                 collector::MonoItemCollectionMode::Eager
             ).0.iter()
         );
-        ::rustc::middle::dependency_format::calculate(tcx);
+        //::rustc::middle::dependency_format::calculate(tcx);
         let _ = tcx.link_args(LOCAL_CRATE);
         let _ = tcx.native_libraries(LOCAL_CRATE);
         for mono_item in
