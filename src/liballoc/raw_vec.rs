@@ -18,8 +18,8 @@ use core::ptr::{self, NonNull, Unique};
 use core::slice;
 
 use alloc::{Alloc, Layout, Global, handle_alloc_error};
-use alloc::CollectionAllocErr;
-use alloc::CollectionAllocErr::*;
+use collections::CollectionAllocErr;
+use collections::CollectionAllocErr::*;
 use boxed::Box;
 
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating

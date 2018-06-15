@@ -30,7 +30,7 @@ use core::slice;
 use core::hash::{Hash, Hasher};
 use core::cmp;
 
-use alloc::CollectionAllocErr;
+use collections::CollectionAllocErr;
 use raw_vec::RawVec;
 use vec::Vec;
 

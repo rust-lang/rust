@@ -438,7 +438,7 @@ pub use self::hash_map::HashMap;
 pub use self::hash_set::HashSet;
 
 #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-pub use alloc::CollectionAllocErr;
+pub use alloc_crate::collections::CollectionAllocErr;
 
 mod hash;
 
