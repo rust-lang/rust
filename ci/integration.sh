@@ -23,12 +23,12 @@ cargo fmt -- --version
 # Checks that:
 #
 # * `cargo fmt --all` succeeds without any warnings or errors
-# * `cargo test -all` still passes (formatting did not break the build)
 # * `cargo fmt --all -- --check` after formatting returns success
+# * `cargo test -all` still passes (formatting did not break the build)
 function check_fmt {
     touch rustfmt.toml
     cargo fmt --all -v 2>&1 | tee rustfmt_output
-    if [[ $? != 0 ]]; then
+    if [[ ${PIPESTATUS[0]} != 0 ]]; then
         cat rustfmt_output
         return 1
     fi
@@ -45,15 +45,14 @@ function check_fmt {
     if [[ $? != 0 ]]; then
         return 1
     fi
+    cargo fmt --all -- --check 2>&1 | tee rustfmt_check_output
+    if [[ ${PIPESTATUS[0]} != 0 ]]; then
+        cat rustfmt_check_output
+        return 1
+    fi
     cargo test --all
     if [[ $? != 0 ]]; then
         return $?
-    fi
-
-    cargo fmt --all -- --check 2>&1 | tee rustfmt_check_output
-    if [[ $? != 0 ]]; then
-        cat rustfmt_check_output
-        return 1
     fi
 }
 
