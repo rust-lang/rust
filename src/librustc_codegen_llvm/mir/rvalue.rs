@@ -232,7 +232,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                                 // HACK(eddyb) have to bitcast pointers
                                 // until LLVM removes pointee types.
                                 let lldata = bx.pointercast(lldata,
-                                    cast.scalar_pair_element_llvm_type(bx.cx, 0));
+                                    cast.scalar_pair_element_llvm_type(bx.cx, 0, true));
                                 OperandValue::Pair(lldata, llextra)
                             }
                             OperandValue::Immediate(lldata) => {
@@ -251,7 +251,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
                             if cast.is_llvm_scalar_pair() {
                                 let data_cast = bx.pointercast(data_ptr,
-                                    cast.scalar_pair_element_llvm_type(bx.cx, 0));
+                                    cast.scalar_pair_element_llvm_type(bx.cx, 0, true));
                                 OperandValue::Pair(data_cast, meta)
                             } else { // cast to thin-ptr
                                 // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and

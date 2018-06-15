@@ -47,8 +47,8 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         }
         layout::Abi::ScalarPair(..) => {
             return Type::struct_(cx, &[
-                layout.scalar_pair_element_llvm_type(cx, 0),
-                layout.scalar_pair_element_llvm_type(cx, 1),
+                layout.scalar_pair_element_llvm_type(cx, 0, false),
+                layout.scalar_pair_element_llvm_type(cx, 1, false),
             ], false);
         }
         layout::Abi::Uninhabited |
@@ -206,7 +206,7 @@ pub trait LayoutLlvmExt<'tcx> {
     fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
                                scalar: &layout::Scalar, offset: Size) -> Type;
     fn scalar_pair_element_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
-                                         index: usize) -> Type;
+                                         index: usize, immediate: bool) -> Type;
     fn llvm_field_index(&self, index: usize) -> u64;
     fn pointee_info_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, offset: Size)
                            -> Option<PointeeInfo>;
@@ -340,7 +340,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
     }
 
     fn scalar_pair_element_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
-                                         index: usize) -> Type {
+                                         index: usize, immediate: bool) -> Type {
         // HACK(eddyb) special-case fat pointers until LLVM removes
         // pointee types, to avoid bitcasting every `OperandRef::deref`.
         match self.ty.sty {
@@ -350,7 +350,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             }
             ty::TyAdt(def, _) if def.is_box() => {
                 let ptr_ty = cx.tcx.mk_mut_ptr(self.ty.boxed_ty());
-                return cx.layout_of(ptr_ty).scalar_pair_element_llvm_type(cx, index);
+                return cx.layout_of(ptr_ty).scalar_pair_element_llvm_type(cx, index, immediate);
             }
             _ => {}
         }
@@ -361,14 +361,13 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         };
         let scalar = [a, b][index];
 
-        // Make sure to return the same type `immediate_llvm_type` would,
-        // to avoid dealing with two types and the associated conversions.
-        // This means that `(bool, bool)` is represented as `{i1, i1}`,
-        // both in memory and as an immediate, while `bool` is typically
-        // `i8` in memory and only `i1` when immediate. While we need to
-        // load/store `bool` as `i8` to avoid crippling LLVM optimizations,
-        // `i1` in a LLVM aggregate is valid and mostly equivalent to `i8`.
-        if scalar.is_bool() {
+        // Make sure to return the same type `immediate_llvm_type` would when
+        // dealing with an immediate pair.  This means that `(bool, bool)` is
+        // effectively represented as `{i8, i8}` in memory and `{i1, i1}` as an
+        // immediate, just like `bool` is typically `i8` in memory and only `i1`
+        // when immediate.  We need to load/store `bool` as `i8` to avoid
+        // crippling LLVM optimizations or triggering other LLVM bugs with `i1`.
+        if immediate && scalar.is_bool() {
             return Type::i1(cx);
         }
 
