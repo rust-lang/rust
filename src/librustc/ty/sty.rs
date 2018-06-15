@@ -1269,8 +1269,8 @@ impl DebruijnIndex {
     ///
     /// you would need to shift the index for `'a` into 1 new binder.
     #[must_use]
-    pub fn shifted_in(self, amount: u32) -> DebruijnIndex {
-        DebruijnIndex::new(self.index() + amount as usize)
+    pub const fn shifted_in(self, amount: u32) -> DebruijnIndex {
+        DebruijnIndex(self.0 + amount)
     }
 
     /// Update this index in place by shifting it "in" through
@@ -1282,8 +1282,8 @@ impl DebruijnIndex {
     /// Returns the resulting index when this value is moved out from
     /// `amount` number of new binders.
     #[must_use]
-    pub fn shifted_out(self, amount: u32) -> DebruijnIndex {
-        DebruijnIndex::new(self.index() - amount as usize)
+    pub const fn shifted_out(self, amount: u32) -> DebruijnIndex {
+        DebruijnIndex(self.0 - amount)
     }
 
     /// Update in place by shifting out from `amount` binders.
@@ -1312,7 +1312,7 @@ impl DebruijnIndex {
     /// bound by one of the binders we are shifting out of, that is an
     /// error (and should fail an assertion failure).
     pub fn shifted_out_to_binder(self, to_binder: DebruijnIndex) -> Self {
-        self.shifted_out((to_binder.index() - INNERMOST.index()) as u32)
+        self.shifted_out((to_binder.0 - INNERMOST.0) as u32)
     }
 }
 
