@@ -269,5 +269,27 @@ error: slicing may panic.
    |
    = help: Consider using `.get(..n)`or `.get_mut(..n)` instead
 
-error: aborting due to 38 previous errors
+error: const index is out of bounds
+  --> $DIR/indexing_slicing.rs:78:5
+   |
+78 |     x[N];
+   |     ^^^^
+
+error: indexing may panic.
+  --> $DIR/indexing_slicing.rs:80:5
+   |
+80 |     v[N];
+   |     ^^^^
+   |
+   = help: Consider using `.get(n)` or `.get_mut(n)` instead
+
+error: indexing may panic.
+  --> $DIR/indexing_slicing.rs:81:5
+   |
+81 |     v[M];
+   |     ^^^^
+   |
+   = help: Consider using `.get(n)` or `.get_mut(n)` instead
+
+error: aborting due to 41 previous errors
 

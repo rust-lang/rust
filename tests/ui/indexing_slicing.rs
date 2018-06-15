@@ -68,4 +68,15 @@ fn main() {
     &v[..100];
 
     &v[..]; // Ok, should not produce stderr.
+
+    //
+    // Continue tests at end function to minimize the changes to this file's corresponding stderr.
+    //
+
+    const N: usize = 15; // Out of bounds
+    const M: usize = 3; // In bounds
+    x[N];
+    x[M]; // Ok, should not produce stderr.
+    v[N];
+    v[M];
 }
