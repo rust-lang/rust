@@ -17,20 +17,27 @@
 //! # Safety
 //!
 //! Many functions in this module take raw pointers as arguments and dereference
-//! them. For this to be safe, these pointers must be valid. A valid pointer
-//! is one that satisfies **all** of the following conditions:
+//! them. For this to be safe, these pointers must be valid. However, because
+//! rust does not yet have a formal memory model, determining whether an
+//! arbitrary pointer is a valid one can be tricky. One thing is certain:
+//! creating a raw pointer from a reference (e.g. `&x as *const _`) *always*
+//! results in a valid pointer. By exploiting this—and by taking care when
+//! using [pointer arithmetic]—users can be confident in the correctness of
+//! their unsafe code.
 //!
-//! * The pointer is not null.
-//! * The pointer is not dangling (it does not point to memory which has been
-//!   freed).
-//! * The pointer satisfies [LLVM's pointer aliasing rules].
+//! For more information on dereferencing raw pointers, see the both the [book]
+//! and the section in the reference devoted to [undefined behavior][ub].
+//!
+//! ## Alignment
 //!
 //! Valid pointers are not necessarily properly aligned. However, most functions
 //! require their arguments to be properly aligned, and will explicitly state
 //! this requirement in the `Safety` section. Notable exceptions to this are
 //! [`read_unaligned`] and [`write_unaligned`].
 //!
-//! [LLVM's pointer aliasing rules]: https://llvm.org/docs/LangRef.html#pointer-aliasing-rules
+//! [ub]: ../../reference/behavior-considered-undefined.html
+//! [book]: ../../book/second-edition/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
+//! [pointer arithmetic]: ../../std/primitive.pointer.html#method.offset
 //! [`read_unaligned`]: ./fn.read_unaligned.html
 //! [`write_unaligned`]: ./fn.write_unaligned.html
 
