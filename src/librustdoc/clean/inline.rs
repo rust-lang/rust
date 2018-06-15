@@ -116,6 +116,23 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name, visited: &mut FxHa
     Some(ret)
 }
 
+pub fn try_inline_glob(cx: &DocContext, def: Def, visited: &mut FxHashSet<DefId>)
+    -> Option<Vec<clean::Item>>
+{
+    if def == Def::Err { return None }
+    let did = def.def_id();
+    if did.is_local() { return None }
+
+    match def {
+        Def::Mod(did) => {
+            let m = build_module(cx, did, visited);
+            Some(m.items)
+        }
+        // glob imports on things like enums aren't inlined even for local exports, so just bail
+        _ => None,
+    }
+}
+
 pub fn load_attrs(cx: &DocContext, did: DefId) -> clean::Attributes {
     cx.tcx.get_attrs(did).clean(cx)
 }
