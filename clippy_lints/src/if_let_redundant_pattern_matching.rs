@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::hir::*;
 use crate::utils::{match_qpath, paths, snippet, span_lint_and_then};
 
-/// **What it does:*** Lint for redundant pattern matching over `Result` or
+/// **What it does:** Lint for redundant pattern matching over `Result` or
 /// `Option`
 ///
 /// **Why is this bad?** It's more concise and clear to just use the proper
