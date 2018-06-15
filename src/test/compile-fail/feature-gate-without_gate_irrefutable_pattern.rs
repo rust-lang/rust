@@ -10,8 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(irrefutable_let_patterns)]
 fn main() {
-    #[allow(irrefutable_let_patterns)]
     if let _ = 5 {}
     //~^ ERROR 15:12: 15:13: irrefutable if-let pattern [E0162]
 }
