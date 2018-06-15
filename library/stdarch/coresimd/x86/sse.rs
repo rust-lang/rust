@@ -976,6 +976,14 @@ pub unsafe fn _mm_setzero_ps() -> __m128 {
     __m128(0.0, 0.0, 0.0, 0.0)
 }
 
+/// A utility function for creating masks to use with Intel shuffle and permute intrinsics.
+#[inline]
+#[allow(non_snake_case)]
+#[stable(feature = "simd_x86", since = "1.28.0")]
+pub const fn _MM_SHUFFLE(z: u32, y: u32, x: u32, w: u32) -> u32 {
+        (z << 6) | (y << 4) | (x << 2) | w
+}
+
 /// Shuffle packed single-precision (32-bit) floating-point elements in `a` and
 /// `b` using `mask`.
 ///
@@ -3583,6 +3591,13 @@ mod tests {
     unsafe fn test_mm_setzero_ps() {
         let r = *black_box(&_mm_setzero_ps());
         assert_eq_m128(r, _mm_set1_ps(0.0));
+    }
+
+    #[simd_test(enable = "sse")]
+    unsafe fn test_mm_shuffle() {
+        assert_eq!(_MM_SHUFFLE(0, 1, 1, 3), 0b00_01_01_11);
+        assert_eq!(_MM_SHUFFLE(3, 1, 1, 0), 0b11_01_01_00);
+        assert_eq!(_MM_SHUFFLE(1, 2, 2, 1), 0b01_10_10_01);
     }
 
     #[simd_test(enable = "sse")]
