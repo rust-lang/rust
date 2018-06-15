@@ -742,6 +742,7 @@ pub fn walk_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v GenericB
 
 pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v GenericParam) {
     visitor.visit_id(param.id);
+    walk_list!(visitor, visit_attribute, &param.attrs);
     match param.name {
         ParamName::Plain(name) => visitor.visit_name(param.span, name),
         ParamName::Fresh(_) => {}
@@ -750,7 +751,6 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Generi
         GenericParamKind::Lifetime { .. } => {}
         GenericParamKind::Type { ref default, .. } => walk_list!(visitor, visit_ty, default),
     }
-    walk_list!(visitor, visit_attribute, &param.attrs);
     walk_list!(visitor, visit_param_bound, &param.bounds);
 }
 
