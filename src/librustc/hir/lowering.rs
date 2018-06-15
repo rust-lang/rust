@@ -574,19 +574,13 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn expect_full_def_from_use(&mut self, id: NodeId) -> Vec<Def> {
-        let mut ret = self.resolver.get_import(id).present_items().map(|pr| {
+    fn expect_full_def_from_use(&mut self, id: NodeId) -> impl Iterator<Item=Def> {
+        self.resolver.get_import(id).present_items().map(|pr| {
             if pr.unresolved_segments() != 0 {
                 bug!("path not fully resolved: {:?}", pr);
             }
             pr.base_def()
-        }).collect::<Vec<_>>();
-
-        if ret.is_empty() {
-            ret.push(Def::Err);
-        }
-
-        ret
+        })
     }
 
     fn diagnostic(&self) -> &errors::Handler {
@@ -2407,7 +2401,7 @@ impl<'a> LoweringContext<'a> {
                 }
 
                 let parent_def_index = self.current_hir_id_owner.last().unwrap().0;
-                let mut defs = self.expect_full_def_from_use(id).into_iter();
+                let mut defs = self.expect_full_def_from_use(id);
                 // we want to return *something* from this function, so hang onto the first item
                 // for later
                 let mut ret_def = defs.next().unwrap_or(Def::Err);
@@ -2746,7 +2740,6 @@ impl<'a> LoweringContext<'a> {
             UseTreeKind::Glob => {}
             UseTreeKind::Simple(_, id1, id2) => {
                 for (_, &id) in self.expect_full_def_from_use(base_id)
-                                    .into_iter()
                                     .skip(1)
                                     .zip([id1, id2].iter())
                 {
