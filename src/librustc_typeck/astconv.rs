@@ -271,22 +271,24 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         };
 
         let own_self = self_ty.is_some() as usize;
+        // FIXME(varkor): Separating out the parameters is messy.
+        let lifetimes: Vec<_> = generic_args.args.iter().filter_map(|arg| match arg {
+            GenericArg::Lifetime(lt) => Some(lt),
+            _ => None,
+        }).collect();
+        let types: Vec<_> = generic_args.args.iter().filter_map(|arg| match arg {
+            GenericArg::Type(ty) => Some(ty),
+            _ => None,
+        }).collect();
         let substs = Substs::for_item(tcx, def_id, |param, substs| {
             match param.kind {
                 GenericParamDefKind::Lifetime => {
-                    let mut i = param.index as usize - own_self;
-                    for arg in &generic_args.args {
-                        match arg {
-                            GenericArg::Lifetime(lt) => {
-                                if i == 0 {
-                                    return self.ast_region_to_region(lt, Some(param)).into();
-                                }
-                                i -= 1;
-                            }
-                            _ => {}
-                        }
+                    let i = param.index as usize - own_self;
+                    if let Some(lt) = lifetimes.get(i) {
+                        self.ast_region_to_region(lt, Some(param)).into()
+                    } else {
+                        tcx.types.re_static.into()
                     }
-                    tcx.types.re_static.into()
                 }
                 GenericParamDefKind::Type { has_default, .. } => {
                     let i = param.index as usize;
@@ -296,21 +298,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         return ty.into();
                     }
 
-                    let mut i = i - (lt_accepted + own_self);
+                    let i = i - (lt_accepted + own_self);
                     if i < ty_provided {
                         // A provided type parameter.
-                        for arg in &generic_args.args {
-                            match arg {
-                                GenericArg::Type(ty) => {
-                                    if i == 0 {
-                                        return self.ast_ty_to_ty(ty).into();
-                                    }
-                                    i -= 1;
-                                }
-                                _ => {}
-                            }
-                        }
-                        bug!()
+                        self.ast_ty_to_ty(&types[i]).into()
                     } else if infer_types {
                         // No type parameters were provided, we can infer all.
                         if !default_needs_object_self(param) {

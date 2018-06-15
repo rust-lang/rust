@@ -4813,11 +4813,42 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             (None, None) => (0, false)
         };
+        // FIXME(varkor): Separating out the parameters is messy.
+        let mut lifetimes_type_seg = vec![];
+        let mut types_type_seg = vec![];
+        let mut infer_types_type_seg = true;
+        if let Some((seg, _)) = type_segment {
+            if let Some(ref data) = seg.args {
+                for arg in &data.args {
+                    match arg {
+                        GenericArg::Lifetime(lt) => lifetimes_type_seg.push(lt),
+                        GenericArg::Type(ty) => types_type_seg.push(ty),
+                    }
+                }
+            }
+            infer_types_type_seg = seg.infer_types;
+        }
+
+        let mut lifetimes_fn_seg = vec![];
+        let mut types_fn_seg = vec![];
+        let mut infer_types_fn_seg = true;
+        if let Some((seg, _)) = fn_segment {
+            if let Some(ref data) = seg.args {
+                for arg in &data.args {
+                    match arg {
+                        GenericArg::Lifetime(lt) => lifetimes_fn_seg.push(lt),
+                        GenericArg::Type(ty) => types_fn_seg.push(ty),
+                    }
+                }
+            }
+            infer_types_fn_seg = seg.infer_types;
+        }
+
         let substs = Substs::for_item(self.tcx, def.def_id(), |param, substs| {
             let mut i = param.index as usize;
 
-            let segment = if i < fn_start {
-                if let GenericParamDefKind::Type {..} = param.kind {
+            let (segment, lifetimes, types, infer_types) = if i < fn_start {
+                if let GenericParamDefKind::Type { .. } = param.kind {
                     // Handle Self first, so we can adjust the index to match the AST.
                     if has_self && i == 0 {
                         return opt_self_ty.map(|ty| ty.into()).unwrap_or_else(|| {
@@ -4826,39 +4857,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
                 i -= has_self as usize;
-                type_segment
+                (type_segment, &lifetimes_type_seg, &types_type_seg, infer_types_type_seg)
             } else {
                 i -= fn_start;
-                fn_segment
+                (fn_segment, &lifetimes_fn_seg, &types_fn_seg, infer_types_fn_seg)
             };
 
             match param.kind {
                 GenericParamDefKind::Lifetime => {
-                    let lifetimes = segment.map_or(vec![], |(s, _)| {
-                        s.args.as_ref().map_or(vec![], |data| {
-                            data.args.iter().filter_map(|arg| match arg {
-                                GenericArg::Lifetime(lt) => Some(lt),
-                                _ => None,
-                            }).collect()
-                        })
-                    });
-
                     if let Some(lifetime) = lifetimes.get(i) {
                         AstConv::ast_region_to_region(self, lifetime, Some(param)).into()
                     } else {
                         self.re_infer(span, Some(param)).unwrap().into()
                     }
                 }
-                GenericParamDefKind::Type {..} => {
-                    let (types, infer_types) = segment.map_or((vec![], true), |(s, _)| {
-                        (s.args.as_ref().map_or(vec![], |data| {
-                            data.args.iter().filter_map(|arg| match arg {
-                                GenericArg::Type(ty) => Some(ty),
-                                _ => None,
-                            }).collect()
-                        }), s.infer_types)
-                    });
-
+                GenericParamDefKind::Type { .. } => {
                     // Skip over the lifetimes in the same segment.
                     if let Some((_, generics)) = segment {
                         i -= generics.own_counts().lifetimes;
