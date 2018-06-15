@@ -635,6 +635,45 @@ pub struct LocalDecl<'tcx> {
 }
 
 impl<'tcx> LocalDecl<'tcx> {
+    /// Returns true only if local is a binding that can itself be
+    /// made mutable via the addition of the `mut` keyword, namely
+    /// something like the occurrences of `x` in:
+    /// - `fn foo(x: Type) { ... }`,
+    /// - `let x = ...`,
+    /// - or `match ... { C(x) => ... }`
+    pub fn can_be_made_mutable(&self) -> bool
+    {
+        match self.is_user_variable {
+            Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+                binding_mode: ty::BindingMode::BindByValue(_),
+                opt_ty_info: _,
+            }))) => true,
+
+            // FIXME: might be able to thread the distinction between
+            // `self`/`mut self`/`&self`/`&mut self` into the
+            // `BindingForm::ImplicitSelf` variant, (and then return
+            // true here for solely the first case).
+            _ => false,
+        }
+    }
+
+    /// Returns true if local is definitely not a `ref ident` or
+    /// `ref mut ident` binding. (Such bindings cannot be made into
+    /// mutable bindings, but the inverse does not necessarily hold).
+    pub fn is_nonref_binding(&self) -> bool
+    {
+        match self.is_user_variable {
+            Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+                binding_mode: ty::BindingMode::BindByValue(_),
+                opt_ty_info: _,
+            }))) => true,
+
+            Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf)) => true,
+
+            _ => false,
+        }
+    }
+
     /// Create a new `LocalDecl` for a temporary.
     #[inline]
     pub fn new_temp(ty: Ty<'tcx>, span: Span) -> Self {

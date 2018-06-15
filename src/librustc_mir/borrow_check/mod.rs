@@ -1398,9 +1398,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     ) {
         debug!("check_if_reassignment_to_immutable_state({:?})", place);
         // determine if this path has a non-mut owner (and thus needs checking).
-        if let Ok(..) = self.is_mutable(place, LocalMutationIsAllowed::No) {
-            return;
-        }
+        let err_place = match self.is_mutable(place, LocalMutationIsAllowed::No) {
+            Ok(..) => return,
+            Err(place) => place,
+        };
         debug!(
             "check_if_reassignment_to_immutable_state({:?}) - is an imm local",
             place
@@ -1410,7 +1411,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let init = self.move_data.inits[i];
             let init_place = &self.move_data.move_paths[init.path].place;
             if places_conflict(self.tcx, self.mir, &init_place, place, Deep) {
-                self.report_illegal_reassignment(context, (place, span), init.span);
+                self.report_illegal_reassignment(context, (place, span), init.span, err_place);
                 break;
             }
         }
@@ -1784,7 +1785,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         match the_place_err {
             // We want to suggest users use `let mut` for local (user
             // variable) mutations...
-            Place::Local(local) if local_can_be_made_mutable(self.mir, *local) => {
+            Place::Local(local) if self.mir.local_decls[*local].can_be_made_mutable() => {
                 // ... but it doesn't make sense to suggest it on
                 // variables that are `ref x`, `ref mut x`, `&self`,
                 // or `&mut self` (such variables are simply not
@@ -1819,7 +1820,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             // arbitrary base for the projection?
             Place::Projection(box Projection { base: Place::Local(local),
                                                elem: ProjectionElem::Deref })
-                if local_is_nonref_binding(self.mir, *local) =>
+                if self.mir.local_decls[*local].is_nonref_binding() =>
             {
                 let (err_help_span, suggested_code) =
                     find_place_to_suggest_ampmut(self.tcx, self.mir, *local);
@@ -1845,43 +1846,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         err.emit();
         return true;
-
-        // Returns true if local is a binding that can itself be made
-        // mutable via the addition of the `mut` keyword, namely
-        // something like:
-        // - `fn foo(x: Type) { ... }`,
-        // - `let x = ...`,
-        // - or `match ... { C(x) => ... }`
-        fn local_can_be_made_mutable(mir: &Mir, local: mir::Local) -> bool
-        {
-            let local = &mir.local_decls[local];
-            match local.is_user_variable {
-                Some(ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
-                    binding_mode: ty::BindingMode::BindByValue(_),
-                    opt_ty_info: _,
-                }))) => true,
-
-                _ => false,
-            }
-        }
-
-        // Returns true if local is definitely not a `ref ident` or
-        // `ref mut ident` binding. (Such bindings cannot be made into
-        // mutable bindings.)
-        fn local_is_nonref_binding(mir: &Mir, local: mir::Local) -> bool
-        {
-            let local = &mir.local_decls[local];
-            match local.is_user_variable {
-                Some(ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
-                    binding_mode: ty::BindingMode::BindByValue(_),
-                    opt_ty_info: _,
-                }))) => true,
-
-                Some(ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf)) => true,
-
-            _ => false,
-            }
-        }
 
         // Returns the span to highlight and the associated text to
         // present when suggesting that the user use an `&mut`.
