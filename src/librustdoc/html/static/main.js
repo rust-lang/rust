@@ -465,6 +465,10 @@
                             var res = buildHrefAndPath(obj);
                             obj.displayPath = pathSplitter(res[0]);
                             obj.fullPath = obj.displayPath + obj.name;
+                            if (obj.ty === TY_KEYWORD) {
+                                // To be sure than it isn't considered as duplicate with items.
+                                obj.fullPath += '|k';
+                            }
                             obj.href = res[1];
                             out.push(obj);
                             if (out.length >= MAX_RESULTS) {
@@ -781,7 +785,7 @@
                     case "fn":
                         return (name == "method" || name == "tymethod");
                     case "type":
-                        return (name == "primitive");
+                        return (name == "primitive" || name == "keyword");
                 }
 
                 // No match
