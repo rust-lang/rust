@@ -151,7 +151,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
 
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if is_relevant_item(cx.tcx, item) {
-            check_attrs(cx, item.span, &item.name, &item.attrs)
+            check_attrs(cx, item.span, item.name, &item.attrs)
         }
         match item.node {
             ItemExternCrate(_) | ItemUse(_, _) => {
@@ -195,13 +195,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if is_relevant_impl(cx.tcx, item) {
-            check_attrs(cx, item.span, &item.name, &item.attrs)
+            check_attrs(cx, item.span, item.name, &item.attrs)
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         if is_relevant_trait(cx.tcx, item) {
-            check_attrs(cx, item.span, &item.name, &item.attrs)
+            check_attrs(cx, item.span, item.name, &item.attrs)
         }
     }
 }
@@ -260,7 +260,7 @@ fn is_relevant_expr(tcx: TyCtxt, tables: &ty::TypeckTables, expr: &Expr) -> bool
     }
 }
 
-fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
+fn check_attrs(cx: &LateContext, span: Span, name: Name, attrs: &[Attribute]) {
     if in_macro(span) {
         return;
     }

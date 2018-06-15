@@ -196,6 +196,7 @@ pub mod suspicious_trait_impl;
 pub mod swap;
 pub mod temporary_assignment;
 pub mod transmute;
+pub mod trivially_copy_pass_by_ref;
 pub mod types;
 pub mod unicode;
 pub mod unsafe_removed_from_name;
@@ -399,6 +400,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box large_enum_variant::LargeEnumVariant::new(conf.enum_variant_size_threshold));
     reg.register_late_lint_pass(box explicit_write::Pass);
     reg.register_late_lint_pass(box needless_pass_by_value::NeedlessPassByValue);
+    reg.register_late_lint_pass(box trivially_copy_pass_by_ref::TriviallyCopyPassByRef::new(
+            conf.trivial_copy_size_limit,
+            &reg.sess.target,
+    ));
     reg.register_early_lint_pass(box literal_representation::LiteralDigitGrouping);
     reg.register_early_lint_pass(box literal_representation::LiteralRepresentation::new(
             conf.literal_representation_threshold
@@ -672,6 +677,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         transmute::TRANSMUTE_PTR_TO_REF,
         transmute::USELESS_TRANSMUTE,
         transmute::WRONG_TRANSMUTE,
+        trivially_copy_pass_by_ref::TRIVIALLY_COPY_PASS_BY_REF,
         types::ABSURD_EXTREME_COMPARISONS,
         types::BORROWED_BOX,
         types::BOX_VEC,
@@ -916,6 +922,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::SINGLE_CHAR_PATTERN,
         misc::CMP_OWNED,
         mutex_atomic::MUTEX_ATOMIC,
+        trivially_copy_pass_by_ref::TRIVIALLY_COPY_PASS_BY_REF,
         types::BOX_VEC,
         vec::USELESS_VEC,
     ]);

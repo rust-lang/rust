@@ -1,4 +1,4 @@
-
+#![allow(trivially_copy_pass_by_ref)]
 
 
 fn fn_val(i: i32) -> i32 { unimplemented!() }

@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-
+#[allow(trivially_copy_pass_by_ref)]
 fn x(y: &i32) -> i32 {
     *y
 }

@@ -349,7 +349,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 let c: fn(_) -> _ = ExprAgain;
                 c.hash(&mut self.s);
                 if let Some(i) = i.label {
-                    self.hash_name(&i.name);
+                    self.hash_name(i.name);
                 }
             },
             ExprYield(ref e) => {
@@ -386,7 +386,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 let c: fn(_, _) -> _ = ExprBreak;
                 c.hash(&mut self.s);
                 if let Some(i) = i.label {
-                    self.hash_name(&i.name);
+                    self.hash_name(i.name);
                 }
                 if let Some(ref j) = *j {
                     self.hash_expr(&*j);
@@ -419,7 +419,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 let c: fn(_, _) -> _ = ExprField;
                 c.hash(&mut self.s);
                 self.hash_expr(e);
-                self.hash_name(&f.name);
+                self.hash_name(f.name);
             },
             ExprIndex(ref a, ref i) => {
                 let c: fn(_, _) -> _ = ExprIndex;
@@ -450,7 +450,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 c.hash(&mut self.s);
                 self.hash_block(b);
                 if let Some(i) = *i {
-                    self.hash_name(&i.name);
+                    self.hash_name(i.name);
                 }
             },
             ExprMatch(ref e, ref arms, ref s) => {
@@ -471,7 +471,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
             ExprMethodCall(ref path, ref _tys, ref args) => {
                 let c: fn(_, _, _) -> _ = ExprMethodCall;
                 c.hash(&mut self.s);
-                self.hash_name(&path.name);
+                self.hash_name(path.name);
                 self.hash_exprs(args);
             },
             ExprRepeat(ref e, ref l_id) => {
@@ -502,7 +502,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_qpath(path);
 
                 for f in fields {
-                    self.hash_name(&f.ident.name);
+                    self.hash_name(f.ident.name);
                     self.hash_expr(&f.expr);
                 }
 
@@ -541,7 +541,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(cond);
                 self.hash_block(b);
                 if let Some(l) = l {
-                    self.hash_name(&l.name);
+                    self.hash_name(l.name);
                 }
             },
         }
@@ -553,7 +553,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
         }
     }
 
-    pub fn hash_name(&mut self, n: &Name) {
+    pub fn hash_name(&mut self, n: Name) {
         n.as_str().hash(&mut self.s);
     }
 
@@ -563,7 +563,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_path(path);
             },
             QPath::TypeRelative(_, ref path) => {
-                self.hash_name(&path.name);
+                self.hash_name(path.name);
             },
         }
         // self.cx.tables.qpath_def(p, id).hash(&mut self.s);
@@ -572,7 +572,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
     pub fn hash_path(&mut self, p: &Path) {
         p.is_global().hash(&mut self.s);
         for p in &p.segments {
-            self.hash_name(&p.name);
+            self.hash_name(p.name);
         }
     }
 

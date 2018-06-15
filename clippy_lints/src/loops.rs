@@ -412,7 +412,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         // check for never_loop
         match expr.node {
             ExprWhile(_, ref block, _) | ExprLoop(ref block, _, _) => {
-                match never_loop_block(block, &expr.id) {
+                match never_loop_block(block, expr.id) {
                     NeverLoopResult::AlwaysBreak =>
                         span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops"),
                     NeverLoopResult::MayContinueMainLoop | NeverLoopResult::Otherwise => (),
@@ -575,7 +575,7 @@ fn combine_branches(b1: NeverLoopResult, b2: NeverLoopResult) -> NeverLoopResult
     }
 }
 
-fn never_loop_block(block: &Block, main_loop_id: &NodeId) -> NeverLoopResult {
+fn never_loop_block(block: &Block, main_loop_id: NodeId) -> NeverLoopResult {
     let stmts = block.stmts.iter().map(stmt_to_expr);
     let expr = once(block.expr.as_ref().map(|p| &**p));
     let mut iter = stmts.chain(expr).filter_map(|e| e);
@@ -596,7 +596,7 @@ fn decl_to_expr(decl: &Decl) -> Option<&Expr> {
     }
 }
 
-fn never_loop_expr(expr: &Expr, main_loop_id: &NodeId) -> NeverLoopResult {
+fn never_loop_expr(expr: &Expr, main_loop_id: NodeId) -> NeverLoopResult {
     match expr.node {
         ExprBox(ref e) |
         ExprUnary(_, ref e) |
@@ -643,7 +643,7 @@ fn never_loop_expr(expr: &Expr, main_loop_id: &NodeId) -> NeverLoopResult {
         ExprAgain(d) => {
             let id = d.target_id
                 .expect("target id can only be missing in the presence of compilation errors");
-            if id == *main_loop_id {
+            if id == main_loop_id {
                 NeverLoopResult::MayContinueMainLoop
             } else {
                 NeverLoopResult::AlwaysBreak
@@ -668,17 +668,17 @@ fn never_loop_expr(expr: &Expr, main_loop_id: &NodeId) -> NeverLoopResult {
     }
 }
 
-fn never_loop_expr_seq<'a, T: Iterator<Item=&'a Expr>>(es: &mut T, main_loop_id: &NodeId) -> NeverLoopResult {
+fn never_loop_expr_seq<'a, T: Iterator<Item=&'a Expr>>(es: &mut T, main_loop_id: NodeId) -> NeverLoopResult {
     es.map(|e| never_loop_expr(e, main_loop_id))
         .fold(NeverLoopResult::Otherwise, combine_seq)
 }
 
-fn never_loop_expr_all<'a, T: Iterator<Item=&'a Expr>>(es: &mut T, main_loop_id: &NodeId) -> NeverLoopResult {
+fn never_loop_expr_all<'a, T: Iterator<Item=&'a Expr>>(es: &mut T, main_loop_id: NodeId) -> NeverLoopResult {
     es.map(|e| never_loop_expr(e, main_loop_id))
         .fold(NeverLoopResult::Otherwise, combine_both)
 }
 
-fn never_loop_expr_branch<'a, T: Iterator<Item=&'a Expr>>(e: &mut T, main_loop_id: &NodeId) -> NeverLoopResult {
+fn never_loop_expr_branch<'a, T: Iterator<Item=&'a Expr>>(e: &mut T, main_loop_id: NodeId) -> NeverLoopResult {
     e.map(|e| never_loop_expr(e, main_loop_id))
         .fold(NeverLoopResult::AlwaysBreak, combine_branches)
 }
@@ -1032,7 +1032,7 @@ fn check_for_loop_range<'a, 'tcx>(
                 };
 
                 let take = if let Some(end) = *end {
-                    if is_len_call(end, &indexed) {
+                    if is_len_call(end, indexed) {
                         "".to_owned()
                     } else {
                         match limits {
@@ -1096,14 +1096,14 @@ fn check_for_loop_range<'a, 'tcx>(
     }
 }
 
-fn is_len_call(expr: &Expr, var: &Name) -> bool {
+fn is_len_call(expr: &Expr, var: Name) -> bool {
     if_chain! {
         if let ExprMethodCall(ref method, _, ref len_args) = expr.node;
         if len_args.len() == 1;
         if method.name == "len";
         if let ExprPath(QPath::Resolved(_, ref path)) = len_args[0].node;
         if path.segments.len() == 1;
-        if path.segments[0].name == *var;
+        if path.segments[0].name == var;
         then {
             return true;
         }

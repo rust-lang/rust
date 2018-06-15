@@ -46,9 +46,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         if_chain! {
             let ty = cx.tables.expr_ty(expr);
-            if let TypeVariants::TyFloat(ref fty) = ty.sty;
+            if let TypeVariants::TyFloat(fty) = ty.sty;
             if let hir::ExprLit(ref lit) = expr.node;
-            if let LitKind::Float(ref sym, _) | LitKind::FloatUnsuffixed(ref sym) = lit.node;
+            if let LitKind::Float(sym, _) | LitKind::FloatUnsuffixed(sym) = lit.node;
             if let Some(sugg) = self.check(sym, fty);
             then {
                 span_lint_and_sugg(
@@ -66,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
 
 impl ExcessivePrecision {
     // None if nothing to lint, Some(suggestion) if lint neccessary
-    fn check(&self, sym: &Symbol, fty: &FloatTy) -> Option<String> {
+    fn check(&self, sym: Symbol, fty: FloatTy) -> Option<String> {
         let max = max_digits(fty);
         let sym_str = sym.as_str();
         if dot_zero_exclusion(&sym_str) {
@@ -79,7 +79,7 @@ impl ExcessivePrecision {
         let digits = count_digits(&sym_str);
         if digits > max as usize {
             let formatter = FloatFormat::new(&sym_str);
-            let sr = match *fty {
+            let sr = match fty {
                 FloatTy::F32 => sym_str.parse::<f32>().map(|f| formatter.format(f)),
                 FloatTy::F64 => sym_str.parse::<f64>().map(|f| formatter.format(f)),
             };
@@ -115,7 +115,7 @@ fn dot_zero_exclusion(s: &str) -> bool {
     }
 }
 
-fn max_digits(fty: &FloatTy) -> u32 {
+fn max_digits(fty: FloatTy) -> u32 {
     match fty {
         FloatTy::F32 => f32::DIGITS,
         FloatTy::F64 => f64::DIGITS,

@@ -1,5 +1,5 @@
 #![deny(useless_asref)]
-
+#![allow(trivially_copy_pass_by_ref)]
 use std::fmt::Debug;
 
 struct FakeAsRef;

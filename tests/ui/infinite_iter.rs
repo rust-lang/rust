@@ -1,7 +1,7 @@
 #![feature(iterator_for_each)]
 
 use std::iter::repeat;
-
+#[allow(trivially_copy_pass_by_ref)]
 fn square_is_lower_64(x: &u32) -> bool { x * x < 64 }
 
 #[allow(maybe_infinite_iter)]
