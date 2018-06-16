@@ -1921,6 +1921,9 @@ impl Step for Bootstrap {
             cmd.arg("--no-fail-fast");
         }
         cmd.arg("--").args(&builder.config.cmd.test_args());
+        // rustbuild tests are racy on directory creation so just run them one at a time.
+        // Since there's not many this shouldn't be a problem.
+        cmd.arg("--test-threads=1");
         try_run(builder, &mut cmd);
     }
 

@@ -370,7 +370,6 @@ impl<'a> Builder<'a> {
             ),
             Kind::Test => describe!(
                 test::Tidy,
-                test::Bootstrap,
                 test::Ui,
                 test::RunPass,
                 test::CompileFail,
@@ -416,6 +415,8 @@ impl<'a> Builder<'a> {
                 test::Clippy,
                 test::RustdocJS,
                 test::RustdocTheme,
+                // Run bootstrap close to the end as it's unlikely to fail
+                test::Bootstrap,
                 // Run run-make last, since these won't pass without make on Windows
                 test::RunMake,
                 test::RustdocUi
