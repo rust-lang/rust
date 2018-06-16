@@ -92,13 +92,6 @@ Compatibility Notes
   will only print the inner type.][48553] e.g.
   `print!("{:?}", AtomicBool::new(true))` will print `true`
   not `AtomicBool(true)`.
-- [`?` can no longer be a separator in macros.][49719] e.g. the following will
-  no longer compile.
-  ```rust
-  macro_rules! barplus {
-      ($(a)?+) => {}
-  }
-  ```
 - [The maximum number for `repr(align(N))` is now 2²⁹.][50378] Previously you
   could enter higher numbers but they were not supported by LLVM. Up to 512MB
   alignment should cover all use cases.
