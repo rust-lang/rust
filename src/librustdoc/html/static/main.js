@@ -160,6 +160,7 @@
     // used for special search precedence
     var TY_PRIMITIVE = itemTypes.indexOf("primitive");
     var TY_KEYWORD = itemTypes.indexOf("keyword");
+    var TY_MACRO = itemTypes.indexOf("macro");
 
     onEach(document.getElementsByClassName('js-only'), function(e) {
         removeClass(e, 'js-only');
@@ -465,9 +466,11 @@
                             var res = buildHrefAndPath(obj);
                             obj.displayPath = pathSplitter(res[0]);
                             obj.fullPath = obj.displayPath + obj.name;
+                            // To be sure than it some items aren't considered as duplicate.
                             if (obj.ty === TY_KEYWORD) {
-                                // To be sure than it isn't considered as duplicate with items.
                                 obj.fullPath += '|k';
+                            } else if (obj.ty === TY_MACRO) {
+                                obj.fullPath += '|m';
                             }
                             obj.href = res[1];
                             out.push(obj);
