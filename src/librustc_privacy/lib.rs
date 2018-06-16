@@ -1037,7 +1037,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         self.access_levels.is_public(trait_id)
     }
 
-    fn check_ty_param_bound(&mut self, bound: &hir::GenericBound) {
+    fn check_generic_bound(&mut self, bound: &hir::GenericBound) {
         if let hir::GenericBound::Trait(ref trait_ref, _) = *bound {
             if self.path_is_private_type(&trait_ref.trait_ref.path) {
                 self.old_error_set.insert(trait_ref.trait_ref.ref_id);
@@ -1100,7 +1100,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                 }
 
                 for bound in bounds.iter() {
-                    self.check_ty_param_bound(bound)
+                    self.check_generic_bound(bound)
                 }
             }
 
@@ -1271,7 +1271,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
             GenericParamKind::Lifetime { .. } => {}
             GenericParamKind::Type { .. } => {
                 for bound in &param.bounds {
-                    self.check_ty_param_bound(bound);
+                    self.check_generic_bound(bound);
                 }
             }
         });
@@ -1279,7 +1279,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
             match predicate {
                 &hir::WherePredicate::BoundPredicate(ref bound_pred) => {
                     for bound in bound_pred.bounds.iter() {
-                        self.check_ty_param_bound(bound)
+                        self.check_generic_bound(bound)
                     }
                 }
                 &hir::WherePredicate::RegionPredicate(_) => {}
