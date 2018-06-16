@@ -240,17 +240,15 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * Both `x` and `y` must be [valid].
-///
 /// * Both `x` and `y` must be properly aligned.
 ///
-/// * `x.offset(count-1)` must be [valid]. In other words, the region of memory
-///   which begins at `x` and has a length of `count * size_of::<T>()` bytes
-///   must belong to a single, live allocation.
+/// * `x.offset(i)` must be [valid] for all `i` in `0..count`. In other words,
+///   the region of memory which begins at `x` and has a length of `count *
+///   size_of::<T>()` bytes must belong to a single, live allocation.
 ///
-/// * `y.offset(count-1)` must be [valid]. In other words, the region of memory
-///   which begins at `y` and has a length of `count * size_of::<T>()` bytes
-///   must belong to a single, live allocation.
+/// * `y.offset(i)` must be [valid] for all `i` in `0..count`. In other words,
+///   the region of memory which begins at `y` and has a length of `count *
+///   size_of::<T>()` bytes must belong to a single, live allocation.
 ///
 /// * The two regions of memory must *not* overlap.
 ///
