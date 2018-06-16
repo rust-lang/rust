@@ -1619,6 +1619,14 @@ fn test_range_step() {
 }
 
 #[test]
+fn test_range_inclusive_step() {
+    assert_eq!((0..=50).step_by(10).collect::<Vec<_>>(), [0, 10, 20, 30, 40, 50]);
+    assert_eq!((0..=5).step_by(1).collect::<Vec<_>>(), [0, 1, 2, 3, 4, 5]);
+    assert_eq!((200..=255u8).step_by(10).collect::<Vec<_>>(), [200, 210, 220, 230, 240, 250]);
+    assert_eq!((250..=255u8).step_by(1).collect::<Vec<_>>(), [250, 251, 252, 253, 254, 255]);
+}
+
+#[test]
 fn test_range_last_max() {
     assert_eq!((0..20).last(), Some(19));
     assert_eq!((-20..0).last(), Some(-1));

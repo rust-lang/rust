@@ -319,9 +319,10 @@
 use cmp;
 use fmt;
 use iter_private::TrustedRandomAccess;
-use ops::Try;
+use ops::{self, Try};
 use usize;
 use intrinsics;
+use mem;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::iterator::Iterator;
@@ -672,12 +673,7 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        if self.first_take {
-            self.first_take = false;
-            self.iter.next()
-        } else {
-            self.iter.nth(self.step)
-        }
+        <Self as StepBySpecIterator>::spec_next(self)
     }
 
     #[inline]
@@ -733,6 +729,76 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
                 nth_step
             };
             self.iter.nth(nth - 1);
+        }
+    }
+}
+
+// hidden trait for specializing iterator methods
+// could be generalized but is currently only used for StepBy
+trait StepBySpecIterator {
+    type Item;
+    fn spec_next(&mut self) -> Option<Self::Item>;
+}
+
+impl<I> StepBySpecIterator for StepBy<I>
+where
+    I: Iterator,
+{
+    type Item = I::Item;
+
+    #[inline]
+    default fn spec_next(&mut self) -> Option<I::Item> {
+        if self.first_take {
+            self.first_take = false;
+            self.iter.next()
+        } else {
+            self.iter.nth(self.step)
+        }
+    }
+}
+
+impl<T> StepBySpecIterator for StepBy<ops::Range<T>>
+where
+    T: Step,
+{
+    #[inline]
+    fn spec_next(&mut self) -> Option<Self::Item> {
+        self.first_take = false;
+        if !(self.iter.start < self.iter.end) {
+            return None;
+        }
+        // add 1 to self.step to get original step size back
+        // it was decremented for the general case on construction
+        if let Some(n) = self.iter.start.add_usize(self.step+1) {
+            let next = mem::replace(&mut self.iter.start, n);
+            Some(next)
+        } else {
+            let last = self.iter.start.clone();
+            self.iter.start = self.iter.end.clone();
+            Some(last)
+        }
+    }
+}
+
+impl<T> StepBySpecIterator for StepBy<ops::RangeInclusive<T>>
+where
+    T: Step,
+{
+    #[inline]
+    fn spec_next(&mut self) -> Option<Self::Item> {
+        self.first_take = false;
+        if !(self.iter.start <= self.iter.end) {
+            return None;
+        }
+        // add 1 to self.step to get original step size back
+        // it was decremented for the general case on construction
+        if let Some(n) = self.iter.start.add_usize(self.step+1) {
+            let next = mem::replace(&mut self.iter.start, n);
+            Some(next)
+        } else {
+            let last = self.iter.start.replace_one();
+            self.iter.end.replace_zero();
+            Some(last)
         }
     }
 }
