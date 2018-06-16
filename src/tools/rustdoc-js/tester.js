@@ -233,6 +233,7 @@ function main(argv) {
 
     var arraysToLoad = ["itemTypes"];
     var variablesToLoad = ["MAX_LEV_DISTANCE", "MAX_RESULTS",
+                           "GENERICS_DATA", "NAME", "INPUTS_DATA", "OUTPUT_DATA",
                            "TY_PRIMITIVE", "TY_KEYWORD",
                            "levenshtein_row2"];
     // execQuery first parameter is built in getQuery (which takes in the search input).
