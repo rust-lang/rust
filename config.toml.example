@@ -14,10 +14,6 @@
 # =============================================================================
 [llvm]
 
-# Indicates whether rustc will support compilation with LLVM
-# note: rustc does not compile without LLVM at the moment
-#enabled = true
-
 # Indicates whether the LLVM build is a Release or Debug build
 #optimize = true
 

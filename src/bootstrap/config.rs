@@ -74,7 +74,6 @@ pub struct Config {
     pub backtrace_on_ice: bool,
 
     // llvm codegen options
-    pub llvm_enabled: bool,
     pub llvm_assertions: bool,
     pub llvm_optimize: bool,
     pub llvm_release_debuginfo: bool,
@@ -239,7 +238,6 @@ struct Install {
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Llvm {
-    enabled: Option<bool>,
     ccache: Option<StringOrBool>,
     ninja: Option<bool>,
     assertions: Option<bool>,
@@ -341,7 +339,6 @@ impl Config {
 
     pub fn default_opts() -> Config {
         let mut config = Config::default();
-        config.llvm_enabled = true;
         config.llvm_optimize = true;
         config.llvm_version_check = true;
         config.use_jemalloc = true;
@@ -496,7 +493,6 @@ impl Config {
                 Some(StringOrBool::Bool(false)) | None => {}
             }
             set(&mut config.ninja, llvm.ninja);
-            set(&mut config.llvm_enabled, llvm.enabled);
             llvm_assertions = llvm.assertions;
             set(&mut config.llvm_optimize, llvm.optimize);
             set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);

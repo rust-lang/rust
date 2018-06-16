@@ -2031,8 +2031,6 @@ dependencies = [
 name = "rustc_codegen_utils"
 version = "0.0.0"
 dependencies = [
- "ar 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "flate2 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",

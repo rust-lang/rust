@@ -893,7 +893,7 @@ impl<'a> Builder<'a> {
         //
         // If LLVM support is disabled we need to use the snapshot compiler to compile
         // build scripts, as the new compiler doesn't support executables.
-        if mode == Mode::Std || !self.config.llvm_enabled {
+        if mode == Mode::Std || self.config.rust_codegen_backends.is_empty() {
             cargo
                 .env("RUSTC_SNAPSHOT", &self.initial_rustc)
                 .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());

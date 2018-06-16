@@ -672,7 +672,7 @@ impl<'a> Builder<'a> {
     }
 
     fn llvm_bin_path(&self) -> Option<PathBuf> {
-        if self.config.llvm_enabled && !self.config.dry_run {
+        if !self.config.rust_codegen_backends.is_empty() && !self.config.dry_run {
             let llvm_config = self.ensure(native::Llvm {
                 target: self.config.build,
                 emscripten: false,

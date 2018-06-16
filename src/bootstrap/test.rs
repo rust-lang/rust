@@ -1096,7 +1096,7 @@ impl Step for Compiletest {
             cmd.arg("--quiet");
         }
 
-        if builder.config.llvm_enabled {
+        if !builder.config.rust_codegen_backends.is_empty() {
             let llvm_config = builder.ensure(native::Llvm {
                 target: builder.config.build,
                 emscripten: false,
@@ -1129,7 +1129,7 @@ impl Step for Compiletest {
                 }
             }
         }
-        if suite == "run-make-fulldeps" && !builder.config.llvm_enabled {
+        if suite == "run-make-fulldeps" && builder.config.rust_codegen_backends.is_empty() {
             builder.info(&format!(
                 "Ignoring run-make test suite as they generally don't work without LLVM"
             ));

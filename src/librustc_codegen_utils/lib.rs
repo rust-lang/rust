@@ -25,8 +25,6 @@
 
 #![recursion_limit="256"]
 
-extern crate ar;
-extern crate flate2;
 #[macro_use]
 extern crate log;
 
@@ -38,8 +36,6 @@ extern crate rustc_incremental;
 extern crate syntax;
 extern crate syntax_pos;
 #[macro_use] extern crate rustc_data_structures;
-
-pub extern crate rustc as __rustc;
 
 use rustc::ty::TyCtxt;
 
