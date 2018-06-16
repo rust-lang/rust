@@ -4581,8 +4581,6 @@ on fields that were not guaranteed to be zero-sized.
 Erroneous code example:
 
 ```compile_fail,E0690
-#![feature(repr_transparent)]
-
 #[repr(transparent)]
 struct LengthWithUnit<U> { // error: transparent struct needs exactly one
     value: f32,            //        non-zero-sized field, but has 2
@@ -4602,8 +4600,6 @@ To combine `repr(transparent)` with type parameters, `PhantomData` may be
 useful:
 
 ```
-#![feature(repr_transparent)]
-
 use std::marker::PhantomData;
 
 #[repr(transparent)]
@@ -4621,7 +4617,7 @@ field that requires non-trivial alignment.
 Erroneous code example:
 
 ```compile_fail,E0691
-#![feature(repr_transparent, repr_align, attr_literals)]
+#![feature(repr_align, attr_literals)]
 
 #[repr(align(32))]
 struct ForceAlign32;
@@ -4640,8 +4636,6 @@ requirement.
 Consider removing the over-aligned zero-sized field:
 
 ```
-#![feature(repr_transparent)]
-
 #[repr(transparent)]
 struct Wrapper(f32);
 ```
@@ -4650,7 +4644,7 @@ Alternatively, `PhantomData<T>` has alignment 1 for all `T`, so you can use it
 if you need to keep the field for some reason:
 
 ```
-#![feature(repr_transparent, repr_align, attr_literals)]
+#![feature(repr_align, attr_literals)]
 
 use std::marker::PhantomData;
 

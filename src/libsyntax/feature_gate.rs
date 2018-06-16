@@ -399,9 +399,6 @@ declare_features! (
     // `extern` in paths
     (active, extern_in_paths, "1.23.0", Some(44660), None),
 
-    // Allows `#[repr(transparent)]` attribute on newtype structs
-    (active, repr_transparent, "1.25.0", Some(43036), None),
-
     // Use `?` as the Kleene "at most one" operator
     (active, macro_at_most_once_rep, "1.25.0", Some(48075), None),
 
@@ -615,6 +612,8 @@ declare_features! (
     (accepted, termination_trait_test, "1.27.0", Some(48854), None),
     // The #[global_allocator] attribute
     (accepted, global_allocator, "1.28.0", Some(27389), None),
+    // Allows `#[repr(transparent)]` attribute on newtype structs
+    (accepted, repr_transparent, "1.28.0", Some(43036), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1594,11 +1593,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         if item.check_name("simd") {
                             gate_feature_post!(&self, repr_simd, attr.span,
                                                "SIMD types are experimental and possibly buggy");
-                        }
-                        if item.check_name("transparent") {
-                            gate_feature_post!(&self, repr_transparent, attr.span,
-                                               "the `#[repr(transparent)]` attribute \
-                                               is experimental");
                         }
                         if let Some((name, _)) = item.name_value_literal() {
                             if name == "packed" {

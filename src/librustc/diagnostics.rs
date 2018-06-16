@@ -1958,8 +1958,6 @@ representation hints.
 Erroneous code example:
 
 ```compile_fail,E0692
-#![feature(repr_transparent)]
-
 #[repr(transparent, C)] // error: incompatible representation hints
 struct Grams(f32);
 ```
@@ -1969,8 +1967,6 @@ another type, so adding more representation hints is contradictory. Remove
 either the `transparent` hint or the other hints, like this:
 
 ```
-#![feature(repr_transparent)]
-
 #[repr(transparent)]
 struct Grams(f32);
 ```
@@ -1978,8 +1974,6 @@ struct Grams(f32);
 Alternatively, move the other attributes to the contained type:
 
 ```
-#![feature(repr_transparent)]
-
 #[repr(C)]
 struct Foo {
     x: i32,
@@ -1994,8 +1988,6 @@ Note that introducing another `struct` just to have a place for the other
 attributes may have unintended side effects on the representation:
 
 ```
-#![feature(repr_transparent)]
-
 #[repr(transparent)]
 struct Grams(f32);
 
