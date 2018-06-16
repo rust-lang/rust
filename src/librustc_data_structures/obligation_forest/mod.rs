@@ -41,7 +41,7 @@ pub trait ObligationProcessor {
 
     fn process_obligation(&mut self,
                           obligation: &mut Self::Obligation)
-                          -> Result<Option<Vec<Self::Obligation>>, Self::Error>;
+                          -> ProcessResult<Self::Obligation, Self::Error>;
 
     /// As we do the cycle check, we invoke this callback when we
     /// encounter an actual cycle. `cycle` is an iterator that starts
@@ -55,6 +55,14 @@ pub trait ObligationProcessor {
                                cycle: I,
                                _marker: PhantomData<&'c Self::Obligation>)
         where I: Clone + Iterator<Item=&'c Self::Obligation>;
+}
+
+/// The result type used by `process_obligation`.
+#[derive(Debug)]
+pub enum ProcessResult<O, E> {
+    Unchanged,
+    Changed(Vec<O>),
+    Error(E),
 }
 
 pub struct ObligationForest<O: ForestObligation> {
@@ -136,8 +144,8 @@ pub struct Outcome<O, E> {
 
     /// If true, then we saw no successful obligations, which means
     /// there is no point in further iteration. This is based on the
-    /// assumption that when trait matching returns `Err` or
-    /// `Ok(None)`, those results do not affect environmental
+    /// assumption that when trait matching returns `Error` or
+    /// `Unchanged`, those results do not affect environmental
     /// inference state. (Note that if we invoke `process_obligations`
     /// with no pending obligations, stalled will be true.)
     pub stalled: bool,
@@ -270,11 +278,11 @@ impl<O: ForestObligation> ObligationForest<O> {
                    result);
 
             match result {
-                Ok(None) => {
-                    // no change in state
+                ProcessResult::Unchanged => {
+                    // No change in state.
                 }
-                Ok(Some(children)) => {
-                    // if we saw a Some(_) result, we are not (yet) stalled
+                ProcessResult::Changed(children) => {
+                    // We are not (yet) stalled.
                     stalled = false;
                     self.nodes[index].state.set(NodeState::Success);
 
@@ -290,7 +298,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                         }
                     }
                 }
-                Err(err) => {
+                ProcessResult::Error(err) => {
                     stalled = false;
                     let backtrace = self.error_at(index);
                     errors.push(Error {
