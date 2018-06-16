@@ -357,17 +357,11 @@ impl_stable_hash_for!(enum ty::VariantDiscr {
     Relative(distance)
 });
 
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::FieldDef {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        let ty::FieldDef { did, ident, vis } = *self;
-
-        did.hash_stable(hcx, hasher);
-        ident.name.hash_stable(hcx, hasher);
-        vis.hash_stable(hcx, hasher);
-    }
-}
+impl_stable_hash_for!(struct ty::FieldDef {
+    did,
+    ident -> (ident.name),
+    vis,
+});
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
 for ::middle::const_val::ConstVal<'gcx> {
@@ -545,15 +539,7 @@ impl_stable_hash_for!(struct ty::GenericPredicates<'tcx> {
     predicates
 });
 
-
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
-for ::mir::interpret::EvalError<'gcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        self.kind.hash_stable(hcx, hasher)
-    }
-}
+impl_stable_hash_for!(struct ::mir::interpret::EvalError<'tcx> { kind });
 
 impl<'a, 'gcx, O: HashStable<StableHashingContext<'a>>> HashStable<StableHashingContext<'a>>
 for ::mir::interpret::EvalErrorKind<'gcx, O> {
@@ -726,28 +712,15 @@ impl_stable_hash_for!(enum ty::adjustment::CustomCoerceUnsized {
     Struct(index)
 });
 
-impl<'a> HashStable<StableHashingContext<'a>> for ty::Generics {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        let ty::Generics {
-            parent,
-            ref parent_count,
-            ref params,
-
-            // Reverse map to each param's `index` field, from its `def_id`.
-            param_def_id_to_index: _, // Don't hash this
-            has_self,
-            has_late_bound_regions,
-        } = *self;
-
-        parent.hash_stable(hcx, hasher);
-        parent_count.hash_stable(hcx, hasher);
-        params.hash_stable(hcx, hasher);
-        has_self.hash_stable(hcx, hasher);
-        has_late_bound_regions.hash_stable(hcx, hasher);
-    }
-}
+impl_stable_hash_for!(struct ty::Generics {
+    parent,
+    parent_count,
+    params,
+    // Reverse map to each param's `index` field, from its `def_id`.
+    param_def_id_to_index -> _, // Don't hash this
+    has_self,
+    has_late_bound_regions,
+});
 
 impl_stable_hash_for!(struct ty::GenericParamDef {
     name,
@@ -1079,57 +1052,30 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::InstanceDef<'gcx> {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for ty::TraitDef {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        let ty::TraitDef {
-            // We already have the def_path_hash below, no need to hash it twice
-            def_id: _,
-            unsafety,
-            paren_sugar,
-            has_auto_impl,
-            def_path_hash,
-        } = *self;
-
-        unsafety.hash_stable(hcx, hasher);
-        paren_sugar.hash_stable(hcx, hasher);
-        has_auto_impl.hash_stable(hcx, hasher);
-        def_path_hash.hash_stable(hcx, hasher);
-    }
-}
+impl_stable_hash_for!(struct ty::TraitDef {
+    // We already have the def_path_hash below, no need to hash it twice
+    def_id -> _,
+    unsafety,
+    paren_sugar,
+    has_auto_impl,
+    def_path_hash,
+});
 
 impl_stable_hash_for!(struct ty::Destructor {
     did
 });
 
-impl<'a> HashStable<StableHashingContext<'a>> for ty::CrateVariancesMap {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        let ty::CrateVariancesMap {
-            ref variances,
-            // This is just an irrelevant helper value.
-            empty_variance: _,
-        } = *self;
+impl_stable_hash_for!(struct ty::CrateVariancesMap {
+    variances,
+    // This is just an irrelevant helper value.
+    empty_variance -> _,
+});
 
-        variances.hash_stable(hcx, hasher);
-    }
-}
-
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::CratePredicatesMap<'gcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        let ty::CratePredicatesMap {
-            ref predicates,
-            // This is just an irrelevant helper value.
-            empty_predicate: _,
-        } = *self;
-
-        predicates.hash_stable(hcx, hasher);
-    }
-}
+impl_stable_hash_for!(struct ty::CratePredicatesMap<'tcx> {
+    predicates,
+    // This is just an irrelevant helper value.
+    empty_predicate -> _,
+});
 
 impl_stable_hash_for!(struct ty::AssociatedItem {
     def_id,
