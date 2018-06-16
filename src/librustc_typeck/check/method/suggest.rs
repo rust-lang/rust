@@ -741,7 +741,7 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
     traits
 }
 
-pub fn provide(providers: &mut ty::maps::Providers) {
+pub fn provide(providers: &mut ty::query::Providers) {
     providers.all_traits = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         Lrc::new(compute_all_traits(tcx))

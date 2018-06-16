@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use dep_graph::{DepConstructor, DepNode};
+use errors::DiagnosticBuilder;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, ItemLocalId, CodegenFnAttrs};
@@ -71,30 +72,30 @@ pub use self::job::{QueryJob, QueryInfo};
 pub use self::job::handle_deadlock;
 
 mod keys;
-pub use self::keys::Key;
+use self::keys::Key;
 
 mod values;
 use self::values::Value;
 
 mod config;
 pub use self::config::QueryConfig;
-use self::config::QueryDescription;
+use self::config::{QueryAccessors, QueryDescription};
 
 mod on_disk_cache;
 pub use self::on_disk_cache::OnDiskCache;
 
-// Each of these maps also corresponds to a method on a
-// `Provider` trait for requesting a value of that type,
-// and a method on `Maps` itself for doing that in a
-// a way that memoizes and does dep-graph tracking,
-// wrapping around the actual chain of providers that
-// the driver creates (using several `rustc_*` crates).
+// Each of these quries corresponds to a function pointer field in the
+// `Providers` struct for requesting a value of that type, and a method
+// on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
+// which memoizes and does dep-graph tracking, wrapping around the actual
+// `Providers` that the driver creates (using several `rustc_*` crates).
 //
-// The result of query must implement Clone. They must also implement ty::maps::values::Value
-// which produces an appropriate error value if the query resulted in a query cycle.
-// Queries marked with `fatal_cycle` do not need that implementation
+// The result type of each query must implement `Clone`, and additionally
+// `ty::query::values::Value`, which produces an appropriate placeholder
+// (error) value if the query resulted in a query cycle.
+// Queries marked with `fatal_cycle` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
-define_maps! { <'tcx>
+define_queries! { <'tcx>
     /// Records the type of every item.
     [] fn type_of: TypeOfItem(DefId) -> Ty<'tcx>,
 
@@ -466,6 +467,32 @@ define_maps! { <'tcx>
     [] fn wasm_custom_sections: WasmCustomSections(CrateNum) -> Lrc<Vec<DefId>>,
     [] fn wasm_import_module_map: WasmImportModuleMap(CrateNum)
         -> Lrc<FxHashMap<DefId, String>>,
+}
+
+// `try_get_query` can't be public because it uses the private query
+// implementation traits, so we provide access to it selectively.
+impl<'a, 'tcx, 'lcx> TyCtxt<'a, 'tcx, 'lcx> {
+    pub fn try_adt_sized_constraint(
+        self,
+        span: Span,
+        key: DefId,
+    ) -> Result<&'tcx [Ty<'tcx>], DiagnosticBuilder<'a>> {
+        self.try_get_query::<queries::adt_sized_constraint>(span, key)
+    }
+    pub fn try_needs_drop_raw(
+        self,
+        span: Span,
+        key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+    ) -> Result<bool, DiagnosticBuilder<'a>> {
+        self.try_get_query::<queries::needs_drop_raw>(span, key)
+    }
+    pub fn try_optimized_mir(
+        self,
+        span: Span,
+        key: DefId,
+    ) -> Result<&'tcx mir::Mir<'tcx>, DiagnosticBuilder<'a>> {
+        self.try_get_query::<queries::optimized_mir>(span, key)
+    }
 }
 
 //////////////////////////////////////////////////////////////////////

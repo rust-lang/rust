@@ -40,7 +40,7 @@ mod suggest;
 
 use self::probe::{IsSuggestion, ProbeScope};
 
-pub fn provide(providers: &mut ty::maps::Providers) {
+pub fn provide(providers: &mut ty::query::Providers) {
     suggest::provide(providers);
 }
 

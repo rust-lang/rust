@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
 use rustc::hir;
 use rustc::hir::def_id::DefId;

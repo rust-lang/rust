@@ -99,7 +99,7 @@ use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate, RegionKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::ty::util::{Representability, IntTypeExt, Discr};
 use errors::{DiagnosticBuilder, DiagnosticId};
 
@@ -703,7 +703,7 @@ fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum
     debug_assert!(crate_num == LOCAL_CRATE);
     Ok(tcx.sess.track_errors(|| {
         for body_owner_def_id in tcx.body_owners() {
-            ty::maps::queries::typeck_tables_of::ensure(tcx, body_owner_def_id);
+            ty::query::queries::typeck_tables_of::ensure(tcx, body_owner_def_id);
         }
     })?)
 }

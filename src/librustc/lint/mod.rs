@@ -47,7 +47,7 @@ use syntax::symbol::Symbol;
 use syntax::visit as ast_visit;
 use syntax_pos::Span;
 use ty::TyCtxt;
-use ty::maps::Providers;
+use ty::query::Providers;
 use util::nodemap::NodeMap;
 
 pub use lint::context::{LateContext, EarlyContext, LintContext, LintStore,

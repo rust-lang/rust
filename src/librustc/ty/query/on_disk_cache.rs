@@ -209,7 +209,7 @@ impl<'sess> OnDiskCache<'sess> {
             let mut query_result_index = EncodedQueryResultIndex::new();
 
             time(tcx.sess, "encode query results", || {
-                use ty::maps::queries::*;
+                use ty::query::queries::*;
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
 
@@ -232,11 +232,11 @@ impl<'sess> OnDiskCache<'sess> {
                 encode_query_results::<specialization_graph_of, _>(tcx, enc, qri)?;
 
                 // const eval is special, it only encodes successfully evaluated constants
-                use ty::maps::QueryConfig;
-                let map = const_eval::query_map(tcx).borrow();
-                assert!(map.active.is_empty());
-                for (key, entry) in map.results.iter() {
-                    use ty::maps::config::QueryDescription;
+                use ty::query::QueryAccessors;
+                let cache = const_eval::query_cache(tcx).borrow();
+                assert!(cache.active.is_empty());
+                for (key, entry) in cache.results.iter() {
+                    use ty::query::config::QueryDescription;
                     if const_eval::cache_on_disk(key.clone()) {
                         if let Ok(ref value) = entry.value {
                             let dep_node = SerializedDepNodeIndex::new(entry.index.index());
@@ -1099,7 +1099,7 @@ fn encode_query_results<'enc, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     time(tcx.sess, desc, || {
 
-    let map = Q::query_map(tcx).borrow();
+    let map = Q::query_cache(tcx).borrow();
     assert!(map.active.is_empty());
     for (key, entry) in map.results.iter() {
         if Q::cache_on_disk(key.clone()) {

@@ -17,7 +17,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::session::Session;
 use rustc::session::config::Sanitizer;
 use rustc::ty::TyCtxt;
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::PanicStrategy;

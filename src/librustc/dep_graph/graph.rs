@@ -656,7 +656,7 @@ impl DepGraph {
                     // We failed to mark it green, so we try to force the query.
                     debug!("try_mark_green({:?}) --- trying to force \
                             dependency {:?}", dep_node, dep_dep_node);
-                    if ::ty::maps::force_from_dep_node(tcx, dep_dep_node) {
+                    if ::ty::query::force_from_dep_node(tcx, dep_dep_node) {
                         let dep_dep_node_color = data.colors.borrow().get(dep_dep_node_index);
 
                         match dep_dep_node_color {
@@ -742,14 +742,14 @@ impl DepGraph {
             // and emit other diagnostics before these diagnostics are emitted.
             // Such diagnostics should be emitted after these.
             // See https://github.com/rust-lang/rust/issues/48685
-            let diagnostics = tcx.on_disk_query_result_cache
+            let diagnostics = tcx.queries.on_disk_cache
                                  .load_diagnostics(tcx, prev_dep_node_index);
 
             if diagnostics.len() > 0 {
                 let handle = tcx.sess.diagnostic();
 
                 // Promote the previous diagnostics to the current session.
-                tcx.on_disk_query_result_cache
+                tcx.queries.on_disk_cache
                    .store_diagnostics(dep_node_index, diagnostics.clone());
 
                 for diagnostic in diagnostics {

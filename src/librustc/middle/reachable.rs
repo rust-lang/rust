@@ -21,7 +21,7 @@ use hir::def::Def;
 use hir::def_id::{DefId, CrateNum};
 use rustc_data_structures::sync::Lrc;
 use ty::{self, TyCtxt};
-use ty::maps::Providers;
+use ty::query::Providers;
 use middle::privacy;
 use session::config;
 use util::nodemap::{NodeSet, FxHashSet};

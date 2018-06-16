@@ -67,7 +67,7 @@ pub mod interpret;
 pub mod monomorphize;
 
 pub use hair::pattern::check_crate as matchck_crate;
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 
 pub fn provide(providers: &mut Providers) {
     borrow_check::provide(providers);

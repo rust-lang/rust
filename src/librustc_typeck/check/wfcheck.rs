@@ -749,21 +749,21 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &hir::Item) {
         debug!("visit_item: {:?}", i);
         let def_id = self.tcx.hir.local_def_id(i.id);
-        ty::maps::queries::check_item_well_formed::ensure(self.tcx, def_id);
+        ty::query::queries::check_item_well_formed::ensure(self.tcx, def_id);
         intravisit::walk_item(self, i);
     }
 
     fn visit_trait_item(&mut self, trait_item: &'v hir::TraitItem) {
         debug!("visit_trait_item: {:?}", trait_item);
         let def_id = self.tcx.hir.local_def_id(trait_item.id);
-        ty::maps::queries::check_trait_item_well_formed::ensure(self.tcx, def_id);
+        ty::query::queries::check_trait_item_well_formed::ensure(self.tcx, def_id);
         intravisit::walk_trait_item(self, trait_item)
     }
 
     fn visit_impl_item(&mut self, impl_item: &'v hir::ImplItem) {
         debug!("visit_impl_item: {:?}", impl_item);
         let def_id = self.tcx.hir.local_def_id(impl_item.id);
-        ty::maps::queries::check_impl_item_well_formed::ensure(self.tcx, def_id);
+        ty::query::queries::check_impl_item_well_formed::ensure(self.tcx, def_id);
         intravisit::walk_impl_item(self, impl_item)
     }
 }

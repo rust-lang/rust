@@ -8,7 +8,7 @@ use rustc::mir;
 use rustc::ty::layout::{self, Size, Align, HasDataLayout, IntegerExt, LayoutOf, TyLayout};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt, TypeAndMut};
-use rustc::ty::maps::TyCtxtAt;
+use rustc::ty::query::TyCtxtAt;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::middle::const_val::FrameInfo;
 use syntax::codemap::{self, Span};

@@ -15,9 +15,9 @@ use mir::interpret::{GlobalId, ConstValue};
 use traits::query::{CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal};
 use ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use ty::subst::Substs;
-use ty::maps::queries;
-use ty::maps::Query;
-use ty::maps::QueryMap;
+use ty::query::queries;
+use ty::query::Query;
+use ty::query::QueryCache;
 
 use std::hash::Hash;
 use std::fmt::Debug;
@@ -26,18 +26,20 @@ use rustc_data_structures::sync::Lock;
 use rustc_data_structures::stable_hasher::HashStable;
 use ich::StableHashingContext;
 
-/// Query configuration and description traits.
+// Query configuration and description traits.
 
 pub trait QueryConfig<'tcx> {
     const NAME: &'static str;
 
     type Key: Eq + Hash + Clone + Debug;
     type Value: Clone + for<'a> HashStable<StableHashingContext<'a>>;
+}
 
+pub(super) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
     fn query(key: Self::Key) -> Query<'tcx>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_map<'a>(tcx: TyCtxt<'a, 'tcx, '_>) -> &'a Lock<QueryMap<'tcx, Self>>;
+    fn query_cache<'a>(tcx: TyCtxt<'a, 'tcx, '_>) -> &'a Lock<QueryCache<'tcx, Self>>;
 
     fn to_dep_node(tcx: TyCtxt<'_, 'tcx, '_>, key: &Self::Key) -> DepNode;
 
@@ -47,7 +49,7 @@ pub trait QueryConfig<'tcx> {
     fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>) -> Self::Value;
 }
 
-pub trait QueryDescription<'tcx>: QueryConfig<'tcx> {
+pub(super) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {
     fn describe(tcx: TyCtxt, key: Self::Key) -> String;
 
     #[inline]
@@ -62,7 +64,7 @@ pub trait QueryDescription<'tcx>: QueryConfig<'tcx> {
     }
 }
 
-impl<'tcx, M: QueryConfig<'tcx, Key=DefId>> QueryDescription<'tcx> for M {
+impl<'tcx, M: QueryAccessors<'tcx, Key=DefId>> QueryDescription<'tcx> for M {
     default fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         if !tcx.sess.verbose() {
             format!("processing `{}`", tcx.item_path_str(def_id))
@@ -233,7 +235,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::const_eval<'tcx> {
     fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               id: SerializedDepNodeIndex)
                               -> Option<Self::Value> {
-        tcx.on_disk_query_result_cache.try_load_query_result(tcx, id).map(Ok)
+        tcx.queries.on_disk_cache.try_load_query_result(tcx, id).map(Ok)
     }
 }
 
@@ -257,7 +259,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::symbol_name<'tcx> {
     fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               id: SerializedDepNodeIndex)
                               -> Option<Self::Value> {
-        tcx.on_disk_query_result_cache.try_load_query_result(tcx, id)
+        tcx.queries.on_disk_cache.try_load_query_result(tcx, id)
     }
 }
 
@@ -331,7 +333,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::const_is_rvalue_promotable_to_sta
     fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           id: SerializedDepNodeIndex)
                           -> Option<Self::Value> {
-        tcx.on_disk_query_result_cache.try_load_query_result(tcx, id)
+        tcx.queries.on_disk_cache.try_load_query_result(tcx, id)
     }
 }
 
@@ -363,7 +365,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::codegen_fulfill_obligation<'tcx> 
     fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               id: SerializedDepNodeIndex)
                               -> Option<Self::Value> {
-        tcx.on_disk_query_result_cache.try_load_query_result(tcx, id)
+        tcx.queries.on_disk_cache.try_load_query_result(tcx, id)
     }
 }
 
@@ -683,7 +685,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::typeck_tables_of<'tcx> {
                           id: SerializedDepNodeIndex)
                           -> Option<Self::Value> {
         let typeck_tables: Option<ty::TypeckTables<'tcx>> = tcx
-            .on_disk_query_result_cache
+            .queries.on_disk_cache
             .try_load_query_result(tcx, id);
 
         typeck_tables.map(|tables| tcx.alloc_tables(tables))
@@ -699,7 +701,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::optimized_mir<'tcx> {
     fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               id: SerializedDepNodeIndex)
                               -> Option<Self::Value> {
-        let mir: Option<::mir::Mir<'tcx>> = tcx.on_disk_query_result_cache
+        let mir: Option<::mir::Mir<'tcx>> = tcx.queries.on_disk_cache
                                                .try_load_query_result(tcx, id);
         mir.map(|x| tcx.alloc_mir(x))
     }
@@ -738,7 +740,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::generics_of<'tcx> {
     fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               id: SerializedDepNodeIndex)
                               -> Option<Self::Value> {
-        let generics: Option<ty::Generics> = tcx.on_disk_query_result_cache
+        let generics: Option<ty::Generics> = tcx.queries.on_disk_cache
                                                 .try_load_query_result(tcx, id);
         generics.map(|x| tcx.alloc_generics(x))
     }
@@ -780,7 +782,7 @@ macro_rules! impl_disk_cacheable_query(
             fn try_load_from_disk<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       id: SerializedDepNodeIndex)
                                       -> Option<Self::Value> {
-                tcx.on_disk_query_result_cache.try_load_query_result(tcx, id)
+                tcx.queries.on_disk_cache.try_load_query_result(tcx, id)
             }
         }
     }

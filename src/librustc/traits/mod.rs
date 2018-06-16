@@ -991,8 +991,8 @@ impl<'tcx> TraitObligation<'tcx> {
     }
 }
 
-pub fn provide(providers: &mut ty::maps::Providers) {
-    *providers = ty::maps::Providers {
+pub fn provide(providers: &mut ty::query::Providers) {
+    *providers = ty::query::Providers {
         is_object_safe: object_safety::is_object_safe_provider,
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
