@@ -976,17 +976,17 @@ extern "rust-intrinsic" {
     ///
     /// Behavior is undefined if any of the following conditions are violated:
     ///
-    /// * Both `src` and `dst` must be [valid].
-    ///
     /// * Both `src` and `dst` must be properly aligned.
     ///
-    /// * `src.offset(count-1)` must be [valid]. In other words, the region of
-    ///   memory which begins at `src` and has a length of `count *
-    ///   size_of::<T>()` bytes must belong to a single, live allocation.
+    /// * `src.offset(i)` must be [valid] for all `i` in `0..count`. In other
+    ///   words, the region of memory which begins at `src` and has a length of
+    ///   `count * size_of::<T>()` bytes must belong to a single, live
+    ///   allocation.
     ///
-    /// * `dst.offset(count-1)` must be [valid]. In other words, the region of
-    ///   memory which begins at `dst` and has a length of `count *
-    ///   size_of::<T>()` bytes must belong to a single, live allocation.
+    /// * `dst.offset(i)` must be [valid] for all `i` in `0..count`. In other
+    ///   words, the region of memory which begins at `dst` and has a length of
+    ///   `count * size_of::<T>()` bytes must belong to a single, live
+    ///   allocation.
     ///
     /// * The two regions of memory must *not* overlap.
     ///
@@ -1064,17 +1064,17 @@ extern "rust-intrinsic" {
     ///
     /// Behavior is undefined if any of the following conditions are violated:
     ///
-    /// * Both `src` and `dst` must be [valid].
-    ///
     /// * Both `src` and `dst` must be properly aligned.
     ///
-    /// * `src.offset(count-1)` must be [valid]. In other words, the region of
-    ///   memory which begins at `src` and has a length of `count *
-    ///   size_of::<T>()` bytes must belong to a single, live allocation.
+    /// * `src.offset(i)` must be [valid] for all `i` in `0..count`. In other
+    ///   words, the region of memory which begins at `src` and has a length of
+    ///   `count * size_of::<T>()` bytes must belong to a single, live
+    ///   allocation.
     ///
-    /// * `dst.offset(count-1)` must be [valid]. In other words, the region of
-    ///   memory which begins at `dst` and has a length of `count *
-    ///   size_of::<T>()` bytes must belong to a single, live allocation.
+    /// * `dst.offset(i)` must be [valid] for all `i` in `0..count`. In other
+    ///   words, the region of memory which begins at `dst` and has a length of
+    ///   `count * size_of::<T>()` bytes must belong to a single, live
+    ///   allocation.
     ///
     /// Like [`read`], `copy` creates a bitwise copy of `T`, regardless of
     /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using both the values
@@ -1116,13 +1116,12 @@ extern "rust-intrinsic" {
     ///
     /// Behavior is undefined if any of the following conditions are violated:
     ///
-    /// * `dst` must be [valid].
-    ///
-    /// * `dst.offset(count-1)` must be [valid]. In other words, the region of
-    ///   memory which begins at `dst` and has a length of `count *
-    ///   size_of::<T>()` bytes must belong to a single, live allocation.
-    ///
     /// * `dst` must be properly aligned.
+    ///
+    /// * `dst.offset(i)` must be [valid] for all `i` in `0..count`. In other
+    ///   words, the region of memory which begins at `dst` and has a length of
+    ///   `count * size_of::<T>()` bytes must belong to a single, live
+    ///   allocation.
     ///
     /// Additionally, the caller must ensure that writing `count *
     /// size_of::<T>()` bytes to the given region of memory results in a valid
