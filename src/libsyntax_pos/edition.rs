@@ -15,7 +15,7 @@ use std::str::FromStr;
 #[derive(Clone, Copy, Hash, PartialOrd, Ord, Eq, PartialEq, Debug, RustcEncodable, RustcDecodable)]
 #[non_exhaustive]
 pub enum Edition {
-    // editions must be kept in order, newest to oldest
+    // editions must be kept in order, oldest to newest
 
     /// The 2015 edition
     Edition2015,
