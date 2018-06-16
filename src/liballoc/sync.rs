@@ -517,6 +517,13 @@ impl<T: ?Sized> Arc<T> {
         unsafe { self.ptr.as_ref() }
     }
 
+    #[inline]
+    pub(crate) unsafe fn into_ptr<U>(self) -> NonNull<U> {
+        let ptr = self.ptr;
+        mem::forget(self);
+        ptr.cast()
+    }
+
     // Non-inlined part of `drop`.
     #[inline(never)]
     unsafe fn drop_slow(&mut self) {

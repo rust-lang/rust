@@ -13,7 +13,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use ffi::{OsStr, OsString};
-use mem;
 use sys::os_str::Buf;
 use sys_common::{FromInner, IntoInner, AsInner};
 
@@ -111,7 +110,7 @@ pub trait OsStrExt {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl OsStrExt for OsStr {
     fn from_bytes(slice: &[u8]) -> &OsStr {
-        unsafe { mem::transmute(slice) }
+        unsafe { &*(slice as *const [u8] as *const OsStr) }
     }
     fn as_bytes(&self) -> &[u8] {
         &self.as_inner().inner

@@ -30,7 +30,6 @@ use cell;
 use char;
 use core::array;
 use fmt::{self, Debug, Display};
-use mem::transmute;
 use num;
 use str;
 use string;
@@ -483,7 +482,7 @@ impl Error + Send {
         let err: Box<Error> = self;
         <Error>::downcast(err).map_err(|s| unsafe {
             // reapply the Send marker
-            transmute::<Box<Error>, Box<Error + Send>>(s)
+            Box::from_raw(Box::into_raw(s) as *mut (Error + Send))
         })
     }
 }
@@ -497,7 +496,7 @@ impl Error + Send + Sync {
         let err: Box<Error> = self;
         <Error>::downcast(err).map_err(|s| unsafe {
             // reapply the Send+Sync marker
-            transmute::<Box<Error>, Box<Error + Send + Sync>>(s)
+            Box::from_raw(Box::into_raw(s) as *mut (Error + Send + Sync))
         })
     }
 }

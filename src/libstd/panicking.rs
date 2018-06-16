@@ -297,10 +297,10 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
     } else {
         update_panic_count(-1);
         debug_assert!(update_panic_count(0) == 0);
-        Err(mem::transmute(raw::TraitObject {
+        Err(Box::from_raw(*(&raw::TraitObject {
             data: any_data as *mut _,
             vtable: any_vtable as *mut _,
-        }))
+        } as *const _ as *const *mut _)))
     };
 
     fn do_call<F: FnOnce() -> R, R>(data: *mut u8) {
