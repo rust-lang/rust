@@ -1079,7 +1079,7 @@ impl_stable_hash_for!(struct ty::CratePredicatesMap<'tcx> {
 
 impl_stable_hash_for!(struct ty::AssociatedItem {
     def_id,
-    ident,
+    ident -> (ident.name),
     kind,
     vis,
     defaultness,

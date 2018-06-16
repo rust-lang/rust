@@ -171,7 +171,7 @@ impl_stable_hash_for!(struct hir::Path {
 });
 
 impl_stable_hash_for!(struct hir::PathSegment {
-    ident,
+    ident -> (ident.name),
     infer_types,
     args
 });
@@ -276,7 +276,7 @@ impl_stable_hash_for!(struct hir::MethodSig {
 
 impl_stable_hash_for!(struct hir::TypeBinding {
     id,
-    ident,
+    ident -> (ident.name),
     ty,
     span
 });
@@ -406,7 +406,7 @@ impl_stable_hash_for_spanned!(hir::FieldPat);
 
 impl_stable_hash_for!(struct hir::FieldPat {
     id -> _,
-    ident,
+    ident -> (ident.name),
     pat,
     is_shorthand,
 });
@@ -650,7 +650,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem {
         } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
-            ident.hash_stable(hcx, hasher);
+            ident.name.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
             generics.hash_stable(hcx, hasher);
             node.hash_stable(hcx, hasher);
@@ -687,7 +687,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem {
         } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
-            ident.hash_stable(hcx, hasher);
+            ident.name.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);
             defaultness.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
@@ -787,7 +787,7 @@ impl_stable_hash_for!(enum hir::UseKind {
 
 impl_stable_hash_for!(struct hir::StructField {
     span,
-    ident,
+    ident -> (ident.name),
     vis,
     id,
     ty,
@@ -845,7 +845,7 @@ impl_stable_hash_for!(enum hir::Item_ {
 
 impl_stable_hash_for!(struct hir::TraitItemRef {
     id,
-    ident,
+    ident -> (ident.name),
     kind,
     span,
     defaultness
@@ -853,7 +853,7 @@ impl_stable_hash_for!(struct hir::TraitItemRef {
 
 impl_stable_hash_for!(struct hir::ImplItemRef {
     id,
-    ident,
+    ident -> (ident.name),
     kind,
     span,
     vis,
