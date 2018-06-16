@@ -211,6 +211,23 @@ See [Configurations.md](Configurations.md) for details.
 
   (Substitute `x86_64` by `i686` and `gnu` by `msvc` depending on which version of rustc was used to install rustfmt).
 
+* You can change the way rustfmt emits the changes with the --emit flag:
+
+  Example:
+
+  ```
+  cargo fmt --emit files
+  ```
+
+  Options:
+
+  | Flag |Description| Nightly Only |
+  |:---:|:---:|:---:|
+  | files | overwrites output to files | No |
+  | stdout | writes output to stdout | No | 
+  | coverage | displays how much of the input file was processed | Yes |
+  | checkstyle | emits in a checkstyle format | Yes |
+
 ## License
 
 Rustfmt is distributed under the terms of both the MIT license and the
