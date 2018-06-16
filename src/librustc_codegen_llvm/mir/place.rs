@@ -16,12 +16,13 @@ use rustc::mir::tcx::PlaceTy;
 use rustc_data_structures::indexed_vec::Idx;
 use base;
 use builder::Builder;
-use common::{CodegenCx, C_undef, C_usize, C_u8, C_u32, C_uint, C_null, C_uint_big};
+use common::{
+    CodegenCx, C_undef, C_usize, C_u8, C_u32, C_uint, C_null, C_uint_big,size_and_align_of_dst
+};
 use consts;
 use type_of::LayoutLlvmExt;
 use type_::Type;
 use value::Value;
-use glue;
 
 use std::ptr;
 
@@ -222,7 +223,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         let unaligned_offset = C_usize(cx, offset.bytes());
 
         // Get the alignment of the field
-        let (_, unsized_align) = glue::size_and_align_of_dst(bx, field.ty, meta);
+        let (_, unsized_align) = size_and_align_of_dst(bx, field.ty, meta);
 
         // Bump the unaligned offset up to the appropriate alignment using the
         // following expression:
