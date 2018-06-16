@@ -3862,6 +3862,13 @@ impl Clean<Vec<Item>> for doctree::Import {
         });
         let path = self.path.clean(cx);
         let inner = if self.glob {
+            if !denied {
+                let mut visited = FxHashSet();
+                if let Some(items) = inline::try_inline_glob(cx, path.def, &mut visited) {
+                    return items;
+                }
+            }
+
             Import::Glob(resolve_use_source(cx, path))
         } else {
             let name = self.name;
