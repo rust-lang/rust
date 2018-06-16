@@ -93,6 +93,8 @@ use syntax::ast;
 
 use mir::operand::OperandValue;
 
+use rustc_codegen_utils::check_for_rustc_errors_attr;
+
 pub struct StatRecorder<'a, 'tcx: 'a> {
     cx: &'a CodegenCx<'a, 'tcx>,
     name: Option<String>,
@@ -714,7 +716,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              rx: mpsc::Receiver<Box<Any + Send>>)
                              -> OngoingCodegen {
 
-    ::rustc_codegen_utils::check_for_rustc_errors_attr(tcx);
+    check_for_rustc_errors_attr(tcx);
 
     if let Some(true) = tcx.sess.opts.debugging_opts.thinlto {
         if unsafe { !llvm::LLVMRustThinLTOAvailable() } {
