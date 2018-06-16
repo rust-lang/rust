@@ -11,9 +11,9 @@
 #![allow(non_snake_case)]
 
 use rustc::hir::map as hir_map;
-use rustc::ty::subst::Substs;
-use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
+use rustc::ty::{self, AdtKind, ParamEnv, Ty};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf};
+use rustc::middle::intrinsicck::is_repr_nullable_ptr;
 use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
@@ -428,40 +428,6 @@ enum FfiResult<'tcx> {
     },
 }
 
-/// Check if this enum can be safely exported based on the
-/// "nullable pointer optimization". Currently restricted
-/// to function pointers and references, but could be
-/// expanded to cover NonZero raw pointers and newtypes.
-/// FIXME: This duplicates code in codegen.
-fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  def: &'tcx ty::AdtDef,
-                                  substs: &Substs<'tcx>)
-                                  -> bool {
-    if def.variants.len() == 2 {
-        let data_idx;
-
-        if def.variants[0].fields.is_empty() {
-            data_idx = 1;
-        } else if def.variants[1].fields.is_empty() {
-            data_idx = 0;
-        } else {
-            return false;
-        }
-
-        if def.variants[data_idx].fields.len() == 1 {
-            match def.variants[data_idx].fields[0].ty(tcx, substs).sty {
-                ty::TyFnPtr(_) => {
-                    return true;
-                }
-                ty::TyRef(..) => {
-                    return true;
-                }
-                _ => {}
-            }
-        }
-    }
-    false
-}
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Check if the given type is "ffi-safe" (has a stable, well-defined

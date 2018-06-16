@@ -2133,8 +2133,8 @@ register_diagnostics! {
     E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
 
     E0697, // closures cannot be static
-
     E0707, // multiple elided lifetimes used in arguments of `async fn`
     E0708, // `async` non-`move` closures with arguments are not currently supported
     E0709, // multiple different lifetimes used in arguments of `async fn`
+    E0912, // transmutation between types of unspecified layout
 }
