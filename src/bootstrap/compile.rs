@@ -645,14 +645,13 @@ impl Step for CodegenBackend {
 
     fn make_run(run: RunConfig) {
         let backend = run.builder.config.rust_codegen_backends.get(0);
-        let backend = backend.cloned().unwrap_or_else(|| {
-            INTERNER.intern_str("llvm")
-        });
-        run.builder.ensure(CodegenBackend {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
-            target: run.target,
-            backend,
-        });
+        if let Some(backend) = backend.cloned() {
+            run.builder.ensure(CodegenBackend {
+                compiler: run.builder.compiler(run.builder.top_stage, run.host),
+                target: run.target,
+                backend,
+            });
+        }
     }
 
     fn run(self, builder: &Builder) {
@@ -677,9 +676,7 @@ impl Step for CodegenBackend {
             .arg(builder.src.join("src/librustc_codegen_llvm/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo);
 
-        if !backend.is_empty() {
-            features += &build_codegen_backend(&builder, &mut cargo, &compiler, target, backend);
-        }
+        features += &build_codegen_backend(&builder, &mut cargo, &compiler, target, backend);
 
         let tmp_stamp = builder.cargo_out(compiler, Mode::Codegen, target)
             .join(".tmp.stamp");
