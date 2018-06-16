@@ -213,14 +213,18 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
-        let mut lt_provided = 0;
-        let mut ty_provided = 0;
-        for arg in &generic_args.args {
-            match arg {
-                GenericArg::Lifetime(_) => lt_provided += 1,
-                GenericArg::Type(_) => ty_provided += 1,
-            }
-        }
+
+        // FIXME(varkor): Separating out the parameters is messy.
+        let lifetimes: Vec<_> = generic_args.args.iter().filter_map(|arg| match arg {
+            GenericArg::Lifetime(lt) => Some(lt),
+            _ => None,
+        }).collect();
+        let types: Vec<_> = generic_args.args.iter().filter_map(|arg| match arg {
+            GenericArg::Type(ty) => Some(ty),
+            _ => None,
+        }).collect();
+        let lt_provided = lifetimes.len();
+        let ty_provided = types.len();
 
         let decl_generics = tcx.generics_of(def_id);
         let mut lt_accepted = 0;
@@ -271,15 +275,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         };
 
         let own_self = self_ty.is_some() as usize;
-        // FIXME(varkor): Separating out the parameters is messy.
-        let lifetimes: Vec<_> = generic_args.args.iter().filter_map(|arg| match arg {
-            GenericArg::Lifetime(lt) => Some(lt),
-            _ => None,
-        }).collect();
-        let types: Vec<_> = generic_args.args.iter().filter_map(|arg| match arg {
-            GenericArg::Type(ty) => Some(ty),
-            _ => None,
-        }).collect();
         let substs = Substs::for_item(tcx, def_id, |param, substs| {
             match param.kind {
                 GenericParamDefKind::Lifetime => {

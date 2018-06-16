@@ -4742,8 +4742,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::Fn(def_id) |
             Def::Const(def_id) |
             Def::Static(def_id, _) => {
-                fn_segment = Some((segments.last().unwrap(),
-                                   self.tcx.generics_of(def_id)));
+                fn_segment = Some((segments.last().unwrap(), self.tcx.generics_of(def_id)));
             }
 
             // Case 3. Reference to a method or associated const.
