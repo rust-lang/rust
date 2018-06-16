@@ -617,7 +617,7 @@ declare_lint! {
     pub ANONYMOUS_PARAMETERS,
     Allow,
     "detects anonymous parameters",
-    Edition::Edition2018 => Warn,
+    Edition::Edition2018 => Warn
 }
 
 /// Checks for use of anonymous parameters (RFC 1685)
@@ -1706,7 +1706,7 @@ impl LintPass for SoftLints {
             UNIONS_WITH_DROP_FIELDS,
             UNREACHABLE_PUB,
             TYPE_ALIAS_BOUNDS,
-            TRIVIAL_BOUNDS,
+            TRIVIAL_BOUNDS
         )
     }
 }

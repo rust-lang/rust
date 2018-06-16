@@ -1,0 +1,12 @@
+warning: using `?` as a separator is deprecated and will be a hard error in an upcoming edition
+  --> $DIR/macro-at-most-once-rep-2015-ques-sep.rs:18:10
+   |
+LL |     ($(a)?*) => {} //~WARN using `?` as a separator
+   |          ^
+
+warning: using `?` as a separator is deprecated and will be a hard error in an upcoming edition
+  --> $DIR/macro-at-most-once-rep-2015-ques-sep.rs:22:10
+   |
+LL |     ($(a)?+) => {} //~WARN using `?` as a separator
+   |          ^
+

@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use {ast, attr};
 use ext::tt::macro_parser;
 use feature_gate::{self, emit_feature_err, Features, GateIssue};
 use parse::{token, ParseSess};
 use print::pprust;
 use symbol::keywords;
-use syntax_pos::{BytePos, Span};
+use syntax_pos::{edition::Edition, BytePos, Span, DUMMY_SP};
 use tokenstream;
+use {ast, attr};
 
-use std::iter::Peekable;
 use rustc_data_structures::sync::Lrc;
+use std::iter::Peekable;
 
 /// Contains the sub-token-trees of a "delimited" token tree, such as the contents of `(`. Note
 /// that the delimiter itself might be `NoDelim`.
@@ -174,6 +174,7 @@ impl TokenTree {
 /// - `sess`: the parsing session. Any errors will be emitted to this session.
 /// - `features`, `attrs`: language feature flags and attributes so that we know whether to use
 ///   unstable features or not.
+/// - `edition`: which edition are we in.
 ///
 /// # Returns
 ///
@@ -184,6 +185,7 @@ pub fn parse(
     sess: &ParseSess,
     features: &Features,
     attrs: &[ast::Attribute],
+    edition: Edition,
 ) -> Vec<TokenTree> {
     // Will contain the final collection of `self::TokenTree`
     let mut result = Vec::new();
@@ -194,7 +196,15 @@ pub fn parse(
     while let Some(tree) = trees.next() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e. in `$id:ident` this would parse the `:` and `ident`).
-        let tree = parse_tree(tree, &mut trees, expect_matchers, sess, features, attrs);
+        let tree = parse_tree(
+            tree,
+            &mut trees,
+            expect_matchers,
+            sess,
+            features,
+            attrs,
+            edition,
+        );
         match tree {
             TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
                 let span = match trees.next() {
@@ -207,11 +217,13 @@ pub fn parse(
                             }
                             _ => end_sp,
                         },
-                        tree => tree.as_ref()
+                        tree => tree
+                            .as_ref()
                             .map(tokenstream::TokenTree::span)
                             .unwrap_or(span),
                     },
-                    tree => tree.as_ref()
+                    tree => tree
+                        .as_ref()
                         .map(tokenstream::TokenTree::span)
                         .unwrap_or(start_sp),
                 };
@@ -252,6 +264,7 @@ fn parse_tree<I>(
     sess: &ParseSess,
     features: &Features,
     attrs: &[ast::Attribute],
+    edition: Edition,
 ) -> TokenTree
 where
     I: Iterator<Item = tokenstream::TokenTree>,
@@ -270,9 +283,17 @@ where
                     sess.span_diagnostic.span_err(span, &msg);
                 }
                 // Parse the contents of the sequence itself
-                let sequence = parse(delimited.tts.into(), expect_matchers, sess, features, attrs);
+                let sequence = parse(
+                    delimited.tts.into(),
+                    expect_matchers,
+                    sess,
+                    features,
+                    attrs,
+                    edition,
+                );
                 // Get the Kleene operator and optional separator
-                let (separator, op) = parse_sep_and_kleene_op(trees, span, sess, features, attrs);
+                let (separator, op) =
+                    parse_sep_and_kleene_op(trees, span, sess, features, attrs, edition);
                 // Count the number of captured "names" (i.e. named metavars)
                 let name_captures = macro_parser::count_names(&sequence);
                 TokenTree::Sequence(
@@ -322,7 +343,14 @@ where
             span,
             Lrc::new(Delimited {
                 delim: delimited.delim,
-                tts: parse(delimited.tts.into(), expect_matchers, sess, features, attrs),
+                tts: parse(
+                    delimited.tts.into(),
+                    expect_matchers,
+                    sess,
+                    features,
+                    attrs,
+                    edition,
+                ),
             }),
         ),
     }
@@ -341,22 +369,23 @@ fn kleene_op(token: &token::Token) -> Option<KleeneOp> {
 
 /// Parse the next token tree of the input looking for a KleeneOp. Returns
 ///
-/// - Ok(Ok(op)) if the next token tree is a KleeneOp
+/// - Ok(Ok((op, span))) if the next token tree is a KleeneOp
 /// - Ok(Err(tok, span)) if the next token tree is a token but not a KleeneOp
 /// - Err(span) if the next token tree is not a token
 fn parse_kleene_op<I>(
     input: &mut I,
     span: Span,
-) -> Result<Result<KleeneOp, (token::Token, Span)>, Span>
+) -> Result<Result<(KleeneOp, Span), (token::Token, Span)>, Span>
 where
     I: Iterator<Item = tokenstream::TokenTree>,
 {
     match input.next() {
         Some(tokenstream::TokenTree::Token(span, tok)) => match kleene_op(&tok) {
-            Some(op) => Ok(Ok(op)),
+            Some(op) => Ok(Ok((op, span))),
             None => Ok(Err((tok, span))),
         },
-        tree => Err(tree.as_ref()
+        tree => Err(tree
+            .as_ref()
             .map(tokenstream::TokenTree::span)
             .unwrap_or(span)),
     }
@@ -374,12 +403,34 @@ where
 /// session `sess`. If the next one (or possibly two) tokens in `input` correspond to a Kleene
 /// operator and separator, then a tuple with `(separator, KleeneOp)` is returned. Otherwise, an
 /// error with the appropriate span is emitted to `sess` and a dummy value is returned.
+///
+/// NOTE: In 2015 edition, * and + are the only Kleene operators and `?` is a separator. In 2018,
+/// `?` is a Kleene op and not a separator.
 fn parse_sep_and_kleene_op<I>(
     input: &mut Peekable<I>,
     span: Span,
     sess: &ParseSess,
     features: &Features,
     attrs: &[ast::Attribute],
+    edition: Edition,
+) -> (Option<token::Token>, KleeneOp)
+where
+    I: Iterator<Item = tokenstream::TokenTree>,
+{
+    match edition {
+        Edition::Edition2015 => parse_sep_and_kleene_op_2015(input, span, sess, features, attrs),
+        Edition::Edition2018 => parse_sep_and_kleene_op_2018(input, span, sess, features, attrs),
+        _ => unimplemented!(),
+    }
+}
+
+// `?` is a separator (with a migration warning) and never a KleeneOp.
+fn parse_sep_and_kleene_op_2015<I>(
+    input: &mut Peekable<I>,
+    span: Span,
+    sess: &ParseSess,
+    _features: &Features,
+    _attrs: &[ast::Attribute],
 ) -> (Option<token::Token>, KleeneOp)
 where
     I: Iterator<Item = tokenstream::TokenTree>,
@@ -388,14 +439,14 @@ where
     let span = match parse_kleene_op(input, span) {
         // #1 is a `+` or `*` KleeneOp
         //
-        // `?` is ambiguous: it could be a separator or a Kleene::ZeroOrOne, so we need to look
-        // ahead one more token to be sure.
-        Ok(Ok(op)) if op != KleeneOp::ZeroOrOne => return (None, op),
+        // `?` is ambiguous: it could be a separator (warning) or a Kleene::ZeroOrOne (error), so
+        // we need to look ahead one more token to be sure.
+        Ok(Ok((op, _))) if op != KleeneOp::ZeroOrOne => return (None, op),
 
-        // #1 is `?` token, but it could be a Kleene::ZeroOrOne without a separator or it could
-        // be a `?` separator followed by any Kleene operator. We need to look ahead 1 token to
-        // find out which.
-        Ok(Ok(op)) => {
+        // #1 is `?` token, but it could be a Kleene::ZeroOrOne (error in 2015) without a separator
+        // or it could be a `?` separator followed by any Kleene operator. We need to look ahead 1
+        // token to find out which.
+        Ok(Ok((op, op1_span))) => {
             assert_eq!(op, KleeneOp::ZeroOrOne);
 
             // Lookahead at #2. If it is a KleenOp, then #1 is a separator.
@@ -406,71 +457,65 @@ where
             };
 
             if is_1_sep {
-                // #1 is a separator and #2 should be a KleepeOp::*
+                // #1 is a separator and #2 should be a KleepeOp.
                 // (N.B. We need to advance the input iterator.)
                 match parse_kleene_op(input, span) {
-                    // #2 is a KleeneOp (this is the only valid option) :)
-                    Ok(Ok(op)) if op == KleeneOp::ZeroOrOne => {
-                        if !features.macro_at_most_once_rep
-                            && !attr::contains_name(attrs, "allow_internal_unstable")
-                        {
-                            let explain = feature_gate::EXPLAIN_MACRO_AT_MOST_ONCE_REP;
-                            emit_feature_err(
-                                sess,
-                                "macro_at_most_once_rep",
-                                span,
-                                GateIssue::Language,
-                                explain,
-                            );
-                        }
+                    // #2 is `?`, which is not allowed as a Kleene op in 2015 edition.
+                    Ok(Ok((op, op2_span))) if op == KleeneOp::ZeroOrOne => {
+                        sess.span_diagnostic
+                            .struct_span_err(op2_span, "expected `*` or `+`")
+                            .note("`?` is not a macro repetition operator")
+                            .emit();
+
+                        // Return a dummy
+                        return (None, KleeneOp::ZeroOrMore);
+                    }
+
+                    // #2 is a Kleene op, which is the the only valid option
+                    Ok(Ok((op, _))) => {
+                        // Warn that `?` as a separator will be deprecated
+                        sess.span_diagnostic.span_warn(
+                            op1_span,
+                            "using `?` as a separator is deprecated and will be \
+                             a hard error in an upcoming edition",
+                        );
+
                         return (Some(token::Question), op);
                     }
-                    Ok(Ok(op)) => return (Some(token::Question), op),
 
                     // #2 is a random token (this is an error) :(
-                    Ok(Err((_, span))) => span,
+                    Ok(Err((_, _))) => op1_span,
 
                     // #2 is not even a token at all :(
-                    Err(span) => span,
+                    Err(_) => op1_span,
                 }
             } else {
-                if !features.macro_at_most_once_rep
-                    && !attr::contains_name(attrs, "allow_internal_unstable")
-                {
-                    let explain = feature_gate::EXPLAIN_MACRO_AT_MOST_ONCE_REP;
-                    emit_feature_err(
-                        sess,
-                        "macro_at_most_once_rep",
-                        span,
-                        GateIssue::Language,
-                        explain,
-                    );
-                }
+                // `?` is not allowed as a Kleene op in 2015
+                sess.span_diagnostic
+                    .struct_span_err(op1_span, "expected `*` or `+`")
+                    .note("`?` is not a macro repetition operator")
+                    .emit();
 
-                // #2 is a random tree and #1 is KleeneOp::ZeroOrOne
-                return (None, op);
+                // Return a dummy
+                return (None, KleeneOp::ZeroOrMore);
             }
         }
 
         // #1 is a separator followed by #2, a KleeneOp
         Ok(Err((tok, span))) => match parse_kleene_op(input, span) {
-            // #2 is a KleeneOp :D
-            Ok(Ok(op)) if op == KleeneOp::ZeroOrOne => {
-                if !features.macro_at_most_once_rep
-                    && !attr::contains_name(attrs, "allow_internal_unstable")
-                {
-                    let explain = feature_gate::EXPLAIN_MACRO_AT_MOST_ONCE_REP;
-                    emit_feature_err(
-                        sess,
-                        "macro_at_most_once_rep",
-                        span,
-                        GateIssue::Language,
-                        explain,
-                    );
-                }
-                return (Some(tok), op);
+            // #2 is a `?`, which is not allowed as a Kleene op in 2015 edition.
+            Ok(Ok((op, op2_span))) if op == KleeneOp::ZeroOrOne => {
+                sess.span_diagnostic
+                    .struct_span_err(op2_span, "expected `*` or `+`")
+                    .note("`?` is not a macro repetition operator")
+                    .emit();
+
+                // Return a dummy
+                return (None, KleeneOp::ZeroOrMore);
             }
-            Ok(Ok(op)) => return (Some(tok), op),
+
+            // #2 is a KleeneOp :D
+            Ok(Ok((op, _))) => return (Some(tok), op),
 
             // #2 is a random token :(
             Ok(Err((_, span))) => span,
@@ -483,13 +528,97 @@ where
         Err(span) => span,
     };
 
-    if !features.macro_at_most_once_rep
-        && !attr::contains_name(attrs, "allow_internal_unstable")
-    {
+    sess.span_diagnostic.span_err(span, "expected `*` or `+`");
+
+    // Return a dummy
+    (None, KleeneOp::ZeroOrMore)
+}
+
+// `?` is a Kleene op, not a separator
+fn parse_sep_and_kleene_op_2018<I>(
+    input: &mut Peekable<I>,
+    span: Span,
+    sess: &ParseSess,
+    features: &Features,
+    attrs: &[ast::Attribute],
+) -> (Option<token::Token>, KleeneOp)
+where
+    I: Iterator<Item = tokenstream::TokenTree>,
+{
+    // We basically look at two token trees here, denoted as #1 and #2 below
+    let span = match parse_kleene_op(input, span) {
+        // #1 is a `?` (needs feature gate)
+        Ok(Ok((op, op1_span))) if op == KleeneOp::ZeroOrOne => {
+            if !features.macro_at_most_once_rep
+                && !attr::contains_name(attrs, "allow_internal_unstable")
+            {
+                let explain = feature_gate::EXPLAIN_MACRO_AT_MOST_ONCE_REP;
+                emit_feature_err(
+                    sess,
+                    "macro_at_most_once_rep",
+                    op1_span,
+                    GateIssue::Language,
+                    explain,
+                );
+
+                op1_span
+            } else {
+                return (None, op);
+            }
+        }
+
+        // #1 is a `+` or `*` KleeneOp
+        Ok(Ok((op, _))) => return (None, op),
+
+        // #1 is a separator followed by #2, a KleeneOp
+        Ok(Err((tok, span))) => match parse_kleene_op(input, span) {
+            // #2 is the `?` Kleene op, which does not take a separator (error)
+            Ok(Ok((op, op2_span))) if op == KleeneOp::ZeroOrOne => {
+                // Error!
+
+                if !features.macro_at_most_once_rep
+                    && !attr::contains_name(attrs, "allow_internal_unstable")
+                {
+                    // FIXME: when `?` as a Kleene op is stabilized, we only need the "does not
+                    // take a macro separator" error (i.e. the `else` case).
+                    sess.span_diagnostic
+                        .struct_span_err(op2_span, "expected `*` or `+`")
+                        .note("`?` is not a macro repetition operator")
+                        .emit();
+                } else {
+                    sess.span_diagnostic.span_err(
+                        span,
+                        "the `?` macro repetition operator does not take a separator",
+                    );
+                }
+
+                // Return a dummy
+                return (None, KleeneOp::ZeroOrMore);
+            }
+
+            // #2 is a KleeneOp :D
+            Ok(Ok((op, _))) => return (Some(tok), op),
+
+            // #2 is a random token :(
+            Ok(Err((_, span))) => span,
+
+            // #2 is not a token at all :(
+            Err(span) => span,
+        },
+
+        // #1 is not a token
+        Err(span) => span,
+    };
+
+    // If we ever get to this point, we have experienced an "unexpected token" error
+
+    if !features.macro_at_most_once_rep && !attr::contains_name(attrs, "allow_internal_unstable") {
+        sess.span_diagnostic.span_err(span, "expected `*` or `+`");
+    } else {
         sess.span_diagnostic
             .span_err(span, "expected one of: `*`, `+`, or `?`");
-    } else {
-        sess.span_diagnostic.span_err(span, "expected `*` or `+`");
     }
+
+    // Return a dummy
     (None, KleeneOp::ZeroOrMore)
 }

@@ -127,7 +127,7 @@ macro_rules! declare_lint {
         };
     );
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
-     $lint_edition: expr => $edition_level: ident $(,)?
+     $lint_edition: expr => $edition_level: ident
     ) => (
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
@@ -142,7 +142,8 @@ macro_rules! declare_lint {
 /// Declare a static `LintArray` and return it as an expression.
 #[macro_export]
 macro_rules! lint_array {
-    ($( $lint:expr ),* $(,)?) => {{
+    ($( $lint:expr ),* ,) => { lint_array!( $($lint),* ) };
+    ($( $lint:expr ),*) => {{
         vec![$($lint),*]
     }}
 }

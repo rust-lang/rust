@@ -44,8 +44,10 @@ macro_rules! ast_fragments {
     (
         $($Kind:ident($AstTy:ty) {
             $kind_name:expr;
-            $(one fn $fold_ast:ident; fn $visit_ast:ident;)?
-            $(many fn $fold_ast_elt:ident; fn $visit_ast_elt:ident;)?
+            // FIXME: HACK: this should be `$(one ...)?` and `$(many ...)?` but `?` macro
+            // repetition was removed from 2015 edition in #51587 because of ambiguities.
+            $(one fn $fold_ast:ident; fn $visit_ast:ident;)*
+            $(many fn $fold_ast_elt:ident; fn $visit_ast_elt:ident;)*
             fn $make_ast:ident;
         })*
     ) => {
@@ -100,11 +102,11 @@ macro_rules! ast_fragments {
                     AstFragment::OptExpr(expr) =>
                         AstFragment::OptExpr(expr.and_then(|expr| folder.fold_opt_expr(expr))),
                     $($(AstFragment::$Kind(ast) =>
-                        AstFragment::$Kind(folder.$fold_ast(ast)),)?)*
+                        AstFragment::$Kind(folder.$fold_ast(ast)),)*)*
                     $($(AstFragment::$Kind(ast) =>
                         AstFragment::$Kind(ast.into_iter()
                                               .flat_map(|ast| folder.$fold_ast_elt(ast))
-                                              .collect()),)?)*
+                                              .collect()),)*)*
                 }
             }
 
@@ -112,10 +114,10 @@ macro_rules! ast_fragments {
                 match *self {
                     AstFragment::OptExpr(Some(ref expr)) => visitor.visit_expr(expr),
                     AstFragment::OptExpr(None) => {}
-                    $($(AstFragment::$Kind(ref ast) => visitor.$visit_ast(ast),)?)*
+                    $($(AstFragment::$Kind(ref ast) => visitor.$visit_ast(ast),)*)*
                     $($(AstFragment::$Kind(ref ast) => for ast_elt in &ast[..] {
                         visitor.$visit_ast_elt(ast_elt);
-                    })?)*
+                    })*)*
                 }
             }
         }
@@ -126,10 +128,10 @@ macro_rules! ast_fragments {
             }
             $($(fn $fold_ast(&mut self, ast: $AstTy) -> $AstTy {
                 self.expand_fragment(AstFragment::$Kind(ast)).$make_ast()
-            })?)*
+            })*)*
             $($(fn $fold_ast_elt(&mut self, ast_elt: <$AstTy as IntoIterator>::Item) -> $AstTy {
                 self.expand_fragment(AstFragment::$Kind(SmallVector::one(ast_elt))).$make_ast()
-            })?)*
+            })*)*
         }
 
         impl<'a> MacResult for ::ext::tt::macro_rules::ParserAnyMacro<'a> {

@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that `?` macro Kleene operator can not be used when the `macro_at_most_once_rep` feature
-// gate is not used.
+// Test behavior of `?` macro _kleene op_ under the 2015 edition. Namely, it doesn't exist.
 
-macro_rules! m { ($(a)?) => {} }
-//~^ ERROR using the `?` macro Kleene operator for "at most one" repetition is unstable
+// compile-flags: --edition=2015
 
-fn main() {
-    m!();
+macro_rules! bar {
+    ($(a)?) => {} //~ERROR expected `*` or `+`
 }
+
+macro_rules! baz {
+    ($(a),?) => {} //~ERROR expected `*` or `+`
+}
+
+fn main() {}
