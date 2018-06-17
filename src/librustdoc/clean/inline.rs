@@ -13,16 +13,19 @@
 use std::iter::once;
 
 use syntax::ast;
-use rustc::hir;
+use syntax::ext::base::MacroKind;
+use syntax_pos::Span;
 
+use rustc::hir;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
+use rustc::middle::cstore::LoadedMacro;
 use rustc::ty;
 use rustc::util::nodemap::FxHashSet;
 
 use core::{DocContext, DocAccessLevels};
 use doctree;
-use clean::{self, GetDefId, get_auto_traits_with_def_id};
+use clean::{self, GetDefId, ToSource, get_auto_traits_with_def_id};
 
 use super::Clean;
 
@@ -97,9 +100,12 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name, visited: &mut FxHa
             record_extern_fqn(cx, did, clean::TypeKind::Const);
             clean::ConstantItem(build_const(cx, did))
         }
-        // Macros are eagerly inlined back in visit_ast, don't show their export statements
-        // FIXME(50647): the eager inline does not take doc(hidden)/doc(no_inline) into account
-        Def::Macro(..) => return Some(Vec::new()),
+        // FIXME(misdreavus): if attributes/derives come down here we should probably document them
+        // separately
+        Def::Macro(did, MacroKind::Bang) => {
+            record_extern_fqn(cx, did, clean::TypeKind::Macro);
+            clean::MacroItem(build_macro(cx, did))
+        }
         _ => return None,
     };
     cx.renderinfo.borrow_mut().inlined.insert(did);
@@ -454,6 +460,33 @@ fn build_static(cx: &DocContext, did: DefId, mutable: bool) -> clean::Static {
         type_: cx.tcx.type_of(did).clean(cx),
         mutability: if mutable {clean::Mutable} else {clean::Immutable},
         expr: "\n\n\n".to_string(), // trigger the "[definition]" links
+    }
+}
+
+fn build_macro(cx: &DocContext, did: DefId) -> clean::Macro {
+    let imported_from = cx.tcx.original_crate_name(did.krate);
+    let def = match cx.cstore.load_macro_untracked(did, cx.sess()) {
+        LoadedMacro::MacroDef(macro_def) => macro_def,
+        // FIXME(jseyfried): document proc macro re-exports
+        LoadedMacro::ProcMacro(..) => panic!("attempting to document proc-macro re-export"),
+    };
+
+    let matchers: hir::HirVec<Span> = if let ast::ItemKind::MacroDef(ref def) = def.node {
+        let tts: Vec<_> = def.stream().into_trees().collect();
+        tts.chunks(4).map(|arm| arm[0].span()).collect()
+    } else {
+        unreachable!()
+    };
+
+    let source = format!("macro_rules! {} {{\n{}}}",
+                         def.ident.name.clean(cx),
+                         matchers.iter().map(|span| {
+                             format!("    {} => {{ ... }};\n", span.to_src(cx))
+                         }).collect::<String>());
+
+    clean::Macro {
+        source,
+        imported_from: Some(imported_from).clean(cx),
     }
 }
 

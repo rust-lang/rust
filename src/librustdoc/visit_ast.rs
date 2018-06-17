@@ -21,9 +21,8 @@ use syntax_pos::Span;
 use rustc::hir::map as hir_map;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::middle::cstore::{LoadedMacro, CrateStore};
+use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevel;
-use rustc::ty::Visibility;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 
 use rustc::hir;
@@ -215,44 +214,6 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             self.visit_item(item, None, &mut om);
         }
         self.inside_public_path = orig_inside_public_path;
-        let def_id = self.cx.tcx.hir.local_def_id(id);
-        if let Some(exports) = self.cx.tcx.module_exports(def_id) {
-            for export in exports.iter().filter(|e| e.vis == Visibility::Public) {
-                if let Def::Macro(def_id, ..) = export.def {
-                    // FIXME(50647): this eager macro inlining does not take
-                    // doc(hidden)/doc(no_inline) into account
-                    if def_id.krate == LOCAL_CRATE {
-                        continue // These are `krate.exported_macros`, handled in `self.visit()`.
-                    }
-
-                    let imported_from = self.cx.tcx.original_crate_name(def_id.krate);
-                    let def = match self.cstore.load_macro_untracked(def_id, self.cx.sess()) {
-                        LoadedMacro::MacroDef(macro_def) => macro_def,
-                        // FIXME(jseyfried): document proc macro re-exports
-                        LoadedMacro::ProcMacro(..) => continue,
-                    };
-
-                    let matchers = if let ast::ItemKind::MacroDef(ref def) = def.node {
-                        let tts: Vec<_> = def.stream().into_trees().collect();
-                        tts.chunks(4).map(|arm| arm[0].span()).collect()
-                    } else {
-                        unreachable!()
-                    };
-
-                    debug!("inlining macro {}", def.ident.name);
-                    om.macros.push(Macro {
-                        def_id,
-                        attrs: def.attrs.clone().into(),
-                        name: def.ident.name,
-                        whence: self.cx.tcx.def_span(def_id),
-                        matchers,
-                        stab: self.cx.tcx.lookup_stability(def_id).cloned(),
-                        depr: self.cx.tcx.lookup_deprecation(def_id),
-                        imported_from: Some(imported_from),
-                    })
-                }
-            }
-        }
         om
     }
 
