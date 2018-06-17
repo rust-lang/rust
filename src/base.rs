@@ -54,7 +54,7 @@ impl CValue {
     fn load_value<'a, 'tcx: 'a>(self, ccx: &mut CodegenCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Value {
         match self {
             CValue::ByRef(value) => {
-                let cton_ty = cton_type_from_ty(ty);
+                let cton_ty = cton_type_from_ty(ty).unwrap();
                 ccx.bcx.ins().load(cton_ty, MemFlags::new(), value, 0)
             }
             CValue::ByVal(value) => value,
@@ -84,11 +84,16 @@ pub fn trans_crate<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Box<Any> {
 
                 trans_fn(tcx, &mut f, def_id, substs);
 
+                let flags = settings::Flags::new(settings::builder());
+                let verify_error: String = ::cretonne::codegen::verify_function(&f, &flags)
+                    .map(|_| String::new())
+                    .unwrap_or_else(|err| format!("\n\ncretonne error: {}", err));
+
                 let mut mir = ::std::io::Cursor::new(Vec::new());
                 ::rustc_mir::util::write_mir_pretty(tcx, Some(def_id), &mut mir).unwrap();
                 let mut cton = String::new();
                 ::cretonne::codegen::write_function(&mut cton, &f, None).unwrap();
-                tcx.sess.warn(&format!("{:?}:\n\n{}\n\n{}", def_id, String::from_utf8_lossy(&mir.into_inner()), cton));
+                tcx.sess.warn(&format!("{:?}:\n\n{}\n\n{}{}", def_id, String::from_utf8_lossy(&mir.into_inner()), cton, verify_error));
 
                 translated_mono_items.push(Translated {
                     f,
@@ -222,10 +227,10 @@ fn trans_fn<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &mut Function, def_id:
 fn trans_stmt<'a, 'tcx: 'a>(ccx: &mut CodegenCtxt<'a, 'tcx>, stmt: &Statement<'tcx>) {
     match &stmt.kind {
         StatementKind::Assign(place, rval) => {
-            let ty = place.ty(&ccx.mir.local_decls, ccx.tcx);
+            let ty = place.ty(&ccx.mir.local_decls, ccx.tcx).to_ty(ccx.tcx);
             let lval = trans_place(ccx, place);
             let rval = trans_rval(ccx, rval);
-            do_memcpy(ccx, lval, ty);
+            do_memcpy(ccx, lval, rval, ty);
         }
         StatementKind::StorageLive(_) | StatementKind::StorageDead(_) | StatementKind::Nop => {}
         _ => unimplemented!("stmt {:?}", stmt),
@@ -240,7 +245,9 @@ fn trans_place<'a, 'tcx: 'a>(ccx: &mut CodegenCtxt<'a, 'tcx>, place: &Place<'tcx
             match projection.elem {
                 ProjectionElem::Field(field, ty) => {
                     let layout = ccx.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                    ccx.bcx.ins().iconst(types::I64, 0) // unimplemented =====================================================
+                    let field_offset = layout.fields.offset(field.index());
+                    let field_offset = ccx.bcx.ins().iconst(types::I64, field_offset.bytes() as i64);
+                    ccx.bcx.ins().iadd(base, field_offset)
                 }
                 _ => unimplemented!("projection {:?}", projection),
             }
@@ -287,7 +294,7 @@ fn trans_operand<'a, 'tcx>(ccx: &mut CodegenCtxt<'a, 'tcx>, operand: &Operand<'t
                     let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
                     match const_.ty.sty {
                         TypeVariants::TyUint(_) => {
-                            let iconst = ccx.bcx.ins().iconst(cton_type_from_ty(const_.ty), bits as u64 as i64);
+                            let iconst = ccx.bcx.ins().iconst(cton_type_from_ty(const_.ty).unwrap(), bits as u64 as i64);
                             CValue::ByVal(iconst)
                         }
                         _ => unimplemented!(),
@@ -297,6 +304,14 @@ fn trans_operand<'a, 'tcx>(ccx: &mut CodegenCtxt<'a, 'tcx>, operand: &Operand<'t
             }
         }
         operand => unimplemented!("operand {:?}", operand),
+    }
+}
+
+fn do_memcpy<'a, 'tcx: 'a>(ccx: &mut CodegenCtxt<'a, 'tcx>, to: Value, from: Value, ty: Ty<'tcx>) {
+    let layout = ccx.tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
+    for i in 0..(layout.size.bytes() as i32) {
+        let byte = ccx.bcx.ins().load_complex(types::I8, MemFlags::new(), &[from], i);
+        ccx.bcx.ins().store_complex(MemFlags::new(), byte, &[to], i);
     }
 }
 
@@ -321,9 +336,9 @@ fn cton_sig_from_fn_sig(sig: &FnSig) -> Signature {
     }
 }
 
-fn cton_type_from_ty(ty: Ty) -> types::Type {
-    match ty.sty {
-        TypeVariants::TyBool => types::B1,
+fn cton_type_from_ty(ty: Ty) -> Option<types::Type> {
+    Some(match ty.sty {
+        TypeVariants::TyBool => types::I8,
         TypeVariants::TyUint(size) => {
             match size {
                 UintTy::U8 => types::I8,
@@ -344,6 +359,6 @@ fn cton_type_from_ty(ty: Ty) -> types::Type {
                 IntTy::Isize => unimplemented!(),
             }
         }
-        _ => unimplemented!("Cton type from {:?}", ty),
-    }
+        _ => return None,
+    })
 }
