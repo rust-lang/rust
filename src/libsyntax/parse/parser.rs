@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc_target::spec::abi::{self, Abi};
-use ast::{AngleBracketedArgs, ParenthesizedArgData, AttrStyle, BareFnTy};
+use ast::{AngleBracketedArgs, ParenthesisedArgs, AttrStyle, BareFnTy};
 use ast::{GenericBound, TraitBoundModifier};
 use ast::Unsafety;
 use ast::{Mod, AnonConst, Arg, Arm, Attribute, BindingMode, TraitItemKind};
@@ -1988,7 +1988,7 @@ impl<'a> Parser<'a> {
                     None
                 };
                 let span = lo.to(self.prev_span);
-                ParenthesizedArgData { inputs, output, span }.into()
+                ParenthesisedArgs { inputs, output, span }.into()
             };
 
             PathSegment { ident, args }

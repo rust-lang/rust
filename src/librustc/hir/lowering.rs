@@ -1747,7 +1747,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_parenthesized_parameter_data(
         &mut self,
-        data: &ParenthesizedArgData,
+        data: &ParenthesisedArgs,
     ) -> (hir::GenericArgs, bool) {
         // Switch to `PassThrough` mode for anonymous lifetimes: this
         // means that we permit things like `&Ref<T>`, where `Ref` has
@@ -1758,7 +1758,7 @@ impl<'a> LoweringContext<'a> {
             AnonymousLifetimeMode::PassThrough,
             |this| {
                 const DISALLOWED: ImplTraitContext = ImplTraitContext::Disallowed;
-                let &ParenthesizedArgData { ref inputs, ref output, span } = data;
+                let &ParenthesisedArgs { ref inputs, ref output, span } = data;
                 let inputs = inputs.iter().map(|ty| this.lower_ty(ty, DISALLOWED)).collect();
                 let mk_tup = |this: &mut Self, tys, span| {
                     let LoweredNodeId { node_id, hir_id } = this.next_id();

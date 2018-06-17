@@ -146,7 +146,7 @@ pub enum GenericArgs {
     /// The `<'a, A,B,C>` in `foo::bar::baz::<'a, A,B,C>`
     AngleBracketed(AngleBracketedArgs),
     /// The `(A,B)` and `C` in `Foo(A,B) -> C`
-    Parenthesized(ParenthesizedArgData),
+    Parenthesized(ParenthesisedArgs),
 }
 
 impl GenericArgs {
@@ -183,7 +183,7 @@ impl Into<Option<P<GenericArgs>>> for AngleBracketedArgs {
     }
 }
 
-impl Into<Option<P<GenericArgs>>> for ParenthesizedArgData {
+impl Into<Option<P<GenericArgs>>> for ParenthesisedArgs {
     fn into(self) -> Option<P<GenericArgs>> {
         Some(P(GenericArgs::Parenthesized(self)))
     }
@@ -191,7 +191,7 @@ impl Into<Option<P<GenericArgs>>> for ParenthesizedArgData {
 
 /// A path like `Foo(A,B) -> C`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct ParenthesizedArgData {
+pub struct ParenthesisedArgs {
     /// Overall span
     pub span: Span,
 

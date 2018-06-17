@@ -193,8 +193,8 @@ pub trait Folder : Sized {
         noop_fold_angle_bracketed_parameter_data(p, self)
     }
 
-    fn fold_parenthesized_parameter_data(&mut self, p: ParenthesizedArgData)
-                                         -> ParenthesizedArgData
+    fn fold_parenthesized_parameter_data(&mut self, p: ParenthesisedArgs)
+                                         -> ParenthesisedArgs
     {
         noop_fold_parenthesized_parameter_data(p, self)
     }
@@ -483,12 +483,12 @@ pub fn noop_fold_angle_bracketed_parameter_data<T: Folder>(data: AngleBracketedA
     }
 }
 
-pub fn noop_fold_parenthesized_parameter_data<T: Folder>(data: ParenthesizedArgData,
+pub fn noop_fold_parenthesized_parameter_data<T: Folder>(data: ParenthesisedArgs,
                                                          fld: &mut T)
-                                                         -> ParenthesizedArgData
+                                                         -> ParenthesisedArgs
 {
-    let ParenthesizedArgData { inputs, output, span } = data;
-    ParenthesizedArgData {
+    let ParenthesisedArgs { inputs, output, span } = data;
+    ParenthesisedArgs {
         inputs: inputs.move_map(|ty| fld.fold_ty(ty)),
         output: output.map(|ty| fld.fold_ty(ty)),
         span: fld.new_span(span)
