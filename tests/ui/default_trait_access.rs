@@ -23,7 +23,45 @@ fn main() {
 
     let s9: String = DefaultFactory::make_t_nicely();
 
-    println!("[{}] [{}] [{}] [{}] [{}] [{}] [{}] [{}] [{}]", s1, s2, s3, s4, s5, s6, s7, s8, s9);
+    let s10 = DerivedDefault::default();
+
+    let s11: GenericDerivedDefault<String> = Default::default();
+
+    let s12 = GenericDerivedDefault::<String>::default();
+
+    let s13 = TupleDerivedDefault::default();
+
+    let s14: TupleDerivedDefault = Default::default();
+
+    let s15: ArrayDerivedDefault = Default::default();
+
+    let s16 = ArrayDerivedDefault::default();
+
+    let s17: TupleStructDerivedDefault = Default::default();
+
+    let s18 = TupleStructDerivedDefault::default();
+
+    println!(
+        "[{}] [{}] [{}] [{}] [{}] [{}] [{}] [{}] [{}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}]",
+        s1,
+        s2,
+        s3,
+        s4,
+        s5,
+        s6,
+        s7,
+        s8,
+        s9,
+        s10,
+        s11,
+        s12,
+        s13,
+        s14,
+        s15,
+        s16,
+        s17,
+        s18,
+    );
 }
 
 struct DefaultFactory;
@@ -37,3 +75,26 @@ impl DefaultFactory {
         T::default()
     }
 }
+
+#[derive(Debug, Default)]
+struct DerivedDefault {
+    pub s: String,
+}
+
+#[derive(Debug, Default)]
+struct GenericDerivedDefault<T: Default + std::fmt::Debug> {
+    pub s: T,
+}
+
+#[derive(Debug, Default)]
+struct TupleDerivedDefault {
+    pub s: (String, String),
+}
+
+#[derive(Debug, Default)]
+struct ArrayDerivedDefault {
+    pub s: [String; 10],
+}
+
+#[derive(Debug, Default)]
+struct TupleStructDerivedDefault(String);

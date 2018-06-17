@@ -1128,3 +1128,17 @@ pub fn without_block_comments(lines: Vec<&str>) -> Vec<&str> {
 
     without
 }
+
+pub fn any_parent_is_automatically_derived(tcx: TyCtxt, node: NodeId) -> bool {
+    let map = &tcx.hir;
+    let mut prev_enclosing_node = None;
+    let mut enclosing_node = node;
+    while Some(enclosing_node) != prev_enclosing_node {
+        if is_automatically_derived(map.attrs(enclosing_node)) {
+            return true;
+        }
+        prev_enclosing_node = Some(enclosing_node);
+        enclosing_node = map.get_parent(enclosing_node);
+    }
+    false
+}
