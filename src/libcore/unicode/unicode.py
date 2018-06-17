@@ -52,7 +52,7 @@ expanded_categories = {
     'Lu': ['LC', 'L'], 'Ll': ['LC', 'L'], 'Lt': ['LC', 'L'],
     'Lm': ['L'], 'Lo': ['L'],
     'Mn': ['M'], 'Mc': ['M'], 'Me': ['M'],
-    'Nd': ['N'], 'Nl': ['N'], 'No': ['No'],
+    'Nd': ['N'], 'Nl': ['N'], 'No': ['N'],
     'Pc': ['P'], 'Pd': ['P'], 'Ps': ['P'], 'Pe': ['P'],
     'Pi': ['P'], 'Pf': ['P'], 'Po': ['P'],
     'Sm': ['S'], 'Sc': ['S'], 'Sk': ['S'], 'So': ['S'],

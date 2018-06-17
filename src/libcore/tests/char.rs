@@ -148,9 +148,10 @@ fn test_is_control() {
 }
 
 #[test]
-fn test_is_digit() {
+fn test_is_numeric() {
    assert!('2'.is_numeric());
    assert!('7'.is_numeric());
+   assert!('¾'.is_numeric());
    assert!(!'c'.is_numeric());
    assert!(!'i'.is_numeric());
    assert!(!'z'.is_numeric());
