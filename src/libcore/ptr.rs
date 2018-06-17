@@ -50,7 +50,7 @@
 //! [aliasing]: ../../nomicon/aliasing.html
 //! [book]: ../../book/second-edition/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
 //! [ub]: ../../reference/behavior-considered-undefined.html
-//! [`copy`]: ./fn.copy.html
+//! [`copy`]: ../../std/ptr/fn.copy.html
 //! [`read_unaligned`]: ./fn.read_unaligned.html
 //! [`write_unaligned`]: ./fn.write_unaligned.html
 
