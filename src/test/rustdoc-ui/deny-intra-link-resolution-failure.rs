@@ -8,13 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This should fail a normal compile due to non_camel_case_types,
-// It should pass a doc-compile as it only needs to type-check and
-// therefore should not concern itself with the lints.
-#[deny(warnings)]
+#![deny(intra_doc_link_resolution_failure)]
 
-// @has cap_lints/struct.Foo.html //pre '#[must_use]'
-#[must_use]
-pub struct Foo {
-    field: i32,
-}
+/// [v2] //~ ERROR
+pub fn foo() {}

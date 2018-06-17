@@ -21,7 +21,7 @@ pub use self::Visibility::{Public, Inherited};
 
 use syntax;
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, AttrStyle, Ident};
+use syntax::ast::{self, AttrStyle, NodeId, Ident};
 use syntax::attr;
 use syntax::codemap::{dummy_spanned, Spanned};
 use syntax::feature_gate::UnstableFeatures;
@@ -46,9 +46,10 @@ use rustc::middle::stability;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_typeck::hir_ty_to_ty;
 use rustc::infer::region_constraints::{RegionConstraintData, Constraint};
+use rustc::lint as lint;
+
 use std::collections::hash_map::Entry;
 use std::fmt;
-
 use std::default::Default;
 use std::{mem, slice, vec};
 use std::iter::{FromIterator, once};
@@ -1283,10 +1284,16 @@ fn resolution_failure(
                 link_range.end + code_dox_len,
             );
 
-            diag = cx.sess().struct_span_warn(sp, &msg);
+            diag = cx.tcx.struct_span_lint_node(lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
+                                                NodeId::new(0),
+                                                sp,
+                                                &msg);
             diag.span_label(sp, "cannot be resolved, ignoring");
         } else {
-            diag = cx.sess().struct_span_warn(sp, &msg);
+            diag = cx.tcx.struct_span_lint_node(lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
+                                                NodeId::new(0),
+                                                sp,
+                                                &msg);
 
             let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
             let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
@@ -1303,8 +1310,13 @@ fn resolution_failure(
         }
         diag
     } else {
-        cx.sess().struct_span_warn(sp, &msg)
+        cx.tcx.struct_span_lint_node(lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
+                                     NodeId::new(0),
+                                     sp,
+                                     &msg)
     };
+    diag.help("to escape `[` and `]` characters, just add '\\' before them like \
+               `\\[` or `\\]`");
     diag.emit();
 }
 

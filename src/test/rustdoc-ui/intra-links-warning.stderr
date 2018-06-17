@@ -3,48 +3,65 @@ warning: `[Foo::baz]` cannot be resolved, ignoring it...
    |
 13 |        //! Test with [Foo::baz], [Bar::foo], ...
    |                       ^^^^^^^^ cannot be resolved, ignoring
+   |
+   = note: #[warn(intra_doc_link_resolution_failure)] on by default
+   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
 
 warning: `[Bar::foo]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:13:35
    |
 13 |        //! Test with [Foo::baz], [Bar::foo], ...
    |                                   ^^^^^^^^ cannot be resolved, ignoring
+   |
+   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
 
 warning: `[Uniooon::X]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:14:13
    |
 14 |      //! , [Uniooon::X] and [Qux::Z].
    |             ^^^^^^^^^^ cannot be resolved, ignoring
+   |
+   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
 
 warning: `[Qux::Z]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:14:30
    |
 14 |      //! , [Uniooon::X] and [Qux::Z].
    |                              ^^^^^^ cannot be resolved, ignoring
+   |
+   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
 
 warning: `[Uniooon::X]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:16:14
    |
 16 |       //! , [Uniooon::X] and [Qux::Z].
    |              ^^^^^^^^^^ cannot be resolved, ignoring
+   |
+   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
 
 warning: `[Qux::Z]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:16:31
    |
 16 |       //! , [Uniooon::X] and [Qux::Z].
    |                               ^^^^^^ cannot be resolved, ignoring
+   |
+   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
 
 warning: `[Qux:Y]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:18:13
    |
 18 |        /// [Qux:Y]
    |             ^^^^^ cannot be resolved, ignoring
+   |
+   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
 
 warning: `[BarA]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:24:10
    |
 24 | /// bar [BarA] bar
    |          ^^^^ cannot be resolved, ignoring
+   |
+   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
 
 warning: `[BarB]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:28:1
@@ -60,6 +77,7 @@ warning: `[BarB]` cannot be resolved, ignoring it...
            
             bar [BarB] bar
                  ^^^^
+   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
 
 warning: `[BarC]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:35:1
@@ -77,6 +95,7 @@ warning: `[BarC]` cannot be resolved, ignoring it...
            
            bar [BarC] bar
                 ^^^^
+   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
 
 warning: `[BarD]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:48:1
@@ -88,6 +107,7 @@ warning: `[BarD]` cannot be resolved, ignoring it...
            
            bar [BarD] bar
                 ^^^^
+   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
 
 warning: `[BarF]` cannot be resolved, ignoring it...
   --> $DIR/intra-links-warning.rs:53:9
@@ -102,4 +122,5 @@ warning: `[BarF]` cannot be resolved, ignoring it...
            
            bar [BarF] bar
                 ^^^^
+   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
 

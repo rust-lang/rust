@@ -1665,3 +1665,36 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
         }
     }
 }
+
+/// Does nothing as a lint pass, but registers some `Lint`s
+/// which are used by other parts of the compiler.
+#[derive(Copy, Clone)]
+pub struct SoftLints;
+
+impl LintPass for SoftLints {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(
+            WHILE_TRUE,
+            BOX_POINTERS,
+            NON_SHORTHAND_FIELD_PATTERNS,
+            UNSAFE_CODE,
+            MISSING_DOCS,
+            MISSING_COPY_IMPLEMENTATIONS,
+            MISSING_DEBUG_IMPLEMENTATIONS,
+            ANONYMOUS_PARAMETERS,
+            UNUSED_DOC_COMMENTS,
+            UNCONDITIONAL_RECURSION,
+            PLUGIN_AS_LIBRARY,
+            PRIVATE_NO_MANGLE_FNS,
+            PRIVATE_NO_MANGLE_STATICS,
+            NO_MANGLE_CONST_ITEMS,
+            NO_MANGLE_GENERIC_ITEMS,
+            MUTABLE_TRANSMUTES,
+            UNSTABLE_FEATURES,
+            UNIONS_WITH_DROP_FIELDS,
+            UNREACHABLE_PUB,
+            TYPE_ALIAS_BOUNDS,
+            TRIVIAL_BOUNDS,
+        )
+    }
+}
