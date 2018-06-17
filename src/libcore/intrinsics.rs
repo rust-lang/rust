@@ -976,19 +976,15 @@ extern "rust-intrinsic" {
     ///
     /// Behavior is undefined if any of the following conditions are violated:
     ///
+    /// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
+    ///
+    /// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
+    ///
     /// * Both `src` and `dst` must be properly aligned.
     ///
-    /// * `src.offset(i)` must be [valid] for all `i` in `0..count`. In other
-    ///   words, the region of memory which begins at `src` and has a length of
-    ///   `count * size_of::<T>()` bytes must belong to a single, live
-    ///   allocation.
-    ///
-    /// * `dst.offset(i)` must be [valid] for all `i` in `0..count`. In other
-    ///   words, the region of memory which begins at `dst` and has a length of
-    ///   `count * size_of::<T>()` bytes must belong to a single, live
-    ///   allocation.
-    ///
-    /// * The two regions of memory must *not* overlap.
+    /// * The region of memory beginning at `src` with a size of `count *
+    ///   size_of::<T>()` bytes must *not* overlap with the region of memory
+    ///   beginning at `dst` with the same size.
     ///
     /// Like [`read`], `copy` creates a bitwise copy of `T`, regardless of
     /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using both the values
@@ -1064,17 +1060,11 @@ extern "rust-intrinsic" {
     ///
     /// Behavior is undefined if any of the following conditions are violated:
     ///
+    /// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
+    ///
+    /// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
+    ///
     /// * Both `src` and `dst` must be properly aligned.
-    ///
-    /// * `src.offset(i)` must be [valid] for all `i` in `0..count`. In other
-    ///   words, the region of memory which begins at `src` and has a length of
-    ///   `count * size_of::<T>()` bytes must belong to a single, live
-    ///   allocation.
-    ///
-    /// * `dst.offset(i)` must be [valid] for all `i` in `0..count`. In other
-    ///   words, the region of memory which begins at `dst` and has a length of
-    ///   `count * size_of::<T>()` bytes must belong to a single, live
-    ///   allocation.
     ///
     /// Like [`read`], `copy` creates a bitwise copy of `T`, regardless of
     /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using both the values
@@ -1116,12 +1106,9 @@ extern "rust-intrinsic" {
     ///
     /// Behavior is undefined if any of the following conditions are violated:
     ///
-    /// * `dst` must be properly aligned.
+    /// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
     ///
-    /// * `dst.offset(i)` must be [valid] for all `i` in `0..count`. In other
-    ///   words, the region of memory which begins at `dst` and has a length of
-    ///   `count * size_of::<T>()` bytes must belong to a single, live
-    ///   allocation.
+    /// * `dst` must be properly aligned.
     ///
     /// Additionally, the caller must ensure that writing `count *
     /// size_of::<T>()` bytes to the given region of memory results in a valid

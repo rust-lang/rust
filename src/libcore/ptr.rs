@@ -19,25 +19,38 @@
 //! Many functions in this module take raw pointers as arguments and dereference
 //! them. For this to be safe, these pointers must be valid. However, because
 //! rust does not yet have a formal memory model, determining whether an
-//! arbitrary pointer is a valid one can be tricky. One thing is certain:
-//! creating a raw pointer from a reference (e.g. `&x as *const _`) *always*
-//! results in a valid pointer. By exploiting this—and by taking care when
-//! using [pointer arithmetic]—users can be confident in the correctness of
-//! their unsafe code.
+//! arbitrary pointer is valid for a given operation can be tricky.
 //!
-//! For more information on dereferencing raw pointers, see the both the [book]
-//! and the section in the reference devoted to [undefined behavior][ub].
+//! There are two types of operations on memory, reads and writes. It is
+//! possible for a `*mut` to be valid for one operation and not the other. Since
+//! a `*const` can only be read and not written, it has no such ambiguity. For
+//! example, a `*mut` is not valid for writes if a a reference exists which
+//! [refers to the same memory][aliasing]. Therefore, each function in this
+//! module will document which operations must be valid on any `*mut` arguments.
+//!
+//! Additionally, some functions (e.g. [`copy`]) take a single pointer but
+//! operate on many values. In this case, the function will state the size of
+//! the operation for which the pointer must be valid. For example,
+//! `copy::<T>(&src, &mut dst, 3)` requires `dst` to be valid for writes of
+//! `size_of::<T>() * 3` bytes. When the documentation requires that a pointer
+//! be valid for an operation but omits the size of that operation, the size is
+//! implied to be `size_of::<T>()` bytes.
+//!
+//! For more information on the safety implications of dereferencing raw
+//! pointers, see the both the [book] and the section in the reference devoted
+//! to [undefined behavior][ub].
 //!
 //! ## Alignment
 //!
 //! Valid pointers are not necessarily properly aligned. However, most functions
 //! require their arguments to be properly aligned, and will explicitly state
-//! this requirement in the `Safety` section. Notable exceptions to this are
+//! this requirement in their documentation. Notable exceptions to this are
 //! [`read_unaligned`] and [`write_unaligned`].
 //!
-//! [ub]: ../../reference/behavior-considered-undefined.html
+//! [aliasing]: ../../nomicon/aliasing.html
 //! [book]: ../../book/second-edition/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
-//! [pointer arithmetic]: ../../std/primitive.pointer.html#method.offset
+//! [ub]: ../../reference/behavior-considered-undefined.html
+//! [`copy`]: ./fn.copy.html
 //! [`read_unaligned`]: ./fn.read_unaligned.html
 //! [`write_unaligned`]: ./fn.write_unaligned.html
 
@@ -83,7 +96,7 @@ pub use intrinsics::write_bytes;
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `to_drop` must be [valid].
+/// * `to_drop` must be [valid] for reads.
 ///
 /// * `to_drop` must be properly aligned.
 ///
@@ -178,7 +191,7 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * Both `x` and `y` must be [valid].
+/// * Both `x` and `y` must be [valid] for reads and writes.
 ///
 /// * Both `x` and `y` must be properly aligned.
 ///
@@ -240,17 +253,14 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
+/// * Both `x` and `y` must be [valid] for reads and writes of `count *
+///   size_of::<T>()` bytes.
+///
 /// * Both `x` and `y` must be properly aligned.
 ///
-/// * `x.offset(i)` must be [valid] for all `i` in `0..count`. In other words,
-///   the region of memory which begins at `x` and has a length of `count *
-///   size_of::<T>()` bytes must belong to a single, live allocation.
-///
-/// * `y.offset(i)` must be [valid] for all `i` in `0..count`. In other words,
-///   the region of memory which begins at `y` and has a length of `count *
-///   size_of::<T>()` bytes must belong to a single, live allocation.
-///
-/// * The two regions of memory must *not* overlap.
+/// * The region of memory beginning at `x` with a size of `count *
+///   size_of::<T>()` bytes must *not* overlap with the region of memory
+///   beginning at `y` with the same size.
 ///
 /// [valid]: ../ptr/index.html#safety
 ///
@@ -346,7 +356,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `dest` must be [valid].
+/// * `dest` must be [valid] for writes.
 ///
 /// * `dest` must be properly aligned.
 ///
@@ -382,7 +392,7 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `src` must be [valid].
+/// * `src` must be [valid] for reads.
 ///
 /// * `src` must be properly aligned. Use [`read_unaligned`] if this is not the
 ///   case.
@@ -495,7 +505,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `src` must be [valid].
+/// * `src` must be [valid] for reads.
 ///
 /// Like [`read`], `read_unaligned` creates a bitwise copy of `T`, regardless of
 /// whether `T` is [`Copy`].  If `T` is not [`Copy`], using both the returned
@@ -572,7 +582,7 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `dst` must be [valid].
+/// * `dst` must be [valid] for writes.
 ///
 /// * `dst` must be properly aligned. Use [`write_unaligned`] if this is not the
 ///   case.
@@ -646,7 +656,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `dst` must be [valid].
+/// * `dst` must be [valid] for writes.
 ///
 /// [valid]: ../ptr/index.html#safety
 ///
@@ -721,7 +731,7 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `src` must be [valid].
+/// * `src` must be [valid] for reads.
 ///
 /// * `src` must be properly aligned.
 ///
@@ -790,7 +800,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `dst` must be [valid].
+/// * `dst` must be [valid] for writes.
 ///
 /// * `dst` must be properly aligned.
 ///
