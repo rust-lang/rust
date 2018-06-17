@@ -35,10 +35,14 @@ fn abc(a: u8) -> u8 {
     a * 2
 }
 
-fn bcd(b: bool, a: u8) -> u8 {
+/*fn bcd(b: bool, a: u8) -> u8 {
     if b {
         a * 2
     } else {
         a * 3
     }
+}*/
+
+fn call() {
+    abc(42);
 }

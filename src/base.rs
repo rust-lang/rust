@@ -4,6 +4,7 @@ use rustc_mir::monomorphize::MonoItem;
 use cretonne::prelude::*;
 use cretonne::codegen::ir::{
     ExternalName,
+    FuncRef,
     function::Function,
 };
 
@@ -32,6 +33,7 @@ impl EntityRef for Variable {
 enum CValue {
     ByRef(Value),
     ByVal(Value),
+    Func(FuncRef),
 }
 
 impl CValue {
@@ -48,6 +50,10 @@ impl CValue {
                 ccx.bcx.ins().stack_store(value, stack_slot, 0);
                 ccx.bcx.ins().stack_addr(types::I64, stack_slot, 0)
             }
+            CValue::Func(func) => {
+                let func = ccx.bcx.ins().func_addr(types::I64, func);
+                CValue::ByVal(func).force_stack(ccx, ty)
+            }
         }
     }
 
@@ -58,6 +64,9 @@ impl CValue {
                 ccx.bcx.ins().load(cton_ty, MemFlags::new(), value, 0)
             }
             CValue::ByVal(value) => value,
+            CValue::Func(func) => {
+                ccx.bcx.ins().func_addr(types::I64, func)
+            }
         }
     }
 }
@@ -189,7 +198,7 @@ fn trans_fn<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &mut Function, def_id:
             TerminatorKind::Return => {
                 ccx.bcx.ins().return_(&[]);
             }
-            TerminatorKind::Assert { cond, expected, msg, target, cleanup } => {
+            TerminatorKind::Assert { cond, expected, msg, target, cleanup: _ } => {
                 let cond_ty = cond.ty(&ccx.mir.local_decls, ccx.tcx);
                 let cond = trans_operand(ccx, cond).load_value(ccx, cond_ty);
                 let target = ccx.get_ebb(*target);
@@ -214,9 +223,41 @@ fn trans_fn<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &mut Function, def_id:
                 let otherwise_ebb = ccx.get_ebb(targets[targets.len() - 1]);
                 ccx.bcx.ins().jump(otherwise_ebb, &[]);
             }
-            _ => {
-                unimplemented!();
+            TerminatorKind::Call { func, args, destination, cleanup: _ } => {
+                let func = trans_operand(ccx, func);
+                let return_place = if let Some((place, _)) = destination {
+                    trans_place(ccx, place)
+                } else {
+                    ccx.bcx.ins().iconst(types::I64, 0)
+                };
+                let args = Some(return_place)
+                    .into_iter()
+                    .chain(
+                        args
+                            .into_iter()
+                            .map(|arg| {
+                                let ty = arg.ty(&ccx.mir.local_decls, ccx.tcx);
+                                let arg = trans_operand(ccx, arg);
+                                arg.force_stack(ccx, ty)
+                            })
+                    ).collect::<Vec<_>>();
+                match func {
+                    CValue::Func(func) => {
+                        ccx.bcx.ins().call(func, &args);
+                    }
+                    _ => unimplemented!("indirect call"),
+                }
+                if let Some((_, dest)) = *destination {
+                    let ret_ebb = ccx.get_ebb(dest);
+                    ccx.bcx.ins().jump(ret_ebb, &[]);
+                } else {
+                    ccx.bcx.ins().trap(TrapCode::User(!0));
+                }
             }
+            TerminatorKind::Resume | TerminatorKind::Abort | TerminatorKind::Unreachable => {
+                ccx.bcx.ins().trap(TrapCode::User(!0));
+            }
+            terminator => unimplemented!("terminator {:?}", terminator),
         }
     }
 
@@ -291,13 +332,29 @@ fn trans_operand<'a, 'tcx>(ccx: &mut CodegenCtxt<'a, 'tcx>, operand: &Operand<'t
             match const_.literal {
                 Literal::Value { value } => {
                     let layout = ccx.tcx.layout_of(ParamEnv::empty().and(const_.ty)).unwrap();
-                    let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
                     match const_.ty.sty {
                         TypeVariants::TyUint(_) => {
+                            let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
                             let iconst = ccx.bcx.ins().iconst(cton_type_from_ty(const_.ty).unwrap(), bits as u64 as i64);
                             CValue::ByVal(iconst)
                         }
-                        _ => unimplemented!(),
+                        TypeVariants::TyInt(_) => {
+                            let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
+                            let iconst = ccx.bcx.ins().iconst(cton_type_from_ty(const_.ty).unwrap(), bits as i128 as i64);
+                            CValue::ByVal(iconst)
+                        }
+                        TypeVariants::TyFnDef(def_id, substs) => {
+                            let ext_name = ext_name_from_did(def_id);
+                            let sig = ccx.tcx.fn_sig(def_id);
+                            let sig = ccx.tcx.subst_and_normalize_erasing_regions(substs, ParamEnv::reveal_all(), &sig);
+                            let sig = ccx.bcx.import_signature(cton_sig_from_fn_sig(sig.skip_binder()));
+                            CValue::Func(ccx.bcx.import_function(ExtFuncData {
+                                name: ext_name,
+                                signature: sig,
+                                colocated: false,
+                            }))
+                        }
+                        _ => unimplemented!("value {:?} ty {:?}", value, const_.ty),
                     }
                 }
                 _ => unimplemented!()
