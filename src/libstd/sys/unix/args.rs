@@ -82,17 +82,15 @@ mod imp {
     static LOCK: Mutex = Mutex::new();
 
     pub unsafe fn init(argc: isize, argv: *const *const u8) {
-        LOCK.lock();
+        let _guard = LOCK.lock();
         ARGC = argc;
         ARGV = argv;
-        LOCK.unlock();
     }
 
     pub unsafe fn cleanup() {
-        LOCK.lock();
+        let _guard = LOCK.lock();
         ARGC = 0;
         ARGV = ptr::null();
-        LOCK.unlock();
     }
 
     pub fn args() -> Args {
@@ -104,13 +102,11 @@ mod imp {
 
     fn clone() -> Vec<OsString> {
         unsafe {
-            LOCK.lock();
-            let ret = (0..ARGC).map(|i| {
+            let _guard = LOCK.lock();
+            (0..ARGC).map(|i| {
                 let cstr = CStr::from_ptr(*ARGV.offset(i) as *const libc::c_char);
                 OsStringExt::from_vec(cstr.to_bytes().to_vec())
-            }).collect();
-            LOCK.unlock();
-            return ret
+            }).collect()
         }
     }
 }
