@@ -1,0 +1,10 @@
+[package]
+name = "rustc_codegen_cretonne"
+version = "0.1.0"
+authors = ["bjorn3 <bjorn3@users.noreply.github.com>"]
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+cretonne = "0.11.0"
