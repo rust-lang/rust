@@ -1175,7 +1175,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.item_use(sp, vis, P(ast::UseTree {
             span: sp,
             prefix: path,
-            kind: ast::UseTreeKind::Simple(rename),
+            kind: ast::UseTreeKind::Simple(rename, ast::DUMMY_NODE_ID, ast::DUMMY_NODE_ID),
         }))
     }
 
@@ -1185,7 +1185,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             (ast::UseTree {
                 span: sp,
                 prefix: self.path(sp, vec![*id]),
-                kind: ast::UseTreeKind::Simple(None),
+                kind: ast::UseTreeKind::Simple(None, ast::DUMMY_NODE_ID, ast::DUMMY_NODE_ID),
             }, ast::DUMMY_NODE_ID)
         }).collect();
 

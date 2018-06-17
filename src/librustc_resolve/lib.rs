@@ -27,7 +27,8 @@ extern crate arena;
 extern crate rustc;
 extern crate rustc_data_structures;
 
-use self::Namespace::*;
+pub use rustc::hir::def::{Namespace, PerNS};
+
 use self::TypeParameters::*;
 use self::RibKind::*;
 
@@ -37,6 +38,7 @@ use rustc::middle::cstore::{CrateStore, CrateLoader};
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::*;
+use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
@@ -610,45 +612,6 @@ impl<'a> PathSource<'a> {
             (PathSource::TraitItem(..), false) => "E0576",
             (PathSource::Visibility, true) | (PathSource::ImportPrefix, true) => "E0577",
             (PathSource::Visibility, false) | (PathSource::ImportPrefix, false) => "E0578",
-        }
-    }
-}
-
-/// Different kinds of symbols don't influence each other.
-///
-/// Therefore, they have a separate universe (namespace).
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub enum Namespace {
-    TypeNS,
-    ValueNS,
-    MacroNS,
-}
-
-/// Just a helper ‒ separate structure for each namespace.
-#[derive(Clone, Default, Debug)]
-pub struct PerNS<T> {
-    value_ns: T,
-    type_ns: T,
-    macro_ns: T,
-}
-
-impl<T> ::std::ops::Index<Namespace> for PerNS<T> {
-    type Output = T;
-    fn index(&self, ns: Namespace) -> &T {
-        match ns {
-            ValueNS => &self.value_ns,
-            TypeNS => &self.type_ns,
-            MacroNS => &self.macro_ns,
-        }
-    }
-}
-
-impl<T> ::std::ops::IndexMut<Namespace> for PerNS<T> {
-    fn index_mut(&mut self, ns: Namespace) -> &mut T {
-        match ns {
-            ValueNS => &mut self.value_ns,
-            TypeNS => &mut self.type_ns,
-            MacroNS => &mut self.macro_ns,
         }
     }
 }
@@ -1346,6 +1309,7 @@ pub struct Resolver<'a> {
     primitive_type_table: PrimitiveTypeTable,
 
     def_map: DefMap,
+    import_map: ImportMap,
     pub freevars: FreevarMap,
     freevars_seen: NodeMap<NodeMap<usize>>,
     pub export_map: ExportMap,
@@ -1518,6 +1482,10 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         self.def_map.get(&id).cloned()
     }
 
+    fn get_import(&mut self, id: NodeId) -> PerNS<Option<PathResolution>> {
+        self.import_map.get(&id).cloned().unwrap_or_default()
+    }
+
     fn definitions(&mut self) -> &mut Definitions {
         &mut self.definitions
     }
@@ -1665,6 +1633,7 @@ impl<'a> Resolver<'a> {
             primitive_type_table: PrimitiveTypeTable::new(),
 
             def_map: NodeMap(),
+            import_map: NodeMap(),
             freevars: NodeMap(),
             freevars_seen: NodeMap(),
             export_map: FxHashMap(),
@@ -2215,7 +2184,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
             }
-            ast::UseTreeKind::Simple(_) => {},
+            ast::UseTreeKind::Simple(..) => {},
             ast::UseTreeKind::Glob => {},
         }
     }

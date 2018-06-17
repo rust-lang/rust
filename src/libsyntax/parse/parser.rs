@@ -7157,7 +7157,7 @@ impl<'a> Parser<'a> {
                     UseTreeKind::Nested(self.parse_use_tree_list()?)
                 }
             } else {
-                UseTreeKind::Simple(self.parse_rename()?)
+                UseTreeKind::Simple(self.parse_rename()?, ast::DUMMY_NODE_ID, ast::DUMMY_NODE_ID)
             }
         };
 

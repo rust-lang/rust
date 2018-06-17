@@ -16,6 +16,8 @@ use syntax_pos::Span;
 use hir;
 use ty;
 
+use self::Namespace::*;
+
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum CtorKind {
     /// Constructor function automatically created by a tuple struct/variant.
@@ -116,12 +118,82 @@ impl PathResolution {
     }
 }
 
+/// Different kinds of symbols don't influence each other.
+///
+/// Therefore, they have a separate universe (namespace).
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum Namespace {
+    TypeNS,
+    ValueNS,
+    MacroNS,
+}
+
+/// Just a helper ‒ separate structure for each namespace.
+#[derive(Copy, Clone, Default, Debug)]
+pub struct PerNS<T> {
+    pub value_ns: T,
+    pub type_ns: T,
+    pub macro_ns: T,
+}
+
+impl<T> PerNS<T> {
+    pub fn map<U, F: FnMut(T) -> U>(self, mut f: F) -> PerNS<U> {
+        PerNS {
+            value_ns: f(self.value_ns),
+            type_ns: f(self.type_ns),
+            macro_ns: f(self.macro_ns),
+        }
+    }
+}
+
+impl<T> ::std::ops::Index<Namespace> for PerNS<T> {
+    type Output = T;
+    fn index(&self, ns: Namespace) -> &T {
+        match ns {
+            ValueNS => &self.value_ns,
+            TypeNS => &self.type_ns,
+            MacroNS => &self.macro_ns,
+        }
+    }
+}
+
+impl<T> ::std::ops::IndexMut<Namespace> for PerNS<T> {
+    fn index_mut(&mut self, ns: Namespace) -> &mut T {
+        match ns {
+            ValueNS => &mut self.value_ns,
+            TypeNS => &mut self.type_ns,
+            MacroNS => &mut self.macro_ns,
+        }
+    }
+}
+
+impl<T> PerNS<Option<T>> {
+    /// Returns whether all the items in this collection are `None`.
+    pub fn is_empty(&self) -> bool {
+        self.type_ns.is_none() && self.value_ns.is_none() && self.macro_ns.is_none()
+    }
+
+    /// Returns an iterator over the items which are `Some`.
+    pub fn present_items(self) -> impl Iterator<Item=T> {
+        use std::iter::once;
+
+        once(self.type_ns)
+            .chain(once(self.value_ns))
+            .chain(once(self.macro_ns))
+            .filter_map(|it| it)
+    }
+}
+
 /// Definition mapping
 pub type DefMap = NodeMap<PathResolution>;
 
 /// This is the replacement export map. It maps a module to all of the exports
 /// within.
 pub type ExportMap = DefIdMap<Vec<Export>>;
+
+/// Map used to track the `use` statements within a scope, matching it with all the items in every
+/// namespace.
+pub type ImportMap = NodeMap<PerNS<Option<PathResolution>>>;
 
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Export {

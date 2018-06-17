@@ -365,6 +365,11 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 });
                 true
             }
+            hir_map::NodeStructCtor(_) if !glob => {
+                // struct constructors always show up alongside their struct definitions, we've
+                // already processed that so just discard this
+                true
+            }
             _ => false,
         };
         self.view_item_stack.remove(&def_node_id);
