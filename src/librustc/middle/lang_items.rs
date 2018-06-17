@@ -307,7 +307,6 @@ language_item_table! {
     ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
     BoxFreeFnLangItem,               "box_free",                box_free_fn;
     DropInPlaceFnLangItem,           "drop_in_place",           drop_in_place_fn;
-    OomLangItem,                     "oom",                     oom;
 
     StartFnLangItem,                 "start",                   start_fn;
 
