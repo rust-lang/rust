@@ -652,6 +652,8 @@ pub fn panicking() -> bool {
 
 /// Puts the current thread to sleep for the specified amount of time.
 ///
+/// Equivalent to `sleep(Duration::from_millis(ms))`.
+///
 /// The thread may sleep longer than the duration specified due to scheduling
 /// specifics or platform-dependent functionality.
 ///
@@ -669,7 +671,6 @@ pub fn panicking() -> bool {
 /// thread::sleep_ms(2000);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::thread::sleep`")]
 pub fn sleep_ms(ms: u32) {
     sleep(Duration::from_millis(ms as u64))
 }
