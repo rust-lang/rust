@@ -42,6 +42,19 @@ pub static ALLOCATOR_METHODS: &[AllocatorMethod] = &[
     },
 ];
 
+pub static OOM_HANDLING_METHODS: &[AllocatorMethod] = &[
+    AllocatorMethod {
+        name: "default_alloc_error_hook",
+        inputs: &[AllocatorTy::Layout],
+        output: AllocatorTy::Unit,
+    },
+    AllocatorMethod {
+        name: "abort_internal",
+        inputs: &[],
+        output: AllocatorTy::Unit,
+    },
+];
+
 pub struct AllocatorMethod {
     pub name: &'static str,
     pub inputs: &'static [AllocatorTy],

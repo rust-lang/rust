@@ -17,12 +17,12 @@ use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc::ich::Fingerprint;
 use rustc::middle::exported_symbols::{SymbolExportLevel, ExportedSymbol, metadata_symbol_name};
-use rustc::session::config;
+use rustc::session::{config, InjectedDefaultOomHook};
 use rustc::ty::{TyCtxt, SymbolName};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::{FxHashMap, DefIdMap};
-use rustc_allocator::ALLOCATOR_METHODS;
+use rustc_allocator::{ALLOCATOR_METHODS, OOM_HANDLING_METHODS};
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::collections::hash_map::Entry::*;
 
@@ -219,6 +219,19 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));
 
             symbols.push((exported_symbol, SymbolExportLevel::Rust));
+        }
+    }
+
+    match tcx.sess.injected_default_alloc_error_hook.get() {
+        InjectedDefaultOomHook::None => {}
+        InjectedDefaultOomHook::Noop |
+        InjectedDefaultOomHook::Platform => {
+            for method in OOM_HANDLING_METHODS {
+                let symbol_name = format!("__rust_{}", method.name);
+                let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));
+
+                symbols.push((exported_symbol, SymbolExportLevel::Rust));
+            }
         }
     }
 

@@ -118,6 +118,7 @@ pub struct Session {
     /// injected.
     pub injected_allocator: Once<Option<CrateNum>>,
     pub allocator_kind: Once<Option<AllocatorKind>>,
+    pub injected_default_alloc_error_hook: Once<InjectedDefaultOomHook>,
     pub injected_panic_runtime: Once<Option<CrateNum>>,
 
     /// Map from imported macro spans (which consist of
@@ -173,6 +174,12 @@ pub struct PerfStats {
     pub normalize_ty_after_erasing_regions: AtomicUsize,
     /// Number of times this query is invoked.
     pub normalize_projection_ty: AtomicUsize,
+}
+
+pub enum InjectedDefaultOomHook {
+    None,
+    Noop,
+    Platform,
 }
 
 /// Enum to support dispatch of one-time diagnostics (in Session.diag_once)
@@ -1119,6 +1126,7 @@ pub fn build_session_(
         next_node_id: OneThread::new(Cell::new(NodeId::new(1))),
         injected_allocator: Once::new(),
         allocator_kind: Once::new(),
+        injected_default_alloc_error_hook: Once::new(),
         injected_panic_runtime: Once::new(),
         imported_macro_spans: OneThread::new(RefCell::new(HashMap::new())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
