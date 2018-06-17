@@ -125,6 +125,8 @@ pub use core::slice::{from_ref, from_mut};
 pub use core::slice::SliceIndex;
 #[unstable(feature = "exact_chunks", issue = "47115")]
 pub use core::slice::{ExactChunks, ExactChunksMut};
+#[unstable(feature = "slice_group_by", issue = "0")]
+pub use core::slice::{GroupBy, GroupByMut};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Basic slice extension methods

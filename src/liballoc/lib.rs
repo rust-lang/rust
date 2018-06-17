@@ -122,6 +122,7 @@
 #![feature(inclusive_range_methods)]
 #![feature(rustc_const_unstable)]
 #![feature(const_vec_new)]
+#![feature(slice_group_by)]
 
 #![cfg_attr(not(test), feature(fn_traits, i128))]
 #![cfg_attr(test, feature(test))]

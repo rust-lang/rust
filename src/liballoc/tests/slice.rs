@@ -998,6 +998,58 @@ fn test_exact_chunksator_0() {
 }
 
 #[test]
+fn test_group_by() {
+    let slice = &[1, 1, 1, 3, 3, 2, 2, 2];
+
+    let mut iter = slice.group_by(|a, b| a == b);
+
+    assert_eq!(iter.next(), Some(&[1, 1, 1][..]));
+
+    assert_eq!(iter.remaining(), &[3, 3, 2, 2, 2]);
+
+    assert_eq!(iter.next(), Some(&[3, 3][..]));
+    assert_eq!(iter.next(), Some(&[2, 2, 2][..]));
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn test_group_by_rev() {
+    let slice = &[1, 1, 1, 3, 3, 2, 2, 2];
+
+    let mut iter = slice.group_by(|a, b| a == b);
+
+    assert_eq!(iter.next_back(), Some(&[2, 2, 2][..]));
+    assert_eq!(iter.next_back(), Some(&[3, 3][..]));
+    assert_eq!(iter.next_back(), Some(&[1, 1, 1][..]));
+    assert_eq!(iter.next_back(), None);
+}
+
+#[derive(Debug, Eq)]
+enum Guard {
+    Valid(i32),
+    Invalid(i32),
+}
+
+impl PartialEq for Guard {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Guard::Valid(_), Guard::Valid(_)) => true,
+            (a, b) => panic!("denied read on Guard::Invalid variant ({:?}, {:?})", a, b),
+        }
+    }
+}
+
+#[test]
+fn test_group_by_overflow() {
+    let slice = &[Guard::Invalid(0), Guard::Valid(1), Guard::Valid(2), Guard::Invalid(3)];
+
+    let mut iter = (&slice[1..3]).group_by(|a, b| a == b);
+
+    assert_eq!(iter.next(), Some(&[Guard::Valid(1), Guard::Valid(2)][..]));
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
 fn test_reverse_part() {
     let mut values = [1, 2, 3, 4, 5];
     values[1..4].reverse();
