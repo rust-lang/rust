@@ -68,7 +68,7 @@ pub struct RegionInferenceContext<'tcx> {
     dependency_map: Option<IndexVec<RegionVid, Option<ConstraintIndex>>>,
 
     /// The constraints we have accumulated and used during solving.
-    constraints: IndexVec<ConstraintIndex, Constraint>,
+    constraints: IndexVec<ConstraintIndex, OutlivesConstraint>,
 
     /// Type constraints that we check after solving.
     type_tests: Vec<TypeTest<'tcx>>,
@@ -118,19 +118,19 @@ pub(crate) enum Cause {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Constraint {
+pub struct OutlivesConstraint {
     // NB. The ordering here is not significant for correctness, but
     // it is for convenience. Before we dump the constraints in the
     // debugging logs, we sort them, and we'd like the "super region"
     // to be first, etc. (In particular, span should remain last.)
     /// The region SUP must outlive SUB...
-    sup: RegionVid,
+    pub sup: RegionVid,
 
     /// Region that must be outlived.
-    sub: RegionVid,
+    pub sub: RegionVid,
 
     /// At this location.
-    point: Location,
+    pub point: Location,
 
     /// Later on, we thread the constraints onto a linked list
     /// grouped by their `sub` field. So if you had:
@@ -140,10 +140,10 @@ pub struct Constraint {
     /// 0     | `'a: 'b`   | Some(2)
     /// 1     | `'b: 'c`   | None
     /// 2     | `'c: 'b`   | None
-    next: Option<ConstraintIndex>,
+    pub next: Option<ConstraintIndex>,
 
     /// Where did this constraint arise?
-    span: Span,
+    pub span: Span,
 }
 
 newtype_index!(ConstraintIndex { DEBUG_FORMAT = "ConstraintIndex({})" });
@@ -239,11 +239,19 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// `num_region_variables` valid inference variables; the first N
     /// of those will be constant regions representing the free
     /// regions defined in `universal_regions`.
+    ///
+    /// The `outlives_constraints` and `type_tests` are an initial set
+    /// of constraints produced by the MIR type check.
     pub(crate) fn new(
         var_infos: VarInfos,
         universal_regions: UniversalRegions<'tcx>,
         mir: &Mir<'tcx>,
+        outlives_constraints: Vec<OutlivesConstraint>,
+        type_tests: Vec<TypeTest<'tcx>>,
     ) -> Self {
+        // The `next` field should not yet have been initialized:
+        debug_assert!(outlives_constraints.iter().all(|c| c.next.is_none()));
+
         let num_region_variables = var_infos.len();
         let num_universal_regions = universal_regions.len();
 
@@ -261,8 +269,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             liveness_constraints: RegionValues::new(elements, num_region_variables),
             inferred_values: None,
             dependency_map: None,
-            constraints: IndexVec::new(),
-            type_tests: Vec::new(),
+            constraints: IndexVec::from_raw(outlives_constraints),
+            type_tests,
             universal_regions,
         };
 
@@ -345,7 +353,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     where
         R: ToRegionVid,
     {
-        let inferred_values = self.inferred_values
+        let inferred_values = self
+            .inferred_values
             .as_ref()
             .expect("region values not yet inferred");
         inferred_values.contains(r.to_region_vid(), p)
@@ -353,7 +362,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Returns access to the value of `r` for debugging purposes.
     crate fn region_value_str(&self, r: RegionVid) -> String {
-        let inferred_values = self.inferred_values
+        let inferred_values = self
+            .inferred_values
             .as_ref()
             .expect("region values not yet inferred");
 
@@ -387,18 +397,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) {
         debug!("add_outlives({:?}: {:?} @ {:?}", sup, sub, point);
         assert!(self.inferred_values.is_none(), "values already inferred");
-        self.constraints.push(Constraint {
+        self.constraints.push(OutlivesConstraint {
             span,
             sup,
             sub,
             point,
             next: None,
         });
-    }
-
-    /// Add a "type test" that must be satisfied.
-    pub(super) fn add_type_test(&mut self, type_test: TypeTest<'tcx>) {
-        self.type_tests.push(type_test);
     }
 
     /// Perform region inference and report errors if we see any
@@ -465,7 +470,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.inferred_values = Some(inferred_values);
     }
 
-    #[inline(never)] // ensure dfs is identifiable in profiles
     fn compute_region_values(&self, _mir: &Mir<'tcx>) -> RegionValues {
         debug!("compute_region_values()");
         debug!("compute_region_values: constraints={:#?}", {
@@ -516,7 +520,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// indices of constraints that need to be re-evaluated when X changes.
     /// These are constraints like Y: X @ P -- so if X changed, we may
     /// need to grow Y.
-    #[inline(never)] // ensure dfs is identifiable in profiles
     fn build_dependency_map(&mut self) -> IndexVec<RegionVid, Option<ConstraintIndex>> {
         let mut map = IndexVec::from_elem(None, &self.definitions);
 
@@ -595,7 +598,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         if self.universal_regions.is_universal_region(r) {
             return self.definitions[r].external_name;
         } else {
-            let inferred_values = self.inferred_values
+            let inferred_values = self
+                .inferred_values
                 .as_ref()
                 .expect("region values not yet inferred");
             let upper_bound = self.universal_upper_bound(r);
@@ -634,8 +638,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // region, which ensures it can be encoded in a `ClosureOutlivesRequirement`.
         let lower_bound_plus = self.non_local_universal_upper_bound(*lower_bound);
         assert!(self.universal_regions.is_universal_region(lower_bound_plus));
-        assert!(!self.universal_regions
-            .is_local_free_region(lower_bound_plus));
+        assert!(
+            !self
+                .universal_regions
+                .is_local_free_region(lower_bound_plus)
+        );
 
         propagated_outlives_requirements.push(ClosureOutlivesRequirement {
             subject,
@@ -663,7 +670,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Option<ClosureOutlivesSubject<'gcx>> {
         let tcx = infcx.tcx;
         let gcx = tcx.global_tcx();
-        let inferred_values = self.inferred_values
+        let inferred_values = self
+            .inferred_values
             .as_ref()
             .expect("region values not yet inferred");
 
@@ -844,7 +852,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             sup_region, sub_region, point
         );
 
-        let inferred_values = self.inferred_values
+        let inferred_values = self
+            .inferred_values
             .as_ref()
             .expect("values for regions not yet inferred");
 
@@ -911,7 +920,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) {
         // The universal regions are always found in a prefix of the
         // full list.
-        let universal_definitions = self.definitions
+        let universal_definitions = self
+            .definitions
             .iter_enumerated()
             .take_while(|(_, fr_definition)| fr_definition.is_universal);
 
@@ -1139,7 +1149,7 @@ impl<'tcx> RegionDefinition<'tcx> {
     }
 }
 
-impl fmt::Debug for Constraint {
+impl fmt::Debug for OutlivesConstraint {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
             formatter,
