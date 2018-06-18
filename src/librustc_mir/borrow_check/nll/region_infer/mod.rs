@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use super::universal_regions::UniversalRegions;
+use borrow_check::nll::type_check::Locations;
 use borrow_check::nll::region_infer::values::ToElementIndex;
 use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
@@ -129,9 +130,6 @@ pub struct Constraint {
     /// Region that must be outlived.
     sub: RegionVid,
 
-    /// At this location.
-    point: Location,
-
     /// Later on, we thread the constraints onto a linked list
     /// grouped by their `sub` field. So if you had:
     ///
@@ -188,8 +186,8 @@ pub struct TypeTest<'tcx> {
     /// The region `'x` that the type must outlive.
     pub lower_bound: RegionVid,
 
-    /// The point where the outlives relation must hold.
-    pub point: Location,
+    /// Where does this type-test have to hold?
+    pub locations: Locations,
 
     /// Where did this constraint arise?
     pub span: Span,
@@ -383,15 +381,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         span: Span,
         sup: RegionVid,
         sub: RegionVid,
-        point: Location,
     ) {
-        debug!("add_outlives({:?}: {:?} @ {:?}", sup, sub, point);
+        debug!("add_outlives({:?}: {:?})", sup, sub);
         assert!(self.inferred_values.is_none(), "values already inferred");
         self.constraints.push(Constraint {
             span,
             sup,
             sub,
-            point,
             next: None,
         });
     }
@@ -546,7 +542,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
 
-            if self.eval_region_test(mir, type_test.point, type_test.lower_bound, &type_test.test) {
+            if self.eval_region_test(mir, type_test.lower_bound, &type_test.test) {
                 continue;
             }
 
@@ -618,9 +614,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let TypeTest {
             generic_kind,
             lower_bound,
-            point: _,
             span,
             test: _,
+            locations: _,
         } = type_test;
 
         let generic_ty = generic_kind.to_ty(tcx);
@@ -803,31 +799,30 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn eval_region_test(
         &self,
         mir: &Mir<'tcx>,
-        point: Location,
         lower_bound: RegionVid,
         test: &RegionTest,
     ) -> bool {
         debug!(
-            "eval_region_test(point={:?}, lower_bound={:?}, test={:?})",
-            point, lower_bound, test
+            "eval_region_test(lower_bound={:?}, test={:?})",
+            lower_bound, test
         );
 
         match test {
             RegionTest::IsOutlivedByAllRegionsIn(regions) => regions
                 .iter()
-                .all(|&r| self.eval_outlives(mir, r, lower_bound, point)),
+                .all(|&r| self.eval_outlives(mir, r, lower_bound)),
 
             RegionTest::IsOutlivedByAnyRegionIn(regions) => regions
                 .iter()
-                .any(|&r| self.eval_outlives(mir, r, lower_bound, point)),
+                .any(|&r| self.eval_outlives(mir, r, lower_bound)),
 
             RegionTest::Any(tests) => tests
                 .iter()
-                .any(|test| self.eval_region_test(mir, point, lower_bound, test)),
+                .any(|test| self.eval_region_test(mir, lower_bound, test)),
 
             RegionTest::All(tests) => tests
                 .iter()
-                .all(|test| self.eval_region_test(mir, point, lower_bound, test)),
+                .all(|test| self.eval_region_test(mir, lower_bound, test)),
         }
     }
 
@@ -837,11 +832,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         _mir: &Mir<'tcx>,
         sup_region: RegionVid,
         sub_region: RegionVid,
-        point: Location,
     ) -> bool {
         debug!(
-            "eval_outlives({:?}: {:?} @ {:?})",
-            sup_region, sub_region, point
+            "eval_outlives({:?}: {:?})",
+            sup_region, sub_region
         );
 
         let inferred_values = self.inferred_values
@@ -1143,8 +1137,8 @@ impl fmt::Debug for Constraint {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
             formatter,
-            "({:?}: {:?} @ {:?}) due to {:?}",
-            self.sup, self.sub, self.point, self.span
+            "({:?}: {:?}) due to {:?}",
+            self.sup, self.sub, self.span
         )
     }
 }

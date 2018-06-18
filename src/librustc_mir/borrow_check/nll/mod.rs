@@ -113,9 +113,14 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     };
 
     if let Some(all_facts) = &mut all_facts {
-        all_facts
-            .universal_region
-            .extend(universal_regions.universal_regions());
+        // Declare that each universal region is live at every point.
+        for ur in universal_regions.universal_regions() {
+            all_facts.region_live_at.extend(
+                location_table
+                    .all_points()
+                    .map(|p| (ur, p))
+            );
+        }
     }
 
     // Create the region inference context, taking ownership of the region inference

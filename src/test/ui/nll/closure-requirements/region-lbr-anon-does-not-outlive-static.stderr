@@ -1,16 +1,21 @@
 warning: not reporting region error due to nll
-  --> $DIR/region-lbr-anon-does-not-outlive-static.rs:19:5
+  --> $DIR/region-lbr-anon-does-not-outlive-static.rs:20:5
    |
 LL |     &*x
    |     ^^^
 
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/region-lbr-anon-does-not-outlive-static.rs:19:5
+  --> $DIR/region-lbr-anon-does-not-outlive-static.rs:18:1
    |
-LL | fn foo(x: &u32) -> &'static u32 {
-   |        - consider changing the type of `x` to `&ReStatic u32`
-LL |     &*x
-   |     ^^^ lifetime `ReStatic` required
+LL |   fn foo(x: &u32) -> &'static u32 {
+   |   ^      - consider changing the type of `x` to `&ReStatic u32`
+   |  _|
+   | |
+LL | |         //~^ ERROR explicit lifetime required in the type of `x`
+LL | |     &*x
+LL | |         //~^ WARN not reporting region error due to nll
+LL | | }
+   | |_^ lifetime `ReStatic` required
 
 error: aborting due to previous error
 

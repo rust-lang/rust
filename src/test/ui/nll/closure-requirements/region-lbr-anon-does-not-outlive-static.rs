@@ -16,9 +16,9 @@
 // compile-flags:-Zborrowck=mir -Zverbose
 
 fn foo(x: &u32) -> &'static u32 {
+        //~^ ERROR explicit lifetime required in the type of `x`
     &*x
         //~^ WARN not reporting region error due to nll
-        //~| ERROR explicit lifetime required in the type of `x`
 }
 
 fn main() { }

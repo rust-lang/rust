@@ -12,7 +12,8 @@ use borrow_check::nll::region_infer::{Cause, RegionInferenceContext};
 use borrow_check::{Context, MirBorrowckCtxt};
 use borrow_check::borrow_set::BorrowData;
 use rustc::mir::visit::{MirVisitable, PlaceContext, Visitor};
-use rustc::mir::{Local, Location, Mir};
+use rustc::mir::{BasicBlock, Local, Location, Mir, Statement, Terminator, TerminatorKind};
+use rustc::mir::RETURN_PLACE;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagnosticBuilder;
 use util::liveness::{self, DefUse, LivenessMode};
@@ -38,9 +39,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 Cause::LiveVar(local, location) => {
                     match find_regular_use(mir, regioncx, borrow, location, local) {
                         Some(p) => {
-                            err.span_label(
-                                mir.source_info(p).span,
-                                format!("borrow later used here"),
+                            mir.visitable(p).apply(
+                                p,
+                                &mut LaterUsedReporter { err, mir },
                             );
                         }
 
@@ -229,6 +230,63 @@ impl<'tcx> Visitor<'tcx> for DefUseVisitor {
                 Some(DefUse::Def) => self.defined = true,
                 Some(DefUse::Use) => self.used = true,
                 None => (),
+            }
+        }
+    }
+
+    fn visit_terminator(
+        &mut self,
+        block: BasicBlock,
+        terminator: &Terminator<'tcx>,
+        location: Location,
+    ) {
+        if let TerminatorKind::Return = terminator.kind {
+            if self.local == RETURN_PLACE {
+                self.used = true;
+            }
+        }
+        self.super_terminator(block, terminator, location);
+    }
+}
+
+struct LaterUsedReporter<'cx, 'diag: 'cx, 'tcx: 'cx> {
+    err: &'cx mut DiagnosticBuilder<'diag>,
+    mir: &'cx Mir<'tcx>,
+}
+
+impl<'cx, 'diag, 'tcx> LaterUsedReporter<'cx, 'diag, 'tcx> {
+    fn base_report(&mut self, location: Location) {
+        self.err.span_label(
+            self.mir.source_info(location).span,
+            format!("borrow later used here"),
+        );
+    }
+}
+
+impl<'cx, 'diag, 'tcx> Visitor<'tcx> for LaterUsedReporter<'cx, 'diag, 'tcx> {
+    fn visit_statement(
+        &mut self,
+        _block: BasicBlock,
+        _statement: &Statement<'tcx>,
+        location: Location
+    ) {
+        self.base_report(location);
+    }
+
+    fn visit_terminator(
+        &mut self,
+        _block: BasicBlock,
+        terminator: &Terminator<'tcx>,
+        location: Location,
+    ) {
+        match terminator.kind {
+            TerminatorKind::Return => {
+                // If the last use is the `Return` terminator
+                // then for now we don't add any label, as it's
+                // not clear what to say that is helpful.
+            }
+            _ => {
+                self.base_report(location);
             }
         }
     }

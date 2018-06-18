@@ -13,7 +13,7 @@ use borrow_check::nll::facts::AllFacts;
 use rustc::infer::region_constraints::Constraint;
 use rustc::infer::region_constraints::RegionConstraintData;
 use rustc::infer::region_constraints::{Verify, VerifyBound};
-use rustc::mir::{Location, Mir};
+use rustc::mir::Mir;
 use rustc::ty;
 use std::iter;
 use syntax::codemap::Span;
@@ -90,11 +90,7 @@ impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
                 givens,
             } = data;
 
-            let span = self.mir
-                .source_info(locations.from_location().unwrap_or(Location::START))
-                .span;
-
-            let at_location = locations.at_location().unwrap_or(Location::START);
+            let span = locations.span(self.mir);
 
             for constraint in constraints.keys() {
                 debug!("generate: constraint: {:?}", constraint);
@@ -112,23 +108,19 @@ impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
                 // reverse direction, because `regioncx` talks about
                 // "outlives" (`>=`) whereas the region constraints
                 // talk about `<=`.
-                self.regioncx.add_outlives(span, b_vid, a_vid, at_location);
+                self.regioncx.add_outlives(span, b_vid, a_vid);
 
-                // In the new analysis, all outlives relations etc
-                // "take effect" at the mid point of the statement
-                // that requires them, so ignore the `at_location`.
                 if let Some(all_facts) = all_facts {
-                    if let Some(from_location) = locations.from_location() {
+                    locations.each_point(self.mir, |location| {
+                        // In the new analysis, all outlives relations etc
+                        // "take effect" at the mid point of the
+                        // statement(s) that require them.
                         all_facts.outlives.push((
                             b_vid,
                             a_vid,
-                            self.location_table.mid_index(from_location),
+                            self.location_table.mid_index(location),
                         ));
-                    } else {
-                        for location in self.location_table.all_points() {
-                            all_facts.outlives.push((b_vid, a_vid, location));
-                        }
-                    }
+                    });
                 }
             }
 
@@ -154,14 +146,12 @@ impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
 
         let lower_bound = self.to_region_vid(verify.region);
 
-        let point = locations.at_location().unwrap_or(Location::START);
-
         let test = self.verify_bound_to_region_test(&verify.bound);
 
         TypeTest {
             generic_kind,
             lower_bound,
-            point,
+            locations: *locations,
             span,
             test,
         }

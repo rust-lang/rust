@@ -5,10 +5,10 @@ LL |     expect_sig(|a, b| b); // ought to return `a`
    |                       ^
 
 error: free region `ReFree(DefId(0/1:9 ~ return_wrong_bound_region[317d]::test[0]::{{closure}}[0]), BrAnon(2))` does not outlive free region `ReFree(DefId(0/1:9 ~ return_wrong_bound_region[317d]::test[0]::{{closure}}[0]), BrAnon(1))`
-  --> $DIR/return-wrong-bound-region.rs:21:23
+  --> $DIR/return-wrong-bound-region.rs:21:16
    |
 LL |     expect_sig(|a, b| b); // ought to return `a`
-   |                       ^
+   |                ^^^^^^^^
 
 note: No external requirements
   --> $DIR/return-wrong-bound-region.rs:21:16

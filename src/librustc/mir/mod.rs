@@ -188,6 +188,15 @@ impl<'tcx> Mir<'tcx> {
         (&mut self.basic_blocks, &mut self.local_decls)
     }
 
+    pub fn terminator_location(&self, block: BasicBlock) -> Location {
+        let num_statements = self.basic_blocks[block].statements.len();
+        Location { block, statement_index: num_statements }
+    }
+
+    pub fn visitable(&self, location: Location) -> &dyn MirVisitable<'tcx> {
+        self.basic_blocks[location.block].visitable(location.statement_index)
+    }
+
     #[inline]
     pub fn predecessors(&self) -> ReadGuard<IndexVec<BasicBlock, Vec<BasicBlock>>> {
         self.cache.predecessors(self)

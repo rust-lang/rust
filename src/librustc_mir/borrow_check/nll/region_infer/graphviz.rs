@@ -41,9 +41,6 @@ impl<'this, 'tcx> dot::Labeller<'this> for RegionInferenceContext<'tcx> {
     fn node_label(&'this self, n: &RegionVid) -> dot::LabelText<'this> {
         dot::LabelText::LabelStr(format!("{:?}", n).into_cow())
     }
-    fn edge_label(&'this self, e: &Constraint) -> dot::LabelText<'this> {
-        dot::LabelText::LabelStr(format!("{:?}", e.point).into_cow())
-    }
 }
 
 impl<'this, 'tcx> dot::GraphWalk<'this> for RegionInferenceContext<'tcx> {
