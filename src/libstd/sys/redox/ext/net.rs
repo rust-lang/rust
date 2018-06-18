@@ -37,7 +37,7 @@ use sys::{cvt, fd::FileDesc, syscall};
 /// let addr = socket.local_addr().expect("Couldn't get local address");
 /// ```
 #[derive(Clone)]
-pub struct SocketAddr;
+pub struct SocketAddr(());
 
 impl SocketAddr {
     /// Returns the contents of this address if it is a `pathname` address.
@@ -516,7 +516,7 @@ impl UnixListener {
     /// }
     /// ```
     pub fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
-        self.0.duplicate_path(b"listen").map(|fd| (UnixStream(fd), SocketAddr))
+        self.0.duplicate_path(b"listen").map(|fd| (UnixStream(fd), SocketAddr(())))
     }
 
     /// Creates a new independently owned handle to the underlying socket.
