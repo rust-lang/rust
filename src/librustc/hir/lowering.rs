@@ -2053,7 +2053,7 @@ impl<'a> LoweringContext<'a> {
                                 .span_label(current_lt_span, "first lifetime here")
                                 .span_label(lifetime.span, "different lifetime here")
                                 .help("`async fn` can only accept borrowed values \
-                                      identical lifetimes")
+                                      with identical lifetimes")
                                 .emit()
                         } else if current_lt_name.is_elided() && name.is_elided() {
                             struct_span_err!(
