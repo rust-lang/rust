@@ -21,6 +21,10 @@ echo "Integration tests for: ${INTEGRATION}"
 cargo fmt -- --version
 
 function check_fmt {
+    cargo test --all
+    if [[ $? != 0 ]]; then
+          return 0
+    fi
     touch rustfmt.toml
     cargo fmt --all -v 2>&1 | tee rustfmt_output
     if [[ $? != 0 ]]; then
