@@ -617,6 +617,7 @@ impl Step for Openssl {
             "powerpc-unknown-netbsd" => "BSD-generic32",
             "powerpc64-unknown-linux-gnu" => "linux-ppc64",
             "powerpc64le-unknown-linux-gnu" => "linux-ppc64le",
+            "powerpc64le-unknown-linux-musl" => "linux-ppc64le",
             "s390x-unknown-linux-gnu" => "linux64-s390x",
             "sparc-unknown-linux-gnu" => "linux-sparcv9",
             "sparc64-unknown-linux-gnu" => "linux64-sparcv9",
