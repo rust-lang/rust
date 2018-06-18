@@ -27,7 +27,7 @@ cargo fmt -- --version
 # * `cargo test -all` still passes (formatting did not break the build)
 function check_fmt {
     touch rustfmt.toml
-    cargo fmt --all -v 2>&1 | tee rustfmt_output
+    cargo fmt --all -v |& tee rustfmt_output
     if [[ ${PIPESTATUS[0]} != 0 ]]; then
         cat rustfmt_output
         return 1
@@ -45,7 +45,7 @@ function check_fmt {
     if [[ $? != 0 ]]; then
         return 1
     fi
-    cargo fmt --all -- --check 2>&1 | tee rustfmt_check_output
+    cargo fmt --all -- --check |& tee rustfmt_check_output
     if [[ ${PIPESTATUS[0]} != 0 ]]; then
         cat rustfmt_check_output
         return 1

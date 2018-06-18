@@ -31,10 +31,9 @@ matrix:
     - env: INTEGRATION=rand
     - env: INTEGRATION=rust-clippy
     - env: INTEGRATION=rust-semverver
-    - env: INTEGRATION=stdsimd
     - env: INTEGRATION=tempdir
   allow_failures:
-    # Need to run an lalrpop build step before testing?
+    # See: https://github.com/rust-lang-nursery/rustfmt/issues/2789
     - env: INTEGRATION=chalk
     # PR sent
     - env: INTEGRATION=crater
@@ -44,6 +43,8 @@ matrix:
     - env: INTEGRATION=rust-clippy
     # Doesn't build
     - env: INTEGRATION=rust-semverver
+    # See: https://github.com/rust-lang-nursery/rustfmt/issues/2787
+    - env: INTEGRATION=stdsimd
 
 before_script:
 - |
