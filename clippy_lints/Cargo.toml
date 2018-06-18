@@ -3,7 +3,7 @@ cargo-features = ["edition"]
 [package]
 name = "clippy_lints"
 # begin automatic update
-version = "0.0.207"
+version = "0.0.208"
 # end automatic update
 authors = [
 	"Manish Goregaokar <manishsmail@gmail.com>",
