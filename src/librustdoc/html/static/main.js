@@ -467,11 +467,7 @@
                             obj.displayPath = pathSplitter(res[0]);
                             obj.fullPath = obj.displayPath + obj.name;
                             // To be sure than it some items aren't considered as duplicate.
-                            if (obj.ty === TY_KEYWORD) {
-                                obj.fullPath += '|k';
-                            } else if (obj.ty === TY_MACRO) {
-                                obj.fullPath += '|m';
-                            }
+                            obj.fullPath += '|' + obj.ty;
                             obj.href = res[1];
                             out.push(obj);
                             if (out.length >= MAX_RESULTS) {
