@@ -21,6 +21,7 @@ use rustc::mir::{BasicBlock, Location, Mir, Place};
 use rustc::mir::{Projection, ProjectionElem, BorrowKind};
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::control_flow_graph::dominators::Dominators;
+use rustc_data_structures::small_vec::SmallVec;
 use std::iter;
 
 pub(super) fn allow_two_phase_borrow<'a, 'tcx, 'gcx: 'tcx>(
@@ -259,8 +260,8 @@ pub(super) fn places_conflict<'a, 'gcx: 'tcx, 'tcx>(
 
 /// Return all the prefixes of `place` in reverse order, including
 /// downcasts.
-fn place_elements<'a, 'tcx>(place: &'a Place<'tcx>) -> Vec<&'a Place<'tcx>> {
-    let mut result = vec![];
+fn place_elements<'a, 'tcx>(place: &'a Place<'tcx>) -> SmallVec<[&'a Place<'tcx>; 8]> {
+    let mut result = SmallVec::new();
     let mut place = place;
     loop {
         result.push(place);
