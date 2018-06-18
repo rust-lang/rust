@@ -527,7 +527,7 @@ impl PrintContext {
                     ty::BrNamed(tcx.hir.local_def_id(CRATE_NODE_ID), name)
                 }
             };
-            tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::INNERMOST, br))
+            tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br))
         }).0;
         start_or_continue(f, "", "> ")?;
 

@@ -119,7 +119,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "pref_align_of" | "min_align_of" => (1, Vec::new(), tcx.types.usize),
             "size_of_val" |  "min_align_of_val" => {
                 (1, vec![
-                    tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::INNERMOST,
+                    tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST,
                                                                   ty::BrAnon(0))),
                                     param(0))
                  ], tcx.types.usize)
@@ -298,7 +298,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "unlikely" => (0, vec![tcx.types.bool], tcx.types.bool),
 
             "discriminant_value" => (1, vec![
-                    tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::INNERMOST,
+                    tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::INNERMOST,
                                                                   ty::BrAnon(0))),
                                    param(0))], tcx.types.u64),
 
