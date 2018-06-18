@@ -735,6 +735,26 @@ impl<I> Iterator for StepBy<I> where I: Iterator {
             self.iter.nth(nth - 1);
         }
     }
+
+    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
+        Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
+    {
+        let mut accum = init;
+
+        if self.first_take {
+            self.first_take = false;
+            if let Some(x) = self.iter.next() {
+                accum = f(accum, x)?;
+            } else {
+                return Try::from_ok(accum);
+            }
+        }
+
+        while let Some(x) = self.iter.nth(self.step) {
+            accum = f(accum, x)?;
+        }
+        Try::from_ok(accum)
+    }
 }
 
 // StepBy can only make the iterator shorter, so the len will still fit.
