@@ -1581,7 +1581,7 @@ mod SomeModule {
                                             // `SomeModule` module.
 }
 
-println!("const value: {}", SomeModule::PRIVATE); // error: constant `CONSTANT`
+println!("const value: {}", SomeModule::PRIVATE); // error: constant `PRIVATE`
                                                   //        is private
 ```
 
