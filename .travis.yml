@@ -41,8 +41,6 @@ matrix:
     - env: INTEGRATION=rand
     # Doesn't build
     - env: INTEGRATION=rust-clippy
-    # Doesn't build
-    - env: INTEGRATION=rust-semverver
     # See: https://github.com/rust-lang-nursery/rustfmt/issues/2787
     - env: INTEGRATION=stdsimd
 
