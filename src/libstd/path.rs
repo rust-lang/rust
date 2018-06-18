@@ -1042,8 +1042,6 @@ impl<'a> cmp::Ord for Components<'a> {
 /// # Examples
 ///
 /// ```
-/// #![feature(path_ancestors)]
-///
 /// use std::path::Path;
 ///
 /// let path = Path::new("/foo/bar");
@@ -1056,12 +1054,12 @@ impl<'a> cmp::Ord for Components<'a> {
 /// [`ancestors`]: struct.Path.html#method.ancestors
 /// [`Path`]: struct.Path.html
 #[derive(Copy, Clone, Debug)]
-#[unstable(feature = "path_ancestors", issue = "48581")]
+#[stable(feature = "path_ancestors", since = "1.28.0")]
 pub struct Ancestors<'a> {
     next: Option<&'a Path>,
 }
 
-#[unstable(feature = "path_ancestors", issue = "48581")]
+#[stable(feature = "path_ancestors", since = "1.28.0")]
 impl<'a> Iterator for Ancestors<'a> {
     type Item = &'a Path;
 
@@ -1075,7 +1073,7 @@ impl<'a> Iterator for Ancestors<'a> {
     }
 }
 
-#[unstable(feature = "path_ancestors", issue = "48581")]
+#[stable(feature = "path_ancestors", since = "1.28.0")]
 impl<'a> FusedIterator for Ancestors<'a> {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1890,8 +1888,6 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// #![feature(path_ancestors)]
-    ///
     /// use std::path::Path;
     ///
     /// let mut ancestors = Path::new("/foo/bar").ancestors();
@@ -1903,7 +1899,7 @@ impl Path {
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
     /// [`parent`]: struct.Path.html#method.parent
-    #[unstable(feature = "path_ancestors", issue = "48581")]
+    #[stable(feature = "path_ancestors", since = "1.28.0")]
     pub fn ancestors(&self) -> Ancestors {
         Ancestors {
             next: Some(&self),
