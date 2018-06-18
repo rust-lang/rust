@@ -26,6 +26,10 @@ cargo fmt -- --version
 # * `cargo fmt --all -- --check` after formatting returns success
 # * `cargo test -all` still passes (formatting did not break the build)
 function check_fmt {
+    cargo test --all
+    if [[ $? != 0 ]]; then
+          return 0
+    fi
     touch rustfmt.toml
     cargo fmt --all -v |& tee rustfmt_output
     if [[ ${PIPESTATUS[0]} != 0 ]]; then
