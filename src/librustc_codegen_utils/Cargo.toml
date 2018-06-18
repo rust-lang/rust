@@ -10,6 +10,7 @@ crate-type = ["dylib"]
 test = false
 
 [dependencies]
+flate2 = "1.0"
 log = "0.4"
 
 syntax = { path = "../libsyntax" }

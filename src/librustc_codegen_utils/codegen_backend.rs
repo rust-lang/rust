@@ -29,6 +29,8 @@ use std::sync::{mpsc, Arc};
 
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::sync::Lrc;
+use flate2::Compression;
+use flate2::write::DeflateEncoder;
 
 use syntax::symbol::Symbol;
 use rustc::hir::def_id::LOCAL_CRATE;
@@ -97,6 +99,7 @@ impl MetadataLoader for NoLlvmMetadataLoader {
 pub struct MetadataOnlyCodegenBackend(());
 pub struct OngoingCodegen {
     metadata: EncodedMetadata,
+    metadata_version: Vec<u8>,
     crate_name: Symbol,
 }
 
@@ -184,6 +187,7 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
 
         box OngoingCodegen {
             metadata: metadata,
+            metadata_version: tcx.metadata_encoding_version().to_vec(),
             crate_name: tcx.crate_name(LOCAL_CRATE),
         }
     }
@@ -203,7 +207,15 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
             }
             let output_name =
                 out_filename(sess, crate_type, &outputs, &ongoing_codegen.crate_name.as_str());
-            let metadata = &ongoing_codegen.metadata.raw_data;
+            let mut compressed = ongoing_codegen.metadata_version.clone();
+            let metadata = if crate_type == CrateType::CrateTypeDylib {
+                DeflateEncoder::new(&mut compressed, Compression::fast())
+                    .write_all(&ongoing_codegen.metadata.raw_data)
+                    .unwrap();
+                &compressed
+            } else {
+                &ongoing_codegen.metadata.raw_data
+            };
             let mut file = File::create(&output_name).unwrap();
             file.write_all(metadata).unwrap();
         }

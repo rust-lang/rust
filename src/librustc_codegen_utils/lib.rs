@@ -25,6 +25,7 @@
 
 #![recursion_limit="256"]
 
+extern crate flate2;
 #[macro_use]
 extern crate log;
 
