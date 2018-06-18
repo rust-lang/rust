@@ -210,30 +210,9 @@ impl DefKey {
         } = self.disambiguated_data;
 
         ::std::mem::discriminant(data).hash(&mut hasher);
-        match *data {
-            DefPathData::TypeNs(name) |
-            DefPathData::Trait(name) |
-            DefPathData::AssocTypeInTrait(name) |
-            DefPathData::AssocTypeInImpl(name) |
-            DefPathData::ValueNs(name) |
-            DefPathData::Module(name) |
-            DefPathData::MacroDef(name) |
-            DefPathData::TypeParam(name) |
-            DefPathData::LifetimeDef(name) |
-            DefPathData::EnumVariant(name) |
-            DefPathData::Field(name) |
-            DefPathData::GlobalMetaData(name) => {
-                name.hash(&mut hasher);
-            }
-
-            DefPathData::Impl |
-            DefPathData::CrateRoot |
-            DefPathData::Misc |
-            DefPathData::ClosureExpr |
-            DefPathData::StructCtor |
-            DefPathData::AnonConst |
-            DefPathData::ImplTrait => {}
-        };
+        if let Some(name) = data.get_opt_name() {
+            name.hash(&mut hasher);
+        }
 
         disambiguator.hash(&mut hasher);
 
@@ -390,8 +369,10 @@ pub enum DefPathData {
     StructCtor,
     /// A constant expression (see {ast,hir}::AnonConst).
     AnonConst,
-    /// An `impl Trait` type node.
-    ImplTrait,
+    /// An `impl Trait` type node in argument position.
+    UniversalImplTrait,
+    /// An `impl Trait` type node in return position.
+    ExistentialImplTrait,
 
     /// GlobalMetaData identifies a piece of crate metadata that is global to
     /// a whole crate (as opposed to just one item). GlobalMetaData components
@@ -655,7 +636,8 @@ impl DefPathData {
             ClosureExpr |
             StructCtor |
             AnonConst |
-            ImplTrait => None
+            ExistentialImplTrait |
+            UniversalImplTrait => None
         }
     }
 
@@ -685,7 +667,8 @@ impl DefPathData {
             ClosureExpr => "{{closure}}",
             StructCtor => "{{constructor}}",
             AnonConst => "{{constant}}",
-            ImplTrait => "{{impl-Trait}}",
+            ExistentialImplTrait => "{{exist-impl-Trait}}",
+            UniversalImplTrait => "{{univ-impl-Trait}}",
         };
 
         Symbol::intern(s).as_interned_str()

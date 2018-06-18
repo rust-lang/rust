@@ -427,6 +427,10 @@ pub struct TypeckTables<'tcx> {
     /// its where clauses and parameter types. These are then
     /// read-again by borrowck.
     pub free_region_map: FreeRegionMap<'tcx>,
+
+    /// All the existential types that are restricted to concrete types
+    /// by this function
+    pub concrete_existential_types: FxHashMap<DefId, Ty<'tcx>>,
 }
 
 impl<'tcx> TypeckTables<'tcx> {
@@ -449,6 +453,7 @@ impl<'tcx> TypeckTables<'tcx> {
             used_trait_imports: Lrc::new(DefIdSet()),
             tainted_by_errors: false,
             free_region_map: FreeRegionMap::new(),
+            concrete_existential_types: FxHashMap(),
         }
     }
 
@@ -746,6 +751,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
             ref used_trait_imports,
             tainted_by_errors,
             ref free_region_map,
+            ref concrete_existential_types,
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
@@ -786,6 +792,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
             used_trait_imports.hash_stable(hcx, hasher);
             tainted_by_errors.hash_stable(hcx, hasher);
             free_region_map.hash_stable(hcx, hasher);
+            concrete_existential_types.hash_stable(hcx, hasher);
         })
     }
 }

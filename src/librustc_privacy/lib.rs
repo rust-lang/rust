@@ -160,6 +160,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemGlobalAsm(..) | hir::ItemFn(..) | hir::ItemMod(..) |
             hir::ItemStatic(..) | hir::ItemStruct(..) |
             hir::ItemTrait(..) | hir::ItemTraitAlias(..) |
+            hir::ItemExistential(..) |
             hir::ItemTy(..) | hir::ItemUnion(..) | hir::ItemUse(..) => {
                 if item.vis == hir::Public { self.prev_level } else { None }
             }
@@ -212,6 +213,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                     }
                 }
             }
+            hir::ItemExistential(..) |
             hir::ItemUse(..) | hir::ItemStatic(..) | hir::ItemConst(..) |
             hir::ItemGlobalAsm(..) | hir::ItemTy(..) | hir::ItemMod(..) | hir::ItemTraitAlias(..) |
             hir::ItemFn(..) | hir::ItemExternCrate(..) => {}
@@ -227,6 +229,8 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemUse(..) => {}
             // The interface is empty
             hir::ItemGlobalAsm(..) => {}
+            // Checked by visit_ty
+            hir::ItemExistential(..) => {}
             // Visit everything
             hir::ItemConst(..) | hir::ItemStatic(..) |
             hir::ItemFn(..) | hir::ItemTy(..) => {
@@ -388,10 +392,10 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        if let hir::TyImplTraitExistential(..) = ty.node {
-            if self.get(ty.id).is_some() {
-                // Reach the (potentially private) type and the API being exposed.
-                self.reach(ty.id).ty().predicates();
+        if let hir::TyImplTraitExistential(item_id, _, _) = ty.node {
+            if self.get(item_id.id).is_some() {
+                // Reach the (potentially private) type and the API being exposed
+                self.reach(item_id.id).ty().predicates();
             }
         }
 
@@ -436,6 +440,10 @@ impl<'b, 'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
 
     fn ty(&mut self) -> &mut Self {
         let ty = self.ev.tcx.type_of(self.item_def_id);
+        self.walk_ty(ty)
+    }
+
+    fn walk_ty(&mut self, ty: Ty<'tcx>) -> &mut Self {
         ty.visit_with(self);
         if let ty::TyFnDef(def_id, _) = ty.sty {
             if def_id == self.item_def_id {
@@ -1546,6 +1554,8 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             hir::ItemUse(..) => {}
             // No subitems
             hir::ItemGlobalAsm(..) => {}
+            // Checked in visit_ty
+            hir::ItemExistential(..) => {}
             // Subitems of these items have inherited publicity
             hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
             hir::ItemTy(..) => {
@@ -1644,13 +1654,14 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
     }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        if let hir::TyImplTraitExistential(..) = ty.node {
+        if let hir::TyImplTraitExistential(ref exist_item, _, _) = ty.node {
             // Check the traits being exposed, as they're separate,
             // e.g. `impl Iterator<Item=T>` has two predicates,
             // `X: Iterator` and `<X as Iterator>::Item == T`,
             // where `X` is the `impl Iterator<Item=T>` itself,
             // stored in `predicates_of`, not in the `Ty` itself.
-            self.check(ty.id, self.inner_visibility).predicates();
+
+            self.check(exist_item.id, self.inner_visibility).predicates();
         }
 
         intravisit::walk_ty(self, ty);

@@ -2857,6 +2857,12 @@ fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option
 fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        def_id: DefId)
                        -> ParamEnv<'tcx> {
+
+    // The param_env of an existential type is its parent's param_env
+    if let Some(Def::Existential(_)) = tcx.describe_def(def_id) {
+        let parent = tcx.parent_def_id(def_id).expect("impl trait item w/o a parent");
+        return param_env(tcx, parent);
+    }
     // Compute the bounds on Self and the type parameters.
 
     let bounds = tcx.predicates_of(def_id).instantiate_identity(tcx);

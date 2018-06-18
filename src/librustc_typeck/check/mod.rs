@@ -1013,7 +1013,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     debug!("check_fn(sig={:?}, fn_id={}, param_env={:?})", fn_sig, fn_id, param_env);
 
     // Create the function context.  This is either derived from scratch or,
-    // in the case of function expressions, based on the outer context.
+    // in the case of closures, based on the outer context.
     let mut fcx = FnCtxt::new(inherited, param_env, body.value.id);
     *fcx.ps.borrow_mut() = UnsafetyState::function(fn_sig.unsafety, fn_id);
 

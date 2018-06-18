@@ -205,6 +205,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                 Def::AssociatedTy(..) | Def::PrimTy(..) | Def::Fn(..) | Def::Const(..) |
                 Def::Static(..) | Def::StructCtor(..) | Def::VariantCtor(..) | Def::Method(..) |
                 Def::AssociatedConst(..) | Def::Local(..) | Def::Upvar(..) | Def::Label(..) |
+                Def::Existential(..) |
                 Def::Macro(..) | Def::GlobalAsm(..) | Def::Err =>
                     bug!("TypeParametersFromOuterFunction should only be used with Def::SelfTy or \
                          Def::TyParam")

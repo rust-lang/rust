@@ -267,6 +267,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     // inherently and their children are already in the
                     // worklist, as determined by the privacy pass
                     hir::ItemExternCrate(_) | hir::ItemUse(..) |
+                    hir::ItemExistential(..) |
                     hir::ItemTy(..) | hir::ItemStatic(..) |
                     hir::ItemMod(..) | hir::ItemForeignMod(..) |
                     hir::ItemImpl(..) | hir::ItemTrait(..) | hir::ItemTraitAlias(..) |

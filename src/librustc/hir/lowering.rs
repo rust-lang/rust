@@ -182,7 +182,9 @@ enum ImplTraitContext {
     /// Treat `impl Trait` as shorthand for a new universal existential parameter.
     /// Example: `fn foo() -> impl Debug`, where `impl Debug` is conceptually
     /// equivalent to a fresh existential parameter like `abstract type T; fn foo() -> T`.
-    Existential,
+    ///
+    /// We store a DefId here so we can look up necessary information later
+    Existential(DefId),
 
     /// `impl Trait` is not accepted in this position.
     Disallowed,
@@ -238,6 +240,7 @@ enum ParamMode {
     Optional,
 }
 
+#[derive(Debug)]
 struct LoweredNodeId {
     node_id: NodeId,
     hir_id: hir::HirId,
@@ -488,16 +491,16 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn with_hir_id_owner<F>(&mut self, owner: NodeId, f: F)
+    fn with_hir_id_owner<F, T>(&mut self, owner: NodeId, f: F) -> T
     where
-        F: FnOnce(&mut Self),
+        F: FnOnce(&mut Self) -> T,
     {
         let counter = self.item_local_id_counters
             .insert(owner, HIR_ID_COUNTER_LOCKED)
             .unwrap();
         let def_index = self.resolver.definitions().opt_def_index(owner).unwrap();
         self.current_hir_id_owner.push((def_index, counter));
-        f(self);
+        let ret = f(self);
         let (new_def_index, new_counter) = self.current_hir_id_owner.pop().unwrap();
 
         debug_assert!(def_index == new_def_index);
@@ -507,6 +510,7 @@ impl<'a> LoweringContext<'a> {
             .insert(owner, new_counter)
             .unwrap();
         debug_assert!(prev == HIR_ID_COUNTER_LOCKED);
+        ret
     }
 
     /// This method allocates a new HirId for the given NodeId and stores it in
@@ -530,7 +534,10 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_node_id_with_owner(&mut self, ast_node_id: NodeId, owner: NodeId) -> LoweredNodeId {
         self.lower_node_id_generic(ast_node_id, |this| {
-            let local_id_counter = this.item_local_id_counters.get_mut(&owner).unwrap();
+            let local_id_counter = this
+                .item_local_id_counters
+                .get_mut(&owner)
+                .expect("called lower_node_id_with_owner before allocate_hir_id_counter");
             let local_id = *local_id_counter;
 
             // We want to be sure not to modify the counter in the map while it
@@ -539,7 +546,12 @@ impl<'a> LoweringContext<'a> {
             debug_assert!(local_id != HIR_ID_COUNTER_LOCKED);
 
             *local_id_counter += 1;
-            let def_index = this.resolver.definitions().opt_def_index(owner).unwrap();
+            let def_index = this
+                .resolver
+                .definitions()
+                .opt_def_index(owner)
+                .expect("You forgot to call `create_def_with_parent` or are lowering node ids \
+                         that do not belong to the current owner");
 
             hir::HirId {
                 owner: def_index,
@@ -1120,26 +1132,93 @@ impl<'a> LoweringContext<'a> {
             TyKind::ImplTrait(ref bounds) => {
                 let span = t.span;
                 match itctx {
-                    ImplTraitContext::Existential => {
-                        let def_index = self.resolver.definitions().opt_def_index(t.id).unwrap();
-                        let hir_bounds = self.lower_bounds(bounds, itctx);
-                        let (lifetimes, lifetime_defs) =
-                            self.lifetimes_from_impl_trait_bounds(def_index, &hir_bounds);
+                    ImplTraitContext::Existential(fn_def_id) => {
 
-                        hir::TyImplTraitExistential(
-                            hir::ExistTy {
+                        // We need to manually repeat the code of `next_id` because the lowering
+                        // needs to happen while the owner_id is pointing to the item itself,
+                        // because items are their own owners
+                        let exist_ty_node_id = self.sess.next_node_id();
+
+                        // Make sure we know that some funky desugaring has been going on here.
+                        // This is a first: there is code in other places like for loop
+                        // desugaring that explicitly states that we don't want to track that.
+                        // Not tracking it makes lints in rustc and clippy very fragile as
+                        // frequently opened issues show.
+                        let exist_ty_span = self.allow_internal_unstable(
+                            CompilerDesugaringKind::ExistentialReturnType,
+                            t.span,
+                        );
+
+                        // Pull a new definition from the ether
+                        let exist_ty_def_index = self
+                            .resolver
+                            .definitions()
+                            .create_def_with_parent(
+                            fn_def_id.index,
+                            exist_ty_node_id,
+                            DefPathData::ExistentialImplTrait,
+                            DefIndexAddressSpace::High,
+                            Mark::root(),
+                            exist_ty_span,
+                        );
+
+                        // the `t` is just for printing debug messages
+                        self.allocate_hir_id_counter(exist_ty_node_id, t);
+
+                        let hir_bounds = self.with_hir_id_owner(exist_ty_node_id, |lctx| {
+                            lctx.lower_bounds(bounds, itctx)
+                        });
+
+                        let (lifetimes, lifetime_defs) = self.lifetimes_from_impl_trait_bounds(
+                            exist_ty_node_id,
+                            exist_ty_def_index,
+                            &hir_bounds,
+                        );
+
+                        self.with_hir_id_owner(exist_ty_node_id, |lctx| {
+                            let exist_ty_item_kind = hir::ItemExistential(hir::ExistTy {
                                 generics: hir::Generics {
                                     params: lifetime_defs,
                                     where_clause: hir::WhereClause {
-                                        id: self.next_id().node_id,
+                                        id: lctx.next_id().node_id,
                                         predicates: Vec::new().into(),
                                     },
                                     span,
                                 },
                                 bounds: hir_bounds,
-                            },
-                            lifetimes,
-                        )
+                                impl_trait_fn: Some(fn_def_id),
+                            });
+                            let exist_ty_id = lctx.lower_node_id(exist_ty_node_id);
+                            // Generate an `existential type Foo: Trait;` declaration
+                            trace!("creating existential type with id {:#?}", exist_ty_id);
+                            // Set the name to `impl Bound1 + Bound2`
+                            let exist_ty_name = Symbol::intern(&pprust::ty_to_string(t));
+
+                            trace!("exist ty def index: {:#?}", exist_ty_def_index);
+                            let exist_ty_item = hir::Item {
+                                id: exist_ty_id.node_id,
+                                hir_id: exist_ty_id.hir_id,
+                                name: exist_ty_name,
+                                attrs: Default::default(),
+                                node: exist_ty_item_kind,
+                                vis: hir::Visibility::Inherited,
+                                span: exist_ty_span,
+                            };
+
+                            // Insert the item into the global list. This usually happens
+                            // automatically for all AST items. But this existential type item
+                            // does not actually exist in the AST.
+                            lctx.items.insert(exist_ty_id.node_id, exist_ty_item);
+
+                            // `impl Trait` now just becomes `Foo<'a, 'b, ..>`
+                            hir::TyImplTraitExistential(
+                                hir::ItemId {
+                                    id: exist_ty_id.node_id
+                                },
+                                DefId::local(exist_ty_def_index),
+                                lifetimes,
+                            )
+                        })
                     }
                     ImplTraitContext::Universal(def_id) => {
                         let def_node_id = self.next_id().node_id;
@@ -1148,7 +1227,7 @@ impl<'a> LoweringContext<'a> {
                         let def_index = self.resolver.definitions().create_def_with_parent(
                             def_id.index,
                             def_node_id,
-                            DefPathData::ImplTrait,
+                            DefPathData::UniversalImplTrait,
                             DefIndexAddressSpace::High,
                             Mark::root(),
                             span,
@@ -1203,6 +1282,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lifetimes_from_impl_trait_bounds(
         &mut self,
+        exist_ty_id: NodeId,
         parent_index: DefIndex,
         bounds: &hir::TyParamBounds,
     ) -> (HirVec<hir::Lifetime>, HirVec<hir::GenericParam>) {
@@ -1212,6 +1292,7 @@ impl<'a> LoweringContext<'a> {
         struct ImplTraitLifetimeCollector<'r, 'a: 'r> {
             context: &'r mut LoweringContext<'a>,
             parent: DefIndex,
+            exist_ty_id: NodeId,
             collect_elided_lifetimes: bool,
             currently_bound_lifetimes: Vec<hir::LifetimeName>,
             already_defined_lifetimes: HashSet<hir::LifetimeName>,
@@ -1306,7 +1387,11 @@ impl<'a> LoweringContext<'a> {
                         name,
                     });
 
-                    let def_node_id = self.context.next_id().node_id;
+                    // We need to manually create the ids here, because the
+                    // definitions will go into the explicit `existential type`
+                    // declaration and thus need to have their owner set to that item
+                    let def_node_id = self.context.sess.next_node_id();
+                    let _ = self.context.lower_node_id_with_owner(def_node_id, self.exist_ty_id);
                     self.context.resolver.definitions().create_def_with_parent(
                         self.parent,
                         def_node_id,
@@ -1318,7 +1403,7 @@ impl<'a> LoweringContext<'a> {
                     let def_lifetime = hir::Lifetime {
                         id: def_node_id,
                         span: lifetime.span,
-                        name: name,
+                        name,
                     };
                     self.output_lifetime_params
                         .push(hir::GenericParam::Lifetime(hir::LifetimeDef {
@@ -1334,6 +1419,7 @@ impl<'a> LoweringContext<'a> {
         let mut lifetime_collector = ImplTraitLifetimeCollector {
             context: self,
             parent: parent_index,
+            exist_ty_id,
             collect_elided_lifetimes: true,
             currently_bound_lifetimes: Vec::new(),
             already_defined_lifetimes: HashSet::new(),
@@ -1772,8 +1858,8 @@ impl<'a> LoweringContext<'a> {
                 .collect(),
             output: match decl.output {
                 FunctionRetTy::Ty(ref ty) => match fn_def_id {
-                    Some(_) if impl_trait_return_allow => {
-                        hir::Return(self.lower_ty(ty, ImplTraitContext::Existential))
+                    Some(def_id) if impl_trait_return_allow => {
+                        hir::Return(self.lower_ty(ty, ImplTraitContext::Existential(def_id)))
                     }
                     _ => hir::Return(self.lower_ty(ty, ImplTraitContext::Disallowed)),
                 },

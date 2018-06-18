@@ -304,6 +304,7 @@ pub enum EntryKind<'tcx> {
     ForeignType,
     GlobalAsm,
     Type,
+    Existential,
     Enum(ReprOptions),
     Field,
     Variant(Lazy<VariantData<'tcx>>),
@@ -336,6 +337,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
             EntryKind::GlobalAsm        |
             EntryKind::ForeignType      |
             EntryKind::Field |
+            EntryKind::Existential |
             EntryKind::Type => {
                 // Nothing else to hash here.
             }

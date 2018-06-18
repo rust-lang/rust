@@ -88,7 +88,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         debug!("visit_item: {:?}", i);
 
         // Pick the def data. This need not be unique, but the more
-        // information we encapsulate into
+        // information we encapsulate into, the better
         let def_data = match i.node {
             ItemKind::Impl(..) => DefPathData::Impl,
             ItemKind::Trait(..) => DefPathData::Trait(i.ident.name.as_interned_str()),
@@ -256,9 +256,6 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     fn visit_ty(&mut self, ty: &'a Ty) {
         match ty.node {
             TyKind::Mac(..) => return self.visit_macro_invoc(ty.id),
-            TyKind::ImplTrait(..) => {
-                self.create_def(ty.id, DefPathData::ImplTrait, REGULAR_SPACE, ty.span);
-            }
             _ => {}
         }
         visit::walk_ty(self, ty);
