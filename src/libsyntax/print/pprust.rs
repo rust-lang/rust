@@ -1079,7 +1079,7 @@ impl<'a> State<'a> {
                 let prefix = if syntax == ast::TraitObjectSyntax::Dyn { "dyn" } else { "" };
                 self.print_type_bounds(prefix, &bounds[..])?;
             }
-            ast::TyKind::ImplTrait(ref bounds) => {
+            ast::TyKind::ImplTrait(_, ref bounds) => {
                 self.print_type_bounds("impl", &bounds[..])?;
             }
             ast::TyKind::Array(ref ty, ref length) => {

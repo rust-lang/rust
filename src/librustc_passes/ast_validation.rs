@@ -201,7 +201,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 self.no_questions_in_bounds(bounds, "trait object types", false);
             }
-            TyKind::ImplTrait(ref bounds) => {
+            TyKind::ImplTrait(_, ref bounds) => {
                 if !bounds.iter()
                           .any(|b| if let GenericBound::Trait(..) = *b { true } else { false }) {
                     self.err_handler().span_err(ty.span, "at least one trait must be specified");
@@ -496,7 +496,7 @@ impl<'a> NestedImplTraitVisitor<'a> {
 
 impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
     fn visit_ty(&mut self, t: &'a Ty) {
-        if let TyKind::ImplTrait(_) = t.node {
+        if let TyKind::ImplTrait(..) = t.node {
             if let Some(outer_impl_trait) = self.outer_impl_trait {
                 struct_span_err!(self.session, t.span, E0666,
                                  "nested `impl Trait` is not allowed")
@@ -561,7 +561,7 @@ impl<'a> ImplTraitProjectionVisitor<'a> {
 impl<'a> Visitor<'a> for ImplTraitProjectionVisitor<'a> {
     fn visit_ty(&mut self, t: &'a Ty) {
         match t.node {
-            TyKind::ImplTrait(_) => {
+            TyKind::ImplTrait(..) => {
                 if self.is_banned {
                     struct_span_err!(self.session, t.span, E0667,
                                  "`impl Trait` is not allowed in path parameters")

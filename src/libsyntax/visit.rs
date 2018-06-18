@@ -340,7 +340,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
             visitor.visit_anon_const(length)
         }
         TyKind::TraitObject(ref bounds, ..) |
-        TyKind::ImplTrait(ref bounds) => {
+        TyKind::ImplTrait(_, ref bounds) => {
             walk_list!(visitor, visit_param_bound, bounds);
         }
         TyKind::Typeof(ref expression) => {
