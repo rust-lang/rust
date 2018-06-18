@@ -1,6 +1,7 @@
 #![feature(rustc_private)]
 
 extern crate syntax;
+#[macro_use]
 extern crate rustc;
 extern crate rustc_mir;
 extern crate rustc_codegen_utils;

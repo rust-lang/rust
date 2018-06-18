@@ -46,3 +46,8 @@ fn abc(a: u8) -> u8 {
 fn call() {
     abc(42);
 }
+
+fn indirect_call() {
+    let f: fn() = call;
+    f();
+}

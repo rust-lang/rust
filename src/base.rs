@@ -141,7 +141,7 @@ impl<'f, 'tcx> CodegenCtxt<'f, 'tcx> {
     }
 }
 
-fn trans_fn<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &mut Function, def_id: DefId, substs: &Substs) {
+fn trans_fn<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &mut Function, def_id: DefId, substs: &Substs<'tcx>) {
     let mir = tcx.optimized_mir(def_id);
     let mut func_ctx = FunctionBuilderContext::new();
     let mut bcx: FunctionBuilder<Variable> = FunctionBuilder::new(f, &mut func_ctx);
@@ -198,7 +198,7 @@ fn trans_fn<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &mut Function, def_id:
             TerminatorKind::Return => {
                 ccx.bcx.ins().return_(&[]);
             }
-            TerminatorKind::Assert { cond, expected, msg, target, cleanup: _ } => {
+            TerminatorKind::Assert { cond, expected, msg: _, target, cleanup: _ } => {
                 let cond_ty = cond.ty(&ccx.mir.local_decls, ccx.tcx);
                 let cond = trans_operand(ccx, cond).load_value(ccx, cond_ty);
                 let target = ccx.get_ebb(*target);
@@ -224,6 +224,7 @@ fn trans_fn<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &mut Function, def_id:
                 ccx.bcx.ins().jump(otherwise_ebb, &[]);
             }
             TerminatorKind::Call { func, args, destination, cleanup: _ } => {
+                let func_ty = func.ty(&ccx.mir.local_decls, ccx.tcx);
                 let func = trans_operand(ccx, func);
                 let return_place = if let Some((place, _)) = destination {
                     trans_place(ccx, place)
@@ -245,7 +246,17 @@ fn trans_fn<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &mut Function, def_id:
                     CValue::Func(func) => {
                         ccx.bcx.ins().call(func, &args);
                     }
-                    _ => unimplemented!("indirect call"),
+                    func => {
+                        let func = func.load_value(ccx, func_ty);
+                        let sig = match func_ty.sty {
+                            TypeVariants::TyFnDef(def_id, _substs) => ccx.tcx.fn_sig(def_id),
+                            TypeVariants::TyFnPtr(fn_sig) => fn_sig,
+                            _ => bug!("Calling non function type {:?}", func_ty),
+                        };
+                        let sig = ccx.tcx.subst_and_normalize_erasing_regions(substs, ParamEnv::reveal_all(), &sig);
+                        let sig = ccx.bcx.import_signature(cton_sig_from_fn_sig(sig.skip_binder()));
+                        ccx.bcx.ins().call_indirect(sig, func, &args);
+                    }
                 }
                 if let Some((_, dest)) = *destination {
                     let ret_ebb = ccx.get_ebb(dest);
@@ -257,7 +268,14 @@ fn trans_fn<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &mut Function, def_id:
             TerminatorKind::Resume | TerminatorKind::Abort | TerminatorKind::Unreachable => {
                 ccx.bcx.ins().trap(TrapCode::User(!0));
             }
-            terminator => unimplemented!("terminator {:?}", terminator),
+            TerminatorKind::Yield { .. } |
+            TerminatorKind::FalseEdges { .. } |
+            TerminatorKind::FalseUnwind { .. } => {
+                bug!("shouldn't exist at trans {:?}", bb_data.terminator());
+            }
+            TerminatorKind::Drop { .. } | TerminatorKind::DropAndReplace { .. } | TerminatorKind::GeneratorDrop { .. } => {
+                unimplemented!("terminator {:?}", bb_data.terminator());
+            }
         }
     }
 
@@ -321,13 +339,21 @@ fn trans_rval<'a, 'tcx: 'a>(ccx: &mut CodegenCtxt<'a, 'tcx>, rval: &Rvalue<'tcx>
                 bin_op => unimplemented!("checked bin op {:?} {:?} {:?}", bin_op, lhs, rhs),
             }
         }
-        rval => unimplemented!("{:?}", rval),
+        Rvalue::Cast(CastKind::ReifyFnPointer, operand, ty) => {
+            let operand = trans_operand(ccx, operand);
+            operand.force_stack(ccx, ty)
+        }
+        Rvalue::Cast(CastKind::UnsafeFnPointer, operand, ty) => {
+            trans_operand(ccx, operand).force_stack(ccx, ty)
+        }
+        rval => unimplemented!("rval {:?}", rval),
     }
 }
 
 fn trans_operand<'a, 'tcx>(ccx: &mut CodegenCtxt<'a, 'tcx>, operand: &Operand<'tcx>) -> CValue {
     match operand {
-        Operand::Move(place) => CValue::ByRef(trans_place(ccx, place)),
+        Operand::Move(place) |
+        Operand::Copy(place) => CValue::ByRef(trans_place(ccx, place)),
         Operand::Constant(const_) => {
             match const_.literal {
                 Literal::Value { value } => {
@@ -366,9 +392,21 @@ fn trans_operand<'a, 'tcx>(ccx: &mut CodegenCtxt<'a, 'tcx>, operand: &Operand<'t
 
 fn do_memcpy<'a, 'tcx: 'a>(ccx: &mut CodegenCtxt<'a, 'tcx>, to: Value, from: Value, ty: Ty<'tcx>) {
     let layout = ccx.tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
-    for i in 0..(layout.size.bytes() as i32) {
-        let byte = ccx.bcx.ins().load_complex(types::I8, MemFlags::new(), &[from], i);
-        ccx.bcx.ins().store_complex(MemFlags::new(), byte, &[to], i);
+    let size = layout.size.bytes() as i32;
+    let ty = match size {
+        2 => Some(types::I16),
+        4 => Some(types::I32),
+        8 => Some(types::I64),
+        _ => None,
+    };
+    if let Some(ty) = ty {
+        let data = ccx.bcx.ins().load(ty, MemFlags::new(), from, 0);
+        ccx.bcx.ins().store(MemFlags::new(), data, to, 0);
+    } else {
+        for i in 0..size {
+            let byte = ccx.bcx.ins().load(types::I8, MemFlags::new(), from, i);
+            ccx.bcx.ins().store(MemFlags::new(), byte, to, i);
+        }
     }
 }
 
@@ -416,6 +454,7 @@ fn cton_type_from_ty(ty: Ty) -> Option<types::Type> {
                 IntTy::Isize => unimplemented!(),
             }
         }
+        TypeVariants::TyFnPtr(_) => types::I64,
         _ => return None,
     })
 }
