@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use fmt;
+use hash::{Hash, Hasher};
 
 /// An unbounded range (`..`).
 ///
@@ -326,15 +327,37 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// assert_eq!(arr[1..=2], [  1,2  ]);  // RangeInclusive
 /// ```
 #[doc(alias = "..=")]
-#[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
+#[derive(Clone)]  // not Copy -- see #27186
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeInclusive<Idx> {
-    // FIXME: The current representation follows RFC 1980,
-    // but it is known that LLVM is not able to optimize loops following that RFC.
-    // Consider adding an extra `bool` field to indicate emptiness of the range.
-    // See #45222 for performance test cases.
     pub(crate) start: Idx,
     pub(crate) end: Idx,
+    pub(crate) is_iterating: Option<bool>,
+    // This field is:
+    //  - `None` when next() or next_back() was never called
+    //  - `Some(true)` when `start <= end` assuming no overflow
+    //  - `Some(false)` otherwise
+    // The field cannot be a simple `bool` because the `..=` constructor can
+    // accept non-PartialOrd types, also we want the constructor to be const.
+}
+
+#[stable(feature = "inclusive_range", since = "1.26.0")]
+impl<Idx: PartialEq> PartialEq for RangeInclusive<Idx> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.start == other.start && self.end == other.end
+    }
+}
+
+#[stable(feature = "inclusive_range", since = "1.26.0")]
+impl<Idx: Eq> Eq for RangeInclusive<Idx> {}
+
+#[stable(feature = "inclusive_range", since = "1.26.0")]
+impl<Idx: Hash> Hash for RangeInclusive<Idx> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.start.hash(state);
+        self.end.hash(state);
+    }
 }
 
 impl<Idx> RangeInclusive<Idx> {
@@ -350,7 +373,7 @@ impl<Idx> RangeInclusive<Idx> {
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
     #[inline]
     pub const fn new(start: Idx, end: Idx) -> Self {
-        Self { start, end }
+        Self { start, end, is_iterating: None }
     }
 
     /// Returns the lower bound of the range (inclusive).
@@ -492,8 +515,9 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// assert!(r.is_empty());
     /// ```
     #[unstable(feature = "range_is_empty", reason = "recently added", issue = "48111")]
+    #[inline]
     pub fn is_empty(&self) -> bool {
-        !(self.start <= self.end)
+        !self.is_iterating.unwrap_or_else(|| self.start <= self.end)
     }
 }
 
