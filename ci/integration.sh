@@ -64,15 +64,6 @@ case ${INTEGRATION} in
         check_fmt
         cd -
         ;;
-    chalk)
-        git clone --depth=1 https://github.com/rust-lang-nursery/${INTEGRATION}.git
-        cd ${INTEGRATION}
-        # Need to run build.rs once.
-        # See: https://github.com/rust-lang-nursery/rustfmt/issues/2789
-        cargo build
-        check_fmt
-        cd -
-        ;;
     failure)
         git clone --depth=1 https://github.com/rust-lang-nursery/${INTEGRATION}.git
         cd ${INTEGRATION}/failure-1.X
