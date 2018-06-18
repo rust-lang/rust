@@ -1168,7 +1168,7 @@ impl<'a> LoweringContext<'a> {
                             lctx.lower_param_bounds(bounds, itctx)
                         });
 
-                        let (lifetimes, lifetime_defs) = self.lifetimes_from_impl_trait_bounds(
+                        let (path_params, params) = self.generics_from_impl_trait_bounds(
                             exist_ty_node_id,
                             exist_ty_def_index,
                             &hir_bounds,
@@ -1177,7 +1177,7 @@ impl<'a> LoweringContext<'a> {
                         self.with_hir_id_owner(exist_ty_node_id, |lctx| {
                             let exist_ty_item_kind = hir::ItemExistential(hir::ExistTy {
                                 generics: hir::Generics {
-                                    params: lifetime_defs,
+                                    params,
                                     where_clause: hir::WhereClause {
                                         id: lctx.next_id().node_id,
                                         predicates: Vec::new().into(),
@@ -1215,7 +1215,7 @@ impl<'a> LoweringContext<'a> {
                                     id: exist_ty_id.node_id
                                 },
                                 DefId::local(exist_ty_def_index),
-                                lifetimes,
+                                path_params.lifetimes,
                             )
                         })
                     }
@@ -1281,12 +1281,12 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn lifetimes_from_impl_trait_bounds(
+    fn generics_from_impl_trait_bounds(
         &mut self,
         exist_ty_id: NodeId,
         parent_index: DefIndex,
         bounds: &hir::GenericBounds,
-    ) -> (HirVec<hir::Lifetime>, HirVec<hir::GenericParam>) {
+    ) -> (hir::PathParameters, HirVec<hir::GenericParam>) {
         // This visitor walks over impl trait bounds and creates defs for all lifetimes which
         // appear in the bounds, excluding lifetimes that are created within the bounds.
         // e.g. 'a, 'b, but not 'c in `impl for<'c> SomeTrait<'a, 'b, 'c>`
@@ -1298,7 +1298,7 @@ impl<'a> LoweringContext<'a> {
             currently_bound_lifetimes: Vec<hir::LifetimeName>,
             already_defined_lifetimes: HashSet<hir::LifetimeName>,
             output_lifetimes: Vec<hir::Lifetime>,
-            output_lifetime_params: Vec<hir::GenericParam>,
+            output_params: Vec<hir::GenericParam>,
         }
 
         impl<'r, 'a: 'r, 'v> hir::intravisit::Visitor<'v> for ImplTraitLifetimeCollector<'r, 'a> {
@@ -1432,7 +1432,7 @@ impl<'a> LoweringContext<'a> {
             currently_bound_lifetimes: Vec::new(),
             already_defined_lifetimes: HashSet::new(),
             output_lifetimes: Vec::new(),
-            output_lifetime_params: Vec::new(),
+            output_params: Vec::new(),
         };
 
         for bound in bounds {
@@ -1440,8 +1440,13 @@ impl<'a> LoweringContext<'a> {
         }
 
         (
-            lifetime_collector.output_lifetimes.into(),
-            lifetime_collector.output_lifetime_params.into(),
+            hir::PathParameters {
+                lifetimes: lifetime_collector.output_lifetimes.into(),
+                types: HirVec::new(),
+                bindings: HirVec::new(),
+                parenthesized: false,
+            },
+            lifetime_collector.output_params.into(),
         )
     }
 
