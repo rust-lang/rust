@@ -29,6 +29,7 @@ pub unsafe fn raw(m: &Mutex) -> *mut AtomicU32 {
 }
 
 impl Mutex {
+    #[promotable_const_fn]
     pub const fn new() -> Mutex {
         Mutex(RWLock::new())
     }

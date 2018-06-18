@@ -246,6 +246,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[promotable_const_fn]
     pub const fn new(v: bool) -> AtomicBool {
         AtomicBool { v: UnsafeCell::new(v as u8) }
     }
@@ -659,6 +660,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[promotable_const_fn]
     pub const fn new(p: *mut T) -> AtomicPtr<T> {
         AtomicPtr { p: UnsafeCell::new(p) }
     }
@@ -1011,6 +1013,7 @@ let atomic_forty_two = ", stringify!($atomic_type), "::new(42);
 ```"),
                 #[inline]
                 #[$stable]
+                #[promotable_const_fn]
                 pub const fn new(v: $int_type) -> Self {
                     $atomic_type {v: UnsafeCell::new(v)}
                 }

@@ -56,6 +56,7 @@ pub unsafe fn raw(m: &Mutex) -> c::PSRWLOCK {
 }
 
 impl Mutex {
+    #[promotable_const_fn]
     pub const fn new() -> Mutex {
         Mutex {
             lock: AtomicUsize::new(0),

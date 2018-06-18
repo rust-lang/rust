@@ -1,0 +1,21 @@
+error[E0019]: promotable constant function contains unimplemented expression type
+  --> $DIR/promote-const-fn.rs:28:9
+   |
+LL |         Foo { a: &1 }.b == 42 //~ ERROR promotable constant function contains
+   |         ^^^^^^^^^^^^^^^
+
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/promote-const-fn.rs:33:27
+   |
+LL |     let x: &'static () = &foo(); //~ borrowed value does not live long enough
+   |                           ^^^^^ temporary value does not live long enough
+LL |     let x: &'static () = &bar();
+LL | }
+   | - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0019, E0597.
+For more information about an error, try `rustc --explain E0019`.

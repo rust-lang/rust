@@ -28,6 +28,7 @@ pub struct Key<T> {
 unsafe impl<T> ::marker::Sync for Key<T> { }
 
 impl<T> Key<T> {
+    #[promotable_const_fn]
     pub const fn new() -> Key<T> {
         Key {
             inner: UnsafeCell::new(None),

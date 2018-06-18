@@ -47,6 +47,7 @@ pub struct Weak<F> {
 }
 
 impl<F> Weak<F> {
+    #[promotable_const_fn]
     pub const fn new(name: &'static str) -> Weak<F> {
         Weak {
             name,

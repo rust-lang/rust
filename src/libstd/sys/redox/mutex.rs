@@ -61,6 +61,7 @@ pub struct Mutex {
 
 impl Mutex {
     /// Create a new mutex.
+    #[promotable_const_fn]
     pub const fn new() -> Self {
         Mutex {
             lock: UnsafeCell::new(0),
@@ -107,6 +108,7 @@ pub struct ReentrantMutex {
 }
 
 impl ReentrantMutex {
+    #[promotable_const_fn]
     pub const fn uninitialized() -> Self {
         ReentrantMutex {
             lock: UnsafeCell::new(0),

@@ -349,6 +349,7 @@ impl<Idx> RangeInclusive<Idx> {
     /// ```
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
     #[inline]
+    #[promotable_const_fn]
     pub const fn new(start: Idx, end: Idx) -> Self {
         Self { start, end }
     }

@@ -20,6 +20,7 @@ unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
 
 impl Condvar {
+    #[promotable_const_fn]
     pub const fn new() -> Condvar {
         Condvar { inner: UnsafeCell::new(c::CONDITION_VARIABLE_INIT) }
     }

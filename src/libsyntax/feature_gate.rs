@@ -145,6 +145,7 @@ declare_features! (
     // rustc internal
     (active, rustc_diagnostic_macros, "1.0.0", None, None),
     (active, rustc_const_unstable, "1.0.0", None, None),
+    (active, promotable_const_fn, "1.0.0", None, None),
     (active, box_syntax, "1.0.0", Some(49733), None),
     (active, unboxed_closures, "1.0.0", Some(29625), None),
 
@@ -776,6 +777,11 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                               is an internal feature",
                                              cfg_fn!(rustc_const_unstable))),
     ("global_allocator", Normal, Ungated),
+    ("promotable_const_fn", Whitelisted, Gated(Stability::Unstable,
+                                             "promotable_const_fn",
+                                             "the `#[promotable_const_fn]` attribute \
+                                              is an internal feature",
+                                             cfg_fn!(promotable_const_fn))),
     ("default_lib_allocator", Whitelisted, Gated(Stability::Unstable,
                                             "allocator_internals",
                                             "the `#[default_lib_allocator]` \

@@ -125,6 +125,7 @@ pub struct Key {
 pub const INIT: StaticKey = StaticKey::new(None);
 
 impl StaticKey {
+    #[promotable_const_fn]
     pub const fn new(dtor: Option<unsafe extern fn(*mut u8)>) -> StaticKey {
         StaticKey {
             key: atomic::AtomicUsize::new(0),

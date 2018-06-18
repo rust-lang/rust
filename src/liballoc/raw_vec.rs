@@ -56,6 +56,7 @@ pub struct RawVec<T, A: Alloc = Global> {
 impl<T, A: Alloc> RawVec<T, A> {
     /// Like `new` but parameterized over the choice of allocator for
     /// the returned RawVec.
+    #[promotable_const_fn]
     pub const fn new_in(a: A) -> Self {
         // !0 is usize::MAX. This branch should be stripped at compile time.
         // FIXME(mark-i-m): use this line when `if`s are allowed in `const`
@@ -123,6 +124,7 @@ impl<T> RawVec<T, Global> {
     /// RawVec with capacity 0. If T has 0 size, then it makes a
     /// RawVec with capacity `usize::MAX`. Useful for implementing
     /// delayed allocation.
+    #[promotable_const_fn]
     pub const fn new() -> Self {
         Self::new_in(Global)
     }

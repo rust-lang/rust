@@ -8,30 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(attr_literals, rustc_attrs, const_fn, promotable_const_fn)]
+// gate-test-promotable_const_fn
 
-#[rustc_args_required_const(0)]
-fn foo(_a: i32) {
-}
+#![feature(const_fn, promotable_const_fn)]
 
-#[rustc_args_required_const(1)]
-fn bar(_a: i32, _b: i32) {
-}
-
-const A: i32 = 3;
+const fn foo() {}
 
 #[promotable_const_fn]
-const fn baz() -> i32 {
-    3
+const fn bar() {}
+
+union Foo {
+    a: &'static u32,
+    b: usize,
+}
+
+#[promotable_const_fn]
+const fn boo() -> bool {
+    unsafe {
+        Foo { a: &1 }.b == 42 //~ ERROR promotable constant function contains
+    }
 }
 
 fn main() {
-    foo(2);
-    foo(2 + 3);
-    foo(baz());
-    let a = 4;
-    foo(A);
-    foo(a); //~ ERROR: argument 1 is required to be a constant
-    bar(a, 3);
-    bar(a, a); //~ ERROR: argument 2 is required to be a constant
+    let x: &'static () = &foo(); //~ borrowed value does not live long enough
+    let x: &'static () = &bar();
 }

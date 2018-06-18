@@ -97,7 +97,7 @@ enum Mode {
     Const,
     Static,
     StaticMut,
-    ConstFn,
+    ConstFn { promotable: bool },
     Fn
 }
 
@@ -106,7 +106,8 @@ impl fmt::Display for Mode {
         match *self {
             Mode::Const => write!(f, "constant"),
             Mode::Static | Mode::StaticMut => write!(f, "static"),
-            Mode::ConstFn => write!(f, "constant function"),
+            Mode::ConstFn { promotable: false } => write!(f, "constant function"),
+            Mode::ConstFn { promotable: true } => write!(f, "promotable constant function"),
             Mode::Fn => write!(f, "function")
         }
     }
@@ -505,21 +506,24 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         }
                     }
                 }
-
-                if self.mode == Mode::Const || self.mode == Mode::ConstFn {
-                    let mut err = struct_span_err!(self.tcx.sess, self.span, E0013,
-                                                   "{}s cannot refer to statics, use \
-                                                    a constant instead", self.mode);
-                    if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                        err.note(
-                            "Static and const variables can refer to other const variables. But a \
-                             const variable cannot refer to a static variable."
-                        );
-                        err.help(
-                            "To fix this, the value can be extracted as a const and then used."
-                        );
-                    }
-                    err.emit()
+                match self.mode {
+                    | Mode::Const
+                    | Mode::ConstFn { .. } => {
+                        let mut err = struct_span_err!(self.tcx.sess, self.span, E0013,
+                                                    "{}s cannot refer to statics, use \
+                                                        a constant instead", self.mode);
+                        if self.tcx.sess.teach(&err.get_code().unwrap()) {
+                            err.note(
+                                "Static and const variables can refer to other const variables. \
+                                But a const variable cannot refer to a static variable."
+                            );
+                            err.help(
+                                "To fix this, the value can be extracted as a const and then used."
+                            );
+                        }
+                        err.emit()
+                    },
+                    _ => {},
                 }
             }
             Place::Projection(ref proj) => {
@@ -566,7 +570,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                         ProjectionElem::Field(..) |
                         ProjectionElem::Index(_) => {
-                            if this.mode == Mode::Fn {
+                            if this.mode == Mode::Fn ||
+                               this.mode == (Mode::ConstFn { promotable: true }) {
                                 let base_ty = proj.base.ty(this.mir, this.tcx).to_ty(this.tcx);
                                 if let Some(def) = base_ty.ty_adt_def() {
                                     if def.is_union() {
@@ -906,6 +911,7 @@ This does not pose a problem by itself because they can't be accessed directly."
             let fn_ty = func.ty(self.mir, self.tcx);
             let mut callee_def_id = None;
             let (mut is_shuffle, mut is_const_fn) = (false, None);
+            let mut promotable = false;
             if let ty::TyFnDef(def_id, _) = fn_ty.sty {
                 callee_def_id = Some(def_id);
                 match self.tcx.fn_sig(def_id).abi() {
@@ -913,9 +919,17 @@ This does not pose a problem by itself because they can't be accessed directly."
                     Abi::PlatformIntrinsic => {
                         assert!(!self.tcx.is_const_fn(def_id));
                         match &self.tcx.item_name(def_id).as_str()[..] {
+                            // Do not add anything to this list without consulting
+                            // @eddyb, @oli-obk and @nikomatsakis
                             | "size_of"
                             | "min_align_of"
-                            | "type_id"
+                            | "type_id" => {
+                                is_const_fn = Some(def_id);
+                                promotable = true;
+                            },
+                            // When adding something to this list, make sure to also implement
+                            // the corresponding entry in the `call_intrinsic` method in
+                            // rustc_mir::interpret::const_eval
                             | "bswap"
                             | "ctpop"
                             | "cttz"
@@ -933,6 +947,11 @@ This does not pose a problem by itself because they can't be accessed directly."
                     _ => {
                         if self.tcx.is_const_fn(def_id) {
                             is_const_fn = Some(def_id);
+                            promotable = self
+                                .tcx
+                                .get_attrs(def_id)
+                                .iter()
+                                .any(|attr| attr.check_name("promotable_const_fn"));
                         }
                     }
                 }
@@ -977,12 +996,33 @@ This does not pose a problem by itself because they can't be accessed directly."
 
             // Const fn calls.
             if let Some(def_id) = is_const_fn {
+                let stability = self.tcx.lookup_stability(def_id);
+
+                // only allow const fns explicitly checked for promotability
+                if !promotable {
+                    match self.mode {
+                        Mode::Fn => self.qualif = Qualif::NOT_CONST,
+                        Mode::ConstFn { promotable: true } => {
+                            self.qualif = Qualif::NOT_CONST;
+                            let mut err = self.tcx.sess.struct_span_err(
+                                self.span,
+                                &format!("`{}` is not a promotable const fn and can thus not \
+                                            be used inside a function with the \
+                                            `#[promotable_const_fn]` attribute",
+                                            self.tcx.item_path_str(def_id)),
+                            );
+                            err.emit();
+                        },
+                        _ => {},
+                    }
+                }
+
                 // find corresponding rustc_const_unstable feature
                 if let Some(&attr::Stability {
                     rustc_const_unstable: Some(attr::RustcConstUnstable {
                         feature: ref feature_name
                     }),
-                .. }) = self.tcx.lookup_stability(def_id) {
+                .. }) = stability {
                     if
                         // feature-gate is not enabled,
                         !self.tcx.features()
@@ -1094,7 +1134,7 @@ This does not pose a problem by itself because they can't be accessed directly."
         self.visit_rvalue(rvalue, location);
 
         // Check the allowed const fn argument forms.
-        if let (Mode::ConstFn, &Place::Local(index)) = (self.mode, dest) {
+        if let (Mode::ConstFn { .. }, &Place::Local(index)) = (self.mode, dest) {
             if self.mir.local_kind(index) == LocalKind::Var &&
                self.const_fn_arg_vars.insert(index.index()) &&
                !self.tcx.sess.features_untracked().const_let {
@@ -1216,10 +1256,15 @@ impl MirPass for QualifyAndPromoteConstants {
         let def_id = src.def_id;
         let id = tcx.hir.as_local_node_id(def_id).unwrap();
         let mut const_promoted_temps = None;
-        let mode = match tcx.hir.body_owner_kind(id) {
+        let body_owner_kind = tcx.hir.body_owner_kind(id);
+        let mode = match body_owner_kind {
             hir::BodyOwnerKind::Fn => {
                 if tcx.is_const_fn(def_id) {
-                    Mode::ConstFn
+                    let promotable = tcx
+                        .get_attrs(def_id)
+                        .iter()
+                        .any(|attr| attr.check_name("promotable_const_fn"));
+                    Mode::ConstFn { promotable }
                 } else {
                     Mode::Fn
                 }
@@ -1232,12 +1277,12 @@ impl MirPass for QualifyAndPromoteConstants {
             hir::BodyOwnerKind::Static(hir::MutMutable) => Mode::StaticMut,
         };
 
-        if mode == Mode::Fn || mode == Mode::ConstFn {
+        if let hir::BodyOwnerKind::Fn = body_owner_kind {
             // This is ugly because Qualifier holds onto mir,
             // which can't be mutated until its scope ends.
             let (temps, candidates) = {
                 let mut qualifier = Qualifier::new(tcx, def_id, mir, mode);
-                if mode == Mode::ConstFn {
+                if let Mode::ConstFn { .. } = mode {
                     // Enforce a constant-like CFG for `const fn`.
                     qualifier.qualify_const();
                 } else {

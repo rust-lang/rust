@@ -27,6 +27,7 @@ pub struct Flag { failed: AtomicBool }
 // all cases.
 
 impl Flag {
+    #[promotable_const_fn]
     pub const fn new() -> Flag {
         Flag { failed: AtomicBool::new(false) }
     }

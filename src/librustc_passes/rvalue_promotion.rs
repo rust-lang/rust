@@ -131,6 +131,12 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
             self.tcx.is_const_fn(def_id)
         };
 
+        self.promotable &= self
+            .tcx
+            .get_attrs(def_id)
+            .iter()
+            .any(|attr| attr.check_name("promotable_const_fn"));
+
         if let Some(&attr::Stability {
             rustc_const_unstable: Some(attr::RustcConstUnstable {
                 feature: ref feature_name

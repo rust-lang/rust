@@ -22,6 +22,7 @@ unsafe impl Send for RWLock {}
 unsafe impl Sync for RWLock {}
 
 impl RWLock {
+    #[promotable_const_fn]
     pub const fn new() -> RWLock {
         RWLock {
             inner: UnsafeCell::new(libc::PTHREAD_RWLOCK_INITIALIZER),

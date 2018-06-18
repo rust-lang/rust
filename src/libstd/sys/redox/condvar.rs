@@ -22,6 +22,7 @@ pub struct Condvar {
 }
 
 impl Condvar {
+    #[promotable_const_fn]
     pub const fn new() -> Condvar {
         Condvar {
             lock: UnsafeCell::new(ptr::null_mut()),

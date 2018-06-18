@@ -74,6 +74,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[promotable_const_fn]
 pub const fn null<T>() -> *const T { 0 as *const T }
 
 /// Creates a null mutable raw pointer.
@@ -88,6 +89,7 @@ pub const fn null<T>() -> *const T { 0 as *const T }
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[promotable_const_fn]
 pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 
 /// Swaps the values at two mutable locations of the same type, without
@@ -2730,6 +2732,7 @@ impl<T: Sized> Unique<T> {
     /// This is useful for initializing types which lazily allocate, like
     /// `Vec::new` does.
     // FIXME: rename to dangling() to match NonNull?
+    #[promotable_const_fn]
     pub const fn empty() -> Self {
         unsafe {
             Unique::new_unchecked(mem::align_of::<T>() as *mut T)
@@ -2744,6 +2747,7 @@ impl<T: ?Sized> Unique<T> {
     /// # Safety
     ///
     /// `ptr` must be non-null.
+    #[promotable_const_fn]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         Unique { pointer: NonZero(ptr as _), _marker: PhantomData }
     }

@@ -344,6 +344,7 @@ assert_eq!(<Wrapping<", stringify!($t), ">>::min_value(), ",
 ```"),
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
                 #[inline]
+                #[promotable_const_fn]
                 pub const fn min_value() -> Self {
                     Wrapping(<$t>::min_value())
                 }
@@ -365,6 +366,7 @@ assert_eq!(<Wrapping<", stringify!($t), ">>::max_value(), ",
 ```"),
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
                 #[inline]
+                #[promotable_const_fn]
                 pub const fn max_value() -> Self {
                     Wrapping(<$t>::max_value())
                 }
