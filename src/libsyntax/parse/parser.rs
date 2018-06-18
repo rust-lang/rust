@@ -1537,7 +1537,7 @@ impl<'a> Parser<'a> {
             // Always parse bounds greedily for better error recovery.
             let bounds = self.parse_generic_bounds()?;
             impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
-            TyKind::ImplTrait(bounds)
+            TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds)
         } else if self.check_keyword(keywords::Dyn) &&
                   self.look_ahead(1, |t| t.can_begin_bound() &&
                                          !can_continue_type_after_non_fn_ident(t)) {

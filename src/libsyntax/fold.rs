@@ -396,8 +396,8 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             TyKind::TraitObject(bounds, syntax) => {
                 TyKind::TraitObject(bounds.move_map(|b| fld.fold_param_bound(b)), syntax)
             }
-            TyKind::ImplTrait(bounds) => {
-                TyKind::ImplTrait(bounds.move_map(|b| fld.fold_param_bound(b)))
+            TyKind::ImplTrait(id, bounds) => {
+                TyKind::ImplTrait(fld.new_id(id), bounds.move_map(|b| fld.fold_param_bound(b)))
             }
             TyKind::Mac(mac) => {
                 TyKind::Mac(fld.fold_mac(mac))
