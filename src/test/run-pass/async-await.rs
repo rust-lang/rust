@@ -99,6 +99,19 @@ fn async_fn_with_internal_borrow(y: u8) -> impl Future<Output = u8> {
     }
 }
 
+unsafe async fn unsafe_async_fn(x: u8) -> u8 {
+    await!(wake_and_yield_once());
+    x
+}
+
+struct Foo {
+    async fn async_method(x: u8) -> u8 {
+        unsafe {
+            await!(unsafe_async_fn())
+        }
+    }
+}
+
 fn test_future_yields_once_then_returns<F, Fut>(f: F)
 where
     F: FnOnce(u8) -> Fut,

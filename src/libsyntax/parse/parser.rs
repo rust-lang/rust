@@ -6744,13 +6744,19 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return Ok(Some(item));
         }
-        if self.check_keyword(keywords::Async) &&
-            (self.look_ahead(1, |t| t.is_keyword(keywords::Fn)) ||
-             self.look_ahead(1, |t| t.is_keyword(keywords::Unsafe)))
+
+        // `unsafe async fn` or `async fn`
+        if (
+            self.check_keyword(keywords::Unsafe) &&
+            self.look_ahead(1, |t| t.is_keyword(keywords::Async))
+        ) || (
+            self.check_keyword(keywords::Async) &&
+            self.look_ahead(1, |t| t.is_keyword(keywords::Fn))
+        )
         {
             // ASYNC FUNCTION ITEM
-            self.expect_keyword(keywords::Async)?;
             let unsafety = self.parse_unsafety();
+            self.expect_keyword(keywords::Async)?;
             self.expect_keyword(keywords::Fn)?;
             let fn_span = self.prev_span;
             let (ident, item_, extra_attrs) =
