@@ -669,7 +669,7 @@ impl<'a> ReplaceBodyWithLoop<'a> {
         if let ast::FunctionRetTy::Ty(ref ty) = ret_ty.output {
             fn involves_impl_trait(ty: &ast::Ty) -> bool {
                 match ty.node {
-                    ast::TyKind::ImplTrait(_) => true,
+                    ast::TyKind::ImplTrait(..) => true,
                     ast::TyKind::Slice(ref subty) |
                     ast::TyKind::Array(ref subty, _) |
                     ast::TyKind::Ptr(ast::MutTy { ty: ref subty, .. }) |

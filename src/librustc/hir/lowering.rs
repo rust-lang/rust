@@ -1129,16 +1129,10 @@ impl<'a> LoweringContext<'a> {
                 }
                 hir::TyTraitObject(bounds, lifetime_bound)
             }
-            TyKind::ImplTrait(ref bounds) => {
+            TyKind::ImplTrait(exist_ty_node_id, ref bounds) => {
                 let span = t.span;
                 match itctx {
                     ImplTraitContext::Existential(fn_def_id) => {
-
-                        // We need to manually repeat the code of `next_id` because the lowering
-                        // needs to happen while the owner_id is pointing to the item itself,
-                        // because items are their own owners
-                        let exist_ty_node_id = self.sess.next_node_id();
-
                         // Make sure we know that some funky desugaring has been going on here.
                         // This is a first: there is code in other places like for loop
                         // desugaring that explicitly states that we don't want to track that.
@@ -1321,18 +1315,18 @@ impl<'a> LoweringContext<'a> {
 
             fn visit_ty(&mut self, t: &'v hir::Ty) {
                 match t.node {
-                // Don't collect elided lifetimes used inside of `fn()` syntax
+                    // Don't collect elided lifetimes used inside of `fn()` syntax
                     hir::Ty_::TyBareFn(_) => {
-                    let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
-                    self.collect_elided_lifetimes = false;
+                        let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
+                        self.collect_elided_lifetimes = false;
 
-                    // Record the "stack height" of `for<'a>` lifetime bindings
-                    // to be able to later fully undo their introduction.
-                    let old_len = self.currently_bound_lifetimes.len();
-                    hir::intravisit::walk_ty(self, t);
-                    self.currently_bound_lifetimes.truncate(old_len);
+                        // Record the "stack height" of `for<'a>` lifetime bindings
+                        // to be able to later fully undo their introduction.
+                        let old_len = self.currently_bound_lifetimes.len();
+                        hir::intravisit::walk_ty(self, t);
+                        self.currently_bound_lifetimes.truncate(old_len);
 
-                    self.collect_elided_lifetimes = old_collect_elided_lifetimes;
+                        self.collect_elided_lifetimes = old_collect_elided_lifetimes;
                     },
                     _ => hir::intravisit::walk_ty(self, t),
                 }
@@ -2811,12 +2805,28 @@ impl<'a> LoweringContext<'a> {
             ItemKind::Use(ref use_tree) => {
                 let mut vec = SmallVector::one(hir::ItemId { id: i.id });
                 self.lower_item_id_use_tree(use_tree, i.id, &mut vec);
-                return vec;
+                vec
             }
-            ItemKind::MacroDef(..) => return SmallVector::new(),
-            _ => {}
+            ItemKind::MacroDef(..) => SmallVector::new(),
+            ItemKind::Fn(ref decl, ..) => {
+                struct IdVisitor { ids: SmallVector<hir::ItemId> }
+                impl<'a> Visitor<'a> for IdVisitor {
+                    fn visit_ty(&mut self, ty: &'a Ty) {
+                        if let TyKind::ImplTrait(id, _) = ty.node {
+                            self.ids.push(hir::ItemId { id });
+                        }
+                        visit::walk_ty(self, ty);
+                    }
+                }
+                let mut visitor = IdVisitor { ids: SmallVector::one(hir::ItemId { id: i.id }) };
+                match decl.output {
+                    FunctionRetTy::Default(_) => {},
+                    FunctionRetTy::Ty(ref ty) => visitor.visit_ty(ty),
+                }
+                visitor.ids
+            },
+            _ => SmallVector::one(hir::ItemId { id: i.id }),
         }
-        SmallVector::one(hir::ItemId { id: i.id })
     }
 
     fn lower_item_id_use_tree(&mut self,
