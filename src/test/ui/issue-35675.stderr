@@ -42,6 +42,7 @@ error[E0573]: expected type, found variant `Ok`
 LL | fn foo() -> Ok {
    |             ^^ not a type
    |
+   = help: there is an enum variant `std::prelude::rust2018::Ok`, try using `std::prelude::rust2018`?
    = help: there is an enum variant `std::prelude::v1::Ok`, try using `std::prelude::v1`?
    = help: there is an enum variant `std::result::Result::Ok`, try using `std::result::Result`?
 
@@ -60,6 +61,7 @@ error[E0573]: expected type, found variant `Some`
 LL | fn qux() -> Some {
    |             ^^^^ not a type
    |
+   = help: there is an enum variant `std::prelude::rust2018::Some`, try using `std::prelude::rust2018`?
    = help: there is an enum variant `std::prelude::v1::Option::Some`, try using `std::prelude::v1::Option`?
    = help: there is an enum variant `std::prelude::v1::Some`, try using `std::prelude::v1`?
 

@@ -68,6 +68,14 @@ impl Edition {
             Edition::Edition2018 => false,
         }
     }
+
+    /// Name of the respective sub-modules of `std::prelude` and `core::prelude`.
+    pub fn prelude_module(&self) -> &'static str {
+        match *self {
+            Edition::Edition2015 => "v1",
+            Edition::Edition2018 => "rust2018",
+        }
+    }
 }
 
 impl FromStr for Edition {

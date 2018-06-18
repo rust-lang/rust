@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,38 +8,46 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The core prelude
+//! The 2018 edition core prelude
 //!
 //! This module is intended for users of libcore which do not link to libstd as
 //! well. This module is imported by default when `#![no_std]` is used in the
 //! same manner as the standard library's prelude.
 
-#![stable(feature = "core_prelude", since = "1.4.0")]
+#![unstable(feature = "rust2018_prelude", issue = "51418")]
 
 // Re-exported core operators
-#[stable(feature = "core_prelude", since = "1.4.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use marker::{Copy, Send, Sized, Sync};
-#[stable(feature = "core_prelude", since = "1.4.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use ops::{Drop, Fn, FnMut, FnOnce};
 
 // Re-exported functions
-#[stable(feature = "core_prelude", since = "1.4.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use mem::drop;
 
 // Re-exported types and traits
-#[stable(feature = "core_prelude", since = "1.4.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use clone::Clone;
-#[stable(feature = "core_prelude", since = "1.4.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
-#[stable(feature = "core_prelude", since = "1.4.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use convert::{AsRef, AsMut, Into, From};
-#[stable(feature = "core_prelude", since = "1.4.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use default::Default;
-#[stable(feature = "core_prelude", since = "1.4.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use iter::{Iterator, Extend, IntoIterator};
-#[stable(feature = "core_prelude", since = "1.4.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use iter::{DoubleEndedIterator, ExactSizeIterator};
-#[stable(feature = "core_prelude", since = "1.4.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use option::Option::{self, Some, None};
-#[stable(feature = "core_prelude", since = "1.4.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use result::Result::{self, Ok, Err};
+
+
+// Contents so far are equivalent to v1.rs
+
+
+// Not in v1.rs because of breakage: https://github.com/rust-lang/rust/pull/49518
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
+#[doc(no_inline)] pub use convert::{TryFrom, TryInto};

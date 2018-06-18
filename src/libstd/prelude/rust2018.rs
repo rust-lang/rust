@@ -9,39 +9,39 @@
 // except according to those terms.
 
 
-//! The first version of the prelude of The Rust Standard Library.
+//! The 2018 edition of the prelude of The Rust Standard Library.
 //!
 //! See the [module-level documentation](../index.html) for more.
 
 
-#![stable(feature = "rust1", since = "1.0.0")]
+#![unstable(feature = "rust2018_prelude", issue = "51418")]
 
 // Re-exported core operators
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use marker::{Copy, Send, Sized, Sync};
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use ops::{Drop, Fn, FnMut, FnOnce};
 
 // Re-exported functions
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use mem::drop;
 
 // Re-exported types and traits
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use clone::Clone;
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use convert::{AsRef, AsMut, Into, From};
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use default::Default;
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use iter::{Iterator, Extend, IntoIterator};
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use iter::{DoubleEndedIterator, ExactSizeIterator};
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use option::Option::{self, Some, None};
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use result::Result::{self, Ok, Err};
 
 
@@ -49,13 +49,21 @@
 
 
 // Re-exported types and traits that involve memory allocation
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use boxed::Box;
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use borrow::ToOwned;
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use slice::SliceConcatExt;
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use string::{String, ToString};
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
 #[doc(no_inline)] pub use vec::Vec;
+
+
+// Contents so far are equivalent to v1.rs
+
+
+// Not in v1.rs because of breakage: https://github.com/rust-lang/rust/pull/49518
+#[unstable(feature = "rust2018_prelude", issue = "51418")]
+#[doc(no_inline)] pub use convert::{TryFrom, TryInto};
