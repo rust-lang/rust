@@ -10,12 +10,18 @@
 
 // Test inclusive range syntax.
 
-use std::ops::{RangeInclusive, RangeToInclusive};
+#![feature(range_is_empty)]
+#![allow(unused_comparisons)]
+
+use std::ops::RangeToInclusive;
 
 fn foo() -> isize { 42 }
 
 // Test that range syntax works in return statements
-fn return_range_to() -> RangeToInclusive<i32> { return ..=1; }
+pub fn return_range_to() -> RangeToInclusive<i32> { return ..=1; }
+
+#[derive(Debug)]
+struct P(u8);
 
 pub fn main() {
     let mut count = 0;
@@ -26,7 +32,7 @@ pub fn main() {
     assert_eq!(count, 55);
 
     let mut count = 0;
-    let mut range = 0_usize..=10;
+    let range = 0_usize..=10;
     for i in range {
         assert!(i >= 0 && i <= 10);
         count += i;
@@ -80,7 +86,7 @@ pub fn main() {
     short.next();
     assert_eq!(long.size_hint(), (255, Some(255)));
     assert_eq!(short.size_hint(), (0, Some(0)));
-    assert_eq!(short, 1..=0);
+    assert!(short.is_empty());
 
     assert_eq!(long.len(), 255);
     assert_eq!(short.len(), 0);
@@ -95,28 +101,31 @@ pub fn main() {
     for i in 3..=251 {
         assert_eq!(long.next(), Some(i));
     }
-    assert_eq!(long, 1..=0);
+    assert!(long.is_empty());
 
     // check underflow
     let mut narrow = 1..=0;
     assert_eq!(narrow.next_back(), None);
-    assert_eq!(narrow, 1..=0);
+    assert!(narrow.is_empty());
     let mut zero = 0u8..=0;
     assert_eq!(zero.next_back(), Some(0));
     assert_eq!(zero.next_back(), None);
-    assert_eq!(zero, 1..=0);
+    assert!(zero.is_empty());
     let mut high = 255u8..=255;
     assert_eq!(high.next_back(), Some(255));
     assert_eq!(high.next_back(), None);
-    assert_eq!(high, 1..=0);
+    assert!(high.is_empty());
 
     // what happens if you have a nonsense range?
     let mut nonsense = 10..=5;
     assert_eq!(nonsense.next(), None);
-    assert_eq!(nonsense, 10..=5);
+    assert!(nonsense.is_empty());
 
     // output
     assert_eq!(format!("{:?}", 0..=10), "0..=10");
     assert_eq!(format!("{:?}", ..=10), "..=10");
-    assert_eq!(format!("{:?}", long), "1..=0");
+    assert_eq!(format!("{:?}", 9..=6), "9..=6");
+
+    // ensure that constructing a RangeInclusive does not need PartialOrd bound
+    assert_eq!(format!("{:?}", P(1)..=P(2)), "P(1)..=P(2)");
 }
