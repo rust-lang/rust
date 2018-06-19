@@ -216,6 +216,7 @@ macro_rules! eprintln {
 #[macro_export]
 #[unstable(feature = "await_macro", issue = "50547")]
 #[allow_internal_unstable]
+#[allow_internal_unsafe]
 macro_rules! await {
     ($e:expr) => { {
         let mut pinned = $e;
