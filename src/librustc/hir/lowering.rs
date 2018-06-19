@@ -181,7 +181,7 @@ enum ImplTraitContext<'a> {
     /// We store a DefId here so we can look up necessary information later
     ///
     /// All generics of the surrounding function must go into the generated existential type
-    Existential(DefId, &'a [hir::TyParam]),
+    Existential(DefId, &'a [hir::TyParam], &'a hir::Generics),
 
     /// `impl Trait` is not accepted in this position.
     Disallowed,
@@ -192,7 +192,7 @@ impl<'a> ImplTraitContext<'a> {
         use self::ImplTraitContext::*;
         match self {
             Universal(did, params) => Universal(*did, params),
-            Existential(did, params) => Existential(*did, params),
+            Existential(did, params, generics) => Existential(*did, params, generics),
             Disallowed => Disallowed,
         }
     }
@@ -809,7 +809,7 @@ impl<'a> LoweringContext<'a> {
         f: F,
     ) -> (hir::Generics, T)
     where
-        F: FnOnce(&mut LoweringContext, &mut Vec<hir::TyParam>) -> T,
+        F: FnOnce(&mut LoweringContext, &mut Vec<hir::TyParam>, &hir::Generics) -> T,
     {
         let (in_band_defs, (mut lowered_generics, res)) = self.with_in_scope_lifetime_defs(
             generics.params.iter().filter_map(|p| match p {
@@ -823,7 +823,7 @@ impl<'a> LoweringContext<'a> {
                         generics,
                         ImplTraitContext::Universal(parent_id, &mut params),
                     );
-                    let res = f(this, &mut params);
+                    let res = f(this, &mut params, &generics);
                     (params, (generics, res))
                 })
             },
@@ -1142,7 +1142,7 @@ impl<'a> LoweringContext<'a> {
             TyKind::ImplTrait(exist_ty_node_id, ref bounds) => {
                 let span = t.span;
                 match itctx {
-                    ImplTraitContext::Existential(fn_def_id, _) => {
+                    ImplTraitContext::Existential(fn_def_id, _, _) => {
                         // Make sure we know that some funky desugaring has been going on here.
                         // This is a first: there is code in other places like for loop
                         // desugaring that explicitly states that we don't want to track that.
@@ -1848,7 +1848,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_fn_decl(
         &mut self,
         decl: &FnDecl,
-        mut in_band_ty_params: Option<(DefId, &mut Vec<hir::TyParam>)>,
+        mut in_band_ty_params: Option<(DefId, &mut Vec<hir::TyParam>, &hir::Generics)>,
         impl_trait_return_allow: bool,
     ) -> P<hir::FnDecl> {
         // NOTE: The two last parameters here have to do with impl Trait. If fn_def_id is Some,
@@ -1862,7 +1862,7 @@ impl<'a> LoweringContext<'a> {
             inputs: decl.inputs
                 .iter()
                 .map(|arg| {
-                    if let Some((def_id, ibty)) = in_band_ty_params.as_mut() {
+                    if let Some((def_id, ibty, _)) = in_band_ty_params.as_mut() {
                         self.lower_ty(&arg.ty, ImplTraitContext::Universal(*def_id, ibty))
                     } else {
                         self.lower_ty(&arg.ty, ImplTraitContext::Disallowed)
@@ -1871,8 +1871,12 @@ impl<'a> LoweringContext<'a> {
                 .collect(),
             output: match decl.output {
                 FunctionRetTy::Ty(ref ty) => match in_band_ty_params {
-                    Some((def_id, ref mut ibty)) if impl_trait_return_allow => {
-                        hir::Return(self.lower_ty(ty, ImplTraitContext::Existential(def_id, ibty)))
+                    Some((def_id, ref mut ibty, generics)) if impl_trait_return_allow => {
+                        hir::Return(self.lower_ty(ty, ImplTraitContext::Existential(
+                            def_id,
+                            ibty,
+                            generics,
+                        )))
                     }
                     _ => hir::Return(self.lower_ty(ty, ImplTraitContext::Disallowed)),
                 },
@@ -2321,7 +2325,11 @@ impl<'a> LoweringContext<'a> {
                         generics,
                         fn_def_id,
                         AnonymousLifetimeMode::PassThrough,
-                        |this, idty| this.lower_fn_decl(decl, Some((fn_def_id, idty)), true),
+                        |this, idty, generics| this.lower_fn_decl(
+                            decl,
+                            Some((fn_def_id, idty, generics)),
+                            true,
+                        ),
                     );
 
                     hir::ItemFn(
@@ -2393,7 +2401,7 @@ impl<'a> LoweringContext<'a> {
                     ast_generics,
                     def_id,
                     AnonymousLifetimeMode::CreateParameter,
-                    |this, _| {
+                    |this, _, _| {
                         let trait_ref = trait_ref.as_ref().map(|trait_ref| {
                             this.lower_trait_ref(trait_ref, ImplTraitContext::Disallowed)
                         });
@@ -2891,7 +2899,7 @@ impl<'a> LoweringContext<'a> {
                         generics,
                         def_id,
                         AnonymousLifetimeMode::PassThrough,
-                        |this, _| {
+                        |this, _, _| {
                             (
                                 // Disallow impl Trait in foreign items
                                 this.lower_fn_decl(fdec, None, false),
@@ -2926,9 +2934,9 @@ impl<'a> LoweringContext<'a> {
             generics,
             fn_def_id,
             AnonymousLifetimeMode::PassThrough,
-            |this, idty| this.lower_fn_decl(
+            |this, idty, generics| this.lower_fn_decl(
                 &sig.decl,
-                Some((fn_def_id, idty)),
+                Some((fn_def_id, idty, generics)),
                 impl_trait_return_allow,
             ),
         );
