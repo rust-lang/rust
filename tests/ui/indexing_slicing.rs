@@ -13,8 +13,8 @@ fn main() {
     &x[..index];
     &x[index_from..index_to];
     &x[index_from..][..index_to]; // Two lint reports, one for [index_from..] and another for [..index_to].
-    x[4];
-    x[1 << 3];
+    x[4]; // Ok, let rustc's `const_err` lint handle `usize` indexing on arrays.
+    x[1 << 3]; // Ok, let rustc's `const_err` lint handle `usize` indexing on arrays.
     &x[..=4];
     &x[1..5];
     &x[5..][..10]; // Two lint reports, one for [5..] and another for [..10].
@@ -44,7 +44,7 @@ fn main() {
     &y[..]; // Ok, should not produce stderr.
 
     let empty: [i8; 0] = [];
-    empty[0];
+    empty[0]; // Ok, let rustc's `const_err` lint handle `usize` indexing on arrays.
     &empty[1..5];
     &empty[0..=4];
     &empty[..=4];
@@ -75,7 +75,7 @@ fn main() {
 
     const N: usize = 15; // Out of bounds
     const M: usize = 3; // In bounds
-    x[N];
+    x[N]; // Ok, let rustc's `const_err` lint handle `usize` indexing on arrays.
     x[M]; // Ok, should not produce stderr.
     v[N];
     v[M];

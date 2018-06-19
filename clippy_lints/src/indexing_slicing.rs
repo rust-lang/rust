@@ -34,9 +34,9 @@ declare_clippy_lint! {
     "out of bounds constant indexing"
 }
 
-/// **What it does:** Checks for usage of indexing or slicing. Does not report
-/// on arrays if we can tell that the indexing or slicing operations are in
-/// bounds.
+/// **What it does:** Checks for usage of indexing or slicing. Arrays are special cased, this lint
+/// does report on arrays if we can tell that slicing operations are in bounds and does not
+/// lint on constant `usize` indexing on arrays because that is handled by rustc's `const_err` lint.
 ///
 /// **Why is this bad?** Indexing and slicing can panic at runtime and there are
 /// safe alternatives.
@@ -64,13 +64,11 @@ declare_clippy_lint! {
 /// let y = [0, 1, 2, 3];
 ///
 /// // Bad
-/// y[10];
 /// &y[10..100];
 /// &y[10..];
 /// &y[..100];
 ///
 /// // Good
-/// y[2];
 /// &y[2..];
 /// &y[..2];
 /// &y[0..3];
@@ -132,20 +130,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
                 );
             } else {
                 // Catchall non-range index, i.e. [n] or [n << m]
-                if let ty::TyArray(_, s) = ty.sty {
-                    let size: u128 = s.assert_usize(cx.tcx).unwrap().into();
+                if let ty::TyArray(..) = ty.sty {
                     // Index is a constant uint.
-                    if let Some((Constant::Int(const_index), _)) = constant(cx, cx.tables, index) {
-                        if size <= const_index {
-                            utils::span_lint(
-                                cx,
-                                OUT_OF_BOUNDS_INDEXING,
-                                expr.span,
-                                "const index is out of bounds",
-                            );
-                        }
-                        // Else index is in bounds, ok.
-
+                    if let Some(..) = constant(cx, cx.tables, index) {
+                        // Let rustc's `const_err` lint handle constant `usize` indexing on arrays.
                         return;
                     }
                 }
