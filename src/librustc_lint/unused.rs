@@ -58,7 +58,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         }
 
         let t = cx.tables.expr_ty(&expr);
-        let ty_warned = match t.sty {
+
+        let checkee_ty = if let ty::TyAnon(def, _) = t.sty {
+            // get concrete type of the `impl Trait` (Issue #51560)
+            cx.tcx.type_of(def)
+        } else {
+            t
+        };
+
+        let ty_warned = match checkee_ty.sty {
             ty::TyTuple(ref tys) if tys.is_empty() => return,
             ty::TyNever => return,
             ty::TyAdt(def, _) => {
