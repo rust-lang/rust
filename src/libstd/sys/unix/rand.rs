@@ -183,15 +183,14 @@ mod imp {
 mod imp {
     #[link(name = "zircon")]
     extern {
-        fn zx_cprng_draw(buffer: *mut u8, len: usize, actual: *mut usize) -> i32;
+        fn zx_cprng_draw_new(buffer: *mut u8, len: usize) -> i32;
     }
 
     fn getrandom(buf: &mut [u8]) -> Result<usize, i32> {
         unsafe {
-            let mut actual = 0;
-            let status = zx_cprng_draw(buf.as_mut_ptr(), buf.len(), &mut actual);
+            let status = zx_cprng_draw_new(buf.as_mut_ptr(), buf.len());
             if status == 0 {
-                Ok(actual)
+                Ok(buf.len())
             } else {
                 Err(status)
             }
