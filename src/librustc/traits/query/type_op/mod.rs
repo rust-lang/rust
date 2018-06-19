@@ -103,18 +103,21 @@ pub trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     }
 }
 
-pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>: TypeFoldable<'tcx> + Lift<'gcx> {
+pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>: fmt::Debug + Sized {
+    type QueryKey: TypeFoldable<'tcx> + Lift<'gcx>;
     type QueryResult: TypeFoldable<'tcx> + Lift<'gcx>;
 
     /// Micro-optimization: returns `Ok(x)` if we can trivially
     /// produce the output, else returns `Err(self)` back.
     fn trivial_noop(self, tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::QueryResult, Self>;
 
+    fn into_query_key(self) -> Self::QueryKey;
+
     fn param_env(&self) -> ParamEnv<'tcx>;
 
     fn perform_query(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
-        canonicalized: Canonicalized<'gcx, Self>,
+        canonicalized: Canonicalized<'gcx, Self::QueryKey>,
     ) -> Fallible<CanonicalizedQueryResult<'gcx, Self::QueryResult>>;
 
     /// "Upcasts" a lifted query result (which is in the gcx lifetime)
@@ -149,7 +152,8 @@ where
         // `canonicalize_hr_query_hack` here because of things like
         // the subtype query, which go awry around `'static`
         // otherwise.
-        let (canonical_self, canonical_var_values) = infcx.canonicalize_hr_query_hack(&self);
+        let query_key = self.into_query_key();
+        let (canonical_self, canonical_var_values) = infcx.canonicalize_hr_query_hack(&query_key);
         let canonical_result = Q::perform_query(infcx.tcx, canonical_self)?;
 
         // FIXME: This is not the most efficient setup. The

@@ -26,6 +26,7 @@ impl<'tcx> Eq<'tcx> {
 }
 
 impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Eq<'tcx> {
+    type QueryKey = Self;
     type QueryResult = ();
 
     fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::QueryResult, Self> {
@@ -34,6 +35,10 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Eq<'tcx> {
         } else {
             Err(self)
         }
+    }
+
+    fn into_query_key(self) -> Self {
+        self
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {

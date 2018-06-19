@@ -33,6 +33,7 @@ impl<'gcx: 'tcx, 'tcx, T> super::QueryTypeOp<'gcx, 'tcx> for Normalize<'tcx, T>
 where
     T: Normalizable<'gcx, 'tcx>,
 {
+    type QueryKey = Self;
     type QueryResult = T;
 
     fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<T, Self> {
@@ -41,6 +42,10 @@ where
         } else {
             Err(self)
         }
+    }
+
+    fn into_query_key(self) -> Self {
+        self
     }
 
     fn param_env(&self) -> ParamEnv<'tcx> {
