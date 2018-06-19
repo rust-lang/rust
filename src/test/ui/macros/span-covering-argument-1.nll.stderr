@@ -1,6 +1,8 @@
 error[E0596]: cannot borrow immutable item `foo` as mutable
   --> $DIR/span-covering-argument-1.rs:15:14
    |
+LL |             let $s = 0;
+   |                 -- help: consider changing this to be mutable: `mut foo`
 LL |             *&mut $s = 0;
    |              ^^^^^^^ cannot borrow as mutable
 ...

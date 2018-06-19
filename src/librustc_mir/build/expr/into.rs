@@ -249,7 +249,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         source_info,
                         visibility_scope: source_info.scope,
                         internal: true,
-                        is_user_variable: false
+                        is_user_variable: None,
                     });
                     let ptr_temp = Place::Local(ptr_temp);
                     let block = unpack!(this.into(&ptr_temp, block, ptr));

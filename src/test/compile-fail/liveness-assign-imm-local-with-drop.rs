@@ -14,6 +14,7 @@
 fn test() {
     let b = Box::new(1); //[ast]~ NOTE first assignment
                          //[mir]~^ NOTE first assignment
+                         //[mir]~| NOTE consider changing this to `mut b`
     drop(b);
     b = Box::new(2); //[ast]~ ERROR cannot assign twice to immutable variable
                      //[mir]~^ ERROR cannot assign twice to immutable variable `b`

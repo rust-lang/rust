@@ -7,6 +7,8 @@ LL |         (&mut self).bar(); //~ ERROR cannot borrow
 error[E0596]: cannot borrow immutable item `self` as mutable
   --> $DIR/issue-31424.rs:23:9
    |
+LL |     fn bar(self: &mut Self) {
+   |            ---- help: consider changing this to be mutable: `mut self`
 LL |         (&mut self).bar(); //~ ERROR cannot borrow
    |         ^^^^^^^^^^^ cannot borrow as mutable
 

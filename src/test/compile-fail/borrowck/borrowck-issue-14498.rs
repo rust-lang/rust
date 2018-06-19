@@ -27,7 +27,7 @@ fn indirect_write_to_imm_box() {
     let y: Box<_> = box &mut x;
     let p = &y;
     ***p = 2; //[ast]~ ERROR cannot assign to data in a `&` reference
-              //[mir]~^ ERROR cannot assign to data in a `&` reference
+              //[mir]~^ ERROR cannot assign to `***p`
     drop(p);
 }
 
