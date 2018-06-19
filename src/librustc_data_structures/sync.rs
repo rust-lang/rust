@@ -26,6 +26,8 @@
 //!
 //! `MTLock` is a mutex which disappears if cfg!(parallel_queries) is false.
 //!
+//! `MTRef` is a immutable refernce if cfg!(parallel_queries), and an mutable reference otherwise.
+//!
 //! `rustc_erase_owner!` erases a OwningRef owner into Erased or Erased + Send + Sync
 //! depending on the value of cfg!(parallel_queries).
 
@@ -126,6 +128,8 @@ cfg_if! {
             }
         }
 
+        pub type MTRef<'a, T> = &'a mut T;
+
         #[derive(Debug)]
         pub struct MTLock<T>(T);
 
@@ -151,13 +155,8 @@ cfg_if! {
             }
 
             #[inline(always)]
-            pub fn borrow(&self) -> &T {
-                &self.0
-            }
-
-            #[inline(always)]
-            pub fn borrow_mut(&self) -> &T {
-                &self.0
+            pub fn lock_mut(&mut self) -> &mut T {
+                &mut self.0
             }
         }
 
@@ -221,7 +220,37 @@ cfg_if! {
         pub use std::sync::Arc as Lrc;
         pub use std::sync::Weak as Weak;
 
-        pub use self::Lock as MTLock;
+        pub type MTRef<'a, T> = &'a T;
+
+        #[derive(Debug)]
+        pub struct MTLock<T>(Lock<T>);
+
+        impl<T> MTLock<T> {
+            #[inline(always)]
+            pub fn new(inner: T) -> Self {
+                MTLock(Lock::new(inner))
+            }
+
+            #[inline(always)]
+            pub fn into_inner(self) -> T {
+                self.0.into_inner()
+            }
+
+            #[inline(always)]
+            pub fn get_mut(&mut self) -> &mut T {
+                self.0.get_mut()
+            }
+
+            #[inline(always)]
+            pub fn lock(&self) -> LockGuard<T> {
+                self.0.lock()
+            }
+
+            #[inline(always)]
+            pub fn lock_mut(&self) -> LockGuard<T> {
+                self.lock()
+            }
+        }
 
         use parking_lot::Mutex as InnerLock;
         use parking_lot::RwLock as InnerRwLock;
