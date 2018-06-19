@@ -45,7 +45,7 @@ use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 
 use syntax::codemap::CodeMap;
-use syntax::ext::hygiene::{Mark, MarkKind, SyntaxContext};
+use syntax::ext::hygiene::{Mark, Transparency, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
@@ -1988,7 +1988,7 @@ impl<'a> Resolver<'a> {
             // When resolving `$crate` from a `macro_rules!` invoked in a `macro`,
             // we don't want to pretend that the `macro_rules!` definition is in the `macro`
             // as described in `SyntaxContext::apply_mark`, so we ignore prepended modern marks.
-            ctxt.marks().into_iter().find(|&mark| mark.kind() != MarkKind::Modern)
+            ctxt.marks().into_iter().find(|&mark| mark.transparency() != Transparency::Opaque)
         } else {
             ctxt = ctxt.modern();
             ctxt.adjust(Mark::root())

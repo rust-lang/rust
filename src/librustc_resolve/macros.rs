@@ -24,7 +24,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Annotatable, Determinacy, MultiModifier, MultiDecorator};
 use syntax::ext::base::{MacroKind, SyntaxExtension, Resolver as SyntaxResolver};
 use syntax::ext::expand::{Expansion, ExpansionKind, Invocation, InvocationKind, find_attr_invoc};
-use syntax::ext::hygiene::{self, Mark, MarkKind};
+use syntax::ext::hygiene::{self, Mark, Transparency};
 use syntax::ext::placeholders::placeholder;
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{self, emit_feature_err, GateIssue};
@@ -331,9 +331,9 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.unused_macros.remove(&def_id);
         let ext = self.get_macro(def);
         if ext.is_modern() {
-            invoc.expansion_data.mark.set_kind(MarkKind::Modern);
+            invoc.expansion_data.mark.set_transparency(Transparency::Opaque);
         } else if def_id.krate == BUILTIN_MACROS_CRATE {
-            invoc.expansion_data.mark.set_kind(MarkKind::Builtin);
+            invoc.expansion_data.mark.set_is_builtin(true);
         }
         Ok(Some(ext))
     }

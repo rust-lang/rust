@@ -43,21 +43,41 @@ pub struct Mark(u32);
 #[derive(Debug)]
 struct MarkData {
     parent: Mark,
-    kind: MarkKind,
+    transparency: Transparency,
+    is_builtin: bool,
     expn_info: Option<ExpnInfo>,
 }
 
+/// A property of a macro expansion that determines how identifiers
+/// produced by that expansion are resolved.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum MarkKind {
-    Modern,
-    Builtin,
-    Legacy,
+pub enum Transparency {
+    /// Identifier produced by a transparent expansion is always resolved at call-site.
+    /// Call-site spans in procedural macros, hygiene opt-out in `macro` should use this.
+    /// (Not used yet.)
+    Transparent,
+    /// Identifier produced by a semi-transparent expansion may be resolved
+    /// either at call-site or at definition-site.
+    /// If it's a local variable, label or `$crate` then it's resolved at def-site.
+    /// Otherwise it's resolved at call-site.
+    /// `macro_rules` macros behave like this, built-in macros currently behave like this too,
+    /// but that's an implementation detail.
+    SemiTransparent,
+    /// Identifier produced by an opaque expansion is always resolved at definition-site.
+    /// Def-site spans in procedural macros, identifiers from `macro` by default use this.
+    Opaque,
 }
 
 impl Mark {
     pub fn fresh(parent: Mark) -> Self {
         HygieneData::with(|data| {
-            data.marks.push(MarkData { parent: parent, kind: MarkKind::Legacy, expn_info: None });
+            data.marks.push(MarkData {
+                parent,
+                // By default expansions behave like `macro_rules`.
+                transparency: Transparency::SemiTransparent,
+                is_builtin: false,
+                expn_info: None,
+            });
             Mark(data.marks.len() as u32 - 1)
         })
     }
@@ -97,23 +117,31 @@ impl Mark {
 
     pub fn modern(mut self) -> Mark {
         HygieneData::with(|data| {
-            loop {
-                if self == Mark::root() || data.marks[self.0 as usize].kind == MarkKind::Modern {
-                    return self;
-                }
+            while data.marks[self.0 as usize].transparency != Transparency::Opaque {
                 self = data.marks[self.0 as usize].parent;
             }
+            self
         })
     }
 
     #[inline]
-    pub fn kind(self) -> MarkKind {
-        HygieneData::with(|data| data.marks[self.0 as usize].kind)
+    pub fn transparency(self) -> Transparency {
+        HygieneData::with(|data| data.marks[self.0 as usize].transparency)
     }
 
     #[inline]
-    pub fn set_kind(self, kind: MarkKind) {
-        HygieneData::with(|data| data.marks[self.0 as usize].kind = kind)
+    pub fn set_transparency(self, transparency: Transparency) {
+        HygieneData::with(|data| data.marks[self.0 as usize].transparency = transparency)
+    }
+
+    #[inline]
+    pub fn is_builtin(self) -> bool {
+        HygieneData::with(|data| data.marks[self.0 as usize].is_builtin)
+    }
+
+    #[inline]
+    pub fn set_is_builtin(self, is_builtin: bool) {
+        HygieneData::with(|data| data.marks[self.0 as usize].is_builtin = is_builtin)
     }
 
     pub fn is_descendant_of(mut self, ancestor: Mark) -> bool {
@@ -169,7 +197,10 @@ impl HygieneData {
         HygieneData {
             marks: vec![MarkData {
                 parent: Mark::root(),
-                kind: MarkKind::Builtin,
+                // If the root is opaque, then loops searching for an opaque mark
+                // will automatically stop after reaching it.
+                transparency: Transparency::Opaque,
+                is_builtin: true,
                 expn_info: None,
             }],
             syntax_contexts: vec![SyntaxContextData {
@@ -215,8 +246,9 @@ impl SyntaxContext {
         HygieneData::with(|data| {
             data.marks.push(MarkData {
                 parent: Mark::root(),
-                kind: MarkKind::Legacy,
-                expn_info: Some(expansion_info)
+                transparency: Transparency::SemiTransparent,
+                is_builtin: false,
+                expn_info: Some(expansion_info),
             });
 
             let mark = Mark(data.marks.len() as u32 - 1);
@@ -232,7 +264,7 @@ impl SyntaxContext {
 
     /// Extend a syntax context with a given mark
     pub fn apply_mark(self, mark: Mark) -> SyntaxContext {
-        if mark.kind() == MarkKind::Modern {
+        if mark.transparency() == Transparency::Opaque {
             return self.apply_mark_internal(mark);
         }
 
@@ -262,7 +294,7 @@ impl SyntaxContext {
         HygieneData::with(|data| {
             let syntax_contexts = &mut data.syntax_contexts;
             let mut modern = syntax_contexts[self.0 as usize].modern;
-            if data.marks[mark.0 as usize].kind == MarkKind::Modern {
+            if data.marks[mark.0 as usize].transparency == Transparency::Opaque {
                 modern = *data.markings.entry((modern, mark)).or_insert_with(|| {
                     let len = syntax_contexts.len() as u32;
                     syntax_contexts.push(SyntaxContextData {
