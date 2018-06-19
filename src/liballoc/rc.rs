@@ -259,7 +259,7 @@ use core::ops::CoerceUnsized;
 use core::ptr::{self, NonNull};
 use core::convert::From;
 
-use alloc::{Global, Alloc, Layout, box_free, oom};
+use alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
 use string::String;
 use vec::Vec;
 
@@ -662,7 +662,7 @@ impl<T: ?Sized> Rc<T> {
         let layout = Layout::for_value(&*fake_ptr);
 
         let mem = Global.alloc(layout)
-            .unwrap_or_else(|_| oom(layout));
+            .unwrap_or_else(|_| handle_alloc_error(layout));
 
         // Initialize the real RcBox
         let inner = set_data_ptr(ptr as *mut T, mem.as_ptr() as *mut u8) as *mut RcBox<T>;

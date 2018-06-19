@@ -158,7 +158,7 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
         if !ptr.is_null() {
             ptr
         } else {
-            oom(layout)
+            handle_alloc_error(layout)
         }
     }
 }
@@ -184,13 +184,13 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
 ///
 /// The default behavior of this function is to print a message to standard error
 /// and abort the process.
-/// It can be replaced with [`set_oom_hook`] and [`take_oom_hook`].
+/// It can be replaced with [`set_alloc_error_hook`] and [`take_alloc_error_hook`].
 ///
-/// [`set_oom_hook`]: ../../std/alloc/fn.set_oom_hook.html
-/// [`take_oom_hook`]: ../../std/alloc/fn.take_oom_hook.html
+/// [`set_alloc_error_hook`]: ../../std/alloc/fn.set_alloc_error_hook.html
+/// [`take_alloc_error_hook`]: ../../std/alloc/fn.take_alloc_error_hook.html
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[rustc_allocator_nounwind]
-pub fn oom(layout: Layout) -> ! {
+pub fn handle_alloc_error(layout: Layout) -> ! {
     #[allow(improper_ctypes)]
     extern "Rust" {
         #[lang = "oom"]
@@ -204,14 +204,14 @@ mod tests {
     extern crate test;
     use self::test::Bencher;
     use boxed::Box;
-    use alloc::{Global, Alloc, Layout, oom};
+    use alloc::{Global, Alloc, Layout, handle_alloc_error};
 
     #[test]
     fn allocate_zeroed() {
         unsafe {
             let layout = Layout::from_size_align(1024, 1).unwrap();
             let ptr = Global.alloc_zeroed(layout.clone())
-                .unwrap_or_else(|_| oom(layout));
+                .unwrap_or_else(|_| handle_alloc_error(layout));
 
             let mut i = ptr.cast::<u8>().as_ptr();
             let end = i.offset(layout.size() as isize);
