@@ -8,6 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    ::std::process::exit(1);
-}
+#![feature(no_core)]
+#![no_core]
