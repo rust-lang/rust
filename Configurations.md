@@ -275,11 +275,11 @@ fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
 
 Whether to use different formatting for items and expressions if they satisfy a heuristic notion of 'small'.
 
-- **Default value**: `true`
-- **Possible values**: `true`, `false`
-- **Stable**: No
+- **Default value**: `Default`
+- **Possible values**: `Default`, `Off`
+- **Stable**: Yess
 
-#### `true` (default):
+#### `Default` (default):
 
 ```rust
 enum Lorem {
@@ -309,7 +309,7 @@ fn main() {
 }
 ```
 
-#### `false`:
+#### `Off`:
 
 ```rust
 enum Lorem {

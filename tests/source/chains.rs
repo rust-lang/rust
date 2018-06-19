@@ -1,5 +1,5 @@
 // rustfmt-normalize_comments: true
-// rustfmt-use_small_heuristics: false
+// rustfmt-use_small_heuristics: Off
 // Test chain formatting.
 
 fn main() {

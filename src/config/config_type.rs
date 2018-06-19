@@ -399,7 +399,7 @@ macro_rules! create_config {
             }
 
             fn set_heuristics(&mut self) {
-                if self.use_small_heuristics.2 {
+                if self.use_small_heuristics.2 == Heuristics::Default {
                     let max_width = self.max_width.2;
                     self.set().width_heuristics(WidthHeuristics::scaled(max_width));
                 } else {

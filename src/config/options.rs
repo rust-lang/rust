@@ -151,6 +151,13 @@ configuration_option_enum! { TypeDensity:
     Wide,
 }
 
+configuration_option_enum! { Heuristics:
+    // Turn off any heuristics
+    Off,
+    // Use Rustfmt's defaults
+    Default,
+}
+
 impl Density {
     pub fn to_list_tactic(self) -> ListTactic {
         match self {

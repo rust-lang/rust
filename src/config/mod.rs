@@ -41,8 +41,8 @@ create_config! {
     hard_tabs: bool, false, true, "Use tab characters for indentation, spaces for alignment";
     tab_spaces: usize, 4, true, "Number of spaces per tab";
     newline_style: NewlineStyle, NewlineStyle::Unix, true, "Unix or Windows line endings";
-    use_small_heuristics: bool, true, false, "Whether to use different formatting for items and \
-        expressions if they satisfy a heuristic notion of 'small'.";
+    use_small_heuristics: Heuristics, Heuristics::Default, true, "Whether to use different \
+        formatting for items and expressions if they satisfy a heuristic notion of 'small'.";
     indent_style: IndentStyle, IndentStyle::Block, false, "How do we indent expressions or items.";
 
     // Comments and strings
@@ -236,7 +236,7 @@ mod test {
         create_config! {
             // Options that are used by the generated functions
             max_width: usize, 100, true, "Maximum width of each line";
-            use_small_heuristics: bool, true, false,
+            use_small_heuristics: Heuristics, Heuristics::Default, true,
                 "Whether to use different formatting for items and \
                  expressions if they satisfy a heuristic notion of 'small'.";
             license_template_path: String, String::default(), false,
