@@ -1,0 +1,4 @@
+error: no #[default_lib_allocator] found but one is required; is libstd not linked?
+
+error: aborting due to previous error
+
