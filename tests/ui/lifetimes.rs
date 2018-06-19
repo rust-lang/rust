@@ -53,9 +53,21 @@ fn fn_bound_2<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>
     where for<'x> F: Fn(Lt<'x, I>) -> Lt<'x, I>
 { unreachable!() }
 
-fn fn_bound_3<'a, F: FnOnce(&'a ())>(x: &'a (), f: F) {} // no error, referenced
+fn fn_bound_3<'a, F: FnOnce(&'a i32)>(x: &'a i32, f: F) { // no error, see below
+    f(x);
+}
 
-fn fn_bound_4<'a, F: FnOnce() -> &'a ()>(x: &'a (), f: F) {} // no error, referenced
+fn fn_bound_3_cannot_elide() {
+    let x = 42;
+    let p = &x;
+    let mut q = &x;
+    fn_bound_3(p, |y| q = y); // this will fail if we elides lifetimes of `fn_bound_3`
+}
+
+// no error, multiple input refs
+fn fn_bound_4<'a, F: FnOnce() -> &'a ()>(cond: bool, x: &'a (), f: F) -> &'a () {
+    if cond { x } else { f() }
+}
 
 struct X {
     x: u8,
