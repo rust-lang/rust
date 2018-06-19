@@ -1,9 +1,8 @@
 use crate::consts::{constant_simple, Constant};
-use crate::utils::{match_def_path, opt_def_id, paths, sext, span_lint};
+use crate::utils::{match_def_path, opt_def_id, paths, span_lint};
 use rustc::hir::*;
 use rustc::lint::*;
-use rustc::ty::{self, TyCtxt};
-use std::cmp::{Ordering, PartialOrd};
+use std::cmp::Ordering;
 
 /// **What it does:** Checks for expressions where `std::cmp::min` and `max` are
 /// used to clamp values, but switched so that the result is constant.
@@ -43,7 +42,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MinMaxPass {
                 }
                 match (
                     outer_max,
-                    const_partial_cmp(cx.tcx, &outer_c, &inner_c, &cx.tables.expr_ty(ie).sty),
+                    Constant::partial_cmp(cx.tcx, &cx.tables.expr_ty(ie).sty, &outer_c, &inner_c),
                 ) {
                     (_, None) | (MinMax::Max, Some(Ordering::Less)) | (MinMax::Min, Some(Ordering::Greater)) => (),
                     _ => {
@@ -57,20 +56,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MinMaxPass {
                 }
             }
         }
-    }
-}
-
-// Constant::partial_cmp incorrectly orders signed integers
-fn const_partial_cmp(tcx: TyCtxt, a: &Constant, b: &Constant, expr_ty: &ty::TypeVariants) -> Option<Ordering> {
-    match *expr_ty {
-        ty::TyInt(int_ty) => {
-            if let (&Constant::Int(a), &Constant::Int(b)) = (a, b) {
-                Some(sext(tcx, a, int_ty).cmp(&sext(tcx, b, int_ty)))
-            } else {
-                None
-            }
-        },
-        _ => a.partial_cmp(&b),
     }
 }
 
