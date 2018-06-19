@@ -11,6 +11,7 @@
 use infer::at::At;
 use infer::InferOk;
 use std::iter::FromIterator;
+use syntax::codemap::Span;
 use ty::subst::Kind;
 use ty::{self, Ty, TyCtxt};
 
@@ -60,22 +61,9 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
                     &orig_values,
                     result,
                 ) {
-                    Ok(InferOk {
-                        value: DropckOutlivesResult { kinds, overflows },
-                        obligations,
-                    }) => {
-                        for overflow_ty in overflows.into_iter().take(1) {
-                            let mut err = struct_span_err!(
-                                tcx.sess,
-                                span,
-                                E0320,
-                                "overflow while adding drop-check rules for {}",
-                                self.infcx.resolve_type_vars_if_possible(&ty),
-                            );
-                            err.note(&format!("overflowed on {}", overflow_ty));
-                            err.emit();
-                        }
-
+                    Ok(InferOk { value, obligations }) => {
+                        let ty = self.infcx.resolve_type_vars_if_possible(&ty);
+                        let kinds = value.into_kinds_reporting_overflows(tcx, span, ty);
                         return InferOk {
                             value: kinds,
                             obligations,
@@ -102,10 +90,42 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct DropckOutlivesResult<'tcx> {
     pub kinds: Vec<Kind<'tcx>>,
     pub overflows: Vec<Ty<'tcx>>,
+}
+
+impl<'tcx> DropckOutlivesResult<'tcx> {
+    pub fn report_overflows(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        span: Span,
+        ty: Ty<'tcx>,
+    ) {
+        for overflow_ty in self.overflows.iter().take(1) {
+            let mut err = struct_span_err!(
+                tcx.sess,
+                span,
+                E0320,
+                "overflow while adding drop-check rules for {}",
+                ty,
+            );
+            err.note(&format!("overflowed on {}", overflow_ty));
+            err.emit();
+        }
+    }
+
+    pub fn into_kinds_reporting_overflows(
+        self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        span: Span,
+        ty: Ty<'tcx>,
+    ) -> Vec<Kind<'tcx>> {
+        self.report_overflows(tcx, span, ty);
+        let DropckOutlivesResult { kinds, overflows: _ } = self;
+        kinds
+    }
 }
 
 /// A set of constraints that need to be satisfied in order for

@@ -13,12 +13,12 @@ use borrow_check::nll::type_check::AtLocation;
 use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow::MaybeInitializedPlaces;
 use dataflow::{FlowAtLocation, FlowsAtLocation};
+use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::mir::Local;
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::traits::query::type_op::outlives::DropckOutlives;
 use rustc::traits::query::type_op::TypeOp;
-use rustc::ty::subst::Kind;
 use rustc::ty::{Ty, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use std::rc::Rc;
@@ -71,7 +71,7 @@ where
 }
 
 struct DropData<'tcx> {
-    dropped_kinds: Vec<Kind<'tcx>>,
+    dropck_result: DropckOutlivesResult<'tcx>,
     region_constraint_data: Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>,
 }
 
@@ -202,10 +202,16 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
             self.cx.push_region_constraints(location.at_self(), data);
         }
 
+        drop_data.dropck_result.report_overflows(
+            self.cx.infcx.tcx,
+            self.mir.source_info(location).span,
+            dropped_ty,
+        );
+
         // All things in the `outlives` array may be touched by
         // the destructor and must be live at this point.
         let cause = Cause::DropVar(dropped_local, location);
-        for &kind in &drop_data.dropped_kinds {
+        for &kind in &drop_data.dropck_result.kinds {
             Self::push_type_live_constraint(&mut self.cx, kind, location, cause);
         }
     }
@@ -217,12 +223,12 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
 
         let param_env = cx.param_env;
-        let (dropped_kinds, region_constraint_data) = DropckOutlives::new(param_env, dropped_ty)
+        let (dropck_result, region_constraint_data) = DropckOutlives::new(param_env, dropped_ty)
             .fully_perform(cx.infcx)
             .unwrap();
 
         DropData {
-            dropped_kinds,
+            dropck_result,
             region_constraint_data,
         }
     }

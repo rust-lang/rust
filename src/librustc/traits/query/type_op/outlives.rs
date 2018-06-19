@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::{InferCtxt, InferOk};
+use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResult, QueryResult};
 use traits::query::dropck_outlives::trivial_dropck_outlives;
+use traits::query::dropck_outlives::DropckOutlivesResult;
 use traits::query::Fallible;
-use traits::ObligationCause;
-use ty::subst::Kind;
-use ty::{ParamEnv, Ty, TyCtxt};
+use ty::{ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 
 #[derive(Debug)]
 pub struct DropckOutlives<'tcx> {
@@ -30,23 +29,39 @@ impl<'tcx> DropckOutlives<'tcx> {
     }
 }
 
-impl<'gcx, 'tcx> super::TypeOp<'gcx, 'tcx> for DropckOutlives<'tcx> {
-    type Output = Vec<Kind<'tcx>>;
+impl super::QueryTypeOp<'gcx, 'tcx> for DropckOutlives<'tcx>
+where
+    'gcx: 'tcx,
+{
+    type QueryKey = ParamEnvAnd<'tcx, Ty<'tcx>>;
+    type QueryResult = DropckOutlivesResult<'tcx>;
 
-    fn trivial_noop(self, tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self> {
+    fn trivial_noop(self, tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::QueryResult, Self> {
         if trivial_dropck_outlives(tcx, self.dropped_ty) {
-            Ok(vec![])
+            Ok(DropckOutlivesResult::default())
         } else {
             Err(self)
         }
     }
 
-    fn perform(
-        self,
-        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
-    ) -> Fallible<InferOk<'tcx, Vec<Kind<'tcx>>>> {
-        Ok(infcx
-            .at(&ObligationCause::dummy(), self.param_env)
-            .dropck_outlives(self.dropped_ty))
+    fn param_env(&self) -> ParamEnv<'tcx> {
+        self.param_env
+    }
+
+    fn into_query_key(self) -> Self::QueryKey {
+        self.param_env.and(self.dropped_ty)
+    }
+
+    fn perform_query(
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        canonicalized: Canonicalized<'gcx, Self::QueryKey>,
+    ) -> Fallible<CanonicalizedQueryResult<'gcx, Self::QueryResult>> {
+        tcx.dropck_outlives(canonicalized)
+    }
+
+    fn upcast_result(
+        lifted_query_result: &'a CanonicalizedQueryResult<'gcx, Self::QueryResult>,
+    ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self::QueryResult>> {
+        lifted_query_result
     }
 }
