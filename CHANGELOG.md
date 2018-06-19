@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.208
+* Rustup to *rustc 1.28.0-nightly (86a8f1a63 2018-06-17)*
+
 ## 0.0.207
 * Rustup to *rustc 1.28.0-nightly (2a0062974 2018-06-09)*
 
@@ -643,6 +646,7 @@ All notable changes to this project will be documented in this file.
 [`drop_copy`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#drop_copy
 [`drop_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#drop_ref
 [`duplicate_underscore_argument`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#duplicate_underscore_argument
+[`duration_subsec`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#duration_subsec
 [`else_if_without_else`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#else_if_without_else
 [`empty_enum`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#empty_enum
 [`empty_line_after_outer_attr`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#empty_line_after_outer_attr
@@ -654,6 +658,7 @@ All notable changes to this project will be documented in this file.
 [`erasing_op`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#erasing_op
 [`eval_order_dependence`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#eval_order_dependence
 [`excessive_precision`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#excessive_precision
+[`expect_fun_call`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#expect_fun_call
 [`expl_impl_clone_on_copy`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#expl_impl_clone_on_copy
 [`explicit_counter_loop`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#explicit_counter_loop
 [`explicit_into_iter_loop`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#explicit_into_iter_loop
@@ -829,6 +834,7 @@ All notable changes to this project will be documented in this file.
 [`transmute_ptr_to_ptr`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#transmute_ptr_to_ptr
 [`transmute_ptr_to_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#transmute_ptr_to_ref
 [`trivial_regex`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#trivial_regex
+[`trivially_copy_pass_by_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref
 [`type_complexity`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#type_complexity
 [`unicode_not_nfc`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unicode_not_nfc
 [`unimplemented`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unimplemented
