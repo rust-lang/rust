@@ -2635,17 +2635,13 @@ impl<'a> LoweringContext<'a> {
             ),
             TraitItemKind::Method(ref sig, None) => {
                 let names = self.lower_fn_args_to_names(&sig.decl);
-                self.add_in_band_defs(
+                let (generics, sig) = self.lower_method_sig(
                     &i.generics,
+                    sig,
                     trait_item_def_id,
-                    AnonymousLifetimeMode::PassThrough,
-                    |this| {
-                        hir::TraitItemKind::Method(
-                            this.lower_method_sig(sig, trait_item_def_id, false),
-                            hir::TraitMethod::Required(names),
-                        )
-                    },
-                )
+                    false,
+                );
+                (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Required(names)))
             }
             TraitItemKind::Method(ref sig, Some(ref body)) => {
                 let body_id = self.lower_body(Some(&sig.decl), |this| {
@@ -2653,17 +2649,14 @@ impl<'a> LoweringContext<'a> {
                     this.expr_block(body, ThinVec::new())
                 });
 
-                self.add_in_band_defs(
+                let (generics, sig) = self.lower_method_sig(
                     &i.generics,
+                    sig,
                     trait_item_def_id,
-                    AnonymousLifetimeMode::PassThrough,
-                    |this| {
-                        hir::TraitItemKind::Method(
-                            this.lower_method_sig(sig, trait_item_def_id, false),
-                            hir::TraitMethod::Provided(body_id),
-                        )
-                    },
-                )
+                    false,
+                );
+
+                (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Provided(body_id)))
             }
             TraitItemKind::Type(ref bounds, ref default) => (
                 self.lower_generics(&i.generics, ImplTraitContext::Disallowed),
@@ -2734,22 +2727,13 @@ impl<'a> LoweringContext<'a> {
                     this.expr_block(body, ThinVec::new())
                 });
                 let impl_trait_return_allow = !self.is_in_trait_impl;
-
-                self.add_in_band_defs(
+                let (generics, sig) = self.lower_method_sig(
                     &i.generics,
-                    impl_item_def_id,
-                    AnonymousLifetimeMode::PassThrough,
-                    |this| {
-                        hir::ImplItemKind::Method(
-                            this.lower_method_sig(
                                 sig,
                                 impl_item_def_id,
                                 impl_trait_return_allow,
-                            ),
-                            body_id,
-                        )
-                    },
-                )
+                );
+                (generics, hir::ImplItemKind::Method(sig, body_id))
             }
             ImplItemKind::Type(ref ty) => (
                 self.lower_generics(&i.generics, ImplTraitContext::Disallowed),
@@ -2923,16 +2907,28 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_method_sig(
         &mut self,
+        generics: &Generics,
         sig: &MethodSig,
         fn_def_id: DefId,
         impl_trait_return_allow: bool,
-    ) -> hir::MethodSig {
-        hir::MethodSig {
-            abi: sig.abi,
-            unsafety: self.lower_unsafety(sig.unsafety),
-            constness: self.lower_constness(sig.constness),
-            decl: self.lower_fn_decl(&sig.decl, Some(fn_def_id), impl_trait_return_allow),
-        }
+    ) -> (hir::Generics, hir::MethodSig) {
+        let unsafety = self.lower_unsafety(sig.unsafety);
+        let constness = self.lower_constness(sig.constness);
+        let (generics, decl) = self.add_in_band_defs(
+            generics,
+            fn_def_id,
+            AnonymousLifetimeMode::PassThrough,
+            |this| this.lower_fn_decl(&sig.decl, Some(fn_def_id), impl_trait_return_allow),
+        );
+        (
+            generics,
+            hir::MethodSig {
+                abi: sig.abi,
+                unsafety,
+                constness,
+                decl,
+            },
+        )
     }
 
     fn lower_is_auto(&mut self, a: IsAuto) -> hir::IsAuto {
