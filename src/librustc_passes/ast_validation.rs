@@ -265,6 +265,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.invalid_visibility(&impl_item.vis, None);
                     if let ImplItemKind::Method(ref sig, _) = impl_item.node {
                         self.check_trait_fn_not_const(sig.header.constness);
+                        self.check_trait_fn_not_async(impl_item.span, sig.header.asyncness);
                     }
                 }
             }
