@@ -1933,23 +1933,18 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_lifetime(&mut self, l: &Lifetime) -> hir::Lifetime {
         let span = l.ident.span;
-        match self.lower_ident(l.ident) {
-            x if x == "'static" => self.new_named_lifetime(l.id, span, hir::LifetimeName::Static),
+        let name = match self.lower_ident(l.ident) {
+            x if x == "'static" => hir::LifetimeName::Static,
             x if x == "'_" => match self.anonymous_lifetime_mode {
-                AnonymousLifetimeMode::CreateParameter => {
-                    let fresh_name = self.collect_fresh_in_band_lifetime(span);
-                    self.new_named_lifetime(l.id, span, fresh_name)
-                }
-
-                AnonymousLifetimeMode::PassThrough => {
-                    self.new_named_lifetime(l.id, span, hir::LifetimeName::Underscore)
-                }
+                AnonymousLifetimeMode::CreateParameter => self.collect_fresh_in_band_lifetime(span),
+                AnonymousLifetimeMode::PassThrough => hir::LifetimeName::Underscore,
             },
             name => {
                 self.maybe_collect_in_band_lifetime(span, name);
-                self.new_named_lifetime(l.id, span, hir::LifetimeName::Name(name))
+                hir::LifetimeName::Name(name)
             }
-        }
+        };
+        self.new_named_lifetime(l.id, span, name)
     }
 
     fn new_named_lifetime(
