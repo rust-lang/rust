@@ -313,6 +313,7 @@ impl NameMapping {
             Enum(_) |
             Variant(_) |
             Trait(_) |
+            Existential(_) |
             TyAlias(_) |
             TyForeign(_) |
             TraitAlias(_) | // TODO: will need some handling later on.
