@@ -29,7 +29,6 @@ use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::*;
 use rustc::traits::query::type_op;
 use rustc::traits::query::{Fallible, NoSolution};
-use rustc::traits::ObligationCause;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
 use std::fmt;
@@ -1507,13 +1506,16 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 if let Some(closure_region_requirements) =
                     tcx.mir_borrowck(*def_id).closure_requirements
                 {
-                    let dummy_body_id = ObligationCause::dummy().body_id;
-                    closure_region_requirements.apply_requirements(
-                        self.infcx,
-                        dummy_body_id,
+                    let closure_constraints = closure_region_requirements.apply_requirements(
+                        self.infcx.tcx,
                         location,
                         *def_id,
                         *substs,
+                    );
+
+                    self.push_region_constraints(
+                        location.at_self(),
+                        &closure_constraints,
                     );
                 }
 

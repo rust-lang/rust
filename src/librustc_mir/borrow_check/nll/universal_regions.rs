@@ -238,13 +238,13 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// `'1: '2`, then the caller would impose the constraint that
     /// `V[1]: V[2]`.
     pub fn closure_mapping(
-        infcx: &InferCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'_, '_, 'tcx>,
         closure_ty: Ty<'tcx>,
         expected_num_vars: usize,
     ) -> IndexVec<RegionVid, ty::Region<'tcx>> {
         let mut region_mapping = IndexVec::with_capacity(expected_num_vars);
-        region_mapping.push(infcx.tcx.types.re_static);
-        infcx.tcx.for_each_free_region(&closure_ty, |fr| {
+        region_mapping.push(tcx.types.re_static);
+        tcx.for_each_free_region(&closure_ty, |fr| {
             region_mapping.push(fr);
         });
 
