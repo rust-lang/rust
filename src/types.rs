@@ -366,6 +366,7 @@ where
         shape: list_shape,
         ends_with_newline: tactic.ends_with_newline(context.config.indent_style()),
         preserve_newline: true,
+        nested: false,
         config: context.config,
     };
 

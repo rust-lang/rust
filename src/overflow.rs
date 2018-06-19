@@ -388,6 +388,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
                 _ => false,
             },
             preserve_newline: false,
+            nested: false,
             config: self.context.config,
         };
 

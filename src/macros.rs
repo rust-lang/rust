@@ -399,6 +399,7 @@ pub fn rewrite_macro_def(
         shape: arm_shape,
         ends_with_newline: true,
         preserve_newline: true,
+        nested: false,
         config: context.config,
     };
 

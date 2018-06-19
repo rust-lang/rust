@@ -706,16 +706,12 @@ fn rewrite_nested_use_tree(
         shape.width.saturating_sub(2)
     };
 
-    let tactic = if has_nested_list {
-        DefinitiveListTactic::NestedImport
-    } else {
-        definitive_tactic(
-            &list_items,
-            context.config.imports_layout(),
-            Separator::Comma,
-            remaining_width,
-        )
-    };
+    let tactic = definitive_tactic(
+        &list_items,
+        context.config.imports_layout(),
+        Separator::Comma,
+        remaining_width,
+    );
 
     let ends_with_newline = context.config.imports_indent() == IndentStyle::Block
         && tactic != DefinitiveListTactic::Horizontal;
@@ -731,6 +727,7 @@ fn rewrite_nested_use_tree(
         shape: nested_shape,
         ends_with_newline,
         preserve_newline: true,
+        nested: has_nested_list,
         config: context.config,
     };
 

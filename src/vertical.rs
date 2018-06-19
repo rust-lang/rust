@@ -252,6 +252,7 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
         shape: item_shape,
         ends_with_newline: true,
         preserve_newline: true,
+        nested: false,
         config: context.config,
     };
     write_list(&items, &fmt)

@@ -260,6 +260,7 @@ fn rewrite_closure_fn_decl(
         shape: arg_shape,
         ends_with_newline: false,
         preserve_newline: true,
+        nested: false,
         config: context.config,
     };
     let list_str = write_list(&item_vec, &fmt)?;

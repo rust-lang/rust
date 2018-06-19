@@ -77,6 +77,7 @@ fn wrap_reorderable_items(
         shape,
         ends_with_newline: true,
         preserve_newline: false,
+        nested: false,
         config: context.config,
     };
 

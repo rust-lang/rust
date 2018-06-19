@@ -247,6 +247,7 @@ impl Rewrite for ast::MetaItem {
                     shape: item_shape,
                     ends_with_newline: false,
                     preserve_newline: false,
+                    nested: false,
                     config: context.config,
                 };
                 let item_str = write_list(&item_vec, &fmt)?;
