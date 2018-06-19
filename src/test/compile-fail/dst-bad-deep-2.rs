@@ -19,5 +19,5 @@ pub fn main() {
     let f: ([isize; 3],) = ([5, 6, 7],);
     let g: &([isize],) = &f;
     let h: &(([isize],),) = &(*g,);
-    //~^ ERROR `[isize]` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 }

@@ -10,7 +10,7 @@
 
 fn changer<'a>(mut things: Box<Iterator<Item=&'a mut u8>>) {
     for item in *things { *item = 0 }
-//~^ ERROR `std::iter::Iterator<Item=&mut u8>` does not have a constant size known at compile-time
+//~^ ERROR the size for value values of type
 }
 
 fn main() {}

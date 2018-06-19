@@ -15,8 +15,8 @@ struct Struct {
 }
 
 fn new_struct(r: A+'static)
-    -> Struct { //~^  ERROR `A + 'static` does not have a constant size known at compile-time
-    //~^ ERROR `A + 'static` does not have a constant size known at compile-time
+    -> Struct { //~^ ERROR the size for value values of type
+    //~^ ERROR the size for value values of type
     Struct { r: r }
 }
 

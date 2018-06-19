@@ -10,5 +10,5 @@
 
 fn main() {
     let _x = "test" as &::std::any::Any;
-    //~^ ERROR `str` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 }

@@ -10,7 +10,7 @@
 
 enum E {
     V([Box<E>]),
-    //~^ ERROR `[std::boxed::Box<E>]` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 }
 
 fn main() {}

@@ -1,22 +1,22 @@
-error[E0277]: `str` does not have a constant size known at compile-time
+error[E0277]: the size for value values of type `str` cannot be known at compilation time
   --> $DIR/sized-yield.rs:17:26
    |
 LL |      let mut gen = move || {
    |  __________________________^
-LL | |    //~^ ERROR `str` does not have a constant size known at compile-time
+LL | |    //~^ ERROR the size for value values of type
 LL | |        yield s[..];
 LL | |    };
-   | |____^ `str` does not have a constant size known at compile-time
+   | |____^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: the yield type of a generator must have a statically known size
 
-error[E0277]: `str` does not have a constant size known at compile-time
+error[E0277]: the size for value values of type `str` cannot be known at compilation time
   --> $DIR/sized-yield.rs:21:17
    |
 LL |    unsafe { gen.resume(); }
-   |                 ^^^^^^ `str` does not have a constant size known at compile-time
+   |                 ^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>

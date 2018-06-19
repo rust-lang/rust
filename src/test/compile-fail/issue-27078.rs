@@ -13,7 +13,7 @@
 trait Foo {
     const BAR: i32;
     fn foo(self) -> &'static i32 {
-        //~^ ERROR `Self` does not have a constant size known at compile-time
+        //~^ ERROR the size for value values of type
         &<Self>::BAR
     }
 }

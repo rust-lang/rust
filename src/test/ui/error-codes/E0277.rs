@@ -21,7 +21,7 @@ fn some_func<T: Foo>(foo: T) {
 }
 
 fn f(p: Path) { }
-//~^ ERROR `[u8]` does not have a constant size known at compile-time
+//~^ ERROR the size for value values of type
 
 fn main() {
     some_func(5i32);

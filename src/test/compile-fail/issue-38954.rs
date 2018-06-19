@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn _test(ref _p: str) {}
-//~^ ERROR `str` does not have a constant size known at compile-time
+//~^ ERROR the size for value values of type
 
 fn main() { }

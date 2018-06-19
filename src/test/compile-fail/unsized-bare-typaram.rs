@@ -10,5 +10,5 @@
 
 fn bar<T: Sized>() { }
 fn foo<T: ?Sized>() { bar::<T>() }
-//~^ ERROR `T` does not have a constant size known at compile-time
+//~^ ERROR the size for value values of type
 fn main() { }

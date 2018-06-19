@@ -10,7 +10,7 @@
 
 #[repr(packed)]
 pub struct Bad<T: ?Sized> {
-    data: T, //~ ERROR `T` does not have a constant size known at compile-time
+    data: T, //~ ERROR the size for value values of type
 }
 
 fn main() {}

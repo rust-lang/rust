@@ -1,8 +1,8 @@
-error[E0277]: `str` does not have a constant size known at compile-time
+error[E0277]: the size for value values of type `str` cannot be known at compilation time
   --> $DIR/trivial-bounds-leak.rs:22:25
    |
 LL | fn cant_return_str() -> str { //~ ERROR
-   |                         ^^^ `str` does not have a constant size known at compile-time
+   |                         ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>

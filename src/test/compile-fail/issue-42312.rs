@@ -12,10 +12,10 @@ use std::ops::Deref;
 
 pub trait Foo {
     fn baz(_: Self::Target) where Self: Deref {}
-    //~^ ERROR `<Self as std::ops::Deref>::Target` does not have a constant size known at
+    //~^ ERROR the size for value values of type
 }
 
 pub fn f(_: ToString) {}
-//~^ ERROR `std::string::ToString + 'static` does not have a constant size known at compile-time
+//~^ ERROR the size for value values of type
 
 fn main() { }

@@ -1,8 +1,8 @@
-error[E0277]: `[u8]` does not have a constant size known at compile-time
+error[E0277]: the size for value values of type `[u8]` cannot be known at compilation time
   --> $DIR/E0277.rs:23:6
    |
 LL | fn f(p: Path) { }
-   |      ^ `[u8]` does not have a constant size known at compile-time
+   |      ^ doesn't have a size known at compile-time
    |
    = help: within `std::path::Path`, the trait `std::marker::Sized` is not implemented for `[u8]`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>

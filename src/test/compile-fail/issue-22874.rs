@@ -10,7 +10,7 @@
 
 struct Table {
     rows: [[String]],
-    //~^ ERROR `[std::string::String]` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 }
 
 fn f(table: &Table) -> &[String] {

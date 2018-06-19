@@ -12,18 +12,18 @@
 
 union Foo<T: ?Sized> {
     value: T,
-    //~^ ERROR `T` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 }
 
 struct Foo2<T: ?Sized> {
     value: T,
-    //~^ ERROR `T` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
     t: u32,
 }
 
 enum Foo3<T: ?Sized> {
     Value(T),
-    //~^ ERROR `T` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 }
 
 fn main() {}

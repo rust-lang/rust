@@ -56,6 +56,6 @@ fn foo<'z>() where &'z (): Sized {
     //[normal]~| found type `fn() {foo::<'static>}`
 
     <str as Foo<u8>>::bar;
-    //[verbose]~^ ERROR `str` does not have a constant size known at compile-time
-    //[normal]~^^ ERROR `str` does not have a constant size known at compile-time
+    //[verbose]~^ ERROR the size for value values of type
+    //[normal]~^^ ERROR the size for value values of type
 }

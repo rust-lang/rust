@@ -18,7 +18,7 @@ trait T3<Z: ?Sized> {
 struct S5<Y>(Y);
 
 impl<X: ?Sized> T3<X> for S5<X> {
-    //~^ ERROR `X` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 }
 
 fn main() { }

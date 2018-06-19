@@ -12,14 +12,15 @@
 
 union U {
     a: str,
-    //~^ ERROR `str` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
+
     b: u8,
 }
 
 union W {
     a: u8,
     b: str,
-    //~^ ERROR `str` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 }
 
 fn main() {}

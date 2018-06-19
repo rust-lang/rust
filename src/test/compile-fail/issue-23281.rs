@@ -14,7 +14,7 @@ pub struct Struct;
 
 impl Struct {
     pub fn function(funs: Vec<Fn() -> ()>) {}
-    //~^ ERROR `std::ops::Fn() + 'static` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 }
 
 fn main() {}

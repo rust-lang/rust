@@ -30,14 +30,14 @@ fn assert_sized<T>() { }
 
 fn main() {
     assert_sized::<A>();
-    //~^ ERROR `A` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 
     assert_sized::<Foo>();
-    //~^ ERROR `A` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 
     assert_sized::<Bar<A>>();
-    //~^ ERROR `A` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 
     assert_sized::<Bar<Bar<A>>>();
-    //~^ ERROR `A` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 }

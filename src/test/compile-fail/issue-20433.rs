@@ -14,5 +14,5 @@ struct The;
 
 impl The {
     fn iceman(c: Vec<[i32]>) {}
-    //~^ ERROR `[i32]` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 }

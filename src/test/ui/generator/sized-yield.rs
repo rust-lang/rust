@@ -15,9 +15,9 @@ use std::ops::Generator;
 fn main() {
    let s = String::from("foo");
    let mut gen = move || {
-   //~^ ERROR `str` does not have a constant size known at compile-time
+   //~^ ERROR the size for value values of type
        yield s[..];
    };
    unsafe { gen.resume(); }
-   //~^ ERROR `str` does not have a constant size known at compile-time
+   //~^ ERROR the size for value values of type
 }

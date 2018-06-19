@@ -216,21 +216,21 @@ LL |     let _ = cf as *const Bar; //~ ERROR is invalid
    |
    = note: vtable kinds may not match
 
-error[E0277]: `[u8]` does not have a constant size known at compile-time
+error[E0277]: the size for value values of type `[u8]` cannot be known at compilation time
   --> $DIR/cast-rfc0401.rs:63:13
    |
-LL |     let _ = fat_v as *const Foo; //~ ERROR `[u8]` does not have a constant size known at
-   |             ^^^^^ `[u8]` does not have a constant size known at compile-time
+LL |     let _ = fat_v as *const Foo; //~ ERROR the size for value values of type
+   |             ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u8]`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: required for the cast to the object type `Foo`
 
-error[E0277]: `str` does not have a constant size known at compile-time
+error[E0277]: the size for value values of type `str` cannot be known at compilation time
   --> $DIR/cast-rfc0401.rs:72:13
    |
-LL |     let _ = a as *const Foo; //~ ERROR `str` does not have a constant size known at compile-time
-   |             ^ `str` does not have a constant size known at compile-time
+LL |     let _ = a as *const Foo; //~ ERROR the size for value values of type
+   |             ^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>

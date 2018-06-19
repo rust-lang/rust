@@ -1,8 +1,8 @@
-error[E0277]: `I + 'static` does not have a constant size known at compile-time
+error[E0277]: the size for value values of type `I + 'static` cannot be known at compilation time
   --> $DIR/issue-5035-2.rs:14:8
    |
 LL | fn foo(_x: K) {}
-   |        ^^ `I + 'static` does not have a constant size known at compile-time
+   |        ^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `I + 'static`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>

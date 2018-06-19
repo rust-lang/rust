@@ -31,53 +31,53 @@ struct Path4(PathHelper4);
 enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
     // parameter
     VA(W),
-    //~^ ERROR `W` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
     VB{x: X},
-    //~^ ERROR `X` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
     VC(isize, Y),
-    //~^ ERROR `Y` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
     VD{u: isize, x: Z},
-    //~^ ERROR `Z` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 
     // slice / str
     VE([u8]),
-    //~^ ERROR `[u8]` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
     VF{x: str},
-    //~^ ERROR `str` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
     VG(isize, [f32]),
-    //~^ ERROR `[f32]` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
     VH{u: isize, x: [u32]},
-    //~^ ERROR `[u32]` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 
     // unsized struct
     VI(Path1),
-    //~^ ERROR `PathHelper1 + 'static` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
     VJ{x: Path2},
-    //~^ ERROR `PathHelper2 + 'static` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
     VK(isize, Path3),
-    //~^ ERROR `PathHelper3 + 'static` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
     VL{u: isize, x: Path4},
-    //~^ ERROR `PathHelper4 + 'static` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 
     // plain trait
     VM(Foo),
-    //~^ ERROR `Foo + 'static` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
     VN{x: Bar},
-    //~^ ERROR `Bar + 'static` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
     VO(isize, FooBar),
-    //~^ ERROR `FooBar + 'static` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
     VP{u: isize, x: BarFoo},
-    //~^ ERROR `BarFoo + 'static` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 
     // projected
     VQ(<&'static [i8] as Deref>::Target),
-    //~^ ERROR `[i8]` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
     VR{x: <&'static [char] as Deref>::Target},
-    //~^ ERROR `[char]` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
     VS(isize, <&'static [f64] as Deref>::Target),
-    //~^ ERROR `[f64]` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
     VT{u: isize, x: <&'static [i32] as Deref>::Target},
-    //~^ ERROR `[i32]` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 }
 
 

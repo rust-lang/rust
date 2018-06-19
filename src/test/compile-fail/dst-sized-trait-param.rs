@@ -15,9 +15,9 @@
 trait Foo<T> : Sized { fn take(self, x: &T) { } } // Note: T is sized
 
 impl Foo<[isize]> for usize { }
-//~^ ERROR `[isize]` does not have a constant size known at compile-time
+//~^ ERROR the size for value values of type
 
 impl Foo<isize> for [usize] { }
-//~^ ERROR `[usize]` does not have a constant size known at compile-time
+//~^ ERROR the size for value values of type
 
 pub fn main() { }

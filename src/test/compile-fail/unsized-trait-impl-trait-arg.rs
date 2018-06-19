@@ -16,7 +16,7 @@ trait T2<Z> {
 }
 struct S4<Y: ?Sized>(Box<Y>);
 impl<X: ?Sized> T2<X> for S4<X> {
-    //~^ ERROR `X` does not have a constant size known at compile-time
+    //~^ ERROR the size for value values of type
 }
 
 fn main() { }

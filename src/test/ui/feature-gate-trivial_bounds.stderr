@@ -87,24 +87,24 @@ LL | | }
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: `str` does not have a constant size known at compile-time
+error[E0277]: the size for value values of type `str` cannot be known at compilation time
   --> $DIR/feature-gate-trivial_bounds.rs:62:1
    |
 LL | struct TwoStrs(str, str) where str: Sized; //~ ERROR
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `str` does not have a constant size known at compile-time
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: `A + 'static` does not have a constant size known at compile-time
+error[E0277]: the size for value values of type `A + 'static` cannot be known at compilation time
   --> $DIR/feature-gate-trivial_bounds.rs:65:1
    |
 LL | / fn unsized_local() where Dst<A>: Sized { //~ ERROR
 LL | |     let x: Dst<A> = *(Box::new(Dst { x: 1 }) as Box<Dst<A>>);
 LL | | }
-   | |_^ `A + 'static` does not have a constant size known at compile-time
+   | |_^ doesn't have a size known at compile-time
    |
    = help: within `Dst<A + 'static>`, the trait `std::marker::Sized` is not implemented for `A + 'static`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
@@ -112,13 +112,13 @@ LL | | }
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: `str` does not have a constant size known at compile-time
+error[E0277]: the size for value values of type `str` cannot be known at compilation time
   --> $DIR/feature-gate-trivial_bounds.rs:69:1
    |
 LL | / fn return_str() -> str where str: Sized { //~ ERROR
 LL | |     *"Sized".to_string().into_boxed_str()
 LL | | }
-   | |_^ `str` does not have a constant size known at compile-time
+   | |_^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
