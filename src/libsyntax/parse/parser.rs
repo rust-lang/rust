@@ -2267,7 +2267,7 @@ impl<'a> Parser<'a> {
                     hi = path.span;
                     return Ok(self.mk_expr(lo.to(hi), ExprKind::Path(Some(qself), path), attrs));
                 }
-                if syntax_pos::hygiene::default_edition() >= Edition::Edition2018 &&
+                if self.span.edition() >= Edition::Edition2018 &&
                     self.check_keyword(keywords::Async)
                 {
                     if self.is_async_block() { // check for `async {` and `async move {`
@@ -3270,7 +3270,7 @@ impl<'a> Parser<'a> {
         } else {
             Movability::Movable
         };
-        let asyncness = if syntax_pos::hygiene::default_edition() >= Edition::Edition2018
+        let asyncness = if self.span.edition() >= Edition::Edition2018
             && self.eat_keyword(keywords::Async)
         {
             IsAsync::Async(ast::DUMMY_NODE_ID)
