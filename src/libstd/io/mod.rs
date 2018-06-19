@@ -147,7 +147,7 @@
 //! ```
 //!
 //! Note that you cannot use the [`?` operator] in functions that do not return
-//! a [`Result<T, E>`][`Result`] (e.g. `main`). Instead, you can call [`.unwrap()`]
+//! a [`Result<T, E>`][`Result`]. Instead, you can call [`.unwrap()`]
 //! or `match` on the return value to catch any possible errors:
 //!
 //! ```no_run
