@@ -2,23 +2,25 @@ use syntax::ast::{IntTy, UintTy};
 use rustc_mir::monomorphize::MonoItem;
 
 use cretonne::prelude::*;
+//use cretonne::codegen::Context;
 use cretonne::codegen::ir::{
     ExternalName,
     FuncRef,
     function::Function,
 };
 
+use cretonne_module::{Module, Backend, FuncId, Linkage};
+use cretonne_simplejit::{SimpleJITBuilder, SimpleJITBackend};
+
 use std::any::Any;
 use std::collections::HashMap;
 
 use prelude::*;
 
-pub struct Translated {
-    f: Function,
-}
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 struct Variable(Local);
+
+type CurrentBackend = SimpleJITBackend;
 
 impl EntityRef for Variable {
     fn new(u: usize) -> Self {
@@ -37,35 +39,35 @@ enum CValue {
 }
 
 impl CValue {
-    fn force_stack<'a, 'tcx: 'a>(self, ccx: &mut CodegenCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Value {
+    fn force_stack<'a, 'tcx: 'a>(self, fx: &mut FunctionCx<'a, 'tcx>, ty: Ty<'tcx>) -> Value {
         match self {
             CValue::ByRef(value) => value,
             CValue::ByVal(value) => {
-                let layout = ccx.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                let stack_slot = ccx.bcx.create_stack_slot(StackSlotData {
+                let layout = fx.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
+                let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
                     kind: StackSlotKind::ExplicitSlot,
                     size: layout.size.bytes() as u32,
                     offset: None,
                 });
-                ccx.bcx.ins().stack_store(value, stack_slot, 0);
-                ccx.bcx.ins().stack_addr(types::I64, stack_slot, 0)
+                fx.bcx.ins().stack_store(value, stack_slot, 0);
+                fx.bcx.ins().stack_addr(types::I64, stack_slot, 0)
             }
             CValue::Func(func) => {
-                let func = ccx.bcx.ins().func_addr(types::I64, func);
-                CValue::ByVal(func).force_stack(ccx, ty)
+                let func = fx.bcx.ins().func_addr(types::I64, func);
+                CValue::ByVal(func).force_stack(fx, ty)
             }
         }
     }
 
-    fn load_value<'a, 'tcx: 'a>(self, ccx: &mut CodegenCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Value {
+    fn load_value<'a, 'tcx: 'a>(self, fx: &mut FunctionCx<'a, 'tcx>, ty: Ty<'tcx>) -> Value {
         match self {
             CValue::ByRef(value) => {
                 let cton_ty = cton_type_from_ty(ty).unwrap();
-                ccx.bcx.ins().load(cton_ty, MemFlags::new(), value, 0)
+                fx.bcx.ins().load(cton_ty, MemFlags::new(), value, 0)
             }
             CValue::ByVal(value) => value,
             CValue::Func(func) => {
-                ccx.bcx.ins().func_addr(types::I64, func)
+                fx.bcx.ins().func_addr(types::I64, func)
             }
         }
     }
@@ -75,7 +77,15 @@ pub fn trans_crate<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Box<Any> {
     let link_meta = ::build_link_meta(tcx.crate_hash(LOCAL_CRATE));
     let metadata = tcx.encode_metadata(&link_meta);
 
-    let mut translated_mono_items = Vec::new();
+    let module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
+    //let mut context = Context::new();
+
+    let mut cx = CodegenCx {
+        tcx,
+        module,
+        def_id_fn_id_map: HashMap::new(),
+    };
+    let cx = &mut cx;
 
     for mono_item in
         collector::collect_crate_mono_items(
@@ -83,51 +93,72 @@ pub fn trans_crate<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Box<Any> {
             collector::MonoItemCollectionMode::Eager
         ).0 {
         match mono_item {
-            MonoItem::Fn(Instance {
-                def: InstanceDef::Item(def_id),
-                substs,
-            }) => {
-                let sig = tcx.fn_sig(def_id);
-                let sig = tcx.subst_and_normalize_erasing_regions(substs, ParamEnv::reveal_all(), &sig);
-                let mut f = Function::with_name_signature(ext_name_from_did(def_id), cton_sig_from_fn_sig(sig.skip_binder()));
+            MonoItem::Fn(inst) => match inst {
+                Instance {
+                    def: InstanceDef::Item(def_id),
+                    substs,
+                } => {
+                    let sig = tcx.fn_sig(def_id);
+                    let sig = cton_sig_from_fn_sig(tcx, sig, substs);
+                    let func_id = {
+                        let module = &mut cx.module;
+                        *cx.def_id_fn_id_map.entry(inst).or_insert_with(|| {
+                            module.declare_function(&tcx.absolute_item_path_str(def_id), Linkage::Local, &sig).unwrap()
+                        })
+                    };
 
-                trans_fn(tcx, &mut f, def_id, substs);
+                    let mut f = Function::with_name_signature(ext_name_from_did(def_id), sig);
 
-                let flags = settings::Flags::new(settings::builder());
-                let verify_error: String = ::cretonne::codegen::verify_function(&f, &flags)
-                    .map(|_| String::new())
-                    .unwrap_or_else(|err| format!("\n\ncretonne error: {}", err));
+                    trans_fn(cx, &mut f, def_id, substs);
 
-                let mut mir = ::std::io::Cursor::new(Vec::new());
-                ::rustc_mir::util::write_mir_pretty(tcx, Some(def_id), &mut mir).unwrap();
-                let mut cton = String::new();
-                ::cretonne::codegen::write_function(&mut cton, &f, None).unwrap();
-                tcx.sess.warn(&format!("{:?}:\n\n{}\n\n{}{}", def_id, String::from_utf8_lossy(&mir.into_inner()), cton, verify_error));
+                    let flags = settings::Flags::new(settings::builder());
+                    let verify_error: String = ::cretonne::codegen::verify_function(&f, &flags)
+                        .map(|_| String::new())
+                        .unwrap_or_else(|err| format!("\n\ncretonne error: {}", err));
 
-                translated_mono_items.push(Translated {
-                    f,
-                });
+                    let mut mir = ::std::io::Cursor::new(Vec::new());
+                    ::rustc_mir::util::write_mir_pretty(cx.tcx, Some(def_id), &mut mir).unwrap();
+                    let mut cton = String::new();
+                    ::cretonne::codegen::write_function(&mut cton, &f, None).unwrap();
+                    tcx.sess.warn(&format!("{:?}:\n\n{}\n\n{}{}", def_id, String::from_utf8_lossy(&mir.into_inner()), cton, verify_error));
+
+                    //context.func = f;
+                    //cx.module.define_function(func_id, &mut context).unwrap();
+                    //context.clear();
+                }
+                _ => {}
             }
             _ => {}
         }
     }
 
+    //cx.module.finalize_all();
+    //cx.module.finish();
+
     Box::new(::OngoingCodegen {
         metadata: metadata,
-        translated_mono_items,
+        //translated_module: Module::new(::cretonne_faerie::FaerieBuilder::new(,
         crate_name: tcx.crate_name(LOCAL_CRATE),
     })
 }
 
-struct CodegenCtxt<'a, 'tcx: 'a> {
+struct CodegenCx<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    module: Module<CurrentBackend>,
+    def_id_fn_id_map: HashMap<Instance<'tcx>, FuncId>,
+}
+
+struct FunctionCx<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    module: &'a mut Module<CurrentBackend>,
+    def_id_fn_id_map: &'a mut HashMap<Instance<'tcx>, FuncId>,
     bcx: FunctionBuilder<'a, Variable>,
     mir: &'tcx Mir<'tcx>,
     ebb_map: HashMap<BasicBlock, Ebb>,
     args_map: HashMap<Local, Value>,
 }
 
-impl<'f, 'tcx> CodegenCtxt<'f, 'tcx> {
+impl<'f, 'tcx> FunctionCx<'f, 'tcx> {
     fn get_ebb(&self, bb: BasicBlock) -> Ebb {
         *self.ebb_map.get(&bb).unwrap()
     }
@@ -139,10 +170,20 @@ impl<'f, 'tcx> CodegenCtxt<'f, 'tcx> {
             LocalKind::Temp | LocalKind::Var => self.bcx.use_var(Variable(local)),
         }
     }
+
+    fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
+        let tcx = self.tcx;
+        let module = &mut self.module;
+        let func_id = *self.def_id_fn_id_map.entry(inst).or_insert_with(|| {
+            let sig = cton_sig_from_instance(tcx, inst);
+            module.declare_function(&tcx.absolute_item_path_str(inst.def_id()), Linkage::Local, &sig).unwrap()
+        });
+        module.declare_func_in_func(func_id, &mut self.bcx.func)
+    }
 }
 
-fn trans_fn<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &mut Function, def_id: DefId, substs: &Substs<'tcx>) {
-    let mir = tcx.optimized_mir(def_id);
+fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx>, f: &mut Function, def_id: DefId, substs: &Substs<'tcx>) {
+    let mir = cx.tcx.optimized_mir(def_id);
     let mut func_ctx = FunctionBuilderContext::new();
     let mut bcx: FunctionBuilder<Variable> = FunctionBuilder::new(f, &mut func_ctx);
 
@@ -160,7 +201,7 @@ fn trans_fn<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &mut Function, def_id:
     }
 
     for local in mir.vars_and_temps_iter() {
-        let layout = tcx.layout_of(ParamEnv::reveal_all().and(mir.local_decls[local].ty)).unwrap();
+        let layout = cx.tcx.layout_of(ParamEnv::reveal_all().and(mir.local_decls[local].ty)).unwrap();
         let stack_slot = bcx.create_stack_slot(StackSlotData {
             kind: StackSlotKind::ExplicitSlot,
             size: layout.size.bytes() as u32,
@@ -173,63 +214,65 @@ fn trans_fn<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &mut Function, def_id:
     }
     bcx.ins().jump(*ebb_map.get(&START_BLOCK).unwrap(), &[]);
 
-    let mut ccx = CodegenCtxt {
-        tcx,
+    let mut fx = FunctionCx {
+        tcx: cx.tcx,
+        module: &mut cx.module,
+        def_id_fn_id_map: &mut cx.def_id_fn_id_map,
         bcx,
         mir,
         ebb_map,
         args_map,
     };
-    let ccx = &mut ccx;
+    let fx = &mut fx;
 
     for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
-        let ebb = ccx.get_ebb(bb);
-        ccx.bcx.switch_to_block(ebb);
+        let ebb = fx.get_ebb(bb);
+        fx.bcx.switch_to_block(ebb);
 
         for stmt in &bb_data.statements {
-            trans_stmt(ccx, stmt);
+            trans_stmt(fx, stmt);
         }
 
         match &bb_data.terminator().kind {
             TerminatorKind::Goto { target } => {
-                let ebb = ccx.get_ebb(*target);
-                ccx.bcx.ins().jump(ebb, &[]);
+                let ebb = fx.get_ebb(*target);
+                fx.bcx.ins().jump(ebb, &[]);
             }
             TerminatorKind::Return => {
-                ccx.bcx.ins().return_(&[]);
+                fx.bcx.ins().return_(&[]);
             }
             TerminatorKind::Assert { cond, expected, msg: _, target, cleanup: _ } => {
-                let cond_ty = cond.ty(&ccx.mir.local_decls, ccx.tcx);
-                let cond = trans_operand(ccx, cond).load_value(ccx, cond_ty);
-                let target = ccx.get_ebb(*target);
+                let cond_ty = cond.ty(&fx.mir.local_decls, fx.tcx);
+                let cond = trans_operand(fx, cond).load_value(fx, cond_ty);
+                let target = fx.get_ebb(*target);
                 if *expected {
-                    ccx.bcx.ins().brz(cond, target, &[]);
+                    fx.bcx.ins().brz(cond, target, &[]);
                 } else {
-                    ccx.bcx.ins().brnz(cond, target, &[]);
+                    fx.bcx.ins().brnz(cond, target, &[]);
                 }
-                ccx.bcx.ins().trap(TrapCode::User(!0));
+                fx.bcx.ins().trap(TrapCode::User(!0));
             }
 
             TerminatorKind::SwitchInt { discr, switch_ty, values, targets } => {
-                let discr_ty = discr.ty(&ccx.mir.local_decls, ccx.tcx);
-                let discr = trans_operand(ccx, discr).load_value(ccx, discr_ty);
+                let discr_ty = discr.ty(&fx.mir.local_decls, fx.tcx);
+                let discr = trans_operand(fx, discr).load_value(fx, discr_ty);
                 let mut jt_data = JumpTableData::new();
                 for (i, value) in values.iter().enumerate() {
-                    let ebb = ccx.get_ebb(targets[i]);
+                    let ebb = fx.get_ebb(targets[i]);
                     jt_data.set_entry(*value as usize, ebb);
                 }
-                let mut jump_table = ccx.bcx.create_jump_table(jt_data);
-                ccx.bcx.ins().br_table(discr, jump_table);
-                let otherwise_ebb = ccx.get_ebb(targets[targets.len() - 1]);
-                ccx.bcx.ins().jump(otherwise_ebb, &[]);
+                let mut jump_table = fx.bcx.create_jump_table(jt_data);
+                fx.bcx.ins().br_table(discr, jump_table);
+                let otherwise_ebb = fx.get_ebb(targets[targets.len() - 1]);
+                fx.bcx.ins().jump(otherwise_ebb, &[]);
             }
             TerminatorKind::Call { func, args, destination, cleanup: _ } => {
-                let func_ty = func.ty(&ccx.mir.local_decls, ccx.tcx);
-                let func = trans_operand(ccx, func);
+                let func_ty = func.ty(&fx.mir.local_decls, fx.tcx);
+                let func = trans_operand(fx, func);
                 let return_place = if let Some((place, _)) = destination {
-                    trans_place(ccx, place)
+                    trans_place(fx, place)
                 } else {
-                    ccx.bcx.ins().iconst(types::I64, 0)
+                    fx.bcx.ins().iconst(types::I64, 0)
                 };
                 let args = Some(return_place)
                     .into_iter()
@@ -237,36 +280,35 @@ fn trans_fn<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &mut Function, def_id:
                         args
                             .into_iter()
                             .map(|arg| {
-                                let ty = arg.ty(&ccx.mir.local_decls, ccx.tcx);
-                                let arg = trans_operand(ccx, arg);
-                                arg.force_stack(ccx, ty)
+                                let ty = arg.ty(&fx.mir.local_decls, fx.tcx);
+                                let arg = trans_operand(fx, arg);
+                                arg.force_stack(fx, ty)
                             })
                     ).collect::<Vec<_>>();
                 match func {
                     CValue::Func(func) => {
-                        ccx.bcx.ins().call(func, &args);
+                        fx.bcx.ins().call(func, &args);
                     }
                     func => {
-                        let func = func.load_value(ccx, func_ty);
+                        let func = func.load_value(fx, func_ty);
                         let sig = match func_ty.sty {
-                            TypeVariants::TyFnDef(def_id, _substs) => ccx.tcx.fn_sig(def_id),
+                            TypeVariants::TyFnDef(def_id, _substs) => fx.tcx.fn_sig(def_id),
                             TypeVariants::TyFnPtr(fn_sig) => fn_sig,
                             _ => bug!("Calling non function type {:?}", func_ty),
                         };
-                        let sig = ccx.tcx.subst_and_normalize_erasing_regions(substs, ParamEnv::reveal_all(), &sig);
-                        let sig = ccx.bcx.import_signature(cton_sig_from_fn_sig(sig.skip_binder()));
-                        ccx.bcx.ins().call_indirect(sig, func, &args);
+                        let sig = fx.bcx.import_signature(cton_sig_from_fn_sig(fx.tcx, sig, substs));
+                        fx.bcx.ins().call_indirect(sig, func, &args);
                     }
                 }
                 if let Some((_, dest)) = *destination {
-                    let ret_ebb = ccx.get_ebb(dest);
-                    ccx.bcx.ins().jump(ret_ebb, &[]);
+                    let ret_ebb = fx.get_ebb(dest);
+                    fx.bcx.ins().jump(ret_ebb, &[]);
                 } else {
-                    ccx.bcx.ins().trap(TrapCode::User(!0));
+                    fx.bcx.ins().trap(TrapCode::User(!0));
                 }
             }
             TerminatorKind::Resume | TerminatorKind::Abort | TerminatorKind::Unreachable => {
-                ccx.bcx.ins().trap(TrapCode::User(!0));
+                fx.bcx.ins().trap(TrapCode::User(!0));
             }
             TerminatorKind::Yield { .. } |
             TerminatorKind::FalseEdges { .. } |
@@ -279,34 +321,34 @@ fn trans_fn<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: &mut Function, def_id:
         }
     }
 
-    ccx.bcx.seal_all_blocks();
-    ccx.bcx.finalize();
+    fx.bcx.seal_all_blocks();
+    fx.bcx.finalize();
 }
 
-fn trans_stmt<'a, 'tcx: 'a>(ccx: &mut CodegenCtxt<'a, 'tcx>, stmt: &Statement<'tcx>) {
+fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx>) {
     match &stmt.kind {
         StatementKind::Assign(place, rval) => {
-            let ty = place.ty(&ccx.mir.local_decls, ccx.tcx).to_ty(ccx.tcx);
-            let lval = trans_place(ccx, place);
-            let rval = trans_rval(ccx, rval);
-            do_memcpy(ccx, lval, rval, ty);
+            let ty = place.ty(&fx.mir.local_decls, fx.tcx).to_ty(fx.tcx);
+            let lval = trans_place(fx, place);
+            let rval = trans_rval(fx, rval);
+            do_memcpy(fx, lval, rval, ty);
         }
         StatementKind::StorageLive(_) | StatementKind::StorageDead(_) | StatementKind::Nop => {}
         _ => unimplemented!("stmt {:?}", stmt),
     }
 }
 
-fn trans_place<'a, 'tcx: 'a>(ccx: &mut CodegenCtxt<'a, 'tcx>, place: &Place<'tcx>) -> Value {
+fn trans_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, place: &Place<'tcx>) -> Value {
     match place {
-        Place::Local(local) => ccx.get_local(*local),
+        Place::Local(local) => fx.get_local(*local),
         Place::Projection(projection) => {
-            let base = trans_place(ccx, &projection.base);
+            let base = trans_place(fx, &projection.base);
             match projection.elem {
                 ProjectionElem::Field(field, ty) => {
-                    let layout = ccx.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
+                    let layout = fx.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
                     let field_offset = layout.fields.offset(field.index());
-                    let field_offset = ccx.bcx.ins().iconst(types::I64, field_offset.bytes() as i64);
-                    ccx.bcx.ins().iadd(base, field_offset)
+                    let field_offset = fx.bcx.ins().iconst(types::I64, field_offset.bytes() as i64);
+                    fx.bcx.ins().iadd(base, field_offset)
                 }
                 _ => unimplemented!("projection {:?}", projection),
             }
@@ -315,70 +357,71 @@ fn trans_place<'a, 'tcx: 'a>(ccx: &mut CodegenCtxt<'a, 'tcx>, place: &Place<'tcx
     }
 }
 
-fn trans_rval<'a, 'tcx: 'a>(ccx: &mut CodegenCtxt<'a, 'tcx>, rval: &Rvalue<'tcx>) -> Value {
+fn trans_rval<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, rval: &Rvalue<'tcx>) -> Value {
     match rval {
         Rvalue::Use(operand) => {
-            let operand_ty = operand.ty(&ccx.mir.local_decls, ccx.tcx);
-            trans_operand(ccx, operand).force_stack(ccx, operand_ty)
+            let operand_ty = operand.ty(&fx.mir.local_decls, fx.tcx);
+            trans_operand(fx, operand).force_stack(fx, operand_ty)
         },
         Rvalue::CheckedBinaryOp(bin_op, lhs, rhs) => {
             match bin_op {
                 BinOp::Mul => {
-                    let ty = lhs.ty(&ccx.mir.local_decls, ccx.tcx);
-                    let lhs_ty = lhs.ty(&ccx.mir.local_decls, ccx.tcx);
-                    let lhs = trans_operand(ccx, lhs).load_value(ccx, lhs_ty);
-                    let rhs_ty = rhs.ty(&ccx.mir.local_decls, ccx.tcx);
-                    let rhs = trans_operand(ccx, rhs).load_value(ccx, rhs_ty);
-                    match ty.sty {
+                    let ty = lhs.ty(&fx.mir.local_decls, fx.tcx);
+                    let lhs_ty = lhs.ty(&fx.mir.local_decls, fx.tcx);
+                    let lhs = trans_operand(fx, lhs).load_value(fx, lhs_ty);
+                    let rhs_ty = rhs.ty(&fx.mir.local_decls, fx.tcx);
+                    let rhs = trans_operand(fx, rhs).load_value(fx, rhs_ty);
+                    let res = match ty.sty {
                         TypeVariants::TyUint(_) => {
-                            ccx.bcx.ins().imul(lhs, rhs)
+                            fx.bcx.ins().imul(lhs, rhs)
                         }
                         _ => unimplemented!(),
-                    }
+                    };
+                    let layout = fx.tcx.layout_of(ParamEnv::empty().and(rval.ty(&fx.mir.local_decls, fx.tcx))).unwrap();
+                    let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+                        kind: StackSlotKind::ExplicitSlot,
+                        size: layout.size.bytes() as u32,
+                        offset: None,
+                    });
+                    fx.bcx.ins().stack_store(res, stack_slot, 1);
+                    fx.bcx.ins().stack_addr(types::I64, stack_slot, 1)
                 }
                 bin_op => unimplemented!("checked bin op {:?} {:?} {:?}", bin_op, lhs, rhs),
             }
         }
         Rvalue::Cast(CastKind::ReifyFnPointer, operand, ty) => {
-            let operand = trans_operand(ccx, operand);
-            operand.force_stack(ccx, ty)
+            let operand = trans_operand(fx, operand);
+            operand.force_stack(fx, ty)
         }
         Rvalue::Cast(CastKind::UnsafeFnPointer, operand, ty) => {
-            trans_operand(ccx, operand).force_stack(ccx, ty)
+            trans_operand(fx, operand).force_stack(fx, ty)
         }
         rval => unimplemented!("rval {:?}", rval),
     }
 }
 
-fn trans_operand<'a, 'tcx>(ccx: &mut CodegenCtxt<'a, 'tcx>, operand: &Operand<'tcx>) -> CValue {
+fn trans_operand<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx>, operand: &Operand<'tcx>) -> CValue {
     match operand {
         Operand::Move(place) |
-        Operand::Copy(place) => CValue::ByRef(trans_place(ccx, place)),
+        Operand::Copy(place) => CValue::ByRef(trans_place(fx, place)),
         Operand::Constant(const_) => {
             match const_.literal {
                 Literal::Value { value } => {
-                    let layout = ccx.tcx.layout_of(ParamEnv::empty().and(const_.ty)).unwrap();
+                    let layout = fx.tcx.layout_of(ParamEnv::empty().and(const_.ty)).unwrap();
                     match const_.ty.sty {
                         TypeVariants::TyUint(_) => {
                             let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
-                            let iconst = ccx.bcx.ins().iconst(cton_type_from_ty(const_.ty).unwrap(), bits as u64 as i64);
+                            let iconst = fx.bcx.ins().iconst(cton_type_from_ty(const_.ty).unwrap(), bits as u64 as i64);
                             CValue::ByVal(iconst)
                         }
                         TypeVariants::TyInt(_) => {
                             let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
-                            let iconst = ccx.bcx.ins().iconst(cton_type_from_ty(const_.ty).unwrap(), bits as i128 as i64);
+                            let iconst = fx.bcx.ins().iconst(cton_type_from_ty(const_.ty).unwrap(), bits as i128 as i64);
                             CValue::ByVal(iconst)
                         }
                         TypeVariants::TyFnDef(def_id, substs) => {
-                            let ext_name = ext_name_from_did(def_id);
-                            let sig = ccx.tcx.fn_sig(def_id);
-                            let sig = ccx.tcx.subst_and_normalize_erasing_regions(substs, ParamEnv::reveal_all(), &sig);
-                            let sig = ccx.bcx.import_signature(cton_sig_from_fn_sig(sig.skip_binder()));
-                            CValue::Func(ccx.bcx.import_function(ExtFuncData {
-                                name: ext_name,
-                                signature: sig,
-                                colocated: false,
-                            }))
+                            let func_ref = fx.get_function_ref(Instance::new(def_id, substs));
+                            CValue::Func(func_ref)
                         }
                         _ => unimplemented!("value {:?} ty {:?}", value, const_.ty),
                     }
@@ -386,12 +429,11 @@ fn trans_operand<'a, 'tcx>(ccx: &mut CodegenCtxt<'a, 'tcx>, operand: &Operand<'t
                 _ => unimplemented!()
             }
         }
-        operand => unimplemented!("operand {:?}", operand),
     }
 }
 
-fn do_memcpy<'a, 'tcx: 'a>(ccx: &mut CodegenCtxt<'a, 'tcx>, to: Value, from: Value, ty: Ty<'tcx>) {
-    let layout = ccx.tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
+fn do_memcpy<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, to: Value, from: Value, ty: Ty<'tcx>) {
+    let layout = fx.tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
     let size = layout.size.bytes() as i32;
     let ty = match size {
         2 => Some(types::I16),
@@ -400,12 +442,12 @@ fn do_memcpy<'a, 'tcx: 'a>(ccx: &mut CodegenCtxt<'a, 'tcx>, to: Value, from: Val
         _ => None,
     };
     if let Some(ty) = ty {
-        let data = ccx.bcx.ins().load(ty, MemFlags::new(), from, 0);
-        ccx.bcx.ins().store(MemFlags::new(), data, to, 0);
+        let data = fx.bcx.ins().load(ty, MemFlags::new(), from, 0);
+        fx.bcx.ins().store(MemFlags::new(), data, to, 0);
     } else {
         for i in 0..size {
-            let byte = ccx.bcx.ins().load(types::I8, MemFlags::new(), from, i);
-            ccx.bcx.ins().store(MemFlags::new(), byte, to, i);
+            let byte = fx.bcx.ins().load(types::I8, MemFlags::new(), from, i);
+            fx.bcx.ins().store(MemFlags::new(), byte, to, i);
         }
     }
 }
@@ -414,9 +456,21 @@ fn ext_name_from_did(def_id: DefId) -> ExternalName {
     ExternalName::user(def_id.krate.as_u32(), def_id.index.as_raw_u32())
 }
 
-fn cton_sig_from_fn_sig(sig: &FnSig) -> Signature {
+fn cton_sig_from_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig: PolyFnSig<'tcx>, substs: &Substs<'tcx>) -> Signature {
+    let sig = tcx.subst_and_normalize_erasing_regions(substs, ParamEnv::reveal_all(), &sig);
+    cton_sig_from_mono_fn_sig(sig)
+}
+
+fn cton_sig_from_instance<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, inst: Instance<'tcx>) -> Signature {
+    let fn_ty = inst.ty(tcx);
+    let sig = fn_ty.fn_sig(tcx);
+    cton_sig_from_mono_fn_sig(sig)
+}
+
+fn cton_sig_from_mono_fn_sig<'a ,'tcx: 'a>(sig: PolyFnSig<'tcx>) -> Signature {
+    let sig = sig.skip_binder();
     let inputs = sig.inputs();
-    let output = sig.output();
+    let _output = sig.output();
     assert!(!sig.variadic, "Variadic function are not yet supported");
     let call_conv = match sig.abi {
         _ => CallConv::SystemV,

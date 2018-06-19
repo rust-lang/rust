@@ -9,6 +9,9 @@ extern crate rustc_incremental;
 extern crate rustc_data_structures;
 
 extern crate cretonne;
+extern crate cretonne_module;
+extern crate cretonne_simplejit;
+extern crate cretonne_faerie;
 
 use syntax::symbol::Symbol;
 use rustc::session::{
@@ -34,7 +37,7 @@ mod base;
 mod prelude {
     pub use rustc::session::Session;
     pub use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-    pub use rustc::ty::{TyCtxt, Ty, TypeVariants, Instance, InstanceDef, ParamEnv, FnSig, subst::Substs};
+    pub use rustc::ty::{TyCtxt, Ty, TypeVariants, Instance, InstanceDef, ParamEnv, FnSig, PolyFnSig, subst::Substs};
     pub use rustc::mir::*;
     pub use rustc_mir::monomorphize::collector;
     pub use rustc_data_structures::{
@@ -49,7 +52,7 @@ struct CretonneCodegenBackend(());
 
 struct OngoingCodegen {
     metadata: EncodedMetadata,
-    translated_mono_items: Vec<base::Translated>,
+    //translated_module: Module<cretonne_faerie::FaerieBackend>,
     crate_name: Symbol,
 }
 
