@@ -6128,7 +6128,19 @@ impl<'a> Parser<'a> {
     }
 
     pub fn submod_path_from_attr(attrs: &[Attribute], dir_path: &Path) -> Option<PathBuf> {
-        attr::first_attr_value_str_by_name(attrs, "path").map(|d| dir_path.join(&d.as_str()))
+        if let Some(s) = attr::first_attr_value_str_by_name(attrs, "path") {
+            let s = s.as_str();
+
+            // On windows, the base path might have the form
+            // `\\?\foo\bar` in which case it does not tolerate
+            // mixed `/` and `\` separators, so canonicalize
+            // `/` to `\`.
+            #[cfg(windows)]
+            let s = s.replace("/", "\\");
+            Some(dir_path.join(s))
+        } else {
+            None
+        }
     }
 
     /// Returns either a path to a module, or .
