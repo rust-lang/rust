@@ -727,6 +727,7 @@ fn rewrite_nested_use_tree(
         shape: nested_shape,
         ends_with_newline,
         preserve_newline: true,
+        nested: has_nested_list,
         config: context.config,
     };
 

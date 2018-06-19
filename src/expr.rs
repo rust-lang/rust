@@ -1338,6 +1338,7 @@ pub fn rewrite_multiple_patterns(
         shape,
         ends_with_newline: false,
         preserve_newline: false,
+        nested: false,
         config: context.config,
     };
     write_list(&items, &fmt)
@@ -1902,6 +1903,7 @@ where
         shape,
         ends_with_newline: false,
         preserve_newline: false,
+        nested: false,
         config: context.config,
     };
     let list_str = write_list(&item_vec, &fmt)?;

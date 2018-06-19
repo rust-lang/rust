@@ -533,6 +533,7 @@ impl<'a> FmtVisitor<'a> {
             shape,
             ends_with_newline: true,
             preserve_newline: true,
+            nested: false,
             config: self.config,
         };
 
@@ -2307,6 +2308,7 @@ fn rewrite_args(
         shape: Shape::legacy(budget, indent),
         ends_with_newline: tactic.ends_with_newline(context.config.indent_style()),
         preserve_newline: true,
+        nested: false,
         config: context.config,
     };
 
@@ -2494,6 +2496,7 @@ fn rewrite_where_clause_rfc_style(
         shape: clause_shape,
         ends_with_newline: true,
         preserve_newline: true,
+        nested: false,
         config: context.config,
     };
     let preds_str = write_list(&items.collect::<Vec<_>>(), &fmt)?;
@@ -2607,6 +2610,7 @@ fn rewrite_where_clause(
         shape: Shape::legacy(budget, offset),
         ends_with_newline: tactic.ends_with_newline(context.config.indent_style()),
         preserve_newline: true,
+        nested: false,
         config: context.config,
     };
     let preds_str = write_list(&item_vec, &fmt)?;

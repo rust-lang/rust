@@ -224,6 +224,7 @@ fn rewrite_match_arms(
         shape: arm_shape,
         ends_with_newline: true,
         preserve_newline: true,
+        nested: false,
         config: context.config,
     };
 

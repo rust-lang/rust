@@ -34,6 +34,8 @@ pub struct ListFormatting<'a> {
     pub ends_with_newline: bool,
     // Remove newlines between list elements for expressions.
     pub preserve_newline: bool,
+    // Nested import lists get some special handling for the "Mixed" list type
+    pub nested: bool,
     pub config: &'a Config,
 }
 
@@ -288,7 +290,8 @@ where
                 // 1 is space between separator and item.
                 if (line_len > 0 && line_len + 1 + total_width > formatting.shape.width)
                     || prev_item_had_post_comment
-                    || (prev_item_is_nested_import || (!first && inner_item.contains("::")))
+                    || (formatting.nested
+                        && (prev_item_is_nested_import || (!first && inner_item.contains("::"))))
                 {
                     result.push('\n');
                     result.push_str(indent_str);
@@ -824,6 +827,7 @@ pub fn struct_lit_formatting<'a>(
         shape,
         ends_with_newline,
         preserve_newline: true,
+        nested: false,
         config: context.config,
     }
 }
