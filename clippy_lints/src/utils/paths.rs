@@ -24,6 +24,7 @@ pub const C_VOID: [&str; 4] = ["std", "os", "raw", "c_void"];
 pub const C_VOID_LIBC: [&str; 2] = ["libc", "c_void"];
 pub const DEBUG_FMT_METHOD: [&str; 4] = ["core", "fmt", "Debug", "fmt"];
 pub const DEFAULT_TRAIT: [&str; 3] = ["core", "default", "Default"];
+pub const DEFAULT_TRAIT_METHOD: [&str; 4] = ["core", "default", "Default", "default"];
 pub const DISPLAY_FMT_METHOD: [&str; 4] = ["core", "fmt", "Display", "fmt"];
 pub const DOUBLE_ENDED_ITERATOR: [&str; 4] = ["core", "iter", "traits", "DoubleEndedIterator"];
 pub const DROP: [&str; 3] = ["core", "mem", "drop"];
