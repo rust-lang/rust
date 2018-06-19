@@ -23,7 +23,7 @@ use syntax::attr::{self, HasAttrs};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Annotatable, Determinacy, MultiModifier, MultiDecorator};
 use syntax::ext::base::{MacroKind, SyntaxExtension, Resolver as SyntaxResolver};
-use syntax::ext::expand::{Expansion, ExpansionKind, Invocation, InvocationKind, find_attr_invoc};
+use syntax::ext::expand::{self, AstFragment, AstFragmentKind, Invocation, InvocationKind};
 use syntax::ext::hygiene::{self, Mark, Transparency};
 use syntax::ext::placeholders::placeholder;
 use syntax::ext::tt::macro_rules;
@@ -187,9 +187,10 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.whitelisted_legacy_custom_derives.contains(&name)
     }
 
-    fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion, derives: &[Mark]) {
+    fn visit_ast_fragment_with_placeholders(&mut self, mark: Mark, fragment: &AstFragment,
+                                            derives: &[Mark]) {
         let invocation = self.invocations[&mark];
-        self.collect_def_ids(mark, invocation, expansion);
+        self.collect_def_ids(mark, invocation, fragment);
 
         self.current_module = invocation.module.get();
         self.current_module.unresolved_invocations.borrow_mut().remove(&mark);
@@ -202,7 +203,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             legacy_scope: LegacyScope::Invocation(invocation),
             expansion: mark,
         };
-        expansion.visit_with(&mut visitor);
+        fragment.visit_with(&mut visitor);
         invocation.expansion.set(visitor.legacy_scope);
     }
 
@@ -396,14 +397,14 @@ impl<'a> Resolver<'a> {
                 Ok(ext) => if let SyntaxExtension::ProcMacroDerive(_, ref inert_attrs, _) = *ext {
                     if inert_attrs.contains(&attr_name) {
                         // FIXME(jseyfried) Avoid `mem::replace` here.
-                        let dummy_item = placeholder(ExpansionKind::Items, ast::DUMMY_NODE_ID)
+                        let dummy_item = placeholder(AstFragmentKind::Items, ast::DUMMY_NODE_ID)
                             .make_items().pop().unwrap();
                         let dummy_item = Annotatable::Item(dummy_item);
                         *item = mem::replace(item, dummy_item).map_attrs(|mut attrs| {
                             let inert_attr = attr.take().unwrap();
                             attr::mark_known(&inert_attr);
                             if self.proc_macro_enabled {
-                                *attr = find_attr_invoc(&mut attrs);
+                                *attr = expand::find_attr_invoc(&mut attrs);
                             }
                             attrs.push(inert_attr);
                             attrs
@@ -769,7 +770,7 @@ impl<'a> Resolver<'a> {
     fn collect_def_ids(&mut self,
                        mark: Mark,
                        invocation: &'a InvocationData<'a>,
-                       expansion: &Expansion) {
+                       fragment: &AstFragment) {
         let Resolver { ref mut invocations, arenas, graph_root, .. } = *self;
         let InvocationData { def_index, .. } = *invocation;
 
@@ -787,7 +788,7 @@ impl<'a> Resolver<'a> {
         let mut def_collector = DefCollector::new(&mut self.definitions, mark);
         def_collector.visit_macro_invoc = Some(visit_macro_invoc);
         def_collector.with_parent(def_index, |def_collector| {
-            expansion.visit_with(def_collector)
+            fragment.visit_with(def_collector)
         });
     }
 

@@ -13,7 +13,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use edition::Edition;
 use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
-use ext::expand::{Expansion, ExpansionKind};
+use ext::expand::{AstFragment, AstFragmentKind};
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::{parse, parse_failure_msg};
@@ -43,21 +43,21 @@ pub struct ParserAnyMacro<'a> {
 }
 
 impl<'a> ParserAnyMacro<'a> {
-    pub fn make(mut self: Box<ParserAnyMacro<'a>>, kind: ExpansionKind) -> Expansion {
+    pub fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser } = *self;
-        let expansion = panictry!(parser.parse_expansion(kind, true));
+        let fragment = panictry!(parser.parse_ast_fragment(kind, true));
 
         // We allow semicolons at the end of expressions -- e.g. the semicolon in
         // `macro_rules! m { () => { panic!(); } }` isn't parsed by `.parse_expr()`,
         // but `m!()` is allowed in expression positions (c.f. issue #34706).
-        if kind == ExpansionKind::Expr && parser.token == token::Semi {
+        if kind == AstFragmentKind::Expr && parser.token == token::Semi {
             parser.bump();
         }
 
         // Make sure we don't have any tokens left to parse so we don't silently drop anything.
         let path = ast::Path::from_ident(macro_ident.with_span_pos(site_span));
         parser.ensure_complete_parse(&path, kind.name(), site_span);
-        expansion
+        fragment
     }
 }
 
