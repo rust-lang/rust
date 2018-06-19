@@ -6,7 +6,7 @@ LL | async fn multiple_named_lifetimes<'a, 'b>(_: &'a u8, _: &'b u8) {}
    |                                               |
    |                                               first lifetime here
    |
-   = help: `async fn` can only accept borrowed values identical lifetimes
+   = help: `async fn` can only accept borrowed values with identical lifetimes
 
 error[E0704]: multiple elided lifetimes used in arguments of `async fn`
   --> $DIR/async-fn-multiple-lifetimes.rs:26:39

@@ -73,6 +73,27 @@ impl<'a> DefCollector<'a> {
         self.parent_def = parent;
     }
 
+    fn visit_async_fn(
+        &mut self,
+        id: NodeId,
+        async_node_id: NodeId,
+        name: Name,
+        span: Span,
+        visit_fn: impl FnOnce(&mut DefCollector<'a>)
+    ) {
+        // For async functions, we need to create their inner defs inside of a
+        // closure to match their desugared representation.
+        let fn_def_data = DefPathData::ValueNs(name.as_interned_str());
+        let fn_def = self.create_def(id, fn_def_data, ITEM_LIKE_SPACE, span);
+        return self.with_parent(fn_def, |this| {
+            let closure_def = this.create_def(async_node_id,
+                                  DefPathData::ClosureExpr,
+                                  REGULAR_SPACE,
+                                  span);
+            this.with_parent(closure_def, visit_fn)
+        })
+    }
+
     fn visit_macro_invoc(&mut self, id: NodeId) {
         if let Some(ref mut visit) = self.visit_macro_invoc {
             visit(MacroInvocationData {
@@ -100,19 +121,13 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                 return visit::walk_item(self, i);
             }
             ItemKind::Fn(_, FnHeader { asyncness: IsAsync::Async(async_node_id), .. }, ..) => {
-                // For async functions, we need to create their inner defs inside of a
-                // closure to match their desugared representation.
-                let fn_def_data = DefPathData::ValueNs(i.ident.name.as_interned_str());
-                let fn_def = self.create_def(i.id, fn_def_data, ITEM_LIKE_SPACE, i.span);
-                return self.with_parent(fn_def, |this| {
-                    let closure_def = this.create_def(async_node_id,
-                                          DefPathData::ClosureExpr,
-                                          REGULAR_SPACE,
-                                          i.span);
-                    this.with_parent(closure_def, |this| {
-                        visit::walk_item(this, i);
-                    })
-                });
+                return self.visit_async_fn(
+                    i.id,
+                    async_node_id,
+                    i.ident.name,
+                    i.span,
+                    |this| visit::walk_item(this, i)
+                )
             }
             ItemKind::Mod(..) => DefPathData::Module(i.ident.name.as_interned_str()),
             ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) =>
@@ -212,6 +227,17 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {
         let def_data = match ii.node {
+            ImplItemKind::Method(MethodSig {
+                header: FnHeader { asyncness: IsAsync::Async(async_node_id), .. }, ..
+            }, ..) => {
+                return self.visit_async_fn(
+                    ii.id,
+                    async_node_id,
+                    ii.ident.name,
+                    ii.span,
+                    |this| visit::walk_impl_item(this, ii)
+                )
+            }
             ImplItemKind::Method(..) | ImplItemKind::Const(..) =>
                 DefPathData::ValueNs(ii.ident.name.as_interned_str()),
             ImplItemKind::Type(..) => DefPathData::AssocTypeInImpl(ii.ident.name.as_interned_str()),

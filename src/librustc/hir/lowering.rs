@@ -2932,7 +2932,7 @@ impl<'a> LoweringContext<'a> {
                     AnonymousLifetimeMode::PassThrough,
                     |this| {
                         hir::TraitItemKind::Method(
-                            this.lower_method_sig(sig, trait_item_def_id, false),
+                            this.lower_method_sig(sig, trait_item_def_id, false, false),
                             hir::TraitMethod::Required(names),
                         )
                     },
@@ -2950,7 +2950,7 @@ impl<'a> LoweringContext<'a> {
                     AnonymousLifetimeMode::PassThrough,
                     |this| {
                         hir::TraitItemKind::Method(
-                            this.lower_method_sig(sig, trait_item_def_id, false),
+                            this.lower_method_sig(sig, trait_item_def_id, false, false),
                             hir::TraitMethod::Provided(body_id),
                         )
                     },
@@ -3021,8 +3021,18 @@ impl<'a> LoweringContext<'a> {
             }
             ImplItemKind::Method(ref sig, ref body) => {
                 let body_id = self.lower_body(Some(&sig.decl), |this| {
-                    let body = this.lower_block(body, false);
-                    this.expr_block(body, ThinVec::new())
+                    if let IsAsync::Async(async_node_id) = sig.header.asyncness {
+                        let async_expr = this.make_async_expr(
+                            CaptureBy::Value, async_node_id, None,
+                            |this| {
+                                let body = this.lower_block(body, false);
+                                this.expr_block(body, ThinVec::new())
+                            });
+                        this.expr(body.span, async_expr, ThinVec::new())
+                    } else {
+                        let body = this.lower_block(body, false);
+                        this.expr_block(body, ThinVec::new())
+                    }
                 });
                 let impl_trait_return_allow = !self.is_in_trait_impl;
 
@@ -3036,6 +3046,7 @@ impl<'a> LoweringContext<'a> {
                                 sig,
                                 impl_item_def_id,
                                 impl_trait_return_allow,
+                                sig.header.asyncness.is_async(),
                             ),
                             body_id,
                         )
@@ -3201,10 +3212,11 @@ impl<'a> LoweringContext<'a> {
         sig: &MethodSig,
         fn_def_id: DefId,
         impl_trait_return_allow: bool,
+        is_async: bool,
     ) -> hir::MethodSig {
         hir::MethodSig {
             header: self.lower_fn_header(sig.header),
-            decl: self.lower_fn_decl(&sig.decl, Some(fn_def_id), impl_trait_return_allow, false),
+            decl: self.lower_fn_decl(&sig.decl, Some(fn_def_id), impl_trait_return_allow, is_async),
         }
     }
 

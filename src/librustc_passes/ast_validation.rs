@@ -87,6 +87,13 @@ impl<'a> AstValidator<'a> {
         }
     }
 
+    fn check_trait_fn_not_async(&self, span: Span, asyncness: IsAsync) {
+        if asyncness.is_async() {
+            struct_span_err!(self.session, span, E0706,
+                             "trait fns cannot be declared `async`").emit()
+        }
+    }
+
     fn check_trait_fn_not_const(&self, constness: Spanned<Constness>) {
         match constness.node {
             Constness::Const => {
@@ -309,6 +316,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.no_questions_in_bounds(bounds, "supertraits", true);
                 for trait_item in trait_items {
                     if let TraitItemKind::Method(ref sig, ref block) = trait_item.node {
+                        self.check_trait_fn_not_async(trait_item.span, sig.header.asyncness);
                         self.check_trait_fn_not_const(sig.header.constness);
                         if block.is_none() {
                             self.check_decl_no_pat(&sig.decl, |span, mut_ident| {

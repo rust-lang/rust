@@ -746,15 +746,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                 function_kind: FnKind<'tcx>,
                 declaration: &'tcx FnDecl,
                 _: Span,
-                node_id: NodeId) {
-        let rib_kind = match function_kind {
-            FnKind::ItemFn(..) => {
-                ItemRibKind
-            }
-            FnKind::Method(_, _, _, _) => {
-                TraitOrImplItemRibKind
-            }
-            FnKind::Closure(_) => ClosureRibKind(node_id),
+                node_id: NodeId)
+    {
+        let (rib_kind, asyncness) = match function_kind {
+            FnKind::ItemFn(_, ref header, ..) =>
+                (ItemRibKind, header.asyncness),
+            FnKind::Method(_, ref sig, _, _) =>
+                (TraitOrImplItemRibKind, sig.header.asyncness),
+            FnKind::Closure(_) =>
+                // Async closures aren't resolved through `visit_fn`-- they're
+                // processed separately
+                (ClosureRibKind(node_id), IsAsync::NotAsync),
         };
 
         // Create a value rib for the function.
@@ -774,7 +776,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         }
         visit::walk_fn_ret_ty(self, &declaration.output);
 
-        // Resolve the function body.
+        // Resolve the function body, potentially inside the body of an async closure
+        if let IsAsync::Async(async_closure_id) = asyncness {
+            let rib_kind = ClosureRibKind(async_closure_id);
+            self.ribs[ValueNS].push(Rib::new(rib_kind));
+            self.label_ribs.push(Rib::new(rib_kind));
+        }
+
         match function_kind {
             FnKind::ItemFn(.., body) |
             FnKind::Method(.., body) => {
@@ -784,6 +792,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                 self.visit_expr(body);
             }
         };
+
+        // Leave the body of the async closure
+        if asyncness.is_async() {
+            self.label_ribs.pop();
+            self.ribs[ValueNS].pop();
+        }
 
         debug!("(resolving function) leaving function");
 
@@ -2054,47 +2068,6 @@ impl<'a> Resolver<'a> {
         self.check_proc_macro_attrs(&item.attrs);
 
         match item.node {
-            ItemKind::Fn(ref declaration,
-                         FnHeader { asyncness: IsAsync::Async(async_closure_id), .. },
-                         ref generics,
-                         ref body) => {
-                // Async functions are desugared from `async fn foo() { .. }`
-                // to `fn foo() { future_from_generator(move || ... ) }`,
-                // so we have to visit the body inside the closure scope
-                self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
-                    this.visit_vis(&item.vis);
-                    this.visit_ident(item.ident);
-                    this.visit_generics(generics);
-                    let rib_kind = ItemRibKind;
-                    this.ribs[ValueNS].push(Rib::new(rib_kind));
-                    this.label_ribs.push(Rib::new(rib_kind));
-                    let mut bindings_list = FxHashMap();
-                    for argument in &declaration.inputs {
-                        this.resolve_pattern(
-                            &argument.pat, PatternSource::FnParam, &mut bindings_list);
-                        this.visit_ty(&*argument.ty);
-                    }
-                    visit::walk_fn_ret_ty(this, &declaration.output);
-
-                    // Now resolve the inner closure
-                    {
-                        let rib_kind = ClosureRibKind(async_closure_id);
-                        this.ribs[ValueNS].push(Rib::new(rib_kind));
-                        this.label_ribs.push(Rib::new(rib_kind));
-                        // No need to resolve either arguments nor return type,
-                        // as this closure has neither
-
-                        // Resolve the body
-                        this.visit_block(body);
-                        this.label_ribs.pop();
-                        this.ribs[ValueNS].pop();
-                    }
-                    this.label_ribs.pop();
-                    this.ribs[ValueNS].pop();
-
-                    walk_list!(this, visit_attribute, &item.attrs);
-                })
-            }
             ItemKind::Enum(_, ref generics) |
             ItemKind::Ty(_, ref generics) |
             ItemKind::Struct(_, ref generics) |
@@ -2415,7 +2388,7 @@ impl<'a> Resolver<'a> {
                                                 visit::walk_impl_item(this, impl_item)
                                             );
                                         }
-                                        ImplItemKind::Method(_, _) => {
+                                        ImplItemKind::Method(..) => {
                                             // If this is a trait impl, ensure the method
                                             // exists in trait
                                             this.check_trait_item(impl_item.ident,

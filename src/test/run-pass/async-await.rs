@@ -104,10 +104,16 @@ unsafe async fn unsafe_async_fn(x: u8) -> u8 {
     x
 }
 
-struct Foo {
+struct Foo;
+
+trait Bar {
+    fn foo() {}
+}
+
+impl Foo {
     async fn async_method(x: u8) -> u8 {
         unsafe {
-            await!(unsafe_async_fn())
+            await!(unsafe_async_fn(x))
         }
     }
 }
