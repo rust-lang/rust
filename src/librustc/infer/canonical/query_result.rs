@@ -17,10 +17,11 @@
 //!
 //! [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html
 
+use either::Either;
 use infer::canonical::substitute::substitute_value;
 use infer::canonical::{
-    Canonical, CanonicalVarValues, CanonicalizedQueryResult, Certainty, QueryRegionConstraint,
-    QueryResult,
+    Canonical, CanonicalVarKind, CanonicalVarValues, CanonicalizedQueryResult, Certainty,
+    QueryRegionConstraint, QueryResult,
 };
 use infer::region_constraints::{Constraint, RegionConstraintData};
 use infer::{InferCtxt, InferOk, InferResult, RegionObligation};
@@ -28,6 +29,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 use std::fmt::Debug;
+use std::iter::once;
 use syntax::ast;
 use traits::query::NoSolution;
 use traits::{FulfillmentContext, TraitEngine};
@@ -174,6 +176,86 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             value: user_result,
             obligations,
         })
+    }
+
+    /// NLL does a lot of queries that have a particular form that we
+    /// can take advantage of to be more efficient. These queries do
+    /// not have any *type* inference variables, only region inference
+    /// variables. Therefore, when we instantiate the query result, we
+    /// only ever produce new *region constraints* and never other
+    /// forms of obligations (moreover, since we only determine
+    /// satisfiability modulo region constraints, instantiation is
+    /// infallible). Therefore, the return value need only be a larger
+    /// set of query region constraints. These constraints can then be
+    /// added directly to the NLL inference context.
+    pub fn instantiate_nll_query_result_and_region_obligations<R>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        original_values: &CanonicalVarValues<'tcx>,
+        query_result: &Canonical<'tcx, QueryResult<'tcx, R>>,
+    ) -> Vec<QueryRegionConstraint<'tcx>>
+    where
+        R: Debug + TypeFoldable<'tcx>,
+    {
+        // In an NLL query, there should be no type variables in the
+        // query, only region variables.
+        debug_assert!(query_result.variables.iter().all(|v| match v.kind {
+            CanonicalVarKind::Ty(_) => false,
+            CanonicalVarKind::Region => true,
+        }));
+
+        let result_subst =
+            self.query_result_substitution_guess(cause, original_values, query_result);
+
+        // Compute `QueryRegionConstraint` values that unify each of
+        // the original values `v_o` that was canonicalized into a
+        // variable...
+        let qrc_from_unify = original_values.var_values.iter_enumerated().flat_map(
+            |(index, original_value)| {
+                // ...with the value `v_r` of that variable from the query.
+                let result_value =
+                    query_result
+                        .substitute_projected(self.tcx, &result_subst, |v| &v.var_values[index]);
+                match (original_value.unpack(), result_value.unpack()) {
+                    (
+                        UnpackedKind::Lifetime(ty::ReErased),
+                        UnpackedKind::Lifetime(ty::ReErased),
+                    ) => {
+                        // no action needed
+                        Either::Left(None.into_iter())
+                    }
+
+                    (UnpackedKind::Lifetime(v_o), UnpackedKind::Lifetime(v_r)) => {
+                        // To make `v_o = v_r`, we emit `v_o: v_r` and `v_r: v_o`.
+                        Either::Right(
+                            once(ty::OutlivesPredicate(v_o.into(), v_r))
+                                .chain(once(ty::OutlivesPredicate(v_r.into(), v_o)))
+                                .map(ty::Binder::dummy),
+                        )
+                    }
+
+                    (UnpackedKind::Type(_), _) | (_, UnpackedKind::Type(_)) => {
+                        // in NLL queries, we do not expect `type` results.
+                        bug!(
+                            "unexpected type in NLL query: cannot unify {:?} and {:?}",
+                            original_value,
+                            result_value,
+                        );
+                    }
+                }
+            },
+        );
+
+        // ...also include the other query region constraints from the query.
+        let qrc_from_result = query_result.value.region_constraints.iter().map(|r_c| {
+            r_c.map_bound(|ty::OutlivesPredicate(k1, r2)| {
+                let k1 = substitute_value(self.tcx, &result_subst, &k1);
+                let r2 = substitute_value(self.tcx, &result_subst, &r2);
+                ty::OutlivesPredicate(k1, r2)
+            })
+        });
+
+        qrc_from_unify.chain(qrc_from_result).collect()
     }
 
     /// Given the original values and the (canonicalized) result from

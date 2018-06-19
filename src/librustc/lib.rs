@@ -79,6 +79,7 @@
 extern crate arena;
 #[macro_use] extern crate bitflags;
 extern crate core;
+extern crate either;
 extern crate fmt_macros;
 extern crate getopts;
 extern crate graphviz;
