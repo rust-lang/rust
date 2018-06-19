@@ -282,14 +282,13 @@ where
                 result.push('\n');
                 result.push_str(indent_str);
             }
-            DefinitiveListTactic::Mixed | DefinitiveListTactic::NestedImport => {
+            DefinitiveListTactic::Mixed => {
                 let total_width = total_item_width(item) + item_sep_len;
 
                 // 1 is space between separator and item.
                 if (line_len > 0 && line_len + 1 + total_width > formatting.shape.width)
                     || prev_item_had_post_comment
-                    || (tactic == DefinitiveListTactic::NestedImport
-                        && (prev_item_is_nested_import || (!first && inner_item.contains("::"))))
+                    || (prev_item_is_nested_import || (!first && inner_item.contains("::")))
                 {
                     result.push('\n');
                     result.push_str(indent_str);
