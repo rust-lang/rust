@@ -194,7 +194,7 @@ enum ReorderableItemKind {
 }
 
 impl ReorderableItemKind {
-    pub fn from(item: &ast::Item) -> Self {
+    fn from(item: &ast::Item) -> Self {
         match item.node {
             _ if contains_macro_use_attr(item) => ReorderableItemKind::Other,
             ast::ItemKind::ExternCrate(..) => ReorderableItemKind::ExternCrate,
@@ -204,11 +204,11 @@ impl ReorderableItemKind {
         }
     }
 
-    pub fn is_same_item_kind(&self, item: &ast::Item) -> bool {
+    fn is_same_item_kind(&self, item: &ast::Item) -> bool {
         ReorderableItemKind::from(item) == *self
     }
 
-    pub fn is_reorderable(&self, config: &Config) -> bool {
+    fn is_reorderable(&self, config: &Config) -> bool {
         match *self {
             ReorderableItemKind::ExternCrate => config.reorder_imports(),
             ReorderableItemKind::Mod => config.reorder_modules(),
@@ -217,7 +217,7 @@ impl ReorderableItemKind {
         }
     }
 
-    pub fn in_group(&self) -> bool {
+    fn in_group(&self) -> bool {
         match *self {
             ReorderableItemKind::ExternCrate
             | ReorderableItemKind::Mod
