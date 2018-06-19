@@ -15,16 +15,19 @@
 
 extern crate alloc;
 
-use std::alloc::{GlobalAlloc, Layout, Opaque};
+use std::{
+    alloc::{GlobalAlloc, Layout},
+    ptr,
+};
 
 struct MyAlloc;
 
 unsafe impl GlobalAlloc for MyAlloc {
-    unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
-        0 as usize as *mut Opaque
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        ptr::null_mut()
     }
 
-    unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout) {}
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {}
 }
 
 mod submod {
