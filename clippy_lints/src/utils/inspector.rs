@@ -380,6 +380,9 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
         hir::ItemTy(..) => {
             println!("type alias for {:?}", cx.tcx.type_of(did));
         },
+        hir::ItemExistential(..) => {
+            println!("existential type with real type {:?}", cx.tcx.type_of(did));
+        },
         hir::ItemEnum(..) => {
             println!("enum definition of type {:?}", cx.tcx.type_of(did));
         },
