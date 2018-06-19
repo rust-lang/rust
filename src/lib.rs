@@ -718,10 +718,18 @@ fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> {
     let mut result = String::with_capacity(snippet.len());
     let mut is_first = true;
 
+    // While formatting the code, ignore the config's newline style setting and always use "\n"
+    // instead of "\r\n" for the newline characters. This is okay because the output here is
+    // not directly outputted by rustfmt command, but used by the comment formatter's input.
+    // We have output-file-wide "\n" ==> "\r\n" conversion proccess after here if it's necessary.
+    let mut config_with_unix_newline = config.clone();
+    config_with_unix_newline
+        .set()
+        .newline_style(NewlineStyle::Unix);
+    let formatted = format_snippet(&snippet, &config_with_unix_newline)?;
+
     // Trim "fn main() {" on the first line and "}" on the last line,
     // then unindent the whole code block.
-    let formatted = format_snippet(&snippet, config)?;
-    // 2 = "}\n"
     let block_len = formatted.rfind('}').unwrap_or(formatted.len());
     let mut is_indented = true;
     for (kind, ref line) in LineClasses::new(&formatted[FN_MAIN_PREFIX.len()..block_len]) {
