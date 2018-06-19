@@ -1740,20 +1740,20 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
 }
 
 declare_lint! {
-    UNTESTABLE_METHOD,
+    UNNAMEABLE_TEST_FUNCTIONS,
     Warn,
-    "detects untestable method marked as #[test]"
+    "detects an function that cannot be named being marked as #[test]"
 }
 
-pub struct UntestableMethod;
+pub struct UnnameableTestFunctions;
 
-impl LintPass for UntestableMethod {
+impl LintPass for UnnameableTestFunctions {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNTESTABLE_METHOD)
+        lint_array!(UNNAMEABLE_TEST_FUNCTIONS)
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UntestableMethod {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestFunctions {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
             hir::ItemFn(..) => {
@@ -1765,7 +1765,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UntestableMethod {
                             None => {}
                             _ => {
                                 cx.struct_span_lint(
-                                    UNTESTABLE_METHOD,
+                                    UNNAMEABLE_TEST_FUNCTIONS,
                                     attr.span,
                                     "cannot test inner function",
                                 ).emit();

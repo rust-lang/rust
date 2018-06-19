@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --test -D untestable_method
+// compile-flags: --test -D unnameable_test_functions
 
 #[test]
 fn foo() {
-    #[test] //~ ERROR cannot test inner function [untestable_method]
+    #[test] //~ ERROR cannot test inner function [unnameable_test_functions]
     fn bar() {}
     bar();
 }
@@ -20,7 +20,7 @@ fn foo() {
 mod x {
     #[test]
     fn foo() {
-        #[test] //~ ERROR cannot test inner function [untestable_method]
+        #[test] //~ ERROR cannot test inner function [unnameable_test_functions]
         fn bar() {}
         bar();
     }

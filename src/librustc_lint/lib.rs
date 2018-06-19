@@ -130,7 +130,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         MutableTransmutes: MutableTransmutes,
         UnionsWithDropFields: UnionsWithDropFields,
         UnreachablePub: UnreachablePub,
-        UntestableMethod: UntestableMethod,
+        UnnameableTestFunctions: UnnameableTestFunctions,
         TypeAliasBounds: TypeAliasBounds,
         UnusedBrokenConst: UnusedBrokenConst,
         TrivialConstraints: TrivialConstraints,
