@@ -29,7 +29,7 @@ use std::fmt;
 #[derive(Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
 pub struct SyntaxContext(pub(super) u32);
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct SyntaxContextData {
     pub outer_mark: Mark,
     pub prev_ctxt: SyntaxContext,
@@ -40,13 +40,14 @@ pub struct SyntaxContextData {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Mark(u32);
 
+#[derive(Debug)]
 struct MarkData {
     parent: Mark,
     kind: MarkKind,
     expn_info: Option<ExpnInfo>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum MarkKind {
     Modern,
     Builtin,
@@ -147,6 +148,7 @@ impl Mark {
     }
 }
 
+#[derive(Debug)]
 pub struct HygieneData {
     marks: Vec<MarkData>,
     syntax_contexts: Vec<SyntaxContextData>,
