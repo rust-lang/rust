@@ -1569,11 +1569,6 @@ impl<'feat> ExpansionConfig<'feat> {
 pub struct Marker(pub Mark);
 
 impl Folder for Marker {
-    fn fold_ident(&mut self, mut ident: Ident) -> Ident {
-        ident.span = ident.span.apply_mark(self.0);
-        ident
-    }
-
     fn new_span(&mut self, span: Span) -> Span {
         span.apply_mark(self.0)
     }
