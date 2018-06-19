@@ -1,4 +1,4 @@
-error[E0697]: invalid ABI: found `路濫狼á́́`
+error[E0703]: invalid ABI: found `路濫狼á́́`
   --> $DIR/unicode.rs:11:8
    |
 LL | extern "路濫狼á́́" fn foo() {} //~ ERROR invalid ABI
@@ -8,4 +8,4 @@ LL | extern "路濫狼á́́" fn foo() {} //~ ERROR invalid ABI
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0697`.
+For more information about this error, try `rustc --explain E0703`.

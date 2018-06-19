@@ -6000,7 +6000,7 @@ impl<'a> Parser<'a> {
                 let sp = self.prev_span;
                 let help_msg = format!("make this visible only to module `{}` with `in`", path);
                 self.expect(&token::CloseDelim(token::Paren))?;  // `)`
-                let mut err = struct_span_err!(self.sess.span_diagnostic, sp, E0698, "{}", msg);
+                let mut err = struct_span_err!(self.sess.span_diagnostic, sp, E0704, "{}", msg);
                 err.help(suggestion);
                 err.span_suggestion_with_applicability(
                     sp, &help_msg, format!("in {}", path), Applicability::MachineApplicable
@@ -6550,7 +6550,7 @@ impl<'a> Parser<'a> {
                         let mut err = struct_span_err!(
                             self.sess.span_diagnostic,
                             prev_span,
-                            E0697,
+                            E0703,
                             "invalid ABI: found `{}`",
                             s);
                         err.span_label(prev_span, "invalid ABI");

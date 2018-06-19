@@ -397,6 +397,6 @@ register_diagnostics! {
     E0630, // rustc_const_unstable attribute must be paired with stable/unstable attribute
     E0693, // incorrect `repr(align)` attribute format
     E0694, // an unknown tool name found in scoped attributes
-    E0697, // invalid ABI
-    E0698, // incorrect visibility restriction
+    E0703, // invalid ABI
+    E0704, // incorrect visibility restriction
 }
