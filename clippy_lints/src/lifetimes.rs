@@ -103,6 +103,11 @@ fn check_fn_inner<'a, 'tcx>(
     let mut bounds_lts = Vec::new();
     for typ in generics.ty_params() {
         for bound in &typ.bounds {
+            let mut visitor = RefVisitor::new(cx);
+            walk_ty_param_bound(&mut visitor, bound);
+            if visitor.lts.iter().any(|lt| matches!(lt, RefLt::Named(_))) {
+                return;
+            }
             if let TraitTyParamBound(ref trait_ref, _) = *bound {
                 let params = &trait_ref
                     .trait_ref
