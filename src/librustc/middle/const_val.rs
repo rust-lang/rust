@@ -33,16 +33,7 @@ pub enum ConstVal<'tcx> {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ConstEvalErr<'tcx> {
     pub span: Span,
-    pub kind: Lrc<ErrKind<'tcx>>,
-}
-
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub enum ErrKind<'tcx> {
-
-    CouldNotResolve,
-    TypeckError,
-    CheckMatchError,
-    Miri(::mir::interpret::EvalError<'tcx>, Vec<FrameInfo>),
+    pub data: Lrc<(::mir::interpret::EvalError<'tcx>, Vec<FrameInfo>)>,
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
@@ -69,25 +60,6 @@ impl<'a, 'tcx> ConstEvalErrDescription<'a, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
-    pub fn description(&'a self) -> ConstEvalErrDescription<'a, 'tcx> {
-        use self::ErrKind::*;
-        use self::ConstEvalErrDescription::*;
-
-        macro_rules! simple {
-            ($msg:expr) => ({ Simple($msg.into_cow()) });
-            ($fmt:expr, $($arg:tt)+) => ({
-                Simple(format!($fmt, $($arg)+).into_cow())
-            })
-        }
-
-        match *self.kind {
-            CouldNotResolve => simple!("could not resolve"),
-            TypeckError => simple!("type-checking failed"),
-            CheckMatchError => simple!("match-checking failed"),
-            Miri(ref err, ref trace) => Backtrace(err, trace),
-        }
-    }
-
     pub fn struct_error(&self,
         tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
         message: &str)
@@ -127,24 +99,19 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         message: &str,
         lint_root: Option<ast::NodeId>,
     ) -> Option<DiagnosticBuilder<'tcx>> {
-        let (msg, frames): (_, &[_]) = match *self.kind {
-            ErrKind::TypeckError | ErrKind::CheckMatchError => return None,
-            ErrKind::Miri(ref miri, ref frames) => {
-                match miri.kind {
-                    ::mir::interpret::EvalErrorKind::TypeckError |
-                    ::mir::interpret::EvalErrorKind::Layout(_) => return None,
-                    ::mir::interpret::EvalErrorKind::ReferencedConstant(ref inner) => {
-                        inner.struct_generic(tcx, "referenced constant", lint_root)?.emit();
-                        (miri.to_string(), frames)
-                    },
-                    _ => (miri.to_string(), frames),
-                }
-            }
-            _ => (self.description().into_oneline().to_string(), &[]),
-        };
+        match self.data.0.kind {
+            ::mir::interpret::EvalErrorKind::TypeckError |
+            ::mir::interpret::EvalErrorKind::ResolutionFailed |
+            ::mir::interpret::EvalErrorKind::CheckMatchError |
+            ::mir::interpret::EvalErrorKind::Layout(_) => return None,
+            ::mir::interpret::EvalErrorKind::ReferencedConstant(ref inner) => {
+                inner.struct_generic(tcx, "referenced constant", lint_root)?.emit();
+            },
+            _ => {},
+        }
         trace!("reporting const eval failure at {:?}", self.span);
         let mut err = if let Some(lint_root) = lint_root {
-            let node_id = frames
+            let node_id = self.data.1
                 .iter()
                 .rev()
                 .filter_map(|frame| frame.lint_root)
@@ -159,8 +126,8 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         } else {
             struct_error(tcx, message)
         };
-        err.span_label(self.span, msg);
-        for FrameInfo { span, location, .. } in frames {
+        err.span_label(self.span, self.data.0.to_string());
+        for FrameInfo { span, location, .. } in &self.data.1 {
             err.span_label(*span, format!("inside call to `{}`", location));
         }
         Some(err)

@@ -16,7 +16,8 @@ use rustc_data_structures::obligation_forest::{Error, ForestObligation, Obligati
 use rustc_data_structures::obligation_forest::{ObligationProcessor, ProcessResult};
 use std::marker::PhantomData;
 use hir::def_id::DefId;
-use middle::const_val::{ConstEvalErr, ErrKind};
+use middle::const_val::ConstEvalErr;
+use mir::interpret::EvalErrorKind;
 
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
@@ -498,10 +499,11 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                                             CodeSelectionError(ConstEvalFailure(err)))
                                     }
                                 } else {
+                                    let err = EvalErrorKind::ResolutionFailed.into();
                                     ProcessResult::Error(
                                         CodeSelectionError(ConstEvalFailure(ConstEvalErr {
                                             span: obligation.cause.span,
-                                            kind: ErrKind::CouldNotResolve.into(),
+                                            data: (err, Vec::new()).into(),
                                         }))
                                     )
                                 }

@@ -150,6 +150,9 @@ pub enum EvalErrorKind<'tcx, O> {
     UnimplementedTraitSelection,
     /// Abort in case type errors are reached
     TypeckError,
+    /// Resolution can fail if we are in a too generic context
+    ResolutionFailed,
+    CheckMatchError,
     /// Cannot compute this constant because it depends on another one
     /// which already produced an error
     ReferencedConstant(ConstEvalErr<'tcx>),
@@ -268,6 +271,10 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
                 "there were unresolved type arguments during trait selection",
             TypeckError =>
                 "encountered constants with type errors, stopping evaluation",
+            ResolutionFailed =>
+                "encountered overly generic constant",
+            CheckMatchError =>
+                "match checking failed",
             ReferencedConstant(_) =>
                 "referenced constant has errors",
             Overflow(mir::BinOp::Add) => "attempt to add with overflow",

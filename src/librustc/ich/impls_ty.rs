@@ -505,7 +505,7 @@ impl_stable_hash_for!(struct ty::Const<'tcx> {
 
 impl_stable_hash_for!(struct ::middle::const_val::ConstEvalErr<'tcx> {
     span,
-    kind
+    data
 });
 
 impl_stable_hash_for!(struct ::middle::const_val::FrameInfo {
@@ -513,29 +513,6 @@ impl_stable_hash_for!(struct ::middle::const_val::FrameInfo {
     lint_root,
     location
 });
-
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
-for ::middle::const_val::ErrKind<'gcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        use middle::const_val::ErrKind::*;
-
-        mem::discriminant(self).hash_stable(hcx, hasher);
-
-        match *self {
-            TypeckError |
-            CouldNotResolve |
-            CheckMatchError => {
-                // nothing to do
-            }
-            Miri(ref err, ref trace) => {
-                err.hash_stable(hcx, hasher);
-                trace.hash_stable(hcx, hasher);
-            },
-        }
-    }
-}
 
 impl_stable_hash_for!(struct ty::ClosureSubsts<'tcx> { substs });
 impl_stable_hash_for!(struct ty::GeneratorSubsts<'tcx> { substs });
@@ -593,6 +570,8 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             ReadFromReturnPointer |
             UnimplementedTraitSelection |
             TypeckError |
+            ResolutionFailed |
+            CheckMatchError |
             DerefFunctionPointer |
             ExecuteMemory |
             OverflowNeg |

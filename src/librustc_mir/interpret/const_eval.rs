@@ -1,6 +1,5 @@
 use rustc::hir;
-use rustc::middle::const_val::{ConstEvalErr, ErrKind};
-use rustc::middle::const_val::ErrKind::{TypeckError, CheckMatchError};
+use rustc::middle::const_val::{ConstEvalErr};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, Ty, Instance};
 use rustc::ty::layout::{self, LayoutOf, Primitive};
@@ -18,7 +17,6 @@ use super::{Place, EvalContext, StackPopCleanup, ValTy, PlaceExtra, Memory, Memo
 
 use std::fmt;
 use std::error::Error;
-use rustc_data_structures::sync::Lrc;
 
 pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -106,7 +104,7 @@ pub fn value_to_const_value<'tcx>(
             let (frames, span) = ecx.generate_stacktrace(None);
             let err = ConstEvalErr {
                 span,
-                kind: ErrKind::Miri(err, frames).into(),
+                data: (err, frames).into(),
             };
             err.report_as_error(
                 ecx.tcx,
@@ -467,9 +465,8 @@ pub fn const_val_field<'a, 'tcx>(
     })();
     result.map_err(|err| {
         let (trace, span) = ecx.generate_stacktrace(None);
-        let err = ErrKind::Miri(err, trace);
         ConstEvalErr {
-            kind: err.into(),
+            data: (err, trace).into(),
             span,
         }
     })
@@ -540,7 +537,7 @@ pub fn const_eval_provider<'a, 'tcx>(
         // Do match-check before building MIR
         if tcx.check_match(def_id).is_err() {
             return Err(ConstEvalErr {
-                kind: Lrc::new(CheckMatchError),
+                data: (EvalErrorKind::CheckMatchError.into(), Vec::new()).into(),
                 span,
             });
         }
@@ -552,7 +549,7 @@ pub fn const_eval_provider<'a, 'tcx>(
         // Do not continue into miri if typeck errors occurred; it will fail horribly
         if tables.tainted_by_errors {
             return Err(ConstEvalErr {
-                kind: Lrc::new(TypeckError),
+                data: (EvalErrorKind::TypeckError.into(), Vec::new()).into(),
                 span,
             });
         }
@@ -566,9 +563,8 @@ pub fn const_eval_provider<'a, 'tcx>(
         Ok(value_to_const_value(&ecx, val, miri_ty))
     }).map_err(|err| {
         let (trace, span) = ecx.generate_stacktrace(None);
-        let err = ErrKind::Miri(err, trace);
         let err = ConstEvalErr {
-            kind: err.into(),
+            data: (err, trace).into(),
             span,
         };
         if tcx.is_static(def_id).is_some() {

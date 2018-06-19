@@ -17,7 +17,7 @@ use rustc::mir::{Constant, Literal, Location, Place, Mir, Operand, Rvalue, Local
 use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext};
-use rustc::middle::const_val::{ConstVal, ConstEvalErr, ErrKind};
+use rustc::middle::const_val::{ConstVal, ConstEvalErr};
 use rustc::ty::{TyCtxt, self, Instance};
 use rustc::mir::interpret::{Value, Scalar, GlobalId, EvalResult};
 use interpret::EvalContext;
@@ -145,7 +145,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 let (frames, span) = self.ecx.generate_stacktrace(None);
                 let err = ConstEvalErr {
                     span,
-                    kind: ErrKind::Miri(err, frames).into(),
+                    data: (err, frames).into(),
                 };
                 err.report_as_lint(
                     self.ecx.tcx,

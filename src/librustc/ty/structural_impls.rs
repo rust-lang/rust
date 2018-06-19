@@ -13,7 +13,7 @@
 //! hand, though we've recently added some macros (e.g.,
 //! `BraceStructLiftImpl!`) to help with the tedium.
 
-use middle::const_val::{self, ConstVal, ConstEvalErr};
+use middle::const_val::{ConstVal, ConstEvalErr};
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
@@ -462,10 +462,10 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ConstEvalErr<'a> {
     type Lifted = ConstEvalErr<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&*self.kind).map(|kind| {
+        tcx.lift(&self.data.0).map(|data| {
             ConstEvalErr {
                 span: self.span,
-                kind: Lrc::new(kind),
+                data: Lrc::new((data, self.data.1.clone())),
             }
         })
     }
@@ -577,6 +577,8 @@ impl<'a, 'tcx, O: Lift<'tcx>> Lift<'tcx> for interpret::EvalErrorKind<'a, O> {
             PathNotFound(ref v) => PathNotFound(v.clone()),
             UnimplementedTraitSelection => UnimplementedTraitSelection,
             TypeckError => TypeckError,
+            ResolutionFailed => ResolutionFailed,
+            CheckMatchError => CheckMatchError,
             ReferencedConstant(ref err) => ReferencedConstant(tcx.lift(err)?),
             OverflowNeg => OverflowNeg,
             Overflow(op) => Overflow(op),
@@ -584,20 +586,6 @@ impl<'a, 'tcx, O: Lift<'tcx>> Lift<'tcx> for interpret::EvalErrorKind<'a, O> {
             RemainderByZero => RemainderByZero,
             GeneratorResumedAfterReturn => GeneratorResumedAfterReturn,
             GeneratorResumedAfterPanic => GeneratorResumedAfterPanic,
-        })
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for const_val::ErrKind<'a> {
-    type Lifted = const_val::ErrKind<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        use middle::const_val::ErrKind::*;
-
-        Some(match *self {
-            CouldNotResolve => CouldNotResolve,
-            TypeckError => TypeckError,
-            CheckMatchError => CheckMatchError,
-            Miri(ref e, ref frames) => return tcx.lift(e).map(|e| Miri(e, frames.clone())),
         })
     }
 }

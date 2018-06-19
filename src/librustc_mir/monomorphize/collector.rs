@@ -1209,15 +1209,12 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         match tcx.const_eval(param_env.and(cid)) {
             Ok(val) => collect_const(tcx, val, instance.substs, output),
             Err(err) => {
-                use rustc::middle::const_val::ErrKind;
                 use rustc::mir::interpret::EvalErrorKind;
-                if let ErrKind::Miri(ref miri, ..) = *err.kind {
-                    if let EvalErrorKind::ReferencedConstant(_) = miri.kind {
-                        err.report_as_error(
-                            tcx.at(mir.promoted[i].span),
-                            "erroneous constant used",
-                        );
-                    }
+                if let EvalErrorKind::ReferencedConstant(_) = err.data.0.kind {
+                    err.report_as_error(
+                        tcx.at(mir.promoted[i].span),
+                        "erroneous constant used",
+                    );
                 }
             },
         }

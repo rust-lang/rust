@@ -285,10 +285,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             instance,
             promoted: None,
         };
-        self.tcx.const_eval(ParamEnv::reveal_all().and(gid)).map_err(|_| {
+        self.tcx.const_eval(ParamEnv::reveal_all().and(gid)).map_err(|err| {
             // no need to report anything, the const_eval call takes care of that for statics
             assert!(self.tcx.is_static(def_id).is_some());
-            EvalErrorKind::TypeckError.into()
+            EvalErrorKind::ReferencedConstant(err).into()
         }).map(|val| {
             let const_val = match val.val {
                 ConstVal::Value(val) => val,
