@@ -31,16 +31,12 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for ProvePredicate<'tcx> {
     type QueryKey = Self;
     type QueryResult = ();
 
-    fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::QueryResult, Self> {
+    fn prequery(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::QueryResult, Self::QueryKey> {
         Err(self)
     }
 
-    fn into_query_key(self) -> Self {
-        self
-    }
-
-    fn param_env(&self) -> ParamEnv<'tcx> {
-        self.param_env
+    fn param_env(key: &Self::QueryKey) -> ParamEnv<'tcx> {
+        key.param_env
     }
 
     fn perform_query(

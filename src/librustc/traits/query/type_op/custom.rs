@@ -9,9 +9,14 @@
 // except according to those terms.
 
 use infer::{InferCtxt, InferOk};
-use traits::query::Fallible;
-use ty::TyCtxt;
 use std::fmt;
+use traits::query::Fallible;
+
+use infer::canonical::query_result;
+use infer::canonical::QueryRegionConstraint;
+use std::rc::Rc;
+use syntax::codemap::DUMMY_SP;
+use traits::{ObligationCause, TraitEngine};
 
 pub struct CustomTypeOp<F, G> {
     closure: F,
@@ -38,12 +43,18 @@ where
 {
     type Output = R;
 
-    fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::Output, Self> {
-        Err(self)
-    }
+    /// Processes the operation and all resulting obligations,
+    /// returning the final result along with any region constraints
+    /// (they will be given over to the NLL region solver).
+    fn fully_perform(
+        self,
+        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+    ) -> Fallible<(Self::Output, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>)> {
+        if cfg!(debug_assertions) {
+            info!("fully_perform({:?})", self);
+        }
 
-    fn perform(self, infcx: &InferCtxt<'_, 'gcx, 'tcx>) -> Fallible<InferOk<'tcx, R>> {
-        Ok((self.closure)(infcx)?)
+        scrape_region_constraints(infcx, || Ok((self.closure)(infcx)?))
     }
 }
 
@@ -53,5 +64,37 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", (self.description)())
+    }
+}
+
+/// Executes `op` and then scrapes out all the "old style" region
+/// constraints that result, creating query-region-constraints.
+fn scrape_region_constraints<'gcx, 'tcx, R>(
+    infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+    op: impl FnOnce() -> Fallible<InferOk<'tcx, R>>,
+) -> Fallible<(R, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>)> {
+    let mut fulfill_cx = TraitEngine::new(infcx.tcx);
+    let dummy_body_id = ObligationCause::dummy().body_id;
+    let InferOk { value, obligations } = infcx.commit_if_ok(|_| op())?;
+    debug_assert!(obligations.iter().all(|o| o.cause.body_id == dummy_body_id));
+    fulfill_cx.register_predicate_obligations(infcx, obligations);
+    if let Err(e) = fulfill_cx.select_all_or_error(infcx) {
+        infcx.tcx.sess.diagnostic().delay_span_bug(
+            DUMMY_SP,
+            &format!("errors selecting obligation during MIR typeck: {:?}", e),
+        );
+    }
+
+    let region_obligations = infcx.take_registered_region_obligations();
+
+    let region_constraint_data = infcx.take_and_reset_region_constraints();
+
+    let outlives =
+        query_result::make_query_outlives(infcx.tcx, region_obligations, &region_constraint_data);
+
+    if outlives.is_empty() {
+        Ok((value, None))
+    } else {
+        Ok((value, Some(Rc::new(outlives))))
     }
 }

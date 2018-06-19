@@ -36,7 +36,7 @@ where
     type QueryKey = Self;
     type QueryResult = T;
 
-    fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<T, Self> {
+    fn prequery(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<T, Self> {
         if !self.value.has_projections() {
             Ok(self.value)
         } else {
@@ -44,12 +44,8 @@ where
         }
     }
 
-    fn into_query_key(self) -> Self {
-        self
-    }
-
-    fn param_env(&self) -> ParamEnv<'tcx> {
-        self.param_env
+    fn param_env(key: &Self::QueryKey) -> ParamEnv<'tcx> {
+        key.param_env
     }
 
     fn perform_query(

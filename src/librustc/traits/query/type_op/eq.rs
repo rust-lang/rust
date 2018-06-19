@@ -10,7 +10,7 @@
 
 use infer::canonical::{Canonical, CanonicalizedQueryResult, QueryResult};
 use traits::query::Fallible;
-use ty::{self, ParamEnv, Ty, TyCtxt};
+use ty::{ParamEnv, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Eq<'tcx> {
@@ -29,7 +29,7 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Eq<'tcx> {
     type QueryKey = Self;
     type QueryResult = ();
 
-    fn trivial_noop(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::QueryResult, Self> {
+    fn prequery(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::QueryResult, Self> {
         if self.a == self.b {
             Ok(())
         } else {
@@ -37,12 +37,8 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Eq<'tcx> {
         }
     }
 
-    fn into_query_key(self) -> Self {
-        self
-    }
-
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
+    fn param_env(key: &Self::QueryKey) -> ParamEnv<'tcx> {
+        key.param_env
     }
 
     fn perform_query(

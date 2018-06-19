@@ -17,7 +17,6 @@
 //!
 //! [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html
 
-use either::Either;
 use infer::canonical::substitute::substitute_value;
 use infer::canonical::{
     Canonical, CanonicalVarKind, CanonicalVarValues, CanonicalizedQueryResult, Certainty,
@@ -29,7 +28,6 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 use std::fmt::Debug;
-use std::iter::once;
 use syntax::ast;
 use traits::query::NoSolution;
 use traits::{FulfillmentContext, TraitEngine};
@@ -191,9 +189,11 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn instantiate_nll_query_result_and_region_obligations<R>(
         &self,
         cause: &ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         original_values: &CanonicalVarValues<'tcx>,
         query_result: &Canonical<'tcx, QueryResult<'tcx, R>>,
-    ) -> Vec<QueryRegionConstraint<'tcx>>
+        output_query_region_constraints: &mut Vec<QueryRegionConstraint<'tcx>>,
+    ) -> InferResult<'tcx, R>
     where
         R: Debug + TypeFoldable<'tcx>,
     {
@@ -210,52 +210,59 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         // Compute `QueryRegionConstraint` values that unify each of
         // the original values `v_o` that was canonicalized into a
         // variable...
-        let qrc_from_unify = original_values.var_values.iter_enumerated().flat_map(
-            |(index, original_value)| {
-                // ...with the value `v_r` of that variable from the query.
-                let result_value =
-                    query_result
-                        .substitute_projected(self.tcx, &result_subst, |v| &v.var_values[index]);
-                match (original_value.unpack(), result_value.unpack()) {
-                    (
-                        UnpackedKind::Lifetime(ty::ReErased),
-                        UnpackedKind::Lifetime(ty::ReErased),
-                    ) => {
-                        // no action needed
-                        Either::Left(None.into_iter())
-                    }
+        let mut obligations = vec![];
 
-                    (UnpackedKind::Lifetime(v_o), UnpackedKind::Lifetime(v_r)) => {
-                        // To make `v_o = v_r`, we emit `v_o: v_r` and `v_r: v_o`.
-                        Either::Right(
-                            once(ty::OutlivesPredicate(v_o.into(), v_r))
-                                .chain(once(ty::OutlivesPredicate(v_r.into(), v_o)))
-                                .map(ty::Binder::dummy),
-                        )
-                    }
+        for (index, original_value) in original_values.var_values.iter_enumerated() {
+            // ...with the value `v_r` of that variable from the query.
+            let result_value = query_result
+                .substitute_projected(self.tcx, &result_subst, |v| &v.var_values[index]);
+            match (original_value.unpack(), result_value.unpack()) {
+                (UnpackedKind::Lifetime(ty::ReErased), UnpackedKind::Lifetime(ty::ReErased)) => {
+                    // no action needed
+                }
 
-                    (UnpackedKind::Type(_), _) | (_, UnpackedKind::Type(_)) => {
-                        // in NLL queries, we do not expect `type` results.
-                        bug!(
-                            "unexpected type in NLL query: cannot unify {:?} and {:?}",
-                            original_value,
-                            result_value,
-                        );
+                (UnpackedKind::Lifetime(v_o), UnpackedKind::Lifetime(v_r)) => {
+                    // To make `v_o = v_r`, we emit `v_o: v_r` and `v_r: v_o`.
+                    if v_o != v_r {
+                        output_query_region_constraints
+                            .push(ty::Binder::dummy(ty::OutlivesPredicate(v_o.into(), v_r)));
+                        output_query_region_constraints
+                            .push(ty::Binder::dummy(ty::OutlivesPredicate(v_r.into(), v_o)));
                     }
                 }
-            },
-        );
+
+                (UnpackedKind::Type(v1), UnpackedKind::Type(v2)) => {
+                    let ok = self.at(cause, param_env).eq(v1, v2)?;
+                    obligations.extend(ok.into_obligations());
+                }
+
+                _ => {
+                    bug!(
+                        "kind mismatch, cannot unify {:?} and {:?}",
+                        original_value,
+                        result_value
+                    );
+                }
+            }
+        }
 
         // ...also include the other query region constraints from the query.
-        let qrc_from_result = query_result.value.region_constraints.iter().map(|r_c| {
-            r_c.map_bound(|ty::OutlivesPredicate(k1, r2)| {
+        output_query_region_constraints.reserve(query_result.value.region_constraints.len());
+        for r_c in query_result.value.region_constraints.iter() {
+            output_query_region_constraints.push(r_c.map_bound(|ty::OutlivesPredicate(k1, r2)| {
                 let k1 = substitute_value(self.tcx, &result_subst, &k1);
                 let r2 = substitute_value(self.tcx, &result_subst, &r2);
                 ty::OutlivesPredicate(k1, r2)
-            })
-        });
+            }));
+        }
 
-        qrc_from_unify.chain(qrc_from_result).collect()
+        let user_result: R =
+            query_result.substitute_projected(self.tcx, &result_subst, |q_r| &q_r.value);
+
+        Ok(InferOk {
+            value: user_result,
+            obligations,
+        })
     }
 
     /// Given the original values and the (canonicalized) result from

@@ -36,20 +36,16 @@ where
     type QueryKey = ParamEnvAnd<'tcx, Ty<'tcx>>;
     type QueryResult = DropckOutlivesResult<'tcx>;
 
-    fn trivial_noop(self, tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::QueryResult, Self> {
+    fn prequery(self, tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::QueryResult, Self::QueryKey> {
         if trivial_dropck_outlives(tcx, self.dropped_ty) {
             Ok(DropckOutlivesResult::default())
         } else {
-            Err(self)
+            Err(self.param_env.and(self.dropped_ty))
         }
     }
 
-    fn param_env(&self) -> ParamEnv<'tcx> {
-        self.param_env
-    }
-
-    fn into_query_key(self) -> Self::QueryKey {
-        self.param_env.and(self.dropped_ty)
+    fn param_env(key: &Self::QueryKey) -> ParamEnv<'tcx> {
+        key.param_env
     }
 
     fn perform_query(
