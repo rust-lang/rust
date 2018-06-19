@@ -1889,24 +1889,23 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_lifetime(&mut self, l: &Lifetime) -> hir::Lifetime {
         let span = l.ident.span;
-        match self.lower_ident(l.ident) {
-            x if x == "'static" => self.new_named_lifetime(l.id, span, hir::LifetimeName::Static),
+        let name = match self.lower_ident(l.ident) {
+            x if x == "'static" => hir::LifetimeName::Static,
             x if x == "'_" => match self.anonymous_lifetime_mode {
                 AnonymousLifetimeMode::CreateParameter => {
                     let fresh_name = self.collect_fresh_in_band_lifetime(span);
-                    self.new_named_lifetime(l.id, span, hir::LifetimeName::Param(fresh_name))
+                    hir::LifetimeName::Param(fresh_name)
                 }
 
-                AnonymousLifetimeMode::PassThrough => {
-                    self.new_named_lifetime(l.id, span, hir::LifetimeName::Underscore)
-                }
+                AnonymousLifetimeMode::PassThrough => hir::LifetimeName::Underscore,
             },
             name => {
                 self.maybe_collect_in_band_lifetime(span, name);
                 let param_name = ParamName::Plain(name);
-                self.new_named_lifetime(l.id, span, hir::LifetimeName::Param(param_name))
+                hir::LifetimeName::Param(param_name)
             }
-        }
+        };
+        self.new_named_lifetime(l.id, span, name)
     }
 
     fn new_named_lifetime(
