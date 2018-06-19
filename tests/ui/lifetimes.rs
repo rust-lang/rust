@@ -53,6 +53,10 @@ fn fn_bound_2<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>
     where for<'x> F: Fn(Lt<'x, I>) -> Lt<'x, I>
 { unreachable!() }
 
+fn fn_bound_3<'a, F: FnOnce(&'a ())>(x: &'a (), f: F) {} // no error, referenced
+
+fn fn_bound_4<'a, F: FnOnce() -> &'a ()>(x: &'a (), f: F) {} // no error, referenced
+
 struct X {
     x: u8,
 }

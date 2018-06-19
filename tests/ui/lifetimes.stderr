@@ -45,45 +45,45 @@ error: explicit lifetimes given in parameter types where they could be elided
    | |__________________^
 
 error: explicit lifetimes given in parameter types where they could be elided
-  --> $DIR/lifetimes.rs:61:5
+  --> $DIR/lifetimes.rs:65:5
    |
-61 |     fn self_and_out<'s>(&'s self) -> &'s u8 { &self.x }
+65 |     fn self_and_out<'s>(&'s self) -> &'s u8 { &self.x }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: explicit lifetimes given in parameter types where they could be elided
-  --> $DIR/lifetimes.rs:65:5
+  --> $DIR/lifetimes.rs:69:5
    |
-65 |     fn distinct_self_and_in<'s, 't>(&'s self, _x: &'t u8) { }
+69 |     fn distinct_self_and_in<'s, 't>(&'s self, _x: &'t u8) { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: explicit lifetimes given in parameter types where they could be elided
-  --> $DIR/lifetimes.rs:81:1
+  --> $DIR/lifetimes.rs:85:1
    |
-81 | fn struct_with_lt<'a>(_foo: Foo<'a>) -> &'a str { unimplemented!() }
+85 | fn struct_with_lt<'a>(_foo: Foo<'a>) -> &'a str { unimplemented!() }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: explicit lifetimes given in parameter types where they could be elided
-   --> $DIR/lifetimes.rs:101:1
-    |
-101 | fn trait_obj_elided2<'a>(_arg: &'a Drop) -> &'a str { unimplemented!() }
-    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: explicit lifetimes given in parameter types where they could be elided
    --> $DIR/lifetimes.rs:105:1
     |
-105 | fn alias_with_lt<'a>(_foo: FooAlias<'a>) -> &'a str { unimplemented!() }
+105 | fn trait_obj_elided2<'a>(_arg: &'a Drop) -> &'a str { unimplemented!() }
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: explicit lifetimes given in parameter types where they could be elided
-   --> $DIR/lifetimes.rs:116:1
+   --> $DIR/lifetimes.rs:109:1
     |
-116 | fn named_input_elided_output<'a>(_arg: &'a str) -> &str { unimplemented!() }
-    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+109 | fn alias_with_lt<'a>(_foo: FooAlias<'a>) -> &'a str { unimplemented!() }
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: explicit lifetimes given in parameter types where they could be elided
    --> $DIR/lifetimes.rs:120:1
     |
-120 | fn trait_bound_ok<'a, T: WithLifetime<'static>>(_: &'a u8, _: T) { unimplemented!() }
+120 | fn named_input_elided_output<'a>(_arg: &'a str) -> &str { unimplemented!() }
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit lifetimes given in parameter types where they could be elided
+   --> $DIR/lifetimes.rs:124:1
+    |
+124 | fn trait_bound_ok<'a, T: WithLifetime<'static>>(_: &'a u8, _: T) { unimplemented!() }
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 14 previous errors
