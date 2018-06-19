@@ -632,7 +632,7 @@ impl Step for Tidy {
         if !builder.config.vendor {
             cmd.arg("--no-vendor");
         }
-        if builder.config.quiet_tests {
+        if !builder.config.verbose_tests {
             cmd.arg("--quiet");
         }
 
@@ -1086,7 +1086,7 @@ impl Step for Compiletest {
             cmd.arg("--verbose");
         }
 
-        if builder.config.quiet_tests {
+        if !builder.config.verbose_tests {
             cmd.arg("--quiet");
         }
 
@@ -1397,10 +1397,10 @@ fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) -> bool
     let test_args = builder.config.cmd.test_args().join(" ");
     cmd.arg("--test-args").arg(test_args);
 
-    if builder.config.quiet_tests {
-        try_run_quiet(builder, &mut cmd)
-    } else {
+    if builder.config.verbose_tests {
         try_run(builder, &mut cmd)
+    } else {
+        try_run_quiet(builder, &mut cmd)
     }
 }
 
@@ -1632,7 +1632,7 @@ impl Step for Crate {
         cargo.arg("--");
         cargo.args(&builder.config.cmd.test_args());
 
-        if builder.config.quiet_tests {
+        if !builder.config.verbose_tests {
             cargo.arg("--quiet");
         }
 
@@ -1742,7 +1742,7 @@ impl Step for CrateRustdoc {
         cargo.arg("--");
         cargo.args(&builder.config.cmd.test_args());
 
-        if builder.config.quiet_tests {
+        if !builder.config.verbose_tests {
             cargo.arg("--quiet");
         }
 
