@@ -390,8 +390,42 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
         StatementKind::Assign(place, rval) => {
             let ty = place.ty(&fx.mir.local_decls, fx.tcx).to_ty(fx.tcx);
             let lval = trans_place(fx, place);
-            let rval = trans_rval(fx, rval);
-            do_memcpy(fx, lval, CValue::ByRef(rval), ty);
+            match rval {
+                Rvalue::Use(operand) => {
+                    let val = trans_operand(fx, operand);
+                    do_memcpy(fx, lval, val, ty);
+                },
+                Rvalue::CheckedBinaryOp(bin_op, lhs, rhs) => {
+                    let ty = lhs.ty(&fx.mir.local_decls, fx.tcx);
+                    let lhs_ty = lhs.ty(&fx.mir.local_decls, fx.tcx);
+                    let lhs = trans_operand(fx, lhs).load_value(fx, lhs_ty);
+                    let rhs_ty = rhs.ty(&fx.mir.local_decls, fx.tcx);
+                    let rhs = trans_operand(fx, rhs).load_value(fx, rhs_ty);
+
+                    let res = match ty.sty {
+                        TypeVariants::TyUint(_) => {
+                            match bin_op {
+                                BinOp::Add => fx.bcx.ins().iadd(lhs, rhs),
+                                BinOp::Sub => fx.bcx.ins().isub(lhs, rhs),
+                                BinOp::Mul => fx.bcx.ins().imul(lhs, rhs),
+                                BinOp::Div => fx.bcx.ins().udiv(lhs, rhs),
+                                bin_op => unimplemented!("checked uint bin op {:?} {:?} {:?}", bin_op, lhs, rhs),
+                            }
+                        }
+                        _ => unimplemented!(),
+                    };
+                    do_memcpy(fx, lval, CValue::ByVal(res), ty);
+                }
+                Rvalue::Cast(CastKind::ReifyFnPointer, operand, ty) => {
+                    let operand = trans_operand(fx, operand);
+                    do_memcpy(fx, lval, operand, ty);
+                }
+                Rvalue::Cast(CastKind::UnsafeFnPointer, operand, ty) => {
+                    let operand = trans_operand(fx, operand);
+                    do_memcpy(fx, lval, operand, ty);
+                }
+                rval => unimplemented!("rval {:?}", rval),
+            }
         }
         StatementKind::StorageLive(_) | StatementKind::StorageDead(_) | StatementKind::Nop => {}
         _ => unimplemented!("stmt {:?}", stmt),
@@ -418,49 +452,6 @@ fn trans_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, place: &Place<'tcx>)
             }
         }
         place => unimplemented!("place {:?}", place),
-    }
-}
-
-fn trans_rval<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, rval: &Rvalue<'tcx>) -> Value {
-    match rval {
-        Rvalue::Use(operand) => {
-            let operand_ty = operand.ty(&fx.mir.local_decls, fx.tcx);
-            trans_operand(fx, operand).force_stack(fx, operand_ty)
-        },
-        Rvalue::CheckedBinaryOp(bin_op, lhs, rhs) => {
-            match bin_op {
-                BinOp::Mul => {
-                    let ty = lhs.ty(&fx.mir.local_decls, fx.tcx);
-                    let lhs_ty = lhs.ty(&fx.mir.local_decls, fx.tcx);
-                    let lhs = trans_operand(fx, lhs).load_value(fx, lhs_ty);
-                    let rhs_ty = rhs.ty(&fx.mir.local_decls, fx.tcx);
-                    let rhs = trans_operand(fx, rhs).load_value(fx, rhs_ty);
-                    let res = match ty.sty {
-                        TypeVariants::TyUint(_) => {
-                            fx.bcx.ins().imul(lhs, rhs)
-                        }
-                        _ => unimplemented!(),
-                    };
-                    let layout = fx.tcx.layout_of(ParamEnv::empty().and(rval.ty(&fx.mir.local_decls, fx.tcx))).unwrap();
-                    let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
-                        kind: StackSlotKind::ExplicitSlot,
-                        size: layout.size.bytes() as u32,
-                        offset: None,
-                    });
-                    fx.bcx.ins().stack_store(res, stack_slot, 1);
-                    fx.bcx.ins().stack_addr(types::I64, stack_slot, 1)
-                }
-                bin_op => unimplemented!("checked bin op {:?} {:?} {:?}", bin_op, lhs, rhs),
-            }
-        }
-        Rvalue::Cast(CastKind::ReifyFnPointer, operand, ty) => {
-            let operand = trans_operand(fx, operand);
-            operand.force_stack(fx, ty)
-        }
-        Rvalue::Cast(CastKind::UnsafeFnPointer, operand, ty) => {
-            trans_operand(fx, operand).force_stack(fx, ty)
-        }
-        rval => unimplemented!("rval {:?}", rval),
     }
 }
 
