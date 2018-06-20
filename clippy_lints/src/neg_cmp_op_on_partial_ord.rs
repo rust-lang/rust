@@ -1,7 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
 
-use crate::utils::{self, paths};
+use crate::utils::{self, paths, span_lint, in_external_macro};
 
 /// **What it does:**
 /// Checks for the usage of negated comparision operators on types which only implement
@@ -53,6 +53,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
 
+            if !in_external_macro(cx, expr.span);
             if let Expr_::ExprUnary(UnOp::UnNot, ref inner) = expr.node;
             if let Expr_::ExprBinary(ref op, ref left, _) = inner.node;
             if let BinOp_::BiLe | BinOp_::BiGe | BinOp_::BiLt | BinOp_::BiGt = op.node;
@@ -78,7 +79,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {
                 };
 
                 if implements_partial_ord && !implements_ord {
-                    cx.span_lint(
+                    span_lint(
+                        cx,
                         NEG_CMP_OP_ON_PARTIAL_ORD,
                         expr.span,
                         "The use of negated comparision operators on partially orded \
