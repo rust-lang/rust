@@ -161,16 +161,6 @@ pub struct SelfProfiler {
     current_timer: Instant,
 }
 
-pub struct ProfilerActivity<'a>(ProfileCategory, &'a mut SelfProfiler);
-
-impl<'a> Drop for ProfilerActivity<'a> {
-    fn drop(&mut self) {
-        let ProfilerActivity (category, profiler) = self;
-
-        profiler.end_activity(*category);
-    }
-}
-
 impl SelfProfiler {
     pub fn new() -> SelfProfiler {
         let mut profiler = SelfProfiler {
@@ -280,11 +270,5 @@ impl SelfProfiler {
                         compilation_options);
 
         fs::write("self_profiler_results.json", json).unwrap();
-    }
-
-    pub fn record_activity<'a>(&'a mut self, category: ProfileCategory) -> ProfilerActivity<'a> {
-        self.start_activity(category);
-
-        ProfilerActivity(category, self)
     }
 }
