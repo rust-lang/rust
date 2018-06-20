@@ -109,14 +109,4 @@ impl fmt::Debug for OutlivesConstraint {
     }
 }
 
-/// Constraints that are considered interesting can be categorized to
-/// determine why they are interesting.
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
-crate enum ConstraintCategory {
-    Assignment,
-    CallArgument,
-    Cast,
-    Other,
-}
-
 newtype_index!(ConstraintIndex { DEBUG_FORMAT = "ConstraintIndex({})" });
