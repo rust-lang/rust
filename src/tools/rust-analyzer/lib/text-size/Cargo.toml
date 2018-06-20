@@ -1,0 +1,11 @@
+[package]
+name = "text_unit"
+version = "0.1.0"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+description = "Newtypes for text offsets"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/matklad/text_unit"
+documentation = "https://docs.rs/text_unit"
+
+[dependencies]
+serde = { version = "1", optional = true }
