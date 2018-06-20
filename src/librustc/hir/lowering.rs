@@ -1153,18 +1153,12 @@ impl<'a> LoweringContext<'a> {
                             t.span,
                         );
 
-                        // Pull a new definition from the ether
                         let exist_ty_def_index = self
                             .resolver
                             .definitions()
-                            .create_def_with_parent(
-                            fn_def_id.index,
-                            def_node_id,
-                            DefPathData::ExistentialImplTrait,
-                            DefIndexAddressSpace::High,
-                            Mark::root(),
-                            exist_ty_span,
-                        );
+                            .opt_def_index(def_node_id)
+                            .unwrap();
+
 
                         // the `t` is just for printing debug messages
                         self.allocate_hir_id_counter(def_node_id, t);
@@ -1227,14 +1221,11 @@ impl<'a> LoweringContext<'a> {
                     ImplTraitContext::Universal(def_id, in_band_ty_params) => {
                         self.lower_node_id(def_node_id);
                         // Add a definition for the in-band TyParam
-                        let def_index = self.resolver.definitions().create_def_with_parent(
-                            def_id.index,
-                            def_node_id,
-                            DefPathData::UniversalImplTrait,
-                            DefIndexAddressSpace::High,
-                            Mark::root(),
-                            span,
-                        );
+                        let def_index = self
+                            .resolver
+                            .definitions()
+                            .opt_def_index(def_node_id)
+                            .unwrap();
 
                         let hir_bounds = self.lower_bounds(
                             bounds,
