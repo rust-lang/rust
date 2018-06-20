@@ -1050,7 +1050,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             this.report_borrowed_value_does_not_live_long_enough(
                                 context,
                                 borrow,
-                                place_span.1,
+                                place_span,
+                                Some(kind),
                             );
                         }
                         WriteKind::Mutate => {
@@ -1328,7 +1329,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             self.report_borrowed_value_does_not_live_long_enough(
                 context,
                 borrow,
-                span,
+                (place, span),
+                None,
             )
         }
     }

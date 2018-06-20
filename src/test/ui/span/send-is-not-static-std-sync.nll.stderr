@@ -63,6 +63,8 @@ LL |     }
 ...
 LL | }
    | - borrow later used here, when `tx` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
 
 error: aborting due to 6 previous errors
 

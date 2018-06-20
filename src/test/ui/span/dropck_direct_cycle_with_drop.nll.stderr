@@ -9,6 +9,8 @@ LL | }
    | |
    | borrowed value only lives until here
    | borrow later used here, when `d1` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
 
 error[E0597]: `d2` does not live long enough
   --> $DIR/dropck_direct_cycle_with_drop.rs:46:19
@@ -21,6 +23,8 @@ LL | }
    | |
    | borrowed value only lives until here
    | borrow later used here, when `d1` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
 
 error: aborting due to 2 previous errors
 
