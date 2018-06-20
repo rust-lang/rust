@@ -1179,14 +1179,11 @@ impl<'a> LoweringContext<'a> {
                     ImplTraitContext::Universal(def_id) => {
                         self.lower_node_id(def_node_id);
                         // Add a definition for the in-band TyParam
-                        let def_index = self.resolver.definitions().create_def_with_parent(
-                            def_id.index,
-                            def_node_id,
-                            DefPathData::UniversalImplTrait,
-                            DefIndexAddressSpace::High,
-                            Mark::root(),
-                            span,
-                        );
+                        let def_index = self
+                            .resolver
+                            .definitions()
+                            .opt_def_index(def_node_id)
+                            .unwrap();
 
                         let hir_bounds = self.lower_param_bounds(bounds, itctx);
                         // Set the name to `impl Bound1 + Bound2`
@@ -1254,18 +1251,12 @@ impl<'a> LoweringContext<'a> {
             span,
         );
 
-        // Pull a new definition from the ether
         let exist_ty_def_index = self
             .resolver
             .definitions()
-            .create_def_with_parent(
-            fn_def_id.index,
-            exist_ty_node_id,
-            DefPathData::ExistentialImplTrait,
-            DefIndexAddressSpace::High,
-            Mark::root(),
-            exist_ty_span,
-        );
+            .opt_def_index(exist_ty_node_id)
+            .unwrap();
+
 
         self.allocate_hir_id_counter(exist_ty_node_id, &"existential impl trait");
 

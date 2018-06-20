@@ -302,6 +302,9 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     fn visit_ty(&mut self, ty: &'a Ty) {
         match ty.node {
             TyKind::Mac(..) => return self.visit_macro_invoc(ty.id),
+            TyKind::ImplTrait(node_id, _) => {
+                self.create_def(node_id, DefPathData::ImplTrait, REGULAR_SPACE, ty.span);
+            }
             _ => {}
         }
         visit::walk_ty(self, ty);

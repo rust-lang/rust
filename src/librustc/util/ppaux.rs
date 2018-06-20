@@ -291,8 +291,7 @@ impl PrintContext {
                     DefPathData::Field(_) |
                     DefPathData::StructCtor |
                     DefPathData::AnonConst |
-                    DefPathData::ExistentialImplTrait |
-                    DefPathData::UniversalImplTrait |
+                    DefPathData::ImplTrait |
                     DefPathData::GlobalMetaData(_) => {
                         // if we're making a symbol for something, there ought
                         // to be a value or type-def or something in there
