@@ -1789,7 +1789,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
     fn visit_fn_like_elision(
         &mut self,
-        inputs: &'tcx [P<hir::Ty>],
+        inputs: &'tcx [hir::Ty],
         output: Option<&'tcx P<hir::Ty>>,
     ) {
         debug!("visit_fn_like_elision: enter");

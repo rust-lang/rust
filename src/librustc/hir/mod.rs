@@ -412,7 +412,7 @@ impl GenericArgs {
         self.args.is_empty() && self.bindings.is_empty() && !self.parenthesized
     }
 
-    pub fn inputs(&self) -> &[P<Ty>] {
+    pub fn inputs(&self) -> &[Ty] {
         if self.parenthesized {
             for arg in &self.args {
                 match arg {
@@ -1660,7 +1660,7 @@ pub enum Ty_ {
     /// The never type (`!`)
     TyNever,
     /// A tuple (`(A, B, C, D,...)`)
-    TyTup(HirVec<P<Ty>>),
+    TyTup(HirVec<Ty>),
     /// A path to a type definition (`module::module::...::Type`), or an
     /// associated type, e.g. `<Vec<T> as Trait>::Type` or `<T>::Target`.
     ///
@@ -1721,7 +1721,7 @@ pub struct Arg {
 /// Represents the header (not the body) of a function declaration
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct FnDecl {
-    pub inputs: HirVec<P<Ty>>,
+    pub inputs: HirVec<Ty>,
     pub output: FunctionRetTy,
     pub variadic: bool,
     /// True if this function has an `self`, `&self` or `&mut self` receiver
