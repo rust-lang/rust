@@ -61,6 +61,4 @@ chalk-engine = { version = "0.6.0", default-features=false }
 #        later crate stop compiling. If you can remove this and everything
 #        compiles, then please feel free to do so!
 flate2 = "1.0"
-tempdir = "0.3"
-
-
+tempfile = "3.0"
