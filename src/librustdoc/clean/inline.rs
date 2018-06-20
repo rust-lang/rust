@@ -104,7 +104,7 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name, visited: &mut FxHa
         // separately
         Def::Macro(did, MacroKind::Bang) => {
             record_extern_fqn(cx, did, clean::TypeKind::Macro);
-            clean::MacroItem(build_macro(cx, did))
+            clean::MacroItem(build_macro(cx, did, name))
         }
         _ => return None,
     };
@@ -463,7 +463,7 @@ fn build_static(cx: &DocContext, did: DefId, mutable: bool) -> clean::Static {
     }
 }
 
-fn build_macro(cx: &DocContext, did: DefId) -> clean::Macro {
+fn build_macro(cx: &DocContext, did: DefId, name: ast::Name) -> clean::Macro {
     let imported_from = cx.tcx.original_crate_name(did.krate);
     let def = match cx.cstore.load_macro_untracked(did, cx.sess()) {
         LoadedMacro::MacroDef(macro_def) => macro_def,
@@ -479,7 +479,7 @@ fn build_macro(cx: &DocContext, did: DefId) -> clean::Macro {
     };
 
     let source = format!("macro_rules! {} {{\n{}}}",
-                         def.ident.name.clean(cx),
+                         name.clean(cx),
                          matchers.iter().map(|span| {
                              format!("    {} => {{ ... }};\n", span.to_src(cx))
                          }).collect::<String>());
