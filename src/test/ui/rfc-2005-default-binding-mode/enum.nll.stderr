@@ -1,26 +1,20 @@
-error[E0594]: cannot assign to data in a `&` reference
+error[E0594]: cannot assign to `*x` which is behind a `&` reference
   --> $DIR/enum.rs:19:5
    |
-LL |     let Wrap(x) = &Wrap(3);
-   |              - help: consider changing this to be a mutable reference: `&mut`
 LL |     *x += 1; //~ ERROR cannot assign to immutable
-   |     ^^^^^^^
+   |     ^^^^^^^ cannot assign
 
-error[E0594]: cannot assign to data in a `&` reference
+error[E0594]: cannot assign to `*x` which is behind a `&` reference
   --> $DIR/enum.rs:23:9
    |
-LL |     if let Some(x) = &Some(3) {
-   |                 - help: consider changing this to be a mutable reference: `&mut`
 LL |         *x += 1; //~ ERROR cannot assign to immutable
-   |         ^^^^^^^
+   |         ^^^^^^^ cannot assign
 
-error[E0594]: cannot assign to data in a `&` reference
+error[E0594]: cannot assign to `*x` which is behind a `&` reference
   --> $DIR/enum.rs:29:9
    |
-LL |     while let Some(x) = &Some(3) {
-   |                    - help: consider changing this to be a mutable reference: `&mut`
 LL |         *x += 1; //~ ERROR cannot assign to immutable
-   |         ^^^^^^^
+   |         ^^^^^^^ cannot assign
 
 error: aborting due to 3 previous errors
 

@@ -315,8 +315,9 @@ pub fn noop_fold_use_tree<T: Folder>(use_tree: UseTree, fld: &mut T) -> UseTree 
         span: fld.new_span(use_tree.span),
         prefix: fld.fold_path(use_tree.prefix),
         kind: match use_tree.kind {
-            UseTreeKind::Simple(rename) =>
-                UseTreeKind::Simple(rename.map(|ident| fld.fold_ident(ident))),
+            UseTreeKind::Simple(rename, id1, id2) =>
+                UseTreeKind::Simple(rename.map(|ident| fld.fold_ident(ident)),
+                                    fld.new_id(id1), fld.new_id(id2)),
             UseTreeKind::Glob => UseTreeKind::Glob,
             UseTreeKind::Nested(items) => UseTreeKind::Nested(items.move_map(|(tree, id)| {
                 (fld.fold_use_tree(tree), fld.new_id(id))

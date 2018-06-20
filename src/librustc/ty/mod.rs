@@ -44,7 +44,7 @@ use std::cmp::{self, Ordering};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{self, Lrc, ParallelIterator, par_iter};
 use std::slice;
 use std::vec::IntoIter;
 use std::mem;
@@ -60,7 +60,7 @@ use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
 
 use hir;
 
-pub use self::sty::{Binder, CanonicalVar, DebruijnIndex};
+pub use self::sty::{Binder, CanonicalVar, DebruijnIndex, INNERMOST};
 pub use self::sty::{FnSig, GenSig, PolyFnSig, PolyGenSig};
 pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
 pub use self::sty::{ClosureSubsts, GeneratorSubsts, UpvarSubsts, TypeAndMut};
@@ -2436,6 +2436,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 .map(move |&body_id| self.hir.body_owner_def_id(body_id))
     }
 
+    pub fn par_body_owners<F: Fn(DefId) + sync::Sync + sync::Send>(self, f: F) {
+        par_iter(&self.hir.krate().body_ids).for_each(|&body_id| {
+            f(self.hir.body_owner_def_id(body_id))
+        });
+    }
+
     pub fn expr_span(self, id: NodeId) -> Span {
         match self.hir.find(id) {
             Some(hir_map::NodeExpr(e)) => {
@@ -2857,6 +2863,12 @@ fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option
 fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        def_id: DefId)
                        -> ParamEnv<'tcx> {
+
+    // The param_env of an existential type is its parent's param_env
+    if let Some(Def::Existential(_)) = tcx.describe_def(def_id) {
+        let parent = tcx.parent_def_id(def_id).expect("impl trait item w/o a parent");
+        return param_env(tcx, parent);
+    }
     // Compute the bounds on Self and the type parameters.
 
     let bounds = tcx.predicates_of(def_id).instantiate_identity(tcx);

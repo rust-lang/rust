@@ -365,6 +365,11 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 });
                 true
             }
+            hir_map::NodeStructCtor(_) if !glob => {
+                // struct constructors always show up alongside their struct definitions, we've
+                // already processed that so just discard this
+                true
+            }
             _ => false,
         };
         self.view_item_stack.remove(&def_node_id);
@@ -559,6 +564,9 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                     om.impls.push(i);
                 }
             },
+            hir::ItemExistential(_) => {
+                // FIXME(oli-obk): actually generate docs for real existential items
+            }
         }
     }
 

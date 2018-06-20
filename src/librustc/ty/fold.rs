@@ -65,7 +65,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
 
     /// True if `self` has any late-bound regions that are either
     /// bound by `binder` or bound by some binder outside of `binder`.
-    /// If `binder` is `ty::DebruijnIndex::INNERMOST`, this indicates whether
+    /// If `binder` is `ty::INNERMOST`, this indicates whether
     /// there are any late-bound regions that appear free.
     fn has_regions_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
         self.visit_with(&mut HasEscapingRegionsVisitor { outer_index: binder })
@@ -78,7 +78,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
 
     fn has_escaping_regions(&self) -> bool {
-        self.has_regions_bound_at_or_above(ty::DebruijnIndex::INNERMOST)
+        self.has_regions_bound_at_or_above(ty::INNERMOST)
     }
 
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
@@ -246,7 +246,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
               T: TypeFoldable<'tcx>,
     {
         value.visit_with(&mut RegionVisitor {
-            outer_index: ty::DebruijnIndex::INNERMOST,
+            outer_index: ty::INNERMOST,
             callback
         });
 
@@ -260,7 +260,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             /// ^          ^          ^     ^
             /// |          |          |     | here, would be shifted in 1
             /// |          |          | here, would be shifted in 2
-            /// |          | here, would be INNTERMOST shifted in by 1
+            /// |          | here, would be INNERMOST shifted in by 1
             /// | here, initially, binder would be INNERMOST
             /// ```
             ///
@@ -333,7 +333,7 @@ impl<'a, 'gcx, 'tcx> RegionFolder<'a, 'gcx, 'tcx> {
         RegionFolder {
             tcx,
             skipped_regions,
-            current_index: ty::DebruijnIndex::INNERMOST,
+            current_index: ty::INNERMOST,
             fold_region_fn,
         }
     }
@@ -495,7 +495,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let mut counter = 0;
         Binder::bind(self.replace_late_bound_regions(sig, |_| {
             counter += 1;
-            self.mk_region(ty::ReLateBound(ty::DebruijnIndex::INNERMOST, ty::BrAnon(counter)))
+            self.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(counter)))
         }).0)
     }
 }
@@ -507,7 +507,7 @@ impl<'a, 'gcx, 'tcx> RegionReplacer<'a, 'gcx, 'tcx> {
     {
         RegionReplacer {
             tcx,
-            current_index: ty::DebruijnIndex::INNERMOST,
+            current_index: ty::INNERMOST,
             fld_r,
             map: BTreeMap::default()
         }
@@ -542,7 +542,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
                     // that region should always use the INNERMOST
                     // debruijn index. Then we adjust it to the
                     // correct depth.
-                    assert_eq!(debruijn1, ty::DebruijnIndex::INNERMOST);
+                    assert_eq!(debruijn1, ty::INNERMOST);
                     self.tcx.mk_region(ty::ReLateBound(debruijn, br))
                 } else {
                     region
@@ -701,7 +701,7 @@ struct LateBoundRegionsCollector {
 impl LateBoundRegionsCollector {
     fn new(just_constrained: bool) -> Self {
         LateBoundRegionsCollector {
-            current_index: ty::DebruijnIndex::INNERMOST,
+            current_index: ty::INNERMOST,
             regions: FxHashSet(),
             just_constrained,
         }

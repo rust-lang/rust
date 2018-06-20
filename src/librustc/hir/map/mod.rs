@@ -170,6 +170,40 @@ impl<'hir> MapEntry<'hir> {
         })
     }
 
+    fn fn_decl(&self) -> Option<&FnDecl> {
+        match self {
+            EntryItem(_, _, ref item) => {
+                match item.node {
+                    ItemFn(ref fn_decl, _, _, _, _, _) => Some(&fn_decl),
+                    _ => None,
+                }
+            }
+
+            EntryTraitItem(_, _, ref item) => {
+                match item.node {
+                    TraitItemKind::Method(ref method_sig, _) => Some(&method_sig.decl),
+                    _ => None
+                }
+            }
+
+            EntryImplItem(_, _, ref item) => {
+                match item.node {
+                    ImplItemKind::Method(ref method_sig, _) => Some(&method_sig.decl),
+                    _ => None,
+                }
+            }
+
+            EntryExpr(_, _, ref expr) => {
+                match expr.node {
+                    ExprClosure(_, ref fn_decl, ..) => Some(&fn_decl),
+                    _ => None,
+                }
+            }
+
+            _ => None
+        }
+    }
+
     fn associated_body(self) -> Option<BodyId> {
         match self {
             EntryItem(_, _, item) => {
@@ -398,6 +432,7 @@ impl<'hir> Map<'hir> {
                     ItemFn(..) => Some(Def::Fn(def_id())),
                     ItemMod(..) => Some(Def::Mod(def_id())),
                     ItemGlobalAsm(..) => Some(Def::GlobalAsm(def_id())),
+                    ItemExistential(..) => Some(Def::Existential(def_id())),
                     ItemTy(..) => Some(Def::TyAlias(def_id())),
                     ItemEnum(..) => Some(Def::Enum(def_id())),
                     ItemStruct(..) => Some(Def::Struct(def_id())),
@@ -499,6 +534,14 @@ impl<'hir> Map<'hir> {
         // NB: intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
         self.forest.krate.body(id)
+    }
+
+    pub fn fn_decl(&self, node_id: ast::NodeId) -> Option<FnDecl> {
+        if let Some(entry) = self.find_entry(node_id) {
+            entry.fn_decl().map(|fd| fd.clone())
+        } else {
+            bug!("no entry for node_id `{}`", node_id)
+        }
     }
 
     /// Returns the `NodeId` that corresponds to the definition of
@@ -767,7 +810,7 @@ impl<'hir> Map<'hir> {
 
     /// Retrieve the NodeId for `id`'s parent item, or `id` itself if no
     /// parent item is in this map. The "parent item" is the closest parent node
-    /// in the AST which is recorded by the map and is an item, either an item
+    /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
     pub fn get_parent(&self, id: NodeId) -> NodeId {
         match self.walk_parent_nodes(id, |node| match *node {
@@ -1250,6 +1293,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemForeignMod(..) => "foreign mod",
                 ItemGlobalAsm(..) => "global asm",
                 ItemTy(..) => "ty",
+                ItemExistential(..) => "existential",
                 ItemEnum(..) => "enum",
                 ItemStruct(..) => "struct",
                 ItemUnion(..) => "union",

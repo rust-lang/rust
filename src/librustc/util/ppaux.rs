@@ -291,7 +291,8 @@ impl PrintContext {
                     DefPathData::Field(_) |
                     DefPathData::StructCtor |
                     DefPathData::AnonConst |
-                    DefPathData::ImplTrait |
+                    DefPathData::ExistentialImplTrait |
+                    DefPathData::UniversalImplTrait |
                     DefPathData::GlobalMetaData(_) => {
                         // if we're making a symbol for something, there ought
                         // to be a value or type-def or something in there
@@ -526,7 +527,7 @@ impl PrintContext {
                     ty::BrNamed(tcx.hir.local_def_id(CRATE_NODE_ID), name)
                 }
             };
-            tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::INNERMOST, br))
+            tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br))
         }).0;
         start_or_continue(f, "", "> ")?;
 

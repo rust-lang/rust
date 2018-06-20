@@ -593,11 +593,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err.emit();
     }
 
+    /// Reports an illegal reassignment; for example, an assignment to
+    /// (part of) a non-`mut` local that occurs potentially after that
+    /// local has already been initialized. `place` is the path being
+    /// assigned; `err_place` is a place providing a reason why
+    /// `place` is not mutable (e.g. the non-`mut` local `x` in an
+    /// assignment to `x.f`).
     pub(super) fn report_illegal_reassignment(
         &mut self,
         _context: Context,
         (place, span): (&Place<'tcx>, Span),
         assigned_span: Span,
+        err_place: &Place<'tcx>,
     ) {
         let is_arg = if let Place::Local(local) = place {
             if let LocalKind::Arg = self.mir.local_kind(*local) {
@@ -621,14 +628,21 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "cannot assign twice to immutable variable"
         };
         if span != assigned_span {
-            if is_arg {
-                err.span_label(assigned_span, "argument not declared as `mut`");
-            } else {
+            if !is_arg {
                 let value_msg = match self.describe_place(place) {
                     Some(name) => format!("`{}`", name),
                     None => "value".to_owned(),
                 };
                 err.span_label(assigned_span, format!("first assignment to {}", value_msg));
+            }
+        }
+        if let Place::Local(local) = err_place {
+            let local_decl = &self.mir.local_decls[*local];
+            if let Some(name) = local_decl.name {
+                if local_decl.can_be_made_mutable() {
+                    err.span_label(local_decl.source_info.span,
+                                   format!("consider changing this to `mut {}`", name));
+                }
             }
         }
         err.span_label(span, msg);

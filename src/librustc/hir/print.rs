@@ -58,6 +58,9 @@ pub trait PpAnn {
     fn post(&self, _state: &mut State, _node: AnnNode) -> io::Result<()> {
         Ok(())
     }
+    fn try_fetch_item(&self, _: ast::NodeId) -> Option<&hir::Item> {
+        None
+    }
 }
 
 pub struct NoAnn;
@@ -65,6 +68,9 @@ impl PpAnn for NoAnn {}
 pub const NO_ANN: &'static dyn PpAnn = &NoAnn;
 
 impl PpAnn for hir::Crate {
+    fn try_fetch_item(&self, item: ast::NodeId) -> Option<&hir::Item> {
+        Some(self.item(item))
+    }
     fn nested(&self, state: &mut State, nested: Nested) -> io::Result<()> {
         match nested {
             Nested::Item(id) => state.print_item(self.item(id.id)),
@@ -413,8 +419,14 @@ impl<'a> State<'a> {
                     self.print_lifetime(lifetime)?;
                 }
             }
-            hir::TyImplTraitExistential(ref existty, ref _lifetimes) => {
-                self.print_bounds("impl", &existty.bounds[..])?;
+            hir::TyImplTraitExistential(hir_id, _def_id, ref _lifetimes) => {
+                match self.ann.try_fetch_item(hir_id.id).map(|it| &it.node) {
+                    None => self.word_space("impl {{Trait}}")?,
+                    Some(&hir::ItemExistential(ref exist_ty)) => {
+                        self.print_bounds("impl", &exist_ty.bounds)?;
+                    },
+                    other => bug!("impl Trait pointed to {:#?}", other),
+                }
             }
             hir::TyArray(ref ty, ref length) => {
                 self.s.word("[")?;
@@ -633,6 +645,31 @@ impl<'a> State<'a> {
                 self.s.space()?;
                 self.word_space("=")?;
                 self.print_type(&ty)?;
+                self.s.word(";")?;
+                self.end()?; // end the outer ibox
+            }
+            hir::ItemExistential(ref exist) => {
+                self.ibox(indent_unit)?;
+                self.ibox(0)?;
+                self.word_nbsp(&visibility_qualified(&item.vis, "existential type"))?;
+                self.print_name(item.name)?;
+                self.print_generic_params(&exist.generics.params)?;
+                self.end()?; // end the inner ibox
+
+                self.print_where_clause(&exist.generics.where_clause)?;
+                self.s.space()?;
+                self.word_space(":")?;
+                let mut real_bounds = Vec::with_capacity(exist.bounds.len());
+                for b in exist.bounds.iter() {
+                    if let TraitTyParamBound(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
+                        self.s.space()?;
+                        self.word_space("for ?")?;
+                        self.print_trait_ref(&ptr.trait_ref)?;
+                    } else {
+                        real_bounds.push(b.clone());
+                    }
+                }
+                self.print_bounds(":", &real_bounds[..])?;
                 self.s.word(";")?;
                 self.end()?; // end the outer ibox
             }

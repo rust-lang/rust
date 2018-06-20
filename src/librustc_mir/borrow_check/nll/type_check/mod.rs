@@ -11,8 +11,10 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 #![allow(unreachable_code)]
 
+use borrow_check::location::LocationTable;
+use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::Cause;
-use borrow_check::nll::region_infer::ClosureRegionRequirementsExt;
+use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, OutlivesConstraint, TypeTest};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
@@ -20,17 +22,17 @@ use dataflow::MaybeInitializedPlaces;
 use rustc::hir::def_id::DefId;
 use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
 use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
+use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
-use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::*;
 use rustc::traits::query::NoSolution;
-use rustc::traits::{self, Normalized, TraitEngine};
+use rustc::traits::{self, ObligationCause, Normalized, TraitEngine};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
 use std::fmt;
-use syntax::ast;
+use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
 use transform::{MirPass, MirSource};
 use util::liveness::LivenessResults;
@@ -45,7 +47,7 @@ macro_rules! span_mirbug {
             $context.last_span,
             &format!(
                 "broken MIR in {:?} ({:?}): {}",
-                $context.body_id,
+                $context.mir_def_id,
                 $elem,
                 format_args!($($message)*),
             ),
@@ -62,6 +64,7 @@ macro_rules! span_mirbug_and_err {
     })
 }
 
+mod constraint_conversion;
 mod input_output;
 mod liveness;
 
@@ -100,19 +103,25 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     mir: &Mir<'tcx>,
     mir_def_id: DefId,
     universal_regions: &UniversalRegions<'tcx>,
+    location_table: &LocationTable,
     liveness: &LivenessResults,
+    all_facts: &mut Option<AllFacts>,
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) -> MirTypeckRegionConstraints<'tcx> {
-    let body_id = infcx.tcx.hir.as_local_node_id(mir_def_id).unwrap();
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     type_check_internal(
         infcx,
-        body_id,
+        mir_def_id,
         param_env,
         mir,
         &universal_regions.region_bound_pairs,
         Some(implicit_region_bound),
+        Some(BorrowCheckContext {
+            universal_regions,
+            location_table,
+            all_facts,
+        }),
         &mut |cx| {
             liveness::generate(cx, mir, liveness, flow_inits, move_data);
 
@@ -123,19 +132,22 @@ pub(crate) fn type_check<'gcx, 'tcx>(
 
 fn type_check_internal<'gcx, 'tcx>(
     infcx: &InferCtxt<'_, 'gcx, 'tcx>,
-    body_id: ast::NodeId,
+    mir_def_id: DefId,
     param_env: ty::ParamEnv<'gcx>,
     mir: &Mir<'tcx>,
     region_bound_pairs: &[(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: Option<ty::Region<'tcx>>,
+    borrowck_context: Option<BorrowCheckContext<'_, 'tcx>>,
     extra: &mut dyn FnMut(&mut TypeChecker<'_, 'gcx, 'tcx>),
 ) -> MirTypeckRegionConstraints<'tcx> {
     let mut checker = TypeChecker::new(
         infcx,
-        body_id,
+        mir_def_id,
         param_env,
         region_bound_pairs,
         implicit_region_bound,
+        borrowck_context,
+        mir,
     );
     let errors_reported = {
         let mut verifier = TypeVerifier::new(&mut checker, mir);
@@ -173,7 +185,7 @@ struct TypeVerifier<'a, 'b: 'a, 'gcx: 'b + 'tcx, 'tcx: 'b> {
     cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     last_span: Span,
-    body_id: ast::NodeId,
+    mir_def_id: DefId,
     errors_reported: bool,
 }
 
@@ -221,7 +233,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn new(cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
         TypeVerifier {
             mir,
-            body_id: cx.body_id,
+            mir_def_id: cx.mir_def_id,
             cx,
             last_span: mir.span,
             errors_reported: false,
@@ -300,7 +312,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
         debug!("sanitize_constant: expected_ty={:?}", expected_ty);
 
-        if let Err(terr) = self.cx
+        if let Err(terr) = self
+            .cx
             .eq_types(expected_ty, constant.ty, location.at_self())
         {
             span_mirbug!(
@@ -580,17 +593,25 @@ struct TypeChecker<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'gcx>,
     last_span: Span,
-    body_id: ast::NodeId,
+    mir_def_id: DefId,
     region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: Option<ty::Region<'tcx>>,
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
     constraints: MirTypeckRegionConstraints<'tcx>,
+    borrowck_context: Option<BorrowCheckContext<'a, 'tcx>>,
+    mir: &'a Mir<'tcx>,
+}
+
+struct BorrowCheckContext<'a, 'tcx: 'a> {
+    universal_regions: &'a UniversalRegions<'tcx>,
+    location_table: &'a LocationTable,
+    all_facts: &'a mut Option<AllFacts>,
 }
 
 /// A collection of region constraints that must be satisfied for the
 /// program to be considered well-typed.
 #[derive(Default)]
-pub(crate) struct MirTypeckRegionConstraints<'tcx> {
+crate struct MirTypeckRegionConstraints<'tcx> {
     /// In general, the type-checker is not responsible for enforcing
     /// liveness constraints; this job falls to the region inferencer,
     /// which performs a liveness analysis. However, in some limited
@@ -598,24 +619,11 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     /// not otherwise appear in the MIR -- in particular, the
     /// late-bound regions that it instantiates at call-sites -- and
     /// hence it must report on their liveness constraints.
-    pub liveness_set: Vec<(ty::Region<'tcx>, Location, Cause)>,
+    crate liveness_set: Vec<(ty::Region<'tcx>, Location, Cause)>,
 
-    /// During the course of type-checking, we will accumulate region
-    /// constraints due to performing subtyping operations or solving
-    /// traits. These are accumulated into this vector for later use.
-    pub outlives_sets: Vec<OutlivesSet<'tcx>>,
-}
+    crate outlives_constraints: Vec<OutlivesConstraint>,
 
-/// Outlives relationships between regions and types created at a
-/// particular point within the control-flow graph.
-pub struct OutlivesSet<'tcx> {
-    /// The locations associated with these constraints.
-    pub locations: Locations,
-
-    /// Constraints generated. In terms of the NLL RFC, when you have
-    /// a constraint `R1: R2 @ P`, the data in there specifies things
-    /// like `R1: R2`.
-    pub data: RegionConstraintData<'tcx>,
+    crate type_tests: Vec<TypeTest<'tcx>>,
 }
 
 /// The `Locations` type summarizes *where* region constraints are
@@ -667,7 +675,7 @@ pub enum Locations {
         /// NLL RFC, when you have a constraint `R1: R2 @ P`, this field
         /// is the `P` value.
         at_location: Location,
-    }
+    },
 }
 
 impl Locations {
@@ -689,37 +697,99 @@ impl Locations {
 impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn new(
         infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-        body_id: ast::NodeId,
+        mir_def_id: DefId,
         param_env: ty::ParamEnv<'gcx>,
         region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
         implicit_region_bound: Option<ty::Region<'tcx>>,
+        borrowck_context: Option<BorrowCheckContext<'a, 'tcx>>,
+        mir: &'a Mir<'tcx>,
     ) -> Self {
         TypeChecker {
             infcx,
             last_span: DUMMY_SP,
-            body_id,
+            mir_def_id,
             param_env,
             region_bound_pairs,
             implicit_region_bound,
+            borrowck_context,
+            mir,
             reported_errors: FxHashSet(),
             constraints: MirTypeckRegionConstraints::default(),
         }
     }
 
-    fn misc(&self, span: Span) -> traits::ObligationCause<'tcx> {
-        traits::ObligationCause::misc(span, self.body_id)
-    }
-
-    fn fully_perform_op<OP, R>(
+    /// Given some operation `op` that manipulates types, proves
+    /// predicates, or otherwise uses the inference context, executes
+    /// `op` and then executes all the further obligations that `op`
+    /// returns. This will yield a set of outlives constraints amongst
+    /// regions which are extracted and stored as having occured at
+    /// `locations`.
+    ///
+    /// **Any `rustc::infer` operations that might generate region
+    /// constraints should occur within this method so that those
+    /// constraints can be properly localized!**
+    fn fully_perform_op<R>(
         &mut self,
         locations: Locations,
-        op: OP,
-    ) -> Result<R, TypeError<'tcx>>
-    where
-        OP: FnOnce(&mut Self) -> InferResult<'tcx, R>,
-    {
+        describe_op: impl Fn() -> String,
+        op: impl FnOnce(&mut Self) -> InferResult<'tcx, R>,
+    ) -> Result<R, TypeError<'tcx>> {
+        let (r, opt_data) = self.fully_perform_op_and_get_region_constraint_data(
+            || format!("{} at {:?}", describe_op(), locations),
+            op,
+        )?;
+
+        if let Some(data) = opt_data {
+            self.push_region_constraints(locations, data);
+        }
+
+        Ok(r)
+    }
+
+    fn push_region_constraints(
+        &mut self,
+        locations: Locations,
+        data: Rc<RegionConstraintData<'tcx>>,
+    ) {
+        debug!(
+            "push_region_constraints: constraints generated at {:?} are {:#?}",
+            locations, data
+        );
+
+        if let Some(borrowck_context) = &mut self.borrowck_context {
+            constraint_conversion::ConstraintConversion::new(
+                self.mir,
+                borrowck_context.universal_regions,
+                borrowck_context.location_table,
+                &mut self.constraints.outlives_constraints,
+                &mut self.constraints.type_tests,
+                &mut borrowck_context.all_facts,
+            ).convert(locations, &data);
+        }
+    }
+
+    /// Helper for `fully_perform_op`, but also used on its own
+    /// sometimes to enable better caching: executes `op` fully (along
+    /// with resulting obligations) and returns the full set of region
+    /// obligations. If the same `op` were to be performed at some
+    /// other location, then the same set of region obligations would
+    /// be generated there, so this can be useful for caching.
+    fn fully_perform_op_and_get_region_constraint_data<R>(
+        &mut self,
+        describe_op: impl Fn() -> String,
+        op: impl FnOnce(&mut Self) -> InferResult<'tcx, R>,
+    ) -> Result<(R, Option<Rc<RegionConstraintData<'tcx>>>), TypeError<'tcx>> {
+        if cfg!(debug_assertions) {
+            info!(
+                "fully_perform_op_and_get_region_constraint_data({})",
+                describe_op(),
+            );
+        }
+
         let mut fulfill_cx = TraitEngine::new(self.infcx.tcx);
+        let dummy_body_id = ObligationCause::dummy().body_id;
         let InferOk { value, obligations } = self.infcx.commit_if_ok(|_| op(self))?;
+        debug_assert!(obligations.iter().all(|o| o.cause.body_id == dummy_body_id));
         fulfill_cx.register_predicate_obligations(self.infcx, obligations);
         if let Err(e) = fulfill_cx.select_all_or_error(self.infcx) {
             span_mirbug!(self, "", "errors selecting obligation: {:?}", e);
@@ -729,21 +799,15 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             self.region_bound_pairs,
             self.implicit_region_bound,
             self.param_env,
-            self.body_id,
+            dummy_body_id,
         );
 
         let data = self.infcx.take_and_reset_region_constraints();
-        if !data.is_empty() {
-            debug!(
-                "fully_perform_op: constraints generated at {:?} are {:#?}",
-                locations, data
-            );
-            self.constraints
-                .outlives_sets
-                .push(OutlivesSet { locations, data });
+        if data.is_empty() {
+            Ok((value, None))
+        } else {
+            Ok((value, Some(Rc::new(data))))
         }
-
-        Ok(value)
     }
 
     fn sub_types(
@@ -752,19 +816,37 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         sup: Ty<'tcx>,
         locations: Locations,
     ) -> UnitResult<'tcx> {
-        self.fully_perform_op(locations, |this| {
-            this.infcx
-                .at(&this.misc(this.last_span), this.param_env)
-                .sup(sup, sub)
-        })
+        // Micro-optimization.
+        if sub == sup {
+            return Ok(());
+        }
+
+        self.fully_perform_op(
+            locations,
+            || format!("sub_types({:?} <: {:?})", sub, sup),
+            |this| {
+                this.infcx
+                    .at(&ObligationCause::dummy(), this.param_env)
+                    .sup(sup, sub)
+            },
+        )
     }
 
     fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> UnitResult<'tcx> {
-        self.fully_perform_op(locations, |this| {
-            this.infcx
-                .at(&this.misc(this.last_span), this.param_env)
-                .eq(b, a)
-        })
+        // Micro-optimization.
+        if a == b {
+            return Ok(());
+        }
+
+        self.fully_perform_op(
+            locations,
+            || format!("eq_types({:?} = {:?})", a, b),
+            |this| {
+                this.infcx
+                    .at(&ObligationCause::dummy(), this.param_env)
+                    .eq(b, a)
+            },
+        )
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
@@ -819,7 +901,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             }
             StatementKind::UserAssertTy(ref c_ty, ref local) => {
                 let local_ty = mir.local_decls()[*local].ty;
-                let (ty, _) = self.infcx
+                let (ty, _) = self
+                    .infcx
                     .instantiate_canonical_with_fresh_inference_vars(stmt.source_info.span, c_ty);
                 debug!(
                     "check_stmt: user_assert_ty ty={:?} local_ty={:?}",
@@ -1431,9 +1514,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             };
             let operand_ty = operand.ty(mir, tcx);
-            if let Err(terr) =
-                self.sub_types(operand_ty, field_ty, location.at_self())
-            {
+            if let Err(terr) = self.sub_types(operand_ty, field_ty, location.at_self()) {
                 span_mirbug!(
                     self,
                     rvalue,
@@ -1487,9 +1568,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 if let Some(closure_region_requirements) =
                     tcx.mir_borrowck(*def_id).closure_requirements
                 {
+                    let dummy_body_id = ObligationCause::dummy().body_id;
                     closure_region_requirements.apply_requirements(
                         self.infcx,
-                        self.body_id,
+                        dummy_body_id,
                         location,
                         *def_id,
                         *substs,
@@ -1522,27 +1604,44 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn prove_predicates<T>(&mut self, predicates: T, location: Location)
     where
-        T: IntoIterator<Item = ty::Predicate<'tcx>>,
-        T::IntoIter: Clone,
+        T: IntoIterator<Item = ty::Predicate<'tcx>> + Clone,
     {
-        let predicates = predicates.into_iter();
+        let cause = ObligationCause::dummy();
+        let obligations: Vec<_> = predicates
+            .into_iter()
+            .map(|p| traits::Obligation::new(cause.clone(), self.param_env, p))
+            .collect();
+
+        // Micro-optimization
+        if obligations.is_empty() {
+            return;
+        }
+
+        // This intermediate vector is mildly unfortunate, in that we
+        // sometimes create it even when logging is disabled, but only
+        // if debug-info is enabled, and I doubt it is actually
+        // expensive. -nmatsakis
+        let predicates_vec: Vec<_> = if cfg!(debug_assertions) {
+            obligations.iter().map(|o| o.predicate).collect()
+        } else {
+            Vec::new()
+        };
 
         debug!(
             "prove_predicates(predicates={:?}, location={:?})",
-            predicates.clone().collect::<Vec<_>>(),
-            location,
+            predicates_vec, location,
         );
-        self.fully_perform_op(location.at_self(), |this| {
-            let cause = this.misc(this.last_span);
-            let obligations = predicates
-                .into_iter()
-                .map(|p| traits::Obligation::new(cause.clone(), this.param_env, p))
-                .collect();
-            Ok(InferOk {
-                value: (),
-                obligations,
-            })
-        }).unwrap()
+
+        self.fully_perform_op(
+            location.at_self(),
+            || format!("prove_predicates({:?})", predicates_vec),
+            |_this| {
+                Ok(InferOk {
+                    value: (),
+                    obligations,
+                })
+            },
+        ).unwrap()
     }
 
     fn typeck_mir(&mut self, mir: &Mir<'tcx>) {
@@ -1575,21 +1674,31 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     where
         T: fmt::Debug + TypeFoldable<'tcx>,
     {
+        // Micro-optimization: avoid work when we don't have to
+        if !value.has_projections() {
+            return value.clone();
+        }
+
         debug!("normalize(value={:?}, location={:?})", value, location);
-        self.fully_perform_op(location.to_locations(), |this| {
-            let Normalized { value, obligations } = this.infcx
-                .at(&this.misc(this.last_span), this.param_env)
-                .normalize(value)
-                .unwrap_or_else(|NoSolution| {
-                    span_bug!(
-                        this.last_span,
-                        "normalization of `{:?}` failed at {:?}",
-                        value,
-                        location,
-                    );
-                });
-            Ok(InferOk { value, obligations })
-        }).unwrap()
+        self.fully_perform_op(
+            location.to_locations(),
+            || format!("normalize(value={:?})", value),
+            |this| {
+                let Normalized { value, obligations } = this
+                    .infcx
+                    .at(&ObligationCause::dummy(), this.param_env)
+                    .normalize(value)
+                    .unwrap_or_else(|NoSolution| {
+                        span_bug!(
+                            this.last_span,
+                            "normalization of `{:?}` failed at {:?}",
+                            value,
+                            location,
+                        );
+                    });
+                Ok(InferOk { value, obligations })
+            },
+        ).unwrap()
     }
 }
 
@@ -1598,7 +1707,6 @@ pub struct TypeckMir;
 impl MirPass for TypeckMir {
     fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
         let def_id = src.def_id;
-        let id = tcx.hir.as_local_node_id(def_id).unwrap();
         debug!("run_pass: {:?}", def_id);
 
         // When NLL is enabled, the borrow checker runs the typeck
@@ -1614,7 +1722,16 @@ impl MirPass for TypeckMir {
         }
         let param_env = tcx.param_env(def_id);
         tcx.infer_ctxt().enter(|infcx| {
-            let _ = type_check_internal(&infcx, id, param_env, mir, &[], None, &mut |_| ());
+            let _ = type_check_internal(
+                &infcx,
+                def_id,
+                param_env,
+                mir,
+                &[],
+                None,
+                None,
+                &mut |_| (),
+            );
 
             // For verification purposes, we just ignore the resulting
             // region constraint sets. Not our problem. =)

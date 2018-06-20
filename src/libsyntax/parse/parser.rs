@@ -2469,7 +2469,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a block or unsafe block
-    pub fn parse_block_expr(&mut self, opt_label: Option<Label>,
+    fn parse_block_expr(&mut self, opt_label: Option<Label>,
                             lo: Span, blk_mode: BlockCheckMode,
                             outer_attrs: ThinVec<Attribute>)
                             -> PResult<'a, P<Expr>> {
@@ -4572,7 +4572,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a block. No inner attrs are allowed.
-    crate fn parse_block(&mut self) -> PResult<'a, P<Block>> {
+    pub fn parse_block(&mut self) -> PResult<'a, P<Block>> {
         maybe_whole!(self, NtBlock, |x| x);
 
         let lo = self.span;
@@ -6128,7 +6128,19 @@ impl<'a> Parser<'a> {
     }
 
     pub fn submod_path_from_attr(attrs: &[Attribute], dir_path: &Path) -> Option<PathBuf> {
-        attr::first_attr_value_str_by_name(attrs, "path").map(|d| dir_path.join(&d.as_str()))
+        if let Some(s) = attr::first_attr_value_str_by_name(attrs, "path") {
+            let s = s.as_str();
+
+            // On windows, the base path might have the form
+            // `\\?\foo\bar` in which case it does not tolerate
+            // mixed `/` and `\` separators, so canonicalize
+            // `/` to `\`.
+            #[cfg(windows)]
+            let s = s.replace("/", "\\");
+            Some(dir_path.join(s))
+        } else {
+            None
+        }
     }
 
     /// Returns either a path to a module, or .
@@ -7157,7 +7169,7 @@ impl<'a> Parser<'a> {
                     UseTreeKind::Nested(self.parse_use_tree_list()?)
                 }
             } else {
-                UseTreeKind::Simple(self.parse_rename()?)
+                UseTreeKind::Simple(self.parse_rename()?, ast::DUMMY_NODE_ID, ast::DUMMY_NODE_ID)
             }
         };
 

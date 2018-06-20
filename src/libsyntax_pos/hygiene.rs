@@ -489,6 +489,10 @@ pub enum CompilerDesugaringKind {
     DotFill,
     QuestionMark,
     Catch,
+    /// Desugaring of an `impl Trait` in return type position
+    /// to an `existential type Foo: Trait;` + replacing the
+    /// `impl Trait` with `Foo`.
+    ExistentialReturnType,
 }
 
 impl CompilerDesugaringKind {
@@ -498,6 +502,7 @@ impl CompilerDesugaringKind {
             DotFill => "...",
             QuestionMark => "?",
             Catch => "do catch",
+            ExistentialReturnType => "existental type",
         };
         Symbol::intern(s)
     }

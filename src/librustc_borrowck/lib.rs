@@ -17,6 +17,8 @@
 #![feature(from_ref)]
 #![feature(quote)]
 
+#![recursion_limit="256"]
+
 #[macro_use] extern crate log;
 extern crate syntax;
 extern crate syntax_pos;

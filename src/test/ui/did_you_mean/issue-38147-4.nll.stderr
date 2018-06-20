@@ -1,10 +1,10 @@
 error[E0596]: cannot borrow immutable item `*f.s` as mutable
   --> $DIR/issue-38147-4.rs:16:5
    |
+LL | fn f(x: usize, f: &Foo) {
+   |                   ---- help: consider changing this to be a mutable reference: `&mut Foo<'_>`
 LL |     f.s.push('x'); //~ ERROR cannot borrow data mutably
-   |     ^^^ cannot borrow as mutable
-   |
-   = note: the value which is causing this path not to be mutable is...: `*f`
+   |     ^^^ `f` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error: aborting due to previous error
 

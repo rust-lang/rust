@@ -1,6 +1,8 @@
 error[E0596]: cannot borrow immutable item `b` as mutable
   --> $DIR/mut-borrow-of-mut-ref.rs:18:7
    |
+LL | fn f(b: &mut i32) {
+   |      - help: consider changing this to be mutable: `mut b`
 LL |     g(&mut b) //~ ERROR cannot borrow
    |       ^^^^^^ cannot borrow as mutable
 

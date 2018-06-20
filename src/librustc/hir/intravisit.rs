@@ -502,6 +502,14 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_ty(typ);
             visitor.visit_generics(type_parameters)
         }
+        ItemExistential(ExistTy {ref generics, ref bounds, impl_trait_fn}) => {
+            visitor.visit_id(item.id);
+            walk_generics(visitor, generics);
+            walk_list!(visitor, visit_ty_param_bound, bounds);
+            if let Some(impl_trait_fn) = impl_trait_fn {
+                visitor.visit_def_mention(Def::Fn(impl_trait_fn))
+            }
+        }
         ItemEnum(ref enum_definition, ref type_parameters) => {
             visitor.visit_generics(type_parameters);
             // visit_enum_def() takes care of visiting the Item's NodeId
@@ -596,10 +604,9 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             }
             visitor.visit_lifetime(lifetime);
         }
-        TyImplTraitExistential(ref existty, ref lifetimes) => {
-            let ExistTy { ref generics, ref bounds } = *existty;
-            walk_generics(visitor, generics);
-            walk_list!(visitor, visit_ty_param_bound, bounds);
+        TyImplTraitExistential(item_id, def_id, ref lifetimes) => {
+            visitor.visit_def_mention(Def::Existential(def_id));
+            visitor.visit_nested_item(item_id);
             walk_list!(visitor, visit_lifetime, lifetimes);
         }
         TyTypeof(ref expression) => {
