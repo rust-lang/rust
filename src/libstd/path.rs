@@ -124,7 +124,7 @@ use sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 ///
 /// fn get_path_prefix(s: &str) -> Prefix {
 ///     let path = Path::new(s);
-///     match path.components().next().unwrap() {
+///     match path.components().next().expect("failed to get next component") {
 ///         Component::Prefix(prefix_component) => prefix_component.kind(),
 ///         _ => panic!(),
 ///     }
@@ -403,7 +403,7 @@ enum State {
 /// use std::ffi::OsStr;
 ///
 /// let path = Path::new(r"c:\you\later\");
-/// match path.components().next().unwrap() {
+/// match path.components().next().expect("failed to get next component") {
 ///     Component::Prefix(prefix_component) => {
 ///         assert_eq!(Prefix::Disk(b'C'), prefix_component.kind());
 ///         assert_eq!(OsStr::new("c:"), prefix_component.as_os_str());
@@ -1861,10 +1861,10 @@ impl Path {
     /// use std::path::Path;
     ///
     /// let path = Path::new("/foo/bar");
-    /// let parent = path.parent().unwrap();
+    /// let parent = path.parent().expect("parent() call failed");
     /// assert_eq!(parent, Path::new("/foo"));
     ///
-    /// let grand_parent = parent.parent().unwrap();
+    /// let grand_parent = parent.parent().expect("parent() call failed");
     /// assert_eq!(grand_parent, Path::new("/"));
     /// assert_eq!(grand_parent.parent(), None);
     /// ```
@@ -2055,7 +2055,7 @@ impl Path {
     ///
     /// let path = Path::new("foo.rs");
     ///
-    /// assert_eq!("foo", path.file_stem().unwrap());
+    /// assert_eq!("foo", path.file_stem().expect("file_stem() call failed"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn file_stem(&self) -> Option<&OsStr> {
@@ -2081,7 +2081,7 @@ impl Path {
     ///
     /// let path = Path::new("foo.rs");
     ///
-    /// assert_eq!("rs", path.extension().unwrap());
+    /// assert_eq!("rs", path.extension().expect("extension() call failed"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn extension(&self) -> Option<&OsStr> {
@@ -2314,7 +2314,8 @@ impl Path {
     /// use std::path::{Path, PathBuf};
     ///
     /// let path = Path::new("/foo/test/../test/bar.rs");
-    /// assert_eq!(path.canonicalize().unwrap(), PathBuf::from("/foo/test/bar.rs"));
+    /// assert_eq!(path.canonicalize().expect("canonicalize() call failed"),
+    ///            PathBuf::from("/foo/test/bar.rs"));
     /// ```
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn canonicalize(&self) -> io::Result<PathBuf> {

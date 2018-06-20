@@ -51,7 +51,7 @@ impl WaitTimeoutResult {
     ///     // Let's wait 20 milliseconds before notifying the condvar.
     ///     thread::sleep(Duration::from_millis(20));
     ///
-    ///     let mut started = lock.lock().unwrap();
+    ///     let mut started = lock.lock().expect("lock() call failed");
     ///     // We update the boolean value.
     ///     *started = true;
     ///     cvar.notify_one();
@@ -59,10 +59,11 @@ impl WaitTimeoutResult {
     ///
     /// // Wait for the thread to start up.
     /// let &(ref lock, ref cvar) = &*pair;
-    /// let mut started = lock.lock().unwrap();
+    /// let mut started = lock.lock().expect("lock() call failed");
     /// loop {
     ///     // Let's put a timeout on the condvar's wait.
-    ///     let result = cvar.wait_timeout(started, Duration::from_millis(10)).unwrap();
+    ///     let result = cvar.wait_timeout(started, Duration::from_millis(10))
+    ///                      .expect("wait_timeout() call failed");
     ///     // 10 milliseconds have passed, or maybe the value changed!
     ///     started = result.0;
     ///     if *started == true {
@@ -105,7 +106,7 @@ impl WaitTimeoutResult {
 /// // Inside of our lock, spawn a new thread, and then wait for it to start.
 /// thread::spawn(move|| {
 ///     let &(ref lock, ref cvar) = &*pair2;
-///     let mut started = lock.lock().unwrap();
+///     let mut started = lock.lock().expect("lock() call failed");
 ///     *started = true;
 ///     // We notify the condvar that the value has changed.
 ///     cvar.notify_one();
@@ -113,9 +114,9 @@ impl WaitTimeoutResult {
 ///
 /// // Wait for the thread to start up.
 /// let &(ref lock, ref cvar) = &*pair;
-/// let mut started = lock.lock().unwrap();
+/// let mut started = lock.lock().expect("lock() call failed");
 /// while !*started {
-///     started = cvar.wait(started).unwrap();
+///     started = cvar.wait(started).expect("wait() call failed");
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -191,7 +192,7 @@ impl Condvar {
     ///
     /// thread::spawn(move|| {
     ///     let &(ref lock, ref cvar) = &*pair2;
-    ///     let mut started = lock.lock().unwrap();
+    ///     let mut started = lock.lock().expect("lock() call failed");
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
     ///     cvar.notify_one();
@@ -199,10 +200,10 @@ impl Condvar {
     ///
     /// // Wait for the thread to start up.
     /// let &(ref lock, ref cvar) = &*pair;
-    /// let mut started = lock.lock().unwrap();
+    /// let mut started = lock.lock().expect("lock() call failed");
     /// // As long as the value inside the `Mutex` is false, we wait.
     /// while !*started {
-    ///     started = cvar.wait(started).unwrap();
+    ///     started = cvar.wait(started).expect("wait() call failed");
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -256,7 +257,7 @@ impl Condvar {
     ///
     /// thread::spawn(move|| {
     ///     let &(ref lock, ref cvar) = &*pair2;
-    ///     let mut started = lock.lock().unwrap();
+    ///     let mut started = lock.lock().expect("lock() call failed");
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
     ///     cvar.notify_one();
@@ -265,7 +266,8 @@ impl Condvar {
     /// // Wait for the thread to start up.
     /// let &(ref lock, ref cvar) = &*pair;
     /// // As long as the value inside the `Mutex` is false, we wait.
-    /// let _guard = cvar.wait_until(lock.lock().unwrap(), |started| { *started }).unwrap();
+    /// let _guard = cvar.wait_until(lock.lock().expect("lock() call failed"),
+    ///                              |started| { *started }).expect("wait_until() call failed");
     /// ```
     #[unstable(feature = "wait_until", issue = "47960")]
     pub fn wait_until<'a, T, F>(&self, mut guard: MutexGuard<'a, T>,
@@ -312,7 +314,7 @@ impl Condvar {
     ///
     /// thread::spawn(move|| {
     ///     let &(ref lock, ref cvar) = &*pair2;
-    ///     let mut started = lock.lock().unwrap();
+    ///     let mut started = lock.lock().expect("lock() call failed");
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
     ///     cvar.notify_one();
@@ -320,10 +322,10 @@ impl Condvar {
     ///
     /// // Wait for the thread to start up.
     /// let &(ref lock, ref cvar) = &*pair;
-    /// let mut started = lock.lock().unwrap();
+    /// let mut started = lock.lock().expect("lock() call failed");
     /// // As long as the value inside the `Mutex` is false, we wait.
     /// loop {
-    ///     let result = cvar.wait_timeout_ms(started, 10).unwrap();
+    ///     let result = cvar.wait_timeout_ms(started, 10).expect("wait_timeout_ms() call failed");
     ///     // 10 milliseconds have passed, or maybe the value changed!
     ///     started = result.0;
     ///     if *started == true {
@@ -385,7 +387,7 @@ impl Condvar {
     ///
     /// thread::spawn(move|| {
     ///     let &(ref lock, ref cvar) = &*pair2;
-    ///     let mut started = lock.lock().unwrap();
+    ///     let mut started = lock.lock().expect("lock() call failed");
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
     ///     cvar.notify_one();
@@ -393,10 +395,11 @@ impl Condvar {
     ///
     /// // wait for the thread to start up
     /// let &(ref lock, ref cvar) = &*pair;
-    /// let mut started = lock.lock().unwrap();
+    /// let mut started = lock.lock().expect("lock() call failed");
     /// // as long as the value inside the `Mutex` is false, we wait
     /// loop {
-    ///     let result = cvar.wait_timeout(started, Duration::from_millis(10)).unwrap();
+    ///     let result = cvar.wait_timeout(started, Duration::from_millis(10))
+    ///                      .expect("wait_timeout() call failed");
     ///     // 10 milliseconds have passed, or maybe the value changed!
     ///     started = result.0;
     ///     if *started == true {
@@ -460,7 +463,7 @@ impl Condvar {
     ///
     /// thread::spawn(move|| {
     ///     let &(ref lock, ref cvar) = &*pair2;
-    ///     let mut started = lock.lock().unwrap();
+    ///     let mut started = lock.lock().expect("lock() call failed");
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
     ///     cvar.notify_one();
@@ -469,10 +472,10 @@ impl Condvar {
     /// // wait for the thread to start up
     /// let &(ref lock, ref cvar) = &*pair;
     /// let result = cvar.wait_timeout_until(
-    ///     lock.lock().unwrap(),
+    ///     lock.lock().expect("lock() call failed"),
     ///     Duration::from_millis(100),
     ///     |&mut started| started,
-    /// ).unwrap();
+    /// ).expect("wait_timeout_until() call failed");
     /// if result.1.timed_out() {
     ///     // timed-out without the condition ever evaluating to true.
     /// }
@@ -519,7 +522,7 @@ impl Condvar {
     ///
     /// thread::spawn(move|| {
     ///     let &(ref lock, ref cvar) = &*pair2;
-    ///     let mut started = lock.lock().unwrap();
+    ///     let mut started = lock.lock().expect("lock() call failed");
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
     ///     cvar.notify_one();
@@ -527,10 +530,10 @@ impl Condvar {
     ///
     /// // Wait for the thread to start up.
     /// let &(ref lock, ref cvar) = &*pair;
-    /// let mut started = lock.lock().unwrap();
+    /// let mut started = lock.lock().expect("lock() call failed");
     /// // As long as the value inside the `Mutex` is false, we wait.
     /// while !*started {
-    ///     started = cvar.wait(started).unwrap();
+    ///     started = cvar.wait(started).expect("wait() call failed");
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -559,7 +562,7 @@ impl Condvar {
     ///
     /// thread::spawn(move|| {
     ///     let &(ref lock, ref cvar) = &*pair2;
-    ///     let mut started = lock.lock().unwrap();
+    ///     let mut started = lock.lock().expect("lock() call failed");
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
     ///     cvar.notify_all();
@@ -567,10 +570,10 @@ impl Condvar {
     ///
     /// // Wait for the thread to start up.
     /// let &(ref lock, ref cvar) = &*pair;
-    /// let mut started = lock.lock().unwrap();
+    /// let mut started = lock.lock().expect("lock() call failed");
     /// // As long as the value inside the `Mutex` is false, we wait.
     /// while !*started {
-    ///     started = cvar.wait(started).unwrap();
+    ///     started = cvar.wait(started).expect("wait() call failed");
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]

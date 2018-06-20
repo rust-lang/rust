@@ -358,10 +358,10 @@ impl<R: Seek> Seek for BufReader<R> {
 /// use std::io::prelude::*;
 /// use std::net::TcpStream;
 ///
-/// let mut stream = TcpStream::connect("127.0.0.1:34254").unwrap();
+/// let mut stream = TcpStream::connect("127.0.0.1:34254").expect("TcpStream::connect failed");
 ///
 /// for i in 0..10 {
-///     stream.write(&[i+1]).unwrap();
+///     stream.write(&[i + 1]).expect("write() call failed");
 /// }
 /// ```
 ///
@@ -374,10 +374,11 @@ impl<R: Seek> Seek for BufReader<R> {
 /// use std::io::BufWriter;
 /// use std::net::TcpStream;
 ///
-/// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+/// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254")
+///                                           .expect("TcpStream::connect failed"));
 ///
 /// for i in 0..10 {
-///     stream.write(&[i+1]).unwrap();
+///     stream.write(&[i + 1]).expect("write() call failed");
 /// }
 /// ```
 ///
@@ -409,7 +410,8 @@ pub struct BufWriter<W: Write> {
 /// use std::io::BufWriter;
 /// use std::net::TcpStream;
 ///
-/// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+/// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254")
+///                                           .expect("TcpStream::connect failed"));
 ///
 /// // do stuff with the stream
 ///
@@ -437,7 +439,8 @@ impl<W: Write> BufWriter<W> {
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
-    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254")
+    ///                                           .expect("TcpStream::connect failed"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: W) -> BufWriter<W> {
@@ -454,7 +457,7 @@ impl<W: Write> BufWriter<W> {
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:34254").unwrap();
+    /// let stream = TcpStream::connect("127.0.0.1:34254").expect("TcpStream::connect failed");
     /// let mut buffer = BufWriter::with_capacity(100, stream);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -501,7 +504,8 @@ impl<W: Write> BufWriter<W> {
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
-    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254")
+    ///                                           .expect("TcpStream::connect failed"));
     ///
     /// // we can use reference just like buffer
     /// let reference = buffer.get_ref();
@@ -519,7 +523,8 @@ impl<W: Write> BufWriter<W> {
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
-    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254")
+    ///                                           .expect("TcpStream::connect failed"));
     ///
     /// // we can use reference just like buffer
     /// let reference = buffer.get_mut();
@@ -541,10 +546,11 @@ impl<W: Write> BufWriter<W> {
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
-    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254")
+    ///                                           .expect("TcpStream::connect failed"));
     ///
     /// // unwrap the TcpStream and flush the buffer
-    /// let stream = buffer.into_inner().unwrap();
+    /// let stream = buffer.into_inner().expect("into_inner() call");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(mut self) -> Result<W, IntoInnerError<BufWriter<W>>> {
@@ -616,7 +622,8 @@ impl<W> IntoInnerError<W> {
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
-    /// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254")
+    ///                                           .expect("TcpStream::connect failed"));
     ///
     /// // do stuff with the stream
     ///
@@ -648,7 +655,8 @@ impl<W> IntoInnerError<W> {
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
-    /// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254")
+    ///                                           .expect("TcpStream::connect failed"));
     ///
     /// // do stuff with the stream
     ///
@@ -663,7 +671,7 @@ impl<W> IntoInnerError<W> {
     ///         // do stuff to try to recover
     ///
     ///         // afterwards, let's just return the stream
-    ///         buffer.into_inner().unwrap()
+    ///         buffer.into_inner().expect("into_inner() call failed")
     ///     }
     /// };
     /// ```

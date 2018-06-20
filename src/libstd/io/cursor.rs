@@ -75,7 +75,7 @@ use io::{self, Initializer, SeekFrom, Error, ErrorKind};
 ///     use std::io::Cursor;
 ///     let mut buff = Cursor::new(vec![0; 15]);
 ///
-///     write_ten_bytes_at_end(&mut buff).unwrap();
+///     write_ten_bytes_at_end(&mut buff).expect("write_ten_bytes_at_end() call failed");
 ///
 ///     assert_eq!(&buff.get_ref()[5..15], &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
 /// }
@@ -172,10 +172,10 @@ impl<T> Cursor<T> {
     ///
     /// assert_eq!(buff.position(), 0);
     ///
-    /// buff.seek(SeekFrom::Current(2)).unwrap();
+    /// buff.seek(SeekFrom::Current(2)).expect("seek() call failed");
     /// assert_eq!(buff.position(), 2);
     ///
-    /// buff.seek(SeekFrom::Current(-1)).unwrap();
+    /// buff.seek(SeekFrom::Current(-1)).expect("seek() call failed");
     /// assert_eq!(buff.position(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]

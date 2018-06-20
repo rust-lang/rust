@@ -147,7 +147,7 @@
 //! ```
 //!
 //! Note that you cannot use the [`?` operator] in functions that do not return
-//! a [`Result<T, E>`][`Result`]. Instead, you can call [`.unwrap()`]
+//! a [`Result<T, E>`][`Result`]. Instead, you can call [`.expect()`]
 //! or `match` on the return value to catch any possible errors:
 //!
 //! ```no_run
@@ -155,7 +155,7 @@
 //!
 //! let mut input = String::new();
 //!
-//! io::stdin().read_line(&mut input).unwrap();
+//! io::stdin().read_line(&mut input).expect("read_line() call failed");
 //! ```
 //!
 //! And a very common source of output is standard output:
@@ -265,7 +265,7 @@
 //! [`?` operator]: ../../book/first-edition/syntax-index.html
 //! [`Read::read`]: trait.Read.html#tymethod.read
 //! [`Result`]: ../result/enum.Result.html
-//! [`.unwrap()`]: ../result/enum.Result.html#method.unwrap
+//! [`.expect()`]: ../result/enum.Result.html#method.expect
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -794,7 +794,7 @@ pub trait Read {
     ///     let mut f = File::open("foo.txt")?;
     ///
     ///     for byte in f.bytes() {
-    ///         println!("{}", byte.unwrap());
+    ///         println!("{}", byte.expect("failed to get byte"));
     ///     }
     ///     Ok(())
     /// }
@@ -1295,7 +1295,7 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>)
 ///
 /// let stdin = io::stdin();
 /// for line in stdin.lock().lines() {
-///     println!("{}", line.unwrap());
+///     println!("{}", line.expect("failed to get line"));
 /// }
 /// ```
 ///
@@ -1321,7 +1321,7 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>)
 ///     let f = BufReader::new(f);
 ///
 ///     for line in f.lines() {
-///         println!("{}", line.unwrap());
+///         println!("{}", line.expect("failed to get line"));
 ///     }
 ///
 ///     Ok(())
@@ -1362,7 +1362,7 @@ pub trait BufRead: Read {
     /// // we can't have two `&mut` references to `stdin`, so use a block
     /// // to end the borrow early.
     /// let length = {
-    ///     let buffer = stdin.fill_buf().unwrap();
+    ///     let buffer = stdin.fill_buf().expect("fill_buff() called failed");
     ///
     ///     // work with buffer
     ///     println!("{:?}", buffer);
@@ -1545,7 +1545,7 @@ pub trait BufRead: Read {
     ///
     /// let cursor = io::Cursor::new(b"lorem-ipsum-dolor");
     ///
-    /// let mut split_iter = cursor.split(b'-').map(|l| l.unwrap());
+    /// let mut split_iter = cursor.split(b'-').map(|l| l.expect("failed to get string"));
     /// assert_eq!(split_iter.next(), Some(b"lorem".to_vec()));
     /// assert_eq!(split_iter.next(), Some(b"ipsum".to_vec()));
     /// assert_eq!(split_iter.next(), Some(b"dolor".to_vec()));
@@ -1578,7 +1578,7 @@ pub trait BufRead: Read {
     ///
     /// let cursor = io::Cursor::new(b"lorem\nipsum\r\ndolor");
     ///
-    /// let mut lines_iter = cursor.lines().map(|l| l.unwrap());
+    /// let mut lines_iter = cursor.lines().map(|l| l.expect("failed to get string"));
     /// assert_eq!(lines_iter.next(), Some(String::from("lorem")));
     /// assert_eq!(lines_iter.next(), Some(String::from("ipsum")));
     /// assert_eq!(lines_iter.next(), Some(String::from("dolor")));

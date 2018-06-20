@@ -351,7 +351,7 @@ impl SystemTime {
     /// let sys_time = SystemTime::now();
     /// let one_sec = Duration::from_secs(1);
     /// sleep(one_sec);
-    /// assert!(sys_time.elapsed().unwrap() >= one_sec);
+    /// assert!(sys_time.elapsed().expect("elapsed() call failed") >= one_sec);
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn elapsed(&self) -> Result<Duration, SystemTimeError> {

@@ -26,7 +26,7 @@
 //! use std::os::unix::prelude::*;
 //!
 //! fn main() {
-//!     let f = File::create("foo.txt").unwrap();
+//!     let f = File::create("foo.txt").expect("File::create failed");
 //!     let fd = f.as_raw_fd();
 //!
 //!     // use fd with native unix bindings

@@ -51,12 +51,12 @@
 //!
 //! Once half of a channel has been deallocated, most operations can no longer
 //! continue to make progress, so [`Err`] will be returned. Many applications
-//! will continue to [`unwrap`] the results returned from this module,
+//! will continue to [`expect`] the results returned from this module,
 //! instigating a propagation of failure among threads if one unexpectedly dies.
 //!
 //! [`Result`]: ../../../std/result/enum.Result.html
 //! [`Err`]: ../../../std/result/enum.Result.html#variant.Err
-//! [`unwrap`]: ../../../std/result/enum.Result.html#method.unwrap
+//! [`expect`]: ../../../std/result/enum.Result.html#method.expect
 //!
 //! # Examples
 //!
@@ -69,9 +69,9 @@
 //! // Create a simple streaming channel
 //! let (tx, rx) = channel();
 //! thread::spawn(move|| {
-//!     tx.send(10).unwrap();
+//!     tx.send(10).expect("send() call failed");
 //! });
-//! assert_eq!(rx.recv().unwrap(), 10);
+//! assert_eq!(rx.recv().expect("recv() call failed"), 10);
 //! ```
 //!
 //! Shared usage:
@@ -87,12 +87,12 @@
 //! for i in 0..10 {
 //!     let tx = tx.clone();
 //!     thread::spawn(move|| {
-//!         tx.send(i).unwrap();
+//!         tx.send(i).expect("send() call failed");
 //!     });
 //! }
 //!
 //! for _ in 0..10 {
-//!     let j = rx.recv().unwrap();
+//!     let j = rx.recv().expect("recv() call failed");
 //!     assert!(0 <= j && j < 10);
 //! }
 //! ```
@@ -118,9 +118,9 @@
 //! let (tx, rx) = sync_channel::<i32>(0);
 //! thread::spawn(move|| {
 //!     // This will wait for the parent thread to start receiving
-//!     tx.send(53).unwrap();
+//!     tx.send(53).expect("send() call failed");
 //! });
-//! rx.recv().unwrap();
+//! rx.recv().expect("recv() call failed");
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -318,14 +318,14 @@ mod cache_aligned;
 /// let (send, recv) = channel();
 ///
 /// thread::spawn(move || {
-///     send.send("Hello world!").unwrap();
+///     send.send("Hello world!").expect("send() call failed");
 ///     thread::sleep(Duration::from_secs(2)); // block for two seconds
-///     send.send("Delayed for 2 seconds").unwrap();
+///     send.send("Delayed for 2 seconds").expect("send() call failed");
 /// });
 ///
-/// println!("{}", recv.recv().unwrap()); // Received immediately
+/// println!("{}", recv.recv().expect("recv() call failed")); // Received immediately
 /// println!("Waiting...");
-/// println!("{}", recv.recv().unwrap()); // Received after 2 seconds
+/// println!("{}", recv.recv().expect("recv() call failed")); // Received after 2 seconds
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Receiver<T> {
@@ -360,9 +360,9 @@ impl<T> !Sync for Receiver<T> { }
 /// let (send, recv) = channel();
 ///
 /// thread::spawn(move || {
-///     send.send(1u8).unwrap();
-///     send.send(2u8).unwrap();
-///     send.send(3u8).unwrap();
+///     send.send(1u8).expect("send() call failed");
+///     send.send(2u8).expect("send() call failed");
+///     send.send(3u8).expect("send() call failed");
 /// });
 ///
 /// for x in recv.iter() {
@@ -402,9 +402,9 @@ pub struct Iter<'a, T: 'a> {
 /// println!("Nothing in the buffer...");
 ///
 /// thread::spawn(move || {
-///     sender.send(1).unwrap();
-///     sender.send(2).unwrap();
-///     sender.send(3).unwrap();
+///     sender.send(1).expect("send() call#1 failed");
+///     sender.send(2).expect("send() call#2 failed");
+///     sender.send(3).expect("send() call#3 failed");
 /// });
 ///
 /// println!("Going to sleep...");
@@ -440,9 +440,9 @@ pub struct TryIter<'a, T: 'a> {
 /// let (send, recv) = channel();
 ///
 /// thread::spawn(move || {
-///     send.send(1u8).unwrap();
-///     send.send(2u8).unwrap();
-///     send.send(3u8).unwrap();
+///     send.send(1u8).expect("send() call#1 failed");
+///     send.send(2u8).expect("send() call#2 failed");
+///     send.send(3u8).expect("send() call#3 failed");
 /// });
 ///
 /// for x in recv.into_iter() {
@@ -474,16 +474,16 @@ pub struct IntoIter<T> {
 ///
 /// // First thread owns sender
 /// thread::spawn(move || {
-///     sender.send(1).unwrap();
+///     sender.send(1).expect("send() call#1 failed");
 /// });
 ///
 /// // Second thread owns sender2
 /// thread::spawn(move || {
-///     sender2.send(2).unwrap();
+///     sender2.send(2).expect("send() call#2 failed");
 /// });
 ///
-/// let msg = receiver.recv().unwrap();
-/// let msg2 = receiver.recv().unwrap();
+/// let msg = receiver.recv().expect("recv() call#1 failed");
+/// let msg2 = receiver.recv().expect("recv() call#2 failed");
 ///
 /// assert_eq!(3, msg + msg2);
 /// ```
@@ -522,28 +522,28 @@ impl<T> !Sync for Sender<T> { }
 ///
 /// // First thread owns sync_sender
 /// thread::spawn(move || {
-///     sync_sender.send(1).unwrap();
-///     sync_sender.send(2).unwrap();
+///     sync_sender.send(1).expect("send() call#1 failed");
+///     sync_sender.send(2).expect("send() call#2 failed");
 /// });
 ///
 /// // Second thread owns sync_sender2
 /// thread::spawn(move || {
-///     sync_sender2.send(3).unwrap();
+///     sync_sender2.send(3).expect("send() call#3 failed");
 ///     // thread will now block since the buffer is full
 ///     println!("Thread unblocked!");
 /// });
 ///
 /// let mut msg;
 ///
-/// msg = receiver.recv().unwrap();
+/// msg = receiver.recv().expect("recv() call#1 failed");
 /// println!("message {} received", msg);
 ///
 /// // "Thread unblocked!" will be printed now
 ///
-/// msg = receiver.recv().unwrap();
+/// msg = receiver.recv().expect("recv() call#2 failed");
 /// println!("message {} received", msg);
 ///
-/// msg = receiver.recv().unwrap();
+/// msg = receiver.recv().expect("recv() call#3 failed");
 ///
 /// println!("message {} received", msg);
 /// ```
@@ -712,13 +712,13 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// // Spawn off an expensive computation
 /// thread::spawn(move|| {
 /// #   fn expensive_computation() {}
-///     sender.send(expensive_computation()).unwrap();
+///     sender.send(expensive_computation()).expect("send() call failed");
 /// });
 ///
 /// // Do some useful work for awhile
 ///
 /// // Let's see what that answer was
-/// println!("{:?}", receiver.recv().unwrap());
+/// println!("{:?}", receiver.recv().expect("recv() call failed"));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
@@ -763,15 +763,15 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// let (sender, receiver) = sync_channel(1);
 ///
 /// // this returns immediately
-/// sender.send(1).unwrap();
+/// sender.send(1).expect("send() call#1 failed");
 ///
 /// thread::spawn(move|| {
 ///     // this will block until the previous message has been received
-///     sender.send(2).unwrap();
+///     sender.send(2).expect("send() call#2 failed");
 /// });
 ///
-/// assert_eq!(receiver.recv().unwrap(), 1);
-/// assert_eq!(receiver.recv().unwrap(), 2);
+/// assert_eq!(receiver.recv().expect("recv() call#1 failed"), 1);
+/// assert_eq!(receiver.recv().expect("recv() call#2 failed"), 2);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn sync_channel<T>(bound: usize) -> (SyncSender<T>, Receiver<T>) {
@@ -814,7 +814,7 @@ impl<T> Sender<T> {
     /// let (tx, rx) = channel();
     ///
     /// // This send is always successful
-    /// tx.send(1).unwrap();
+    /// tx.send(1).expect("send() call failed");
     ///
     /// // This send will fail because the receiver is gone
     /// drop(rx);
@@ -964,13 +964,13 @@ impl<T> SyncSender<T> {
     ///
     /// thread::spawn(move || {
     ///    println!("sending message...");
-    ///    sync_sender.send(1).unwrap();
+    ///    sync_sender.send(1).expect("send() call failed");
     ///    // Thread is now blocked until the message is received
     ///
     ///    println!("...message received!");
     /// });
     ///
-    /// let msg = receiver.recv().unwrap();
+    /// let msg = receiver.recv().expect("recv() call failed");
     /// assert_eq!(1, msg);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1002,8 +1002,8 @@ impl<T> SyncSender<T> {
     ///
     /// // First thread owns sync_sender
     /// thread::spawn(move || {
-    ///     sync_sender.send(1).unwrap();
-    ///     sync_sender.send(2).unwrap();
+    ///     sync_sender.send(1).expect("send() call#1 failed");
+    ///     sync_sender.send(2).expect("send() call#2 failed");
     ///     // Thread blocked
     /// });
     ///
@@ -1015,10 +1015,10 @@ impl<T> SyncSender<T> {
     /// });
     ///
     /// let mut msg;
-    /// msg = receiver.recv().unwrap();
+    /// msg = receiver.recv().expect("recv() call#1 failed");
     /// println!("message {} received", msg);
     ///
-    /// msg = receiver.recv().unwrap();
+    /// msg = receiver.recv().expect("recv() call#2 failed");
     /// println!("message {} received", msg);
     ///
     /// // Third message may have never been sent
@@ -1163,10 +1163,10 @@ impl<T> Receiver<T> {
     ///
     /// let (send, recv) = mpsc::channel();
     /// let handle = thread::spawn(move || {
-    ///     send.send(1u8).unwrap();
+    ///     send.send(1u8).expect("send() call#1 failed");
     /// });
     ///
-    /// handle.join().unwrap();
+    /// handle.join().expect("join() call#1 failed");
     ///
     /// assert_eq!(Ok(1), recv.recv());
     /// ```
@@ -1180,14 +1180,14 @@ impl<T> Receiver<T> {
     ///
     /// let (send, recv) = mpsc::channel();
     /// let handle = thread::spawn(move || {
-    ///     send.send(1u8).unwrap();
-    ///     send.send(2).unwrap();
-    ///     send.send(3).unwrap();
+    ///     send.send(1u8).expect("send() call#2 failed");
+    ///     send.send(2).expect("send() call#3 failed");
+    ///     send.send(3).expect("send() call#4 failed");
     ///     drop(send);
     /// });
     ///
     /// // wait for the thread to join so we ensure the sender is dropped
-    /// handle.join().unwrap();
+    /// handle.join().expect("join() call#2 failed");
     ///
     /// assert_eq!(Ok(1), recv.recv());
     /// assert_eq!(Ok(2), recv.recv());
@@ -1259,7 +1259,7 @@ impl<T> Receiver<T> {
     /// let (send, recv) = mpsc::channel();
     ///
     /// thread::spawn(move || {
-    ///     send.send('a').unwrap();
+    ///     send.send('a').expect("send() call failed");
     /// });
     ///
     /// assert_eq!(
@@ -1279,7 +1279,7 @@ impl<T> Receiver<T> {
     ///
     /// thread::spawn(move || {
     ///     thread::sleep(Duration::from_millis(800));
-    ///     send.send('a').unwrap();
+    ///     send.send('a').expect("send() call failed");
     /// });
     ///
     /// assert_eq!(
@@ -1332,7 +1332,7 @@ impl<T> Receiver<T> {
     /// let (send, recv) = mpsc::channel();
     ///
     /// thread::spawn(move || {
-    ///     send.send('a').unwrap();
+    ///     send.send('a').expect("send() call failed");
     /// });
     ///
     /// assert_eq!(
@@ -1353,7 +1353,7 @@ impl<T> Receiver<T> {
     ///
     /// thread::spawn(move || {
     ///     thread::sleep(Duration::from_millis(800));
-    ///     send.send('a').unwrap();
+    ///     send.send('a').expect("send() call failed");
     /// });
     ///
     /// assert_eq!(
@@ -1428,9 +1428,9 @@ impl<T> Receiver<T> {
     /// let (send, recv) = channel();
     ///
     /// thread::spawn(move || {
-    ///     send.send(1).unwrap();
-    ///     send.send(2).unwrap();
-    ///     send.send(3).unwrap();
+    ///     send.send(1).expect("send() call#1 failed");
+    ///     send.send(2).expect("send() call#2 failed");
+    ///     send.send(3).expect("send() call#3 failed");
     /// });
     ///
     /// let mut iter = recv.iter();
@@ -1465,9 +1465,9 @@ impl<T> Receiver<T> {
     ///
     /// thread::spawn(move || {
     ///     thread::sleep(Duration::from_secs(1));
-    ///     sender.send(1).unwrap();
-    ///     sender.send(2).unwrap();
-    ///     sender.send(3).unwrap();
+    ///     sender.send(1).expect("send() call#1 failed");
+    ///     sender.send(2).expect("send() call#2 failed");
+    ///     sender.send(3).expect("send() call#3 failed");
     /// });
     ///
     /// // nothing is in the buffer yet

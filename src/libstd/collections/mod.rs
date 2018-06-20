@@ -401,10 +401,10 @@
 //! map.insert(Foo { a: 1, b: "xyz" }, 100);
 //!
 //! // The value has been updated...
-//! assert_eq!(map.values().next().unwrap(), &100);
+//! assert_eq!(map.values().next().expect("empty value: we reached the end"), &100);
 //!
 //! // ...but the key hasn't changed. b is still "baz", not "xyz".
-//! assert_eq!(map.keys().next().unwrap().b, "baz");
+//! assert_eq!(map.keys().next().expect("empty value: we reached the end").b, "baz");
 //! ```
 //!
 //! [`Vec`]: ../../std/vec/struct.Vec.html

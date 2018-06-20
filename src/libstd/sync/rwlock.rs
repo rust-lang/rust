@@ -54,15 +54,15 @@ use sys_common::rwlock as sys;
 ///
 /// // many reader locks can be held at once
 /// {
-///     let r1 = lock.read().unwrap();
-///     let r2 = lock.read().unwrap();
+///     let r1 = lock.read().expect("read() call#1 failed");
+///     let r2 = lock.read().expect("read() call#2 failed");
 ///     assert_eq!(*r1, 5);
 ///     assert_eq!(*r2, 5);
 /// } // read locks are dropped at this point
 ///
 /// // only one write lock may be held, however
 /// {
-///     let mut w = lock.write().unwrap();
+///     let mut w = lock.write().expect("write() call failed");
 ///     *w += 1;
 ///     assert_eq!(*w, 6);
 /// } // write lock is dropped here
@@ -180,13 +180,13 @@ impl<T: ?Sized> RwLock<T> {
     /// let lock = Arc::new(RwLock::new(1));
     /// let c_lock = lock.clone();
     ///
-    /// let n = lock.read().unwrap();
+    /// let n = lock.read().expect("read() call failed");
     /// assert_eq!(*n, 1);
     ///
     /// thread::spawn(move || {
     ///     let r = c_lock.read();
     ///     assert!(r.is_ok());
-    /// }).join().unwrap();
+    /// }).join().expect("join() call failed");
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -265,7 +265,7 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// let lock = RwLock::new(1);
     ///
-    /// let mut n = lock.write().unwrap();
+    /// let mut n = lock.write().expect("write() call failed");
     /// *n = 2;
     ///
     /// assert!(lock.try_read().is_err());
@@ -304,7 +304,7 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// let lock = RwLock::new(1);
     ///
-    /// let n = lock.read().unwrap();
+    /// let n = lock.read().expect("read() call failed");
     /// assert_eq!(*n, 1);
     ///
     /// assert!(lock.try_write().is_err());
@@ -337,7 +337,7 @@ impl<T: ?Sized> RwLock<T> {
     /// let c_lock = lock.clone();
     ///
     /// let _ = thread::spawn(move || {
-    ///     let _lock = c_lock.write().unwrap();
+    ///     let _lock = c_lock.write().expect("write() call failed");
     ///     panic!(); // the lock gets poisoned
     /// }).join();
     /// assert_eq!(lock.is_poisoned(), true);
@@ -364,10 +364,10 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// let lock = RwLock::new(String::new());
     /// {
-    ///     let mut s = lock.write().unwrap();
+    ///     let mut s = lock.write().expect("write() call failed");
     ///     *s = "modified".to_owned();
     /// }
-    /// assert_eq!(lock.into_inner().unwrap(), "modified");
+    /// assert_eq!(lock.into_inner().expect("into_inner() call failed"), "modified");
     /// ```
     #[stable(feature = "rwlock_into_inner", since = "1.6.0")]
     pub fn into_inner(self) -> LockResult<T> where T: Sized {
@@ -409,8 +409,8 @@ impl<T: ?Sized> RwLock<T> {
     /// use std::sync::RwLock;
     ///
     /// let mut lock = RwLock::new(0);
-    /// *lock.get_mut().unwrap() = 10;
-    /// assert_eq!(*lock.read().unwrap(), 10);
+    /// *lock.get_mut().expect("get_mut() call failed") = 10;
+    /// assert_eq!(*lock.read().expect("read() call failed"), 10);
     /// ```
     #[stable(feature = "rwlock_get_mut", since = "1.6.0")]
     pub fn get_mut(&mut self) -> LockResult<&mut T> {

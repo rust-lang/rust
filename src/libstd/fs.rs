@@ -2023,9 +2023,10 @@ impl DirBuilder {
     /// let path = "/tmp/foo/bar/baz";
     /// DirBuilder::new()
     ///     .recursive(true)
-    ///     .create(path).unwrap();
+    ///     .create(path)
+    ///     .expect("DirBuilder creation failed");
     ///
-    /// assert!(fs::metadata(path).unwrap().is_dir());
+    /// assert!(fs::metadata(path).expect("fs::metadata call failed").is_dir());
     /// ```
     #[stable(feature = "dir_builder", since = "1.6.0")]
     pub fn create<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {

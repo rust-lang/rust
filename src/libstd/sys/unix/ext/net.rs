@@ -153,7 +153,7 @@ impl SocketAddr {
     /// ```no_run
     /// use std::os::unix::net::UnixListener;
     ///
-    /// let socket = UnixListener::bind("/tmp/sock").unwrap();
+    /// let socket = UnixListener::bind("/tmp/sock").expect("UnixListener::bind failed");
     /// let addr = socket.local_addr().expect("Couldn't get local address");
     /// assert_eq!(addr.is_unnamed(), false);
     /// ```
@@ -163,7 +163,7 @@ impl SocketAddr {
     /// ```
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let socket = UnixDatagram::unbound().unwrap();
+    /// let socket = UnixDatagram::unbound().expect("UnixDatagram::unbound failed");
     /// let addr = socket.local_addr().expect("Couldn't get local address");
     /// assert_eq!(addr.is_unnamed(), true);
     /// ```
@@ -186,7 +186,7 @@ impl SocketAddr {
     /// use std::os::unix::net::UnixListener;
     /// use std::path::Path;
     ///
-    /// let socket = UnixListener::bind("/tmp/sock").unwrap();
+    /// let socket = UnixListener::bind("/tmp/sock").expect("UnixListener::bind failed");
     /// let addr = socket.local_addr().expect("Couldn't get local address");
     /// assert_eq!(addr.as_pathname(), Some(Path::new("/tmp/sock")));
     /// ```
@@ -196,7 +196,7 @@ impl SocketAddr {
     /// ```
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let socket = UnixDatagram::unbound().unwrap();
+    /// let socket = UnixDatagram::unbound().expect("UnixDatagram::unbound failed");
     /// let addr = socket.local_addr().expect("Couldn't get local address");
     /// assert_eq!(addr.as_pathname(), None);
     /// ```
@@ -258,10 +258,10 @@ impl<'a> fmt::Display for AsciiEscaped<'a> {
 /// use std::os::unix::net::UnixStream;
 /// use std::io::prelude::*;
 ///
-/// let mut stream = UnixStream::connect("/path/to/my/socket").unwrap();
-/// stream.write_all(b"hello world").unwrap();
+/// let mut stream = UnixStream::connect("/path/to/my/socket").expect("UnixStream::connect failed");
+/// stream.write_all(b"hello world").expect("write_all() call failed");
 /// let mut response = String::new();
-/// stream.read_to_string(&mut response).unwrap();
+/// stream.read_to_string(&mut response).expect("read_to_string() call failed");
 /// println!("{}", response);
 /// ```
 #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -347,7 +347,7 @@ impl UnixStream {
     /// ```no_run
     /// use std::os::unix::net::UnixStream;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// let socket = UnixStream::connect("/tmp/sock").expect("UnixStream::connect failed");
     /// let sock_copy = socket.try_clone().expect("Couldn't clone socket");
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -362,7 +362,7 @@ impl UnixStream {
     /// ```no_run
     /// use std::os::unix::net::UnixStream;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// let socket = UnixStream::connect("/tmp/sock").expect("UnixStream::connect failed");
     /// let addr = socket.local_addr().expect("Couldn't get local address");
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -377,7 +377,7 @@ impl UnixStream {
     /// ```no_run
     /// use std::os::unix::net::UnixStream;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// let socket = UnixStream::connect("/tmp/sock").expect("UnixStream::connect failed");
     /// let addr = socket.peer_addr().expect("Couldn't get peer address");
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -402,7 +402,7 @@ impl UnixStream {
     /// use std::os::unix::net::UnixStream;
     /// use std::time::Duration;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// let socket = UnixStream::connect("/tmp/sock").expect("UnixStream::connect failed");
     /// socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
     /// ```
     ///
@@ -414,7 +414,7 @@ impl UnixStream {
     /// use std::os::unix::net::UnixStream;
     /// use std::time::Duration;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// let socket = UnixStream::connect("/tmp/sock").expect("UnixStream::connect failed");
     /// let result = socket.set_read_timeout(Some(Duration::new(0, 0)));
     /// let err = result.unwrap_err();
     /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
@@ -441,7 +441,7 @@ impl UnixStream {
     /// use std::os::unix::net::UnixStream;
     /// use std::time::Duration;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// let socket = UnixStream::connect("/tmp/sock").expect("UnixStream::connect failed");
     /// socket.set_write_timeout(Some(Duration::new(1, 0))).expect("Couldn't set write timeout");
     /// ```
     ///
@@ -453,7 +453,7 @@ impl UnixStream {
     /// use std::net::UdpSocket;
     /// use std::time::Duration;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").unwrap();
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("UdpSocket::bind failed");
     /// let result = socket.set_write_timeout(Some(Duration::new(0, 0)));
     /// let err = result.unwrap_err();
     /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
@@ -471,9 +471,10 @@ impl UnixStream {
     /// use std::os::unix::net::UnixStream;
     /// use std::time::Duration;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// let socket = UnixStream::connect("/tmp/sock").expect("UnixStream::connect failed");
     /// socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
-    /// assert_eq!(socket.read_timeout().unwrap(), Some(Duration::new(1, 0)));
+    /// assert_eq!(socket.read_timeout().expect("read_timeout() call failed"),
+    ///            Some(Duration::new(1, 0)));
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
@@ -488,9 +489,10 @@ impl UnixStream {
     /// use std::os::unix::net::UnixStream;
     /// use std::time::Duration;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// let socket = UnixStream::connect("/tmp/sock").expect("UnixStream::connect failed");
     /// socket.set_write_timeout(Some(Duration::new(1, 0))).expect("Couldn't set write timeout");
-    /// assert_eq!(socket.write_timeout().unwrap(), Some(Duration::new(1, 0)));
+    /// assert_eq!(socket.write_timeout().expect("write_timeout() call failed"),
+    ///            Some(Duration::new(1, 0)));
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
@@ -504,7 +506,7 @@ impl UnixStream {
     /// ```no_run
     /// use std::os::unix::net::UnixStream;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// let socket = UnixStream::connect("/tmp/sock").expect("UnixStream::connect failed");
     /// socket.set_nonblocking(true).expect("Couldn't set nonblocking");
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -519,7 +521,7 @@ impl UnixStream {
     /// ```no_run
     /// use std::os::unix::net::UnixStream;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// let socket = UnixStream::connect("/tmp/sock").expect("UnixStream::connect failed");
     /// if let Ok(Some(err)) = socket.take_error() {
     ///     println!("Got error: {:?}", err);
     /// }
@@ -546,7 +548,7 @@ impl UnixStream {
     /// use std::os::unix::net::UnixStream;
     /// use std::net::Shutdown;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// let socket = UnixStream::connect("/tmp/sock").expect("UnixStream::connect failed");
     /// socket.shutdown(Shutdown::Both).expect("shutdown function failed");
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -692,7 +694,7 @@ impl IntoRawFd for net::UdpSocket {
 ///     // ...
 /// }
 ///
-/// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+/// let listener = UnixListener::bind("/path/to/the/socket").expect("UnixListener::bind failed");
 ///
 /// // accept connections and process them, spawning a new thread for each one
 /// for stream in listener.incoming() {
@@ -768,7 +770,8 @@ impl UnixListener {
     /// ```no_run
     /// use std::os::unix::net::UnixListener;
     ///
-    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+    /// let listener = UnixListener::bind("/path/to/the/socket")
+    ///                             .expect("UnixListener::bind failed");
     ///
     /// match listener.accept() {
     ///     Ok((socket, addr)) => println!("Got a client: {:?}", addr),
@@ -795,7 +798,8 @@ impl UnixListener {
     /// ```no_run
     /// use std::os::unix::net::UnixListener;
     ///
-    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+    /// let listener = UnixListener::bind("/path/to/the/socket")
+    ///                             .expect("UnixListener::bind failed");
     ///
     /// let listener_copy = listener.try_clone().expect("try_clone failed");
     /// ```
@@ -811,7 +815,8 @@ impl UnixListener {
     /// ```no_run
     /// use std::os::unix::net::UnixListener;
     ///
-    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+    /// let listener = UnixListener::bind("/path/to/the/socket")
+    ///                             .expect("UnixListener::bind failed");
     ///
     /// let addr = listener.local_addr().expect("Couldn't get local address");
     /// ```
@@ -827,7 +832,8 @@ impl UnixListener {
     /// ```no_run
     /// use std::os::unix::net::UnixListener;
     ///
-    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+    /// let listener = UnixListener::bind("/path/to/the/socket")
+    ///                             .expect("UnixListener::bind failed");
     ///
     /// listener.set_nonblocking(true).expect("Couldn't set non blocking");
     /// ```
@@ -843,7 +849,8 @@ impl UnixListener {
     /// ```no_run
     /// use std::os::unix::net::UnixListener;
     ///
-    /// let listener = UnixListener::bind("/tmp/sock").unwrap();
+    /// let listener = UnixListener::bind("/tmp/sock")
+    ///                             .expect("UnixListener::bind failed");
     ///
     /// if let Ok(Some(err)) = listener.take_error() {
     ///     println!("Got error: {:?}", err);
@@ -875,7 +882,8 @@ impl UnixListener {
     ///     // ...
     /// }
     ///
-    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+    /// let listener = UnixListener::bind("/path/to/the/socket")
+    ///                             .expect("UnixListener::bind failed");
     ///
     /// for stream in listener.incoming() {
     ///     match stream {
@@ -942,7 +950,7 @@ impl<'a> IntoIterator for &'a UnixListener {
 ///     // ...
 /// }
 ///
-/// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+/// let listener = UnixListener::bind("/path/to/the/socket").expect("UnixListener::bind failed");
 ///
 /// for stream in listener.incoming() {
 ///     match stream {
@@ -981,10 +989,10 @@ impl<'a> Iterator for Incoming<'a> {
 /// ```no_run
 /// use std::os::unix::net::UnixDatagram;
 ///
-/// let socket = UnixDatagram::bind("/path/to/my/socket").unwrap();
-/// socket.send_to(b"hello world", "/path/to/other/socket").unwrap();
+/// let socket = UnixDatagram::bind("/path/to/my/socket").expect("UnixDatagram::bind failed");
+/// socket.send_to(b"hello world", "/path/to/other/socket").expect("send_to() call failed");
 /// let mut buf = [0; 100];
-/// let (count, address) = socket.recv_from(&mut buf).unwrap();
+/// let (count, address) = socket.recv_from(&mut buf).expect("recv_from() call failed");
 /// println!("socket {:?} sent {:?}", address, &buf[..count]);
 /// ```
 #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -1094,7 +1102,7 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
+    /// let sock = UnixDatagram::unbound().expect("UnixDatagram::unbound failed");
     /// match sock.connect("/path/to/the/socket") {
     ///     Ok(sock) => sock,
     ///     Err(e) => {
@@ -1128,7 +1136,7 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::bind("/path/to/the/socket").unwrap();
+    /// let sock = UnixDatagram::bind("/path/to/the/socket").expect("UnixDatagram::bind failed");
     ///
     /// let sock_copy = sock.try_clone().expect("try_clone failed");
     /// ```
@@ -1144,7 +1152,7 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::bind("/path/to/the/socket").unwrap();
+    /// let sock = UnixDatagram::bind("/path/to/the/socket").expect("UnixDatagram::bind failed");
     ///
     /// let addr = sock.local_addr().expect("Couldn't get local address");
     /// ```
@@ -1164,8 +1172,8 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
-    /// sock.connect("/path/to/the/socket").unwrap();
+    /// let sock = UnixDatagram::unbound().expect("UnixDatagram::unbound failed");
+    /// sock.connect("/path/to/the/socket").expect("connect() call failed");
     ///
     /// let addr = sock.peer_addr().expect("Couldn't get peer address");
     /// ```
@@ -1184,7 +1192,7 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
+    /// let sock = UnixDatagram::unbound().expect("UnixDatagram::unbound failed");
     /// let mut buf = vec![0; 10];
     /// match sock.recv_from(buf.as_mut_slice()) {
     ///     Ok((size, sender)) => println!("received {} bytes from {:?}", size, sender),
@@ -1224,7 +1232,7 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::bind("/path/to/the/socket").unwrap();
+    /// let sock = UnixDatagram::bind("/path/to/the/socket").expect("UnixDatagram::bind failed");
     /// let mut buf = vec![0; 10];
     /// sock.recv(buf.as_mut_slice()).expect("recv function failed");
     /// ```
@@ -1242,7 +1250,7 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
+    /// let sock = UnixDatagram::unbound().expect("UnixDatagram::unbound failed");
     /// sock.send_to(b"omelette au fromage", "/some/sock").expect("send_to function failed");
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -1275,7 +1283,7 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
+    /// let sock = UnixDatagram::unbound().expect("UnixDatagram::unbound failed");
     /// sock.connect("/some/sock").expect("Couldn't connect");
     /// sock.send(b"omelette au fromage").expect("send_to function failed");
     /// ```
@@ -1302,7 +1310,7 @@ impl UnixDatagram {
     /// use std::os::unix::net::UnixDatagram;
     /// use std::time::Duration;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
+    /// let sock = UnixDatagram::unbound().expect("UnixDatagram::unbound failed");
     /// sock.set_read_timeout(Some(Duration::new(1, 0))).expect("set_read_timeout function failed");
     /// ```
     ///
@@ -1314,7 +1322,7 @@ impl UnixDatagram {
     /// use std::os::unix::net::UnixDatagram;
     /// use std::time::Duration;
     ///
-    /// let socket = UnixDatagram::unbound().unwrap();
+    /// let socket = UnixDatagram::unbound().expect("UnixDatagram::unbound failed");
     /// let result = socket.set_read_timeout(Some(Duration::new(0, 0)));
     /// let err = result.unwrap_err();
     /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
@@ -1341,7 +1349,7 @@ impl UnixDatagram {
     /// use std::os::unix::net::UnixDatagram;
     /// use std::time::Duration;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
+    /// let sock = UnixDatagram::unbound().expect("UnixDatagram::unbound failed");
     /// sock.set_write_timeout(Some(Duration::new(1, 0)))
     ///     .expect("set_write_timeout function failed");
     /// ```
@@ -1354,7 +1362,7 @@ impl UnixDatagram {
     /// use std::os::unix::net::UnixDatagram;
     /// use std::time::Duration;
     ///
-    /// let socket = UnixDatagram::unbound().unwrap();
+    /// let socket = UnixDatagram::unbound().expect("UnixDatagram::unbound failed");
     /// let result = socket.set_write_timeout(Some(Duration::new(0, 0)));
     /// let err = result.unwrap_err();
     /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
@@ -1372,9 +1380,10 @@ impl UnixDatagram {
     /// use std::os::unix::net::UnixDatagram;
     /// use std::time::Duration;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
+    /// let sock = UnixDatagram::unbound().expect("UnixDatagram::unbound failed");
     /// sock.set_read_timeout(Some(Duration::new(1, 0))).expect("set_read_timeout function failed");
-    /// assert_eq!(sock.read_timeout().unwrap(), Some(Duration::new(1, 0)));
+    /// assert_eq!(sock.read_timeout().expect("read_timeout() call failed"),
+    ///            Some(Duration::new(1, 0)));
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
@@ -1389,10 +1398,11 @@ impl UnixDatagram {
     /// use std::os::unix::net::UnixDatagram;
     /// use std::time::Duration;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
+    /// let sock = UnixDatagram::unbound().expect("UnixDatagram::unbound failed");
     /// sock.set_write_timeout(Some(Duration::new(1, 0)))
     ///     .expect("set_write_timeout function failed");
-    /// assert_eq!(sock.write_timeout().unwrap(), Some(Duration::new(1, 0)));
+    /// assert_eq!(sock.write_timeout().expect("write_timeout() call failed"),
+    ///            Some(Duration::new(1, 0)));
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
@@ -1406,7 +1416,7 @@ impl UnixDatagram {
     /// ```
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
+    /// let sock = UnixDatagram::unbound().expect("UnixDatagram::unbound failed");
     /// sock.set_nonblocking(true).expect("set_nonblocking function failed");
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -1421,7 +1431,7 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
+    /// let sock = UnixDatagram::unbound().expect("UnixDatagram::unbound failed");
     /// if let Ok(Some(err)) = sock.take_error() {
     ///     println!("Got error: {:?}", err);
     /// }
@@ -1443,7 +1453,7 @@ impl UnixDatagram {
     /// use std::os::unix::net::UnixDatagram;
     /// use std::net::Shutdown;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
+    /// let sock = UnixDatagram::unbound().expect("UnixDatagram::unbound failed");
     /// sock.shutdown(Shutdown::Both).expect("shutdown function failed");
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]

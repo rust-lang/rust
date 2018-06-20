@@ -131,7 +131,7 @@ pub trait Error: Debug + Display {
     ///     match get_super_error() {
     ///         Err(e) => {
     ///             println!("Error: {}", e.description());
-    ///             println!("Caused by: {}", e.cause().unwrap());
+    ///             println!("Caused by: {}", e.cause().expect("no cause provided"));
     ///         }
     ///         _ => println!("No error"),
     ///     }

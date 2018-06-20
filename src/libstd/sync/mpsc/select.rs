@@ -34,15 +34,15 @@
 //! let (tx1, rx1) = channel();
 //! let (tx2, rx2) = channel();
 //!
-//! tx1.send(1).unwrap();
-//! tx2.send(2).unwrap();
+//! tx1.send(1).expect("send() call#1 failed");
+//! tx2.send(2).expect("send() call#2 failed");
 //!
 //! select! {
 //!     val = rx1.recv() => {
-//!         assert_eq!(val.unwrap(), 1);
+//!         assert_eq!(val.expect("recv() call#1 failed"), 1);
 //!     },
 //!     val = rx2.recv() => {
-//!         assert_eq!(val.unwrap(), 2);
+//!         assert_eq!(val.expect("recv() call#2 failed"), 2);
 //!     }
 //! }
 //! ```

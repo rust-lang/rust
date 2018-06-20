@@ -76,7 +76,7 @@ pub struct Guard {
 /// // poison the mutex
 /// let c_mutex = mutex.clone();
 /// let _ = thread::spawn(move || {
-///     let mut data = c_mutex.lock().unwrap();
+///     let mut data = c_mutex.lock().expect("lock() call failed");
 ///     *data = 2;
 ///     panic!();
 /// }).join();
@@ -192,7 +192,7 @@ impl<T> PoisonError<T> {
     /// // poison the mutex
     /// let c_mutex = mutex.clone();
     /// let _ = thread::spawn(move || {
-    ///     let mut data = c_mutex.lock().unwrap();
+    ///     let mut data = c_mutex.lock().expect("lock() call failed");
     ///     data.insert(10);
     ///     panic!();
     /// }).join();

@@ -90,7 +90,7 @@ pub struct Empty { _priv: () }
 /// use std::io::{self, Read};
 ///
 /// let mut buffer = String::new();
-/// io::empty().read_to_string(&mut buffer).unwrap();
+/// io::empty().read_to_string(&mut buffer).expect("read_to_string() call failed");
 /// assert!(buffer.is_empty());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -141,7 +141,7 @@ pub struct Repeat { byte: u8 }
 /// use std::io::{self, Read};
 ///
 /// let mut buffer = [0; 3];
-/// io::repeat(0b101).read_exact(&mut buffer).unwrap();
+/// io::repeat(0b101).read_exact(&mut buffer).expect("read_exact() call failed");
 /// assert_eq!(buffer, [0b101, 0b101, 0b101]);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -190,7 +190,7 @@ pub struct Sink { _priv: () }
 /// use std::io::{self, Write};
 ///
 /// let buffer = vec![1, 2, 3, 5, 8];
-/// let num_bytes = io::sink().write(&buffer).unwrap();
+/// let num_bytes = io::sink().write(&buffer).expect("write() call failed");
 /// assert_eq!(num_bytes, 5);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]

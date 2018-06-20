@@ -423,7 +423,9 @@ impl Error {
     ///
     /// fn change_error(mut err: Error) -> Error {
     ///     if let Some(inner_err) = err.get_mut() {
-    ///         inner_err.downcast_mut::<MyError>().unwrap().change_message("I've been changed!");
+    ///         inner_err.downcast_mut::<MyError>()
+    ///                  .expect("downcast_mut::<MyError>() call failed")
+    ///                  .change_message("I've been changed!");
     ///     }
     ///     err
     /// }

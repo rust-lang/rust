@@ -75,18 +75,18 @@ use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 ///         // Our non-atomic increment is safe because we're the only thread
 ///         // which can access the shared state when the lock is held.
 ///         //
-///         // We unwrap() the return value to assert that we are not expecting
+///         // We get the return value with expect() to assert that we are not expecting
 ///         // threads to ever fail while holding the lock.
-///         let mut data = data.lock().unwrap();
+///         let mut data = data.lock().expect("lock() call failed");
 ///         *data += 1;
 ///         if *data == N {
-///             tx.send(()).unwrap();
+///             tx.send(()).expect("send() call failed");
 ///         }
 ///         // the lock is unlocked here when `data` goes out of scope.
 ///     });
 /// }
 ///
-/// rx.recv().unwrap();
+/// rx.recv().expect("recv() call failed");
 /// ```
 ///
 /// To recover from a poisoned mutex:
@@ -101,7 +101,7 @@ use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 /// let _ = thread::spawn(move || -> () {
 ///     // This thread will acquire the mutex first, unwrapping the result of
 ///     // `lock` because the lock has not been poisoned.
-///     let _guard = lock2.lock().unwrap();
+///     let _guard = lock2.lock().expect("lock() call failed");
 ///
 ///     // This panic while holding the lock (`_guard` is in scope) will poison
 ///     // the mutex.
@@ -220,9 +220,9 @@ impl<T: ?Sized> Mutex<T> {
     /// let c_mutex = mutex.clone();
     ///
     /// thread::spawn(move || {
-    ///     *c_mutex.lock().unwrap() = 10;
+    ///     *c_mutex.lock().expect("lock() call#1 failed") = 10;
     /// }).join().expect("thread::spawn failed");
-    /// assert_eq!(*mutex.lock().unwrap(), 10);
+    /// assert_eq!(*mutex.lock().expect("lock() call#2 failed"), 10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> LockResult<MutexGuard<T>> {
@@ -265,7 +265,7 @@ impl<T: ?Sized> Mutex<T> {
     ///         println!("try_lock failed");
     ///     }
     /// }).join().expect("thread::spawn failed");
-    /// assert_eq!(*mutex.lock().unwrap(), 10);
+    /// assert_eq!(*mutex.lock().expect("lock() call failed"), 10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_lock(&self) -> TryLockResult<MutexGuard<T>> {
@@ -294,7 +294,7 @@ impl<T: ?Sized> Mutex<T> {
     /// let c_mutex = mutex.clone();
     ///
     /// let _ = thread::spawn(move || {
-    ///     let _lock = c_mutex.lock().unwrap();
+    ///     let _lock = c_mutex.lock().expect("lock() call failed");
     ///     panic!(); // the mutex gets poisoned
     /// }).join();
     /// assert_eq!(mutex.is_poisoned(), true);
@@ -318,7 +318,7 @@ impl<T: ?Sized> Mutex<T> {
     /// use std::sync::Mutex;
     ///
     /// let mutex = Mutex::new(0);
-    /// assert_eq!(mutex.into_inner().unwrap(), 0);
+    /// assert_eq!(mutex.into_inner().expect("into_inner() call failed"), 0);
     /// ```
     #[stable(feature = "mutex_into_inner", since = "1.6.0")]
     pub fn into_inner(self) -> LockResult<T> where T: Sized {
@@ -358,8 +358,8 @@ impl<T: ?Sized> Mutex<T> {
     /// use std::sync::Mutex;
     ///
     /// let mut mutex = Mutex::new(0);
-    /// *mutex.get_mut().unwrap() = 10;
-    /// assert_eq!(*mutex.lock().unwrap(), 10);
+    /// *mutex.get_mut().expect("get_mut() call failed") = 10;
+    /// assert_eq!(*mutex.lock().expect("lock() call failed"), 10);
     /// ```
     #[stable(feature = "mutex_get_mut", since = "1.6.0")]
     pub fn get_mut(&mut self) -> LockResult<&mut T> {

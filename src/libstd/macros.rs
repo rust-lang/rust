@@ -113,11 +113,11 @@ macro_rules! panic {
 /// print!("same ");
 /// print!("line ");
 ///
-/// io::stdout().flush().unwrap();
+/// io::stdout().flush().expect("flush() call failed");
 ///
 /// print!("this string has a newline, why not choose println! instead?\n");
 ///
-/// io::stdout().flush().unwrap();
+/// io::stdout().flush().expect("flush() call failed");
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -263,13 +263,13 @@ macro_rules! await {
 /// let (tx1, rx1) = mpsc::channel();
 /// let (tx2, rx2) = mpsc::channel();
 ///
-/// thread::spawn(move|| { long_running_thread(); tx1.send(()).unwrap(); });
-/// thread::spawn(move|| { tx2.send(calculate_the_answer()).unwrap(); });
+/// thread::spawn(move|| { long_running_thread(); tx1.send(()).expect("send() call failed"); });
+/// thread::spawn(move|| { tx2.send(calculate_the_answer()).expect("send() call failed"); });
 ///
 /// select! {
 ///     _ = rx1.recv() => println!("the long running thread finished first"),
 ///     answer = rx2.recv() => {
-///         println!("the answer was: {}", answer.unwrap());
+///         println!("the answer was: {}", answer.expect("failed to get answer"));
 ///     }
 /// }
 /// # drop(rx1.recv());

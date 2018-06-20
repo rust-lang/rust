@@ -34,7 +34,7 @@ use sync::{Mutex, Condvar};
 /// }
 /// // Wait for other threads to finish.
 /// for handle in handles {
-///     handle.join().unwrap();
+///     handle.join().expect("join() call failed");
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -134,7 +134,7 @@ impl Barrier {
     /// }
     /// // Wait for other threads to finish.
     /// for handle in handles {
-    ///     handle.join().unwrap();
+    ///     handle.join().expect("join() call failed");
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]

@@ -1225,7 +1225,7 @@ impl Child {
     /// ```no_run
     /// use std::process::Command;
     ///
-    /// let mut child = Command::new("ls").spawn().unwrap();
+    /// let mut child = Command::new("ls").spawn().expect("spawn() call failed");
     ///
     /// match child.try_wait() {
     ///     Ok(Some(status)) => println!("exited with: {}", status),

@@ -229,7 +229,7 @@ pub use self::local::{LocalKey, AccessError};
 /// [`io::Result`] to the thread handle with the given configuration.
 ///
 /// The [`thread::spawn`] free function uses a `Builder` with default
-/// configuration and [`unwrap`]s its return value.
+/// configuration and get its return value through [`expect`].
 ///
 /// You may want to use [`spawn`] instead of [`thread::spawn`], when you want
 /// to recover from a failure to launch a thread, indeed the free function will
@@ -244,9 +244,9 @@ pub use self::local::{LocalKey, AccessError};
 ///
 /// let handler = builder.spawn(|| {
 ///     // thread code
-/// }).unwrap();
+/// }).expect("spawn() call failed");
 ///
-/// handler.join().unwrap();
+/// handler.join().expect("join() call failed");
 /// ```
 ///
 /// [`thread::spawn`]: ../../std/thread/fn.spawn.html
@@ -254,7 +254,7 @@ pub use self::local::{LocalKey, AccessError};
 /// [`name`]: ../../std/thread/struct.Builder.html#method.name
 /// [`spawn`]: ../../std/thread/struct.Builder.html#method.spawn
 /// [`io::Result`]: ../../std/io/type.Result.html
-/// [`unwrap`]: ../../std/result/enum.Result.html#method.unwrap
+/// [`expect`]: ../../std/result/enum.Result.html#method.expect
 /// [naming-threads]: ./index.html#naming-threads
 /// [stack-size]: ./index.html#stack-size
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -281,9 +281,9 @@ impl Builder {
     ///
     /// let handler = builder.spawn(|| {
     ///     // thread code
-    /// }).unwrap();
+    /// }).expect("spawn() call failed");
     ///
-    /// handler.join().unwrap();
+    /// handler.join().expect("join() call failed");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Builder {
@@ -311,9 +311,9 @@ impl Builder {
     ///
     /// let handler = builder.spawn(|| {
     ///     assert_eq!(thread::current().name(), Some("foo"))
-    /// }).unwrap();
+    /// }).expect("spawn() call failed");
     ///
-    /// handler.join().unwrap();
+    /// handler.join().expect("join() call failed");
     /// ```
     ///
     /// [naming-threads]: ./index.html#naming-threads
@@ -379,9 +379,9 @@ impl Builder {
     ///
     /// let handler = builder.spawn(|| {
     ///     // thread code
-    /// }).unwrap();
+    /// }).expect("spawn() call failed");
     ///
-    /// handler.join().unwrap();
+    /// handler.join().expect("join() call failed");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn spawn<F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
@@ -478,7 +478,7 @@ impl Builder {
 ///     // thread code
 /// });
 ///
-/// handler.join().unwrap();
+/// handler.join().expect("join() call failed");
 /// ```
 ///
 /// As mentioned in the module documentation, threads are usually made to
@@ -519,7 +519,7 @@ impl Builder {
 ///     42
 /// });
 ///
-/// let result = computation.join().unwrap();
+/// let result = computation.join().expect("join() call failed");
 /// println!("{}", result);
 /// ```
 ///
@@ -554,9 +554,9 @@ pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
 ///         let handle = thread::current();
 ///         assert_eq!(handle.name(), Some("named thread"));
 ///     })
-///     .unwrap();
+///     .expect("spawn() call failed");
 ///
-/// handler.join().unwrap();
+/// handler.join().expect("join() call failed");
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn current() -> Thread {
@@ -762,7 +762,7 @@ const NOTIFIED: usize = 2;
 ///         thread::park();
 ///         println!("Thread unparked");
 ///     })
-///     .unwrap();
+///     .expect("spawn() call failed");
 ///
 /// // Let some time pass for the thread to be spawned.
 /// thread::sleep(Duration::from_millis(10));
@@ -772,7 +772,7 @@ const NOTIFIED: usize = 2;
 /// println!("Unpark the thread");
 /// parked_thread.thread().unpark();
 ///
-/// parked_thread.join().unwrap();
+/// parked_thread.join().expect("join() call failed");
 /// ```
 ///
 /// [`Thread`]: ../../std/thread/struct.Thread.html
@@ -927,7 +927,7 @@ pub fn park_timeout(dur: Duration) {
 ///     thread::current().id()
 /// });
 ///
-/// let other_thread_id = other_thread.join().unwrap();
+/// let other_thread_id = other_thread.join().expect("join() call failed");
 /// assert!(thread::current().id() != other_thread_id);
 /// ```
 ///
@@ -1044,7 +1044,7 @@ impl Thread {
     ///         thread::park();
     ///         println!("Thread unparked");
     ///     })
-    ///     .unwrap();
+    ///     .expect("spawn() call failed");
     ///
     /// // Let some time pass for the thread to be spawned.
     /// thread::sleep(Duration::from_millis(10));
@@ -1052,7 +1052,7 @@ impl Thread {
     /// println!("Unpark the thread");
     /// parked_thread.thread().unpark();
     ///
-    /// parked_thread.join().unwrap();
+    /// parked_thread.join().expect("join() call failed");
     /// ```
     ///
     /// [park]: fn.park.html
@@ -1088,7 +1088,7 @@ impl Thread {
     ///     thread::current().id()
     /// });
     ///
-    /// let other_thread_id = other_thread.join().unwrap();
+    /// let other_thread_id = other_thread.join().expect("join() call failed");
     /// assert!(thread::current().id() != other_thread_id);
     /// ```
     #[stable(feature = "thread_id", since = "1.19.0")]
@@ -1112,9 +1112,9 @@ impl Thread {
     ///
     /// let handler = builder.spawn(|| {
     ///     assert!(thread::current().name().is_none());
-    /// }).unwrap();
+    /// }).expect("spawn() call failed");
     ///
-    /// handler.join().unwrap();
+    /// handler.join().expect("join() call failed");
     /// ```
     ///
     /// Thread with a specified name:
@@ -1127,9 +1127,9 @@ impl Thread {
     ///
     /// let handler = builder.spawn(|| {
     ///     assert_eq!(thread::current().name(), Some("foo"))
-    /// }).unwrap();
+    /// }).expect("spawn() call failed");
     ///
-    /// handler.join().unwrap();
+    /// handler.join().expect("join() call failed");
     /// ```
     ///
     /// [naming-threads]: ./index.html#naming-threads
@@ -1167,7 +1167,7 @@ impl fmt::Debug for Thread {
 /// use std::fs;
 ///
 /// fn copy_in_thread() -> thread::Result<()> {
-///     thread::spawn(move || { fs::copy("foo.txt", "bar.txt").unwrap(); }).join()
+///     thread::spawn(move || { fs::copy("foo.txt", "bar.txt").expect("fs::copy failed"); }).join()
 /// }
 ///
 /// fn main() {
@@ -1248,7 +1248,7 @@ impl<T> JoinInner<T> {
 ///
 /// let join_handle: thread::JoinHandle<_> = builder.spawn(|| {
 ///     // some work here
-/// }).unwrap();
+/// }).expect("spawn() call failed");
 /// ```
 ///
 /// Child being detached and outliving its parent:
@@ -1298,7 +1298,7 @@ impl<T> JoinHandle<T> {
     ///
     /// let join_handle: thread::JoinHandle<_> = builder.spawn(|| {
     ///     // some work here
-    /// }).unwrap();
+    /// }).expect("spawn() call failed");
     ///
     /// let thread = join_handle.thread();
     /// println!("thread id: {:?}", thread.id());
@@ -1330,7 +1330,7 @@ impl<T> JoinHandle<T> {
     ///
     /// let join_handle: thread::JoinHandle<_> = builder.spawn(|| {
     ///     // some work here
-    /// }).unwrap();
+    /// }).expect("spawn() call failed");
     /// join_handle.join().expect("Couldn't join on the associated thread");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]

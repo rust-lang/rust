@@ -678,9 +678,9 @@ impl<T, S> HashSet<T, S>
     /// let mut set = HashSet::new();
     /// set.insert(Vec::<i32>::new());
     ///
-    /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 0);
+    /// assert_eq!(set.get(&[][..]).expect("get() failed").capacity(), 0);
     /// set.replace(Vec::with_capacity(10));
-    /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 10);
+    /// assert_eq!(set.get(&[][..]).expect("get() failed").capacity(), 10);
     /// ```
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn replace(&mut self, value: T) -> Option<T> {

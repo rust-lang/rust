@@ -721,7 +721,7 @@ impl hash::Hash for SocketAddrV6 {
 /// use std::net::{ToSocketAddrs, SocketAddr};
 ///
 /// let addr = SocketAddr::from(([127, 0, 0, 1], 443));
-/// let mut addrs_iter = addr.to_socket_addrs().unwrap();
+/// let mut addrs_iter = addr.to_socket_addrs().expect("to_socket_addrs() call failed");
 ///
 /// assert_eq!(Some(addr), addrs_iter.next());
 /// assert!(addrs_iter.next().is_none());
@@ -733,7 +733,7 @@ impl hash::Hash for SocketAddrV6 {
 /// use std::net::{SocketAddr, ToSocketAddrs};
 ///
 /// // assuming 'localhost' resolves to 127.0.0.1
-/// let mut addrs_iter = "localhost:443".to_socket_addrs().unwrap();
+/// let mut addrs_iter = "localhost:443".to_socket_addrs().expect("to_socket_addrs() call failed");
 /// assert_eq!(addrs_iter.next(), Some(SocketAddr::from(([127, 0, 0, 1], 443))));
 /// assert!(addrs_iter.next().is_none());
 ///
@@ -750,7 +750,7 @@ impl hash::Hash for SocketAddrV6 {
 /// let addr2 = SocketAddr::from(([127, 0, 0, 1], 443));
 /// let addrs = vec![addr1, addr2];
 ///
-/// let mut addrs_iter = (&addrs[..]).to_socket_addrs().unwrap();
+/// let mut addrs_iter = (&addrs[..]).to_socket_addrs().expect("to_socket_addrs() call failed");
 ///
 /// assert_eq!(Some(addr1), addrs_iter.next());
 /// assert_eq!(Some(addr2), addrs_iter.next());
