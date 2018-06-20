@@ -168,7 +168,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         None
     }
 
-    pub(super) fn _is_return_type_impl_trait(
+    pub(super) fn is_return_type_impl_trait(
         &self,
         scope_def_id: DefId,
     ) -> bool {

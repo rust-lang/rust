@@ -12,7 +12,7 @@
 
 use infer::error_reporting::nice_region_error::NiceRegionError;
 use infer::lexical_region_resolve::RegionResolutionError;
-use ty::RegionKind;
+use ty::{BoundRegion, FreeRegion, RegionKind};
 use util::common::ErrorReported;
 
 impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
@@ -29,7 +29,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                 ) => {
                     let anon_reg_sup = self.is_suitable_region(sup_r)?;
                     if sub_r == &RegionKind::ReStatic &&
-                        self._is_return_type_impl_trait(anon_reg_sup.def_id)
+                        self.is_return_type_impl_trait(anon_reg_sup.def_id)
                     {
                         let sp = var_origin.span();
                         let return_sp = sub_origin.span();
@@ -54,6 +54,12 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                             );
                         }
 
+                        let lifetime_name = match sup_r {
+                            RegionKind::ReFree(FreeRegion {
+                                bound_region: BoundRegion::BrNamed(_, ref name), ..
+                            }) => format!("{}", name),
+                            _ => "'_".to_owned(),
+                        };
                         if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(return_sp) {
                             err.span_suggestion(
                                 return_sp,
@@ -62,7 +68,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                                      less than `'static` and match {}",
                                     lifetime,
                                 ),
-                                format!("{} + '_", snippet),
+                                format!("{} + {}", snippet, lifetime_name),
                             );
                         }
                         err.emit();
