@@ -131,17 +131,15 @@ Compatibility Notes
 [`Option::filter`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.filter
 [`String::replace_range`]: https://doc.rust-lang.org/std/string/struct.String.html#method.replace_range
 [`Take::set_limit`]: https://doc.rust-lang.org/std/io/struct.Take.html#method.set_limit
+[`hint::unreachable_unchecked`]: https://doc.rust-lang.org/std/hint/fn.unreachable_unchecked.html
+[`os::unix::process::parent_id`]: https://doc.rust-lang.org/std/os/unix/process/fn.parent_id.html
+[`process::id`]: https://doc.rust-lang.org/std/process/fn.id.html
+[`ptr::swap_nonoverlapping`]: https://doc.rust-lang.org/std/ptr/fn.swap_nonoverlapping.html
 [`slice::rsplit_mut`]: https://doc.rust-lang.org/std/primitive.slice.html#method.rsplit_mut
 [`slice::rsplit`]: https://doc.rust-lang.org/std/primitive.slice.html#method.rsplit
 [`slice::swap_with_slice`]: https://doc.rust-lang.org/std/primitive.slice.html#method.swap_with_slice
 [`arch::x86_64`]: https://doc.rust-lang.org/std/arch/x86_64/index.html
 [`arch::x86`]: https://doc.rust-lang.org/std/arch/x86/index.html
-[`fs::read`]:
-[`fs::write`]:
-[`hint::unreachable_unchecked`]: https://doc.rust-lang.org/std/hint/fn.unreachable_unchecked.html
-[`os::unix::process::parent_id`]: https://doc.rust-lang.org/std/os/unix/process/fn.parent_id.html
-[`ptr::swap_nonoverlapping`]: https://doc.rust-lang.org/std/ptr/fn.swap_nonoverlapping.html
-[`process::id`]: https://doc.rust-lang.org/std/process/fn.id.html
 [“The Rustc book”]: https://doc.rust-lang.org/rustc
 
 
