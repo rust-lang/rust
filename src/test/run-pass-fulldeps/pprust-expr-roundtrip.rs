@@ -124,6 +124,7 @@ fn iter_exprs(depth: usize, f: &mut FnMut(P<Expr>)) {
                 });
                 iter_exprs(depth - 1, &mut |e| g(
                         ExprKind::Closure(CaptureBy::Value,
+                                          IsAsync::NotAsync,
                                           Movability::Movable,
                                           decl.clone(),
                                           e,
