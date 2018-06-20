@@ -61,6 +61,7 @@ mod location;
 crate mod place_ext;
 mod prefixes;
 mod path_utils;
+mod used_muts;
 
 pub(crate) mod nll;
 
@@ -281,20 +282,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
             .filter(|&local| !mbcx.mir.local_decls[*local].is_user_variable.is_some())
             .cloned()
             .collect();
-
-    for local in temporary_used_locals {
-        for location in mbcx.mir.find_assignments(local) {
-            for moi in &mbcx.move_data.loc_map[location] {
-                let mpi = &mbcx.move_data.moves[*moi].path;
-                let path = &mbcx.move_data.move_paths[*mpi];
-                debug!("assignment of {:?} to {:?}, adding {:?} to used mutable set",
-                       path.place, local, path.place);
-                if let Place::Local(user_local) = path.place {
-                    mbcx.used_mut.insert(user_local);
-                }
-            }
-        }
-    }
+    mbcx.gather_used_muts(temporary_used_locals);
 
     debug!("mbcx.used_mut: {:?}", mbcx.used_mut);
 
