@@ -1139,7 +1139,7 @@ impl<'a> LoweringContext<'a> {
                 }
                 hir::TyTraitObject(bounds, lifetime_bound)
             }
-            TyKind::ImplTrait(exist_ty_node_id, ref bounds) => {
+            TyKind::ImplTrait(def_node_id, ref bounds) => {
                 let span = t.span;
                 match itctx {
                     ImplTraitContext::Existential(fn_def_id, _, _) => {
@@ -1159,7 +1159,7 @@ impl<'a> LoweringContext<'a> {
                             .definitions()
                             .create_def_with_parent(
                             fn_def_id.index,
-                            exist_ty_node_id,
+                            def_node_id,
                             DefPathData::ExistentialImplTrait,
                             DefIndexAddressSpace::High,
                             Mark::root(),
@@ -1167,19 +1167,19 @@ impl<'a> LoweringContext<'a> {
                         );
 
                         // the `t` is just for printing debug messages
-                        self.allocate_hir_id_counter(exist_ty_node_id, t);
+                        self.allocate_hir_id_counter(def_node_id, t);
 
-                        let hir_bounds = self.with_hir_id_owner(exist_ty_node_id, |lctx| {
+                        let hir_bounds = self.with_hir_id_owner(def_node_id, |lctx| {
                             lctx.lower_bounds(bounds, itctx)
                         });
 
                         let (path_params, params) = self.generics_from_impl_trait_bounds(
-                            exist_ty_node_id,
+                            def_node_id,
                             exist_ty_def_index,
                             &hir_bounds,
                         );
 
-                        self.with_hir_id_owner(exist_ty_node_id, |lctx| {
+                        self.with_hir_id_owner(def_node_id, |lctx| {
                             let exist_ty_item_kind = hir::ItemExistential(hir::ExistTy {
                                 generics: hir::Generics {
                                     params,
@@ -1192,7 +1192,7 @@ impl<'a> LoweringContext<'a> {
                                 bounds: hir_bounds,
                                 impl_trait_fn: Some(fn_def_id),
                             });
-                            let exist_ty_id = lctx.lower_node_id(exist_ty_node_id);
+                            let exist_ty_id = lctx.lower_node_id(def_node_id);
                             // Generate an `existential type Foo: Trait;` declaration
                             trace!("creating existential type with id {:#?}", exist_ty_id);
                             // Set the name to `impl Bound1 + Bound2`
@@ -1225,8 +1225,7 @@ impl<'a> LoweringContext<'a> {
                         })
                     }
                     ImplTraitContext::Universal(def_id, in_band_ty_params) => {
-                        let def_node_id = self.next_id().node_id;
-
+                        self.lower_node_id(def_node_id);
                         // Add a definition for the in-band TyParam
                         let def_index = self.resolver.definitions().create_def_with_parent(
                             def_id.index,
