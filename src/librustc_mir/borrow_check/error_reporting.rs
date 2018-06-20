@@ -364,6 +364,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         };
 
         if let Some((_, var_span)) = old_closure_span {
+            let place = &issued_borrow.borrowed_place;
+            let desc_place = self.describe_place(place).unwrap_or("_".to_owned());
+
             err.span_label(
                 var_span,
                 format!(
