@@ -25,15 +25,32 @@ where
     Ok(false)
 }
 
-#[cfg(not(target_os = "emscripten"))]
+#[cfg(target_os = "fuchsia")]
 pub use sys_common::gnu::libbacktrace::foreach_symbol_fileline;
 
-#[cfg(not(target_os = "emscripten"))]
+#[cfg(target_os = "fuchsia")]
 pub fn resolve_symname<F>(frame: Frame, callback: F, bc: &BacktraceContext) -> io::Result<()>
 where
     F: FnOnce(Option<&str>) -> io::Result<()>
 {
     ::sys_common::gnu::libbacktrace::resolve_symname(frame, |symname| {
+        if symname.is_some() {
+            callback(symname)
+        } else {
+            dladdr::resolve_symname(frame, callback, bc)
+        }
+    }, bc)
+}
+
+#[cfg(not(any(target_os = "fuchsia", target_os = "emscripten")))]
+pub use sys_common::addr2line::foreach_symbol_fileline;
+
+#[cfg(not(any(target_os = "fuchsia", target_os = "emscripten")))]
+pub fn resolve_symname<F>(frame: Frame, callback: F, bc: &BacktraceContext) -> io::Result<()>
+where
+    F: FnOnce(Option<&str>) -> io::Result<()>
+{
+    ::sys_common::addr2line::resolve_symname(frame, |symname| {
         if symname.is_some() {
             callback(symname)
         } else {

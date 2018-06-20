@@ -13,17 +13,29 @@ path = "lib.rs"
 crate-type = ["dylib", "rlib"]
 
 [dependencies]
-alloc = { path = "../liballoc" }
 alloc_jemalloc = { path = "../liballoc_jemalloc", optional = true }
 alloc_system = { path = "../liballoc_system" }
 panic_unwind = { path = "../libpanic_unwind", optional = true }
 panic_abort = { path = "../libpanic_abort" }
-core = { path = "../libcore" }
 libc = { path = "../rustc/libc_shim" }
-compiler_builtins = { path = "../rustc/compiler_builtins_shim" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
-std_unicode = { path = "../libstd_unicode" }
 unwind = { path = "../libunwind" }
+object = { version = "0.9", default-features = false, optional = true }
+
+[dependencies.gimli]
+version = "0.16"
+default-features = false
+features = ["alloc"]
+git = "https://github.com/est31/gimli"
+rev = "304caacf8b73f117813b1a0d436ce24403459bf2"
+optional = true
+
+[dependencies.addr2line]
+git = "https://github.com/est31/addr2line"
+branch = "no_std_prototype"
+default-features = false
+features = ["cpp_demangle"]
+optional = true
 
 [dev-dependencies]
 rand = "0.4"
@@ -43,7 +55,7 @@ cc = "1.0"
 build_helper = { path = "../build_helper" }
 
 [features]
-backtrace = []
+backtrace = ["addr2line", "object", "gimli"]
 debug-jemalloc = ["alloc_jemalloc/debug"]
 jemalloc = ["alloc_jemalloc"]
 force_alloc_system = []

@@ -1,6 +1,9 @@
 [workspace]
 members = [
   "bootstrap",
+  "libcore",
+  "libstd_unicode",
+  "liballoc",
   "rustc",
   "libstd",
   "libtest",

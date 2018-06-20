@@ -66,10 +66,12 @@ cfg_if! {
 }
 
 #[cfg(feature = "backtrace")]
-#[cfg(any(all(unix, not(target_os = "emscripten")),
-          all(windows, target_env = "gnu"),
-          target_os = "redox"))]
+#[cfg(target_os = "fuchsia")]
 pub mod gnu;
+
+#[cfg(feature = "backtrace")]
+#[cfg(not(target_os = "fuchsia"))]
+pub mod addr2line;
 
 // common error constructors
 
