@@ -1167,18 +1167,17 @@ impl<'a> LoweringContext<'a> {
                 }
                 hir::TyTraitObject(bounds, lifetime_bound)
             }
-            TyKind::ImplTrait(exist_ty_node_id, ref bounds) => {
+            TyKind::ImplTrait(def_node_id, ref bounds) => {
                 let span = t.span;
                 match itctx {
                     ImplTraitContext::Existential(fn_def_id) => {
                         self.lower_existential_impl_trait(
-                            span, fn_def_id, exist_ty_node_id,
+                            span, fn_def_id, def_node_id,
                             |this| this.lower_param_bounds(bounds, itctx),
                         )
                     }
                     ImplTraitContext::Universal(def_id) => {
-                        let def_node_id = self.next_id().node_id;
-
+                        self.lower_node_id(def_node_id);
                         // Add a definition for the in-band TyParam
                         let def_index = self.resolver.definitions().create_def_with_parent(
                             def_id.index,
