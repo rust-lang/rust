@@ -1165,7 +1165,7 @@ impl<'a> LoweringContext<'a> {
                         self.allocate_hir_id_counter(exist_ty_node_id, t);
 
                         let hir_bounds = self.with_hir_id_owner(exist_ty_node_id, |lctx| {
-                            lctx.lower_bounds(bounds, itctx)
+                            lctx.lower_param_bounds(bounds, itctx)
                         });
 
                         let (lifetimes, lifetime_defs) = self.lifetimes_from_impl_trait_bounds(

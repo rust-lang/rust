@@ -511,7 +511,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
         ItemExistential(ExistTy {ref generics, ref bounds, impl_trait_fn}) => {
             visitor.visit_id(item.id);
             walk_generics(visitor, generics);
-            walk_list!(visitor, visit_ty_param_bound, bounds);
+            walk_list!(visitor, visit_param_bound, bounds);
             if let Some(impl_trait_fn) = impl_trait_fn {
                 visitor.visit_def_mention(Def::Fn(impl_trait_fn))
             }

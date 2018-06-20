@@ -662,7 +662,7 @@ impl<'a> State<'a> {
                 self.word_space(":")?;
                 let mut real_bounds = Vec::with_capacity(exist.bounds.len());
                 for b in exist.bounds.iter() {
-                    if let TraitTyParamBound(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
+                    if let GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
                         self.s.space()?;
                         self.word_space("for ?")?;
                         self.print_trait_ref(&ptr.trait_ref)?;
