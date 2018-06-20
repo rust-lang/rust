@@ -963,7 +963,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ..
             }) => {
                 (self.tcx.sess.codemap().def_span(span), decl.inputs.iter()
-                        .map(|arg| match arg.clone().into_inner().node {
+                        .map(|arg| match arg.clone().node {
                     hir::TyTup(ref tys) => ArgKind::Tuple(
                         Some(arg.span),
                         tys.iter()
