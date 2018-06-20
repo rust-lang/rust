@@ -978,20 +978,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // Mapping of regions to the previous region and constraint index that led to it.
         let mut previous = FxHashMap();
-        // Current region in traversal.
-        let mut current = r0;
         // Regions yet to be visited.
-        let mut next = vec! [ current ];
+        let mut next = vec! [ r0 ];
         // Regions that have been visited.
         let mut visited = FxHashSet();
         // Ends of paths.
         let mut end_regions: Vec<RegionVid> = Vec::new();
 
         // When we've still got points to visit...
-        while !next.is_empty() {
+        while let Some(current) = next.pop() {
             // ...take the next point...
-            debug!("find_constraint_paths_from_region: next={:?}", next);
-            current = next.pop().unwrap(); // Can unwrap here as we know the vector is not empty.
+            debug!("find_constraint_paths_from_region: current={:?} next={:?}", current, next);
 
             // ...find the edges containing it...
             let mut upcoming = Vec::new();

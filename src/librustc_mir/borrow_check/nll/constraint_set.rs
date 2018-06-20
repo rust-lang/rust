@@ -13,7 +13,6 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use borrow_check::nll::type_check::Locations;
 
 use std::fmt;
-use std::cmp::Ordering;
 use std::ops::Deref;
 
 #[derive(Clone, Default)]
@@ -112,37 +111,12 @@ impl fmt::Debug for OutlivesConstraint {
 
 /// Constraints that are considered interesting can be categorized to
 /// determine why they are interesting.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
 crate enum ConstraintCategory {
     Assignment,
     CallArgument,
     Cast,
     Other,
 }
-
-impl Ord for ConstraintCategory {
-    fn cmp(&self, other: &Self) -> Ordering {
-        if self == other {
-            return Ordering::Equal;
-        }
-
-        match (self, other) {
-            (ConstraintCategory::Assignment, _) => Ordering::Greater,
-            (_, ConstraintCategory::Assignment) => Ordering::Less,
-            (ConstraintCategory::CallArgument, _) => Ordering::Greater,
-            (_, ConstraintCategory::CallArgument) => Ordering::Less,
-            (ConstraintCategory::Cast, _) => Ordering::Greater,
-            (_, ConstraintCategory::Cast) => Ordering::Less,
-            (ConstraintCategory::Other, _) => Ordering::Greater,
-        }
-    }
-}
-
-impl PartialOrd for ConstraintCategory {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 
 newtype_index!(ConstraintIndex { DEBUG_FORMAT = "ConstraintIndex({})" });
