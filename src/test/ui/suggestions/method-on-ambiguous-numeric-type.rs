@@ -15,4 +15,8 @@ fn main() {
     let x = y.neg();
     //~^ ERROR can't call method `neg` on ambiguous numeric type `{float}`
     println!("{:?}", x);
+    for i in 0..100 {
+        println!("{}", i.pow(2));
+        //~^ ERROR can't call method `pow` on ambiguous numeric type `{integer}`
+    }
 }

@@ -187,7 +187,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 out_of_scope_traits,
                 lev_candidate,
                 mode,
-                ..
             }) => {
                 let tcx = self.tcx;
 
@@ -264,13 +263,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         let span = tcx.hir.span(node_id);
                                         let snippet = tcx.sess.codemap().span_to_snippet(span)
                                             .unwrap();
-                                        err.span_suggestion(span,
-                                                            &format!("you must specify a type for \
-                                                                      this binding, like `{}`",
-                                                                     concrete_type),
-                                                            format!("{}: {}",
-                                                                    snippet,
-                                                                    concrete_type));
+
+                                        let parent_node = self.tcx.hir.get(
+                                            self.tcx.hir.get_parent_node(node_id),
+                                        );
+                                        let msg = format!(
+                                            "you must specify a type for this binding, like `{}`",
+                                            concrete_type,
+                                        );
+                                        match parent_node {
+                                            hir_map::NodeLocal(hir::Local {
+                                                source: hir::LocalSource::Normal,
+                                                ..
+                                            }) => {
+                                                err.span_suggestion(
+                                                    span,
+                                                    &msg,
+                                                    format!("{}: {}", snippet, concrete_type),
+                                                );
+                                            }
+                                            _ => {
+                                                err.span_label(span, msg);
+                                            }
+                                        }
                                     }
                                 }
                             }

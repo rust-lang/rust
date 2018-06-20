@@ -18,6 +18,14 @@ help: you must specify a type for this binding, like `f32`
 LL |     let y: f32 = 2.0;
    |         ^^^^^^
 
-error: aborting due to 2 previous errors
+error[E0689]: can't call method `pow` on ambiguous numeric type `{integer}`
+  --> $DIR/method-on-ambiguous-numeric-type.rs:19:26
+   |
+LL |     for i in 0..100 {
+   |         - you must specify a type for this binding, like `i32`
+LL |         println!("{}", i.pow(2));
+   |                          ^^^
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0689`.
