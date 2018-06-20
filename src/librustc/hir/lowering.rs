@@ -1047,7 +1047,11 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_ty(&mut self, t: &Ty, mut itctx: ImplTraitContext) -> P<hir::Ty> {
+    fn lower_ty(&mut self, t: &Ty, itctx: ImplTraitContext) -> P<hir::Ty> {
+        P(self.lower_ty_direct(t, itctx))
+    }
+
+    fn lower_ty_direct(&mut self, t: &Ty, mut itctx: ImplTraitContext) -> hir::Ty {
         let kind = match t.node {
             TyKind::Infer => hir::TyInfer,
             TyKind::Err => hir::TyErr,
@@ -1087,10 +1091,15 @@ impl<'a> LoweringContext<'a> {
             ),
             TyKind::Never => hir::TyNever,
             TyKind::Tup(ref tys) => {
-                hir::TyTup(tys.iter().map(|ty| self.lower_ty(ty, itctx.reborrow())).collect())
+                hir::TyTup(
+                    tys
+                        .iter()
+                        .map(|ty| self.lower_ty_direct(ty, itctx.reborrow()))
+                        .collect()
+                )
             }
             TyKind::Paren(ref ty) => {
-                return self.lower_ty(ty, itctx);
+                return self.lower_ty_direct(ty, itctx);
             }
             TyKind::Path(ref qself, ref path) => {
                 let id = self.lower_node_id(t.id);
@@ -1269,12 +1278,12 @@ impl<'a> LoweringContext<'a> {
         };
 
         let LoweredNodeId { node_id, hir_id } = self.lower_node_id(t.id);
-        P(hir::Ty {
+        hir::Ty {
             id: node_id,
             node: kind,
             span: t.span,
             hir_id,
-        })
+        }
     }
 
     fn generics_from_impl_trait_bounds(
@@ -1588,7 +1597,7 @@ impl<'a> LoweringContext<'a> {
             // e.g. `Vec` in `Vec::new` or `<I as Iterator>::Item` in
             // `<I as Iterator>::Item::default`.
             let new_id = self.next_id();
-            self.ty_path(new_id, p.span, hir::QPath::Resolved(qself, path))
+            P(self.ty_path(new_id, p.span, hir::QPath::Resolved(qself, path)))
         };
 
         // Anything after the base path are associated "extensions",
@@ -1619,7 +1628,7 @@ impl<'a> LoweringContext<'a> {
 
             // Wrap the associated extension in another type node.
             let new_id = self.next_id();
-            ty = self.ty_path(new_id, p.span, qpath);
+            ty = P(self.ty_path(new_id, p.span, qpath));
         }
 
         // Should've returned in the for loop above.
@@ -1727,7 +1736,7 @@ impl<'a> LoweringContext<'a> {
         (
             hir::PathParameters {
                 lifetimes: self.lower_lifetimes(lifetimes),
-                types: types.iter().map(|ty| self.lower_ty(ty, itctx.reborrow())).collect(),
+                types: types.iter().map(|ty| self.lower_ty_direct(ty, itctx.reborrow())).collect(),
                 bindings: bindings
                     .iter()
                     .map(|b| self.lower_ty_binding(b, itctx.reborrow()))
@@ -1758,16 +1767,16 @@ impl<'a> LoweringContext<'a> {
                 } = data;
                 let inputs = inputs
                     .iter()
-                    .map(|ty| this.lower_ty(ty, DISALLOWED))
+                    .map(|ty| this.lower_ty_direct(ty, DISALLOWED))
                     .collect();
                 let mk_tup = |this: &mut Self, tys, span| {
                     let LoweredNodeId { node_id, hir_id } = this.next_id();
-                    P(hir::Ty {
+                    hir::Ty {
                         node: hir::TyTup(tys),
                         id: node_id,
                         hir_id,
                         span,
-                    })
+                    }
                 };
 
                 (
@@ -1781,7 +1790,7 @@ impl<'a> LoweringContext<'a> {
                                 ty: output
                                     .as_ref()
                                     .map(|ty| this.lower_ty(&ty, DISALLOWED))
-                                    .unwrap_or_else(|| mk_tup(this, hir::HirVec::new(), span)),
+                                    .unwrap_or_else(|| P(mk_tup(this, hir::HirVec::new(), span))),
                                 span: output.as_ref().map_or(span, |ty| ty.span),
                             }
                         ],
@@ -1853,9 +1862,9 @@ impl<'a> LoweringContext<'a> {
                 .iter()
                 .map(|arg| {
                     if let Some((def_id, ibty, _)) = in_band_ty_params.as_mut() {
-                        self.lower_ty(&arg.ty, ImplTraitContext::Universal(*def_id, ibty))
+                        self.lower_ty_direct(&arg.ty, ImplTraitContext::Universal(*def_id, ibty))
                     } else {
-                        self.lower_ty(&arg.ty, ImplTraitContext::Disallowed)
+                        self.lower_ty_direct(&arg.ty, ImplTraitContext::Disallowed)
                     }
                 })
                 .collect(),
@@ -3316,7 +3325,7 @@ impl<'a> LoweringContext<'a> {
                 let e1 = self.lower_expr(e1);
                 let e2 = self.lower_expr(e2);
                 let ty_path = P(self.std_path(span, &["ops", "RangeInclusive"], false));
-                let ty = self.ty_path(id, span, hir::QPath::Resolved(None, ty_path));
+                let ty = P(self.ty_path(id, span, hir::QPath::Resolved(None, ty_path)));
                 let new_seg = P(hir::PathSegment::from_name(Symbol::intern("new")));
                 let new_path = hir::QPath::TypeRelative(ty, new_seg);
                 let new = P(self.expr(span, hir::ExprPath(new_path), ThinVec::new()));
@@ -4194,7 +4203,7 @@ impl<'a> LoweringContext<'a> {
             .resolve_str_path(span, self.crate_root, components, is_value)
     }
 
-    fn ty_path(&mut self, id: LoweredNodeId, span: Span, qpath: hir::QPath) -> P<hir::Ty> {
+    fn ty_path(&mut self, id: LoweredNodeId, span: Span, qpath: hir::QPath) -> hir::Ty {
         let mut id = id;
         let node = match qpath {
             hir::QPath::Resolved(None, path) => {
@@ -4219,12 +4228,12 @@ impl<'a> LoweringContext<'a> {
             }
             _ => hir::TyPath(qpath),
         };
-        P(hir::Ty {
+        hir::Ty {
             id: id.node_id,
             hir_id: id.hir_id,
             node,
             span,
-        })
+        }
     }
 
     /// Invoked to create the lifetime argument for a type `&T`
