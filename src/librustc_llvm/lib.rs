@@ -383,6 +383,9 @@ pub fn initialize_available_targets() {
 }
 
 pub fn last_error() -> Option<String> {
+  extern "C" {
+    fn free(ptr: *mut std::os::raw::c_void);
+  }
     unsafe {
         let cstr = LLVMRustGetLastError();
         if cstr.is_null() {
@@ -390,7 +393,7 @@ pub fn last_error() -> Option<String> {
         } else {
             let err = CStr::from_ptr(cstr).to_bytes();
             let err = String::from_utf8_lossy(err).to_string();
-            libc::free(cstr as *mut _);
+            free(cstr as *mut _);
             Some(err)
         }
     }

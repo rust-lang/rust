@@ -19,13 +19,15 @@ use debuginfo::{DIBuilderRef, DIDescriptor, DIFile, DILexicalBlock, DISubprogram
                 DIGlobalVariable, DIArray, DISubrange, DITemplateTypeParameter, DIEnumerator,
                 DINameSpace, DIFlags};
 
-use libc::{c_uint, c_int, size_t, c_char};
-use libc::{c_longlong, c_ulonglong, c_void};
+use std::os::raw::{c_uint, c_int, c_char};
+use std::os::raw::{c_longlong, c_ulonglong, c_void};
+
+use super::size_t;
 
 use RustStringRef;
 
 pub type Opcode = u32;
-pub type Bool = c_uint;
+pub type Bool = c_int;
 
 pub const True: Bool = 1 as Bool;
 pub const False: Bool = 0 as Bool;
@@ -482,7 +484,7 @@ pub mod debuginfo {
     bitflags! {
         #[repr(C)]
         #[derive(Default)]
-        pub struct DIFlags: ::libc::uint32_t {
+        pub struct DIFlags: u32 {
             const FlagZero                = 0;
             const FlagPrivate             = 1;
             const FlagProtected           = 2;
@@ -1323,7 +1325,7 @@ extern "C" {
 
     pub fn LLVMPassManagerBuilderCreate() -> PassManagerBuilderRef;
     pub fn LLVMPassManagerBuilderDispose(PMB: PassManagerBuilderRef);
-    pub fn LLVMPassManagerBuilderSetSizeLevel(PMB: PassManagerBuilderRef, Value: Bool);
+    pub fn LLVMPassManagerBuilderSetSizeLevel(PMB: PassManagerBuilderRef, Value: c_uint);
     pub fn LLVMPassManagerBuilderSetDisableUnrollLoops(PMB: PassManagerBuilderRef, Value: Bool);
     pub fn LLVMPassManagerBuilderUseInlinerWithThreshold(PMB: PassManagerBuilderRef,
                                                          threshold: c_uint);
