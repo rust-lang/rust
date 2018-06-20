@@ -6,6 +6,7 @@ use arch::detect::bit;
 use super::auxvec;
 
 /// Performs run-time feature detection.
+#[inline]
 pub fn check_for(x: Feature) -> bool {
     cache::test(x as u32, detect_features)
 }

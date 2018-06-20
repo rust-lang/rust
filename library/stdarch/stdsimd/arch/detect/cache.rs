@@ -12,12 +12,14 @@ use core::sync::atomic::AtomicU64;
 use core::sync::atomic::AtomicU32;
 
 /// Sets the `bit` of `x`.
-pub const fn set_bit(x: u64, bit: u32) -> u64 {
+#[inline]
+const fn set_bit(x: u64, bit: u32) -> u64 {
     x | 1 << bit
 }
 
 /// Tests the `bit` of `x`.
-pub const fn test_bit(x: u64, bit: u32) -> bool {
+#[inline]
+const fn test_bit(x: u64, bit: u32) -> bool {
     x & (1 << bit) != 0
 }
 
@@ -26,7 +28,7 @@ const CACHE_CAPACITY: u32 = 63;
 
 /// This type is used to initialize the cache
 #[derive(Copy, Clone)]
-pub struct Initializer(u64);
+pub(crate) struct Initializer(u64);
 
 impl Default for Initializer {
     fn default() -> Self {
@@ -37,7 +39,8 @@ impl Default for Initializer {
 impl Initializer {
     /// Tests the `bit` of the cache.
     #[allow(dead_code)]
-    pub fn test(&self, bit: u32) -> bool {
+    #[inline]
+    pub(crate) fn test(&self, bit: u32) -> bool {
         // FIXME: this way of making sure that the cache is large enough is
         // brittle.
         debug_assert!(
@@ -48,7 +51,8 @@ impl Initializer {
     }
 
     /// Sets the `bit` of the cache.
-    pub fn set(&mut self, bit: u32) {
+    #[inline]
+    pub(crate) fn set(&mut self, bit: u32) {
         // FIXME: this way of making sure that the cache is large enough is
         // brittle.
         debug_assert!(
@@ -77,17 +81,20 @@ impl Cache {
         Cache(AtomicU64::new(u64::max_value()))
     }
     /// Is the cache uninitialized?
-    pub fn is_uninitialized(&self) -> bool {
+    #[inline]
+    pub(crate) fn is_uninitialized(&self) -> bool {
         self.0.load(Ordering::Relaxed) == u64::max_value()
     }
 
     /// Is the `bit` in the cache set?
-    pub fn test(&self, bit: u32) -> bool {
+    #[inline]
+    pub(crate) fn test(&self, bit: u32) -> bool {
         test_bit(CACHE.0.load(Ordering::Relaxed), bit)
     }
 
     /// Initializes the cache.
-    pub fn initialize(&self, value: Initializer) {
+    #[inline]
+    pub(crate) fn initialize(&self, value: Initializer) {
         self.0.store(value.0, Ordering::Relaxed);
     }
 }
@@ -109,12 +116,14 @@ impl Cache {
         )
     }
     /// Is the cache uninitialized?
-    pub fn is_uninitialized(&self) -> bool {
+    #[inline]
+    pub(crate) fn is_uninitialized(&self) -> bool {
         self.1.load(Ordering::Relaxed) == u32::max_value()
     }
 
     /// Is the `bit` in the cache set?
-    pub fn test(&self, bit: u32) -> bool {
+    #[inline]
+    pub(crate) fn test(&self, bit: u32) -> bool {
         if bit < 32 {
             test_bit(CACHE.0.load(Ordering::Relaxed) as u64, bit)
         } else {
@@ -123,7 +132,8 @@ impl Cache {
     }
 
     /// Initializes the cache.
-    pub fn initialize(&self, value: Initializer) {
+    #[inline]
+    pub(crate) fn initialize(&self, value: Initializer) {
         let lo: u32 = value.0 as u32;
         let hi: u32 = (value.0 >> 32) as u32;
         self.0.store(lo, Ordering::Relaxed);
@@ -139,9 +149,8 @@ impl Cache {
 ///
 /// It uses the `Feature` variant to index into this variable as a bitset. If
 /// the bit is set, the feature is enabled, and otherwise it is disabled.
-///
-/// PLEASE: do not use this, it is an implementation detail subject to change.
-pub fn test<F>(bit: u32, f: F) -> bool
+#[inline]
+pub(crate) fn test<F>(bit: u32, f: F) -> bool
 where
     F: FnOnce() -> Initializer,
 {

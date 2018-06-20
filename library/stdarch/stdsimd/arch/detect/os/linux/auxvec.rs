@@ -7,17 +7,17 @@ use fs::File;
 use io::Read;
 
 /// Key to access the CPU Hardware capabilities bitfield.
-pub const AT_HWCAP: usize = 16;
+pub(crate) const AT_HWCAP: usize = 16;
 /// Key to access the CPU Hardware capabilities 2 bitfield.
 #[cfg(any(target_arch = "arm", target_arch = "powerpc64"))]
-pub const AT_HWCAP2: usize = 26;
+pub(crate) const AT_HWCAP2: usize = 26;
 
 /// Cache HWCAP bitfields of the ELF Auxiliary Vector.
 ///
 /// If an entry cannot be read all the bits in the bitfield are set to zero.
 /// This should be interpreted as all the features being disabled.
 #[derive(Debug, Copy, Clone)]
-pub struct AuxVec {
+pub(crate) struct AuxVec {
     pub hwcap: usize,
     #[cfg(any(target_arch = "arm", target_arch = "powerpc64"))]
     pub hwcap2: usize,
@@ -48,7 +48,7 @@ pub struct AuxVec {
 ///
 /// [auxvec_h]: https://github.com/torvalds/linux/blob/master/include/uapi/linux/auxvec.h
 /// [auxv_docs]: https://docs.rs/auxv/0.3.3/auxv/
-pub fn auxv() -> Result<AuxVec, ()> {
+pub(crate) fn auxv() -> Result<AuxVec, ()> {
     // Try to call a dynamically-linked getauxval function.
     if let Ok(hwcap) = getauxval(AT_HWCAP) {
         // Targets with only AT_HWCAP:

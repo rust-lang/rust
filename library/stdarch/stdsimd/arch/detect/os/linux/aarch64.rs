@@ -7,6 +7,7 @@ use super::auxvec;
 use super::cpuinfo;
 
 /// Performs run-time feature detection.
+#[inline]
 pub fn check_for(x: Feature) -> bool {
     cache::test(x as u32, detect_features)
 }
@@ -125,7 +126,7 @@ impl AtHwcap {
     ///
     /// The features are enabled approximately like in LLVM host feature detection:
     /// https://github.com/llvm-mirror/llvm/blob/master/lib/Support/Host.cpp#L1273
-    pub fn cache(self) -> cache::Initializer {
+    fn cache(self) -> cache::Initializer {
         let mut value = cache::Initializer::default();
         {
             let mut enable_feature = |f, enable| {

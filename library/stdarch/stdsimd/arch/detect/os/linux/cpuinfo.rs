@@ -6,20 +6,20 @@ use fs::File;
 use io::{self, Read};
 
 /// cpuinfo
-pub struct CpuInfo {
+pub(crate) struct CpuInfo {
     raw: String,
 }
 
 impl CpuInfo {
     /// Reads /proc/cpuinfo into CpuInfo.
-    pub fn new() -> Result<Self, io::Error> {
+    pub(crate) fn new() -> Result<Self, io::Error> {
         let mut file = File::open("/proc/cpuinfo")?;
         let mut cpui = Self { raw: String::new() };
         file.read_to_string(&mut cpui.raw)?;
         Ok(cpui)
     }
     /// Returns the value of the cpuinfo `field`.
-    pub fn field(&self, field: &str) -> CpuInfoField {
+    pub(crate) fn field(&self, field: &str) -> CpuInfoField {
         for l in self.raw.lines() {
             if l.trim().starts_with(field) {
                 return CpuInfoField::new(l.split(": ").nth(1));
@@ -44,7 +44,7 @@ impl CpuInfo {
 
 /// Field of cpuinfo
 #[derive(Debug)]
-pub struct CpuInfoField<'a>(Option<&'a str>);
+pub(crate) struct CpuInfoField<'a>(Option<&'a str>);
 
 impl<'a> PartialEq<&'a str> for CpuInfoField<'a> {
     fn eq(&self, other: &&'a str) -> bool {
@@ -56,7 +56,7 @@ impl<'a> PartialEq<&'a str> for CpuInfoField<'a> {
 }
 
 impl<'a> CpuInfoField<'a> {
-    pub fn new<'b>(v: Option<&'b str>) -> CpuInfoField<'b> {
+    pub(crate) fn new<'b>(v: Option<&'b str>) -> CpuInfoField<'b> {
         match v {
             None => CpuInfoField::<'b>(None),
             Some(f) => CpuInfoField::<'b>(Some(f.trim())),
@@ -64,11 +64,11 @@ impl<'a> CpuInfoField<'a> {
     }
     /// Does the field exist?
     #[cfg(test)]
-    pub fn exists(&self) -> bool {
+    pub(crate) fn exists(&self) -> bool {
         self.0.is_some()
     }
     /// Does the field contain `other`?
-    pub fn has(&self, other: &str) -> bool {
+    pub(crate) fn has(&self, other: &str) -> bool {
         match self.0 {
             None => other.is_empty(),
             Some(f) => {
