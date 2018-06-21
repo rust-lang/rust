@@ -350,6 +350,10 @@
 # rustc to execute.
 #lld = false
 
+# Indicates whether some LLVM tools, like llvm-objdump, will be made available in the
+# sysroot.
+#llvm-tools = false
+
 # Whether to deny warnings in crates
 #deny-warnings = true
 

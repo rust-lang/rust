@@ -453,6 +453,7 @@ impl<'a> Builder<'a> {
                 dist::Cargo,
                 dist::Rls,
                 dist::Rustfmt,
+                dist::LlvmTools,
                 dist::Extended,
                 dist::HashSign
             ),
