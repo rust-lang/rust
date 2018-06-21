@@ -224,7 +224,8 @@ should work and will probably try at some point.
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-Rust (now) allows usage of `Self(v0, v1, ..)` inside inherent and
+With this RFC implemented,
+rust allows usage of `Self(v0, v1, ..)` inside inherent and
 trait `impl`s of tuple structs, either when mentioning the tuple struct
 directly in the `impl` header, or via a type alias.
 This usage is permitted both in expression and pattern contexts.
