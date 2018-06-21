@@ -586,16 +586,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                         )
                     }
                 };
-                let elem_size = self.layout_of(elem_ty)?.size;
                 let value = self.eval_operand(operand)?.value;
 
                 let (dest, dest_align) = self.force_allocation(dest)?.to_ptr_align();
 
-                // FIXME: speed up repeat filling
-                for i in 0..length {
-                    let elem_dest = dest.ptr_offset(elem_size * i as u64, &self)?;
-                    self.write_value_to_ptr(value, elem_dest, dest_align, elem_ty)?;
-                }
+                self.write_values_to_ptr(value, length, dest, dest_align, elem_ty)?;
             }
 
             Len(ref place) => {
@@ -1253,6 +1248,68 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 // TODO: What about signedess?
                 self.memory.write_scalar(a_ptr, dest_align, a_val, a_size, false)?;
                 self.memory.write_scalar(b_ptr, dest_align, b_val, b_size, false)
+            }
+        }
+    }
+
+    pub fn write_values_to_ptr(
+        &mut self,
+        value: Value,
+        length: u64,
+        dest: Scalar,
+        dest_align: Align,
+        dest_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx> {
+        let layout = self.layout_of(dest_ty)?;
+        let elem_size = layout.size;
+        trace!("write_value_to_ptr: {:#?}, {}, {:#?}", value, dest_ty, layout);
+        match value {
+            Value::ByRef(ptr, align) => {
+                let align_min = align.min(layout.align);
+                let dest_align_min = dest_align.min(layout.align);
+                // FIXME: speed up repeat filling
+                for i in 0..length {
+                    let elem_dest = dest.ptr_offset(elem_size * i, &self)?;
+                    self.memory.copy(ptr, align_min, elem_dest, dest_align_min, layout.size,
+                                     false)?;
+                }
+                Ok(())
+            }
+            Value::Scalar(scalar) => {
+                let signed = match layout.abi {
+                    layout::Abi::Scalar(ref scal) => match scal.value {
+                        layout::Primitive::Int(_, signed) => signed,
+                        _ => false,
+                    },
+                    _ => match scalar {
+                        Scalar::Bits { defined: 0, .. } => false,
+                        _ => bug!("write_value_to_ptr: invalid ByVal layout: {:#?}", layout),
+                    }
+                };
+                // FIXME: speed up repeat filling
+                for i in 0..length {
+                    let elem_dest = dest.ptr_offset(elem_size * i, &self)?;
+                    self.memory.write_scalar(elem_dest, dest_align, scalar, layout.size, signed)?;
+                }
+                Ok(())
+            }
+            Value::ScalarPair(a_val, b_val) => {
+                let (a, b) = match layout.abi {
+                    layout::Abi::ScalarPair(ref a, ref b) => (&a.value, &b.value),
+                    _ => bug!("write_value_to_ptr: invalid ScalarPair layout: {:#?}", layout)
+                };
+                let (a_size, b_size) = (a.size(&self), b.size(&self));
+                let b_offset = a_size.abi_align(b.align(&self));
+                // FIXME: speed up repeat filling
+                for i in 0..length {
+                    let elem_dest = dest.ptr_offset(elem_size * i, &self)?;
+                    let a_ptr = elem_dest;
+                    let b_ptr = elem_dest.ptr_offset(b_offset, &self)?.into();
+                    // TODO: What about signedess?
+                    self.memory.write_scalar(a_ptr, dest_align, a_val, a_size, false)?;
+                    self.memory.write_scalar(b_ptr, dest_align, b_val, b_size, false)?;
+                }
+                Ok(())
             }
         }
     }
