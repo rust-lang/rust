@@ -224,20 +224,6 @@ should work and will probably try at some point.
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-With this RFC implemented,
-rust allows usage of `Self(v0, v1, ..)` inside inherent and
-trait `impl`s of tuple structs, either when mentioning the tuple struct
-directly in the `impl` header, or via a type alias.
-This usage is permitted both in expression and pattern contexts.
-
-Furthermore, `Self`, when referring to a tuple struct, can be legally coerced
-into an `fn` pointer which accepts and returns expressions of the same type as
-the function pointer `Self` is referring to accepts.
-
-A unit struct defined as `struct $ident;` can similarly be referred
-to as by `Self` in expression and pattern contexts inside inherent
-and trait `impl`s.
-
 ## Grammar
 
 Given:
@@ -262,30 +248,24 @@ expr : ... // <-- Original grammar of `expr`.
      ;
 ```
 
-## Semantics - Expression contexts
+## Semantics
 
-The semantics of the syntax `Self(x_0, .., x_n)` is defined by adding into the
-value namespace, if `Self` refers to a tuple struct, a function:
+When entering one of the following contexts, a Rust compiler will extend
+the value namespace with `Self` which maps to the tuple constructor `fn`
+in the case of tuple struct, or a constant, in the case of a unit struct:
 
-```rust
-const fn Self(x_0: τ_0, .. x: τ_n) -> Self {
-    Self { 0: x_0, .. n: x_n }
-}
-```
++ inherent `impl`s where the `Self` type is a tuple or unit struct
++ `trait` `impl`s where the `Self` type is a tuple or unit struct
 
-The semantics of `Self` is defined by adding into the value namespace,
-if `Self` refers to a unit struct:
+As a result, when referring to a tuple struct, `Self` can be legally coerced
+into an `fn` pointer which accepts and returns expressions of the same type as
+the function pointer `Self` is referring to accepts.
 
-```rust
-const Self: Self = Self {};
-```
-
-## Semantics - Pattern contexts
-
-In a pattern context, the pattern `Self(x_0, .., x_n)` is desugared to the
-pattern `Self { 0: v0, 1: v1, .. }`. Similarly, the pattern `Self` is desugared
-to `Self {}`. A rust compiler is free to use different mechanics as these
-semantics are preserved.
+Another consequence is that `Self(p_0, .., p_n)` and `Self` become
+legal patterns. This works since `TupleCtor(p_0, .., p_n)` patterns are
+handled by resolving them in the value namespace and checking that they
+resolve to a tuple constructor. Since by definition, `Self` referring
+to a tuple struct resolves to a tuple constructor, this is OK.
 
 ## Implementation notes
 
