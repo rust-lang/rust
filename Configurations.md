@@ -1928,7 +1928,7 @@ fn bar() {
 }
 ```
 
-#### `2` (default):
+#### `2`:
 ```rust
 fn foo() {
     println!("a");
