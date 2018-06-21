@@ -224,32 +224,6 @@ should work and will probably try at some point.
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-## Grammar
-
-Given:
-
-```
-%token SELF
-```
-
-which lexes `Self`, the following are legal productions in the language:
-
-```
-pat : ... // <-- The original grammar of `pat` prior to this RFC.
-    | SELF '(' ')'
-    | SELF '(' pat_tup ')'
-    | SELF
-    | ...
-    ;
-
-expr : ... // <-- Original grammar of `expr`.
-     | SELF '(' maybe_exprs ')'
-     | ...
-     ;
-```
-
-## Semantics
-
 When entering one of the following contexts, a Rust compiler will extend
 the value namespace with `Self` which maps to the tuple constructor `fn`
 in the case of tuple struct, or a constant, in the case of a unit struct:
