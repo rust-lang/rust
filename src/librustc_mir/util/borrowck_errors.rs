@@ -356,12 +356,14 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
                                  use_span: Span,
                                  verb: &str,
                                  optional_adverb_for_moved: &str,
-                                 moved_path: &str,
+                                 moved_path: Option<String>,
                                  o: Origin)
                                  -> DiagnosticBuilder<'cx>
     {
+        let moved_path = moved_path.map(|mp| format!(": `{}`", mp)).unwrap_or("".to_owned());
+
         let err = struct_span_err!(self, use_span, E0382,
-                                   "{} of {}moved value: `{}`{OGN}",
+                                   "{} of {}moved value{}{OGN}",
                                    verb, optional_adverb_for_moved, moved_path, OGN=o);
 
         self.cancel_if_wrong_origin(err, o)
