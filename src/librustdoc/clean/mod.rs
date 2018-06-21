@@ -2159,7 +2159,7 @@ pub struct Arguments {
     pub values: Vec<Argument>,
 }
 
-impl<'a> Clean<Arguments> for (&'a [P<hir::Ty>], &'a [Spanned<ast::Name>]) {
+impl<'a> Clean<Arguments> for (&'a [hir::Ty], &'a [Spanned<ast::Name>]) {
     fn clean(&self, cx: &DocContext) -> Arguments {
         Arguments {
             values: self.0.iter().enumerate().map(|(i, ty)| {
@@ -2177,7 +2177,7 @@ impl<'a> Clean<Arguments> for (&'a [P<hir::Ty>], &'a [Spanned<ast::Name>]) {
     }
 }
 
-impl<'a> Clean<Arguments> for (&'a [P<hir::Ty>], hir::BodyId) {
+impl<'a> Clean<Arguments> for (&'a [hir::Ty], hir::BodyId) {
     fn clean(&self, cx: &DocContext) -> Arguments {
         let body = cx.tcx.hir.body(self.1);
 
@@ -2193,7 +2193,7 @@ impl<'a> Clean<Arguments> for (&'a [P<hir::Ty>], hir::BodyId) {
 }
 
 impl<'a, A: Copy> Clean<FnDecl> for (&'a hir::FnDecl, A)
-    where (&'a [P<hir::Ty>], A): Clean<Arguments>
+    where (&'a [hir::Ty], A): Clean<Arguments>
 {
     fn clean(&self, cx: &DocContext) -> FnDecl {
         FnDecl {
@@ -2929,7 +2929,7 @@ impl Clean<Type> for hir::Ty {
                                         }
                                     });
                                     if let Some(ty) = type_.cloned() {
-                                        ty_substs.insert(ty_param_def, ty.into_inner().clean(cx));
+                                        ty_substs.insert(ty_param_def, ty.clean(cx));
                                     } else if let Some(default) = default.clone() {
                                         ty_substs.insert(ty_param_def,
                                                          default.into_inner().clean(cx));
