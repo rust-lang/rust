@@ -276,7 +276,7 @@ types! {
     /// use std::arch::x86_64::*;
     ///
     /// # fn main() {
-    /// # #[target_feature(enable = "sse")]
+    /// # #[target_feature(enable = "avx")]
     /// # unsafe fn foo() {
     /// let eight_zeros = _mm256_setzero_ps();
     /// let eight_ones = _mm256_set1_ps(1.0);
