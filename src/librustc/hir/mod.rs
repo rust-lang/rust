@@ -475,6 +475,13 @@ impl GenericParam {
             _ => false,
         }
     }
+
+    pub fn span(&self) -> Span {
+        match *self {
+            GenericParam::Lifetime(ref lifetime) => lifetime.lifetime.span,
+            GenericParam::Type(ref typaram) => typaram.span,
+        }
+    }
 }
 
 pub trait GenericParamsExt {
@@ -1660,6 +1667,137 @@ pub struct Ty {
     pub node: Ty_,
     pub span: Span,
     pub hir_id: HirId,
+}
+
+impl Ty {
+    pub fn lifetimes(&self) -> Vec<Lifetime> {
+        // FIXME(estebank): expand to all `Ty_`s
+        match self.node {
+            TyRptr(lifetime, ref mut_ty) => {
+                let mut lifetimes = vec![lifetime];
+                lifetimes.extend(mut_ty.ty.lifetimes());
+                lifetimes
+            }
+            TyPtr(ref mut_ty) => {
+                let mut lifetimes = vec![];
+                lifetimes.extend(mut_ty.ty.lifetimes());
+                lifetimes
+            }
+            TySlice(ref ty) |
+            TyArray(ref ty, _) => ty.lifetimes(),
+            TyBareFn(ref bare_fn) => {
+                let mut lifetimes = vec![];
+                for ty in &bare_fn.decl.inputs {
+                    lifetimes.extend(ty.lifetimes());
+                }
+                if let FunctionRetTy::Return(ref ty) = bare_fn.decl.output {
+                    lifetimes.extend(ty.lifetimes());
+                }
+                lifetimes
+            }
+            TyPath(ref path) => {
+                match *path {
+                    QPath::Resolved(ref ty, ref path) => {
+                        let mut lifetimes = vec![];
+                        if let &Some(ref ty) = ty {
+                            lifetimes.extend(ty.lifetimes());
+                        }
+                        for segment in &path.segments {
+                            if let Some(ref params) = segment.parameters {
+                                for lifetime in &params.lifetimes {
+                                    lifetimes.push(*lifetime);
+                                }
+                                for ty in &params.types {
+                                    lifetimes.extend(ty.lifetimes());
+                                }
+                            }
+                        }
+                        lifetimes
+                    }
+                    QPath::TypeRelative(ref ty, ref path_segment) => {
+                        let mut lifetimes = vec![];
+                        lifetimes.extend(ty.lifetimes());
+                        if let Some(ref params) = path_segment.parameters {
+                            for lifetime in &params.lifetimes {
+                                lifetimes.push(*lifetime);
+                            }
+                            for ty in &params.types {
+                                lifetimes.extend(ty.lifetimes());
+                            }
+                        }
+                        lifetimes
+                    }
+                }
+            }
+            TyTup(ref tys) => {
+                let mut lifetimes = vec![];
+                for ty in tys {
+                    lifetimes.extend(ty.lifetimes());
+                }
+                lifetimes
+            }
+            TyTraitObject(ref poly_trait_refs, lifetime) => {
+                let mut lifetimes = vec![lifetime];
+                for poly_trait_ref in poly_trait_refs {
+                    for param in &poly_trait_ref.bound_generic_params {
+                        if let GenericParam::Lifetime(lifetime_def) = param {
+                            lifetimes.push(lifetime_def.lifetime);
+                        }
+                    }
+                    for segment in &poly_trait_ref.trait_ref.path.segments {
+                        if let Some(ref params) = segment.parameters {
+                            for lifetime in &params.lifetimes {
+                                lifetimes.push(*lifetime);
+                            }
+                            for ty in &params.types {
+                                lifetimes.extend(ty.lifetimes());
+                            }
+                        }
+                    }
+                }
+                lifetimes
+            }
+            TyImplTraitExistential(ref exist_ty, ref ex_lifetimes) => {
+                let mut lifetimes = vec![];
+                lifetimes.extend(ex_lifetimes);
+                for param in &exist_ty.generics.params {
+                    if let GenericParam::Lifetime(lifetime_def) = param {
+                        lifetimes.push(lifetime_def.lifetime);
+                    }
+                }
+                for param in &exist_ty.generics.params {
+                    if let GenericParam::Lifetime(lifetime_def) = param {
+                        lifetimes.push(lifetime_def.lifetime);
+                    }
+                }
+                for bound in &exist_ty.bounds {
+                    match bound {
+                        TyParamBound::RegionTyParamBound(lifetime) => lifetimes.push(*lifetime),
+
+                        TyParamBound::TraitTyParamBound(ref poly_trait_ref, _) => {
+                            for param in &poly_trait_ref.bound_generic_params {
+                                if let GenericParam::Lifetime(lifetime_def) = param {
+                                    lifetimes.push(lifetime_def.lifetime);
+                                }
+                                for segment in &poly_trait_ref.trait_ref.path.segments {
+                                    if let Some(ref params) = segment.parameters {
+                                        for lifetime in &params.lifetimes {
+                                            lifetimes.push(*lifetime);
+                                        }
+                                        for ty in &params.types {
+                                            lifetimes.extend(ty.lifetimes());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                lifetimes
+            }
+            TyNever | TyErr | TyInfer | TyTypeof(_) => vec![],
+        }
+    }
 }
 
 impl fmt::Debug for Ty {
