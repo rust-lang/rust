@@ -434,8 +434,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         instantiated_ty: Ty<'gcx>,
     ) -> Ty<'gcx> {
         debug!(
-            "infer_anon_definition_from_instantiation(instantiated_ty={:?})",
-            instantiated_ty
+            "infer_anon_definition_from_instantiation(def_id={:?}, instantiated_ty={:?})",
+            def_id, instantiated_ty
         );
 
         let gcx = self.tcx.global_tcx();
