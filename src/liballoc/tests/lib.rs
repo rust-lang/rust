@@ -25,6 +25,7 @@
 #![feature(unboxed_closures)]
 #![feature(exact_chunks)]
 #![feature(repeat_generic_slice)]
+#![feature(trim_direction)]
 
 extern crate alloc_system;
 extern crate core;
