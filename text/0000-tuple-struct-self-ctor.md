@@ -6,9 +6,8 @@
 # Summary
 [summary]: #summary
 
-Tuple `struct`s can now be constructed with `Self(v1, v2, ..)`
-to match how `struct`s with named fields can be constructed
-using `Self { f1: v1, f2: v2, .. }`. A simple example:
+Tuple `struct`s can now be constructed and pattern matched with
+`Self(v1, v2, ..)`. A simple example:
 
 ```rust
 struct TheAnswer(usize);
@@ -17,6 +16,8 @@ impl Default for TheAnswer {
     fn default() -> Self { Self(42) }
 }
 ```
+
+Similarly, unit structs can also be constructed and pattern matched with `Self`.
 
 # Motivation
 [motivation]: #motivation
@@ -67,8 +68,8 @@ keep the type name fresh in their working memory. This is beneficial for
 users with shorter working memory such as the author of this RFC.
 
 Since `Self { f0: v0, .. }` is well motivated, those benefits and motivations
-will also extend to tuple structs. Eliminating this discrepancy between tuple
-structs and those with named fields will therefore have all the benefits
+will also extend to tuple and unit structs. Eliminating this discrepancy between
+tuple structs and those with named fields will therefore have all the benefits
 associated with this feature for structs with named fields.
 
 # Guide-level explanation
@@ -129,6 +130,90 @@ impl Default for BarFoo {
 }
 ```
 
+## Patterns
+
+Currently, you can pattern match using `Self { .. }` on a named struct as in
+the following example:
+
+```rust
+struct Person {
+    ssn: usize,
+    age: usize
+}
+
+impl Person {
+    /// Make a newborn person.
+    fn newborn(ssn: usize) -> Self {
+        match { Self { ssn, age: 0 } } {
+            Self { ssn, age } // `Self { .. }` is permitted as a pattern!
+                => Self { ssn, age }
+        }
+    }
+}
+```
+
+This RFC extends this to tuple structs:
+
+```rust
+struct Person(usize, usize);
+
+impl Person {
+    /// Make a newborn person.
+    fn newborn(ssn: usize) -> Self {
+        match { Self(ssn, 0) } {
+            Self(ssn, age) // `Self(..)` is permitted as a pattern!
+                => Self(ssn, age)
+        }
+    }
+}
+```
+
+Of course, this redundant reconstruction is not recommended in actual code,
+but illustrates what you can do.
+
+## `Self` as a function pointer
+
+When you define a tuple struct today such as:
+
+```rust
+struct Foo<T>(T);
+
+impl<T> Foo<T> {
+    fn fooify_iter(iter: impl Iterator<Item = T>) -> impl Iterator<Item = Foo<T>> {
+        iter.map(Foo)
+    }
+}
+```
+
+you can use `Foo` as a function pointer typed at: `for<T> fn(T) -> T` as
+seen in the example above.
+
+This RFC extends that such that `Self` can also be used as a function pointer
+for tuple structs. Modifying the example above gives us:
+
+```rust
+impl<T> Foo<T> {
+    fn fooify_iter(iter: impl Iterator<Item = T>) -> impl Iterator<Item = Foo<T>> {
+        iter.map(Self)
+    }
+}
+```
+
+## Unit structs
+
+With this RFC, you can also use `Self` in pattern and expression contexts when
+dealing with unit structs. For example:
+
+```rust
+struct TheAnswer;
+
+impl Default for TheAnswer {
+    fn default() -> Self {
+        match { Self } { Self => Self }
+    }
+}
+```
+
 ## Teaching the contents
 
 This RFC should not require additional effort other than spreading the
@@ -139,23 +224,97 @@ should work and will probably try at some point.
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-Rust (now) allows usage of `Self(v0, v1, ..)` inside inherent
-and trait `impl`s of tuple structs, either when mentioning the
-tuple struct directly in the `impl` header, or via a type alias.
+## Grammar
 
-## Desugaring
+Given:
 
-When the compiler encounters the following syntactic form specified in `EBNF`:
-
-```ebnf
-SelfTupleApply ::= "Self" "(" ExprList ")" ;
-ExprList ::= Expr "," Values | Expr | "" ;
+```
+%token SELF
 ```
 
-the compiler will desugar the application by substituting `Self(v0, v1, ..)`
-for `Self { 0: v0, 1: v1, .. }` and then continue on from there. The compiler
-is however free to use more direct or other approaches as long as it preserves
-the semantics of desugaring to `Self { 0: v0, 1: v1, .. }`.
+which lexes `Self`, the following are legal productions in the language:
+
+```
+pat : ... // <-- The original grammar of `pat` prior to this RFC.
+    | SELF '(' ')'
+    | SELF '(' pat_tup ')'
+    | SELF
+    | ...
+    ;
+
+expr : ... // <-- Original grammar of `expr`.
+     | SELF '(' maybe_exprs ')'
+     | ...
+     ;
+```
+
+## Semantics
+
+When entering one of the following contexts, a Rust compiler will extend
+the value namespace with `Self` which maps to the tuple constructor `fn`
+in the case of tuple struct, or a constant, in the case of a unit struct:
+
++ inherent `impl`s where the `Self` type is a tuple or unit struct
++ `trait` `impl`s where the `Self` type is a tuple or unit struct
+
+As a result, when referring to a tuple struct, `Self` can be legally coerced
+into an `fn` pointer which accepts and returns expressions of the same type as
+the function pointer `Self` is referring to accepts.
+
+Another consequence is that `Self(p_0, .., p_n)` and `Self` become
+legal patterns. This works since `TupleCtor(p_0, .., p_n)` patterns are
+handled by resolving them in the value namespace and checking that they
+resolve to a tuple constructor. Since by definition, `Self` referring
+to a tuple struct resolves to a tuple constructor, this is OK.
+
+## Implementation notes
+
+As an additional check on the sanity of a Rust compiler implementation,
+a well formed expression `Self(v0, v1, ..)`, must be semantically equivalent to
+`Self { 0: v0, 1: v1, .. }` and must also be permitted when the latter would.
+Likewise the pattern `Self(p0, p1, ..)` must match exactly the same set of
+values as `Self { 0: p0, 1: p1, .. }` would and must be permitted when
+`Self { 0: p0, 1: p1, .. }` is well formed.
+
+Furthermore, a well formed expression or pattern `Self` must be semantically
+equivalent to `Self {}` and permitted when `Self {}` is well formed in the
+same context.
+
+For example for tuple structs, we have the typing rule:
+
+```
+Δ ⊢ τ_0  type .. Δ ⊢ τ_n  type
+Δ ⊢ Self type
+Γ ⊢ x_0 : τ_0 .. Γ ⊢ x_n : τ_n
+Γ ⊢ Self { 0: x_0, .. n: x_n } : Self
+-----------------------------------------
+Γ ⊢ Self (    x_0, ..,   x_n ) : Self
+```
+
+and the operational semantics:
+
+```
+Γ ⊢ Self { 0: e_0, .., n: e_n } ⇓ v
+-------------------------------------
+Γ ⊢ Self {    e_0, ..,    e_n } ⇓ v
+```
+
+for unit structs, the following holds:
+
+```
+Δ ⊢ Self type
+Γ ⊢ Self {} : Self
+-----------------------------------------
+Γ ⊢ Self    : Self
+```
+
+with the operational semantics:
+
+```
+Γ ⊢ Self {} ⇓ v
+-------------------------------------
+Γ ⊢ Self    ⇓ v
+```
 
 ## In relation to other RFCs
 
@@ -184,15 +343,4 @@ and unintuitive surprises for developers.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-The following questions should be resolved during the RFC period:
-
-+ Are there any syntactic ambiguities?
-
-To the author's knowledge, there are none since following fails to compile today:
-
-```rust
-fn Self(x: u8) {} // <-- an error here since Self is a keyword.
-
-struct F(u8);
-impl F { fn x() { Self(0) } }
-```
+There are none.
