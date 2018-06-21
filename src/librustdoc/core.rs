@@ -190,8 +190,8 @@ pub fn run_core(search_paths: SearchPaths,
     let intra_link_resolution_failure_name = lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE.name;
     let warnings_lint_name = lint::builtin::WARNINGS.name;
     let lints = lint::builtin::HardwiredLints.get_lints()
-                    .iter()
-                    .chain(rustc_lint::SoftLints.get_lints())
+                    .into_iter()
+                    .chain(rustc_lint::SoftLints.get_lints().into_iter())
                     .filter_map(|lint| {
                         if lint.name == warnings_lint_name ||
                            lint.name == intra_link_resolution_failure_name {

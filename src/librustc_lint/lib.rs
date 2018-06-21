@@ -41,9 +41,14 @@ extern crate rustc_target;
 extern crate syntax_pos;
 
 use rustc::lint;
+use rustc::lint::{LateContext, LateLintPass, LintPass, LintArray};
 use rustc::lint::builtin::{BARE_TRAIT_OBJECTS, ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE};
 use rustc::session;
 use rustc::util;
+use rustc::hir;
+
+use syntax::ast;
+use syntax_pos::Span;
 
 use session::Session;
 use syntax::edition::Edition;
@@ -67,26 +72,10 @@ pub use builtin::SoftLints;
 /// defined in this crate and the ones defined in
 /// `rustc::lint::builtin`).
 pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
-    macro_rules! add_builtin {
-        ($sess:ident, $($name:ident),*,) => (
-            {$(
-                store.register_late_pass($sess, false, box $name);
-                )*}
-            )
-    }
-
     macro_rules! add_early_builtin {
         ($sess:ident, $($name:ident),*,) => (
             {$(
                 store.register_early_pass($sess, false, box $name);
-                )*}
-            )
-    }
-
-    macro_rules! add_builtin_with_new {
-        ($sess:ident, $($name:ident),*,) => (
-            {$(
-                store.register_late_pass($sess, false, box $name::new());
                 )*}
             )
     }
@@ -117,39 +106,38 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                                 DeprecatedAttr,
                                 );
 
-    add_builtin!(sess,
-                 HardwiredLints,
-                 WhileTrue,
-                 ImproperCTypes,
-                 VariantSizeDifferences,
-                 BoxPointers,
-                 UnusedAttributes,
-                 PathStatements,
-                 UnusedResults,
-                 NonCamelCaseTypes,
-                 NonSnakeCase,
-                 NonUpperCaseGlobals,
-                 NonShorthandFieldPatterns,
-                 UnsafeCode,
-                 UnusedAllocation,
-                 MissingCopyImplementations,
-                 UnstableFeatures,
-                 UnconditionalRecursion,
-                 InvalidNoMangleItems,
-                 PluginAsLibrary,
-                 MutableTransmutes,
-                 UnionsWithDropFields,
-                 UnreachablePub,
-                 TypeAliasBounds,
-                 UnusedBrokenConst,
-                 TrivialConstraints,
-                 );
+    late_lint_methods!(declare_combined_late_lint_pass, [BuiltinCombinedLateLintPass, [
+        HardwiredLints: HardwiredLints,
+        WhileTrue: WhileTrue,
+        ImproperCTypes: ImproperCTypes,
+        VariantSizeDifferences: VariantSizeDifferences,
+        BoxPointers: BoxPointers,
+        UnusedAttributes: UnusedAttributes,
+        PathStatements: PathStatements,
+        UnusedResults: UnusedResults,
+        NonCamelCaseTypes: NonCamelCaseTypes,
+        NonSnakeCase: NonSnakeCase,
+        NonUpperCaseGlobals: NonUpperCaseGlobals,
+        NonShorthandFieldPatterns: NonShorthandFieldPatterns,
+        UnsafeCode: UnsafeCode,
+        UnusedAllocation: UnusedAllocation,
+        MissingCopyImplementations: MissingCopyImplementations,
+        UnstableFeatures: UnstableFeatures,
+        UnconditionalRecursion: UnconditionalRecursion,
+        InvalidNoMangleItems: InvalidNoMangleItems,
+        PluginAsLibrary: PluginAsLibrary,
+        MutableTransmutes: MutableTransmutes,
+        UnionsWithDropFields: UnionsWithDropFields,
+        UnreachablePub: UnreachablePub,
+        TypeAliasBounds: TypeAliasBounds,
+        UnusedBrokenConst: UnusedBrokenConst,
+        TrivialConstraints: TrivialConstraints,
+        TypeLimits: TypeLimits::new(),
+        MissingDoc: MissingDoc::new(),
+        MissingDebugImplementations: MissingDebugImplementations::new(),
+    ]], ['tcx]);
 
-    add_builtin_with_new!(sess,
-                          TypeLimits,
-                          MissingDoc,
-                          MissingDebugImplementations,
-                          );
+    store.register_late_pass(sess, false, box BuiltinCombinedLateLintPass::new());
 
     add_lint_group!(sess,
                     "bad_style",
