@@ -265,10 +265,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         let snippet = tcx.sess.codemap().span_to_snippet(span)
                                             .unwrap();
                                         let filename = tcx.sess.codemap().span_to_filename(span);
-                                        let is_real_filename = match filename {
-                                            FileName::Real(_) => true,
-                                            _ => false,
-                                        };
 
                                         let parent_node = self.tcx.hir.get(
                                             self.tcx.hir.get_parent_node(node_id),
@@ -278,8 +274,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             concrete_type,
                                         );
 
-                                        match (is_real_filename, parent_node) {
-                                            (true, hir_map::NodeLocal(hir::Local {
+                                        match (filename, parent_node) {
+                                            (FileName::Real(_), hir_map::NodeLocal(hir::Local {
                                                 source: hir::LocalSource::Normal,
                                                 ty,
                                                 ..
