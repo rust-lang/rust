@@ -35,7 +35,9 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
 
             Some(trait_ref) => {
                 let trait_def = self.tcx.trait_def(trait_ref.def_id);
-                let unsafe_attr = impl_generics.and_then(|g| g.carries_unsafe_attr());
+                let unsafe_attr = impl_generics.and_then(|generics| {
+                    generics.params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle")
+                });
                 match (trait_def.unsafety, unsafe_attr, unsafety, polarity) {
                     (Unsafety::Normal, None, Unsafety::Unsafe, hir::ImplPolarity::Positive) => {
                         span_err!(self.tcx.sess,
@@ -53,13 +55,14 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
                                   trait_ref);
                     }
 
-                    (Unsafety::Normal, Some(g), Unsafety::Normal, hir::ImplPolarity::Positive) =>
+                    (Unsafety::Normal, Some(attr_name), Unsafety::Normal,
+                        hir::ImplPolarity::Positive) =>
                     {
                         span_err!(self.tcx.sess,
                                   item.span,
                                   E0569,
                                   "requires an `unsafe impl` declaration due to `#[{}]` attribute",
-                                  g.attr_name());
+                                  attr_name);
                     }
 
                     (_, _, Unsafety::Unsafe, hir::ImplPolarity::Negative) => {

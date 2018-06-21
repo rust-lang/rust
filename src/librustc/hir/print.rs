@@ -24,7 +24,8 @@ use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
 
 use hir;
-use hir::{PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier, RangeEnd};
+use hir::{PatKind, GenericBound, TraitBoundModifier, RangeEnd};
+use hir::{GenericParam, GenericParamKind, GenericArg};
 
 use std::cell::Cell;
 use std::io::{self, Write, Read};
@@ -513,7 +514,7 @@ impl<'a> State<'a> {
 
     fn print_associated_type(&mut self,
                              name: ast::Name,
-                             bounds: Option<&hir::TyParamBounds>,
+                             bounds: Option<&hir::GenericBounds>,
                              ty: Option<&hir::Ty>)
                              -> io::Result<()> {
         self.word_space("type")?;
@@ -661,7 +662,7 @@ impl<'a> State<'a> {
                 self.word_space(":")?;
                 let mut real_bounds = Vec::with_capacity(exist.bounds.len());
                 for b in exist.bounds.iter() {
-                    if let TraitTyParamBound(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
+                    if let GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
                         self.s.space()?;
                         self.word_space("for ?")?;
                         self.print_trait_ref(&ptr.trait_ref)?;
@@ -739,7 +740,7 @@ impl<'a> State<'a> {
                 self.print_generic_params(&generics.params)?;
                 let mut real_bounds = Vec::with_capacity(bounds.len());
                 for b in bounds.iter() {
-                    if let TraitTyParamBound(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
+                    if let GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
                         self.s.space()?;
                         self.word_space("for ?")?;
                         self.print_trait_ref(&ptr.trait_ref)?;
@@ -765,7 +766,7 @@ impl<'a> State<'a> {
                 let mut real_bounds = Vec::with_capacity(bounds.len());
                 // FIXME(durka) this seems to be some quite outdated syntax
                 for b in bounds.iter() {
-                    if let TraitTyParamBound(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
+                    if let GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = *b {
                         self.s.space()?;
                         self.word_space("for ?")?;
                         self.print_trait_ref(&ptr.trait_ref)?;
@@ -1268,15 +1269,11 @@ impl<'a> State<'a> {
         self.s.word(".")?;
         self.print_name(segment.name)?;
 
-        segment.with_parameters(|parameters| {
-            if !parameters.lifetimes.is_empty() ||
-                !parameters.types.is_empty() ||
-                !parameters.bindings.is_empty()
-            {
-                self.print_path_parameters(&parameters, segment.infer_types, true)
-            } else {
-                Ok(())
+        segment.with_generic_args(|generic_args| {
+            if !generic_args.args.is_empty() || !generic_args.bindings.is_empty() {
+                return self.print_generic_args(&generic_args, segment.infer_types, true);
             }
+            Ok(())
         })?;
         self.print_call_post(base_args)
     }
@@ -1641,10 +1638,9 @@ impl<'a> State<'a> {
             if segment.name != keywords::CrateRoot.name() &&
                segment.name != keywords::DollarCrate.name() {
                self.print_name(segment.name)?;
-               segment.with_parameters(|parameters| {
-                   self.print_path_parameters(parameters,
-                                              segment.infer_types,
-                                              colons_before_params)
+               segment.with_generic_args(|generic_args| {
+                   self.print_generic_args(generic_args, segment.infer_types,
+                                           colons_before_params)
                })?;
             }
         }
@@ -1673,10 +1669,10 @@ impl<'a> State<'a> {
                     if segment.name != keywords::CrateRoot.name() &&
                        segment.name != keywords::DollarCrate.name() {
                         self.print_name(segment.name)?;
-                        segment.with_parameters(|parameters| {
-                            self.print_path_parameters(parameters,
-                                                       segment.infer_types,
-                                                       colons_before_params)
+                        segment.with_generic_args(|generic_args| {
+                            self.print_generic_args(generic_args,
+                                                    segment.infer_types,
+                                                    colons_before_params)
                         })?;
                     }
                 }
@@ -1685,10 +1681,10 @@ impl<'a> State<'a> {
                 self.s.word("::")?;
                 let item_segment = path.segments.last().unwrap();
                 self.print_name(item_segment.name)?;
-                item_segment.with_parameters(|parameters| {
-                    self.print_path_parameters(parameters,
-                                               item_segment.infer_types,
-                                               colons_before_params)
+                item_segment.with_generic_args(|generic_args| {
+                    self.print_generic_args(generic_args,
+                                            item_segment.infer_types,
+                                            colons_before_params)
                 })
             }
             hir::QPath::TypeRelative(ref qself, ref item_segment) => {
@@ -1697,28 +1693,28 @@ impl<'a> State<'a> {
                 self.s.word(">")?;
                 self.s.word("::")?;
                 self.print_name(item_segment.name)?;
-                item_segment.with_parameters(|parameters| {
-                    self.print_path_parameters(parameters,
-                                               item_segment.infer_types,
-                                               colons_before_params)
+                item_segment.with_generic_args(|generic_args| {
+                    self.print_generic_args(generic_args,
+                                            item_segment.infer_types,
+                                            colons_before_params)
                 })
             }
         }
     }
 
-    fn print_path_parameters(&mut self,
-                             parameters: &hir::PathParameters,
+    fn print_generic_args(&mut self,
+                             generic_args: &hir::GenericArgs,
                              infer_types: bool,
                              colons_before_params: bool)
                              -> io::Result<()> {
-        if parameters.parenthesized {
+        if generic_args.parenthesized {
             self.s.word("(")?;
-            self.commasep(Inconsistent, parameters.inputs(), |s, ty| s.print_type(&ty))?;
+            self.commasep(Inconsistent, generic_args.inputs(), |s, ty| s.print_type(&ty))?;
             self.s.word(")")?;
 
             self.space_if_not_bol()?;
             self.word_space("->")?;
-            self.print_type(&parameters.bindings[0].ty)?;
+            self.print_type(&generic_args.bindings[0].ty)?;
         } else {
             let start = if colons_before_params { "::<" } else { "<" };
             let empty = Cell::new(true);
@@ -1731,16 +1727,31 @@ impl<'a> State<'a> {
                 }
             };
 
-            if !parameters.lifetimes.iter().all(|lt| lt.is_elided()) {
-                for lifetime in &parameters.lifetimes {
-                    start_or_comma(self)?;
-                    self.print_lifetime(lifetime)?;
+            let mut types = vec![];
+            let mut elide_lifetimes = true;
+            for arg in &generic_args.args {
+                match arg {
+                    GenericArg::Lifetime(lt) => {
+                        if !lt.is_elided() {
+                            elide_lifetimes = false;
+                        }
+                    }
+                    GenericArg::Type(ty) => {
+                        types.push(ty);
+                    }
                 }
             }
-
-            if !parameters.types.is_empty() {
+            if !elide_lifetimes {
                 start_or_comma(self)?;
-                self.commasep(Inconsistent, &parameters.types, |s, ty| s.print_type(&ty))?;
+                self.commasep(Inconsistent, &generic_args.args, |s, generic_arg| {
+                    match generic_arg {
+                        GenericArg::Lifetime(lt) => s.print_lifetime(lt),
+                        GenericArg::Type(ty) => s.print_type(ty),
+                    }
+                })?;
+            } else if !types.is_empty() {
+                start_or_comma(self)?;
+                self.commasep(Inconsistent, &types, |s, ty| s.print_type(&ty))?;
             }
 
             // FIXME(eddyb) This would leak into error messages, e.g.:
@@ -1750,7 +1761,7 @@ impl<'a> State<'a> {
                 self.s.word("..")?;
             }
 
-            for binding in parameters.bindings.iter() {
+            for binding in generic_args.bindings.iter() {
                 start_or_comma(self)?;
                 self.print_name(binding.name)?;
                 self.s.space()?;
@@ -2060,7 +2071,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_bounds(&mut self, prefix: &str, bounds: &[hir::TyParamBound]) -> io::Result<()> {
+    pub fn print_bounds(&mut self, prefix: &str, bounds: &[hir::GenericBound]) -> io::Result<()> {
         if !bounds.is_empty() {
             self.s.word(prefix)?;
             let mut first = true;
@@ -2075,13 +2086,13 @@ impl<'a> State<'a> {
                 }
 
                 match bound {
-                    TraitTyParamBound(tref, modifier) => {
+                    GenericBound::Trait(tref, modifier) => {
                         if modifier == &TraitBoundModifier::Maybe {
                             self.s.word("?")?;
                         }
                         self.print_poly_trait_ref(tref)?;
                     }
-                    RegionTyParamBound(lt) => {
+                    GenericBound::Outlives(lt) => {
                         self.print_lifetime(lt)?;
                     }
                 }
@@ -2090,30 +2101,12 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_lifetime(&mut self, lifetime: &hir::Lifetime) -> io::Result<()> {
-        self.print_name(lifetime.name.name())
-    }
-
-    pub fn print_lifetime_def(&mut self, lifetime: &hir::LifetimeDef) -> io::Result<()> {
-        self.print_lifetime(&lifetime.lifetime)?;
-        let mut sep = ":";
-        for v in &lifetime.bounds {
-            self.s.word(sep)?;
-            self.print_lifetime(v)?;
-            sep = "+";
-        }
-        Ok(())
-    }
-
-    pub fn print_generic_params(&mut self, generic_params: &[hir::GenericParam]) -> io::Result<()> {
+    pub fn print_generic_params(&mut self, generic_params: &[GenericParam]) -> io::Result<()> {
         if !generic_params.is_empty() {
             self.s.word("<")?;
 
             self.commasep(Inconsistent, generic_params, |s, param| {
-                match *param {
-                    hir::GenericParam::Lifetime(ref ld) => s.print_lifetime_def(ld),
-                    hir::GenericParam::Type(ref tp) => s.print_ty_param(tp),
-                }
+                s.print_generic_param(param)
             })?;
 
             self.s.word(">")?;
@@ -2121,17 +2114,39 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_ty_param(&mut self, param: &hir::TyParam) -> io::Result<()> {
-        self.print_name(param.name)?;
-        self.print_bounds(":", &param.bounds)?;
-        match param.default {
-            Some(ref default) => {
-                self.s.space()?;
-                self.word_space("=")?;
-                self.print_type(&default)
+    pub fn print_generic_param(&mut self, param: &GenericParam) -> io::Result<()> {
+        self.print_name(param.name.name())?;
+        match param.kind {
+            GenericParamKind::Lifetime { .. } => {
+                let mut sep = ":";
+                for bound in &param.bounds {
+                    match bound {
+                        GenericBound::Outlives(lt) => {
+                            self.s.word(sep)?;
+                            self.print_lifetime(lt)?;
+                            sep = "+";
+                        }
+                        _ => bug!(),
+                    }
+                }
+                Ok(())
             }
-            _ => Ok(()),
+            GenericParamKind::Type { ref default, .. } => {
+                self.print_bounds(":", &param.bounds)?;
+                match default {
+                    Some(default) => {
+                        self.s.space()?;
+                        self.word_space("=")?;
+                        self.print_type(&default)
+                    }
+                    _ => Ok(()),
+                }
+            }
         }
+    }
+
+    pub fn print_lifetime(&mut self, lifetime: &hir::Lifetime) -> io::Result<()> {
+        self.print_name(lifetime.name.name())
     }
 
     pub fn print_where_clause(&mut self, where_clause: &hir::WhereClause) -> io::Result<()> {
@@ -2165,7 +2180,12 @@ impl<'a> State<'a> {
                     self.s.word(":")?;
 
                     for (i, bound) in bounds.iter().enumerate() {
-                        self.print_lifetime(bound)?;
+                        match bound {
+                            GenericBound::Outlives(lt) => {
+                                self.print_lifetime(lt)?;
+                            }
+                            _ => bug!(),
+                        }
 
                         if i != 0 {
                             self.s.word(":")?;

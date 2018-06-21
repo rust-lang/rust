@@ -99,9 +99,9 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn no_questions_in_bounds(&self, bounds: &TyParamBounds, where_: &str, is_trait: bool) {
+    fn no_questions_in_bounds(&self, bounds: &GenericBounds, where_: &str, is_trait: bool) {
         for bound in bounds {
-            if let TraitTyParamBound(ref poly, TraitBoundModifier::Maybe) = *bound {
+            if let GenericBound::Trait(ref poly, TraitBoundModifier::Maybe) = *bound {
                 let mut err = self.err_handler().struct_span_err(poly.span,
                                     &format!("`?Trait` is not permitted in {}", where_));
                 if is_trait {
@@ -139,29 +139,22 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_late_bound_lifetime_defs(&self, params: &Vec<GenericParam>) {
-        // Check: Only lifetime parameters
-        let non_lifetime_param_spans : Vec<_> = params.iter()
-            .filter_map(|param| match *param {
-                GenericParam::Lifetime(_) => None,
-                GenericParam::Type(ref t) => Some(t.ident.span),
-            }).collect();
-        if !non_lifetime_param_spans.is_empty() {
-            self.err_handler().span_err(non_lifetime_param_spans,
-                "only lifetime parameters can be used in this context");
-        }
-
-        // Check: No bounds on lifetime parameters
-        for param in params.iter() {
-            match *param {
-                GenericParam::Lifetime(ref l) => {
-                    if !l.bounds.is_empty() {
-                        let spans: Vec<_> = l.bounds.iter().map(|b| b.ident.span).collect();
-                        self.err_handler().span_err(spans,
-                            "lifetime bounds cannot be used in this context");
+        // Check only lifetime parameters are present and that the lifetime
+        // parameters that are present have no bounds.
+        let non_lt_param_spans: Vec<_> = params.iter().filter_map(|param| match param.kind {
+                GenericParamKind::Lifetime { .. } => {
+                    if !param.bounds.is_empty() {
+                        let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
+                        self.err_handler()
+                            .span_err(spans, "lifetime bounds cannot be used in this context");
                     }
+                    None
                 }
-                GenericParam::Type(_) => {}
-            }
+                _ => Some(param.ident.span),
+            }).collect();
+        if !non_lt_param_spans.is_empty() {
+            self.err_handler().span_err(non_lt_param_spans,
+                "only lifetime parameters can be used in this context");
         }
     }
 }
@@ -197,7 +190,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             TyKind::TraitObject(ref bounds, ..) => {
                 let mut any_lifetime_bounds = false;
                 for bound in bounds {
-                    if let RegionTyParamBound(ref lifetime) = *bound {
+                    if let GenericBound::Outlives(ref lifetime) = *bound {
                         if any_lifetime_bounds {
                             span_err!(self.session, lifetime.ident.span, E0226,
                                       "only a single explicit lifetime bound is permitted");
@@ -210,7 +203,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             TyKind::ImplTrait(ref bounds) => {
                 if !bounds.iter()
-                          .any(|b| if let TraitTyParamBound(..) = *b { true } else { false }) {
+                          .any(|b| if let GenericBound::Trait(..) = *b { true } else { false }) {
                     self.err_handler().span_err(ty.span, "at least one trait must be specified");
                 }
             }
@@ -230,9 +223,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         // }
         // foo!(bar::baz<T>);
         use_tree.prefix.segments.iter().find(|segment| {
-            segment.parameters.is_some()
+            segment.args.is_some()
         }).map(|segment| {
-            self.err_handler().span_err(segment.parameters.as_ref().unwrap().span(),
+            self.err_handler().span_err(segment.args.as_ref().unwrap().span(),
                                         "generic arguments in import path");
         });
 
@@ -300,7 +293,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Trait(is_auto, _, ref generics, ref bounds, ref trait_items) => {
                 if is_auto == IsAuto::Yes {
                     // Auto traits cannot have generics, super traits nor contain items.
-                    if generics.is_parameterized() {
+                    if !generics.params.is_empty() {
                         struct_span_err!(self.session, item.span, E0567,
                                         "auto traits cannot have generic parameters").emit();
                     }
@@ -335,22 +328,19 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::TraitAlias(Generics { ref params, .. }, ..) => {
                 for param in params {
-                    if let GenericParam::Type(TyParam {
-                        ident,
-                        ref bounds,
-                        ref default,
-                        ..
-                    }) = *param
-                    {
-                        if !bounds.is_empty() {
-                            self.err_handler().span_err(ident.span,
-                                                        "type parameters on the left side of a \
-                                                         trait alias cannot be bounded");
-                        }
-                        if !default.is_none() {
-                            self.err_handler().span_err(ident.span,
-                                                        "type parameters on the left side of a \
-                                                         trait alias cannot have defaults");
+                    match param.kind {
+                        GenericParamKind::Lifetime { .. } => {}
+                        GenericParamKind::Type { ref default, .. } => {
+                            if !param.bounds.is_empty() {
+                                self.err_handler()
+                                    .span_err(param.ident.span, "type parameters on the left \
+                                        side of a trait alias cannot be bounded");
+                            }
+                            if !default.is_none() {
+                                self.err_handler()
+                                    .span_err(param.ident.span, "type parameters on the left \
+                                        side of a trait alias cannot have defaults");
+                            }
                         }
                     }
                 }
@@ -398,8 +388,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_vis(&mut self, vis: &'a Visibility) {
         match vis.node {
             VisibilityKind::Restricted { ref path, .. } => {
-                path.segments.iter().find(|segment| segment.parameters.is_some()).map(|segment| {
-                    self.err_handler().span_err(segment.parameters.as_ref().unwrap().span(),
+                path.segments.iter().find(|segment| segment.args.is_some()).map(|segment| {
+                    self.err_handler().span_err(segment.args.as_ref().unwrap().span(),
                                                 "generic arguments in visibility path");
                 });
             }
@@ -409,41 +399,40 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_vis(self, vis)
     }
 
-    fn visit_generics(&mut self, g: &'a Generics) {
+    fn visit_generics(&mut self, generics: &'a Generics) {
         let mut seen_non_lifetime_param = false;
         let mut seen_default = None;
-        for param in &g.params {
-            match (param, seen_non_lifetime_param) {
-                (&GenericParam::Lifetime(ref ld), true) => {
+        for param in &generics.params {
+            match (&param.kind, seen_non_lifetime_param) {
+                (GenericParamKind::Lifetime { .. }, true) => {
                     self.err_handler()
-                        .span_err(ld.lifetime.ident.span, "lifetime parameters must be leading");
+                        .span_err(param.ident.span, "lifetime parameters must be leading");
                 },
-                (&GenericParam::Lifetime(_), false) => {}
-                _ => {
+                (GenericParamKind::Lifetime { .. }, false) => {}
+                (GenericParamKind::Type { ref default, .. }, _) => {
                     seen_non_lifetime_param = true;
+                    if default.is_some() {
+                        seen_default = Some(param.ident.span);
+                    } else if let Some(span) = seen_default {
+                        self.err_handler()
+                            .span_err(span, "type parameters with a default must be trailing");
+                        break;
+                    }
                 }
             }
-
-            if let GenericParam::Type(ref ty_param @ TyParam { default: Some(_), .. }) = *param {
-                seen_default = Some(ty_param.ident.span);
-            } else if let Some(span) = seen_default {
-                self.err_handler()
-                    .span_err(span, "type parameters with a default must be trailing");
-                break
-            }
         }
-        for predicate in &g.where_clause.predicates {
+        for predicate in &generics.where_clause.predicates {
             if let WherePredicate::EqPredicate(ref predicate) = *predicate {
                 self.err_handler().span_err(predicate.span, "equality constraints are not yet \
                                                              supported in where clauses (#20041)");
             }
         }
-        visit::walk_generics(self, g)
+        visit::walk_generics(self, generics)
     }
 
     fn visit_generic_param(&mut self, param: &'a GenericParam) {
-        if let GenericParam::Lifetime(ref ld) = *param {
-            self.check_lifetime(ld.lifetime.ident);
+        if let GenericParamKind::Lifetime { .. } = param.kind {
+            self.check_lifetime(param.ident);
         }
         visit::walk_generic_param(self, param);
     }
@@ -521,23 +510,24 @@ impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
             visit::walk_ty(self, t);
         }
     }
-    fn visit_path_parameters(&mut self, _: Span, path_parameters: &'a PathParameters) {
-        match *path_parameters {
-            PathParameters::AngleBracketed(ref params) => {
-                for type_ in &params.types {
-                    self.visit_ty(type_);
-                }
-                for type_binding in &params.bindings {
+    fn visit_generic_args(&mut self, _: Span, generic_args: &'a GenericArgs) {
+        match *generic_args {
+            GenericArgs::AngleBracketed(ref data) => {
+                data.args.iter().for_each(|arg| match arg {
+                    GenericArg::Type(ty) => self.visit_ty(ty),
+                    _ => {}
+                });
+                for type_binding in &data.bindings {
                     // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
                     // are allowed to contain nested `impl Trait`.
                     self.with_impl_trait(None, |this| visit::walk_ty(this, &type_binding.ty));
                 }
             }
-            PathParameters::Parenthesized(ref params) => {
-                for type_ in &params.inputs {
+            GenericArgs::Parenthesized(ref data) => {
+                for type_ in &data.inputs {
                     self.visit_ty(type_);
                 }
-                if let Some(ref type_) = params.output {
+                if let Some(ref type_) = data.output {
                     // `-> Foo` syntax is essentially an associated type binding,
                     // so it is also allowed to contain nested `impl Trait`.
                     self.with_impl_trait(None, |this| visit::walk_ty(this, type_));
@@ -590,7 +580,7 @@ impl<'a> Visitor<'a> for ImplTraitProjectionVisitor<'a> {
                 //
                 // To implement this, we disallow `impl Trait` from `qself`
                 // (for cases like `<impl Trait>::Foo>`)
-                // but we allow `impl Trait` in `PathParameters`
+                // but we allow `impl Trait` in `GenericArgs`
                 // iff there are no more PathSegments.
                 if let Some(ref qself) = *qself {
                     // `impl Trait` in `qself` is always illegal

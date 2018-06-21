@@ -692,8 +692,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             if path.segments.len() != 1 {
                 return false;
             }
-            if let Some(ref params) = path.segments[0].parameters {
-                if let ast::PathParameters::Parenthesized(_) = **params {
+            if let Some(ref generic_args) = path.segments[0].args {
+                if let ast::GenericArgs::Parenthesized(_) = **generic_args {
                     return true;
                 }
             }
@@ -934,10 +934,7 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
         sig.push_str(&generics
             .params
             .iter()
-            .map(|param| match *param {
-                ast::GenericParam::Lifetime(ref l) => l.lifetime.ident.name.to_string(),
-                ast::GenericParam::Type(ref t) => t.ident.to_string(),
-            })
+            .map(|param| param.ident.to_string())
             .collect::<Vec<_>>()
             .join(", "));
         sig.push_str("> ");

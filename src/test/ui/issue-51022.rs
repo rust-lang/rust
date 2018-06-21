@@ -9,4 +9,4 @@
 // except according to those terms.
 
 fn main<'a>() { }
-    //~^ ERROR `main` function is not allowed to have lifetime parameters [E0131]
+    //~^ ERROR `main` function is not allowed to have generic parameters [E0131]

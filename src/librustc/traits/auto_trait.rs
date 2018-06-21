@@ -224,11 +224,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             let names_map: FxHashSet<String> = generics
                 .params
                 .iter()
-                .filter_map(|param| {
-                    match param.kind {
-                        ty::GenericParamDefKind::Lifetime => Some(param.name.to_string()),
-                        _ => None
-                    }
+                .filter_map(|param| match param.kind {
+                    ty::GenericParamDefKind::Lifetime => Some(param.name.to_string()),
+                    _ => None
                 })
                 .collect();
 

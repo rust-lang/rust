@@ -1036,15 +1036,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             // Get the `hir::TyParam` to verify whether it already has any bounds.
                             // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                             // instead we suggest `T: 'a + 'b` in that case.
-                            let has_lifetimes = if let hir_map::NodeTyParam(ref p) = hir.get(id) {
-                                p.bounds.len() > 0
-                            } else {
-                                false
-                            };
+                            let mut has_bounds = false;
+                            if let hir_map::NodeGenericParam(ref param) = hir.get(id) {
+                                has_bounds = !param.bounds.is_empty();
+                            }
                             let sp = hir.span(id);
                             // `sp` only covers `T`, change it so that it covers
                             // `T:` when appropriate
-                            let sp = if has_lifetimes {
+                            let sp = if has_bounds {
                                 sp.to(self.tcx
                                     .sess
                                     .codemap()
@@ -1052,7 +1051,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             } else {
                                 sp
                             };
-                            (sp, has_lifetimes)
+                            (sp, has_bounds)
                         })
                     } else {
                         None

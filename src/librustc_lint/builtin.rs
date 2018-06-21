@@ -49,7 +49,7 @@ use syntax_pos::{BytePos, Span, SyntaxContext};
 use syntax::symbol::keywords;
 use syntax::errors::{Applicability, DiagnosticBuilder};
 
-use rustc::hir::{self, PatKind};
+use rustc::hir::{self, GenericParamKind, PatKind};
 use rustc::hir::intravisit::FnKind;
 
 use bad_style::{MethodLateContext, method_context};
@@ -1196,15 +1196,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                         }
                         err.emit();
                     }
-                    if generics.is_type_parameterized() {
-                        let mut err = cx.struct_span_lint(NO_MANGLE_GENERIC_ITEMS,
-                                                          it.span,
-                                                          "functions generic over \
-                                                           types must be mangled");
-                        err.span_suggestion_short(no_mangle_attr.span,
-                                                  "remove this attribute",
-                                                  "".to_owned());
-                        err.emit();
+                    for param in &generics.params {
+                        match param.kind {
+                            GenericParamKind::Lifetime { .. } => {}
+                            GenericParamKind::Type { .. } => {
+                                let mut err = cx.struct_span_lint(NO_MANGLE_GENERIC_ITEMS,
+                                                                  it.span,
+                                                                  "functions generic over \
+                                                                   types must be mangled");
+                                err.span_suggestion_short(no_mangle_attr.span,
+                                                          "remove this attribute",
+                                                          "".to_owned());
+                                err.emit();
+                                break;
+                            }
+                        }
                     }
                 }
             }
@@ -1531,10 +1537,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
         }
         // The parameters must not have bounds
         for param in type_alias_generics.params.iter() {
-            let spans : Vec<_> = match param {
-                &hir::GenericParam::Lifetime(ref l) => l.bounds.iter().map(|b| b.span).collect(),
-                &hir::GenericParam::Type(ref ty) => ty.bounds.iter().map(|b| b.span()).collect(),
-            };
+            let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
             if !spans.is_empty() {
                 let mut err = cx.struct_span_lint(
                     TYPE_ALIAS_BOUNDS,

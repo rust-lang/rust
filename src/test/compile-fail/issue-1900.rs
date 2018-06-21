@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: `main` function is not allowed to have type parameters
+// error-pattern: `main` function is not allowed to have generic parameters
 fn main<T>() { }

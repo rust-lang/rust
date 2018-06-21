@@ -244,34 +244,32 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         None
     }
 
-    fn generics_to_path_params(&self, generics: ty::Generics) -> hir::PathParameters {
-        let mut lifetimes = vec![];
-        let mut types = vec![];
+    fn generics_to_path_params(&self, generics: ty::Generics) -> hir::GenericArgs {
+        let mut args = vec![];
 
         for param in generics.params.iter() {
             match param.kind {
                 ty::GenericParamDefKind::Lifetime => {
                     let name = if param.name == "" {
-                        hir::LifetimeName::Static
+                        hir::ParamName::Plain(keywords::StaticLifetime.name())
                     } else {
-                        hir::LifetimeName::Name(param.name.as_symbol())
+                        hir::ParamName::Plain(param.name.as_symbol())
                     };
 
-                    lifetimes.push(hir::Lifetime {
+                    args.push(hir::GenericArg::Lifetime(hir::Lifetime {
                         id: ast::DUMMY_NODE_ID,
                         span: DUMMY_SP,
-                        name,
-                    });
+                        name: hir::LifetimeName::Param(name),
+                    }));
                 }
                 ty::GenericParamDefKind::Type {..} => {
-                    types.push(P(self.ty_param_to_ty(param.clone())));
+                    args.push(hir::GenericArg::Type(P(self.ty_param_to_ty(param.clone()))));
                 }
             }
         }
 
-        hir::PathParameters {
-            lifetimes: HirVec::from_vec(lifetimes),
-            types: HirVec::from_vec(types),
+        hir::GenericArgs {
+            args: HirVec::from_vec(args),
             bindings: HirVec::new(),
             parenthesized: false,
         }
@@ -488,11 +486,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             .iter()
             .flat_map(|(name, lifetime)| {
                 let empty = Vec::new();
-                let bounds: FxHashSet<Lifetime> = finished
-                    .get(name)
-                    .unwrap_or(&empty)
-                    .iter()
-                    .map(|region| self.get_lifetime(region, names_map))
+                let bounds: FxHashSet<GenericBound> = finished.get(name).unwrap_or(&empty).iter()
+                    .map(|region| GenericBound::Outlives(self.get_lifetime(region, names_map)))
                     .collect();
 
                 if bounds.is_empty() {
@@ -523,7 +518,10 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                         // We only care about late bound regions, as we need to add them
                         // to the 'for<>' section
                         &ty::ReLateBound(_, ty::BoundRegion::BrNamed(_, name)) => {
-                            Some(GenericParamDef::Lifetime(Lifetime(name.to_string())))
+                            Some(GenericParamDef {
+                                name: name.to_string(),
+                                kind: GenericParamDefKind::Lifetime,
+                            })
                         }
                         &ty::ReVar(_) | &ty::ReEarlyBound(_) => None,
                         _ => panic!("Unexpected region type {:?}", r),
@@ -535,9 +533,9 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
     fn make_final_bounds<'b, 'c, 'cx>(
         &self,
-        ty_to_bounds: FxHashMap<Type, FxHashSet<TyParamBound>>,
+        ty_to_bounds: FxHashMap<Type, FxHashSet<GenericBound>>,
         ty_to_fn: FxHashMap<Type, (Option<PolyTrait>, Option<Type>)>,
-        lifetime_to_bounds: FxHashMap<Lifetime, FxHashSet<Lifetime>>,
+        lifetime_to_bounds: FxHashMap<Lifetime, FxHashSet<GenericBound>>,
     ) -> Vec<WherePredicate> {
         ty_to_bounds
             .into_iter()
@@ -555,9 +553,9 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                             let mut new_path = path.clone();
                             let last_segment = new_path.segments.pop().unwrap();
 
-                            let (old_input, old_output) = match last_segment.params {
-                                PathParameters::AngleBracketed { types, .. } => (types, None),
-                                PathParameters::Parenthesized { inputs, output, .. } => {
+                            let (old_input, old_output) = match last_segment.args {
+                                GenericArgs::AngleBracketed { types, .. } => (types, None),
+                                GenericArgs::Parenthesized { inputs, output, .. } => {
                                     (inputs, output)
                                 }
                             };
@@ -569,14 +567,14 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                 );
                             }
 
-                            let new_params = PathParameters::Parenthesized {
+                            let new_params = GenericArgs::Parenthesized {
                                 inputs: old_input,
                                 output,
                             };
 
                             new_path.segments.push(PathSegment {
                                 name: last_segment.name,
-                                params: new_params,
+                                args: new_params,
                             });
 
                             Type::ResolvedPath {
@@ -588,7 +586,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                         }
                         _ => panic!("Unexpected data: {:?}, {:?}", ty, data),
                     };
-                    bounds.insert(TyParamBound::TraitBound(
+                    bounds.insert(GenericBound::TraitBound(
                         PolyTrait {
                             trait_: new_ty,
                             generic_params: poly_trait.generic_params,
@@ -614,7 +612,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                     .filter(|&(_, ref bounds)| !bounds.is_empty())
                     .map(|(lifetime, bounds)| {
                         let mut bounds_vec = bounds.into_iter().collect();
-                        self.sort_where_lifetimes(&mut bounds_vec);
+                        self.sort_where_bounds(&mut bounds_vec);
                         WherePredicate::RegionPredicate {
                             lifetime,
                             bounds: bounds_vec,
@@ -731,7 +729,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                         // later
 
                         let is_fn = match &mut b {
-                            &mut TyParamBound::TraitBound(ref mut p, _) => {
+                            &mut GenericBound::TraitBound(ref mut p, _) => {
                                 // Insert regions into the for_generics hash map first, to ensure
                                 // that we don't end up with duplicate bounds (e.g. for<'b, 'b>)
                                 for_generics.extend(p.generic_params.clone());
@@ -793,13 +791,13 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
                                     // FIXME: Remove this scope when NLL lands
                                     {
-                                        let params =
-                                            &mut new_trait_path.segments.last_mut().unwrap().params;
+                                        let args =
+                                            &mut new_trait_path.segments.last_mut().unwrap().args;
 
-                                        match params {
+                                        match args {
                                             // Convert somethiung like '<T as Iterator::Item> = u8'
                                             // to 'T: Iterator<Item=u8>'
-                                            &mut PathParameters::AngleBracketed {
+                                            &mut GenericArgs::AngleBracketed {
                                                 ref mut bindings,
                                                 ..
                                             } => {
@@ -808,7 +806,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                                     ty: rhs,
                                                 });
                                             }
-                                            &mut PathParameters::Parenthesized { .. } => {
+                                            &mut GenericArgs::Parenthesized { .. } => {
                                                 existing_predicates.push(
                                                     WherePredicate::EqPredicate {
                                                         lhs: lhs.clone(),
@@ -825,7 +823,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                         .entry(*ty.clone())
                                         .or_insert_with(|| FxHashSet());
 
-                                    bounds.insert(TyParamBound::TraitBound(
+                                    bounds.insert(GenericBound::TraitBound(
                                         PolyTrait {
                                             trait_: Type::ResolvedPath {
                                                 path: new_trait_path,
@@ -842,7 +840,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                     // that we don't see a
                                     // duplicate bound like `T: Iterator + Iterator<Item=u8>`
                                     // on the docs page.
-                                    bounds.remove(&TyParamBound::TraitBound(
+                                    bounds.remove(&GenericBound::TraitBound(
                                         PolyTrait {
                                             trait_: *trait_.clone(),
                                             generic_params: Vec::new(),
@@ -869,19 +867,17 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
         existing_predicates.extend(final_bounds);
 
-        for p in generic_params.iter_mut() {
-            match p {
-                &mut GenericParamDef::Type(ref mut ty) => {
-                    // We never want something like 'impl<T=Foo>'
-                    ty.default.take();
-
-                    let generic_ty = Type::Generic(ty.name.clone());
-
+        for param in generic_params.iter_mut() {
+            match param.kind {
+                GenericParamDefKind::Type { ref mut default, ref mut bounds, .. } => {
+                    // We never want something like `impl<T=Foo>`.
+                    default.take();
+                    let generic_ty = Type::Generic(param.name.clone());
                     if !has_sized.contains(&generic_ty) {
-                        ty.bounds.insert(0, TyParamBound::maybe_sized(self.cx));
+                        bounds.insert(0, GenericBound::maybe_sized(self.cx));
                     }
                 }
-                GenericParamDef::Lifetime(_) => {}
+                GenericParamDefKind::Lifetime => {}
             }
         }
 
@@ -912,15 +908,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
     // both for visual consistency between 'rustdoc' runs, and to
     // make writing tests much easier
     #[inline]
-    fn sort_where_bounds(&self, mut bounds: &mut Vec<TyParamBound>) {
-        // We should never have identical bounds - and if we do,
-        // they're visually identical as well. Therefore, using
-        // an unstable sort is fine.
-        self.unstable_debug_sort(&mut bounds);
-    }
-
-    #[inline]
-    fn sort_where_lifetimes(&self, mut bounds: &mut Vec<Lifetime>) {
+    fn sort_where_bounds(&self, mut bounds: &mut Vec<GenericBound>) {
         // We should never have identical bounds - and if we do,
         // they're visually identical as well. Therefore, using
         // an unstable sort is fine.
@@ -940,7 +928,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
     // to end users, it makes writing tests much more difficult, as predicates
     // can appear in any order in the final result.
     //
-    // To solve this problem, we sort WherePredicates and TyParamBounds
+    // To solve this problem, we sort WherePredicates and GenericBounds
     // by their Debug string. The thing to keep in mind is that we don't really
     // care what the final order is - we're synthesizing an impl or bound
     // ourselves, so any order can be considered equally valid. By sorting the
@@ -950,7 +938,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
     // Using the Debug impementation for sorting prevents us from needing to
     // write quite a bit of almost entirely useless code (e.g. how should two
     // Types be sorted relative to each other). It also allows us to solve the
-    // problem for both WherePredicates and TyParamBounds at the same time. This
+    // problem for both WherePredicates and GenericBounds at the same time. This
     // approach is probably somewhat slower, but the small number of items
     // involved (impls rarely have more than a few bounds) means that it
     // shouldn't matter in practice.

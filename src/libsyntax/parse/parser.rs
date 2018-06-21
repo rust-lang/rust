@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use rustc_target::spec::abi::{self, Abi};
-use ast::{AngleBracketedParameterData, ParenthesizedParameterData, AttrStyle, BareFnTy};
-use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
+use ast::{AngleBracketedArgs, ParenthesisedArgs, AttrStyle, BareFnTy};
+use ast::{GenericBound, TraitBoundModifier};
 use ast::Unsafety;
 use ast::{Mod, AnonConst, Arg, Arm, Attribute, BindingMode, TraitItemKind};
 use ast::Block;
@@ -21,9 +21,10 @@ use ast::EnumDef;
 use ast::{Expr, ExprKind, RangeLimits};
 use ast::{Field, FnDecl};
 use ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
-use ast::GenericParam;
+use ast::{GenericParam, GenericParamKind};
+use ast::GenericArg;
 use ast::{Ident, ImplItem, IsAuto, Item, ItemKind};
-use ast::{Label, Lifetime, LifetimeDef, Lit, LitKind};
+use ast::{Label, Lifetime, Lit, LitKind};
 use ast::Local;
 use ast::MacStmtStyle;
 use ast::{Mac, Mac_, MacDelimiter};
@@ -35,7 +36,7 @@ use ast::{VariantData, StructField};
 use ast::StrStyle;
 use ast::SelfKind;
 use ast::{TraitItem, TraitRef, TraitObjectSyntax};
-use ast::{Ty, TyKind, TypeBinding, TyParam, TyParamBounds};
+use ast::{Ty, TyKind, TypeBinding, GenericBounds};
 use ast::{Visibility, VisibilityKind, WhereClause, CrateSugar};
 use ast::{UseTree, UseTreeKind};
 use ast::{BinOpKind, UnOp};
@@ -1245,8 +1246,7 @@ impl<'a> Parser<'a> {
     }
 
     /// parse a TyKind::BareFn type:
-    fn parse_ty_bare_fn(&mut self, generic_params: Vec<GenericParam>)
-                            -> PResult<'a, TyKind> {
+    fn parse_ty_bare_fn(&mut self, generic_params: Vec<GenericParam>) -> PResult<'a, TyKind> {
         /*
 
         [unsafe] [extern "ABI"] fn (S) -> T
@@ -1311,9 +1311,7 @@ impl<'a> Parser<'a> {
         let lo = self.span;
 
         let (name, node, generics) = if self.eat_keyword(keywords::Type) {
-            let (generics, TyParam {ident, bounds, default, ..}) =
-                self.parse_trait_item_assoc_ty(vec![])?;
-            (ident, TraitItemKind::Type(bounds, default), generics)
+            self.parse_trait_item_assoc_ty()?
         } else if self.is_const_item() {
             self.expect_keyword(keywords::Const)?;
             let ident = self.parse_ident()?;
@@ -1446,7 +1444,7 @@ impl<'a> Parser<'a> {
                     TyKind::TraitObject(ref bounds, TraitObjectSyntax::None)
                             if maybe_bounds && bounds.len() == 1 && !trailing_plus => {
                         let path = match bounds[0] {
-                            TraitTyParamBound(ref pt, ..) => pt.trait_ref.path.clone(),
+                            GenericBound::Trait(ref pt, ..) => pt.trait_ref.path.clone(),
                             _ => self.bug("unexpected lifetime bound"),
                         };
                         self.parse_remaining_bounds(Vec::new(), path, lo, true)?
@@ -1511,7 +1509,7 @@ impl<'a> Parser<'a> {
             }
         } else if self.eat_keyword(keywords::Impl) {
             // Always parse bounds greedily for better error recovery.
-            let bounds = self.parse_ty_param_bounds()?;
+            let bounds = self.parse_generic_bounds()?;
             impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
             TyKind::ImplTrait(bounds)
         } else if self.check_keyword(keywords::Dyn) &&
@@ -1519,13 +1517,13 @@ impl<'a> Parser<'a> {
                                          !can_continue_type_after_non_fn_ident(t)) {
             self.bump(); // `dyn`
             // Always parse bounds greedily for better error recovery.
-            let bounds = self.parse_ty_param_bounds()?;
+            let bounds = self.parse_generic_bounds()?;
             impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
             TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn)
         } else if self.check(&token::Question) ||
                   self.check_lifetime() && self.look_ahead(1, |t| t.is_like_plus()) {
             // Bound list (trait object type)
-            TyKind::TraitObject(self.parse_ty_param_bounds_common(allow_plus)?,
+            TyKind::TraitObject(self.parse_generic_bounds_common(allow_plus)?,
                                 TraitObjectSyntax::None)
         } else if self.eat_lt() {
             // Qualified path
@@ -1568,10 +1566,10 @@ impl<'a> Parser<'a> {
     fn parse_remaining_bounds(&mut self, generic_params: Vec<GenericParam>, path: ast::Path,
                               lo: Span, parse_plus: bool) -> PResult<'a, TyKind> {
         let poly_trait_ref = PolyTraitRef::new(generic_params, path, lo.to(self.prev_span));
-        let mut bounds = vec![TraitTyParamBound(poly_trait_ref, TraitBoundModifier::None)];
+        let mut bounds = vec![GenericBound::Trait(poly_trait_ref, TraitBoundModifier::None)];
         if parse_plus {
             self.eat_plus(); // `+`, or `+=` gets split and `+` is discarded
-            bounds.append(&mut self.parse_ty_param_bounds()?);
+            bounds.append(&mut self.parse_generic_bounds()?);
         }
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
     }
@@ -1596,7 +1594,7 @@ impl<'a> Parser<'a> {
         }
 
         self.bump(); // `+`
-        let bounds = self.parse_ty_param_bounds()?;
+        let bounds = self.parse_generic_bounds()?;
         let sum_span = ty.span.to(self.prev_span);
 
         let mut err = struct_span_err!(self.sess.span_diagnostic, sum_span, E0178,
@@ -1612,7 +1610,7 @@ impl<'a> Parser<'a> {
                     s.print_mutability(mut_ty.mutbl)?;
                     s.popen()?;
                     s.print_type(&mut_ty.ty)?;
-                    s.print_bounds(" +", &bounds)?;
+                    s.print_type_bounds(" +", &bounds)?;
                     s.pclose()
                 });
                 err.span_suggestion_with_applicability(
@@ -1894,7 +1892,7 @@ impl<'a> Parser<'a> {
                              -> PResult<'a, ast::Path> {
         maybe_whole!(self, NtPath, |path| {
             if style == PathStyle::Mod &&
-               path.segments.iter().any(|segment| segment.parameters.is_some()) {
+               path.segments.iter().any(|segment| segment.args.is_some()) {
                 self.diagnostic().span_err(path.span, "unexpected generic arguments in path");
             }
             path
@@ -1969,12 +1967,12 @@ impl<'a> Parser<'a> {
                                  .span_label(self.prev_span, "try removing `::`").emit();
             }
 
-            let parameters = if self.eat_lt() {
+            let args = if self.eat_lt() {
                 // `<'a, T, A = U>`
-                let (lifetimes, types, bindings) = self.parse_generic_args()?;
+                let (args, bindings) = self.parse_generic_args()?;
                 self.expect_gt()?;
                 let span = lo.to(self.prev_span);
-                AngleBracketedParameterData { lifetimes, types, bindings, span }.into()
+                AngleBracketedArgs { args, bindings, span }.into()
             } else {
                 // `(T, U) -> R`
                 self.bump(); // `(`
@@ -1990,10 +1988,10 @@ impl<'a> Parser<'a> {
                     None
                 };
                 let span = lo.to(self.prev_span);
-                ParenthesizedParameterData { inputs, output, span }.into()
+                ParenthesisedArgs { inputs, output, span }.into()
             };
 
-            PathSegment { ident, parameters }
+            PathSegment { ident, args }
         } else {
             // Generic arguments are not found.
             PathSegment::from_ident(ident)
@@ -2543,8 +2541,8 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 // Field access `expr.f`
-                if let Some(parameters) = segment.parameters {
-                    self.span_err(parameters.span(),
+                if let Some(args) = segment.args {
+                    self.span_err(args.span(),
                                   "field expressions may not have generic arguments");
                 }
 
@@ -4737,7 +4735,7 @@ impl<'a> Parser<'a> {
     // LT_BOUND = LIFETIME (e.g. `'a`)
     // TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
     // TY_BOUND_NOPAREN = [?] [for<LT_PARAM_DEFS>] SIMPLE_PATH (e.g. `?for<'a: 'b> m::Trait<'a>`)
-    fn parse_ty_param_bounds_common(&mut self, allow_plus: bool) -> PResult<'a, TyParamBounds> {
+    fn parse_generic_bounds_common(&mut self, allow_plus: bool) -> PResult<'a, GenericBounds> {
         let mut bounds = Vec::new();
         loop {
             // This needs to be syncronized with `Token::can_begin_bound`.
@@ -4754,7 +4752,7 @@ impl<'a> Parser<'a> {
                         self.span_err(question_span,
                                       "`?` may only modify trait bounds, not lifetime bounds");
                     }
-                    bounds.push(RegionTyParamBound(self.expect_lifetime()));
+                    bounds.push(GenericBound::Outlives(self.expect_lifetime()));
                     if has_parens {
                         self.expect(&token::CloseDelim(token::Paren))?;
                         self.span_err(self.prev_span,
@@ -4772,7 +4770,7 @@ impl<'a> Parser<'a> {
                     } else {
                         TraitBoundModifier::None
                     };
-                    bounds.push(TraitTyParamBound(poly_trait, modifier));
+                    bounds.push(GenericBound::Trait(poly_trait, modifier));
                 }
             } else {
                 break
@@ -4786,16 +4784,16 @@ impl<'a> Parser<'a> {
         return Ok(bounds);
     }
 
-    fn parse_ty_param_bounds(&mut self) -> PResult<'a, TyParamBounds> {
-        self.parse_ty_param_bounds_common(true)
+    fn parse_generic_bounds(&mut self) -> PResult<'a, GenericBounds> {
+        self.parse_generic_bounds_common(true)
     }
 
     // Parse bounds of a lifetime parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
     // BOUND = LT_BOUND (e.g. `'a`)
-    fn parse_lt_param_bounds(&mut self) -> Vec<Lifetime> {
+    fn parse_lt_param_bounds(&mut self) -> GenericBounds {
         let mut lifetimes = Vec::new();
         while self.check_lifetime() {
-            lifetimes.push(self.expect_lifetime());
+            lifetimes.push(ast::GenericBound::Outlives(self.expect_lifetime()));
 
             if !self.eat_plus() {
                 break
@@ -4805,12 +4803,14 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?
-    fn parse_ty_param(&mut self, preceding_attrs: Vec<Attribute>) -> PResult<'a, TyParam> {
+    fn parse_ty_param(&mut self,
+                      preceding_attrs: Vec<Attribute>)
+                      -> PResult<'a, GenericParam> {
         let ident = self.parse_ident()?;
 
         // Parse optional colon and param bounds.
         let bounds = if self.eat(&token::Colon) {
-            self.parse_ty_param_bounds()?
+            self.parse_generic_bounds()?
         } else {
             Vec::new()
         };
@@ -4821,25 +4821,27 @@ impl<'a> Parser<'a> {
             None
         };
 
-        Ok(TyParam {
-            attrs: preceding_attrs.into(),
+        Ok(GenericParam {
             ident,
             id: ast::DUMMY_NODE_ID,
+            attrs: preceding_attrs.into(),
             bounds,
-            default,
+            kind: GenericParamKind::Type {
+                default,
+            }
         })
     }
 
     /// Parses the following grammar:
-    ///     TraitItemAssocTy = Ident ["<"...">"] [":" [TyParamBounds]] ["where" ...] ["=" Ty]
-    fn parse_trait_item_assoc_ty(&mut self, preceding_attrs: Vec<Attribute>)
-        -> PResult<'a, (ast::Generics, TyParam)> {
+    ///     TraitItemAssocTy = Ident ["<"...">"] [":" [GenericBounds]] ["where" ...] ["=" Ty]
+    fn parse_trait_item_assoc_ty(&mut self)
+        -> PResult<'a, (Ident, TraitItemKind, ast::Generics)> {
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
 
         // Parse optional colon and param bounds.
         let bounds = if self.eat(&token::Colon) {
-            self.parse_ty_param_bounds()?
+            self.parse_generic_bounds()?
         } else {
             Vec::new()
         };
@@ -4852,13 +4854,7 @@ impl<'a> Parser<'a> {
         };
         self.expect(&token::Semi)?;
 
-        Ok((generics, TyParam {
-            attrs: preceding_attrs.into(),
-            ident,
-            id: ast::DUMMY_NODE_ID,
-            bounds,
-            default,
-        }))
+        Ok((ident, TraitItemKind::Type(bounds, default), generics))
     }
 
     /// Parses (possibly empty) list of lifetime and type parameters, possibly including
@@ -4876,18 +4872,20 @@ impl<'a> Parser<'a> {
                 } else {
                     Vec::new()
                 };
-                params.push(ast::GenericParam::Lifetime(LifetimeDef {
+                params.push(ast::GenericParam {
+                    ident: lifetime.ident,
+                    id: lifetime.id,
                     attrs: attrs.into(),
-                    lifetime,
                     bounds,
-                }));
+                    kind: ast::GenericParamKind::Lifetime,
+                });
                 if seen_ty_param {
                     self.span_err(self.prev_span,
                         "lifetime parameters must be declared prior to type parameters");
                 }
             } else if self.check_ident() {
                 // Parse type parameter.
-                params.push(ast::GenericParam::Type(self.parse_ty_param(attrs)?));
+                params.push(self.parse_ty_param(attrs)?);
                 seen_ty_param = true;
             } else {
                 // Check for trailing attributes and stop parsing.
@@ -4936,16 +4934,16 @@ impl<'a> Parser<'a> {
 
     /// Parses (possibly empty) list of lifetime and type arguments and associated type bindings,
     /// possibly including trailing comma.
-    fn parse_generic_args(&mut self) -> PResult<'a, (Vec<Lifetime>, Vec<P<Ty>>, Vec<TypeBinding>)> {
-        let mut lifetimes = Vec::new();
-        let mut types = Vec::new();
+    fn parse_generic_args(&mut self)
+                          -> PResult<'a, (Vec<GenericArg>, Vec<TypeBinding>)> {
+        let mut args = Vec::new();
         let mut bindings = Vec::new();
         let mut seen_type = false;
         let mut seen_binding = false;
         loop {
             if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 // Parse lifetime argument.
-                lifetimes.push(self.expect_lifetime());
+                args.push(GenericArg::Lifetime(self.expect_lifetime()));
                 if seen_type || seen_binding {
                     self.span_err(self.prev_span,
                         "lifetime parameters must be declared prior to type parameters");
@@ -4965,11 +4963,12 @@ impl<'a> Parser<'a> {
                 seen_binding = true;
             } else if self.check_type() {
                 // Parse type argument.
-                types.push(self.parse_ty()?);
+                let ty_param = self.parse_ty()?;
                 if seen_binding {
-                    self.span_err(types[types.len() - 1].span,
+                    self.span_err(ty_param.span,
                         "type parameters must be declared prior to associated type bindings");
                 }
+                args.push(GenericArg::Type(ty_param));
                 seen_type = true;
             } else {
                 break
@@ -4979,7 +4978,7 @@ impl<'a> Parser<'a> {
                 break
             }
         }
-        Ok((lifetimes, types, bindings))
+        Ok((args, bindings))
     }
 
     /// Parses an optional `where` clause and places it in `generics`.
@@ -5037,7 +5036,7 @@ impl<'a> Parser<'a> {
                 // or with mandatory equality sign and the second type.
                 let ty = self.parse_ty()?;
                 if self.eat(&token::Colon) {
-                    let bounds = self.parse_ty_param_bounds()?;
+                    let bounds = self.parse_generic_bounds()?;
                     where_clause.predicates.push(ast::WherePredicate::BoundPredicate(
                         ast::WhereBoundPredicate {
                             span: lo.to(self.prev_span),
@@ -5537,14 +5536,14 @@ impl<'a> Parser<'a> {
 
         // Parse optional colon and supertrait bounds.
         let bounds = if self.eat(&token::Colon) {
-            self.parse_ty_param_bounds()?
+            self.parse_generic_bounds()?
         } else {
             Vec::new()
         };
 
         if self.eat(&token::Eq) {
             // it's a trait alias
-            let bounds = self.parse_ty_param_bounds()?;
+            let bounds = self.parse_generic_bounds()?;
             tps.where_clause = self.parse_where_clause()?;
             self.expect(&token::Semi)?;
             if unsafety != Unsafety::Normal {

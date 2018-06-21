@@ -192,10 +192,8 @@ use std::collections::HashSet;
 use std::vec;
 
 use rustc_target::spec::abi::Abi;
-use syntax::ast::{
-    self, BinOpKind, EnumDef, Expr, GenericParam, Generics, Ident, PatKind, VariantData
-};
-
+use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
+use syntax::ast::{VariantData, GenericParamKind, GenericArg};
 use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
@@ -424,7 +422,10 @@ impl<'a> TraitDef<'a> {
                     ast::ItemKind::Struct(_, ref generics) |
                     ast::ItemKind::Enum(_, ref generics) |
                     ast::ItemKind::Union(_, ref generics) => {
-                        !generics.params.iter().any(|p| p.is_type_param())
+                        !generics.params.iter().any(|param| match param.kind {
+                            ast::GenericParamKind::Type { .. } => true,
+                            _ => false,
+                        })
                     }
                     _ => {
                         // Non-ADT derive is an error, but it should have been
@@ -548,30 +549,27 @@ impl<'a> TraitDef<'a> {
             .to_generics(cx, self.span, type_ident, generics);
 
         // Create the generic parameters
-        params.extend(generics.params.iter().map(|param| {
-            match *param {
-                ref l @ GenericParam::Lifetime(_) => l.clone(),
-                GenericParam::Type(ref ty_param) => {
-                    // I don't think this can be moved out of the loop, since
-                    // a TyParamBound requires an ast id
-                    let mut bounds: Vec<_> =
-                        // extra restrictions on the generics parameters to the
-                        // type being derived upon
-                        self.additional_bounds.iter().map(|p| {
-                            cx.typarambound(p.to_path(cx, self.span,
-                                                        type_ident, generics))
-                        }).collect();
+        params.extend(generics.params.iter().map(|param| match param.kind {
+            GenericParamKind::Lifetime { .. } => param.clone(),
+            GenericParamKind::Type { .. } => {
+                // I don't think this can be moved out of the loop, since
+                // a GenericBound requires an ast id
+                let mut bounds: Vec<_> =
+                    // extra restrictions on the generics parameters to the
+                    // type being derived upon
+                    self.additional_bounds.iter().map(|p| {
+                        cx.trait_bound(p.to_path(cx, self.span, type_ident, generics))
+                    }).collect();
 
-                    // require the current trait
-                    bounds.push(cx.typarambound(trait_path.clone()));
+                // require the current trait
+                bounds.push(cx.trait_bound(trait_path.clone()));
 
-                    // also add in any bounds from the declaration
-                    for declared_bound in ty_param.bounds.iter() {
-                        bounds.push((*declared_bound).clone());
-                    }
-
-                    GenericParam::Type(cx.typaram(self.span, ty_param.ident, vec![], bounds, None))
+                // also add in any bounds from the declaration
+                for declared_bound in &param.bounds {
+                    bounds.push((*declared_bound).clone());
                 }
+
+                cx.typaram(self.span, param.ident, vec![], bounds, None)
             }
         }));
 
@@ -608,8 +606,8 @@ impl<'a> TraitDef<'a> {
             // Extra scope required here so ty_params goes out of scope before params is moved
 
             let mut ty_params = params.iter()
-                .filter_map(|param| match *param {
-                    ast::GenericParam::Type(ref t) => Some(t),
+                .filter_map(|param| match param.kind {
+                    ast::GenericParamKind::Type { .. } => Some(param),
                     _ => None,
                 })
                 .peekable();
@@ -636,12 +634,12 @@ impl<'a> TraitDef<'a> {
                         let mut bounds: Vec<_> = self.additional_bounds
                             .iter()
                             .map(|p| {
-                                cx.typarambound(p.to_path(cx, self.span, type_ident, generics))
+                                cx.trait_bound(p.to_path(cx, self.span, type_ident, generics))
                             })
                             .collect();
 
                         // require the current trait
-                        bounds.push(cx.typarambound(trait_path.clone()));
+                        bounds.push(cx.trait_bound(trait_path.clone()));
 
                         let predicate = ast::WhereBoundPredicate {
                             span: self.span,
@@ -666,31 +664,18 @@ impl<'a> TraitDef<'a> {
         // Create the reference to the trait.
         let trait_ref = cx.trait_ref(trait_path);
 
-        // Create the type parameters on the `self` path.
-        let self_ty_params = generics.params
-            .iter()
-            .filter_map(|param| match *param {
-                GenericParam::Type(ref ty_param)
-                    => Some(cx.ty_ident(self.span, ty_param.ident)),
-                _ => None,
-            })
-            .collect();
-
-        let self_lifetimes: Vec<ast::Lifetime> = generics.params
-            .iter()
-            .filter_map(|param| match *param {
-                GenericParam::Lifetime(ref ld) => Some(ld.lifetime),
-                _ => None,
-            })
-            .collect();
+        let self_params: Vec<_> = generics.params.iter().map(|param| match param.kind {
+            GenericParamKind::Lifetime { .. } => {
+                GenericArg::Lifetime(cx.lifetime(self.span, param.ident))
+            }
+            GenericParamKind::Type { .. } => {
+                GenericArg::Type(cx.ty_ident(self.span, param.ident))
+            }
+        }).collect();
 
         // Create the type of `self`.
-        let self_type = cx.ty_path(cx.path_all(self.span,
-                                               false,
-                                               vec![type_ident],
-                                               self_lifetimes,
-                                               self_ty_params,
-                                               Vec::new()));
+        let path = cx.path_all(self.span, false, vec![type_ident], self_params, vec![]);
+        let self_type = cx.ty_path(path);
 
         let attr = cx.attribute(self.span,
                                 cx.meta_word(self.span,

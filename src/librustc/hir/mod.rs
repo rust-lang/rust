@@ -22,7 +22,6 @@ pub use self::Mutability::*;
 pub use self::PrimTy::*;
 pub use self::Stmt_::*;
 pub use self::Ty_::*;
-pub use self::TyParamBound::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 pub use self::Visibility::{Public, Inherited};
@@ -53,8 +52,6 @@ use rustc_data_structures::sync::{ParallelIterator, par_iter, Send, Sync, scope}
 use serialize::{self, Encoder, Encodable, Decoder, Decodable};
 use std::collections::BTreeMap;
 use std::fmt;
-use std::iter;
-use std::slice;
 
 /// HIR doesn't commit to a concrete storage type and has its own alias for a vector.
 /// It can be `Vec`, `P<[T]>` or potentially `Box<[T]>`, or some other container with similar
@@ -203,12 +200,9 @@ pub struct Lifetime {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
-pub enum LifetimeName {
-    /// User typed nothing. e.g. the lifetime in `&u32`.
-    Implicit,
-
-    /// User typed `'_`.
-    Underscore,
+pub enum ParamName {
+    /// Some user-given name like `T` or `'x`.
+    Plain(Name),
 
     /// Synthetic name generated when user elided a lifetime in an impl header,
     /// e.g. the lifetimes in cases like these:
@@ -224,12 +218,30 @@ pub enum LifetimeName {
     /// where `'f` is something like `Fresh(0)`. The indices are
     /// unique per impl, but not necessarily continuous.
     Fresh(usize),
+}
+
+impl ParamName {
+    pub fn name(&self) -> Name {
+        match *self {
+            ParamName::Plain(name) => name,
+            ParamName::Fresh(_) => keywords::UnderscoreLifetime.name(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
+pub enum LifetimeName {
+    /// User-given names or fresh (synthetic) names.
+    Param(ParamName),
+
+    /// User typed nothing. e.g. the lifetime in `&u32`.
+    Implicit,
+
+    /// User typed `'_`.
+    Underscore,
 
     /// User wrote `'static`
     Static,
-
-    /// Some user-given name like `'x`
-    Name(Name),
 }
 
 impl LifetimeName {
@@ -237,10 +249,28 @@ impl LifetimeName {
         use self::LifetimeName::*;
         match *self {
             Implicit => keywords::Invalid.name(),
-            Fresh(_) | Underscore => keywords::UnderscoreLifetime.name(),
+            Underscore => keywords::UnderscoreLifetime.name(),
             Static => keywords::StaticLifetime.name(),
-            Name(name) => name,
+            Param(param_name) => param_name.name(),
         }
+    }
+
+    fn is_elided(&self) -> bool {
+        use self::LifetimeName::*;
+        match self {
+            Implicit | Underscore => true,
+
+            // It might seem surprising that `Fresh(_)` counts as
+            // *not* elided -- but this is because, as far as the code
+            // in the compiler is concerned -- `Fresh(_)` variants act
+            // equivalently to "some fresh name". They correspond to
+            // early-bound regions on an impl, in other words.
+            Param(_) | Static => false,
+        }
+    }
+
+    fn is_static(&self) -> bool {
+        self == &LifetimeName::Static
     }
 }
 
@@ -255,34 +285,12 @@ impl fmt::Debug for Lifetime {
 
 impl Lifetime {
     pub fn is_elided(&self) -> bool {
-        use self::LifetimeName::*;
-        match self.name {
-            Implicit | Underscore => true,
-
-            // It might seem surprising that `Fresh(_)` counts as
-            // *not* elided -- but this is because, as far as the code
-            // in the compiler is concerned -- `Fresh(_)` variants act
-            // equivalently to "some fresh name". They correspond to
-            // early-bound regions on an impl, in other words.
-            Fresh(_) | Static | Name(_) => false,
-        }
+        self.name.is_elided()
     }
 
     pub fn is_static(&self) -> bool {
-        self.name == LifetimeName::Static
+        self.name.is_static()
     }
-}
-
-/// A lifetime definition, eg `'a: 'b+'c+'d`
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct LifetimeDef {
-    pub lifetime: Lifetime,
-    pub bounds: HirVec<Lifetime>,
-    pub pure_wrt_drop: bool,
-    // Indicates that the lifetime definition was synthetically added
-    // as a result of an in-band lifetime usage like
-    // `fn foo(x: &'a u8) -> &'a u8 { x }`
-    pub in_band: bool,
 }
 
 /// A "Path" is essentially Rust's notion of a name; for instance:
@@ -327,7 +335,7 @@ pub struct PathSegment {
     /// this is more than just simple syntactic sugar; the use of
     /// parens affects the region binding rules, so we preserve the
     /// distinction.
-    pub parameters: Option<P<PathParameters>>,
+    pub args: Option<P<GenericArgs>>,
 
     /// Whether to infer remaining type parameters, if any.
     /// This only applies to expression and pattern paths, and
@@ -342,30 +350,30 @@ impl PathSegment {
         PathSegment {
             name,
             infer_types: true,
-            parameters: None
+            args: None,
         }
     }
 
-    pub fn new(name: Name, parameters: PathParameters, infer_types: bool) -> Self {
+    pub fn new(name: Name, args: GenericArgs, infer_types: bool) -> Self {
         PathSegment {
             name,
             infer_types,
-            parameters: if parameters.is_empty() {
+            args: if args.is_empty() {
                 None
             } else {
-                Some(P(parameters))
+                Some(P(args))
             }
         }
     }
 
     // FIXME: hack required because you can't create a static
-    // PathParameters, so you can't just return a &PathParameters.
-    pub fn with_parameters<F, R>(&self, f: F) -> R
-        where F: FnOnce(&PathParameters) -> R
+    // GenericArgs, so you can't just return a &GenericArgs.
+    pub fn with_generic_args<F, R>(&self, f: F) -> R
+        where F: FnOnce(&GenericArgs) -> R
     {
-        let dummy = PathParameters::none();
-        f(if let Some(ref params) = self.parameters {
-            &params
+        let dummy = GenericArgs::none();
+        f(if let Some(ref args) = self.args {
+            &args
         } else {
             &dummy
         })
@@ -373,63 +381,52 @@ impl PathSegment {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct PathParameters {
-    /// The lifetime parameters for this path segment.
-    pub lifetimes: HirVec<Lifetime>,
-    /// The type parameters for this path segment, if present.
-    pub types: HirVec<P<Ty>>,
+pub enum GenericArg {
+    Lifetime(Lifetime),
+    Type(P<Ty>),
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct GenericArgs {
+    /// The generic arguments for this path segment.
+    pub args: HirVec<GenericArg>,
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
     pub bindings: HirVec<TypeBinding>,
-    /// Were parameters written in parenthesized form `Fn(T) -> U`?
+    /// Were arguments written in parenthesized form `Fn(T) -> U`?
     /// This is required mostly for pretty-printing and diagnostics,
     /// but also for changing lifetime elision rules to be "function-like".
     pub parenthesized: bool,
 }
 
-impl PathParameters {
+impl GenericArgs {
     pub fn none() -> Self {
         Self {
-            lifetimes: HirVec::new(),
-            types: HirVec::new(),
+            args: HirVec::new(),
             bindings: HirVec::new(),
             parenthesized: false,
         }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.lifetimes.is_empty() && self.types.is_empty() &&
-            self.bindings.is_empty() && !self.parenthesized
+        self.args.is_empty() && self.bindings.is_empty() && !self.parenthesized
     }
 
     pub fn inputs(&self) -> &[P<Ty>] {
         if self.parenthesized {
-            if let Some(ref ty) = self.types.get(0) {
-                if let TyTup(ref tys) = ty.node {
-                    return tys;
+            for arg in &self.args {
+                match arg {
+                    GenericArg::Lifetime(_) => {}
+                    GenericArg::Type(ref ty) => {
+                        if let TyTup(ref tys) = ty.node {
+                            return tys;
+                        }
+                        break;
+                    }
                 }
             }
         }
-        bug!("PathParameters::inputs: not a `Fn(T) -> U`");
-    }
-}
-
-/// The AST represents all type param bounds as types.
-/// typeck::collect::compute_bounds matches these against
-/// the "special" built-in traits (see middle::lang_items) and
-/// detects Copy, Send and Sync.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum TyParamBound {
-    TraitTyParamBound(PolyTraitRef, TraitBoundModifier),
-    RegionTyParamBound(Lifetime),
-}
-
-impl TyParamBound {
-    pub fn span(&self) -> Span {
-        match self {
-            &TraitTyParamBound(ref t, ..) => t.span,
-            &RegionTyParamBound(ref l) => l.span,
-        }
+        bug!("GenericArgs::inputs: not a `Fn(T) -> U`");
     }
 }
 
@@ -441,74 +438,57 @@ pub enum TraitBoundModifier {
     Maybe,
 }
 
-pub type TyParamBounds = HirVec<TyParamBound>;
+/// The AST represents all type param bounds as types.
+/// typeck::collect::compute_bounds matches these against
+/// the "special" built-in traits (see middle::lang_items) and
+/// detects Copy, Send and Sync.
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum GenericBound {
+    Trait(PolyTraitRef, TraitBoundModifier),
+    Outlives(Lifetime),
+}
+
+impl GenericBound {
+    pub fn span(&self) -> Span {
+        match self {
+            &GenericBound::Trait(ref t, ..) => t.span,
+            &GenericBound::Outlives(ref l) => l.span,
+        }
+    }
+}
+
+pub type GenericBounds = HirVec<GenericBound>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct TyParam {
-    pub name: Name,
+pub enum GenericParamKind {
+    /// A lifetime definition, eg `'a: 'b + 'c + 'd`.
+    Lifetime {
+        // Indicates that the lifetime definition was synthetically added
+        // as a result of an in-band lifetime usage like:
+        // `fn foo(x: &'a u8) -> &'a u8 { x }`
+        in_band: bool,
+    },
+    Type {
+        default: Option<P<Ty>>,
+        synthetic: Option<SyntheticTyParamKind>,
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct GenericParam {
     pub id: NodeId,
-    pub bounds: TyParamBounds,
-    pub default: Option<P<Ty>>,
+    pub name: ParamName,
+    pub attrs: HirVec<Attribute>,
+    pub bounds: GenericBounds,
     pub span: Span,
     pub pure_wrt_drop: bool,
-    pub synthetic: Option<SyntheticTyParamKind>,
-    pub attrs: HirVec<Attribute>,
+
+    pub kind: GenericParamKind,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum GenericParam {
-    Lifetime(LifetimeDef),
-    Type(TyParam),
-}
-
-impl GenericParam {
-    pub fn is_lifetime_param(&self) -> bool {
-        match *self {
-            GenericParam::Lifetime(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_type_param(&self) -> bool {
-        match *self {
-            GenericParam::Type(_) => true,
-            _ => false,
-        }
-    }
-}
-
-pub trait GenericParamsExt {
-    fn lifetimes<'a>(&'a self) -> iter::FilterMap<
-        slice::Iter<GenericParam>,
-        fn(&GenericParam) -> Option<&LifetimeDef>,
-    >;
-
-    fn ty_params<'a>(&'a self) -> iter::FilterMap<
-        slice::Iter<GenericParam>,
-        fn(&GenericParam) -> Option<&TyParam>,
-    >;
-}
-
-impl GenericParamsExt for [GenericParam] {
-    fn lifetimes<'a>(&'a self) -> iter::FilterMap<
-        slice::Iter<GenericParam>,
-        fn(&GenericParam) -> Option<&LifetimeDef>,
-    > {
-        self.iter().filter_map(|param| match *param {
-            GenericParam::Lifetime(ref l) => Some(l),
-            _ => None,
-        })
-    }
-
-    fn ty_params<'a>(&'a self) -> iter::FilterMap<
-        slice::Iter<GenericParam>,
-        fn(&GenericParam) -> Option<&TyParam>,
-    > {
-        self.iter().filter_map(|param| match *param {
-            GenericParam::Type(ref t) => Some(t),
-            _ => None,
-        })
-    }
+pub struct GenericParamCount {
+    pub lifetimes: usize,
+    pub types: usize,
 }
 
 /// Represents lifetimes and type parameters attached to a declaration
@@ -532,55 +512,23 @@ impl Generics {
         }
     }
 
-    pub fn is_lt_parameterized(&self) -> bool {
-        self.params.iter().any(|param| param.is_lifetime_param())
-    }
+    pub fn own_counts(&self) -> GenericParamCount {
+        // We could cache this as a property of `GenericParamCount`, but
+        // the aim is to refactor this away entirely eventually and the
+        // presence of this method will be a constant reminder.
+        let mut own_counts = GenericParamCount {
+            lifetimes: 0,
+            types: 0,
+        };
 
-    pub fn is_type_parameterized(&self) -> bool {
-        self.params.iter().any(|param| param.is_type_param())
-    }
-
-    pub fn lifetimes<'a>(&'a self) -> impl Iterator<Item = &'a LifetimeDef> {
-        self.params.lifetimes()
-    }
-
-    pub fn ty_params<'a>(&'a self) -> impl Iterator<Item = &'a TyParam> {
-        self.params.ty_params()
-    }
-}
-
-pub enum UnsafeGeneric {
-    Region(LifetimeDef, &'static str),
-    Type(TyParam, &'static str),
-}
-
-impl UnsafeGeneric {
-    pub fn attr_name(&self) -> &'static str {
-        match *self {
-            UnsafeGeneric::Region(_, s) => s,
-            UnsafeGeneric::Type(_, s) => s,
-        }
-    }
-}
-
-impl Generics {
-    pub fn carries_unsafe_attr(&self) -> Option<UnsafeGeneric> {
         for param in &self.params {
-            match *param {
-                GenericParam::Lifetime(ref l) => {
-                    if l.pure_wrt_drop {
-                        return Some(UnsafeGeneric::Region(l.clone(), "may_dangle"));
-                    }
-                }
-                GenericParam::Type(ref t) => {
-                    if t.pure_wrt_drop {
-                        return Some(UnsafeGeneric::Type(t.clone(), "may_dangle"));
-                    }
-                }
-            }
+            match param.kind {
+                GenericParamKind::Lifetime { .. } => own_counts.lifetimes += 1,
+                GenericParamKind::Type { .. } => own_counts.types += 1,
+            };
         }
 
-        None
+        own_counts
     }
 }
 
@@ -640,7 +588,7 @@ pub struct WhereBoundPredicate {
     /// The type being bounded
     pub bounded_ty: P<Ty>,
     /// Trait and lifetime bounds (`Clone+Send+'static`)
-    pub bounds: TyParamBounds,
+    pub bounds: GenericBounds,
 }
 
 /// A lifetime predicate, e.g. `'a: 'b+'c`
@@ -648,7 +596,7 @@ pub struct WhereBoundPredicate {
 pub struct WhereRegionPredicate {
     pub span: Span,
     pub lifetime: Lifetime,
-    pub bounds: HirVec<Lifetime>,
+    pub bounds: GenericBounds,
 }
 
 /// An equality predicate (unsupported), e.g. `T=int`
@@ -1607,7 +1555,7 @@ pub enum TraitItemKind {
     Method(MethodSig, TraitMethod),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type
-    Type(TyParamBounds, Option<P<Ty>>),
+    Type(GenericBounds, Option<P<Ty>>),
 }
 
 // The bodies for items are stored "out of line", in a separate
@@ -1692,7 +1640,7 @@ pub struct BareFnTy {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct ExistTy {
     pub generics: Generics,
-    pub bounds: TyParamBounds,
+    pub bounds: GenericBounds,
     pub impl_trait_fn: Option<DefId>,
 }
 
@@ -2101,9 +2049,9 @@ pub enum Item_ {
     /// A union definition, e.g. `union Foo<A, B> {x: A, y: B}`
     ItemUnion(VariantData, Generics),
     /// Represents a Trait Declaration
-    ItemTrait(IsAuto, Unsafety, Generics, TyParamBounds, HirVec<TraitItemRef>),
+    ItemTrait(IsAuto, Unsafety, Generics, GenericBounds, HirVec<TraitItemRef>),
     /// Represents a Trait Alias Declaration
-    ItemTraitAlias(Generics, TyParamBounds),
+    ItemTraitAlias(Generics, GenericBounds),
 
     /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,

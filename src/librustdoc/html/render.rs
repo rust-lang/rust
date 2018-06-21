@@ -69,7 +69,7 @@ use doctree;
 use fold::DocFolder;
 use html::escape::Escape;
 use html::format::{ConstnessSpace};
-use html::format::{TyParamBounds, WhereClause, href, AbiSpace};
+use html::format::{GenericBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
@@ -1453,11 +1453,11 @@ impl DocFolder for Cache {
 impl<'a> Cache {
     fn generics(&mut self, generics: &clean::Generics) {
         for param in &generics.params {
-            match *param {
-                clean::GenericParamDef::Type(ref typ) => {
-                    self.typarams.insert(typ.did, typ.name.clone());
+            match param.kind {
+                clean::GenericParamDefKind::Lifetime => {}
+                clean::GenericParamDefKind::Type { did, .. } => {
+                    self.typarams.insert(did, param.name.clone());
                 }
-                clean::GenericParamDef::Lifetime(_) => {}
             }
         }
     }
@@ -2960,14 +2960,14 @@ fn assoc_const(w: &mut fmt::Formatter,
 }
 
 fn assoc_type<W: fmt::Write>(w: &mut W, it: &clean::Item,
-                             bounds: &Vec<clean::TyParamBound>,
+                             bounds: &Vec<clean::GenericBound>,
                              default: Option<&clean::Type>,
                              link: AssocItemLink) -> fmt::Result {
     write!(w, "type <a href='{}' class=\"type\">{}</a>",
            naive_assoc_href(it, link),
            it.name.as_ref().unwrap())?;
     if !bounds.is_empty() {
-        write!(w, ": {}", TyParamBounds(bounds))?
+        write!(w, ": {}", GenericBounds(bounds))?
     }
     if let Some(default) = default {
         write!(w, " = {}", default)?;

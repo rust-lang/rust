@@ -13,7 +13,7 @@
 //! is parameterized by an instance of `AstConv`.
 
 use rustc_data_structures::accumulate_vec::AccumulateVec;
-use hir;
+use hir::{self, GenericArg};
 use hir::def::Def;
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
@@ -177,11 +177,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     {
 
         let (substs, assoc_bindings) =
-            item_segment.with_parameters(|parameters| {
+            item_segment.with_generic_args(|generic_args| {
                 self.create_substs_for_ast_path(
                     span,
                     def_id,
-                    parameters,
+                    generic_args,
                     item_segment.infer_types,
                     None)
             });
@@ -199,7 +199,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     fn create_substs_for_ast_path(&self,
         span: Span,
         def_id: DefId,
-        parameters: &hir::PathParameters,
+        generic_args: &hir::GenericArgs,
         infer_types: bool,
         self_ty: Option<Ty<'tcx>>)
         -> (&'tcx Substs<'tcx>, Vec<ConvertedBinding<'tcx>>)
@@ -207,16 +207,26 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let tcx = self.tcx();
 
         debug!("create_substs_for_ast_path(def_id={:?}, self_ty={:?}, \
-               parameters={:?})",
-               def_id, self_ty, parameters);
+               generic_args={:?})",
+               def_id, self_ty, generic_args);
 
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
-        let decl_generics = tcx.generics_of(def_id);
-        let ty_provided = parameters.types.len();
-        let lt_provided = parameters.lifetimes.len();
 
+        // FIXME(varkor): Separating out the parameters is messy.
+        let lifetimes: Vec<_> = generic_args.args.iter().filter_map(|arg| match arg {
+            GenericArg::Lifetime(lt) => Some(lt),
+            _ => None,
+        }).collect();
+        let types: Vec<_> = generic_args.args.iter().filter_map(|arg| match arg {
+            GenericArg::Type(ty) => Some(ty),
+            _ => None,
+        }).collect();
+        let lt_provided = lifetimes.len();
+        let ty_provided = types.len();
+
+        let decl_generics = tcx.generics_of(def_id);
         let mut lt_accepted = 0;
         let mut ty_params = ParamRange { required: 0, accepted: 0 };
         for param in &decl_generics.params {
@@ -269,8 +279,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             match param.kind {
                 GenericParamDefKind::Lifetime => {
                     let i = param.index as usize - own_self;
-                    if let Some(lifetime) = parameters.lifetimes.get(i) {
-                        self.ast_region_to_region(lifetime, Some(param)).into()
+                    if let Some(lt) = lifetimes.get(i) {
+                        self.ast_region_to_region(lt, Some(param)).into()
                     } else {
                         tcx.types.re_static.into()
                     }
@@ -286,7 +296,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     let i = i - (lt_accepted + own_self);
                     if i < ty_provided {
                         // A provided type parameter.
-                        self.ast_ty_to_ty(&parameters.types[i]).into()
+                        self.ast_ty_to_ty(&types[i]).into()
                     } else if infer_types {
                         // No type parameters were provided, we can infer all.
                         if !default_needs_object_self(param) {
@@ -330,7 +340,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
         });
 
-        let assoc_bindings = parameters.bindings.iter().map(|binding| {
+        let assoc_bindings = generic_args.bindings.iter().map(|binding| {
             ConvertedBinding {
                 item_name: binding.name,
                 ty: self.ast_ty_to_ty(&binding.ty),
@@ -355,7 +365,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         self_ty: Ty<'tcx>)
         -> ty::TraitRef<'tcx>
     {
-        self.prohibit_type_params(trait_ref.path.segments.split_last().unwrap().1);
+        self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1);
 
         let trait_def_id = self.trait_def_id(trait_ref);
         self.ast_path_to_mono_trait_ref(trait_ref.path.span,
@@ -389,7 +399,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         debug!("ast_path_to_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
 
-        self.prohibit_type_params(trait_ref.path.segments.split_last().unwrap().1);
+        self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1);
 
         let (substs, assoc_bindings) =
             self.create_substs_for_ast_trait_ref(trait_ref.path.span,
@@ -451,7 +461,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let trait_def = self.tcx().trait_def(trait_def_id);
 
         if !self.tcx().features().unboxed_closures &&
-           trait_segment.with_parameters(|p| p.parenthesized) != trait_def.paren_sugar {
+            trait_segment.with_generic_args(|generic_args| generic_args.parenthesized)
+            != trait_def.paren_sugar {
             // For now, require that parenthetical notation be used only with `Fn()` etc.
             let msg = if trait_def.paren_sugar {
                 "the precise format of `Fn`-family traits' type parameters is subject to change. \
@@ -463,10 +474,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                              span, GateIssue::Language, msg);
         }
 
-        trait_segment.with_parameters(|parameters| {
+        trait_segment.with_generic_args(|generic_args| {
             self.create_substs_for_ast_path(span,
                                             trait_def_id,
-                                            parameters,
+                                            generic_args,
                                             trait_segment.infer_types,
                                             Some(self_ty))
         })
@@ -866,7 +877,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         debug!("associated_path_def_to_ty: {:?}::{}", ty, assoc_name);
 
-        self.prohibit_type_params(slice::from_ref(item_segment));
+        self.prohibit_generics(slice::from_ref(item_segment));
 
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
@@ -943,7 +954,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let tcx = self.tcx();
         let trait_def_id = tcx.parent_def_id(item_def_id).unwrap();
 
-        self.prohibit_type_params(slice::from_ref(item_segment));
+        self.prohibit_generics(slice::from_ref(item_segment));
 
         let self_ty = if let Some(ty) = opt_self_ty {
             ty
@@ -968,25 +979,37 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         self.normalize_ty(span, tcx.mk_projection(item_def_id, trait_ref.substs))
     }
 
-    pub fn prohibit_type_params(&self, segments: &[hir::PathSegment]) {
+    pub fn prohibit_generics(&self, segments: &[hir::PathSegment]) {
         for segment in segments {
-            segment.with_parameters(|parameters| {
-                for typ in &parameters.types {
-                    struct_span_err!(self.tcx().sess, typ.span, E0109,
-                                     "type parameters are not allowed on this type")
-                        .span_label(typ.span, "type parameter not allowed")
-                        .emit();
-                    break;
+            segment.with_generic_args(|generic_args| {
+                let (mut err_for_lt, mut err_for_ty) = (false, false);
+                for arg in &generic_args.args {
+                    let (mut span_err, span, kind) = match arg {
+                        hir::GenericArg::Lifetime(lt) => {
+                            if err_for_lt { continue }
+                            err_for_lt = true;
+                            (struct_span_err!(self.tcx().sess, lt.span, E0110,
+                                            "lifetime parameters are not allowed on \
+                                                this type"),
+                             lt.span,
+                             "lifetime")
+                        }
+                        hir::GenericArg::Type(ty) => {
+                            if err_for_ty { continue }
+                            err_for_ty = true;
+                            (struct_span_err!(self.tcx().sess, ty.span, E0109,
+                                            "type parameters are not allowed on this type"),
+                             ty.span,
+                             "type")
+                        }
+                    };
+                    span_err.span_label(span, format!("{} parameter not allowed", kind))
+                            .emit();
+                    if err_for_lt && err_for_ty {
+                        break;
+                    }
                 }
-                for lifetime in &parameters.lifetimes {
-                    struct_span_err!(self.tcx().sess, lifetime.span, E0110,
-                                     "lifetime parameters are not allowed on this type")
-                        .span_label(lifetime.span,
-                                    "lifetime parameter not allowed on this type")
-                        .emit();
-                    break;
-                }
-                for binding in &parameters.bindings {
+                for binding in &generic_args.bindings {
                     self.prohibit_projection(binding.span);
                     break;
                 }
@@ -1016,21 +1039,21 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) |
             Def::Union(did) | Def::TyForeign(did) => {
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_type_params(path.segments.split_last().unwrap().1);
+                self.prohibit_generics(path.segments.split_last().unwrap().1);
                 self.ast_path_to_ty(span, did, path.segments.last().unwrap())
             }
             Def::Variant(did) if permit_variants => {
                 // Convert "variant type" as if it were a real type.
                 // The resulting `Ty` is type of the variant's enum for now.
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_type_params(path.segments.split_last().unwrap().1);
+                self.prohibit_generics(path.segments.split_last().unwrap().1);
                 self.ast_path_to_ty(span,
                                     tcx.parent_def_id(did).unwrap(),
                                     path.segments.last().unwrap())
             }
             Def::TyParam(did) => {
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_type_params(&path.segments);
+                self.prohibit_generics(&path.segments);
 
                 let node_id = tcx.hir.as_local_node_id(did).unwrap();
                 let item_id = tcx.hir.get_parent_node(node_id);
@@ -1043,18 +1066,18 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // Self in impl (we know the concrete type).
 
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_type_params(&path.segments);
+                self.prohibit_generics(&path.segments);
 
                 tcx.at(span).type_of(def_id)
             }
             Def::SelfTy(Some(_), None) => {
                 // Self in trait.
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_type_params(&path.segments);
+                self.prohibit_generics(&path.segments);
                 tcx.mk_self_type()
             }
             Def::AssociatedTy(def_id) => {
-                self.prohibit_type_params(&path.segments[..path.segments.len()-2]);
+                self.prohibit_generics(&path.segments[..path.segments.len()-2]);
                 self.qpath_to_ty(span,
                                  opt_self_ty,
                                  def_id,
@@ -1063,7 +1086,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             Def::PrimTy(prim_ty) => {
                 assert_eq!(opt_self_ty, None);
-                self.prohibit_type_params(&path.segments);
+                self.prohibit_generics(&path.segments);
                 match prim_ty {
                     hir::TyBool => tcx.types.bool,
                     hir::TyChar => tcx.types.char,

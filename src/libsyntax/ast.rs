@@ -10,9 +10,8 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
-pub use self::PathParameters::*;
+pub use self::GenericArgs::*;
 pub use symbol::{Ident, Symbol as Name};
 pub use util::ThinVec;
 pub use util::parser::ExprPrecedence;
@@ -56,14 +55,6 @@ impl fmt::Debug for Lifetime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "lifetime({}: {})", self.id, pprust::lifetime_to_string(self))
     }
-}
-
-/// A lifetime definition, e.g. `'a: 'b+'c+'d`
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct LifetimeDef {
-    pub attrs: ThinVec<Attribute>,
-    pub lifetime: Lifetime,
-    pub bounds: Vec<Lifetime>
 }
 
 /// A "Path" is essentially Rust's notion of a name.
@@ -135,30 +126,30 @@ pub struct PathSegment {
     /// `Some` means that parameter list is supplied (`Path<X, Y>`)
     /// but it can be empty (`Path<>`).
     /// `P` is used as a size optimization for the common case with no parameters.
-    pub parameters: Option<P<PathParameters>>,
+    pub args: Option<P<GenericArgs>>,
 }
 
 impl PathSegment {
     pub fn from_ident(ident: Ident) -> Self {
-        PathSegment { ident, parameters: None }
+        PathSegment { ident, args: None }
     }
     pub fn crate_root(span: Span) -> Self {
         PathSegment::from_ident(Ident::new(keywords::CrateRoot.name(), span))
     }
 }
 
-/// Parameters of a path segment.
+/// Arguments of a path segment.
 ///
 /// E.g. `<A, B>` as in `Foo<A, B>` or `(A, B)` as in `Foo(A, B)`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum PathParameters {
+pub enum GenericArgs {
     /// The `<'a, A,B,C>` in `foo::bar::baz::<'a, A,B,C>`
-    AngleBracketed(AngleBracketedParameterData),
+    AngleBracketed(AngleBracketedArgs),
     /// The `(A,B)` and `C` in `Foo(A,B) -> C`
-    Parenthesized(ParenthesizedParameterData),
+    Parenthesized(ParenthesisedArgs),
 }
 
-impl PathParameters {
+impl GenericArgs {
     pub fn span(&self) -> Span {
         match *self {
             AngleBracketed(ref data) => data.span,
@@ -167,36 +158,40 @@ impl PathParameters {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum GenericArg {
+    Lifetime(Lifetime),
+    Type(P<Ty>),
+}
+
 /// A path like `Foo<'a, T>`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Default)]
-pub struct AngleBracketedParameterData {
+pub struct AngleBracketedArgs {
     /// Overall span
     pub span: Span,
-    /// The lifetime parameters for this path segment.
-    pub lifetimes: Vec<Lifetime>,
-    /// The type parameters for this path segment, if present.
-    pub types: Vec<P<Ty>>,
+    /// The arguments for this path segment.
+    pub args: Vec<GenericArg>,
     /// Bindings (equality constraints) on associated types, if present.
     ///
     /// E.g., `Foo<A=Bar>`.
     pub bindings: Vec<TypeBinding>,
 }
 
-impl Into<Option<P<PathParameters>>> for AngleBracketedParameterData {
-    fn into(self) -> Option<P<PathParameters>> {
-        Some(P(PathParameters::AngleBracketed(self)))
+impl Into<Option<P<GenericArgs>>> for AngleBracketedArgs {
+    fn into(self) -> Option<P<GenericArgs>> {
+        Some(P(GenericArgs::AngleBracketed(self)))
     }
 }
 
-impl Into<Option<P<PathParameters>>> for ParenthesizedParameterData {
-    fn into(self) -> Option<P<PathParameters>> {
-        Some(P(PathParameters::Parenthesized(self)))
+impl Into<Option<P<GenericArgs>>> for ParenthesisedArgs {
+    fn into(self) -> Option<P<GenericArgs>> {
+        Some(P(GenericArgs::Parenthesized(self)))
     }
 }
 
 /// A path like `Foo(A,B) -> C`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct ParenthesizedParameterData {
+pub struct ParenthesisedArgs {
     /// Overall span
     pub span: Span,
 
@@ -273,25 +268,6 @@ pub const CRATE_NODE_ID: NodeId = NodeId(0);
 /// small, positive ids.
 pub const DUMMY_NODE_ID: NodeId = NodeId(!0);
 
-/// The AST represents all type param bounds as types.
-/// typeck::collect::compute_bounds matches these against
-/// the "special" built-in traits (see middle::lang_items) and
-/// detects Copy, Send and Sync.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum TyParamBound {
-    TraitTyParamBound(PolyTraitRef, TraitBoundModifier),
-    RegionTyParamBound(Lifetime)
-}
-
-impl TyParamBound {
-    pub fn span(&self) -> Span {
-        match self {
-            &TraitTyParamBound(ref t, ..) => t.span,
-            &RegionTyParamBound(ref l) => l.ident.span,
-        }
-    }
-}
-
 /// A modifier on a bound, currently this is only used for `?Sized`, where the
 /// modifier is `Maybe`. Negative bounds should also be handled here.
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -300,37 +276,44 @@ pub enum TraitBoundModifier {
     Maybe,
 }
 
-pub type TyParamBounds = Vec<TyParamBound>;
+/// The AST represents all type param bounds as types.
+/// typeck::collect::compute_bounds matches these against
+/// the "special" built-in traits (see middle::lang_items) and
+/// detects Copy, Send and Sync.
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum GenericBound {
+    Trait(PolyTraitRef, TraitBoundModifier),
+    Outlives(Lifetime)
+}
+
+impl GenericBound {
+    pub fn span(&self) -> Span {
+        match self {
+            &GenericBound::Trait(ref t, ..) => t.span,
+            &GenericBound::Outlives(ref l) => l.ident.span,
+        }
+    }
+}
+
+pub type GenericBounds = Vec<GenericBound>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct TyParam {
-    pub attrs: ThinVec<Attribute>,
-    pub ident: Ident,
+pub enum GenericParamKind {
+    /// A lifetime definition, e.g. `'a: 'b+'c+'d`.
+    Lifetime,
+    Type {
+        default: Option<P<Ty>>,
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct GenericParam {
     pub id: NodeId,
-    pub bounds: TyParamBounds,
-    pub default: Option<P<Ty>>,
-}
+    pub ident: Ident,
+    pub attrs: ThinVec<Attribute>,
+    pub bounds: GenericBounds,
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum GenericParam {
-    Lifetime(LifetimeDef),
-    Type(TyParam),
-}
-
-impl GenericParam {
-    pub fn is_lifetime_param(&self) -> bool {
-        match *self {
-            GenericParam::Lifetime(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_type_param(&self) -> bool {
-        match *self {
-            GenericParam::Type(_) => true,
-            _ => false,
-        }
-    }
+    pub kind: GenericParamKind,
 }
 
 /// Represents lifetime, type and const parameters attached to a declaration of
@@ -340,31 +323,6 @@ pub struct Generics {
     pub params: Vec<GenericParam>,
     pub where_clause: WhereClause,
     pub span: Span,
-}
-
-impl Generics {
-    pub fn is_lt_parameterized(&self) -> bool {
-        self.params.iter().any(|param| param.is_lifetime_param())
-    }
-
-    pub fn is_type_parameterized(&self) -> bool {
-        self.params.iter().any(|param| param.is_type_param())
-    }
-
-    pub fn is_parameterized(&self) -> bool {
-        !self.params.is_empty()
-    }
-
-    pub fn span_for_name(&self, name: &str) -> Option<Span> {
-        for param in &self.params {
-            if let GenericParam::Type(ref t) = *param {
-                if t.ident.name == name {
-                    return Some(t.ident.span);
-                }
-            }
-        }
-        None
-    }
 }
 
 impl Default for Generics {
@@ -422,7 +380,7 @@ pub struct WhereBoundPredicate {
     /// The type being bounded
     pub bounded_ty: P<Ty>,
     /// Trait and lifetime bounds (`Clone+Send+'static`)
-    pub bounds: TyParamBounds,
+    pub bounds: GenericBounds,
 }
 
 /// A lifetime predicate.
@@ -432,7 +390,7 @@ pub struct WhereBoundPredicate {
 pub struct WhereRegionPredicate {
     pub span: Span,
     pub lifetime: Lifetime,
-    pub bounds: Vec<Lifetime>,
+    pub bounds: GenericBounds,
 }
 
 /// An equality predicate (unsupported).
@@ -968,11 +926,11 @@ impl Expr {
         }
     }
 
-    fn to_bound(&self) -> Option<TyParamBound> {
+    fn to_bound(&self) -> Option<GenericBound> {
         match &self.node {
             ExprKind::Path(None, path) =>
-                Some(TraitTyParamBound(PolyTraitRef::new(Vec::new(), path.clone(), self.span),
-                                       TraitBoundModifier::None)),
+                Some(GenericBound::Trait(PolyTraitRef::new(Vec::new(), path.clone(), self.span),
+                                         TraitBoundModifier::None)),
             _ => None,
         }
     }
@@ -1393,7 +1351,7 @@ pub struct TraitItem {
 pub enum TraitItemKind {
     Const(P<Ty>, Option<P<Expr>>),
     Method(MethodSig, Option<P<Block>>),
-    Type(TyParamBounds, Option<P<Ty>>),
+    Type(GenericBounds, Option<P<Ty>>),
     Macro(Mac),
 }
 
@@ -1578,10 +1536,10 @@ pub enum TyKind {
     Path(Option<QSelf>, Path),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TraitObject(TyParamBounds, TraitObjectSyntax),
+    TraitObject(GenericBounds, TraitObjectSyntax),
     /// An `impl Bound1 + Bound2 + Bound3` type
     /// where `Bound` is a trait or a lifetime.
-    ImplTrait(TyParamBounds),
+    ImplTrait(GenericBounds),
     /// No-op; kept solely so that we can pretty-print faithfully
     Paren(P<Ty>),
     /// Unused for now
@@ -2102,11 +2060,11 @@ pub enum ItemKind {
     /// A Trait declaration (`trait` or `pub trait`).
     ///
     /// E.g. `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`
-    Trait(IsAuto, Unsafety, Generics, TyParamBounds, Vec<TraitItem>),
+    Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<TraitItem>),
     /// Trait alias
     ///
     /// E.g. `trait Foo = Bar + Quux;`
-    TraitAlias(Generics, TyParamBounds),
+    TraitAlias(Generics, GenericBounds),
     /// An implementation.
     ///
     /// E.g. `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`

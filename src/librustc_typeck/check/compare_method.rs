@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir::{self, ImplItemKind, TraitItemKind};
+use rustc::hir::{self, GenericParamKind, ImplItemKind, TraitItemKind};
 use rustc::infer::{self, InferOk};
 use rustc::ty::{self, TyCtxt, GenericParamDefKind};
 use rustc::ty::util::ExplicitSelf;
@@ -728,11 +728,9 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut error_found = false;
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
-    let impl_m_type_params = impl_m_generics.params.iter().filter_map(|param| {
-        match param.kind {
-            GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
-            GenericParamDefKind::Lifetime => None,
-        }
+    let impl_m_type_params = impl_m_generics.params.iter().filter_map(|param| match param.kind {
+        GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
+        GenericParamDefKind::Lifetime => None,
     });
     let trait_m_type_params = trait_m_generics.params.iter().filter_map(|param| {
         match param.kind {
@@ -843,19 +841,19 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         }
                         let span = visitor.0?;
 
-                        let param = impl_m.generics.params.iter().filter_map(|param| {
-                            match param {
-                                hir::GenericParam::Type(param) => {
+                        let bounds = impl_m.generics.params.iter().find_map(|param| {
+                            match param.kind {
+                                GenericParamKind::Lifetime { .. } => None,
+                                GenericParamKind::Type { .. } => {
                                     if param.id == impl_node_id {
-                                        Some(param)
+                                        Some(&param.bounds)
                                     } else {
                                         None
                                     }
-                                },
-                                hir::GenericParam::Lifetime(..) => None,
+                                }
                             }
-                        }).next()?;
-                        let bounds = param.bounds.first()?.span().to(param.bounds.last()?.span());
+                        })?;
+                        let bounds = bounds.first()?.span().to(bounds.last()?.span());
                         let bounds = tcx
                             .sess
                             .codemap()

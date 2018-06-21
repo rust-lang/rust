@@ -104,7 +104,7 @@ pub fn assoc_const_signature(
 pub fn assoc_type_signature(
     id: NodeId,
     ident: ast::Ident,
-    bounds: Option<&ast::TyParamBounds>,
+    bounds: Option<&ast::GenericBounds>,
     default: Option<&ast::Ty>,
     scx: &SaveContext,
 ) -> Option<Signature> {
@@ -223,9 +223,9 @@ impl Sig for ast::Ty {
                     text.push_str("for<");
                     text.push_str(&f.generic_params
                         .iter()
-                        .filter_map(|p| match *p {
-                            ast::GenericParam::Lifetime(ref l) => {
-                                Some(l.lifetime.ident.to_string())
+                        .filter_map(|param| match param.kind {
+                            ast::GenericParamKind::Lifetime { .. } => {
+                                Some(param.ident.to_string())
                             }
                             _ => None,
                         })
@@ -617,45 +617,34 @@ impl Sig for ast::Generics {
 
         let mut defs = vec![];
         for param in &self.params {
-            match *param {
-                ast::GenericParam::Lifetime(ref l) => {
-                    let mut l_text = l.lifetime.ident.to_string();
-                    defs.push(SigElement {
-                        id: id_from_node_id(l.lifetime.id, scx),
-                        start: offset + text.len(),
-                        end: offset + text.len() + l_text.len(),
-                    });
-
-                    if !l.bounds.is_empty() {
-                        l_text.push_str(": ");
-                        let bounds = l.bounds
-                            .iter()
-                            .map(|l| l.ident.to_string())
+            let mut param_text = param.ident.to_string();
+            defs.push(SigElement {
+                id: id_from_node_id(param.id, scx),
+                start: offset + text.len(),
+                end: offset + text.len() + param_text.len(),
+            });
+            if !param.bounds.is_empty() {
+                param_text.push_str(": ");
+                match param.kind {
+                    ast::GenericParamKind::Lifetime { .. } => {
+                        let bounds = param.bounds.iter()
+                            .map(|bound| match bound {
+                                ast::GenericBound::Outlives(lt) => lt.ident.to_string(),
+                                _ => panic!(),
+                            })
                             .collect::<Vec<_>>()
                             .join(" + ");
-                        l_text.push_str(&bounds);
+                        param_text.push_str(&bounds);
                         // FIXME add lifetime bounds refs.
                     }
-                    text.push_str(&l_text);
-                    text.push(',');
-                }
-                ast::GenericParam::Type(ref t) => {
-                    let mut t_text = t.ident.to_string();
-                    defs.push(SigElement {
-                        id: id_from_node_id(t.id, scx),
-                        start: offset + text.len(),
-                        end: offset + text.len() + t_text.len(),
-                    });
-
-                    if !t.bounds.is_empty() {
-                        t_text.push_str(": ");
-                        t_text.push_str(&pprust::bounds_to_string(&t.bounds));
+                    ast::GenericParamKind::Type { .. } => {
+                        param_text.push_str(&pprust::bounds_to_string(&param.bounds));
                         // FIXME descend properly into bounds.
                     }
-                    text.push_str(&t_text);
-                    text.push(',');
                 }
             }
+            text.push_str(&param_text);
+            text.push(',');
         }
 
         text.push('>');
@@ -852,7 +841,7 @@ fn name_and_generics(
 fn make_assoc_type_signature(
     id: NodeId,
     ident: ast::Ident,
-    bounds: Option<&ast::TyParamBounds>,
+    bounds: Option<&ast::GenericBounds>,
     default: Option<&ast::Ty>,
     scx: &SaveContext,
 ) -> Result {

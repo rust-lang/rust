@@ -287,7 +287,7 @@ impl PrintContext {
                     DefPathData::MacroDef(_) |
                     DefPathData::ClosureExpr |
                     DefPathData::TypeParam(_) |
-                    DefPathData::LifetimeDef(_) |
+                    DefPathData::LifetimeParam(_) |
                     DefPathData::Field(_) |
                     DefPathData::StructCtor |
                     DefPathData::AnonConst |
@@ -336,12 +336,10 @@ impl PrintContext {
 
             if !verbose {
                 let mut type_params =
-                    generics.params.iter().rev().filter_map(|param| {
-                        match param.kind {
-                            GenericParamDefKind::Type { has_default, .. } => {
-                                Some((param.def_id, has_default))
-                            }
-                            GenericParamDefKind::Lifetime => None,
+                    generics.params.iter().rev().filter_map(|param| match param.kind {
+                        GenericParamDefKind::Lifetime => None,
+                        GenericParamDefKind::Type { has_default, .. } => {
+                            Some((param.def_id, has_default))
                         }
                     }).peekable();
                 let has_default = {

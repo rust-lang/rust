@@ -1235,10 +1235,14 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     self.encode_optimized_mir(def_id)
                 }
                 hir::ItemConst(..) => self.encode_optimized_mir(def_id),
-                hir::ItemFn(_, _, constness, _, ref generics, _) => {
-                    let has_tps = generics.ty_params().next().is_some();
+                hir::ItemFn(_, _, constness, ..) => {
+                    let generics = tcx.generics_of(def_id);
+                    let has_types = generics.params.iter().any(|param| match param.kind {
+                        ty::GenericParamDefKind::Type { .. } => true,
+                        _ => false,
+                    });
                     let needs_inline =
-                        (has_tps || tcx.codegen_fn_attrs(def_id).requests_inline()) &&
+                        (has_types || tcx.codegen_fn_attrs(def_id).requests_inline()) &&
                             !self.metadata_output_only();
                     let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
                     if needs_inline || constness == hir::Constness::Const || always_encode_mir {
@@ -1645,11 +1649,15 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     }
 
     fn encode_info_for_generics(&mut self, generics: &hir::Generics) {
-        for ty_param in generics.ty_params() {
-            let def_id = self.tcx.hir.local_def_id(ty_param.id);
-            let has_default = Untracked(ty_param.default.is_some());
-            self.record(def_id, IsolatedEncoder::encode_info_for_ty_param, (def_id, has_default));
-        }
+        generics.params.iter().for_each(|param| match param.kind {
+            hir::GenericParamKind::Lifetime { .. } => {}
+            hir::GenericParamKind::Type { ref default, .. } => {
+                let def_id = self.tcx.hir.local_def_id(param.id);
+                let has_default = Untracked(default.is_some());
+                let encode_info = IsolatedEncoder::encode_info_for_ty_param;
+                self.record(def_id, encode_info, (def_id, has_default));
+            }
+        });
     }
 
     fn encode_info_for_ty(&mut self, ty: &hir::Ty) {

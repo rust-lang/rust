@@ -1099,14 +1099,12 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                  item: &'tcx hir::Item,
                                                  output: &mut Vec<MonoItem<'tcx>>) {
     match item.node {
-        hir::ItemImpl(_,
-                      _,
-                      _,
-                      ref generics,
-                      ..,
-                      ref impl_item_refs) => {
-            if generics.is_type_parameterized() {
-                return
+        hir::ItemImpl(_, _, _, ref generics, .., ref impl_item_refs) => {
+            for param in &generics.params {
+                match param.kind {
+                    hir::GenericParamKind::Lifetime { .. } => {}
+                    hir::GenericParamKind::Type { .. } => return,
+                }
             }
 
             let impl_def_id = tcx.hir.local_def_id(item.id);

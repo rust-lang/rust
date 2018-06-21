@@ -49,6 +49,7 @@ use syntax::feature_gate;
 use syntax_pos::{Span, DUMMY_SP};
 
 use rustc::hir::{self, map as hir_map, CodegenFnAttrs, CodegenFnAttrFlags, Unsafety};
+use rustc::hir::GenericParamKind;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
@@ -113,10 +114,14 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
-        for param in generics.ty_params() {
-            if param.default.is_some() {
-                let def_id = self.tcx.hir.local_def_id(param.id);
-                self.tcx.type_of(def_id);
+        for param in &generics.params {
+            match param.kind {
+                hir::GenericParamKind::Lifetime { .. } => {}
+                hir::GenericParamKind::Type { default: Some(_), .. } => {
+                    let def_id = self.tcx.hir.local_def_id(param.id);
+                    self.tcx.type_of(def_id);
+                }
+                hir::GenericParamKind::Type { .. } => {}
             }
         }
         intravisit::walk_generics(self, generics);
@@ -308,9 +313,12 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
                                          -> Vec<ty::Predicate<'tcx>>
     {
         let from_ty_params =
-            ast_generics.ty_params()
-                .filter(|p| p.id == param_id)
-                .flat_map(|p| p.bounds.iter())
+            ast_generics.params.iter()
+                .filter_map(|param| match param.kind {
+                    GenericParamKind::Type { .. } if param.id == param_id => Some(&param.bounds),
+                    _ => None
+                })
+                .flat_map(|bounds| bounds.iter())
                 .flat_map(|b| predicates_from_bound(self, ty, b));
 
         let from_where_clauses =
@@ -739,10 +747,15 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             outer_index: ty::INNERMOST,
             has_late_bound_regions: None,
         };
-        for lifetime in generics.lifetimes() {
-            let hir_id = tcx.hir.node_to_hir_id(lifetime.lifetime.id);
-            if tcx.is_late_bound(hir_id) {
-                return Some(lifetime.lifetime.span);
+        for param in &generics.params {
+            match param.kind {
+                GenericParamKind::Lifetime { .. } => {
+                    let hir_id = tcx.hir.node_to_hir_id(param.id);
+                    if tcx.is_late_bound(hir_id) {
+                        return Some(param.span);
+                    }
+                }
+                _ => {},
             }
         }
         visitor.visit_fn_decl(decl);
@@ -883,12 +896,12 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut params: Vec<_> = opt_self.into_iter().collect();
 
     let early_lifetimes = early_bound_lifetimes_from_generics(tcx, ast_generics);
-    params.extend(early_lifetimes.enumerate().map(|(i, l)| {
+    params.extend(early_lifetimes.enumerate().map(|(i, param)| {
         ty::GenericParamDef {
-            name: l.lifetime.name.name().as_interned_str(),
+            name: param.name.name().as_interned_str(),
             index: own_start + i as u32,
-            def_id: tcx.hir.local_def_id(l.lifetime.id),
-            pure_wrt_drop: l.pure_wrt_drop,
+            def_id: tcx.hir.local_def_id(param.id),
+            pure_wrt_drop: param.pure_wrt_drop,
             kind: ty::GenericParamDefKind::Lifetime,
         }
     }));
@@ -898,34 +911,40 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Now create the real type parameters.
     let type_start = own_start - has_self as u32 + params.len() as u32;
-    params.extend(ast_generics.ty_params().enumerate().map(|(i, p)| {
-        if p.name == keywords::SelfType.name() {
-            span_bug!(p.span, "`Self` should not be the name of a regular parameter");
-        }
-
-        if !allow_defaults && p.default.is_some() {
-            if !tcx.features().default_type_parameter_fallback {
-                tcx.lint_node(
-                    lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
-                    p.id,
-                    p.span,
-                    &format!("defaults for type parameters are only allowed in `struct`, \
-                              `enum`, `type`, or `trait` definitions."));
+    let mut i = 0;
+    params.extend(ast_generics.params.iter().filter_map(|param| match param.kind {
+        GenericParamKind::Type { ref default, synthetic, .. } => {
+            if param.name.name() == keywords::SelfType.name() {
+                span_bug!(param.span,  "`Self` should not be the name of a regular parameter");
             }
-        }
 
-        ty::GenericParamDef {
-            index: type_start + i as u32,
-            name: p.name.as_interned_str(),
-            def_id: tcx.hir.local_def_id(p.id),
-            pure_wrt_drop: p.pure_wrt_drop,
-            kind: ty::GenericParamDefKind::Type {
-                has_default: p.default.is_some(),
-                object_lifetime_default:
-                    object_lifetime_defaults.as_ref().map_or(rl::Set1::Empty, |o| o[i]),
-                synthetic: p.synthetic,
-            },
+            if !allow_defaults && default.is_some() {
+                if !tcx.features().default_type_parameter_fallback {
+                    tcx.lint_node(
+                        lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
+                        param.id,
+                        param.span,
+                        &format!("defaults for type parameters are only allowed in \
+                                    `struct`, `enum`, `type`, or `trait` definitions."));
+                }
+            }
+
+            let ty_param = ty::GenericParamDef {
+                index: type_start + i as u32,
+                name: param.name.name().as_interned_str(),
+                def_id: tcx.hir.local_def_id(param.id),
+                pure_wrt_drop: param.pure_wrt_drop,
+                kind: ty::GenericParamDefKind::Type {
+                    has_default: default.is_some(),
+                    object_lifetime_default:
+                        object_lifetime_defaults.as_ref().map_or(rl::Set1::Empty, |o| o[i]),
+                    synthetic,
+                },
+            };
+            i += 1;
+            Some(ty_param)
         }
+        _ => None,
     }));
 
     // provide junk type parameter defs - the only place that
@@ -1119,8 +1138,13 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         },
 
-        NodeTyParam(&hir::TyParam { default: Some(ref ty), .. }) => {
-            icx.to_ty(ty)
+        NodeGenericParam(param) => {
+            match param.kind {
+                hir::GenericParamKind::Type { default: Some(ref ty), .. } => {
+                    icx.to_ty(ty)
+                }
+                _ => bug!("unexpected non-type NodeGenericParam"),
+            }
         }
 
         x => {
@@ -1225,7 +1249,7 @@ fn impl_polarity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 // Is it marked with ?Sized
 fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
-                                ast_bounds: &[hir::TyParamBound],
+                                ast_bounds: &[hir::GenericBound],
                                 span: Span) -> bool
 {
     let tcx = astconv.tcx();
@@ -1233,7 +1257,7 @@ fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     // Try to find an unbound in bounds.
     let mut unbound = None;
     for ab in ast_bounds {
-        if let &hir::TraitTyParamBound(ref ptr, hir::TraitBoundModifier::Maybe) = ab  {
+        if let &hir::GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = ab  {
             if unbound.is_none() {
                 unbound = Some(ptr.trait_ref.clone());
             } else {
@@ -1274,15 +1298,16 @@ fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
 /// `resolve_lifetime::early_bound_lifetimes`.
 fn early_bound_lifetimes_from_generics<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    ast_generics: &'a hir::Generics)
-    -> impl Iterator<Item=&'a hir::LifetimeDef> + Captures<'tcx>
+    generics: &'a hir::Generics)
+    -> impl Iterator<Item=&'a hir::GenericParam> + Captures<'tcx>
 {
-    ast_generics
-        .lifetimes()
-        .filter(move |l| {
-            let hir_id = tcx.hir.node_to_hir_id(l.lifetime.id);
+    generics.params.iter().filter(move |param| match param.kind {
+        GenericParamKind::Lifetime { .. } => {
+            let hir_id = tcx.hir.node_to_hir_id(param.id);
             !tcx.is_late_bound(hir_id)
-        })
+        }
+        _ => false,
+    })
 }
 
 fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1410,31 +1435,42 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut index = parent_count + has_own_self as u32;
     for param in early_bound_lifetimes_from_generics(tcx, ast_generics) {
         let region = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
-            def_id: tcx.hir.local_def_id(param.lifetime.id),
+            def_id: tcx.hir.local_def_id(param.id),
             index,
-            name: param.lifetime.name.name().as_interned_str(),
+            name: param.name.name().as_interned_str(),
         }));
         index += 1;
 
-        for bound in &param.bounds {
-            let bound_region = AstConv::ast_region_to_region(&icx, bound, None);
-            let outlives = ty::Binder::bind(ty::OutlivesPredicate(region, bound_region));
-            predicates.push(outlives.to_predicate());
+        match param.kind {
+            GenericParamKind::Lifetime { .. } => {
+                param.bounds.iter().for_each(|bound| match bound {
+                    hir::GenericBound::Outlives(lt) => {
+                        let bound = AstConv::ast_region_to_region(&icx, &lt, None);
+                        let outlives = ty::Binder::bind(ty::OutlivesPredicate(region, bound));
+                        predicates.push(outlives.to_predicate());
+                    }
+                    _ => bug!(),
+                });
+            },
+            _ => bug!(),
         }
     }
 
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T:Foo>`).
-    for param in ast_generics.ty_params() {
-        let param_ty = ty::ParamTy::new(index, param.name.as_interned_str()).to_ty(tcx);
-        index += 1;
+    for param in &ast_generics.params {
+        match param.kind {
+            GenericParamKind::Type { .. } => {
+                let name = param.name.name().as_interned_str();
+                let param_ty = ty::ParamTy::new(index, name).to_ty(tcx);
+                index += 1;
 
-        let bounds = compute_bounds(&icx,
-                                    param_ty,
-                                    &param.bounds,
-                                    SizedByDefault::Yes,
-                                    param.span);
-        predicates.extend(bounds.predicates(tcx, param_ty));
+                let sized = SizedByDefault::Yes;
+                let bounds = compute_bounds(&icx, param_ty, &param.bounds, sized, param.span);
+                predicates.extend(bounds.predicates(tcx, param_ty));
+            }
+            _ => {}
+        }
     }
 
     // Add in the bounds that appear in the where-clause
@@ -1446,7 +1482,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                 for bound in bound_pred.bounds.iter() {
                     match bound {
-                        &hir::TyParamBound::TraitTyParamBound(ref poly_trait_ref, _) => {
+                        &hir::GenericBound::Trait(ref poly_trait_ref, _) => {
                             let mut projections = Vec::new();
 
                             let trait_ref =
@@ -1462,7 +1498,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             }
                         }
 
-                        &hir::TyParamBound::RegionTyParamBound(ref lifetime) => {
+                        &hir::GenericBound::Outlives(ref lifetime) => {
                             let region = AstConv::ast_region_to_region(&icx,
                                                                        lifetime,
                                                                        None);
@@ -1476,7 +1512,12 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             &hir::WherePredicate::RegionPredicate(ref region_pred) => {
                 let r1 = AstConv::ast_region_to_region(&icx, &region_pred.lifetime, None);
                 for bound in &region_pred.bounds {
-                    let r2 = AstConv::ast_region_to_region(&icx, bound, None);
+                    let r2 = match bound {
+                        hir::GenericBound::Outlives(lt) => {
+                            AstConv::ast_region_to_region(&icx, lt, None)
+                        }
+                        _ => bug!(),
+                    };
                     let pred = ty::Binder::bind(ty::OutlivesPredicate(r1, r2));
                     predicates.push(ty::Predicate::RegionOutlives(pred))
                 }
@@ -1541,7 +1582,7 @@ pub enum SizedByDefault { Yes, No, }
 /// built-in trait (formerly known as kind): Send.
 pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
                                         param_ty: Ty<'tcx>,
-                                        ast_bounds: &[hir::TyParamBound],
+                                        ast_bounds: &[hir::GenericBound],
                                         sized_by_default: SizedByDefault,
                                         span: Span)
                                         -> Bounds<'tcx>
@@ -1550,22 +1591,16 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     let mut trait_bounds = vec![];
     for ast_bound in ast_bounds {
         match *ast_bound {
-            hir::TraitTyParamBound(ref b, hir::TraitBoundModifier::None) => {
-                trait_bounds.push(b);
-            }
-            hir::TraitTyParamBound(_, hir::TraitBoundModifier::Maybe) => {}
-            hir::RegionTyParamBound(ref l) => {
-                region_bounds.push(l);
-            }
+            hir::GenericBound::Trait(ref b, hir::TraitBoundModifier::None) => trait_bounds.push(b),
+            hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => {}
+            hir::GenericBound::Outlives(ref l) => region_bounds.push(l),
         }
     }
 
     let mut projection_bounds = vec![];
 
     let mut trait_bounds: Vec<_> = trait_bounds.iter().map(|&bound| {
-        astconv.instantiate_poly_trait_ref(bound,
-                                           param_ty,
-                                           &mut projection_bounds)
+        astconv.instantiate_poly_trait_ref(bound, param_ty, &mut projection_bounds)
     }).collect();
 
     let region_bounds = region_bounds.into_iter().map(|r| {
@@ -1588,18 +1623,18 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     }
 }
 
-/// Converts a specific TyParamBound from the AST into a set of
+/// Converts a specific GenericBound from the AST into a set of
 /// predicates that apply to the self-type. A vector is returned
 /// because this can be anywhere from 0 predicates (`T:?Sized` adds no
 /// predicates) to 1 (`T:Foo`) to many (`T:Bar<X=i32>` adds `T:Bar`
 /// and `<T as Bar>::X == i32`).
 fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
                                param_ty: Ty<'tcx>,
-                               bound: &hir::TyParamBound)
+                               bound: &hir::GenericBound)
                                -> Vec<ty::Predicate<'tcx>>
 {
     match *bound {
-        hir::TraitTyParamBound(ref tr, hir::TraitBoundModifier::None) => {
+        hir::GenericBound::Trait(ref tr, hir::TraitBoundModifier::None) => {
             let mut projections = Vec::new();
             let pred = astconv.instantiate_poly_trait_ref(tr,
                                                           param_ty,
@@ -1609,14 +1644,12 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
                        .chain(Some(pred.to_predicate()))
                        .collect()
         }
-        hir::RegionTyParamBound(ref lifetime) => {
+        hir::GenericBound::Outlives(ref lifetime) => {
             let region = astconv.ast_region_to_region(lifetime, None);
             let pred = ty::Binder::bind(ty::OutlivesPredicate(param_ty, region));
             vec![ty::Predicate::TypeOutlives(pred)]
         }
-        hir::TraitTyParamBound(_, hir::TraitBoundModifier::Maybe) => {
-            Vec::new()
-        }
+        hir::GenericBound::Trait(_, hir::TraitBoundModifier::Maybe) => vec![],
     }
 }
 

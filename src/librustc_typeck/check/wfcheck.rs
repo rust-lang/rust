@@ -602,8 +602,8 @@ fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
 }
 
 fn check_variances_for_type_defn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    item: &hir::Item,
-                                    ast_generics: &hir::Generics)
+                                           item: &hir::Item,
+                                           hir_generics: &hir::Generics)
 {
     let item_def_id = tcx.hir.local_def_id(item.id);
     let ty = tcx.type_of(item_def_id);
@@ -631,11 +631,8 @@ fn check_variances_for_type_defn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             continue;
         }
 
-        let (span, name) = match ast_generics.params[index] {
-            hir::GenericParam::Lifetime(ref ld) => (ld.lifetime.span, ld.lifetime.name.name()),
-            hir::GenericParam::Type(ref tp) => (tp.span, tp.name),
-        };
-        report_bivariance(tcx, span, name);
+        let param = &hir_generics.params[index];
+        report_bivariance(tcx, param.span, param.name.name());
     }
 }
 
@@ -663,17 +660,12 @@ fn report_bivariance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
     let generics = tcx.generics_of(def_id);
     let parent = tcx.generics_of(generics.parent.unwrap());
-    let impl_params: FxHashMap<_, _> =
-        parent.params.iter()
-                     .flat_map(|param| {
-                         match param.kind {
-                             GenericParamDefKind::Lifetime => None,
-                             GenericParamDefKind::Type {..} => Some((param.name, param.def_id)),
-                         }
-                     })
-                     .collect();
+    let impl_params: FxHashMap<_, _> = parent.params.iter().flat_map(|param| match param.kind {
+        GenericParamDefKind::Lifetime => None,
+        GenericParamDefKind::Type {..} => Some((param.name, param.def_id)),
+    }).collect();
 
-    for method_param in generics.params.iter() {
+    for method_param in &generics.params {
         match method_param.kind {
             // Shadowing is checked in resolve_lifetime.
             GenericParamDefKind::Lifetime => continue,

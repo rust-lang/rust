@@ -22,7 +22,7 @@ extern crate rustc_typeck;
 extern crate syntax_pos;
 extern crate rustc_data_structures;
 
-use rustc::hir::{self, PatKind};
+use rustc::hir::{self, GenericParamKind, PatKind};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -1037,9 +1037,8 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         self.access_levels.is_public(trait_id)
     }
 
-    fn check_ty_param_bound(&mut self,
-                            ty_param_bound: &hir::TyParamBound) {
-        if let hir::TraitTyParamBound(ref trait_ref, _) = *ty_param_bound {
+    fn check_generic_bound(&mut self, bound: &hir::GenericBound) {
+        if let hir::GenericBound::Trait(ref trait_ref, _) = *bound {
             if self.path_is_private_type(&trait_ref.trait_ref.path) {
                 self.old_error_set.insert(trait_ref.trait_ref.ref_id);
             }
@@ -1101,7 +1100,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                 }
 
                 for bound in bounds.iter() {
-                    self.check_ty_param_bound(bound)
+                    self.check_generic_bound(bound)
                 }
             }
 
@@ -1268,16 +1267,19 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
-        for ty_param in generics.ty_params() {
-            for bound in ty_param.bounds.iter() {
-                self.check_ty_param_bound(bound)
+        generics.params.iter().for_each(|param| match param.kind {
+            GenericParamKind::Lifetime { .. } => {}
+            GenericParamKind::Type { .. } => {
+                for bound in &param.bounds {
+                    self.check_generic_bound(bound);
+                }
             }
-        }
+        });
         for predicate in &generics.where_clause.predicates {
             match predicate {
                 &hir::WherePredicate::BoundPredicate(ref bound_pred) => {
                     for bound in bound_pred.bounds.iter() {
-                        self.check_ty_param_bound(bound)
+                        self.check_generic_bound(bound)
                     }
                 }
                 &hir::WherePredicate::RegionPredicate(_) => {}
