@@ -25,7 +25,8 @@ use util::nodemap::FxHashSet;
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
 use errors::DiagnosticBuilder;
-use syntax_pos::Span;
+use syntax_pos::{Span, FileName};
+
 
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::hir;
@@ -263,6 +264,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         let span = tcx.hir.span(node_id);
                                         let snippet = tcx.sess.codemap().span_to_snippet(span)
                                             .unwrap();
+                                        let filename = tcx.sess.codemap().span_to_filename(span);
+                                        let is_real_filename = match filename {
+                                            FileName::Real(_) => true,
+                                            _ => false,
+                                        };
 
                                         let parent_node = self.tcx.hir.get(
                                             self.tcx.hir.get_parent_node(node_id),
@@ -271,13 +277,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             "you must specify a type for this binding, like `{}`",
                                             concrete_type,
                                         );
-                                        match parent_node {
-                                            hir_map::NodeLocal(hir::Local {
+
+                                        match (is_real_filename, parent_node) {
+                                            (true, hir_map::NodeLocal(hir::Local {
                                                 source: hir::LocalSource::Normal,
+                                                ty,
                                                 ..
-                                            }) => {
+                                            })) => {
                                                 err.span_suggestion(
-                                                    span,
+                                                    // account for `let x: _ = 42;`
+                                                    //                  ^^^^
+                                                    span.to(ty.as_ref().map(|ty| ty.span)
+                                                        .unwrap_or(span)),
                                                     &msg,
                                                     format!("{}: {}", snippet, concrete_type),
                                                 );
