@@ -282,7 +282,7 @@ types! {
     /// let eight_ones = _mm256_set1_ps(1.0);
     /// let eight_floats = _mm256_set_ps(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
     /// # }
-    /// # if is_x86_feature_detected!("sse") { unsafe { foo() } }
+    /// # if is_x86_feature_detected!("avx") { unsafe { foo() } }
     /// # }
     /// ```
     #[stable(feature = "simd_x86", since = "1.27.0")]
