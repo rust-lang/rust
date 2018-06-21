@@ -208,6 +208,7 @@ pub trait HasDataLayout: Copy {
 }
 
 impl<'a> HasDataLayout for &'a TargetDataLayout {
+    #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         self
     }
@@ -240,10 +241,12 @@ impl Size {
         }
     }
 
+    #[inline]
     pub fn bytes(self) -> u64 {
         self.raw
     }
 
+    #[inline]
     pub fn bits(self) -> u64 {
         self.bytes().checked_mul(8).unwrap_or_else(|| {
             panic!("Size::bits: {} bytes in bits doesn't fit in u64", self.bytes())
@@ -289,6 +292,7 @@ impl Size {
 
 impl Add for Size {
     type Output = Size;
+    #[inline]
     fn add(self, other: Size) -> Size {
         Size::from_bytes(self.bytes().checked_add(other.bytes()).unwrap_or_else(|| {
             panic!("Size::add: {} + {} doesn't fit in u64", self.bytes(), other.bytes())
@@ -298,6 +302,7 @@ impl Add for Size {
 
 impl Sub for Size {
     type Output = Size;
+    #[inline]
     fn sub(self, other: Size) -> Size {
         Size::from_bytes(self.bytes().checked_sub(other.bytes()).unwrap_or_else(|| {
             panic!("Size::sub: {} - {} would result in negative size", self.bytes(), other.bytes())
@@ -314,6 +319,7 @@ impl Mul<Size> for u64 {
 
 impl Mul<u64> for Size {
     type Output = Size;
+    #[inline]
     fn mul(self, count: u64) -> Size {
         match self.bytes().checked_mul(count) {
             Some(bytes) => Size::from_bytes(bytes),
@@ -374,18 +380,22 @@ impl Align {
         })
     }
 
+    #[inline]
     pub fn abi(self) -> u64 {
         1 << self.abi_pow2
     }
 
+    #[inline]
     pub fn pref(self) -> u64 {
         1 << self.pref_pow2
     }
 
+    #[inline]
     pub fn abi_bits(self) -> u64 {
         self.abi() * 8
     }
 
+    #[inline]
     pub fn pref_bits(self) -> u64 {
         self.pref() * 8
     }
