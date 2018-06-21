@@ -14,6 +14,7 @@ use rustc::mir::{Local, Location, Place};
 use rustc_data_structures::fx::FxHashSet;
 
 use borrow_check::MirBorrowckCtxt;
+use util::collect_writes::is_place_assignment;
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// Walks the MIR looking for assignments to a set of locals, as part of the unused mutable
@@ -45,31 +46,19 @@ impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'c
             return;
         }
 
-        match place_context {
-            PlaceContext::Store | PlaceContext::Call => {
-                // Propagate the Local assigned at this Location as a used mutable local variable
-                for moi in &self.mbcx.move_data.loc_map[location] {
-                    let mpi = &self.mbcx.move_data.moves[*moi].path;
-                    let path = &self.mbcx.move_data.move_paths[*mpi];
-                    debug!(
-                        "assignment of {:?} to {:?}, adding {:?} to used mutable set",
-                        path.place, local, path.place
-                    );
-                    if let Place::Local(user_local) = path.place {
-                        self.mbcx.used_mut.insert(user_local);
-                    }
+        if is_place_assignment(&place_context) {
+            // Propagate the Local assigned at this Location as a used mutable local variable
+            for moi in &self.mbcx.move_data.loc_map[location] {
+                let mpi = &self.mbcx.move_data.moves[*moi].path;
+                let path = &self.mbcx.move_data.move_paths[*mpi];
+                debug!(
+                    "assignment of {:?} to {:?}, adding {:?} to used mutable set",
+                    path.place, local, path.place
+                );
+                if let Place::Local(user_local) = path.place {
+                    self.mbcx.used_mut.insert(user_local);
                 }
             }
-            PlaceContext::AsmOutput
-            | PlaceContext::Drop
-            | PlaceContext::Inspect
-            | PlaceContext::Borrow { .. }
-            | PlaceContext::Projection(..)
-            | PlaceContext::Copy
-            | PlaceContext::Move
-            | PlaceContext::StorageLive
-            | PlaceContext::StorageDead
-            | PlaceContext::Validate => {}
         }
     }
 }
