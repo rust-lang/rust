@@ -632,8 +632,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     // and ban them. Type variables instantiated inside binders aren't
                     // well-supported at the moment, so this doesn't work.
                     // In the future, this should be fixed and this error should be removed.
-                    let def = self.map.defs.get(&lifetime.id);
-                    if let Some(&Region::LateBound(_, def_id, _)) = def {
+                    let def = self.map.defs.get(&lifetime.id).cloned();
+                    if let Some(Region::LateBound(_, def_id, _)) = def {
                         if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
                             // Ensure that the parent of the def is an item, not HRTB
                             let parent_id = self.tcx.hir.get_parent_node(node_id);
@@ -651,6 +651,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                     "`impl Trait` can only capture lifetimes \
                                      bound at the fn or impl level"
                                 );
+                                self.uninsert_lifetime_on_error(lifetime, def.unwrap());
                             }
                         }
                     }
@@ -2376,6 +2377,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
             }
         }
+    }
+
+    /// Sometimes we resolve a lifetime, but later find that it is an
+    /// error (esp. around impl trait). In that case, we remove the
+    /// entry into `map.defs` so as not to confuse later code.
+    fn uninsert_lifetime_on_error(&mut self, lifetime_ref: &'tcx hir::Lifetime, bad_def: Region) {
+        let old_value = self.map.defs.remove(&lifetime_ref.id);
+        assert_eq!(old_value, Some(bad_def));
     }
 }
 

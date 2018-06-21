@@ -10,6 +10,25 @@ error[E0657]: `impl Trait` can only capture lifetimes bound at the fn or impl le
 LL |         -> Box<for<'a> Id<impl Lt<'a>>>
    |                                   ^^
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/E0657.rs:22:5
+   |
+LL |     () //~ ERROR mismatched types
+   |     ^^ expected struct `std::boxed::Box`, found ()
+   |
+   = note: expected type `std::boxed::Box<Id<_> + 'static>`
+              found type `()`
 
-For more information about this error, try `rustc --explain E0657`.
+error[E0308]: mismatched types
+  --> $DIR/E0657.rs:31:9
+   |
+LL |         () //~ ERROR mismatched types
+   |         ^^ expected struct `std::boxed::Box`, found ()
+   |
+   = note: expected type `std::boxed::Box<Id<_> + 'static>`
+              found type `()`
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0308, E0657.
+For more information about an error, try `rustc --explain E0308`.
