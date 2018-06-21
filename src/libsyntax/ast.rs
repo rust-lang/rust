@@ -1581,7 +1581,11 @@ pub enum TyKind {
     TraitObject(TyParamBounds, TraitObjectSyntax),
     /// An `impl Bound1 + Bound2 + Bound3` type
     /// where `Bound` is a trait or a lifetime.
-    ImplTrait(TyParamBounds),
+    ///
+    /// The `NodeId` exists to prevent lowering from having to
+    /// generate `NodeId`s on the fly, which would complicate
+    /// the generation of `existential type` items significantly
+    ImplTrait(NodeId, TyParamBounds),
     /// No-op; kept solely so that we can pretty-print faithfully
     Paren(P<Ty>),
     /// Unused for now

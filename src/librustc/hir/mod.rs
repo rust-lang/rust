@@ -377,7 +377,7 @@ pub struct PathParameters {
     /// The lifetime parameters for this path segment.
     pub lifetimes: HirVec<Lifetime>,
     /// The type parameters for this path segment, if present.
-    pub types: HirVec<P<Ty>>,
+    pub types: HirVec<Ty>,
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
     pub bindings: HirVec<TypeBinding>,
@@ -402,7 +402,7 @@ impl PathParameters {
             self.bindings.is_empty() && !self.parenthesized
     }
 
-    pub fn inputs(&self) -> &[P<Ty>] {
+    pub fn inputs(&self) -> &[Ty] {
         if self.parenthesized {
             if let Some(ref ty) = self.types.get(0) {
                 if let TyTup(ref tys) = ty.node {
@@ -1712,7 +1712,7 @@ pub enum Ty_ {
     /// The never type (`!`)
     TyNever,
     /// A tuple (`(A, B, C, D,...)`)
-    TyTup(HirVec<P<Ty>>),
+    TyTup(HirVec<Ty>),
     /// A path to a type definition (`module::module::...::Type`), or an
     /// associated type, e.g. `<Vec<T> as Trait>::Type` or `<T>::Target`.
     ///
@@ -1773,7 +1773,7 @@ pub struct Arg {
 /// Represents the header (not the body) of a function declaration
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct FnDecl {
-    pub inputs: HirVec<P<Ty>>,
+    pub inputs: HirVec<Ty>,
     pub output: FunctionRetTy,
     pub variadic: bool,
     /// True if this function has an `self`, `&self` or `&mut self` receiver
