@@ -24,7 +24,6 @@ use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::GenericParamDefKind;
 use rustc::ty::wf::object_region_bounds;
 use rustc_target::spec::abi;
-use std::slice;
 use require_c_abi_if_variadic;
 use util::common::ErrorReported;
 use util::nodemap::{FxHashSet, FxHashMap};
@@ -217,21 +216,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let ty_provided = parameters.types.len();
         let lt_provided = parameters.lifetimes.len();
 
-        let mut lt_accepted = 0;
-        let mut ty_params = ParamRange { required: 0, accepted: 0 };
-        for param in &decl_generics.params {
-            match param.kind {
-                GenericParamDefKind::Lifetime => {
-                    lt_accepted += 1;
-                }
-                GenericParamDefKind::Type { has_default, .. } => {
-                    ty_params.accepted += 1;
-                    if !has_default {
-                        ty_params.required += 1;
-                    }
-                }
-            };
-        }
+        let (mut ty_params, lt_accepted) = accepted_argument_count_of(decl_generics);
+
         if self_ty.is_some() {
             ty_params.required -= 1;
             ty_params.accepted -= 1;
@@ -866,8 +852,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         debug!("associated_path_def_to_ty: {:?}::{}", ty, assoc_name);
 
-        self.prohibit_type_params(slice::from_ref(item_segment));
-
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
         let bound = match (&ty.sty, ty_path_def) {
@@ -919,6 +903,22 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         })
         .expect("missing associated type");
 
+        // Make sure the supplied parameters match the declared parameter of
+        // the associated type.
+        let (ty_provided, lt_provided) = match &item_segment.parameters {
+            Some(params) => (params.types.len(), params.lifetimes.len()),
+            None => (0, 0),
+        };
+
+        let (ty_params, lt_accepted)
+            = accepted_argument_count_of(tcx.generics_of(item.def_id));
+
+        if lt_accepted != lt_provided {
+            report_lifetime_number_error(tcx, span, lt_provided, lt_accepted);
+        }
+        check_type_argument_count(tcx, span, ty_provided, ty_params);
+
+
         let ty = self.projected_ty_from_poly_trait_ref(span, item.def_id, bound);
         let ty = self.normalize_ty(span, ty);
 
@@ -943,7 +943,21 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let tcx = self.tcx();
         let trait_def_id = tcx.parent_def_id(item_def_id).unwrap();
 
-        self.prohibit_type_params(slice::from_ref(item_segment));
+        // Make sure the supplied parameters match the declared parameter of
+        // the associated type.
+        let (ty_provided, lt_provided) = match &item_segment.parameters {
+            Some(params) => (params.types.len(), params.lifetimes.len()),
+            None => (0, 0),
+        };
+
+        let (ty_params, lt_accepted)
+            = accepted_argument_count_of(tcx.generics_of(item_def_id));
+
+        if lt_accepted != lt_provided {
+            report_lifetime_number_error(tcx, span, lt_provided, lt_accepted);
+        }
+        check_type_argument_count(tcx, span, ty_provided, ty_params);
+
 
         let self_ty = if let Some(ty) = opt_self_ty {
             ty
@@ -1054,7 +1068,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 tcx.mk_self_type()
             }
             Def::AssociatedTy(def_id) => {
+                // TODO: why is this here? Maybe it should be removed now?
                 self.prohibit_type_params(&path.segments[..path.segments.len()-2]);
+
                 self.qpath_to_ty(span,
                                  opt_self_ty,
                                  def_id,
@@ -1354,6 +1370,38 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     }).collect::<Vec<_>>();
 
     (auto_traits, trait_bounds)
+}
+
+/// Given the generic parameters of a definition, this function returns
+/// information about how many lifetime and type parameters can be applied when
+/// referencing the item. That is:
+///
+/// - the number of accepted lifetime parameters
+/// - the number of required and the number of accepted type parameters
+///
+/// For example, for `struct Foo<T = u32>` this function returns:
+/// `(0, ParamRange { required: 0, accepted: 1})`. For `struct Bar<'a, T>` this
+/// function returns: `(1, ParamRange { required: 1, accepted: 1})`.
+fn accepted_argument_count_of<'tcx>(
+    generics: &'tcx ty::Generics
+) -> (ParamRange, usize) {
+    let mut lt_accepted = 0;
+    let mut ty_params = ParamRange { required: 0, accepted: 0 };
+    for param in &generics.params {
+        match param.kind {
+            GenericParamDefKind::Lifetime => {
+                lt_accepted += 1;
+            }
+            GenericParamDefKind::Type { has_default, .. } => {
+                ty_params.accepted += 1;
+                if !has_default {
+                    ty_params.required += 1;
+                }
+            }
+        };
+    }
+
+    (ty_params, lt_accepted)
 }
 
 fn check_type_argument_count(tcx: TyCtxt,
