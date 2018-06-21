@@ -2797,10 +2797,27 @@ impl<'a> LoweringContext<'a> {
                 struct IdVisitor { ids: SmallVector<hir::ItemId> }
                 impl<'a> Visitor<'a> for IdVisitor {
                     fn visit_ty(&mut self, ty: &'a Ty) {
-                        if let TyKind::ImplTrait(id, _) = ty.node {
-                            self.ids.push(hir::ItemId { id });
+                        match ty.node {
+                            | TyKind::Typeof(_)
+                            | TyKind::BareFn(_)
+                            => return,
+
+                            TyKind::ImplTrait(id, _) => self.ids.push(hir::ItemId { id }),
+                            _ => {},
                         }
                         visit::walk_ty(self, ty);
+                    }
+                    fn visit_path_segment(
+                        &mut self,
+                        path_span: Span,
+                        path_segment: &'v PathSegment,
+                    ) {
+                        if let Some(ref p) = path_segment.parameters {
+                            if let PathParameters::Parenthesized(..) = **p {
+                                return;
+                            }
+                        }
+                        visit::walk_path_segment(self, path_span, path_segment)
                     }
                 }
                 let mut visitor = IdVisitor { ids: SmallVector::one(hir::ItemId { id: i.id }) };
