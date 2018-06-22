@@ -32,11 +32,8 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// Bounds in scope for polymorphic evaluations.
     pub param_env: ty::ParamEnv<'tcx>,
 
-    /// The virtual memory system.
-    pub memory: Memory<'a, 'mir, 'tcx, M>,
-
-    /// The virtual call stack.
-    pub(crate) stack: Vec<Frame<'mir, 'tcx>>,
+    /// Virtual memory and call stack.
+    state: EvalState<'a, 'mir, 'tcx, M>,
 
     /// The maximum number of stack frames allowed
     pub(crate) stack_limit: usize,
@@ -45,6 +42,14 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// This prevents infinite loops and huge computations from freezing up const eval.
     /// Remove once halting problem is solved.
     pub(crate) terminators_remaining: usize,
+}
+
+struct EvalState<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
+    /// The virtual memory system.
+    memory: Memory<'a, 'mir, 'tcx, M>,
+
+    /// The virtual call stack.
+    stack: Vec<Frame<'mir, 'tcx>>,
 }
 
 /// A stack frame.
@@ -186,18 +191,20 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             machine,
             tcx,
             param_env,
-            memory: Memory::new(tcx, memory_data),
-            stack: Vec::new(),
+            state: EvalState {
+                memory: Memory::new(tcx, memory_data),
+                stack: Vec::new(),
+            },
             stack_limit: tcx.sess.const_eval_stack_frame_limit,
             terminators_remaining: MAX_TERMINATORS,
         }
     }
 
     pub(crate) fn with_fresh_body<F: FnOnce(&mut Self) -> R, R>(&mut self, f: F) -> R {
-        let stack = mem::replace(&mut self.stack, Vec::new());
+        let stack = mem::replace(self.stack_mut(), Vec::new());
         let terminators_remaining = mem::replace(&mut self.terminators_remaining, MAX_TERMINATORS);
         let r = f(self);
-        self.stack = stack;
+        *self.stack_mut() = stack;
         self.terminators_remaining = terminators_remaining;
         r
     }
@@ -206,29 +213,34 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         let layout = self.layout_of(ty)?;
         assert!(!layout.is_unsized(), "cannot alloc memory for unsized type");
 
-        self.memory.allocate(layout.size, layout.align, MemoryKind::Stack)
+        self.memory_mut().allocate(layout.size, layout.align, MemoryKind::Stack)
     }
 
     pub fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M> {
-        &self.memory
+        &self.state.memory
     }
 
     pub fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M> {
-        &mut self.memory
+        &mut self.state.memory
     }
 
+    #[inline]
     pub fn stack(&self) -> &[Frame<'mir, 'tcx>] {
-        &self.stack
+        &self.state.stack
+    }
+
+    pub fn stack_mut(&mut self) -> &mut Vec<Frame<'mir, 'tcx>> {
+        &mut self.state.stack
     }
 
     #[inline]
     pub fn cur_frame(&self) -> usize {
-        assert!(self.stack.len() > 0);
-        self.stack.len() - 1
+        assert!(self.stack().len() > 0);
+        self.stack().len() - 1
     }
 
     pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
-        let ptr = self.memory.allocate_bytes(s.as_bytes());
+        let ptr = self.memory_mut().allocate_bytes(s.as_bytes());
         Ok(Scalar::Ptr(ptr).to_value_with_len(s.len() as u64, self.tcx.tcx))
     }
 
@@ -246,7 +258,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
             ConstValue::ByRef(alloc, offset) => {
                 // FIXME: Allocate new AllocId for all constants inside
-                let id = self.memory.allocate_value(alloc.clone(), MemoryKind::Stack)?;
+                let id = self.memory_mut().allocate_value(alloc.clone(), MemoryKind::Stack)?;
                 Ok(Value::ByRef(Pointer::new(id, offset).into(), alloc.align))
             },
             ConstValue::ScalarPair(a, b) => Ok(Value::ScalarPair(a, b)),
@@ -417,7 +429,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             IndexVec::new()
         };
 
-        self.stack.push(Frame {
+        self.stack_mut().push(Frame {
             mir,
             block: mir::START_BLOCK,
             return_to_block,
@@ -428,9 +440,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             stmt: 0,
         });
 
-        self.memory.cur_frame = self.cur_frame();
+        self.memory_mut().cur_frame = self.cur_frame();
 
-        if self.stack.len() > self.stack_limit {
+        if self.stack().len() > self.stack_limit {
             err!(StackFrameLimitReached)
         } else {
             Ok(())
@@ -440,18 +452,18 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation -= 1;
         M::end_region(self, None)?;
-        let frame = self.stack.pop().expect(
+        let frame = self.stack_mut().pop().expect(
             "tried to pop a stack frame, but there were none",
         );
-        if !self.stack.is_empty() {
+        if !self.stack().is_empty() {
             // TODO: Is this the correct time to start considering these accesses as originating from the returned-to stack frame?
-            self.memory.cur_frame = self.cur_frame();
+            self.memory_mut().cur_frame = self.cur_frame();
         }
         match frame.return_to_block {
             StackPopCleanup::MarkStatic(mutable) => {
                 if let Place::Ptr { ptr, .. } = frame.return_place {
                     // FIXME: to_ptr()? might be too extreme here, static zsts might reach this under certain conditions
-                    self.memory.mark_static_initialized(
+                    self.memory_mut().mark_static_initialized(
                         ptr.to_ptr()?.alloc_id,
                         mutable,
                     )?
@@ -474,8 +486,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         if let Some(Value::ByRef(ptr, _align)) = local {
             trace!("deallocating local");
             let ptr = ptr.to_ptr()?;
-            self.memory.dump_alloc(ptr.alloc_id);
-            self.memory.deallocate_local(ptr)?;
+            self.memory().dump_alloc(ptr.alloc_id);
+            self.memory_mut().deallocate_local(ptr)?;
         };
         Ok(())
     }
@@ -595,7 +607,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let src = self.eval_place(place)?;
                 let ty = self.place_ty(place);
                 let (_, len) = src.elem_ty_and_len(ty, self.tcx.tcx);
-                let defined = self.memory.pointer_size().bits() as u8;
+                let defined = self.memory().pointer_size().bits() as u8;
                 self.write_scalar(
                     dest,
                     Scalar::Bits {
@@ -637,7 +649,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let layout = self.layout_of(ty)?;
                 assert!(!layout.is_unsized(),
                         "SizeOf nullary MIR operator called for unsized type");
-                let defined = self.memory.pointer_size().bits() as u8;
+                let defined = self.memory().pointer_size().bits() as u8;
                 self.write_scalar(
                     dest,
                     Scalar::Bits {
@@ -732,7 +744,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                     def_id,
                                     substs,
                                 ).ok_or_else(|| EvalErrorKind::TooGeneric.into());
-                                let fn_ptr = self.memory.create_fn_alloc(instance?);
+                                let fn_ptr = self.memory_mut().create_fn_alloc(instance?);
                                 let valty = ValTy {
                                     value: Value::Scalar(fn_ptr.into()),
                                     ty: dest_ty,
@@ -768,7 +780,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                     substs,
                                     ty::ClosureKind::FnOnce,
                                 );
-                                let fn_ptr = self.memory.create_fn_alloc(instance);
+                                let fn_ptr = self.memory_mut().create_fn_alloc(instance);
                                 let valty = ValTy {
                                     value: Value::Scalar(fn_ptr.into()),
                                     ty: dest_ty,
@@ -1045,7 +1057,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     pub fn force_allocation(&mut self, place: Place) -> EvalResult<'tcx, Place> {
         let new_place = match place {
             Place::Local { frame, local } => {
-                match self.stack[frame].locals[local] {
+                match self.stack()[frame].locals[local] {
                     None => return err!(DeadLocal),
                     Some(Value::ByRef(ptr, align)) => {
                         Place::Ptr {
@@ -1055,11 +1067,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                         }
                     }
                     Some(val) => {
-                        let ty = self.stack[frame].mir.local_decls[local].ty;
-                        let ty = self.monomorphize(ty, self.stack[frame].instance.substs);
+                        let ty = self.stack()[frame].mir.local_decls[local].ty;
+                        let ty = self.monomorphize(ty, self.stack()[frame].instance.substs);
                         let layout = self.layout_of(ty)?;
                         let ptr = self.alloc_ptr(ty)?;
-                        self.stack[frame].locals[local] =
+                        self.stack_mut()[frame].locals[local] =
                             Some(Value::ByRef(ptr.into(), layout.align)); // it stays live
                         let place = Place::from_ptr(ptr, layout.align);
                         self.write_value(ValTy { value: val, ty }, place)?;
@@ -1141,10 +1153,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
 
             Place::Local { frame, local } => {
-                let dest = self.stack[frame].get_local(local)?;
+                let dest = self.stack()[frame].get_local(local)?;
                 self.write_value_possibly_by_val(
                     src_val,
-                    |this, val| this.stack[frame].set_local(local, val),
+                    |this, val| this.stack_mut()[frame].set_local(local, val),
                     dest,
                     dest_ty,
                 )
@@ -1186,7 +1198,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             } else {
                 let dest_ptr = self.alloc_ptr(dest_ty)?.into();
                 let layout = self.layout_of(dest_ty)?;
-                self.memory.copy(src_ptr, align.min(layout.align), dest_ptr, layout.align, layout.size, false)?;
+                self.memory_mut().copy(src_ptr, align.min(layout.align), dest_ptr, layout.align, layout.size, false)?;
                 write_dest(self, Value::ByRef(dest_ptr, layout.align))?;
             }
         } else {
@@ -1208,7 +1220,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         trace!("write_value_to_ptr: {:#?}, {}, {:#?}", value, dest_ty, layout);
         match value {
             Value::ByRef(ptr, align) => {
-                self.memory.copy(ptr, align.min(layout.align), dest, dest_align.min(layout.align), layout.size, false)
+                self.memory_mut().copy(ptr, align.min(layout.align), dest, dest_align.min(layout.align), layout.size, false)
             }
             Value::Scalar(scalar) => {
                 let signed = match layout.abi {
@@ -1221,7 +1233,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                         _ => bug!("write_value_to_ptr: invalid ByVal layout: {:#?}", layout),
                     }
                 };
-                self.memory.write_scalar(dest, dest_align, scalar, layout.size, signed)
+                self.memory_mut().write_scalar(dest, dest_align, scalar, layout.size, signed)
             }
             Value::ScalarPair(a_val, b_val) => {
                 trace!("write_value_to_ptr valpair: {:#?}", layout);
@@ -1234,8 +1246,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let b_offset = a_size.abi_align(b.align(&self));
                 let b_ptr = dest.ptr_offset(b_offset, &self)?.into();
                 // TODO: What about signedess?
-                self.memory.write_scalar(a_ptr, dest_align, a_val, a_size, false)?;
-                self.memory.write_scalar(b_ptr, dest_align, b_val, b_size, false)
+                self.memory_mut().write_scalar(a_ptr, dest_align, a_val, a_size, false)?;
+                self.memory_mut().write_scalar(b_ptr, dest_align, b_val, b_size, false)
             }
         }
     }
@@ -1266,8 +1278,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         ptr_align: Align,
         pointee_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Value> {
-        let ptr_size = self.memory.pointer_size();
-        let p: Scalar = self.memory.read_ptr_sized(ptr, ptr_align)?.into();
+        let ptr_size = self.memory().pointer_size();
+        let p: Scalar = self.memory().read_ptr_sized(ptr, ptr_align)?.into();
         if self.type_is_sized(pointee_ty) {
             Ok(p.to_value())
         } else {
@@ -1275,11 +1287,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             let extra = ptr.offset(ptr_size, self)?;
             match self.tcx.struct_tail(pointee_ty).sty {
                 ty::TyDynamic(..) => Ok(p.to_value_with_vtable(
-                    self.memory.read_ptr_sized(extra, ptr_align)?.to_ptr()?,
+                    self.memory().read_ptr_sized(extra, ptr_align)?.to_ptr()?,
                 )),
                 ty::TySlice(..) | ty::TyStr => {
                     let len = self
-                        .memory
+                        .memory()
                         .read_ptr_sized(extra, ptr_align)?
                         .to_bits(ptr_size)?;
                     Ok(p.to_value_with_len(len as u64, self.tcx.tcx))
@@ -1297,10 +1309,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     ) -> EvalResult<'tcx> {
         match ty.sty {
             ty::TyBool => {
-                self.memory.read_scalar(ptr, ptr_align, Size::from_bytes(1))?.to_bool()?;
+                self.memory().read_scalar(ptr, ptr_align, Size::from_bytes(1))?.to_bool()?;
             }
             ty::TyChar => {
-                let c = self.memory.read_scalar(ptr, ptr_align, Size::from_bytes(4))?.to_bits(Size::from_bytes(4))? as u32;
+                let c = self.memory().read_scalar(ptr, ptr_align, Size::from_bytes(4))?.to_bits(Size::from_bytes(4))? as u32;
                 match ::std::char::from_u32(c) {
                     Some(..) => (),
                     None => return err!(InvalidChar(c as u128)),
@@ -1308,7 +1320,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
 
             ty::TyFnPtr(_) => {
-                self.memory.read_ptr_sized(ptr, ptr_align)?;
+                self.memory().read_ptr_sized(ptr, ptr_align)?;
             },
             ty::TyRef(_, rty, _) |
             ty::TyRawPtr(ty::TypeAndMut { ty: rty, .. }) => {
@@ -1323,7 +1335,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
                 if let layout::Abi::Scalar(ref scalar) = self.layout_of(ty)?.abi {
                     let size = scalar.value.size(self);
-                    self.memory.read_scalar(ptr, ptr_align, size)?;
+                    self.memory().read_scalar(ptr, ptr_align, size)?;
                 }
             }
 
@@ -1344,7 +1356,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     pub fn try_read_value(&self, ptr: Scalar, ptr_align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
         let layout = self.layout_of(ty)?;
-        self.memory.check_align(ptr, ptr_align)?;
+        self.memory().check_align(ptr, ptr_align)?;
 
         if layout.size.bytes() == 0 {
             return Ok(Some(Value::Scalar(Scalar::undef())));
@@ -1357,7 +1369,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
         match layout.abi {
             layout::Abi::Scalar(..) => {
-                let scalar = self.memory.read_scalar(ptr, ptr_align, layout.size)?;
+                let scalar = self.memory().read_scalar(ptr, ptr_align, layout.size)?;
                 Ok(Some(Value::Scalar(scalar)))
             }
             layout::Abi::ScalarPair(ref a, ref b) => {
@@ -1366,8 +1378,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let a_ptr = ptr;
                 let b_offset = a_size.abi_align(b.align(self));
                 let b_ptr = ptr.offset(b_offset, self)?.into();
-                let a_val = self.memory.read_scalar(a_ptr, ptr_align, a_size)?;
-                let b_val = self.memory.read_scalar(b_ptr, ptr_align, b_size)?;
+                let a_val = self.memory().read_scalar(a_ptr, ptr_align, a_size)?;
+                let b_val = self.memory().read_scalar(b_ptr, ptr_align, b_size)?;
                 Ok(Some(Value::ScalarPair(a_val, b_val)))
             }
             _ => Ok(None),
@@ -1375,11 +1387,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub fn frame(&self) -> &Frame<'mir, 'tcx> {
-        self.stack.last().expect("no call frames exist")
+        self.stack().last().expect("no call frames exist")
     }
 
     pub fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx> {
-        self.stack.last_mut().expect("no call frames exist")
+        self.stack_mut().last_mut().expect("no call frames exist")
     }
 
     pub(super) fn mir(&self) -> &'mir mir::Mir<'tcx> {
@@ -1387,7 +1399,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub fn substs(&self) -> &'tcx Substs<'tcx> {
-        if let Some(frame) = self.stack.last() {
+        if let Some(frame) = self.stack().last() {
             frame.instance.substs
         } else {
             Substs::empty()
@@ -1533,7 +1545,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 }
                 write!(msg, ":").unwrap();
 
-                match self.stack[frame].get_local(local) {
+                match self.stack()[frame].get_local(local) {
                     Err(err) => {
                         if let EvalErrorKind::DeadLocal = err.kind {
                             write!(msg, " is dead").unwrap();
@@ -1568,13 +1580,13 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 }
 
                 trace!("{}", msg);
-                self.memory.dump_allocs(allocs);
+                self.memory().dump_allocs(allocs);
             }
             Place::Ptr { ptr, align, .. } => {
                 match ptr {
                     Scalar::Ptr(ptr) => {
                         trace!("by align({}) ref:", align.abi());
-                        self.memory.dump_alloc(ptr.alloc_id);
+                        self.memory().dump_alloc(ptr.alloc_id);
                     }
                     ptr => trace!(" integral by ref: {:?}", ptr),
                 }
@@ -1587,12 +1599,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     where
         F: FnOnce(&mut Self, Value) -> EvalResult<'tcx, Value>,
     {
-        let val = self.stack[frame].get_local(local)?;
+        let val = self.stack()[frame].get_local(local)?;
         let new_val = f(self, val)?;
-        self.stack[frame].set_local(local, new_val)?;
+        self.stack_mut()[frame].set_local(local, new_val)?;
         // FIXME(solson): Run this when setting to Undef? (See previous version of this code.)
-        // if let Value::ByRef(ptr) = self.stack[frame].get_local(local) {
-        //     self.memory.deallocate(ptr)?;
+        // if let Value::ByRef(ptr) = self.stack()[frame].get_local(local) {
+        //     self.memory().deallocate(ptr)?;
         // }
         Ok(())
     }

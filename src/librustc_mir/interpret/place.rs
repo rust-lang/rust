@@ -201,7 +201,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 assert_eq!(extra, PlaceExtra::None);
                 Ok(Value::ByRef(ptr, align))
             }
-            Place::Local { frame, local } => self.stack[frame].get_local(local),
+            Place::Local { frame, local } => self.stack()[frame].get_local(local),
         }
     }
 
@@ -261,7 +261,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let (base_ptr, base_align, base_extra) = match base {
             Place::Ptr { ptr, align, extra } => (ptr, align, extra),
             Place::Local { frame, local } => {
-                match (&self.stack[frame].get_local(local)?, &base_layout.abi) {
+                match (&self.stack()[frame].get_local(local)?, &base_layout.abi) {
                     // in case the field covers the entire type, just return the value
                     (&Value::Scalar(_), &layout::Abi::Scalar(_)) |
                     (&Value::ScalarPair(..), &layout::Abi::ScalarPair(..))

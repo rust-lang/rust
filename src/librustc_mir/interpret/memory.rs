@@ -991,12 +991,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for Me
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
     fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M> {
-        &mut self.memory
+        self.memory_mut()
     }
 
     #[inline]
     fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M> {
-        &self.memory
+        self.memory()
     }
 }
 

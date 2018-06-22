@@ -88,7 +88,7 @@ pub fn value_to_const_value<'tcx>(
             Value::ScalarPair(a, b) => Ok(ConstValue::ScalarPair(a, b)),
             Value::ByRef(ptr, align) => {
                 let ptr = ptr.to_ptr().unwrap();
-                let alloc = ecx.memory.get(ptr.alloc_id)?;
+                let alloc = ecx.memory().get(ptr.alloc_id)?;
                 assert!(alloc.align.abi() >= align.abi());
                 assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= layout.size.bytes());
                 let mut alloc = alloc.clone();
@@ -149,7 +149,7 @@ fn eval_body_using_ecx<'a, 'mir, 'tcx>(
     }
     let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
-    let ptr = ecx.memory.allocate(
+    let ptr = ecx.memory_mut().allocate(
         layout.size,
         layout.align,
         MemoryKind::Stack,
@@ -486,7 +486,7 @@ pub fn const_variant_index<'a, 'tcx>(
     let (ptr, align) = match value {
         Value::ScalarPair(..) | Value::Scalar(_) => {
             let layout = ecx.layout_of(val.ty)?;
-            let ptr = ecx.memory.allocate(layout.size, layout.align, MemoryKind::Stack)?.into();
+            let ptr = ecx.memory_mut().allocate(layout.size, layout.align, MemoryKind::Stack)?.into();
             ecx.write_value_to_ptr(value, ptr, layout.align, val.ty)?;
             (ptr, layout.align)
         },
@@ -515,9 +515,9 @@ pub fn const_value_to_allocation_provider<'a, 'tcx>(
             ());
         let value = ecx.const_to_value(val.val)?;
         let layout = ecx.layout_of(val.ty)?;
-        let ptr = ecx.memory.allocate(layout.size, layout.align, MemoryKind::Stack)?;
+        let ptr = ecx.memory_mut().allocate(layout.size, layout.align, MemoryKind::Stack)?;
         ecx.write_value_to_ptr(value, ptr.into(), layout.align, val.ty)?;
-        let alloc = ecx.memory.get(ptr.alloc_id)?;
+        let alloc = ecx.memory().get(ptr.alloc_id)?;
         Ok(tcx.intern_const_alloc(alloc.clone()))
     };
     result().expect("unable to convert ConstValue to Allocation")

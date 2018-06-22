@@ -71,7 +71,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let (fn_def, sig) = match func.ty.sty {
                     ty::TyFnPtr(sig) => {
                         let fn_ptr = self.value_to_scalar(func)?.to_ptr()?;
-                        let instance = self.memory.get_fn(fn_ptr)?;
+                        let instance = self.memory().get_fn(fn_ptr)?;
                         let instance_ty = instance.ty(*self.tcx);
                         match instance_ty.sty {
                             ty::TyFnDef(..) => {
@@ -377,14 +377,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
             // cannot use the shim here, because that will only result in infinite recursion
             ty::InstanceDef::Virtual(_, idx) => {
-                let ptr_size = self.memory.pointer_size();
+                let ptr_size = self.memory().pointer_size();
                 let ptr_align = self.tcx.data_layout.pointer_align;
                 let (ptr, vtable) = self.into_ptr_vtable_pair(args[0].value)?;
-                let fn_ptr = self.memory.read_ptr_sized(
+                let fn_ptr = self.memory().read_ptr_sized(
                     vtable.offset(ptr_size * (idx as u64 + 3), &self)?,
                     ptr_align
                 )?.to_ptr()?;
-                let instance = self.memory.get_fn(fn_ptr)?;
+                let instance = self.memory().get_fn(fn_ptr)?;
                 let mut args = args.to_vec();
                 let ty = self.layout_of(args[0].ty)?.field(&self, 0)?.ty;
                 args[0].ty = ty;

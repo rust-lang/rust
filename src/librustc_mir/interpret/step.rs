@@ -19,7 +19,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
     /// Returns true as long as there are more things to do.
     pub fn step(&mut self) -> EvalResult<'tcx, bool> {
-        if self.stack.is_empty() {
+        if self.stack().is_empty() {
             return Ok(false);
         }
 
@@ -53,7 +53,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         // *before* executing the statement.
         let frame_idx = self.cur_frame();
         self.tcx.span = stmt.source_info.span;
-        self.memory.tcx.span = stmt.source_info.span;
+        self.memory_mut().tcx.span = stmt.source_info.span;
 
         match stmt.kind {
             Assign(ref place, ref rvalue) => self.eval_rvalue_into_place(rvalue, place)?,
@@ -102,16 +102,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             InlineAsm { .. } => return err!(InlineAsm),
         }
 
-        self.stack[frame_idx].stmt += 1;
+        self.stack_mut()[frame_idx].stmt += 1;
         Ok(())
     }
 
     fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<'tcx> {
         trace!("{:?}", terminator.kind);
         self.tcx.span = terminator.source_info.span;
-        self.memory.tcx.span = terminator.source_info.span;
+        self.memory_mut().tcx.span = terminator.source_info.span;
         self.eval_terminator(terminator)?;
-        if !self.stack.is_empty() {
+        if !self.stack().is_empty() {
             trace!("// {:?}", self.frame().block);
         }
         Ok(())
