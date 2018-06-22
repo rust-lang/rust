@@ -1,6 +1,6 @@
 use std::fmt::Write;
 use std::hash::{Hash, Hasher};
-use std::{mem, ptr};
+use std::mem;
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
@@ -98,8 +98,8 @@ impl<'mir, 'tcx: 'mir> Eq for Frame<'mir, 'tcx> {}
 impl<'mir, 'tcx: 'mir> PartialEq for Frame<'mir, 'tcx> {
     fn eq(&self, other: &Self) -> bool {
         let Frame {
-            mir,
-            instance: _,
+            mir: _,
+            instance,
             span: _,
             return_to_block,
             return_place,
@@ -108,8 +108,10 @@ impl<'mir, 'tcx: 'mir> PartialEq for Frame<'mir, 'tcx> {
             stmt,
         } = self;
 
-        ptr::eq(mir, &other.mir)
-            && *return_to_block == other.return_to_block // TODO: Are these two necessary?
+        // Some of these are constant during evaluation, but are included
+        // anyways for correctness.
+        *instance == other.instance
+            && *return_to_block == other.return_to_block
             && *return_place == other.return_place
             && *locals == other.locals
             && *block == other.block
@@ -120,8 +122,8 @@ impl<'mir, 'tcx: 'mir> PartialEq for Frame<'mir, 'tcx> {
 impl<'mir, 'tcx: 'mir> Hash for Frame<'mir, 'tcx> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         let Frame {
-            mir,
-            instance: _,
+            mir: _,
+            instance,
             span: _,
             return_to_block,
             return_place,
@@ -130,7 +132,7 @@ impl<'mir, 'tcx: 'mir> Hash for Frame<'mir, 'tcx> {
             stmt,
         } = self;
 
-        (mir as *const _ as usize).hash(state);
+        instance.hash(state);
         return_to_block.hash(state);
         return_place.hash(state);
         locals.hash(state);

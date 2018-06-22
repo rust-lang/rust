@@ -64,14 +64,13 @@ impl<'a, 'mir, 'tcx, M> PartialEq for Memory<'a, 'mir, 'tcx, M>
             alloc_kind,
             alloc_map,
             cur_frame,
-            tcx,
+            tcx: _,
         } = self;
 
         *data == other.data
             && *alloc_kind == other.alloc_kind
             && *alloc_map == other.alloc_map
             && *cur_frame == other.cur_frame
-            && ptr::eq(tcx, &other.tcx)
     }
 }
 
@@ -85,12 +84,11 @@ impl<'a, 'mir, 'tcx, M> Hash for Memory<'a, 'mir, 'tcx, M>
             alloc_kind: _,
             alloc_map: _,
             cur_frame,
-            tcx,
+            tcx: _,
         } = self;
 
         data.hash(state);
         cur_frame.hash(state);
-        (tcx as *const _ as usize).hash(state);
 
         // We ignore some fields which don't change between evaluation steps.
 
