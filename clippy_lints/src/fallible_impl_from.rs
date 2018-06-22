@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::hir;
 use rustc::ty;
 use syntax_pos::Span;
-use crate::utils::{match_def_path, method_chain_args, span_lint_and_then, walk_ptrs_ty, is_expn_of};
+use crate::utils::{match_def_path, method_chain_args, span_lint_and_then, walk_ptrs_ty, is_expn_of, opt_def_id};
 use crate::utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT, OPTION, RESULT};
 
 /// **What it does:** Checks for impls of `From<..>` that contain `panic!()` or `unwrap()`
@@ -65,8 +65,9 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
             if_chain! {
                 if let ExprCall(ref func_expr, _) = expr.node;
                 if let ExprPath(QPath::Resolved(_, ref path)) = func_expr.node;
-                if match_def_path(self.tcx, path.def.def_id(), &BEGIN_PANIC) ||
-                    match_def_path(self.tcx, path.def.def_id(), &BEGIN_PANIC_FMT);
+                if let Some(path_def_id) = opt_def_id(path.def);
+                if match_def_path(self.tcx, path_def_id, &BEGIN_PANIC) ||
+                    match_def_path(self.tcx, path_def_id, &BEGIN_PANIC_FMT);
                 if is_expn_of(expr.span, "unreachable").is_none();
                 then {
                     self.result.push(expr.span);
