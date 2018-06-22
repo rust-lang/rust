@@ -2,7 +2,7 @@ use syntax::ast::{IntTy, UintTy};
 use rustc_mir::monomorphize::MonoItem;
 
 use cretonne::prelude::*;
-//use cretonne::codegen::Context;
+use cretonne::codegen::Context;
 use cretonne::codegen::ir::{
     ExternalName,
     FuncRef,
@@ -31,6 +31,28 @@ impl EntityRef for Variable {
     fn index(self) -> usize {
         self.0.index()
     }
+}
+
+// FIXME(cretonne) fix load.i8
+fn load_workaround(fx: &mut FunctionCx, ty: Type, addr: Value, offset: i32) -> Value {
+    use cretonne::codegen::ir::types::*;
+    match ty {
+        I8 => fx.bcx.ins().uload8(I32, MemFlags::new(), addr, offset),
+        I16 => fx.bcx.ins().uload16(I32, MemFlags::new(), addr, offset),
+        // I32 and I64 work
+        _ => fx.bcx.ins().load(ty, MemFlags::new(), addr, offset),
+    }
+}
+
+// FIXME(cretonne) fix store.i8
+fn store_workaround(fx: &mut FunctionCx, ty: Type, addr: Value, val: Value, offset: i32) {
+    use cretonne::codegen::ir::types::*;
+    match ty {
+        I8 => fx.bcx.ins().istore8(MemFlags::new(), val, addr, offset),
+        I16 => fx.bcx.ins().istore16(MemFlags::new(), val, addr, offset),
+        // I32 and I64 work
+        _ => fx.bcx.ins().store(MemFlags::new(), val, addr, offset),
+    };
 }
 
 #[derive(Copy, Clone)]
@@ -65,7 +87,7 @@ impl CValue {
         match self {
             CValue::ByRef(value) => {
                 let cton_ty = cton_type_from_ty(ty).unwrap();
-                fx.bcx.ins().load(cton_ty, MemFlags::new(), value, 0)
+                load_workaround(fx, cton_ty, value, 0)
             }
             CValue::ByVal(value) => value,
             CValue::Func(func) => {
@@ -77,8 +99,8 @@ impl CValue {
     fn expect_byref(self) -> Value {
         match self {
             CValue::ByRef(value) => value,
-            CValue::ByVal(_) => unimplemented!("Expected CValue::ByRef, found CValue::ByVal"),
-            CValue::Func(_) => unimplemented!("Expected CValue::ByRef, found CValue::Func"),
+            CValue::ByVal(_) => bug!("Expected CValue::ByRef, found CValue::ByVal"),
+            CValue::Func(_) => bug!("Expected CValue::ByRef, found CValue::Func"),
         }
     }
 }
@@ -89,8 +111,12 @@ enum CPlace {
     Addr(Value),
 }
 
-impl CPlace {
-    fn to_cvalue<'a, 'tcx: 'a>(self, fx: &mut FunctionCx<'a, 'tcx>) -> CValue {
+impl<'a, 'tcx: 'a> CPlace {
+    fn from_stack_slot(fx: &mut FunctionCx<'a, 'tcx>, stack_slot: StackSlot) -> CPlace {
+        CPlace::Addr(fx.bcx.ins().stack_addr(types::I64, stack_slot, 0))
+    }
+
+    fn to_cvalue(self, fx: &mut FunctionCx<'a, 'tcx>) -> CValue {
         match self {
             CPlace::Var(var) => CValue::ByVal(fx.bcx.use_var(var)),
             CPlace::Addr(addr) => CValue::ByRef(addr),
@@ -100,7 +126,30 @@ impl CPlace {
     fn expect_addr(self) -> Value {
         match self {
             CPlace::Addr(addr) => addr,
-            CPlace::Var(_) => unreachable!("Expected CPlace::Addr, found CPlace::Var"),
+            CPlace::Var(_) => bug!("Expected CPlace::Addr, found CPlace::Var"),
+        }
+    }
+
+    fn write_cvalue(self, fx: &mut FunctionCx<'a, 'tcx>, from: CValue, ty: Ty<'tcx>) {
+        let layout = fx.tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
+        let size = layout.size.bytes() as i32;
+        match self {
+            CPlace::Var(var) => {
+                let data = from.load_value(fx, ty);
+                fx.bcx.def_var(var, data)
+            },
+            CPlace::Addr(addr) => {
+                if let Some(cton_ty) = cton_type_from_ty(ty) {
+                    let data = from.load_value(fx, ty);
+                    store_workaround(fx, cton_ty, addr, data, 0);
+                } else {
+                    for i in 0..size {
+                        let from = from.expect_byref();
+                        let byte = load_workaround(fx, types::I8, from, i);
+                        store_workaround(fx, types::I8, addr, byte, i);
+                    }
+                }
+            }
         }
     }
 }
@@ -109,66 +158,81 @@ pub fn trans_crate<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Box<Any> {
     let link_meta = ::build_link_meta(tcx.crate_hash(LOCAL_CRATE));
     let metadata = tcx.encode_metadata(&link_meta);
 
-    let module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
-    //let mut context = Context::new();
+    let mut module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
+    let mut context = Context::new();
+    let mut def_id_fn_id_map = HashMap::new();
 
-    let mut cx = CodegenCx {
-        tcx,
-        module,
-        def_id_fn_id_map: HashMap::new(),
-    };
-    let cx = &mut cx;
-
-    for mono_item in
-        collector::collect_crate_mono_items(
+    {
+        let mut cx = CodegenCx {
             tcx,
-            collector::MonoItemCollectionMode::Eager
-        ).0 {
-        match mono_item {
-            MonoItem::Fn(inst) => match inst {
-                Instance {
-                    def: InstanceDef::Item(def_id),
-                    substs,
-                } => {
-                    let sig = tcx.fn_sig(def_id);
-                    let sig = cton_sig_from_fn_sig(tcx, sig, substs);
-                    let func_id = {
-                        let module = &mut cx.module;
-                        *cx.def_id_fn_id_map.entry(inst).or_insert_with(|| {
-                            module.declare_function(&tcx.absolute_item_path_str(def_id), Linkage::Local, &sig).unwrap()
-                        })
-                    };
+            module: &mut module,
+            def_id_fn_id_map: &mut def_id_fn_id_map,
+        };
+        let cx = &mut cx;
 
-                    let mut f = Function::with_name_signature(ext_name_from_did(def_id), sig);
+        for mono_item in
+            collector::collect_crate_mono_items(
+                tcx,
+                collector::MonoItemCollectionMode::Eager
+            ).0 {
+            match mono_item {
+                MonoItem::Fn(inst) => match inst {
+                    Instance {
+                        def: InstanceDef::Item(def_id),
+                        substs,
+                    } => {
+                        let sig = tcx.fn_sig(def_id);
+                        let sig = cton_sig_from_fn_sig(tcx, sig, substs);
+                        let func_id = {
+                            let module = &mut cx.module;
+                            *cx.def_id_fn_id_map.entry(inst).or_insert_with(|| {
+                                module.declare_function(&tcx.absolute_item_path_str(def_id), Linkage::Local, &sig).unwrap()
+                            })
+                        };
 
-                    trans_fn(cx, &mut f, def_id, substs);
+                        let mut f = Function::with_name_signature(ext_name_from_did(def_id), sig);
 
-                    let mut mir = ::std::io::Cursor::new(Vec::new());
-                    ::rustc_mir::util::write_mir_pretty(cx.tcx, Some(def_id), &mut mir).unwrap();
-                    let mut cton = String::new();
-                    ::cretonne::codegen::write_function(&mut cton, &f, None).unwrap();
-                    tcx.sess.warn(&format!("{:?}:\n\n{}\n\n{}", def_id, String::from_utf8_lossy(&mir.into_inner()), cton));
+                        trans_fn(cx, &mut f, def_id, substs);
 
-                    let flags = settings::Flags::new(settings::builder());
-                    match ::cretonne::codegen::verify_function(&f, &flags) {
-                        Ok(_) => {}
-                        Err(err) => {
-                            tcx.sess.fatal(&format!("cretonne verify error: {}", err));
+                        let mut mir = ::std::io::Cursor::new(Vec::new());
+                        ::rustc_mir::util::write_mir_pretty(cx.tcx, Some(def_id), &mut mir).unwrap();
+                        let mut cton = String::new();
+                        ::cretonne::codegen::write_function(&mut cton, &f, None).unwrap();
+                        tcx.sess.warn(&format!("{:?}:\n\n{}\n\n{}", def_id, String::from_utf8_lossy(&mir.into_inner()), cton));
+
+                        let flags = settings::Flags::new(settings::builder());
+                        match ::cretonne::codegen::verify_function(&f, &flags) {
+                            Ok(_) => {}
+                            Err(err) => {
+                                tcx.sess.fatal(&format!("cretonne verify error: {}", err));
+                            }
                         }
-                    }
 
-                    //context.func = f;
-                    //cx.module.define_function(func_id, &mut context).unwrap();
-                    //context.clear();
+                        context.func = f;
+                        cx.module.define_function(func_id, &mut context).unwrap();
+                        context.clear();
+                    }
+                    _ => {}
                 }
                 _ => {}
             }
-            _ => {}
         }
     }
 
-    //cx.module.finalize_all();
-    //cx.module.finish();
+    module.finalize_all();
+
+    for (inst, func_id) in def_id_fn_id_map.iter() {
+        if tcx.absolute_item_path_str(inst.def_id()) != "example::ret_42" {
+            continue;
+        }
+        let finalized_function: *const u8 = module.finalize_function(*func_id);
+        let f: extern "C" fn(&mut u32) = unsafe { ::std::mem::transmute(finalized_function) };
+        let mut res = 0u32;
+        f(&mut res);
+        tcx.sess.warn(&format!("ret_42 returned {}", res));
+    }
+
+    module.finish();
 
     tcx.sess.fatal("unimplemented");
 
@@ -179,10 +243,10 @@ pub fn trans_crate<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Box<Any> {
     })
 }
 
-struct CodegenCx<'a, 'tcx: 'a> {
+struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    module: Module<CurrentBackend>,
-    def_id_fn_id_map: HashMap<Instance<'tcx>, FuncId>,
+    module: &'a mut Module<B>,
+    def_id_fn_id_map: &'a mut HashMap<Instance<'tcx>, FuncId>,
 }
 
 struct FunctionCx<'a, 'tcx: 'a> {
@@ -215,7 +279,7 @@ impl<'f, 'tcx> FunctionCx<'f, 'tcx> {
     }
 }
 
-fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx>, f: &mut Function, def_id: DefId, substs: &Substs<'tcx>) {
+fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut Function, def_id: DefId, substs: &Substs<'tcx>) {
     let mir = cx.tcx.optimized_mir(def_id);
     let mut func_ctx = FunctionBuilderContext::new();
     let mut bcx: FunctionBuilder<Variable> = FunctionBuilder::new(f, &mut func_ctx);
@@ -259,13 +323,13 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx>, f: &mut Function, def_id
     fx.local_map.insert(RETURN_PLACE, CPlace::Addr(ret_param));
 
     for (local, ebb_param, ty, stack_slot) in func_params {
-        let addr = fx.bcx.ins().stack_addr(types::I64, stack_slot, 0);
+        let place = CPlace::from_stack_slot(fx, stack_slot);
         if ty.is_some() {
             fx.bcx.ins().stack_store(ebb_param, stack_slot, 0);
         } else {
-            do_memcpy(fx, CPlace::Addr(addr), CValue::ByRef(ebb_param), mir.local_decls[local].ty);
+            place.write_cvalue(fx, CValue::ByRef(ebb_param), mir.local_decls[local].ty);
         }
-        fx.local_map.insert(local, CPlace::Addr(addr));
+        fx.local_map.insert(local, place);
     }
 
     for local in mir.vars_and_temps_iter() {
@@ -275,8 +339,8 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx>, f: &mut Function, def_id
             size: layout.size.bytes() as u32,
             offset: None,
         });
-        let addr = fx.bcx.ins().stack_addr(types::I64, stack_slot, 0);
-        fx.local_map.insert(local, CPlace::Addr(addr));
+        let place = CPlace::from_stack_slot(fx, stack_slot);
+        fx.local_map.insert(local, place);
     }
 
     fx.bcx.ins().jump(*fx.ebb_map.get(&START_BLOCK).unwrap(), &[]);
@@ -393,7 +457,7 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
             match rval {
                 Rvalue::Use(operand) => {
                     let val = trans_operand(fx, operand);
-                    do_memcpy(fx, lval, val, ty);
+                    lval.write_cvalue(fx, val, ty);
                 },
                 Rvalue::CheckedBinaryOp(bin_op, lhs, rhs) => {
                     let ty = lhs.ty(&fx.mir.local_decls, fx.tcx);
@@ -414,15 +478,15 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                         }
                         _ => unimplemented!(),
                     };
-                    do_memcpy(fx, lval, CValue::ByVal(res), ty);
+                    lval.write_cvalue(fx, CValue::ByVal(res), ty);
                 }
                 Rvalue::Cast(CastKind::ReifyFnPointer, operand, ty) => {
                     let operand = trans_operand(fx, operand);
-                    do_memcpy(fx, lval, operand, ty);
+                    lval.write_cvalue(fx, operand, ty);
                 }
                 Rvalue::Cast(CastKind::UnsafeFnPointer, operand, ty) => {
                     let operand = trans_operand(fx, operand);
-                    do_memcpy(fx, lval, operand, ty);
+                    lval.write_cvalue(fx, operand, ty);
                 }
                 rval => unimplemented!("rval {:?}", rval),
             }
@@ -485,29 +549,6 @@ fn trans_operand<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx>, operand: &Operand<'tcx
                     }
                 }
                 _ => unimplemented!()
-            }
-        }
-    }
-}
-
-fn do_memcpy<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, to: CPlace, from: CValue, ty: Ty<'tcx>) {
-    let layout = fx.tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
-    let size = layout.size.bytes() as i32;
-    match to {
-        CPlace::Var(var) => {
-            let data = from.load_value(fx, ty);
-            fx.bcx.def_var(var, data)
-        },
-        CPlace::Addr(addr) => {
-            if cton_type_from_ty(ty).is_some() {
-                let data = from.load_value(fx, ty);
-                fx.bcx.ins().store(MemFlags::new(), data, addr, 0);
-            } else {
-                for i in 0..size {
-                    let from = from.expect_byref();
-                    let byte = fx.bcx.ins().load(types::I8, MemFlags::new(), from, i);
-                    fx.bcx.ins().store(MemFlags::new(), byte, addr, i);
-                }
             }
         }
     }
