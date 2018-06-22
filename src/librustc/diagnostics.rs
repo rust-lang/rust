@@ -2134,7 +2134,7 @@ register_diagnostics! {
 
     E0906, // closures cannot be static
 
-    E0703, // multiple different lifetimes used in arguments of `async fn`
-    E0704, // multiple elided lifetimes used in arguments of `async fn`
-    E0705, // `async` non-`move` closures with arguments are not currently supported
+    E0725, // multiple different lifetimes used in arguments of `async fn`
+    E0726, // multiple elided lifetimes used in arguments of `async fn`
+    E0727, // `async` non-`move` closures with arguments are not currently supported
 }

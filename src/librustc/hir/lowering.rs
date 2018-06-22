@@ -877,7 +877,7 @@ impl<'a> LoweringContext<'a> {
 
         let unstable_span = self.allow_internal_unstable(CompilerDesugaringKind::Async, span);
         let gen_future = self.expr_std_path(
-            unstable_span, &["raw", "future_from_generator"], None, ThinVec::new());
+            unstable_span, &["future", "future_from_generator"], None, ThinVec::new());
         hir::ExprCall(P(gen_future), hir_vec![generator])
     }
 
@@ -2049,7 +2049,7 @@ impl<'a> LoweringContext<'a> {
                             struct_span_err!(
                                 self.context.sess,
                                 current_lt_span.between(lifetime.span),
-                                E0703,
+                                E0725,
                                 "multiple different lifetimes used in arguments of `async fn`",
                             )
                                 .span_label(current_lt_span, "first lifetime here")
@@ -2061,7 +2061,7 @@ impl<'a> LoweringContext<'a> {
                             struct_span_err!(
                                 self.context.sess,
                                 current_lt_span.between(lifetime.span),
-                                E0704,
+                                E0726,
                                 "multiple elided lifetimes used in arguments of `async fn`",
                             )
                                 .span_label(current_lt_span, "first lifetime here")
@@ -2582,9 +2582,10 @@ impl<'a> LoweringContext<'a> {
                 let fn_def_id = self.resolver.definitions().local_def_id(id);
 
                 self.with_new_scopes(|this| {
-                    // Note: we can use non-async decl here because lower_body
-                    // only cares about the input argument patterns,
-                    // not the return types.
+                    // Note: we don't need to change the return type from `T` to
+                    // `impl Future<Output = T>` here because lower_body
+                    // only cares about the input argument patterns in the function
+                    // declaration (decl), not the return types.
                     let body_id = this.lower_body(Some(decl), |this| {
                         if let IsAsync::Async(async_node_id) = header.asyncness {
                             let async_expr = this.make_async_expr(
@@ -3560,7 +3561,7 @@ impl<'a> LoweringContext<'a> {
                             struct_span_err!(
                                 this.sess,
                                 fn_decl_span,
-                                E0705,
+                                E0727,
                                 "`async` non-`move` closures with arguments \
                                 are not currently supported",
                             )

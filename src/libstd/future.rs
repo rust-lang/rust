@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(missing_docs)]
-#![unstable(feature = "raw", issue = "27751")]
-
-//! Contains struct definitions for the layout of compiler built-in types.
-//!
-//! They can be used as targets of transmutes in unsafe code for manipulating
-//! the raw representations directly.
-//!
-//! Their definition should always match the ABI defined in `rustc::back::abi`.
+//! Asynchronous values.
 
 use core::cell::Cell;
-use core::future::Future;
 use core::marker::Unpin;
 use core::mem::PinMut;
 use core::option::Option;
@@ -27,8 +18,8 @@ use core::ptr::NonNull;
 use core::task::{self, Poll};
 use core::ops::{Drop, Generator, GeneratorState};
 
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::raw::*;
+#[doc(inline)]
+pub use core::future::*;
 
 /// Wrap a future in a generator.
 ///
@@ -52,7 +43,7 @@ impl<T: Generator<Yield = ()>> !Unpin for GenFuture<T> {}
 impl<T: Generator<Yield = ()>> Future for GenFuture<T> {
     type Output = T::Return;
     fn poll(self: PinMut<Self>, cx: &mut task::Context) -> Poll<Self::Output> {
-        with_set_cx(cx, || match unsafe { PinMut::get_mut(self).0.resume() } {
+        set_task_cx(cx, || match unsafe { PinMut::get_mut(self).0.resume() } {
             GeneratorState::Yielded(()) => Poll::Pending,
             GeneratorState::Complete(x) => Poll::Ready(x),
         })
@@ -74,7 +65,8 @@ impl Drop for SetOnDrop {
 }
 
 #[unstable(feature = "gen_future", issue = "50547")]
-pub fn with_set_cx<F, R>(cx: &mut task::Context, f: F) -> R
+/// Sets the thread-local task context used by async/await futures.
+pub fn set_task_cx<F, R>(cx: &mut task::Context, f: F) -> R
 where
     F: FnOnce() -> R
 {
@@ -90,7 +82,11 @@ where
 }
 
 #[unstable(feature = "gen_future", issue = "50547")]
-pub fn with_get_cx<F, R>(f: F) -> R
+/// Retrieves the thread-local task context used by async/await futures.
+///
+/// Panics if no task has been set or if the task context has already been
+/// retrived by a surrounding call to get_task_cx.
+pub fn get_task_cx<F, R>(f: F) -> R
 where
     F: FnOnce(&mut task::Context) -> R
 {
