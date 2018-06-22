@@ -168,6 +168,7 @@ pub trait Resolver {
         span: Span,
         crate_root: Option<&str>,
         components: &[&str],
+        params: Option<P<hir::PathParameters>>
         is_value: bool,
     ) -> hir::Path;
 }
@@ -876,7 +877,7 @@ impl<'a> LoweringContext<'a> {
 
         let unstable_span = self.allow_internal_unstable(CompilerDesugaringKind::Async, span);
         let gen_future = self.expr_std_path(
-            unstable_span, &["raw", "future_from_generator"], ThinVec::new());
+            unstable_span, &["raw", "future_from_generator"], None, ThinVec::new());
         hir::ExprCall(P(gen_future), hir_vec![generator])
     }
 
@@ -2115,24 +2116,21 @@ impl<'a> LoweringContext<'a> {
                 }
             };
 
-            let hir::Path { def, segments, .. } = this.std_path(span, &["future", "Future"], false);
-            let future_path = hir::Path {
-                segments: segments.map_slice(|mut v| {
-                    v.last_mut().unwrap().parameters = Some(P(hir::PathParameters {
-                        lifetimes: hir_vec![],
-                        types: hir_vec![],
-                        bindings: hir_vec![hir::TypeBinding {
-                            name: Symbol::intern(FN_OUTPUT_NAME),
-                            ty: output_ty,
-                            id: this.next_id().node_id,
-                            span,
-                        }],
-                        parenthesized: false,
-                    }));
-                    v
-                }),
-                def, span
-            };
+            // "<Output = T>"
+            let future_params = P(hir::PathParameters {
+                lifetimes: hir_vec![],
+                types: hir_vec![],
+                bindings: hir_vec![hir::TypeBinding {
+                    name: Symbol::intern(FN_OUTPUT_NAME),
+                    ty: output_ty,
+                    id: this.next_id().node_id,
+                    span,
+                }],
+                parenthesized: false,
+            });
+
+            let let future_path =
+                this.std_path(span, &["future", "Future"], Some(future_params), false);
 
             // FIXME(cramertj) collect input lifetimes to function and add them to
             // the output `impl Trait` type here.
@@ -3665,7 +3663,7 @@ impl<'a> LoweringContext<'a> {
                 let id = self.next_id();
                 let e1 = self.lower_expr(e1);
                 let e2 = self.lower_expr(e2);
-                let ty_path = P(self.std_path(span, &["ops", "RangeInclusive"], false));
+                let ty_path = P(self.std_path(span, &["ops", "RangeInclusive"], None, false));
                 let ty = self.ty_path(id, span, hir::QPath::Resolved(None, ty_path));
                 let new_seg = P(hir::PathSegment::from_name(Symbol::intern("new")));
                 let new_path = hir::QPath::TypeRelative(ty, new_seg);
@@ -3705,7 +3703,7 @@ impl<'a> LoweringContext<'a> {
                 let struct_path = iter::once("ops")
                     .chain(iter::once(path))
                     .collect::<Vec<_>>();
-                let struct_path = self.std_path(unstable_span, &struct_path, is_unit);
+                let struct_path = self.std_path(unstable_span, &struct_path, None, is_unit);
                 let struct_path = hir::QPath::Resolved(None, P(struct_path));
 
                 let LoweredNodeId { node_id, hir_id } = self.lower_node_id(e.id);
@@ -3982,7 +3980,7 @@ impl<'a> LoweringContext<'a> {
                     let iter = P(self.expr_ident(head_sp, iter, iter_pat.id));
                     let ref_mut_iter = self.expr_mut_addr_of(head_sp, iter);
                     let next_path = &["iter", "Iterator", "next"];
-                    let next_path = P(self.expr_std_path(head_sp, next_path, ThinVec::new()));
+                    let next_path = P(self.expr_std_path(head_sp, next_path, None, ThinVec::new()));
                     let next_expr = P(self.expr_call(head_sp, next_path, hir_vec![ref_mut_iter]));
                     let arms = hir_vec![pat_arm, break_arm];
 
@@ -4040,7 +4038,8 @@ impl<'a> LoweringContext<'a> {
                 // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
                 let into_iter_expr = {
                     let into_iter_path = &["iter", "IntoIterator", "into_iter"];
-                    let into_iter = P(self.expr_std_path(head_sp, into_iter_path, ThinVec::new()));
+                    let into_iter = P(self.expr_std_path(
+                            head_sp, into_iter_path, None, ThinVec::new()));
                     P(self.expr_call(head_sp, into_iter, hir_vec![head]))
                 };
 
@@ -4086,7 +4085,8 @@ impl<'a> LoweringContext<'a> {
                     let sub_expr = self.lower_expr(sub_expr);
 
                     let path = &["ops", "Try", "into_result"];
-                    let path = P(self.expr_std_path(unstable_span, path, ThinVec::new()));
+                    let path = P(self.expr_std_path(
+                            unstable_span, path, None, ThinVec::new()));
                     P(self.expr_call(e.span, path, hir_vec![sub_expr]))
                 };
 
@@ -4125,7 +4125,8 @@ impl<'a> LoweringContext<'a> {
                     let err_local = self.pat_ident(e.span, err_ident);
                     let from_expr = {
                         let path = &["convert", "From", "from"];
-                        let from = P(self.expr_std_path(e.span, path, ThinVec::new()));
+                        let from = P(self.expr_std_path(
+                                e.span, path, None, ThinVec::new()));
                         let err_expr = self.expr_ident(e.span, err_ident, err_local.id);
 
                         self.expr_call(e.span, from, hir_vec![err_expr])
@@ -4365,9 +4366,10 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         span: Span,
         components: &[&str],
+        params: Option<P<hir::PathParameters>>,
         attrs: ThinVec<Attribute>,
     ) -> hir::Expr {
-        let path = self.std_path(span, components, true);
+        let path = self.std_path(span, components, params, true);
         self.expr(
             span,
             hir::ExprPath(hir::QPath::Resolved(None, P(path))),
@@ -4492,7 +4494,7 @@ impl<'a> LoweringContext<'a> {
         components: &[&str],
         subpats: hir::HirVec<P<hir::Pat>>,
     ) -> P<hir::Pat> {
-        let path = self.std_path(span, components, true);
+        let path = self.std_path(span, components, None, true);
         let qpath = hir::QPath::Resolved(None, P(path));
         let pt = if subpats.is_empty() {
             hir::PatKind::Path(qpath)
@@ -4539,9 +4541,15 @@ impl<'a> LoweringContext<'a> {
     /// Given suffix ["b","c","d"], returns path `::std::b::c::d` when
     /// `fld.cx.use_std`, and `::core::b::c::d` otherwise.
     /// The path is also resolved according to `is_value`.
-    fn std_path(&mut self, span: Span, components: &[&str], is_value: bool) -> hir::Path {
+    fn std_path(
+        &mut self,
+        span: Span,
+        components: &[&str],
+        params: Option<P<hir::PathParameters>>,
+        is_value: bool
+    ) -> hir::Path {
         self.resolver
-            .resolve_str_path(span, self.crate_root, components, is_value)
+            .resolve_str_path(span, self.crate_root, components, params, is_value)
     }
 
     fn ty_path(&mut self, id: LoweredNodeId, span: Span, qpath: hir::QPath) -> P<hir::Ty> {
@@ -4673,7 +4681,7 @@ impl<'a> LoweringContext<'a> {
         unstable_span: Span,
     ) -> P<hir::Expr> {
         let path = &["ops", "Try", method];
-        let from_err = P(self.expr_std_path(unstable_span, path,
+        let from_err = P(self.expr_std_path(unstable_span, path, None,
                                             ThinVec::new()));
         P(self.expr_call(e.span, from_err, hir_vec![e]))
     }

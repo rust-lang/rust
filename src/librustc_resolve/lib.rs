@@ -1489,14 +1489,34 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
                                  |resolver, span, error| resolve_error(resolver, span, error))
     }
 
-    fn resolve_str_path(&mut self, span: Span, crate_root: Option<&str>,
-                        components: &[&str], is_value: bool) -> hir::Path {
+    fn resolve_str_path(
+        &mut self,
+        span: Span,
+        crate_root: Option<&str>,
+        components: &[&str],
+        params: Option<hir::PathParameters>,
+        is_value: bool
+    ) -> hir::Path {
+        let mut segments = iter::once(keywords::CrateRoot.name())
+            .chain(
+                crate_root.into_iter()
+                    .chain(components.iter().cloned())
+                    .map(Symbol::intern)
+            ).map(hir::PathSegment::from_name).collect::<Vec<_>>();
+
+        if let Some(parameters) = params {
+            let last_name = segments.last().unwrap().name;
+            *segments.last_mut().unwrap() = hir::PathSegment {
+                name,
+                parameters,
+                infer_types: true,
+            };
+        }
+
         let mut path = hir::Path {
             span,
             def: Def::Err,
-            segments: iter::once(keywords::CrateRoot.name()).chain({
-                crate_root.into_iter().chain(components.iter().cloned()).map(Symbol::intern)
-            }).map(hir::PathSegment::from_name).collect(),
+            segments: segments.into(),
         };
 
         self.resolve_hir_path(&mut path, is_value);
