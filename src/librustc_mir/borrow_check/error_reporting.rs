@@ -60,7 +60,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 .cannot_act_on_uninitialized_variable(
                     span,
                     desired_action.as_noun(),
-                    &self.describe_place_with_options(place, IncludingDowncast(true)).unwrap_or("_".to_owned()),
+                    &self
+                        .describe_place_with_options(place, IncludingDowncast(true))
+                        .unwrap_or("_".to_owned()),
                     Origin::Mir,
                 )
                 .span_label(span, format!("use of possibly uninitialized {}", item_msg))
@@ -79,7 +81,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let mut is_loop_move = false;
             for moi in &mois {
                 let move_msg = ""; //FIXME: add " (into closure)"
-                let move_span = self.mir.source_info(self.move_data.moves[**moi].source).span;
+                let move_span = self
+                    .mir
+                    .source_info(self.move_data.moves[**moi].source)
+                    .span;
                 if span == move_span {
                     err.span_label(
                         span,
@@ -120,7 +125,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     let place = &self.move_data.move_paths[mpi].place;
 
                     if let Some(ty) = self.retrieve_type_for_place(place) {
-                        let note_msg = match self.describe_place_with_options(place, IncludingDowncast(true)) {
+                        let note_msg = match self
+                            .describe_place_with_options(place, IncludingDowncast(true))
+                        {
                             Some(name) => format!("`{}`", name),
                             None => "value".to_owned(),
                         };
@@ -649,8 +656,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let local_decl = &self.mir.local_decls[*local];
             if let Some(name) = local_decl.name {
                 if local_decl.can_be_made_mutable() {
-                    err.span_label(local_decl.source_info.span,
-                                   format!("consider changing this to `mut {}`", name));
+                    err.span_label(
+                        local_decl.source_info.span,
+                        format!("consider changing this to `mut {}`", name),
+                    );
                 }
             }
         }
@@ -672,7 +681,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     // place is a temporary for instance, None will be returned.
     // `IncludingDowncast` parameter makes the function return `Err` if `ProjectionElem` is
     // `Downcast` and `IncludingDowncast` is true
-    pub(super) fn describe_place_with_options(&self, place: &Place<'tcx>, including_downcast: IncludingDowncast) -> Option<String> {
+    pub(super) fn describe_place_with_options(
+        &self,
+        place: &Place<'tcx>,
+        including_downcast: IncludingDowncast,
+    ) -> Option<String> {
         let mut buf = String::new();
         match self.append_place_to_string(place, &mut buf, false, &including_downcast) {
             Ok(()) => Some(buf),
@@ -708,15 +721,30 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             }
                         } else {
                             if autoderef {
-                                self.append_place_to_string(&proj.base, buf, autoderef, &including_downcast)?;
+                                self.append_place_to_string(
+                                    &proj.base,
+                                    buf,
+                                    autoderef,
+                                    &including_downcast,
+                                )?;
                             } else {
                                 buf.push_str(&"*");
-                                self.append_place_to_string(&proj.base, buf, autoderef, &including_downcast)?;
+                                self.append_place_to_string(
+                                    &proj.base,
+                                    buf,
+                                    autoderef,
+                                    &including_downcast,
+                                )?;
                             }
                         }
                     }
                     ProjectionElem::Downcast(..) => {
-                        self.append_place_to_string(&proj.base, buf, autoderef, &including_downcast)?;
+                        self.append_place_to_string(
+                            &proj.base,
+                            buf,
+                            autoderef,
+                            &including_downcast,
+                        )?;
                         if including_downcast.0 {
                             return Err(());
                         }
@@ -730,14 +758,24 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             buf.push_str(&name);
                         } else {
                             let field_name = self.describe_field(&proj.base, field);
-                            self.append_place_to_string(&proj.base, buf, autoderef, &including_downcast)?;
+                            self.append_place_to_string(
+                                &proj.base,
+                                buf,
+                                autoderef,
+                                &including_downcast,
+                            )?;
                             buf.push_str(&format!(".{}", field_name));
                         }
                     }
                     ProjectionElem::Index(index) => {
                         autoderef = true;
 
-                        self.append_place_to_string(&proj.base, buf, autoderef, &including_downcast)?;
+                        self.append_place_to_string(
+                            &proj.base,
+                            buf,
+                            autoderef,
+                            &including_downcast,
+                        )?;
                         buf.push_str("[");
                         if let Err(_) = self.append_local_to_string(index, buf) {
                             buf.push_str("..");
@@ -749,7 +787,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         // Since it isn't possible to borrow an element on a particular index and
                         // then use another while the borrow is held, don't output indices details
                         // to avoid confusing the end-user
-                        self.append_place_to_string(&proj.base, buf, autoderef, &including_downcast)?;
+                        self.append_place_to_string(
+                            &proj.base,
+                            buf,
+                            autoderef,
+                            &including_downcast,
+                        )?;
                         buf.push_str(&"[..]");
                     }
                 };
