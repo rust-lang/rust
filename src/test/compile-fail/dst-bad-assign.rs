@@ -47,5 +47,5 @@ pub fn main() {
     //~| expected type `ToBar`
     //~| found type `Bar1`
     //~| expected trait ToBar, found struct `Bar1`
-    //~| ERROR `ToBar: std::marker::Sized` is not satisfied
+    //~| ERROR the size for value values of type
 }

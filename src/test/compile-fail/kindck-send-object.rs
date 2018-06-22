@@ -24,7 +24,8 @@ fn object_ref_with_static_bound_not_ok() {
 }
 
 fn box_object_with_no_bound_not_ok<'a>() {
-    assert_send::<Box<Dummy>>(); //~ ERROR : std::marker::Send` is not satisfied
+    assert_send::<Box<Dummy>>();
+    //~^ ERROR `Dummy` cannot be sent between threads safely
 }
 
 fn object_with_send_bound_ok() {

@@ -104,8 +104,11 @@ use super::LoopState;
 /// assert_eq!(c.0, vec![0, 1, 2, 3, 4]);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented="a collection of type `{Self}` cannot be \
-                          built from an iterator over elements of type `{A}`"]
+#[rustc_on_unimplemented(
+    message="a collection of type `{Self}` cannot be built from an iterator \
+             over elements of type `{A}`",
+    label="a collection of type `{Self}` cannot be built from `std::iter::Iterator<Item={A}>`",
+)]
 pub trait FromIterator<A>: Sized {
     /// Creates a value from an iterator.
     ///

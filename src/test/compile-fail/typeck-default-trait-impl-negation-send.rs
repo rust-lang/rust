@@ -27,5 +27,5 @@ fn is_send<T: Send>() {}
 fn main() {
     is_send::<MySendable>();
     is_send::<MyNotSendable>();
-    //~^ ERROR `MyNotSendable: std::marker::Send` is not satisfied
+    //~^ ERROR `MyNotSendable` cannot be sent between threads safely
 }

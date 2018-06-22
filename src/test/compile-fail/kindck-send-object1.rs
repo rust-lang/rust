@@ -37,7 +37,7 @@ fn test61() {
 // them not ok
 fn test_71<'a>() {
     assert_send::<Box<Dummy+'a>>();
-    //~^ ERROR : std::marker::Send` is not satisfied
+    //~^ ERROR `Dummy + 'a` cannot be sent between threads safely
 }
 
 fn main() { }

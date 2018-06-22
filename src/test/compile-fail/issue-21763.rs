@@ -17,5 +17,5 @@ fn foo<T: Send>() {}
 
 fn main() {
     foo::<HashMap<Rc<()>, Rc<()>>>();
-    //~^ ERROR: `std::rc::Rc<()>: std::marker::Send` is not satisfied
+    //~^ ERROR `std::rc::Rc<()>` cannot be sent between threads safely
 }

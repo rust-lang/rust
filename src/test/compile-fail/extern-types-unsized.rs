@@ -30,14 +30,14 @@ fn assert_sized<T>() { }
 
 fn main() {
     assert_sized::<A>();
-    //~^ ERROR the trait bound `A: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
 
     assert_sized::<Foo>();
-    //~^ ERROR the trait bound `A: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
 
     assert_sized::<Bar<A>>();
-    //~^ ERROR the trait bound `A: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
 
     assert_sized::<Bar<Bar<A>>>();
-    //~^ ERROR the trait bound `A: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
 }

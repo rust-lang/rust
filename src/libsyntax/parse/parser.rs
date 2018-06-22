@@ -638,7 +638,26 @@ impl<'a> Parser<'a> {
                 let mut err = self.fatal(&format!("expected `{}`, found `{}`",
                                                   token_str,
                                                   this_token_str));
-                err.span_label(self.span, format!("expected `{}`", token_str));
+
+                let sp = if self.token == token::Token::Eof {
+                    // EOF, don't want to point at the following char, but rather the last token
+                    self.prev_span
+                } else {
+                    self.sess.codemap().next_point(self.prev_span)
+                };
+                let label_exp = format!("expected `{}`", token_str);
+                let cm = self.sess.codemap();
+                match (cm.lookup_line(self.span.lo()), cm.lookup_line(sp.lo())) {
+                    (Ok(ref a), Ok(ref b)) if a.line == b.line => {
+                        // When the spans are in the same line, it means that the only content
+                        // between them is whitespace, point only at the found token.
+                        err.span_label(self.span, label_exp);
+                    }
+                    _ => {
+                        err.span_label(sp, label_exp);
+                        err.span_label(self.span, "unexpected token");
+                    }
+                }
                 Err(err)
             }
         } else {
@@ -1204,14 +1223,6 @@ impl<'a> Parser<'a> {
     }
     fn span_fatal_err<S: Into<MultiSpan>>(&self, sp: S, err: Error) -> DiagnosticBuilder<'a> {
         err.span_err(sp, self.diagnostic())
-    }
-    fn span_fatal_help<S: Into<MultiSpan>>(&self,
-                                            sp: S,
-                                            m: &str,
-                                            help: &str) -> DiagnosticBuilder<'a> {
-        let mut err = self.sess.span_diagnostic.struct_span_fatal(sp, m);
-        err.help(help);
-        err
     }
     fn bug(&self, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(self.span, m)
@@ -5985,12 +5996,13 @@ impl<'a> Parser<'a> {
 `pub(super)`: visible only in the current module's parent
 `pub(in path::to::module)`: visible only on the specified path"##;
                 let path = self.parse_path(PathStyle::Mod)?;
-                let path_span = self.prev_span;
+                let sp = self.prev_span;
                 let help_msg = format!("make this visible only to module `{}` with `in`", path);
                 self.expect(&token::CloseDelim(token::Paren))?;  // `)`
-                let mut err = self.span_fatal_help(path_span, msg, suggestion);
+                let mut err = struct_span_err!(self.sess.span_diagnostic, sp, E0704, "{}", msg);
+                err.help(suggestion);
                 err.span_suggestion_with_applicability(
-                    path_span, &help_msg, format!("in {}", path), Applicability::MachineApplicable
+                    sp, &help_msg, format!("in {}", path), Applicability::MachineApplicable
                 );
                 err.emit();  // emit diagnostic, but continue with public visibility
             }
@@ -6534,12 +6546,15 @@ impl<'a> Parser<'a> {
                     Some(abi) => Ok(Some(abi)),
                     None => {
                         let prev_span = self.prev_span;
-                        self.span_err(
+                        let mut err = struct_span_err!(
+                            self.sess.span_diagnostic,
                             prev_span,
-                            &format!("invalid ABI: expected one of [{}], \
-                                     found `{}`",
-                                    abi::all_names().join(", "),
-                                    s));
+                            E0703,
+                            "invalid ABI: found `{}`",
+                            s);
+                        err.span_label(prev_span, "invalid ABI");
+                        err.help(&format!("valid ABIs: {}", abi::all_names().join(", ")));
+                        err.emit();
                         Ok(None)
                     }
                 }

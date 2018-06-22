@@ -10,7 +10,7 @@
 
 struct Table {
     rows: [[String]],
-    //~^ ERROR the trait bound `[std::string::String]: std::marker::Sized` is not satisfied [E0277]
+    //~^ ERROR the size for value values of type
 }
 
 fn f(table: &Table) -> &[String] {

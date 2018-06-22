@@ -24,5 +24,5 @@ fn main() {
     //~^ ERROR `A` cannot be shared between threads safely [E0277]
 
     assert_send::<A>();
-    //~^ ERROR the trait bound `A: std::marker::Send` is not satisfied
+    //~^ ERROR `A` cannot be sent between threads safely [E0277]
 }

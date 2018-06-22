@@ -24,5 +24,5 @@ fn is_send<T: Send>() { }
 
 fn main() {
     is_send::<Foo>();
-    //~^ ERROR the trait bound `*const u8: std::marker::Send` is not satisfied in `Foo`
+    //~^ ERROR `*const u8` cannot be sent between threads safely
 }

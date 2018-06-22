@@ -14,7 +14,7 @@
 trait Foo : Send+Sync { }
 
 impl <T: Sync+'static> Foo for (T,) { }
-//~^ ERROR the trait bound `T: std::marker::Send` is not satisfied in `(T,)` [E0277]
+//~^ ERROR `T` cannot be sent between threads safely [E0277]
 
 impl <T: Send> Foo for (T,T) { }
 //~^ ERROR `T` cannot be shared between threads safely [E0277]

@@ -13,7 +13,7 @@
 trait Foo {
     const BAR: i32;
     fn foo(self) -> &'static i32 {
-        //~^ ERROR the trait bound `Self: std::marker::Sized` is not satisfied
+        //~^ ERROR the size for value values of type
         &<Self>::BAR
     }
 }

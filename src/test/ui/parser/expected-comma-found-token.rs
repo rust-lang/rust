@@ -8,16 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(generators, generator_trait)]
+// Tests that two closures cannot simultaneously have mutable
+// access to the variable, whether that mutable access be used
+// for direct assignment or for taking mutable ref. Issue #6801.
 
-use std::ops::Generator;
+#![feature(on_unimplemented)]
 
-fn main() {
-   let s = String::from("foo");
-   let mut gen = move || {
-   //~^ ERROR the size for value values of type
-       yield s[..];
-   };
-   unsafe { gen.resume(); }
-   //~^ ERROR the size for value values of type
-}
+#[rustc_on_unimplemented(
+    message="the message"
+    label="the label"
+)]
+trait T {}
+//~^^^ ERROR expected one of `)` or `,`, found `label`

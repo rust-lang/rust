@@ -30,37 +30,54 @@ struct Path4(PathHelper4);
 
 enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
     // parameter
-    VA(W), //~ ERROR `W: std::marker::Sized` is not satisfied
-    VB{x: X}, //~ ERROR `X: std::marker::Sized` is not satisfied
-    VC(isize, Y), //~ ERROR `Y: std::marker::Sized` is not satisfied
-    VD{u: isize, x: Z}, //~ ERROR `Z: std::marker::Sized` is not satisfied
+    VA(W),
+    //~^ ERROR the size for value values of type
+    VB{x: X},
+    //~^ ERROR the size for value values of type
+    VC(isize, Y),
+    //~^ ERROR the size for value values of type
+    VD{u: isize, x: Z},
+    //~^ ERROR the size for value values of type
 
     // slice / str
-    VE([u8]), //~ ERROR `[u8]: std::marker::Sized` is not satisfied
-    VF{x: str}, //~ ERROR `str: std::marker::Sized` is not satisfied
-    VG(isize, [f32]), //~ ERROR `[f32]: std::marker::Sized` is not satisfied
-    VH{u: isize, x: [u32]}, //~ ERROR `[u32]: std::marker::Sized` is not satisfied
+    VE([u8]),
+    //~^ ERROR the size for value values of type
+    VF{x: str},
+    //~^ ERROR the size for value values of type
+    VG(isize, [f32]),
+    //~^ ERROR the size for value values of type
+    VH{u: isize, x: [u32]},
+    //~^ ERROR the size for value values of type
 
     // unsized struct
-    VI(Path1), //~ ERROR `PathHelper1 + 'static: std::marker::Sized` is not satisfied
-    VJ{x: Path2}, //~ ERROR `PathHelper2 + 'static: std::marker::Sized` is not satisfied
-    VK(isize, Path3), //~ ERROR `PathHelper3 + 'static: std::marker::Sized` is not satisfied
-    VL{u: isize, x: Path4}, //~ ERROR `PathHelper4 + 'static: std::marker::Sized` is not satisfied
+    VI(Path1),
+    //~^ ERROR the size for value values of type
+    VJ{x: Path2},
+    //~^ ERROR the size for value values of type
+    VK(isize, Path3),
+    //~^ ERROR the size for value values of type
+    VL{u: isize, x: Path4},
+    //~^ ERROR the size for value values of type
 
     // plain trait
-    VM(Foo),  //~ ERROR `Foo + 'static: std::marker::Sized` is not satisfied
-    VN{x: Bar}, //~ ERROR `Bar + 'static: std::marker::Sized` is not satisfied
-    VO(isize, FooBar), //~ ERROR `FooBar + 'static: std::marker::Sized` is not satisfied
-    VP{u: isize, x: BarFoo}, //~ ERROR `BarFoo + 'static: std::marker::Sized` is not satisfied
+    VM(Foo),
+    //~^ ERROR the size for value values of type
+    VN{x: Bar},
+    //~^ ERROR the size for value values of type
+    VO(isize, FooBar),
+    //~^ ERROR the size for value values of type
+    VP{u: isize, x: BarFoo},
+    //~^ ERROR the size for value values of type
 
     // projected
-    VQ(<&'static [i8] as Deref>::Target), //~ ERROR `[i8]: std::marker::Sized` is not satisfied
+    VQ(<&'static [i8] as Deref>::Target),
+    //~^ ERROR the size for value values of type
     VR{x: <&'static [char] as Deref>::Target},
-    //~^ ERROR `[char]: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
     VS(isize, <&'static [f64] as Deref>::Target),
-    //~^ ERROR `[f64]: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
     VT{u: isize, x: <&'static [i32] as Deref>::Target},
-    //~^ ERROR `[i32]: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
 }
 
 

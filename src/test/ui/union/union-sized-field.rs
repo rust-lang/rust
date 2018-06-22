@@ -11,16 +11,19 @@
 #![feature(untagged_unions)]
 
 union Foo<T: ?Sized> {
-    value: T, //~ ERROR the trait bound `T: std::marker::Sized` is not satisfied
+    value: T,
+    //~^ ERROR the size for value values of type
 }
 
 struct Foo2<T: ?Sized> {
-    value: T, //~ ERROR the trait bound `T: std::marker::Sized` is not satisfied
+    value: T,
+    //~^ ERROR the size for value values of type
     t: u32,
 }
 
 enum Foo3<T: ?Sized> {
-    Value(T), //~ ERROR the trait bound `T: std::marker::Sized` is not satisfied
+    Value(T),
+    //~^ ERROR the size for value values of type
 }
 
 fn main() {}

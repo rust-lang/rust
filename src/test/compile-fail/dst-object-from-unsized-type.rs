@@ -16,22 +16,22 @@ impl Foo for [u8] {}
 
 fn test1<T: ?Sized + Foo>(t: &T) {
     let u: &Foo = t;
-    //~^ ERROR `T: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
 }
 
 fn test2<T: ?Sized + Foo>(t: &T) {
     let v: &Foo = t as &Foo;
-    //~^ ERROR `T: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
 }
 
 fn test3() {
     let _: &[&Foo] = &["hi"];
-    //~^ ERROR `str: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
 }
 
 fn test4(x: &[u8]) {
     let _: &Foo = x as &Foo;
-    //~^ ERROR `[u8]: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
 }
 
 fn main() { }

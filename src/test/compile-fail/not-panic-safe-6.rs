@@ -17,6 +17,6 @@ fn assert<T: UnwindSafe + ?Sized>() {}
 
 fn main() {
     assert::<*mut RefCell<i32>>();
-    //~^ ERROR `std::cell::UnsafeCell<i32>: std::panic::RefUnwindSafe` is not satisfied
-    //~^^ ERROR `std::cell::UnsafeCell<usize>: std::panic::RefUnwindSafe` is not satisfied
+    //~^ ERROR the type `std::cell::UnsafeCell<i32>` may contain interior mutability and a
+    //~| ERROR the type `std::cell::UnsafeCell<usize>` may contain interior mutability and a
 }

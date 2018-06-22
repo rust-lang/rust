@@ -47,7 +47,7 @@ LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires processing `cycle1::{{exist-impl-Trait}}`, completing the cycle
 
-error[E0277]: the trait bound `std::rc::Rc<std::string::String>: std::marker::Send` is not satisfied in `impl std::clone::Clone`
+error[E0277]: `std::rc::Rc<std::string::String>` cannot be sent between threads safely
   --> $DIR/auto-trait-leak.rs:27:5
    |
 LL |     send(cycle2().clone());
