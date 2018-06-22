@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-50585.rs:12:18
+   |
+LL | fn main() {
+   |           - expected `()` because of default return type
+LL |     |y: Vec<[(); for x in 0..2 {}]>| {};
+   |                  ^^^^^^^^^^^^^^^^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
