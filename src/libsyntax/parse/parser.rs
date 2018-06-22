@@ -4709,7 +4709,7 @@ impl<'a> Parser<'a> {
                 if macro_legacy_warnings && self.token != token::Semi {
                     self.warn_missing_semicolon();
                 } else {
-                    self.expect_one_of(&[token::Semi], &[])?;
+                    self.expect_one_of(&[], &[token::Semi])?;
                 }
             }
             _ => {}
