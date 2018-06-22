@@ -33,8 +33,11 @@ use std::fs::File;
 use std::io::Write;
 
 mod base;
+mod common;
 
 mod prelude {
+    pub use std::collections::HashMap;
+
     pub use rustc::session::Session;
     pub use rustc::hir::def_id::{DefId, LOCAL_CRATE};
     pub use rustc::ty::{TyCtxt, Ty, TypeVariants, Instance, InstanceDef, ParamEnv, FnSig, PolyFnSig, subst::Substs};
@@ -44,6 +47,19 @@ mod prelude {
         sync::Lrc,
         indexed_vec::Idx,
     };
+
+    pub use cretonne::prelude::*;
+    pub use cretonne::codegen::Context;
+    pub use cretonne::codegen::ir::{
+        ExternalName,
+        FuncRef,
+        StackSlot,
+        function::Function,
+    };
+
+
+    pub use common::*;
+    pub use common::Variable;
 }
 
 use prelude::*;
