@@ -1057,7 +1057,7 @@ impl<'a> Parser<'a> {
     /// Parse a sequence, not including the closing delimiter. The function
     /// f must consume tokens until reaching the next separator or
     /// closing bracket.
-    fn parse_seq_to_before_end<T, F>(&mut self,
+    pub fn parse_seq_to_before_end<T, F>(&mut self,
                                          ket: &token::Token,
                                          sep: SeqSep,
                                          f: F)
@@ -2117,7 +2117,7 @@ impl<'a> Parser<'a> {
         ExprKind::AssignOp(binop, lhs, rhs)
     }
 
-    fn mk_mac_expr(&mut self, span: Span, m: Mac_, attrs: ThinVec<Attribute>) -> P<Expr> {
+    pub fn mk_mac_expr(&mut self, span: Span, m: Mac_, attrs: ThinVec<Attribute>) -> P<Expr> {
         P(Expr {
             id: ast::DUMMY_NODE_ID,
             node: ExprKind::Mac(codemap::Spanned {node: m, span: span}),
@@ -7226,7 +7226,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_optional_str(&mut self) -> Option<(Symbol, ast::StrStyle, Option<ast::Name>)> {
+    pub fn parse_optional_str(&mut self) -> Option<(Symbol, ast::StrStyle, Option<ast::Name>)> {
         let ret = match self.token {
             token::Literal(token::Str_(s), suf) => (s, ast::StrStyle::Cooked, suf),
             token::Literal(token::StrRaw(s, n), suf) => (s, ast::StrStyle::Raw(n), suf),
