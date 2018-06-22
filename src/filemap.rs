@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// TODO: add tests
-
 use std::fs;
 use std::io::{self, Write};
 

@@ -43,8 +43,6 @@ impl<'a> FmtVisitor<'a> {
         self.buffer.is_empty()
     }
 
-    // TODO these format_missing methods are ugly. Refactor and add unit tests
-    // for the central whitespace stripping loop.
     pub fn format_missing(&mut self, end: BytePos) {
         // HACK(topecongiro)
         // We use `format_missing()` to extract a missing comment between a macro

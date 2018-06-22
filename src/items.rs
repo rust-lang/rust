@@ -125,8 +125,8 @@ impl Rewrite for ast::Local {
     }
 }
 
-// TODO convert to using rewrite style rather than visitor
-// TODO format modules in this style
+// FIXME convert to using rewrite style rather than visitor
+// FIXME format modules in this style
 #[allow(dead_code)]
 struct Item<'a> {
     keyword: &'static str,

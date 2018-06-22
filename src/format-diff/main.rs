@@ -175,7 +175,7 @@ where
             None => continue,
         };
 
-        // TODO(emilio): We could avoid this most of the time if needed, but
+        // FIXME(emilio): We could avoid this most of the time if needed, but
         // it's not clear it's worth it.
         if !file_filter.is_match(file) {
             continue;

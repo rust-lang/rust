@@ -14,7 +14,7 @@
 //! order. Trait items are reordered in pre-determined order (associated types
 //! and constants comes before methods).
 
-// TODO(#2455): Reorder trait items.
+// FIXME(#2455): Reorder trait items.
 
 use config::{lists::*, Config};
 use syntax::{ast, attr, codemap::Span};

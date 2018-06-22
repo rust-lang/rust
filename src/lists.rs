@@ -212,7 +212,6 @@ where
 }
 
 // Format a list of commented items into a string.
-// TODO: add unit tests
 pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
 where
     I: IntoIterator<Item = T> + Clone,
