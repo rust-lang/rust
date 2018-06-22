@@ -419,7 +419,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
                 convert_variant_ctor(tcx, struct_def.id());
             }
         },
-        hir::ItemExistential(..) |
+        hir::ItemExistential(..) => {}
         hir::ItemTy(..) | hir::ItemStatic(..) | hir::ItemConst(..) | hir::ItemFn(..) => {
             tcx.generics_of(def_id);
             tcx.type_of(def_id);
