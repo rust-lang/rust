@@ -614,10 +614,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         debug!("stability: \
                 inspecting def_id={:?} span={:?} of stability={:?}", def_id, span, stability);
 
-        if let Some(&Stability{rustc_depr: Some(attr::RustcDeprecation { reason, .. }), ..})
+        if let Some(&Stability{rustc_depr: Some(attr::RustcDeprecation { reason, since }), ..})
                 = stability {
             if let Some(id) = id {
-                lint_deprecated(def_id, id, Some(reason));
+                if deprecation_in_effect(&since.as_str()) {
+                    lint_deprecated(def_id, id, Some(reason));
+                }
             }
         }
 
