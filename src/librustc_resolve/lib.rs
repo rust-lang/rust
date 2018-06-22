@@ -822,11 +822,12 @@ impl<'a, 'tcx, 'cl> Visitor<'tcx> for Resolver<'a, 'cl> {
             .filter_map(|param| match param.kind {
                 GenericParamKind::Lifetime { .. } => None,
                 GenericParamKind::Type { ref default, .. } => {
-                    if found_default || default.is_some() {
-                        found_default = true;
-                        return Some((Ident::with_empty_ctxt(param.ident.name), Def::Err));
+                    found_default |= default.is_some();
+                    if found_default {
+                        Some((Ident::with_empty_ctxt(param.ident.name), Def::Err));
+                    } else {
+                        None
                     }
-                    None
                 }
             }));
 

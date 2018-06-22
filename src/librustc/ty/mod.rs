@@ -931,7 +931,7 @@ impl<'a, 'gcx, 'tcx> Generics {
     pub fn requires_monomorphization(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         for param in &self.params {
             match param.kind {
-                GenericParamDefKind::Type {..} => return true,
+                GenericParamDefKind::Type { .. } => return true,
                 GenericParamDefKind::Lifetime => {}
             }
         }

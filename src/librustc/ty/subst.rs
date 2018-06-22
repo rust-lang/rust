@@ -231,7 +231,6 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                     mk_kind: &mut F)
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
-
         if let Some(def_id) = defs.parent {
             let parent_defs = tcx.generics_of(def_id);
             Substs::fill_item(substs, tcx, parent_defs, mk_kind);
