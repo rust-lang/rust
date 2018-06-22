@@ -8,12 +8,16 @@ use rustc::mir::interpret::EvalResult;
 use super::{EvalContext, Machine};
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
-    pub fn inc_step_counter_and_check_limit(&mut self, n: usize) {
-        self.terminators_remaining = self.terminators_remaining.saturating_sub(n);
-        if self.terminators_remaining == 0 {
+    pub fn inc_step_counter_and_detect_loops(&mut self, n: usize) {
+        self.steps_until_detector_enabled
+            = self.steps_until_detector_enabled.saturating_sub(n);
+
+        if self.steps_until_detector_enabled == 0 {
+            let _ = self.loop_detector.observe(&self.state); // TODO: Handle error
+
             // FIXME(#49980): make this warning a lint
             self.tcx.sess.span_warn(self.frame().span, "Constant evaluating a complex constant, this might take some time");
-            self.terminators_remaining = 1_000_000;
+            self.steps_until_detector_enabled = 1_000_000;
         }
     }
 
@@ -36,7 +40,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             return Ok(true);
         }
 
-        self.inc_step_counter_and_check_limit(1);
+        self.inc_step_counter_and_detect_loops(1);
 
         let terminator = basic_block.terminator();
         assert_eq!(old_frames, self.cur_frame());

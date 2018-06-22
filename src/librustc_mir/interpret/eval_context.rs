@@ -10,6 +10,7 @@ use rustc::ty::layout::{self, Size, Align, HasDataLayout, IntegerExt, LayoutOf, 
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt, TypeAndMut};
 use rustc::ty::query::TyCtxtAt;
+use rustc_data_structures::fx::{FxHashSet, FxHasher};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::mir::interpret::{
     FrameInfo, GlobalId, Value, Scalar,
@@ -34,15 +35,16 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     pub param_env: ty::ParamEnv<'tcx>,
 
     /// Virtual memory and call stack.
-    state: EvalState<'a, 'mir, 'tcx, M>,
+    pub(crate) state: EvalState<'a, 'mir, 'tcx, M>,
 
     /// The maximum number of stack frames allowed
     pub(crate) stack_limit: usize,
 
-    /// The maximum number of terminators that may be evaluated.
-    /// This prevents infinite loops and huge computations from freezing up const eval.
-    /// Remove once halting problem is solved.
-    pub(crate) terminators_remaining: usize,
+    /// The number of terminators to be evaluated before enabling the infinite
+    /// loop detector.
+    pub(crate) steps_until_detector_enabled: usize,
+
+    pub(crate) loop_detector: InfiniteLoopDetector<'a, 'mir, 'tcx, M>,
 }
 
 pub(crate) struct EvalState<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
@@ -178,6 +180,56 @@ impl<'mir, 'tcx: 'mir> Hash for Frame<'mir, 'tcx> {
     }
 }
 
+pub(crate) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
+    /// The set of all `EvalState` *hashes* observed by this detector.
+    ///
+    /// Not a proper bloom filter.
+    bloom: FxHashSet<u64>,
+
+    /// The set of all `EvalState`s observed by this detector.
+    ///
+    /// An `EvalState` will only be fully cloned once it has caused a collision
+    /// in `bloom`. As a result, the detector must observe *two* full cycles of
+    /// an infinite loop before it triggers.
+    snapshots: FxHashSet<EvalState<'a, 'mir, 'tcx, M>>,
+}
+
+impl<'a, 'mir, 'tcx, M> Default for InfiniteLoopDetector<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+          'tcx: 'a + 'mir,
+{
+    fn default() -> Self {
+        InfiniteLoopDetector {
+            bloom: FxHashSet::default(),
+            snapshots: FxHashSet::default(),
+        }
+    }
+}
+
+impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+          'tcx: 'a + 'mir,
+{
+    pub fn observe(&mut self, snapshot: &EvalState<'a, 'mir, 'tcx, M>) -> Result<(), (/*TODO*/)> {
+        let mut fx = FxHasher::default();
+        snapshot.hash(&mut fx);
+        let hash = fx.finish();
+
+        if self.bloom.insert(hash) {
+            // No collision
+            return Ok(())
+        }
+
+        if self.snapshots.insert(snapshot.clone()) {
+            // Spurious collision or first cycle
+            return Ok(())
+        }
+
+        // Second cycle,
+        Err(())
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum StackPopCleanup {
     /// The stackframe existed to compute the initial value of a static/constant, make sure it
@@ -280,16 +332,17 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 stack: Vec::new(),
             },
             stack_limit: tcx.sess.const_eval_stack_frame_limit,
-            terminators_remaining: MAX_TERMINATORS,
+            loop_detector: Default::default(),
+            steps_until_detector_enabled: MAX_TERMINATORS,
         }
     }
 
     pub(crate) fn with_fresh_body<F: FnOnce(&mut Self) -> R, R>(&mut self, f: F) -> R {
         let stack = mem::replace(self.stack_mut(), Vec::new());
-        let terminators_remaining = mem::replace(&mut self.terminators_remaining, MAX_TERMINATORS);
+        let steps = mem::replace(&mut self.steps_until_detector_enabled, MAX_TERMINATORS);
         let r = f(self);
         *self.stack_mut() = stack;
-        self.terminators_remaining = terminators_remaining;
+        self.steps_until_detector_enabled = steps;
         r
     }
 
@@ -634,7 +687,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
 
             Aggregate(ref kind, ref operands) => {
-                self.inc_step_counter_and_check_limit(operands.len());
+                self.inc_step_counter_and_detect_loops(operands.len());
 
                 let (dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
