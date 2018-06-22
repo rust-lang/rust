@@ -824,10 +824,12 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             if let Some(ref generic_args) = seg.args {
                 match **generic_args {
                     ast::GenericArgs::AngleBracketed(ref data) => {
-                        data.args.iter().for_each(|arg| match arg {
-                            ast::GenericArg::Type(ty) => self.visit_ty(ty),
-                            _ => {}
-                        });
+                        for arg in &data.args {
+                            match arg {
+                                ast::GenericArg::Type(ty) => self.visit_ty(ty),
+                                _ => {}
+                            }
+                        }
                     }
                     ast::GenericArgs::Parenthesized(ref data) => {
                         for t in &data.inputs {
@@ -911,10 +913,12 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         // Explicit types in the turbo-fish.
         if let Some(ref generic_args) = seg.args {
             if let ast::GenericArgs::AngleBracketed(ref data) = **generic_args {
-                data.args.iter().for_each(|arg| match arg {
-                    ast::GenericArg::Type(ty) => self.visit_ty(ty),
-                    _ => {}
-                });
+                for arg in &data.args {
+                    match arg {
+                        ast::GenericArg::Type(ty) => self.visit_ty(ty),
+                        _ => {}
+                    }
+                }
             }
         }
 
@@ -1522,19 +1526,21 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
     }
 
     fn visit_generics(&mut self, generics: &'l ast::Generics) {
-        generics.params.iter().for_each(|param| match param.kind {
-            ast::GenericParamKind::Lifetime { .. } => {}
-            ast::GenericParamKind::Type { ref default, .. } => {
-                for bound in &param.bounds {
-                    if let ast::GenericBound::Trait(ref trait_ref, _) = *bound {
-                        self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)
+        for param in &generics.params {
+            match param.kind {
+                ast::GenericParamKind::Lifetime { .. } => {}
+                ast::GenericParamKind::Type { ref default, .. } => {
+                    for bound in &param.bounds {
+                        if let ast::GenericBound::Trait(ref trait_ref, _) = *bound {
+                            self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)
+                        }
+                    }
+                    if let Some(ref ty) = default {
+                        self.visit_ty(&ty);
                     }
                 }
-                if let Some(ref ty) = default {
-                    self.visit_ty(&ty);
-                }
             }
-        });
+        }
     }
 
     fn visit_ty(&mut self, t: &'l ast::Ty) {
