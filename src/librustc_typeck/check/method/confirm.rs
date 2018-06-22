@@ -324,37 +324,34 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         assert_eq!(method_generics.parent_count, parent_substs.len());
         let provided = &segment.args;
         let own_counts = method_generics.own_counts();
+        // FIXME(varkor): Separating out the parameters is messy.
+        let lifetimes: Vec<_> = provided.iter().flat_map(|data| data.args.iter().filter_map(|arg| match arg {
+            GenericArg::Lifetime(ty) => Some(ty),
+            _ => None,
+        })).collect();
+        let types: Vec<_> = provided.iter().flat_map(|data| data.args.iter().filter_map(|arg| match arg {
+            GenericArg::Type(ty) => Some(ty),
+            _ => None,
+        })).collect();
         Substs::for_item(self.tcx, pick.item.def_id, |param, _| {
-            let mut i = param.index as usize;
+            let i = param.index as usize;
             if i < parent_substs.len() {
                 parent_substs[i]
             } else {
-                let (is_lt, is_ty) = match param.kind {
-                    GenericParamDefKind::Lifetime => (true, false),
-                    GenericParamDefKind::Type { .. } => (false, true),
-                };
-                provided.as_ref().and_then(|data| {
-                    for arg in &data.args {
-                        match arg {
-                            GenericArg::Lifetime(lt) if is_lt => {
-                                if i == parent_substs.len() {
-                                    return Some(AstConv::ast_region_to_region(
-                                        self.fcx, lt, Some(param)).into());
-                                }
-                                i -= 1;
-                            }
-                            GenericArg::Lifetime(_) => {}
-                            GenericArg::Type(ty) if is_ty => {
-                                if i == parent_substs.len() + own_counts.lifetimes {
-                                    return Some(self.to_ty(ty).into());
-                                }
-                                i -= 1;
-                            }
-                            GenericArg::Type(_) => {}
+                match param.kind {
+                    GenericParamDefKind::Lifetime => {
+                        if let Some(lifetime) = lifetimes.get(i - parent_substs.len()) {
+                            return AstConv::ast_region_to_region(
+                                self.fcx, lifetime, Some(param)).into();
                         }
                     }
-                    None
-                }).unwrap_or_else(|| self.var_for_def(self.span, param))
+                    GenericParamDefKind::Type { .. } => {
+                        if let Some(ast_ty) = types.get(i - parent_substs.len() - own_counts.lifetimes) {
+                            return self.to_ty(ast_ty).into();
+                        }
+                    }
+                }
+                self.var_for_def(self.span, param)
             }
         })
     }

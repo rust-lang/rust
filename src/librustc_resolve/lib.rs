@@ -824,7 +824,7 @@ impl<'a, 'tcx, 'cl> Visitor<'tcx> for Resolver<'a, 'cl> {
                 GenericParamKind::Type { ref default, .. } => {
                     found_default |= default.is_some();
                     if found_default {
-                        Some((Ident::with_empty_ctxt(param.ident.name), Def::Err));
+                        Some((Ident::with_empty_ctxt(param.ident.name), Def::Err))
                     } else {
                         None
                     }
