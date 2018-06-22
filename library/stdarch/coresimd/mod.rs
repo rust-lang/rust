@@ -134,7 +134,6 @@ pub mod arch {
     /// Platform-specific intrinsics for the `PowerPC64` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(target_arch = "powerpc64")]
     #[cfg(any(target_arch = "powerpc64", dox))]
     #[doc(cfg(target_arch = "powerpc64"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
