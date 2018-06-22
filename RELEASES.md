@@ -36,7 +36,7 @@ Libraries
 - [Implemented `Extend` for `()`.][50234]
 - [The `Debug` implementation of `time::Duration` should now be more easily
   human readable.][50364] Previously a `Duration` of one second would printed as
-  `Duration { secs: 1, nanos: 0 }` will now be printed as `1s`.
+  `Duration { secs: 1, nanos: 0 }` and will now be printed as `1s`.
 - [Implemented `From<&String>` for `Cow<str>`, `From<&Vec<T>>` for `Cow<[T]>`,
   `From<Cow<CStr>>` for `CString`, `From<CString>, From<CStr>, From<&CString>`
   for `Cow<CStr>`, `From<OsString>, From<OsStr>, From<&OsString>` for
