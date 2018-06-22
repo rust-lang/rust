@@ -19,6 +19,7 @@ use mir::operand::{OperandRef, OperandValue};
 use base::*;
 use common::*;
 use declare;
+use glue;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use rustc::ty::{self, Ty};
@@ -145,7 +146,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
             let tp_ty = substs.type_at(0);
             if let OperandValue::Pair(_, meta) = args[0].val {
                 let (llsize, _) =
-                    size_and_align_of_dst(bx, tp_ty, meta);
+                    glue::size_and_align_of_dst(bx, tp_ty, meta);
                 llsize
             } else {
                 C_usize(cx, cx.size_of(tp_ty).bytes())
@@ -159,7 +160,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
             let tp_ty = substs.type_at(0);
             if let OperandValue::Pair(_, meta) = args[0].val {
                 let (_, llalign) =
-                    size_and_align_of_dst(bx, tp_ty, meta);
+                    glue::size_and_align_of_dst(bx, tp_ty, meta);
                 llalign
             } else {
                 C_usize(cx, cx.align_of(tp_ty).abi())

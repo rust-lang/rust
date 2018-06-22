@@ -109,6 +109,7 @@ mod consts;
 mod context;
 mod debuginfo;
 mod declare;
+mod glue;
 mod intrinsic;
 mod llvm_util;
 mod metadata;
