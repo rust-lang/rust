@@ -1373,16 +1373,46 @@ impl_stable_hash_for!(enum infer::canonical::Certainty {
     Proven, Ambiguous
 });
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::WhereClauseAtom<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::WhereClause<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use traits::WhereClauseAtom::*;
+        use traits::WhereClause::*;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
             Implemented(trait_ref) => trait_ref.hash_stable(hcx, hasher),
             ProjectionEq(projection) => projection.hash_stable(hcx, hasher),
+            TypeOutlives(ty_outlives) => ty_outlives.hash_stable(hcx, hasher),
+            RegionOutlives(region_outlives) => region_outlives.hash_stable(hcx, hasher),
+        }
+    }
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::WellFormed<'tcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        use traits::WellFormed::*;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match self {
+            Trait(trait_ref) => trait_ref.hash_stable(hcx, hasher),
+            Ty(ty) => ty.hash_stable(hcx, hasher),
+        }
+    }
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::FromEnv<'tcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        use traits::FromEnv::*;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match self {
+            Trait(trait_ref) => trait_ref.hash_stable(hcx, hasher),
+            Ty(ty) => ty.hash_stable(hcx, hasher),
         }
     }
 }
@@ -1395,15 +1425,10 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::DomainGoal<'tcx>
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
-            Holds(where_clause) |
-            WellFormed(where_clause) |
-            FromEnv(where_clause) => where_clause.hash_stable(hcx, hasher),
-
-            WellFormedTy(ty) => ty.hash_stable(hcx, hasher),
+            Holds(wc) => wc.hash_stable(hcx, hasher),
+            WellFormed(wf) => wf.hash_stable(hcx, hasher),
+            FromEnv(from_env) => from_env.hash_stable(hcx, hasher),
             Normalize(projection) => projection.hash_stable(hcx, hasher),
-            FromEnvTy(ty) => ty.hash_stable(hcx, hasher),
-            RegionOutlives(predicate) => predicate.hash_stable(hcx, hasher),
-            TypeOutlives(predicate) => predicate.hash_stable(hcx, hasher),
         }
     }
 }

@@ -269,7 +269,9 @@ pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
 pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 
 /// The following types:
-/// * `WhereClauseAtom`
+/// * `WhereClause`
+/// * `WellFormed`
+/// * `FromEnv`
 /// * `DomainGoal`
 /// * `Goal`
 /// * `Clause`
@@ -277,21 +279,31 @@ pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 /// logic programming clauses. They are part of the interface
 /// for the chalk SLG solver.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum WhereClauseAtom<'tcx> {
+pub enum WhereClause<'tcx> {
     Implemented(ty::TraitPredicate<'tcx>),
     ProjectionEq(ty::ProjectionPredicate<'tcx>),
+    RegionOutlives(ty::RegionOutlivesPredicate<'tcx>),
+    TypeOutlives(ty::TypeOutlivesPredicate<'tcx>),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum WellFormed<'tcx> {
+    Trait(ty::TraitPredicate<'tcx>),
+    Ty(Ty<'tcx>),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum FromEnv<'tcx> {
+    Trait(ty::TraitPredicate<'tcx>),
+    Ty(Ty<'tcx>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum DomainGoal<'tcx> {
-    Holds(WhereClauseAtom<'tcx>),
-    WellFormed(WhereClauseAtom<'tcx>),
-    FromEnv(WhereClauseAtom<'tcx>),
-    WellFormedTy(Ty<'tcx>),
+    Holds(WhereClause<'tcx>),
+    WellFormed(WellFormed<'tcx>),
+    FromEnv(FromEnv<'tcx>),
     Normalize(ty::ProjectionPredicate<'tcx>),
-    FromEnvTy(Ty<'tcx>),
-    RegionOutlives(ty::RegionOutlivesPredicate<'tcx>),
-    TypeOutlives(ty::TypeOutlivesPredicate<'tcx>),
 }
 
 pub type PolyDomainGoal<'tcx> = ty::Binder<DomainGoal<'tcx>>;
@@ -314,24 +326,24 @@ pub enum Goal<'tcx> {
 
 pub type Goals<'tcx> = &'tcx Slice<Goal<'tcx>>;
 
+impl<'tcx> DomainGoal<'tcx> {
+    pub fn into_goal(self) -> Goal<'tcx> {
+        Goal::DomainGoal(self)
+    }
+}
+
 impl<'tcx> Goal<'tcx> {
     pub fn from_poly_domain_goal<'a>(
         domain_goal: PolyDomainGoal<'tcx>,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ) -> Goal<'tcx> {
         match domain_goal.no_late_bound_regions() {
-            Some(p) => p.into(),
+            Some(p) => p.into_goal(),
             None => Goal::Quantified(
                 QuantifierKind::Universal,
-                domain_goal.map_bound(|p| tcx.mk_goal(Goal::from(p)))
+                domain_goal.map_bound(|p| tcx.mk_goal(p.into_goal()))
             ),
         }
-    }
-}
-
-impl<'tcx> From<DomainGoal<'tcx>> for Goal<'tcx> {
-    fn from(domain_goal: DomainGoal<'tcx>) -> Self {
-        Goal::DomainGoal(domain_goal)
     }
 }
 
