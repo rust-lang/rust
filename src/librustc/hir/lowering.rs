@@ -2785,6 +2785,45 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
+    /// Lowers `impl Trait` items and appends them to the list
+    fn lower_impl_trait_ids(
+        &mut self,
+        decl: &FnDecl,
+        ids: &mut SmallVector<hir::ItemId>,
+    ) {
+        struct IdVisitor<'a> { ids: &'a mut SmallVector<hir::ItemId> }
+        impl<'a, 'b> Visitor<'a> for IdVisitor<'b> {
+            fn visit_ty(&mut self, ty: &'a Ty) {
+                match ty.node {
+                    | TyKind::Typeof(_)
+                    | TyKind::BareFn(_)
+                    => return,
+
+                    TyKind::ImplTrait(id, _) => self.ids.push(hir::ItemId { id }),
+                    _ => {},
+                }
+                visit::walk_ty(self, ty);
+            }
+            fn visit_path_segment(
+                &mut self,
+                path_span: Span,
+                path_segment: &'v PathSegment,
+            ) {
+                if let Some(ref p) = path_segment.parameters {
+                    if let PathParameters::Parenthesized(..) = **p {
+                        return;
+                    }
+                }
+                visit::walk_path_segment(self, path_span, path_segment)
+            }
+        }
+        let mut visitor = IdVisitor { ids };
+        match decl.output {
+            FunctionRetTy::Default(_) => {},
+            FunctionRetTy::Ty(ref ty) => visitor.visit_ty(ty),
+        }
+    }
+
     fn lower_item_id(&mut self, i: &Item) -> SmallVector<hir::ItemId> {
         match i.node {
             ItemKind::Use(ref use_tree) => {
@@ -2794,38 +2833,18 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::MacroDef(..) => SmallVector::new(),
             ItemKind::Fn(ref decl, ..) => {
-                struct IdVisitor { ids: SmallVector<hir::ItemId> }
-                impl<'a> Visitor<'a> for IdVisitor {
-                    fn visit_ty(&mut self, ty: &'a Ty) {
-                        match ty.node {
-                            | TyKind::Typeof(_)
-                            | TyKind::BareFn(_)
-                            => return,
-
-                            TyKind::ImplTrait(id, _) => self.ids.push(hir::ItemId { id }),
-                            _ => {},
-                        }
-                        visit::walk_ty(self, ty);
-                    }
-                    fn visit_path_segment(
-                        &mut self,
-                        path_span: Span,
-                        path_segment: &'v PathSegment,
-                    ) {
-                        if let Some(ref p) = path_segment.parameters {
-                            if let PathParameters::Parenthesized(..) = **p {
-                                return;
-                            }
-                        }
-                        visit::walk_path_segment(self, path_span, path_segment)
+                let mut ids = SmallVector::one(hir::ItemId { id: i.id });
+                self.lower_impl_trait_ids(decl, &mut ids);
+                ids
+            },
+            ItemKind::Impl(.., ref items) => {
+                let mut ids = SmallVector::one(hir::ItemId { id: i.id });
+                for item in items {
+                    if let ImplItemKind::Method(ref sig, _) = item.node {
+                        self.lower_impl_trait_ids(&sig.decl, &mut ids);
                     }
                 }
-                let mut visitor = IdVisitor { ids: SmallVector::one(hir::ItemId { id: i.id }) };
-                match decl.output {
-                    FunctionRetTy::Default(_) => {},
-                    FunctionRetTy::Ty(ref ty) => visitor.visit_ty(ty),
-                }
-                visitor.ids
+                ids
             },
             _ => SmallVector::one(hir::ItemId { id: i.id }),
         }
