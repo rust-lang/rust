@@ -41,22 +41,33 @@ use std::rc::Rc;
 use std::path::PathBuf;
 
 macro_rules! ast_fragments {
-    ($($kind:ident: $ty:ty [$($vec:ident, $ty_elt:ty)*], $kind_name:expr, .$make:ident,
-            $(.$fold:ident)*  $(lift .$fold_elt:ident)*,
-            $(.$visit:ident)*  $(lift .$visit_elt:ident)*;)*) => {
+    (
+        $($Kind:ident($AstTy:ty) {
+            $kind_name:expr;
+            $(one fn $fold_ast:ident; fn $visit_ast:ident;)?
+            $(many fn $fold_ast_elt:ident; fn $visit_ast_elt:ident;)?
+            fn $make_ast:ident;
+        })*
+    ) => {
         /// A fragment of AST that can be produced by a single macro expansion.
         /// Can also serve as an input and intermediate result for macro expansion operations.
-        pub enum AstFragment { OptExpr(Option<P<ast::Expr>>), $( $kind($ty), )* }
+        pub enum AstFragment {
+            OptExpr(Option<P<ast::Expr>>),
+            $($Kind($AstTy),)*
+        }
 
         /// "Discriminant" of an AST fragment.
         #[derive(Copy, Clone, PartialEq, Eq)]
-        pub enum AstFragmentKind { OptExpr, $( $kind, )*  }
+        pub enum AstFragmentKind {
+            OptExpr,
+            $($Kind,)*
+        }
 
         impl AstFragmentKind {
             pub fn name(self) -> &'static str {
                 match self {
                     AstFragmentKind::OptExpr => "expression",
-                    $( AstFragmentKind::$kind => $kind_name, )*
+                    $(AstFragmentKind::$Kind => $kind_name,)*
                 }
             }
 
@@ -64,7 +75,7 @@ macro_rules! ast_fragments {
                 match self {
                     AstFragmentKind::OptExpr =>
                         result.make_expr().map(Some).map(AstFragment::OptExpr),
-                    $( AstFragmentKind::$kind => result.$make().map(AstFragment::$kind), )*
+                    $(AstFragmentKind::$Kind => result.$make_ast().map(AstFragment::$Kind),)*
                 }
             }
         }
@@ -76,21 +87,24 @@ macro_rules! ast_fragments {
                     _ => panic!("AstFragment::make_* called on the wrong kind of fragment"),
                 }
             }
-            $( pub fn $make(self) -> $ty {
+
+            $(pub fn $make_ast(self) -> $AstTy {
                 match self {
-                    AstFragment::$kind(ast) => ast,
+                    AstFragment::$Kind(ast) => ast,
                     _ => panic!("AstFragment::make_* called on the wrong kind of fragment"),
                 }
-            } )*
+            })*
 
             pub fn fold_with<F: Folder>(self, folder: &mut F) -> Self {
-                use self::AstFragment::*;
                 match self {
-                    OptExpr(expr) => OptExpr(expr.and_then(|expr| folder.fold_opt_expr(expr))),
-                    $($( $kind(ast) => $kind(folder.$fold(ast)), )*)*
-                    $($( $kind(ast) => {
-                        $kind(ast.into_iter().flat_map(|ast| folder.$fold_elt(ast)).collect())
-                    }, )*)*
+                    AstFragment::OptExpr(expr) =>
+                        AstFragment::OptExpr(expr.and_then(|expr| folder.fold_opt_expr(expr))),
+                    $($(AstFragment::$Kind(ast) =>
+                        AstFragment::$Kind(folder.$fold_ast(ast)),)?)*
+                    $($(AstFragment::$Kind(ast) =>
+                        AstFragment::$Kind(ast.into_iter()
+                                              .flat_map(|ast| folder.$fold_ast_elt(ast))
+                                              .collect()),)?)*
                 }
             }
 
@@ -98,48 +112,50 @@ macro_rules! ast_fragments {
                 match *self {
                     AstFragment::OptExpr(Some(ref expr)) => visitor.visit_expr(expr),
                     AstFragment::OptExpr(None) => {}
-                    $($( AstFragment::$kind(ref ast) => visitor.$visit(ast), )*)*
-                    $($( AstFragment::$kind(ref ast) => for ast in &ast[..] {
-                        visitor.$visit_elt(ast);
-                    }, )*)*
+                    $($(AstFragment::$Kind(ref ast) => visitor.$visit_ast(ast),)?)*
+                    $($(AstFragment::$Kind(ref ast) => for ast_elt in &ast[..] {
+                        visitor.$visit_ast_elt(ast_elt);
+                    })?)*
                 }
             }
         }
 
         impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
             fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
-                self.expand(AstFragment::OptExpr(Some(expr))).make_opt_expr()
+                self.expand_fragment(AstFragment::OptExpr(Some(expr))).make_opt_expr()
             }
-            $($(fn $fold(&mut self, node: $ty) -> $ty {
-                self.expand(AstFragment::$kind(node)).$make()
-            })*)*
-            $($(fn $fold_elt(&mut self, node: $ty_elt) -> $ty {
-                self.expand(AstFragment::$kind(SmallVector::one(node))).$make()
-            })*)*
+            $($(fn $fold_ast(&mut self, ast: $AstTy) -> $AstTy {
+                self.expand_fragment(AstFragment::$Kind(ast)).$make_ast()
+            })?)*
+            $($(fn $fold_ast_elt(&mut self, ast_elt: <$AstTy as IntoIterator>::Item) -> $AstTy {
+                self.expand_fragment(AstFragment::$Kind(SmallVector::one(ast_elt))).$make_ast()
+            })?)*
         }
 
         impl<'a> MacResult for ::ext::tt::macro_rules::ParserAnyMacro<'a> {
-            $(fn $make(self: Box<::ext::tt::macro_rules::ParserAnyMacro<'a>>) -> Option<$ty> {
-                Some(self.make(AstFragmentKind::$kind).$make())
+            $(fn $make_ast(self: Box<::ext::tt::macro_rules::ParserAnyMacro<'a>>)
+                           -> Option<$AstTy> {
+                Some(self.make(AstFragmentKind::$Kind).$make_ast())
             })*
         }
     }
 }
 
 ast_fragments! {
-    Expr: P<ast::Expr> [], "expression", .make_expr, .fold_expr, .visit_expr;
-    Pat: P<ast::Pat>   [], "pattern",    .make_pat,  .fold_pat,  .visit_pat;
-    Ty: P<ast::Ty>     [], "type",       .make_ty,   .fold_ty,   .visit_ty;
-    Stmts: SmallVector<ast::Stmt> [SmallVector, ast::Stmt],
-        "statement",  .make_stmts,       lift .fold_stmt, lift .visit_stmt;
-    Items: SmallVector<P<ast::Item>> [SmallVector, P<ast::Item>],
-        "item",       .make_items,       lift .fold_item, lift .visit_item;
-    TraitItems: SmallVector<ast::TraitItem> [SmallVector, ast::TraitItem],
-        "trait item", .make_trait_items, lift .fold_trait_item, lift .visit_trait_item;
-    ImplItems: SmallVector<ast::ImplItem> [SmallVector, ast::ImplItem],
-        "impl item",  .make_impl_items,  lift .fold_impl_item,  lift .visit_impl_item;
-    ForeignItems: SmallVector<ast::ForeignItem> [SmallVector, ast::ForeignItem],
-        "foreign item", .make_foreign_items, lift .fold_foreign_item, lift .visit_foreign_item;
+    Expr(P<ast::Expr>) { "expression"; one fn fold_expr; fn visit_expr; fn make_expr; }
+    Pat(P<ast::Pat>) { "pattern"; one fn fold_pat; fn visit_pat; fn make_pat; }
+    Ty(P<ast::Ty>) { "type"; one fn fold_ty; fn visit_ty; fn make_ty; }
+    Stmts(SmallVector<ast::Stmt>) { "statement"; many fn fold_stmt; fn visit_stmt; fn make_stmts; }
+    Items(SmallVector<P<ast::Item>>) { "item"; many fn fold_item; fn visit_item; fn make_items; }
+    TraitItems(SmallVector<ast::TraitItem>) {
+        "trait item"; many fn fold_trait_item; fn visit_trait_item; fn make_trait_items;
+    }
+    ImplItems(SmallVector<ast::ImplItem>) {
+        "impl item"; many fn fold_impl_item; fn visit_impl_item; fn make_impl_items;
+    }
+    ForeignItems(SmallVector<ast::ForeignItem>) {
+        "foreign item"; many fn fold_foreign_item; fn visit_foreign_item; fn make_foreign_items;
+    }
 }
 
 impl AstFragmentKind {
@@ -261,7 +277,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             tokens: None,
         })));
 
-        match self.expand(krate_item).make_items().pop().map(P::into_inner) {
+        match self.expand_fragment(krate_item).make_items().pop().map(P::into_inner) {
             Some(ast::Item { attrs, node: ast::ItemKind::Mod(module), .. }) => {
                 krate.attrs = attrs;
                 krate.module = module;
@@ -281,7 +297,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     // Fully expand all macro invocations in this AST fragment.
-    fn expand(&mut self, input_fragment: AstFragment) -> AstFragment {
+    fn expand_fragment(&mut self, input_fragment: AstFragment) -> AstFragment {
         let orig_expansion_data = self.cx.current_expansion.clone();
         self.cx.current_expansion.depth = 0;
 
