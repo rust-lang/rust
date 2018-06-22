@@ -16,7 +16,6 @@
 #![feature(fs_read_write)]
 #![feature(libc)]
 #![feature(macro_at_most_once_rep)]
-#![cfg_attr(stage0, feature(macro_lifetime_matcher))]
 #![feature(proc_macro_internals)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]

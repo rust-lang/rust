@@ -105,7 +105,6 @@
 #![feature(pin)]
 #![feature(ptr_internals)]
 #![feature(ptr_offset_from)]
-#![cfg_attr(stage0, feature(repr_transparent))]
 #![feature(rustc_attrs)]
 #![feature(specialization)]
 #![feature(split_ascii_whitespace)]

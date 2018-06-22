@@ -1364,10 +1364,6 @@ extern "rust-intrinsic" {
     /// source as well as std's catch implementation.
     pub fn try(f: fn(*mut u8), data: *mut u8, local_ptr: *mut u8) -> i32;
 
-    #[cfg(stage0)]
-    /// docs my friends, its friday!
-    pub fn align_offset(ptr: *const (), align: usize) -> usize;
-
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
     /// Probably will never become stable.
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
