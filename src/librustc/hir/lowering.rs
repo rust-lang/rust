@@ -2837,7 +2837,7 @@ impl<'a> LoweringContext<'a> {
                 self.lower_impl_trait_ids(decl, &mut ids);
                 ids
             },
-            ItemKind::Impl(.., ref items) => {
+            ItemKind::Impl(.., None, _, ref items) => {
                 let mut ids = SmallVector::one(hir::ItemId { id: i.id });
                 for item in items {
                     if let ImplItemKind::Method(ref sig, _) = item.node {
