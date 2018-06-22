@@ -25,7 +25,8 @@ use util::nodemap::FxHashSet;
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
 use errors::DiagnosticBuilder;
-use syntax_pos::Span;
+use syntax_pos::{Span, FileName};
+
 
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::hir;
@@ -187,7 +188,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 out_of_scope_traits,
                 lev_candidate,
                 mode,
-                ..
             }) => {
                 let tcx = self.tcx;
 
@@ -264,13 +264,35 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         let span = tcx.hir.span(node_id);
                                         let snippet = tcx.sess.codemap().span_to_snippet(span)
                                             .unwrap();
-                                        err.span_suggestion(span,
-                                                            &format!("you must specify a type for \
-                                                                      this binding, like `{}`",
-                                                                     concrete_type),
-                                                            format!("{}: {}",
-                                                                    snippet,
-                                                                    concrete_type));
+                                        let filename = tcx.sess.codemap().span_to_filename(span);
+
+                                        let parent_node = self.tcx.hir.get(
+                                            self.tcx.hir.get_parent_node(node_id),
+                                        );
+                                        let msg = format!(
+                                            "you must specify a type for this binding, like `{}`",
+                                            concrete_type,
+                                        );
+
+                                        match (filename, parent_node) {
+                                            (FileName::Real(_), hir_map::NodeLocal(hir::Local {
+                                                source: hir::LocalSource::Normal,
+                                                ty,
+                                                ..
+                                            })) => {
+                                                err.span_suggestion(
+                                                    // account for `let x: _ = 42;`
+                                                    //                  ^^^^
+                                                    span.to(ty.as_ref().map(|ty| ty.span)
+                                                        .unwrap_or(span)),
+                                                    &msg,
+                                                    format!("{}: {}", snippet, concrete_type),
+                                                );
+                                            }
+                                            _ => {
+                                                err.span_label(span, msg);
+                                            }
+                                        }
                                     }
                                 }
                             }
