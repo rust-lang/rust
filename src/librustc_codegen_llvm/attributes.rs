@@ -98,6 +98,11 @@ pub fn set_probestack(cx: &CodegenCx, llfn: ValueRef) {
         return;
     }
 
+    // probestack doesn't play nice either with gcov profiling.
+    if cx.sess().opts.debugging_opts.profile {
+        return;
+    }
+
     // Flag our internal `__rust_probestack` function as the stack probe symbol.
     // This is defined in the `compiler-builtins` crate for each architecture.
     llvm::AddFunctionAttrStringValue(
