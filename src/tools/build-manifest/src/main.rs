@@ -212,6 +212,7 @@ fn main() {
     let cargo_release = args.next().unwrap();
     let rls_release = args.next().unwrap();
     let rustfmt_release = args.next().unwrap();
+    let _llvm_tools_vers = args.next().unwrap(); // FIXME do something with it?
     let s3_address = args.next().unwrap();
     let mut passphrase = String::new();
     t!(io::stdin().read_to_string(&mut passphrase));
