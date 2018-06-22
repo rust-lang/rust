@@ -877,7 +877,7 @@ impl<'a> LoweringContext<'a> {
 
         let unstable_span = self.allow_internal_unstable(CompilerDesugaringKind::Async, span);
         let gen_future = self.expr_std_path(
-            unstable_span, &["future", "future_from_generator"], None, ThinVec::new());
+            unstable_span, &["future", "from_generator"], None, ThinVec::new());
         hir::ExprCall(P(gen_future), hir_vec![generator])
     }
 
@@ -1173,11 +1173,8 @@ impl<'a> LoweringContext<'a> {
                 let span = t.span;
                 match itctx {
                     ImplTraitContext::Existential(fn_def_id) => {
-                        // Set the name to `impl Bound1 + Bound2`
-                        let exist_ty_name = Symbol::intern(&pprust::ty_to_string(t));
                         self.lower_existential_impl_trait(
-                            span, fn_def_id, exist_ty_name,
-                            |this| this.lower_param_bounds(bounds, itctx))
+                            span, fn_def_id, |this| this.lower_param_bounds(bounds, itctx))
                     }
                     ImplTraitContext::Universal(def_id) => {
                         let def_node_id = self.next_id().node_id;
@@ -1245,7 +1242,6 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         span: Span,
         fn_def_id: DefId,
-        exist_ty_name: Name,
         lower_bounds: impl FnOnce(&mut LoweringContext) -> hir::GenericBounds,
     ) -> hir::Ty_ {
         // We need to manually repeat the code of `next_id` because the lowering
@@ -1307,7 +1303,7 @@ impl<'a> LoweringContext<'a> {
             let exist_ty_item = hir::Item {
                 id: exist_ty_id.node_id,
                 hir_id: exist_ty_id.hir_id,
-                name: exist_ty_name,
+                name: keywords::Invalid.name(),
                 attrs: Default::default(),
                 node: exist_ty_item_kind,
                 vis: hir::Visibility::Inherited,
@@ -2090,19 +2086,13 @@ impl<'a> LoweringContext<'a> {
             lifetime_collector.output_lifetime
         };
 
-        let output_ty_name_owned;
-        let (output_ty_name, span) = match output {
-            FunctionRetTy::Ty(ty) => {
-                output_ty_name_owned = pprust::ty_to_string(ty);
-                (&*output_ty_name_owned, ty.span)
-            },
-            FunctionRetTy::Default(span) => ("()", *span),
+        let span = match output {
+            FunctionRetTy::Ty(ty) => ty.span,
+            FunctionRetTy::Default(span) => *span,
         };
 
-        // FIXME(cramertj) add lifetimes (see FIXME below) to the name
-        let exist_ty_name = Symbol::intern(&format!("impl Future<Output = {}>", output_ty_name));
         let impl_trait_ty = self.lower_existential_impl_trait(
-            span, fn_def_id, exist_ty_name, |this| {
+            span, fn_def_id, |this| {
             let output_ty = match output {
                 FunctionRetTy::Ty(ty) =>
                     this.lower_ty(ty, ImplTraitContext::Existential(fn_def_id)),

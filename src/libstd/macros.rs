@@ -222,9 +222,7 @@ macro_rules! await {
         let mut pinned = $e;
         let mut pinned = unsafe { $crate::mem::PinMut::new_unchecked(&mut pinned) };
         loop {
-            match $crate::future::get_task_cx(|cx|
-                $crate::future::Future::poll(pinned.reborrow(), cx))
-            {
+            match $crate::future::poll_in_task_cx(&mut pinned) {
                 // FIXME(cramertj) prior to stabilizing await, we have to ensure that this
                 // can't be used to create a generator on stable via `|| await!()`.
                 $crate::task::Poll::Pending => yield,

@@ -26,7 +26,7 @@ pub use core::future::*;
 /// This function returns a `GenFuture` underneath, but hides it in `impl Trait` to give
 /// better error messages (`impl Future` rather than `GenFuture<[closure.....]>`).
 #[unstable(feature = "gen_future", issue = "50547")]
-pub fn future_from_generator<T: Generator<Yield = ()>>(x: T) -> impl Future<Output = T::Return> {
+pub fn from_generator<T: Generator<Yield = ()>>(x: T) -> impl Future<Output = T::Return> {
     GenFuture(x)
 }
 
@@ -71,18 +71,21 @@ where
     F: FnOnce() -> R
 {
     let old_cx = TLS_CX.with(|tls_cx| {
-        let old_cx = tls_cx.get();
-        tls_cx.set(NonNull::new(
-                cx as *mut task::Context as *mut () as *mut task::Context<'static>));
-        old_cx
+        tls_cx.replace(NonNull::new(
+            cx
+                as *mut task::Context
+                as *mut ()
+                as *mut task::Context<'static>
+        ))
     });
     let _reset_cx = SetOnDrop(old_cx);
-    let res = f();
-    res
+    f()
 }
 
 #[unstable(feature = "gen_future", issue = "50547")]
 /// Retrieves the thread-local task context used by async/await futures.
+///
+/// This function acquires exclusive access to the task context.
 ///
 /// Panics if no task has been set or if the task context has already been
 /// retrived by a surrounding call to get_task_cx.
@@ -91,11 +94,9 @@ where
     F: FnOnce(&mut task::Context) -> R
 {
     let cx_ptr = TLS_CX.with(|tls_cx| {
-        let cx_ptr = tls_cx.get();
         // Clear the entry so that nested `with_get_cx` calls
         // will fail or set their own value.
-        tls_cx.set(None);
-        cx_ptr
+        tls_cx.replace(None)
     });
     let _reset_cx = SetOnDrop(cx_ptr);
 
@@ -103,4 +104,13 @@ where
         "TLS task::Context not set. This is a rustc bug. \
         Please file an issue on https://github.com/rust-lang/rust.");
     unsafe { f(cx_ptr.as_mut()) }
+}
+
+#[unstable(feature = "gen_future", issue = "50547")]
+/// Polls a future in the current thread-local task context.
+pub fn poll_in_task_cx<F>(f: &mut PinMut<F>) -> Poll<F::Output>
+where
+    F: Future
+{
+    get_task_cx(|cx| f.reborrow().poll(cx))
 }
