@@ -2,18 +2,22 @@
 //!
 //! The main entry point is the `step` method.
 
+use std::hash::Hash;
+
 use rustc::mir;
 
 use rustc::mir::interpret::EvalResult;
 use super::{EvalContext, Machine};
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M>
+    where M: Clone + Eq + Hash,
+{
     pub fn inc_step_counter_and_detect_loops(&mut self, n: usize) {
         self.steps_until_detector_enabled
             = self.steps_until_detector_enabled.saturating_sub(n);
 
         if self.steps_until_detector_enabled == 0 {
-            let _ = self.loop_detector.observe(&self.state); // TODO: Handle error
+            let _ = self.loop_detector.observe(&self.machine, &self.stack, &self.memory); // TODO: Handle error
 
             // FIXME(#49980): make this warning a lint
             self.tcx.sess.span_warn(self.frame().span, "Constant evaluating a complex constant, this might take some time");
@@ -23,7 +27,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
     /// Returns true as long as there are more things to do.
     pub fn step(&mut self) -> EvalResult<'tcx, bool> {
-        if self.stack().is_empty() {
+        if self.stack.is_empty() {
             return Ok(false);
         }
 
@@ -57,7 +61,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         // *before* executing the statement.
         let frame_idx = self.cur_frame();
         self.tcx.span = stmt.source_info.span;
-        self.memory_mut().tcx.span = stmt.source_info.span;
+        self.memory.tcx.span = stmt.source_info.span;
 
         match stmt.kind {
             Assign(ref place, ref rvalue) => self.eval_rvalue_into_place(rvalue, place)?,
@@ -106,16 +110,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             InlineAsm { .. } => return err!(InlineAsm),
         }
 
-        self.stack_mut()[frame_idx].stmt += 1;
+        self.stack[frame_idx].stmt += 1;
         Ok(())
     }
 
     fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<'tcx> {
         trace!("{:?}", terminator.kind);
         self.tcx.span = terminator.source_info.span;
-        self.memory_mut().tcx.span = terminator.source_info.span;
+        self.memory.tcx.span = terminator.source_info.span;
         self.eval_terminator(terminator)?;
-        if !self.stack().is_empty() {
+        if !self.stack.is_empty() {
             trace!("// {:?}", self.frame().block);
         }
         Ok(())

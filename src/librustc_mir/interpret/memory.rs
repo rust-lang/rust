@@ -32,6 +32,7 @@ pub enum MemoryKind<T> {
 // Top-level interpreter memory
 ////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Clone)]
 pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// Additional data required by the Machine
     pub data: M::MemoryData,
@@ -46,21 +47,6 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     pub cur_frame: usize,
 
     pub tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
-}
-
-impl<'a, 'mir, 'tcx, M> Clone for Memory<'a, 'mir, 'tcx, M>
-    where M: Machine<'mir, 'tcx>,
-          'tcx: 'a + 'mir,
-{
-    fn clone(&self) -> Self {
-        Memory {
-            data: self.data.clone(),
-            alloc_kind: self.alloc_kind.clone(),
-            alloc_map: self.alloc_map.clone(),
-            cur_frame: self.cur_frame.clone(),
-            tcx: self.tcx.clone(),
-        }
-    }
 }
 
 impl<'a, 'mir, 'tcx, M> Eq for Memory<'a, 'mir, 'tcx, M>
@@ -1067,12 +1053,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for Me
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> HasMemory<'a, 'mir, 'tcx, M> for EvalContext<'a, 'mir, 'tcx, M> {
     #[inline]
     fn memory_mut(&mut self) -> &mut Memory<'a, 'mir, 'tcx, M> {
-        self.memory_mut()
+        &mut self.memory
     }
 
     #[inline]
     fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M> {
-        self.memory()
+        &self.memory
     }
 }
 

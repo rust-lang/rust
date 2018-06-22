@@ -76,8 +76,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             // No alignment check needed for raw pointers.  But we have to truncate to target ptr size.
             TyRawPtr(_) => {
                 Ok(Scalar::Bits {
-                    bits: self.memory().truncate_to_ptr(v).0 as u128,
-                    defined: self.memory().pointer_size().bits() as u8,
+                    bits: self.memory.truncate_to_ptr(v).0 as u128,
+                    defined: self.memory.pointer_size().bits() as u8,
                 })
             },
 
@@ -92,7 +92,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         match dest_ty.sty {
             // float -> uint
             TyUint(t) => {
-                let width = t.bit_width().unwrap_or(self.memory().pointer_size().bits() as usize);
+                let width = t.bit_width().unwrap_or(self.memory.pointer_size().bits() as usize);
                 match fty {
                     FloatTy::F32 => Ok(Scalar::Bits {
                         bits: Single::from_bits(bits).to_u128(width).value,
@@ -106,7 +106,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             },
             // float -> int
             TyInt(t) => {
-                let width = t.bit_width().unwrap_or(self.memory().pointer_size().bits() as usize);
+                let width = t.bit_width().unwrap_or(self.memory.pointer_size().bits() as usize);
                 match fty {
                     FloatTy::F32 => Ok(Scalar::Bits {
                         bits: Single::from_bits(bits).to_i128(width).value as u128,
