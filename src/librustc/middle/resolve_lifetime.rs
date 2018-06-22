@@ -498,13 +498,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |_, this| intravisit::walk_item(this, item));
             }
-            hir::ItemExistential(hir::ExistTy { impl_trait_fn: Some(_), .. }) => {
+            hir::ItemExistential(hir::ExistTy { .. }) => {
                 // currently existential type declarations are just generated from impl Trait
                 // items. doing anything on this node is irrelevant, as we currently don't need
                 // it.
             }
             hir::ItemTy(_, ref generics)
-            | hir::ItemExistential(hir::ExistTy { impl_trait_fn: None, ref generics, .. })
             | hir::ItemEnum(_, ref generics)
             | hir::ItemStruct(_, ref generics)
             | hir::ItemUnion(_, ref generics)
