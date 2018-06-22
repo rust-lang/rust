@@ -776,6 +776,9 @@ impl<'a> Parser<'a> {
             err.span_label(self.span, format!("expected identifier, found {}", token_descr));
         } else {
             err.span_label(self.span, "expected identifier");
+            if self.token == token::Comma && self.look_ahead(1, |t| t.is_ident()) {
+                err.span_suggestion(self.span, "remove this comma", "".into());
+            }
         }
         err
     }
@@ -2446,8 +2449,14 @@ impl<'a> Parser<'a> {
                 Err(mut e) => {
                     e.span_label(struct_sp, "while parsing this struct");
                     e.emit();
-                    self.recover_stmt();
-                    break;
+
+                    // If the next token is a comma, then try to parse
+                    // what comes next as additional fields, rather than
+                    // bailing out until next `}`.
+                    if self.token != token::Comma {
+                        self.recover_stmt();
+                        break;
+                    }
                 }
             }
 
