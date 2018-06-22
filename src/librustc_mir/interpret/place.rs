@@ -7,7 +7,7 @@ use rustc::mir::interpret::{GlobalId, Value, Scalar, EvalResult, Pointer};
 use super::{EvalContext, Machine, ValTy};
 use interpret::memory::HasMemory;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Place {
     /// A place referring to a value allocated in the `Memory` system.
     Ptr {
@@ -24,7 +24,7 @@ pub enum Place {
     Local { frame: usize, local: mir::Local },
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum PlaceExtra {
     None,
     Length(u64),

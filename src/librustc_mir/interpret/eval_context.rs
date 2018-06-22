@@ -1,5 +1,6 @@
 use std::fmt::Write;
-use std::mem;
+use std::hash::{Hash, Hasher};
+use std::{mem, ptr};
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
@@ -44,7 +45,7 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     pub(crate) terminators_remaining: usize,
 }
 
-struct EvalState<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
+pub(crate) struct EvalState<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// The virtual memory system.
     memory: Memory<'a, 'mir, 'tcx, M>,
 
@@ -52,7 +53,44 @@ struct EvalState<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     stack: Vec<Frame<'mir, 'tcx>>,
 }
 
+impl<'a, 'mir, 'tcx, M> Clone for EvalState<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+          'tcx: 'a + 'mir,
+{
+    fn clone(&self) -> Self {
+        EvalState {
+            memory: self.memory.clone(),
+            stack: self.stack.clone(),
+        }
+    }
+}
+
+impl<'a, 'mir, 'tcx, M> Eq for EvalState<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+          'tcx: 'a + 'mir,
+{}
+
+impl<'a, 'mir, 'tcx, M> PartialEq for EvalState<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+          'tcx: 'a + 'mir,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.memory == other.memory
+            && self.stack == other.stack
+    }
+}
+
+impl<'a, 'mir, 'tcx, M> Hash for EvalState<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+          'tcx: 'a + 'mir,
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.memory.hash(state);
+        self.stack.hash(state);
+    }
+}
 /// A stack frame.
+#[derive(Clone)]
 pub struct Frame<'mir, 'tcx: 'mir> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
@@ -92,6 +130,52 @@ pub struct Frame<'mir, 'tcx: 'mir> {
 
     /// The index of the currently evaluated statement.
     pub stmt: usize,
+}
+
+impl<'mir, 'tcx: 'mir> Eq for Frame<'mir, 'tcx> {}
+
+impl<'mir, 'tcx: 'mir> PartialEq for Frame<'mir, 'tcx> {
+    fn eq(&self, other: &Self) -> bool {
+        let Frame {
+            mir,
+            instance: _,
+            span: _,
+            return_to_block,
+            return_place,
+            locals,
+            block,
+            stmt,
+        } = self;
+
+        ptr::eq(mir, &other.mir)
+            && *return_to_block == other.return_to_block // TODO: Are these two necessary?
+            && *return_place == other.return_place
+            && *locals == other.locals
+            && *block == other.block
+            && *stmt == other.stmt
+    }
+}
+
+impl<'mir, 'tcx: 'mir> Hash for Frame<'mir, 'tcx> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let Frame {
+            mir,
+            instance: _,
+            span: _,
+            return_to_block,
+            return_place,
+            locals,
+            block,
+            stmt,
+        } = self;
+
+        (mir as *const _ as usize).hash(state);
+        return_to_block.hash(state);
+        return_place.hash(state);
+        locals.hash(state);
+        block.hash(state);
+        stmt.hash(state);
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]

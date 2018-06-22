@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::hash::{Hash, Hasher};
 use std::ptr;
 
 use rustc::hir::def_id::DefId;
@@ -9,7 +10,7 @@ use rustc::ty::layout::{self, Align, TargetDataLayout, Size};
 use rustc::mir::interpret::{Pointer, AllocId, Allocation, AccessKind, Value,
                             EvalResult, Scalar, EvalErrorKind, GlobalId, AllocType};
 pub use rustc::mir::interpret::{write_target_uint, write_target_int, read_target_uint};
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use rustc_data_structures::fx::{FxHashSet, FxHashMap, FxHasher};
 
 use syntax::ast::Mutability;
 
@@ -19,7 +20,7 @@ use super::{EvalContext, Machine};
 // Allocations and pointers
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MemoryKind<T> {
     /// Error if deallocated except during a stack pop
     Stack,
@@ -45,6 +46,81 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     pub cur_frame: usize,
 
     pub tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+}
+
+impl<'a, 'mir, 'tcx, M> Clone for Memory<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+          'tcx: 'a + 'mir,
+{
+    fn clone(&self) -> Self {
+        Memory {
+            data: self.data.clone(),
+            alloc_kind: self.alloc_kind.clone(),
+            alloc_map: self.alloc_map.clone(),
+            cur_frame: self.cur_frame.clone(),
+            tcx: self.tcx.clone(),
+        }
+    }
+}
+
+impl<'a, 'mir, 'tcx, M> Eq for Memory<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+          'tcx: 'a + 'mir,
+{}
+
+impl<'a, 'mir, 'tcx, M> PartialEq for Memory<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+          'tcx: 'a + 'mir,
+{
+    fn eq(&self, other: &Self) -> bool {
+        let Memory {
+            data,
+            alloc_kind,
+            alloc_map,
+            cur_frame,
+            tcx,
+        } = self;
+
+        *data == other.data
+            && *alloc_kind == other.alloc_kind
+            && *alloc_map == other.alloc_map
+            && *cur_frame == other.cur_frame
+            && ptr::eq(tcx, &other.tcx)
+    }
+}
+
+impl<'a, 'mir, 'tcx, M> Hash for Memory<'a, 'mir, 'tcx, M>
+    where M: Machine<'mir, 'tcx>,
+          'tcx: 'a + 'mir,
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let Memory {
+            data,
+            alloc_kind: _,
+            alloc_map: _,
+            cur_frame,
+            tcx,
+        } = self;
+
+        data.hash(state);
+        cur_frame.hash(state);
+        (tcx as *const _ as usize).hash(state);
+
+        // We ignore some fields which don't change between evaluation steps.
+
+        // Since HashMaps which contain the same items may have different
+        // iteration orders, we use a commutative operation (in this case
+        // addition, but XOR would also work), to combine the hash of each
+        // `Allocation`.
+        self.allocations()
+            .map(|allocs| {
+                let mut h = FxHasher::default();
+                allocs.hash(&mut h);
+                h.finish()
+            })
+            .fold(0u64, |hash, x| hash.wrapping_add(x))
+            .hash(state);
+    }
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
@@ -866,7 +942,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         for i in 0..size.bytes() {
             let defined = undef_mask.get(src.offset + Size::from_bytes(i));
-            
+
             for j in 0..repeat {
                 dest_allocation.undef_mask.set(
                     dest.offset + Size::from_bytes(i + (size.bytes() * j)),
