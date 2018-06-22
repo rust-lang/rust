@@ -55,7 +55,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 
 use syntax::visit::{self, FnKind, Visitor};
 use syntax::attr;
-use syntax::ast::{Arm, IsAsync, BindingMode, Block, Crate, Expr, ExprKind, FnHeader};
+use syntax::ast::{Arm, IsAsync, BindingMode, Block, Crate, Expr, ExprKind};
 use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParamKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
@@ -1494,7 +1494,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         span: Span,
         crate_root: Option<&str>,
         components: &[&str],
-        params: Option<hir::PathParameters>,
+        args: Option<P<hir::GenericArgs>>,
         is_value: bool
     ) -> hir::Path {
         let mut segments = iter::once(keywords::CrateRoot.name())
@@ -1504,11 +1504,11 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
                     .map(Symbol::intern)
             ).map(hir::PathSegment::from_name).collect::<Vec<_>>();
 
-        if let Some(parameters) = params {
-            let last_name = segments.last().unwrap().name;
+        if let Some(args) = args {
+            let name = segments.last().unwrap().name;
             *segments.last_mut().unwrap() = hir::PathSegment {
                 name,
-                parameters,
+                args: Some(args),
                 infer_types: true,
             };
         }

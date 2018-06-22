@@ -168,7 +168,7 @@ pub trait Resolver {
         span: Span,
         crate_root: Option<&str>,
         components: &[&str],
-        params: Option<P<hir::PathParameters>>
+        params: Option<P<hir::GenericArgs>>,
         is_value: bool,
     ) -> hir::Path;
 }
@@ -1176,7 +1176,8 @@ impl<'a> LoweringContext<'a> {
                         // Set the name to `impl Bound1 + Bound2`
                         let exist_ty_name = Symbol::intern(&pprust::ty_to_string(t));
                         self.lower_existential_impl_trait(
-                            span, fn_def_id, exist_ty_name, |this| this.lower_bounds(bounds, itctx))
+                            span, fn_def_id, exist_ty_name,
+                            |this| this.lower_param_bounds(bounds, itctx))
                     }
                     ImplTraitContext::Universal(def_id) => {
                         let def_node_id = self.next_id().node_id;
@@ -1245,7 +1246,7 @@ impl<'a> LoweringContext<'a> {
         span: Span,
         fn_def_id: DefId,
         exist_ty_name: Name,
-        lower_bounds: impl FnOnce(&mut LoweringContext) -> hir::TyParamBounds,
+        lower_bounds: impl FnOnce(&mut LoweringContext) -> hir::GenericBounds,
     ) -> hir::Ty_ {
         // We need to manually repeat the code of `next_id` because the lowering
         // needs to happen while the owner_id is pointing to the item itself,
@@ -1970,15 +1971,15 @@ impl<'a> LoweringContext<'a> {
                 hir::intravisit::NestedVisitorMap::None
             }
 
-            fn visit_path_parameters(&mut self, span: Span, parameters: &'v hir::PathParameters) {
+            fn visit_generic_args(&mut self, span: Span, parameters: &'v hir::GenericArgs) {
                 // Don't collect elided lifetimes used inside of `Fn()` syntax.
                 if parameters.parenthesized {
                     let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
                     self.collect_elided_lifetimes = false;
-                    hir::intravisit::walk_path_parameters(self, span, parameters);
+                    hir::intravisit::walk_generic_args(self, span, parameters);
                     self.collect_elided_lifetimes = old_collect_elided_lifetimes;
                 } else {
-                    hir::intravisit::walk_path_parameters(self, span, parameters);
+                    hir::intravisit::walk_generic_args(self, span, parameters);
                 }
             }
 
@@ -2013,11 +2014,12 @@ impl<'a> LoweringContext<'a> {
             }
 
             fn visit_generic_param(&mut self, param: &'v hir::GenericParam) {
-                // Record the introduction of 'a in `for<'a> ...`
-                if let hir::GenericParam::Lifetime(ref lt_def) = *param {
+                 // Record the introduction of 'a in `for<'a> ...`
+                if let hir::GenericParamKind::Lifetime { .. } = param.kind {
                     // Introduce lifetimes one at a time so that we can handle
                     // cases like `fn foo<'d>() -> impl for<'a, 'b: 'a, 'c: 'b + 'd>`
-                    self.currently_bound_lifetimes.push(lt_def.lifetime.name);
+                    let lt_name = hir::LifetimeName::Param(param.name);
+                    self.currently_bound_lifetimes.push(lt_name);
                 }
 
                 hir::intravisit::walk_generic_param(self, param);
@@ -2034,8 +2036,7 @@ impl<'a> LoweringContext<'a> {
                             return;
                         }
                     }
-                    name @ hir::LifetimeName::Fresh(_) => name,
-                    name @ hir::LifetimeName::Name(_) => name,
+                    hir::LifetimeName::Param(_) => lifetime.name,
                     hir::LifetimeName::Static => return,
                 };
 
@@ -2117,9 +2118,8 @@ impl<'a> LoweringContext<'a> {
             };
 
             // "<Output = T>"
-            let future_params = P(hir::PathParameters {
-                lifetimes: hir_vec![],
-                types: hir_vec![],
+            let future_params = P(hir::GenericArgs {
+                args: hir_vec![],
                 bindings: hir_vec![hir::TypeBinding {
                     name: Symbol::intern(FN_OUTPUT_NAME),
                     ty: output_ty,
@@ -2129,13 +2129,11 @@ impl<'a> LoweringContext<'a> {
                 parenthesized: false,
             });
 
-            let let future_path =
+            let future_path =
                 this.std_path(span, &["future", "Future"], Some(future_params), false);
 
-            // FIXME(cramertj) collect input lifetimes to function and add them to
-            // the output `impl Trait` type here.
             let mut bounds = vec![
-                hir::TyParamBound::TraitTyParamBound(
+                hir::GenericBound::Trait(
                     hir::PolyTraitRef {
                         trait_ref: hir::TraitRef {
                             path: future_path,
@@ -2149,7 +2147,7 @@ impl<'a> LoweringContext<'a> {
             ];
 
             if let Some((name, span)) = bound_lifetime {
-                bounds.push(hir::RegionTyParamBound(
+                bounds.push(hir::GenericBound::Outlives(
                     hir::Lifetime { id: this.next_id().node_id, name, span }));
             }
 
@@ -4366,7 +4364,7 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         span: Span,
         components: &[&str],
-        params: Option<P<hir::PathParameters>>,
+        params: Option<P<hir::GenericArgs>>,
         attrs: ThinVec<Attribute>,
     ) -> hir::Expr {
         let path = self.std_path(span, components, params, true);
@@ -4545,7 +4543,7 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         span: Span,
         components: &[&str],
-        params: Option<P<hir::PathParameters>>,
+        params: Option<P<hir::GenericArgs>>,
         is_value: bool
     ) -> hir::Path {
         self.resolver
