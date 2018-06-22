@@ -517,7 +517,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     ///   implicit deref patterns attached (e.g., it is really
     ///   `&Some(x)`). In that case, we return the "outermost" type
     ///   (e.g., `&Option<T>).
-    fn pat_ty(&self, pat: &hir::Pat) -> McResult<Ty<'tcx>> {
+    pub fn pat_ty_adjusted(&self, pat: &hir::Pat) -> McResult<Ty<'tcx>> {
         // Check for implicit `&` types wrapping the pattern; note
         // that these are never attached to binding patterns, so
         // actually this is somewhat "disjoint" from the code below
@@ -1300,7 +1300,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             };
 
             for (i, subpat) in subpats.iter().enumerate_and_adjust(expected_len, ddpos) {
-                let subpat_ty = self.pat_ty(&subpat)?; // see (*2)
+                let subpat_ty = self.pat_ty_adjusted(&subpat)?; // see (*2)
                 let interior = InteriorField(FieldIndex(i, Name::intern(&i.to_string())));
                 let subcmt = Rc::new(self.cat_imm_interior(pat, cmt.clone(), subpat_ty, interior));
                 self.cat_pattern_(subcmt, &subpat, op)?;
@@ -1323,7 +1323,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             };
 
             for fp in field_pats {
-                let field_ty = self.pat_ty(&fp.node.pat)?; // see (*2)
+                let field_ty = self.pat_ty_adjusted(&fp.node.pat)?; // see (*2)
                 let f_index = self.tcx.field_index(fp.node.id, self.tables);
                 let cmt_field = Rc::new(self.cat_field(pat, cmt.clone(), f_index,
                                                        fp.node.ident, field_ty));
@@ -1342,7 +1342,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 ref ty => span_bug!(pat.span, "tuple pattern unexpected type {:?}", ty),
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(expected_len, ddpos) {
-                let subpat_ty = self.pat_ty(&subpat)?; // see (*2)
+                let subpat_ty = self.pat_ty_unadjusted(&subpat)?; // see (*2)
                 let interior = InteriorField(FieldIndex(i, Name::intern(&i.to_string())));
                 let subcmt = Rc::new(self.cat_imm_interior(pat, cmt.clone(), subpat_ty, interior));
                 self.cat_pattern_(subcmt, &subpat, op)?;
