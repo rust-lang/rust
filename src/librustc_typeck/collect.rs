@@ -1909,7 +1909,7 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                 codegen_fn_attrs.export_name = Some(s);
             } else {
                 struct_span_err!(tcx.sess, attr.span, E0558,
-                                 "export_name attribute has invalid format")
+                                 "`export_name` attribute has invalid format")
                     .span_label(attr.span, "did you mean #[export_name=\"*\"]?")
                     .emit();
             }

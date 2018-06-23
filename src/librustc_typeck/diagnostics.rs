@@ -3709,7 +3709,7 @@ The `export_name` attribute was malformed.
 Erroneous code example:
 
 ```ignore (error-emitted-at-codegen-which-cannot-be-handled-by-compile_fail)
-#[export_name] // error: export_name attribute has invalid format
+#[export_name] // error: `export_name` attribute has invalid format
 pub fn something() {}
 
 fn main() {}
