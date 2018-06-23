@@ -3351,7 +3351,7 @@ impl<'a> LoweringContext<'a> {
                 )
             }
             ExprKind::Continue(opt_label) => {
-                hir::ExprAgain(if self.is_in_loop_condition && opt_label.is_none() {
+                hir::ExprContinue(if self.is_in_loop_condition && opt_label.is_none() {
                     hir::Destination {
                         label: None,
                         target_id: Err(hir::LoopIdError::UnlabeledCfInWhileCondition).into(),

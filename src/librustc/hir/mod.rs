@@ -1279,7 +1279,7 @@ impl Expr {
             ExprPath(..) => ExprPrecedence::Path,
             ExprAddrOf(..) => ExprPrecedence::AddrOf,
             ExprBreak(..) => ExprPrecedence::Break,
-            ExprAgain(..) => ExprPrecedence::Continue,
+            ExprContinue(..) => ExprPrecedence::Continue,
             ExprRet(..) => ExprPrecedence::Ret,
             ExprInlineAsm(..) => ExprPrecedence::InlineAsm,
             ExprStruct(..) => ExprPrecedence::Struct,
@@ -1374,7 +1374,7 @@ pub enum Expr_ {
     /// A `break`, with an optional label to break
     ExprBreak(Destination, Option<P<Expr>>),
     /// A `continue`, with an optional label
-    ExprAgain(Destination),
+    ExprContinue(Destination),
     /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 

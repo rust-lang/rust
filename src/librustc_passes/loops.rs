@@ -148,7 +148,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
 
                 self.require_break_cx("break", e.span);
             }
-            hir::ExprAgain(label) => {
+            hir::ExprContinue(label) => {
                 self.require_label_in_labeled_block(e.span, &label, "continue");
 
                 match label.target_id {

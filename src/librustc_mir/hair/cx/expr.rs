@@ -543,7 +543,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 Err(err) => bug!("invalid loop id for break: {}", err)
             }
         }
-        hir::ExprAgain(dest) => {
+        hir::ExprContinue(dest) => {
             match dest.target_id {
                 Ok(loop_id) => ExprKind::Continue {
                     label: region::Scope::Node(cx.tcx.hir.node_to_hir_id(loop_id).local_id),

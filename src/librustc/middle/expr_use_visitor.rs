@@ -479,7 +479,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.consume_exprs(inputs);
             }
 
-            hir::ExprAgain(..) |
+            hir::ExprContinue(..) |
             hir::ExprLit(..) => {}
 
             hir::ExprLoop(ref blk, _, _) => {

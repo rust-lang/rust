@@ -469,7 +469,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
 
         // More control flow (also not very meaningful).
         hir::ExprBreak(..) |
-        hir::ExprAgain(_) |
+        hir::ExprContinue(_) |
         hir::ExprRet(_) |
 
         // Generator expressions

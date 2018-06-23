@@ -2331,7 +2331,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::ExprRepeat(..) |
             hir::ExprArray(..) |
             hir::ExprBreak(..) |
-            hir::ExprAgain(..) |
+            hir::ExprContinue(..) |
             hir::ExprRet(..) |
             hir::ExprWhile(..) |
             hir::ExprLoop(..) |
@@ -3847,7 +3847,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               }
 
           }
-          hir::ExprAgain(_) => { tcx.types.never }
+          hir::ExprContinue(_) => { tcx.types.never }
           hir::ExprRet(ref expr_opt) => {
             if self.ret_coercion.is_none() {
                 struct_span_err!(self.tcx.sess, expr.span, E0572,
