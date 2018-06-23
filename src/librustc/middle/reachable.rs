@@ -238,8 +238,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             // If we are building an executable, only explicitly extern
             // types need to be exported.
             if let hir_map::NodeItem(item) = *node {
-                let reachable = if let hir::ItemFn(.., abi, _, _) = item.node {
-                    abi != Abi::Rust
+                let reachable = if let hir::ItemFn(_, header, ..) = item.node {
+                    header.abi != Abi::Rust
                 } else {
                     false
                 };

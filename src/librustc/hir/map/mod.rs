@@ -174,7 +174,7 @@ impl<'hir> MapEntry<'hir> {
         match self {
             EntryItem(_, _, ref item) => {
                 match item.node {
-                    ItemFn(ref fn_decl, _, _, _, _, _) => Some(&fn_decl),
+                    ItemFn(ref fn_decl, _, _, _) => Some(&fn_decl),
                     _ => None,
                 }
             }
@@ -210,7 +210,7 @@ impl<'hir> MapEntry<'hir> {
                 match item.node {
                     ItemConst(_, body) |
                     ItemStatic(.., body) |
-                    ItemFn(_, _, _, _, _, body) => Some(body),
+                    ItemFn(_, _, _, body) => Some(body),
                     _ => None,
                 }
             }

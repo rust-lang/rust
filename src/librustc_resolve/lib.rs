@@ -55,7 +55,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 
 use syntax::visit::{self, FnKind, Visitor};
 use syntax::attr;
-use syntax::ast::{Arm, BindingMode, Block, Crate, Expr, ExprKind};
+use syntax::ast::{Arm, IsAsync, BindingMode, Block, Crate, Expr, ExprKind};
 use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParamKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
@@ -746,15 +746,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                 function_kind: FnKind<'tcx>,
                 declaration: &'tcx FnDecl,
                 _: Span,
-                node_id: NodeId) {
-        let rib_kind = match function_kind {
-            FnKind::ItemFn(..) => {
-                ItemRibKind
-            }
-            FnKind::Method(_, _, _, _) => {
-                TraitOrImplItemRibKind
-            }
-            FnKind::Closure(_) => ClosureRibKind(node_id),
+                node_id: NodeId)
+    {
+        let (rib_kind, asyncness) = match function_kind {
+            FnKind::ItemFn(_, ref header, ..) =>
+                (ItemRibKind, header.asyncness),
+            FnKind::Method(_, ref sig, _, _) =>
+                (TraitOrImplItemRibKind, sig.header.asyncness),
+            FnKind::Closure(_) =>
+                // Async closures aren't resolved through `visit_fn`-- they're
+                // processed separately
+                (ClosureRibKind(node_id), IsAsync::NotAsync),
         };
 
         // Create a value rib for the function.
@@ -774,7 +776,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         }
         visit::walk_fn_ret_ty(self, &declaration.output);
 
-        // Resolve the function body.
+        // Resolve the function body, potentially inside the body of an async closure
+        if let IsAsync::Async(async_closure_id) = asyncness {
+            let rib_kind = ClosureRibKind(async_closure_id);
+            self.ribs[ValueNS].push(Rib::new(rib_kind));
+            self.label_ribs.push(Rib::new(rib_kind));
+        }
+
         match function_kind {
             FnKind::ItemFn(.., body) |
             FnKind::Method(.., body) => {
@@ -784,6 +792,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                 self.visit_expr(body);
             }
         };
+
+        // Leave the body of the async closure
+        if asyncness.is_async() {
+            self.label_ribs.pop();
+            self.ribs[ValueNS].pop();
+        }
 
         debug!("(resolving function) leaving function");
 
@@ -1475,14 +1489,34 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
                                  |resolver, span, error| resolve_error(resolver, span, error))
     }
 
-    fn resolve_str_path(&mut self, span: Span, crate_root: Option<&str>,
-                        components: &[&str], is_value: bool) -> hir::Path {
+    fn resolve_str_path(
+        &mut self,
+        span: Span,
+        crate_root: Option<&str>,
+        components: &[&str],
+        args: Option<P<hir::GenericArgs>>,
+        is_value: bool
+    ) -> hir::Path {
+        let mut segments = iter::once(keywords::CrateRoot.name())
+            .chain(
+                crate_root.into_iter()
+                    .chain(components.iter().cloned())
+                    .map(Symbol::intern)
+            ).map(hir::PathSegment::from_name).collect::<Vec<_>>();
+
+        if let Some(args) = args {
+            let name = segments.last().unwrap().name;
+            *segments.last_mut().unwrap() = hir::PathSegment {
+                name,
+                args: Some(args),
+                infer_types: true,
+            };
+        }
+
         let mut path = hir::Path {
             span,
             def: Def::Err,
-            segments: iter::once(keywords::CrateRoot.name()).chain({
-                crate_root.into_iter().chain(components.iter().cloned()).map(Symbol::intern)
-            }).map(hir::PathSegment::from_name).collect(),
+            segments: segments.into(),
         };
 
         self.resolve_hir_path(&mut path, is_value);
@@ -2058,9 +2092,9 @@ impl<'a> Resolver<'a> {
             ItemKind::Ty(_, ref generics) |
             ItemKind::Struct(_, ref generics) |
             ItemKind::Union(_, ref generics) |
-            ItemKind::Fn(.., ref generics, _) => {
+            ItemKind::Fn(_, _, ref generics, _) => {
                 self.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind),
-                                             |this| visit::walk_item(this, item));
+                                         |this| visit::walk_item(this, item));
             }
 
             ItemKind::Impl(.., ref generics, ref opt_trait_ref, ref self_type, ref impl_items) =>
@@ -2374,7 +2408,7 @@ impl<'a> Resolver<'a> {
                                                 visit::walk_impl_item(this, impl_item)
                                             );
                                         }
-                                        ImplItemKind::Method(_, _) => {
+                                        ImplItemKind::Method(..) => {
                                             // If this is a trait impl, ensure the method
                                             // exists in trait
                                             this.check_trait_item(impl_item.ident,
@@ -3887,6 +3921,49 @@ impl<'a> Resolver<'a> {
                 self.current_type_ascription.push(type_expr.span);
                 visit::walk_expr(self, expr);
                 self.current_type_ascription.pop();
+            }
+            // Resolve the body of async exprs inside the async closure to which they desugar
+            ExprKind::Async(_, async_closure_id, ref block) => {
+                let rib_kind = ClosureRibKind(async_closure_id);
+                self.ribs[ValueNS].push(Rib::new(rib_kind));
+                self.label_ribs.push(Rib::new(rib_kind));
+                self.visit_block(&block);
+                self.label_ribs.pop();
+                self.ribs[ValueNS].pop();
+            }
+            // `async |x| ...` gets desugared to `|x| future_from_generator(|| ...)`, so we need to
+            // resolve the arguments within the proper scopes so that usages of them inside the
+            // closure are detected as upvars rather than normal closure arg usages.
+            ExprKind::Closure(
+                _, IsAsync::Async(inner_closure_id), _, ref fn_decl, ref body, _span) =>
+            {
+                let rib_kind = ClosureRibKind(expr.id);
+                self.ribs[ValueNS].push(Rib::new(rib_kind));
+                self.label_ribs.push(Rib::new(rib_kind));
+                // Resolve arguments:
+                let mut bindings_list = FxHashMap();
+                for argument in &fn_decl.inputs {
+                    self.resolve_pattern(&argument.pat, PatternSource::FnParam, &mut bindings_list);
+                    self.visit_ty(&argument.ty);
+                }
+                // No need to resolve return type-- the outer closure return type is
+                // FunctionRetTy::Default
+
+                // Now resolve the inner closure
+                {
+                    let rib_kind = ClosureRibKind(inner_closure_id);
+                    self.ribs[ValueNS].push(Rib::new(rib_kind));
+                    self.label_ribs.push(Rib::new(rib_kind));
+                    // No need to resolve arguments: the inner closure has none.
+                    // Resolve the return type:
+                    visit::walk_fn_ret_ty(self, &fn_decl.output);
+                    // Resolve the body
+                    self.visit_expr(body);
+                    self.label_ribs.pop();
+                    self.ribs[ValueNS].pop();
+                }
+                self.label_ribs.pop();
+                self.ribs[ValueNS].pop();
             }
             _ => {
                 visit::walk_expr(self, expr);

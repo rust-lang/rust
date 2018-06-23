@@ -168,6 +168,7 @@ pub trait Resolver {
         span: Span,
         crate_root: Option<&str>,
         components: &[&str],
+        params: Option<P<hir::GenericArgs>>,
         is_value: bool,
     ) -> hir::Path;
 }
@@ -449,7 +450,7 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn allocate_hir_id_counter<T: Debug>(&mut self, owner: NodeId, debug: &T) {
+    fn allocate_hir_id_counter<T: Debug>(&mut self, owner: NodeId, debug: &T) -> LoweredNodeId {
         if self.item_local_id_counters.insert(owner, 0).is_some() {
             bug!(
                 "Tried to allocate item_local_id_counter for {:?} twice",
@@ -457,7 +458,7 @@ impl<'a> LoweringContext<'a> {
             );
         }
         // Always allocate the first HirId for the owner itself
-        self.lower_node_id_with_owner(owner, owner);
+        self.lower_node_id_with_owner(owner, owner)
     }
 
     fn lower_node_id_generic<F>(&mut self, ast_node_id: NodeId, alloc_hir_id: F) -> LoweredNodeId
@@ -501,7 +502,7 @@ impl<'a> LoweringContext<'a> {
     {
         let counter = self.item_local_id_counters
             .insert(owner, HIR_ID_COUNTER_LOCKED)
-            .unwrap();
+            .unwrap_or_else(|| panic!("No item_local_id_counters entry for {:?}", owner));
         let def_index = self.resolver.definitions().opt_def_index(owner).unwrap();
         self.current_hir_id_owner.push((def_index, counter));
         let ret = f(self);
@@ -840,6 +841,46 @@ impl<'a> LoweringContext<'a> {
         result
     }
 
+    fn make_async_expr(
+        &mut self,
+        capture_clause: CaptureBy,
+        closure_node_id: NodeId,
+        ret_ty: Option<&Ty>,
+        body: impl FnOnce(&mut LoweringContext) -> hir::Expr,
+    ) -> hir::Expr_ {
+        let prev_is_generator = mem::replace(&mut self.is_generator, true);
+        let body_expr = body(self);
+        let span = body_expr.span;
+        let output = match ret_ty {
+            Some(ty) => FunctionRetTy::Ty(P(ty.clone())),
+            None => FunctionRetTy::Default(span),
+        };
+        let decl = FnDecl {
+            inputs: vec![],
+            output,
+            variadic: false
+        };
+        let body_id = self.record_body(body_expr, Some(&decl));
+        self.is_generator = prev_is_generator;
+
+        let capture_clause = self.lower_capture_clause(capture_clause);
+        let closure_hir_id = self.lower_node_id(closure_node_id).hir_id;
+        let decl = self.lower_fn_decl(&decl, None, /* impl trait allowed */ false, false);
+        let generator = hir::Expr {
+            id: closure_node_id,
+            hir_id: closure_hir_id,
+            node: hir::ExprClosure(capture_clause, decl, body_id, span,
+                Some(hir::GeneratorMovability::Static)),
+            span,
+            attrs: ThinVec::new(),
+        };
+
+        let unstable_span = self.allow_internal_unstable(CompilerDesugaringKind::Async, span);
+        let gen_future = self.expr_std_path(
+            unstable_span, &["future", "from_generator"], None, ThinVec::new());
+        hir::ExprCall(P(gen_future), hir_vec![generator])
+    }
+
     fn lower_body<F>(&mut self, decl: Option<&FnDecl>, f: F) -> hir::BodyId
     where
         F: FnOnce(&mut LoweringContext) -> hir::Expr,
@@ -1067,7 +1108,7 @@ impl<'a> LoweringContext<'a> {
                                 ),
                                 unsafety: this.lower_unsafety(f.unsafety),
                                 abi: f.abi,
-                                decl: this.lower_fn_decl(&f.decl, None, false),
+                                decl: this.lower_fn_decl(&f.decl, None, false, false),
                                 arg_names: this.lower_fn_args_to_names(&f.decl),
                             }))
                         },
@@ -1132,92 +1173,8 @@ impl<'a> LoweringContext<'a> {
                 let span = t.span;
                 match itctx {
                     ImplTraitContext::Existential(fn_def_id) => {
-
-                        // We need to manually repeat the code of `next_id` because the lowering
-                        // needs to happen while the owner_id is pointing to the item itself,
-                        // because items are their own owners
-                        let exist_ty_node_id = self.sess.next_node_id();
-
-                        // Make sure we know that some funky desugaring has been going on here.
-                        // This is a first: there is code in other places like for loop
-                        // desugaring that explicitly states that we don't want to track that.
-                        // Not tracking it makes lints in rustc and clippy very fragile as
-                        // frequently opened issues show.
-                        let exist_ty_span = self.allow_internal_unstable(
-                            CompilerDesugaringKind::ExistentialReturnType,
-                            t.span,
-                        );
-
-                        // Pull a new definition from the ether
-                        let exist_ty_def_index = self
-                            .resolver
-                            .definitions()
-                            .create_def_with_parent(
-                            fn_def_id.index,
-                            exist_ty_node_id,
-                            DefPathData::ExistentialImplTrait,
-                            DefIndexAddressSpace::High,
-                            Mark::root(),
-                            exist_ty_span,
-                        );
-
-                        // the `t` is just for printing debug messages
-                        self.allocate_hir_id_counter(exist_ty_node_id, t);
-
-                        let hir_bounds = self.with_hir_id_owner(exist_ty_node_id, |lctx| {
-                            lctx.lower_param_bounds(bounds, itctx)
-                        });
-
-                        let (lifetimes, lifetime_defs) = self.lifetimes_from_impl_trait_bounds(
-                            exist_ty_node_id,
-                            exist_ty_def_index,
-                            &hir_bounds,
-                        );
-
-                        self.with_hir_id_owner(exist_ty_node_id, |lctx| {
-                            let exist_ty_item_kind = hir::ItemExistential(hir::ExistTy {
-                                generics: hir::Generics {
-                                    params: lifetime_defs,
-                                    where_clause: hir::WhereClause {
-                                        id: lctx.next_id().node_id,
-                                        predicates: Vec::new().into(),
-                                    },
-                                    span,
-                                },
-                                bounds: hir_bounds,
-                                impl_trait_fn: Some(fn_def_id),
-                            });
-                            let exist_ty_id = lctx.lower_node_id(exist_ty_node_id);
-                            // Generate an `existential type Foo: Trait;` declaration
-                            trace!("creating existential type with id {:#?}", exist_ty_id);
-                            // Set the name to `impl Bound1 + Bound2`
-                            let exist_ty_name = Symbol::intern(&pprust::ty_to_string(t));
-
-                            trace!("exist ty def index: {:#?}", exist_ty_def_index);
-                            let exist_ty_item = hir::Item {
-                                id: exist_ty_id.node_id,
-                                hir_id: exist_ty_id.hir_id,
-                                name: exist_ty_name,
-                                attrs: Default::default(),
-                                node: exist_ty_item_kind,
-                                vis: hir::Visibility::Inherited,
-                                span: exist_ty_span,
-                            };
-
-                            // Insert the item into the global list. This usually happens
-                            // automatically for all AST items. But this existential type item
-                            // does not actually exist in the AST.
-                            lctx.items.insert(exist_ty_id.node_id, exist_ty_item);
-
-                            // `impl Trait` now just becomes `Foo<'a, 'b, ..>`
-                            hir::TyImplTraitExistential(
-                                hir::ItemId {
-                                    id: exist_ty_id.node_id
-                                },
-                                DefId::local(exist_ty_def_index),
-                                lifetimes,
-                            )
-                        })
+                        self.lower_existential_impl_trait(
+                            span, fn_def_id, |this| this.lower_param_bounds(bounds, itctx))
                     }
                     ImplTraitContext::Universal(def_id) => {
                         let def_node_id = self.next_id().node_id;
@@ -1278,6 +1235,94 @@ impl<'a> LoweringContext<'a> {
             node: kind,
             span: t.span,
             hir_id,
+        })
+    }
+
+    fn lower_existential_impl_trait(
+        &mut self,
+        span: Span,
+        fn_def_id: DefId,
+        lower_bounds: impl FnOnce(&mut LoweringContext) -> hir::GenericBounds,
+    ) -> hir::Ty_ {
+        // We need to manually repeat the code of `next_id` because the lowering
+        // needs to happen while the owner_id is pointing to the item itself,
+        // because items are their own owners
+        let exist_ty_node_id = self.sess.next_node_id();
+
+        // Make sure we know that some funky desugaring has been going on here.
+        // This is a first: there is code in other places like for loop
+        // desugaring that explicitly states that we don't want to track that.
+        // Not tracking it makes lints in rustc and clippy very fragile as
+        // frequently opened issues show.
+        let exist_ty_span = self.allow_internal_unstable(
+            CompilerDesugaringKind::ExistentialReturnType,
+            span,
+        );
+
+        // Pull a new definition from the ether
+        let exist_ty_def_index = self
+            .resolver
+            .definitions()
+            .create_def_with_parent(
+            fn_def_id.index,
+            exist_ty_node_id,
+            DefPathData::ExistentialImplTrait,
+            DefIndexAddressSpace::High,
+            Mark::root(),
+            exist_ty_span,
+        );
+
+        self.allocate_hir_id_counter(exist_ty_node_id, &"existential impl trait");
+
+        let hir_bounds = self.with_hir_id_owner(exist_ty_node_id, lower_bounds);
+
+        let (lifetimes, lifetime_defs) = self.lifetimes_from_impl_trait_bounds(
+            exist_ty_node_id,
+            exist_ty_def_index,
+            &hir_bounds,
+        );
+
+        self.with_hir_id_owner(exist_ty_node_id, |lctx| {
+            let exist_ty_item_kind = hir::ItemExistential(hir::ExistTy {
+                generics: hir::Generics {
+                    params: lifetime_defs,
+                    where_clause: hir::WhereClause {
+                        id: lctx.next_id().node_id,
+                        predicates: Vec::new().into(),
+                    },
+                    span,
+                },
+                bounds: hir_bounds,
+                impl_trait_fn: Some(fn_def_id),
+            });
+            let exist_ty_id = lctx.lower_node_id(exist_ty_node_id);
+            // Generate an `existential type Foo: Trait;` declaration
+            trace!("creating existential type with id {:#?}", exist_ty_id);
+
+            trace!("exist ty def index: {:#?}", exist_ty_def_index);
+            let exist_ty_item = hir::Item {
+                id: exist_ty_id.node_id,
+                hir_id: exist_ty_id.hir_id,
+                name: keywords::Invalid.name(),
+                attrs: Default::default(),
+                node: exist_ty_item_kind,
+                vis: hir::Visibility::Inherited,
+                span: exist_ty_span,
+            };
+
+            // Insert the item into the global list. This usually happens
+            // automatically for all AST items. But this existential type item
+            // does not actually exist in the AST.
+            lctx.items.insert(exist_ty_id.node_id, exist_ty_item);
+
+            // `impl Trait` now just becomes `Foo<'a, 'b, ..>`
+            hir::TyImplTraitExistential(
+                hir::ItemId {
+                    id: exist_ty_id.node_id
+                },
+                DefId::local(exist_ty_def_index),
+                lifetimes,
+            )
         })
     }
 
@@ -1829,31 +1874,40 @@ impl<'a> LoweringContext<'a> {
             .collect()
     }
 
+    // Lowers a function declaration.
+    //
+    // decl: the unlowered (ast) function declaration.
+    // fn_def_id: if `Some`, impl Trait arguments are lowered into generic parameters on the
+    //      given DefId, otherwise impl Trait is disallowed. Must be `Some` if
+    //      make_ret_async is true.
+    // impl_trait_return_allow: determines whether impl Trait can be used in return position.
+    //      This guards against trait declarations and implementations where impl Trait is
+    //      disallowed.
+    // make_ret_async: if enabled, converts `-> T` into `-> impl Future<Output = T>` in the
+    //      return type. This is used for `async fn` declarations.
     fn lower_fn_decl(
         &mut self,
         decl: &FnDecl,
         fn_def_id: Option<DefId>,
         impl_trait_return_allow: bool,
+        make_ret_async: bool,
     ) -> P<hir::FnDecl> {
-        // NOTE: The two last parameters here have to do with impl Trait. If fn_def_id is Some,
-        //       then impl Trait arguments are lowered into generic parameters on the given
-        //       fn_def_id, otherwise impl Trait is disallowed. (for now)
-        //
-        //       Furthermore, if impl_trait_return_allow is true, then impl Trait may be used in
-        //       return positions as well. This guards against trait declarations and their impls
-        //       where impl Trait is disallowed. (again for now)
-        P(hir::FnDecl {
-            inputs: decl.inputs
-                .iter()
-                .map(|arg| {
-                    if let Some(def_id) = fn_def_id {
-                        self.lower_ty(&arg.ty, ImplTraitContext::Universal(def_id))
-                    } else {
-                        self.lower_ty(&arg.ty, ImplTraitContext::Disallowed)
-                    }
-                })
-                .collect(),
-            output: match decl.output {
+        let inputs = decl.inputs
+            .iter()
+            .map(|arg| {
+                if let Some(def_id) = fn_def_id {
+                    self.lower_ty(&arg.ty, ImplTraitContext::Universal(def_id))
+                } else {
+                    self.lower_ty(&arg.ty, ImplTraitContext::Disallowed)
+                }
+            })
+            .collect::<HirVec<_>>();
+
+        let output = if make_ret_async {
+            self.lower_async_fn_ret_ty(
+                &inputs, &decl.output, fn_def_id.expect("make_ret_async but no fn_def_id"))
+        } else {
+            match decl.output {
                 FunctionRetTy::Ty(ref ty) => match fn_def_id {
                     Some(def_id) if impl_trait_return_allow => {
                         hir::Return(self.lower_ty(ty, ImplTraitContext::Existential(def_id)))
@@ -1861,7 +1915,12 @@ impl<'a> LoweringContext<'a> {
                     _ => hir::Return(self.lower_ty(ty, ImplTraitContext::Disallowed)),
                 },
                 FunctionRetTy::Default(span) => hir::DefaultReturn(span),
-            },
+            }
+        };
+
+        P(hir::FnDecl {
+            inputs,
+            output,
             variadic: decl.variadic,
             has_implicit_self: decl.inputs.get(0).map_or(false, |arg| match arg.ty.node {
                 TyKind::ImplicitSelf => true,
@@ -1869,6 +1928,231 @@ impl<'a> LoweringContext<'a> {
                 _ => false,
             }),
         })
+    }
+
+    // Transform `-> T` into `-> impl Future<Output = T>` for `async fn`
+    //
+    // fn_span: the span of the async function declaration. Used for error reporting.
+    // inputs: lowered types of arguments to the function. Used to collect lifetimes.
+    // output: unlowered output type (`T` in `-> T`)
+    // fn_def_id: DefId of the parent function. Used to create child impl trait definition.
+    fn lower_async_fn_ret_ty(
+        &mut self,
+        inputs: &[P<hir::Ty>],
+        output: &FunctionRetTy,
+        fn_def_id: DefId,
+    ) -> hir::FunctionRetTy {
+        // Get lifetimes used in the input arguments to the function. Our output type must also
+        // have the same lifetime. FIXME(cramertj) multiple different lifetimes are not allowed
+        // because `impl Trait + 'a + 'b` doesn't allow for capture `'a` and `'b` where neither
+        // is a subset of the other. We really want some new lifetime that is a subset of all input
+        // lifetimes, but that doesn't exist at the moment.
+
+        struct AsyncFnLifetimeCollector<'r, 'a: 'r> {
+            context: &'r mut LoweringContext<'a>,
+            // Lifetimes bound by HRTB
+            currently_bound_lifetimes: Vec<hir::LifetimeName>,
+            // Whether to count elided lifetimes.
+            // Disabled inside of `Fn` or `fn` syntax.
+            collect_elided_lifetimes: bool,
+            // The lifetime found.
+            // Multiple different or elided lifetimes cannot appear in async fn for now.
+            output_lifetime: Option<(hir::LifetimeName, Span)>,
+        }
+
+        impl<'r, 'a: 'r, 'v> hir::intravisit::Visitor<'v> for AsyncFnLifetimeCollector<'r, 'a> {
+            fn nested_visit_map<'this>(
+                &'this mut self,
+            ) -> hir::intravisit::NestedVisitorMap<'this, 'v> {
+                hir::intravisit::NestedVisitorMap::None
+            }
+
+            fn visit_generic_args(&mut self, span: Span, parameters: &'v hir::GenericArgs) {
+                // Don't collect elided lifetimes used inside of `Fn()` syntax.
+                if parameters.parenthesized {
+                    let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
+                    self.collect_elided_lifetimes = false;
+                    hir::intravisit::walk_generic_args(self, span, parameters);
+                    self.collect_elided_lifetimes = old_collect_elided_lifetimes;
+                } else {
+                    hir::intravisit::walk_generic_args(self, span, parameters);
+                }
+            }
+
+            fn visit_ty(&mut self, t: &'v hir::Ty) {
+                // Don't collect elided lifetimes used inside of `fn()` syntax
+                if let &hir::Ty_::TyBareFn(_) = &t.node {
+                    let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
+                    self.collect_elided_lifetimes = false;
+
+                    // Record the "stack height" of `for<'a>` lifetime bindings
+                    // to be able to later fully undo their introduction.
+                    let old_len = self.currently_bound_lifetimes.len();
+                    hir::intravisit::walk_ty(self, t);
+                    self.currently_bound_lifetimes.truncate(old_len);
+
+                    self.collect_elided_lifetimes = old_collect_elided_lifetimes;
+                } else {
+                    hir::intravisit::walk_ty(self, t);
+                }
+            }
+
+            fn visit_poly_trait_ref(
+                &mut self,
+                trait_ref: &'v hir::PolyTraitRef,
+                modifier: hir::TraitBoundModifier,
+            ) {
+                // Record the "stack height" of `for<'a>` lifetime bindings
+                // to be able to later fully undo their introduction.
+                let old_len = self.currently_bound_lifetimes.len();
+                hir::intravisit::walk_poly_trait_ref(self, trait_ref, modifier);
+                self.currently_bound_lifetimes.truncate(old_len);
+            }
+
+            fn visit_generic_param(&mut self, param: &'v hir::GenericParam) {
+                 // Record the introduction of 'a in `for<'a> ...`
+                if let hir::GenericParamKind::Lifetime { .. } = param.kind {
+                    // Introduce lifetimes one at a time so that we can handle
+                    // cases like `fn foo<'d>() -> impl for<'a, 'b: 'a, 'c: 'b + 'd>`
+                    let lt_name = hir::LifetimeName::Param(param.name);
+                    self.currently_bound_lifetimes.push(lt_name);
+                }
+
+                hir::intravisit::walk_generic_param(self, param);
+            }
+
+            fn visit_lifetime(&mut self, lifetime: &'v hir::Lifetime) {
+                let name = match lifetime.name {
+                    hir::LifetimeName::Implicit | hir::LifetimeName::Underscore => {
+                        if self.collect_elided_lifetimes {
+                            // Use `'_` for both implicit and underscore lifetimes in
+                            // `abstract type Foo<'_>: SomeTrait<'_>;`
+                            hir::LifetimeName::Underscore
+                        } else {
+                            return;
+                        }
+                    }
+                    hir::LifetimeName::Param(_) => lifetime.name,
+                    hir::LifetimeName::Static => return,
+                };
+
+                if !self.currently_bound_lifetimes.contains(&name) {
+                    if let Some((current_lt_name, current_lt_span)) = self.output_lifetime {
+                        // We don't currently have a reliable way to desugar `async fn` with
+                        // multiple potentially unrelated input lifetimes into
+                        // `-> impl Trait + 'lt`, so we report an error in this case.
+                        if current_lt_name != name {
+                            struct_span_err!(
+                                self.context.sess,
+                                current_lt_span.between(lifetime.span),
+                                E0725,
+                                "multiple different lifetimes used in arguments of `async fn`",
+                            )
+                                .span_label(current_lt_span, "first lifetime here")
+                                .span_label(lifetime.span, "different lifetime here")
+                                .help("`async fn` can only accept borrowed values \
+                                      with identical lifetimes")
+                                .emit()
+                        } else if current_lt_name.is_elided() && name.is_elided() {
+                            struct_span_err!(
+                                self.context.sess,
+                                current_lt_span.between(lifetime.span),
+                                E0726,
+                                "multiple elided lifetimes used in arguments of `async fn`",
+                            )
+                                .span_label(current_lt_span, "first lifetime here")
+                                .span_label(lifetime.span, "different lifetime here")
+                                .help("consider giving these arguments named lifetimes")
+                                .emit()
+                        }
+                    } else {
+                        self.output_lifetime = Some((name, lifetime.span));
+                    }
+                }
+            }
+        }
+
+        let bound_lifetime = {
+            let mut lifetime_collector = AsyncFnLifetimeCollector {
+                context: self,
+                currently_bound_lifetimes: Vec::new(),
+                collect_elided_lifetimes: true,
+                output_lifetime: None,
+            };
+
+            for arg in inputs {
+                hir::intravisit::walk_ty(&mut lifetime_collector, arg);
+            }
+            lifetime_collector.output_lifetime
+        };
+
+        let span = match output {
+            FunctionRetTy::Ty(ty) => ty.span,
+            FunctionRetTy::Default(span) => *span,
+        };
+
+        let impl_trait_ty = self.lower_existential_impl_trait(
+            span, fn_def_id, |this| {
+            let output_ty = match output {
+                FunctionRetTy::Ty(ty) =>
+                    this.lower_ty(ty, ImplTraitContext::Existential(fn_def_id)),
+                FunctionRetTy::Default(span) => {
+                    let LoweredNodeId { node_id, hir_id } = this.next_id();
+                    P(hir::Ty {
+                        id: node_id,
+                        hir_id: hir_id,
+                        node: hir::TyTup(hir_vec![]),
+                        span: *span,
+                    })
+                }
+            };
+
+            // "<Output = T>"
+            let future_params = P(hir::GenericArgs {
+                args: hir_vec![],
+                bindings: hir_vec![hir::TypeBinding {
+                    name: Symbol::intern(FN_OUTPUT_NAME),
+                    ty: output_ty,
+                    id: this.next_id().node_id,
+                    span,
+                }],
+                parenthesized: false,
+            });
+
+            let future_path =
+                this.std_path(span, &["future", "Future"], Some(future_params), false);
+
+            let mut bounds = vec![
+                hir::GenericBound::Trait(
+                    hir::PolyTraitRef {
+                        trait_ref: hir::TraitRef {
+                            path: future_path,
+                            ref_id: this.next_id().node_id,
+                        },
+                        bound_generic_params: hir_vec![],
+                        span,
+                    },
+                    hir::TraitBoundModifier::None
+                ),
+            ];
+
+            if let Some((name, span)) = bound_lifetime {
+                bounds.push(hir::GenericBound::Outlives(
+                    hir::Lifetime { id: this.next_id().node_id, name, span }));
+            }
+
+            hir::HirVec::from(bounds)
+        });
+
+        let LoweredNodeId { node_id, hir_id } = self.next_id();
+        let impl_trait_ty = P(hir::Ty {
+            id: node_id,
+            node: impl_trait_ty,
+            span,
+            hir_id,
+        });
+
+        hir::FunctionRetTy::Return(impl_trait_ty)
     }
 
     fn lower_param_bound(
@@ -2284,25 +2568,40 @@ impl<'a> LoweringContext<'a> {
                 let value = self.lower_body(None, |this| this.lower_expr(e));
                 hir::ItemConst(self.lower_ty(t, ImplTraitContext::Disallowed), value)
             }
-            ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
+            ItemKind::Fn(ref decl, header, ref generics, ref body) => {
                 let fn_def_id = self.resolver.definitions().local_def_id(id);
+
                 self.with_new_scopes(|this| {
+                    // Note: we don't need to change the return type from `T` to
+                    // `impl Future<Output = T>` here because lower_body
+                    // only cares about the input argument patterns in the function
+                    // declaration (decl), not the return types.
                     let body_id = this.lower_body(Some(decl), |this| {
-                        let body = this.lower_block(body, false);
-                        this.expr_block(body, ThinVec::new())
+                        if let IsAsync::Async(async_node_id) = header.asyncness {
+                            let async_expr = this.make_async_expr(
+                                CaptureBy::Value, async_node_id, None,
+                                |this| {
+                                    let body = this.lower_block(body, false);
+                                    this.expr_block(body, ThinVec::new())
+                                });
+                            this.expr(body.span, async_expr, ThinVec::new())
+                        } else {
+                            let body = this.lower_block(body, false);
+                            this.expr_block(body, ThinVec::new())
+                        }
                     });
+
                     let (generics, fn_decl) = this.add_in_band_defs(
                         generics,
                         fn_def_id,
                         AnonymousLifetimeMode::PassThrough,
-                        |this| this.lower_fn_decl(decl, Some(fn_def_id), true),
+                        |this| this.lower_fn_decl(
+                            decl, Some(fn_def_id), true, header.asyncness.is_async())
                     );
 
                     hir::ItemFn(
                         fn_decl,
-                        this.lower_unsafety(unsafety),
-                        this.lower_constness(constness),
-                        abi,
+                        this.lower_fn_header(header),
                         generics,
                         body_id,
                     )
@@ -2620,7 +2919,7 @@ impl<'a> LoweringContext<'a> {
                     AnonymousLifetimeMode::PassThrough,
                     |this| {
                         hir::TraitItemKind::Method(
-                            this.lower_method_sig(sig, trait_item_def_id, false),
+                            this.lower_method_sig(sig, trait_item_def_id, false, false),
                             hir::TraitMethod::Required(names),
                         )
                     },
@@ -2638,7 +2937,7 @@ impl<'a> LoweringContext<'a> {
                     AnonymousLifetimeMode::PassThrough,
                     |this| {
                         hir::TraitItemKind::Method(
-                            this.lower_method_sig(sig, trait_item_def_id, false),
+                            this.lower_method_sig(sig, trait_item_def_id, false, false),
                             hir::TraitMethod::Provided(body_id),
                         )
                     },
@@ -2709,8 +3008,18 @@ impl<'a> LoweringContext<'a> {
             }
             ImplItemKind::Method(ref sig, ref body) => {
                 let body_id = self.lower_body(Some(&sig.decl), |this| {
-                    let body = this.lower_block(body, false);
-                    this.expr_block(body, ThinVec::new())
+                    if let IsAsync::Async(async_node_id) = sig.header.asyncness {
+                        let async_expr = this.make_async_expr(
+                            CaptureBy::Value, async_node_id, None,
+                            |this| {
+                                let body = this.lower_block(body, false);
+                                this.expr_block(body, ThinVec::new())
+                            });
+                        this.expr(body.span, async_expr, ThinVec::new())
+                    } else {
+                        let body = this.lower_block(body, false);
+                        this.expr_block(body, ThinVec::new())
+                    }
                 });
                 let impl_trait_return_allow = !self.is_in_trait_impl;
 
@@ -2724,6 +3033,7 @@ impl<'a> LoweringContext<'a> {
                                 sig,
                                 impl_item_def_id,
                                 impl_trait_return_allow,
+                                sig.header.asyncness.is_async(),
                             ),
                             body_id,
                         )
@@ -2865,7 +3175,7 @@ impl<'a> LoweringContext<'a> {
                         |this| {
                             (
                                 // Disallow impl Trait in foreign items
-                                this.lower_fn_decl(fdec, None, false),
+                                this.lower_fn_decl(fdec, None, false, false),
                                 this.lower_fn_args_to_names(fdec),
                             )
                         },
@@ -2889,12 +3199,11 @@ impl<'a> LoweringContext<'a> {
         sig: &MethodSig,
         fn_def_id: DefId,
         impl_trait_return_allow: bool,
+        is_async: bool,
     ) -> hir::MethodSig {
         hir::MethodSig {
-            abi: sig.abi,
-            unsafety: self.lower_unsafety(sig.unsafety),
-            constness: self.lower_constness(sig.constness),
-            decl: self.lower_fn_decl(&sig.decl, Some(fn_def_id), impl_trait_return_allow),
+            header: self.lower_fn_header(sig.header),
+            decl: self.lower_fn_decl(&sig.decl, Some(fn_def_id), impl_trait_return_allow, is_async),
         }
     }
 
@@ -2902,6 +3211,15 @@ impl<'a> LoweringContext<'a> {
         match a {
             IsAuto::Yes => hir::IsAuto::Yes,
             IsAuto::No => hir::IsAuto::No,
+        }
+    }
+
+    fn lower_fn_header(&mut self, h: FnHeader) -> hir::FnHeader {
+        hir::FnHeader {
+            unsafety: self.lower_unsafety(h.unsafety),
+            asyncness: self.lower_asyncness(h.asyncness),
+            constness: self.lower_constness(h.constness),
+            abi: h.abi,
         }
     }
 
@@ -2916,6 +3234,13 @@ impl<'a> LoweringContext<'a> {
         match c.node {
             Constness::Const => hir::Constness::Const,
             Constness::NotConst => hir::Constness::NotConst,
+        }
+    }
+
+    fn lower_asyncness(&mut self, a: IsAsync) -> hir::IsAsync {
+        match a {
+            IsAsync::Async(_) => hir::IsAsync::Async,
+            IsAsync::NotAsync => hir::IsAsync::NotAsync,
         }
     }
 
@@ -3206,46 +3531,101 @@ impl<'a> LoweringContext<'a> {
                 arms.iter().map(|x| self.lower_arm(x)).collect(),
                 hir::MatchSource::Normal,
             ),
-            ExprKind::Closure(capture_clause, movability, ref decl, ref body, fn_decl_span) => {
+            ExprKind::Async(capture_clause, closure_node_id, ref block) => {
+                self.make_async_expr(capture_clause, closure_node_id, None, |this| {
+                    this.with_new_scopes(|this| {
+                        let block = this.lower_block(block, false);
+                        this.expr_block(block, ThinVec::new())
+                    })
+                })
+            },
+            ExprKind::Closure(
+                capture_clause, asyncness, movability, ref decl, ref body, fn_decl_span) =>
+            {
                 self.with_new_scopes(|this| {
-                    let mut is_generator = false;
-                    let body_id = this.lower_body(Some(decl), |this| {
-                        let e = this.lower_expr(body);
-                        is_generator = this.is_generator;
-                        e
-                    });
-                    let generator_option = if is_generator {
-                        if !decl.inputs.is_empty() {
-                            span_err!(
+                    if let IsAsync::Async(async_closure_node_id) = asyncness {
+                        // FIXME(cramertj) allow `async` non-`move` closures with
+                        if capture_clause == CaptureBy::Ref &&
+                            !decl.inputs.is_empty()
+                        {
+                            struct_span_err!(
                                 this.sess,
                                 fn_decl_span,
-                                E0628,
-                                "generators cannot have explicit arguments"
-                            );
-                            this.sess.abort_if_errors();
+                                E0727,
+                                "`async` non-`move` closures with arguments \
+                                are not currently supported",
+                            )
+                                .help("consider using `let` statements to manually capture \
+                                        variables by reference before entering an \
+                                        `async move` closure")
+                                .emit();
                         }
-                        Some(match movability {
-                            Movability::Movable => hir::GeneratorMovability::Movable,
-                            Movability::Static => hir::GeneratorMovability::Static,
-                        })
+
+                        // Transform `async |x: u8| -> X { ... }` into
+                        // `|x: u8| future_from_generator(|| -> X { ... })`
+                        let outer_decl = FnDecl {
+                            inputs: decl.inputs.clone(),
+                            output: FunctionRetTy::Default(fn_decl_span),
+                            variadic: false,
+                        };
+                        let body_id = this.lower_body(Some(&outer_decl), |this| {
+                            let async_ret_ty = if let FunctionRetTy::Ty(ty) = &decl.output {
+                                Some(&**ty)
+                            } else { None };
+                            let async_body = this.make_async_expr(
+                                capture_clause, async_closure_node_id, async_ret_ty,
+                                |this| {
+                                    this.with_new_scopes(|this| this.lower_expr(body))
+                                });
+                            this.expr(fn_decl_span, async_body, ThinVec::new())
+                        });
+                        hir::ExprClosure(
+                            this.lower_capture_clause(capture_clause),
+                            this.lower_fn_decl(&outer_decl, None, false, false),
+                            body_id,
+                            fn_decl_span,
+                            None,
+                        )
                     } else {
-                        if movability == Movability::Static {
-                            span_err!(
-                                this.sess,
-                                fn_decl_span,
-                                E0697,
-                                "closures cannot be static"
-                            );
-                        }
-                        None
-                    };
-                    hir::ExprClosure(
-                        this.lower_capture_clause(capture_clause),
-                        this.lower_fn_decl(decl, None, false),
-                        body_id,
-                        fn_decl_span,
-                        generator_option,
-                    )
+                        let mut is_generator = false;
+                        let body_id = this.lower_body(Some(decl), |this| {
+                            let e = this.lower_expr(body);
+                            is_generator = this.is_generator;
+                            e
+                        });
+                        let generator_option = if is_generator {
+                            if !decl.inputs.is_empty() {
+                                span_err!(
+                                    this.sess,
+                                    fn_decl_span,
+                                    E0628,
+                                    "generators cannot have explicit arguments"
+                                );
+                                this.sess.abort_if_errors();
+                            }
+                            Some(match movability {
+                                Movability::Movable => hir::GeneratorMovability::Movable,
+                                Movability::Static => hir::GeneratorMovability::Static,
+                            })
+                        } else {
+                            if movability == Movability::Static {
+                                span_err!(
+                                    this.sess,
+                                    fn_decl_span,
+                                    E0906,
+                                    "closures cannot be static"
+                                );
+                            }
+                            None
+                        };
+                        hir::ExprClosure(
+                            this.lower_capture_clause(capture_clause),
+                            this.lower_fn_decl(decl, None, false, false),
+                            body_id,
+                            fn_decl_span,
+                            generator_option,
+                        )
+                    }
                 })
             }
             ExprKind::Block(ref blk, opt_label) => {
@@ -3272,7 +3652,7 @@ impl<'a> LoweringContext<'a> {
                 let id = self.next_id();
                 let e1 = self.lower_expr(e1);
                 let e2 = self.lower_expr(e2);
-                let ty_path = P(self.std_path(span, &["ops", "RangeInclusive"], false));
+                let ty_path = P(self.std_path(span, &["ops", "RangeInclusive"], None, false));
                 let ty = self.ty_path(id, span, hir::QPath::Resolved(None, ty_path));
                 let new_seg = P(hir::PathSegment::from_name(Symbol::intern("new")));
                 let new_path = hir::QPath::TypeRelative(ty, new_seg);
@@ -3312,7 +3692,7 @@ impl<'a> LoweringContext<'a> {
                 let struct_path = iter::once("ops")
                     .chain(iter::once(path))
                     .collect::<Vec<_>>();
-                let struct_path = self.std_path(unstable_span, &struct_path, is_unit);
+                let struct_path = self.std_path(unstable_span, &struct_path, None, is_unit);
                 let struct_path = hir::QPath::Resolved(None, P(struct_path));
 
                 let LoweredNodeId { node_id, hir_id } = self.lower_node_id(e.id);
@@ -3589,7 +3969,7 @@ impl<'a> LoweringContext<'a> {
                     let iter = P(self.expr_ident(head_sp, iter, iter_pat.id));
                     let ref_mut_iter = self.expr_mut_addr_of(head_sp, iter);
                     let next_path = &["iter", "Iterator", "next"];
-                    let next_path = P(self.expr_std_path(head_sp, next_path, ThinVec::new()));
+                    let next_path = P(self.expr_std_path(head_sp, next_path, None, ThinVec::new()));
                     let next_expr = P(self.expr_call(head_sp, next_path, hir_vec![ref_mut_iter]));
                     let arms = hir_vec![pat_arm, break_arm];
 
@@ -3647,7 +4027,8 @@ impl<'a> LoweringContext<'a> {
                 // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
                 let into_iter_expr = {
                     let into_iter_path = &["iter", "IntoIterator", "into_iter"];
-                    let into_iter = P(self.expr_std_path(head_sp, into_iter_path, ThinVec::new()));
+                    let into_iter = P(self.expr_std_path(
+                            head_sp, into_iter_path, None, ThinVec::new()));
                     P(self.expr_call(head_sp, into_iter, hir_vec![head]))
                 };
 
@@ -3693,7 +4074,8 @@ impl<'a> LoweringContext<'a> {
                     let sub_expr = self.lower_expr(sub_expr);
 
                     let path = &["ops", "Try", "into_result"];
-                    let path = P(self.expr_std_path(unstable_span, path, ThinVec::new()));
+                    let path = P(self.expr_std_path(
+                            unstable_span, path, None, ThinVec::new()));
                     P(self.expr_call(e.span, path, hir_vec![sub_expr]))
                 };
 
@@ -3732,7 +4114,8 @@ impl<'a> LoweringContext<'a> {
                     let err_local = self.pat_ident(e.span, err_ident);
                     let from_expr = {
                         let path = &["convert", "From", "from"];
-                        let from = P(self.expr_std_path(e.span, path, ThinVec::new()));
+                        let from = P(self.expr_std_path(
+                                e.span, path, None, ThinVec::new()));
                         let err_expr = self.expr_ident(e.span, err_ident, err_local.id);
 
                         self.expr_call(e.span, from, hir_vec![err_expr])
@@ -3972,9 +4355,10 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         span: Span,
         components: &[&str],
+        params: Option<P<hir::GenericArgs>>,
         attrs: ThinVec<Attribute>,
     ) -> hir::Expr {
-        let path = self.std_path(span, components, true);
+        let path = self.std_path(span, components, params, true);
         self.expr(
             span,
             hir::ExprPath(hir::QPath::Resolved(None, P(path))),
@@ -4099,7 +4483,7 @@ impl<'a> LoweringContext<'a> {
         components: &[&str],
         subpats: hir::HirVec<P<hir::Pat>>,
     ) -> P<hir::Pat> {
-        let path = self.std_path(span, components, true);
+        let path = self.std_path(span, components, None, true);
         let qpath = hir::QPath::Resolved(None, P(path));
         let pt = if subpats.is_empty() {
             hir::PatKind::Path(qpath)
@@ -4146,9 +4530,15 @@ impl<'a> LoweringContext<'a> {
     /// Given suffix ["b","c","d"], returns path `::std::b::c::d` when
     /// `fld.cx.use_std`, and `::core::b::c::d` otherwise.
     /// The path is also resolved according to `is_value`.
-    fn std_path(&mut self, span: Span, components: &[&str], is_value: bool) -> hir::Path {
+    fn std_path(
+        &mut self,
+        span: Span,
+        components: &[&str],
+        params: Option<P<hir::GenericArgs>>,
+        is_value: bool
+    ) -> hir::Path {
         self.resolver
-            .resolve_str_path(span, self.crate_root, components, is_value)
+            .resolve_str_path(span, self.crate_root, components, params, is_value)
     }
 
     fn ty_path(&mut self, id: LoweredNodeId, span: Span, qpath: hir::QPath) -> P<hir::Ty> {
@@ -4280,7 +4670,7 @@ impl<'a> LoweringContext<'a> {
         unstable_span: Span,
     ) -> P<hir::Expr> {
         let path = &["ops", "Try", method];
-        let from_err = P(self.expr_std_path(unstable_span, path,
+        let from_err = P(self.expr_std_path(unstable_span, path, None,
                                             ThinVec::new()));
         P(self.expr_call(e.span, from_err, hir_vec![e]))
     }

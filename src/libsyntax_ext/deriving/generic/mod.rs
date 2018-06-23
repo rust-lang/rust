@@ -197,7 +197,7 @@ use syntax::ast::{VariantData, GenericParamKind, GenericArg};
 use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
-use syntax::codemap::{self, dummy_spanned, respan};
+use syntax::codemap::{self, respan};
 use syntax::util::move_map::MoveMap;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
@@ -971,10 +971,10 @@ impl<'a> MethodDef<'a> {
             defaultness: ast::Defaultness::Final,
             ident: method_ident,
             node: ast::ImplItemKind::Method(ast::MethodSig {
-                                                abi,
-                                                unsafety,
-                                                constness:
-                                                    dummy_spanned(ast::Constness::NotConst),
+                                                header: ast::FnHeader {
+                                                    unsafety, abi,
+                                                    ..ast::FnHeader::default()
+                                                },
                                                 decl: fn_decl,
                                             },
                                             body_block),

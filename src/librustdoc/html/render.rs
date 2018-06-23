@@ -62,13 +62,12 @@ use rustc::middle::stability;
 use rustc::hir;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::flock;
-use rustc_target::spec::abi;
 
 use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability};
 use doctree;
 use fold::DocFolder;
 use html::escape::Escape;
-use html::format::{ConstnessSpace};
+use html::format::{AsyncSpace, ConstnessSpace};
 use html::format::{GenericBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
@@ -2405,7 +2404,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
                 let unsafety_flag = match myitem.inner {
                     clean::FunctionItem(ref func) | clean::ForeignFunctionItem(ref func)
-                    if func.unsafety == hir::Unsafety::Unsafe => {
+                    if func.header.unsafety == hir::Unsafety::Unsafe => {
                         "<a title='unsafe function' href='#'><sup>⚠</sup></a>"
                     }
                     _ => "",
@@ -2575,21 +2574,24 @@ fn item_static(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
 fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
-    let name_len = format!("{}{}{}{:#}fn {}{:#}",
+    let name_len = format!("{}{}{}{}{:#}fn {}{:#}",
                            VisSpace(&it.visibility),
-                           ConstnessSpace(f.constness),
-                           UnsafetySpace(f.unsafety),
-                           AbiSpace(f.abi),
+                           ConstnessSpace(f.header.constness),
+                           UnsafetySpace(f.header.unsafety),
+                           AsyncSpace(f.header.asyncness),
+                           AbiSpace(f.header.abi),
                            it.name.as_ref().unwrap(),
                            f.generics).len();
     write!(w, "{}<pre class='rust fn'>", render_spotlight_traits(it)?)?;
     render_attributes(w, it)?;
     write!(w,
-           "{vis}{constness}{unsafety}{abi}fn {name}{generics}{decl}{where_clause}</pre>",
+           "{vis}{constness}{unsafety}{asyncness}{abi}fn \
+           {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(&it.visibility),
-           constness = ConstnessSpace(f.constness),
-           unsafety = UnsafetySpace(f.unsafety),
-           abi = AbiSpace(f.abi),
+           constness = ConstnessSpace(f.header.constness),
+           unsafety = UnsafetySpace(f.header.unsafety),
+           asyncness = AsyncSpace(f.header.asyncness),
+           abi = AbiSpace(f.header.abi),
            name = it.name.as_ref().unwrap(),
            generics = f.generics,
            where_clause = WhereClause { gens: &f.generics, indent: 0, end_newline: true },
@@ -2999,9 +3001,7 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                      parent: ItemType) -> fmt::Result {
     fn method(w: &mut fmt::Formatter,
               meth: &clean::Item,
-              unsafety: hir::Unsafety,
-              constness: hir::Constness,
-              abi: abi::Abi,
+              header: hir::FnHeader,
               g: &clean::Generics,
               d: &clean::FnDecl,
               link: AssocItemLink,
@@ -3024,11 +3024,12 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                 href(did).map(|p| format!("{}#{}.{}", p.0, ty, name)).unwrap_or(anchor)
             }
         };
-        let mut head_len = format!("{}{}{}{:#}fn {}{:#}",
+        let mut head_len = format!("{}{}{}{}{:#}fn {}{:#}",
                                    VisSpace(&meth.visibility),
-                                   ConstnessSpace(constness),
-                                   UnsafetySpace(unsafety),
-                                   AbiSpace(abi),
+                                   ConstnessSpace(header.constness),
+                                   UnsafetySpace(header.unsafety),
+                                   AsyncSpace(header.asyncness),
+                                   AbiSpace(header.abi),
                                    name,
                                    *g).len();
         let (indent, end_newline) = if parent == ItemType::Trait {
@@ -3038,12 +3039,13 @@ fn render_assoc_item(w: &mut fmt::Formatter,
             (0, true)
         };
         render_attributes(w, meth)?;
-        write!(w, "{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
+        write!(w, "{}{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
                VisSpace(&meth.visibility),
-               ConstnessSpace(constness),
-               UnsafetySpace(unsafety),
-               AbiSpace(abi),
+               ConstnessSpace(header.constness),
+               UnsafetySpace(header.unsafety),
+               AsyncSpace(header.asyncness),
+               AbiSpace(header.abi),
                href = href,
                name = name,
                generics = *g,
@@ -3061,12 +3063,10 @@ fn render_assoc_item(w: &mut fmt::Formatter,
     match item.inner {
         clean::StrippedItem(..) => Ok(()),
         clean::TyMethodItem(ref m) => {
-            method(w, item, m.unsafety, hir::Constness::NotConst,
-                   m.abi, &m.generics, &m.decl, link, parent)
+            method(w, item, m.header, &m.generics, &m.decl, link, parent)
         }
         clean::MethodItem(ref m) => {
-            method(w, item, m.unsafety, m.constness,
-                   m.abi, &m.generics, &m.decl, link, parent)
+            method(w, item, m.header, &m.generics, &m.decl, link, parent)
         }
         clean::AssociatedConstItem(ref ty, ref default) => {
             assoc_const(w, item, ty, default.as_ref(), link)

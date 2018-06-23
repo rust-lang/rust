@@ -17,7 +17,7 @@ pub use util::ThinVec;
 pub use util::parser::ExprPrecedence;
 
 use syntax_pos::{Span, DUMMY_SP};
-use codemap::{respan, Spanned};
+use codemap::{dummy_spanned, respan, Spanned};
 use rustc_target::spec::abi::Abi;
 use ext::hygiene::{Mark, SyntaxContext};
 use print::pprust;
@@ -987,6 +987,7 @@ impl Expr {
             ExprKind::Closure(..) => ExprPrecedence::Closure,
             ExprKind::Block(..) => ExprPrecedence::Block,
             ExprKind::Catch(..) => ExprPrecedence::Catch,
+            ExprKind::Async(..) => ExprPrecedence::Async,
             ExprKind::Assign(..) => ExprPrecedence::Assign,
             ExprKind::AssignOp(..) => ExprPrecedence::AssignOp,
             ExprKind::Field(..) => ExprPrecedence::Field,
@@ -1094,9 +1095,18 @@ pub enum ExprKind {
     /// A closure (for example, `move |a, b, c| a + b + c`)
     ///
     /// The final span is the span of the argument block `|...|`
-    Closure(CaptureBy, Movability, P<FnDecl>, P<Expr>, Span),
+    Closure(CaptureBy, IsAsync, Movability, P<FnDecl>, P<Expr>, Span),
     /// A block (`'label: { ... }`)
     Block(P<Block>, Option<Label>),
+    /// An async block (`async move { ... }`)
+    ///
+    /// The `NodeId` is the `NodeId` for the closure that results from
+    /// desugaring an async block, just like the NodeId field in the
+    /// `IsAsync` enum. This is necessary in order to create a def for the
+    /// closure which can be used as a parent of any child defs. Defs
+    /// created during lowering cannot be made the parent of any other
+    /// preexisting defs.
+    Async(CaptureBy, NodeId, P<Block>),
     /// A catch block (`catch { ... }`)
     Catch(P<Block>),
 
@@ -1325,9 +1335,7 @@ pub struct MutTy {
 /// or in an implementation.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct MethodSig {
-    pub unsafety: Unsafety,
-    pub constness: Spanned<Constness>,
-    pub abi: Abi,
+    pub header: FnHeader,
     pub decl: P<FnDecl>,
 }
 
@@ -1709,6 +1717,22 @@ pub enum Unsafety {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum IsAsync {
+    Async(NodeId),
+    NotAsync,
+}
+
+impl IsAsync {
+    pub fn is_async(self) -> bool {
+        if let IsAsync::Async(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Constness {
     Const,
     NotConst,
@@ -2009,6 +2033,29 @@ pub struct Item {
     pub tokens: Option<TokenStream>,
 }
 
+/// A function header
+///
+/// All the information between the visibility & the name of the function is
+/// included in this struct (e.g. `async unsafe fn` or `const extern "C" fn`)
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct FnHeader {
+    pub unsafety: Unsafety,
+    pub asyncness: IsAsync,
+    pub constness: Spanned<Constness>,
+    pub abi: Abi,
+}
+
+impl Default for FnHeader {
+    fn default() -> FnHeader {
+        FnHeader {
+            unsafety: Unsafety::Normal,
+            asyncness: IsAsync::NotAsync,
+            constness: dummy_spanned(Constness::NotConst),
+            abi: Abi::Rust,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum ItemKind {
     /// An `extern crate` item, with optional *original* crate name if the crate was renamed.
@@ -2030,7 +2077,7 @@ pub enum ItemKind {
     /// A function declaration (`fn` or `pub fn`).
     ///
     /// E.g. `fn foo(bar: usize) -> usize { .. }`
-    Fn(P<FnDecl>, Unsafety, Spanned<Constness>, Abi, Generics, P<Block>),
+    Fn(P<FnDecl>, FnHeader, Generics, P<Block>),
     /// A module declaration (`mod` or `pub mod`).
     ///
     /// E.g. `mod foo;` or `mod foo { .. }`

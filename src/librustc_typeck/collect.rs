@@ -1181,13 +1181,13 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let icx = ItemCtxt::new(tcx, def_id);
 
     match tcx.hir.get(node_id) {
-        NodeTraitItem(&hir::TraitItem { node: TraitItemKind::Method(ref sig, _), .. }) |
-        NodeImplItem(&hir::ImplItem { node: ImplItemKind::Method(ref sig, _), .. }) => {
-            AstConv::ty_of_fn(&icx, sig.unsafety, sig.abi, &sig.decl)
+        NodeTraitItem(hir::TraitItem { node: TraitItemKind::Method(sig, _), .. }) |
+        NodeImplItem(hir::ImplItem { node: ImplItemKind::Method(sig, _), .. }) => {
+            AstConv::ty_of_fn(&icx, sig.header.unsafety, sig.header.abi, &sig.decl)
         }
 
-        NodeItem(&hir::Item { node: ItemFn(ref decl, unsafety, _, abi, _, _), .. }) => {
-            AstConv::ty_of_fn(&icx, unsafety, abi, decl)
+        NodeItem(hir::Item { node: ItemFn(decl, header, _, _), .. }) => {
+            AstConv::ty_of_fn(&icx, header.unsafety, header.abi, decl)
         }
 
         NodeForeignItem(&hir::ForeignItem { node: ForeignItemFn(ref fn_decl, _, _), .. }) => {

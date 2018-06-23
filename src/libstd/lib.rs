@@ -263,6 +263,7 @@
 #![feature(fn_traits)]
 #![feature(fnbox)]
 #![feature(futures_api)]
+#![feature(generator_trait)]
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
 #![feature(integer_atomics)]
@@ -462,22 +463,6 @@ pub use core::u128;
 #[stable(feature = "core_hint", since = "1.27.0")]
 pub use core::hint;
 
-#[unstable(feature = "futures_api",
-           reason = "futures in libcore are unstable",
-           issue = "50547")]
-pub mod task {
-    //! Types and Traits for working with asynchronous tasks.
-    #[doc(inline)]
-    pub use core::task::*;
-    #[doc(inline)]
-    pub use alloc_crate::task::*;
-}
-
-#[unstable(feature = "futures_api",
-           reason = "futures in libcore are unstable",
-           issue = "50547")]
-pub use core::future;
-
 pub mod f32;
 pub mod f64;
 
@@ -498,6 +483,22 @@ pub mod path;
 pub mod process;
 pub mod sync;
 pub mod time;
+
+#[unstable(feature = "futures_api",
+           reason = "futures in libcore are unstable",
+           issue = "50547")]
+pub mod task {
+    //! Types and Traits for working with asynchronous tasks.
+    #[doc(inline)]
+    pub use core::task::*;
+    #[doc(inline)]
+    pub use alloc_crate::task::*;
+}
+
+#[unstable(feature = "futures_api",
+           reason = "futures in libcore are unstable",
+           issue = "50547")]
+pub mod future;
 
 // Platform-abstraction modules
 #[macro_use]

@@ -1164,7 +1164,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                     }
 
                     if let Node::NodeItem(item) = fcx.tcx.hir.get(fn_id) {
-                        if let Item_::ItemFn(_, _, _, _, ref generics, _) = item.node {
+                        if let Item_::ItemFn(_, _, ref generics, _) = item.node {
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
                                     span,

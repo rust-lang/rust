@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// compile-flags: --edition=2015
 
-struct Foo;
+#![feature(futures_api)]
 
-impl Foo {
-    fn foo() {}
+async fn foo() {} //~ ERROR async fn is unstable
 
-    #[stable(feature = "rust1", since = "1.0.0")]
-} //~ ERROR expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `type`, or
-
-fn main() {}
+fn main() {
+    let _ = async {}; //~ ERROR cannot find struct, variant or union type `async`
+    let _ = async || {}; //~ ERROR cannot find value `async` in this scope
+}

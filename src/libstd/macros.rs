@@ -213,6 +213,25 @@ macro_rules! eprintln {
     ($fmt:expr, $($arg:tt)*) => (eprint!(concat!($fmt, "\n"), $($arg)*));
 }
 
+#[macro_export]
+#[unstable(feature = "await_macro", issue = "50547")]
+#[allow_internal_unstable]
+#[allow_internal_unsafe]
+macro_rules! await {
+    ($e:expr) => { {
+        let mut pinned = $e;
+        let mut pinned = unsafe { $crate::mem::PinMut::new_unchecked(&mut pinned) };
+        loop {
+            match $crate::future::poll_in_task_cx(&mut pinned) {
+                // FIXME(cramertj) prior to stabilizing await, we have to ensure that this
+                // can't be used to create a generator on stable via `|| await!()`.
+                $crate::task::Poll::Pending => yield,
+                $crate::task::Poll::Ready(x) => break x,
+            }
+        }
+    } }
+}
+
 /// A macro to select an event from a number of receivers.
 ///
 /// This macro is used to wait for the first event to occur on a number of
