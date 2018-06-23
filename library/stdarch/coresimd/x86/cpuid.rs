@@ -96,7 +96,7 @@ pub fn has_cpuid() -> bool {
             let eflags: u32 = __readeflags();
 
             // Invert the ID bit in EFLAGS:
-            let eflags_mod: u32 = eflags | 0x0020_0000;
+            let eflags_mod: u32 = eflags ^ 0x0020_0000;
 
             // Store the modified EFLAGS (ID bit may or may not be inverted)
             __writeeflags(eflags_mod);
@@ -136,6 +136,11 @@ mod tests {
         // all currently-tested targets have the instruction
         // FIXME: add targets without `cpuid` to CI
         assert!(cpuid::has_cpuid());
+    }
+
+    #[test]
+    fn test_has_cpuid_idempotent() {
+        assert_eq!(cpuid::has_cpuid(), cpuid::has_cpuid());
     }
 
     #[cfg(target_arch = "x86")]
