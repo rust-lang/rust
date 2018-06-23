@@ -126,11 +126,13 @@ impl Mark {
 
     #[inline]
     pub fn transparency(self) -> Transparency {
+        assert_ne!(self, Mark::root());
         HygieneData::with(|data| data.marks[self.0 as usize].transparency)
     }
 
     #[inline]
     pub fn set_transparency(self, transparency: Transparency) {
+        assert_ne!(self, Mark::root());
         HygieneData::with(|data| data.marks[self.0 as usize].transparency = transparency)
     }
 
