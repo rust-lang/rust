@@ -38,31 +38,26 @@ mod common;
 mod prelude {
     pub use std::collections::HashMap;
 
-    pub use rustc::session::Session;
     pub use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-    pub use rustc::ty::{TyCtxt, Ty, TypeVariants, Instance, InstanceDef, ParamEnv, FnSig, PolyFnSig, subst::Substs};
-    pub use rustc::ty::layout;
     pub use rustc::mir;
     pub use rustc::mir::*;
+    pub use rustc::session::Session;
+    pub use rustc::ty::layout;
+    pub use rustc::ty::{
+        self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
+        TypeFoldable, TypeVariants,
+    };
+    pub use rustc_data_structures::{indexed_vec::Idx, sync::Lrc};
     pub use rustc_mir::monomorphize::collector;
-    pub use rustc_data_structures::{
-        sync::Lrc,
-        indexed_vec::Idx,
-    };
 
-    pub use cretonne::prelude::*;
-    pub use cretonne::codegen::Context;
     pub use cretonne::codegen::ir::{
-        ExternalName,
-        FuncRef,
-        StackSlot,
-        function::Function,
-        condcodes::IntCC,
+        condcodes::IntCC, function::Function, ExternalName, FuncRef, StackSlot,
     };
+    pub use cretonne::codegen::Context;
+    pub use cretonne::prelude::*;
 
-
-    pub use common::*;
     pub use common::Variable;
+    pub use common::*;
 }
 
 use prelude::*;

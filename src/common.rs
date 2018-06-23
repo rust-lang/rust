@@ -28,7 +28,7 @@ pub fn cton_type_from_ty(ty: Ty) -> Option<types::Type> {
                 UintTy::U16 => types::I16,
                 UintTy::U32 => types::I32,
                 UintTy::U64 => types::I64,
-                UintTy::U128 => unimplemented!(),
+                UintTy::U128 => types::I64X2,
                 UintTy::Usize => types::I64,
             }
         }
@@ -38,13 +38,22 @@ pub fn cton_type_from_ty(ty: Ty) -> Option<types::Type> {
                 IntTy::I16 => types::I16,
                 IntTy::I32 => types::I32,
                 IntTy::I64 => types::I64,
-                IntTy::I128 => unimplemented!(),
+                IntTy::I128 => types::I64X2,
                 IntTy::Isize => types::I64,
             }
         }
         TypeVariants::TyFnPtr(_) => types::I64,
+        TypeVariants::TyRef(..) | TypeVariants::TyRawPtr(..) => types::I64,
         _ => return None,
     })
+}
+
+// FIXME(cretonne) fix types smaller than I32
+pub fn fixup_cton_ty(ty: Type) -> Type {
+    match ty {
+        types::I64X2 | types::I64 | types::I32 => ty,
+        _ => types::I32,
+    }
 }
 
 pub fn extend_val<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, val: Value, ty: Ty) -> Value {
@@ -116,7 +125,7 @@ impl CValue {
     pub fn load_value<'a, 'tcx: 'a>(self, fx: &mut FunctionCx<'a, 'tcx>, ty: Ty<'tcx>) -> Value {
         match self {
             CValue::ByRef(value) => {
-                let cton_ty = cton_type_from_ty(ty).unwrap();
+                let cton_ty = cton_type_from_ty(fx.monomorphize(&ty)).expect(&format!("{:?}", ty));
                 load_workaround(fx, cton_ty, value, 0)
             }
             CValue::ByVal(value) => value,
@@ -139,7 +148,7 @@ impl CValue {
             CValue::ByRef(addr) => addr,
             _ => bug!("place_field for {:?}", self),
         };
-        let layout = fx.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
+        let layout = fx.tcx.layout_of(ParamEnv::empty().and(fx.monomorphize(&ty))).unwrap();
         let field_offset = layout.fields.offset(field.index());
         if field_offset.bytes() > 0 {
             let field_offset = fx.bcx.ins().iconst(types::I64, field_offset.bytes() as i64);
@@ -150,6 +159,7 @@ impl CValue {
     }
 
     pub fn const_val<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, ty: Ty<'tcx>, const_val: i64) -> CValue {
+        let ty = fx.monomorphize(&ty);
         CValue::ByVal(fx.bcx.ins().iconst(cton_type_from_ty(ty).unwrap(), const_val))
     }
 }
@@ -180,7 +190,7 @@ impl<'a, 'tcx: 'a> CPlace {
     }
 
     pub fn write_cvalue(self, fx: &mut FunctionCx<'a, 'tcx>, from: CValue, ty: Ty<'tcx>) {
-        let layout = fx.tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
+        let layout = fx.tcx.layout_of(ParamEnv::reveal_all().and(fx.monomorphize(&ty))).unwrap();
         let size = layout.size.bytes() as i32;
         match self {
             CPlace::Var(var) => {
@@ -236,7 +246,7 @@ pub fn cton_sig_from_mono_fn_sig<'a ,'tcx: 'a>(sig: PolyFnSig<'tcx>) -> Signatur
     };
     Signature {
         params: Some(types::I64).into_iter() // First param is place to put return val
-            .chain(inputs.into_iter().map(|ty| cton_type_from_ty(ty).unwrap_or(types::I64)))
+            .chain(inputs.into_iter().map(|ty| fixup_cton_ty(cton_type_from_ty(ty).unwrap_or(types::I64))))
             .map(AbiParam::new).collect(),
         returns: vec![],
         call_conv,
@@ -265,13 +275,25 @@ pub struct FunctionCx<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub module: &'a mut Module<CurrentBackend>,
     pub def_id_fn_id_map: &'a mut HashMap<Instance<'tcx>, FuncId>,
-    pub bcx: FunctionBuilder<'a, Variable>,
+    pub instance: Instance<'tcx>,
     pub mir: &'tcx Mir<'tcx>,
+    pub param_substs: &'tcx Substs<'tcx>,
+    pub bcx: FunctionBuilder<'a, Variable>,
     pub ebb_map: HashMap<BasicBlock, Ebb>,
     pub local_map: HashMap<Local, CPlace>,
 }
 
 impl<'f, 'tcx> FunctionCx<'f, 'tcx> {
+    pub fn monomorphize<T>(&self, value: &T) -> T
+        where T: TypeFoldable<'tcx>
+    {
+        self.tcx.subst_and_normalize_erasing_regions(
+            self.param_substs,
+            ty::ParamEnv::reveal_all(),
+            value,
+        )
+    }
+
     pub fn get_ebb(&self, bb: BasicBlock) -> Ebb {
         *self.ebb_map.get(&bb).unwrap()
     }

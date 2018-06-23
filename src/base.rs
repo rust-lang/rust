@@ -50,7 +50,7 @@ pub fn trans_crate<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Box<Any> {
                         ::rustc_mir::util::write_mir_pretty(cx.tcx, Some(def_id), &mut mir).unwrap();
                         tcx.sess.warn(&format!("{:?}:\n\n{}", def_id, String::from_utf8_lossy(&mir.into_inner())));
 
-                        trans_fn(cx, &mut f, def_id, substs);
+                        trans_fn(cx, &mut f, inst);
 
                         let mut cton = String::new();
                         ::cretonne::codegen::write_function(&mut cton, &f, None).unwrap();
@@ -114,8 +114,8 @@ struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'a> {
     def_id_fn_id_map: &'a mut HashMap<Instance<'tcx>, FuncId>,
 }
 
-fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut Function, def_id: DefId, substs: &Substs<'tcx>) {
-    let mir = cx.tcx.optimized_mir(def_id);
+fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut Function, instance: Instance<'tcx>) {
+    let mir = cx.tcx.optimized_mir(instance.def_id());
     let mut func_ctx = FunctionBuilderContext::new();
     let mut bcx: FunctionBuilder<Variable> = FunctionBuilder::new(f, &mut func_ctx);
 
@@ -130,8 +130,13 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
         tcx: cx.tcx,
         module: &mut cx.module,
         def_id_fn_id_map: &mut cx.def_id_fn_id_map,
-        bcx,
+        instance,
         mir,
+        bcx,
+        param_substs: {
+            assert!(!instance.substs.needs_infer());
+            instance.substs
+        },
         ebb_map,
         local_map: HashMap::new(),
     };
@@ -145,7 +150,7 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
     }); // Dummy stack slot for debugging
 
     let func_params = mir.args_iter().map(|local| {
-        let layout = fx.tcx.layout_of(ParamEnv::reveal_all().and(mir.local_decls[local].ty)).unwrap();
+        let layout = fx.tcx.layout_of(ParamEnv::reveal_all().and(fx.monomorphize(&mir.local_decls[local].ty))).unwrap();
         let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
             kind: StackSlotKind::ExplicitSlot,
             size: layout.size.bytes() as u32,
@@ -160,8 +165,6 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
     for (local, ebb_param, ty, stack_slot) in func_params {
         let place = CPlace::from_stack_slot(fx, stack_slot);
         if ty.is_some() {
-            // FIXME(cretonne) support i16 and smaller
-            let ebb_param = extend_val(fx, ebb_param, mir.local_decls[local].ty);
             CPlace::from_stack_slot(fx, stack_slot).write_cvalue(fx, CValue::ByVal(ebb_param), mir.local_decls[local].ty);
             //fx.bcx.ins().stack_store(ebb_param, stack_slot, 0);
         } else {
@@ -258,7 +261,7 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
                             TypeVariants::TyFnPtr(fn_sig) => fn_sig,
                             _ => bug!("Calling non function type {:?}", func_ty),
                         };
-                        let sig = fx.bcx.import_signature(cton_sig_from_fn_sig(fx.tcx, sig, substs));
+                        let sig = fx.bcx.import_signature(cton_sig_from_fn_sig(fx.tcx, sig, fx.param_substs));
                         fx.bcx.ins().call_indirect(sig, func, &args);
                     }
                 }
@@ -289,19 +292,72 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
 
 fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx>) {
     match &stmt.kind {
+        /*StatementKind::SetDiscriminant { place, variant_index } => {
+            if self.layout.for_variant(bx.cx, variant_index).abi == layout::Abi::Uninhabited {
+                return;
+            }
+            match self.layout.variants {
+                layout::Variants::Single { index } => {
+                    assert_eq!(index, variant_index);
+                }
+                layout::Variants::Tagged { .. } => {
+                    let ptr = self.project_field(bx, 0);
+                    let to = self.layout.ty.ty_adt_def().unwrap()
+                        .discriminant_for_variant(bx.tcx(), variant_index)
+                        .val;
+                    bx.store(
+                        C_uint_big(ptr.layout.llvm_type(bx.cx), to),
+                        ptr.llval,
+                        ptr.align);
+                }
+                layout::Variants::NicheFilling {
+                    dataful_variant,
+                    ref niche_variants,
+                    niche_start,
+                    ..
+                } => {
+                    if variant_index != dataful_variant {
+                        if bx.sess().target.target.arch == "arm" ||
+                        bx.sess().target.target.arch == "aarch64" {
+                            // Issue #34427: As workaround for LLVM bug on ARM,
+                            // use memset of 0 before assigning niche value.
+                            let llptr = bx.pointercast(self.llval, Type::i8(bx.cx).ptr_to());
+                            let fill_byte = C_u8(bx.cx, 0);
+                            let (size, align) = self.layout.size_and_align();
+                            let size = C_usize(bx.cx, size.bytes());
+                            let align = C_u32(bx.cx, align.abi() as u32);
+                            base::call_memset(bx, llptr, fill_byte, size, align, false);
+                        }
+
+                        let niche = self.project_field(bx, 0);
+                        let niche_llty = niche.layout.immediate_llvm_type(bx.cx);
+                        let niche_value = ((variant_index - *niche_variants.start()) as u128)
+                            .wrapping_add(niche_start);
+                        // FIXME(eddyb) Check the actual primitive type here.
+                        let niche_llval = if niche_value == 0 {
+                            // HACK(eddyb) Using `C_null` as it works on all types.
+                            C_null(niche_llty)
+                        } else {
+                            C_uint_big(niche_llty, niche_value)
+                        };
+                        OperandValue::Immediate(niche_llval).store(bx, niche);
+                    }
+                }
+            }
+        }*/
         StatementKind::Assign(to_place, rval) => {
-            let dest_ty = to_place.ty(&fx.mir.local_decls, fx.tcx).to_ty(fx.tcx);
+            let dest_ty = fx.monomorphize(&to_place.ty(&fx.mir.local_decls, fx.tcx).to_ty(fx.tcx));
             let lval = trans_place(fx, to_place);
             match rval {
                 Rvalue::Use(operand) => {
                     let val = trans_operand(fx, operand);
-                    lval.write_cvalue(fx, val, dest_ty);
+                    lval.write_cvalue(fx, val, &dest_ty);
                 },
                 Rvalue::BinaryOp(bin_op, lhs, rhs) => {
-                    let ty = lhs.ty(&fx.mir.local_decls, fx.tcx);
-                    let lhs_ty = lhs.ty(&fx.mir.local_decls, fx.tcx);
+                    let ty = fx.monomorphize(&lhs.ty(&fx.mir.local_decls, fx.tcx));
+                    let lhs_ty = fx.monomorphize(&lhs.ty(&fx.mir.local_decls, fx.tcx));
                     let lhs = trans_operand(fx, lhs).load_value(fx, lhs_ty);
-                    let rhs_ty = rhs.ty(&fx.mir.local_decls, fx.tcx);
+                    let rhs_ty = fx.monomorphize(&rhs.ty(&fx.mir.local_decls, fx.tcx));
                     let rhs = trans_operand(fx, rhs).load_value(fx, rhs_ty);
 
                     let res = match ty.sty {
@@ -314,6 +370,15 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                                 bin_op => unimplemented!("checked uint bin op {:?} {:?} {:?}", bin_op, lhs, rhs),
                             }
                         }
+                        TypeVariants::TyInt(_) => {
+                            match bin_op {
+                                BinOp::Add => fx.bcx.ins().iadd(lhs, rhs),
+                                BinOp::Sub => fx.bcx.ins().isub(lhs, rhs),
+                                BinOp::Mul => fx.bcx.ins().imul(lhs, rhs),
+                                BinOp::Div => fx.bcx.ins().sdiv(lhs, rhs),
+                                bin_op => unimplemented!("checked int bin op {:?} {:?} {:?}", bin_op, lhs, rhs),
+                            }
+                        }
                         _ => unimplemented!(),
                     };
                     lval.write_cvalue(fx, CValue::ByVal(res), ty);
@@ -321,10 +386,10 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                 Rvalue::CheckedBinaryOp(bin_op, lhs, rhs) => {
                     // TODO correctly write output tuple
 
-                    let ty = lhs.ty(&fx.mir.local_decls, fx.tcx);
-                    let lhs_ty = lhs.ty(&fx.mir.local_decls, fx.tcx);
+                    let ty = fx.monomorphize(&lhs.ty(&fx.mir.local_decls, fx.tcx));
+                    let lhs_ty = fx.monomorphize(&lhs.ty(&fx.mir.local_decls, fx.tcx));
                     let lhs = trans_operand(fx, lhs).load_value(fx, lhs_ty);
-                    let rhs_ty = rhs.ty(&fx.mir.local_decls, fx.tcx);
+                    let rhs_ty = fx.monomorphize(&rhs.ty(&fx.mir.local_decls, fx.tcx));
                     let rhs = trans_operand(fx, rhs).load_value(fx, rhs_ty);
 
                     let res = match ty.sty {
@@ -344,15 +409,15 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                 }
                 Rvalue::Cast(CastKind::ReifyFnPointer, operand, ty) => {
                     let operand = trans_operand(fx, operand);
-                    lval.write_cvalue(fx, operand, dest_ty);
+                    lval.write_cvalue(fx, operand, &dest_ty);
                 }
                 Rvalue::Cast(CastKind::UnsafeFnPointer, operand, ty) => {
                     let operand = trans_operand(fx, operand);
-                    lval.write_cvalue(fx, operand, dest_ty);
+                    lval.write_cvalue(fx, operand, &dest_ty);
                 }
                 Rvalue::Discriminant(place) => {
-                    let place_ty = place.ty(&fx.mir.local_decls, fx.tcx).to_ty(fx.tcx);
-                    let cton_place_ty = cton_type_from_ty(place_ty);
+                    let place_ty = fx.monomorphize(&place.ty(&fx.mir.local_decls, fx.tcx).to_ty(fx.tcx));
+                    let cton_place_ty = cton_type_from_ty(&place_ty);
                     let layout = fx.tcx.layout_of(ParamEnv::reveal_all().and(place_ty)).unwrap();
 
                     if layout.abi == layout::Abi::Uninhabited {
@@ -363,8 +428,8 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                             let discr_val = layout.ty.ty_adt_def().map_or(
                                 index as u128,
                                 |def| def.discriminant_for_variant(fx.tcx, index).val);
-                            let val = CValue::const_val(fx, dest_ty, discr_val as u64 as i64);
-                            lval.write_cvalue(fx, val, dest_ty);
+                            let val = CValue::const_val(fx, &dest_ty, discr_val as u64 as i64);
+                            lval.write_cvalue(fx, val, &dest_ty);
                         }
                         layout::Variants::Tagged { .. } |
                         layout::Variants::NicheFilling { .. } => {},
@@ -383,8 +448,8 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                                 layout::Int(_, signed) => signed,
                                 _ => false
                             };
-                            let val = cton_intcast(fx, lldiscr, discr_ty, dest_ty, signed);
-                            lval.write_cvalue(fx, CValue::ByVal(val), dest_ty);
+                            let val = cton_intcast(fx, lldiscr, discr_ty, &dest_ty, signed);
+                            lval.write_cvalue(fx, CValue::ByVal(val), &dest_ty);
                         }
                         layout::Variants::NicheFilling {
                             dataful_variant,
@@ -395,10 +460,10 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                             let niche_llty = cton_type_from_ty(discr_ty).unwrap();
                             if niche_variants.start() == niche_variants.end() {
                                 let b = fx.bcx.ins().icmp_imm(IntCC::Equal, lldiscr, niche_start as u64 as i64);
-                                let if_true = fx.bcx.ins().iconst(cton_type_from_ty(dest_ty).unwrap(), *niche_variants.start() as u64 as i64);
-                                let if_false = fx.bcx.ins().iconst(cton_type_from_ty(dest_ty).unwrap(), dataful_variant as u64 as i64);
+                                let if_true = fx.bcx.ins().iconst(cton_type_from_ty(&dest_ty).unwrap(), *niche_variants.start() as u64 as i64);
+                                let if_false = fx.bcx.ins().iconst(cton_type_from_ty(&dest_ty).unwrap(), dataful_variant as u64 as i64);
                                 let val = fx.bcx.ins().select(b, if_true, if_false);
-                                lval.write_cvalue(fx, CValue::ByVal(val), dest_ty);
+                                lval.write_cvalue(fx, CValue::ByVal(val), &dest_ty);
                             } else {
                                 // Rebase from niche values to discriminant values.
                                 let delta = niche_start.wrapping_sub(*niche_variants.start() as u128);
@@ -406,10 +471,10 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                                 let lldiscr = fx.bcx.ins().isub(lldiscr, delta);
                                 let lldiscr_max = fx.bcx.ins().iconst(niche_llty, *niche_variants.end() as u64 as i64);
                                 let b = fx.bcx.ins().icmp_imm(IntCC::UnsignedLessThanOrEqual, lldiscr, *niche_variants.end() as u64 as i64);
-                                let if_true = cton_intcast(fx, lldiscr, discr_ty, dest_ty, false);
+                                let if_true = cton_intcast(fx, lldiscr, discr_ty, &dest_ty, false);
                                 let if_false = fx.bcx.ins().iconst(niche_llty, dataful_variant as u64 as i64);
                                 let val = fx.bcx.ins().select(b, if_true, if_false);
-                                lval.write_cvalue(fx, CValue::ByVal(val), dest_ty);
+                                lval.write_cvalue(fx, CValue::ByVal(val), &dest_ty);
                             }
                         }
                     }
@@ -427,7 +492,11 @@ fn trans_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, place: &Place<'tcx>)
         Place::Local(local) => fx.get_local_place(*local),
         Place::Projection(projection) => {
             let base = trans_place(fx, &projection.base);
+            let place_ty = fx.monomorphize(&place.ty(&*fx.mir, fx.tcx)).to_ty(fx.tcx);
             match projection.elem {
+                ProjectionElem::Deref => {
+                    CPlace::Addr(base.to_cvalue(fx).load_value(fx, place_ty))
+                }
                 ProjectionElem::Field(field, ty) => {
                     base.place_field(fx, field, ty).0
                 }
