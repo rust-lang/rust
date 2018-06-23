@@ -505,7 +505,16 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 let def = self.tables.qpath_def(qpath, pat.hir_id);
                 let adt_def = match ty.sty {
                     ty::TyAdt(adt_def, _) => adt_def,
-                    _ => span_bug!(pat.span, "tuple struct pattern not applied to an ADT"),
+                    ty::TyError => {  // Avoid ICE (#50585)
+                        return Pattern {
+                            span: pat.span,
+                            ty,
+                            kind: Box::new(PatternKind::Wild),
+                        };
+                    }
+                    _ => span_bug!(pat.span,
+                                   "tuple struct pattern not applied to an ADT {:?}",
+                                   ty.sty),
                 };
                 let variant_def = adt_def.variant_of_def(def);
 
@@ -637,6 +646,9 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     let substs = match ty.sty {
                         ty::TyAdt(_, substs) |
                         ty::TyFnDef(_, substs) => substs,
+                        ty::TyError => {  // Avoid ICE (#50585)
+                            return PatternKind::Wild;
+                        }
                         _ => bug!("inappropriate type for def: {:?}", ty.sty),
                     };
                     PatternKind::Variant {
