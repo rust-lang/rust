@@ -260,7 +260,8 @@ impl Builder {
         self.cargo_git_commit_hash = self.git_commit_hash("cargo", "x86_64-unknown-linux-gnu");
         self.rls_git_commit_hash = self.git_commit_hash("rls", "x86_64-unknown-linux-gnu");
         self.rustfmt_git_commit_hash = self.git_commit_hash("rustfmt", "x86_64-unknown-linux-gnu");
-        self.llvm_tools_git_commit_hash = self.git_commit_hash("llvm-tools", "x86_64-unknown-linux-gnu");
+        self.llvm_tools_git_commit_hash = self.git_commit_hash("llvm-tools",
+                                                               "x86_64-unknown-linux-gnu");
 
         self.digest_and_sign();
         let manifest = self.build_manifest();

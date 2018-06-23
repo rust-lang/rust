@@ -1303,7 +1303,11 @@ impl Step for Extended {
         let cargo_installer = builder.ensure(Cargo { stage, target });
         let rustfmt_installer = builder.ensure(Rustfmt { stage, target });
         let rls_installer = builder.ensure(Rls { stage, target });
-        let llvm_tools_installer = builder.ensure(LlvmTools { stage, target, compiler: builder.compiler(stage, target) });
+        let llvm_tools_installer = builder.ensure(LlvmTools {
+            stage,
+            target,
+            compiler: builder.compiler(stage, target)
+        });
         let mingw_installer = builder.ensure(Mingw { host: target });
         let analysis_installer = builder.ensure(Analysis {
             compiler: builder.compiler(stage, self.host),
