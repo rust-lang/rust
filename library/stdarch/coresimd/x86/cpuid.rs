@@ -152,19 +152,10 @@ mod tests {
     #[test]
     fn test_has_cpuid_idempotent() {
         assert_eq!(cpuid::has_cpuid(), cpuid::has_cpuid());
-    }
 
-    #[cfg(target_arch = "x86")]
-    #[test]
-    fn test_has_cpuid() {
-        unsafe {
-            let before = __readeflags();
-
-            if cpuid::has_cpuid() {
-                assert!(before != __readeflags());
-            } else {
-                assert!(before == __readeflags());
-            }
-        }
+        let before = __readeflags();
+        let _ = cpuid::has_cpuid();
+        let after = __readeflags();
+        assert_eq!(before, after);
     }
 }
