@@ -2732,13 +2732,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn adjust_ident(self, mut ident: Ident, scope: DefId, block: NodeId) -> (Ident, DefId) {
-        let expansion = match scope.krate {
-            LOCAL_CRATE => self.hir.definitions().expansion(scope.index),
+        ident = ident.modern();
+        let target_expansion = match scope.krate {
+            LOCAL_CRATE => self.hir.definitions().opaque_expansion_that_defined(scope.index),
             _ => Mark::root(),
         };
-        ident = ident.modern();
-        let scope = match ident.span.adjust(expansion) {
-            Some(macro_def) => self.hir.definitions().macro_def_scope(macro_def),
+        let scope = match ident.span.adjust(target_expansion) {
+            Some(actual_expansion) =>
+                self.hir.definitions().parent_module_of_macro_def(actual_expansion),
             None if block == DUMMY_NODE_ID => DefId::local(CRATE_DEF_INDEX), // Dummy DefId
             None => self.hir.get_module_parent(block),
         };

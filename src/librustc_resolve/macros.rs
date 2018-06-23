@@ -327,7 +327,8 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.macro_defs.insert(invoc.expansion_data.mark, def_id);
         let normal_module_def_id =
             self.macro_def_scope(invoc.expansion_data.mark).normal_ancestor_id;
-        self.definitions.add_macro_def_scope(invoc.expansion_data.mark, normal_module_def_id);
+        self.definitions.add_parent_module_of_macro_def(invoc.expansion_data.mark,
+                                                        normal_module_def_id);
 
         self.unused_macros.remove(&def_id);
         let ext = self.get_macro(def);
