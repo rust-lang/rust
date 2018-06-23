@@ -42,6 +42,8 @@ Libraries
   for `Cow<CStr>`, `From<OsString>, From<OsStr>, From<&OsString>` for
   `Cow<OsStr>`, `From<&PathBuf>` for `Cow<Path>`, and `From<Cow<Path>>`
   for `PathBuf`.][50170]
+- [Implemented `Shl` and `Shr` for `Wrapping<u128>`
+  and `Wrapping<i128>`.][50465]
 - [`DirEntry::metadata` now uses `fstatat` instead of `lstat` when
   possible.][51050] This can provide up to a 40% speed increase.
 - [Improved error messages when using `format!`.][50610]
@@ -70,7 +72,7 @@ Stabilized APIs
 Cargo
 -----
 - [Cargo will now no longer allow you to publish crates with build scripts that
-  modify the `src` directory.][5584] The `src` directory in a crate should be
+  modify the `src` directory.][cargo/5584] The `src` directory in a crate should be
   considered to be immutable.
 
 Misc
@@ -103,6 +105,7 @@ Compatibility Notes
 [50265]: https://github.com/rust-lang/rust/pull/50265/
 [50364]: https://github.com/rust-lang/rust/pull/50364/
 [50385]: https://github.com/rust-lang/rust/pull/50385/
+[50465]: https://github.com/rust-lang/rust/pull/50465/
 [50486]: https://github.com/rust-lang/rust/pull/50486/
 [50554]: https://github.com/rust-lang/rust/pull/50554/
 [50610]: https://github.com/rust-lang/rust/pull/50610/
@@ -115,7 +118,7 @@ Compatibility Notes
 [51298]: https://github.com/rust-lang/rust/pull/51298/
 [51306]: https://github.com/rust-lang/rust/pull/51306/
 [51562]: https://github.com/rust-lang/rust/pull/51562/
-[5584]: https://github.com/rust-lang/cargo/pull/5584/
+[cargo/5584]: https://github.com/rust-lang/cargo/pull/5584/
 [`Iterator::step_by`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.step_by
 [`Path::ancestors`]: https://doc.rust-lang.org/std/path/struct.Path.html#method.ancestors
 [`btree_map::Entry::or_default`]: https://doc.rust-lang.org/std/collections/btree_map/enum.Entry.html#method.or_default
