@@ -4800,12 +4800,14 @@ impl<'a> Parser<'a> {
 
     fn err_dotdotdot_syntax(&self, span: Span) {
         self.diagnostic().struct_span_err(span, {
-            "`...` syntax cannot be used in expressions"
-        }).help({
-            "Use `..` if you need an exclusive range (a < b)"
-        }).help({
-            "or `..=` if you need an inclusive range (a <= b)"
-        }).emit();
+            "unexpected token: `...`"
+        }).span_suggestion_with_applicability(
+            span, "use `..` for an exclusive range", "..".to_owned(),
+            Applicability::MaybeIncorrect
+        ).span_suggestion_with_applicability(
+            span, "or `..=` for an inclusive range", "..=".to_owned(),
+            Applicability::MaybeIncorrect
+        ).emit();
     }
 
     // Parse bounds of a type parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
