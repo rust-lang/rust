@@ -1,12 +1,30 @@
-stdsimd
+stdsimd - Rust's standard library SIMD components
 =======
 
 [![Travis-CI Status]][travis] [![Appveyor Status]][appveyor] [![Latest Version]][crates.io] [![docs]][docs.rs]
 
-> Experimental support for SIMD destined to eventually become part of Rust's
-> standard library
+# Usage
 
-This is a **work in progress**.
+`stdsimd` is now shipped with Rust's `std` library - its is part of `libcore`
+and `libstd`.
+
+The easiest way to use it is just to import it via `use std::arch`. 
+
+The `std::arch` component for `x86` is available in stable Rust. The `std::arch`
+components for other architectures and the `std::simd` component require nightly
+Rust.
+
+Using `stdsimd` master branch is not recommended. It requires nightly Rust, it
+only works with particular Rust nightly versions, and it can (and does) break
+often. If you need to use `stdsimd` master branch, you can add it to your
+`Cargo.toml` as follows:
+
+```toml
+#[dependencies]
+stdsimd = { git = "https://github.com/rust-lang-nursery/stdsimd.git" }
+```
+
+# Documentation
 
 * [Documentation - i686][i686]
 * [Documentation - x86\_64][x86_64]
