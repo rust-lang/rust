@@ -2045,7 +2045,7 @@ impl<'a> LoweringContext<'a> {
                             struct_span_err!(
                                 self.context.sess,
                                 current_lt_span.between(lifetime.span),
-                                E0725,
+                                E0709,
                                 "multiple different lifetimes used in arguments of `async fn`",
                             )
                                 .span_label(current_lt_span, "first lifetime here")
@@ -2057,7 +2057,7 @@ impl<'a> LoweringContext<'a> {
                             struct_span_err!(
                                 self.context.sess,
                                 current_lt_span.between(lifetime.span),
-                                E0726,
+                                E0707,
                                 "multiple elided lifetimes used in arguments of `async fn`",
                             )
                                 .span_label(current_lt_span, "first lifetime here")
@@ -3551,7 +3551,7 @@ impl<'a> LoweringContext<'a> {
                             struct_span_err!(
                                 this.sess,
                                 fn_decl_span,
-                                E0727,
+                                E0708,
                                 "`async` non-`move` closures with arguments \
                                 are not currently supported",
                             )
@@ -3612,7 +3612,7 @@ impl<'a> LoweringContext<'a> {
                                 span_err!(
                                     this.sess,
                                     fn_decl_span,
-                                    E0906,
+                                    E0697,
                                     "closures cannot be static"
                                 );
                             }

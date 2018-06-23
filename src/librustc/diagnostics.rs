@@ -2132,9 +2132,9 @@ register_diagnostics! {
     E0687, // in-band lifetimes cannot be used in `fn`/`Fn` syntax
     E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
 
-    E0906, // closures cannot be static
+    E0697, // closures cannot be static
 
-    E0725, // multiple different lifetimes used in arguments of `async fn`
-    E0726, // multiple elided lifetimes used in arguments of `async fn`
-    E0727, // `async` non-`move` closures with arguments are not currently supported
+    E0707, // multiple elided lifetimes used in arguments of `async fn`
+    E0708, // `async` non-`move` closures with arguments are not currently supported
+    E0709, // multiple different lifetimes used in arguments of `async fn`
 }

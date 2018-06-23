@@ -1,4 +1,4 @@
-error[E0725]: multiple different lifetimes used in arguments of `async fn`
+error[E0709]: multiple different lifetimes used in arguments of `async fn`
   --> $DIR/async-fn-multiple-lifetimes.rs:17:49
    |
 LL | async fn multiple_named_lifetimes<'a, 'b>(_: &'a u8, _: &'b u8) {}
@@ -8,7 +8,7 @@ LL | async fn multiple_named_lifetimes<'a, 'b>(_: &'a u8, _: &'b u8) {}
    |
    = help: `async fn` can only accept borrowed values with identical lifetimes
 
-error[E0726]: multiple elided lifetimes used in arguments of `async fn`
+error[E0707]: multiple elided lifetimes used in arguments of `async fn`
   --> $DIR/async-fn-multiple-lifetimes.rs:26:39
    |
 LL | async fn multiple_elided_lifetimes(_: &u8, _: &u8) {}
@@ -28,5 +28,5 @@ LL | async fn multiple_elided_lifetimes(_: &u8, _: &u8) {}
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0106, E0725, E0726.
+Some errors occurred: E0106, E0707, E0709.
 For more information about an error, try `rustc --explain E0106`.
