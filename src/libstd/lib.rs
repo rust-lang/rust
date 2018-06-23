@@ -523,22 +523,22 @@ pub mod rt;
 #[path = "../stdsimd/stdsimd/mod.rs"]
 #[allow(missing_debug_implementations, missing_docs, dead_code)]
 #[unstable(feature = "stdsimd", issue = "48556")]
-#[cfg(all(not(stage0), not(test)))]
+#[cfg(all(not(stage0), not(test), codegen_backend="llvm"))]
 mod stdsimd;
 
 // A "fake" module needed by the `stdsimd` module to compile, not actually
 // exported though.
-#[cfg(not(stage0))]
+#[cfg(all(not(stage0), codegen_backend="llvm"))]
 mod coresimd {
     pub use core::arch;
     pub use core::simd;
 }
 
 #[unstable(feature = "stdsimd", issue = "48556")]
-#[cfg(all(not(stage0), not(test)))]
+#[cfg(all(not(stage0), not(test), codegen_backend="llvm"))]
 pub use stdsimd::simd;
 #[stable(feature = "simd_arch", since = "1.27.0")]
-#[cfg(all(not(stage0), not(test)))]
+#[cfg(all(not(stage0), not(test), codegen_backend="llvm"))]
 pub use stdsimd::arch;
 
 // Include a number of private modules that exist solely to provide

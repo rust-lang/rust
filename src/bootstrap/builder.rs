@@ -747,6 +747,10 @@ impl<'a> Builder<'a> {
             stage = compiler.stage;
         }
 
+        if self.config.rust_codegen_backends.is_empty() {
+            cargo.env("RUSTC_SHOULD_USE_METADATA_ONLY_BACKEND", "1");
+        }
+
         let mut extra_args = env::var(&format!("RUSTFLAGS_STAGE_{}", stage)).unwrap_or_default();
         if stage != 0 {
             let s = env::var("RUSTFLAGS_STAGE_NOT_0").unwrap_or_default();
