@@ -162,6 +162,7 @@ pub mod util {
     pub mod ppaux;
     pub mod nodemap;
     pub mod fs;
+    pub mod time_graph;
 }
 
 // A private module so that macro-expanded idents like

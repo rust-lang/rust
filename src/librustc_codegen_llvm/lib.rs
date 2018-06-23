@@ -76,10 +76,10 @@ use rustc::middle::lang_items::LangItem;
 use rustc::session::{Session, CompileIncomplete};
 use rustc::session::config::{OutputFilenames, OutputType, PrintRequest};
 use rustc::ty::{self, TyCtxt};
+use rustc::util::time_graph;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc_mir::monomorphize;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_codegen_utils::time_graph;
 
 mod diagnostics;
 
