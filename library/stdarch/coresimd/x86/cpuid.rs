@@ -95,9 +95,7 @@ pub fn has_cpuid() -> bool {
             // If it is, then `cpuid` is available.
             let eax: i32;
             asm!(r#"
-                # Save ecx (__fastcall needs it preserved) and save a
-                # copy of the original eflags that we will restore later:
-                push %ecx
+                # Save a copy of the original eflags that we will restore later:
                 pushfd
                 # Copy eflags to ecx and eax:
                 pushfd
@@ -120,13 +118,12 @@ pub fn has_cpuid() -> bool {
                 # and if it is zero, it isn't because we didn't manage to
                 # modify it:
                 shrd %eax, 21
-                # Restore original eflags and ecx:
+                # Restore original eflags
                 popfd
-                pop %ecx
             "#
                  : "={eax}"(eax)  // output operands
                  : // input operands
-                 : "memory", "ecx" // clobbers all memory
+                 : "memory", "ecx" // clobbers all memory and ecx 
                  : "volatile"  // has side-effects
             );
             debug_assert!(eax == 0 || eax == 1);
