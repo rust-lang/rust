@@ -91,22 +91,36 @@ pub fn has_cpuid() -> bool {
             // This follows the approach indicated in:
             // http://wiki.osdev.org/CPUID#Checking_CPUID_availability
             // https://software.intel.com/en-us/articles/using-cpuid-to-detect-the-presence-of-sse-41-and-sse-42-instruction-sets/
-            // which detects whether `cpuid` is available by checking whether the 21th bit of the EFLAGS register is modifiable or not.
+            // which detects whether `cpuid` is available by checking whether the 21st bit of the EFLAGS register is modifiable or not.
             // If it is, then `cpuid` is available.
             let eax: i32;
             asm!(r#"
+                # Save ecx (__fastcall needs it preserved) and save a
+                # copy of the original eflags that we will restore later:
                 push %ecx
                 pushfd
+                # Copy eflags to ecx and eax:
                 pushfd
                 pop %eax
                 mov %ecx, %eax
+                # Flip 21st bit and write back to eflags register:
                 xor %eax, 0x200000
                 push %eax
                 popfd
+                # Read eflags register again:
                 pushfd
                 pop %eax
+                # If cpuid is available, the bit will still be flipped
+                # and it will be the only bit modified.
+                #
+                # xor with the original eflags should produce a 1 in
+                # the 21st bit in this case, and zeros for all other bits:
                 xor %eax, %ecx
+                # So if the value of the 21st bit is 1, cpuid is available,
+                # and if it is zero, it isn't because we didn't manage to
+                # modify it:
                 shrd %eax, 21
+                # Restore original eflags and ecx:
                 popfd
                 pop %ecx
             "#
@@ -152,10 +166,5 @@ mod tests {
     #[test]
     fn test_has_cpuid_idempotent() {
         assert_eq!(cpuid::has_cpuid(), cpuid::has_cpuid());
-
-        let before = __readeflags();
-        let _ = cpuid::has_cpuid();
-        let after = __readeflags();
-        assert_eq!(before, after);
     }
 }
