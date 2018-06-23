@@ -111,6 +111,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let (closure_def_id, substs) = match self.node_ty(closure_hir_id).sty {
             ty::TyClosure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
             ty::TyGenerator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
+            ty::TyError => {
+                // #51714: skip analysis when we have already encountered type errors
+                return;
+            }
             ref t => {
                 span_bug!(
                     span,
