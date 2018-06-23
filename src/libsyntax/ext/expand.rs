@@ -11,7 +11,7 @@
 use ast::{self, Block, Ident, NodeId, PatKind, Path};
 use ast::{MacStmtStyle, StmtKind, ItemKind};
 use attr::{self, HasAttrs};
-use codemap::{ExpnInfo, NameAndSpan, MacroBang, MacroAttribute, dummy_spanned, respan};
+use codemap::{ExpnInfo, MacroBang, MacroAttribute, dummy_spanned, respan};
 use config::{is_test_or_bench, StripUnconfigured};
 use errors::{Applicability, FatalError};
 use ext::base::*;
@@ -514,7 +514,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             let suggested_limit = self.cx.ecfg.recursion_limit * 2;
             let mut err = self.cx.struct_span_err(info.call_site,
                 &format!("recursion limit reached while expanding the macro `{}`",
-                         info.callee.name()));
+                         info.format.name()));
             err.help(&format!(
                 "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
                 suggested_limit));
@@ -538,13 +538,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         attr::mark_used(&attr);
         invoc.expansion_data.mark.set_expn_info(ExpnInfo {
             call_site: attr.span,
-            callee: NameAndSpan {
-                format: MacroAttribute(Symbol::intern(&format!("{}", attr.path))),
-                span: None,
-                allow_internal_unstable: false,
-                allow_internal_unsafe: false,
-                edition: ext.edition(),
-            }
+            def_site: None,
+            format: MacroAttribute(Symbol::intern(&format!("{}", attr.path))),
+            allow_internal_unstable: false,
+            allow_internal_unsafe: false,
+            edition: ext.edition(),
         });
 
         match *ext {
@@ -727,13 +725,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             mark.set_expn_info(ExpnInfo {
                 call_site: span,
-                callee: NameAndSpan {
-                    format: macro_bang_format(path),
-                    span: def_site_span,
-                    allow_internal_unstable,
-                    allow_internal_unsafe,
-                    edition,
-                },
+                def_site: def_site_span,
+                format: macro_bang_format(path),
+                allow_internal_unstable,
+                allow_internal_unsafe,
+                edition,
             });
             Ok(())
         };
@@ -777,13 +773,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 } else {
                     invoc.expansion_data.mark.set_expn_info(ExpnInfo {
                         call_site: span,
-                        callee: NameAndSpan {
-                            format: macro_bang_format(path),
-                            span: tt_span,
-                            allow_internal_unstable,
-                            allow_internal_unsafe: false,
-                            edition: hygiene::default_edition(),
-                        }
+                        def_site: tt_span,
+                        format: macro_bang_format(path),
+                        allow_internal_unstable,
+                        allow_internal_unsafe: false,
+                        edition: hygiene::default_edition(),
                     });
 
                     let input: Vec<_> = mac.node.stream().into_trees().collect();
@@ -815,16 +809,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.gate_proc_macro_expansion_kind(span, kind);
                     invoc.expansion_data.mark.set_expn_info(ExpnInfo {
                         call_site: span,
-                        callee: NameAndSpan {
-                            format: macro_bang_format(path),
-                            // FIXME procedural macros do not have proper span info
-                            // yet, when they do, we should use it here.
-                            span: None,
-                            // FIXME probably want to follow macro_rules macros here.
-                            allow_internal_unstable,
-                            allow_internal_unsafe: false,
-                            edition,
-                        },
+                        // FIXME procedural macros do not have proper span info
+                        // yet, when they do, we should use it here.
+                        def_site: None,
+                        format: macro_bang_format(path),
+                        // FIXME probably want to follow macro_rules macros here.
+                        allow_internal_unstable,
+                        allow_internal_unsafe: false,
+                        edition,
                     });
 
                     let tok_result = expandfun.expand(self.cx, span, mac.node.stream());
@@ -894,13 +886,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         let mut expn_info = ExpnInfo {
             call_site: span,
-            callee: NameAndSpan {
-                format: MacroAttribute(pretty_name),
-                span: None,
-                allow_internal_unstable: false,
-                allow_internal_unsafe: false,
-                edition: ext.edition(),
-            }
+            def_site: None,
+            format: MacroAttribute(pretty_name),
+            allow_internal_unstable: false,
+            allow_internal_unsafe: false,
+            edition: ext.edition(),
         };
 
         match *ext {
@@ -916,7 +906,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 Some(invoc.fragment_kind.expect_from_annotatables(items))
             }
             BuiltinDerive(func) => {
-                expn_info.callee.allow_internal_unstable = true;
+                expn_info.allow_internal_unstable = true;
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
                 let mut items = Vec::new();

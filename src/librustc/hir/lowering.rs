@@ -612,13 +612,11 @@ impl<'a> LoweringContext<'a> {
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(codemap::ExpnInfo {
             call_site: span,
-            callee: codemap::NameAndSpan {
-                format: codemap::CompilerDesugaring(reason),
-                span: Some(span),
-                allow_internal_unstable: true,
-                allow_internal_unsafe: false,
-                edition: codemap::hygiene::default_edition(),
-            },
+            def_site: Some(span),
+            format: codemap::CompilerDesugaring(reason),
+            allow_internal_unstable: true,
+            allow_internal_unsafe: false,
+            edition: codemap::hygiene::default_edition(),
         });
         span.with_ctxt(SyntaxContext::empty().apply_mark(mark))
     }

@@ -14,7 +14,7 @@ use std::cell::Cell;
 use ext::hygiene::{Mark, SyntaxContext};
 use symbol::{Symbol, keywords};
 use syntax_pos::{DUMMY_SP, Span};
-use codemap::{ExpnInfo, NameAndSpan, MacroAttribute, dummy_spanned, hygiene, respan};
+use codemap::{ExpnInfo, MacroAttribute, dummy_spanned, hygiene, respan};
 use ptr::P;
 use tokenstream::TokenStream;
 
@@ -25,13 +25,11 @@ fn ignored_span(sp: Span) -> Span {
     let mark = Mark::fresh(Mark::root());
     mark.set_expn_info(ExpnInfo {
         call_site: DUMMY_SP,
-        callee: NameAndSpan {
-            format: MacroAttribute(Symbol::intern("std_inject")),
-            span: None,
-            allow_internal_unstable: true,
-            allow_internal_unsafe: false,
-            edition: hygiene::default_edition(),
-        }
+        def_site: None,
+        format: MacroAttribute(Symbol::intern("std_inject")),
+        allow_internal_unstable: true,
+        allow_internal_unsafe: false,
+        edition: hygiene::default_edition(),
     });
     sp.with_ctxt(SyntaxContext::empty().apply_mark(mark))
 }

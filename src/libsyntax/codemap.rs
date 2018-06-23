@@ -19,7 +19,7 @@
 
 
 pub use syntax_pos::*;
-pub use syntax_pos::hygiene::{ExpnFormat, ExpnInfo, NameAndSpan};
+pub use syntax_pos::hygiene::{ExpnFormat, ExpnInfo};
 pub use self::ExpnFormat::*;
 
 use rustc_data_structures::fx::FxHashMap;

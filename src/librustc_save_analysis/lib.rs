@@ -844,7 +844,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let callsite = span.source_callsite();
         let callsite_span = self.span_from_span(callsite);
         let callee = span.source_callee()?;
-        let callee_span = callee.span?;
+        let callee_span = callee.def_site?;
 
         // Ignore attribute macros, their spans are usually mangled
         if let MacroAttribute(_) = callee.format {
@@ -872,7 +872,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let callee_span = self.span_from_span(callee_span);
         Some(MacroRef {
             span: callsite_span,
-            qualname: callee.name().to_string(), // FIXME: generate the real qualname
+            qualname: callee.format.name().to_string(), // FIXME: generate the real qualname
             callee_span,
         })
     }

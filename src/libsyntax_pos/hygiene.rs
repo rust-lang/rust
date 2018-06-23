@@ -482,12 +482,11 @@ pub struct ExpnInfo {
     /// call_site span would have its own ExpnInfo, with the call_site
     /// pointing to the `foo!` invocation.
     pub call_site: Span,
-    /// Information about the expansion.
-    pub callee: NameAndSpan
-}
-
-#[derive(Clone, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct NameAndSpan {
+    /// The span of the macro definition itself. The macro may not
+    /// have a sensible definition span (e.g. something defined
+    /// completely inside libsyntax) in which case this is None.
+    /// This span serves only informational purpose and is not used for resolution.
+    pub def_site: Option<Span>,
     /// The format with which the macro was invoked.
     pub format: ExpnFormat,
     /// Whether the macro is allowed to use #[unstable]/feature-gated
@@ -499,20 +498,6 @@ pub struct NameAndSpan {
     pub allow_internal_unsafe: bool,
     /// Edition of the crate in which the macro is defined.
     pub edition: Edition,
-    /// The span of the macro definition itself. The macro may not
-    /// have a sensible definition span (e.g. something defined
-    /// completely inside libsyntax) in which case this is None.
-    pub span: Option<Span>
-}
-
-impl NameAndSpan {
-    pub fn name(&self) -> Symbol {
-        match self.format {
-            ExpnFormat::MacroAttribute(s) |
-            ExpnFormat::MacroBang(s) => s,
-            ExpnFormat::CompilerDesugaring(ref kind) => kind.as_symbol(),
-        }
-    }
 }
 
 /// The source of expansion.
@@ -526,8 +511,17 @@ pub enum ExpnFormat {
     CompilerDesugaring(CompilerDesugaringKind)
 }
 
+impl ExpnFormat {
+    pub fn name(&self) -> Symbol {
+        match *self {
+            ExpnFormat::MacroBang(name) | ExpnFormat::MacroAttribute(name) => name,
+            ExpnFormat::CompilerDesugaring(kind) => kind.name(),
+        }
+    }
+}
+
 /// The kind of compiler desugaring.
-#[derive(Clone, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum CompilerDesugaringKind {
     DotFill,
     QuestionMark,
@@ -540,16 +534,14 @@ pub enum CompilerDesugaringKind {
 }
 
 impl CompilerDesugaringKind {
-    pub fn as_symbol(&self) -> Symbol {
-        use CompilerDesugaringKind::*;
-        let s = match *self {
-            Async => "async",
-            DotFill => "...",
-            QuestionMark => "?",
-            Catch => "do catch",
-            ExistentialReturnType => "existental type",
-        };
-        Symbol::intern(s)
+    pub fn name(self) -> Symbol {
+        Symbol::intern(match self {
+            CompilerDesugaringKind::Async => "async",
+            CompilerDesugaringKind::DotFill => "...",
+            CompilerDesugaringKind::QuestionMark => "?",
+            CompilerDesugaringKind::Catch => "do catch",
+            CompilerDesugaringKind::ExistentialReturnType => "existental type",
+        })
     }
 }
 

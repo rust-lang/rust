@@ -366,9 +366,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         if let Some(k) = obligation.cause.span.compiler_desugaring_kind() {
-            let desugaring = k.as_symbol().as_str();
             flags.push(("from_desugaring".to_string(), None));
-            flags.push(("from_desugaring".to_string(), Some(desugaring.to_string())));
+            flags.push(("from_desugaring".to_string(), Some(k.name().to_string())));
         }
         let generics = self.tcx.generics_of(def_id);
         let self_ty = trait_ref.self_ty();

@@ -834,7 +834,7 @@ impl<'a> ExtCtxt<'a> {
         let mut last_macro = None;
         loop {
             if ctxt.outer().expn_info().map_or(None, |info| {
-                if info.callee.name() == "include" {
+                if info.format.name() == "include" {
                     // Stop going up the backtrace once include! is encountered
                     return None;
                 }
