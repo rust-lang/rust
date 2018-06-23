@@ -1074,6 +1074,12 @@ impl Step for Compiletest {
         // Get test-args by striping suite path
         let mut test_args: Vec<&str> = paths
             .iter()
+            .map(|p| {
+                match p.strip_prefix(".") {
+                    Ok(path) => path,
+                    Err(_) => p,
+                }
+            })
             .filter(|p| p.starts_with(suite_path) && p.is_file())
             .map(|p| p.strip_prefix(suite_path).unwrap().to_str().unwrap())
             .collect();

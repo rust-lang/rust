@@ -218,6 +218,12 @@ impl StepDescription {
             }
         } else {
             for path in paths {
+                // strip CurDir prefix if present
+                let path = match path.strip_prefix(".") {
+                    Ok(p) => p,
+                    Err(_) => path,
+                };
+
                 let mut attempted_run = false;
                 for (desc, should_run) in v.iter().zip(&should_runs) {
                     if let Some(suite) = should_run.is_suite_path(path) {
