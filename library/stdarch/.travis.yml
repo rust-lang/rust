@@ -59,7 +59,6 @@ matrix:
   allow_failures:
     - env: CLIPPY=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
     - env: RUSTFMT=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
-    - env: TARGET=x86_64-linux-android
 
 before_install:
   # FIXME (travis-ci/travis-ci#8920) shouldn't be necessary...
