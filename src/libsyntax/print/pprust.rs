@@ -3186,10 +3186,20 @@ mod tests {
                 variadic: false
             };
             let generics = ast::Generics::default();
-            assert_eq!(fun_to_string(&decl, ast::Unsafety::Normal,
-                                    ast::Constness::NotConst,
-                                    abba_ident, &generics),
-                    "fn abba()");
+            assert_eq!(
+                fun_to_string(
+                    &decl,
+                    ast::FnHeader {
+                        unsafety: ast::Unsafety::Normal,
+                        constness: codemap::dummy_spanned(ast::Constness::NotConst),
+                        asyncness: ast::IsAsync::NotAsync,
+                        abi: Abi::Rust,
+                    },
+                    abba_ident,
+                    &generics
+                ),
+                "fn abba()"
+            );
         })
     }
 
