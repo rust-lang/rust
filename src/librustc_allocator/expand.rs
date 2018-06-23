@@ -67,7 +67,7 @@ struct ExpandAllocatorDirectives<'a> {
 
 impl<'a> Folder for ExpandAllocatorDirectives<'a> {
     fn fold_item(&mut self, item: P<Item>) -> SmallVector<P<Item>> {
-        info!("in submodule {}", self.in_submod);
+        debug!("in submodule {}", self.in_submod);
 
         let name = if attr::contains_name(&item.attrs, "global_allocator") {
             "global_allocator"
@@ -163,11 +163,11 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
 
     // If we enter a submodule, take note.
     fn fold_mod(&mut self, m: Mod) -> Mod {
-        info!("enter submodule");
+        debug!("enter submodule");
         self.in_submod += 1;
         let ret = fold::noop_fold_mod(m, self);
         self.in_submod -= 1;
-        info!("exit submodule");
+        debug!("exit submodule");
         ret
     }
 
