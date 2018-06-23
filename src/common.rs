@@ -29,7 +29,7 @@ pub fn cton_type_from_ty(ty: Ty) -> Option<types::Type> {
                 UintTy::U32 => types::I32,
                 UintTy::U64 => types::I64,
                 UintTy::U128 => unimplemented!(),
-                UintTy::Usize => unimplemented!(),
+                UintTy::Usize => types::I64,
             }
         }
         TypeVariants::TyInt(size) => {
@@ -39,12 +39,28 @@ pub fn cton_type_from_ty(ty: Ty) -> Option<types::Type> {
                 IntTy::I32 => types::I32,
                 IntTy::I64 => types::I64,
                 IntTy::I128 => unimplemented!(),
-                IntTy::Isize => unimplemented!(),
+                IntTy::Isize => types::I64,
             }
         }
         TypeVariants::TyFnPtr(_) => types::I64,
         _ => return None,
     })
+}
+
+pub fn extend_val<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, val: Value, ty: Ty) -> Value {
+    let cton_ty = cton_type_from_ty(ty).unwrap();
+    let to_ty = match cton_ty {
+        types::I64 => return val,
+        types::I32 => return val,
+        _ => types::I32,
+    };
+    match ty.sty {
+        TypeVariants::TyBool => fx.bcx.ins().uextend(to_ty, val),
+        TypeVariants::TyUint(_) => fx.bcx.ins().uextend(to_ty, val),
+        TypeVariants::TyInt(_) => fx.bcx.ins().sextend(to_ty, val),
+        TypeVariants::TyFnPtr(_) => val,
+        _ => unimplemented!(),
+    }
 }
 
 // FIXME(cretonne) fix load.i8
@@ -69,7 +85,7 @@ fn store_workaround(fx: &mut FunctionCx, ty: Type, addr: Value, val: Value, offs
     };
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum CValue {
     ByRef(Value),
     ByVal(Value),
@@ -117,9 +133,28 @@ impl CValue {
             CValue::Func(_) => bug!("Expected CValue::ByRef, found CValue::Func"),
         }
     }
+
+    pub fn value_field<'a, 'tcx: 'a>(self, fx: &mut FunctionCx<'a, 'tcx>, field: mir::Field, ty: Ty<'tcx>) -> CValue {
+        let base = match self {
+            CValue::ByRef(addr) => addr,
+            _ => bug!("place_field for {:?}", self),
+        };
+        let layout = fx.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
+        let field_offset = layout.fields.offset(field.index());
+        if field_offset.bytes() > 0 {
+            let field_offset = fx.bcx.ins().iconst(types::I64, field_offset.bytes() as i64);
+            CValue::ByRef(fx.bcx.ins().iadd(base, field_offset))
+        } else {
+            CValue::ByRef(base)
+        }
+    }
+
+    pub fn const_val<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, ty: Ty<'tcx>, const_val: i64) -> CValue {
+        CValue::ByVal(fx.bcx.ins().iconst(cton_type_from_ty(ty).unwrap(), const_val))
+    }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum CPlace {
     Var(Variable),
     Addr(Value),
@@ -166,10 +201,18 @@ impl<'a, 'tcx: 'a> CPlace {
             }
         }
     }
-}
 
-pub fn ext_name_from_did(def_id: DefId) -> ExternalName {
-    ExternalName::user(def_id.krate.as_u32(), def_id.index.as_raw_u32())
+    pub fn place_field(self, fx: &mut FunctionCx<'a, 'tcx>, field: mir::Field, ty: Ty<'tcx>) -> (CPlace, layout::TyLayout<'tcx>) {
+        let base = self.expect_addr();
+        let layout = fx.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
+        let field_offset = layout.fields.offset(field.index());
+        if field_offset.bytes() > 0 {
+            let field_offset = fx.bcx.ins().iconst(types::I64, field_offset.bytes() as i64);
+            (CPlace::Addr(fx.bcx.ins().iadd(base, field_offset)), layout)
+        } else {
+            (CPlace::Addr(base), layout)
+        }
+    }
 }
 
 pub fn cton_sig_from_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig: PolyFnSig<'tcx>, substs: &Substs<'tcx>) -> Signature {
@@ -198,6 +241,23 @@ pub fn cton_sig_from_mono_fn_sig<'a ,'tcx: 'a>(sig: PolyFnSig<'tcx>) -> Signatur
         returns: vec![],
         call_conv,
         argument_bytes: None,
+    }
+}
+
+pub fn cton_intcast<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, val: Value, from: Ty<'tcx>, to: Ty<'tcx>, signed: bool) -> Value {
+    let from = cton_type_from_ty(from).unwrap();
+    let to = cton_type_from_ty(to).unwrap();
+    if from == to {
+        return val;
+    }
+    if from.wider_or_equal(to) {
+        if signed {
+            fx.bcx.ins().sextend(to, val)
+        } else {
+            fx.bcx.ins().uextend(to, val)
+        }
+    } else {
+        fx.bcx.ins().ireduce(to, val)
     }
 }
 

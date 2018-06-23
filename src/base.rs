@@ -44,15 +44,17 @@ pub fn trans_crate<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Box<Any> {
                             })
                         };
 
-                        let mut f = Function::with_name_signature(ext_name_from_did(def_id), sig);
-
-                        trans_fn(cx, &mut f, def_id, substs);
+                        let mut f = Function::with_name_signature(ExternalName::user(0, func_id.index() as u32), sig);
 
                         let mut mir = ::std::io::Cursor::new(Vec::new());
                         ::rustc_mir::util::write_mir_pretty(cx.tcx, Some(def_id), &mut mir).unwrap();
+                        tcx.sess.warn(&format!("{:?}:\n\n{}", def_id, String::from_utf8_lossy(&mir.into_inner())));
+
+                        trans_fn(cx, &mut f, def_id, substs);
+
                         let mut cton = String::new();
                         ::cretonne::codegen::write_function(&mut cton, &f, None).unwrap();
-                        tcx.sess.warn(&format!("{:?}:\n\n{}\n\n{}", def_id, String::from_utf8_lossy(&mir.into_inner()), cton));
+                        tcx.sess.warn(&cton);
 
                         let flags = settings::Flags::new(settings::builder());
                         match ::cretonne::codegen::verify_function(&f, &flags) {
@@ -73,17 +75,26 @@ pub fn trans_crate<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Box<Any> {
         }
     }
 
+    tcx.sess.warn("Compiled everything");
+
     module.finalize_all();
 
+    tcx.sess.warn("Finalized everything");
+
     for (inst, func_id) in def_id_fn_id_map.iter() {
-        if tcx.absolute_item_path_str(inst.def_id()) != "example::ret_42" {
+        //if tcx.absolute_item_path_str(inst.def_id()) != "example::ret_42" {
+        if tcx.absolute_item_path_str(inst.def_id()) != "example::option_unwrap_or" {
             continue;
         }
         let finalized_function: *const u8 = module.finalize_function(*func_id);
-        let f: extern "C" fn(&mut u32) = unsafe { ::std::mem::transmute(finalized_function) };
+        /*let f: extern "C" fn(&mut u32) = unsafe { ::std::mem::transmute(finalized_function) };
         let mut res = 0u32;
         f(&mut res);
-        tcx.sess.warn(&format!("ret_42 returned {}", res));
+        tcx.sess.warn(&format!("ret_42 returned {}", res));*/
+        let f: extern "C" fn(&mut bool, &u8, bool) = unsafe { ::std::mem::transmute(finalized_function) };
+        let mut res = false;
+        f(&mut res, &3, false);
+        tcx.sess.warn(&format!("option_unwrap_or returned {}", res));
     }
 
     module.finish();
@@ -149,7 +160,10 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
     for (local, ebb_param, ty, stack_slot) in func_params {
         let place = CPlace::from_stack_slot(fx, stack_slot);
         if ty.is_some() {
-            fx.bcx.ins().stack_store(ebb_param, stack_slot, 0);
+            // FIXME(cretonne) support i16 and smaller
+            let ebb_param = extend_val(fx, ebb_param, mir.local_decls[local].ty);
+            CPlace::from_stack_slot(fx, stack_slot).write_cvalue(fx, CValue::ByVal(ebb_param), mir.local_decls[local].ty);
+            //fx.bcx.ins().stack_store(ebb_param, stack_slot, 0);
         } else {
             place.write_cvalue(fx, CValue::ByRef(ebb_param), mir.local_decls[local].ty);
         }
@@ -275,15 +289,15 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
 
 fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx>) {
     match &stmt.kind {
-        StatementKind::Assign(place, rval) => {
-            let ty = place.ty(&fx.mir.local_decls, fx.tcx).to_ty(fx.tcx);
-            let lval = trans_place(fx, place);
+        StatementKind::Assign(to_place, rval) => {
+            let dest_ty = to_place.ty(&fx.mir.local_decls, fx.tcx).to_ty(fx.tcx);
+            let lval = trans_place(fx, to_place);
             match rval {
                 Rvalue::Use(operand) => {
                     let val = trans_operand(fx, operand);
-                    lval.write_cvalue(fx, val, ty);
+                    lval.write_cvalue(fx, val, dest_ty);
                 },
-                Rvalue::CheckedBinaryOp(bin_op, lhs, rhs) => {
+                Rvalue::BinaryOp(bin_op, lhs, rhs) => {
                     let ty = lhs.ty(&fx.mir.local_decls, fx.tcx);
                     let lhs_ty = lhs.ty(&fx.mir.local_decls, fx.tcx);
                     let lhs = trans_operand(fx, lhs).load_value(fx, lhs_ty);
@@ -304,13 +318,101 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                     };
                     lval.write_cvalue(fx, CValue::ByVal(res), ty);
                 }
+                Rvalue::CheckedBinaryOp(bin_op, lhs, rhs) => {
+                    // TODO correctly write output tuple
+
+                    let ty = lhs.ty(&fx.mir.local_decls, fx.tcx);
+                    let lhs_ty = lhs.ty(&fx.mir.local_decls, fx.tcx);
+                    let lhs = trans_operand(fx, lhs).load_value(fx, lhs_ty);
+                    let rhs_ty = rhs.ty(&fx.mir.local_decls, fx.tcx);
+                    let rhs = trans_operand(fx, rhs).load_value(fx, rhs_ty);
+
+                    let res = match ty.sty {
+                        TypeVariants::TyUint(_) => {
+                            match bin_op {
+                                BinOp::Add => fx.bcx.ins().iadd(lhs, rhs),
+                                BinOp::Sub => fx.bcx.ins().isub(lhs, rhs),
+                                BinOp::Mul => fx.bcx.ins().imul(lhs, rhs),
+                                BinOp::Div => fx.bcx.ins().udiv(lhs, rhs),
+                                bin_op => unimplemented!("checked uint bin op {:?} {:?} {:?}", bin_op, lhs, rhs),
+                            }
+                        }
+                        _ => unimplemented!(),
+                    };
+                    lval.write_cvalue(fx, CValue::ByVal(res), ty);
+                    unimplemented!("checked bin op {:?}", bin_op);
+                }
                 Rvalue::Cast(CastKind::ReifyFnPointer, operand, ty) => {
                     let operand = trans_operand(fx, operand);
-                    lval.write_cvalue(fx, operand, ty);
+                    lval.write_cvalue(fx, operand, dest_ty);
                 }
                 Rvalue::Cast(CastKind::UnsafeFnPointer, operand, ty) => {
                     let operand = trans_operand(fx, operand);
-                    lval.write_cvalue(fx, operand, ty);
+                    lval.write_cvalue(fx, operand, dest_ty);
+                }
+                Rvalue::Discriminant(place) => {
+                    let place_ty = place.ty(&fx.mir.local_decls, fx.tcx).to_ty(fx.tcx);
+                    let cton_place_ty = cton_type_from_ty(place_ty);
+                    let layout = fx.tcx.layout_of(ParamEnv::reveal_all().and(place_ty)).unwrap();
+
+                    if layout.abi == layout::Abi::Uninhabited {
+                        fx.bcx.ins().trap(TrapCode::User(!0));
+                    }
+                    match layout.variants {
+                        layout::Variants::Single { index } => {
+                            let discr_val = layout.ty.ty_adt_def().map_or(
+                                index as u128,
+                                |def| def.discriminant_for_variant(fx.tcx, index).val);
+                            let val = CValue::const_val(fx, dest_ty, discr_val as u64 as i64);
+                            lval.write_cvalue(fx, val, dest_ty);
+                        }
+                        layout::Variants::Tagged { .. } |
+                        layout::Variants::NicheFilling { .. } => {},
+                    }
+
+                    let discr = lval.to_cvalue(fx).value_field(fx, mir::Field::new(0), place_ty);
+                    let discr_ty = layout.field(layout::LayoutCx {
+                        tcx: fx.tcx,
+                        param_env: ParamEnv::reveal_all()
+                    }, 0).unwrap().ty;
+                    let lldiscr = discr.load_value(fx, discr_ty);
+                    match layout.variants {
+                        layout::Variants::Single { .. } => bug!(),
+                        layout::Variants::Tagged { ref tag, .. } => {
+                            let signed = match tag.value {
+                                layout::Int(_, signed) => signed,
+                                _ => false
+                            };
+                            let val = cton_intcast(fx, lldiscr, discr_ty, dest_ty, signed);
+                            lval.write_cvalue(fx, CValue::ByVal(val), dest_ty);
+                        }
+                        layout::Variants::NicheFilling {
+                            dataful_variant,
+                            ref niche_variants,
+                            niche_start,
+                            ..
+                        } => {
+                            let niche_llty = cton_type_from_ty(discr_ty).unwrap();
+                            if niche_variants.start() == niche_variants.end() {
+                                let b = fx.bcx.ins().icmp_imm(IntCC::Equal, lldiscr, niche_start as u64 as i64);
+                                let if_true = fx.bcx.ins().iconst(cton_type_from_ty(dest_ty).unwrap(), *niche_variants.start() as u64 as i64);
+                                let if_false = fx.bcx.ins().iconst(cton_type_from_ty(dest_ty).unwrap(), dataful_variant as u64 as i64);
+                                let val = fx.bcx.ins().select(b, if_true, if_false);
+                                lval.write_cvalue(fx, CValue::ByVal(val), dest_ty);
+                            } else {
+                                // Rebase from niche values to discriminant values.
+                                let delta = niche_start.wrapping_sub(*niche_variants.start() as u128);
+                                let delta = fx.bcx.ins().iconst(niche_llty, delta as u64 as i64);
+                                let lldiscr = fx.bcx.ins().isub(lldiscr, delta);
+                                let lldiscr_max = fx.bcx.ins().iconst(niche_llty, *niche_variants.end() as u64 as i64);
+                                let b = fx.bcx.ins().icmp_imm(IntCC::UnsignedLessThanOrEqual, lldiscr, *niche_variants.end() as u64 as i64);
+                                let if_true = cton_intcast(fx, lldiscr, discr_ty, dest_ty, false);
+                                let if_false = fx.bcx.ins().iconst(niche_llty, dataful_variant as u64 as i64);
+                                let val = fx.bcx.ins().select(b, if_true, if_false);
+                                lval.write_cvalue(fx, CValue::ByVal(val), dest_ty);
+                            }
+                        }
+                    }
                 }
                 rval => unimplemented!("rval {:?}", rval),
             }
@@ -324,17 +426,13 @@ fn trans_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, place: &Place<'tcx>)
     match place {
         Place::Local(local) => fx.get_local_place(*local),
         Place::Projection(projection) => {
-            let base = trans_place(fx, &projection.base).expect_addr();
+            let base = trans_place(fx, &projection.base);
             match projection.elem {
                 ProjectionElem::Field(field, ty) => {
-                    let layout = fx.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                    let field_offset = layout.fields.offset(field.index());
-                    if field_offset.bytes() > 0 {
-                        let field_offset = fx.bcx.ins().iconst(types::I64, field_offset.bytes() as i64);
-                        CPlace::Addr(fx.bcx.ins().iadd(base, field_offset))
-                    } else {
-                        CPlace::Addr(base)
-                    }
+                    base.place_field(fx, field, ty).0
+                }
+                ProjectionElem::Downcast(_ty, _field) => {
+                    base
                 }
                 _ => unimplemented!("projection {:?}", projection),
             }

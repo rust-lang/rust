@@ -23,7 +23,7 @@ use rustc::session::{
 };
 use rustc::middle::cstore::{MetadataLoader, EncodedMetadata};
 use rustc::dep_graph::DepGraph;
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc_codegen_utils::codegen_backend::{CodegenBackend, NoLlvmMetadataLoader};
 use rustc_codegen_utils::link::{out_filename, build_link_meta};
 
@@ -41,6 +41,8 @@ mod prelude {
     pub use rustc::session::Session;
     pub use rustc::hir::def_id::{DefId, LOCAL_CRATE};
     pub use rustc::ty::{TyCtxt, Ty, TypeVariants, Instance, InstanceDef, ParamEnv, FnSig, PolyFnSig, subst::Substs};
+    pub use rustc::ty::layout;
+    pub use rustc::mir;
     pub use rustc::mir::*;
     pub use rustc_mir::monomorphize::collector;
     pub use rustc_data_structures::{
@@ -55,6 +57,7 @@ mod prelude {
         FuncRef,
         StackSlot,
         function::Function,
+        condcodes::IntCC,
     };
 
 
