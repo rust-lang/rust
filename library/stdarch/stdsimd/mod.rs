@@ -192,10 +192,10 @@
 /// [`x86_64`]: https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/arch/x86_64/index.html
 /// [`arm`]: https://rust-lang-nursery.github.io/stdsimd/arm/stdsimd/arch/arm/index.html
 /// [`aarch64`]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/aarch64/index.html
-/// [`mips`]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/mips/index.html
-/// [`mips64`]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/mips64/index.html
-/// [`powerpc`]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/powerpc/index.html
-/// [`powerpc64`]: https://rust-lang-nursery.github.io/stdsimd/aarch64/stdsimd/arch/powerpc64/index.html
+/// [`mips`]: https://rust-lang-nursery.github.io/stdsimd/mips/stdsimd/arch/mips/index.html
+/// [`mips64`]: https://rust-lang-nursery.github.io/stdsimd/mips64/stdsimd/arch/mips64/index.html
+/// [`powerpc`]: https://rust-lang-nursery.github.io/stdsimd/powerpc/stdsimd/arch/powerpc/index.html
+/// [`powerpc64`]: https://rust-lang-nursery.github.io/stdsimd/powerpc64/stdsimd/arch/powerpc64/index.html
 ///
 /// # Examples
 ///
