@@ -5402,7 +5402,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse an impl item.
-    crate fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, ImplItem> {
+    pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, ImplItem> {
         maybe_whole!(self, NtImplItem, |x| x);
         let attrs = self.parse_outer_attributes()?;
         let (mut item, tokens) = self.collect_tokens(|this| {
