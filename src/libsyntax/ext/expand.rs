@@ -804,7 +804,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 kind.dummy(span)
             }
 
-            ProcMacro(ref expandfun, edition) => {
+            ProcMacro(ref expandfun, allow_internal_unstable, edition) => {
                 if ident.name != keywords::Invalid.name() {
                     let msg =
                         format!("macro {}! expects no ident argument, given '{}'", path, ident);
@@ -821,7 +821,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             // yet, when they do, we should use it here.
                             span: None,
                             // FIXME probably want to follow macro_rules macros here.
-                            allow_internal_unstable: false,
+                            allow_internal_unstable,
                             allow_internal_unsafe: false,
                             edition,
                         },

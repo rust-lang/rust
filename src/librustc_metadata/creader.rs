@@ -570,7 +570,7 @@ impl<'a> CrateLoader<'a> {
                                         name: &str,
                                         expand: fn(TokenStream) -> TokenStream) {
                 let expand = SyntaxExtension::ProcMacro(
-                    Box::new(BangProcMacro { inner: expand }), self.edition
+                    Box::new(BangProcMacro { inner: expand }), false, self.edition
                 );
                 self.extensions.push((Symbol::intern(name), Lrc::new(expand)));
             }

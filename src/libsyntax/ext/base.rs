@@ -597,7 +597,11 @@ pub enum SyntaxExtension {
     MultiModifier(Box<MultiItemModifier + sync::Sync + sync::Send>),
 
     /// A function-like procedural macro. TokenStream -> TokenStream.
-    ProcMacro(Box<ProcMacro + sync::Sync + sync::Send>, Edition),
+    ProcMacro(
+        /* expander: */ Box<ProcMacro + sync::Sync + sync::Send>,
+        /* allow_internal_unstable: */ bool,
+        /* edition: */ Edition,
+    ),
 
     /// An attribute-like procedural macro. TokenStream, TokenStream -> TokenStream.
     /// The first TokenSteam is the attribute, the second is the annotated item.
