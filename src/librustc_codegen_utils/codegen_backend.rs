@@ -42,6 +42,7 @@ use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
 use rustc_target::spec::Target;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_mir::monomorphize::collector;
 use link::{build_link_meta, out_filename};
 
@@ -132,9 +133,7 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         ::symbol_names::provide(providers);
 
         providers.target_features_whitelist = |_tcx, _cnum| {
-            Lrc::new(::llvm_target_features::all_known_features()
-                .map(|(a, b)| (a.to_string(), b.map(|s| s.to_string())))
-                .collect())
+            Lrc::new(FxHashMap()) // Just a dummy
         };
         providers.is_reachable_non_generic = |_tcx, _defid| true;
         providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());
