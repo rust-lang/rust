@@ -86,26 +86,37 @@ pub fn has_cpuid() -> bool {
     }
     #[cfg(target_arch = "x86")]
     {
-        use coresimd::x86::{__readeflags, __writeeflags};
-
-        // On `x86` the `cpuid` instruction is not always available.
-        // This follows the approach indicated in:
-        // http://wiki.osdev.org/CPUID#Checking_CPUID_availability
         unsafe {
-            // Read EFLAGS:
-            let eflags: u32 = __readeflags();
-
-            // Invert the ID bit in EFLAGS:
-            let eflags_mod: u32 = eflags ^ 0x0020_0000;
-
-            // Store the modified EFLAGS (ID bit may or may not be inverted)
-            __writeeflags(eflags_mod);
-
-            // Read EFLAGS again:
-            let eflags_after: u32 = __readeflags();
-
-            // Check if the ID bit changed:
-            eflags_after != eflags
+            // On `x86` the `cpuid` instruction is not always available.
+            // This follows the approach indicated in:
+            // http://wiki.osdev.org/CPUID#Checking_CPUID_availability
+            // https://software.intel.com/en-us/articles/using-cpuid-to-detect-the-presence-of-sse-41-and-sse-42-instruction-sets/
+            // which detects whether `cpuid` is available by checking whether the 21th bit of the EFLAGS register is modifiable or not.
+            // If it is, then `cpuid` is available.
+            let eax: i32;
+            asm!(r#"
+                push %ecx
+                pushfd
+                pushfd
+                pop %eax
+                mov %ecx, %eax
+                xor %eax, 0x200000
+                push %eax
+                popfd
+                pushfd
+                pop %eax
+                xor %eax, %ecx
+                shrd %eax, 21
+                popfd
+                pop %ecx
+            "#
+                 : "={eax}"(eax)  // output operands
+                 : // input operands
+                 : "memory", "ecx" // clobbers all memory
+                 : "volatile"  // has side-effects
+            );
+            debug_assert!(eax == 0 || eax == 1);
+            eax == 1
         }
     }
 }
