@@ -44,7 +44,7 @@ pub fn pkgname(builder: &Builder, component: &str) -> String {
     } else if component == "rustfmt" {
         format!("{}-{}", component, builder.rustfmt_package_vers())
     } else if component == "llvm-tools" {
-        format!("{}-{}", component, builder.llvm_tools_vers())
+        format!("{}-{}", component, builder.llvm_tools_package_vers())
     } else {
         assert!(component.starts_with("rust"));
         format!("{}-{}", component, builder.rust_package_vers())
@@ -1303,6 +1303,7 @@ impl Step for Extended {
         let cargo_installer = builder.ensure(Cargo { stage, target });
         let rustfmt_installer = builder.ensure(Rustfmt { stage, target });
         let rls_installer = builder.ensure(Rls { stage, target });
+        let llvm_tools_installer = builder.ensure(LlvmTools { stage, target, compiler: builder.compiler(stage, target) });
         let mingw_installer = builder.ensure(Mingw { host: target });
         let analysis_installer = builder.ensure(Analysis {
             compiler: builder.compiler(stage, self.host),
@@ -1340,6 +1341,7 @@ impl Step for Extended {
         tarballs.push(cargo_installer);
         tarballs.extend(rls_installer.clone());
         tarballs.extend(rustfmt_installer.clone());
+        tarballs.extend(llvm_tools_installer.clone());
         tarballs.push(analysis_installer);
         tarballs.push(std_installer);
         if builder.config.docs {
@@ -1740,7 +1742,7 @@ impl Step for HashSign {
         cmd.arg(builder.package_vers(&builder.release_num("cargo")));
         cmd.arg(builder.package_vers(&builder.release_num("rls")));
         cmd.arg(builder.package_vers(&builder.release_num("rustfmt")));
-        cmd.arg(builder.llvm_tools_vers());
+        cmd.arg(builder.llvm_tools_package_vers());
         cmd.arg(addr);
 
         builder.create_dir(&distdir(builder));
@@ -1806,6 +1808,7 @@ impl Step for LlvmTools {
         builder.create_dir(&overlay);
         builder.install(&src.join("README.txt"), &overlay, 0o644);
         builder.install(&src.join("LICENSE.TXT"), &overlay, 0o644);
+        builder.create(&overlay.join("version"), &builder.llvm_tools_vers());
 
         // Generate the installer tarball
         let mut cmd = rust_installer(builder);
