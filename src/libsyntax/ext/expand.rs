@@ -301,11 +301,19 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let orig_expansion_data = self.cx.current_expansion.clone();
         self.cx.current_expansion.depth = 0;
 
+        // Collect all macro invocations and replace them with placeholders.
         let (fragment_with_placeholders, mut invocations)
             = self.collect_invocations(input_fragment, &[]);
-        self.resolve_imports();
-        invocations.reverse();
 
+        // Optimization: if we resolve all imports now,
+        // we'll be able to immediately resolve most of imported macros.
+        self.resolve_imports();
+
+        // Resolve paths in all invocations and produce ouput expanded fragments for them, but
+        // do not insert them into our input AST fragment yet, only store in `expanded_fragments`.
+        // The output fragments also go through expansion recursively until no invocations are left.
+        // Unresolved macros produce dummy outputs as a recovery measure.
+        invocations.reverse();
         let mut expanded_fragments = Vec::new();
         let mut derives = HashMap::new();
         let mut undetermined_invocations = Vec::new();
@@ -411,6 +419,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         self.cx.current_expansion = orig_expansion_data;
 
+        // Finally incorporate all the expanded macros into the input AST fragment.
         let mut placeholder_expander = PlaceholderExpander::new(self.cx, self.monotonic);
         while let Some(expanded_fragments) = expanded_fragments.pop() {
             for (mark, expanded_fragment) in expanded_fragments.into_iter().rev() {
@@ -419,7 +428,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                          expanded_fragment, derives);
             }
         }
-
         fragment_with_placeholders.fold_with(&mut placeholder_expander)
     }
 
@@ -431,6 +439,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
     }
 
+    /// Collect all macro invocations reachable at this time in this AST fragment, and replace
+    /// them with "placeholders" - dummy macro invocations with specially crafted `NodeId`s.
+    /// Then call into resolver that builds a skeleton ("reduced graph") of the fragment and
+    /// prepares data for resolving paths of macro invocations.
     fn collect_invocations(&mut self, fragment: AstFragment, derives: &[Mark])
                            -> (AstFragment, Vec<Invocation>) {
         let (fragment_with_placeholders, invocations) = {
