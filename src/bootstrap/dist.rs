@@ -1303,11 +1303,7 @@ impl Step for Extended {
         let cargo_installer = builder.ensure(Cargo { stage, target });
         let rustfmt_installer = builder.ensure(Rustfmt { stage, target });
         let rls_installer = builder.ensure(Rls { stage, target });
-        let llvm_tools_installer = builder.ensure(LlvmTools {
-            stage,
-            target,
-            compiler: builder.compiler(stage, target)
-        });
+        let llvm_tools_installer = builder.ensure(LlvmTools { stage, target });
         let mingw_installer = builder.ensure(Mingw { host: target });
         let analysis_installer = builder.ensure(Analysis {
             compiler: builder.compiler(stage, self.host),
@@ -1761,7 +1757,6 @@ impl Step for HashSign {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct LlvmTools {
     pub stage: u32,
-    pub compiler: Compiler,
     pub target: Interned<String>,
 }
 
@@ -1776,19 +1771,16 @@ impl Step for LlvmTools {
     fn make_run(run: RunConfig) {
         run.builder.ensure(LlvmTools {
             stage: run.builder.top_stage,
-            compiler: run.builder.compiler(run.builder.top_stage, run.target),
             target: run.target,
         });
     }
 
     fn run(self, builder: &Builder) -> Option<PathBuf> {
-        let compiler = self.compiler;
-        let host = compiler.host;
-
         let stage = self.stage;
+        let target = self.target;
         assert!(builder.config.extended);
 
-        builder.info(&format!("Dist LlvmTools stage{} ({})", stage, host));
+        builder.info(&format!("Dist LlvmTools stage{} ({})", stage, target));
         let src = builder.src.join("src/llvm");
         let name = pkgname(builder, "llvm-tools");
 
@@ -1800,9 +1792,9 @@ impl Step for LlvmTools {
         // Prepare the image directory
         for tool in LLVM_TOOLS {
             let exe = builder
-                .llvm_out(host)
+                .llvm_out(target)
                 .join("bin")
-                .join(exe(tool, &compiler.host));
+                .join(exe(tool, &target));
             builder.install(&exe, &image.join("bin"), 0o755);
         }
 
@@ -1824,12 +1816,12 @@ impl Step for LlvmTools {
             .arg("--work-dir").arg(&tmpdir(builder))
             .arg("--output-dir").arg(&distdir(builder))
             .arg("--non-installed-overlay").arg(&overlay)
-            .arg(format!("--package-name={}-{}", name, host))
+            .arg(format!("--package-name={}-{}", name, target))
             .arg("--legacy-manifest-dirs=rustlib,cargo")
             .arg("--component-name=llvm-tools");
 
 
         builder.run(&mut cmd);
-        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, host)))
+        Some(distdir(builder).join(format!("{}-{}.tar.gz", name, target)))
     }
 }
