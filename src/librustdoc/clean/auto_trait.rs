@@ -642,8 +642,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                                 name: name.to_string(),
                                 kind: GenericParamDefKind::Lifetime,
                             })
-                        }
-                        &ty::ReVar(_) | &ty::ReEarlyBound(_) => None,
+                        },
+                        &ty::ReVar(_) | &ty::ReEarlyBound(_) | &ty::ReStatic => None,
                         _ => panic!("Unexpected region type {:?}", r),
                     }
                 })
