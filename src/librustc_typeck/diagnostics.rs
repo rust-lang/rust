@@ -4545,6 +4545,14 @@ fn start(_: isize, _: *const *const u8) -> isize where (): Copy {
 ```
 "##,
 
+E0648: r##"
+`export_name` attributes may not contain null characters (`\0`).
+
+```compile_fail,E0648
+#[export_name="\0foo"] // error: `export_name` may not contain null characters
+```
+"##,
+
 E0689: r##"
 This error indicates that the numeric value for the method being passed exists
 but the type of the numeric value or binding could not be identified.
