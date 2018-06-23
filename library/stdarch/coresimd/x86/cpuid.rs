@@ -78,7 +78,7 @@ pub unsafe fn __cpuid(leaf: u32) -> CpuidResult {
 }
 
 /// Does the host support the `cpuid` instruction?
-#[inline]
+#[inline(never)]
 pub fn has_cpuid() -> bool {
     #[cfg(target_arch = "x86_64")]
     {
@@ -117,7 +117,7 @@ pub fn has_cpuid() -> bool {
                 # So if the value of the 21st bit is 1, cpuid is available,
                 # and if it is zero, it isn't because we didn't manage to
                 # modify it:
-                shrd %eax, 21
+                shrl %eax, 21
                 # Restore original eflags
                 popfd
             "#
