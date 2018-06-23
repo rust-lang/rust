@@ -4,6 +4,13 @@ error[E0268]: `continue` outside of loop
 LL |     |_: [_; continue]| {}; //~ ERROR: `continue` outside of loop
    |             ^^^^^^^^ cannot break outside of a loop
 
-error: aborting due to previous error
+error[E0590]: `break` or `continue` with no label in the condition of a `while` loop
+  --> $DIR/closure-array-break-length.rs:14:19
+   |
+LL |     while |_: [_; continue]| {} {} //~ ERROR: `break` or `continue` with no label
+   |                   ^^^^^^^^ unlabeled `continue` in the condition of a `while` loop
 
-For more information about this error, try `rustc --explain E0268`.
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0268, E0590.
+For more information about an error, try `rustc --explain E0268`.
