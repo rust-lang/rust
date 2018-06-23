@@ -23,7 +23,7 @@ use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::lint;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc::util::common::ErrorReported;
 
 use rustc::hir::def::*;
@@ -328,10 +328,12 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
                         "pattern binding `{}` is named the same as one \
                          of the variants of the type `{}`",
                         name.node, ty_path);
-                    help!(err,
-                        "if you meant to match on a variant, \
-                        consider making the path in the pattern qualified: `{}::{}`",
-                        ty_path, name.node);
+                    err.span_suggestion_with_applicability(
+                        p.span,
+                        "to match on the variant, qualify the path",
+                        format!("{}::{}", ty_path, name.node),
+                        Applicability::MachineApplicable
+                    );
                     err.emit();
                 }
             }
