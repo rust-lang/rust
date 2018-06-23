@@ -502,7 +502,7 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
       hir::ExprArray(..) | hir::ExprCall(..) | hir::ExprMethodCall(..) |
       hir::ExprTup(..) | hir::ExprBinary(..) | hir::ExprAddrOf(..) |
       hir::ExprCast(..) | hir::ExprUnary(..) | hir::ExprBreak(..) |
-      hir::ExprAgain(_) | hir::ExprLit(_) | hir::ExprRet(..) |
+      hir::ExprContinue(_) | hir::ExprLit(_) | hir::ExprRet(..) |
       hir::ExprBlock(..) | hir::ExprAssign(..) | hir::ExprAssignOp(..) |
       hir::ExprStruct(..) | hir::ExprRepeat(..) |
       hir::ExprInlineAsm(..) | hir::ExprBox(..) | hir::ExprYield(..) |
@@ -1047,7 +1047,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               }
           }
 
-          hir::ExprAgain(label) => {
+          hir::ExprContinue(label) => {
               // Find which label this expr continues to
               let sc = match label.target_id {
                     Ok(node_id) => node_id,
@@ -1431,7 +1431,7 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
       hir::ExprIndex(..) | hir::ExprField(..) |
       hir::ExprArray(..) | hir::ExprTup(..) | hir::ExprBinary(..) |
       hir::ExprCast(..) | hir::ExprUnary(..) | hir::ExprRet(..) |
-      hir::ExprBreak(..) | hir::ExprAgain(..) | hir::ExprLit(_) |
+      hir::ExprBreak(..) | hir::ExprContinue(..) | hir::ExprLit(_) |
       hir::ExprBlock(..) | hir::ExprAddrOf(..) |
       hir::ExprStruct(..) | hir::ExprRepeat(..) |
       hir::ExprClosure(..) | hir::ExprPath(_) | hir::ExprYield(..) |

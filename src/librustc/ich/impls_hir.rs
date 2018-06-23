@@ -621,7 +621,7 @@ impl_stable_hash_for!(enum hir::Expr_ {
     ExprPath(path),
     ExprAddrOf(mutability, sub),
     ExprBreak(destination, sub),
-    ExprAgain(destination),
+    ExprContinue(destination),
     ExprRet(val),
     ExprInlineAsm(asm, inputs, outputs),
     ExprStruct(path, fields, base),

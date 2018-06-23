@@ -2331,7 +2331,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::ExprRepeat(..) |
             hir::ExprArray(..) |
             hir::ExprBreak(..) |
-            hir::ExprAgain(..) |
+            hir::ExprContinue(..) |
             hir::ExprRet(..) |
             hir::ExprWhile(..) |
             hir::ExprLoop(..) |
@@ -3611,579 +3611,579 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let tcx = self.tcx;
         let id = expr.id;
         match expr.node {
-          hir::ExprBox(ref subexpr) => {
-            let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| {
-                match ty.sty {
-                    ty::TyAdt(def, _) if def.is_box()
-                        => Expectation::rvalue_hint(self, ty.boxed_ty()),
-                    _ => NoExpectation
-                }
-            });
-            let referent_ty = self.check_expr_with_expectation(subexpr, expected_inner);
-            tcx.mk_box(referent_ty)
-          }
+            hir::ExprBox(ref subexpr) => {
+                let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| {
+                    match ty.sty {
+                        ty::TyAdt(def, _) if def.is_box()
+                            => Expectation::rvalue_hint(self, ty.boxed_ty()),
+                        _ => NoExpectation
+                    }
+                });
+                let referent_ty = self.check_expr_with_expectation(subexpr, expected_inner);
+                tcx.mk_box(referent_ty)
+            }
 
-          hir::ExprLit(ref lit) => {
-            self.check_lit(&lit, expected)
-          }
-          hir::ExprBinary(op, ref lhs, ref rhs) => {
-            self.check_binop(expr, op, lhs, rhs)
-          }
-          hir::ExprAssignOp(op, ref lhs, ref rhs) => {
-            self.check_binop_assign(expr, op, lhs, rhs)
-          }
-          hir::ExprUnary(unop, ref oprnd) => {
-            let expected_inner = match unop {
-                hir::UnNot | hir::UnNeg => {
-                    expected
-                }
-                hir::UnDeref => {
-                    NoExpectation
-                }
-            };
-            let needs = match unop {
-                hir::UnDeref => needs,
-                _ => Needs::None
-            };
-            let mut oprnd_t = self.check_expr_with_expectation_and_needs(&oprnd,
-                                                                               expected_inner,
-                                                                               needs);
-
-            if !oprnd_t.references_error() {
-                oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
-                match unop {
+            hir::ExprLit(ref lit) => {
+                self.check_lit(&lit, expected)
+            }
+            hir::ExprBinary(op, ref lhs, ref rhs) => {
+                self.check_binop(expr, op, lhs, rhs)
+            }
+            hir::ExprAssignOp(op, ref lhs, ref rhs) => {
+                self.check_binop_assign(expr, op, lhs, rhs)
+            }
+            hir::ExprUnary(unop, ref oprnd) => {
+                let expected_inner = match unop {
+                    hir::UnNot | hir::UnNeg => {
+                        expected
+                    }
                     hir::UnDeref => {
-                        if let Some(mt) = oprnd_t.builtin_deref(true) {
-                            oprnd_t = mt.ty;
-                        } else if let Some(ok) = self.try_overloaded_deref(
-                                expr.span, oprnd_t, needs) {
-                            let method = self.register_infer_ok_obligations(ok);
-                            if let ty::TyRef(region, _, mutbl) = method.sig.inputs()[0].sty {
-                                let mutbl = match mutbl {
-                                    hir::MutImmutable => AutoBorrowMutability::Immutable,
-                                    hir::MutMutable => AutoBorrowMutability::Mutable {
-                                        // (It shouldn't actually matter for unary ops whether
-                                        // we enable two-phase borrows or not, since a unary
-                                        // op has no additional operands.)
-                                        allow_two_phase_borrow: AllowTwoPhase::No,
-                                    }
-                                };
-                                self.apply_adjustments(oprnd, vec![Adjustment {
-                                    kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
-                                    target: method.sig.inputs()[0]
-                                }]);
+                        NoExpectation
+                    }
+                };
+                let needs = match unop {
+                    hir::UnDeref => needs,
+                    _ => Needs::None
+                };
+                let mut oprnd_t = self.check_expr_with_expectation_and_needs(&oprnd,
+                                                                                    expected_inner,
+                                                                                    needs);
+
+                if !oprnd_t.references_error() {
+                    oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
+                    match unop {
+                        hir::UnDeref => {
+                            if let Some(mt) = oprnd_t.builtin_deref(true) {
+                                oprnd_t = mt.ty;
+                            } else if let Some(ok) = self.try_overloaded_deref(
+                                    expr.span, oprnd_t, needs) {
+                                let method = self.register_infer_ok_obligations(ok);
+                                if let ty::TyRef(region, _, mutbl) = method.sig.inputs()[0].sty {
+                                    let mutbl = match mutbl {
+                                        hir::MutImmutable => AutoBorrowMutability::Immutable,
+                                        hir::MutMutable => AutoBorrowMutability::Mutable {
+                                            // (It shouldn't actually matter for unary ops whether
+                                            // we enable two-phase borrows or not, since a unary
+                                            // op has no additional operands.)
+                                            allow_two_phase_borrow: AllowTwoPhase::No,
+                                        }
+                                    };
+                                    self.apply_adjustments(oprnd, vec![Adjustment {
+                                        kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                                        target: method.sig.inputs()[0]
+                                    }]);
+                                }
+                                oprnd_t = self.make_overloaded_place_return_type(method).ty;
+                                self.write_method_call(expr.hir_id, method);
+                            } else {
+                                type_error_struct!(tcx.sess, expr.span, oprnd_t, E0614,
+                                                    "type `{}` cannot be dereferenced",
+                                                    oprnd_t).emit();
+                                oprnd_t = tcx.types.err;
                             }
-                            oprnd_t = self.make_overloaded_place_return_type(method).ty;
-                            self.write_method_call(expr.hir_id, method);
-                        } else {
-                            type_error_struct!(tcx.sess, expr.span, oprnd_t, E0614,
-                                               "type `{}` cannot be dereferenced",
-                                               oprnd_t).emit();
-                            oprnd_t = tcx.types.err;
                         }
-                    }
-                    hir::UnNot => {
-                        let result = self.check_user_unop(expr, oprnd_t, unop);
-                        // If it's builtin, we can reuse the type, this helps inference.
-                        if !(oprnd_t.is_integral() || oprnd_t.sty == ty::TyBool) {
-                            oprnd_t = result;
+                        hir::UnNot => {
+                            let result = self.check_user_unop(expr, oprnd_t, unop);
+                            // If it's builtin, we can reuse the type, this helps inference.
+                            if !(oprnd_t.is_integral() || oprnd_t.sty == ty::TyBool) {
+                                oprnd_t = result;
+                            }
                         }
-                    }
-                    hir::UnNeg => {
-                        let result = self.check_user_unop(expr, oprnd_t, unop);
-                        // If it's builtin, we can reuse the type, this helps inference.
-                        if !(oprnd_t.is_integral() || oprnd_t.is_fp()) {
-                            oprnd_t = result;
+                        hir::UnNeg => {
+                            let result = self.check_user_unop(expr, oprnd_t, unop);
+                            // If it's builtin, we can reuse the type, this helps inference.
+                            if !(oprnd_t.is_integral() || oprnd_t.is_fp()) {
+                                oprnd_t = result;
+                            }
                         }
                     }
                 }
+                oprnd_t
             }
-            oprnd_t
-          }
-          hir::ExprAddrOf(mutbl, ref oprnd) => {
-            let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
-                match ty.sty {
-                    ty::TyRef(_, ty, _) | ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
-                        if self.is_place_expr(&oprnd) {
-                            // Places may legitimately have unsized types.
-                            // For example, dereferences of a fat pointer and
-                            // the last field of a struct can be unsized.
-                            ExpectHasType(ty)
-                        } else {
-                            Expectation::rvalue_hint(self, ty)
+            hir::ExprAddrOf(mutbl, ref oprnd) => {
+                let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
+                    match ty.sty {
+                        ty::TyRef(_, ty, _) | ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
+                            if self.is_place_expr(&oprnd) {
+                                // Places may legitimately have unsized types.
+                                // For example, dereferences of a fat pointer and
+                                // the last field of a struct can be unsized.
+                                ExpectHasType(ty)
+                            } else {
+                                Expectation::rvalue_hint(self, ty)
+                            }
                         }
+                        _ => NoExpectation
                     }
-                    _ => NoExpectation
-                }
-            });
-            let needs = Needs::maybe_mut_place(mutbl);
-            let ty = self.check_expr_with_expectation_and_needs(&oprnd, hint, needs);
+                });
+                let needs = Needs::maybe_mut_place(mutbl);
+                let ty = self.check_expr_with_expectation_and_needs(&oprnd, hint, needs);
 
-            let tm = ty::TypeAndMut { ty: ty, mutbl: mutbl };
-            if tm.ty.references_error() {
-                tcx.types.err
-            } else {
-                // Note: at this point, we cannot say what the best lifetime
-                // is to use for resulting pointer.  We want to use the
-                // shortest lifetime possible so as to avoid spurious borrowck
-                // errors.  Moreover, the longest lifetime will depend on the
-                // precise details of the value whose address is being taken
-                // (and how long it is valid), which we don't know yet until type
-                // inference is complete.
-                //
-                // Therefore, here we simply generate a region variable.  The
-                // region inferencer will then select the ultimate value.
-                // Finally, borrowck is charged with guaranteeing that the
-                // value whose address was taken can actually be made to live
-                // as long as it needs to live.
-                let region = self.next_region_var(infer::AddrOfRegion(expr.span));
-                tcx.mk_ref(region, tm)
-            }
-          }
-          hir::ExprPath(ref qpath) => {
-              let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(qpath,
-                                                                         expr.id, expr.span);
-              let ty = if def != Def::Err {
-                  self.instantiate_value_path(segments, opt_ty, def, expr.span, id)
-              } else {
-                  self.set_tainted_by_errors();
-                  tcx.types.err
-              };
-
-              // We always require that the type provided as the value for
-              // a type parameter outlives the moment of instantiation.
-              let substs = self.tables.borrow().node_substs(expr.hir_id);
-              self.add_wf_bounds(substs, expr);
-
-              ty
-          }
-          hir::ExprInlineAsm(_, ref outputs, ref inputs) => {
-              for output in outputs {
-                  self.check_expr(output);
-              }
-              for input in inputs {
-                  self.check_expr(input);
-              }
-              tcx.mk_nil()
-          }
-          hir::ExprBreak(destination, ref expr_opt) => {
-              if let Ok(target_id) = destination.target_id {
-                  let (e_ty, cause);
-                  if let Some(ref e) = *expr_opt {
-                      // If this is a break with a value, we need to type-check
-                      // the expression. Get an expected type from the loop context.
-                      let opt_coerce_to = {
-                          let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-                          enclosing_breakables.find_breakable(target_id)
-                                              .coerce
-                                              .as_ref()
-                                              .map(|coerce| coerce.expected_ty())
-                      };
-
-                      // If the loop context is not a `loop { }`, then break with
-                      // a value is illegal, and `opt_coerce_to` will be `None`.
-                      // Just set expectation to error in that case.
-                      let coerce_to = opt_coerce_to.unwrap_or(tcx.types.err);
-
-                      // Recurse without `enclosing_breakables` borrowed.
-                      e_ty = self.check_expr_with_hint(e, coerce_to);
-                      cause = self.misc(e.span);
-                  } else {
-                      // Otherwise, this is a break *without* a value. That's
-                      // always legal, and is equivalent to `break ()`.
-                      e_ty = tcx.mk_nil();
-                      cause = self.misc(expr.span);
-                  }
-
-                  // Now that we have type-checked `expr_opt`, borrow
-                  // the `enclosing_loops` field and let's coerce the
-                  // type of `expr_opt` into what is expected.
-                  let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-                  let ctxt = enclosing_breakables.find_breakable(target_id);
-                  if let Some(ref mut coerce) = ctxt.coerce {
-                      if let Some(ref e) = *expr_opt {
-                          coerce.coerce(self, &cause, e, e_ty);
-                      } else {
-                          assert!(e_ty.is_nil());
-                          coerce.coerce_forced_unit(self, &cause, &mut |_| (), true);
-                      }
-                  } else {
-                      // If `ctxt.coerce` is `None`, we can just ignore
-                      // the type of the expresison.  This is because
-                      // either this was a break *without* a value, in
-                      // which case it is always a legal type (`()`), or
-                      // else an error would have been flagged by the
-                      // `loops` pass for using break with an expression
-                      // where you are not supposed to.
-                      assert!(expr_opt.is_none() || self.tcx.sess.err_count() > 0);
-                  }
-
-                  ctxt.may_break = true;
-
-                  // the type of a `break` is always `!`, since it diverges
-                  tcx.types.never
-              } else {
-                  // Otherwise, we failed to find the enclosing loop;
-                  // this can only happen if the `break` was not
-                  // inside a loop at all, which is caught by the
-                  // loop-checking pass.
-                  assert!(self.tcx.sess.err_count() > 0);
-
-                  // We still need to assign a type to the inner expression to
-                  // prevent the ICE in #43162.
-                  if let Some(ref e) = *expr_opt {
-                      self.check_expr_with_hint(e, tcx.types.err);
-
-                      // ... except when we try to 'break rust;'.
-                      // ICE this expression in particular (see #43162).
-                      if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = e.node {
-                          if path.segments.len() == 1 && path.segments[0].name == "rust" {
-                              fatally_break_rust(self.tcx.sess);
-                          }
-                      }
-                  }
-                  // There was an error, make typecheck fail
-                  tcx.types.err
-              }
-
-          }
-          hir::ExprAgain(_) => { tcx.types.never }
-          hir::ExprRet(ref expr_opt) => {
-            if self.ret_coercion.is_none() {
-                struct_span_err!(self.tcx.sess, expr.span, E0572,
-                                 "return statement outside of function body").emit();
-            } else if let Some(ref e) = *expr_opt {
-                self.check_return_expr(e);
-            } else {
-                let mut coercion = self.ret_coercion.as_ref().unwrap().borrow_mut();
-                let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
-                coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
-            }
-            tcx.types.never
-          }
-          hir::ExprAssign(ref lhs, ref rhs) => {
-            let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
-
-            let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty);
-
-            match expected {
-                ExpectIfCondition => {
-                    self.tcx.sess.delay_span_bug(lhs.span, "invalid lhs expression in if;\
-                                                            expected error elsehwere");
-                }
-                _ => {
-                    // Only check this if not in an `if` condition, as the
-                    // mistyped comparison help is more appropriate.
-                    if !self.is_place_expr(&lhs) {
-                        struct_span_err!(self.tcx.sess, expr.span, E0070,
-                                         "invalid left-hand side expression")
-                            .span_label(expr.span, "left-hand of expression not valid")
-                            .emit();
-                    }
+                let tm = ty::TypeAndMut { ty: ty, mutbl: mutbl };
+                if tm.ty.references_error() {
+                    tcx.types.err
+                } else {
+                    // Note: at this point, we cannot say what the best lifetime
+                    // is to use for resulting pointer.  We want to use the
+                    // shortest lifetime possible so as to avoid spurious borrowck
+                    // errors.  Moreover, the longest lifetime will depend on the
+                    // precise details of the value whose address is being taken
+                    // (and how long it is valid), which we don't know yet until type
+                    // inference is complete.
+                    //
+                    // Therefore, here we simply generate a region variable.  The
+                    // region inferencer will then select the ultimate value.
+                    // Finally, borrowck is charged with guaranteeing that the
+                    // value whose address was taken can actually be made to live
+                    // as long as it needs to live.
+                    let region = self.next_region_var(infer::AddrOfRegion(expr.span));
+                    tcx.mk_ref(region, tm)
                 }
             }
+            hir::ExprPath(ref qpath) => {
+                let (def, opt_ty, segs) = self.resolve_ty_and_def_ufcs(qpath, expr.id, expr.span);
+                let ty = if def != Def::Err {
+                    self.instantiate_value_path(segs, opt_ty, def, expr.span, id)
+                } else {
+                    self.set_tainted_by_errors();
+                    tcx.types.err
+                };
 
-            self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
+                // We always require that the type provided as the value for
+                // a type parameter outlives the moment of instantiation.
+                let substs = self.tables.borrow().node_substs(expr.hir_id);
+                self.add_wf_bounds(substs, expr);
 
-            if lhs_ty.references_error() || rhs_ty.references_error() {
-                tcx.types.err
-            } else {
+                ty
+            }
+            hir::ExprInlineAsm(_, ref outputs, ref inputs) => {
+                for output in outputs {
+                    self.check_expr(output);
+                }
+                for input in inputs {
+                    self.check_expr(input);
+                }
                 tcx.mk_nil()
             }
-          }
-          hir::ExprIf(ref cond, ref then_expr, ref opt_else_expr) => {
-              self.check_then_else(&cond, then_expr, opt_else_expr.as_ref().map(|e| &**e),
-                                   expr.span, expected)
-          }
-          hir::ExprWhile(ref cond, ref body, _) => {
-              let ctxt = BreakableCtxt {
-                  // cannot use break with a value from a while loop
-                  coerce: None,
-                  may_break: false,  // Will get updated if/when we find a `break`.
-              };
+            hir::ExprBreak(destination, ref expr_opt) => {
+                if let Ok(target_id) = destination.target_id {
+                    let (e_ty, cause);
+                    if let Some(ref e) = *expr_opt {
+                        // If this is a break with a value, we need to type-check
+                        // the expression. Get an expected type from the loop context.
+                        let opt_coerce_to = {
+                            let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
+                            enclosing_breakables.find_breakable(target_id)
+                                                .coerce
+                                                .as_ref()
+                                                .map(|coerce| coerce.expected_ty())
+                        };
 
-              let (ctxt, ()) = self.with_breakable_ctxt(expr.id, ctxt, || {
-                  self.check_expr_has_type_or_error(&cond, tcx.types.bool);
-                  let cond_diverging = self.diverges.get();
-                  self.check_block_no_value(&body);
+                        // If the loop context is not a `loop { }`, then break with
+                        // a value is illegal, and `opt_coerce_to` will be `None`.
+                        // Just set expectation to error in that case.
+                        let coerce_to = opt_coerce_to.unwrap_or(tcx.types.err);
 
-                  // We may never reach the body so it diverging means nothing.
-                  self.diverges.set(cond_diverging);
-              });
-
-              if ctxt.may_break {
-                  // No way to know whether it's diverging because
-                  // of a `break` or an outer `break` or `return`.
-                  self.diverges.set(Diverges::Maybe);
-              }
-
-              self.tcx.mk_nil()
-          }
-          hir::ExprLoop(ref body, _, source) => {
-              let coerce = match source {
-                  // you can only use break with a value from a normal `loop { }`
-                  hir::LoopSource::Loop => {
-                      let coerce_to = expected.coercion_target_type(self, body.span);
-                      Some(CoerceMany::new(coerce_to))
-                  }
-
-                  hir::LoopSource::WhileLet |
-                  hir::LoopSource::ForLoop => {
-                      None
-                  }
-              };
-
-              let ctxt = BreakableCtxt {
-                  coerce,
-                  may_break: false, // Will get updated if/when we find a `break`.
-              };
-
-              let (ctxt, ()) = self.with_breakable_ctxt(expr.id, ctxt, || {
-                  self.check_block_no_value(&body);
-              });
-
-              if ctxt.may_break {
-                  // No way to know whether it's diverging because
-                  // of a `break` or an outer `break` or `return`.
-                  self.diverges.set(Diverges::Maybe);
-              }
-
-              // If we permit break with a value, then result type is
-              // the LUB of the breaks (possibly ! if none); else, it
-              // is nil. This makes sense because infinite loops
-              // (which would have type !) are only possible iff we
-              // permit break with a value [1].
-              assert!(ctxt.coerce.is_some() || ctxt.may_break); // [1]
-              ctxt.coerce.map(|c| c.complete(self)).unwrap_or(self.tcx.mk_nil())
-          }
-          hir::ExprMatch(ref discrim, ref arms, match_src) => {
-            self.check_match(expr, &discrim, arms, expected, match_src)
-          }
-          hir::ExprClosure(capture, ref decl, body_id, _, gen) => {
-              self.check_expr_closure(expr, capture, &decl, body_id, gen, expected)
-          }
-          hir::ExprBlock(ref body, _) => {
-            self.check_block_with_expected(&body, expected)
-          }
-          hir::ExprCall(ref callee, ref args) => {
-              self.check_call(expr, &callee, args, expected)
-          }
-          hir::ExprMethodCall(ref segment, span, ref args) => {
-              self.check_method_call(expr, segment, span, args, expected, needs)
-          }
-          hir::ExprCast(ref e, ref t) => {
-            // Find the type of `e`. Supply hints based on the type we are casting to,
-            // if appropriate.
-            let t_cast = self.to_ty(t);
-            let t_cast = self.resolve_type_vars_if_possible(&t_cast);
-            let t_expr = self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
-            let t_cast = self.resolve_type_vars_if_possible(&t_cast);
-
-            // Eagerly check for some obvious errors.
-            if t_expr.references_error() || t_cast.references_error() {
-                tcx.types.err
-            } else {
-                // Defer other checks until we're done type checking.
-                let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
-                match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
-                    Ok(cast_check) => {
-                        deferred_cast_checks.push(cast_check);
-                        t_cast
+                        // Recurse without `enclosing_breakables` borrowed.
+                        e_ty = self.check_expr_with_hint(e, coerce_to);
+                        cause = self.misc(e.span);
+                    } else {
+                        // Otherwise, this is a break *without* a value. That's
+                        // always legal, and is equivalent to `break ()`.
+                        e_ty = tcx.mk_nil();
+                        cause = self.misc(expr.span);
                     }
-                    Err(ErrorReported) => {
-                        tcx.types.err
+
+                    // Now that we have type-checked `expr_opt`, borrow
+                    // the `enclosing_loops` field and let's coerce the
+                    // type of `expr_opt` into what is expected.
+                    let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
+                    let ctxt = enclosing_breakables.find_breakable(target_id);
+                    if let Some(ref mut coerce) = ctxt.coerce {
+                        if let Some(ref e) = *expr_opt {
+                            coerce.coerce(self, &cause, e, e_ty);
+                        } else {
+                            assert!(e_ty.is_nil());
+                            coerce.coerce_forced_unit(self, &cause, &mut |_| (), true);
+                        }
+                    } else {
+                        // If `ctxt.coerce` is `None`, we can just ignore
+                        // the type of the expresison.  This is because
+                        // either this was a break *without* a value, in
+                        // which case it is always a legal type (`()`), or
+                        // else an error would have been flagged by the
+                        // `loops` pass for using break with an expression
+                        // where you are not supposed to.
+                        assert!(expr_opt.is_none() || self.tcx.sess.err_count() > 0);
+                    }
+
+                    ctxt.may_break = true;
+
+                    // the type of a `break` is always `!`, since it diverges
+                    tcx.types.never
+                } else {
+                    // Otherwise, we failed to find the enclosing loop;
+                    // this can only happen if the `break` was not
+                    // inside a loop at all, which is caught by the
+                    // loop-checking pass.
+                    assert!(self.tcx.sess.err_count() > 0);
+
+                    // We still need to assign a type to the inner expression to
+                    // prevent the ICE in #43162.
+                    if let Some(ref e) = *expr_opt {
+                        self.check_expr_with_hint(e, tcx.types.err);
+
+                        // ... except when we try to 'break rust;'.
+                        // ICE this expression in particular (see #43162).
+                        if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = e.node {
+                            if path.segments.len() == 1 && path.segments[0].name == "rust" {
+                                fatally_break_rust(self.tcx.sess);
+                            }
+                        }
+                    }
+                    // There was an error, make typecheck fail
+                    tcx.types.err
+                }
+
+            }
+            hir::ExprContinue(_) => { tcx.types.never }
+            hir::ExprRet(ref expr_opt) => {
+                if self.ret_coercion.is_none() {
+                    struct_span_err!(self.tcx.sess, expr.span, E0572,
+                                        "return statement outside of function body").emit();
+                } else if let Some(ref e) = *expr_opt {
+                    self.check_return_expr(e);
+                } else {
+                    let mut coercion = self.ret_coercion.as_ref().unwrap().borrow_mut();
+                    let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
+                    coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
+                }
+                tcx.types.never
+            }
+            hir::ExprAssign(ref lhs, ref rhs) => {
+                let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
+
+                let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty);
+
+                match expected {
+                    ExpectIfCondition => {
+                        self.tcx.sess.delay_span_bug(lhs.span, "invalid lhs expression in if;\
+                                                                expected error elsehwere");
+                    }
+                    _ => {
+                        // Only check this if not in an `if` condition, as the
+                        // mistyped comparison help is more appropriate.
+                        if !self.is_place_expr(&lhs) {
+                            struct_span_err!(self.tcx.sess, expr.span, E0070,
+                                                "invalid left-hand side expression")
+                                .span_label(expr.span, "left-hand of expression not valid")
+                                .emit();
+                        }
+                    }
+                }
+
+                self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
+
+                if lhs_ty.references_error() || rhs_ty.references_error() {
+                    tcx.types.err
+                } else {
+                    tcx.mk_nil()
+                }
+            }
+            hir::ExprIf(ref cond, ref then_expr, ref opt_else_expr) => {
+                self.check_then_else(&cond, then_expr, opt_else_expr.as_ref().map(|e| &**e),
+                                    expr.span, expected)
+            }
+            hir::ExprWhile(ref cond, ref body, _) => {
+                let ctxt = BreakableCtxt {
+                    // cannot use break with a value from a while loop
+                    coerce: None,
+                    may_break: false,  // Will get updated if/when we find a `break`.
+                };
+
+                let (ctxt, ()) = self.with_breakable_ctxt(expr.id, ctxt, || {
+                    self.check_expr_has_type_or_error(&cond, tcx.types.bool);
+                    let cond_diverging = self.diverges.get();
+                    self.check_block_no_value(&body);
+
+                    // We may never reach the body so it diverging means nothing.
+                    self.diverges.set(cond_diverging);
+                });
+
+                if ctxt.may_break {
+                    // No way to know whether it's diverging because
+                    // of a `break` or an outer `break` or `return`.
+                    self.diverges.set(Diverges::Maybe);
+                }
+
+                self.tcx.mk_nil()
+            }
+            hir::ExprLoop(ref body, _, source) => {
+                let coerce = match source {
+                    // you can only use break with a value from a normal `loop { }`
+                    hir::LoopSource::Loop => {
+                        let coerce_to = expected.coercion_target_type(self, body.span);
+                        Some(CoerceMany::new(coerce_to))
+                    }
+
+                    hir::LoopSource::WhileLet |
+                    hir::LoopSource::ForLoop => {
+                        None
+                    }
+                };
+
+                let ctxt = BreakableCtxt {
+                    coerce,
+                    may_break: false, // Will get updated if/when we find a `break`.
+                };
+
+                let (ctxt, ()) = self.with_breakable_ctxt(expr.id, ctxt, || {
+                    self.check_block_no_value(&body);
+                });
+
+                if ctxt.may_break {
+                    // No way to know whether it's diverging because
+                    // of a `break` or an outer `break` or `return`.
+                    self.diverges.set(Diverges::Maybe);
+                }
+
+                // If we permit break with a value, then result type is
+                // the LUB of the breaks (possibly ! if none); else, it
+                // is nil. This makes sense because infinite loops
+                // (which would have type !) are only possible iff we
+                // permit break with a value [1].
+                assert!(ctxt.coerce.is_some() || ctxt.may_break); // [1]
+                ctxt.coerce.map(|c| c.complete(self)).unwrap_or(self.tcx.mk_nil())
+            }
+            hir::ExprMatch(ref discrim, ref arms, match_src) => {
+                self.check_match(expr, &discrim, arms, expected, match_src)
+            }
+            hir::ExprClosure(capture, ref decl, body_id, _, gen) => {
+                self.check_expr_closure(expr, capture, &decl, body_id, gen, expected)
+            }
+            hir::ExprBlock(ref body, _) => {
+                self.check_block_with_expected(&body, expected)
+            }
+            hir::ExprCall(ref callee, ref args) => {
+                self.check_call(expr, &callee, args, expected)
+            }
+            hir::ExprMethodCall(ref segment, span, ref args) => {
+                self.check_method_call(expr, segment, span, args, expected, needs)
+            }
+            hir::ExprCast(ref e, ref t) => {
+                // Find the type of `e`. Supply hints based on the type we are casting to,
+                // if appropriate.
+                let t_cast = self.to_ty(t);
+                let t_cast = self.resolve_type_vars_if_possible(&t_cast);
+                let t_expr = self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
+                let t_cast = self.resolve_type_vars_if_possible(&t_cast);
+
+                // Eagerly check for some obvious errors.
+                if t_expr.references_error() || t_cast.references_error() {
+                    tcx.types.err
+                } else {
+                    // Defer other checks until we're done type checking.
+                    let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
+                    match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
+                        Ok(cast_check) => {
+                            deferred_cast_checks.push(cast_check);
+                            t_cast
+                        }
+                        Err(ErrorReported) => {
+                            tcx.types.err
+                        }
                     }
                 }
             }
-          }
-          hir::ExprType(ref e, ref t) => {
-            let typ = self.to_ty(&t);
-            self.check_expr_eq_type(&e, typ);
-            typ
-          }
-          hir::ExprArray(ref args) => {
-              let uty = expected.to_option(self).and_then(|uty| {
-                  match uty.sty {
-                      ty::TyArray(ty, _) | ty::TySlice(ty) => Some(ty),
-                      _ => None
-                  }
-              });
-
-              let element_ty = if !args.is_empty() {
-                  let coerce_to = uty.unwrap_or_else(
-                      || self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span)));
-                  let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
-                  assert_eq!(self.diverges.get(), Diverges::Maybe);
-                  for e in args {
-                      let e_ty = self.check_expr_with_hint(e, coerce_to);
-                      let cause = self.misc(e.span);
-                      coerce.coerce(self, &cause, e, e_ty);
-                  }
-                  coerce.complete(self)
-              } else {
-                  self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span))
-              };
-              tcx.mk_array(element_ty, args.len() as u64)
-          }
-          hir::ExprRepeat(ref element, ref count) => {
-            let count_def_id = tcx.hir.local_def_id(count.id);
-            let param_env = ty::ParamEnv::empty();
-            let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
-            let instance = ty::Instance::resolve(
-                tcx.global_tcx(),
-                param_env,
-                count_def_id,
-                substs,
-            ).unwrap();
-            let global_id = GlobalId {
-                instance,
-                promoted: None
-            };
-            let count = tcx.const_eval(param_env.and(global_id));
-
-            if let Err(ref err) = count {
-                err.report_as_error(
-                    tcx.at(tcx.def_span(count_def_id)),
-                    "could not evaluate repeat length",
-                );
+            hir::ExprType(ref e, ref t) => {
+                let ty = self.to_ty(&t);
+                self.check_expr_eq_type(&e, ty);
+                ty
             }
-
-            let uty = match expected {
-                ExpectHasType(uty) => {
+            hir::ExprArray(ref args) => {
+                let uty = expected.to_option(self).and_then(|uty| {
                     match uty.sty {
                         ty::TyArray(ty, _) | ty::TySlice(ty) => Some(ty),
                         _ => None
                     }
-                }
-                _ => None
-            };
+                });
 
-            let (element_ty, t) = match uty {
-                Some(uty) => {
-                    self.check_expr_coercable_to_type(&element, uty);
-                    (uty, uty)
-                }
-                None => {
-                    let t: Ty = self.next_ty_var(TypeVariableOrigin::MiscVariable(element.span));
-                    let element_ty = self.check_expr_has_type_or_error(&element, t);
-                    (element_ty, t)
-                }
-            };
-
-            if let Ok(count) = count {
-                let zero_or_one = count.assert_usize(tcx).map_or(false, |count| count <= 1);
-                if !zero_or_one {
-                    // For [foo, ..n] where n > 1, `foo` must have
-                    // Copy type:
-                    let lang_item = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);
-                    self.require_type_meets(t, expr.span, traits::RepeatVec, lang_item);
-                }
-            }
-
-            if element_ty.references_error() {
-                tcx.types.err
-            } else if let Ok(count) = count {
-                tcx.mk_ty(ty::TyArray(t, count))
-            } else {
-                tcx.types.err
-            }
-          }
-          hir::ExprTup(ref elts) => {
-            let flds = expected.only_has_type(self).and_then(|ty| {
-                let ty = self.resolve_type_vars_with_obligations(ty);
-                match ty.sty {
-                    ty::TyTuple(ref flds) => Some(&flds[..]),
-                    _ => None
-                }
-            });
-
-            let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| {
-                let t = match flds {
-                    Some(ref fs) if i < fs.len() => {
-                        let ety = fs[i];
-                        self.check_expr_coercable_to_type(&e, ety);
-                        ety
+                let element_ty = if !args.is_empty() {
+                    let coerce_to = uty.unwrap_or_else(
+                        || self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span)));
+                    let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
+                    assert_eq!(self.diverges.get(), Diverges::Maybe);
+                    for e in args {
+                        let e_ty = self.check_expr_with_hint(e, coerce_to);
+                        let cause = self.misc(e.span);
+                        coerce.coerce(self, &cause, e, e_ty);
                     }
-                    _ => {
-                        self.check_expr_with_expectation(&e, NoExpectation)
+                    coerce.complete(self)
+                } else {
+                    self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span))
+                };
+                tcx.mk_array(element_ty, args.len() as u64)
+            }
+            hir::ExprRepeat(ref element, ref count) => {
+                let count_def_id = tcx.hir.local_def_id(count.id);
+                let param_env = ty::ParamEnv::empty();
+                let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
+                let instance = ty::Instance::resolve(
+                    tcx.global_tcx(),
+                    param_env,
+                    count_def_id,
+                    substs,
+                ).unwrap();
+                let global_id = GlobalId {
+                    instance,
+                    promoted: None
+                };
+                let count = tcx.const_eval(param_env.and(global_id));
+
+                if let Err(ref err) = count {
+                    err.report_as_error(
+                        tcx.at(tcx.def_span(count_def_id)),
+                        "could not evaluate repeat length",
+                    );
+                }
+
+                let uty = match expected {
+                    ExpectHasType(uty) => {
+                        match uty.sty {
+                            ty::TyArray(ty, _) | ty::TySlice(ty) => Some(ty),
+                            _ => None
+                        }
+                    }
+                    _ => None
+                };
+
+                let (element_ty, t) = match uty {
+                    Some(uty) => {
+                        self.check_expr_coercable_to_type(&element, uty);
+                        (uty, uty)
+                    }
+                    None => {
+                        let ty = self.next_ty_var(TypeVariableOrigin::MiscVariable(element.span));
+                        let element_ty = self.check_expr_has_type_or_error(&element, ty);
+                        (element_ty, ty)
                     }
                 };
-                t
-            });
-            let tuple = tcx.mk_tup(elt_ts_iter);
-            if tuple.references_error() {
-                tcx.types.err
-            } else {
-                self.require_type_is_sized(tuple, expr.span, traits::TupleInitializerSized);
-                tuple
-            }
-          }
-          hir::ExprStruct(ref qpath, ref fields, ref base_expr) => {
-            self.check_expr_struct(expr, expected, qpath, fields, base_expr)
-          }
-          hir::ExprField(ref base, field) => {
-            self.check_field(expr, needs, &base, field)
-          }
-          hir::ExprIndex(ref base, ref idx) => {
-              let base_t = self.check_expr_with_needs(&base, needs);
-              let idx_t = self.check_expr(&idx);
 
-              if base_t.references_error() {
-                  base_t
-              } else if idx_t.references_error() {
-                  idx_t
-              } else {
-                  let base_t = self.structurally_resolved_type(base.span, base_t);
-                  match self.lookup_indexing(expr, base, base_t, idx_t, needs) {
-                      Some((index_ty, element_ty)) => {
-                          // two-phase not needed because index_ty is never mutable
-                          self.demand_coerce(idx, idx_t, index_ty, AllowTwoPhase::No);
-                          element_ty
-                      }
-                      None => {
-                          let mut err = type_error_struct!(tcx.sess, expr.span, base_t, E0608,
-                                                           "cannot index into a value of type `{}`",
-                                                           base_t);
-                          // Try to give some advice about indexing tuples.
-                          if let ty::TyTuple(..) = base_t.sty {
-                              let mut needs_note = true;
-                              // If the index is an integer, we can show the actual
-                              // fixed expression:
-                              if let hir::ExprLit(ref lit) = idx.node {
-                                  if let ast::LitKind::Int(i,
-                                            ast::LitIntType::Unsuffixed) = lit.node {
-                                      let snip = tcx.sess.codemap().span_to_snippet(base.span);
-                                      if let Ok(snip) = snip {
-                                          err.span_suggestion(expr.span,
-                                                              "to access tuple elements, use",
-                                                              format!("{}.{}", snip, i));
-                                          needs_note = false;
-                                      }
-                                  }
-                              }
-                              if needs_note {
-                                  err.help("to access tuple elements, use tuple indexing \
-                                            syntax (e.g. `tuple.0`)");
-                              }
-                          }
-                          err.emit();
-                          self.tcx.types.err
-                      }
-                  }
-              }
-           }
-          hir::ExprYield(ref value) => {
-            match self.yield_ty {
-                Some(ty) => {
-                    self.check_expr_coercable_to_type(&value, ty);
+                if let Ok(count) = count {
+                    let zero_or_one = count.assert_usize(tcx).map_or(false, |count| count <= 1);
+                    if !zero_or_one {
+                        // For [foo, ..n] where n > 1, `foo` must have
+                        // Copy type:
+                        let lang_item = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);
+                        self.require_type_meets(t, expr.span, traits::RepeatVec, lang_item);
+                    }
                 }
-                None => {
-                    struct_span_err!(self.tcx.sess, expr.span, E0627,
-                                 "yield statement outside of generator literal").emit();
+
+                if element_ty.references_error() {
+                    tcx.types.err
+                } else if let Ok(count) = count {
+                    tcx.mk_ty(ty::TyArray(t, count))
+                } else {
+                    tcx.types.err
                 }
             }
-            tcx.mk_nil()
-          }
+            hir::ExprTup(ref elts) => {
+                let flds = expected.only_has_type(self).and_then(|ty| {
+                    let ty = self.resolve_type_vars_with_obligations(ty);
+                    match ty.sty {
+                        ty::TyTuple(ref flds) => Some(&flds[..]),
+                        _ => None
+                    }
+                });
+
+                let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| {
+                    let t = match flds {
+                        Some(ref fs) if i < fs.len() => {
+                            let ety = fs[i];
+                            self.check_expr_coercable_to_type(&e, ety);
+                            ety
+                        }
+                        _ => {
+                            self.check_expr_with_expectation(&e, NoExpectation)
+                        }
+                    };
+                    t
+                });
+                let tuple = tcx.mk_tup(elt_ts_iter);
+                if tuple.references_error() {
+                    tcx.types.err
+                } else {
+                    self.require_type_is_sized(tuple, expr.span, traits::TupleInitializerSized);
+                    tuple
+                }
+            }
+            hir::ExprStruct(ref qpath, ref fields, ref base_expr) => {
+                self.check_expr_struct(expr, expected, qpath, fields, base_expr)
+            }
+            hir::ExprField(ref base, field) => {
+                self.check_field(expr, needs, &base, field)
+            }
+            hir::ExprIndex(ref base, ref idx) => {
+                let base_t = self.check_expr_with_needs(&base, needs);
+                let idx_t = self.check_expr(&idx);
+
+                if base_t.references_error() {
+                    base_t
+                } else if idx_t.references_error() {
+                    idx_t
+                } else {
+                    let base_t = self.structurally_resolved_type(base.span, base_t);
+                    match self.lookup_indexing(expr, base, base_t, idx_t, needs) {
+                        Some((index_ty, element_ty)) => {
+                            // two-phase not needed because index_ty is never mutable
+                            self.demand_coerce(idx, idx_t, index_ty, AllowTwoPhase::No);
+                            element_ty
+                        }
+                        None => {
+                            let mut err =
+                                type_error_struct!(tcx.sess, expr.span, base_t, E0608,
+                                                   "cannot index into a value of type `{}`",
+                                                   base_t);
+                            // Try to give some advice about indexing tuples.
+                            if let ty::TyTuple(..) = base_t.sty {
+                                let mut needs_note = true;
+                                // If the index is an integer, we can show the actual
+                                // fixed expression:
+                                if let hir::ExprLit(ref lit) = idx.node {
+                                    if let ast::LitKind::Int(i,
+                                            ast::LitIntType::Unsuffixed) = lit.node {
+                                        let snip = tcx.sess.codemap().span_to_snippet(base.span);
+                                        if let Ok(snip) = snip {
+                                            err.span_suggestion(expr.span,
+                                                                "to access tuple elements, use",
+                                                                format!("{}.{}", snip, i));
+                                            needs_note = false;
+                                        }
+                                    }
+                                }
+                                if needs_note {
+                                    err.help("to access tuple elements, use tuple indexing \
+                                            syntax (e.g. `tuple.0`)");
+                                }
+                            }
+                            err.emit();
+                            self.tcx.types.err
+                        }
+                    }
+                }
+            }
+            hir::ExprYield(ref value) => {
+                match self.yield_ty {
+                    Some(ty) => {
+                        self.check_expr_coercable_to_type(&value, ty);
+                    }
+                    None => {
+                        struct_span_err!(self.tcx.sess, expr.span, E0627,
+                                        "yield statement outside of generator literal").emit();
+                    }
+                }
+                tcx.mk_nil()
+            }
         }
     }
 

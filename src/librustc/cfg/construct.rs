@@ -335,7 +335,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_unreachable_node()
             }
 
-            hir::ExprAgain(destination) => {
+            hir::ExprContinue(destination) => {
                 let (target_scope, cont_dest) =
                     self.find_scope_edge(expr, destination, ScopeCfKind::Continue);
                 let a = self.add_ast_node(expr.hir_id.local_id, &[pred]);

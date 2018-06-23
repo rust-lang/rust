@@ -1475,7 +1475,7 @@ impl<'a> State<'a> {
                     self.s.space()?;
                 }
             }
-            hir::ExprAgain(destination) => {
+            hir::ExprContinue(destination) => {
                 self.s.word("continue")?;
                 self.s.space()?;
                 if let Some(label) = destination.label {
