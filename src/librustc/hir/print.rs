@@ -459,7 +459,12 @@ impl<'a> State<'a> {
             hir::ForeignItemFn(ref decl, ref arg_names, ref generics) => {
                 self.head("")?;
                 self.print_fn(decl,
-                              hir::FnHeader::default(),
+                              hir::FnHeader {
+                                  unsafety: hir::Unsafety::Normal,
+                                  constness: hir::Constness::NotConst,
+                                  abi: Abi::Rust,
+                                  asyncness: hir::IsAsync::NotAsync,
+                              },
                               Some(item.name),
                               generics,
                               &item.vis,
@@ -2253,8 +2258,10 @@ impl<'a> State<'a> {
         };
         self.print_fn(decl,
                       hir::FnHeader {
-                          unsafety, abi,
-                          ..hir::FnHeader::default()
+                          unsafety,
+                          abi,
+                          constness: hir::Constness::NotConst,
+                          asyncness: hir::IsAsync::NotAsync,
                       },
                       name,
                       &generics,

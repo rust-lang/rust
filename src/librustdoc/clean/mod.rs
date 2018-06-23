@@ -2457,7 +2457,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                             unsafety: sig.unsafety(),
                             abi: sig.abi(),
                             constness,
-                            ..hir::FnHeader::default()
+                            asyncness: hir::IsAsync::NotAsync,
                         }
                     })
                 } else {
@@ -2467,7 +2467,8 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                         header: hir::FnHeader {
                             unsafety: sig.unsafety(),
                             abi: sig.abi(),
-                            ..hir::FnHeader::default()
+                            constness: hir::Constness::NotConst,
+                            asyncness: hir::IsAsync::NotAsync,
                         }
                     })
                 }
@@ -4007,7 +4008,12 @@ impl Clean<Item> for hir::ForeignItem {
                 ForeignFunctionItem(Function {
                     decl,
                     generics,
-                    header: hir::FnHeader::default(),
+                    header: hir::FnHeader {
+                        unsafety: hir::Unsafety::Unsafe,
+                        abi: Abi::Rust,
+                        constness: hir::Constness::NotConst,
+                        asyncness: hir::IsAsync::NotAsync,
+                    },
                 })
             }
             hir::ForeignItemStatic(ref ty, mutbl) => {

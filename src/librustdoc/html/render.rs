@@ -2577,20 +2577,20 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     let name_len = format!("{}{}{}{}{:#}fn {}{:#}",
                            VisSpace(&it.visibility),
                            ConstnessSpace(f.header.constness),
-                           AsyncSpace(f.header.asyncness),
                            UnsafetySpace(f.header.unsafety),
+                           AsyncSpace(f.header.asyncness),
                            AbiSpace(f.header.abi),
                            it.name.as_ref().unwrap(),
                            f.generics).len();
     write!(w, "{}<pre class='rust fn'>", render_spotlight_traits(it)?)?;
     render_attributes(w, it)?;
     write!(w,
-           "{vis}{constness}{asyncness}{unsafety}{abi}fn \
+           "{vis}{constness}{unsafety}{asyncness}{abi}fn \
            {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(&it.visibility),
            constness = ConstnessSpace(f.header.constness),
-           asyncness = AsyncSpace(f.header.asyncness),
            unsafety = UnsafetySpace(f.header.unsafety),
+           asyncness = AsyncSpace(f.header.asyncness),
            abi = AbiSpace(f.header.abi),
            name = it.name.as_ref().unwrap(),
            generics = f.generics,
@@ -3024,10 +3024,11 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                 href(did).map(|p| format!("{}#{}.{}", p.0, ty, name)).unwrap_or(anchor)
             }
         };
-        let mut head_len = format!("{}{}{}{:#}fn {}{:#}",
+        let mut head_len = format!("{}{}{}{}{:#}fn {}{:#}",
                                    VisSpace(&meth.visibility),
                                    ConstnessSpace(header.constness),
                                    UnsafetySpace(header.unsafety),
+                                   AsyncSpace(header.asyncness),
                                    AbiSpace(header.abi),
                                    name,
                                    *g).len();
@@ -3038,11 +3039,12 @@ fn render_assoc_item(w: &mut fmt::Formatter,
             (0, true)
         };
         render_attributes(w, meth)?;
-        write!(w, "{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
+        write!(w, "{}{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
                VisSpace(&meth.visibility),
                ConstnessSpace(header.constness),
                UnsafetySpace(header.unsafety),
+               AsyncSpace(header.asyncness),
                AbiSpace(header.abi),
                href = href,
                name = name,

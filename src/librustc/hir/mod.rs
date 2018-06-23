@@ -2024,17 +2024,6 @@ pub struct FnHeader {
     pub abi: Abi,
 }
 
-impl Default for FnHeader {
-    fn default() -> FnHeader {
-        FnHeader {
-            unsafety: Unsafety::Normal,
-            constness: Constness::NotConst,
-            asyncness: IsAsync::NotAsync,
-            abi: Abi::Rust,
-        }
-    }
-}
-
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Item_ {
     /// An `extern crate` item, with optional *original* crate name if the crate was renamed.

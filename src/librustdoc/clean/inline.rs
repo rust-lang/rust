@@ -202,7 +202,7 @@ fn build_external_function(cx: &DocContext, did: DefId) -> clean::Function {
             unsafety: sig.unsafety(),
             abi: sig.abi(),
             constness,
-            ..hir::FnHeader::default()
+            asyncness: hir::IsAsync::NotAsync,
         }
     }
 }
