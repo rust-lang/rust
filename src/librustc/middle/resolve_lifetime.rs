@@ -1395,7 +1395,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 lifetimeuseset
             );
             match lifetimeuseset {
-                Some(LifetimeUseSet::One(_)) => {
+                Some(LifetimeUseSet::One(lifetime)) => {
                     let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
                     debug!("node id first={:?}", node_id);
                     if let Some((id, span, name)) = match self.tcx.hir.get(node_id) {
@@ -1408,12 +1408,15 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         _ => None,
                     } {
                         debug!("id = {:?} span = {:?} name = {:?}", node_id, span, name);
-                        self.tcx.struct_span_lint_node(
+                        let mut err = self.tcx.struct_span_lint_node(
                             lint::builtin::SINGLE_USE_LIFETIMES,
                             id,
                             span,
                             &format!("lifetime parameter `{}` only used once", name),
-                        ).emit();
+                        );
+                        err.span_label(span, "this lifetime...");
+                        err.span_label(lifetime.span, "...is used only here");
+                        err.emit();
                     }
                 }
                 Some(LifetimeUseSet::Many) => {
