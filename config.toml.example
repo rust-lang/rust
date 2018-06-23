@@ -331,7 +331,7 @@
 # that's being compiled. The default is to only build the LLVM codegen backend,
 # but you can also optionally enable the "emscripten" backend for asm.js or
 # make this an empty array (which will disable LLVM, but that probably won't
-# get too far in the bootstrap
+# get too far in the bootstrap)
 #codegen-backends = ["llvm"]
 
 # This is the name of the directory in which codegen backends will get installed
