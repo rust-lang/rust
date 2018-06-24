@@ -450,25 +450,26 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         match *place {
             Place::Local(ref local) => self.visit_local(local, context, location),
             Place::Static(ref global) => {
-                // Only allow statics (not consts) to refer to other statics.
-                if !(self.mode == Mode::Static || self.mode == Mode::StaticMut) {
+                if self.tcx
+                       .get_attrs(global.def_id)
+                       .iter()
+                       .any(|attr| attr.check_name("thread_local")) {
+                    if self.mode != Mode::Fn {
+                        span_err!(self.tcx.sess, self.span, E0625,
+                                  "thread-local statics cannot be \
+                                   accessed at compile-time");
+                    }
                     self.add(Qualif::NOT_CONST);
+                    return;
                 }
+
+                // Only allow statics (not consts) to refer to other statics.
+                if self.mode == Mode::Static || self.mode == Mode::StaticMut {
+                    return;
+                }
+                self.add(Qualif::NOT_CONST);
 
                 if self.mode != Mode::Fn {
-                    if self.tcx
-                           .get_attrs(global.def_id)
-                           .iter()
-                           .any(|attr| attr.check_name("thread_local")) {
-                        span_err!(self.tcx.sess, self.span, E0625,
-                                    "thread-local statics cannot be \
-                                    accessed at compile-time");
-                        self.add(Qualif::NOT_CONST);
-                        return;
-                    }
-                }
-
-                if self.mode == Mode::Const || self.mode == Mode::ConstFn {
                     let mut err = struct_span_err!(self.tcx.sess, self.span, E0013,
                                                    "{}s cannot refer to statics, use \
                                                     a constant instead", self.mode);
@@ -544,13 +545,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     }
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
+        self.super_operand(operand, location);
+
         match *operand {
             Operand::Copy(_) |
             Operand::Move(_) => {
-                self.nest(|this| {
-                    this.super_operand(operand, location);
-                });
-
                 // Mark the consumed locals to indicate later drops are noops.
                 if let Operand::Move(Place::Local(local)) = *operand {
                     self.local_qualif[local] = self.local_qualif[local].map(|q|
@@ -595,12 +594,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
 
             if is_reborrow {
-                self.nest(|this| {
-                    this.super_place(place, PlaceContext::Borrow {
-                        region,
-                        kind
-                    }, location);
-                });
+                self.super_place(place, PlaceContext::Borrow {
+                    region,
+                    kind
+                }, location);
             } else {
                 self.super_rvalue(rvalue, location);
             }

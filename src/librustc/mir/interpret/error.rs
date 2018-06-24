@@ -306,7 +306,7 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
             ReadBytesAsPointer =>
                 "a memory access tried to interpret some bytes as a pointer",
             ReadForeignStatic =>
-                "tried to read foreign (extern) static",
+                "tried to read from foreign (extern) static",
             InvalidPointerMath =>
                 "attempted to do invalid arithmetic on pointers that would leak base addresses, e.g. comparing pointers into different allocations",
             ReadUndefBytes =>
