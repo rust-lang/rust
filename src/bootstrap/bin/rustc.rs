@@ -108,9 +108,7 @@ fn main() {
     let mut maybe_crate = None;
 
     // Don't use metadata only backend for snapshot compiler, because it may be broken
-    if env::var("RUSTC_SHOULD_USE_METADATA_ONLY_BACKEND").is_ok() && stage != "0" {
-        //cmd.arg("-Zcodegen-backend=metadata_only");
-    } else {
+    if env::var("RUSTC_SHOULD_USE_METADATA_ONLY_BACKEND").is_err() {
         cmd.arg("--cfg").arg("codegen_backend=\"llvm\"");
     }
 
