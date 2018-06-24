@@ -380,12 +380,6 @@ impl<'a> Context<'a> {
         self.local_waker
     }
 
-    /// Get the `Waker` associated with the current task.
-    #[inline]
-    pub fn waker(&self) -> &'a Waker {
-        unsafe { &*(self.local_waker as *const LocalWaker as *const Waker) }
-    }
-
     /// Get the default executor associated with this task.
     ///
     /// This method is useful primarily if you want to explicitly handle
