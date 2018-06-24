@@ -549,7 +549,8 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             RemainderByZero |
             DivisionByZero |
             GeneratorResumedAfterReturn |
-            GeneratorResumedAfterPanic => {}
+            GeneratorResumedAfterPanic |
+            InfiniteLoop => {}
             ReferencedConstant(ref err) => err.hash_stable(hcx, hasher),
             MachineError(ref err) => err.hash_stable(hcx, hasher),
             FunctionPointerTyMismatch(a, b) => {

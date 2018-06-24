@@ -264,6 +264,7 @@ pub enum EvalErrorKind<'tcx, O> {
     ReferencedConstant(Lrc<ConstEvalErr<'tcx>>),
     GeneratorResumedAfterReturn,
     GeneratorResumedAfterPanic,
+    InfiniteLoop,
 }
 
 pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
@@ -398,6 +399,7 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
             RemainderByZero => "attempt to calculate the remainder with a divisor of zero",
             GeneratorResumedAfterReturn => "generator resumed after completion",
             GeneratorResumedAfterPanic => "generator resumed after panicking",
+            InfiniteLoop => "program will never terminate",
         }
     }
 }

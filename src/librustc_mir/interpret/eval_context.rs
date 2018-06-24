@@ -180,7 +180,7 @@ impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
         machine: &M,
         stack: &Vec<Frame<'mir, 'tcx>>,
         memory: &Memory<'a, 'mir, 'tcx, M>,
-    ) -> Result<(), (/*TODO*/)> {
+    ) -> EvalResult<'_, ()> {
         let snapshot = (machine, stack, memory);
 
         let mut fx = FxHasher::default();
@@ -197,8 +197,8 @@ impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
             return Ok(())
         }
 
-        // Second cycle,
-        Err(())
+        // Second cycle
+        Err(EvalErrorKind::InfiniteLoop.into())
     }
 }
 
