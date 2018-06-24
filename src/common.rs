@@ -1,4 +1,7 @@
+extern crate rustc_target;
+
 use syntax::ast::{IntTy, UintTy};
+use self::rustc_target::spec::{HasTargetSpec, Target};
 
 use cretonne_module::{Module, Linkage, FuncId};
 
@@ -274,6 +277,24 @@ impl<'a, 'tcx: 'a> LayoutOf for &'a FunctionCx<'a, 'tcx> {
     fn layout_of(self, ty: Ty<'tcx>) -> TyLayout<'tcx> {
         let ty = self.monomorphize(&ty);
         self.tcx.layout_of(ParamEnv::reveal_all().and(&ty)).unwrap()
+    }
+}
+
+impl<'a, 'tcx> layout::HasTyCtxt<'tcx> for &'a FunctionCx<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
+        self.tcx
+    }
+}
+
+impl<'a, 'tcx> layout::HasDataLayout for &'a FunctionCx<'a, 'tcx> {
+    fn data_layout(&self) -> &layout::TargetDataLayout {
+        &self.tcx.data_layout
+    }
+}
+
+impl<'a, 'tcx> HasTargetSpec for &'a FunctionCx<'a, 'tcx> {
+    fn target_spec(&self) -> &Target {
+        &self.tcx.sess.target.target
     }
 }
 
