@@ -27,7 +27,7 @@ macro_rules! impl_int_minmax_ops {
 
             /// Maximum of two vectors.
             ///
-            /// Returns a new vector containing the minimum value of each of
+            /// Returns a new vector containing the maximum value of each of
             /// the input vector lanes.
             #[inline]
             pub fn max(self, x: Self) -> Self {
@@ -86,7 +86,7 @@ macro_rules! impl_float_minmax_ops {
 
             /// Maximum of two vectors.
             ///
-            /// Returns a new vector containing the minimum value of each of the
+            /// Returns a new vector containing the maximum value of each of the
             /// input vector lanes. The lane-wise semantics are the same as that
             /// of `max` for the primitive floating-point types.
             #[inline]
