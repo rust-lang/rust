@@ -148,14 +148,14 @@ type EvalSnapshot<'a, 'mir, 'tcx, M>
 pub(crate) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// The set of all `EvalSnapshot` *hashes* observed by this detector.
     ///
-    /// Not a proper bloom filter.
-    bloom: FxHashSet<u64>,
+    /// When a collision occurs in this table, we store the full snapshot in `snapshots`.
+    hashes: FxHashSet<u64>,
 
     /// The set of all `EvalSnapshot`s observed by this detector.
     ///
-    /// An `EvalSnapshot` will only be fully cloned once it has caused a collision
-    /// in `bloom`. As a result, the detector must observe *two* full cycles of
-    /// an infinite loop before it triggers.
+    /// An `EvalSnapshot` will only be fully cloned once it has caused a collision in `hashes`. As
+    /// a result, the detector must observe at least *two* full cycles of an infinite loop before
+    /// it triggers.
     snapshots: FxHashSet<EvalSnapshot<'a, 'mir, 'tcx, M>>,
 }
 
@@ -165,7 +165,7 @@ impl<'a, 'mir, 'tcx, M> Default for InfiniteLoopDetector<'a, 'mir, 'tcx, M>
 {
     fn default() -> Self {
         InfiniteLoopDetector {
-            bloom: FxHashSet::default(),
+            hashes: FxHashSet::default(),
             snapshots: FxHashSet::default(),
         }
     }
@@ -177,7 +177,7 @@ impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
 {
     /// Returns `true` if the loop detector has not yet observed a snapshot.
     pub fn is_empty(&self) -> bool {
-        self.bloom.is_empty()
+        self.hashes.is_empty()
     }
 
     pub fn observe_and_analyze(
@@ -192,7 +192,7 @@ impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
         snapshot.hash(&mut fx);
         let hash = fx.finish();
 
-        if self.bloom.insert(hash) {
+        if self.hashes.insert(hash) {
             // No collision
             return Ok(())
         }

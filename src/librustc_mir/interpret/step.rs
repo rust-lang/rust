@@ -16,10 +16,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M>
     pub fn is_loop_detector_scheduled(&self) -> bool {
         /// The number of steps between loop detector snapshots.
         /// Should be a power of two for performance reasons.
-        const LOOP_SNAPSHOT_PERIOD: isize = 1 << 8;
+        const DETECTOR_SNAPSHOT_PERIOD: isize = 1 << 8;
 
         let steps = self.steps_until_detector_enabled;
-        steps <= 0 && steps % LOOP_SNAPSHOT_PERIOD == 0
+        steps <= 0 && steps % DETECTOR_SNAPSHOT_PERIOD == 0
     }
 
     pub fn inc_step_counter_and_detect_loops(&mut self, n: usize) -> EvalResult<'tcx, ()> {
