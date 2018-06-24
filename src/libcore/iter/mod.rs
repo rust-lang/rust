@@ -322,6 +322,7 @@ use iter_private::TrustedRandomAccess;
 use ops::{self, Try};
 use usize;
 use intrinsics;
+use marker::PhantomData;
 use mem;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1469,6 +1470,118 @@ unsafe impl<B, I, F> TrustedRandomAccess for Map<I, F>
     #[inline]
     fn may_have_side_effect() -> bool { true }
 }
+
+/// An iterator adapter to apply `Into` conversion to each element.
+///
+/// See [`.map_into()`](trait.Iterator.html#method.map_into) for more information.
+#[derive(Debug)]
+#[unstable(feature = "move_into", issue = "0")]
+pub struct MapInto<I, R> {
+    iter: I,
+    _res: PhantomData<R>,
+}
+
+#[unstable(feature = "move_into", issue = "0")]
+impl<R, I> Iterator for MapInto<I, R>
+where
+    I: Iterator,
+    I::Item: Into<R>,
+{
+    type Item = R;
+
+    #[inline]
+    fn next(&mut self) -> Option<R> {
+        self.iter.next().map(|i| i.into())
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+
+    fn try_fold<Acc, G, Ret>(&mut self, init: Acc, mut g: G) -> Ret where
+        Self: Sized, G: FnMut(Acc, Self::Item) -> Ret, Ret: Try<Ok=Acc>
+    {
+        self.iter.try_fold(init, move |acc, elt| g(acc, elt.into()))
+    }
+
+    fn fold<Acc, G>(self, init: Acc, mut g: G) -> Acc
+        where G: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.iter.fold(init, move |acc, elt| g(acc, elt.into()))
+    }
+}
+
+#[unstable(feature = "move_into", issue = "0")]
+impl<I, R> DoubleEndedIterator for MapInto<I, R>
+where
+    I: DoubleEndedIterator,
+    I::Item: Into<R>,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<R> {
+        self.iter.next_back().map(|i| i.into())
+    }
+
+    fn try_rfold<Acc, G, Ret>(&mut self, init: Acc, mut g: G) -> Ret where
+        Self: Sized, G: FnMut(Acc, Self::Item) -> Ret, Ret: Try<Ok=Acc>
+    {
+        self.iter.try_rfold(init, move |acc, elt| g(acc, elt.into()))
+    }
+
+    fn rfold<Acc, G>(self, init: Acc, mut g: G) -> Acc
+        where G: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.iter.rfold(init, move |acc, elt| g(acc, elt.into()))
+    }
+}
+
+#[unstable(feature = "move_into", issue = "0")]
+impl<I, R> ExactSizeIterator for MapInto<I, R>
+where
+    I: ExactSizeIterator,
+    I::Item: Into<R>,
+{
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.iter.is_empty()
+    }
+}
+
+#[unstable(feature = "move_into", issue = "0")]
+impl<I, R> FusedIterator for MapInto<I, R>
+where
+    I: FusedIterator,
+    I::Item: Into<R>,
+{}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+// #[unstable(feature = "move_into", issue = "0")]
+unsafe impl<I, R> TrustedLen for MapInto<I, R>
+where
+    I: TrustedLen,
+    I::Item: Into<R>,
+{}
+
+#[doc(hidden)]
+#[unstable(feature = "move_into", issue = "0")]
+unsafe impl<I, R> TrustedRandomAccess for MapInto<I, R>
+where
+    I: TrustedRandomAccess,
+    I::Item: Into<R>,
+{
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+        self.iter
+            .get_unchecked(i)
+            .into()
+    }
+    #[inline]
+    fn may_have_side_effect() -> bool { true }
+}
+
 
 /// An iterator that filters the elements of `iter` with `predicate`.
 ///

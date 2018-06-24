@@ -9,12 +9,13 @@
 // except according to those terms.
 
 use cmp::Ordering;
+use marker::PhantomData;
 use ops::Try;
 
 use super::LoopState;
 use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, Fuse};
 use super::{Flatten, FlatMap, flatten_compat};
-use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
+use super::{Inspect, Map, MapInto, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
 use super::{Zip, Sum, Product};
 use super::{ChainState, FromIterator, ZipImpl};
 
@@ -485,6 +486,21 @@ pub trait Iterator {
         Self: Sized, F: FnMut(Self::Item) -> B,
     {
         Map{iter: self, f: f}
+    }
+
+    /// Converts each item of the iterator using the `Into` trait.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// (1i32..42i32).map_into().collect::<Vec<f64>>();
+    /// ```
+    #[unstable(feature = "move_into", issue = "0")]
+    fn map_into<R>(self) -> MapInto<Self, R>
+    where
+        Self: Sized, Self::Item: Into<R>,
+    {
+        MapInto{iter: self, _res: PhantomData}
     }
 
     /// Calls a closure on each element of an iterator.
