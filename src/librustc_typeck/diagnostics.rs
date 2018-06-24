@@ -4550,6 +4550,7 @@ E0648: r##"
 
 ```compile_fail,E0648
 #[export_name="\0foo"] // error: `export_name` may not contain null characters
+pub fn bar() {}
 ```
 "##,
 
