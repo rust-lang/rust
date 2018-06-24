@@ -60,7 +60,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
             then {
                 let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
                 let should_check = if let Some(ref params) = *parameters {
-                    !params.parenthesized && params.lifetimes.len() == 0
+                    !params.parenthesized && !params.args.iter().any(|arg| match arg {
+                        GenericArg::Lifetime(_) => true,
+                        GenericArg::Type(_) => false,
+                    })
                 } else {
                     true
                 };

@@ -219,7 +219,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                             if let Some(elem_ty) = path.segments.iter()
                                 .find(|seg| seg.name == "Vec")
                                 .and_then(|ps| ps.args.as_ref())
-                                .map(|params| &params.types[0]);
+                                .map(|params| params.args.iter().find_map(|arg| match arg {
+                                    GenericArg::Type(ty) => Some(ty),
+                                    GenericArg::Lifetime(_) => None,
+                                }).unwrap());
                             then {
                                 let slice_ty = format!("&[{}]", snippet(cx, elem_ty.span, "_"));
                                 db.span_suggestion(input.span,

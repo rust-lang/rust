@@ -161,9 +161,14 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
                 if_chain! {
                     if let TyPath(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).node;
                     if let Some(&PathSegment{args: Some(ref parameters), ..}) = path.segments.last();
-                    if parameters.types.len() == 1;
                     then {
-                        ty_snippet = snippet_opt(cx, parameters.types[0].span);
+                        let types: Vec<_> = parameters.args.iter().filter_map(|arg| match arg {
+                            GenericArg::Type(ty) => Some(ty),
+                            _ => None,
+                        }).collect();
+                        if types.len() == 1 {
+                            ty_snippet = snippet_opt(cx, types[0].span);
+                        }
                     }
                 };
                 if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_owned()")]) {
@@ -220,7 +225,8 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
                     if let [ref bx] = *pp.segments;
                     if let Some(ref params) = bx.args;
                     if !params.parenthesized;
-                    if let [ref inner] = *params.types;
+                    if let [ref inner] = *params.args;
+                    if let GenericArg::Type(inner) = inner;
                     then {
                         let replacement = snippet_opt(cx, inner.span);
                         if let Some(r) = replacement {

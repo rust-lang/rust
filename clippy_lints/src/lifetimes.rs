@@ -119,12 +119,15 @@ fn check_fn_inner<'a, 'tcx>(
                         .expect("a path must have at least one segment")
                         .args;
                     if let Some(ref params) = *params {
-                        for bound in &params.lifetimes {
-                            if bound.name.name() != "'static" && !bound.is_elided() {
-                                return;
-                            }
-                            bounds_lts.push(bound);
-                        }
+                        params.args.iter().for_each(|param| match param {
+                            GenericArg::Lifetime(bound) => {
+                                if bound.name.name() != "'static" && !bound.is_elided() {
+                                    return;
+                                }
+                                bounds_lts.push(bound);
+                            },
+                            _ => {},
+                        });
                     }
                 }
             }
@@ -233,9 +236,9 @@ fn could_use_elision<'a, 'tcx: 'a>(
 fn allowed_lts_from(named_generics: &[GenericParam]) -> HashSet<RefLt> {
     let mut allowed_lts = HashSet::new();
     for par in named_generics.iter() {
-        if let GenericParam::Lifetime(ref lt) = *par {
-            if lt.bounds.is_empty() {
-                allowed_lts.insert(RefLt::Named(lt.lifetime.name.name()));
+        if let GenericParamKind::Lifetime { .. } = par.kind {
+            if par.bounds.is_empty() {
+                allowed_lts.insert(RefLt::Named(par.name.name()));
             }
         }
     }
@@ -299,7 +302,11 @@ impl<'v, 't> RefVisitor<'v, 't> {
 
     fn collect_anonymous_lifetimes(&mut self, qpath: &QPath, ty: &Ty) {
         if let Some(ref last_path_segment) = last_path_segment(qpath).args {
-            if !last_path_segment.parenthesized && last_path_segment.lifetimes.is_empty() {
+            if !last_path_segment.parenthesized
+                && !last_path_segment.args.iter().any(|arg| match arg {
+                    GenericArg::Lifetime(_) => true,
+                    GenericArg::Type(_) => false,
+                }) {
                 let hir_id = self.cx.tcx.hir.node_to_hir_id(ty.id);
                 match self.cx.tables.qpath_def(qpath, hir_id) {
                     Def::TyAlias(def_id) | Def::Struct(def_id) => {
@@ -431,9 +438,11 @@ impl<'tcx> Visitor<'tcx> for LifetimeChecker {
 }
 
 fn report_extra_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, func: &'tcx FnDecl, generics: &'tcx Generics) {
-    let hs = generics
-        .lifetimes()
-        .map(|lt| (lt.lifetime.name.name(), lt.lifetime.span))
+    let hs = generics.params.iter()
+        .filter_map(|par| match par.kind {
+            GenericParamKind::Lifetime { .. } => Some((par.name.name(), par.span)),
+            _ => None,
+        })
         .collect();
     let mut checker = LifetimeChecker { map: hs };
 

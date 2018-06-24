@@ -182,7 +182,10 @@ fn match_type_parameter(cx: &LateContext, qpath: &QPath, path: &[&str]) -> bool 
     if_chain! {
         if let Some(ref params) = last.args;
         if !params.parenthesized;
-        if let Some(ty) = params.types.get(0);
+        if let Some(ty) = params.args.iter().find_map(|arg| match arg {
+            GenericArg::Type(ty) => Some(ty),
+            GenericArg::Lifetime(_) => None,
+        });
         if let TyPath(ref qpath) = ty.node;
         if let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir.node_to_hir_id(ty.id)));
         if match_def_path(cx.tcx, did, path);
@@ -246,7 +249,11 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                     for ty in p.segments.iter().flat_map(|seg| {
                         seg.args
                             .as_ref()
-                            .map_or_else(|| [].iter(), |params| params.types.iter())
+                            .map_or_else(|| [].iter(), |params| params.args.iter())
+                            .filter_map(|arg| match arg {
+                                GenericArg::Type(ty) => Some(ty),
+                                GenericArg::Lifetime(_) => None,
+                            })
                     }) {
                         check_ty(cx, ty, is_local);
                     }
@@ -254,14 +261,21 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                 QPath::Resolved(None, ref p) => for ty in p.segments.iter().flat_map(|seg| {
                     seg.args
                         .as_ref()
-                        .map_or_else(|| [].iter(), |params| params.types.iter())
+                        .map_or_else(|| [].iter(), |params| params.args.iter())
+                        .filter_map(|arg| match arg {
+                            GenericArg::Type(ty) => Some(ty),
+                            GenericArg::Lifetime(_) => None,
+                        })
                 }) {
                     check_ty(cx, ty, is_local);
                 },
                 QPath::TypeRelative(ref ty, ref seg) => {
                     check_ty(cx, ty, is_local);
                     if let Some(ref params) = seg.args {
-                        for ty in params.types.iter() {
+                        for ty in params.args.iter().filter_map(|arg| match arg {
+                            GenericArg::Type(ty) => Some(ty),
+                            GenericArg::Lifetime(_) => None,
+                        }) {
                             check_ty(cx, ty, is_local);
                         }
                     }
@@ -290,7 +304,8 @@ fn check_ty_rptr(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool, lt: &Lifeti
                 if let [ref bx] = *path.segments;
                 if let Some(ref params) = bx.args;
                 if !params.parenthesized;
-                if let [ref inner] = *params.types;
+                if let [ref inner] = *params.args;
+                if let GenericArg::Type(inner) = inner;
                 then {
                     if is_any_trait(inner) {
                         // Ignore `Box<Any>` types, see #1884 for details.
@@ -1862,7 +1877,11 @@ impl<'tcx> ImplicitHasherType<'tcx> {
     /// Checks that `ty` is a target type without a BuildHasher.
     fn new<'a>(cx: &LateContext<'a, 'tcx>, hir_ty: &hir::Ty) -> Option<Self> {
         if let TyPath(QPath::Resolved(None, ref path)) = hir_ty.node {
-            let params = &path.segments.last().as_ref()?.args.as_ref()?.types;
+            let params: Vec<_> = path.segments.last().as_ref()?.args.as_ref()?
+                .args.iter().filter_map(|arg| match arg {
+                    GenericArg::Type(ty) => Some(ty),
+                    GenericArg::Lifetime(_) => None,
+                }).collect();
             let params_len = params.len();
 
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);

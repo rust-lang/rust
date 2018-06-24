@@ -152,6 +152,14 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         left.ident.name == right.ident.name && self.eq_expr(&left.expr, &right.expr)
     }
 
+    fn eq_generic_arg(&mut self, left: &GenericArg, right: &GenericArg) -> bool {
+        match (left, right) {
+            (GenericArg::Lifetime(l_lt), GenericArg::Lifetime(r_lt)) => self.eq_lifetime(l_lt, r_lt),
+            (GenericArg::Type(l_ty), GenericArg::Type(r_ty)) => self.eq_ty(l_ty, r_ty),
+            _ => false,
+        }
+    }
+
     fn eq_lifetime(&mut self, left: &Lifetime, right: &Lifetime) -> bool {
         left.name == right.name
     }
@@ -203,8 +211,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
 
     fn eq_path_parameters(&mut self, left: &GenericArgs, right: &GenericArgs) -> bool {
         if !(left.parenthesized || right.parenthesized) {
-            over(&left.lifetimes, &right.lifetimes, |l, r| self.eq_lifetime(l, r))
-                && over(&left.types, &right.types, |l, r| self.eq_ty(l, r))
+            over(&left.args, &right.args, |l, r| self.eq_generic_arg(l, r)) // FIXME(flip1995): may not work
                 && over(&left.bindings, &right.bindings, |l, r| self.eq_type_binding(l, r))
         } else if left.parenthesized && right.parenthesized {
             over(left.inputs(), right.inputs(), |l, r| self.eq_ty(l, r))

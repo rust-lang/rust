@@ -2101,8 +2101,14 @@ fn is_as_ref_or_mut_trait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Gener
                                 if params.parenthesized {
                                     false
                                 } else {
-                                    params.types.len() == 1
-                                        && (is_self_ty(&params.types[0]) || is_ty(&*params.types[0], self_ty))
+                                    // FIXME(flip1995): messy, improve if there is a better option
+                                    // in the compiler
+                                    let types: Vec<_> = params.args.iter().filter_map(|arg| match arg {
+                                        hir::GenericArg::Type(ty) => Some(ty),
+                                        _ => None,
+                                    }).collect();
+                                    types.len() == 1
+                                        && (is_self_ty(&types[0]) || is_ty(&*types[0], self_ty))
                                 }
                             } else {
                                 false
