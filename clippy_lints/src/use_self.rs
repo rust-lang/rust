@@ -58,7 +58,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
             if let ItemImpl(.., ref item_type, ref refs) = item.node;
             if let Ty_::TyPath(QPath::Resolved(_, ref item_path)) = item_type.node;
             then {
-                let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).parameters;
+                let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
                 let should_check = if let Some(ref params) = *parameters {
                     !params.parenthesized && params.lifetimes.len() == 0
                 } else {

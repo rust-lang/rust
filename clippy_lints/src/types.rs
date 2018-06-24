@@ -180,7 +180,7 @@ fn check_fn_decl(cx: &LateContext, decl: &FnDecl) {
 fn match_type_parameter(cx: &LateContext, qpath: &QPath, path: &[&str]) -> bool {
     let last = last_path_segment(qpath);
     if_chain! {
-        if let Some(ref params) = last.parameters;
+        if let Some(ref params) = last.args;
         if !params.parenthesized;
         if let Some(ty) = params.types.get(0);
         if let TyPath(ref qpath) = ty.node;
@@ -244,7 +244,7 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                 QPath::Resolved(Some(ref ty), ref p) => {
                     check_ty(cx, ty, is_local);
                     for ty in p.segments.iter().flat_map(|seg| {
-                        seg.parameters
+                        seg.args
                             .as_ref()
                             .map_or_else(|| [].iter(), |params| params.types.iter())
                     }) {
@@ -252,7 +252,7 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                     }
                 },
                 QPath::Resolved(None, ref p) => for ty in p.segments.iter().flat_map(|seg| {
-                    seg.parameters
+                    seg.args
                         .as_ref()
                         .map_or_else(|| [].iter(), |params| params.types.iter())
                 }) {
@@ -260,7 +260,7 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                 },
                 QPath::TypeRelative(ref ty, ref seg) => {
                     check_ty(cx, ty, is_local);
-                    if let Some(ref params) = seg.parameters {
+                    if let Some(ref params) = seg.args {
                         for ty in params.types.iter() {
                             check_ty(cx, ty, is_local);
                         }
@@ -288,7 +288,7 @@ fn check_ty_rptr(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool, lt: &Lifeti
                 if Some(def_id) == cx.tcx.lang_items().owned_box();
                 if let QPath::Resolved(None, ref path) = *qpath;
                 if let [ref bx] = *path.segments;
-                if let Some(ref params) = bx.parameters;
+                if let Some(ref params) = bx.args;
                 if !params.parenthesized;
                 if let [ref inner] = *params.types;
                 then {
@@ -1208,7 +1208,10 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
             TyTraitObject(ref param_bounds, _) => {
                 let has_lifetime_parameters = param_bounds
                     .iter()
-                    .any(|bound| bound.bound_generic_params.iter().any(|gen| gen.is_lifetime_param()));
+                    .any(|bound| bound.bound_generic_params.iter().any(|gen| match gen.kind {
+                        GenericParamKind::Lifetime { .. } => true,
+                        _ => false,
+                    }));
                 if has_lifetime_parameters {
                     // complex trait bounds like A<'a, 'b>
                     (50 * self.nest, 1)
@@ -1859,7 +1862,7 @@ impl<'tcx> ImplicitHasherType<'tcx> {
     /// Checks that `ty` is a target type without a BuildHasher.
     fn new<'a>(cx: &LateContext<'a, 'tcx>, hir_ty: &hir::Ty) -> Option<Self> {
         if let TyPath(QPath::Resolved(None, ref path)) = hir_ty.node {
-            let params = &path.segments.last().as_ref()?.parameters.as_ref()?.types;
+            let params = &path.segments.last().as_ref()?.args.as_ref()?.types;
             let params_len = params.len();
 
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);

@@ -52,7 +52,7 @@ impl<'a> Sugg<'a> {
                 hir::ExprIf(..) |
                 hir::ExprUnary(..) |
                 hir::ExprMatch(..) => Sugg::MaybeParen(snippet),
-                hir::ExprAgain(..) |
+                hir::ExprContinue(..) |
                 hir::ExprYield(..) |
                 hir::ExprArray(..) |
                 hir::ExprBlock(..) |

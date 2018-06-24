@@ -99,11 +99,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                     if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
                         let name = impl_item.name;
                         let id = impl_item.id;
-                        if sig.constness == hir::Constness::Const {
+                        if sig.header.constness == hir::Constness::Const {
                             // can't be implemented by default
                             return;
                         }
-                        if impl_item.generics.params.iter().any(|gen| gen.is_type_param()) {
+                        if impl_item.generics.params.iter().any(|gen| match gen.kind {
+                            hir::GenericParamKind::Type { .. } => true,
+                            _ => false
+                        }) {
                             // when the result of `new()` depends on a type parameter we should not require
                             // an
                             // impl of `Default`

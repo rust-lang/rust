@@ -92,8 +92,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         };
 
         let unsafety = match kind {
-            hir::intravisit::FnKind::ItemFn(_, _, unsafety, _, _, _, _) => unsafety,
-            hir::intravisit::FnKind::Method(_, sig, _, _) => sig.unsafety,
+            hir::intravisit::FnKind::ItemFn(_, _, hir::FnHeader { unsafety, .. }, _, _) => unsafety,
+            hir::intravisit::FnKind::Method(_, sig, _, _) => sig.header.unsafety,
             hir::intravisit::FnKind::Closure(_) => return,
         };
 
@@ -101,8 +101,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         if !is_impl {
             // don't lint extern functions decls, it's not their fault either
             match kind {
-                hir::intravisit::FnKind::Method(_, &hir::MethodSig { abi: Abi::Rust, .. }, _, _) |
-                hir::intravisit::FnKind::ItemFn(_, _, _, _, Abi::Rust, _, _) => self.check_arg_number(cx, decl, span),
+                hir::intravisit::FnKind::Method(_, &hir::MethodSig { header: hir::FnHeader { abi: Abi::Rust, .. }, .. }, _, _) |
+                hir::intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _, _) => self.check_arg_number(cx, decl, span),
                 _ => {},
             }
         }
@@ -113,13 +113,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
         if let hir::TraitItemKind::Method(ref sig, ref eid) = item.node {
             // don't lint extern functions decls, it's not their fault
-            if sig.abi == Abi::Rust {
+            if sig.header.abi == Abi::Rust {
                 self.check_arg_number(cx, &sig.decl, item.span);
             }
 
             if let hir::TraitMethod::Provided(eid) = *eid {
                 let body = cx.tcx.hir.body(eid);
-                self.check_raw_ptr(cx, sig.unsafety, &sig.decl, body, item.id);
+                self.check_raw_ptr(cx, sig.header.unsafety, &sig.decl, body, item.id);
             }
         }
     }

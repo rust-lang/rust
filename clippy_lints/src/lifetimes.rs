@@ -59,7 +59,7 @@ impl LintPass for LifetimePass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LifetimePass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemFn(ref decl, _, _, _, ref generics, id) = item.node {
+        if let ItemFn(ref decl, _, ref generics, id) = item.node {
             check_fn_inner(cx, decl, Some(id), generics, item.span);
         }
     }
@@ -101,32 +101,35 @@ fn check_fn_inner<'a, 'tcx>(
     }
 
     let mut bounds_lts = Vec::new();
-    for typ in generics.ty_params() {
-        for bound in &typ.bounds {
-            let mut visitor = RefVisitor::new(cx);
-            walk_ty_param_bound(&mut visitor, bound);
-            if visitor.lts.iter().any(|lt| matches!(lt, RefLt::Named(_))) {
-                return;
-            }
-            if let TraitTyParamBound(ref trait_ref, _) = *bound {
-                let params = &trait_ref
-                    .trait_ref
-                    .path
-                    .segments
-                    .last()
-                    .expect("a path must have at least one segment")
-                    .parameters;
-                if let Some(ref params) = *params {
-                    for bound in &params.lifetimes {
-                        if bound.name.name() != "'static" && !bound.is_elided() {
-                            return;
+    generics.params.iter().for_each(|param| match param.kind {
+        GenericParamKind::Lifetime { .. } => {},
+        GenericParamKind::Type { .. } => {
+            for bound in &param.bounds {
+                let mut visitor = RefVisitor::new(cx);
+                walk_param_bound(&mut visitor, bound);
+                if visitor.lts.iter().any(|lt| matches!(lt, RefLt::Named(_))) {
+                    return;
+                }
+                if let GenericBound::Trait(ref trait_ref, _) = *bound {
+                    let params = &trait_ref
+                        .trait_ref
+                        .path
+                        .segments
+                        .last()
+                        .expect("a path must have at least one segment")
+                        .args;
+                    if let Some(ref params) = *params {
+                        for bound in &params.lifetimes {
+                            if bound.name.name() != "'static" && !bound.is_elided() {
+                                return;
+                            }
+                            bounds_lts.push(bound);
                         }
-                        bounds_lts.push(bound);
                     }
                 }
             }
-        }
-    }
+        },
+    });
     if could_use_elision(cx, decl, body, &generics.params, bounds_lts) {
         span_lint(
             cx,
@@ -295,7 +298,7 @@ impl<'v, 't> RefVisitor<'v, 't> {
     }
 
     fn collect_anonymous_lifetimes(&mut self, qpath: &QPath, ty: &Ty) {
-        if let Some(ref last_path_segment) = last_path_segment(qpath).parameters {
+        if let Some(ref last_path_segment) = last_path_segment(qpath).args {
             if !last_path_segment.parenthesized && last_path_segment.lifetimes.is_empty() {
                 let hir_id = self.cx.tcx.hir.node_to_hir_id(ty.id);
                 match self.cx.tables.qpath_def(qpath, hir_id) {
@@ -335,7 +338,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
             TyImplTraitExistential(exist_ty_id, _, _) => {
                 if let ItemExistential(ref exist_ty) = self.cx.tcx.hir.expect_item(exist_ty_id.id).node {
                     for bound in &exist_ty.bounds {
-                        if let RegionTyParamBound(_) = *bound {
+                        if let GenericBound::Outlives(_) = *bound {
                             self.record(&None);
                         }
                     }
@@ -377,7 +380,7 @@ fn has_where_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, where_clause: &
                 let allowed_lts = allowed_lts_from(&pred.bound_generic_params);
                 // now walk the bounds
                 for bound in pred.bounds.iter() {
-                    walk_ty_param_bound(&mut visitor, bound);
+                    walk_param_bound(&mut visitor, bound);
                 }
                 // and check that all lifetimes are allowed
                 match visitor.into_vec() {
@@ -418,7 +421,7 @@ impl<'tcx> Visitor<'tcx> for LifetimeChecker {
         // don't want to spuriously remove them
         // `'b` in `'a: 'b` is useless unless used elsewhere in
         // a non-lifetime bound
-        if param.is_type_param() {
+        if let GenericParamKind::Type { .. } = param.kind {
             walk_generic_param(self, param)
         }
     }
