@@ -1981,8 +1981,9 @@ impl<'a> Resolver<'a> {
         result
     }
 
-    fn resolve_crate_root(&mut self, mut ctxt: SyntaxContext, legacy: bool) -> Module<'a> {
-        let mark = if legacy {
+    fn resolve_crate_root(&mut self, ident: Ident) -> Module<'a> {
+        let mut ctxt = ident.span.ctxt();
+        let mark = if ident.name == keywords::DollarCrate.name() {
             // When resolving `$crate` from a `macro_rules!` invoked in a `macro`,
             // we don't want to pretend that the `macro_rules!` definition is in the `macro`
             // as described in `SyntaxContext::apply_mark`, so we ignore prepended modern marks.
@@ -3345,14 +3346,11 @@ impl<'a> Resolver<'a> {
             if ns == TypeNS {
                 if (i == 0 && name == keywords::CrateRoot.name()) ||
                    (i == 0 && name == keywords::Crate.name()) ||
+                   (i == 0 && name == keywords::DollarCrate.name()) ||
                    (i == 1 && name == keywords::Crate.name() &&
                               path[0].name == keywords::CrateRoot.name()) {
-                    // `::a::b` or `::crate::a::b`
-                    module = Some(self.resolve_crate_root(ident.span.ctxt(), false));
-                    continue
-                } else if i == 0 && name == keywords::DollarCrate.name() {
-                    // `$crate::a::b`
-                    module = Some(self.resolve_crate_root(ident.span.ctxt(), true));
+                    // `::a::b`, `crate::a::b`, `::crate::a::b` or `$crate::a::b`
+                    module = Some(self.resolve_crate_root(ident));
                     continue
                 } else if i == 1 && !ident.is_path_segment_keyword() {
                     let prev_name = path[0].name;

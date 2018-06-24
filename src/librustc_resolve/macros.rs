@@ -155,10 +155,9 @@ impl<'a> base::Resolver for Resolver<'a> {
                     }
                 });
 
-                let ident = path.segments[0].ident;
-                if ident.name == keywords::DollarCrate.name() {
+                if path.segments[0].ident.name == keywords::DollarCrate.name() {
+                    let module = self.0.resolve_crate_root(path.segments[0].ident);
                     path.segments[0].ident.name = keywords::CrateRoot.name();
-                    let module = self.0.resolve_crate_root(ident.span.ctxt(), true);
                     if !module.is_local() {
                         let span = path.segments[0].ident.span;
                         path.segments.insert(1, match module.kind {
