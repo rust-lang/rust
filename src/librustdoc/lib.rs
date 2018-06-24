@@ -103,10 +103,14 @@ struct Output {
 }
 
 pub fn main() {
-    const STACK_SIZE: usize = 32_000_000; // 32MB
+    let thread_stack_size: usize = if cfg!(target_os = "haiku") {
+        16_000_000 // 16MB on Haiku
+    } else {
+        32_000_000 // 32MB on other platforms
+    };
     rustc_driver::set_sigpipe_handler();
     env_logger::init();
-    let res = std::thread::Builder::new().stack_size(STACK_SIZE).spawn(move || {
+    let res = std::thread::Builder::new().stack_size(thread_stack_size).spawn(move || {
         syntax::with_globals(move || {
             get_args().map(|args| main_args(&args)).unwrap_or(1)
         })
