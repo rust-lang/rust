@@ -95,33 +95,31 @@ pub fn has_cpuid() -> bool {
             // If it is, then `cpuid` is available.
             let result: u32;
             let _temp: u32;
-            unsafe {
-                asm!(r#"
-                    # Read eflags into $0 and copy into $1:
-                    pushfd
-                    pop     $0
-                    mov     $1, $0
-                    # Flip 21st bit:
-                    xor     $0, 0x200000
-                    # Set eflags:
-                    push    $0
-                    popfd
-                    # Read eflags again, if cpuid is available
-                    # the 21st bit will be flipped, otherwise it
-                    # it will have the same value as the original in $1:
-                    pushfd
-                    pop     $0
-                    # Xor'ing with the original eflags should have the
-                    # 21st bit set to true if cpuid is available and zero
-                    # otherwise. All other bits have not been modified and
-                    # are zero:
-                    xor     $0, $1
-                    "#
-                     : "=r"(result), "=r"(_temp)
-                     :
-                     : "cc", "memory"
-                     : "intel");
-            }
+            asm!(r#"
+                 # Read eflags into $0 and copy into $1:
+                 pushfd
+                 pop     $0
+                 mov     $1, $0
+                 # Flip 21st bit:
+                 xor     $0, 0x200000
+                 # Set eflags:
+                 push    $0
+                 popfd
+                 # Read eflags again, if cpuid is available
+                 # the 21st bit will be flipped, otherwise it
+                 # it will have the same value as the original in $1:
+                 pushfd
+                 pop     $0
+                 # Xor'ing with the original eflags should have the
+                 # 21st bit set to true if cpuid is available and zero
+                 # otherwise. All other bits have not been modified and
+                 # are zero:
+                 xor     $0, $1
+                 "#
+                 : "=r"(result), "=r"(_temp)
+                 :
+                 : "cc", "memory"
+                 : "intel");
             // Therefore, if result is 0, the bit was not modified and cpuid is
             // not available. If cpuid is available, the bit was modified and
             // result != 0.
