@@ -332,7 +332,9 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.unused_macros.remove(&def_id);
         let ext = self.get_macro(def);
         if ext.is_modern() {
-            invoc.expansion_data.mark.set_transparency(Transparency::Opaque);
+            let transparency =
+                if ext.is_transparent() { Transparency::Transparent } else { Transparency::Opaque };
+            invoc.expansion_data.mark.set_transparency(transparency);
         } else if def_id.krate == BUILTIN_MACROS_CRATE {
             invoc.expansion_data.mark.set_is_builtin(true);
         }

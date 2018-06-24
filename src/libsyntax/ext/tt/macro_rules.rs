@@ -312,9 +312,12 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: 
             edition,
         }
     } else {
+        let is_transparent = attr::contains_name(&def.attrs, "rustc_transparent_macro");
+
         SyntaxExtension::DeclMacro {
             expander,
             def_info: Some((def.id, def.span)),
+            is_transparent,
             edition,
         }
     }

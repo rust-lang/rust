@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(decl_macro)]
+// This is an equivalent of issue #50504, but for declarative macros.
 
-pub mod foo {
-    pub use self::bar::m;
-    mod bar {
-        fn f() -> u32 { 1 }
-        pub macro m() {
-            f();
-        }
+#![feature(decl_macro, rustc_attrs)]
+
+#[rustc_transparent_macro]
+macro genmod() {
+    mod m {
+        type A = S; //~ ERROR cannot find type `S` in this scope
     }
 }
 
-pub struct SomeType;
+struct S;
 
-pub macro uses_dollar_crate() {
-    type Alias = $crate::SomeType;
-}
+genmod!();

@@ -738,7 +738,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
 
         let opt_expanded = match *ext {
-            DeclMacro { ref expander, def_info, edition } => {
+            DeclMacro { ref expander, def_info, edition, .. } => {
                 if let Err(dummy_span) = validate_and_set_expn_info(self, def_info.map(|(_, s)| s),
                                                                     false, false, false, None,
                                                                     edition) {

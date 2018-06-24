@@ -491,6 +491,12 @@ impl Span {
         let span = self.data();
         span.with_ctxt(span.ctxt.modern())
     }
+
+    #[inline]
+    pub fn modern_and_legacy(self) -> Span {
+        let span = self.data();
+        span.with_ctxt(span.ctxt.modern_and_legacy())
+    }
 }
 
 #[derive(Clone, Debug)]

@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(decl_macro)]
+#![feature(decl_macro, rustc_attrs)]
 
-pub mod foo {
-    pub use self::bar::m;
-    mod bar {
-        fn f() -> u32 { 1 }
-        pub macro m() {
-            f();
-        }
-    }
-}
-
-pub struct SomeType;
-
-pub macro uses_dollar_crate() {
-    type Alias = $crate::SomeType;
+#[rustc_transparent_macro]
+pub macro dollar_crate() {
+    let s = $crate::S;
 }

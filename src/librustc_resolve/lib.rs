@@ -1850,6 +1850,8 @@ impl<'a> Resolver<'a> {
             } else {
                 ident.span.modern()
             }
+        } else {
+            ident = ident.modern_and_legacy();
         }
 
         // Walk backwards up the ribs in scope.
@@ -1987,7 +1989,7 @@ impl<'a> Resolver<'a> {
             // When resolving `$crate` from a `macro_rules!` invoked in a `macro`,
             // we don't want to pretend that the `macro_rules!` definition is in the `macro`
             // as described in `SyntaxContext::apply_mark`, so we ignore prepended modern marks.
-            ctxt.marks().into_iter().find(|&mark| mark.transparency() != Transparency::Opaque)
+            ctxt.marks().into_iter().rev().find(|m| m.transparency() != Transparency::Transparent)
         } else {
             ctxt = ctxt.modern();
             ctxt.adjust(Mark::root())
@@ -2628,6 +2630,7 @@ impl<'a> Resolver<'a> {
         // must not add it if it's in the bindings map
         // because that breaks the assumptions later
         // passes make about or-patterns.)
+        let ident = ident.modern_and_legacy();
         let mut def = Def::Local(pat_id);
         match bindings.get(&ident).cloned() {
             Some(id) if id == outer_pat_id => {
@@ -3782,7 +3785,8 @@ impl<'a> Resolver<'a> {
             self.unused_labels.insert(id, label.ident.span);
             let def = Def::Label(id);
             self.with_label_rib(|this| {
-                this.label_ribs.last_mut().unwrap().bindings.insert(label.ident, def);
+                let ident = label.ident.modern_and_legacy();
+                this.label_ribs.last_mut().unwrap().bindings.insert(ident, def);
                 f(this);
             });
         } else {
@@ -3813,7 +3817,10 @@ impl<'a> Resolver<'a> {
             }
 
             ExprKind::Break(Some(label), _) | ExprKind::Continue(Some(label)) => {
-                match self.search_label(label.ident, |rib, id| rib.bindings.get(&id).cloned()) {
+                let def = self.search_label(label.ident, |rib, ident| {
+                    rib.bindings.get(&ident.modern_and_legacy()).cloned()
+                });
+                match def {
                     None => {
                         // Search again for close matches...
                         // Picks the first label that is "close enough", which is not necessarily
