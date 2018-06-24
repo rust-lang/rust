@@ -159,6 +159,13 @@ impl<'a> GccLinker<'a> {
         self
     }
 
+    fn add_lib(&mut self, lib: &str) -> &mut Self {
+        let mut os = OsString::from("-l");
+        os.push(lib.as_ref());
+        self.cmd.arg(os);
+        self
+    }
+
     fn takes_hints(&self) -> bool {
         !self.sess.target.target.options.is_like_osx
     }
@@ -185,8 +192,8 @@ impl<'a> GccLinker<'a> {
 }
 
 impl<'a> Linker for GccLinker<'a> {
-    fn link_dylib(&mut self, lib: &str) { self.hint_dynamic(); self.cmd.arg("-l").arg(lib); }
-    fn link_staticlib(&mut self, lib: &str) { self.hint_static(); self.cmd.arg("-l").arg(lib); }
+    fn link_dylib(&mut self, lib: &str) { self.hint_dynamic(); self.add_lib(lib); }
+    fn link_staticlib(&mut self, lib: &str) { self.hint_static(); self.add_lib(lib); }
     fn link_rlib(&mut self, lib: &Path) { self.hint_static(); self.cmd.arg(lib); }
     fn include_path(&mut self, path: &Path) { self.cmd.arg("-L").arg(path); }
     fn framework_path(&mut self, path: &Path) { self.cmd.arg("-F").arg(path); }
@@ -202,7 +209,7 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
         self.hint_dynamic();
-        self.cmd.arg("-l").arg(lib);
+        self.add_lib(lib);
     }
 
     fn link_framework(&mut self, framework: &str) {
@@ -220,7 +227,7 @@ impl<'a> Linker for GccLinker<'a> {
         self.hint_static();
         let target = &self.sess.target.target;
         if !target.options.is_like_osx {
-            self.linker_arg("--whole-archive").cmd.arg("-l").arg(lib);
+            self.linker_arg("--whole-archive").add_lib(lib);
             self.linker_arg("--no-whole-archive");
         } else {
             // -force_load is the macOS equivalent of --whole-archive, but it
