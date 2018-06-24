@@ -58,8 +58,7 @@ use syntax::parse::{self, token};
 use syntax::symbol::{keywords, Symbol};
 use syntax::tokenstream;
 use syntax::parse::lexer::{self, comments};
-use syntax_pos::{FileMap, Pos, SyntaxContext, FileName};
-use syntax_pos::hygiene::Mark;
+use syntax_pos::{FileMap, Pos, FileName};
 
 /// The main type provided by this crate, representing an abstract stream of
 /// tokens, or, more specifically, a sequence of token trees.
@@ -109,6 +108,7 @@ impl TokenStream {
 /// Attempts to break the string into tokens and parse those tokens into a token stream.
 /// May fail for a number of reasons, for example, if the string contains unbalanced delimiters
 /// or characters not existing in the language.
+/// All tokens in the parsed stream get `Span::call_site()` spans.
 ///
 /// NOTE: Some errors may cause panics instead of returning `LexError`. We reserve the right to
 /// change these errors into `LexError`s later.
@@ -117,17 +117,10 @@ impl FromStr for TokenStream {
     type Err = LexError;
 
     fn from_str(src: &str) -> Result<TokenStream, LexError> {
-        __internal::with_sess(|(sess, mark)| {
-            let src = src.to_string();
-            let name = FileName::ProcMacroSourceCode;
-            let expn_info = mark.expn_info().unwrap();
-            let call_site = expn_info.call_site;
-            // notify the expansion info that it is unhygienic
-            let mark = Mark::fresh(mark);
-            mark.set_expn_info(expn_info);
-            let span = call_site.with_ctxt(SyntaxContext::empty().apply_mark(mark));
-            let stream = parse::parse_stream_from_source_str(name, src, sess, Some(span));
-            Ok(__internal::token_stream_wrap(stream))
+        __internal::with_sess(|sess, data| {
+            Ok(__internal::token_stream_wrap(parse::parse_stream_from_source_str(
+                FileName::ProcMacroSourceCode, src.to_string(), sess, Some(data.call_site.0)
+            )))
         })
     }
 }
@@ -284,10 +277,7 @@ impl Span {
     /// A span that resolves at the macro definition site.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn def_site() -> Span {
-        ::__internal::with_sess(|(_, mark)| {
-            let call_site = mark.expn_info().unwrap().call_site;
-            Span(call_site.with_ctxt(SyntaxContext::empty().apply_mark(mark)))
-        })
+        ::__internal::with_sess(|_, data| data.def_site)
     }
 
     /// The span of the invocation of the current procedural macro.
@@ -296,7 +286,7 @@ impl Span {
     /// at the macro call site will be able to refer to them as well.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn call_site() -> Span {
-        ::__internal::with_sess(|(_, mark)| Span(mark.expn_info().unwrap().call_site))
+        ::__internal::with_sess(|_, data| data.call_site)
     }
 
     /// The original source file into which this span points.
@@ -1243,7 +1233,7 @@ impl TokenTree {
             }
 
             Interpolated(_) => {
-                __internal::with_sess(|(sess, _)| {
+                __internal::with_sess(|sess, _| {
                     let tts = token.interpolated_to_tokenstream(sess, span);
                     tt!(Group::new(Delimiter::None, TokenStream(tts)))
                 })
@@ -1354,20 +1344,21 @@ pub mod __internal {
     pub use quote::{LiteralKind, SpannedSymbol, Quoter, unquote};
 
     use std::cell::Cell;
+    use std::ptr;
 
     use syntax::ast;
     use syntax::ext::base::ExtCtxt;
-    use syntax::ext::hygiene::Mark;
     use syntax::ptr::P;
     use syntax::parse::{self, ParseSess};
     use syntax::parse::token::{self, Token};
     use syntax::tokenstream;
     use syntax_pos::{BytePos, Loc, DUMMY_SP};
+    use syntax_pos::hygiene::{Mark, SyntaxContext, Transparency};
 
-    use super::{TokenStream, LexError};
+    use super::{TokenStream, LexError, Span};
 
     pub fn lookup_char_pos(pos: BytePos) -> Loc {
-        with_sess(|(sess, _)| sess.codemap().lookup_char_pos(pos))
+        with_sess(|sess, _| sess.codemap().lookup_char_pos(pos))
     }
 
     pub fn new_token_stream(item: P<ast::Item>) -> TokenStream {
@@ -1380,7 +1371,7 @@ pub mod __internal {
     }
 
     pub fn token_stream_parse_items(stream: TokenStream) -> Result<Vec<P<ast::Item>>, LexError> {
-        with_sess(move |(sess, _)| {
+        with_sess(move |sess, _| {
             let mut parser = parse::stream_to_parser(sess, stream.0);
             let mut items = Vec::new();
 
@@ -1411,16 +1402,30 @@ pub mod __internal {
                                     expand: fn(TokenStream) -> TokenStream);
     }
 
+    #[derive(Clone, Copy)]
+    pub struct ProcMacroData {
+        pub def_site: Span,
+        pub call_site: Span,
+    }
+
+    #[derive(Clone, Copy)]
+    struct ProcMacroSess {
+        parse_sess: *const ParseSess,
+        data: ProcMacroData,
+    }
+
     // Emulate scoped_thread_local!() here essentially
     thread_local! {
-        static CURRENT_SESS: Cell<(*const ParseSess, Mark)> =
-            Cell::new((0 as *const _, Mark::root()));
+        static CURRENT_SESS: Cell<ProcMacroSess> = Cell::new(ProcMacroSess {
+            parse_sess: ptr::null(),
+            data: ProcMacroData { def_site: Span(DUMMY_SP), call_site: Span(DUMMY_SP) },
+        });
     }
 
     pub fn set_sess<F, R>(cx: &ExtCtxt, f: F) -> R
         where F: FnOnce() -> R
     {
-        struct Reset { prev: (*const ParseSess, Mark) }
+        struct Reset { prev: ProcMacroSess }
 
         impl Drop for Reset {
             fn drop(&mut self) {
@@ -1430,24 +1435,39 @@ pub mod __internal {
 
         CURRENT_SESS.with(|p| {
             let _reset = Reset { prev: p.get() };
-            p.set((cx.parse_sess, cx.current_expansion.mark));
+
+            // No way to determine def location for a proc macro rigth now, so use call location.
+            let location = cx.current_expansion.mark.expn_info().unwrap().call_site;
+            // Opaque mark was already created by expansion, now create its transparent twin.
+            let opaque_mark = cx.current_expansion.mark;
+            let transparent_mark = Mark::fresh_cloned(opaque_mark);
+            transparent_mark.set_transparency(Transparency::Transparent);
+
+            let to_span = |mark| Span(location.with_ctxt(SyntaxContext::empty().apply_mark(mark)));
+            p.set(ProcMacroSess {
+                parse_sess: cx.parse_sess,
+                data: ProcMacroData {
+                    def_site: to_span(opaque_mark),
+                    call_site: to_span(transparent_mark),
+                },
+            });
             f()
         })
     }
 
     pub fn in_sess() -> bool
     {
-        let p = CURRENT_SESS.with(|p| p.get());
-        !p.0.is_null()
+        !CURRENT_SESS.with(|sess| sess.get()).parse_sess.is_null()
     }
 
     pub fn with_sess<F, R>(f: F) -> R
-        where F: FnOnce((&ParseSess, Mark)) -> R
+        where F: FnOnce(&ParseSess, &ProcMacroData) -> R
     {
-        let p = CURRENT_SESS.with(|p| p.get());
-        assert!(!p.0.is_null(), "proc_macro::__internal::with_sess() called \
-                                 before set_parse_sess()!");
-        f(unsafe { (&*p.0, p.1) })
+        let sess = CURRENT_SESS.with(|sess| sess.get());
+        if sess.parse_sess.is_null() {
+            panic!("procedural macro API is used outside of a procedural macro");
+        }
+        f(unsafe { &*sess.parse_sess }, &sess.data)
     }
 }
 
