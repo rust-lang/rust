@@ -12,17 +12,34 @@ use super::{EvalContext, Machine};
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M>
     where M: Clone + Eq + Hash,
 {
-    pub fn inc_step_counter_and_detect_loops(&mut self, n: usize) {
-        self.steps_until_detector_enabled
-            = self.steps_until_detector_enabled.saturating_sub(n);
+    /// Returns `true` if the loop detector should take a snapshot during the current step.
+    pub fn is_loop_detector_scheduled(&self) -> bool {
+        /// The number of steps between loop detector snapshots.
+        /// Should be a power of two for performance reasons.
+        const LOOP_SNAPSHOT_PERIOD: isize = 1 << 8;
 
-        if self.steps_until_detector_enabled == 0 {
-            let _ = self.loop_detector.observe(&self.machine, &self.stack, &self.memory); // TODO: Handle error
+        let steps = self.steps_until_detector_enabled;
+        steps <= 0 && steps % LOOP_SNAPSHOT_PERIOD == 0
+    }
+
+    pub fn inc_step_counter_and_detect_loops(&mut self, n: usize) -> EvalResult<'tcx, ()> {
+        // TODO: Remove `as` cast
+        self.steps_until_detector_enabled =
+            self.steps_until_detector_enabled.saturating_sub(n as isize);
+
+        if !self.is_loop_detector_scheduled() {
+            return Ok(());
+        }
+
+        if self.loop_detector.is_empty() {
+            // First run of the loop detector
 
             // FIXME(#49980): make this warning a lint
-            self.tcx.sess.span_warn(self.frame().span, "Constant evaluating a complex constant, this might take some time");
-            self.steps_until_detector_enabled = 1_000_000;
+            self.tcx.sess.span_warn(self.frame().span,
+                "Constant evaluating a complex constant, this might take some time");
         }
+
+        self.loop_detector.observe_and_analyze(&self.machine, &self.stack, &self.memory)
     }
 
     /// Returns true as long as there are more things to do.
@@ -44,7 +61,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M>
             return Ok(true);
         }
 
-        self.inc_step_counter_and_detect_loops(1);
+        self.inc_step_counter_and_detect_loops(1)?;
 
         let terminator = basic_block.terminator();
         assert_eq!(old_frames, self.cur_frame());

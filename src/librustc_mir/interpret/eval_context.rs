@@ -45,7 +45,7 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
 
     /// The number of terminators to be evaluated before enabling the infinite
     /// loop detector.
-    pub(crate) steps_until_detector_enabled: usize,
+    pub(crate) steps_until_detector_enabled: isize,
 
     pub(crate) loop_detector: InfiniteLoopDetector<'a, 'mir, 'tcx, M>,
 }
@@ -175,12 +175,17 @@ impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
     where M: Clone + Eq + Hash + Machine<'mir, 'tcx>,
           'tcx: 'a + 'mir,
 {
-    pub fn observe(
+    /// Returns `true` if the loop detector has not yet observed a snapshot.
+    pub fn is_empty(&self) -> bool {
+        self.bloom.is_empty()
+    }
+
+    pub fn observe_and_analyze(
         &mut self,
         machine: &M,
         stack: &Vec<Frame<'mir, 'tcx>>,
         memory: &Memory<'a, 'mir, 'tcx, M>,
-    ) -> EvalResult<'_, ()> {
+    ) -> EvalResult<'tcx, ()> {
         let snapshot = (machine, stack, memory);
 
         let mut fx = FxHasher::default();
@@ -286,7 +291,7 @@ impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf
     }
 }
 
-const MAX_TERMINATORS: usize = 1_000_000;
+const MAX_TERMINATORS: isize = 1_000_000;
 
 impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn new(
@@ -656,7 +661,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
 
             Aggregate(ref kind, ref operands) => {
-                self.inc_step_counter_and_detect_loops(operands.len());
+                self.inc_step_counter_and_detect_loops(operands.len())?;
 
                 let (dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
