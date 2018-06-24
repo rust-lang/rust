@@ -78,7 +78,7 @@ pub unsafe fn __cpuid(leaf: u32) -> CpuidResult {
 }
 
 /// Does the host support the `cpuid` instruction?
-#[inline(never)]
+#[inline]
 pub fn has_cpuid() -> bool {
     #[cfg(target_arch = "x86_64")]
     {
@@ -116,14 +116,15 @@ pub fn has_cpuid() -> bool {
                     # otherwise. All other bits have not been modified and
                     # are zero:
                     xor     $0, $1
-                    # Store in $0 the value of the 21st bit
-                    shr     $0, 21
                     "#
                      : "=r"(result), "=r"(_temp)
                      :
                      : "cc", "memory"
                      : "intel");
             }
+            // Therefore, if result is 0, the bit was not modified and cpuid is
+            // not available. If cpuid is available, the bit was modified and
+            // result != 0.
             result != 0
         }
     }
