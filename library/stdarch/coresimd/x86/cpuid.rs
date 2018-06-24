@@ -93,41 +93,38 @@ pub fn has_cpuid() -> bool {
             // https://software.intel.com/en-us/articles/using-cpuid-to-detect-the-presence-of-sse-41-and-sse-42-instruction-sets/
             // which detects whether `cpuid` is available by checking whether the 21st bit of the EFLAGS register is modifiable or not.
             // If it is, then `cpuid` is available.
-            let eax: i32;
-            asm!(r#"
-                # Save a copy of the original eflags that we will restore later:
-                pushfd
-                # Copy eflags to ecx and eax:
-                pushfd
-                pop %eax
-                mov %ecx, %eax
-                # Flip 21st bit and write back to eflags register:
-                xor %eax, 0x200000
-                push %eax
-                popfd
-                # Read eflags register again:
-                pushfd
-                pop %eax
-                # If cpuid is available, the bit will still be flipped
-                # and it will be the only bit modified.
-                #
-                # xor with the original eflags should produce a 1 in
-                # the 21st bit in this case, and zeros for all other bits:
-                xor %eax, %ecx
-                # So if the value of the 21st bit is 1, cpuid is available,
-                # and if it is zero, it isn't because we didn't manage to
-                # modify it:
-                shrl %eax, 21
-                # Restore original eflags
-                popfd
-            "#
-                 : "={eax}"(eax)  // output operands
-                 : // input operands
-                 : "memory", "ecx" // clobbers all memory and ecx 
-                 : "volatile"  // has side-effects
-            );
-            debug_assert!(eax == 0 || eax == 1);
-            eax == 1
+            let result: u32;
+            let _temp: u32;
+            unsafe {
+                asm!(r#"
+                    # Read eflags into $0 and copy into $1:
+                    pushfd
+                    pop     $0
+                    mov     $1, $0
+                    # Flip 21st bit:
+                    xor     $0, 0x200000
+                    # Set eflags:
+                    push    $0
+                    popfd
+                    # Read eflags again, if cpuid is available
+                    # the 21st bit will be flipped, otherwise it
+                    # it will have the same value as the original in $1:
+                    pushfd
+                    pop     $0
+                    # Xor'ing with the original eflags should have the
+                    # 21st bit set to true if cpuid is available and zero
+                    # otherwise. All other bits have not been modified and
+                    # are zero:
+                    xor     $0, $1
+                    # Store in $0 the value of the 21st bit
+                    shr     $0, 21
+                    "#
+                     : "=r"(result), "=r"(_temp)
+                     :
+                     : "cc", "memory"
+                     : "intel");
+            }
+            result != 0
         }
     }
 }
