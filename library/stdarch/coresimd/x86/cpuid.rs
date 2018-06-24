@@ -96,31 +96,36 @@ pub fn has_cpuid() -> bool {
             let result: u32;
             let _temp: u32;
             asm!(r#"
-                 # Read eflags into $0 and copy into $1:
+                 # Read eflags into $0 and copy it into $1:
                  pushfd
                  pop     $0
                  mov     $1, $0
-                 # Flip 21st bit:
+                 # Flip 21st bit of $0.
                  xor     $0, 0x200000
-                 # Set eflags:
+                 # Set eflags to the value of $0
+                 #
+                 # Bit 21st can only be modified if cpuid is available
                  push    $0
-                 popfd
-                 # Read eflags again, if cpuid is available
-                 # the 21st bit will be flipped, otherwise it
-                 # it will have the same value as the original in $1:
-                 pushfd
+                 popfd          # A
+                 # Read eflags into $0:
+                 pushfd         # B
                  pop     $0
-                 # Xor'ing with the original eflags should have the
-                 # 21st bit set to true if cpuid is available and zero
-                 # otherwise. All other bits have not been modified and
-                 # are zero:
+                 # xor with the original eflags sets the bits that
+                 # have been modified:
                  xor     $0, $1
+                 # There is a race between popfd (A) and pushfd (B)
+                 # where other bits beyond 21st may have been modified due to
+                 # interrupts, a debugger stepping through the asm, etc.
+                 #
+                 # Therefore, explicitly check whether the 21st bit
+                 # was modified or not:
+                 and     $0, 0x200000
                  "#
                  : "=r"(result), "=r"(_temp)
                  :
                  : "cc", "memory"
                  : "intel");
-            // Therefore, if result is 0, the bit was not modified and cpuid is
+            // If result == 0, the 21st bit was not modified and cpuid is
             // not available. If cpuid is available, the bit was modified and
             // result != 0.
             result != 0
