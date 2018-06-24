@@ -1,0 +1,41 @@
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/infinite_loop.rs:20:9
+   |
+LL | /         while n != 0 { //~ ERROR constant contains unimplemented expression type
+LL | |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
+LL | |         }
+   | |_________^
+
+warning: Constant evaluating a complex constant, this might take some time
+  --> $DIR/infinite_loop.rs:16:18
+   |
+LL |       let _ = [(); {
+   |  __________________^
+LL | |         //~^ WARNING Constant evaluating a complex constant, this might take some time
+LL | |         //~| ERROR could not evaluate repeat length
+LL | |         let mut n = 113383; // #20 in A006884
+...  |
+LL | |         n
+LL | |     }];
+   | |_____^
+
+error[E0080]: could not evaluate repeat length
+  --> $DIR/infinite_loop.rs:16:18
+   |
+LL |       let _ = [(); {
+   |  __________________^
+LL | |         //~^ WARNING Constant evaluating a complex constant, this might take some time
+LL | |         //~| ERROR could not evaluate repeat length
+LL | |         let mut n = 113383; // #20 in A006884
+LL | |         while n != 0 { //~ ERROR constant contains unimplemented expression type
+LL | |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
+   | |                    ---------- program will never terminate
+LL | |         }
+LL | |         n
+LL | |     }];
+   | |_____^
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0019, E0080.
+For more information about an error, try `rustc --explain E0019`.
