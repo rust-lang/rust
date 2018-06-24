@@ -312,7 +312,11 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: 
             edition,
         }
     } else {
-        SyntaxExtension::DeclMacro(expander, Some((def.id, def.span)), edition)
+        SyntaxExtension::DeclMacro {
+            expander,
+            def_info: Some((def.id, def.span)),
+            edition,
+        }
     }
 }
 

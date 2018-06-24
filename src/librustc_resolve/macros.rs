@@ -350,8 +350,8 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn check_unused_macros(&self) {
         for did in self.unused_macros.iter() {
             let id_span = match *self.macro_map[did] {
-                SyntaxExtension::NormalTT { def_info, .. } => def_info,
-                SyntaxExtension::DeclMacro(.., osp, _) => osp,
+                SyntaxExtension::NormalTT { def_info, .. } |
+                SyntaxExtension::DeclMacro { def_info, .. } => def_info,
                 _ => None,
             };
             if let Some((id, span)) = id_span {
@@ -848,8 +848,6 @@ impl<'a> Resolver<'a> {
     /// Error if `ext` is a Macros 1.1 procedural macro being imported by `#[macro_use]`
     fn err_if_macro_use_proc_macro(&mut self, name: Name, use_span: Span,
                                    binding: &NameBinding<'a>) {
-        use self::SyntaxExtension::*;
-
         let krate = binding.def().def_id().krate;
 
         // Plugin-based syntax extensions are exempt from this check
@@ -859,15 +857,16 @@ impl<'a> Resolver<'a> {
 
         match *ext {
             // If `ext` is a procedural macro, check if we've already warned about it
-            AttrProcMacro(..) | ProcMacro(..) =>
+            SyntaxExtension::AttrProcMacro(..) | SyntaxExtension::ProcMacro { .. } =>
                 if !self.warned_proc_macros.insert(name) { return; },
             _ => return,
         }
 
         let warn_msg = match *ext {
-            AttrProcMacro(..) => "attribute procedural macros cannot be \
-                                  imported with `#[macro_use]`",
-            ProcMacro(..) => "procedural macros cannot be imported with `#[macro_use]`",
+            SyntaxExtension::AttrProcMacro(..) =>
+                "attribute procedural macros cannot be imported with `#[macro_use]`",
+            SyntaxExtension::ProcMacro { .. } =>
+                "procedural macros cannot be imported with `#[macro_use]`",
             _ => return,
         };
 
