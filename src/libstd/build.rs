@@ -126,7 +126,8 @@ fn build_libbacktrace(target: &str) -> Result<(), ()> {
     if !target.contains("apple-ios") &&
        !target.contains("solaris") &&
        !target.contains("redox") &&
-       !target.contains("android") {
+       !target.contains("android") &&
+       !target.contains("haiku") {
         build.define("HAVE_DL_ITERATE_PHDR", "1");
     }
     build.define("_GNU_SOURCE", "1");
