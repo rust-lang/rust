@@ -292,23 +292,24 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
 
 fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx>) {
     match &stmt.kind {
-        /*StatementKind::SetDiscriminant { place, variant_index } => {
-            if self.layout.for_variant(bx.cx, variant_index).abi == layout::Abi::Uninhabited {
+        StatementKind::SetDiscriminant { place, variant_index } => {
+            let place_ty = fx.monomorphize(&place.ty(&fx.mir.local_decls, fx.tcx).to_ty(fx.tcx));
+            let place = trans_place(fx, place);
+            let layout = fx.layout_of(place_ty);
+            if layout.for_variant(&*fx, *variant_index).abi == layout::Abi::Uninhabited {
                 return;
             }
-            match self.layout.variants {
+            match layout.variants {
                 layout::Variants::Single { index } => {
-                    assert_eq!(index, variant_index);
+                    assert_eq!(index, *variant_index);
                 }
                 layout::Variants::Tagged { .. } => {
-                    let ptr = self.project_field(bx, 0);
-                    let to = self.layout.ty.ty_adt_def().unwrap()
-                        .discriminant_for_variant(bx.tcx(), variant_index)
+                    let ptr = place.place_field(fx, mir::Field::new(0), place_ty);
+                    let to = layout.ty.ty_adt_def().unwrap()
+                        .discriminant_for_variant(fx.tcx, *variant_index)
                         .val;
-                    bx.store(
-                        C_uint_big(ptr.layout.llvm_type(bx.cx), to),
-                        ptr.llval,
-                        ptr.align);
+                    let discr = CValue::const_val(fx, ptr.1.ty, to as u64 as i64);
+                    ptr.0.write_cvalue(fx, discr, ptr.1.ty);
                 }
                 layout::Variants::NicheFilling {
                     dataful_variant,
@@ -316,35 +317,22 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                     niche_start,
                     ..
                 } => {
-                    if variant_index != dataful_variant {
-                        if bx.sess().target.target.arch == "arm" ||
-                        bx.sess().target.target.arch == "aarch64" {
-                            // Issue #34427: As workaround for LLVM bug on ARM,
-                            // use memset of 0 before assigning niche value.
-                            let llptr = bx.pointercast(self.llval, Type::i8(bx.cx).ptr_to());
-                            let fill_byte = C_u8(bx.cx, 0);
-                            let (size, align) = self.layout.size_and_align();
-                            let size = C_usize(bx.cx, size.bytes());
-                            let align = C_u32(bx.cx, align.abi() as u32);
-                            base::call_memset(bx, llptr, fill_byte, size, align, false);
-                        }
-
-                        let niche = self.project_field(bx, 0);
-                        let niche_llty = niche.layout.immediate_llvm_type(bx.cx);
+                    if *variant_index != dataful_variant {
+                        let niche = place.place_field(fx, mir::Field::new(0), place_ty);
+                        //let niche_llty = niche.layout.immediate_llvm_type(bx.cx);
                         let niche_value = ((variant_index - *niche_variants.start()) as u128)
                             .wrapping_add(niche_start);
                         // FIXME(eddyb) Check the actual primitive type here.
                         let niche_llval = if niche_value == 0 {
-                            // HACK(eddyb) Using `C_null` as it works on all types.
-                            C_null(niche_llty)
+                            CValue::const_val(fx, niche.1.ty, 0)
                         } else {
-                            C_uint_big(niche_llty, niche_value)
+                            CValue::const_val(fx, niche.1.ty, niche_value as u64 as i64)
                         };
-                        OperandValue::Immediate(niche_llval).store(bx, niche);
+                        niche.0.write_cvalue(fx, niche_llval, niche.1.ty);
                     }
                 }
             }
-        }*/
+        }
         StatementKind::Assign(to_place, rval) => {
             let dest_ty = fx.monomorphize(&to_place.ty(&fx.mir.local_decls, fx.tcx).to_ty(fx.tcx));
             let lval = trans_place(fx, to_place);
@@ -400,6 +388,15 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                                 BinOp::Mul => fx.bcx.ins().imul(lhs, rhs),
                                 BinOp::Div => fx.bcx.ins().udiv(lhs, rhs),
                                 bin_op => unimplemented!("checked uint bin op {:?} {:?} {:?}", bin_op, lhs, rhs),
+                            }
+                        }
+                        TypeVariants::TyInt(_) => {
+                            match bin_op {
+                                BinOp::Add => fx.bcx.ins().iadd(lhs, rhs),
+                                BinOp::Sub => fx.bcx.ins().isub(lhs, rhs),
+                                BinOp::Mul => fx.bcx.ins().imul(lhs, rhs),
+                                BinOp::Div => fx.bcx.ins().sdiv(lhs, rhs),
+                                bin_op => unimplemented!("checked int bin op {:?} {:?} {:?}", bin_op, lhs, rhs),
                             }
                         }
                         _ => unimplemented!(),
@@ -493,10 +490,10 @@ fn trans_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, place: &Place<'tcx>)
         Place::Local(local) => fx.get_local_place(*local),
         Place::Projection(projection) => {
             let base = trans_place(fx, &projection.base);
-            let place_ty = fx.monomorphize(&place.ty(&*fx.mir, fx.tcx)).to_ty(fx.tcx);
+            let base_ty = projection.base.ty(&*fx.mir, fx.tcx).to_ty(fx.tcx);
             match projection.elem {
                 ProjectionElem::Deref => {
-                    CPlace::Addr(base.to_cvalue(fx).load_value(fx, place_ty))
+                    CPlace::Addr(base.to_cvalue(fx).load_value(fx, base_ty))
                 }
                 ProjectionElem::Field(field, ty) => {
                     base.place_field(fx, field, ty).0
