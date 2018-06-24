@@ -119,7 +119,6 @@ ENV RUST_CONFIGURE_ARGS \
       --musl-root-aarch64=/musl-aarch64 \
       --musl-root-mips=/musl-mips \
       --musl-root-mipsel=/musl-mipsel \
-      --enable-emscripten \
       --disable-docs
 
 ENV SCRIPT python2.7 ../x.py test --target $TARGETS src/test/run-make
