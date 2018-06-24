@@ -51,7 +51,7 @@ extern crate unicode_width;
 
 pub mod edition;
 pub mod hygiene;
-pub use hygiene::{Mark, SyntaxContext, ExpnInfo, ExpnFormat, NameAndSpan, CompilerDesugaringKind};
+pub use hygiene::{Mark, SyntaxContext, ExpnInfo, ExpnFormat, CompilerDesugaringKind};
 
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
@@ -303,19 +303,19 @@ impl Span {
     /// Edition of the crate from which this span came.
     pub fn edition(self) -> edition::Edition {
         self.ctxt().outer().expn_info().map_or_else(|| hygiene::default_edition(),
-                                                    |einfo| einfo.callee.edition)
+                                                    |einfo| einfo.edition)
     }
 
     /// Return the source callee.
     ///
-    /// Returns None if the supplied span has no expansion trace,
-    /// else returns the NameAndSpan for the macro definition
+    /// Returns `None` if the supplied span has no expansion trace,
+    /// else returns the `ExpnInfo` for the macro definition
     /// corresponding to the source callsite.
-    pub fn source_callee(self) -> Option<NameAndSpan> {
-        fn source_callee(info: ExpnInfo) -> NameAndSpan {
+    pub fn source_callee(self) -> Option<ExpnInfo> {
+        fn source_callee(info: ExpnInfo) -> ExpnInfo {
             match info.call_site.ctxt().outer().expn_info() {
                 Some(info) => source_callee(info),
-                None => info.callee,
+                None => info,
             }
         }
         self.ctxt().outer().expn_info().map(source_callee)
@@ -326,7 +326,7 @@ impl Span {
     /// `#[allow_internal_unstable]`).
     pub fn allows_unstable(&self) -> bool {
         match self.ctxt().outer().expn_info() {
-            Some(info) => info.callee.allow_internal_unstable,
+            Some(info) => info.allow_internal_unstable,
             None => false,
         }
     }
@@ -334,7 +334,7 @@ impl Span {
     /// Check if this span arises from a compiler desugaring of kind `kind`.
     pub fn is_compiler_desugaring(&self, kind: CompilerDesugaringKind) -> bool {
         match self.ctxt().outer().expn_info() {
-            Some(info) => match info.callee.format {
+            Some(info) => match info.format {
                 ExpnFormat::CompilerDesugaring(k) => k == kind,
                 _ => false,
             },
@@ -346,7 +346,7 @@ impl Span {
     /// if this span is not from a desugaring.
     pub fn compiler_desugaring_kind(&self) -> Option<CompilerDesugaringKind> {
         match self.ctxt().outer().expn_info() {
-            Some(info) => match info.callee.format {
+            Some(info) => match info.format {
                 ExpnFormat::CompilerDesugaring(k) => Some(k),
                 _ => None
             },
@@ -359,7 +359,7 @@ impl Span {
     //  (that is, a macro marked with `#[allow_internal_unsafe]`).
     pub fn allows_unsafe(&self) -> bool {
         match self.ctxt().outer().expn_info() {
-            Some(info) => info.callee.allow_internal_unsafe,
+            Some(info) => info.allow_internal_unsafe,
             None => false,
         }
     }
@@ -368,20 +368,17 @@ impl Span {
         let mut prev_span = DUMMY_SP;
         let mut result = vec![];
         while let Some(info) = self.ctxt().outer().expn_info() {
-            let (pre, post) = match info.callee.format {
-                ExpnFormat::MacroAttribute(..) => ("#[", "]"),
-                ExpnFormat::MacroBang(..) => ("", "!"),
-                ExpnFormat::CompilerDesugaring(..) => ("desugaring of `", "`"),
-            };
-            let macro_decl_name = format!("{}{}{}", pre, info.callee.name(), post);
-            let def_site_span = info.callee.span;
-
             // Don't print recursive invocations
             if !info.call_site.source_equal(&prev_span) {
+                let (pre, post) = match info.format {
+                    ExpnFormat::MacroAttribute(..) => ("#[", "]"),
+                    ExpnFormat::MacroBang(..) => ("", "!"),
+                    ExpnFormat::CompilerDesugaring(..) => ("desugaring of `", "`"),
+                };
                 result.push(MacroBacktrace {
                     call_site: info.call_site,
-                    macro_decl_name,
-                    def_site_span,
+                    macro_decl_name: format!("{}{}{}", pre, info.format.name(), post),
+                    def_site_span: info.def_site,
                 });
             }
 

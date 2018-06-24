@@ -22,7 +22,7 @@ use std::vec;
 use attr::{self, HasAttrs};
 use syntax_pos::{self, DUMMY_SP, NO_EXPANSION, Span, FileMap, BytePos};
 
-use codemap::{self, CodeMap, ExpnInfo, NameAndSpan, MacroAttribute, dummy_spanned};
+use codemap::{self, CodeMap, ExpnInfo, MacroAttribute, dummy_spanned};
 use errors;
 use config;
 use entry::{self, EntryPointType};
@@ -307,13 +307,11 @@ fn generate_test_harness(sess: &ParseSess,
 
     mark.set_expn_info(ExpnInfo {
         call_site: DUMMY_SP,
-        callee: NameAndSpan {
-            format: MacroAttribute(Symbol::intern("test")),
-            span: None,
-            allow_internal_unstable: true,
-            allow_internal_unsafe: false,
-            edition: hygiene::default_edition(),
-        }
+        def_site: None,
+        format: MacroAttribute(Symbol::intern("test")),
+        allow_internal_unstable: true,
+        allow_internal_unsafe: false,
+        edition: hygiene::default_edition(),
     });
 
     TestHarnessGenerator {

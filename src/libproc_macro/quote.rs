@@ -85,9 +85,6 @@ impl ProcMacro for Quoter {
                    _: ::syntax_pos::Span,
                    stream: tokenstream::TokenStream)
                    -> tokenstream::TokenStream {
-        let mut info = cx.current_expansion.mark.expn_info().unwrap();
-        info.callee.allow_internal_unstable = true;
-        cx.current_expansion.mark.set_expn_info(info);
         ::__internal::set_sess(cx, || TokenStream(stream).quote().0)
     }
 }

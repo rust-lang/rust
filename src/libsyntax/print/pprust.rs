@@ -18,7 +18,7 @@ use util::parser::{self, AssocOp, Fixity};
 use attr;
 use codemap::{self, CodeMap};
 use syntax_pos::{self, BytePos};
-use syntax_pos::hygiene::{Mark, MarkKind, SyntaxContext};
+use syntax_pos::hygiene::{Mark, SyntaxContext};
 use parse::token::{self, BinOpToken, Token};
 use parse::lexer::comments;
 use parse::{self, ParseSess};
@@ -842,7 +842,7 @@ pub trait PrintState<'a> {
     fn print_dollar_crate(&mut self, mut ctxt: SyntaxContext) -> io::Result<()> {
         if let Some(mark) = ctxt.adjust(Mark::root()) {
             // Make a best effort to print something that complies
-            if mark.kind() == MarkKind::Builtin {
+            if mark.is_builtin() {
                 if let Some(name) = std_inject::injected_crate_name() {
                     self.writer().word("::")?;
                     self.writer().word(name)?;

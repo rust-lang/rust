@@ -15,7 +15,7 @@ use syntax::ast::{Arg, FnHeader, Generics, Mac, Mutability, Ty, Unsafety};
 use syntax::ast::{self, Expr, Ident, Item, ItemKind, TyKind, VisibilityKind};
 use syntax::attr;
 use syntax::codemap::respan;
-use syntax::codemap::{ExpnInfo, MacroAttribute, NameAndSpan};
+use syntax::codemap::{ExpnInfo, MacroAttribute};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::base::Resolver;
 use syntax::ext::build::AstBuilder;
@@ -80,13 +80,11 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(ExpnInfo {
             call_site: DUMMY_SP,
-            callee: NameAndSpan {
-                format: MacroAttribute(Symbol::intern(name)),
-                span: None,
-                allow_internal_unstable: true,
-                allow_internal_unsafe: false,
-                edition: hygiene::default_edition(),
-            },
+            def_site: None,
+            format: MacroAttribute(Symbol::intern(name)),
+            allow_internal_unstable: true,
+            allow_internal_unsafe: false,
+            edition: hygiene::default_edition(),
         });
         let span = item.span.with_ctxt(SyntaxContext::empty().apply_mark(mark));
         let ecfg = ExpansionConfig::default(name.to_string());
