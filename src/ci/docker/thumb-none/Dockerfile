@@ -80,23 +80,25 @@ RUN \
   echo "# a" >> /usr/local/mips-linux-musl/bin/mips-openwrt-linux-musl-wrapper.sh && \
   echo "# b" >> /usr/local/mipsel-linux-musl/bin/mipsel-openwrt-linux-musl-wrapper.sh
 
-ENV TARGETS=asmjs-unknown-emscripten
-ENV TARGETS=$TARGETS,wasm32-unknown-emscripten
-ENV TARGETS=$TARGETS,x86_64-rumprun-netbsd
-ENV TARGETS=$TARGETS,mips-unknown-linux-musl
-ENV TARGETS=$TARGETS,mipsel-unknown-linux-musl
-ENV TARGETS=$TARGETS,arm-unknown-linux-musleabi
-ENV TARGETS=$TARGETS,arm-unknown-linux-musleabihf
-ENV TARGETS=$TARGETS,armv5te-unknown-linux-gnueabi
-ENV TARGETS=$TARGETS,armv5te-unknown-linux-musleabi
-ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabihf
-ENV TARGETS=$TARGETS,aarch64-unknown-linux-musl
-ENV TARGETS=$TARGETS,sparc64-unknown-linux-gnu
-ENV TARGETS=$TARGETS,x86_64-unknown-redox
-ENV TARGETS=$TARGETS,thumbv6m-none-eabi
-ENV TARGETS=$TARGETS,thumbv7m-none-eabi
-ENV TARGETS=$TARGETS,thumbv7em-none-eabi
-ENV TARGETS=$TARGETS,thumbv7em-none-eabihf
+# ENV TARGETS=asmjs-unknown-emscripten
+# ENV TARGETS=$TARGETS,wasm32-unknown-emscripten
+# ENV TARGETS=$TARGETS,x86_64-rumprun-netbsd
+# ENV TARGETS=$TARGETS,mips-unknown-linux-musl
+# ENV TARGETS=$TARGETS,mipsel-unknown-linux-musl
+# ENV TARGETS=$TARGETS,arm-unknown-linux-musleabi
+# ENV TARGETS=$TARGETS,arm-unknown-linux-musleabihf
+# ENV TARGETS=$TARGETS,armv5te-unknown-linux-gnueabi
+# ENV TARGETS=$TARGETS,armv5te-unknown-linux-musleabi
+# ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabihf
+# ENV TARGETS=$TARGETS,aarch64-unknown-linux-musl
+# ENV TARGETS=$TARGETS,sparc64-unknown-linux-gnu
+# ENV TARGETS=$TARGETS,x86_64-unknown-redox
+# ENV TARGETS=$TARGETS,thumbv6m-none-eabi
+# ENV TARGETS=$TARGETS,thumbv7m-none-eabi
+# ENV TARGETS=$TARGETS,thumbv7em-none-eabi
+# ENV TARGETS=$TARGETS,thumbv7em-none-eabihf
+
+ENV TARGETS=thumbv7m-none-eabi
 
 # FIXME: remove armv5te vars after https://github.com/alexcrichton/cc-rs/issues/271
 #        get fixed and cc update
@@ -120,7 +122,7 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-emscripten \
       --disable-docs
 
-ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
+ENV SCRIPT python2.7 ../x.py test --target $TARGETS src/test/run-make
 
 # sccache
 COPY scripts/sccache.sh /scripts/
