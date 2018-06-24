@@ -1297,7 +1297,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 // Detect if this is an inline module (`mod m { ... }` as opposed to `mod m;`).
                 // In the non-inline case, `inner` is never the dummy span (c.f. `parse_item_mod`).
                 // Thus, if `inner` is the dummy span, we know the module is inline.
-                let inline_module = item.span.contains(inner) || inner == DUMMY_SP;
+                let inline_module = item.span.contains(inner) || inner.is_dummy();
 
                 if inline_module {
                     if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, "path") {

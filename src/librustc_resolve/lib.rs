@@ -2861,7 +2861,7 @@ impl<'a> Resolver<'a> {
                     .map(|suggestion| import_candidate_to_paths(&suggestion)).collect::<Vec<_>>();
                 enum_candidates.sort();
                 for (sp, variant_path, enum_path) in enum_candidates {
-                    if sp == DUMMY_SP {
+                    if sp.is_dummy() {
                         let msg = format!("there is an enum variant `{}`, \
                                         try using `{}`?",
                                         variant_path,
@@ -4285,7 +4285,7 @@ impl<'a> Resolver<'a> {
             let mut err = struct_span_err!(self.session, span, E0659, "`{}` is ambiguous", name);
             err.span_note(b1.span, &msg1);
             match b2.def() {
-                Def::Macro(..) if b2.span == DUMMY_SP =>
+                Def::Macro(..) if b2.span.is_dummy() =>
                     err.note(&format!("`{}` is also a builtin macro", name)),
                 _ => err.span_note(b2.span, &msg2),
             };
@@ -4398,14 +4398,14 @@ impl<'a> Resolver<'a> {
                           container));
 
         err.span_label(span, format!("`{}` re{} here", name, new_participle));
-        if old_binding.span != DUMMY_SP {
+        if !old_binding.span.is_dummy() {
             err.span_label(self.session.codemap().def_span(old_binding.span),
                            format!("previous {} of the {} `{}` here", old_noun, old_kind, name));
         }
 
         // See https://github.com/rust-lang/rust/issues/32354
         if old_binding.is_import() || new_binding.is_import() {
-            let binding = if new_binding.is_import() && new_binding.span != DUMMY_SP {
+            let binding = if new_binding.is_import() && !new_binding.span.is_dummy() {
                 new_binding
             } else {
                 old_binding

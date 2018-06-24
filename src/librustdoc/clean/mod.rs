@@ -3464,7 +3464,7 @@ impl Span {
 
 impl Clean<Span> for syntax_pos::Span {
     fn clean(&self, cx: &DocContext) -> Span {
-        if *self == DUMMY_SP {
+        if self.is_dummy() {
             return Span::empty();
         }
 

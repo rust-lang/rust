@@ -12,7 +12,7 @@ use lint;
 use rustc::ty::TyCtxt;
 
 use syntax::ast;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -39,7 +39,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CheckVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        if item.vis == hir::Public || item.span == DUMMY_SP {
+        if item.vis == hir::Public || item.span.is_dummy() {
             return;
         }
         if let hir::ItemUse(ref path, _) = item.node {

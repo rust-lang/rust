@@ -190,7 +190,7 @@ struct TypeVerifier<'a, 'b: 'a, 'gcx: 'b + 'tcx, 'tcx: 'b> {
 
 impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn visit_span(&mut self, span: &Span) {
-        if *span != DUMMY_SP {
+        if !span.is_dummy() {
             self.last_span = *span;
         }
     }
@@ -1601,7 +1601,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 statement_index: 0,
             };
             for stmt in &block_data.statements {
-                if stmt.source_info.span != DUMMY_SP {
+                if !stmt.source_info.span.is_dummy() {
                     self.last_span = stmt.source_info.span;
                 }
                 self.check_stmt(mir, stmt, location);

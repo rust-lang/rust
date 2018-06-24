@@ -14,7 +14,7 @@ use feature_gate::{self, emit_feature_err, Features, GateIssue};
 use parse::{token, ParseSess};
 use print::pprust;
 use symbol::keywords;
-use syntax_pos::{BytePos, Span, DUMMY_SP};
+use syntax_pos::{BytePos, Span};
 use tokenstream;
 
 use std::iter::Peekable;
@@ -41,8 +41,8 @@ impl Delimited {
 
     /// Return a `self::TokenTree` with a `Span` corresponding to the opening delimiter.
     pub fn open_tt(&self, span: Span) -> TokenTree {
-        let open_span = if span == DUMMY_SP {
-            DUMMY_SP
+        let open_span = if span.is_dummy() {
+            span
         } else {
             span.with_lo(span.lo() + BytePos(self.delim.len() as u32))
         };
@@ -51,8 +51,8 @@ impl Delimited {
 
     /// Return a `self::TokenTree` with a `Span` corresponding to the closing delimiter.
     pub fn close_tt(&self, span: Span) -> TokenTree {
-        let close_span = if span == DUMMY_SP {
-            DUMMY_SP
+        let close_span = if span.is_dummy() {
+            span
         } else {
             span.with_lo(span.hi() - BytePos(self.delim.len() as u32))
         };

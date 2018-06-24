@@ -708,7 +708,7 @@ macro_rules! define_queries {
 
             // FIXME(eddyb) Get more valid Span's on queries.
             pub fn default_span(&self, tcx: TyCtxt<'_, $tcx, '_>, span: Span) -> Span {
-                if span != DUMMY_SP {
+                if !span.is_dummy() {
                     return span;
                 }
                 // The def_span query is used to calculate default_span,

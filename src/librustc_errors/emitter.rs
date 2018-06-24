@@ -10,7 +10,7 @@
 
 use self::Destination::*;
 
-use syntax_pos::{DUMMY_SP, FileMap, Span, MultiSpan};
+use syntax_pos::{FileMap, Span, MultiSpan};
 
 use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapperDyn, DiagnosticId};
 use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
@@ -216,7 +216,7 @@ impl EmitterWriter {
 
         if let Some(ref cm) = self.cm {
             for span_label in msp.span_labels() {
-                if span_label.span == DUMMY_SP {
+                if span_label.span.is_dummy() {
                     continue;
                 }
 
@@ -730,7 +730,7 @@ impl EmitterWriter {
         let mut max = 0;
         if let Some(ref cm) = self.cm {
             for primary_span in msp.primary_spans() {
-                if primary_span != &DUMMY_SP {
+                if !primary_span.is_dummy() {
                     let hi = cm.lookup_char_pos(primary_span.hi());
                     if hi.line > max {
                         max = hi.line;
@@ -739,7 +739,7 @@ impl EmitterWriter {
             }
             if !self.short_message {
                 for span_label in msp.span_labels() {
-                    if span_label.span != DUMMY_SP {
+                    if !span_label.span.is_dummy() {
                         let hi = cm.lookup_char_pos(span_label.span.hi());
                         if hi.line > max {
                             max = hi.line;
@@ -778,7 +778,7 @@ impl EmitterWriter {
 
             // First, find all the spans in <*macros> and point instead at their use site
             for sp in span.primary_spans() {
-                if *sp == DUMMY_SP {
+                if sp.is_dummy() {
                     continue;
                 }
                 let call_sp = cm.call_span_if_macro(*sp);
@@ -790,7 +790,7 @@ impl EmitterWriter {
                     // Only show macro locations that are local
                     // and display them like a span_note
                     if let Some(def_site) = trace.def_site_span {
-                        if def_site == DUMMY_SP {
+                        if def_site.is_dummy() {
                             continue;
                         }
                         if always_backtrace {
@@ -830,7 +830,7 @@ impl EmitterWriter {
                 span.push_span_label(label_span, label_text);
             }
             for sp_label in span.span_labels() {
-                if sp_label.span == DUMMY_SP {
+                if sp_label.span.is_dummy() {
                     continue;
                 }
                 if cm.span_to_filename(sp_label.span.clone()).is_macros() &&
@@ -1003,7 +1003,7 @@ impl EmitterWriter {
         // Make sure our primary file comes first
         let (primary_lo, cm) = if let (Some(cm), Some(ref primary_span)) =
             (self.cm.as_ref(), msp.primary_span().as_ref()) {
-            if primary_span != &&DUMMY_SP {
+            if !primary_span.is_dummy() {
                 (cm.lookup_char_pos(primary_span.lo()), cm)
             } else {
                 emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;

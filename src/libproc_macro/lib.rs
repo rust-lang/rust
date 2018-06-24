@@ -177,8 +177,6 @@ impl iter::FromIterator<TokenStream> for TokenStream {
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub mod token_stream {
     use syntax::tokenstream;
-    use syntax_pos::DUMMY_SP;
-
     use {TokenTree, TokenStream, Delimiter};
 
     /// An iterator over `TokenStream`'s `TokenTree`s.
@@ -207,7 +205,7 @@ pub mod token_stream {
                 // need to flattened during iteration over stream's token trees.
                 // Eventually this needs to be removed in favor of keeping original token trees
                 // and not doing the roundtrip through AST.
-                if tree.span().0 == DUMMY_SP {
+                if tree.span().0.is_dummy() {
                     if let TokenTree::Group(ref group) = tree {
                         if group.delimiter() == Delimiter::None {
                             self.cursor.insert(group.stream.clone().0);
