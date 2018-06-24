@@ -113,22 +113,23 @@ pub fn has_cpuid() -> bool {
                  # xor with the original eflags sets the bits that
                  # have been modified:
                  xor     $0, $1
-                 # There is a race between popfd (A) and pushfd (B)
-                 # where other bits beyond 21st may have been modified due to
-                 # interrupts, a debugger stepping through the asm, etc.
-                 #
-                 # Therefore, explicitly check whether the 21st bit
-                 # was modified or not:
-                 and     $0, 0x200000
                  "#
                  : "=r"(result), "=r"(_temp)
                  :
                  : "cc", "memory"
                  : "intel");
-            // If result == 0, the 21st bit was not modified and cpuid is
-            // not available. If cpuid is available, the bit was modified and
-            // result != 0.
-            result != 0
+            // There is a race between popfd (A) and pushfd (B)
+            // where other bits beyond 21st may have been modified due to
+            // interrupts, a debugger stepping through the asm, etc.
+            //
+            // Therefore, explicitly check whether the 21st bit
+            // was modified or not.
+            //
+            // If the result is zero, the cpuid bit was not modified.
+            // If the result is 0x200000 (non-zero), then the cpuid
+            // was correctly modified and the CPU supports the cpuid
+            // instruction:
+            (result & 0x200000) != 0
         }
     }
 }
