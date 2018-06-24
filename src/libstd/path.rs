@@ -1397,6 +1397,8 @@ impl<'a> From<&'a Path> for Box<Path> {
 
 #[stable(feature = "path_buf_from_box", since = "1.18.0")]
 impl From<Box<Path>> for PathBuf {
+    /// Converts a `Box<Path>` into a `PathBuf`.
+    /// This conversion does not allocate memory
     fn from(boxed: Box<Path>) -> PathBuf {
         boxed.into_path_buf()
     }
@@ -1404,6 +1406,8 @@ impl From<Box<Path>> for PathBuf {
 
 #[stable(feature = "box_from_path_buf", since = "1.20.0")]
 impl From<PathBuf> for Box<Path> {
+    /// Converts a `PathBuf` into a `Box<Path>`.
+    /// This conversion does not allocate memory
     fn from(p: PathBuf) -> Box<Path> {
         p.into_boxed_path()
     }
@@ -1426,6 +1430,9 @@ impl<'a, T: ?Sized + AsRef<OsStr>> From<&'a T> for PathBuf {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<OsString> for PathBuf {
+    /// Converts a `OsString` into a `PathBuf`.
+    /// This conversion copies the data.
+    /// This conversion does allocate memory.
     fn from(s: OsString) -> PathBuf {
         PathBuf { inner: s }
     }
@@ -1433,6 +1440,9 @@ impl From<OsString> for PathBuf {
 
 #[stable(feature = "from_path_buf_for_os_string", since = "1.14.0")]
 impl From<PathBuf> for OsString {
+    /// Converts a `PathBuf` into a `OsString`.
+    /// This conversion copies the data.
+    /// This conversion does allocate memory.
     fn from(path_buf : PathBuf) -> OsString {
         path_buf.inner
     }
@@ -1440,6 +1450,8 @@ impl From<PathBuf> for OsString {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<String> for PathBuf {
+    /// Converts a `String` into a `PathBuf`.
+    /// This conversion does not allocate memory
     fn from(s: String) -> PathBuf {
         PathBuf::from(OsString::from(s))
     }
@@ -1536,6 +1548,10 @@ impl<'a> From<Cow<'a, Path>> for PathBuf {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<PathBuf> for Arc<Path> {
+    /// Converts a `PathBuf` into a `Arc<Path>`.
+    /// This conversion happens in place.
+    /// This conversion does not allocate memory.
+    /// This function is unsafe. Data can't be moved from this reference.
     #[inline]
     fn from(s: PathBuf) -> Arc<Path> {
         let arc: Arc<OsStr> = Arc::from(s.into_os_string());
@@ -1545,6 +1561,10 @@ impl From<PathBuf> for Arc<Path> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl<'a> From<&'a Path> for Arc<Path> {
+    /// Converts a `PathBuf` into a `Arc<Path>`.
+    /// This conversion happens in place.
+    /// This conversion does not allocate memory.
+    /// This function is unsafe. Data can't be moved from this reference.
     #[inline]
     fn from(s: &Path) -> Arc<Path> {
         let arc: Arc<OsStr> = Arc::from(s.as_os_str());
@@ -1554,6 +1574,10 @@ impl<'a> From<&'a Path> for Arc<Path> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<PathBuf> for Rc<Path> {
+    /// Converts a `PathBuf` into a `Rc<Path>`.
+    /// This conversion happens in place.
+    /// This conversion does not allocate memory.
+    /// This function is unsafe. Data can't be moved from this reference.
     #[inline]
     fn from(s: PathBuf) -> Rc<Path> {
         let rc: Rc<OsStr> = Rc::from(s.into_os_string());
