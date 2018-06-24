@@ -19,7 +19,7 @@ impl EntityRef for Variable {
     }
 }
 
-pub fn cton_type_from_ty(ty: Ty) -> Option<types::Type> {
+fn cton_type_from_ty(ty: Ty) -> Option<types::Type> {
     Some(match ty.sty {
         TypeVariants::TyBool => types::I8,
         TypeVariants::TyUint(size) => {
@@ -53,22 +53,6 @@ pub fn fixup_cton_ty(ty: Type) -> Type {
     match ty {
         types::I64X2 | types::I64 | types::I32 => ty,
         _ => types::I32,
-    }
-}
-
-pub fn extend_val<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, val: Value, ty: Ty) -> Value {
-    let cton_ty = cton_type_from_ty(ty).unwrap();
-    let to_ty = match cton_ty {
-        types::I64 => return val,
-        types::I32 => return val,
-        _ => types::I32,
-    };
-    match ty.sty {
-        TypeVariants::TyBool => fx.bcx.ins().uextend(to_ty, val),
-        TypeVariants::TyUint(_) => fx.bcx.ins().uextend(to_ty, val),
-        TypeVariants::TyInt(_) => fx.bcx.ins().sextend(to_ty, val),
-        TypeVariants::TyFnPtr(_) => val,
-        _ => unimplemented!(),
     }
 }
 
@@ -106,7 +90,7 @@ impl CValue {
         match self {
             CValue::ByRef(value) => value,
             CValue::ByVal(value) => {
-                let layout = fx.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
+                let layout = fx.layout_of(ty);
                 let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
                     kind: StackSlotKind::ExplicitSlot,
                     size: layout.size.bytes() as u32,
@@ -125,7 +109,7 @@ impl CValue {
     pub fn load_value<'a, 'tcx: 'a>(self, fx: &mut FunctionCx<'a, 'tcx>, ty: Ty<'tcx>) -> Value {
         match self {
             CValue::ByRef(value) => {
-                let cton_ty = cton_type_from_ty(fx.monomorphize(&ty)).expect(&format!("{:?}", ty));
+                let cton_ty = fx.cton_type(ty).expect(&format!("{:?}", ty));
                 load_workaround(fx, cton_ty, value, 0)
             }
             CValue::ByVal(value) => value,
@@ -148,7 +132,7 @@ impl CValue {
             CValue::ByRef(addr) => addr,
             _ => bug!("place_field for {:?}", self),
         };
-        let layout = fx.tcx.layout_of(ParamEnv::empty().and(fx.monomorphize(&ty))).unwrap();
+        let layout = fx.layout_of(ty);
         let field_offset = layout.fields.offset(field.index());
         if field_offset.bytes() > 0 {
             let field_offset = fx.bcx.ins().iconst(types::I64, field_offset.bytes() as i64);
@@ -159,8 +143,8 @@ impl CValue {
     }
 
     pub fn const_val<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, ty: Ty<'tcx>, const_val: i64) -> CValue {
-        let ty = fx.monomorphize(&ty);
-        CValue::ByVal(fx.bcx.ins().iconst(cton_type_from_ty(ty).unwrap(), const_val))
+        let ty = fx.cton_type(ty).unwrap();
+        CValue::ByVal(fx.bcx.ins().iconst(ty, const_val))
     }
 }
 
@@ -190,7 +174,7 @@ impl<'a, 'tcx: 'a> CPlace {
     }
 
     pub fn write_cvalue(self, fx: &mut FunctionCx<'a, 'tcx>, from: CValue, ty: Ty<'tcx>) {
-        let layout = fx.tcx.layout_of(ParamEnv::reveal_all().and(fx.monomorphize(&ty))).unwrap();
+        let layout = fx.layout_of(ty);
         let size = layout.size.bytes() as i32;
         match self {
             CPlace::Var(var) => {
@@ -198,7 +182,7 @@ impl<'a, 'tcx: 'a> CPlace {
                 fx.bcx.def_var(var, data)
             },
             CPlace::Addr(addr) => {
-                if let Some(cton_ty) = cton_type_from_ty(ty) {
+                if let Some(cton_ty) = fx.cton_type(ty) {
                     let data = from.load_value(fx, ty);
                     store_workaround(fx, cton_ty, addr, data, 0);
                 } else {
@@ -214,7 +198,7 @@ impl<'a, 'tcx: 'a> CPlace {
 
     pub fn place_field(self, fx: &mut FunctionCx<'a, 'tcx>, field: mir::Field, ty: Ty<'tcx>) -> (CPlace, layout::TyLayout<'tcx>) {
         let base = self.expect_addr();
-        let layout = fx.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
+        let layout = fx.layout_of(ty);
         let field_offset = layout.fields.offset(field.index());
         if field_offset.bytes() > 0 {
             let field_offset = fx.bcx.ins().iconst(types::I64, field_offset.bytes() as i64);
@@ -255,8 +239,8 @@ pub fn cton_sig_from_mono_fn_sig<'a ,'tcx: 'a>(sig: PolyFnSig<'tcx>) -> Signatur
 }
 
 pub fn cton_intcast<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, val: Value, from: Ty<'tcx>, to: Ty<'tcx>, signed: bool) -> Value {
-    let from = cton_type_from_ty(from).unwrap();
-    let to = cton_type_from_ty(to).unwrap();
+    let from = fx.cton_type(from).unwrap();
+    let to = fx.cton_type(to).unwrap();
     if from == to {
         return val;
     }
@@ -283,6 +267,16 @@ pub struct FunctionCx<'a, 'tcx: 'a> {
     pub local_map: HashMap<Local, CPlace>,
 }
 
+impl<'a, 'tcx: 'a> LayoutOf for &'a FunctionCx<'a, 'tcx> {
+    type Ty = Ty<'tcx>;
+    type TyLayout = TyLayout<'tcx>;
+
+    fn layout_of(self, ty: Ty<'tcx>) -> TyLayout<'tcx> {
+        let ty = self.monomorphize(&ty);
+        self.tcx.layout_of(ParamEnv::reveal_all().and(&ty)).unwrap()
+    }
+}
+
 impl<'f, 'tcx> FunctionCx<'f, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TypeFoldable<'tcx>
@@ -292,6 +286,10 @@ impl<'f, 'tcx> FunctionCx<'f, 'tcx> {
             ty::ParamEnv::reveal_all(),
             value,
         )
+    }
+
+    pub fn cton_type(&self, ty: Ty<'tcx>) -> Option<Type> {
+        cton_type_from_ty(self.monomorphize(&ty))
     }
 
     pub fn get_ebb(&self, bb: BasicBlock) -> Ebb {

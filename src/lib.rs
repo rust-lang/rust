@@ -42,7 +42,7 @@ mod prelude {
     pub use rustc::mir;
     pub use rustc::mir::*;
     pub use rustc::session::Session;
-    pub use rustc::ty::layout;
+    pub use rustc::ty::layout::{self, LayoutOf, TyLayout};
     pub use rustc::ty::{
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
         TypeFoldable, TypeVariants,
