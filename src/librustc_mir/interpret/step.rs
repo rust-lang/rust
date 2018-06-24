@@ -3,6 +3,7 @@
 //! The main entry point is the `step` method.
 
 use rustc::mir;
+use rustc::lint;
 
 use rustc::mir::interpret::EvalResult;
 use super::{EvalContext, Machine};
@@ -11,8 +12,28 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn inc_step_counter_and_check_limit(&mut self, n: usize) {
         self.terminators_remaining = self.terminators_remaining.saturating_sub(n);
         if self.terminators_remaining == 0 {
-            // FIXME(#49980): make this warning a lint
-            self.tcx.sess.span_warn(self.frame().span, "Constant evaluating a complex constant, this might take some time");
+            let msg = "constant evaluating a complex constant, this might take some time";
+            let lint = ::rustc::lint::builtin::CONST_TIME_LIMIT;
+            let node_id = self
+                .stack()
+                .iter()
+                .rev()
+                .filter_map(|frame| frame.lint_root)
+                .next()
+                .or(lint_root)
+                .expect("some part of a failing const eval must be local");
+            let err = self.tcx.struct_span_lint_node(
+                lint,
+                node_id,
+                self.frame().span,
+                msg,
+            );
+            if self.lint_level_at_node(lint, node_id).0 == lint::Level::Deny ||
+                self.lint_level_at_node(lint, node_id).0 == lint::Level::Forbid {
+                    err.report_as_err(self.tcx, msg, node_id);
+                } else {
+                    err.report_as_lint(self.tcx, msg);
+                }
             self.terminators_remaining = 1_000_000;
         }
     }
