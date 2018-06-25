@@ -540,12 +540,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     // ==============
     /// Finds the breakable scope for a given label. This is used for
     /// resolving `break` and `continue`.
-    pub fn find_breakable_scope(&mut self,
+    pub fn find_breakable_scope(&self,
                            span: Span,
                            label: region::Scope)
-                           -> &mut BreakableScope<'tcx> {
+                           -> &BreakableScope<'tcx> {
         // find the loop-scope with the correct id
-        self.breakable_scopes.iter_mut()
+        self.breakable_scopes.iter()
             .rev()
             .filter(|breakable_scope| breakable_scope.region_scope == label)
             .next()
