@@ -354,13 +354,13 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 let rw = format_trait(&self.get_context(), item, self.block_indent);
                 self.push_rewrite(item.span, rw);
             }
-            ast::ItemKind::TraitAlias(ref generics, ref ty_param_bounds) => {
+            ast::ItemKind::TraitAlias(ref generics, ref generic_bounds) => {
                 let shape = Shape::indented(self.block_indent, self.config);
                 let rw = format_trait_alias(
                     &self.get_context(),
                     item.ident,
                     generics,
-                    ty_param_bounds,
+                    generic_bounds,
                     shape,
                 );
                 self.push_rewrite(item.span, rw);
@@ -461,11 +461,11 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     Some(&inner_attrs),
                 );
             }
-            ast::TraitItemKind::Type(ref type_param_bounds, ref type_default) => {
+            ast::TraitItemKind::Type(ref generic_bounds, ref type_default) => {
                 let rewrite = rewrite_associated_type(
                     ti.ident,
                     type_default.as_ref(),
-                    Some(type_param_bounds),
+                    Some(generic_bounds),
                     &self.get_context(),
                     self.block_indent,
                 );

@@ -36,7 +36,6 @@ use overflow;
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use spanned::Spanned;
-use types::TraitTyParamBounds;
 use utils::*;
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
@@ -971,7 +970,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         is_auto,
         unsafety,
         ref generics,
-        ref type_param_bounds,
+        ref generic_bounds,
         ref trait_items,
     ) = item.node
     {
@@ -997,23 +996,22 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         result.push_str(&generics_str);
 
         // FIXME(#2055): rustfmt fails to format when there are comments between trait bounds.
-        if !type_param_bounds.is_empty() {
+        if !generic_bounds.is_empty() {
             let ident_hi = context
                 .snippet_provider
                 .span_after(item.span, &format!("{}", item.ident));
-            let bound_hi = type_param_bounds.last().unwrap().span().hi();
+            let bound_hi = generic_bounds.last().unwrap().span().hi();
             let snippet = context.snippet(mk_sp(ident_hi, bound_hi));
             if contains_comment(snippet) {
                 return None;
             }
-        }
-        if !type_param_bounds.is_empty() {
+
             result = rewrite_assign_rhs_with(
                 context,
                 result + ":",
-                &TraitTyParamBounds::new(type_param_bounds),
+                generic_bounds,
                 shape,
-                RhsTactics::ForceNextLine,
+                RhsTactics::ForceNextLineWithoutIndent,
             )?;
         }
 
@@ -1026,10 +1024,10 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             };
 
             let where_budget = context.budget(last_line_width(&result));
-            let pos_before_where = if type_param_bounds.is_empty() {
+            let pos_before_where = if generic_bounds.is_empty() {
                 generics.where_clause.span.lo()
             } else {
-                type_param_bounds[type_param_bounds.len() - 1].span().hi()
+                generic_bounds[generic_bounds.len() - 1].span().hi()
             };
             let option = WhereClauseOption::snuggled(&generics_str);
             let where_clause_str = rewrite_where_clause(
@@ -1134,7 +1132,7 @@ pub fn format_trait_alias(
     context: &RewriteContext,
     ident: ast::Ident,
     generics: &ast::Generics,
-    ty_param_bounds: &ast::TyParamBounds,
+    generic_bounds: &ast::GenericBounds,
     shape: Shape,
 ) -> Option<String> {
     let alias = ident.name.as_str();
@@ -1143,7 +1141,7 @@ pub fn format_trait_alias(
     let generics_str = rewrite_generics(context, &alias, generics, g_shape, generics.span)?;
     let lhs = format!("trait {} =", generics_str);
     // 1 = ";"
-    rewrite_assign_rhs(context, lhs, ty_param_bounds, shape.sub_width(1)?).map(|s| s + ";")
+    rewrite_assign_rhs(context, lhs, generic_bounds, shape.sub_width(1)?).map(|s| s + ";")
 }
 
 fn format_unit_struct(context: &RewriteContext, p: &StructParts, offset: Indent) -> Option<String> {
@@ -1671,13 +1669,13 @@ fn rewrite_static(
 pub fn rewrite_associated_type(
     ident: ast::Ident,
     ty_opt: Option<&ptr::P<ast::Ty>>,
-    ty_param_bounds_opt: Option<&ast::TyParamBounds>,
+    generic_bounds_opt: Option<&ast::GenericBounds>,
     context: &RewriteContext,
     indent: Indent,
 ) -> Option<String> {
     let prefix = format!("type {}", ident);
 
-    let type_bounds_str = if let Some(bounds) = ty_param_bounds_opt {
+    let type_bounds_str = if let Some(bounds) = generic_bounds_opt {
         if bounds.is_empty() {
             String::new()
         } else {
@@ -1703,11 +1701,11 @@ pub fn rewrite_associated_impl_type(
     ident: ast::Ident,
     defaultness: ast::Defaultness,
     ty_opt: Option<&ptr::P<ast::Ty>>,
-    ty_param_bounds_opt: Option<&ast::TyParamBounds>,
+    generic_bounds_opt: Option<&ast::GenericBounds>,
     context: &RewriteContext,
     indent: Indent,
 ) -> Option<String> {
-    let result = rewrite_associated_type(ident, ty_opt, ty_param_bounds_opt, context, indent)?;
+    let result = rewrite_associated_type(ident, ty_opt, generic_bounds_opt, context, indent)?;
 
     match defaultness {
         ast::Defaultness::Default => Some(format!("default {}", result)),
@@ -2698,7 +2696,7 @@ fn format_generics(
         }
         // If the generics are not parameterized then generics.span.hi() == 0,
         // so we use span.lo(), which is the position after `struct Foo`.
-        let span_end_before_where = if generics.is_parameterized() {
+        let span_end_before_where = if !generics.params.is_empty() {
             generics.span.hi()
         } else {
             span.lo()
@@ -2801,15 +2799,6 @@ impl Rewrite for ast::ForeignItem {
             shape,
             false,
         )
-    }
-}
-
-impl Rewrite for ast::GenericParam {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        match *self {
-            ast::GenericParam::Lifetime(ref lifetime_def) => lifetime_def.rewrite(context, shape),
-            ast::GenericParam::Type(ref ty) => ty.rewrite(context, shape),
-        }
     }
 }
 

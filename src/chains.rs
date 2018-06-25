@@ -70,6 +70,7 @@ use expr::rewrite_call;
 use macros::convert_try_mac;
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
+use spanned::Spanned;
 use utils::{
     first_line_width, last_line_extendable, last_line_width, mk_sp, trimmed_last_line_width,
     wrap_str,
@@ -436,9 +437,9 @@ fn rewrite_chain_subexpr(
 
     match expr.node {
         ast::ExprKind::MethodCall(ref segment, ref expressions) => {
-            let types = match segment.parameters {
+            let types = match segment.args {
                 Some(ref params) => match **params {
-                    ast::PathParameters::AngleBracketed(ref data) => &data.types[..],
+                    ast::GenericArgs::AngleBracketed(ref data) => &data.args[..],
                     _ => &[],
                 },
                 _ => &[],
@@ -484,7 +485,7 @@ fn is_try(expr: &ast::Expr) -> bool {
 
 fn rewrite_method_call(
     method_name: ast::Ident,
-    types: &[ptr::P<ast::Ty>],
+    types: &[ast::GenericArg],
     args: &[ptr::P<ast::Expr>],
     span: Span,
     context: &RewriteContext,
@@ -500,7 +501,7 @@ fn rewrite_method_call(
 
         let type_str = format!("::<{}>", type_list.join(", "));
 
-        (types.last().unwrap().span.hi(), type_str)
+        (types.last().unwrap().span().hi(), type_str)
     };
 
     let callee_str = format!(".{}{}", method_name, type_str);
