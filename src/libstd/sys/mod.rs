@@ -67,6 +67,7 @@ cfg_if! {
         // (missing things in `libc` which is empty) so just omit everything
         // with an empty module
         #[unstable(issue = "0", feature = "std_internals")]
+        #[allow(missing_docs)]
         pub mod unix_ext {}
     } else {
         // On other platforms like Windows document the bare bones of unix
@@ -80,6 +81,7 @@ cfg_if! {
 cfg_if! {
     if #[cfg(windows)] {
         // On windows we'll just be documenting what's already available
+        #[allow(missing_docs)]
         pub use self::ext as windows_ext;
     } else if #[cfg(any(target_os = "cloudabi", target_arch = "wasm32"))] {
         // On CloudABI and wasm right now the shim below doesn't compile, so
