@@ -160,7 +160,6 @@
     // used for special search precedence
     var TY_PRIMITIVE = itemTypes.indexOf("primitive");
     var TY_KEYWORD = itemTypes.indexOf("keyword");
-    var TY_MACRO = itemTypes.indexOf("macro");
 
     onEach(document.getElementsByClassName('js-only'), function(e) {
         removeClass(e, 'js-only');

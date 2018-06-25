@@ -233,7 +233,7 @@ function main(argv) {
 
     var arraysToLoad = ["itemTypes"];
     var variablesToLoad = ["MAX_LEV_DISTANCE", "MAX_RESULTS",
-                           "TY_PRIMITIVE", "TY_KEYWORD", "TY_MACRO",
+                           "TY_PRIMITIVE", "TY_KEYWORD",
                            "levenshtein_row2"];
     // execQuery first parameter is built in getQuery (which takes in the search input).
     // execQuery last parameter is built in buildIndex.
