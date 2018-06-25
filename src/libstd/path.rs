@@ -1431,8 +1431,7 @@ impl<'a, T: ?Sized + AsRef<OsStr>> From<&'a T> for PathBuf {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<OsString> for PathBuf {
     /// Converts a `OsString` into a `PathBuf`.
-    /// This conversion copies the data.
-    /// This conversion does allocate memory.
+    /// This conversion does not allocate memory
     fn from(s: OsString) -> PathBuf {
         PathBuf { inner: s }
     }
@@ -1441,8 +1440,7 @@ impl From<OsString> for PathBuf {
 #[stable(feature = "from_path_buf_for_os_string", since = "1.14.0")]
 impl From<PathBuf> for OsString {
     /// Converts a `PathBuf` into a `OsString`.
-    /// This conversion copies the data.
-    /// This conversion does allocate memory.
+    /// This conversion does not allocate memory
     fn from(path_buf : PathBuf) -> OsString {
         path_buf.inner
     }
