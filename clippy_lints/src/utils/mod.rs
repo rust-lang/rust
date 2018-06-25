@@ -612,7 +612,7 @@ pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
 /// These suggestions can be parsed by rustfix to allow it to automatically fix your code.
 /// In the example below, `help` is `"try"` and `sugg` is the suggested replacement `".any(|x| x > 2)"`.
 ///
-/// ```
+/// ```ignore
 /// error: This `.fold` can be more succinctly expressed as `.any`
 /// --> $DIR/methods.rs:390:13
 ///     |

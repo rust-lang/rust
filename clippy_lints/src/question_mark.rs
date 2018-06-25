@@ -43,7 +43,7 @@ impl LintPass for QuestionMarkPass {
 impl QuestionMarkPass {
     /// Check if the given expression on the given context matches the following structure:
     ///
-    /// ```
+    /// ```ignore
     /// if option.is_none() {
     ///    return None;
     /// }

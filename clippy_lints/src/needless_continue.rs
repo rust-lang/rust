@@ -2,7 +2,7 @@
 //!
 //! For example, the lint would catch
 //!
-//! ```
+//! ```ignore
 //! while condition() {
 //!     update_condition();
 //!     if x {
@@ -16,7 +16,7 @@
 //!
 //! And suggest something like this:
 //!
-//! ```
+//! ```ignore
 //! while condition() {
 //!     update_condition();
 //!     if x {
@@ -365,7 +365,7 @@ fn check_and_warn<'a>(ctx: &EarlyContext, expr: &'a ast::Expr) {
 ///
 /// is transformed to
 ///
-/// ```
+/// ```ignore
 ///     {
 ///         let x = 5;
 /// ```
@@ -388,7 +388,7 @@ pub fn erode_from_back(s: &str) -> String {
 /// any number of opening braces are eaten, followed by any number of newlines.
 /// e.g.,  the string
 ///
-/// ```
+/// ```ignore
 ///         {
 ///             something();
 ///             inside_a_block();
@@ -397,7 +397,7 @@ pub fn erode_from_back(s: &str) -> String {
 ///
 /// is transformed to
 ///
-/// ```
+/// ```ignore
 ///             something();
 ///             inside_a_block();
 ///         }
