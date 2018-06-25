@@ -35,7 +35,7 @@ IR                      |  Intermediate Representation. A general term in compil
 local crate             |  the crate currently being compiled.
 LTO                     |  Link-Time Optimizations. A set of optimizations offered by LLVM that occur just before the final binary is linked. These include optmizations like removing functions that are never used in the final program, for example. _ThinLTO_ is a variant of LTO that aims to be a bit more scalable and efficient, but possibly sacrifices some optimizations. You may also read issues in the Rust repo about "FatLTO", which is the loving nickname given to non-Thin LTO. LLVM documentation: [here][lto] and [here][thinlto]
 [LLVM]                  |  (actually not an acronym :P) an open-source compiler backend. It accepts LLVM IR and outputs native binaries. Various languages (e.g. Rust) can then implement a compiler front-end that output LLVM IR and use LLVM to compile to all the platforms LLVM supports.
-MIR                     |  the Mid-level IR that is created after type-checking for use by borrowck and trans ([see more](./mir/index.html))
+MIR                     |  the Mid-level IR that is created after type-checking for use by borrowck and codegen ([see more](./mir/index.html))
 miri                    |  an interpreter for MIR used for constant evaluation ([see more](./miri.html))
 normalize               |  a general term for converting to a more canonical form, but in the case of rustc typically refers to [associated type normalization](./traits/associated-types.html#normalize)
 newtype                 |  a "newtype" is a wrapper around some other type (e.g., `struct Foo(T)` is a "newtype" for `T`). This is commonly used in Rust to give a stronger type for indices.
@@ -61,7 +61,7 @@ tcx                     |  the "typing context", main data structure of the comp
 trait reference         |  the name of a trait along with a suitable set of input type/lifetimes ([see more](./traits/goals-and-clauses.html#trait-ref))
 token                   |  the smallest unit of parsing. Tokens are produced after lexing ([see more](the-parser.html)).
 [TLS]                   |  Thread-Local Storage. Variables may be defined so that each thread has its own copy (rather than all threads sharing the variable). This has some interactions with LLVM. Not all platforms support TLS.
-trans                   |  the code to translate MIR into LLVM IR.
+codegen                 |  the code to translate MIR into LLVM IR.
 trait reference         |  a trait and values for its type parameters ([see more](ty.html)).
 ty                      |  the internal representation of a type ([see more](ty.html)).
 UFCS                    |  Universal Function Call Syntax. An unambiguous syntax for calling a method ([see more](type-checking.html)).

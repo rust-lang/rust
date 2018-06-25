@@ -53,7 +53,7 @@
 - [Constant evaluation](./const-eval.md)
     - [miri const evaluator](./miri.md)
 - [Parameter Environments](./param_env.md)
-- [Generating LLVM IR](./trans.md)
+- [Generating LLVM IR](./codegen.md)
 - [Emitting Diagnostics](./diag.md)
 
 ---

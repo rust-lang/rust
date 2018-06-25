@@ -8,7 +8,7 @@ standard library and the compiler.  This document, of course, focuses
 on the latter.
 
 Rustc consists of a number of crates, including `syntax`,
-`rustc`, `rustc_back`, `rustc_trans`, `rustc_driver`, and
+`rustc`, `rustc_back`, `rustc_codegen`, `rustc_driver`, and
 many more. The source for each crate can be found in a directory
 like `src/libXXX`, where `XXX` is the crate name.
 
@@ -25,7 +25,7 @@ The dependency structure of these crates is roughly a diamond:
               /        |         \
             /          |           \
           /            v             \
-rustc_trans    rustc_borrowck   ...  rustc_metadata
+rustc_codegen  rustc_borrowck   ...  rustc_metadata
           \            |            /
             \          |          /
               \        |        /
