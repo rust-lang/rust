@@ -25,6 +25,7 @@ use rustc::hir::RangeEnd;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 use rustc::mir::Field;
+use rustc::mir::interpret::ConstValue;
 use rustc::util::common::ErrorReported;
 
 use syntax_pos::{Span, DUMMY_SP};
@@ -932,16 +933,20 @@ fn slice_pat_covered_by_constructor<'tcx>(
     suffix: &[Pattern<'tcx>]
 ) -> Result<bool, ErrorReported> {
     let data: &[u8] = match *ctor {
-        ConstantValue(const_val @ &ty::Const { val: ConstVal::Value(..), .. }) => {
-            if let Some(ptr) = const_val.to_ptr() {
-                let is_array_ptr = const_val.ty
+        ConstantValue(&ty::Const { val: ConstVal::Value(const_val), ty }) => {
+            let val = match const_val {
+                ConstValue::ByRef(..) => bug!("unexpected ConstValue::ByRef"),
+                ConstValue::Scalar(val) | ConstValue::ScalarPair(val, _) => val,
+            };
+            if let Ok(ptr) = val.to_ptr() {
+                let is_array_ptr = ty
                     .builtin_deref(true)
                     .and_then(|t| t.ty.builtin_index())
                     .map_or(false, |t| t == tcx.types.u8);
                 assert!(is_array_ptr);
                 tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id).bytes.as_ref()
             } else {
-                bug!()
+                bug!("unexpected non-ptr ConstantValue")
             }
         }
         _ => bug!()
