@@ -87,6 +87,7 @@ cfg_if! {
         // On CloudABI and wasm right now the shim below doesn't compile, so
         // just omit it
         #[unstable(issue = "0", feature = "std_internals")]
+        #[allow(missing_docs)]
         pub mod windows_ext {}
     } else {
         // On all other platforms (aka linux/osx/etc) then pull in a "minimal"
