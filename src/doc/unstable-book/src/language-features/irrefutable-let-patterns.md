@@ -23,6 +23,6 @@ fn main() {
     // These two examples used to be errors, but now they
     // trigger a lint (that is allowed):
     if let _ = 5 {}
-    while let _ = 5 {}
+    while let _ = 5 { break; }
 }
 ```
