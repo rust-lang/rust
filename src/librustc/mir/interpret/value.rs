@@ -5,18 +5,10 @@ use ty;
 
 use super::{EvalResult, Pointer, PointerArithmetic, Allocation};
 
-#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
-pub enum ConstVal<'tcx> {
-    Value(ConstValue<'tcx>),
-}
-
 /// Represents a constant value in Rust. ByVal and ScalarPair are optimizations which
 /// matches Value's optimizations for easy conversions between these two types
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
 pub enum ConstValue<'tcx> {
-    /// Never returned from the `const_eval` query, but the HIR contains these frequently in order
-    /// to allow HIR creation to happen for everything before needing 
-    Unevaluated(DefId, &'tcx Substs<'tcx>),
     /// Used only for types with layout::abi::Scalar ABI and ZSTs which use Scalar::undef()
     Scalar(Scalar),
     /// Used only for types with layout::abi::ScalarPair
