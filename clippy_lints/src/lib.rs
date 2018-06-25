@@ -499,7 +499,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
 
     reg.register_lint_group("clippy", vec![
         approx_const::APPROX_CONSTANT,
-        indexing_slicing::OUT_OF_BOUNDS_INDEXING,
         assign_ops::ASSIGN_OP_PATTERN,
         assign_ops::MISREFACTORED_ASSIGN_OP,
         attrs::DEPRECATED_SEMVER,
@@ -549,6 +548,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         identity_conversion::IDENTITY_CONVERSION,
         identity_op::IDENTITY_OP,
         if_let_redundant_pattern_matching::IF_LET_REDUNDANT_PATTERN_MATCHING,
+        indexing_slicing::OUT_OF_BOUNDS_INDEXING,
         infallible_destructuring_match::INFALLIBLE_DESTRUCTURING_MATCH,
         infinite_iter::INFINITE_ITER,
         inline_fn_without_body::INLINE_FN_WITHOUT_BODY,
@@ -862,7 +862,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
 
     reg.register_lint_group("clippy_correctness", vec![
         approx_const::APPROX_CONSTANT,
-        indexing_slicing::OUT_OF_BOUNDS_INDEXING,
         attrs::DEPRECATED_SEMVER,
         attrs::USELESS_ATTRIBUTE,
         bit_mask::BAD_BIT_MASK,
@@ -880,6 +879,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         erasing_op::ERASING_OP,
         formatting::POSSIBLE_MISSING_COMMA,
         functions::NOT_UNSAFE_PTR_ARG_DEREF,
+        indexing_slicing::OUT_OF_BOUNDS_INDEXING,
         infinite_iter::INFINITE_ITER,
         inline_fn_without_body::INLINE_FN_WITHOUT_BODY,
         invalid_ref::INVALID_REF,
