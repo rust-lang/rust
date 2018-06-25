@@ -68,7 +68,7 @@ impl<'a> Spanned for ArmWrapper<'a> {
 
 impl<'a> Rewrite for ArmWrapper<'a> {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        rewrite_match_arm(context, self.arm, shape, self.is_last, self.beginning_vert)
+        rewrite_match_arm(context, self.arm, shape, self.is_last)
     }
 }
 
@@ -236,7 +236,6 @@ fn rewrite_match_arm(
     arm: &ast::Arm,
     shape: Shape,
     is_last: bool,
-    beginning_vert: Option<BytePos>,
 ) -> Option<String> {
     let (missing_span, attrs_str) = if !arm.attrs.is_empty() {
         if contains_skip(&arm.attrs) {
@@ -256,22 +255,18 @@ fn rewrite_match_arm(
     } else {
         (mk_sp(arm.span().lo(), arm.span().lo()), String::new())
     };
-    let pats_str = rewrite_match_pattern(
-        context,
-        &ptr_vec_to_ref_vec(&arm.pats),
-        &arm.guard,
-        beginning_vert.is_some(),
-        shape,
-    ).and_then(|pats_str| {
-        combine_strs_with_missing_comments(
-            context,
-            &attrs_str,
-            &pats_str,
-            missing_span,
-            shape,
-            false,
-        )
-    })?;
+    let pats_str =
+        rewrite_match_pattern(context, &ptr_vec_to_ref_vec(&arm.pats), &arm.guard, shape)
+            .and_then(|pats_str| {
+                combine_strs_with_missing_comments(
+                    context,
+                    &attrs_str,
+                    &pats_str,
+                    missing_span,
+                    shape,
+                    false,
+                )
+            })?;
     rewrite_match_body(
         context,
         &arm.body,
@@ -286,22 +281,17 @@ fn rewrite_match_pattern(
     context: &RewriteContext,
     pats: &[&ast::Pat],
     guard: &Option<ptr::P<ast::Expr>>,
-    has_beginning_vert: bool,
     shape: Shape,
 ) -> Option<String> {
     // Patterns
     // 5 = ` => {`
-    // 2 = `| `
-    let pat_shape = shape
-        .sub_width(5)?
-        .offset_left(if has_beginning_vert { 2 } else { 0 })?;
+    let pat_shape = shape.sub_width(5)?;
     let pats_str = rewrite_multiple_patterns(context, pats, pat_shape)?;
-    let beginning_vert = if has_beginning_vert { "| " } else { "" };
 
     // Guard
     let guard_str = rewrite_guard(context, guard, shape, trimmed_last_line_width(&pats_str))?;
 
-    Some(format!("{}{}{}", beginning_vert, pats_str, guard_str))
+    Some(format!("{}{}", pats_str, guard_str))
 }
 
 // (extend, body)
