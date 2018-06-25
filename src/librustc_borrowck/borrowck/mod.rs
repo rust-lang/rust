@@ -680,7 +680,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 let mut err = self.cannot_act_on_moved_value(use_span,
                                                              verb,
                                                              msg,
-                                                             &format!("{}", nl),
+                                                             Some(format!("{}", nl)),
                                                              Origin::Ast);
                 let need_note = match lp.ty.sty {
                     ty::TypeVariants::TyClosure(id, _) => {
