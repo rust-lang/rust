@@ -145,7 +145,8 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 let (frames, span) = self.ecx.generate_stacktrace(None);
                 let err = ConstEvalErr {
                     span,
-                    data: (err, frames).into(),
+                    error: err,
+                    stacktrace: frames,
                 };
                 err.report_as_lint(
                     self.ecx.tcx,

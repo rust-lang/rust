@@ -18,7 +18,6 @@ use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc_data_structures::sync::Lrc;
 use mir::interpret;
 
 use std::rc::Rc;
@@ -462,10 +461,11 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ConstEvalErr<'a> {
     type Lifted = ConstEvalErr<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.data.0).map(|data| {
+        tcx.lift(&self.error).map(|error| {
             ConstEvalErr {
                 span: self.span,
-                data: Lrc::new((data, self.data.1.clone())),
+                stacktrace: self.stacktrace.clone(),
+                error,
             }
         })
     }
@@ -579,7 +579,7 @@ impl<'a, 'tcx, O: Lift<'tcx>> Lift<'tcx> for interpret::EvalErrorKind<'a, O> {
             TypeckError => TypeckError,
             TooGeneric => TooGeneric,
             CheckMatchError => CheckMatchError,
-            ReferencedConstant(ref err) => ReferencedConstant(tcx.lift(err)?),
+            ReferencedConstant(ref err) => ReferencedConstant(tcx.lift(&**err)?.into()),
             OverflowNeg => OverflowNeg,
             Overflow(op) => Overflow(op),
             DivisionByZero => DivisionByZero,

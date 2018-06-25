@@ -20,7 +20,7 @@ use syntax::ast;
 
 use rustc_data_structures::sync::Lrc;
 
-pub type EvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ConstEvalErr<'tcx>>;
+pub type EvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, Lrc<ConstEvalErr<'tcx>>>;
 
 #[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
 pub enum ConstVal<'tcx> {
@@ -31,7 +31,8 @@ pub enum ConstVal<'tcx> {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ConstEvalErr<'tcx> {
     pub span: Span,
-    pub data: Lrc<(::mir::interpret::EvalError<'tcx>, Vec<FrameInfo>)>,
+    pub error: ::mir::interpret::EvalError<'tcx>,
+    pub stacktrace: Vec<FrameInfo>,
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
@@ -81,7 +82,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         message: &str,
         lint_root: Option<ast::NodeId>,
     ) -> Option<DiagnosticBuilder<'tcx>> {
-        match self.data.0.kind {
+        match self.error.kind {
             ::mir::interpret::EvalErrorKind::TypeckError |
             ::mir::interpret::EvalErrorKind::TooGeneric |
             ::mir::interpret::EvalErrorKind::CheckMatchError |
@@ -93,7 +94,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         }
         trace!("reporting const eval failure at {:?}", self.span);
         let mut err = if let Some(lint_root) = lint_root {
-            let node_id = self.data.1
+            let node_id = self.stacktrace
                 .iter()
                 .rev()
                 .filter_map(|frame| frame.lint_root)
@@ -108,8 +109,8 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         } else {
             struct_error(tcx, message)
         };
-        err.span_label(self.span, self.data.0.to_string());
-        for FrameInfo { span, location, .. } in &self.data.1 {
+        err.span_label(self.span, self.error.to_string());
+        for FrameInfo { span, location, .. } in &self.stacktrace {
             err.span_label(*span, format!("inside call to `{}`", location));
         }
         Some(err)

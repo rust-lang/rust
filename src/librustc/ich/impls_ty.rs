@@ -505,7 +505,8 @@ impl_stable_hash_for!(struct ty::Const<'tcx> {
 
 impl_stable_hash_for!(struct ::middle::const_val::ConstEvalErr<'tcx> {
     span,
-    data
+    stacktrace,
+    error
 });
 
 impl_stable_hash_for!(struct ::middle::const_val::FrameInfo {

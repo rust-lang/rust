@@ -104,7 +104,8 @@ pub fn value_to_const_value<'tcx>(
             let (frames, span) = ecx.generate_stacktrace(None);
             let err = ConstEvalErr {
                 span,
-                data: (err, frames).into(),
+                error: err,
+                stacktrace: frames,
             };
             err.report_as_error(
                 ecx.tcx,
@@ -466,9 +467,10 @@ pub fn const_val_field<'a, 'tcx>(
     result.map_err(|err| {
         let (trace, span) = ecx.generate_stacktrace(None);
         ConstEvalErr {
-            data: (err, trace).into(),
+            error: err,
+            stacktrace: trace,
             span,
-        }
+        }.into()
     })
 }
 
@@ -537,9 +539,10 @@ pub fn const_eval_provider<'a, 'tcx>(
         // Do match-check before building MIR
         if tcx.check_match(def_id).is_err() {
             return Err(ConstEvalErr {
-                data: (EvalErrorKind::CheckMatchError.into(), Vec::new()).into(),
+                error: EvalErrorKind::CheckMatchError.into(),
+                stacktrace: vec![],
                 span,
-            });
+            }.into());
         }
 
         if let hir::BodyOwnerKind::Const = tcx.hir.body_owner_kind(id) {
@@ -549,9 +552,10 @@ pub fn const_eval_provider<'a, 'tcx>(
         // Do not continue into miri if typeck errors occurred; it will fail horribly
         if tables.tainted_by_errors {
             return Err(ConstEvalErr {
-                data: (EvalErrorKind::TypeckError.into(), Vec::new()).into(),
+                error: EvalErrorKind::CheckMatchError.into(),
+                stacktrace: vec![],
                 span,
-            });
+            }.into());
         }
     };
 
@@ -564,13 +568,14 @@ pub fn const_eval_provider<'a, 'tcx>(
     }).map_err(|err| {
         let (trace, span) = ecx.generate_stacktrace(None);
         let err = ConstEvalErr {
-            data: (err, trace).into(),
+            error: err,
+            stacktrace: trace,
             span,
         };
         if tcx.is_static(def_id).is_some() {
             err.report_as_error(ecx.tcx, "could not evaluate static initializer");
         }
-        err
+        err.into()
     })
 }
 

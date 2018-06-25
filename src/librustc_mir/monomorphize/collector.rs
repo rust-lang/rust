@@ -1210,7 +1210,7 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             Ok(val) => collect_const(tcx, val, instance.substs, output),
             Err(err) => {
                 use rustc::mir::interpret::EvalErrorKind;
-                if let EvalErrorKind::ReferencedConstant(_) = err.data.0.kind {
+                if let EvalErrorKind::ReferencedConstant(_) = err.error.kind {
                     err.report_as_error(
                         tcx.at(mir.promoted[i].span),
                         "erroneous constant used",

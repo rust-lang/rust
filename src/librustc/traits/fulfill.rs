@@ -499,12 +499,12 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                                             CodeSelectionError(ConstEvalFailure(err)))
                                     }
                                 } else {
-                                    let err = EvalErrorKind::TooGeneric.into();
                                     ProcessResult::Error(
                                         CodeSelectionError(ConstEvalFailure(ConstEvalErr {
                                             span: obligation.cause.span,
-                                            data: (err, vec![]).into(),
-                                        }))
+                                            error: EvalErrorKind::TooGeneric.into(),
+                                            stacktrace: vec![],
+                                        }.into()))
                                     )
                                 }
                             },

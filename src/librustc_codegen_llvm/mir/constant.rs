@@ -14,6 +14,7 @@ use rustc_mir::interpret::{read_target_uint, const_val_field};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::sync::Lrc;
 use rustc::mir::interpret::{GlobalId, Pointer, Scalar, Allocation, ConstValue, AllocType};
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Size};
@@ -117,7 +118,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
 pub fn codegen_static_initializer<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     def_id: DefId)
-    -> Result<ValueRef, ConstEvalErr<'tcx>>
+    -> Result<ValueRef, Lrc<ConstEvalErr<'tcx>>>
 {
     let instance = ty::Instance::mono(cx.tcx, def_id);
     let cid = GlobalId {
@@ -139,7 +140,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         &mut self,
         bx: &Builder<'a, 'tcx>,
         constant: &'tcx ty::Const<'tcx>,
-    ) -> Result<ConstValue<'tcx>, ConstEvalErr<'tcx>> {
+    ) -> Result<ConstValue<'tcx>, Lrc<ConstEvalErr<'tcx>>> {
         match constant.val {
             ConstVal::Unevaluated(def_id, ref substs) => {
                 let tcx = bx.tcx();
@@ -160,7 +161,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         &mut self,
         bx: &Builder<'a, 'tcx>,
         constant: &mir::Constant<'tcx>,
-    ) -> Result<ConstValue<'tcx>, ConstEvalErr<'tcx>> {
+    ) -> Result<ConstValue<'tcx>, Lrc<ConstEvalErr<'tcx>>> {
         match constant.literal {
             mir::Literal::Promoted { index } => {
                 let param_env = ty::ParamEnv::reveal_all();
@@ -189,7 +190,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     ty::TyArray(_, n) => n.unwrap_usize(bx.tcx()),
                     ref other => bug!("invalid simd shuffle type: {}", other),
                 };
-                let values: Result<Vec<ValueRef>, _> = (0..fields).map(|field| {
+                let values: Result<Vec<ValueRef>, Lrc<_>> = (0..fields).map(|field| {
                     let field = const_val_field(
                         bx.tcx(),
                         ty::ParamEnv::reveal_all(),

@@ -4,6 +4,7 @@ use mir;
 use middle::const_val::ConstEvalErr;
 use ty::{FnSig, Ty, layout};
 use ty::layout::{Size, Align};
+use rustc_data_structures::sync::Lrc;
 
 use super::{
     Pointer, Lock, AccessKind
@@ -155,7 +156,7 @@ pub enum EvalErrorKind<'tcx, O> {
     CheckMatchError,
     /// Cannot compute this constant because it depends on another one
     /// which already produced an error
-    ReferencedConstant(ConstEvalErr<'tcx>),
+    ReferencedConstant(Lrc<ConstEvalErr<'tcx>>),
     GeneratorResumedAfterReturn,
     GeneratorResumedAfterPanic,
 }

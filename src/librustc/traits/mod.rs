@@ -381,7 +381,7 @@ pub enum SelectionError<'tcx> {
                                 ty::PolyTraitRef<'tcx>,
                                 ty::error::TypeError<'tcx>),
     TraitNotObjectSafe(DefId),
-    ConstEvalFailure(ConstEvalErr<'tcx>),
+    ConstEvalFailure(Lrc<ConstEvalErr<'tcx>>),
     Overflow,
 }
 

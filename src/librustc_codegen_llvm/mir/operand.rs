@@ -15,6 +15,7 @@ use rustc::mir::interpret::ConstValue;
 use rustc::ty;
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::sync::Lrc;
 
 use base;
 use common::{self, CodegenCx, C_null, C_undef, C_usize};
@@ -97,7 +98,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     pub fn from_const(bx: &Builder<'a, 'tcx>,
                       val: ConstValue<'tcx>,
                       ty: ty::Ty<'tcx>)
-                      -> Result<OperandRef<'tcx>, ConstEvalErr<'tcx>> {
+                      -> Result<OperandRef<'tcx>, Lrc<ConstEvalErr<'tcx>>> {
         let layout = bx.cx.layout_of(ty);
 
         if layout.is_zst() {
