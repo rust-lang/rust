@@ -31,6 +31,10 @@ enum r#Foo {
     r#Bar {},
 }
 
+struct r#Struct {
+    r#field: r#FieldType,
+}
+
 trait r#Trait {
     type r#Type;
 }
@@ -47,4 +51,11 @@ extern "C" {
 
 macro_rules! r#macro {
     () => {};
+}
+
+macro_rules! foo {
+    ($x:expr) => {
+        let r#catch = $x + 1;
+        println!("{}", r#catch);
+    };
 }
