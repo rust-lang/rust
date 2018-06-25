@@ -1,10 +1,7 @@
 # The walking tour of rustdoc
 
 Rustdoc actually uses the rustc internals directly. It lives in-tree with the
-compiler and standard library. This chapter is about how it works. (A new
-implementation is also [under way], though).
-
-[under way]: https://github.com/steveklabnik/rustdoc
+compiler and standard library. This chapter is about how it works.
 
 Rustdoc is implemented entirely within the crate [`librustdoc`][rd]. It runs
 the compiler up to the point where we have an internal representation of a
