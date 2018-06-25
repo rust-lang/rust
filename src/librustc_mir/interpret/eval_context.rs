@@ -280,7 +280,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             self.param_env,
             def_id,
             substs,
-        ).ok_or_else(|| EvalErrorKind::ResolutionFailed.into())
+        ).ok_or_else(|| EvalErrorKind::TooGeneric.into())
     }
 
     pub(super) fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
@@ -739,7 +739,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                     self.param_env,
                                     def_id,
                                     substs,
-                                ).ok_or_else(|| EvalErrorKind::ResolutionFailed.into());
+                                ).ok_or_else(|| EvalErrorKind::TooGeneric.into());
                                 let fn_ptr = self.memory.create_fn_alloc(instance?);
                                 let valty = ValTy {
                                     value: Value::Scalar(fn_ptr.into()),

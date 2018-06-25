@@ -577,7 +577,7 @@ impl<'a, 'tcx, O: Lift<'tcx>> Lift<'tcx> for interpret::EvalErrorKind<'a, O> {
             PathNotFound(ref v) => PathNotFound(v.clone()),
             UnimplementedTraitSelection => UnimplementedTraitSelection,
             TypeckError => TypeckError,
-            ResolutionFailed => ResolutionFailed,
+            TooGeneric => TooGeneric,
             CheckMatchError => CheckMatchError,
             ReferencedConstant(ref err) => ReferencedConstant(tcx.lift(err)?),
             OverflowNeg => OverflowNeg,

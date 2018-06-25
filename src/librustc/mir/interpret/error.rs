@@ -151,7 +151,7 @@ pub enum EvalErrorKind<'tcx, O> {
     /// Abort in case type errors are reached
     TypeckError,
     /// Resolution can fail if we are in a too generic context
-    ResolutionFailed,
+    TooGeneric,
     CheckMatchError,
     /// Cannot compute this constant because it depends on another one
     /// which already produced an error
@@ -271,7 +271,7 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
                 "there were unresolved type arguments during trait selection",
             TypeckError =>
                 "encountered constants with type errors, stopping evaluation",
-            ResolutionFailed =>
+            TooGeneric =>
                 "encountered overly generic constant",
             CheckMatchError =>
                 "match checking failed",

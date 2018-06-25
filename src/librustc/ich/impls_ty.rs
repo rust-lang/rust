@@ -570,7 +570,7 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             ReadFromReturnPointer |
             UnimplementedTraitSelection |
             TypeckError |
-            ResolutionFailed |
+            TooGeneric |
             CheckMatchError |
             DerefFunctionPointer |
             ExecuteMemory |

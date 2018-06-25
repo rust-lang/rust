@@ -101,7 +101,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
     ) -> Option<DiagnosticBuilder<'tcx>> {
         match self.data.0.kind {
             ::mir::interpret::EvalErrorKind::TypeckError |
-            ::mir::interpret::EvalErrorKind::ResolutionFailed |
+            ::mir::interpret::EvalErrorKind::TooGeneric |
             ::mir::interpret::EvalErrorKind::CheckMatchError |
             ::mir::interpret::EvalErrorKind::Layout(_) => return None,
             ::mir::interpret::EvalErrorKind::ReferencedConstant(ref inner) => {
