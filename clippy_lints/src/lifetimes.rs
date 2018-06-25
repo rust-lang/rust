@@ -101,38 +101,40 @@ fn check_fn_inner<'a, 'tcx>(
     }
 
     let mut bounds_lts = Vec::new();
-    generics.params.iter().for_each(|param| match param.kind {
-        GenericParamKind::Lifetime { .. } => {},
-        GenericParamKind::Type { .. } => {
-            for bound in &param.bounds {
-                let mut visitor = RefVisitor::new(cx);
-                walk_param_bound(&mut visitor, bound);
-                if visitor.lts.iter().any(|lt| matches!(lt, RefLt::Named(_))) {
-                    return;
-                }
-                if let GenericBound::Trait(ref trait_ref, _) = *bound {
-                    let params = &trait_ref
-                        .trait_ref
-                        .path
-                        .segments
-                        .last()
-                        .expect("a path must have at least one segment")
-                        .args;
-                    if let Some(ref params) = *params {
-                        params.args.iter().for_each(|param| match param {
-                            GenericArg::Lifetime(bound) => {
-                                if bound.name.name() != "'static" && !bound.is_elided() {
-                                    return;
-                                }
-                                bounds_lts.push(bound);
-                            },
-                            _ => {},
-                        });
+    let types = generics.params.iter().filter_map(|param| match param.kind {
+        GenericParamKind::Type { .. } => Some(param),
+        GenericParamKind::Lifetime { .. } => None,
+    });
+    for typ in types {
+        for bound in &typ.bounds {
+            let mut visitor = RefVisitor::new(cx);
+            walk_param_bound(&mut visitor, bound);
+            if visitor.lts.iter().any(|lt| matches!(lt, RefLt::Named(_))) {
+                return;
+            }
+            if let GenericBound::Trait(ref trait_ref, _) = *bound {
+                let params = &trait_ref
+                    .trait_ref
+                    .path
+                    .segments
+                    .last()
+                    .expect("a path must have at least one segment")
+                    .args;
+                if let Some(ref params) = *params {
+                    let lifetimes = params.args.iter().filter_map(|arg| match arg {
+                        GenericArg::Lifetime(lt) => Some(lt),
+                        GenericArg::Type(_) => None,
+                    });
+                    for bound in lifetimes {
+                        if bound.name.name() != "'static" && !bound.is_elided() {
+                            return;
+                        }
+                        bounds_lts.push(bound);
                     }
                 }
             }
-        },
-    });
+        }
+    }
     if could_use_elision(cx, decl, body, &generics.params, bounds_lts) {
         span_lint(
             cx,

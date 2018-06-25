@@ -304,8 +304,10 @@ fn check_ty_rptr(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool, lt: &Lifeti
                 if let [ref bx] = *path.segments;
                 if let Some(ref params) = bx.args;
                 if !params.parenthesized;
-                if let [ref inner] = *params.args;
-                if let GenericArg::Type(inner) = inner;
+                if let Some(inner) = params.args.iter().find_map(|arg| match arg {
+                    GenericArg::Type(ty) => Some(ty),
+                    GenericArg::Lifetime(_) => None,
+                });
                 then {
                     if is_any_trait(inner) {
                         // Ignore `Box<Any>` types, see #1884 for details.
