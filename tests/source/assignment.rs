@@ -13,6 +13,10 @@ fn main() {
         DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD;
 
     single_line_fit =   5;single_lit_fit    >>=  10;
+
+
+    // #2791
+    let x = 2;;;;
 }
 
 fn break_meee() {
