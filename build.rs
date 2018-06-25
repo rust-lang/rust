@@ -13,9 +13,6 @@
 //! This build script was originally taken from the Rocket web framework:
 //! https://github.com/SergioBenitez/Rocket
 
-extern crate ansi_term;
-extern crate rustc_version;
-
 use ansi_term::Colour::Red;
 use rustc_version::{version_meta, version_meta_for, Channel, Version, VersionMeta};
 use std::env;

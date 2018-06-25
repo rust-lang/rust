@@ -90,7 +90,7 @@ pub(super) enum Radix {
 
 impl Radix {
     /// Return a reasonable digit group size for this radix.
-    pub fn suggest_grouping(&self) -> usize {
+    crate fn suggest_grouping(&self) -> usize {
         match *self {
             Radix::Binary | Radix::Hexadecimal => 4,
             Radix::Octal | Radix::Decimal => 3,
@@ -101,19 +101,19 @@ impl Radix {
 #[derive(Debug)]
 pub(super) struct DigitInfo<'a> {
     /// Characters of a literal between the radix prefix and type suffix.
-    pub digits: &'a str,
+    crate digits: &'a str,
     /// Which radix the literal was represented in.
-    pub radix: Radix,
+    crate radix: Radix,
     /// The radix prefix, if present.
-    pub prefix: Option<&'a str>,
+    crate prefix: Option<&'a str>,
     /// The type suffix, including preceding underscore if present.
-    pub suffix: Option<&'a str>,
+    crate suffix: Option<&'a str>,
     /// True for floating-point literals.
-    pub float: bool,
+    crate float: bool,
 }
 
 impl<'a> DigitInfo<'a> {
-    pub fn new(lit: &'a str, float: bool) -> Self {
+    crate fn new(lit: &'a str, float: bool) -> Self {
         // Determine delimiter for radix prefix, if present, and radix.
         let radix = if lit.starts_with("0x") {
             Radix::Hexadecimal
@@ -160,7 +160,7 @@ impl<'a> DigitInfo<'a> {
     }
 
     /// Returns digits grouped in a sensible way.
-    pub fn grouping_hint(&self) -> String {
+    crate fn grouping_hint(&self) -> String {
         let group_size = self.radix.suggest_grouping();
         if self.digits.contains('.') {
             let mut parts = self.digits.split('.');
@@ -227,7 +227,7 @@ enum WarningType {
 }
 
 impl WarningType {
-    pub fn display(&self, grouping_hint: &str, cx: &EarlyContext, span: syntax_pos::Span) {
+    crate fn display(&self, grouping_hint: &str, cx: &EarlyContext, span: syntax_pos::Span) {
         match self {
             WarningType::UnreadableLiteral => span_lint_and_sugg(
                 cx,

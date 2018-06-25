@@ -76,6 +76,15 @@ lazy_static! {
 macro_rules! define_Conf {
     ($(#[$doc: meta] ($rust_name: ident, $rust_name_str: expr, $default: expr => $($ty: tt)+),)+) => {
         pub use self::helpers::Conf;
+        // FIXME(mati865): remove #[allow(rust_2018_idioms)] when it's fixed:
+        //
+        // warning: `extern crate` is not idiomatic in the new edition
+        //    --> src/utils/conf.rs:82:22
+        //     |
+        // 82  |               #[derive(Deserialize)]
+        //     |                        ^^^^^^^^^^^ help: convert it to a `use`
+        //
+        #[allow(rust_2018_idioms)]
         mod helpers {
             /// Type used to store lint configuration.
             #[derive(Deserialize)]
@@ -92,7 +101,7 @@ macro_rules! define_Conf {
                 mod $rust_name {
                     use serde;
                     use serde::Deserialize;
-                    pub fn deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D)
+                    crate fn deserialize<'de, D: serde::Deserializer<'de>>(deserializer: D)
                     -> Result<define_Conf!(TY $($ty)+), D::Error> {
                         type T = define_Conf!(TY $($ty)+);
                         Ok(T::deserialize(deserializer).unwrap_or_else(|e| {
