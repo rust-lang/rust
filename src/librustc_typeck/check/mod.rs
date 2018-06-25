@@ -113,7 +113,7 @@ use util::nodemap::{DefIdMap, DefIdSet, FxHashMap, NodeMap};
 
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use rustc_data_structures::sync::Lrc;
-use std::collections::hash_map::Entry;
+use std::collections::{hash_map::Entry, HashSet};
 use std::cmp;
 use std::fmt::Display;
 use std::iter;
@@ -504,6 +504,9 @@ impl<'gcx, 'tcx> EnclosingBreakables<'gcx, 'tcx> {
         &mut self.stack[ix]
     }
 }
+
+#[derive(Debug)]
+struct PathSeg(DefId, usize);
 
 pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     body_id: ast::NodeId,
@@ -4770,20 +4773,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         err.span_suggestion(span_semi, "consider removing this semicolon", "".to_string());
     }
 
-    // Instantiates the given path, which must refer to an item with the given
-    // number of type parameters and type.
-    pub fn instantiate_value_path(&self,
-                                  segments: &[hir::PathSegment],
-                                  opt_self_ty: Option<Ty<'tcx>>,
-                                  def: Def,
-                                  span: Span,
-                                  node_id: ast::NodeId)
-                                  -> Ty<'tcx> {
-        debug!("instantiate_value_path(path={:?}, def={:?}, node_id={})",
-               segments,
-               def,
-               node_id);
-
+    fn def_ids_for_path_segments(&self,
+                                 segments: &[hir::PathSegment],
+                                 def: Def)
+                                 -> Vec<PathSeg> {
         // We need to extract the type parameters supplied by the user in
         // the path `path`. Due to the current setup, this is a bit of a
         // tricky-process; the problem is that resolve only tells us the
@@ -4829,8 +4822,119 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // The first step then is to categorize the segments appropriately.
 
         assert!(!segments.is_empty());
+        let last = segments.len() - 1;
+
+        let mut path_segs = vec![];
+
+        match def {
+            // Case 1. Reference to a struct/variant constructor.
+            Def::StructCtor(def_id, ..) |
+            Def::VariantCtor(def_id, ..) => {
+                // Everything but the final segment should have no
+                // parameters at all.
+                let mut generics = self.tcx.generics_of(def_id);
+                // Variant and struct constructors use the
+                // generics of their parent type definition.
+                let generics_def_id = generics.parent.unwrap_or(def_id);
+                path_segs.push(PathSeg(generics_def_id, last));
+            }
+
+            // Case 2. Reference to a top-level value.
+            Def::Fn(def_id) |
+            Def::Const(def_id) |
+            Def::Static(def_id, _) => {
+                path_segs.push(PathSeg(def_id, last));
+            }
+
+            // Case 3. Reference to a method or associated const.
+            Def::Method(def_id) |
+            Def::AssociatedConst(def_id) => {
+                if segments.len() >= 2 {
+                    let generics = self.tcx.generics_of(def_id);
+                    path_segs.push(PathSeg(generics.parent.unwrap(), last - 1));
+                }
+                path_segs.push(PathSeg(def_id, last));
+            }
+
+            // Case 4. Local variable, no generics.
+            Def::Local(..) | Def::Upvar(..) => {}
+
+            _ => bug!("unexpected definition: {:?}", def),
+        }
+
+        debug!("path_segs = {:?}", path_segs);
+
+        path_segs
+    }
+
+    // Instantiates the given path, which must refer to an item with the given
+    // number of type parameters and type.
+    pub fn instantiate_value_path(&self,
+                                  segments: &[hir::PathSegment],
+                                  opt_self_ty: Option<Ty<'tcx>>,
+                                  def: Def,
+                                  span: Span,
+                                  node_id: ast::NodeId)
+                                  -> Ty<'tcx> {
+        debug!("instantiate_value_path(path={:?}, def={:?}, node_id={})",
+               segments,
+               def,
+               node_id);
+
+        let path_segs = self.def_ids_for_path_segments(segments, def);
 
         let mut ufcs_associated = None;
+        match def {
+            Def::Method(def_id) |
+            Def::AssociatedConst(def_id) => {
+                let container = self.tcx.associated_item(def_id).container;
+                match container {
+                    ty::TraitContainer(trait_did) => {
+                        callee::check_legal_trait_for_method_call(self.tcx, span, trait_did)
+                    }
+                    ty::ImplContainer(_) => {}
+                }
+                if segments.len() == 1 {
+                    // `<T>::assoc` will end up here, and so can `T::assoc`.
+                    let self_ty = opt_self_ty.expect("UFCS sugared assoc missing Self");
+                    ufcs_associated = Some((container, self_ty));
+                }
+            }
+            _ => {}
+        }
+
+        // Now that we have categorized what space the parameters for each
+        // segment belong to, let's sort out the parameters that the user
+        // provided (if any) into their appropriate spaces. We'll also report
+        // errors if type parameters are provided in an inappropriate place.
+        let mut generic_segs = HashSet::new();
+        for PathSeg(_, index) in &path_segs {
+            generic_segs.insert(index);
+        }
+        let segs: Vec<_> = segments
+            .iter()
+            .enumerate()
+            .filter_map(|(index, seg)| {
+                if !generic_segs.contains(&index) {
+                    Some(seg)
+                } else {
+                    None
+                }
+            })
+            .cloned()
+            .collect();
+        AstConv::prohibit_generics(self, &segs);
+
+        match def {
+            Def::Local(nid) | Def::Upvar(nid, ..) => {
+                let ty = self.local_ty(span, nid);
+                let ty = self.normalize_associated_types_in(span, &ty);
+                self.write_ty(self.tcx.hir.node_to_hir_id(node_id), ty);
+                return ty;
+            }
+            _ => {}
+        }
+
         let mut type_segment = None;
         let mut fn_segment = None;
         match def {
@@ -4858,51 +4962,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Case 3. Reference to a method or associated const.
             Def::Method(def_id) |
             Def::AssociatedConst(def_id) => {
-                let container = self.tcx.associated_item(def_id).container;
-                match container {
-                    ty::TraitContainer(trait_did) => {
-                        callee::check_legal_trait_for_method_call(self.tcx, span, trait_did)
-                    }
-                    ty::ImplContainer(_) => {}
-                }
-
                 let generics = self.tcx.generics_of(def_id);
                 if segments.len() >= 2 {
                     let parent_generics = self.tcx.generics_of(generics.parent.unwrap());
                     type_segment = Some((&segments[segments.len() - 2], parent_generics));
-                } else {
-                    // `<T>::assoc` will end up here, and so can `T::assoc`.
-                    let self_ty = opt_self_ty.expect("UFCS sugared assoc missing Self");
-                    ufcs_associated = Some((container, self_ty));
                 }
                 fn_segment = Some((segments.last().unwrap(), generics));
             }
 
-            // Case 4. Local variable, no generics.
-            Def::Local(..) | Def::Upvar(..) => {}
-
-            _ => bug!("unexpected definition: {:?}", def),
+            _ => {}
         }
 
         debug!("type_segment={:?} fn_segment={:?}", type_segment, fn_segment);
-
-        // Now that we have categorized what space the parameters for each
-        // segment belong to, let's sort out the parameters that the user
-        // provided (if any) into their appropriate spaces. We'll also report
-        // errors if type parameters are provided in an inappropriate place.
-        let poly_segments = type_segment.is_some() as usize +
-                            fn_segment.is_some() as usize;
-        AstConv::prohibit_generics(self, &segments[..segments.len() - poly_segments]);
-
-        match def {
-            Def::Local(nid) | Def::Upvar(nid, ..) => {
-                let ty = self.local_ty(span, nid);
-                let ty = self.normalize_associated_types_in(span, &ty);
-                self.write_ty(self.tcx.hir.node_to_hir_id(node_id), ty);
-                return ty;
-            }
-            _ => {}
-        }
 
         // Now we have to compare the types that the user *actually*
         // provided against the types that were *expected*. If the user
@@ -4911,17 +4982,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
         let supress_mismatch = self.check_impl_trait(span, fn_segment);
-        self.check_generic_arg_count(span, &mut type_segment, false, supress_mismatch);
-        self.check_generic_arg_count(span, &mut fn_segment, false, supress_mismatch);
+        for &PathSeg(def_id, index) in &path_segs {
+            let generics = self.tcx.generics_of(def_id);
+            self.check_generic_arg_count(span, &segments[index], &generics, false, supress_mismatch);
+        }
 
-        let (fn_start, has_self) = match (type_segment, fn_segment) {
-            (_, Some((_, generics))) => {
-                (generics.parent_count, generics.has_self)
-            }
-            (Some((_, generics)), None) => {
-                (generics.params.len(), generics.has_self)
-            }
-            (None, None) => (0, false)
+        let has_self = path_segs.last().map(|PathSeg(def_id, _)| {
+            self.tcx.generics_of(*def_id).has_self
+        }).unwrap_or(false);
+
+        let fn_start = match (type_segment, fn_segment) {
+            (_, Some((_, generics))) => generics.parent_count,
+            (Some((_, generics)), None) => generics.params.len(),
+            (None, None) => 0,
         };
         // FIXME(varkor): Separating out the parameters is messy.
         let mut lifetimes_type_seg = vec![];
@@ -5091,64 +5164,55 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Report errors if the provided parameters are too few or too many.
     fn check_generic_arg_count(&self,
                                span: Span,
-                               segment: &mut Option<(&hir::PathSegment, &ty::Generics)>,
+                               segment: &hir::PathSegment,
+                               generics: &ty::Generics,
                                is_method_call: bool,
                                supress_mismatch_error: bool) {
-        let (lifetimes, types, infer_types, bindings) = segment.map_or(
-            (vec![], vec![], true, &[][..]),
-            |(s, _)| {
-                s.args.as_ref().map_or(
-                    (vec![], vec![], s.infer_types, &[][..]),
-                    |data| {
-                        let (mut lifetimes, mut types) = (vec![], vec![]);
-                        data.args.iter().for_each(|arg| match arg {
-                            GenericArg::Lifetime(lt) => lifetimes.push(lt),
-                            GenericArg::Type(ty) => types.push(ty),
-                        });
-                        (lifetimes, types, s.infer_types, &data.bindings[..])
-                    }
-                )
+        let (mut lifetimes, mut types) = (vec![], vec![]);
+        let infer_types = segment.infer_types;
+        let mut bindings = vec![];
+        if let Some(ref data) = segment.args {
+            data.args.iter().for_each(|arg| match arg {
+                GenericArg::Lifetime(lt) => lifetimes.push(lt.clone()),
+                GenericArg::Type(ty) => types.push(ty.clone()),
             });
+            bindings = data.bindings.clone().to_vec();
+        }
 
-        // Check provided parameters.
-        let ((ty_required, ty_accepted), lt_accepted) =
-            segment.map_or(((0, 0), 0), |(_, generics)| {
-                struct ParamRange {
-                    required: usize,
-                    accepted: usize
-                };
-
-                let mut lt_accepted = 0;
-                let mut ty_params = ParamRange { required: 0, accepted: 0 };
-                for param in &generics.params {
-                    match param.kind {
-                        GenericParamDefKind::Lifetime => lt_accepted += 1,
-                        GenericParamDefKind::Type { has_default, .. } => {
-                            ty_params.accepted += 1;
-                            if !has_default {
-                                ty_params.required += 1;
-                            }
-                        }
-                    };
-                }
-                if generics.parent.is_none() && generics.has_self {
-                    ty_params.required -= 1;
-                    ty_params.accepted -= 1;
-                }
-
-                ((ty_params.required, ty_params.accepted), lt_accepted)
-            });
-
-        let count_type_params = |n| {
-            format!("{} type parameter{}", n, if n == 1 { "" } else { "s" })
+        struct ParamRange {
+            required: usize,
+            accepted: usize
         };
+
+        let mut lt_accepted = 0;
+        let mut ty_params = ParamRange { required: 0, accepted: 0 };
+        for param in &generics.params {
+            match param.kind {
+                GenericParamDefKind::Lifetime => lt_accepted += 1,
+                GenericParamDefKind::Type { has_default, .. } => {
+                    ty_params.accepted += 1;
+                    if !has_default {
+                        ty_params.required += 1;
+                    }
+                }
+            };
+        }
+        if generics.parent.is_none() && generics.has_self {
+            ty_params.required -= 1;
+            ty_params.accepted -= 1;
+        }
+        let ty_accepted = ty_params.accepted;
+        let ty_required = ty_params.required;
+
+        let count_type_params = |n| format!("{} type parameter{}", n, if n == 1 { "" } else { "s" });
         let expected_text = count_type_params(ty_accepted);
         let actual_text = count_type_params(types.len());
         if let Some((mut err, span)) = if types.len() > ty_accepted {
             // To prevent derived errors to accumulate due to extra
             // type parameters, we force instantiate_value_path to
             // use inference variables instead of the provided types.
-            *segment = None;
+            // FIXME(varkor)
+            // *segment = None;
             let span = types[ty_accepted].span;
             Some((struct_span_err!(self.tcx.sess, span, E0087,
                                   "too many type parameters provided: \
@@ -5172,8 +5236,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let infer_lifetimes = lifetimes.len() == 0;
         // Prohibit explicit lifetime arguments if late bound lifetime parameters are present.
-        let has_late_bound_lifetime_defs =
-            segment.map_or(None, |(_, generics)| generics.has_late_bound_regions);
+        let has_late_bound_lifetime_defs = generics.has_late_bound_regions;
         if let (Some(span_late), false) = (has_late_bound_lifetime_defs, lifetimes.is_empty()) {
             // Report this as a lint only if no error was reported previously.
             let primary_msg = "cannot specify lifetime arguments explicitly \
@@ -5184,7 +5247,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let mut err = self.tcx.sess.struct_span_err(lifetimes[0].span, primary_msg);
                 err.span_note(span_late, note_msg);
                 err.emit();
-                *segment = None;
+                // FIXME(varkor)
+                // *segment = None;
             } else {
                 let mut multispan = MultiSpan::from_span(lifetimes[0].span);
                 multispan.push_span_label(span_late, note_msg.to_string());
