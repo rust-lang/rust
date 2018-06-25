@@ -148,6 +148,15 @@ enum SegmentParam<'a> {
     Binding(&'a ast::TypeBinding),
 }
 
+impl<'a> SegmentParam<'a> {
+    fn from_generic_arg(arg: &ast::GenericArg) -> SegmentParam {
+        match arg {
+            ast::GenericArg::Lifetime(ref lt) => SegmentParam::LifeTime(lt),
+            ast::GenericArg::Type(ref ty) => SegmentParam::Type(ty),
+        }
+    }
+}
+
 impl<'a> Spanned for SegmentParam<'a> {
     fn span(&self) -> Span {
         match *self {
@@ -220,18 +229,15 @@ fn rewrite_segment(
         shape.shrink_left(ident_len)?
     };
 
-    if let Some(ref params) = segment.parameters {
-        match **params {
-            ast::PathParameters::AngleBracketed(ref data)
-                if !data.lifetimes.is_empty()
-                    || !data.types.is_empty()
-                    || !data.bindings.is_empty() =>
+    if let Some(ref args) = segment.args {
+        match **args {
+            ast::GenericArgs::AngleBracketed(ref data)
+                if !data.args.is_empty() || !data.bindings.is_empty() =>
             {
                 let param_list = data
-                    .lifetimes
+                    .args
                     .iter()
-                    .map(SegmentParam::LifeTime)
-                    .chain(data.types.iter().map(|x| SegmentParam::Type(&*x)))
+                    .map(SegmentParam::from_generic_arg)
                     .chain(data.bindings.iter().map(|x| SegmentParam::Binding(&*x)))
                     .collect::<Vec<_>>();
 
@@ -257,7 +263,7 @@ fn rewrite_segment(
 
                 result.push_str(&generics_str)
             }
-            ast::PathParameters::Parenthesized(ref data) => {
+            ast::GenericArgs::Parenthesized(ref data) => {
                 let output = match data.output {
                     Some(ref ty) => FunctionRetTy::Ty(ty.clone()),
                     None => FunctionRetTy::Default(codemap::DUMMY_SP),
@@ -457,15 +463,18 @@ impl Rewrite for ast::WherePredicate {
     }
 }
 
-impl Rewrite for ast::LifetimeDef {
+impl Rewrite for ast::GenericArg {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        rewrite_bounded_lifetime(&self.lifetime, &self.bounds, context, shape)
+        match *self {
+            ast::GenericArg::Lifetime(ref lt) => lt.rewrite(context, shape),
+            ast::GenericArg::Type(ref ty) => ty.rewrite(context, shape),
+        }
     }
 }
 
 fn rewrite_bounded_lifetime(
     lt: &ast::Lifetime,
-    bounds: &[ast::Lifetime],
+    bounds: &[ast::GenericBound],
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
@@ -486,45 +495,36 @@ fn rewrite_bounded_lifetime(
     }
 }
 
-impl Rewrite for ast::TyParamBound {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        match *self {
-            ast::TyParamBound::TraitTyParamBound(ref tref, ast::TraitBoundModifier::None) => {
-                tref.rewrite(context, shape)
-            }
-            ast::TyParamBound::TraitTyParamBound(ref tref, ast::TraitBoundModifier::Maybe) => Some(
-                format!("?{}", tref.rewrite(context, shape.offset_left(1)?)?),
-            ),
-            ast::TyParamBound::RegionTyParamBound(ref l) => l.rewrite(context, shape),
-        }
-    }
-}
-
 impl Rewrite for ast::Lifetime {
     fn rewrite(&self, _: &RewriteContext, _: Shape) -> Option<String> {
         Some(self.ident.to_string())
     }
 }
 
-/// A simple wrapper over type param bounds in trait.
-#[derive(new)]
-pub struct TraitTyParamBounds<'a> {
-    inner: &'a ast::TyParamBounds,
-}
-
-impl<'a> Rewrite for TraitTyParamBounds<'a> {
+impl Rewrite for ast::GenericBound {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        join_bounds(context, shape, self.inner, false)
+        match *self {
+            ast::GenericBound::Trait(ref poly_trait_ref, trait_bound_modifier) => {
+                match trait_bound_modifier {
+                    ast::TraitBoundModifier::None => poly_trait_ref.rewrite(context, shape),
+                    ast::TraitBoundModifier::Maybe => {
+                        let rw = poly_trait_ref.rewrite(context, shape.offset_left(1)?)?;
+                        Some(format!("?{}", rw))
+                    }
+                }
+            }
+            ast::GenericBound::Outlives(ref lifetime) => lifetime.rewrite(context, shape),
+        }
     }
 }
 
-impl Rewrite for ast::TyParamBounds {
+impl Rewrite for ast::GenericBounds {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         join_bounds(context, shape, self, true)
     }
 }
 
-impl Rewrite for ast::TyParam {
+impl Rewrite for ast::GenericParam {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let mut result = String::with_capacity(128);
         // FIXME: If there are more than one attributes, this will force multiline.
@@ -537,7 +537,10 @@ impl Rewrite for ast::TyParam {
             result.push_str(type_bound_colon(context));
             result.push_str(&self.bounds.rewrite(context, shape)?)
         }
-        if let Some(ref def) = self.default {
+        if let ast::GenericParamKind::Type {
+            default: Some(ref def),
+        } = self.kind
+        {
             let eq_str = match context.config.type_punctuation_density() {
                 TypeDensity::Compressed => "=",
                 TypeDensity::Wide => " = ",
@@ -786,7 +789,10 @@ fn rewrite_lifetime_param(
 ) -> Option<String> {
     let result = generic_params
         .iter()
-        .filter(|p| p.is_lifetime_param())
+        .filter(|p| match p.kind {
+            ast::GenericParamKind::Lifetime => true,
+            _ => false,
+        })
         .map(|lt| lt.rewrite(context, shape))
         .collect::<Option<Vec<_>>>()?
         .join(", ");

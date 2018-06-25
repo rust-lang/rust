@@ -346,7 +346,7 @@ impl UseTree {
                         .collect(),
                 ));
             }
-            UseTreeKind::Simple(ref rename) => {
+            UseTreeKind::Simple(ref rename, ..) => {
                 let mut name = (*path_to_imported_ident(&a.prefix).name.as_str()).to_owned();
                 let alias = rename.and_then(|ident| {
                     if ident == path_to_imported_ident(&a.prefix) {

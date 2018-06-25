@@ -2014,8 +2014,8 @@ fn rewrite_assignment(
 pub enum RhsTactics {
     /// Use heuristics.
     Default,
-    /// Put the rhs on the next line if it uses multiple line.
-    ForceNextLine,
+    /// Put the rhs on the next line if it uses multiple line, without extra indentation.
+    ForceNextLineWithoutIndent,
 }
 
 // The left hand side must contain everything up to, and including, the
@@ -2072,11 +2072,12 @@ fn choose_rhs<R: Rewrite>(
         _ => {
             // Expression did not fit on the same line as the identifier.
             // Try splitting the line and see if that works better.
-            let new_shape =
-                Shape::indented(shape.indent.block_indent(context.config), context.config)
-                    .sub_width(shape.rhs_overhead(context.config))?;
+            let new_shape = shape_from_rhs_tactic(context, shape, rhs_tactics)?;
             let new_rhs = expr.rewrite(context, new_shape);
-            let new_indent_str = &new_shape.indent.to_string_with_newline(context.config);
+            let new_indent_str = &shape
+                .indent
+                .block_indent(context.config)
+                .to_string_with_newline(context.config);
 
             match (orig_rhs, new_rhs) {
                 (Some(ref orig_rhs), Some(ref new_rhs))
@@ -2098,8 +2099,22 @@ fn choose_rhs<R: Rewrite>(
     }
 }
 
+fn shape_from_rhs_tactic(
+    context: &RewriteContext,
+    shape: Shape,
+    rhs_tactic: RhsTactics,
+) -> Option<Shape> {
+    match rhs_tactic {
+        RhsTactics::ForceNextLineWithoutIndent => Some(shape.with_max_width(context.config)),
+        RhsTactics::Default => {
+            Shape::indented(shape.indent.block_indent(context.config), context.config)
+                .sub_width(shape.rhs_overhead(context.config))
+        }
+    }
+}
+
 pub fn prefer_next_line(orig_rhs: &str, next_line_rhs: &str, rhs_tactics: RhsTactics) -> bool {
-    rhs_tactics == RhsTactics::ForceNextLine
+    rhs_tactics == RhsTactics::ForceNextLineWithoutIndent
         || !next_line_rhs.contains('\n')
         || count_newlines(orig_rhs) > count_newlines(next_line_rhs) + 1
 }
