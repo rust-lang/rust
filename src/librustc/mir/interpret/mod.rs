@@ -8,7 +8,10 @@ macro_rules! err {
 mod error;
 mod value;
 
-pub use self::error::{EvalError, EvalResult, EvalErrorKind, AssertMessage};
+pub use self::error::{
+    EvalError, EvalResult, EvalErrorKind, AssertMessage, ConstVal, ConstEvalErr, struct_error,
+    FrameInfo, ConstEvalResult,
+};
 
 pub use self::value::{Scalar, Value, ConstValue};
 

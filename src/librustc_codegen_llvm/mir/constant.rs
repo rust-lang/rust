@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::{self, ValueRef};
-use rustc::middle::const_val::{ConstVal, ConstEvalErr};
+use rustc::mir::interpret::{ConstVal, ConstEvalErr};
 use rustc_mir::interpret::{read_target_uint, const_val_field};
 use rustc::hir::def_id::DefId;
 use rustc::mir;

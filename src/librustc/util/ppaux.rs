@@ -10,7 +10,7 @@
 
 use hir::def_id::DefId;
 use hir::map::definitions::DefPathData;
-use middle::const_val::ConstVal;
+use mir::interpret::ConstVal;
 use middle::region::{self, BlockRemainder};
 use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::const_val::ConstVal;
+use mir::interpret::ConstVal;
 use ty::subst::Substs;
 use ty::{self, Ty, TypeFlags, TypeFoldable};
 

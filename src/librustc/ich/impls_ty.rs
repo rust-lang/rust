@@ -370,11 +370,11 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::FieldDef {
 }
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
-for ::middle::const_val::ConstVal<'gcx> {
+for ::mir::interpret::ConstVal<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        use middle::const_val::ConstVal::*;
+        use mir::interpret::ConstVal::*;
 
         mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -503,13 +503,13 @@ impl_stable_hash_for!(struct ty::Const<'tcx> {
     val
 });
 
-impl_stable_hash_for!(struct ::middle::const_val::ConstEvalErr<'tcx> {
+impl_stable_hash_for!(struct ::mir::interpret::ConstEvalErr<'tcx> {
     span,
     stacktrace,
     error
 });
 
-impl_stable_hash_for!(struct ::middle::const_val::FrameInfo {
+impl_stable_hash_for!(struct ::mir::interpret::FrameInfo {
     span,
     lint_root,
     location

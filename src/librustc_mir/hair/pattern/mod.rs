@@ -18,7 +18,7 @@ pub(crate) use self::check_match::check_match;
 
 use interpret::{const_val_field, const_variant_index, self};
 
-use rustc::middle::const_val::ConstVal;
+use rustc::mir::interpret::ConstVal;
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, Value};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};

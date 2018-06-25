@@ -3,14 +3,14 @@ use std::fmt::Write;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
 use rustc::hir::map::definitions::DefPathData;
-use rustc::middle::const_val::ConstVal;
+use rustc::mir::interpret::ConstVal;
 use rustc::mir;
 use rustc::ty::layout::{self, Size, Align, HasDataLayout, IntegerExt, LayoutOf, TyLayout};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt, TypeAndMut};
 use rustc::ty::query::TyCtxtAt;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc::middle::const_val::FrameInfo;
+use rustc::mir::interpret::FrameInfo;
 use syntax::codemap::{self, Span};
 use syntax::ast::Mutability;
 use rustc::mir::interpret::{

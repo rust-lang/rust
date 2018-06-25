@@ -12,7 +12,7 @@ use self::Constructor::*;
 use self::Usefulness::*;
 use self::WitnessPreference::*;
 
-use rustc::middle::const_val::ConstVal;
+use rustc::mir::interpret::ConstVal;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;

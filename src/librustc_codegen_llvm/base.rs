@@ -1381,7 +1381,7 @@ mod temp_stable_hash_impls {
 
 fn fetch_wasm_section(tcx: TyCtxt, id: DefId) -> (String, Vec<u8>) {
     use rustc::mir::interpret::GlobalId;
-    use rustc::middle::const_val::ConstVal;
+    use rustc::mir::interpret::ConstVal;
 
     info!("loading wasm section {:?}", id);
 

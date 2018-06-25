@@ -2164,7 +2164,7 @@ impl<'tcx> Debug for Literal<'tcx> {
 
 /// Write a `ConstVal` in a way closer to the original source code than the `Debug` output.
 pub fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ty::Const) -> fmt::Result {
-    use middle::const_val::ConstVal;
+    use mir::interpret::ConstVal;
     match const_val.val {
         ConstVal::Unevaluated(..) => write!(fmt, "{:?}", const_val),
         ConstVal::Value(val) => {

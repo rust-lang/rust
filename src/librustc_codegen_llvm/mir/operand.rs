@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::{ValueRef, LLVMConstInBoundsGEP};
-use rustc::middle::const_val::ConstEvalErr;
+use rustc::mir::interpret::ConstEvalErr;
 use rustc::mir;
 use rustc::mir::interpret::ConstValue;
 use rustc::ty;

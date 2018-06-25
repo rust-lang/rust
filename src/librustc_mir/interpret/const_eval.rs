@@ -1,5 +1,5 @@
 use rustc::hir;
-use rustc::middle::const_val::{ConstEvalErr};
+use rustc::mir::interpret::{ConstEvalErr};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, Ty, Instance};
 use rustc::ty::layout::{self, LayoutOf, Primitive};
@@ -427,7 +427,7 @@ pub fn const_val_field<'a, 'tcx>(
     field: mir::Field,
     value: ConstValue<'tcx>,
     ty: Ty<'tcx>,
-) -> ::rustc::middle::const_val::EvalResult<'tcx> {
+) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     trace!("const_val_field: {:?}, {:?}, {:?}, {:?}", instance, field, value, ty);
     let mut ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let result = (|| {
@@ -527,7 +527,7 @@ pub fn const_value_to_allocation_provider<'a, 'tcx>(
 pub fn const_eval_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
-) -> ::rustc::middle::const_val::EvalResult<'tcx> {
+) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     trace!("const eval: {:?}", key);
     let cid = key.value;
     let def_id = cid.instance.def.def_id();

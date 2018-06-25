@@ -26,7 +26,7 @@ use middle::resolve_lifetime::{ResolveLifetimes, Region, ObjectLifetimeDefault};
 use middle::stability::{self, DeprecationEntry};
 use middle::lang_items::{LanguageItems, LangItem};
 use middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
-use middle::const_val::EvalResult;
+use mir::interpret::ConstEvalResult;
 use mir::mono::{CodegenUnit, Stats};
 use mir;
 use mir::interpret::{GlobalId, Allocation, ConstValue};
@@ -230,7 +230,7 @@ define_queries! { <'tcx>
     /// Results of evaluating const items or constants embedded in
     /// other items (such as enum variant explicit discriminants).
     [] fn const_eval: const_eval_dep_node(ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
-        -> EvalResult<'tcx>,
+        -> ConstEvalResult<'tcx>,
 
     /// Converts a constant value to an constant allocation
     [] fn const_value_to_allocation: const_value_to_allocation(

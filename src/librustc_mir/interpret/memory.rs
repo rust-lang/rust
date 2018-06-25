@@ -7,7 +7,7 @@ use rustc::ty::ParamEnv;
 use rustc::ty::query::TyCtxtAt;
 use rustc::ty::layout::{self, Align, TargetDataLayout, Size};
 use syntax::ast::Mutability;
-use rustc::middle::const_val::ConstVal;
+use rustc::mir::interpret::ConstVal;
 
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc::mir::interpret::{Pointer, AllocId, Allocation, AccessKind, Value,

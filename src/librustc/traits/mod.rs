@@ -22,7 +22,7 @@ use hir;
 use hir::def_id::DefId;
 use infer::outlives::env::OutlivesEnvironment;
 use middle::region;
-use middle::const_val::ConstEvalErr;
+use mir::interpret::ConstEvalErr;
 use ty::subst::Substs;
 use ty::{self, AdtKind, Slice, Ty, TyCtxt, GenericParamDefKind, ToPredicate};
 use ty::error::{ExpectedFound, TypeError};

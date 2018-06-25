@@ -16,7 +16,7 @@ use rustc_data_structures::obligation_forest::{Error, ForestObligation, Obligati
 use rustc_data_structures::obligation_forest::{ObligationProcessor, ProcessResult};
 use std::marker::PhantomData;
 use hir::def_id::DefId;
-use middle::const_val::ConstEvalErr;
+use mir::interpret::ConstEvalErr;
 use mir::interpret::EvalErrorKind;
 
 use super::CodeAmbiguity;

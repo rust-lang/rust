@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use middle::const_val::ConstVal;
+use mir::interpret::ConstVal;
 use infer::InferCtxt;
 use ty::subst::Substs;
 use traits;
