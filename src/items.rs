@@ -233,7 +233,7 @@ impl<'a> FnSig<'a> {
     fn to_str(&self, context: &RewriteContext) -> String {
         let mut result = String::with_capacity(128);
         // Vis defaultness constness unsafety abi.
-        result.push_str(&*format_visibility(&self.visibility));
+        result.push_str(&*format_visibility(context, &self.visibility));
         result.push_str(format_defaultness(self.defaultness));
         result.push_str(format_constness(self.constness));
         result.push_str(format_unsafety(self.unsafety));
@@ -437,7 +437,7 @@ impl<'a> FmtVisitor<'a> {
         generics: &ast::Generics,
         span: Span,
     ) {
-        let enum_header = format_header("enum ", ident, vis);
+        let enum_header = format_header(&self.get_context(), "enum ", ident, vis);
         self.push_str(&enum_header);
 
         let enum_snippet = self.snippet(span);
@@ -571,10 +571,10 @@ impl<'a> FmtVisitor<'a> {
             )?,
             ast::VariantData::Unit(..) => {
                 if let Some(ref expr) = field.node.disr_expr {
-                    let lhs = format!("{} =", field.node.ident.name);
+                    let lhs = format!("{} =", rewrite_ident(&context, field.node.ident));
                     rewrite_assign_rhs(&context, lhs, &*expr.value, shape)?
                 } else {
-                    field.node.ident.name.to_string()
+                    rewrite_ident(&context, field.node.ident).to_owned()
                 }
             }
         };
@@ -797,7 +797,7 @@ fn format_impl_ref_and_type(
     {
         let mut result = String::with_capacity(128);
 
-        result.push_str(&format_visibility(&item.vis));
+        result.push_str(&format_visibility(context, &item.vis));
         result.push_str(format_defaultness(defaultness));
         result.push_str(format_unsafety(unsafety));
 
@@ -916,8 +916,8 @@ pub struct StructParts<'a> {
 }
 
 impl<'a> StructParts<'a> {
-    fn format_header(&self) -> String {
-        format_header(self.prefix, self.ident, self.vis)
+    fn format_header(&self, context: &RewriteContext) -> String {
+        format_header(context, self.prefix, self.ident, self.vis)
     }
 
     fn from_variant(variant: &'a ast::Variant) -> Self {
@@ -977,7 +977,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         let mut result = String::with_capacity(128);
         let header = format!(
             "{}{}{}trait ",
-            format_visibility(&item.vis),
+            format_visibility(context, &item.vis),
             format_unsafety(unsafety),
             format_auto(is_auto),
         );
@@ -988,7 +988,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         let shape = Shape::indented(offset, context.config).offset_left(result.len())?;
         let generics_str = rewrite_generics(
             context,
-            &item.ident.to_string(),
+            rewrite_ident(context, item.ident),
             generics,
             shape,
             mk_sp(item.span.lo(), body_lo),
@@ -999,7 +999,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         if !generic_bounds.is_empty() {
             let ident_hi = context
                 .snippet_provider
-                .span_after(item.span, &format!("{}", item.ident));
+                .span_after(item.span, &item.ident.as_str());
             let bound_hi = generic_bounds.last().unwrap().span().hi();
             let snippet = context.snippet(mk_sp(ident_hi, bound_hi));
             if contains_comment(snippet) {
@@ -1135,7 +1135,7 @@ pub fn format_trait_alias(
     generic_bounds: &ast::GenericBounds,
     shape: Shape,
 ) -> Option<String> {
-    let alias = ident.name.as_str();
+    let alias = rewrite_ident(context, ident);
     // 6 = "trait ", 2 = " ="
     let g_shape = shape.offset_left(6)?.sub_width(2)?;
     let generics_str = rewrite_generics(context, &alias, generics, g_shape, generics.span)?;
@@ -1145,7 +1145,7 @@ pub fn format_trait_alias(
 }
 
 fn format_unit_struct(context: &RewriteContext, p: &StructParts, offset: Indent) -> Option<String> {
-    let header_str = format_header(p.prefix, p.ident, p.vis);
+    let header_str = format_header(context, p.prefix, p.ident, p.vis);
     let generics_str = if let Some(generics) = p.generics {
         let hi = if generics.where_clause.predicates.is_empty() {
             generics.span.hi()
@@ -1177,7 +1177,7 @@ pub fn format_struct_struct(
     let mut result = String::with_capacity(1024);
     let span = struct_parts.span;
 
-    let header_str = struct_parts.format_header();
+    let header_str = struct_parts.format_header(context);
     result.push_str(&header_str);
 
     let header_hi = span.lo() + BytePos(header_str.len() as u32);
@@ -1312,7 +1312,7 @@ fn format_tuple_struct(
     let mut result = String::with_capacity(1024);
     let span = struct_parts.span;
 
-    let header_str = struct_parts.format_header();
+    let header_str = struct_parts.format_header(context);
     result.push_str(&header_str);
 
     let body_lo = if fields.is_empty() {
@@ -1413,7 +1413,7 @@ pub fn rewrite_type_alias(
 ) -> Option<String> {
     let mut result = String::with_capacity(128);
 
-    result.push_str(&format_visibility(vis));
+    result.push_str(&format_visibility(context, vis));
     result.push_str("type ");
 
     // 2 = `= `
@@ -1424,7 +1424,13 @@ pub fn rewrite_type_alias(
         context.snippet_provider.span_after(span, "type"),
         ty.span.lo(),
     );
-    let generics_str = rewrite_generics(context, &ident.to_string(), generics, g_shape, g_span)?;
+    let generics_str = rewrite_generics(
+        context,
+        rewrite_ident(context, ident),
+        generics,
+        g_shape,
+        g_span,
+    )?;
     result.push_str(&generics_str);
 
     let where_budget = context.budget(last_line_width(&result));
@@ -1467,10 +1473,15 @@ pub fn rewrite_struct_field_prefix(
     context: &RewriteContext,
     field: &ast::StructField,
 ) -> Option<String> {
-    let vis = format_visibility(&field.vis);
+    let vis = format_visibility(context, &field.vis);
     let type_annotation_spacing = type_annotation_spacing(context.config);
     Some(match field.ident {
-        Some(name) => format!("{}{}{}:", vis, name, type_annotation_spacing.0),
+        Some(name) => format!(
+            "{}{}{}:",
+            vis,
+            rewrite_ident(context, name),
+            type_annotation_spacing.0
+        ),
         None => format!("{}", vis),
     })
 }
@@ -1623,7 +1634,7 @@ fn rewrite_static(
     );
     let mut prefix = format!(
         "{}{}{} {}{}{}",
-        format_visibility(static_parts.vis),
+        format_visibility(context, static_parts.vis),
         static_parts.defaultness.map_or("", format_defaultness),
         static_parts.prefix,
         format_mutability(static_parts.mutability),
@@ -1673,7 +1684,7 @@ pub fn rewrite_associated_type(
     context: &RewriteContext,
     indent: Indent,
 ) -> Option<String> {
-    let prefix = format!("type {}", ident);
+    let prefix = format!("type {}", rewrite_ident(context, ident));
 
     let type_bounds_str = if let Some(bounds) = generic_bounds_opt {
         if bounds.is_empty() {
@@ -1881,8 +1892,13 @@ fn rewrite_fn_base(
     };
     let fd = fn_sig.decl;
     let g_span = mk_sp(span.lo(), fd.output.span().lo());
-    let generics_str =
-        rewrite_generics(context, &ident.to_string(), fn_sig.generics, shape, g_span)?;
+    let generics_str = rewrite_generics(
+        context,
+        rewrite_ident(context, ident),
+        fn_sig.generics,
+        shape,
+        g_span,
+    )?;
     result.push_str(&generics_str);
 
     let snuggle_angle_bracket = generics_str
@@ -2665,8 +2681,18 @@ fn rewrite_comments_before_after_where(
     Some((before_comment, after_comment))
 }
 
-fn format_header(item_name: &str, ident: ast::Ident, vis: &ast::Visibility) -> String {
-    format!("{}{}{}", format_visibility(vis), item_name, ident)
+fn format_header(
+    context: &RewriteContext,
+    item_name: &str,
+    ident: ast::Ident,
+    vis: &ast::Visibility,
+) -> String {
+    format!(
+        "{}{}{}",
+        format_visibility(context, vis),
+        item_name,
+        rewrite_ident(context, ident)
+    )
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -2771,15 +2797,24 @@ impl Rewrite for ast::ForeignItem {
             ast::ForeignItemKind::Static(ref ty, is_mutable) => {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function keywords here.
-                let vis = format_visibility(&self.vis);
+                let vis = format_visibility(context, &self.vis);
                 let mut_str = if is_mutable { "mut " } else { "" };
-                let prefix = format!("{}static {}{}:", vis, mut_str, self.ident);
+                let prefix = format!(
+                    "{}static {}{}:",
+                    vis,
+                    mut_str,
+                    rewrite_ident(context, self.ident)
+                );
                 // 1 = ;
                 rewrite_assign_rhs(context, prefix, &**ty, shape.sub_width(1)?).map(|s| s + ";")
             }
             ast::ForeignItemKind::Ty => {
-                let vis = format_visibility(&self.vis);
-                Some(format!("{}type {};", vis, self.ident))
+                let vis = format_visibility(context, &self.vis);
+                Some(format!(
+                    "{}type {};",
+                    vis,
+                    rewrite_ident(context, self.ident)
+                ))
             }
             ast::ForeignItemKind::Macro(ref mac) => {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Item)
@@ -2803,11 +2838,11 @@ impl Rewrite for ast::ForeignItem {
 }
 
 /// Rewrite an inline mod.
-pub fn rewrite_mod(item: &ast::Item) -> String {
+pub fn rewrite_mod(context: &RewriteContext, item: &ast::Item) -> String {
     let mut result = String::with_capacity(32);
-    result.push_str(&*format_visibility(&item.vis));
+    result.push_str(&*format_visibility(context, &item.vis));
     result.push_str("mod ");
-    result.push_str(&item.ident.to_string());
+    result.push_str(rewrite_ident(context, item.ident));
     result.push(';');
     result
 }

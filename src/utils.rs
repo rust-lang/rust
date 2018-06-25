@@ -24,6 +24,10 @@ use shape::Shape;
 pub const DEPR_SKIP_ANNOTATION: &str = "rustfmt_skip";
 pub const SKIP_ANNOTATION: &str = "rustfmt::skip";
 
+pub fn rewrite_ident<'a>(context: &'a RewriteContext, ident: ast::Ident) -> &'a str {
+    context.snippet(ident.span)
+}
+
 // Computes the length of a string's last line, minus offset.
 pub fn extra_offset(text: &str, shape: Shape) -> usize {
     match text.rfind('\n') {
@@ -34,7 +38,7 @@ pub fn extra_offset(text: &str, shape: Shape) -> usize {
 }
 
 // Uses Cow to avoid allocating in the common cases.
-pub fn format_visibility(vis: &Visibility) -> Cow<'static, str> {
+pub fn format_visibility(context: &RewriteContext, vis: &Visibility) -> Cow<'static, str> {
     match vis.node {
         VisibilityKind::Public => Cow::from("pub "),
         VisibilityKind::Inherited => Cow::from(""),
@@ -42,7 +46,7 @@ pub fn format_visibility(vis: &Visibility) -> Cow<'static, str> {
         VisibilityKind::Crate(CrateSugar::JustCrate) => Cow::from("crate "),
         VisibilityKind::Restricted { ref path, .. } => {
             let Path { ref segments, .. } = **path;
-            let mut segments_iter = segments.iter().map(|seg| seg.ident.name.to_string());
+            let mut segments_iter = segments.iter().map(|seg| rewrite_ident(context, seg.ident));
             if path.is_global() {
                 segments_iter
                     .next()

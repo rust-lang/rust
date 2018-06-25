@@ -24,7 +24,7 @@ use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separat
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use spanned::Spanned;
-use utils::{contains_skip, is_attributes_extendable, mk_sp};
+use utils::{contains_skip, is_attributes_extendable, mk_sp, rewrite_ident};
 
 pub trait AlignedItem {
     fn skip(&self) -> bool;
@@ -88,7 +88,7 @@ impl AlignedItem for ast::Field {
 
     fn rewrite_prefix(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let attrs_str = self.attrs.rewrite(context, shape)?;
-        let name = &self.ident.name.to_string();
+        let name = rewrite_ident(context, self.ident);
         let missing_span = if self.attrs.is_empty() {
             mk_sp(self.span.lo(), self.span.lo())
         } else {

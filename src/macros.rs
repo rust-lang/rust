@@ -43,7 +43,7 @@ use overflow;
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use spanned::Spanned;
-use utils::{format_visibility, mk_sp, wrap_str};
+use utils::{format_visibility, mk_sp, rewrite_ident, wrap_str};
 
 const FORCED_BRACKET_MACROS: &[&str] = &["vec!"];
 
@@ -116,10 +116,14 @@ fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
 }
 
 /// Rewrite macro name without using pretty-printer if possible.
-fn rewrite_macro_name(path: &ast::Path, extra_ident: Option<ast::Ident>) -> String {
+fn rewrite_macro_name(
+    context: &RewriteContext,
+    path: &ast::Path,
+    extra_ident: Option<ast::Ident>,
+) -> String {
     let name = if path.segments.len() == 1 {
         // Avoid using pretty-printer in the common case.
-        format!("{}!", path.segments[0].ident)
+        format!("{}!", rewrite_ident(context, path.segments[0].ident))
     } else {
         format!("{}!", path)
     };
@@ -170,7 +174,7 @@ pub fn rewrite_macro_inner(
 
     let original_style = macro_style(mac, context);
 
-    let macro_name = rewrite_macro_name(&mac.node.path, extra_ident);
+    let macro_name = rewrite_macro_name(context, &mac.node.path, extra_ident);
 
     let style = if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) {
         DelimToken::Bracket
@@ -361,11 +365,11 @@ pub fn rewrite_macro_def(
     let mut result = if def.legacy {
         String::from("macro_rules!")
     } else {
-        format!("{}macro", format_visibility(vis))
+        format!("{}macro", format_visibility(context, vis))
     };
 
     result += " ";
-    result += &ident.name.as_str();
+    result += rewrite_ident(context, ident);
 
     let multi_branch_style = def.legacy || parsed_def.branches.len() != 1;
 
@@ -1339,7 +1343,7 @@ fn format_lazy_static(context: &RewriteContext, shape: Shape, ts: &TokenStream) 
 
     while parser.token != Token::Eof {
         // Parse a `lazy_static!` item.
-        let vis = ::utils::format_visibility(&parse_or!(parse_visibility, false));
+        let vis = ::utils::format_visibility(context, &parse_or!(parse_visibility, false));
         parser.eat_keyword(symbol::keywords::Static);
         parser.eat_keyword(symbol::keywords::Ref);
         let id = parse_or!(parse_ident);

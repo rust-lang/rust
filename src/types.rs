@@ -29,7 +29,7 @@ use shape::Shape;
 use spanned::Spanned;
 use utils::{
     colon_spaces, extra_offset, first_line_width, format_abi, format_mutability, last_line_width,
-    mk_sp,
+    mk_sp, rewrite_ident,
 };
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -187,8 +187,10 @@ impl<'a> Rewrite for SegmentParam<'a> {
             SegmentParam::Type(ty) => ty.rewrite(context, shape),
             SegmentParam::Binding(binding) => {
                 let mut result = match context.config.type_punctuation_density() {
-                    TypeDensity::Wide => format!("{} = ", binding.ident),
-                    TypeDensity::Compressed => format!("{}=", binding.ident),
+                    TypeDensity::Wide => format!("{} = ", rewrite_ident(context, binding.ident)),
+                    TypeDensity::Compressed => {
+                        format!("{}=", rewrite_ident(context, binding.ident))
+                    }
                 };
                 let budget = shape.width.checked_sub(result.len())?;
                 let rewrite = binding
@@ -220,7 +222,7 @@ fn rewrite_segment(
     shape: Shape,
 ) -> Option<String> {
     let mut result = String::with_capacity(128);
-    result.push_str(&segment.ident.name.as_str());
+    result.push_str(rewrite_ident(context, segment.ident));
 
     let ident_len = result.len();
     let shape = if context.use_block_indent() {
@@ -496,8 +498,8 @@ fn rewrite_bounded_lifetime(
 }
 
 impl Rewrite for ast::Lifetime {
-    fn rewrite(&self, _: &RewriteContext, _: Shape) -> Option<String> {
-        Some(self.ident.to_string())
+    fn rewrite(&self, context: &RewriteContext, _: Shape) -> Option<String> {
+        Some(rewrite_ident(context, self.ident).to_owned())
     }
 }
 
@@ -532,7 +534,7 @@ impl Rewrite for ast::GenericParam {
             Some(ref rw) if !rw.is_empty() => result.push_str(&format!("{} ", rw)),
             _ => (),
         }
-        result.push_str(&self.ident.to_string());
+        result.push_str(rewrite_ident(context, self.ident));
         if !self.bounds.is_empty() {
             result.push_str(type_bound_colon(context));
             result.push_str(&self.bounds.rewrite(context, shape)?)

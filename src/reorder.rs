@@ -100,7 +100,7 @@ fn rewrite_reorderable_item(
 
     let item_str = match item.node {
         ast::ItemKind::ExternCrate(..) => rewrite_extern_crate(context, item)?,
-        ast::ItemKind::Mod(..) => rewrite_mod(item),
+        ast::ItemKind::Mod(..) => rewrite_mod(context, item),
         _ => return None,
     };
 

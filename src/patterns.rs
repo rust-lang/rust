@@ -28,7 +28,7 @@ use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;
 use types::{rewrite_path, PathContext};
-use utils::{format_mutability, mk_sp};
+use utils::{format_mutability, mk_sp, rewrite_ident};
 
 /// Returns true if the given pattern is short. A short pattern is defined by the following grammer:
 ///
@@ -74,7 +74,7 @@ impl Rewrite for Pat {
                     BindingMode::ByValue(mutability) => ("", mutability),
                 };
                 let mut_infix = format_mutability(mutability);
-                let id_str = ident.name.to_string();
+                let id_str = rewrite_ident(context, ident);
                 let sub_pat = match *sub_pat {
                     Some(ref p) => {
                         // 3 - ` @ `.
@@ -246,7 +246,7 @@ impl Rewrite for FieldPat {
             pat
         } else {
             let pat_str = pat?;
-            let id_str = self.ident.to_string();
+            let id_str = rewrite_ident(context, self.ident);
             let one_line_width = id_str.len() + 2 + pat_str.len();
             if one_line_width <= shape.width {
                 Some(format!("{}: {}", id_str, pat_str))
