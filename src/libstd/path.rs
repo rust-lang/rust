@@ -1551,7 +1551,6 @@ impl From<PathBuf> for Arc<Path> {
     /// Converts a `PathBuf` into a `Arc<Path>`.
     /// This conversion happens in place.
     /// This conversion does not allocate memory.
-    /// This function is unsafe. Data can't be moved from this reference.
     #[inline]
     fn from(s: PathBuf) -> Arc<Path> {
         let arc: Arc<OsStr> = Arc::from(s.into_os_string());
@@ -1564,7 +1563,6 @@ impl<'a> From<&'a Path> for Arc<Path> {
     /// Converts a `PathBuf` into a `Arc<Path>`.
     /// This conversion happens in place.
     /// This conversion does not allocate memory.
-    /// This function is unsafe. Data can't be moved from this reference.
     #[inline]
     fn from(s: &Path) -> Arc<Path> {
         let arc: Arc<OsStr> = Arc::from(s.as_os_str());
@@ -1577,7 +1575,6 @@ impl From<PathBuf> for Rc<Path> {
     /// Converts a `PathBuf` into a `Rc<Path>`.
     /// This conversion happens in place.
     /// This conversion does not allocate memory.
-    /// This function is unsafe. Data can't be moved from this reference.
     #[inline]
     fn from(s: PathBuf) -> Rc<Path> {
         let rc: Rc<OsStr> = Rc::from(s.into_os_string());
