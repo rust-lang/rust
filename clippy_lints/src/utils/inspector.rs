@@ -300,7 +300,7 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
                 print_expr(cx, e, indent + 1);
             }
         },
-        hir::ExprAgain(_) => println!("{}Again", ind),
+        hir::ExprContinue(_) => println!("{}Again", ind),
         hir::ExprRet(ref e) => {
             println!("{}Ret", ind);
             if let Some(ref e) = *e {

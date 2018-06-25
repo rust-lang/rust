@@ -558,7 +558,7 @@ fn in_attributes_expansion(expr: &Expr) -> bool {
         .ctxt()
         .outer()
         .expn_info()
-        .map_or(false, |info| matches!(info.callee.format, ExpnFormat::MacroAttribute(_)))
+        .map_or(false, |info| matches!(info.format, ExpnFormat::MacroAttribute(_)))
 }
 
 /// Test whether `def` is a variable defined outside a macro.

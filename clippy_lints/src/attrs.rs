@@ -207,7 +207,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
 }
 
 fn is_relevant_item(tcx: TyCtxt, item: &Item) -> bool {
-    if let ItemFn(_, _, _, _, _, eid) = item.node {
+    if let ItemFn(_, _, _, eid) = item.node {
         is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir.body(eid).value)
     } else {
         true

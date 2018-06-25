@@ -52,7 +52,7 @@ impl<'a> Sugg<'a> {
                 hir::ExprIf(..) |
                 hir::ExprUnary(..) |
                 hir::ExprMatch(..) => Sugg::MaybeParen(snippet),
-                hir::ExprAgain(..) |
+                hir::ExprContinue(..) |
                 hir::ExprYield(..) |
                 hir::ExprArray(..) |
                 hir::ExprBlock(..) |
@@ -100,6 +100,7 @@ impl<'a> Sugg<'a> {
             ast::ExprKind::ObsoleteInPlace(..) |
             ast::ExprKind::Unary(..) |
             ast::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
+            ast::ExprKind::Async(..) |
             ast::ExprKind::Block(..) |
             ast::ExprKind::Break(..) |
             ast::ExprKind::Call(..) |

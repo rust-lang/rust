@@ -84,8 +84,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
         }
 
         match kind {
-            FnKind::ItemFn(.., abi, _, attrs) => {
-                if abi != Abi::Rust {
+            FnKind::ItemFn(.., header, _, attrs) => {
+                if header.abi != Abi::Rust {
                     return;
                 }
                 for a in attrs {

@@ -432,7 +432,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 }
                 // FIXME: implement label printing
             },
-            Expr_::ExprAgain(ref _destination) => {
+            Expr_::ExprContinue(ref _destination) => {
                 let destination_pat = self.next("destination");
                 println!("Again(ref {}) = {};", destination_pat, current);
                 // FIXME: implement label printing

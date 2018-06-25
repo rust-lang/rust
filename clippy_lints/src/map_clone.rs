@@ -104,7 +104,7 @@ fn expr_eq_name(expr: &Expr, id: ast::Name) -> bool {
             let arg_segment = [
                 PathSegment {
                     name: id,
-                    parameters: None,
+                    args: None,
                     infer_types: true,
                 },
             ];
