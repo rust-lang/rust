@@ -21,7 +21,7 @@ use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListIte
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;
-use utils::mk_sp;
+use utils::{mk_sp, rewrite_ident};
 use visitor::FmtVisitor;
 
 use std::borrow::Cow;
@@ -141,9 +141,12 @@ impl UseSegment {
         }
     }
 
-    fn from_path_segment(path_seg: &ast::PathSegment) -> Option<UseSegment> {
-        let name = path_seg.ident.name.as_str();
-        if name == "{{root}}" {
+    fn from_path_segment(
+        context: &RewriteContext,
+        path_seg: &ast::PathSegment,
+    ) -> Option<UseSegment> {
+        let name = rewrite_ident(context, path_seg.ident);
+        if name.is_empty() || name == "{{root}}" {
             return None;
         }
         Some(if name == "self" {
@@ -231,10 +234,9 @@ impl fmt::Display for UseTree {
 impl UseTree {
     // Rewrite use tree with `use ` and a trailing `;`.
     pub fn rewrite_top_level(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        let vis = self
-            .visibility
-            .as_ref()
-            .map_or(Cow::from(""), |vis| ::utils::format_visibility(&vis));
+        let vis = self.visibility.as_ref().map_or(Cow::from(""), |vis| {
+            ::utils::format_visibility(context, &vis)
+        });
         let use_str = self
             .rewrite(context, shape.offset_left(vis.len())?)
             .map(|s| {
@@ -314,7 +316,7 @@ impl UseTree {
             attrs,
         };
         for p in &a.prefix.segments {
-            if let Some(use_segment) = UseSegment::from_path_segment(p) {
+            if let Some(use_segment) = UseSegment::from_path_segment(context, p) {
                 result.path.push(use_segment);
             }
         }
@@ -347,12 +349,12 @@ impl UseTree {
                 ));
             }
             UseTreeKind::Simple(ref rename, ..) => {
-                let mut name = (*path_to_imported_ident(&a.prefix).name.as_str()).to_owned();
+                let mut name = rewrite_ident(context, path_to_imported_ident(&a.prefix)).to_owned();
                 let alias = rename.and_then(|ident| {
                     if ident == path_to_imported_ident(&a.prefix) {
                         None
                     } else {
-                        Some(ident.to_string())
+                        Some(rewrite_ident(context, ident).to_owned())
                     }
                 });
 

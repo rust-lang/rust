@@ -28,7 +28,7 @@ use shape::{Indent, Shape};
 use spanned::Spanned;
 use utils::{
     self, contains_skip, count_newlines, inner_attributes, mk_sp, ptr_vec_to_ref_vec,
-    DEPR_SKIP_ANNOTATION,
+    rewrite_ident, DEPR_SKIP_ANNOTATION,
 };
 use {ErrorKind, FormatReport, FormattingError};
 
@@ -682,9 +682,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         attrs: &[ast::Attribute],
         is_internal: bool,
     ) {
-        self.push_str(&*utils::format_visibility(vis));
+        let vis_str = utils::format_visibility(&self.get_context(), vis);
+        self.push_str(&*vis_str);
         self.push_str("mod ");
-        self.push_str(&ident.to_string());
+        // Calling `to_owned()` to work around borrow checker.
+        let ident_str = rewrite_ident(&self.get_context(), ident).to_owned();
+        self.push_str(&ident_str);
 
         if is_internal {
             match self.config.brace_style() {
