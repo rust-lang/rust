@@ -25,10 +25,12 @@ use sys_common::{AsInner, FromInner};
 
 #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "l4re"))]
 use libc::{stat64, fstat64, lstat64, off64_t, ftruncate64, lseek64, dirent64, readdir64_r, open64};
+#[cfg(any(target_os = "linux", target_os = "emscripten"))]
+use libc::fstatat64;
 #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
-use libc::{fstatat, dirfd};
+use libc::dirfd;
 #[cfg(target_os = "android")]
-use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, lseek64,
+use libc::{stat as stat64, fstat as fstat64, fstatat as fstatat64, lstat as lstat64, lseek64,
            dirent as dirent64, open as open64};
 #[cfg(not(any(target_os = "linux",
               target_os = "emscripten",
@@ -299,10 +301,7 @@ impl DirEntry {
         let fd = cvt(unsafe {dirfd(self.dir.0.dirp.0)})?;
         let mut stat: stat64 = unsafe { mem::zeroed() };
         cvt(unsafe {
-            fstatat(fd,
-                    self.entry.d_name.as_ptr(),
-                    &mut stat as *mut _ as *mut _,
-                    libc::AT_SYMLINK_NOFOLLOW)
+            fstatat64(fd, self.entry.d_name.as_ptr(), &mut stat, libc::AT_SYMLINK_NOFOLLOW)
         })?;
         Ok(FileAttr { stat: stat })
     }
