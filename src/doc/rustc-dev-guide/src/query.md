@@ -215,9 +215,7 @@ Well, defining a query takes place in two steps:
 
 To specify the query name and arguments, you simply add an entry to
 the big macro invocation in
-[`src/librustc/ty/query/mod.rs`][query-mod]. This will probably have
-changed by the time you read this README, but at present it looks
-something like:
+[`src/librustc/ty/query/mod.rs`][query-mod], which looks something like:
 
 [query-mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/query/index.html
 
