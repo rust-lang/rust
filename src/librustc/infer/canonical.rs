@@ -29,7 +29,7 @@
 //! For a more detailed look at what is happening here, check
 //! out the [chapter in the rustc guide][c].
 //!
-//! [c]: https://rust-lang-nursery.github.io/rustc-guide/traits-canonicalization.html
+//! [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html
 
 use infer::{InferCtxt, InferOk, InferResult, RegionVariableOrigin, TypeVariableOrigin};
 use rustc_data_structures::indexed_vec::Idx;
@@ -274,7 +274,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// To get a good understanding of what is happening here, check
     /// out the [chapter in the rustc guide][c].
     ///
-    /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits-canonicalization.html#processing-the-canonicalized-query-result
+    /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html#processing-the-canonicalized-query-result
     pub fn instantiate_query_result<R>(
         &self,
         cause: &ObligationCause<'tcx>,
@@ -458,7 +458,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// To get a good understanding of what is happening here, check
     /// out the [chapter in the rustc guide][c].
     ///
-    /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits-canonicalization.html#canonicalizing-the-query
+    /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html#canonicalizing-the-query
     pub fn canonicalize_query<V>(&self, value: &V) -> (V::Canonicalized, CanonicalVarValues<'tcx>)
     where
         V: Canonicalize<'gcx, 'tcx>,
@@ -497,7 +497,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// To get a good understanding of what is happening here, check
     /// out the [chapter in the rustc guide][c].
     ///
-    /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits-canonicalization.html#canonicalizing-the-query-result
+    /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html#canonicalizing-the-query-result
     pub fn canonicalize_response<V>(
         &self,
         value: &V,
