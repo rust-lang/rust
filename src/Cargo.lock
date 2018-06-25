@@ -2035,6 +2035,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "rustc_allocator"
 version = "0.0.0"
 dependencies = [
+ "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_target 0.0.0",
