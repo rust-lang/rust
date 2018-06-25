@@ -15,11 +15,9 @@ use ty::query::TyCtxtAt;
 use mir::interpret::ConstValue;
 use errors::DiagnosticBuilder;
 
-use graphviz::IntoCow;
 use syntax_pos::Span;
 use syntax::ast;
 
-use std::borrow::Cow;
 use rustc_data_structures::sync::Lrc;
 
 pub type EvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ConstEvalErr<'tcx>>;
@@ -41,22 +39,6 @@ pub struct FrameInfo {
     pub span: Span,
     pub location: String,
     pub lint_root: Option<ast::NodeId>,
-}
-
-#[derive(Clone, Debug)]
-pub enum ConstEvalErrDescription<'a, 'tcx: 'a> {
-    Simple(Cow<'a, str>),
-    Backtrace(&'a ::mir::interpret::EvalError<'tcx>, &'a [FrameInfo]),
-}
-
-impl<'a, 'tcx> ConstEvalErrDescription<'a, 'tcx> {
-    /// Return a one-line description of the error, for lints and such
-    pub fn into_oneline(self) -> Cow<'a, str> {
-        match self {
-            ConstEvalErrDescription::Simple(simple) => simple,
-            ConstEvalErrDescription::Backtrace(miri, _) => format!("{}", miri).into_cow(),
-        }
-    }
 }
 
 impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
