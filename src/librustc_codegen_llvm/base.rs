@@ -1381,7 +1381,6 @@ mod temp_stable_hash_impls {
 
 fn fetch_wasm_section(tcx: TyCtxt, id: DefId) -> (String, Vec<u8>) {
     use rustc::mir::interpret::GlobalId;
-    use rustc::mir::interpret::ConstVal;
 
     info!("loading wasm section {:?}", id);
 
@@ -1399,12 +1398,6 @@ fn fetch_wasm_section(tcx: TyCtxt, id: DefId) -> (String, Vec<u8>) {
     };
     let param_env = ty::ParamEnv::reveal_all();
     let val = tcx.const_eval(param_env.and(cid)).unwrap();
-
-    let const_val = match val.val {
-        ConstVal::Value(val) => val,
-        ConstVal::Unevaluated(..) => bug!("should be evaluated"),
-    };
-
-    let alloc = tcx.const_value_to_allocation((const_val, val.ty));
+    let alloc = tcx.const_value_to_allocation(val);
     (section.to_string(), alloc.bytes.clone())
 }

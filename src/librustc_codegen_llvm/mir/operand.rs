@@ -96,16 +96,16 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     }
 
     pub fn from_const(bx: &Builder<'a, 'tcx>,
-                      val: ConstValue<'tcx>,
-                      ty: ty::Ty<'tcx>)
+                      val: &'tcx ty::Const<'tcx>)
                       -> Result<OperandRef<'tcx>, Lrc<ConstEvalErr<'tcx>>> {
-        let layout = bx.cx.layout_of(ty);
+        let layout = bx.cx.layout_of(val.ty);
 
         if layout.is_zst() {
             return Ok(OperandRef::new_zst(bx.cx, layout));
         }
 
-        let val = match val {
+        let val = match val.val {
+            ConstValue::Unevaluated(..) => bug!(),
             ConstValue::Scalar(x) => {
                 let scalar = match layout.abi {
                     layout::Abi::Scalar(ref x) => x,
@@ -409,8 +409,8 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
 
             mir::Operand::Constant(ref constant) => {
                 let ty = self.monomorphize(&constant.ty);
-                self.mir_constant_to_const_value(bx, constant)
-                    .and_then(|c| OperandRef::from_const(bx, c, ty))
+                self.eval_mir_constant(bx, constant)
+                    .and_then(|c| OperandRef::from_const(bx, c))
                     .unwrap_or_else(|err| {
                         match constant.literal {
                             mir::Literal::Promoted { .. } => {

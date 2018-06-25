@@ -14,7 +14,7 @@
 //! type equality, etc.
 
 use hir::def_id::DefId;
-use mir::interpret::ConstVal;
+use mir::interpret::ConstValue;
 use ty::subst::{Kind, UnpackedKind, Substs};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::error::{ExpectedFound, TypeError};
@@ -474,7 +474,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
                     return Ok(s);
                 }
                 match x.val {
-                    ConstVal::Unevaluated(def_id, substs) => {
+                    ConstValue::Unevaluated(def_id, substs) => {
                         // FIXME(eddyb) get the right param_env.
                         let param_env = ty::ParamEnv::empty();
                         match tcx.lift_to_global(&substs) {

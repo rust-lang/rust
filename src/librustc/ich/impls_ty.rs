@@ -370,27 +370,6 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::FieldDef {
 }
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
-for ::mir::interpret::ConstVal<'gcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        use mir::interpret::ConstVal::*;
-
-        mem::discriminant(self).hash_stable(hcx, hasher);
-
-        match *self {
-            Unevaluated(def_id, substs) => {
-                def_id.hash_stable(hcx, hasher);
-                substs.hash_stable(hcx, hasher);
-            }
-            Value(ref value) => {
-                value.hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
-
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
 for ::mir::interpret::ConstValue<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
@@ -400,6 +379,10 @@ for ::mir::interpret::ConstValue<'gcx> {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
+            Unevaluated(def_id, substs) => {
+                def_id.hash_stable(hcx, hasher);
+                substs.hash_stable(hcx, hasher);
+            }
             Scalar(val) => {
                 val.hash_stable(hcx, hasher);
             }

@@ -425,13 +425,13 @@ pub fn const_val_field<'a, 'tcx>(
     instance: ty::Instance<'tcx>,
     variant: Option<usize>,
     field: mir::Field,
-    value: ConstValue<'tcx>,
-    ty: Ty<'tcx>,
+    value: &'tcx ty::Const<'tcx>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
-    trace!("const_val_field: {:?}, {:?}, {:?}, {:?}", instance, field, value, ty);
+    trace!("const_val_field: {:?}, {:?}, {:?}", instance, field, value);
     let mut ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let result = (|| {
-        let value = ecx.const_value_to_value(value, ty)?;
+        let ty = value.ty;
+        let value = ecx.const_to_value(value.val)?;
         let layout = ecx.layout_of(ty)?;
         let (ptr, align) = match value {
             Value::ByRef(ptr, align) => (ptr, align),
@@ -478,30 +478,29 @@ pub fn const_variant_index<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     instance: ty::Instance<'tcx>,
-    val: ConstValue<'tcx>,
-    ty: Ty<'tcx>,
+    val: &'tcx ty::Const<'tcx>,
 ) -> EvalResult<'tcx, usize> {
-    trace!("const_variant_index: {:?}, {:?}, {:?}", instance, val, ty);
+    trace!("const_variant_index: {:?}, {:?}", instance, val);
     let mut ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
-    let value = ecx.const_value_to_value(val, ty)?;
+    let value = ecx.const_to_value(val.val)?;
     let (ptr, align) = match value {
         Value::ScalarPair(..) | Value::Scalar(_) => {
-            let layout = ecx.layout_of(ty)?;
+            let layout = ecx.layout_of(val.ty)?;
             let ptr = ecx.memory.allocate(layout.size, layout.align, Some(MemoryKind::Stack))?.into();
-            ecx.write_value_to_ptr(value, ptr, layout.align, ty)?;
+            ecx.write_value_to_ptr(value, ptr, layout.align, val.ty)?;
             (ptr, layout.align)
         },
         Value::ByRef(ptr, align) => (ptr, align),
     };
     let place = Place::from_scalar_ptr(ptr, align);
-    ecx.read_discriminant_as_variant_index(place, ty)
+    ecx.read_discriminant_as_variant_index(place, val.ty)
 }
 
 pub fn const_value_to_allocation_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    (val, ty): (ConstValue<'tcx>, Ty<'tcx>),
+    val: &'tcx ty::Const<'tcx>,
 ) -> &'tcx Allocation {
-    match val {
+    match val.val {
         ConstValue::ByRef(alloc, offset) => {
             assert_eq!(offset.bytes(), 0);
             return alloc;
@@ -514,14 +513,14 @@ pub fn const_value_to_allocation_provider<'a, 'tcx>(
             ty::ParamEnv::reveal_all(),
             CompileTimeEvaluator,
             ());
-        let value = ecx.const_value_to_value(val, ty)?;
-        let layout = ecx.layout_of(ty)?;
+        let value = ecx.const_to_value(val.val)?;
+        let layout = ecx.layout_of(val.ty)?;
         let ptr = ecx.memory.allocate(layout.size, layout.align, Some(MemoryKind::Stack))?;
-        ecx.write_value_to_ptr(value, ptr.into(), layout.align, ty)?;
+        ecx.write_value_to_ptr(value, ptr.into(), layout.align, val.ty)?;
         let alloc = ecx.memory.get(ptr.alloc_id)?;
         Ok(tcx.intern_const_alloc(alloc.clone()))
     };
-    result().expect("unable to convert ConstVal to Allocation")
+    result().expect("unable to convert ConstValue to Allocation")
 }
 
 pub fn const_eval_provider<'a, 'tcx>(

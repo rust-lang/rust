@@ -20,7 +20,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::mir::interpret::ConstVal;
+use rustc::mir::interpret::ConstValue;
 use rustc::traits::{self, TraitEngine};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::cast::CastTy;
@@ -611,7 +611,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
             Operand::Constant(ref constant) => {
                 if let Literal::Value {
-                    value: &ty::Const { val: ConstVal::Unevaluated(def_id, _), ty, .. }
+                    value: &ty::Const { val: ConstValue::Unevaluated(def_id, _), ty, .. }
                 } = constant.literal {
                     // Don't peek inside trait associated constants.
                     if self.tcx.trait_of_item(def_id).is_some() {

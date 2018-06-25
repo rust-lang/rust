@@ -60,7 +60,7 @@
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
 
-use mir::interpret::{GlobalId, ConstValue};
+use mir::interpret::GlobalId;
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use hir::map::DefPathHash;
 use hir::{HirId, ItemLocalId};
@@ -75,7 +75,7 @@ use traits::query::{
     CanonicalPredicateGoal, CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpNormalizeGoal,
 };
 use ty::{TyCtxt, FnSig, Instance, InstanceDef,
-         ParamEnv, ParamEnvAnd, Predicate, PolyFnSig, PolyTraitRef, Ty};
+         ParamEnv, ParamEnvAnd, Predicate, PolyFnSig, PolyTraitRef, Ty, self};
 use ty::subst::Substs;
 
 // erase!() just makes tokens go away. It's used to specify which macro argument
@@ -632,7 +632,7 @@ define_dep_nodes!( <'tcx>
     // queries). Making them anonymous avoids hashing the result, which
     // may save a bit of time.
     [anon] EraseRegionsTy { ty: Ty<'tcx> },
-    [anon] ConstValueToAllocation { val: ConstValue<'tcx>, ty: Ty<'tcx> },
+    [anon] ConstValueToAllocation { val: &'tcx ty::Const<'tcx> },
 
     [input] Freevars(DefId),
     [input] MaybeUnusedTraitImport(DefId),

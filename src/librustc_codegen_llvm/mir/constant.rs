@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::{self, ValueRef};
-use rustc::mir::interpret::{ConstVal, ConstEvalErr};
+use rustc::mir::interpret::ConstEvalErr;
 use rustc_mir::interpret::{read_target_uint, const_val_field};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
@@ -129,20 +129,20 @@ pub fn codegen_static_initializer<'a, 'tcx>(
     let static_ = cx.tcx.const_eval(param_env.and(cid))?;
 
     let alloc = match static_.val {
-        ConstVal::Value(ConstValue::ByRef(alloc, n)) if n.bytes() == 0 => alloc,
+        ConstValue::ByRef(alloc, n) if n.bytes() == 0 => alloc,
         _ => bug!("static const eval returned {:#?}", static_),
     };
     Ok(const_alloc_to_llvm(cx, alloc))
 }
 
 impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
-    fn const_to_const_value(
+    fn fully_evaluate(
         &mut self,
         bx: &Builder<'a, 'tcx>,
         constant: &'tcx ty::Const<'tcx>,
-    ) -> Result<ConstValue<'tcx>, Lrc<ConstEvalErr<'tcx>>> {
+    ) -> Result<&'tcx ty::Const<'tcx>, Lrc<ConstEvalErr<'tcx>>> {
         match constant.val {
-            ConstVal::Unevaluated(def_id, ref substs) => {
+            ConstValue::Unevaluated(def_id, ref substs) => {
                 let tcx = bx.tcx();
                 let param_env = ty::ParamEnv::reveal_all();
                 let instance = ty::Instance::resolve(tcx, param_env, def_id, substs).unwrap();
@@ -150,18 +150,17 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     instance,
                     promoted: None,
                 };
-                let c = tcx.const_eval(param_env.and(cid))?;
-                self.const_to_const_value(bx, c)
+                tcx.const_eval(param_env.and(cid))
             },
-            ConstVal::Value(val) => Ok(val),
+            _ => Ok(constant),
         }
     }
 
-    pub fn mir_constant_to_const_value(
+    pub fn eval_mir_constant(
         &mut self,
         bx: &Builder<'a, 'tcx>,
         constant: &mir::Constant<'tcx>,
-    ) -> Result<ConstValue<'tcx>, Lrc<ConstEvalErr<'tcx>>> {
+    ) -> Result<&'tcx ty::Const<'tcx>, Lrc<ConstEvalErr<'tcx>>> {
         match constant.literal {
             mir::Literal::Promoted { index } => {
                 let param_env = ty::ParamEnv::reveal_all();
@@ -174,7 +173,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
             mir::Literal::Value { value } => {
                 Ok(self.monomorphize(&value))
             }
-        }.and_then(|c| self.const_to_const_value(bx, c))
+        }.and_then(|c| self.fully_evaluate(bx, c))
     }
 
     /// process constant containing SIMD shuffle indices
@@ -183,10 +182,10 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         bx: &Builder<'a, 'tcx>,
         constant: &mir::Constant<'tcx>,
     ) -> (ValueRef, Ty<'tcx>) {
-        self.mir_constant_to_const_value(bx, constant)
+        self.eval_mir_constant(bx, constant)
             .and_then(|c| {
-                let field_ty = constant.ty.builtin_index().unwrap();
-                let fields = match constant.ty.sty {
+                let field_ty = c.ty.builtin_index().unwrap();
+                let fields = match c.ty.sty {
                     ty::TyArray(_, n) => n.unwrap_usize(bx.tcx()),
                     ref other => bug!("invalid simd shuffle type: {}", other),
                 };
@@ -198,7 +197,6 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                         None,
                         mir::Field::new(field as usize),
                         c,
-                        constant.ty,
                     )?;
                     if let Some(prim) = field.to_scalar() {
                         let layout = bx.cx.layout_of(field_ty);
@@ -215,7 +213,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     }
                 }).collect();
                 let llval = C_struct(bx.cx, &values?, false);
-                Ok((llval, constant.ty))
+                Ok((llval, c.ty))
             })
             .unwrap_or_else(|e| {
                 e.report_as_error(

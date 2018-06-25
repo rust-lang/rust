@@ -29,7 +29,7 @@ use syntax::symbol::keywords::{self, Keyword};
 use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::{self, DUMMY_SP, Pos, FileName};
 
-use rustc::mir::interpret::ConstVal;
+use rustc::mir::interpret::ConstValue;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::resolve_lifetime as rl;
 use rustc::ty::fold::TypeFolder;
@@ -3014,7 +3014,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::TySlice(ty) => Slice(box ty.clean(cx)),
             ty::TyArray(ty, n) => {
                 let mut n = cx.tcx.lift(&n).unwrap();
-                if let ConstVal::Unevaluated(def_id, substs) = n.val {
+                if let ConstValue::Unevaluated(def_id, substs) = n.val {
                     let param_env = cx.tcx.param_env(def_id);
                     let cid = GlobalId {
                         instance: ty::Instance::new(def_id, substs),
@@ -4096,14 +4096,14 @@ fn name_from_pat(p: &hir::Pat) -> String {
 
 fn print_const(cx: &DocContext, n: &ty::Const) -> String {
     match n.val {
-        ConstVal::Unevaluated(def_id, _) => {
+        ConstValue::Unevaluated(def_id, _) => {
             if let Some(node_id) = cx.tcx.hir.as_local_node_id(def_id) {
                 print_const_expr(cx, cx.tcx.hir.body_owned_by(node_id))
             } else {
                 inline::print_inlined_const(cx, def_id)
             }
         },
-        ConstVal::Value(..) => {
+        _ => {
             let mut s = String::new();
             ::rustc::mir::fmt_const_val(&mut s, n).unwrap();
             // array lengths are obviously usize

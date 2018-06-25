@@ -13,7 +13,7 @@
 //! hand, though we've recently added some macros (e.g.,
 //! `BraceStructLiftImpl!`) to help with the tedium.
 
-use mir::interpret::{ConstVal, ConstEvalErr};
+use mir::interpret::{ConstValue, ConstEvalErr};
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
@@ -1127,20 +1127,24 @@ EnumTypeFoldableImpl! {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ConstVal<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
-            ConstVal::Value(v) => ConstVal::Value(v),
-            ConstVal::Unevaluated(def_id, substs) => {
-                ConstVal::Unevaluated(def_id, substs.fold_with(folder))
+            ConstValue::Scalar(v) => ConstValue::Scalar(v),
+            ConstValue::ScalarPair(a, b) => ConstValue::ScalarPair(a, b),
+            ConstValue::ByRef(alloc, offset) => ConstValue::ByRef(alloc, offset),
+            ConstValue::Unevaluated(def_id, substs) => {
+                ConstValue::Unevaluated(def_id, substs.fold_with(folder))
             }
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
-            ConstVal::Value(_) => false,
-            ConstVal::Unevaluated(_, substs) => substs.visit_with(visitor),
+            ConstValue::Scalar(_) |
+            ConstValue::ScalarPair(_, _) |
+            ConstValue::ByRef(_, _) => false,
+            ConstValue::Unevaluated(_, substs) => substs.visit_with(visitor),
         }
     }
 }

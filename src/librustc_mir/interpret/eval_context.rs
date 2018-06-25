@@ -3,7 +3,6 @@ use std::fmt::Write;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
 use rustc::hir::map::definitions::DefPathData;
-use rustc::mir::interpret::ConstVal;
 use rustc::mir;
 use rustc::ty::layout::{self, Size, Align, HasDataLayout, IntegerExt, LayoutOf, TyLayout};
 use rustc::ty::subst::{Subst, Substs};
@@ -233,12 +232,18 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         Ok(Scalar::Ptr(ptr).to_value_with_len(s.len() as u64, self.tcx.tcx))
     }
 
-    pub fn const_value_to_value(
+    pub fn const_to_value(
         &mut self,
         val: ConstValue<'tcx>,
-        _ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Value> {
         match val {
+            ConstValue::Unevaluated(def_id, substs) => {
+                let instance = self.resolve(def_id, substs)?;
+                self.read_global_as_value(GlobalId {
+                    instance,
+                    promoted: None,
+                })
+            }
             ConstValue::ByRef(alloc, offset) => {
                 // FIXME: Allocate new AllocId for all constants inside
                 let id = self.memory.allocate_value(alloc.clone(), Some(MemoryKind::Stack))?;
@@ -246,23 +251,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             },
             ConstValue::ScalarPair(a, b) => Ok(Value::ScalarPair(a, b)),
             ConstValue::Scalar(val) => Ok(Value::Scalar(val)),
-        }
-    }
-
-    pub(super) fn const_to_value(
-        &mut self,
-        const_val: &ConstVal<'tcx>,
-        ty: Ty<'tcx>
-    ) -> EvalResult<'tcx, Value> {
-        match *const_val {
-            ConstVal::Unevaluated(def_id, substs) => {
-                let instance = self.resolve(def_id, substs)?;
-                self.read_global_as_value(GlobalId {
-                    instance,
-                    promoted: None,
-                }, ty)
-            }
-            ConstVal::Value(val) => self.const_value_to_value(val, ty)
         }
     }
 
@@ -849,14 +837,14 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 use rustc::mir::Literal;
                 let mir::Constant { ref literal, .. } = **constant;
                 let value = match *literal {
-                    Literal::Value { ref value } => self.const_to_value(&value.val, ty)?,
+                    Literal::Value { ref value } => self.const_to_value(value.val)?,
 
                     Literal::Promoted { index } => {
                         let instance = self.frame().instance;
                         self.read_global_as_value(GlobalId {
                             instance,
                             promoted: Some(index),
-                        }, ty)?
+                        })?
                     }
                 };
 
@@ -1036,18 +1024,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         Ok(())
     }
 
-    pub fn read_global_as_value(&mut self, gid: GlobalId<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
-        if self.tcx.is_static(gid.instance.def_id()).is_some() {
-            let alloc_id = self
-                .tcx
-                .alloc_map
-                .lock()
-                .intern_static(gid.instance.def_id());
-            let layout = self.layout_of(ty)?;
-            return Ok(Value::ByRef(Scalar::Ptr(alloc_id.into()), layout.align))
-        }
+    pub fn read_global_as_value(&mut self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, Value> {
         let cv = self.const_eval(gid)?;
-        self.const_to_value(&cv.val, ty)
+        self.const_to_value(cv.val)
     }
 
     pub fn const_eval(&self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, &'tcx ty::Const<'tcx>> {

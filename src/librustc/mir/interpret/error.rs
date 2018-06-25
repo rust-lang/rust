@@ -11,24 +11,14 @@ use super::{
 
 use backtrace::Backtrace;
 
-
-use hir::def_id::DefId;
 use ty;
-use ty::subst::Substs;
 use ty::query::TyCtxtAt;
-use mir::interpret::ConstValue;
 use errors::DiagnosticBuilder;
 
 use syntax_pos::Span;
 use syntax::ast;
 
 pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, Lrc<ConstEvalErr<'tcx>>>;
-
-#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
-pub enum ConstVal<'tcx> {
-    Unevaluated(DefId, &'tcx Substs<'tcx>),
-    Value(ConstValue<'tcx>),
-}
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ConstEvalErr<'tcx> {
