@@ -174,7 +174,7 @@ enum ImplTraitContext<'a> {
     /// We store a DefId here so we can look up necessary information later
     ///
     /// Newly generated parameters should be inserted into the given `Vec`
-    Universal(DefId, &'a mut Vec<hir::TyParam>),
+    Universal(DefId, &'a mut Vec<hir::GenericParam>),
 
     /// Treat `impl Trait` as shorthand for a new universal existential parameter.
     /// Example: `fn foo() -> impl Debug`, where `impl Debug` is conceptually
@@ -183,7 +183,7 @@ enum ImplTraitContext<'a> {
     /// We store a DefId here so we can look up necessary information later
     ///
     /// All generics of the surrounding function must go into the generated existential type
-    Existential(DefId, &'a [hir::TyParam], &'a hir::Generics),
+    Existential(DefId, &'a [hir::GenericParam], &'a hir::Generics),
 
     /// `impl Trait` is not accepted in this position.
     Disallowed,
@@ -656,7 +656,7 @@ impl<'a> LoweringContext<'a> {
         f: F,
     ) -> (Vec<hir::GenericParam>, T)
     where
-        F: FnOnce(&mut LoweringContext) -> (Vec<hir::TyParam>, T),
+        F: FnOnce(&mut LoweringContext) -> (Vec<hir::GenericParam>, T),
     {
         assert!(!self.is_collecting_in_band_lifetimes);
         assert!(self.lifetimes_to_define.is_empty());
@@ -804,7 +804,7 @@ impl<'a> LoweringContext<'a> {
         f: F,
     ) -> (hir::Generics, T)
     where
-        F: FnOnce(&mut LoweringContext, &mut Vec<hir::TyParam>, &hir::Generics) -> T,
+        F: FnOnce(&mut LoweringContext, &mut Vec<hir::GenericParam>, &hir::Generics) -> T,
     {
         let (in_band_defs, (mut lowered_generics, res)) = self.with_in_scope_lifetime_defs(
             &generics.params,
@@ -1045,7 +1045,7 @@ impl<'a> LoweringContext<'a> {
                         -> hir::GenericArg {
         match arg {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt)),
-            ast::GenericArg::Type(ty) => GenericArg::Type(self.lower_ty(&ty, itctx)),
+            ast::GenericArg::Type(ty) => GenericArg::Type(self.lower_ty_direct(&ty, itctx)),
         }
     }
 
@@ -1175,7 +1175,7 @@ impl<'a> LoweringContext<'a> {
                             lctx.lower_param_bounds(bounds, itctx)
                         });
 
-                        let (path_params, params) = self.generics_from_impl_trait_bounds(
+                        let (params, lifetimes) = self.generics_from_impl_trait_bounds(
                             def_node_id,
                             exist_ty_def_index,
                             &hir_bounds,
@@ -1222,7 +1222,7 @@ impl<'a> LoweringContext<'a> {
                                     id: exist_ty_id.node_id
                                 },
                                 DefId::local(exist_ty_def_index),
-                                path_params.lifetimes,
+                                lifetimes,
                             )
                         })
                     }
@@ -1241,7 +1241,7 @@ impl<'a> LoweringContext<'a> {
                         );
                         // Set the name to `impl Bound1 + Bound2`
                         let name = Symbol::intern(&pprust::ty_to_string(t));
-                        self.in_band_ty_params.push(hir::GenericParam {
+                        in_band_ty_params.push(hir::GenericParam {
                             id: def_node_id,
                             name: ParamName::Plain(name),
                             span,
@@ -1292,7 +1292,7 @@ impl<'a> LoweringContext<'a> {
         exist_ty_id: NodeId,
         parent_index: DefIndex,
         bounds: &hir::GenericBounds,
-    ) -> (hir::PathParameters, HirVec<hir::GenericParam>) {
+    ) -> (HirVec<hir::GenericParam>, HirVec<hir::Lifetime>) {
         // This visitor walks over impl trait bounds and creates defs for all lifetimes which
         // appear in the bounds, excluding lifetimes that are created within the bounds.
         // e.g. 'a, 'b, but not 'c in `impl for<'c> SomeTrait<'a, 'b, 'c>`
@@ -1408,15 +1408,15 @@ impl<'a> LoweringContext<'a> {
                         lifetime.span,
                     );
 
-                    let name = match name {
+                    let (in_band, name) = match name {
                         hir::LifetimeName::Underscore => {
-                            hir::ParamName::Plain(keywords::UnderscoreLifetime.name())
+                            (true, hir::ParamName::Plain(keywords::UnderscoreLifetime.name()))
                         }
-                        hir::LifetimeName::Param(param_name) => param_name,
+                        hir::LifetimeName::Param(param_name) => (false, param_name),
                         _ => bug!("expected LifetimeName::Param or ParamName::Plain"),
                     };
 
-                    self.output_lifetime_params.push(hir::GenericParam {
+                    self.output_params.push(hir::GenericParam {
                         id: def_node_id,
                         name,
                         span: lifetime.span,
@@ -1424,7 +1424,7 @@ impl<'a> LoweringContext<'a> {
                         attrs: hir_vec![],
                         bounds: hir_vec![],
                         kind: hir::GenericParamKind::Lifetime {
-                            in_band: false,
+                            in_band,
                         }
                     });
                 }
@@ -1447,13 +1447,8 @@ impl<'a> LoweringContext<'a> {
         }
 
         (
-            hir::PathParameters {
-                lifetimes: lifetime_collector.output_lifetimes.into(),
-                types: HirVec::new(),
-                bindings: HirVec::new(),
-                parenthesized: false,
-            },
             lifetime_collector.output_params.into(),
+            lifetime_collector.output_lifetimes.into(),
         )
     }
 
@@ -1844,7 +1839,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_fn_decl(
         &mut self,
         decl: &FnDecl,
-        mut in_band_ty_params: Option<(DefId, &mut Vec<hir::TyParam>, &hir::Generics)>,
+        mut in_band_ty_params: Option<(DefId, &mut Vec<hir::GenericParam>, &hir::Generics)>,
         impl_trait_return_allow: bool,
     ) -> P<hir::FnDecl> {
         // NOTE: The two last parameters here have to do with impl Trait. If fn_def_id is Some,
@@ -1943,15 +1938,19 @@ impl<'a> LoweringContext<'a> {
         add_bounds: &NodeMap<Vec<GenericBound>>,
         mut itctx: ImplTraitContext,
     ) -> hir::HirVec<hir::GenericParam> {
-        params.iter().map(|param| self.lower_generic_param(param, add_bounds, itctx)).collect()
+        params.iter().map(|param| self.lower_generic_param(
+            param,
+            add_bounds,
+            itctx.reborrow(),
+        )).collect()
     }
 
     fn lower_generic_param(&mut self,
                            param: &GenericParam,
                            add_bounds: &NodeMap<Vec<GenericBound>>,
-                           itctx: ImplTraitContext)
+                           mut itctx: ImplTraitContext)
                            -> hir::GenericParam {
-        let mut bounds = self.lower_param_bounds(&param.bounds, itctx);
+        let mut bounds = self.lower_param_bounds(&param.bounds, itctx.reborrow());
         match param.kind {
             GenericParamKind::Lifetime => {
                 let was_collecting_in_band = self.is_collecting_in_band_lifetimes;
@@ -2809,8 +2808,8 @@ impl<'a> LoweringContext<'a> {
                 path_span: Span,
                 path_segment: &'v PathSegment,
             ) {
-                if let Some(ref p) = path_segment.parameters {
-                    if let PathParameters::Parenthesized(..) = **p {
+                if let Some(ref p) = path_segment.args {
+                    if let GenericArgs::Parenthesized(..) = **p {
                         return;
                     }
                 }

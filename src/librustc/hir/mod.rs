@@ -383,7 +383,7 @@ impl PathSegment {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum GenericArg {
     Lifetime(Lifetime),
-    Type(P<Ty>),
+    Type(Ty),
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
