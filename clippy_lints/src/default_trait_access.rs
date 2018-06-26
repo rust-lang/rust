@@ -22,7 +22,7 @@ use crate::utils::{any_parent_is_automatically_derived, match_def_path, opt_def_
 /// ```
 declare_clippy_lint! {
     pub DEFAULT_TRAIT_ACCESS,
-    style,
+    pedantic,
     "checks for literal calls to Default::default()"
 }
 
