@@ -1,4 +1,3 @@
-// rustfmt-imports_indent: Block
 // rustfmt-imports_layout: Vertical
 
 use std::{
