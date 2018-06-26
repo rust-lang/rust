@@ -14,56 +14,8 @@
 
 use fmt;
 use future::Future;
-use mem::{self, PinMut};
+use mem::PinMut;
 use super::{Context, Poll};
-
-/// A custom trait object for polling tasks, roughly akin to
-/// `Box<Future<Output = ()> + Send>`.
-pub struct TaskObj {
-    ptr: *mut (),
-    poll_fn: unsafe fn(*mut (), &mut Context) -> Poll<()>,
-    drop_fn: unsafe fn(*mut ()),
-}
-
-unsafe impl Send for TaskObj {}
-
-impl TaskObj {
-    /// Create a `TaskObj` from a custom trait object representation.
-    #[inline]
-    pub fn new<T: UnsafeTask + Send>(t: T) -> TaskObj {
-        TaskObj {
-            ptr: t.into_raw(),
-            poll_fn: T::poll,
-            drop_fn: T::drop,
-        }
-    }
-}
-
-impl fmt::Debug for TaskObj {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("TaskObj")
-            .finish()
-    }
-}
-
-impl Future for TaskObj {
-    type Output = ();
-
-    #[inline]
-    fn poll(self: PinMut<Self>, cx: &mut Context) -> Poll<()> {
-        unsafe {
-            (self.poll_fn)(self.ptr, cx)
-        }
-    }
-}
-
-impl Drop for TaskObj {
-    fn drop(&mut self) {
-        unsafe {
-            (self.drop_fn)(self.ptr)
-        }
-    }
-}
 
 /// A custom trait object for polling tasks, roughly akin to
 /// `Box<Future<Output = ()>>`.
@@ -90,8 +42,7 @@ impl LocalTaskObj {
     /// instance from which this `LocalTaskObj` was created actually implements
     /// `Send`.
     pub unsafe fn as_task_obj(self) -> TaskObj {
-        // Safety: Both structs have the same memory layout
-        mem::transmute::<LocalTaskObj, TaskObj>(self)
+        TaskObj(self)
     }
 }
 
@@ -104,10 +55,7 @@ impl fmt::Debug for LocalTaskObj {
 
 impl From<TaskObj> for LocalTaskObj {
     fn from(task: TaskObj) -> LocalTaskObj {
-        unsafe {
-            // Safety: Both structs have the same memory layout
-            mem::transmute::<TaskObj, LocalTaskObj>(task)
-        }
+        task.0
     }
 }
 
@@ -127,6 +75,37 @@ impl Drop for LocalTaskObj {
         unsafe {
             (self.drop_fn)(self.ptr)
         }
+    }
+}
+
+/// A custom trait object for polling tasks, roughly akin to
+/// `Box<Future<Output = ()> + Send>`.
+pub struct TaskObj(LocalTaskObj);
+
+unsafe impl Send for TaskObj {}
+
+impl TaskObj {
+    /// Create a `TaskObj` from a custom trait object representation.
+    #[inline]
+    pub fn new<T: UnsafeTask + Send>(t: T) -> TaskObj {
+        TaskObj(LocalTaskObj::new(t))
+    }
+}
+
+impl fmt::Debug for TaskObj {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("TaskObj")
+            .finish()
+    }
+}
+
+impl Future for TaskObj {
+    type Output = ();
+
+    #[inline]
+    fn poll(self: PinMut<Self>, cx: &mut Context) -> Poll<()> {
+        let pinned_field = unsafe { PinMut::map_unchecked(self, |x| &mut x.0) };
+        pinned_field.poll(cx)
     }
 }
 
