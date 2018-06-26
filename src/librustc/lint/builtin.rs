@@ -281,6 +281,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub IRREFUTABLE_LET_PATTERNS,
+    Deny,
+    "detects irrefutable patterns in if-let and while-let statements"
+}
+
+declare_lint! {
     pub UNUSED_LABELS,
     Allow,
     "detects labels that are never used"
@@ -361,6 +367,7 @@ impl LintPass for HardwiredLints {
             BARE_TRAIT_OBJECTS,
             ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
             UNSTABLE_NAME_COLLISIONS,
+            IRREFUTABLE_LET_PATTERNS,
             DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
             DUPLICATE_MACRO_EXPORTS,
             INTRA_DOC_LINK_RESOLUTION_FAILURE,
