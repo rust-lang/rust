@@ -94,6 +94,12 @@ impl fmt::Debug for UnixStream {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut builder = fmt.debug_struct("UnixStream");
         builder.field("fd", &self.0.raw());
+        if let Ok(addr) = self.local_addr() {
+            builder.field("local", &addr);
+        }
+        if let Ok(addr) = self.peer_addr() {
+            builder.field("peer", &addr);
+        }
         builder.finish()
     }
 }
@@ -171,6 +177,142 @@ impl UnixStream {
         self.0.duplicate().map(UnixStream)
     }
 
+    /// Returns the socket address of the local half of this connection.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    ///
+    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// let addr = socket.local_addr().expect("Couldn't get local address");
+    /// ```
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        Err(Error::new(ErrorKind::Other, "UnixStream::local_addr unimplemented on redox"))
+    }
+
+    /// Returns the socket address of the remote half of this connection.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    ///
+    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// let addr = socket.peer_addr().expect("Couldn't get peer address");
+    /// ```
+    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        Err(Error::new(ErrorKind::Other, "UnixStream::peer_addr unimplemented on redox"))
+    }
+
+    /// Sets the read timeout for the socket.
+    ///
+    /// If the provided value is [`None`], then [`read`] calls will block
+    /// indefinitely. An [`Err`] is returned if the zero [`Duration`] is passed to this
+    /// method.
+    ///
+    /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
+    /// [`Err`]: ../../../../std/result/enum.Result.html#variant.Err
+    /// [`read`]: ../../../../std/io/trait.Read.html#tymethod.read
+    /// [`Duration`]: ../../../../std/time/struct.Duration.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    /// use std::time::Duration;
+    ///
+    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
+    /// ```
+    ///
+    /// An [`Err`] is returned if the zero [`Duration`] is passed to this
+    /// method:
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::os::unix::net::UnixStream;
+    /// use std::time::Duration;
+    ///
+    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// let result = socket.set_read_timeout(Some(Duration::new(0, 0)));
+    /// let err = result.unwrap_err();
+    /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
+    /// ```
+    pub fn set_read_timeout(&self, _timeout: Option<Duration>) -> io::Result<()> {
+        Err(Error::new(ErrorKind::Other, "UnixStream::set_read_timeout unimplemented on redox"))
+    }
+
+    /// Sets the write timeout for the socket.
+    ///
+    /// If the provided value is [`None`], then [`write`] calls will block
+    /// indefinitely. An [`Err`] is returned if the zero [`Duration`] is
+    /// passed to this method.
+    ///
+    /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
+    /// [`Err`]: ../../../../std/result/enum.Result.html#variant.Err
+    /// [`write`]: ../../../../std/io/trait.Write.html#tymethod.write
+    /// [`Duration`]: ../../../../std/time/struct.Duration.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    /// use std::time::Duration;
+    ///
+    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// socket.set_write_timeout(Some(Duration::new(1, 0))).expect("Couldn't set write timeout");
+    /// ```
+    ///
+    /// An [`Err`] is returned if the zero [`Duration`] is passed to this
+    /// method:
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::net::UdpSocket;
+    /// use std::time::Duration;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").unwrap();
+    /// let result = socket.set_write_timeout(Some(Duration::new(0, 0)));
+    /// let err = result.unwrap_err();
+    /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
+    /// ```
+    pub fn set_write_timeout(&self, _timeout: Option<Duration>) -> io::Result<()> {
+        Err(Error::new(ErrorKind::Other, "UnixStream::set_write_timeout unimplemented on redox"))
+    }
+
+    /// Returns the read timeout of this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    /// use std::time::Duration;
+    ///
+    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
+    /// assert_eq!(socket.read_timeout().unwrap(), Some(Duration::new(1, 0)));
+    /// ```
+    pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
+        Err(Error::new(ErrorKind::Other, "UnixStream::read_timeout unimplemented on redox"))
+    }
+
+    /// Returns the write timeout of this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    /// use std::time::Duration;
+    ///
+    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// socket.set_write_timeout(Some(Duration::new(1, 0))).expect("Couldn't set write timeout");
+    /// assert_eq!(socket.write_timeout().unwrap(), Some(Duration::new(1, 0)));
+    /// ```
+    pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
+        Err(Error::new(ErrorKind::Other, "UnixStream::write_timeout unimplemented on redox"))
+    }
+
     /// Moves the socket into or out of nonblocking mode.
     ///
     /// # Examples
@@ -202,6 +344,27 @@ impl UnixStream {
     /// On Redox this always returns None.
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         Ok(None)
+    }
+
+    /// Shuts down the read, write, or both halves of this connection.
+    ///
+    /// This function will cause all pending and future I/O calls on the
+    /// specified portions to immediately return with an appropriate value
+    /// (see the documentation of [`Shutdown`]).
+    ///
+    /// [`Shutdown`]: ../../../../std/net/enum.Shutdown.html
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixStream;
+    /// use std::net::Shutdown;
+    ///
+    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// socket.shutdown(Shutdown::Both).expect("shutdown function failed");
+    /// ```
+    pub fn shutdown(&self, _how: Shutdown) -> io::Result<()> {
+        Err(Error::new(ErrorKind::Other, "UnixStream::shutdown unimplemented on redox"))
     }
 }
 
@@ -299,6 +462,9 @@ impl fmt::Debug for UnixListener {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut builder = fmt.debug_struct("UnixListener");
         builder.field("fd", &self.0.raw());
+        if let Ok(addr) = self.local_addr() {
+            builder.field("local", &addr);
+        }
         builder.finish()
     }
 }
@@ -373,6 +539,21 @@ impl UnixListener {
     /// ```
     pub fn try_clone(&self) -> io::Result<UnixListener> {
         self.0.duplicate().map(UnixListener)
+    }
+
+    /// Returns the local socket address of this listener.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixListener;
+    ///
+    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+    ///
+    /// let addr = listener.local_addr().expect("Couldn't get local address");
+    /// ```
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        Err(Error::new(ErrorKind::Other, "UnixListener::local_addr unimplemented on redox"))
     }
 
     /// Moves the socket into or out of nonblocking mode.
