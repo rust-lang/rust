@@ -1062,10 +1062,14 @@ define_print! {
                 TyParam(ref param_ty) => write!(f, "{}", param_ty),
                 TyAdt(def, substs) => cx.parameterized(f, substs, def.did, &[]),
                 TyDynamic(data, r) => {
-                    data.print(f, cx)?;
                     let r = r.print_to_string(cx);
                     if !r.is_empty() {
-                        write!(f, " + {}", r)
+                        write!(f, "(")?;
+                    }
+                    write!(f, "dyn ")?;
+                    data.print(f, cx)?;
+                    if !r.is_empty() {
+                        write!(f, " + {})", r)
                     } else {
                         Ok(())
                     }

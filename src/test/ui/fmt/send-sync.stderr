@@ -1,11 +1,11 @@
-error[E0277]: `*mut std::ops::Fn() + 'static` cannot be shared between threads safely
+error[E0277]: `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
   --> $DIR/send-sync.rs:18:5
    |
 LL |     send(format_args!("{:?}", c)); //~ ERROR E0277
-   |     ^^^^ `*mut std::ops::Fn() + 'static` cannot be shared between threads safely
+   |     ^^^^ `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
    |
-   = help: within `[std::fmt::ArgumentV1<'_>]`, the trait `std::marker::Sync` is not implemented for `*mut std::ops::Fn() + 'static`
-   = note: required because it appears within the type `std::marker::PhantomData<*mut std::ops::Fn() + 'static>`
+   = help: within `[std::fmt::ArgumentV1<'_>]`, the trait `std::marker::Sync` is not implemented for `*mut (dyn std::ops::Fn() + 'static)`
+   = note: required because it appears within the type `std::marker::PhantomData<*mut (dyn std::ops::Fn() + 'static)>`
    = note: required because it appears within the type `core::fmt::Void`
    = note: required because it appears within the type `&core::fmt::Void`
    = note: required because it appears within the type `std::fmt::ArgumentV1<'_>`
@@ -18,14 +18,14 @@ note: required by `send`
 LL | fn send<T: Send>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: `*mut std::ops::Fn() + 'static` cannot be shared between threads safely
+error[E0277]: `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
   --> $DIR/send-sync.rs:19:5
    |
 LL |     sync(format_args!("{:?}", c)); //~ ERROR E0277
-   |     ^^^^ `*mut std::ops::Fn() + 'static` cannot be shared between threads safely
+   |     ^^^^ `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
    |
-   = help: within `std::fmt::Arguments<'_>`, the trait `std::marker::Sync` is not implemented for `*mut std::ops::Fn() + 'static`
-   = note: required because it appears within the type `std::marker::PhantomData<*mut std::ops::Fn() + 'static>`
+   = help: within `std::fmt::Arguments<'_>`, the trait `std::marker::Sync` is not implemented for `*mut (dyn std::ops::Fn() + 'static)`
+   = note: required because it appears within the type `std::marker::PhantomData<*mut (dyn std::ops::Fn() + 'static)>`
    = note: required because it appears within the type `core::fmt::Void`
    = note: required because it appears within the type `&core::fmt::Void`
    = note: required because it appears within the type `std::fmt::ArgumentV1<'_>`

@@ -540,7 +540,7 @@ impl CompilerDesugaringKind {
             CompilerDesugaringKind::DotFill => "...",
             CompilerDesugaringKind::QuestionMark => "?",
             CompilerDesugaringKind::Catch => "do catch",
-            CompilerDesugaringKind::ExistentialReturnType => "existental type",
+            CompilerDesugaringKind::ExistentialReturnType => "existential type",
         })
     }
 }

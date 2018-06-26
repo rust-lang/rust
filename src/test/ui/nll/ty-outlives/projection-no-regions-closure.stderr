@@ -20,7 +20,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
                '_#1r,
                T,
                i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<Anything + '_#2r>
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#2r)>
            ]
    = note: number of external vids: 3
    = note: where <T as std::iter::Iterator>::Item: '_#2r
@@ -60,7 +60,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
                '_#1r,
                T,
                i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<Anything + '_#2r>
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#2r)>
            ]
    = note: number of external vids: 3
    = note: where <T as std::iter::Iterator>::Item: '_#2r
@@ -92,7 +92,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
                '_#2r,
                T,
                i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<Anything + '_#3r>
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#3r)>
            ]
    = note: number of external vids: 4
    = note: where <T as std::iter::Iterator>::Item: '_#3r
@@ -134,7 +134,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
                '_#2r,
                T,
                i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<Anything + '_#3r>
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#3r)>
            ]
    = note: number of external vids: 4
    = note: where <T as std::iter::Iterator>::Item: '_#3r

@@ -275,7 +275,7 @@ impl<T> Option<T> {
     #[unstable(feature = "pin", issue = "49150")]
     pub fn as_pin_mut<'a>(self: PinMut<'a, Self>) -> Option<PinMut<'a, T>> {
         unsafe {
-            PinMut::get_mut(self).as_mut().map(|x| PinMut::new_unchecked(x))
+            PinMut::get_mut_unchecked(self).as_mut().map(|x| PinMut::new_unchecked(x))
         }
     }
 

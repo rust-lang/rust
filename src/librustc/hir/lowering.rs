@@ -3536,12 +3536,22 @@ impl<'a> LoweringContext<'a> {
                         this.expr_block(block, ThinVec::new())
                     })
                 })
-            },
+            }
             ExprKind::Closure(
-                capture_clause, asyncness, movability, ref decl, ref body, fn_decl_span) =>
-            {
-                self.with_new_scopes(|this| {
-                    if let IsAsync::Async(async_closure_node_id) = asyncness {
+                capture_clause, asyncness, movability, ref decl, ref body, fn_decl_span
+            ) => {
+                if let IsAsync::Async(async_closure_node_id) = asyncness {
+                    let outer_decl = FnDecl {
+                        inputs: decl.inputs.clone(),
+                        output: FunctionRetTy::Default(fn_decl_span),
+                        variadic: false,
+                    };
+                    // We need to lower the declaration outside the new scope, because we
+                    // have to conserve the state of being inside a loop condition for the
+                    // closure argument types.
+                    let fn_decl = self.lower_fn_decl(&outer_decl, None, false, false);
+
+                    self.with_new_scopes(|this| {
                         // FIXME(cramertj) allow `async` non-`move` closures with
                         if capture_clause == CaptureBy::Ref &&
                             !decl.inputs.is_empty()
@@ -3561,11 +3571,6 @@ impl<'a> LoweringContext<'a> {
 
                         // Transform `async |x: u8| -> X { ... }` into
                         // `|x: u8| future_from_generator(|| -> X { ... })`
-                        let outer_decl = FnDecl {
-                            inputs: decl.inputs.clone(),
-                            output: FunctionRetTy::Default(fn_decl_span),
-                            variadic: false,
-                        };
                         let body_id = this.lower_body(Some(&outer_decl), |this| {
                             let async_ret_ty = if let FunctionRetTy::Ty(ty) = &decl.output {
                                 Some(&**ty)
@@ -3579,12 +3584,17 @@ impl<'a> LoweringContext<'a> {
                         });
                         hir::ExprClosure(
                             this.lower_capture_clause(capture_clause),
-                            this.lower_fn_decl(&outer_decl, None, false, false),
+                            fn_decl,
                             body_id,
                             fn_decl_span,
                             None,
                         )
-                    } else {
+                    })
+                } else {
+                    // Lower outside new scope to preserve `is_in_loop_condition`.
+                    let fn_decl = self.lower_fn_decl(decl, None, false, false);
+
+                    self.with_new_scopes(|this| {
                         let mut is_generator = false;
                         let body_id = this.lower_body(Some(decl), |this| {
                             let e = this.lower_expr(body);
@@ -3618,13 +3628,13 @@ impl<'a> LoweringContext<'a> {
                         };
                         hir::ExprClosure(
                             this.lower_capture_clause(capture_clause),
-                            this.lower_fn_decl(decl, None, false, false),
+                            fn_decl,
                             body_id,
                             fn_decl_span,
                             generator_option,
                         )
-                    }
-                })
+                    })
+                }
             }
             ExprKind::Block(ref blk, opt_label) => {
                 hir::ExprBlock(self.lower_block(blk,

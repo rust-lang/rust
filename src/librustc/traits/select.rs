@@ -10,7 +10,7 @@
 
 //! See [rustc guide] for more info on how this works.
 //!
-//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/trait-resolution.html#selection
+//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/traits/resolution.html#selection
 
 use self::SelectionCandidate::*;
 use self::EvaluationResult::*;
@@ -1047,7 +1047,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     // candidates. See [rustc guide] for more details.
     //
     // [rustc guide]:
-    // https://rust-lang-nursery.github.io/rustc-guide/trait-resolution.html#candidate-assembly
+    // https://rust-lang-nursery.github.io/rustc-guide/traits/resolution.html#candidate-assembly
 
     fn candidate_from_obligation<'o>(&mut self,
                                      stack: &TraitObligationStack<'o, 'tcx>)
@@ -2415,7 +2415,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     // type error.  See [rustc guide] for more details.
     //
     // [rustc guide]:
-    // https://rust-lang-nursery.github.io/rustc-guide/trait-resolution.html#confirmation
+    // https://rust-lang-nursery.github.io/rustc-guide/traits/resolution.html#confirmation
 
     fn confirm_candidate(&mut self,
                          obligation: &TraitObligation<'tcx>,

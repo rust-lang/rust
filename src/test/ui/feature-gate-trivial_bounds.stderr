@@ -98,7 +98,7 @@ LL | struct TwoStrs(str, str) where str: Sized; //~ ERROR
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: the size for value values of type `A + 'static` cannot be known at compilation time
+error[E0277]: the size for value values of type `(dyn A + 'static)` cannot be known at compilation time
   --> $DIR/feature-gate-trivial_bounds.rs:65:1
    |
 LL | / fn unsized_local() where Dst<A>: Sized { //~ ERROR
@@ -106,9 +106,9 @@ LL | |     let x: Dst<A> = *(Box::new(Dst { x: 1 }) as Box<Dst<A>>);
 LL | | }
    | |_^ doesn't have a size known at compile-time
    |
-   = help: within `Dst<A + 'static>`, the trait `std::marker::Sized` is not implemented for `A + 'static`
+   = help: within `Dst<(dyn A + 'static)>`, the trait `std::marker::Sized` is not implemented for `(dyn A + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
-   = note: required because it appears within the type `Dst<A + 'static>`
+   = note: required because it appears within the type `Dst<(dyn A + 'static)>`
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 

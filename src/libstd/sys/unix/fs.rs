@@ -803,7 +803,7 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
     let p = cstr(p)?;
     let mut stat: stat64 = unsafe { mem::zeroed() };
     cvt(unsafe {
-        stat64(p.as_ptr(), &mut stat as *mut _ as *mut _)
+        stat64(p.as_ptr(), &mut stat)
     })?;
     Ok(FileAttr { stat: stat })
 }
@@ -812,7 +812,7 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
     let p = cstr(p)?;
     let mut stat: stat64 = unsafe { mem::zeroed() };
     cvt(unsafe {
-        lstat64(p.as_ptr(), &mut stat as *mut _ as *mut _)
+        lstat64(p.as_ptr(), &mut stat)
     })?;
     Ok(FileAttr { stat: stat })
 }

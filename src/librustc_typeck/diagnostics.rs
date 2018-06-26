@@ -3709,7 +3709,7 @@ The `export_name` attribute was malformed.
 Erroneous code example:
 
 ```ignore (error-emitted-at-codegen-which-cannot-be-handled-by-compile_fail)
-#[export_name] // error: export_name attribute has invalid format
+#[export_name] // error: `export_name` attribute has invalid format
 pub fn something() {}
 
 fn main() {}
@@ -4542,6 +4542,15 @@ fn start(_: isize, _: *const *const u8) -> isize where (): Copy {
     //^ error: start function is not allowed to have a where clause
     0
 }
+```
+"##,
+
+E0648: r##"
+`export_name` attributes may not contain null characters (`\0`).
+
+```compile_fail,E0648
+#[export_name="\0foo"] // error: `export_name` may not contain null characters
+pub fn bar() {}
 ```
 "##,
 

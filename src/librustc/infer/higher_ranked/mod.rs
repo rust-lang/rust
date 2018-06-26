@@ -583,7 +583,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// For more information about how skolemization for HRTBs works, see
     /// the [rustc guide].
     ///
-    /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/trait-hrtb.html
+    /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/traits/hrtb.html
     pub fn skolemize_late_bound_regions<T>(&self,
                                            binder: &ty::Binder<T>)
                                            -> (T, SkolemizationMap<'tcx>)

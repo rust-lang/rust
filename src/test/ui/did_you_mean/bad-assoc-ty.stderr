@@ -92,7 +92,7 @@ error[E0223]: ambiguous associated type
 LL | type G = 'static + (Send)::AssocTy;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ ambiguous associated type
    |
-   = note: specify the type using the syntax `<std::marker::Send + 'static as Trait>::AssocTy`
+   = note: specify the type using the syntax `<(dyn std::marker::Send + 'static) as Trait>::AssocTy`
 
 error[E0223]: ambiguous associated type
   --> $DIR/bad-assoc-ty.rs:43:10
@@ -100,7 +100,7 @@ error[E0223]: ambiguous associated type
 LL | type H = Fn(u8) -> (u8)::Output;
    |          ^^^^^^^^^^^^^^^^^^^^^^ ambiguous associated type
    |
-   = note: specify the type using the syntax `<std::ops::Fn(u8) -> u8 + 'static as Trait>::Output`
+   = note: specify the type using the syntax `<(dyn std::ops::Fn(u8) -> u8 + 'static) as Trait>::Output`
 
 error: aborting due to 15 previous errors
 

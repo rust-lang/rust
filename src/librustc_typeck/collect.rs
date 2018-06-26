@@ -1898,11 +1898,18 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                 }
             });
         } else if attr.check_name("export_name") {
-            if let s @ Some(_) = attr.value_str() {
-                codegen_fn_attrs.export_name = s;
+            if let Some(s) = attr.value_str() {
+                if s.as_str().contains("\0") {
+                    // `#[export_name = ...]` will be converted to a null-terminated string,
+                    // so it may not contain any null characters.
+                    struct_span_err!(tcx.sess, attr.span, E0648,
+                                     "`export_name` may not contain null characters")
+                        .emit();
+                }
+                codegen_fn_attrs.export_name = Some(s);
             } else {
                 struct_span_err!(tcx.sess, attr.span, E0558,
-                                    "export_name attribute has invalid format")
+                                 "`export_name` attribute has invalid format")
                     .span_label(attr.span, "did you mean #[export_name=\"*\"]?")
                     .emit();
             }

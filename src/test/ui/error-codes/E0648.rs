@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait {}
+#[export_name="\0foo"] //~ ERROR E0648
+pub fn bar() {}
 
-fn get_function<'a>() -> &'a Fn() -> Trait { panic!("") }
-
-fn main() {
-    let t : &Trait = &get_function()();
-    //~^ ERROR cannot move a value of type (dyn Trait + 'static)
-}
+fn main() {}
