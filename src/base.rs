@@ -157,7 +157,7 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
             offset: None,
         });
         let ty = mir.local_decls[local].ty;
-        let cton_type = fx.cton_type(ty).unwrap_or(types::I64);
+        let cton_type = ::common::fixup_cton_ty(fx.cton_type(ty).unwrap_or(types::I64));
         (local, fx.bcx.append_ebb_param(start_ebb, cton_type), ty, stack_slot)
     }).collect::<Vec<(Local, Value, Ty, StackSlot)>>();
 
@@ -412,6 +412,7 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                     lval.write_cvalue(fx, operand.unchecked_cast_to(layout));
                 }
                 Rvalue::Discriminant(place) => {
+                    let place = trans_place(fx, place);
                     let dest_cton_ty = fx.cton_type(dest_layout.ty).unwrap();
                     let layout = lval.layout();
 
@@ -431,8 +432,8 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                         layout::Variants::NicheFilling { .. } => {},
                     }
 
-                    let discr = lval.to_cvalue(fx).value_field(fx, mir::Field::new(0));
-                    let discr_ty = lval.layout().ty;
+                    let discr = place.to_cvalue(fx).value_field(fx, mir::Field::new(0));
+                    let discr_ty = discr.layout().ty;
                     let lldiscr = discr.load_value(fx);
                     match layout.variants {
                         layout::Variants::Single { .. } => bug!(),
