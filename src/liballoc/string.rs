@@ -1222,7 +1222,7 @@ impl String {
 
         while idx < len {
             let ch = unsafe {
-                self.slice_unchecked(idx, len).chars().next().unwrap()
+                self.get_unchecked(idx..len).chars().next().unwrap()
             };
             let ch_len = ch.len_utf8();
 

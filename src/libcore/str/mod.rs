@@ -1055,7 +1055,7 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
         if !self.finished && (self.allow_trailing_empty || self.end - self.start > 0) {
             self.finished = true;
             unsafe {
-                let string = self.matcher.haystack().slice_unchecked(self.start, self.end);
+                let string = self.matcher.haystack().get_unchecked(self.start..self.end);
                 Some(string)
             }
         } else {
@@ -1070,7 +1070,7 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
         let haystack = self.matcher.haystack();
         match self.matcher.next_match() {
             Some((a, b)) => unsafe {
-                let elt = haystack.slice_unchecked(self.start, a);
+                let elt = haystack.get_unchecked(self.start..a);
                 self.start = b;
                 Some(elt)
             },
@@ -1095,13 +1095,13 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
         let haystack = self.matcher.haystack();
         match self.matcher.next_match_back() {
             Some((a, b)) => unsafe {
-                let elt = haystack.slice_unchecked(b, self.end);
+                let elt = haystack.get_unchecked(b..self.end);
                 self.end = a;
                 Some(elt)
             },
             None => unsafe {
                 self.finished = true;
-                Some(haystack.slice_unchecked(self.start, self.end))
+                Some(haystack.get_unchecked(self.start..self.end))
             },
         }
     }
@@ -1222,7 +1222,7 @@ impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
     #[inline]
     fn next(&mut self) -> Option<(usize, &'a str)> {
         self.0.next_match().map(|(start, end)| unsafe {
-            (start, self.0.haystack().slice_unchecked(start, end))
+            (start, self.0.haystack().get_unchecked(start..end))
         })
     }
 
@@ -1231,7 +1231,7 @@ impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
         where P::Searcher: ReverseSearcher<'a>
     {
         self.0.next_match_back().map(|(start, end)| unsafe {
-            (start, self.0.haystack().slice_unchecked(start, end))
+            (start, self.0.haystack().get_unchecked(start..end))
         })
     }
 }
@@ -1274,7 +1274,7 @@ impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
     fn next(&mut self) -> Option<&'a str> {
         self.0.next_match().map(|(a, b)| unsafe {
             // Indices are known to be on utf8 boundaries
-            self.0.haystack().slice_unchecked(a, b)
+            self.0.haystack().get_unchecked(a..b)
         })
     }
 
@@ -1284,7 +1284,7 @@ impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
     {
         self.0.next_match_back().map(|(a, b)| unsafe {
             // Indices are known to be on utf8 boundaries
-            self.0.haystack().slice_unchecked(a, b)
+            self.0.haystack().get_unchecked(a..b)
         })
     }
 }
@@ -2453,6 +2453,7 @@ impl str {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(since = "1.28.0", reason = "duplicates `get_unchecked`")]
     #[inline]
     pub unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str {
         (begin..end).get_unchecked(self)
@@ -2483,6 +2484,7 @@ impl str {
     /// * `begin` and `end` must be byte positions within the string slice.
     /// * `begin` and `end` must lie on UTF-8 sequence boundaries.
     #[stable(feature = "str_slice_mut", since = "1.5.0")]
+    #[rustc_deprecated(since = "1.28.0", reason = "duplicates `get_unchecked`")]
     #[inline]
     pub unsafe fn slice_mut_unchecked(&mut self, begin: usize, end: usize) -> &mut str {
         (begin..end).get_unchecked_mut(self)
@@ -2524,8 +2526,8 @@ impl str {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
             unsafe {
-                (self.slice_unchecked(0, mid),
-                 self.slice_unchecked(mid, self.len()))
+                (self.get_unchecked(0..mid),
+                 self.get_unchecked(mid..self.len()))
             }
         } else {
             slice_error_fail(self, 0, mid)
@@ -3652,7 +3654,7 @@ impl str {
         }
         unsafe {
             // Searcher is known to return valid indices
-            self.slice_unchecked(i, j)
+            self.get_unchecked(i..j)
         }
     }
 
@@ -3691,7 +3693,7 @@ impl str {
         }
         unsafe {
             // Searcher is known to return valid indices
-            self.slice_unchecked(i, self.len())
+            self.get_unchecked(i..self.len())
         }
     }
 
@@ -3738,7 +3740,7 @@ impl str {
         }
         unsafe {
             // Searcher is known to return valid indices
-            self.slice_unchecked(0, j)
+            self.get_unchecked(0..j)
         }
     }
 
