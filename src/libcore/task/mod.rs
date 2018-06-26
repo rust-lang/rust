@@ -18,13 +18,12 @@ mod context;
 pub use self::context::Context;
 
 mod executor;
-pub use self::executor::Executor;
+pub use self::executor::{
+  Executor, SpawnErrorKind, SpawnObjError, SpawnLocalObjError
+};
 
 mod poll;
 pub use self::poll::Poll;
-
-mod spawn_error;
-pub use self::spawn_error::{SpawnErrorKind, SpawnObjError, SpawnLocalObjError};
 
 mod task;
 pub use self::task::{TaskObj, LocalTaskObj, UnsafeTask};

@@ -12,7 +12,8 @@
             reason = "futures in libcore are unstable",
             issue = "50547")]
 
-use super::{TaskObj, SpawnObjError, SpawnErrorKind};
+use fmt;
+use super::{TaskObj, LocalTaskObj};
 
 /// A task executor.
 ///
@@ -41,4 +42,49 @@ pub trait Executor {
     fn status(&self) -> Result<(), SpawnErrorKind> {
         Ok(())
     }
+}
+
+/// Provides the reason that an executor was unable to spawn.
+pub struct SpawnErrorKind {
+    _hidden: (),
+}
+
+impl fmt::Debug for SpawnErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("SpawnErrorKind")
+            .field(&"shutdown")
+            .finish()
+    }
+}
+
+impl SpawnErrorKind {
+    /// Spawning is failing because the executor has been shut down.
+    pub fn shutdown() -> SpawnErrorKind {
+        SpawnErrorKind { _hidden: () }
+    }
+
+    /// Check whether this error is the `shutdown` error.
+    pub fn is_shutdown(&self) -> bool {
+        true
+    }
+}
+
+/// The result of a failed spawn
+#[derive(Debug)]
+pub struct SpawnObjError {
+    /// The kind of error
+    pub kind: SpawnErrorKind,
+
+    /// The task for which spawning was attempted
+    pub task: TaskObj,
+}
+
+/// The result of a failed spawn
+#[derive(Debug)]
+pub struct SpawnLocalObjError {
+    /// The kind of error
+    pub kind: SpawnErrorKind,
+
+    /// The task for which spawning was attempted
+    pub task: LocalTaskObj,
 }
