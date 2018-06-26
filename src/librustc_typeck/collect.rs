@@ -419,7 +419,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
                 convert_variant_ctor(tcx, struct_def.id());
             }
         },
-        hir::ItemExistential(..) |
+        hir::ItemExistential(..) => {}
         hir::ItemTy(..) | hir::ItemStatic(..) | hir::ItemConst(..) | hir::ItemFn(..) => {
             tcx.generics_of(def_id);
             tcx.type_of(def_id);
@@ -1066,24 +1066,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ItemExistential(hir::ExistTy { impl_trait_fn: None, .. }) => unimplemented!(),
                 // existential types desugared from impl Trait
                 ItemExistential(hir::ExistTy { impl_trait_fn: Some(owner), .. }) => {
-                    tcx.typeck_tables_of(owner).concrete_existential_types
-                        .get(&def_id)
-                        .cloned()
-                        .unwrap_or_else(|| {
-                            // This can occur if some error in the
-                            // owner fn prevented us from populating
-                            // the `concrete_existential_types` table.
-                            tcx.sess.delay_span_bug(
-                                DUMMY_SP,
-                                &format!(
-                                    "owner {:?} has no existential type for {:?} in its tables",
-                                    owner,
-                                    def_id,
-                                ),
-                            );
-
-                            tcx.types.err
-                        })
+                    tcx.typeck_tables_of(owner).concrete_existential_types[&def_id]
                 },
                 ItemTrait(..) | ItemTraitAlias(..) |
                 ItemMod(..) |
