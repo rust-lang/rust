@@ -86,6 +86,14 @@ pub fn has_cpuid() -> bool {
     }
     #[cfg(target_arch = "x86")]
     {
+        // Optimization for i586 and i686 Rust targets which SSE enabled
+        // and support cpuid:
+        #[cfg(target_feature = "sse")] {
+            true
+        }
+
+        // If SSE is not enabled, detect whether cpuid is available:
+        #[cfg(not(target_feature = "sse"))]
         unsafe {
             // On `x86` the `cpuid` instruction is not always available.
             // This follows the approach indicated in:
