@@ -5001,7 +5001,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // FIXME(varkor): Separating out the parameters is messy.
         let mut lifetimes_type_seg = vec![];
         let mut types_type_seg = vec![];
-        let mut infer_types_type_seg = true;
+        let mut _infer_types_type_seg = true;
         if let Some((seg, _)) = type_segment {
             if let Some(ref data) = seg.args {
                 for (i, arg) in data.args.iter().enumerate() {
@@ -5011,12 +5011,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            infer_types_type_seg = seg.infer_types;
+            _infer_types_type_seg = seg.infer_types;
         }
 
         let mut lifetimes_fn_seg = vec![];
         let mut types_fn_seg = vec![];
-        let mut infer_types_fn_seg = true;
+        let mut _infer_types_fn_seg = true;
         if let Some((seg, _)) = fn_segment {
             if let Some(ref data) = seg.args {
                 for (i, arg) in data.args.iter().enumerate() {
@@ -5026,7 +5026,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            infer_types_fn_seg = seg.infer_types;
+            _infer_types_fn_seg = seg.infer_types;
         }
 
         let defs = self.tcx.generics_of(def.def_id());
@@ -5045,74 +5045,61 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         while let Some(def_id) = stack.pop() {
             let defs = self.tcx.generics_of(def_id);
             Substs::fill_single(&mut substs, defs, &mut |param: &ty::GenericParamDef, substs| {
-                let mut i = param.index as usize;
-
-                let (lifetimes, types, infer_types) = if i < fn_start {
+                let lifetimes = if (param.index as usize) < fn_start {
                     if let GenericParamDefKind::Type { .. } = param.kind {
                         // Handle Self first, so we can adjust the index to match the AST.
-                        if has_self && i == 0 {
+                        if has_self && param.index == 0 {
                             return opt_self_ty.map(|ty| ty.into()).unwrap_or_else(|| {
                                 self.var_for_def(span, param)
                             });
                         }
                     }
-                    i -= has_self as usize;
-                    (&lifetimes_type_seg, &types_type_seg, infer_types_type_seg)
+                    &lifetimes_type_seg
                 } else {
-                    i -= fn_start;
-                    (&lifetimes_fn_seg, &types_fn_seg, infer_types_fn_seg)
+                    &lifetimes_fn_seg
                 };
 
                 let mut pi = param.index as usize - has_self as usize;
 
-                let segment = if let Some(&PathSeg(_, ind)) = path_segs.iter().find(|&PathSeg(di, _)| *di == def_id) {
+                let (_segment, infer_types) = if let Some(&PathSeg(_, ind)) = path_segs.iter().find(|&PathSeg(di, _)| *di == def_id) {
                     let seg = &segments[ind];
                     if lifetimes.len() == 0 {
                         pi -= defs.own_counts().lifetimes;
                     }
 
-                    Some((seg, defs))
+                    if let Some(ref data) = seg.args {
+                        if let Some(arg) = data.args.get(pi) {
+                            return match param.kind {
+                                GenericParamDefKind::Lifetime => {
+                                    let lt = match arg {
+                                        GenericArg::Lifetime(lt) => lt,
+                                        _ => bug!("should be a lifetime"),
+                                    };
+                                    AstConv::ast_region_to_region(self, lt, Some(param)).into()
+                                }
+                                GenericParamDefKind::Type { .. } => {
+                                    // A provided type parameter.
+                                    let ty = match arg {
+                                        GenericArg::Type(ty) => ty,
+                                        _ => bug!("should be a type"),
+                                    };
+                                    self.to_ty(ty).into()
+                                }
+                            };
+                        }
+                    }
+
+                    (Some((seg, defs)), seg.infer_types)
                 } else {
-                    None
+                    (None, true)
                 };
-
-                // eprintln!("{:?} {:?} {:?}", param.index, i, segment);
-
-
 
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
-                        if let Some((z, lt)) = lifetimes.get(i) {
-                            eprintln!("lifetime {:?} {:?} {:?}", pi, z, has_self);
-                            if pi != *z {
-                                eprintln!("error {:?} {:?} {:?} {:?} {:?} {:?}", pi, z, i, segment, fn_start, has_self);
-                                bug!("uh oh")
-                            }
-                            AstConv::ast_region_to_region(self, lt, Some(param)).into()
-                        } else {
-                            self.re_infer(span, Some(param)).unwrap().into()
-                        }
+                        self.re_infer(span, Some(param)).unwrap().into()
                     }
-                    GenericParamDefKind::Type { .. } => {
-                        // Skip over the lifetimes in the same segment.
-                        if let Some((_, generics)) = segment {
-                            i -= generics.own_counts().lifetimes;
-                        }
-
-                        let has_default = match param.kind {
-                            GenericParamDefKind::Type { has_default, .. } => has_default,
-                            _ => unreachable!()
-                        };
-
-                        if let Some((z, ty)) = types.get(i) {
-                            eprintln!("type {:?} {:?} {:?}", pi, z, has_self);
-                            if pi != *z {
-                                eprintln!("error {:?} {:?} {:?} {:?} {:?} {:?}", pi, z, i, segment, fn_start, has_self);
-                                bug!("uh oh")
-                            }
-                            // A provided type parameter.
-                            self.to_ty(ty).into()
-                        } else if !infer_types && has_default {
+                    GenericParamDefKind::Type { has_default, .. } => {
+                        if !infer_types && has_default {
                             // No type parameter provided, but a default exists.
                             let default = self.tcx.type_of(param.def_id);
                             self.normalize_ty(
