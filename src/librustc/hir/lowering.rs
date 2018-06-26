@@ -3598,7 +3598,7 @@ impl<'a> LoweringContext<'a> {
             ExprKind::Closure(
                 capture_clause, asyncness, movability, ref decl, ref body, fn_decl_span
             ) => {
-                if let IsAsync::Async { async_closure_node_id, .. } = asyncness {
+                if let IsAsync::Async { closure_id, .. } = asyncness {
                     let outer_decl = FnDecl {
                         inputs: decl.inputs.clone(),
                         output: FunctionRetTy::Default(fn_decl_span),
