@@ -5,11 +5,9 @@
 #![feature(macro_vis_matcher)]
 #![allow(unknown_lints)]
 #![allow(missing_docs_in_private_items)]
+#![warn(rust_2018_idioms)]
 
-extern crate rustc_plugin;
 use rustc_plugin::Registry;
-
-extern crate clippy_lints;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {

@@ -12,49 +12,22 @@
 #![feature(iterator_find_map)]
 #![feature(macro_at_most_once_rep)]
 #![feature(rust_2018_preview)]
+#![warn(rust_2018_idioms)]
 
-extern crate cargo_metadata;
 #[macro_use]
 extern crate rustc;
-extern crate rustc_target;
-extern crate rustc_typeck;
-extern crate syntax;
-extern crate syntax_pos;
 
-extern crate toml;
-
-// for unicode nfc normalization
-
-extern crate unicode_normalization;
-
-// for semver check in attrs.rs
-
-extern crate semver;
-
-// for regex checking
-
-extern crate regex_syntax;
-
-// for finding minimal boolean expressions
-
-extern crate quine_mc_cluskey;
-
-extern crate rustc_errors;
-extern crate rustc_plugin;
+use toml;
+use rustc_plugin;
 
 #[macro_use]
 extern crate matches as matches_macro;
 
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
 #[macro_use]
 extern crate lazy_static;
-
-extern crate itertools;
-extern crate pulldown_cmark;
-extern crate url;
 
 #[macro_use]
 extern crate if_chain;
@@ -211,7 +184,7 @@ pub mod zero_div_zero;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
 mod reexport {
-    pub use syntax::ast::{Name, NodeId};
+    crate use syntax::ast::{Name, NodeId};
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]

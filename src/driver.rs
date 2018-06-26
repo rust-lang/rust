@@ -3,16 +3,8 @@
 #![feature(rustc_private)]
 #![allow(unknown_lints, missing_docs_in_private_items)]
 
-extern crate clippy_lints;
-extern crate getopts;
-extern crate rustc;
-extern crate rustc_codegen_utils;
-extern crate rustc_driver;
-extern crate rustc_errors;
-extern crate rustc_plugin;
-extern crate syntax;
-
-use rustc_driver::{driver::CompileController, Compilation};
+use rustc_driver::{self, driver::CompileController, Compilation};
+use rustc_plugin;
 use std::process::{exit, Command};
 
 #[allow(print_stdout)]

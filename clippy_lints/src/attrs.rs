@@ -1,16 +1,16 @@
 //! checks for attributes
 
 use crate::reexport::*;
+use crate::utils::{
+    in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_then,
+    without_block_comments,
+};
 use rustc::hir::*;
 use rustc::lint::*;
 use rustc::ty::{self, TyCtxt};
 use semver::Version;
 use syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use syntax::codemap::Span;
-use crate::utils::{
-    in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_then,
-    without_block_comments,
-};
 
 /// **What it does:** Checks for items annotated with `#[inline(always)]`,
 /// unless the annotated function is empty or simply panics.

@@ -134,7 +134,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
 
 /// Implementation of `IF_SAME_THEN_ELSE`.
 fn lint_same_then_else(cx: &LateContext, blocks: &[&Block]) {
-    let eq: &Fn(&&Block, &&Block) -> bool = &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).eq_block(lhs, rhs) };
+    let eq: &dyn Fn(&&Block, &&Block) -> bool = &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).eq_block(lhs, rhs) };
 
     if let Some((i, j)) = search_same_sequenced(blocks, eq) {
         span_note_and_lint(
@@ -150,13 +150,13 @@ fn lint_same_then_else(cx: &LateContext, blocks: &[&Block]) {
 
 /// Implementation of `IFS_SAME_COND`.
 fn lint_same_cond(cx: &LateContext, conds: &[&Expr]) {
-    let hash: &Fn(&&Expr) -> u64 = &|expr| -> u64 {
+    let hash: &dyn Fn(&&Expr) -> u64 = &|expr| -> u64 {
         let mut h = SpanlessHash::new(cx, cx.tables);
         h.hash_expr(expr);
         h.finish()
     };
 
-    let eq: &Fn(&&Expr, &&Expr) -> bool = &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, rhs) };
+    let eq: &dyn Fn(&&Expr, &&Expr) -> bool = &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, rhs) };
 
     if let Some((i, j)) = search_same(conds, hash, eq) {
         span_note_and_lint(
