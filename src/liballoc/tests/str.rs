@@ -177,9 +177,9 @@ fn test_join_for_different_lengths_with_long_separator() {
 
 #[test]
 fn test_unsafe_slice() {
-    assert_eq!("ab", unsafe {"abc".slice_unchecked(0, 2)});
-    assert_eq!("bc", unsafe {"abc".slice_unchecked(1, 3)});
-    assert_eq!("", unsafe {"abc".slice_unchecked(1, 1)});
+    assert_eq!("ab", unsafe {"abc".get_unchecked(0..2)});
+    assert_eq!("bc", unsafe {"abc".get_unchecked(1..3)});
+    assert_eq!("", unsafe {"abc".get_unchecked(1..1)});
     fn a_million_letter_a() -> String {
         let mut i = 0;
         let mut rs = String::new();
@@ -200,7 +200,7 @@ fn test_unsafe_slice() {
     }
     let letters = a_million_letter_a();
     assert_eq!(half_a_million_letter_a(),
-        unsafe { letters.slice_unchecked(0, 500000)});
+        unsafe { letters.get_unchecked(0..500000)});
 }
 
 #[test]
