@@ -493,6 +493,8 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
+    /// #![feature(move_into)]
+    ///
     /// (1i32..42i32).map_into().collect::<Vec<f64>>();
     /// ```
     #[unstable(feature = "move_into", issue = "0")]
