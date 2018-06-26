@@ -1753,9 +1753,9 @@ impl<S: Semantics> IeeeFloat<S> {
                     } else {
                         loss = Some(match hex_value {
                             0 => Loss::ExactlyZero,
-                            1...7 => Loss::LessThanHalf,
+                            1..=7 => Loss::LessThanHalf,
                             8 => Loss::ExactlyHalf,
-                            9...15 => Loss::MoreThanHalf,
+                            9..=15 => Loss::MoreThanHalf,
                             _ => unreachable!(),
                         });
                     }

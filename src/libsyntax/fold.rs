@@ -1137,10 +1137,10 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
             }
             PatKind::Box(inner) => PatKind::Box(folder.fold_pat(inner)),
             PatKind::Ref(inner, mutbl) => PatKind::Ref(folder.fold_pat(inner), mutbl),
-            PatKind::Range(e1, e2, end) => {
+            PatKind::Range(e1, e2, Spanned { span, node: end }) => {
                 PatKind::Range(folder.fold_expr(e1),
                                folder.fold_expr(e2),
-                               folder.fold_range_end(end))
+                               Spanned { span, node: folder.fold_range_end(end) })
             },
             PatKind::Slice(before, slice, after) => {
                 PatKind::Slice(before.move_map(|x| folder.fold_pat(x)),

@@ -9,11 +9,15 @@
 // except according to those terms.
 
 // compile-pass
+// run-rustfix
+
+#![warn(ellipsis_inclusive_range_patterns)]
 
 fn main() {
-    const MIN: i8 = -5;
-    match 5i8 {
-        MIN..=-1 => {},
-        _ => {},
+    let despondency = 2;
+    match despondency {
+        1...2 => {}
+        //~^ WARN `...` range patterns are deprecated
+        _ => {}
     }
 }

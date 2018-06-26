@@ -16,7 +16,7 @@ use ast::{SelfKind, GenericBound, TraitBoundModifier};
 use ast::{Attribute, MacDelimiter, GenericArg};
 use util::parser::{self, AssocOp, Fixity};
 use attr;
-use codemap::{self, CodeMap};
+use codemap::{self, CodeMap, Spanned};
 use syntax_pos::{self, BytePos};
 use syntax_pos::hygiene::{Mark, SyntaxContext};
 use parse::token::{self, BinOpToken, Token};
@@ -2624,7 +2624,7 @@ impl<'a> State<'a> {
                 self.print_pat(inner)?;
             }
             PatKind::Lit(ref e) => self.print_expr(&**e)?,
-            PatKind::Range(ref begin, ref end, ref end_kind) => {
+            PatKind::Range(ref begin, ref end, Spanned { node: ref end_kind, .. }) => {
                 self.print_expr(begin)?;
                 self.s.space()?;
                 match *end_kind {
