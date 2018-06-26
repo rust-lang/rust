@@ -504,12 +504,18 @@ impl Ipv4Addr {
     ///
     /// The following return false:
     ///
-    /// - private address (10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16)
-    /// - the loopback address (127.0.0.0/8)
-    /// - the link-local address (169.254.0.0/16)
-    /// - the broadcast address (255.255.255.255/32)
-    /// - test addresses used for documentation (192.0.2.0/24, 198.51.100.0/24 and 203.0.113.0/24)
-    /// - the unspecified address (0.0.0.0)
+    /// - private addresses (see [`is_private()`](#method.is_private))
+    /// - the loopback address (see [`is_loopback()`](#method.is_loopback))
+    /// - the link-local address (see [`is_link_local()`](#method.is_link_local))
+    /// - the broadcast address (see [`is_broadcast()`](#method.is_broadcast))
+    /// - addresses used for documentation (see [`is_documentation()`](#method.is_documentation))
+    /// - the unspecified address (see [`is_unspecified()`](#method.is_unspecified)), and the whole 0.0.0.0/8 block
+    /// - addresses reserved for future protocols (see
+    /// [`is_ietf_protocol_assignment()`](#method.is_ietf_protocol_assignment), except
+    /// `192.0.0.9/32` and `192.0.0.10/32` which are globally routable
+    /// - addresses reserved for future use (see [`is_reserved()`](#method.is_reserved())
+    /// - addresses reserved for networking devices benchmarking (see
+    /// [`is_benchmarking`](#method.is_benchmarking))
     ///
     /// [ipv4-sr]: https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
     /// [`true`]: ../../std/primitive.bool.html
@@ -530,8 +536,22 @@ impl Ipv4Addr {
     /// }
     /// ```
     pub fn is_global(&self) -> bool {
-        !self.is_private() && !self.is_loopback() && !self.is_link_local() &&
-        !self.is_broadcast() && !self.is_documentation() && !self.is_unspecified()
+        // check if this address is 192.0.0.9 or 192.0.0.10. These addresses are the only two
+        // globally routable addresses in the 192.0.0.0/24 range.
+        if u32::from(*self) == 0xc0000009 || u32::from(*self) == 0xc000000a {
+            return true;
+        }
+        !self.is_private()
+            && !self.is_loopback()
+            && !self.is_link_local()
+            && !self.is_broadcast()
+            && !self.is_documentation()
+            && !self.is_shared()
+            && !self.is_ietf_protocol_assignment()
+            && !self.is_reserved()
+            && !self.is_benchmarking()
+            // Make sure the address is not in 0.0.0.0/8
+            && self.octets()[0] != 0
     }
 
     /// Returns [`true`] if this address is part of the Shared Address Space defined in
