@@ -1027,11 +1027,23 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
 
-    /// Returns [`true`] if the address is unicast and link-local (fe80::/10).
+    /// Returns [`true`] if the address is a unicast link-local address (`fe80::/10`).
     ///
-    /// This property is defined in [IETF RFC 4291].
+    /// A common mis-conception is to think that unicast link-local addresses start with
+    /// `fe80::`, but the [IETF RFC 4291] actually defines a stricter format for these addresses:
     ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// ```no_rust
+    /// |   10     |
+    /// |  bits    |         54 bits         |          64 bits           |
+    /// +----------+-------------------------+----------------------------+
+    /// |1111111010|           0             |       interface ID         |
+    /// +----------+-------------------------+----------------------------+
+    /// ```
+    ///
+    /// This method validates the format defined in the RFC and won't recognize the following
+    /// addresses such as `fe80:0:0:1::` or `fe81::` as unicast link-local addresses for example.
+    ///
+    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291#section-2.5.6
     /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
@@ -1042,13 +1054,19 @@ impl Ipv6Addr {
     /// use std::net::Ipv6Addr;
     ///
     /// fn main() {
-    ///     assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unicast_link_local(),
-    ///                false);
-    ///     assert_eq!(Ipv6Addr::new(0xfe8a, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
+    ///     assert!(Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local());
+    ///     assert!(Ipv6Addr::new(0xfe80, 0, 0, 0, 0xffff, 0xffff, 0xffff, 0xffff).is_unicast_link_local());
+    ///     // fe80::0:0:1:: is not a valid unicast link-local address
+    ///     assert!(!Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0).is_unicast_link_local());
+    ///     // neither is fe81::
+    ///     assert!(!Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local());
     /// }
     /// ```
     pub fn is_unicast_link_local(&self) -> bool {
-        (self.segments()[0] & 0xffc0) == 0xfe80
+        (self.segments()[0] & 0xffff) == 0xfe80
+            && (self.segments()[1] & 0xffff) == 0
+            && (self.segments()[2] & 0xffff) == 0
+            && (self.segments()[3] & 0xffff) == 0
     }
 
     /// Returns [`true`] if this is a deprecated unicast site-local address
