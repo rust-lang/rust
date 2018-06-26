@@ -495,7 +495,9 @@ pub trait Iterator {
     /// ```
     /// #![feature(move_into)]
     ///
-    /// (1i32..42i32).map_into().collect::<Vec<f64>>();
+    /// let floats = (1i32..42i32).map_into().collect::<Vec<f64>>();
+    /// assert_eq!(41, floats.len());
+    /// assert_eq!(861.0, floats.iter().sum());
     /// ```
     #[unstable(feature = "move_into", issue = "0")]
     fn map_into<R>(self) -> MapInto<Self, R>
