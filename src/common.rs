@@ -31,7 +31,7 @@ fn cton_type_from_ty(ty: Ty) -> Option<types::Type> {
                 UintTy::U16 => types::I16,
                 UintTy::U32 => types::I32,
                 UintTy::U64 => types::I64,
-                UintTy::U128 => types::I64X2,
+                UintTy::U128 => unimplemented!(),
                 UintTy::Usize => types::I64,
             }
         }
@@ -41,7 +41,7 @@ fn cton_type_from_ty(ty: Ty) -> Option<types::Type> {
                 IntTy::I16 => types::I16,
                 IntTy::I32 => types::I32,
                 IntTy::I64 => types::I64,
-                IntTy::I128 => types::I64X2,
+                IntTy::I128 => unimplemented!(),
                 IntTy::Isize => types::I64,
             }
         }
