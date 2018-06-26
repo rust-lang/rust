@@ -4984,10 +4984,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
         let mut infer_lifetimes = FxHashMap();
-        let supress_mismatch = self.check_impl_trait(span, fn_segment);
         for &PathSeg(def_id, index) in &path_segs {
-            let generics = self.tcx.generics_of(def_id);
             let seg = &segments[index];
+            let generics = self.tcx.generics_of(def_id);
+            let supress_mismatch = self.check_impl_trait(span, seg, &generics);
             self.check_generic_arg_count(span, seg, &generics, false, supress_mismatch);
             infer_lifetimes.insert(index, if let Some(ref data) = seg.args {
                 !data.args.iter().any(|arg| match arg {
@@ -5284,33 +5284,30 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Report error if there is an explicit type parameter when using `impl Trait`.
     fn check_impl_trait(&self,
                         span: Span,
-                        segment: Option<(&hir::PathSegment, &ty::Generics)>)
+                        seg: &hir::PathSegment,
+                        generics: &ty::Generics)
                         -> bool {
-        let segment = segment.map(|(path_segment, generics)| {
-            let explicit = !path_segment.infer_types;
-            let impl_trait = generics.params.iter().any(|param| match param.kind {
-                ty::GenericParamDefKind::Type {
-                    synthetic: Some(hir::SyntheticTyParamKind::ImplTrait), ..
-                } => true,
-                _ => false,
-            });
-
-            if explicit && impl_trait {
-                let mut err = struct_span_err! {
-                    self.tcx.sess,
-                    span,
-                    E0632,
-                    "cannot provide explicit type parameters when `impl Trait` is \
-                    used in argument position."
-                };
-
-                err.emit();
-            }
-
-            impl_trait
+        let explicit = !seg.infer_types;
+        let impl_trait = generics.params.iter().any(|param| match param.kind {
+            ty::GenericParamDefKind::Type {
+                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait), ..
+            } => true,
+            _ => false,
         });
 
-        segment.unwrap_or(false)
+        if explicit && impl_trait {
+            let mut err = struct_span_err! {
+                self.tcx.sess,
+                span,
+                E0632,
+                "cannot provide explicit type parameters when `impl Trait` is \
+                used in argument position."
+            };
+
+            err.emit();
+        }
+
+        impl_trait
     }
 
     // Resolves `typ` by a single level if `typ` is a type variable.
