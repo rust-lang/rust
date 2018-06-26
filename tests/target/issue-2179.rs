@@ -1,5 +1,3 @@
-// rustfmt-error_on_line_overflow: false
-
 fn issue_2179() {
     let (opts, rustflags, clear_env_rust_log) = {
         // We mustn't lock configuration for the whole build process

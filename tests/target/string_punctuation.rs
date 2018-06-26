@@ -1,5 +1,4 @@
 // rustfmt-format_strings: true
-// rustfmt-error_on_line_overflow: false
 
 fn main() {
     println!(

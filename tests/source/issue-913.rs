@@ -1,5 +1,3 @@
-// rustfmt-error_on_line_overflow: false
-
 mod client {
     impl Client {
         fn test(self) -> Result<()> {

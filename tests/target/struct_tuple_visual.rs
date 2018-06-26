@@ -1,6 +1,5 @@
 // rustfmt-normalize_comments: true
 // rustfmt-wrap_comments: true
-// rustfmt-error_on_line_overflow: false
 // rustfmt-indent_style: Visual
 fn foo() {
     Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(f(), b());
