@@ -151,13 +151,20 @@ fn detect_features() -> cache::Initializer {
 
             if cpu_osxsave {
                 // 2. The OS must have signaled the CPU that it supports saving and
-                // restoring the SSE and AVX registers by setting `XCR0.SSE[1]` and
-                // `XCR0.AVX[2]` to `1`.
+                // restoring the:
+                //
+                // * SSE -> `XCR0.SSE[1]`
+                // * AVX -> `XCR0.AVX[2]`
+                // * AVX-512 -> `XCR0.AVX-512[7:5]`.
+                //
+                // by setting the corresponding bits of `XCR0` to `1`.
                 //
                 // This is safe because the CPU supports `xsave`
                 // and the OS has set `osxsave`.
                 let xcr0 = unsafe { _xgetbv(0) };
+                // Test `XCR0.SSE[1]` and `XCR0.AVX[2]` with the mask `0b110 == 6`:
                 let os_avx_support = xcr0 & 6 == 6;
+                // Test `XCR0.AVX-512[7:5]` with the mask `0b1110_0000 == 224`:
                 let os_avx512_support = xcr0 & 224 == 224;
 
                 // Only if the OS and the CPU support saving/restoring the AVX
