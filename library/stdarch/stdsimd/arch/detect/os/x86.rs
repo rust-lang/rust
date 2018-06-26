@@ -116,7 +116,6 @@ fn detect_features() -> cache::Initializer {
 
         enable(proc_info_ecx, 0, Feature::sse3);
         enable(proc_info_ecx, 9, Feature::ssse3);
-        enable(proc_info_ecx, 12, Feature::fma);
         enable(proc_info_ecx, 19, Feature::sse4_1);
         enable(proc_info_ecx, 20, Feature::sse4_2);
         enable(proc_info_ecx, 23, Feature::popcnt);
@@ -188,6 +187,9 @@ fn detect_features() -> cache::Initializer {
                         enable(proc_extended_state1_eax, 1, Feature::xsavec);
                         enable(proc_extended_state1_eax, 3, Feature::xsaves);
                     }
+
+                    // FMA (uses 256-bit wide registers):
+                    enable(proc_info_ecx, 12, Feature::fma);
 
                     // And AVX/AVX2:
                     enable(proc_info_ecx, 28, Feature::avx);
