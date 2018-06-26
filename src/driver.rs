@@ -13,7 +13,7 @@ extern crate rustc_plugin;
 extern crate syntax;
 
 use rustc_driver::{driver::CompileController, Compilation};
-use std::process::Command;
+use std::process::{exit, Command};
 
 #[allow(print_stdout)]
 fn show_version() {
@@ -133,5 +133,10 @@ pub fn main() {
     }
     controller.compilation_done.stop = Compilation::Stop;
 
-    rustc_driver::run_compiler(&args, Box::new(controller), None, None);
+    if rustc_driver::run_compiler(&args, Box::new(controller), None, None)
+        .0
+        .is_err()
+    {
+        exit(101);
+    }
 }

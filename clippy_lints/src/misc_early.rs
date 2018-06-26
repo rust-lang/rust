@@ -189,13 +189,13 @@ impl LintPass for MiscEarly {
 impl EarlyLintPass for MiscEarly {
     fn check_generics(&mut self, cx: &EarlyContext, gen: &Generics) {
         for param in &gen.params {
-            if let GenericParam::Type(ref ty) = *param {
-                let name = ty.ident.name.as_str();
+            if let GenericParamKind::Type { .. } = param.kind {
+                let name = param.ident.name.as_str();
                 if constants::BUILTIN_TYPES.contains(&&*name) {
                     span_lint(
                         cx,
                         BUILTIN_TYPE_SHADOW,
-                        ty.ident.span,
+                        param.ident.span,
                         &format!("This generic shadows the built-in type `{}`", name),
                     );
                 }
@@ -296,7 +296,7 @@ impl EarlyLintPass for MiscEarly {
         }
         match expr.node {
             ExprKind::Call(ref paren, _) => if let ExprKind::Paren(ref closure) = paren.node {
-                if let ExprKind::Closure(_, _, ref decl, ref block, _) = closure.node {
+                if let ExprKind::Closure(_, _, _, ref decl, ref block, _) = closure.node {
                     span_lint_and_then(
                         cx,
                         REDUNDANT_CLOSURE_CALL,
@@ -327,7 +327,7 @@ impl EarlyLintPass for MiscEarly {
             if_chain! {
                 if let StmtKind::Local(ref local) = w[0].node;
                 if let Option::Some(ref t) = local.init;
-                if let ExprKind::Closure(_, _, _, _, _) = t.node;
+                if let ExprKind::Closure(..) = t.node;
                 if let PatKind::Ident(_, ident, _) = local.pat.node;
                 if let StmtKind::Semi(ref second) = w[1].node;
                 if let ExprKind::Assign(_, ref call) = second.node;

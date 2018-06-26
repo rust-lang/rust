@@ -300,7 +300,7 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
                 print_expr(cx, e, indent + 1);
             }
         },
-        hir::ExprAgain(_) => println!("{}Again", ind),
+        hir::ExprContinue(_) => println!("{}Again", ind),
         hir::ExprRet(ref e) => {
             println!("{}Ret", ind);
             if let Some(ref e) = *e {
@@ -379,6 +379,9 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
         hir::ItemGlobalAsm(ref asm) => println!("global asm: {:?}", asm),
         hir::ItemTy(..) => {
             println!("type alias for {:?}", cx.tcx.type_of(did));
+        },
+        hir::ItemExistential(..) => {
+            println!("existential type with real type {:?}", cx.tcx.type_of(did));
         },
         hir::ItemEnum(..) => {
             println!("enum definition of type {:?}", cx.tcx.type_of(did));

@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.210
+* Rustup to *rustc 1.28.0-nightly (01cc982e9 2018-06-24)*
+
+## 0.0.209
+* Rustup to *rustc 1.28.0-nightly (523097979 2018-06-18)*
+
 ## 0.0.208
 * Rustup to *rustc 1.28.0-nightly (86a8f1a63 2018-06-17)*
 
@@ -635,6 +641,7 @@ All notable changes to this project will be documented in this file.
 [`crosspointer_transmute`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#crosspointer_transmute
 [`cyclomatic_complexity`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cyclomatic_complexity
 [`decimal_literal_representation`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#decimal_literal_representation
+[`default_trait_access`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#default_trait_access
 [`deprecated_semver`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#deprecated_semver
 [`deref_addrof`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#deref_addrof
 [`derive_hash_xor_eq`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#derive_hash_xor_eq
@@ -775,6 +782,7 @@ All notable changes to this project will be documented in this file.
 [`out_of_bounds_indexing`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#out_of_bounds_indexing
 [`overflow_check_conditional`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#overflow_check_conditional
 [`panic_params`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#panic_params
+[`panicking_unwrap`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#panicking_unwrap
 [`partialeq_ne_impl`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#partialeq_ne_impl
 [`possible_missing_comma`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#possible_missing_comma
 [`precedence`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#precedence

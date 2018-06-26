@@ -57,7 +57,7 @@ pub fn in_constant(cx: &LateContext, id: NodeId) -> bool {
 /// Returns true if this `expn_info` was expanded by any macro.
 pub fn in_macro(span: Span) -> bool {
     span.ctxt().outer().expn_info().map_or(false, |info| {
-        match info.callee.format {
+        match info.format {
             // don't treat range expressions desugared to structs as "in_macro"
             ExpnFormat::CompilerDesugaring(kind) => kind != CompilerDesugaringKind::DotFill,
             _ => true,
@@ -68,7 +68,7 @@ pub fn in_macro(span: Span) -> bool {
 /// Returns true if `expn_info` was expanded by range expressions.
 pub fn is_range_expression(span: Span) -> bool {
     span.ctxt().outer().expn_info().map_or(false, |info| {
-        match info.callee.format {
+        match info.format {
             ExpnFormat::CompilerDesugaring(CompilerDesugaringKind::DotFill) => true,
             _ => false,
         }
@@ -84,12 +84,12 @@ pub fn in_external_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
     /// this after other checks have already happened.
     fn in_macro_ext<'a, T: LintContext<'a>>(cx: &T, info: &ExpnInfo) -> bool {
         // no ExpnInfo = no macro
-        if let ExpnFormat::MacroAttribute(..) = info.callee.format {
+        if let ExpnFormat::MacroAttribute(..) = info.format {
             // these are all plugins
             return true;
         }
         // no span for the callee = external macro
-        info.callee.span.map_or(true, |span| {
+        info.def_site.map_or(true, |span| {
             // no snippet = external macro or compiler-builtin expansion
             cx.sess()
                 .codemap()
@@ -524,7 +524,7 @@ pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeI
         match node {
             Node::NodeBlock(block) => Some(block),
             Node::NodeItem(&Item {
-                node: ItemFn(_, _, _, _, _, eid),
+                node: ItemFn(_, _, _, eid),
                 ..
             }) | Node::NodeImplItem(&ImplItem {
                 node: ImplItemKind::Method(_, eid),
@@ -768,7 +768,7 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
         let span_name_span = span.ctxt()
             .outer()
             .expn_info()
-            .map(|ei| (ei.callee.name(), ei.call_site));
+            .map(|ei| (ei.format.name(), ei.call_site));
 
         match span_name_span {
             Some((mac_name, new_span)) if mac_name == name => return Some(new_span),
@@ -791,7 +791,7 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
     let span_name_span = span.ctxt()
         .outer()
         .expn_info()
-        .map(|ei| (ei.callee.name(), ei.call_site));
+        .map(|ei| (ei.format.name(), ei.call_site));
 
     match span_name_span {
         Some((mac_name, new_span)) if mac_name == name => Some(new_span),
@@ -981,6 +981,7 @@ pub fn opt_def_id(def: Def) -> Option<DefId> {
         Def::Const(id) |
         Def::AssociatedConst(id) |
         Def::Macro(id, ..) |
+        Def::Existential(id) |
         Def::GlobalAsm(id) => Some(id),
 
         Def::Upvar(..) | Def::Local(_) | Def::Label(..) | Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => None,
@@ -1127,4 +1128,18 @@ pub fn without_block_comments(lines: Vec<&str>) -> Vec<&str> {
     }
 
     without
+}
+
+pub fn any_parent_is_automatically_derived(tcx: TyCtxt, node: NodeId) -> bool {
+    let map = &tcx.hir;
+    let mut prev_enclosing_node = None;
+    let mut enclosing_node = node;
+    while Some(enclosing_node) != prev_enclosing_node {
+        if is_automatically_derived(map.attrs(enclosing_node)) {
+            return true;
+        }
+        prev_enclosing_node = Some(enclosing_node);
+        enclosing_node = map.get_parent(enclosing_node);
+    }
+    false
 }

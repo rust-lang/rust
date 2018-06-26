@@ -640,7 +640,7 @@ fn never_loop_expr(expr: &Expr, main_loop_id: NodeId) -> NeverLoopResult {
             }
         },
         ExprBlock(ref b, _) => never_loop_block(b, main_loop_id),
-        ExprAgain(d) => {
+        ExprContinue(d) => {
             let id = d.target_id
                 .expect("target id can only be missing in the presence of compilation errors");
             if id == main_loop_id {

@@ -36,7 +36,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     ExprClosure(_, ref decl, closure_eid, _, _) => {
                         let body = cx.tcx.hir.body(closure_eid);
                         let closure_expr = remove_blocks(&body.value);
-                        let ty = cx.tables.pat_ty(&body.arguments[0].pat);
                         if_chain! {
                             // nothing special in the argument, besides reference bindings
                             // (e.g. .map(|&x| x) )
@@ -45,6 +44,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             // the method is being called on a known type (option or iterator)
                             if let Some(type_name) = get_type_name(cx, expr, &args[0]);
                             then {
+                                // We know that body.arguments is not empty at this point
+                                let ty = cx.tables.pat_ty(&body.arguments[0].pat);
                                 // look for derefs, for .map(|x| *x)
                                 if only_derefs(cx, &*closure_expr, arg_ident) &&
                                     // .cloned() only removes one level of indirection, don't lint on more
@@ -103,7 +104,7 @@ fn expr_eq_name(expr: &Expr, id: ast::Name) -> bool {
             let arg_segment = [
                 PathSegment {
                     name: id,
-                    parameters: None,
+                    args: None,
                     infer_types: true,
                 },
             ];

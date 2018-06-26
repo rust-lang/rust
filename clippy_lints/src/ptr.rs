@@ -103,7 +103,7 @@ impl LintPass for PointerPass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemFn(ref decl, _, _, _, _, body_id) = item.node {
+        if let ItemFn(ref decl, _, _, body_id) = item.node {
             check_fn(cx, decl, item.id, Some(body_id));
         }
     }
@@ -160,10 +160,15 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
                 let mut ty_snippet = None;
                 if_chain! {
                     if let TyPath(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).node;
-                    if let Some(&PathSegment{parameters: Some(ref parameters), ..}) = path.segments.last();
-                    if parameters.types.len() == 1;
+                    if let Some(&PathSegment{args: Some(ref parameters), ..}) = path.segments.last();
                     then {
-                        ty_snippet = snippet_opt(cx, parameters.types[0].span);
+                        let types: Vec<_> = parameters.args.iter().filter_map(|arg| match arg {
+                            GenericArg::Type(ty) => Some(ty),
+                            _ => None,
+                        }).collect();
+                        if types.len() == 1 {
+                            ty_snippet = snippet_opt(cx, types[0].span);
+                        }
                     }
                 };
                 if let Some(spans) = get_spans(cx, opt_body_id, idx, &[("clone", ".to_owned()")]) {
@@ -218,9 +223,12 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
                     if let TyPath(ref path) = ty.node;
                     if let QPath::Resolved(None, ref pp) = *path;
                     if let [ref bx] = *pp.segments;
-                    if let Some(ref params) = bx.parameters;
+                    if let Some(ref params) = bx.args;
                     if !params.parenthesized;
-                    if let [ref inner] = *params.types;
+                    if let Some(inner) = params.args.iter().find_map(|arg| match arg {
+                        GenericArg::Type(ty) => Some(ty),
+                        GenericArg::Lifetime(_) => None,
+                    });
                     then {
                         let replacement = snippet_opt(cx, inner.span);
                         if let Some(r) = replacement {

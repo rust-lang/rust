@@ -7,7 +7,7 @@ use std::fmt;
 use std::iter;
 use syntax::ast;
 use syntax::codemap::{Span, BytePos};
-use crate::utils::{get_arg_name, get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, is_expn_of, is_self, 
+use crate::utils::{get_arg_name, get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, is_expn_of, is_self,
             is_self_ty, iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method,
             match_type, method_chain_args, match_var, return_ty, remove_blocks, same_tys, single_segment_path, snippet,
             span_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
@@ -336,7 +336,7 @@ declare_clippy_lint! {
 ///
 /// **Known problems:** If the function has side-effects, not calling it will
 /// change the semantic of the program, but you shouldn't rely on that anyway.
-/// 
+///
 /// **Example:**
 /// ```rust
 /// foo.expect(&format("Err {}: {}", err_code, err_msg))
@@ -1020,7 +1020,7 @@ fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, n
                 }
             }
         };
-        
+
         snippet(cx, a.span, "..").into_owned()
     }
 
@@ -1077,7 +1077,7 @@ fn lint_expect_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, n
         }
 
         let sugg: Cow<_> = snippet(cx, arg.span, "..");
-        
+
         span_lint_and_sugg(
             cx,
             EXPECT_FUN_CALL,
@@ -2091,26 +2091,35 @@ impl SelfKind {
 
 fn is_as_ref_or_mut_trait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Generics, name: &[&str]) -> bool {
     single_segment_ty(ty).map_or(false, |seg| {
-        generics.ty_params().any(|param| {
-            param.name == seg.name && param.bounds.iter().any(|bound| {
-                if let hir::TyParamBound::TraitTyParamBound(ref ptr, ..) = *bound {
-                    let path = &ptr.trait_ref.path;
-                    match_path(path, name) && path.segments.last().map_or(false, |s| {
-                        if let Some(ref params) = s.parameters {
-                            if params.parenthesized {
-                                false
+        generics.params.iter().any(|param| match param.kind {
+            hir::GenericParamKind::Type { .. } => {
+                param.name.name() == seg.name && param.bounds.iter().any(|bound| {
+                    if let hir::GenericBound::Trait(ref ptr, ..) = *bound {
+                        let path = &ptr.trait_ref.path;
+                        match_path(path, name) && path.segments.last().map_or(false, |s| {
+                            if let Some(ref params) = s.args {
+                                if params.parenthesized {
+                                    false
+                                } else {
+                                    // FIXME(flip1995): messy, improve if there is a better option
+                                    // in the compiler
+                                    let types: Vec<_> = params.args.iter().filter_map(|arg| match arg {
+                                        hir::GenericArg::Type(ty) => Some(ty),
+                                        _ => None,
+                                    }).collect();
+                                    types.len() == 1
+                                        && (is_self_ty(&types[0]) || is_ty(&*types[0], self_ty))
+                                }
                             } else {
-                                params.types.len() == 1
-                                    && (is_self_ty(&params.types[0]) || is_ty(&*params.types[0], self_ty))
+                                false
                             }
-                        } else {
-                            false
-                        }
-                    })
-                } else {
-                    false
-                }
-            })
+                        })
+                    } else {
+                        false
+                    }
+                })
+            },
+            _ => false,
         })
     })
 }

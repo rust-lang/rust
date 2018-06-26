@@ -1,6 +1,6 @@
-/// This test case utilizes `f64` an easy example for `PartialOrd` only types
-/// but the lint itself actually validates any expression where the left
-/// operand implements `PartialOrd` but not `Ord`.
+//! This test case utilizes `f64` an easy example for `PartialOrd` only types
+//! but the lint itself actually validates any expression where the left
+//! operand implements `PartialOrd` but not `Ord`.
 
 use std::cmp::Ordering;
 
@@ -54,5 +54,14 @@ fn main() {
     let _ = a_value <= another_value;
     let _ = a_value > another_value;
     let _ = a_value >= another_value;
-}
 
+    // --- regression tests ---
+
+    // Issue 2856: False positive on assert!()
+    //
+    // The macro always negates the result of the given comparision in its
+    // internal check which automatically triggered the lint. As it's an
+    // external macro there was no chance to do anything about it which lead
+    // to a whitelisting of all external macros.
+    assert!(a_value < another_value);
+}

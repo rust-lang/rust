@@ -32,6 +32,27 @@ declare_clippy_lint! {
     "checks for calls of unwrap[_err]() that cannot fail"
 }
 
+/// **What it does:** Checks for calls of `unwrap[_err]()` that will always fail.
+///
+/// **Why is this bad?** If panicking is desired, an explicit `panic!()` should be used.
+///
+/// **Known problems:** This lint only checks `if` conditions not assignments.
+/// So something like `let x: Option<()> = None; x.unwrap();` will not be recognized.
+///
+/// **Example:**
+/// ```rust
+/// if option.is_none() {
+///     do_something_with(option.unwrap())
+/// }
+/// ```
+///
+/// This code will always panic. The if condition should probably be inverted.
+declare_clippy_lint! {
+    pub PANICKING_UNWRAP,
+    nursery,
+    "checks for calls of unwrap[_err]() that will always fail"
+}
+
 pub struct Pass;
 
 /// Visitor that keeps track of which variables are unwrappable.
@@ -124,17 +145,28 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                 if ["unwrap", "unwrap_err"].contains(&&*method_name.name.as_str());
                 let call_to_unwrap = method_name.name == "unwrap";
                 if let Some(unwrappable) = self.unwrappables.iter()
-                    .find(|u| u.ident.def == path.def && call_to_unwrap == u.safe_to_unwrap);
+                    .find(|u| u.ident.def == path.def);
                 then {
-                    span_lint_and_then(
-                        self.cx,
-                        UNNECESSARY_UNWRAP,
-                        expr.span,
-                        &format!("You checked before that `{}()` cannot fail. \
-                        Instead of checking and unwrapping, it's better to use `if let` or `match`.",
-                        method_name.name),
-                        |db| { db.span_label(unwrappable.check.span, "the check is happening here"); },
-                    );
+                    if call_to_unwrap == unwrappable.safe_to_unwrap {
+                        span_lint_and_then(
+                            self.cx,
+                            UNNECESSARY_UNWRAP,
+                            expr.span,
+                            &format!("You checked before that `{}()` cannot fail. \
+                            Instead of checking and unwrapping, it's better to use `if let` or `match`.",
+                            method_name.name),
+                            |db| { db.span_label(unwrappable.check.span, "the check is happening here"); },
+                        );
+                    } else {
+                        span_lint_and_then(
+                            self.cx,
+                            PANICKING_UNWRAP,
+                            expr.span,
+                            &format!("This call to `{}()` will always panic.",
+                            method_name.name),
+                            |db| { db.span_label(unwrappable.check.span, "because of this check"); },
+                        );
+                    }
                 }
             }
             walk_expr(self, expr);
@@ -148,7 +180,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
 
 impl<'a> LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNNECESSARY_UNWRAP)
+        lint_array!(PANICKING_UNWRAP, UNNECESSARY_UNWRAP)
     }
 }
 

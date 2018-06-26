@@ -2,7 +2,7 @@ cargo-features = ["edition"]
 
 [package]
 name = "clippy"
-version = "0.0.208"
+version = "0.0.210"
 authors = [
 	"Manish Goregaokar <manishsmail@gmail.com>",
 	"Andre Bogus <bogusandre@gmail.com>",
@@ -40,7 +40,7 @@ path = "src/driver.rs"
 
 [dependencies]
 # begin automatic update
-clippy_lints = { version = "0.0.208", path = "clippy_lints" }
+clippy_lints = { version = "0.0.210", path = "clippy_lints" }
 # end automatic update
 regex = "1"
 semver = "0.9"

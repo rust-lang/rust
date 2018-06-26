@@ -76,7 +76,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
 
         match (&left.node, &right.node) {
             (&ExprAddrOf(l_mut, ref le), &ExprAddrOf(r_mut, ref re)) => l_mut == r_mut && self.eq_expr(le, re),
-            (&ExprAgain(li), &ExprAgain(ri)) => {
+            (&ExprContinue(li), &ExprContinue(ri)) => {
                 both(&li.label, &ri.label, |l, r| l.name.as_str() == r.name.as_str())
             },
             (&ExprAssign(ref ll, ref lr), &ExprAssign(ref rl, ref rr)) => self.eq_expr(ll, rl) && self.eq_expr(lr, rr),
@@ -152,6 +152,14 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         left.ident.name == right.ident.name && self.eq_expr(&left.expr, &right.expr)
     }
 
+    fn eq_generic_arg(&mut self, left: &GenericArg, right: &GenericArg) -> bool {
+        match (left, right) {
+            (GenericArg::Lifetime(l_lt), GenericArg::Lifetime(r_lt)) => self.eq_lifetime(l_lt, r_lt),
+            (GenericArg::Type(l_ty), GenericArg::Type(r_ty)) => self.eq_ty(l_ty, r_ty),
+            _ => false,
+        }
+    }
+
     fn eq_lifetime(&mut self, left: &Lifetime, right: &Lifetime) -> bool {
         left.name == right.name
     }
@@ -201,10 +209,9 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             && over(&left.segments, &right.segments, |l, r| self.eq_path_segment(l, r))
     }
 
-    fn eq_path_parameters(&mut self, left: &PathParameters, right: &PathParameters) -> bool {
+    fn eq_path_parameters(&mut self, left: &GenericArgs, right: &GenericArgs) -> bool {
         if !(left.parenthesized || right.parenthesized) {
-            over(&left.lifetimes, &right.lifetimes, |l, r| self.eq_lifetime(l, r))
-                && over(&left.types, &right.types, |l, r| self.eq_ty(l, r))
+            over(&left.args, &right.args, |l, r| self.eq_generic_arg(l, r)) // FIXME(flip1995): may not work
                 && over(&left.bindings, &right.bindings, |l, r| self.eq_type_binding(l, r))
         } else if left.parenthesized && right.parenthesized {
             over(left.inputs(), right.inputs(), |l, r| self.eq_ty(l, r))
@@ -224,7 +231,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         if left.name.as_str() != right.name.as_str() {
             return false;
         }
-        match (&left.parameters, &right.parameters) {
+        match (&left.args, &right.args) {
             (&None, &None) => true,
             (&Some(ref l), &Some(ref r)) => self.eq_path_parameters(l, r),
             _ => false,
@@ -345,8 +352,8 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 m.hash(&mut self.s);
                 self.hash_expr(e);
             },
-            ExprAgain(i) => {
-                let c: fn(_) -> _ = ExprAgain;
+            ExprContinue(i) => {
+                let c: fn(_) -> _ = ExprContinue;
                 c.hash(&mut self.s);
                 if let Some(i) = i.label {
                     self.hash_name(i.name);

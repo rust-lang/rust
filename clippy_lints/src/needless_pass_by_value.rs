@@ -72,8 +72,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         }
 
         match kind {
-            FnKind::ItemFn(.., abi, _, attrs) => {
-                if abi != Abi::Rust {
+            FnKind::ItemFn(.., header, _, attrs) => {
+                if header.abi != Abi::Rust {
                     return;
                 }
                 for a in attrs {
@@ -218,8 +218,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                             if let TyPath(QPath::Resolved(_, ref path)) = input.node;
                             if let Some(elem_ty) = path.segments.iter()
                                 .find(|seg| seg.name == "Vec")
-                                .and_then(|ps| ps.parameters.as_ref())
-                                .map(|params| &params.types[0]);
+                                .and_then(|ps| ps.args.as_ref())
+                                .map(|params| params.args.iter().find_map(|arg| match arg {
+                                    GenericArg::Type(ty) => Some(ty),
+                                    GenericArg::Lifetime(_) => None,
+                                }).unwrap());
                             then {
                                 let slice_ty = format!("&[{}]", snippet(cx, elem_ty.span, "_"));
                                 db.span_suggestion(input.span,
