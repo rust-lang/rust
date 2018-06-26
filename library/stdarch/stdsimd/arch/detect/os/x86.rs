@@ -150,64 +150,67 @@ fn detect_features() -> cache::Initializer {
             // [mozilla_sse_cpp]: https://hg.mozilla.org/mozilla-central/file/64bab5cbb9b6/mozglue/build/SSE.cpp#l190
             let cpu_osxsave = bit::test(proc_info_ecx as usize, 27);
 
-            // 2. The OS must have signaled the CPU that it supports saving and
-            // restoring the SSE and AVX registers by setting `XCR0.SSE[1]` and
-            // `XCR0.AVX[2]` to `1`.
-            //
-            // This is safe because the CPU supports `xsave`
-            let xcr0 = unsafe { _xgetbv(0) };
-            let os_avx_support = xcr0 & 6 == 6;
-            let os_avx512_support = xcr0 & 224 == 224;
-
-            // Only if the OS and the CPU support saving/restoring the AVX
-            // registers we enable `xsave` support:
-            if cpu_osxsave && os_avx_support {
-                // See "13.3 ENABLING THE XSAVE FEATURE SET AND XSAVE-ENABLED
-                // FEATURES" in the "Intel® 64 and IA-32 Architectures Software
-                // Developer’s Manual, Volume 1: Basic Architecture":
+            if cpu_osxsave {
+                // 2. The OS must have signaled the CPU that it supports saving and
+                // restoring the SSE and AVX registers by setting `XCR0.SSE[1]` and
+                // `XCR0.AVX[2]` to `1`.
                 //
-                // "Software enables the XSAVE feature set by setting
-                // CR4.OSXSAVE[bit 18] to 1 (e.g., with the MOV to CR4
-                // instruction). If this bit is 0, execution of any of XGETBV,
-                // XRSTOR, XRSTORS, XSAVE, XSAVEC, XSAVEOPT, XSAVES, and XSETBV
-                // causes an invalid-opcode exception (#UD)"
-                //
-                enable(proc_info_ecx, 26, Feature::xsave);
+                // This is safe because the CPU supports `xsave`
+                // and the OS has set `osxsave`.
+                let xcr0 = unsafe { _xgetbv(0) };
+                let os_avx_support = xcr0 & 6 == 6;
+                let os_avx512_support = xcr0 & 224 == 224;
 
-                // For `xsaveopt`, `xsavec`, and `xsaves` we need to query:
-                // Processor Extended State Enumeration Sub-leaf (EAX = 0DH,
-                // ECX = 1):
-                if max_basic_leaf >= 0xd {
-                    let CpuidResult {
-                        eax: proc_extended_state1_eax,
-                        ..
-                    } = unsafe { __cpuid_count(0xd_u32, 1) };
-                    enable(proc_extended_state1_eax, 0, Feature::xsaveopt);
-                    enable(proc_extended_state1_eax, 1, Feature::xsavec);
-                    enable(proc_extended_state1_eax, 3, Feature::xsaves);
-                }
+                // Only if the OS and the CPU support saving/restoring the AVX
+                // registers we enable `xsave` support:
+                if os_avx_support {
+                    // See "13.3 ENABLING THE XSAVE FEATURE SET AND XSAVE-ENABLED
+                    // FEATURES" in the "Intel® 64 and IA-32 Architectures Software
+                    // Developer’s Manual, Volume 1: Basic Architecture":
+                    //
+                    // "Software enables the XSAVE feature set by setting
+                    // CR4.OSXSAVE[bit 18] to 1 (e.g., with the MOV to CR4
+                    // instruction). If this bit is 0, execution of any of XGETBV,
+                    // XRSTOR, XRSTORS, XSAVE, XSAVEC, XSAVEOPT, XSAVES, and XSETBV
+                    // causes an invalid-opcode exception (#UD)"
+                    //
+                    enable(proc_info_ecx, 26, Feature::xsave);
 
-                // And AVX/AVX2:
-                enable(proc_info_ecx, 28, Feature::avx);
-                enable(extended_features_ebx, 5, Feature::avx2);
+                    // For `xsaveopt`, `xsavec`, and `xsaves` we need to query:
+                    // Processor Extended State Enumeration Sub-leaf (EAX = 0DH,
+                    // ECX = 1):
+                    if max_basic_leaf >= 0xd {
+                        let CpuidResult {
+                            eax: proc_extended_state1_eax,
+                            ..
+                        } = unsafe { __cpuid_count(0xd_u32, 1) };
+                        enable(proc_extended_state1_eax, 0, Feature::xsaveopt);
+                        enable(proc_extended_state1_eax, 1, Feature::xsavec);
+                        enable(proc_extended_state1_eax, 3, Feature::xsaves);
+                    }
 
-                // For AVX-512 the OS also needs to support saving/restoring
-                // the extended state, only then we enable AVX-512 support:
-                if os_avx512_support {
-                    enable(extended_features_ebx, 16, Feature::avx512f);
-                    enable(extended_features_ebx, 17, Feature::avx512dq);
-                    enable(extended_features_ebx, 21, Feature::avx512_ifma);
-                    enable(extended_features_ebx, 26, Feature::avx512pf);
-                    enable(extended_features_ebx, 27, Feature::avx512er);
-                    enable(extended_features_ebx, 28, Feature::avx512cd);
-                    enable(extended_features_ebx, 30, Feature::avx512bw);
-                    enable(extended_features_ebx, 31, Feature::avx512vl);
-                    enable(extended_features_ecx, 1, Feature::avx512_vbmi);
-                    enable(
-                        extended_features_ecx,
-                        14,
-                        Feature::avx512_vpopcntdq,
-                    );
+                    // And AVX/AVX2:
+                    enable(proc_info_ecx, 28, Feature::avx);
+                    enable(extended_features_ebx, 5, Feature::avx2);
+
+                    // For AVX-512 the OS also needs to support saving/restoring
+                    // the extended state, only then we enable AVX-512 support:
+                    if os_avx512_support {
+                        enable(extended_features_ebx, 16, Feature::avx512f);
+                        enable(extended_features_ebx, 17, Feature::avx512dq);
+                        enable(extended_features_ebx, 21, Feature::avx512_ifma);
+                        enable(extended_features_ebx, 26, Feature::avx512pf);
+                        enable(extended_features_ebx, 27, Feature::avx512er);
+                        enable(extended_features_ebx, 28, Feature::avx512cd);
+                        enable(extended_features_ebx, 30, Feature::avx512bw);
+                        enable(extended_features_ebx, 31, Feature::avx512vl);
+                        enable(extended_features_ecx, 1, Feature::avx512_vbmi);
+                        enable(
+                            extended_features_ecx,
+                            14,
+                            Feature::avx512_vpopcntdq,
+                        );
+                    }
                 }
             }
         }
