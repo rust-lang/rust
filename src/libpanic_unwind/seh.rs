@@ -119,7 +119,9 @@ mod imp {
     }
 }
 
-#[cfg(target_arch = "x86_64")]
+// TODO: this needs to be validated when WinEH for ARM is implemented in LLVM
+// It looks like ARM and ARM64 use the same _TypeInfo semantics as x64
+#[cfg(any(target_arch = "x86_64", target_arch = "arm"))]
 #[macro_use]
 mod imp {
     pub type ptr_t = u32;
