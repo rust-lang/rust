@@ -1,5 +1,3 @@
-// rustfmt-format_strings: false
-
 fn main() {
     let expected = "; ModuleID = \'foo\'
 
