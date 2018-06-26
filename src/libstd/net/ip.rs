@@ -609,6 +609,30 @@ impl Ipv4Addr {
         self.octets()[0] == 198 && (self.octets()[1] & 0xfe) == 18
     }
 
+    /// Returns [`true`] if this address is reserved by IANA for future use. [IETF RFC 1112]
+    /// defines the block of reserved addresses as `240.0.0.0/4`. This range normally includes the
+    /// broadcast address `255.255.255.255`, but this implementation explicitely excludes it, since
+    /// it is obviously not reserved for future use.
+    ///
+    /// [IETF RFC 1112]: https://tools.ietf.org/html/rfc1112
+    /// [`true`]: ../../std/primitive.bool.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// fn main() {
+    ///     assert_eq!(Ipv4Addr::new(240, 0, 0, 0).is_ietf_protocol_assignment(), true);
+    ///     assert_eq!(Ipv4Addr::new(255, 255, 255, 254).is_ietf_protocol_assignment(), true);
+    ///     assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_ietf_protocol_assignment(), false);
+    ///     assert_eq!(Ipv4Addr::new(239, 255, 255, 255).is_ietf_protocol_assignment(), false);
+    /// }
+    /// ```
+    pub fn is_reserved(&self) -> bool {
+        self.octets()[0] & 240 == 240 && !self.is_broadcast()
+    }
+
     /// Returns [`true`] if this is a multicast address (224.0.0.0/4).
     ///
     /// Multicast addresses have a most significant octet between 224 and 239,
