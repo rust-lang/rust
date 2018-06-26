@@ -534,6 +534,28 @@ impl Ipv4Addr {
         !self.is_broadcast() && !self.is_documentation() && !self.is_unspecified()
     }
 
+    /// Returns [`true`] if this address is part of the Shared Address Space defined in
+    /// [IETF RFC 6598] (`100.64.0.0/10`).
+    ///
+    /// [IETF RFC 6598]: https://tools.ietf.org/html/rfc6598
+    /// [`true`]: ../../std/primitive.bool.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// fn main() {
+    ///     assert_eq!(Ipv4Addr::new(100, 64, 0, 0).is_shared(), true);
+    ///     assert_eq!(Ipv4Addr::new(100, 127, 255, 255).is_shared(), true);
+    ///     assert_eq!(Ipv4Addr::new(100, 128, 0, 0).is_shared(), false);
+    /// }
+    /// ```
+    pub fn is_shared(&self) -> bool {
+        self.octets()[0] == 100 && (self.octets()[1] & 0b1100_0000 == 0b0100_0000)
+    }
+
+
     /// Returns [`true`] if this is a multicast address (224.0.0.0/4).
     ///
     /// Multicast addresses have a most significant octet between 224 and 239,
