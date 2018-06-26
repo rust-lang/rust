@@ -298,6 +298,10 @@ impl TestProps {
                     .extend(flags.split_whitespace().map(|s| s.to_owned()));
             }
 
+            if let Some(edition) = config.parse_edition(ln) {
+                self.compile_flags.push(format!("--edition={}", edition));
+            }
+
             if let Some(r) = config.parse_revisions(ln) {
                 self.revisions.extend(r);
             }
@@ -371,9 +375,9 @@ impl TestProps {
                 self.compile_pass = config.parse_compile_pass(ln) || self.run_pass;
             }
 
-                        if !self.skip_codegen {
-                            self.skip_codegen = config.parse_skip_codegen(ln);
-                        }
+            if !self.skip_codegen {
+                self.skip_codegen = config.parse_skip_codegen(ln);
+            }
 
             if !self.disable_ui_testing_normalization {
                 self.disable_ui_testing_normalization =
@@ -646,6 +650,10 @@ impl Config {
 
     fn parse_run_rustfix(&self, line: &str) -> bool {
         self.parse_name_directive(line, "run-rustfix")
+    }
+
+    fn parse_edition(&self, line: &str) -> Option<String> {
+        self.parse_name_value_directive(line, "edition")
     }
 }
 

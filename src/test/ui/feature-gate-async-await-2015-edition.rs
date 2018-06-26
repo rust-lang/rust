@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --edition=2015
+// edition:2015
 
 #![feature(futures_api)]
 

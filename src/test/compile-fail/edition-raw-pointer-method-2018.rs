@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags: --edition=2018 -Zunstable-options
+// edition:2018
 
 // tests that editions work with the tyvar warning-turned-error
 
