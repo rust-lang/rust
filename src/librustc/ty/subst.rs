@@ -226,9 +226,9 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     }
 
     fn fill_item<F>(substs: &mut AccumulateVec<[Kind<'tcx>; 8]>,
-                    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                    defs: &ty::Generics,
-                    mk_kind: &mut F)
+                        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                        defs: &ty::Generics,
+                        mk_kind: &mut F)
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
     {
         if let Some(def_id) = defs.parent {
@@ -238,7 +238,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         Substs::fill_single(substs, defs, mk_kind)
     }
 
-    fn fill_single<F>(substs: &mut AccumulateVec<[Kind<'tcx>; 8]>,
+    pub fn fill_single<F>(substs: &mut AccumulateVec<[Kind<'tcx>; 8]>,
                       defs: &ty::Generics,
                       mk_kind: &mut F)
     where F: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Kind<'tcx>
