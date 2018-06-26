@@ -22,6 +22,7 @@ matrix:
     - env: TARGET=powerpc-unknown-linux-gnu
     - env: TARGET=powerpc64-unknown-linux-gnu
     - env: TARGET=powerpc64le-unknown-linux-gnu
+    - env: TARGET=s390x-unknown-linux-gnu NORUN=1
     - os: osx
       env: TARGET=i686-apple-darwin
       script: ci/run.sh
