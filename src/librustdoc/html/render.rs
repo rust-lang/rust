@@ -42,6 +42,7 @@ use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::default::Default;
 use std::error;
 use std::fmt::{self, Display, Formatter, Write as FmtWrite};
+use std::ffi::OsStr;
 use std::fs::{self, File, OpenOptions};
 use std::io::prelude::*;
 use std::io::{self, BufWriter, BufReader};
@@ -756,10 +757,12 @@ fn write_shared(cx: &Context,
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
 
-    write(cx.dst.join(&format!("rustdoc{}.css", cx.shared.resource_suffix)),
-          include_bytes!("static/rustdoc.css"))?;
-    write(cx.dst.join(&format!("settings{}.css", cx.shared.resource_suffix)),
-          include_bytes!("static/settings.css"))?;
+    write_minify(cx.dst.join(&format!("rustdoc{}.css", cx.shared.resource_suffix)),
+                 include_str!("static/rustdoc.css"),
+                 enable_minification)?;
+    write_minify(cx.dst.join(&format!("settings{}.css", cx.shared.resource_suffix)),
+                 include_str!("static/settings.css"),
+                 enable_minification)?;
 
     // To avoid "light.css" to be overwritten, we'll first run over the received themes and only
     // then we'll run over the "official" styles.
@@ -781,11 +784,13 @@ fn write_shared(cx: &Context,
           include_bytes!("static/brush.svg"))?;
     write(cx.dst.join(&format!("wheel{}.svg", cx.shared.resource_suffix)),
           include_bytes!("static/wheel.svg"))?;
-    write(cx.dst.join(&format!("light{}.css", cx.shared.resource_suffix)),
-          include_bytes!("static/themes/light.css"))?;
+    write_minify(cx.dst.join(&format!("light{}.css", cx.shared.resource_suffix)),
+                 include_str!("static/themes/light.css"),
+                 enable_minification)?;
     themes.insert("light".to_owned());
-    write(cx.dst.join(&format!("dark{}.css", cx.shared.resource_suffix)),
-          include_bytes!("static/themes/dark.css"))?;
+    write_minify(cx.dst.join(&format!("dark{}.css", cx.shared.resource_suffix)),
+                 include_str!("static/themes/dark.css"),
+                 enable_minification)?;
     themes.insert("dark".to_owned());
 
     let mut themes: Vec<&String> = themes.iter().collect();
@@ -857,10 +862,19 @@ themePicker.onblur = handleThemeButtonsBlur;
 
     if let Some(ref css) = cx.shared.css_file_extension {
         let out = cx.dst.join(&format!("theme{}.css", cx.shared.resource_suffix));
-        try_err!(fs::copy(css, out), css);
+        if !enable_minification {
+            try_err!(fs::copy(css, out), css);
+        } else {
+            let mut f = try_err!(File::open(css), css);
+            let mut buffer = String::with_capacity(1000);
+
+            try_err!(f.read_to_string(&mut buffer), css);
+            write_minify(out, &buffer, enable_minification)?;
+        }
     }
-    write(cx.dst.join(&format!("normalize{}.css", cx.shared.resource_suffix)),
-          include_bytes!("static/normalize.css"))?;
+    write_minify(cx.dst.join(&format!("normalize{}.css", cx.shared.resource_suffix)),
+                 include_str!("static/normalize.css"),
+                 enable_minification)?;
     write(cx.dst.join("FiraSans-Regular.woff"),
           include_bytes!("static/FiraSans-Regular.woff"))?;
     write(cx.dst.join("FiraSans-Medium.woff"),
@@ -1051,7 +1065,12 @@ fn write(dst: PathBuf, contents: &[u8]) -> Result<(), Error> {
 
 fn write_minify(dst: PathBuf, contents: &str, enable_minification: bool) -> Result<(), Error> {
     if enable_minification {
-        write(dst, minifier::js::minify(contents).as_bytes())
+        if dst.extension() == Some(&OsStr::new("css")) {
+            let res = try_none!(minifier::css::minify(contents).ok(), &dst);
+            write(dst, res.as_bytes())
+        } else {
+            write(dst, minifier::js::minify(contents).as_bytes())
+        }
     } else {
         write(dst, contents.as_bytes())
     }
