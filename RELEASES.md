@@ -3,26 +3,26 @@ Version 1.28.0 (2018-08-02)
 
 Language
 --------
-- [Stabilised the `#[repr(transparent)]` attribute.][51562] This attribute
+- [The `#[repr(transparent)]` attribute is now stable.][51562] This attribute
   allows a Rust newtype wrapper (`struct NewType<T>(T);`) to be represented as
   the inner type across Foreign Function Interface (FFI) boundaries.
 - [The keywords `pure`, `sizeof`, `alignof`, and `offsetof` have been unreserved
   and can now be used as identifiers.][51196]
-- [Stabilised the `GlobalAlloc` trait and `#[global_allocator]`
-  attribute.][51241] This will allow users to specify a global allocator for
+- [The `GlobalAlloc` trait and `#[global_allocator]` attribute are now
+  stable.][51241] This will allow users to specify a global allocator for
   their program.
 - [Unit test functions marked with the `#[test]` attribute can now return
   `Result<(), E: Debug>` in addition to `()`.][51298]
-- [Stabilised a `lifetime` specifier to `macro_rules!` allowing macros to easily
-  target lifetimes.][50385]
+- [The `lifetime` specifier for `macro_rules!` is now stable.][50385] This
+  allows macros to easily target lifetimes.
 
 Compiler
 --------
-- [Stabilised the `s` and `z` optimisation levels.][50265] These optimisations
+- [The `s` and `z` optimisation levels are now stable.][50265] These optimisations
   prioritise making smaller binary sizes. `z` is the same as `s` with the
   exception that it does not vectorise loops, which typically results in an even
   smaller binary.
-- [Stabilised the short error format.][49546] Specified with
+- [The short error format is now stable.][49546] Specified with
   `--error-format=short` this option will provide a more compressed output of
   rust error messages.
 - [Added a lint warning when you have duplicated `macro_export`s.][50143]
@@ -77,9 +77,9 @@ Cargo
 
 Misc
 ----
-- [Stabilised the `suggestion_applicability` field in the json output.][50486]
-  This will allow dev tools to check whether a code suggestion would apply
-  to them.
+- [The `suggestion_applicability` field in `rustc`'s json output is now
+  stable.][50486] This will allow dev tools to check whether a code suggestion
+  would apply to them.
 
 Compatibility Notes
 -------------------
@@ -329,7 +329,7 @@ Language
 - [Closures now implement `Copy` and/or `Clone` if all captured variables
   implement either or both traits.][49299]
 - [The inclusive range syntax e.g. `for x in 0..=10` is now stable.][47813]
-- [Stablise `'_`. The underscore lifetime can be used anywhere where a
+- [The `'_` lifetime is now stable. The underscore lifetime can be used anywhere where a
   lifetime can be elided.][49458]
 - [`impl Trait` is now stable allowing you to have abstract types in returns
    or in function parameters.][49255] e.g. `fn foo() -> impl Iterator<Item=u8>` or
@@ -530,7 +530,7 @@ Version 1.25.0 (2018-03-29)
 
 Language
 --------
-- [Stabilised `#[repr(align(x))]`.][47006] [RFC 1358]
+- [The `#[repr(align(x))]` attribute is now stable.][47006] [RFC 1358]
 - [You can now use nested groups of imports.][47948]
   e.g. `use std::{fs::File, io::Read, path::{Path, PathBuf}};`
 - [You can now have `|` at the start of a match arm.][47947] e.g.
