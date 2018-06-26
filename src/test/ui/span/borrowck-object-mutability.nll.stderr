@@ -2,7 +2,7 @@ error[E0596]: cannot borrow immutable item `*x` as mutable
   --> $DIR/borrowck-object-mutability.rs:19:5
    |
 LL | fn borrowed_receiver(x: &Foo) {
-   |                         ---- help: consider changing this to be a mutable reference: `&mut Foo`
+   |                         ---- help: consider changing this to be a mutable reference: `&mut dyn Foo`
 LL |     x.borrowed();
 LL |     x.borrowed_mut(); //~ ERROR cannot borrow
    |     ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable

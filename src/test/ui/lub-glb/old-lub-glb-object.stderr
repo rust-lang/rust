@@ -9,8 +9,8 @@ LL | |         _ => y,
 LL | |     };
    | |_____^ expected bound lifetime parameter 'a, found concrete lifetime
    |
-   = note: expected type `&for<'a, 'b> Foo<&'a u8, &'b u8>`
-              found type `&for<'a> Foo<&'a u8, &'a u8>`
+   = note: expected type `&dyn for<'a, 'b> Foo<&'a u8, &'b u8>`
+              found type `&dyn for<'a> Foo<&'a u8, &'a u8>`
    = note: this was previously accepted by the compiler but has been phased out
    = note: for more information, see https://github.com/rust-lang/rust/issues/45852
 

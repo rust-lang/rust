@@ -1,10 +1,10 @@
-error[E0277]: the size for value values of type `std::fmt::Debug + std::marker::Sync + 'static` cannot be known at compilation time
+error[E0277]: the size for value values of type `(dyn std::fmt::Debug + std::marker::Sync + 'static)` cannot be known at compilation time
   --> $DIR/const-unsized.rs:13:29
    |
 LL | const CONST_0: Debug+Sync = *(&0 as &(Debug+Sync));
    |                             ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `std::fmt::Debug + std::marker::Sync + 'static`
+   = help: the trait `std::marker::Sized` is not implemented for `(dyn std::fmt::Debug + std::marker::Sync + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: constant expressions must have a statically known size
 
@@ -18,13 +18,13 @@ LL | const CONST_FOO: str = *"foo";
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: constant expressions must have a statically known size
 
-error[E0277]: the size for value values of type `std::fmt::Debug + std::marker::Sync + 'static` cannot be known at compilation time
+error[E0277]: the size for value values of type `(dyn std::fmt::Debug + std::marker::Sync + 'static)` cannot be known at compilation time
   --> $DIR/const-unsized.rs:19:31
    |
 LL | static STATIC_1: Debug+Sync = *(&1 as &(Debug+Sync));
    |                               ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `std::fmt::Debug + std::marker::Sync + 'static`
+   = help: the trait `std::marker::Sized` is not implemented for `(dyn std::fmt::Debug + std::marker::Sync + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: constant expressions must have a statically known size
 

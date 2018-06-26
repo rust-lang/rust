@@ -82,43 +82,43 @@ LL |     VH{u: isize, x: [u32]},
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: no field of an enum variant may have a dynamically sized type
 
-error[E0277]: the size for value values of type `Foo + 'static` cannot be known at compilation time
+error[E0277]: the size for value values of type `(dyn Foo + 'static)` cannot be known at compilation time
   --> $DIR/unsized-enum2.rs:63:8
    |
 LL |     VM(Foo),
    |        ^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `Foo + 'static`
+   = help: the trait `std::marker::Sized` is not implemented for `(dyn Foo + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: no field of an enum variant may have a dynamically sized type
 
-error[E0277]: the size for value values of type `Bar + 'static` cannot be known at compilation time
+error[E0277]: the size for value values of type `(dyn Bar + 'static)` cannot be known at compilation time
   --> $DIR/unsized-enum2.rs:65:8
    |
 LL |     VN{x: Bar},
    |        ^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `Bar + 'static`
+   = help: the trait `std::marker::Sized` is not implemented for `(dyn Bar + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: no field of an enum variant may have a dynamically sized type
 
-error[E0277]: the size for value values of type `FooBar + 'static` cannot be known at compilation time
+error[E0277]: the size for value values of type `(dyn FooBar + 'static)` cannot be known at compilation time
   --> $DIR/unsized-enum2.rs:67:15
    |
 LL |     VO(isize, FooBar),
    |               ^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `FooBar + 'static`
+   = help: the trait `std::marker::Sized` is not implemented for `(dyn FooBar + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: no field of an enum variant may have a dynamically sized type
 
-error[E0277]: the size for value values of type `BarFoo + 'static` cannot be known at compilation time
+error[E0277]: the size for value values of type `(dyn BarFoo + 'static)` cannot be known at compilation time
   --> $DIR/unsized-enum2.rs:69:18
    |
 LL |     VP{u: isize, x: BarFoo},
    |                  ^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `BarFoo + 'static`
+   = help: the trait `std::marker::Sized` is not implemented for `(dyn BarFoo + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: no field of an enum variant may have a dynamically sized type
 
@@ -162,46 +162,46 @@ LL |     VT{u: isize, x: <&'static [i32] as Deref>::Target},
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: no field of an enum variant may have a dynamically sized type
 
-error[E0277]: the size for value values of type `PathHelper1 + 'static` cannot be known at compilation time
+error[E0277]: the size for value values of type `(dyn PathHelper1 + 'static)` cannot be known at compilation time
   --> $DIR/unsized-enum2.rs:53:8
    |
 LL |     VI(Path1),
    |        ^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Path1`, the trait `std::marker::Sized` is not implemented for `PathHelper1 + 'static`
+   = help: within `Path1`, the trait `std::marker::Sized` is not implemented for `(dyn PathHelper1 + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: required because it appears within the type `Path1`
    = note: no field of an enum variant may have a dynamically sized type
 
-error[E0277]: the size for value values of type `PathHelper2 + 'static` cannot be known at compilation time
+error[E0277]: the size for value values of type `(dyn PathHelper2 + 'static)` cannot be known at compilation time
   --> $DIR/unsized-enum2.rs:55:8
    |
 LL |     VJ{x: Path2},
    |        ^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Path2`, the trait `std::marker::Sized` is not implemented for `PathHelper2 + 'static`
+   = help: within `Path2`, the trait `std::marker::Sized` is not implemented for `(dyn PathHelper2 + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: required because it appears within the type `Path2`
    = note: no field of an enum variant may have a dynamically sized type
 
-error[E0277]: the size for value values of type `PathHelper3 + 'static` cannot be known at compilation time
+error[E0277]: the size for value values of type `(dyn PathHelper3 + 'static)` cannot be known at compilation time
   --> $DIR/unsized-enum2.rs:57:15
    |
 LL |     VK(isize, Path3),
    |               ^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Path3`, the trait `std::marker::Sized` is not implemented for `PathHelper3 + 'static`
+   = help: within `Path3`, the trait `std::marker::Sized` is not implemented for `(dyn PathHelper3 + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: required because it appears within the type `Path3`
    = note: no field of an enum variant may have a dynamically sized type
 
-error[E0277]: the size for value values of type `PathHelper4 + 'static` cannot be known at compilation time
+error[E0277]: the size for value values of type `(dyn PathHelper4 + 'static)` cannot be known at compilation time
   --> $DIR/unsized-enum2.rs:59:18
    |
 LL |     VL{u: isize, x: Path4},
    |                  ^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Path4`, the trait `std::marker::Sized` is not implemented for `PathHelper4 + 'static`
+   = help: within `Path4`, the trait `std::marker::Sized` is not implemented for `(dyn PathHelper4 + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = note: required because it appears within the type `Path4`
    = note: no field of an enum variant may have a dynamically sized type

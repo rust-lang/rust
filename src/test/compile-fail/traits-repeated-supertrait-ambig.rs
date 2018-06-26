@@ -33,7 +33,7 @@ impl CompareTo<u64> for i64 {
 impl CompareToInts for i64 { }
 
 fn with_obj(c: &CompareToInts) -> bool {
-    c.same_as(22) //~ ERROR `CompareToInts: CompareTo<i32>` is not satisfied
+    c.same_as(22) //~ ERROR `dyn CompareToInts: CompareTo<i32>` is not satisfied
 }
 
 fn with_trait<C:CompareToInts>(c: &C) -> bool {
@@ -41,7 +41,7 @@ fn with_trait<C:CompareToInts>(c: &C) -> bool {
 }
 
 fn with_ufcs1<C:CompareToInts>(c: &C) -> bool {
-    CompareToInts::same_as(c, 22) //~ ERROR `CompareToInts: CompareTo<i32>` is not satisfied
+    CompareToInts::same_as(c, 22) //~ ERROR `dyn CompareToInts: CompareTo<i32>` is not satisfied
 }
 
 fn with_ufcs2<C:CompareToInts>(c: &C) -> bool {

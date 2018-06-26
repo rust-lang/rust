@@ -10,8 +10,8 @@ note: first, the lifetime cannot outlive the lifetime 'a as defined on the funct
 LL | fn with_dyn_debug_static<'a>(x: Box<dyn Debug + 'a>) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...so that the expression is assignable:
-           expected std::boxed::Box<std::fmt::Debug>
-              found std::boxed::Box<std::fmt::Debug + 'a>
+           expected std::boxed::Box<dyn std::fmt::Debug>
+              found std::boxed::Box<(dyn std::fmt::Debug + 'a)>
    = note: but, the lifetime must be valid for the static lifetime...
    = note: ...so that the types are compatible:
            expected StaticTrait

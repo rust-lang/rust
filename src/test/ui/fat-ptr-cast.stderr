@@ -52,7 +52,7 @@ error[E0607]: cannot cast thin pointer `*const i32` to fat pointer `*const [i32]
 LL |     q as *const [i32]; //~ ERROR cannot cast
    |     ^^^^^^^^^^^^^^^^^
 
-error[E0606]: casting `usize` as `*mut Trait + 'static` is invalid
+error[E0606]: casting `usize` as `*mut (dyn Trait + 'static)` is invalid
   --> $DIR/fat-ptr-cast.rs:32:37
    |
 LL |     let t: *mut (Trait + 'static) = 0 as *mut _; //~ ERROR casting
