@@ -2,7 +2,7 @@
 #![feature(arm_target_feature)]
 #![feature(aarch64_target_feature)]
 #![feature(powerpc_target_feature)]
-#![allow(unused_attributes)]
+#![allow(unused_attributes, dead_code, unused_imports, unused_macros)]
 
 #[macro_use]
 extern crate stdsimd;
