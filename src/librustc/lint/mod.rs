@@ -35,7 +35,7 @@ use rustc_data_structures::sync::{self, Lrc};
 
 use errors::{DiagnosticBuilder, DiagnosticId};
 use hir::def_id::{CrateNum, LOCAL_CRATE};
-use hir::intravisit::{self, FnKind};
+use hir::intravisit;
 use hir;
 use lint::builtin::BuiltinLintDiagnostics;
 use session::{Session, DiagnosticMessageId};
@@ -123,12 +123,11 @@ macro_rules! declare_lint {
 #[macro_export]
 macro_rules! lint_array {
     ($( $lint:expr ),* $(,)?) => {{
-         static ARRAY: LintArray = &[ $( &$lint ),* ];
-         ARRAY
+        vec![$($lint),*]
     }}
 }
 
-pub type LintArray = &'static [&'static &'static Lint];
+pub type LintArray = Vec<&'static Lint>;
 
 pub trait LintPass {
     /// Get descriptions of the lints this `LintPass` object can emit.
@@ -140,6 +139,80 @@ pub trait LintPass {
     fn get_lints(&self) -> LintArray;
 }
 
+#[macro_export]
+macro_rules! late_lint_methods {
+    ($macro:path, $args:tt, [$hir:tt]) => (
+        $macro!($args, [$hir], [
+            fn check_body(a: &$hir hir::Body);
+            fn check_body_post(a: &$hir hir::Body);
+            fn check_name(a: Span, b: ast::Name);
+            fn check_crate(a: &$hir hir::Crate);
+            fn check_crate_post(a: &$hir hir::Crate);
+            fn check_mod(a: &$hir hir::Mod, b: Span, c: ast::NodeId);
+            fn check_mod_post(a: &$hir hir::Mod, b: Span, c: ast::NodeId);
+            fn check_foreign_item(a: &$hir hir::ForeignItem);
+            fn check_foreign_item_post(a: &$hir hir::ForeignItem);
+            fn check_item(a: &$hir hir::Item);
+            fn check_item_post(a: &$hir hir::Item);
+            fn check_local(a: &$hir hir::Local);
+            fn check_block(a: &$hir hir::Block);
+            fn check_block_post(a: &$hir hir::Block);
+            fn check_stmt(a: &$hir hir::Stmt);
+            fn check_arm(a: &$hir hir::Arm);
+            fn check_pat(a: &$hir hir::Pat);
+            fn check_decl(a: &$hir hir::Decl);
+            fn check_expr(a: &$hir hir::Expr);
+            fn check_expr_post(a: &$hir hir::Expr);
+            fn check_ty(a: &$hir hir::Ty);
+            fn check_generic_param(a: &$hir hir::GenericParam);
+            fn check_generics(a: &$hir hir::Generics);
+            fn check_where_predicate(a: &$hir hir::WherePredicate);
+            fn check_poly_trait_ref(a: &$hir hir::PolyTraitRef, b: hir::TraitBoundModifier);
+            fn check_fn(
+                a: hir::intravisit::FnKind<$hir>,
+                b: &$hir hir::FnDecl,
+                c: &$hir hir::Body,
+                d: Span,
+                e: ast::NodeId);
+            fn check_fn_post(
+                a: hir::intravisit::FnKind<$hir>,
+                b: &$hir hir::FnDecl,
+                c: &$hir hir::Body,
+                d: Span,
+                e: ast::NodeId
+            );
+            fn check_trait_item(a: &$hir hir::TraitItem);
+            fn check_trait_item_post(a: &$hir hir::TraitItem);
+            fn check_impl_item(a: &$hir hir::ImplItem);
+            fn check_impl_item_post(a: &$hir hir::ImplItem);
+            fn check_struct_def(
+                a: &$hir hir::VariantData,
+                b: ast::Name,
+                c: &$hir hir::Generics,
+                d: ast::NodeId
+            );
+            fn check_struct_def_post(
+                a: &$hir hir::VariantData,
+                b: ast::Name,
+                c: &$hir hir::Generics,
+                d: ast::NodeId
+            );
+            fn check_struct_field(a: &$hir hir::StructField);
+            fn check_variant(a: &$hir hir::Variant, b: &$hir hir::Generics);
+            fn check_variant_post(a: &$hir hir::Variant, b: &$hir hir::Generics);
+            fn check_lifetime(a: &$hir hir::Lifetime);
+            fn check_path(a: &$hir hir::Path, b: ast::NodeId);
+            fn check_attribute(a: &$hir ast::Attribute);
+
+            /// Called when entering a syntax node that can have lint attributes such
+            /// as `#[allow(...)]`. Called with *all* the attributes of that node.
+            fn enter_lint_attrs(a: &$hir [ast::Attribute]);
+
+            /// Counterpart to `enter_lint_attrs`.
+            fn exit_lint_attrs(a: &$hir [ast::Attribute]);
+        ]);
+    )
+}
 
 /// Trait for types providing lint checks.
 ///
@@ -149,90 +222,67 @@ pub trait LintPass {
 //
 // FIXME: eliminate the duplication with `Visitor`. But this also
 // contains a few lint-specific methods with no equivalent in `Visitor`.
-pub trait LateLintPass<'a, 'tcx>: LintPass {
-    fn check_body(&mut self, _: &LateContext, _: &'tcx hir::Body) { }
-    fn check_body_post(&mut self, _: &LateContext, _: &'tcx hir::Body) { }
-    fn check_name(&mut self, _: &LateContext, _: Span, _: ast::Name) { }
-    fn check_crate(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Crate) { }
-    fn check_crate_post(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Crate) { }
-    fn check_mod(&mut self,
-                 _: &LateContext<'a, 'tcx>,
-                 _: &'tcx hir::Mod,
-                 _: Span,
-                 _: ast::NodeId) { }
-    fn check_mod_post(&mut self,
-                      _: &LateContext<'a, 'tcx>,
-                      _: &'tcx hir::Mod,
-                      _: Span,
-                      _: ast::NodeId) { }
-    fn check_foreign_item(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::ForeignItem) { }
-    fn check_foreign_item_post(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::ForeignItem) { }
-    fn check_item(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Item) { }
-    fn check_item_post(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Item) { }
-    fn check_local(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Local) { }
-    fn check_block(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Block) { }
-    fn check_block_post(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Block) { }
-    fn check_stmt(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Stmt) { }
-    fn check_arm(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Arm) { }
-    fn check_pat(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Pat) { }
-    fn check_decl(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Decl) { }
-    fn check_expr(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Expr) { }
-    fn check_expr_post(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Expr) { }
-    fn check_ty(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Ty) { }
-    fn check_generic_param(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::GenericParam) { }
-    fn check_generics(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Generics) { }
-    fn check_where_predicate(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::WherePredicate) { }
-    fn check_poly_trait_ref(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::PolyTraitRef,
-                            _: hir::TraitBoundModifier) { }
-    fn check_fn(&mut self,
-                _: &LateContext<'a, 'tcx>,
-                _: FnKind<'tcx>,
-                _: &'tcx hir::FnDecl,
-                _: &'tcx hir::Body,
-                _: Span,
-                _: ast::NodeId) { }
-    fn check_fn_post(&mut self,
-                     _: &LateContext<'a, 'tcx>,
-                     _: FnKind<'tcx>,
-                     _: &'tcx hir::FnDecl,
-                     _: &'tcx hir::Body,
-                     _: Span,
-                     _: ast::NodeId) { }
-    fn check_trait_item(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::TraitItem) { }
-    fn check_trait_item_post(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::TraitItem) { }
-    fn check_impl_item(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::ImplItem) { }
-    fn check_impl_item_post(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::ImplItem) { }
-    fn check_struct_def(&mut self,
-                        _: &LateContext<'a, 'tcx>,
-                        _: &'tcx hir::VariantData,
-                        _: ast::Name,
-                        _: &'tcx hir::Generics,
-                        _: ast::NodeId) { }
-    fn check_struct_def_post(&mut self,
-                             _: &LateContext<'a, 'tcx>,
-                             _: &'tcx hir::VariantData,
-                             _: ast::Name,
-                             _: &'tcx hir::Generics,
-                             _: ast::NodeId) { }
-    fn check_struct_field(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::StructField) { }
-    fn check_variant(&mut self,
-                     _: &LateContext<'a, 'tcx>,
-                     _: &'tcx hir::Variant,
-                     _: &'tcx hir::Generics) { }
-    fn check_variant_post(&mut self,
-                          _: &LateContext<'a, 'tcx>,
-                          _: &'tcx hir::Variant,
-                          _: &'tcx hir::Generics) { }
-    fn check_lifetime(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Lifetime) { }
-    fn check_path(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Path, _: ast::NodeId) { }
-    fn check_attribute(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx ast::Attribute) { }
 
-    /// Called when entering a syntax node that can have lint attributes such
-    /// as `#[allow(...)]`. Called with *all* the attributes of that node.
-    fn enter_lint_attrs(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx [ast::Attribute]) { }
+macro_rules! expand_lint_pass_methods {
+    ($context:ty, [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
+        $(#[inline(always)] fn $name(&mut self, $context, $(_: $arg),*) {})*
+    )
+}
 
-    /// Counterpart to `enter_lint_attrs`.
-    fn exit_lint_attrs(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx [ast::Attribute]) { }
+macro_rules! declare_late_lint_pass {
+    ([], [$hir:tt], [$($methods:tt)*]) => (
+        pub trait LateLintPass<'a, $hir>: LintPass {
+            expand_lint_pass_methods!(&LateContext<'a, $hir>, [$($methods)*]);
+        }
+    )
+}
+
+late_lint_methods!(declare_late_lint_pass, [], ['tcx]);
+
+#[macro_export]
+macro_rules! expand_combined_late_lint_pass_method {
+    ([$($passes:ident),*], $self: ident, $name: ident, $params:tt) => ({
+        $($self.$passes.$name $params;)*
+    })
+}
+
+#[macro_export]
+macro_rules! expand_combined_late_lint_pass_methods {
+    ($passes:tt, [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
+        $(fn $name(&mut self, context: &LateContext<'a, 'tcx>, $($param: $arg),*) {
+            expand_combined_late_lint_pass_method!($passes, self, $name, (context, $($param),*));
+        })*
+    )
+}
+
+#[macro_export]
+macro_rules! declare_combined_late_lint_pass {
+    ([$name:ident, [$($passes:ident: $constructor:expr,)*]], [$hir:tt], $methods:tt) => (
+        #[allow(non_snake_case)]
+        struct $name {
+            $($passes: $passes,)*
+        }
+
+        impl $name {
+            fn new() -> Self {
+                Self {
+                    $($passes: $constructor,)*
+                }
+            }
+        }
+
+        impl<'a, 'tcx> LateLintPass<'a, 'tcx> for $name {
+            expand_combined_late_lint_pass_methods!([$($passes),*], $methods);
+        }
+
+        impl LintPass for $name {
+            fn get_lints(&self) -> LintArray {
+                let mut lints = Vec::new();
+                $(lints.extend_from_slice(&self.$passes.get_lints());)*
+                lints
+            }
+        }
+    )
 }
 
 pub trait EarlyLintPass: LintPass {

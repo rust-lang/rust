@@ -178,10 +178,10 @@ impl LintStore {
                                         sess: Option<&Session>,
                                         from_plugin: bool,
                                         pass: &Box<P>) {
-        for &lint in pass.get_lints() {
-            self.lints.push((*lint, from_plugin));
+        for lint in pass.get_lints() {
+            self.lints.push((lint, from_plugin));
 
-            let id = LintId::of(*lint);
+            let id = LintId::of(lint);
             if self.by_name.insert(lint.name_lower(), Id(id)).is_some() {
                 let msg = format!("duplicate specification of lint {}", lint.name_lower());
                 match (sess, from_plugin) {
