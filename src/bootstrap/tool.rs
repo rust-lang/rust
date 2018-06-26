@@ -273,7 +273,7 @@ macro_rules! tool {
             /// Whether this tool requires LLVM to run
             pub fn uses_llvm_tools(&self) -> bool {
                 match self {
-                    $(Tool::$name => true $(&& $llvm)*,)+
+                    $(Tool::$name => false $(|| $llvm)*,)+
                 }
             }
         }
@@ -340,9 +340,6 @@ macro_rules! tool {
     }
 }
 
-// FIXME(#51459): We have only checked that RustInstaller does not require
-// the LLVM binaries when running. We should go through all tools to determine
-// if they really need LLVM binaries, and make `llvm_tools` a required argument.
 tool!(
     Rustbook, "src/tools/rustbook", "rustbook", Mode::ToolRustc;
     ErrorIndex, "src/tools/error_index_generator", "error_index_generator", Mode::ToolRustc;
@@ -350,10 +347,10 @@ tool!(
     Tidy, "src/tools/tidy", "tidy", Mode::ToolStd;
     Linkchecker, "src/tools/linkchecker", "linkchecker", Mode::ToolStd;
     CargoTest, "src/tools/cargotest", "cargotest", Mode::ToolStd;
-    Compiletest, "src/tools/compiletest", "compiletest", Mode::ToolTest;
+    Compiletest, "src/tools/compiletest", "compiletest", Mode::ToolTest, llvm_tools = true;
     BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::ToolStd;
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::ToolStd;
-    RustInstaller, "src/tools/rust-installer", "fabricate", Mode::ToolStd, llvm_tools = false;
+    RustInstaller, "src/tools/rust-installer", "fabricate", Mode::ToolStd;
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes", Mode::ToolStd;
 );
 
