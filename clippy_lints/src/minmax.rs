@@ -1,8 +1,8 @@
 use crate::consts::{constant_simple, Constant};
-use rustc::lint::*;
-use rustc::hir::*;
-use std::cmp::{Ordering, PartialOrd};
 use crate::utils::{match_def_path, opt_def_id, paths, span_lint};
+use rustc::hir::*;
+use rustc::lint::*;
+use std::cmp::Ordering;
 
 /// **What it does:** Checks for expressions where `std::cmp::min` and `max` are
 /// used to clamp values, but switched so that the result is constant.
@@ -36,14 +36,22 @@ impl LintPass for MinMaxPass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MinMaxPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let Some((outer_max, outer_c, oe)) = min_max(cx, expr) {
-            if let Some((inner_max, inner_c, _)) = min_max(cx, oe) {
+            if let Some((inner_max, inner_c, ie)) = min_max(cx, oe) {
                 if outer_max == inner_max {
                     return;
                 }
-                match (outer_max, outer_c.partial_cmp(&inner_c)) {
+                match (
+                    outer_max,
+                    Constant::partial_cmp(cx.tcx, &cx.tables.expr_ty(ie).sty, &outer_c, &inner_c),
+                ) {
                     (_, None) | (MinMax::Max, Some(Ordering::Less)) | (MinMax::Min, Some(Ordering::Greater)) => (),
                     _ => {
-                        span_lint(cx, MIN_MAX, expr.span, "this min/max combination leads to constant result");
+                        span_lint(
+                            cx,
+                            MIN_MAX,
+                            expr.span,
+                            "this min/max combination leads to constant result",
+                        );
                     },
                 }
             }

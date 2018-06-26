@@ -23,6 +23,9 @@ fn main() {
 
     min(1, max(LARGE, x)); // no error, we don't lookup consts here
 
+    let y = 2isize;
+    min(max(y, -1), 3);
+
     let s;
     s = "Hello";
 

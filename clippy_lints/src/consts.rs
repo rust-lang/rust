@@ -122,21 +122,32 @@ impl Hash for Constant {
     }
 }
 
-impl PartialOrd for Constant {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match (self, other) {
+impl Constant {
+    pub fn partial_cmp(tcx: TyCtxt, cmp_type: &ty::TypeVariants, left: &Self, right: &Self) -> Option<Ordering> {
+        match (left, right) {
             (&Constant::Str(ref ls), &Constant::Str(ref rs)) => Some(ls.cmp(rs)),
             (&Constant::Char(ref l), &Constant::Char(ref r)) => Some(l.cmp(r)),
-            (&Constant::Int(l), &Constant::Int(r)) => Some(l.cmp(&r)),
+            (&Constant::Int(l), &Constant::Int(r)) => {
+                if let ty::TyInt(int_ty) = *cmp_type {
+                    Some(sext(tcx, l, int_ty).cmp(&sext(tcx, r, int_ty)))
+                } else {
+                    Some(l.cmp(&r))
+                }
+            },
             (&Constant::F64(l), &Constant::F64(r)) => l.partial_cmp(&r),
             (&Constant::F32(l), &Constant::F32(r)) => l.partial_cmp(&r),
             (&Constant::Bool(ref l), &Constant::Bool(ref r)) => Some(l.cmp(r)),
-            (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) | (&Constant::Vec(ref l), &Constant::Vec(ref r)) => {
-                l.partial_cmp(r)
-            },
-            (&Constant::Repeat(ref lv, ref ls), &Constant::Repeat(ref rv, ref rs)) => match lv.partial_cmp(rv) {
-                Some(Equal) => Some(ls.cmp(rs)),
-                x => x,
+            (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) | (&Constant::Vec(ref l), &Constant::Vec(ref r)) => l
+                .iter()
+                .zip(r.iter())
+                .map(|(li, ri)| Constant::partial_cmp(tcx, cmp_type, li, ri))
+                .find(|r| r.map_or(true, |o| o != Ordering::Equal))
+                .unwrap_or_else(|| Some(l.len().cmp(&r.len()))),
+            (&Constant::Repeat(ref lv, ref ls), &Constant::Repeat(ref rv, ref rs)) => {
+                match Constant::partial_cmp(tcx, cmp_type, lv, rv) {
+                    Some(Equal) => Some(ls.cmp(rs)),
+                    x => x,
+                }
             },
             _ => None, // TODO: Are there any useful inter-type orderings?
         }

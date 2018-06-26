@@ -31,15 +31,15 @@ error: this min/max combination leads to constant result
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this min/max combination leads to constant result
-  --> $DIR/min_max.rs:29:5
+  --> $DIR/min_max.rs:32:5
    |
-29 |     min("Apple", max("Zoo", s));
+32 |     min("Apple", max("Zoo", s));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this min/max combination leads to constant result
-  --> $DIR/min_max.rs:30:5
+  --> $DIR/min_max.rs:33:5
    |
-30 |     max(min(s, "Apple"), "Zoo");
+33 |     max(min(s, "Apple"), "Zoo");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors
