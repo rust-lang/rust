@@ -174,3 +174,22 @@ pub fn foo() {}
 #[clippy::bar(a, b, c)]
 pub fn foo() {}
 
+mod issue_2620 {
+    #[derive(Debug, StructOpt)]
+#[structopt(about = "Display information about the character on FF Logs")]
+pub struct Params {
+  #[structopt(help = "The server the character is on")]
+  server: String,
+  #[structopt(help = "The character's first name")]
+  first_name: String,
+  #[structopt(help = "The character's last name")]
+  last_name: String,
+  #[structopt(
+    short = "j",
+    long = "job",
+    help = "The job to look at",
+    parse(try_from_str)
+  )]
+  job: Option<Job>
+}
+}

@@ -98,6 +98,7 @@ fn format_derive(
         argument_shape,
         // 10 = "[derive()]", 3 = "()" and "]"
         shape.offset_left(10 + prefix.len())?.sub_width(3)?,
+        None,
     )?;
 
     result.push_str(&item_str);
@@ -227,6 +228,7 @@ impl Rewrite for ast::MetaItem {
                     shape
                         .offset_left(path.len())?
                         .sub_width(3 + trailing_comma.len())?,
+                    Some(context.config.width_heuristics().fn_call_width),
                 )?;
 
                 let indent = if item_str.starts_with('\n') {
@@ -264,6 +266,7 @@ fn format_arg_list<I, T, F1, F2, F3>(
     context: &RewriteContext,
     shape: Shape,
     one_line_shape: Shape,
+    one_line_limit: Option<usize>,
 ) -> Option<String>
 where
     I: Iterator<Item = T>,
@@ -284,12 +287,14 @@ where
         false,
     );
     let item_vec = items.collect::<Vec<_>>();
-    let tactic = ::lists::definitive_tactic(
-        &item_vec,
-        ListTactic::HorizontalVertical,
-        ::lists::Separator::Comma,
-        shape.width,
-    );
+    let tactic = if let Some(limit) = one_line_limit {
+        ListTactic::LimitedHorizontalVertical(limit)
+    } else {
+        ListTactic::HorizontalVertical
+    };
+
+    let tactic =
+        ::lists::definitive_tactic(&item_vec, tactic, ::lists::Separator::Comma, shape.width);
     let fmt = ListFormatting {
         tactic,
         separator: ",",
