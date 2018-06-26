@@ -13,7 +13,8 @@
             issue = "50547")]
 
 use fmt;
-use super::TaskObj;
+use mem;
+use super::{TaskObj, LocalTaskObj};
 
 /// Provides the reason that an executor was unable to spawn.
 pub struct SpawnErrorKind {
@@ -48,4 +49,34 @@ pub struct SpawnObjError {
 
     /// The task for which spawning was attempted
     pub task: TaskObj,
+}
+
+/// The result of a failed spawn
+#[derive(Debug)]
+pub struct SpawnLocalObjError {
+    /// The kind of error
+    pub kind: SpawnErrorKind,
+
+    /// The task for which spawning was attempted
+    pub task: LocalTaskObj,
+}
+
+impl SpawnLocalObjError {
+    /// Converts the `SpawnLocalObjError` into a `SpawnObjError`
+    /// To make this operation safe one has to ensure that the `UnsafeTask`
+    /// instance from which the `LocalTaskObj` stored inside was created
+    /// actually implements `Send`.
+    pub unsafe fn as_spawn_obj_error(self) -> SpawnObjError {
+        // Safety: Both structs have the same memory layout
+        mem::transmute::<SpawnLocalObjError, SpawnObjError>(self)
+    }
+}
+
+impl From<SpawnObjError> for SpawnLocalObjError {
+    fn from(error: SpawnObjError) -> SpawnLocalObjError {
+        unsafe {
+            // Safety: Both structs have the same memory layout
+            mem::transmute::<SpawnObjError, SpawnLocalObjError>(error)
+        }
+    }
 }

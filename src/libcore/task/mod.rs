@@ -24,10 +24,10 @@ mod poll;
 pub use self::poll::Poll;
 
 mod spawn_error;
-pub use self::spawn_error::{SpawnErrorKind, SpawnObjError};
+pub use self::spawn_error::{SpawnErrorKind, SpawnObjError, SpawnLocalObjError};
 
 mod task;
-pub use self::task::{TaskObj, UnsafeTask};
+pub use self::task::{TaskObj, LocalTaskObj, UnsafeTask};
 
 mod wake;
 pub use self::wake::{Waker, LocalWaker, UnsafeWake};

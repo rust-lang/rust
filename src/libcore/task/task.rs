@@ -14,7 +14,7 @@
 
 use fmt;
 use future::Future;
-use mem::PinMut;
+use mem::{self, PinMut};
 use super::{Context, Poll};
 
 /// A custom trait object for polling tasks, roughly akin to
@@ -30,7 +30,7 @@ unsafe impl Send for TaskObj {}
 impl TaskObj {
     /// Create a `TaskObj` from a custom trait object representation.
     #[inline]
-    pub fn new<T: UnsafeTask>(t: T) -> TaskObj {
+    pub fn new<T: UnsafeTask + Send>(t: T) -> TaskObj {
         TaskObj {
             ptr: t.into_raw(),
             poll_fn: T::poll,
@@ -65,6 +65,71 @@ impl Drop for TaskObj {
     }
 }
 
+/// A custom trait object for polling tasks, roughly akin to
+/// `Box<Future<Output = ()>>`.
+/// Contrary to `TaskObj`, `LocalTaskObj` does not have a `Send` bound.
+pub struct LocalTaskObj {
+    ptr: *mut (),
+    poll_fn: unsafe fn(*mut (), &mut Context) -> Poll<()>,
+    drop_fn: unsafe fn(*mut ()),
+}
+
+impl LocalTaskObj {
+    /// Create a `LocalTaskObj` from a custom trait object representation.
+    #[inline]
+    pub fn new<T: UnsafeTask>(t: T) -> LocalTaskObj {
+        LocalTaskObj {
+            ptr: t.into_raw(),
+            poll_fn: T::poll,
+            drop_fn: T::drop,
+        }
+    }
+
+    /// Converts the `LocalTaskObj` into a `TaskObj`
+    /// To make this operation safe one has to ensure that the `UnsafeTask`
+    /// instance from which this `LocalTaskObj` was created actually implements
+    /// `Send`.
+    pub unsafe fn as_task_obj(self) -> TaskObj {
+        // Safety: Both structs have the same memory layout
+        mem::transmute::<LocalTaskObj, TaskObj>(self)
+    }
+}
+
+impl fmt::Debug for LocalTaskObj {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("LocalTaskObj")
+            .finish()
+    }
+}
+
+impl From<TaskObj> for LocalTaskObj {
+    fn from(task: TaskObj) -> LocalTaskObj {
+        unsafe {
+            // Safety: Both structs have the same memory layout
+            mem::transmute::<TaskObj, LocalTaskObj>(task)
+        }
+    }
+}
+
+impl Future for LocalTaskObj {
+    type Output = ();
+
+    #[inline]
+    fn poll(self: PinMut<Self>, cx: &mut Context) -> Poll<()> {
+        unsafe {
+            (self.poll_fn)(self.ptr, cx)
+        }
+    }
+}
+
+impl Drop for LocalTaskObj {
+    fn drop(&mut self) {
+        unsafe {
+            (self.drop_fn)(self.ptr)
+        }
+    }
+}
+
 /// A custom implementation of a task trait object for `TaskObj`, providing
 /// a hand-rolled vtable.
 ///
@@ -74,7 +139,7 @@ impl Drop for TaskObj {
 /// The implementor must guarantee that it is safe to call `poll` repeatedly (in
 /// a non-concurrent fashion) with the result of `into_raw` until `drop` is
 /// called.
-pub unsafe trait UnsafeTask: Send + 'static {
+pub unsafe trait UnsafeTask: 'static {
     /// Convert a owned instance into a (conceptually owned) void pointer.
     fn into_raw(self) -> *mut ();
 
