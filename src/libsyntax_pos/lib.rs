@@ -663,7 +663,7 @@ pub struct MultiByteChar {
     /// The absolute offset of the character in the CodeMap
     pub pos: BytePos,
     /// The number of bytes, >=2
-    pub bytes: u32,
+    pub bytes: u8,
 }
 
 /// Identifies an offset of a non-narrow character in a FileMap

@@ -263,7 +263,7 @@ fn analyze_filemap_generic(src: &str,
                 assert!(char_len >=2 && char_len <= 4);
                 let mbc = MultiByteChar {
                     pos,
-                    bytes: char_len as u32,
+                    bytes: char_len as u8,
                 };
                 multi_byte_chars.push(mbc);
             }

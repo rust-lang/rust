@@ -819,10 +819,10 @@ impl CodeMap {
             if mbc.pos < bpos {
                 // every character is at least one byte, so we only
                 // count the actual extra bytes.
-                total_extra_bytes += mbc.bytes - 1;
+                total_extra_bytes += mbc.bytes as u32 - 1;
                 // We should never see a byte position in the middle of a
                 // character
-                assert!(bpos.to_u32() >= mbc.pos.to_u32() + mbc.bytes);
+                assert!(bpos.to_u32() >= mbc.pos.to_u32() + mbc.bytes as u32);
             } else {
                 break;
             }
