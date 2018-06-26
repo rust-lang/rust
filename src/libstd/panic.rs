@@ -327,14 +327,9 @@ impl<T: fmt::Debug> fmt::Debug for AssertUnwindSafe<T> {
 impl<'a, F: Future> Future for AssertUnwindSafe<F> {
     type Output = F::Output;
 
-    fn poll(mut self: PinMut<Self>, cx: &mut task::Context) -> Poll<Self::Output> {
-        unsafe {
-            let pinned_field = PinMut::new_unchecked(
-                &mut PinMut::get_mut(self.reborrow()).0
-            );
-
-            pinned_field.poll(cx)
-        }
+    fn poll(self: PinMut<Self>, cx: &mut task::Context) -> Poll<Self::Output> {
+        let pinned_field = unsafe { PinMut::map_unchecked(self, |x| &mut x.0) };
+        pinned_field.poll(cx)
     }
 }
 
