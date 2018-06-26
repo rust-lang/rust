@@ -1,4 +1,3 @@
-// rustfmt-reorder_imports: true
 // rustfmt-normalize_comments: true
 
 use d; use c; use b; use a; 
