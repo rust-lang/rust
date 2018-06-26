@@ -4983,115 +4983,82 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // variables. If the user provided some types, we may still need
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
+        let mut infer_lifetimes = FxHashMap();
         let supress_mismatch = self.check_impl_trait(span, fn_segment);
         for &PathSeg(def_id, index) in &path_segs {
             let generics = self.tcx.generics_of(def_id);
-            self.check_generic_arg_count(span, &segments[index], &generics, false, supress_mismatch);
+            let seg = &segments[index];
+            self.check_generic_arg_count(span, seg, &generics, false, supress_mismatch);
+            infer_lifetimes.insert(index, if let Some(ref data) = seg.args {
+                !data.args.iter().any(|arg| match arg {
+                    GenericArg::Lifetime(_) => true,
+                    _ => false,
+                })
+            } else {
+                true
+            });
         }
 
         let has_self = path_segs.last().map(|PathSeg(def_id, _)| {
             self.tcx.generics_of(*def_id).has_self
         }).unwrap_or(false);
 
-        let fn_start = match (type_segment, fn_segment) {
-            (_, Some((_, generics))) => generics.parent_count,
-            (Some((_, generics)), None) => generics.params.len(),
-            (None, None) => 0,
-        };
-        // FIXME(varkor): Separating out the parameters is messy.
-        let mut lifetimes_type_seg = vec![];
-        let mut types_type_seg = vec![];
-        let mut _infer_types_type_seg = true;
-        if let Some((seg, _)) = type_segment {
-            if let Some(ref data) = seg.args {
-                for (i, arg) in data.args.iter().enumerate() {
-                    match arg {
-                        GenericArg::Lifetime(lt) => lifetimes_type_seg.push((i, lt)),
-                        GenericArg::Type(ty) => types_type_seg.push((i, ty)),
-                    }
-                }
-            }
-            _infer_types_type_seg = seg.infer_types;
-        }
-
-        let mut lifetimes_fn_seg = vec![];
-        let mut types_fn_seg = vec![];
-        let mut _infer_types_fn_seg = true;
-        if let Some((seg, _)) = fn_segment {
-            if let Some(ref data) = seg.args {
-                for (i, arg) in data.args.iter().enumerate() {
-                    match arg {
-                        GenericArg::Lifetime(lt) => lifetimes_fn_seg.push((i, lt)),
-                        GenericArg::Type(ty) => types_fn_seg.push((i, ty)),
-                    }
-                }
-            }
-            _infer_types_fn_seg = seg.infer_types;
-        }
-
-        let defs = self.tcx.generics_of(def.def_id());
+        let def_id = def.def_id();
+        let defs = self.tcx.generics_of(def_id);
         let count = defs.count();
         let mut substs = if count <= 8 {
             AccumulateVec::Array(ArrayVec::new())
         } else {
             AccumulateVec::Heap(Vec::with_capacity(count))
         };
-        let mut stack = vec![def.def_id()];
         let mut parent_defs = defs;
+        let mut stack = vec![(def_id, parent_defs)];
         while let Some(def_id) = parent_defs.parent {
             parent_defs = self.tcx.generics_of(def_id);
-            stack.push(def_id);
+            stack.push((def_id, parent_defs));
         }
-        while let Some(def_id) = stack.pop() {
-            let defs = self.tcx.generics_of(def_id);
+        while let Some((def_id, defs)) = stack.pop() {
             Substs::fill_single(&mut substs, defs, &mut |param: &ty::GenericParamDef, substs| {
-                let lifetimes = if (param.index as usize) < fn_start {
+                if param.index == 0 && has_self {
                     if let GenericParamDefKind::Type { .. } = param.kind {
                         // Handle Self first, so we can adjust the index to match the AST.
-                        if has_self && param.index == 0 {
-                            return opt_self_ty.map(|ty| ty.into()).unwrap_or_else(|| {
-                                self.var_for_def(span, param)
-                            });
-                        }
+                        return opt_self_ty.map(|ty| ty.into()).unwrap_or_else(|| {
+                            self.var_for_def(span, param)
+                        });
                     }
-                    &lifetimes_type_seg
-                } else {
-                    &lifetimes_fn_seg
-                };
+                }
 
-                let mut pi = param.index as usize - has_self as usize;
+                let infer_types = if let Some(&PathSeg(_, index)) = path_segs
+                    .iter()
+                    .find(|&PathSeg(di, _)| *di == def_id) {
 
-                let (_segment, infer_types) = if let Some(&PathSeg(_, ind)) = path_segs.iter().find(|&PathSeg(di, _)| *di == def_id) {
-                    let seg = &segments[ind];
-                    if lifetimes.len() == 0 {
-                        pi -= defs.own_counts().lifetimes;
-                    }
-
-                    if let Some(ref data) = seg.args {
-                        if let Some(arg) = data.args.get(pi) {
+                    if let Some(ref data) = segments[index].args {
+                        let lifetime_offset = if infer_lifetimes[&index] {
+                            defs.own_counts().lifetimes
+                        } else {
+                            0
+                        };
+                        let param_idx = param.index as usize - has_self as usize - lifetime_offset;
+                        if let Some(arg) = data.args.get(param_idx) {
                             return match param.kind {
-                                GenericParamDefKind::Lifetime => {
-                                    let lt = match arg {
-                                        GenericArg::Lifetime(lt) => lt,
-                                        _ => bug!("should be a lifetime"),
-                                    };
-                                    AstConv::ast_region_to_region(self, lt, Some(param)).into()
+                                GenericParamDefKind::Lifetime => match arg {
+                                    GenericArg::Lifetime(lt) => {
+                                        AstConv::ast_region_to_region(self, lt, Some(param)).into()
+                                    }
+                                    _ => bug!("expected a lifetime arg"),
                                 }
-                                GenericParamDefKind::Type { .. } => {
+                                GenericParamDefKind::Type { .. } => match arg {
                                     // A provided type parameter.
-                                    let ty = match arg {
-                                        GenericArg::Type(ty) => ty,
-                                        _ => bug!("should be a type"),
-                                    };
-                                    self.to_ty(ty).into()
+                                    GenericArg::Type(ty) => self.to_ty(ty).into(),
+                                    _ => bug!("expected a type arg"),
                                 }
-                            };
+                            }
                         }
                     }
 
-                    (Some((seg, defs)), seg.infer_types)
+                    segments[index].infer_types
                 } else {
-                    (None, true)
+                    true
                 };
 
                 match param.kind {
