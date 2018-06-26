@@ -533,7 +533,7 @@ where
             let pre_snippet = self
                 .snippet_provider
                 .span_to_snippet(mk_sp(self.prev_span_end, (self.get_lo)(&item)))
-                .unwrap();
+                .unwrap_or("");
             let trimmed_pre_snippet = pre_snippet.trim();
             let has_single_line_comment = trimmed_pre_snippet.starts_with("//");
             let has_block_comment = trimmed_pre_snippet.starts_with("/*");
@@ -572,7 +572,7 @@ where
             let post_snippet = self
                 .snippet_provider
                 .span_to_snippet(mk_sp((self.get_hi)(&item), next_start))
-                .unwrap();
+                .unwrap_or("");
 
             let comment_end = match self.inner.peek() {
                 Some(..) => {

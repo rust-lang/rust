@@ -155,9 +155,29 @@ fn attributes_on_statements() {
     foo!();
 }
 
-// Large derive
-#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
-         Deserialize)]
+// Large derives
+#[derive(
+    Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize, Mul,
+)]
+
+/// Foo bar baz
+
+#[derive(
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Clone,
+    Copy,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Debug,
+    Hash,
+    Serialize,
+    Deserialize,
+)]
 pub struct HP(pub u8);
 
 // Long `#[doc = "..."]`
