@@ -197,6 +197,9 @@ impl UnixStream {
     ///     println!("Got error: {:?}", err);
     /// }
     /// ```
+    ///
+    /// # Platform specific
+    /// On Redox this always returns None.
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         Ok(None)
     }
@@ -400,6 +403,9 @@ impl UnixListener {
     ///     println!("Got error: {:?}", err);
     /// }
     /// ```
+    ///
+    /// # Platform specific
+    /// On Redox this always returns None.
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         Ok(None)
     }
