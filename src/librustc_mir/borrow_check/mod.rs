@@ -245,6 +245,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         mir_def_id: def_id,
         move_data: &mdpe.move_data,
         param_env: param_env,
+        location_table,
         movable_generator,
         locals_are_invalidated_at_exit: match tcx.hir.body_owner_kind(id) {
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => false,
@@ -332,6 +333,11 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     mir: &'cx Mir<'tcx>,
     mir_def_id: DefId,
     move_data: &'cx MoveData<'tcx>,
+
+    /// Map from MIR `Location` to `LocationIndex`; created
+    /// when MIR borrowck begins.
+    location_table: &'cx LocationTable,
+
     param_env: ParamEnv<'gcx>,
     movable_generator: bool,
     /// This keeps track of whether local variables are free-ed when the function
@@ -946,8 +952,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let mut error_reported = false;
         let tcx = self.tcx;
         let mir = self.mir;
-        let location_table = &LocationTable::new(mir);
-        let location = location_table.start_index(context.loc);
+        let location = self.location_table.start_index(context.loc);
         let borrow_set = self.borrow_set.clone();
         each_borrow_involving_path(
             self,
