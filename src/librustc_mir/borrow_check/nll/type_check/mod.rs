@@ -1725,6 +1725,14 @@ impl MirPass for TypeckMir {
             // broken MIR, so try not to report duplicate errors.
             return;
         }
+
+        if tcx.is_struct_constructor(def_id) {
+            // We just assume that the automatically generated struct constructors are
+            // correct. See the comment in the `mir_borrowck` implementation for an
+            // explanation why we need this.
+            return;
+        }
+
         let param_env = tcx.param_env(def_id);
         tcx.infer_ctxt().enter(|infcx| {
             let _ = type_check_internal(

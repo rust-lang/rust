@@ -522,6 +522,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr
     }
 
+    /// True if this def-id refers to the implicit constructor for
+    /// a tuple struct like `struct Foo(u32)`.
+    pub fn is_struct_constructor(self, def_id: DefId) -> bool {
+        self.def_key(def_id).disambiguated_data.data == DefPathData::StructCtor
+    }
+
     /// Given the `DefId` of a fn or closure, returns the `DefId` of
     /// the innermost fn item that the closure is contained within.
     /// This is a significant def-id because, when we do

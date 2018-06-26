@@ -76,7 +76,37 @@ fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> BorrowC
     let input_mir = tcx.mir_validated(def_id);
     debug!("run query mir_borrowck: {}", tcx.item_path_str(def_id));
 
-    if !tcx.has_attr(def_id, "rustc_mir_borrowck") && !tcx.use_mir_borrowck() {
+    let mut return_early;
+
+    // Return early if we are not supposed to use MIR borrow checker for this function.
+    return_early = !tcx.has_attr(def_id, "rustc_mir_borrowck") && !tcx.use_mir_borrowck();
+
+    if tcx.is_struct_constructor(def_id) {
+        // We are not borrow checking the automatically generated struct constructors
+        // because we want to accept structs such as this (taken from the `linked-hash-map`
+        // crate):
+        // ```rust
+        // struct Qey<Q: ?Sized>(Q);
+        // ```
+        // MIR of this struct constructor looks something like this:
+        // ```rust
+        // fn Qey(_1: Q) -> Qey<Q>{
+        //     let mut _0: Qey<Q>;                  // return place
+        //
+        //     bb0: {
+        //         (_0.0: Q) = move _1;             // bb0[0]: scope 0 at src/main.rs:1:1: 1:26
+        //         return;                          // bb0[1]: scope 0 at src/main.rs:1:1: 1:26
+        //     }
+        // }
+        // ```
+        // The problem here is that `(_0.0: Q) = move _1;` is valid only if `Q` is
+        // of statically known size, which is not known to be true because of the
+        // `Q: ?Sized` constraint. However, it is true because the constructor can be
+        // called only when `Q` is of statically known size.
+        return_early = true;
+    }
+
+    if return_early {
         return BorrowCheckResult {
             closure_requirements: None,
             used_mut_upvars: SmallVec::new(),
