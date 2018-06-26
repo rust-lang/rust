@@ -8,26 +8,42 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::fmt;
 use borrow_check::nll::region_infer::{Cause, ConstraintIndex, RegionInferenceContext};
 use borrow_check::nll::region_infer::values::ToElementIndex;
 use borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
-use rustc::mir::{Location, Mir, StatementKind, TerminatorKind, Rvalue};
+use rustc::mir::{self, Location, Mir, Place, StatementKind, TerminatorKind, Rvalue};
 use rustc::ty::RegionVid;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
 use syntax_pos::Span;
 
 /// Constraints that are considered interesting can be categorized to
-/// determine why they are interesting.
+/// determine why they are interesting. Order of variants indicates
+/// sort order of the category, thereby influencing diagnostic output.
 #[derive(Debug, Eq, PartialEq, PartialOrd, Ord)]
 enum ConstraintCategory {
-    Assignment,
     Cast,
+    Assignment,
+    Return,
     CallArgument,
     Other,
+    Boring,
+}
+
+impl fmt::Display for ConstraintCategory {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ConstraintCategory::Assignment => write!(f, "Assignment"),
+            ConstraintCategory::Return => write!(f, "Return"),
+            ConstraintCategory::Cast => write!(f, "Cast"),
+            ConstraintCategory::CallArgument => write!(f, "Argument"),
+            _ => write!(f, "Free region"),
+        }
+    }
 }
 
 impl<'tcx> RegionInferenceContext<'tcx> {
@@ -132,9 +148,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// This function classifies a constraint from a location.
-    fn classify_constraint(&self, location: Location, mir: &Mir<'tcx>) -> ConstraintCategory {
+    fn classify_constraint(&self, index: &ConstraintIndex,
+                           mir: &Mir<'tcx>) -> Option<(ConstraintCategory, Span)> {
+        let constraint = self.constraints.get(*index)?;
+        let span = constraint.locations.span(mir);
+        let location = constraint.locations.from_location()?;
+
+        if !self.constraint_is_interesting(index) {
+            return Some((ConstraintCategory::Boring, span));
+        }
+
         let data = &mir[location.block];
-        if location.statement_index == data.statements.len() {
+        let category = if location.statement_index == data.statements.len() {
             if let Some(ref terminator) = data.terminator {
                 match terminator.kind {
                     TerminatorKind::DropAndReplace { .. } => ConstraintCategory::Assignment,
@@ -147,14 +172,22 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         } else {
             let statement = &data.statements[location.statement_index];
             match statement.kind {
-                StatementKind::Assign(_, ref rvalue) => match rvalue {
-                    Rvalue::Cast(..) => ConstraintCategory::Cast,
-                    Rvalue::Use(..) => ConstraintCategory::Assignment,
-                    _ => ConstraintCategory::Other,
+                StatementKind::Assign(ref place, ref rvalue) => {
+                    if *place == Place::Local(mir::RETURN_PLACE) {
+                        ConstraintCategory::Return
+                    } else {
+                        match rvalue {
+                            Rvalue::Cast(..) => ConstraintCategory::Cast,
+                            Rvalue::Use(..) => ConstraintCategory::Assignment,
+                            _ => ConstraintCategory::Other,
+                        }
+                    }
                 },
                 _ => ConstraintCategory::Other,
             }
-        }
+        };
+
+        Some((category, span))
     }
 
     /// Report an error because the universal region `fr` was required to outlive
@@ -187,53 +220,36 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
 
+        let fr_string = match fr_name {
+            Some(r) => format!("free region `{}`", r),
+            None => format!("free region `{:?}`", fr),
+        };
+
+        let outlived_fr_string = match outlived_fr_name {
+            Some(r) => format!("free region `{}`", r),
+            None => format!("free region `{:?}`", outlived_fr),
+        };
+
         let constraints = self.find_constraint_paths_from_region(fr.clone());
         let path = constraints.iter().min_by_key(|p| p.len()).unwrap();
-        debug!("report_error: path={:?}", path);
-
-        let path = path.iter()
-            .filter(|index| self.constraint_is_interesting(index))
-            .collect::<Vec<&ConstraintIndex>>();
-        debug!("report_error: path={:?}", path);
+        debug!("report_error: shortest_path={:?}", path);
 
         let mut categorized_path = path.iter().filter_map(|index| {
-            self.constraints.get(**index).iter().filter_map(|constraint| {
-                let span = constraint.locations.span(mir);
-                constraint.locations.from_location().iter().filter_map(|location| {
-                    let classification = self.classify_constraint(*location, mir);
-                    Some((classification, span))
-                }).next()
-            }).next()
+            self.classify_constraint(index, mir)
         }).collect::<Vec<(ConstraintCategory, Span)>>();
         debug!("report_error: categorized_path={:?}", categorized_path);
 
         categorized_path.sort_by(|p0, p1| p0.0.cmp(&p1.0));
         debug!("report_error: sorted_path={:?}", categorized_path);
 
-        if categorized_path.len() > 0 {
-            let blame_constraint = &categorized_path[0];
-
+        if let Some((category, span)) = &categorized_path.first() {
             let mut diag = infcx.tcx.sess.struct_span_err(
-                blame_constraint.1,
-                &format!("{:?}", blame_constraint.0),
+                *span, &format!("{} requires that data must outlive {}",
+                                category, outlived_fr_string),
             );
-
-            for secondary in categorized_path.iter().skip(1) {
-                diag.span_label(secondary.1, format!("{:?}", secondary.0));
-            }
 
             diag.emit();
         } else {
-            let fr_string = match fr_name {
-                Some(r) => format!("free region `{}`", r),
-                None => format!("free region `{:?}`", fr),
-            };
-
-            let outlived_fr_string = match outlived_fr_name {
-                Some(r) => format!("free region `{}`", r),
-                None => format!("free region `{:?}`", outlived_fr),
-            };
-
             let mut diag = infcx.tcx.sess.struct_span_err(
                 blame_span,
                 &format!("{} does not outlive {}", fr_string, outlived_fr_string,),
