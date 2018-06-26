@@ -22,15 +22,11 @@ warning: not reporting region error due to nll
 LL |     Box::new(items.iter()) //~ ERROR cannot infer an appropriate lifetime
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-error: free region `` does not outlive free region `'static`
-  --> $DIR/dyn-trait-underscore.rs:16:52
+error: Cast requires that data must outlive free region `'static`
+  --> $DIR/dyn-trait-underscore.rs:18:5
    |
-LL |   fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
-   |  ____________________________________________________^
-LL | |     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`
-LL | |     Box::new(items.iter()) //~ ERROR cannot infer an appropriate lifetime
-LL | | }
-   | |_^
+LL |     Box::new(items.iter()) //~ ERROR cannot infer an appropriate lifetime
+   |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

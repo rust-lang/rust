@@ -9,7 +9,7 @@ note: External requirements
    |
 LL |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
    |  _______________________________________________^
-LL | |         //~^ ERROR does not outlive free region
+LL | |         //~^ ERROR Argument requires that data must outlive free region
 LL | |
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to nll
@@ -23,12 +23,11 @@ LL | |     });
    = note: number of external vids: 2
    = note: where '_#1r: '_#0r
 
-error: free region `ReFree(DefId(0/0:6 ~ propagate_approximated_shorter_to_static_no_bound[317d]::supply[0]), BrNamed(crate0:DefIndex(1:16), 'a))` does not outlive free region `ReStatic`
-  --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:45:47
+error: Argument requires that data must outlive free region `ReStatic`
+  --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:45:5
    |
-LL |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-   |  _______________________________________________^
-LL | |         //~^ ERROR does not outlive free region
+LL | /     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
+LL | |         //~^ ERROR Argument requires that data must outlive free region
 LL | |
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to nll
@@ -40,7 +39,7 @@ note: No external requirements
    |
 LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
 LL | |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-LL | |         //~^ ERROR does not outlive free region
+LL | |         //~^ ERROR Argument requires that data must outlive free region
 LL | |
 ...  |
 LL | |     });
