@@ -293,6 +293,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             edition: Some(Edition::Edition2018),
         },
         FutureIncompatibleInfo {
+            id: LintId::of(WHERE_CLAUSES_OBJECT_SAFETY),
+            reference: "issue #51443 <https://github.com/rust-lang/rust/issues/51443>",
+            edition: None,
+        },
+        FutureIncompatibleInfo {
             id: LintId::of(DUPLICATE_ASSOCIATED_TYPE_BINDINGS),
             reference: "issue #50589 <https://github.com/rust-lang/rust/issues/50589>",
             edition: None,

@@ -304,6 +304,12 @@ declare_lint! {
     "warn about documentation intra links resolution failure"
 }
 
+declare_lint! {
+    pub WHERE_CLAUSES_OBJECT_SAFETY,
+    Warn,
+    "checks the object safety of where clauses"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -358,6 +364,7 @@ impl LintPass for HardwiredLints {
             DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
             DUPLICATE_MACRO_EXPORTS,
             INTRA_DOC_LINK_RESOLUTION_FAILURE,
+            WHERE_CLAUSES_OBJECT_SAFETY,
         )
     }
 }
