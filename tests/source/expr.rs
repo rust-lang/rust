@@ -1,6 +1,5 @@
 // rustfmt-normalize_comments: true
 // rustfmt-wrap_comments: true
-// rustfmt-remove_nested_parens: true
 // Test expressions
 
 fn foo() -> bool {
