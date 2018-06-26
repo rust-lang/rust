@@ -1,4 +1,3 @@
-// rustfmt-indent_style: Block
 // Test expressions with block formatting.
 
 fn arrays() {

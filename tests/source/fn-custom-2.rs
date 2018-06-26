@@ -1,4 +1,3 @@
-// rustfmt-indent_style: Block
 // Test different indents.
 
 fn foo(a: Aaaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbbbb, c: Ccccccccccccccccc, d: Ddddddddddddddddddddddddd, e: Eeeeeeeeeeeeeeeeeee) {

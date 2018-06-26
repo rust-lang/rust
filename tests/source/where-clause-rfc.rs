@@ -1,5 +1,3 @@
-// rustfmt-indent_style: Block
-
 fn reflow_list_node_with_rule(node: &CompoundNode, rule: &Rule, args: &[Arg], shape: &Shape) where T: FOo, U: Bar {
     let mut effects = HashMap::new();
 }

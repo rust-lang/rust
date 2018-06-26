@@ -1,5 +1,3 @@
-// rustfmt-indent_style = "block"
-
 #![feature(pub_restricted)]
 
 mod inner_mode {

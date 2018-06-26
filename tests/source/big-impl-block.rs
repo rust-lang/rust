@@ -1,5 +1,3 @@
-// rustfmt-indent_style: Block
-
 // #1357
 impl<
     'a,
