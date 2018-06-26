@@ -3846,7 +3846,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
             }
-            hir::ExprContinue(_) => { tcx.types.never }
+            hir::ExprContinue(destination) => {
+                if let Ok(_) = destination.target_id {
+                    tcx.types.never
+                } else {
+                    // There was an error, make typecheck fail
+                    tcx.types.err
+                }
+            }
             hir::ExprRet(ref expr_opt) => {
                 if self.ret_coercion.is_none() {
                     struct_span_err!(self.tcx.sess, expr.span, E0572,
