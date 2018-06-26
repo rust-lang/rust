@@ -232,7 +232,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 };
 
                 if hir_id == ::hir::DUMMY_HIR_ID {
-                    println!("Maybe you forgot to lower the node id {:?}?", id);
+                    debug!("Maybe you forgot to lower the node id {:?}?", id);
                 }
 
                 bug!("inconsistent DepNode for `{}`: \
