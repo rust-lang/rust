@@ -1,9 +1,14 @@
 //! Vector absolute value
-
+#![allow(dead_code)]
 use coresimd::simd::*;
 
 #[allow(improper_ctypes)]
 extern "C" {
+    #[link_name = "llvm.fabs.f32"]
+    fn abs_f32(x: f32) -> f32;
+    #[link_name = "llvm.fabs.f64"]
+    fn abs_f64(x: f64) -> f64;
+
     #[link_name = "llvm.fabs.v2f32"]
     fn abs_v2f32(x: f32x2) -> f32x2;
     #[link_name = "llvm.fabs.v4f32"]
@@ -24,11 +29,40 @@ pub(crate) trait FloatAbs {
     fn abs(self) -> Self;
 }
 
+trait RawAbs {
+    fn raw_abs(self) -> Self;
+}
+
+impl RawAbs for f32 {
+    fn raw_abs(self) -> Self {
+        unsafe { abs_f32(self) }
+    }
+}
+
+impl RawAbs for f64 {
+    fn raw_abs(self) -> Self {
+        unsafe { abs_f64(self) }
+    }
+}
+
+
 macro_rules! impl_fabs {
     ($id:ident : $fn:ident) => {
+        #[cfg(not(target_arch = "s390x"))]
         impl FloatAbs for $id {
             fn abs(self) -> Self {
                 unsafe { $fn(self) }
+            }
+        }
+        // FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/501
+        #[cfg(target_arch = "s390x")]
+        impl FloatAbs for $id {
+            fn abs(self) -> Self {
+                let mut v = $id::splat(0.);
+                for i in 0..$id::lanes() {
+                    v = v.replace(i, self.extract(i).raw_abs())
+                }
+                v
             }
         }
     };
