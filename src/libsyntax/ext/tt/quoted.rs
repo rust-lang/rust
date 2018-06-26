@@ -22,7 +22,7 @@ use rustc_data_structures::sync::Lrc;
 
 /// Contains the sub-token-trees of a "delimited" token tree, such as the contents of `(`. Note
 /// that the delimiter itself might be `NoDelim`.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub struct Delimited {
     pub delim: token::DelimToken,
     pub tts: Vec<TokenTree>,
@@ -60,7 +60,7 @@ impl Delimited {
     }
 }
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub struct SequenceRepetition {
     /// The sequence of token trees
     pub tts: Vec<TokenTree>,
@@ -85,7 +85,7 @@ pub enum KleeneOp {
 
 /// Similar to `tokenstream::TokenTree`, except that `$i`, `$i:ident`, and `$(...)`
 /// are "first-class" token trees. Useful for parsing macros.
-#[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable, Hash)]
+#[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum TokenTree {
     Token(Span, token::Token),
     Delimited(Span, Lrc<Delimited>),

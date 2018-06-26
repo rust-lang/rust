@@ -49,6 +49,7 @@ use rustc::lint as lint;
 
 use std::collections::hash_map::Entry;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::default::Default;
 use std::{mem, slice, vec};
 use std::iter::{FromIterator, once};
@@ -754,7 +755,7 @@ impl<'a> FromIterator<&'a DocFragment> for String {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default, Hash)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default)]
 pub struct Attributes {
     pub doc_strings: Vec<DocFragment>,
     pub other_attrs: Vec<ast::Attribute>,
@@ -980,11 +981,23 @@ impl PartialEq for Attributes {
         self.cfg == rhs.cfg &&
         self.span == rhs.span &&
         self.links == rhs.links &&
-        self.other_attrs.id == rhs.other_attrs.id
+        self.other_attrs.iter().map(|attr| attr.id).eq(rhs.other_attrs.iter().map(|attr| attr.id))
     }
 }
 
 impl Eq for Attributes {}
+
+impl Hash for Attributes {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        self.doc_strings.hash(hasher);
+        self.cfg.hash(hasher);
+        self.span.hash(hasher);
+        self.links.hash(hasher);
+        for attr in &self.other_attrs {
+            attr.id.hash(hasher);
+        }
+    }
+}
 
 impl AttributesExt for Attributes {
     fn lists<'a>(&'a self, name: &'a str) -> ListAttributesIter<'a> {

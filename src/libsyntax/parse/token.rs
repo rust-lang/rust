@@ -139,7 +139,7 @@ fn ident_can_begin_type(ident: ast::Ident, is_raw: bool) -> bool {
     ].contains(&ident.name)
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Hash, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
 pub enum Token {
     /* Expression-operator symbols. */
     Eq,
@@ -638,7 +638,7 @@ impl Token {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Hash)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
     NtItem(P<ast::Item>),
