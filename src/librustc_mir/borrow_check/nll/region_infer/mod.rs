@@ -343,11 +343,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("add_live_point: @{:?} Adding cause {:?}", point, cause);
 
         let element = self.elements.index(point);
-        if self.liveness_constraints.add_element(v, element, &cause) {
-            true
-        } else {
-            false
-        }
+        self.liveness_constraints.add_element(v, element, &cause)
     }
 
     /// Indicates that the region variable `sup` must outlive `sub` is live at the point `point`.
