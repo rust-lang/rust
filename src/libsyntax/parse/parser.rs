@@ -1299,7 +1299,10 @@ impl<'a> Parser<'a> {
     /// Parse asyncness: `async` or nothing
     fn parse_asyncness(&mut self) -> IsAsync {
         if self.eat_keyword(keywords::Async) {
-            IsAsync::Async(ast::DUMMY_NODE_ID)
+            IsAsync::Async {
+                closure_id: ast::DUMMY_NODE_ID,
+                return_impl_trait_id: ast::DUMMY_NODE_ID,
+            }
         } else {
             IsAsync::NotAsync
         }
@@ -3279,10 +3282,8 @@ impl<'a> Parser<'a> {
         } else {
             Movability::Movable
         };
-        let asyncness = if self.span.edition() >= Edition::Edition2018
-            && self.eat_keyword(keywords::Async)
-        {
-            IsAsync::Async(ast::DUMMY_NODE_ID)
+        let asyncness = if self.span.edition() >= Edition::Edition2018 {
+            self.parse_asyncness()
         } else {
             IsAsync::NotAsync
         };
@@ -6798,7 +6799,10 @@ impl<'a> Parser<'a> {
             let fn_span = self.prev_span;
             let (ident, item_, extra_attrs) =
                 self.parse_item_fn(unsafety,
-                                   IsAsync::Async(ast::DUMMY_NODE_ID),
+                                   IsAsync::Async {
+                                       closure_id: ast::DUMMY_NODE_ID,
+                                       return_impl_trait_id: ast::DUMMY_NODE_ID,
+                                   },
                                    respan(fn_span, Constness::NotConst),
                                    Abi::Rust)?;
             let prev_span = self.prev_span;

@@ -1722,13 +1722,16 @@ pub enum Unsafety {
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum IsAsync {
-    Async(NodeId),
+    Async {
+        closure_id: NodeId,
+        return_impl_trait_id: NodeId,
+    },
     NotAsync,
 }
 
 impl IsAsync {
     pub fn is_async(self) -> bool {
-        if let IsAsync::Async(_) = self {
+        if let IsAsync::Async { .. } = self {
             true
         } else {
             false
