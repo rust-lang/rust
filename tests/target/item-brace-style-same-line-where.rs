@@ -1,5 +1,3 @@
-// rustfmt-brace_style: SameLineWhere
-
 mod M {
     enum A {
         A,
