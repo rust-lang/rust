@@ -116,6 +116,7 @@ use rustc_data_structures::sync::Lrc;
 use std::collections::hash_map::Entry;
 use std::cmp;
 use std::fmt::Display;
+use std::iter;
 use std::mem::replace;
 use std::ops::{self, Deref};
 use rustc_target::spec::abi::Abi;
@@ -4539,9 +4540,31 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             cause_span: Span,
                                             blk_id: ast::NodeId) {
         self.suggest_missing_semicolon(err, expression, expected, cause_span);
-
         if let Some((fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
             self.suggest_missing_return_type(err, &fn_decl, expected, found, can_suggest);
+        }
+        self.suggest_ref_or_into(err, expression, expected, found);
+    }
+
+    pub fn suggest_ref_or_into(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        expr: &hir::Expr,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) {
+        if let Some((sp, msg, suggestion)) = self.check_ref(expr, found, expected) {
+            err.span_suggestion(sp, msg, suggestion);
+        } else if !self.check_for_cast(err, expr, found, expected) {
+            let methods = self.get_conversion_methods(expr.span, expected, found);
+            if let Ok(expr_text) = self.sess().codemap().span_to_snippet(expr.span) {
+                let suggestions = iter::repeat(expr_text).zip(methods.iter())
+                    .map(|(receiver, method)| format!("{}.{}()", receiver, method.ident))
+                    .collect::<Vec<_>>();
+                if !suggestions.is_empty() {
+                    err.span_suggestions(expr.span, "try using a conversion method", suggestions);
+                }
+            }
         }
     }
 
