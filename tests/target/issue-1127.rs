@@ -1,4 +1,4 @@
-// rustfmt-max_width:120
+// rustfmt-max_width: 120
 // rustfmt-match_arm_blocks: false
 // rustfmt-match_block_trailing_comma: true
 
