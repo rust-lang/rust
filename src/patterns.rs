@@ -112,7 +112,7 @@ impl Rewrite for Pat {
                 rewrite_pair(
                     &**lhs,
                     &**rhs,
-                    PairParts::new("", &infix, ""),
+                    PairParts::infix(&infix),
                     context,
                     shape,
                     SeparatorPlace::Front,

@@ -92,7 +92,7 @@ pub fn format_expr(
                 rewrite_pair(
                     &**lhs,
                     &**rhs,
-                    PairParts::new("", &format!(" {} ", context.snippet(op.span)), ""),
+                    PairParts::infix(&format!(" {} ", context.snippet(op.span))),
                     context,
                     shape,
                     context.config.binop_separator(),
@@ -211,7 +211,7 @@ pub fn format_expr(
         ast::ExprKind::Cast(ref expr, ref ty) => rewrite_pair(
             &**expr,
             &**ty,
-            PairParts::new("", " as ", ""),
+            PairParts::infix(" as "),
             context,
             shape,
             SeparatorPlace::Front,
@@ -219,7 +219,7 @@ pub fn format_expr(
         ast::ExprKind::Type(ref expr, ref ty) => rewrite_pair(
             &**expr,
             &**ty,
-            PairParts::new("", ": ", ""),
+            PairParts::infix(": "),
             context,
             shape,
             SeparatorPlace::Back,
@@ -288,7 +288,7 @@ pub fn format_expr(
                     rewrite_pair(
                         &*lhs,
                         &*rhs,
-                        PairParts::new("", &sp_delim, ""),
+                        PairParts::infix(&sp_delim),
                         context,
                         shape,
                         context.config.binop_separator(),
@@ -435,11 +435,22 @@ fn rewrite_simple_binaries(
     None
 }
 
+/// Sigils that decorate a binop pair.
 #[derive(new, Clone, Copy)]
 pub struct PairParts<'a> {
     prefix: &'a str,
     infix: &'a str,
     suffix: &'a str,
+}
+
+impl<'a> PairParts<'a> {
+    pub fn infix(infix: &'a str) -> PairParts<'a> {
+        PairParts {
+            prefix: "",
+            infix,
+            suffix: "",
+        }
+    }
 }
 
 pub fn rewrite_pair<LHS, RHS>(
