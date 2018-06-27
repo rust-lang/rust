@@ -1038,7 +1038,7 @@ impl<T> Weak<T> {
     }
 }
 
-fn is_dangling<T: ?Sized>(ptr: NonNull<T>) -> bool {
+pub(crate) fn is_dangling<T: ?Sized>(ptr: NonNull<T>) -> bool {
     let address = ptr.as_ptr() as *mut () as usize;
     let align = align_of_val(unsafe { ptr.as_ref() });
     address == align

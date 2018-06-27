@@ -253,7 +253,7 @@ use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 use core::marker;
 use core::marker::{Unsize, PhantomData};
-use core::mem::{self, align_of_val, forget, size_of_val, uninitialized};
+use core::mem::{self, align_of_val, forget, size_of_val};
 use core::ops::Deref;
 use core::ops::CoerceUnsized;
 use core::ptr::{self, NonNull};
@@ -261,6 +261,7 @@ use core::convert::From;
 
 use alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
 use string::String;
+use sync::is_dangling;
 use vec::Vec;
 
 struct RcBox<T: ?Sized> {
@@ -1153,6 +1154,10 @@ impl<T> From<Vec<T>> for Rc<[T]> {
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
 #[stable(feature = "rc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
+    // This is a `NonNull` to allow optimizing the size of this type in enums,
+    // but it is not necessarily a valid pointer.
+    // `Weak::new` sets this to a dangling pointer so that it doesn’t need
+    // to allocate space on the heap.
     ptr: NonNull<RcBox<T>>,
 }
 
@@ -1165,8 +1170,8 @@ impl<T: ?Sized> !marker::Sync for Weak<T> {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
 impl<T> Weak<T> {
-    /// Constructs a new `Weak<T>`, allocating memory for `T` without initializing
-    /// it. Calling [`upgrade`] on the return value always gives [`None`].
+    /// Constructs a new `Weak<T>`, without allocating any memory.
+    /// Calling [`upgrade`] on the return value always gives [`None`].
     ///
     /// [`upgrade`]: struct.Weak.html#method.upgrade
     /// [`None`]: ../../std/option/enum.Option.html
@@ -1181,14 +1186,8 @@ impl<T> Weak<T> {
     /// ```
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     pub fn new() -> Weak<T> {
-        unsafe {
-            Weak {
-                ptr: Box::into_raw_non_null(box RcBox {
-                    strong: Cell::new(0),
-                    weak: Cell::new(1),
-                    value: uninitialized(),
-                }),
-            }
+        Weak {
+            ptr: NonNull::dangling(),
         }
     }
 }
@@ -1222,11 +1221,23 @@ impl<T: ?Sized> Weak<T> {
     /// ```
     #[stable(feature = "rc_weak", since = "1.4.0")]
     pub fn upgrade(&self) -> Option<Rc<T>> {
-        if self.strong() == 0 {
+        let inner = self.inner()?;
+        if inner.strong() == 0 {
             None
         } else {
-            self.inc_strong();
+            inner.inc_strong();
             Some(Rc { ptr: self.ptr, phantom: PhantomData })
+        }
+    }
+
+    /// Return `None` when the pointer is dangling and there is no allocated `RcBox`,
+    /// i.e. this `Weak` was created by `Weak::new`
+    #[inline]
+    fn inner(&self) -> Option<&RcBox<T>> {
+        if is_dangling(self.ptr) {
+            None
+        } else {
+            Some(unsafe { self.ptr.as_ref() })
         }
     }
 }
@@ -1258,12 +1269,14 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// assert!(other_weak_foo.upgrade().is_none());
     /// ```
     fn drop(&mut self) {
-        unsafe {
-            self.dec_weak();
+        if let Some(inner) = self.inner() {
+            inner.dec_weak();
             // the weak count starts at 1, and will only go to zero if all
             // the strong pointers have disappeared.
-            if self.weak() == 0 {
-                Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
+            if inner.weak() == 0 {
+                unsafe {
+                    Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
+                }
             }
         }
     }
@@ -1284,7 +1297,9 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// ```
     #[inline]
     fn clone(&self) -> Weak<T> {
-        self.inc_weak();
+        if let Some(inner) = self.inner() {
+            inner.inc_weak()
+        }
         Weak { ptr: self.ptr }
     }
 }
@@ -1317,7 +1332,7 @@ impl<T> Default for Weak<T> {
     }
 }
 
-// NOTE: We checked_add here to deal with mem::forget safety. In particular
+// NOTE: We checked_add here to deal with mem::forget safely. In particular
 // if you mem::forget Rcs (or Weaks), the ref-count can overflow, and then
 // you can free the allocation while outstanding Rcs (or Weaks) exist.
 // We abort because this is such a degenerate scenario that we don't care about
@@ -1370,12 +1385,10 @@ impl<T: ?Sized> RcBoxPtr<T> for Rc<T> {
     }
 }
 
-impl<T: ?Sized> RcBoxPtr<T> for Weak<T> {
+impl<T: ?Sized> RcBoxPtr<T> for RcBox<T> {
     #[inline(always)]
     fn inner(&self) -> &RcBox<T> {
-        unsafe {
-            self.ptr.as_ref()
-        }
+        self
     }
 }
 
