@@ -35,8 +35,6 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
 
 use std::hash::Hash;
-use std::io::prelude::*;
-use std::io::Cursor;
 use std::path::Path;
 use rustc_data_structures::sync::Lrc;
 use std::u32;
@@ -52,7 +50,7 @@ use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc::hir::intravisit;
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
-    opaque: opaque::Encoder<'a>,
+    opaque: opaque::Encoder,
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     link_meta: &'a LinkMeta,
 
@@ -76,7 +74,7 @@ macro_rules! encoder_methods {
 }
 
 impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
-    type Error = <opaque::Encoder<'a> as Encoder>::Error;
+    type Error = <opaque::Encoder as Encoder>::Error;
 
     fn emit_nil(&mut self) -> Result<(), Self::Error> {
         Ok(())
@@ -480,7 +478,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // Index the items
         i = self.position();
-        let index = items.write_index(&mut self.opaque.cursor);
+        let index = items.write_index(&mut self.opaque);
         let index_bytes = self.position() - i;
 
         let attrs = tcx.hir.krate_attrs();
@@ -537,7 +535,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         if self.tcx.sess.meta_stats() {
             let mut zero_bytes = 0;
-            for e in self.opaque.cursor.get_ref() {
+            for e in self.opaque.data.iter() {
                 if *e == 0 {
                     zero_bytes += 1;
                 }
@@ -1797,15 +1795,15 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta)
                                  -> EncodedMetadata
 {
-    let mut cursor = Cursor::new(vec![]);
-    cursor.write_all(METADATA_HEADER).unwrap();
+    let mut encoder = opaque::Encoder::new(vec![]);
+    encoder.emit_raw_bytes(METADATA_HEADER);
 
     // Will be filled with the root position after encoding everything.
-    cursor.write_all(&[0, 0, 0, 0]).unwrap();
+    encoder.emit_raw_bytes(&[0, 0, 0, 0]);
 
-    let root = {
+    let (root, mut result) = {
         let mut ecx = EncodeContext {
-            opaque: opaque::Encoder::new(&mut cursor),
+            opaque: encoder,
             tcx,
             link_meta,
             lazy_state: LazyState::NoNode,
@@ -1821,9 +1819,9 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Encode all the entries and extra information in the crate,
         // culminating in the `CrateRoot` which points to all of it.
-        ecx.encode_crate_root()
+        let root = ecx.encode_crate_root();
+        (root, ecx.opaque.into_inner())
     };
-    let mut result = cursor.into_inner();
 
     // Encode the root position.
     let header = METADATA_HEADER.len();

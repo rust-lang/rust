@@ -54,7 +54,7 @@ pub trait TyEncoder: Encoder {
     fn position(&self) -> usize;
 }
 
-impl<'buf> TyEncoder for opaque::Encoder<'buf> {
+impl TyEncoder for opaque::Encoder {
     #[inline]
     fn position(&self) -> usize {
         self.position()
