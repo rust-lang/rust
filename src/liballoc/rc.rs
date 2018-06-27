@@ -1182,6 +1182,15 @@ impl<T> Weak<T> {
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     pub fn new() -> Weak<T> {
         unsafe {
+            // Assert that we’re not about to allocate zero bytes
+            // but at least enough space for the `strong` and `weak` fields
+            // even if `T` is uninhabited.
+            // https://github.com/rust-lang/rust/issues/48493#issuecomment-372438465
+            // https://github.com/rust-lang/rust/pull/50622
+            #[cfg(not(stage0))] enum Void {}
+            #[cfg(not(stage0))] let _ = mem::transmute::<RcBox<Void>, RcBox<()>>;
+            #[cfg(not(stage0))] let _ = mem::transmute::<RcBox<!>, RcBox<()>>;
+
             let layout = Layout::new::<RcBox<T>>();
             let mut ptr = Global.alloc(layout)
                 .unwrap_or_else(|_| handle_alloc_error(layout))
