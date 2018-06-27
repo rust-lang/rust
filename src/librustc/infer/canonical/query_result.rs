@@ -18,23 +18,53 @@
 //! [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html
 
 use infer::canonical::substitute::substitute_value;
-use infer::canonical::{
-    Canonical, CanonicalVarKind, CanonicalVarValues, CanonicalizedQueryResult, Certainty,
-    QueryRegionConstraint, QueryResult,
-};
+use infer::canonical::{Canonical, CanonicalVarKind, CanonicalVarValues, CanonicalizedQueryResult,
+                       Certainty, QueryRegionConstraint, QueryResult};
 use infer::region_constraints::{Constraint, RegionConstraintData};
+use infer::InferCtxtBuilder;
 use infer::{InferCtxt, InferOk, InferResult, RegionObligation};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 use std::fmt::Debug;
 use syntax::ast;
-use traits::query::NoSolution;
+use syntax_pos::DUMMY_SP;
+use traits::query::{Fallible, NoSolution};
 use traits::{FulfillmentContext, TraitEngine};
 use traits::{Obligation, ObligationCause, PredicateObligation};
 use ty::fold::TypeFoldable;
 use ty::subst::{Kind, UnpackedKind};
 use ty::{self, CanonicalVar, Lift, TyCtxt};
+
+impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
+    /// The "main method" for a canonicalized trait query. Given the
+    /// canonical key `canonical_key`, this method will create a new
+    /// inference context, instantiate the key, and run your operation
+    /// `op`. The operation should yield up a result (of type `R`) as
+    /// well as a set of trait obligations that must be fully
+    /// satisfied. These obligations will be processed and the
+    /// canonical result created.
+    ///
+    /// Returns `NoSolution` in the event of any error.
+    pub fn enter_canonical_trait_query<K, R>(
+        &'tcx mut self,
+        canonical_key: &Canonical<'tcx, K>,
+        op: impl FnOnce(&InferCtxt<'_, 'gcx, 'tcx>, K) -> Fallible<InferOk<'tcx, R>>,
+    ) -> Fallible<CanonicalizedQueryResult<'gcx, R>>
+    where
+        K: TypeFoldable<'tcx>,
+        R: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
+    {
+        self.enter(|ref infcx| {
+            let (key, canonical_inference_vars) =
+                infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_key);
+            let InferOk { value, obligations } = op(infcx, key)?;
+            let fulfill_cx = &mut FulfillmentContext::new();
+            fulfill_cx.register_predicate_obligations(infcx, obligations);
+            infcx.make_canonicalized_query_result(canonical_inference_vars, value, fulfill_cx)
+        })
+    }
+}
 
 impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// This method is meant to be invoked as the final step of a canonical query
@@ -61,7 +91,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
         fulfill_cx: &mut FulfillmentContext<'tcx>,
-    ) -> Result<CanonicalizedQueryResult<'gcx, T>, NoSolution>
+    ) -> Fallible<CanonicalizedQueryResult<'gcx, T>>
     where
         T: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
     {
@@ -293,14 +323,13 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         let result_subst =
             self.query_result_substitution_guess(cause, original_values, query_result);
 
-        let obligations = self
-            .unify_query_result_substitution_guess(
-                cause,
-                param_env,
-                original_values,
-                &result_subst,
-                query_result,
-            )?
+        let obligations = self.unify_query_result_substitution_guess(
+            cause,
+            param_env,
+            original_values,
+            &result_subst,
+            query_result,
+        )?
             .into_obligations();
 
         Ok(InferOk {
