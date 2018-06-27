@@ -8,21 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::canonical::{Canonical, CanonicalizedQueryResult, QueryResult};
+use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResult, QueryResult};
 use traits::query::Fallible;
-use ty::{ParamEnv, Ty, TyCtxt};
+use ty::{ParamEnvAnd, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Subtype<'tcx> {
-    pub param_env: ParamEnv<'tcx>,
     pub sub: Ty<'tcx>,
     pub sup: Ty<'tcx>,
 }
 
 impl<'tcx> Subtype<'tcx> {
-    pub fn new(param_env: ParamEnv<'tcx>, sub: Ty<'tcx>, sup: Ty<'tcx>) -> Self {
+    pub fn new(sub: Ty<'tcx>, sup: Ty<'tcx>) -> Self {
         Self {
-            param_env,
             sub,
             sup,
         }
@@ -30,24 +28,19 @@ impl<'tcx> Subtype<'tcx> {
 }
 
 impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Subtype<'tcx> {
-    type QueryKey = Self;
     type QueryResult = ();
 
-    fn prequery(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<(), Self::QueryKey> {
-        if self.sub == self.sup {
-            Ok(())
+    fn prequery(_tcx: TyCtxt<'_, 'gcx, 'tcx>, key: &ParamEnvAnd<'tcx, Self>) -> Option<()> {
+        if key.value.sub == key.value.sup {
+            Some(())
         } else {
-            Err(self)
+            None
         }
-    }
-
-    fn param_env(key: &Self::QueryKey) -> ParamEnv<'tcx> {
-        key.param_env
     }
 
     fn perform_query(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
-        canonicalized: Canonical<'gcx, Subtype<'gcx>>,
+        canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResult<'gcx, ()>> {
         tcx.type_op_subtype(canonicalized)
     }
@@ -61,7 +54,6 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Subtype<'tcx> {
 
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for Subtype<'tcx> {
-        param_env,
         sub,
         sup,
     }
@@ -70,12 +62,11 @@ BraceStructTypeFoldableImpl! {
 BraceStructLiftImpl! {
     impl<'a, 'tcx> Lift<'tcx> for Subtype<'a> {
         type Lifted = Subtype<'tcx>;
-        param_env,
         sub,
         sup,
     }
 }
 
 impl_stable_hash_for! {
-    struct Subtype<'tcx> { param_env, sub, sup }
+    struct Subtype<'tcx> { sub, sup }
 }

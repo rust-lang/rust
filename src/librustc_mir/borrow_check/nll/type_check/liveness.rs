@@ -13,10 +13,10 @@ use borrow_check::nll::type_check::AtLocation;
 use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow::MaybeInitializedPlaces;
 use dataflow::{FlowAtLocation, FlowsAtLocation};
-use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::mir::Local;
 use rustc::mir::{BasicBlock, Location, Mir};
+use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc::traits::query::type_op::outlives::DropckOutlives;
 use rustc::traits::query::type_op::TypeOp;
 use rustc::ty::{Ty, TypeFoldable};
@@ -223,7 +223,8 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
 
         let param_env = cx.param_env;
-        let (dropck_result, region_constraint_data) = DropckOutlives::new(param_env, dropped_ty)
+        let (dropck_result, region_constraint_data) = param_env
+            .and(DropckOutlives::new(dropped_ty))
             .fully_perform(cx.infcx)
             .unwrap();
 

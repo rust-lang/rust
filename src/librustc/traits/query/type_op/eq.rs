@@ -8,42 +8,36 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::canonical::{Canonical, CanonicalizedQueryResult, QueryResult};
+use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResult, QueryResult};
 use traits::query::Fallible;
-use ty::{ParamEnv, Ty, TyCtxt};
+use ty::{ParamEnvAnd, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Eq<'tcx> {
-    pub param_env: ParamEnv<'tcx>,
     pub a: Ty<'tcx>,
     pub b: Ty<'tcx>,
 }
 
 impl<'tcx> Eq<'tcx> {
-    pub fn new(param_env: ParamEnv<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> Self {
-        Self { param_env, a, b }
+    pub fn new(a: Ty<'tcx>, b: Ty<'tcx>) -> Self {
+        Self { a, b }
     }
 }
 
 impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Eq<'tcx> {
-    type QueryKey = Self;
     type QueryResult = ();
 
-    fn prequery(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::QueryResult, Self> {
-        if self.a == self.b {
-            Ok(())
+    fn prequery(_tcx: TyCtxt<'_, 'gcx, 'tcx>, key: &ParamEnvAnd<'tcx, Eq<'tcx>>) -> Option<Self::QueryResult> {
+        if key.value.a == key.value.b {
+            Some(())
         } else {
-            Err(self)
+            None
         }
-    }
-
-    fn param_env(key: &Self::QueryKey) -> ParamEnv<'tcx> {
-        key.param_env
     }
 
     fn perform_query(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
-        canonicalized: Canonical<'gcx, Eq<'gcx>>,
+        canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResult<'gcx, ()>> {
         tcx.type_op_eq(canonicalized)
     }
@@ -57,7 +51,6 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Eq<'tcx> {
 
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for Eq<'tcx> {
-        param_env,
         a,
         b,
     }
@@ -66,12 +59,11 @@ BraceStructTypeFoldableImpl! {
 BraceStructLiftImpl! {
     impl<'a, 'tcx> Lift<'tcx> for Eq<'a> {
         type Lifted = Eq<'tcx>;
-        param_env,
         a,
         b,
     }
 }
 
 impl_stable_hash_for! {
-    struct Eq<'tcx> { param_env, a, b }
+    struct Eq<'tcx> { a, b }
 }

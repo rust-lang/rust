@@ -8,40 +8,33 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::canonical::{Canonical, CanonicalizedQueryResult, QueryResult};
+use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResult, QueryResult};
 use traits::query::Fallible;
-use ty::{ParamEnv, Predicate, TyCtxt};
+use ty::{ParamEnvAnd, Predicate, TyCtxt};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct ProvePredicate<'tcx> {
-    pub param_env: ParamEnv<'tcx>,
     pub predicate: Predicate<'tcx>,
 }
 
 impl<'tcx> ProvePredicate<'tcx> {
-    pub fn new(param_env: ParamEnv<'tcx>, predicate: Predicate<'tcx>) -> Self {
+    pub fn new(predicate: Predicate<'tcx>) -> Self {
         ProvePredicate {
-            param_env,
             predicate,
         }
     }
 }
 
 impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for ProvePredicate<'tcx> {
-    type QueryKey = Self;
     type QueryResult = ();
 
-    fn prequery(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<Self::QueryResult, Self::QueryKey> {
-        Err(self)
-    }
-
-    fn param_env(key: &Self::QueryKey) -> ParamEnv<'tcx> {
-        key.param_env
+    fn prequery(_tcx: TyCtxt<'_, 'gcx, 'tcx>, _key: &ParamEnvAnd<'tcx, Self>) -> Option<Self::QueryResult> {
+        None
     }
 
     fn perform_query(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
-        canonicalized: Canonical<'gcx, ProvePredicate<'gcx>>,
+        canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResult<'gcx, ()>> {
         tcx.type_op_prove_predicate(canonicalized)
     }
@@ -55,7 +48,6 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for ProvePredicate<'tcx> {
 
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for ProvePredicate<'tcx> {
-        param_env,
         predicate,
     }
 }
@@ -63,11 +55,10 @@ BraceStructTypeFoldableImpl! {
 BraceStructLiftImpl! {
     impl<'a, 'tcx> Lift<'tcx> for ProvePredicate<'a> {
         type Lifted = ProvePredicate<'tcx>;
-        param_env,
         predicate,
     }
 }
 
 impl_stable_hash_for! {
-    struct ProvePredicate<'tcx> { param_env, predicate }
+    struct ProvePredicate<'tcx> { predicate }
 }

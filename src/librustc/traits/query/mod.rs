@@ -34,16 +34,16 @@ pub type CanonicalPredicateGoal<'tcx> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::Predicate<'tcx>>>;
 
 pub type CanonicalTypeOpEqGoal<'tcx> =
-    Canonical<'tcx, type_op::eq::Eq<'tcx>>;
+    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::eq::Eq<'tcx>>>;
 
 pub type CanonicalTypeOpSubtypeGoal<'tcx> =
-    Canonical<'tcx, type_op::subtype::Subtype<'tcx>>;
+    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::subtype::Subtype<'tcx>>>;
 
 pub type CanonicalTypeOpProvePredicateGoal<'tcx> =
-    Canonical<'tcx, type_op::prove_predicate::ProvePredicate<'tcx>>;
+    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::prove_predicate::ProvePredicate<'tcx>>>;
 
 pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
-    Canonical<'tcx, type_op::normalize::Normalize<'tcx, T>>;
+    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::normalize::Normalize<T>>>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NoSolution;

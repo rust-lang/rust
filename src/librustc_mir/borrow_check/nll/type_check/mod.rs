@@ -778,13 +778,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         let param_env = self.param_env;
         self.fully_perform_op(
             locations,
-            type_op::subtype::Subtype::new(param_env, sub, sup),
+            param_env.and(type_op::subtype::Subtype::new(sub, sup)),
         )
     }
 
     fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> Fallible<()> {
         let param_env = self.param_env;
-        self.fully_perform_op(locations, type_op::eq::Eq::new(param_env, b, a))
+        self.fully_perform_op(locations, param_env.and(type_op::eq::Eq::new(b, a)))
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
@@ -1576,7 +1576,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         let param_env = self.param_env;
         self.fully_perform_op(
             location.at_self(),
-            type_op::prove_predicate::ProvePredicate::new(param_env, predicate),
+            param_env.and(type_op::prove_predicate::ProvePredicate::new(predicate)),
         ).unwrap_or_else(|NoSolution| {
             span_mirbug!(self, NoSolution, "could not prove {:?}", predicate);
         })
@@ -1616,7 +1616,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         let param_env = self.param_env;
         self.fully_perform_op(
             location.to_locations(),
-            type_op::normalize::Normalize::new(param_env, value),
+            param_env.and(type_op::normalize::Normalize::new(value)),
         ).unwrap_or_else(|NoSolution| {
             span_mirbug!(self, NoSolution, "failed to normalize `{:?}`", value);
             value

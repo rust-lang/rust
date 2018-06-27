@@ -12,45 +12,39 @@ use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResult, Query
 use std::fmt;
 use traits::query::Fallible;
 use ty::fold::TypeFoldable;
-use ty::{self, Lift, ParamEnv, Ty, TyCtxt};
+use ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub struct Normalize<'tcx, T> {
-    pub param_env: ParamEnv<'tcx>,
+pub struct Normalize<T> {
     pub value: T,
 }
 
-impl<'tcx, T> Normalize<'tcx, T>
+impl<'tcx, T> Normalize<T>
 where
     T: fmt::Debug + TypeFoldable<'tcx>,
 {
-    pub fn new(param_env: ParamEnv<'tcx>, value: T) -> Self {
-        Self { param_env, value }
+    pub fn new(value: T) -> Self {
+        Self { value }
     }
 }
 
-impl<'gcx: 'tcx, 'tcx, T> super::QueryTypeOp<'gcx, 'tcx> for Normalize<'tcx, T>
+impl<'gcx: 'tcx, 'tcx, T> super::QueryTypeOp<'gcx, 'tcx> for Normalize<T>
 where
     T: Normalizable<'gcx, 'tcx>,
 {
-    type QueryKey = Self;
     type QueryResult = T;
 
-    fn prequery(self, _tcx: TyCtxt<'_, 'gcx, 'tcx>) -> Result<T, Self> {
-        if !self.value.has_projections() {
-            Ok(self.value)
+    fn prequery(_tcx: TyCtxt<'_, 'gcx, 'tcx>, key: &ParamEnvAnd<'tcx, Self>) -> Option<T> {
+        if !key.value.value.has_projections() {
+            Some(key.value.value)
         } else {
-            Err(self)
+            None
         }
-    }
-
-    fn param_env(key: &Self::QueryKey) -> ParamEnv<'tcx> {
-        key.param_env
     }
 
     fn perform_query(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
-        canonicalized: Canonicalized<'gcx, Self>,
+        canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResult<'gcx, Self::QueryResult>> {
         T::type_op_method(tcx, canonicalized)
     }
@@ -62,10 +56,10 @@ where
     }
 }
 
-pub trait Normalizable<'gcx, 'tcx>: fmt::Debug + TypeFoldable<'tcx> + Lift<'gcx> {
+pub trait Normalizable<'gcx, 'tcx>: fmt::Debug + TypeFoldable<'tcx> + Lift<'gcx> + Copy {
     fn type_op_method(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
-        canonicalized: Canonicalized<'gcx, Normalize<'gcx, Self>>,
+        canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Fallible<CanonicalizedQueryResult<'gcx, Self>>;
 
     /// Convert from the `'gcx` (lifted) form of `Self` into the `tcx`
@@ -81,7 +75,7 @@ where
 {
     fn type_op_method(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
-        canonicalized: Canonicalized<'gcx, Normalize<'gcx, Self>>,
+        canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Fallible<CanonicalizedQueryResult<'gcx, Self>> {
         tcx.type_op_normalize_ty(canonicalized)
     }
@@ -99,7 +93,7 @@ where
 {
     fn type_op_method(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
-        canonicalized: Canonicalized<'gcx, Normalize<'gcx, Self>>,
+        canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Fallible<CanonicalizedQueryResult<'gcx, Self>> {
         tcx.type_op_normalize_predicate(canonicalized)
     }
@@ -117,7 +111,7 @@ where
 {
     fn type_op_method(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
-        canonicalized: Canonicalized<'gcx, Normalize<'gcx, Self>>,
+        canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Fallible<CanonicalizedQueryResult<'gcx, Self>> {
         tcx.type_op_normalize_poly_fn_sig(canonicalized)
     }
@@ -135,7 +129,7 @@ where
 {
     fn type_op_method(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
-        canonicalized: Canonicalized<'gcx, Normalize<'gcx, Self>>,
+        canonicalized: Canonicalized<'gcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
     ) -> Fallible<CanonicalizedQueryResult<'gcx, Self>> {
         tcx.type_op_normalize_fn_sig(canonicalized)
     }
@@ -148,22 +142,20 @@ where
 }
 
 BraceStructTypeFoldableImpl! {
-    impl<'tcx, T> TypeFoldable<'tcx> for Normalize<'tcx, T> {
-        param_env,
+    impl<'tcx, T> TypeFoldable<'tcx> for Normalize<T> {
         value,
     } where T: TypeFoldable<'tcx>,
 }
 
 BraceStructLiftImpl! {
-    impl<'a, 'tcx, T> Lift<'tcx> for Normalize<'a, T> {
-        type Lifted = Normalize<'tcx, T::Lifted>;
-        param_env,
+    impl<'tcx, T> Lift<'tcx> for Normalize<T> {
+        type Lifted = Normalize<T::Lifted>;
         value,
     } where T: Lift<'tcx>,
 }
 
 impl_stable_hash_for! {
-    impl<'tcx, T> for struct Normalize<'tcx, T> {
-        param_env, value
+    impl<'tcx, T> for struct Normalize<T> {
+        value
     }
 }
