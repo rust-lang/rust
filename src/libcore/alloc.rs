@@ -67,6 +67,8 @@ impl Layout {
     /// or returns `LayoutErr` if either of the following conditions
     /// are not met:
     ///
+    /// * `align` must not be zero,
+    ///
     /// * `align` must be a power of two,
     ///
     /// * `size`, when rounded up to the nearest multiple of `align`,
