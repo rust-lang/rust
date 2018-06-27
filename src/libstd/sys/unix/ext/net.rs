@@ -323,8 +323,9 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        inner::SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
-            .map(SocketAddr)
+        inner::SocketAddr::new(|addr, len| unsafe {
+            libc::getsockname(*self.0.as_inner(), addr, len)
+        }).map(SocketAddr)
     }
 
     /// Returns the address of this socket's peer.
@@ -345,8 +346,9 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        inner::SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
-            .map(SocketAddr)
+        inner::SocketAddr::new(|addr, len| unsafe {
+            libc::getsockname(*self.0.as_inner(), addr, len)
+        }).map(SocketAddr)
     }
 
     /// Receives data from the socket.

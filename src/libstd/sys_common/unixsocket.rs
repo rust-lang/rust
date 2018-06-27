@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![cfg(any(all(unix, not(target_os = "emscripten")), target_os = "redox"))]
 #![stable(feature = "unix_socket", since = "1.10.0")]
 
 //! Unix-specific networking functionality

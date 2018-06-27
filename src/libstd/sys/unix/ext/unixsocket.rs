@@ -65,7 +65,9 @@ impl SocketAddr {
         }
     }
 
-    pub(crate) fn from_parts(addr: libc::sockaddr_un, mut len: libc::socklen_t) -> io::Result<SocketAddr> {
+    pub(crate) fn from_parts(addr: libc::sockaddr_un, mut len: libc::socklen_t)
+        -> io::Result<SocketAddr>
+    {
         if len == 0 {
             // When there is a datagram from unnamed unix socket
             // linux returns zero bytes of address
