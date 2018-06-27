@@ -20,7 +20,6 @@ fn main() {
     let a: [i8; LEN] = unimplemented!();
 //~^ ERROR E0080
 //~| ERROR E0080
-//~| ERROR const_err
-//~| ERROR const_err
-//~| ERROR const_err
+//~| ERROR E0080
+//~| ERROR E0080
 }

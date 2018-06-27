@@ -12,7 +12,7 @@ note: lint level defined here
 LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
-warning: referenced constant
+warning: referenced constant has errors
   --> $DIR/conditional_array_execution.rs:19:20
    |
 LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
@@ -27,7 +27,7 @@ warning: this expression will panic at runtime
 LL |     println!("{}", FOO);
    |                    ^^^ referenced constant has errors
 
-error[E0080]: referenced constant
+error[E0080]: referenced constant has errors
   --> $DIR/conditional_array_execution.rs:19:20
    |
 LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];

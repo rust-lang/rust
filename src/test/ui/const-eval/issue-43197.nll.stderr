@@ -20,7 +20,7 @@ LL |     const Y: u32 = foo(0-1);
    |                        |
    |                        attempt to subtract with overflow
 
-warning: referenced constant
+warning: referenced constant has errors
   --> $DIR/issue-43197.rs:24:23
    |
 LL |     const X: u32 = 0-1;
@@ -35,7 +35,7 @@ warning: this expression will panic at runtime
 LL |     println!("{} {}", X, Y);
    |                       ^ referenced constant has errors
 
-warning: referenced constant
+warning: referenced constant has errors
   --> $DIR/issue-43197.rs:24:26
    |
 LL |     const Y: u32 = foo(0-1);
@@ -50,7 +50,7 @@ warning: this expression will panic at runtime
 LL |     println!("{} {}", X, Y);
    |                          ^ referenced constant has errors
 
-error[E0080]: referenced constant
+error[E0080]: referenced constant has errors
   --> $DIR/issue-43197.rs:24:5
    |
 LL |     const X: u32 = 0-1;
@@ -71,7 +71,7 @@ LL |     println!("{} {}", X, Y);
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
-error[E0080]: referenced constant
+error[E0080]: referenced constant has errors
   --> $DIR/issue-43197.rs:24:26
    |
 LL |     const Y: u32 = foo(0-1);
@@ -86,7 +86,7 @@ error[E0080]: erroneous constant used
 LL |     println!("{} {}", X, Y);
    |                          ^ referenced constant has errors
 
-error[E0080]: referenced constant
+error[E0080]: referenced constant has errors
   --> $DIR/issue-43197.rs:24:23
    |
 LL |     const X: u32 = 0-1;

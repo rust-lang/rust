@@ -1,4 +1,4 @@
-error[E0080]: referenced constant
+error[E0080]: referenced constant has errors
   --> $DIR/issue-50814.rs:27:5
    |
 LL |     const MAX: u8 = A::MAX + B::MAX;

@@ -27,4 +27,6 @@ const FOO: u8 = [5u8][1];
 
 fn main() {
     black_box((FOO, FOO));
+    //~^ ERROR referenced constant has errors
+    //~| ERROR could not evaluate constant
 }

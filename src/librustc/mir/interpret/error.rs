@@ -80,7 +80,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             ::mir::interpret::EvalErrorKind::CheckMatchError |
             ::mir::interpret::EvalErrorKind::Layout(_) => return None,
             ::mir::interpret::EvalErrorKind::ReferencedConstant(ref inner) => {
-                inner.struct_generic(tcx, "referenced constant", lint_root)?.emit();
+                inner.struct_generic(tcx, "referenced constant has errors", lint_root)?.emit();
             },
             _ => {},
         }

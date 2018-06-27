@@ -170,10 +170,23 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
     ) -> Option<Const<'tcx>> {
         match c.literal {
             Literal::Value { value } => {
-                let v = self.use_ecx(source_info, |this| {
-                    this.ecx.const_to_value(value.val)
-                })?;
-                Some((v, value.ty, c.span))
+                self.ecx.tcx.span = source_info.span;
+                match self.ecx.const_to_value(value.val) {
+                    Ok(val) => Some((val, value.ty, c.span)),
+                    Err(error) => {
+                        let (stacktrace, span) = self.ecx.generate_stacktrace(None);
+                        let err = ConstEvalErr {
+                            span,
+                            error,
+                            stacktrace,
+                        };
+                        err.report_as_error(
+                            self.tcx.at(source_info.span),
+                            "could not evaluate constant",
+                        );
+                        None
+                    },
+                }
             },
             // evaluate the promoted and replace the constant with the evaluated result
             Literal::Promoted { index } => {
