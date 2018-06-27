@@ -3081,8 +3081,12 @@ impl<'a> LoweringContext<'a> {
     fn lower_impl_trait_ids(
         &mut self,
         decl: &FnDecl,
+        header: &FnHeader,
         ids: &mut SmallVector<hir::ItemId>,
     ) {
+        if let Some(id) = header.asyncness.opt_return_id() {
+            ids.push(hir::ItemId { id });
+        }
         struct IdVisitor<'a> { ids: &'a mut SmallVector<hir::ItemId> }
         impl<'a, 'b> Visitor<'a> for IdVisitor<'b> {
             fn visit_ty(&mut self, ty: &'a Ty) {
@@ -3126,20 +3130,14 @@ impl<'a> LoweringContext<'a> {
             ItemKind::MacroDef(..) => SmallVector::new(),
             ItemKind::Fn(ref decl, ref header, ..) => {
                 let mut ids = SmallVector::one(hir::ItemId { id: i.id });
-                if let Some(id) = header.asyncness.opt_return_id() {
-                    ids.push(hir::ItemId { id });
-                }
-                self.lower_impl_trait_ids(decl, &mut ids);
+                self.lower_impl_trait_ids(decl, header, &mut ids);
                 ids
             },
             ItemKind::Impl(.., None, _, ref items) => {
                 let mut ids = SmallVector::one(hir::ItemId { id: i.id });
                 for item in items {
                     if let ImplItemKind::Method(ref sig, _) = item.node {
-                        if let Some(id) = sig.header.asyncness.opt_return_id() {
-                            ids.push(hir::ItemId { id });
-                        }
-                        self.lower_impl_trait_ids(&sig.decl, &mut ids);
+                        self.lower_impl_trait_ids(&sig.decl, &sig.header, &mut ids);
                     }
                 }
                 ids
