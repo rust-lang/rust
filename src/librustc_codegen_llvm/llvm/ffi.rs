@@ -15,14 +15,16 @@
 // https://reviews.llvm.org/D26769
 
 use super::debuginfo::{
-    DIBuilderRef, DIDescriptor, DIFile, DILexicalBlock, DISubprogram, DIType,
-    DIBasicType, DIDerivedType, DICompositeType, DIScope, DIVariable,
-    DIGlobalVariable, DIArray, DISubrange, DITemplateTypeParameter, DIEnumerator,
+    DIBuilderRef, DIDescriptor_opaque, DIDescriptor, DIFile, DILexicalBlock, DISubprogram, DIType_opaque,
+    DIType, DIBasicType, DIDerivedType, DICompositeType, DIScope_opaque, DIScope, DIVariable,
+    DIGlobalVariable, DIArray_opaque, DIArray, DISubrange, DITemplateTypeParameter, DIEnumerator,
     DINameSpace, DIFlags,
 };
 
 use libc::{c_uint, c_int, size_t, c_char};
 use libc::{c_longlong, c_ulonglong, c_void};
+
+use std::ptr::NonNull;
 
 use super::RustStringRef;
 
@@ -348,10 +350,10 @@ pub enum PassKind {
 }
 
 /// LLVMRustThinLTOData
-pub enum ThinLTOData {}
+extern { pub type ThinLTOData; }
 
 /// LLVMRustThinLTOBuffer
-pub enum ThinLTOBuffer {}
+extern { pub type ThinLTOBuffer; }
 
 /// LLVMRustThinLTOModule
 #[repr(C)]
@@ -373,83 +375,59 @@ pub enum ThreadLocalMode {
 }
 
 // Opaque pointer types
-#[allow(missing_copy_implementations)]
-pub enum Module_opaque {}
+extern { pub type Module_opaque; }
 pub type ModuleRef = *mut Module_opaque;
-#[allow(missing_copy_implementations)]
-pub enum Context_opaque {}
+extern { pub type Context_opaque; }
 pub type ContextRef = *mut Context_opaque;
-#[allow(missing_copy_implementations)]
-pub enum Type_opaque {}
+extern { pub type Type_opaque; }
 pub type TypeRef = *mut Type_opaque;
-#[allow(missing_copy_implementations)]
-pub enum Value_opaque {}
+extern { pub type Value_opaque; }
 pub type ValueRef = *mut Value_opaque;
-#[allow(missing_copy_implementations)]
-pub enum Metadata_opaque {}
+extern { pub type Metadata_opaque; }
 pub type MetadataRef = *mut Metadata_opaque;
-#[allow(missing_copy_implementations)]
-pub enum BasicBlock_opaque {}
+extern { pub type BasicBlock_opaque; }
 pub type BasicBlockRef = *mut BasicBlock_opaque;
-#[allow(missing_copy_implementations)]
-pub enum Builder_opaque {}
+extern { pub type Builder_opaque; }
 pub type BuilderRef = *mut Builder_opaque;
-#[allow(missing_copy_implementations)]
-pub enum ExecutionEngine_opaque {}
+extern { pub type ExecutionEngine_opaque; }
 pub type ExecutionEngineRef = *mut ExecutionEngine_opaque;
-#[allow(missing_copy_implementations)]
-pub enum MemoryBuffer_opaque {}
+extern { pub type MemoryBuffer_opaque; }
 pub type MemoryBufferRef = *mut MemoryBuffer_opaque;
-#[allow(missing_copy_implementations)]
-pub enum PassManager_opaque {}
+extern { pub type PassManager_opaque; }
 pub type PassManagerRef = *mut PassManager_opaque;
-#[allow(missing_copy_implementations)]
-pub enum PassManagerBuilder_opaque {}
+extern { pub type PassManagerBuilder_opaque; }
 pub type PassManagerBuilderRef = *mut PassManagerBuilder_opaque;
-#[allow(missing_copy_implementations)]
-pub enum Use_opaque {}
+extern { pub type Use_opaque; }
 pub type UseRef = *mut Use_opaque;
-#[allow(missing_copy_implementations)]
-pub enum TargetData_opaque {}
+extern { pub type TargetData_opaque; }
 pub type TargetDataRef = *mut TargetData_opaque;
-#[allow(missing_copy_implementations)]
-pub enum ObjectFile_opaque {}
+extern { pub type ObjectFile_opaque; }
 pub type ObjectFileRef = *mut ObjectFile_opaque;
-#[allow(missing_copy_implementations)]
-pub enum SectionIterator_opaque {}
+extern { pub type SectionIterator_opaque; }
 pub type SectionIteratorRef = *mut SectionIterator_opaque;
-#[allow(missing_copy_implementations)]
-pub enum Pass_opaque {}
+extern { pub type Pass_opaque; }
 pub type PassRef = *mut Pass_opaque;
-#[allow(missing_copy_implementations)]
-pub enum TargetMachine_opaque {}
+extern { pub type TargetMachine_opaque; }
 pub type TargetMachineRef = *mut TargetMachine_opaque;
-pub enum Archive_opaque {}
+extern { pub type Archive_opaque; }
 pub type ArchiveRef = *mut Archive_opaque;
-pub enum ArchiveIterator_opaque {}
+extern { pub type ArchiveIterator_opaque; }
 pub type ArchiveIteratorRef = *mut ArchiveIterator_opaque;
-pub enum ArchiveChild_opaque {}
+extern { pub type ArchiveChild_opaque; }
 pub type ArchiveChildRef = *mut ArchiveChild_opaque;
-#[allow(missing_copy_implementations)]
-pub enum Twine_opaque {}
+extern { pub type Twine_opaque; }
 pub type TwineRef = *mut Twine_opaque;
-#[allow(missing_copy_implementations)]
-pub enum DiagnosticInfo_opaque {}
+extern { pub type DiagnosticInfo_opaque; }
 pub type DiagnosticInfoRef = *mut DiagnosticInfo_opaque;
-#[allow(missing_copy_implementations)]
-pub enum DebugLoc_opaque {}
+extern { pub type DebugLoc_opaque; }
 pub type DebugLocRef = *mut DebugLoc_opaque;
-#[allow(missing_copy_implementations)]
-pub enum SMDiagnostic_opaque {}
+extern { pub type SMDiagnostic_opaque; }
 pub type SMDiagnosticRef = *mut SMDiagnostic_opaque;
-#[allow(missing_copy_implementations)]
-pub enum RustArchiveMember_opaque {}
+extern { pub type RustArchiveMember_opaque; }
 pub type RustArchiveMemberRef = *mut RustArchiveMember_opaque;
-#[allow(missing_copy_implementations)]
-pub enum OperandBundleDef_opaque {}
+extern { pub type OperandBundleDef_opaque; }
 pub type OperandBundleDefRef = *mut OperandBundleDef_opaque;
-#[allow(missing_copy_implementations)]
-pub enum Linker_opaque {}
+extern { pub type Linker_opaque; }
 pub type LinkerRef = *mut Linker_opaque;
 
 pub type DiagnosticHandler = unsafe extern "C" fn(DiagnosticInfoRef, *mut c_void);
@@ -457,26 +435,29 @@ pub type InlineAsmDiagHandler = unsafe extern "C" fn(SMDiagnosticRef, *const c_v
 
 
 pub mod debuginfo {
-    use super::MetadataRef;
+    use super::Metadata_opaque;
 
-    #[allow(missing_copy_implementations)]
-    pub enum DIBuilder_opaque {}
+    extern { pub type DIBuilder_opaque; }
     pub type DIBuilderRef = *mut DIBuilder_opaque;
 
-    pub type DIDescriptor = MetadataRef;
-    pub type DIScope = DIDescriptor;
+    pub type DIDescriptor_opaque = Metadata_opaque;
+    pub type DIDescriptor = *mut DIDescriptor_opaque;
+    pub type DIScope_opaque = DIDescriptor_opaque;
+    pub type DIScope = *mut DIScope_opaque;
     pub type DILocation = DIDescriptor;
     pub type DIFile = DIScope;
     pub type DILexicalBlock = DIScope;
     pub type DISubprogram = DIScope;
     pub type DINameSpace = DIScope;
-    pub type DIType = DIDescriptor;
+    pub type DIType_opaque = DIDescriptor_opaque;
+    pub type DIType = *mut DIType_opaque;
     pub type DIBasicType = DIType;
     pub type DIDerivedType = DIType;
     pub type DICompositeType = DIDerivedType;
     pub type DIVariable = DIDescriptor;
     pub type DIGlobalVariable = DIDescriptor;
-    pub type DIArray = DIDescriptor;
+    pub type DIArray_opaque = DIDescriptor_opaque;
+    pub type DIArray = *mut DIArray_opaque;
     pub type DISubrange = DIDescriptor;
     pub type DIEnumerator = DIDescriptor;
     pub type DITemplateTypeParameter = DIDescriptor;
@@ -512,8 +493,9 @@ pub mod debuginfo {
     }
 }
 
-pub enum ModuleBuffer {}
+extern { pub type ModuleBuffer; }
 
+#[allow(improper_ctypes)] // TODO remove this (use for NonNull)
 extern "C" {
     // Create and destroy contexts.
     pub fn LLVMRustContextCreate(shouldDiscardNames: bool) -> ContextRef;
@@ -793,7 +775,7 @@ extern "C" {
     pub fn LLVMDisposeBuilder(Builder: BuilderRef);
 
     // Metadata
-    pub fn LLVMSetCurrentDebugLocation(Builder: BuilderRef, L: ValueRef);
+    pub fn LLVMSetCurrentDebugLocation(Builder: BuilderRef, L: Option<NonNull<Value_opaque>>);
     pub fn LLVMGetCurrentDebugLocation(Builder: BuilderRef) -> ValueRef;
     pub fn LLVMSetInstDebugLocation(Builder: BuilderRef, Inst: ValueRef);
 
@@ -819,7 +801,7 @@ extern "C" {
                                NumArgs: c_uint,
                                Then: BasicBlockRef,
                                Catch: BasicBlockRef,
-                               Bundle: OperandBundleDefRef,
+                               Bundle: Option<NonNull<OperandBundleDef_opaque>>,
                                Name: *const c_char)
                                -> ValueRef;
     pub fn LLVMBuildLandingPad(B: BuilderRef,
@@ -832,14 +814,14 @@ extern "C" {
     pub fn LLVMBuildUnreachable(B: BuilderRef) -> ValueRef;
 
     pub fn LLVMRustBuildCleanupPad(B: BuilderRef,
-                                   ParentPad: ValueRef,
+                                   ParentPad: Option<NonNull<Value_opaque>>,
                                    ArgCnt: c_uint,
                                    Args: *const ValueRef,
                                    Name: *const c_char)
                                    -> ValueRef;
     pub fn LLVMRustBuildCleanupRet(B: BuilderRef,
                                    CleanupPad: ValueRef,
-                                   UnwindBB: BasicBlockRef)
+                                   UnwindBB: Option<NonNull<BasicBlock_opaque>>)
                                    -> ValueRef;
     pub fn LLVMRustBuildCatchPad(B: BuilderRef,
                                  ParentPad: ValueRef,
@@ -849,8 +831,8 @@ extern "C" {
                                  -> ValueRef;
     pub fn LLVMRustBuildCatchRet(B: BuilderRef, Pad: ValueRef, BB: BasicBlockRef) -> ValueRef;
     pub fn LLVMRustBuildCatchSwitch(Builder: BuilderRef,
-                                    ParentPad: ValueRef,
-                                    BB: BasicBlockRef,
+                                    ParentPad: Option<NonNull<Value_opaque>>,
+                                    BB: Option<NonNull<BasicBlock_opaque>>,
                                     NumHandlers: c_uint,
                                     Name: *const c_char)
                                     -> ValueRef;
@@ -1161,7 +1143,7 @@ extern "C" {
                              Fn: ValueRef,
                              Args: *const ValueRef,
                              NumArgs: c_uint,
-                             Bundle: OperandBundleDefRef,
+                             Bundle: Option<NonNull<OperandBundleDef_opaque>>,
                              Name: *const c_char)
                              -> ValueRef;
     pub fn LLVMBuildSelect(B: BuilderRef,
@@ -1433,7 +1415,7 @@ extern "C" {
                                            isOptimized: bool,
                                            Fn: ValueRef,
                                            TParam: DIArray,
-                                           Decl: DIDescriptor)
+                                           Decl: Option<NonNull<DIDescriptor_opaque>>)
                                            -> DISubprogram;
 
     pub fn LLVMRustDIBuilderCreateBasicType(Builder: DIBuilderRef,
@@ -1451,17 +1433,17 @@ extern "C" {
                                               -> DIDerivedType;
 
     pub fn LLVMRustDIBuilderCreateStructType(Builder: DIBuilderRef,
-                                             Scope: DIDescriptor,
+                                             Scope: Option<NonNull<DIDescriptor_opaque>>,
                                              Name: *const c_char,
                                              File: DIFile,
                                              LineNumber: c_uint,
                                              SizeInBits: u64,
                                              AlignInBits: u32,
                                              Flags: DIFlags,
-                                             DerivedFrom: DIType,
+                                             DerivedFrom: Option<NonNull<DIType_opaque>>,
                                              Elements: DIArray,
                                              RunTimeLang: c_uint,
-                                             VTableHolder: DIType,
+                                             VTableHolder: Option<NonNull<DIType_opaque>>,
                                              UniqueId: *const c_char)
                                              -> DICompositeType;
 
@@ -1490,7 +1472,7 @@ extern "C" {
                                                    -> DILexicalBlock;
 
     pub fn LLVMRustDIBuilderCreateStaticVariable(Builder: DIBuilderRef,
-                                                 Context: DIScope,
+                                                 Context: Option<NonNull<DIScope_opaque>>,
                                                  Name: *const c_char,
                                                  LinkageName: *const c_char,
                                                  File: DIFile,
@@ -1498,7 +1480,7 @@ extern "C" {
                                                  Ty: DIType,
                                                  isLocalToUnit: bool,
                                                  Val: ValueRef,
-                                                 Decl: DIDescriptor,
+                                                 Decl: Option<NonNull<DIDescriptor_opaque>>,
                                                  AlignInBits: u32)
                                                  -> DIGlobalVariable;
 
@@ -1535,7 +1517,7 @@ extern "C" {
                                                 -> DISubrange;
 
     pub fn LLVMRustDIBuilderGetOrCreateArray(Builder: DIBuilderRef,
-                                             Ptr: *const DIDescriptor,
+                                             Ptr: *const Option<NonNull<DIDescriptor_opaque>>,
                                              Count: c_uint)
                                              -> DIArray;
 
@@ -1572,7 +1554,7 @@ extern "C" {
                                             SizeInBits: u64,
                                             AlignInBits: u32,
                                             Flags: DIFlags,
-                                            Elements: DIArray,
+                                            Elements: Option<NonNull<DIArray_opaque>>,
                                             RunTimeLang: c_uint,
                                             UniqueId: *const c_char)
                                             -> DIType;
@@ -1580,7 +1562,7 @@ extern "C" {
     pub fn LLVMSetUnnamedAddr(GlobalVar: ValueRef, UnnamedAddr: Bool);
 
     pub fn LLVMRustDIBuilderCreateTemplateTypeParameter(Builder: DIBuilderRef,
-                                                        Scope: DIScope,
+                                                        Scope: Option<NonNull<DIScope_opaque>>,
                                                         Name: *const c_char,
                                                         Ty: DIType,
                                                         File: DIFile,
@@ -1590,7 +1572,7 @@ extern "C" {
 
 
     pub fn LLVMRustDIBuilderCreateNameSpace(Builder: DIBuilderRef,
-                                            Scope: DIScope,
+                                            Scope: Option<NonNull<DIScope_opaque>>,
                                             Name: *const c_char,
                                             File: DIFile,
                                             LineNo: c_uint)
@@ -1604,7 +1586,7 @@ extern "C" {
                                                 Line: c_uint,
                                                 Column: c_uint,
                                                 Scope: DIScope,
-                                                InlinedAt: MetadataRef)
+                                                InlinedAt: Option<NonNull<Metadata_opaque>>)
                                                 -> ValueRef;
     pub fn LLVMRustDIBuilderCreateOpDeref() -> i64;
     pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> i64;
@@ -1720,7 +1702,7 @@ extern "C" {
                                 -> LLVMRustResult;
     pub fn LLVMRustArchiveMemberNew(Filename: *const c_char,
                                     Name: *const c_char,
-                                    Child: ArchiveChildRef)
+                                    Child: Option<NonNull<ArchiveChild_opaque>>)
                                     -> RustArchiveMemberRef;
     pub fn LLVMRustArchiveMemberFree(Member: RustArchiveMemberRef);
 

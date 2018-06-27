@@ -20,7 +20,7 @@ use super::{CrateDebugContext};
 use abi;
 
 use llvm::{self, ValueRef};
-use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor,
+use llvm::debuginfo::{DIType, DIFile, DIScope_opaque, DIScope, DIDescriptor,
                       DICompositeType, DILexicalBlock, DIFlags};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -41,6 +41,7 @@ use std::ffi::CString;
 use std::fmt::Write;
 use std::iter;
 use std::ptr;
+use std::ptr::NonNull;
 use std::path::{Path, PathBuf};
 use syntax::ast;
 use syntax::symbol::{Interner, InternedString, Symbol};
@@ -64,8 +65,7 @@ const DW_ATE_unsigned_char: c_uint = 0x08;
 pub const UNKNOWN_LINE_NUMBER: c_uint = 0;
 pub const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 
-// ptr::null() doesn't work :(
-pub const NO_SCOPE_METADATA: DIScope = (0 as DIScope);
+pub const NO_SCOPE_METADATA: Option<NonNull<DIScope_opaque>> = None;
 
 #[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]
 pub struct UniqueTypeId(ast::Name);
@@ -289,7 +289,7 @@ fn fixed_vec_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     };
 
     let subrange = unsafe {
-        llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound)
+        NonNull::new(llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound))
     };
 
     let subscripts = create_DIArray(DIB(cx), &[subrange]);
@@ -365,15 +365,17 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         &signature,
     );
 
-    let signature_metadata: Vec<DIType> = iter::once(
+    let signature_metadata: Vec<_> = iter::once(
         // return type
         match signature.output().sty {
-            ty::TyTuple(ref tys) if tys.is_empty() => ptr::null_mut(),
-            _ => type_metadata(cx, signature.output(), span)
+            ty::TyTuple(ref tys) if tys.is_empty() => None,
+            _ => NonNull::new(type_metadata(cx, signature.output(), span))
         }
     ).chain(
         // regular arguments
-        signature.inputs().iter().map(|argument_type| type_metadata(cx, argument_type, span))
+        signature.inputs().iter().map(|argument_type| {
+            NonNull::new(type_metadata(cx, argument_type, span))
+        })
     ).collect();
 
     return_if_metadata_created_in_meantime!(cx, unique_type_id);
@@ -406,7 +408,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     let containing_scope = match trait_type.sty {
         ty::TyDynamic(ref data, ..) => if let Some(principal) = data.principal() {
             let def_id = principal.def_id();
-            get_namespace_for_item(cx, def_id)
+            NonNull::new(get_namespace_for_item(cx, def_id))
         } else {
             NO_SCOPE_METADATA
         },
@@ -985,7 +987,7 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                                   struct_type,
                                                   &struct_name,
                                                   unique_type_id,
-                                                  containing_scope);
+                                                  NonNull::new(containing_scope));
 
     create_and_register_recursive_type_forward_declaration(
         cx,
@@ -1317,7 +1319,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                            layout.ty,
                                            &variant_name,
                                            unique_type_id,
-                                           containing_scope);
+                                           NonNull::new(containing_scope));
 
     // If this is not a univariant enum, there is also the discriminant field.
     let (discr_offset, discr_arg) = match discriminant_info {
@@ -1376,17 +1378,17 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     let file_metadata = unknown_file_metadata(cx);
 
     let def = enum_type.ty_adt_def().unwrap();
-    let enumerators_metadata: Vec<DIDescriptor> = def.discriminants(cx.tcx)
+    let enumerators_metadata: Vec<_> = def.discriminants(cx.tcx)
         .zip(&def.variants)
         .map(|(discr, v)| {
             let token = v.name.as_str();
             let name = CString::new(token.as_bytes()).unwrap();
             unsafe {
-                llvm::LLVMRustDIBuilderCreateEnumerator(
+                NonNull::new(llvm::LLVMRustDIBuilderCreateEnumerator(
                     DIB(cx),
                     name.as_ptr(),
                     // FIXME: what if enumeration has i128 discriminant?
-                    discr.val as u64)
+                    discr.val as u64))
             }
         })
         .collect();
@@ -1459,7 +1461,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         enum_type_size.bits(),
         enum_type_align.abi_bits() as u32,
         DIFlags::FlagZero,
-        ptr::null_mut(),
+        None,
         0, // RuntimeLang
         unique_type_id_str.as_ptr())
     };
@@ -1494,7 +1496,7 @@ fn composite_type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                      composite_type_name: &str,
                                      composite_type_unique_id: UniqueTypeId,
                                      member_descriptions: &[MemberDescription],
-                                     containing_scope: DIScope,
+                                     containing_scope: Option<NonNull<DIScope_opaque>>,
 
                                      // Ignore source location information as long as it
                                      // can't be reconstructed for non-local crates.
@@ -1535,13 +1537,13 @@ fn set_members_of_composite_type(cx: &CodegenCx,
         }
     }
 
-    let member_metadata: Vec<DIDescriptor> = member_descriptions
+    let member_metadata: Vec<_> = member_descriptions
         .iter()
         .map(|member_description| {
             let member_name = member_description.name.as_bytes();
             let member_name = CString::new(member_name).unwrap();
             unsafe {
-                llvm::LLVMRustDIBuilderCreateMemberType(
+                NonNull::new(llvm::LLVMRustDIBuilderCreateMemberType(
                     DIB(cx),
                     composite_type_metadata,
                     member_name.as_ptr(),
@@ -1551,7 +1553,7 @@ fn set_members_of_composite_type(cx: &CodegenCx,
                     member_description.align.abi_bits() as u32,
                     member_description.offset.bits(),
                     member_description.flags,
-                    member_description.type_metadata)
+                    member_description.type_metadata))
             }
         })
         .collect();
@@ -1570,7 +1572,7 @@ fn create_struct_stub<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                 struct_type: Ty<'tcx>,
                                 struct_type_name: &str,
                                 unique_type_id: UniqueTypeId,
-                                containing_scope: DIScope)
+                                containing_scope: Option<NonNull<DIScope_opaque>>)
                                 -> DICompositeType {
     let (struct_size, struct_align) = cx.size_and_align_of(struct_type);
 
@@ -1593,10 +1595,10 @@ fn create_struct_stub<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             struct_size.bits(),
             struct_align.abi_bits() as u32,
             DIFlags::FlagZero,
-            ptr::null_mut(),
+            None,
             empty_array,
             0,
-            ptr::null_mut(),
+            None,
             unique_type_id.as_ptr())
     };
 
@@ -1630,7 +1632,7 @@ fn create_union_stub<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             union_size.bits(),
             union_align.abi_bits() as u32,
             DIFlags::FlagZero,
-            empty_array,
+            NonNull::new(empty_array),
             0, // RuntimeLang
             unique_type_id.as_ptr())
     };
@@ -1684,7 +1686,7 @@ pub fn create_global_var_metadata(cx: &CodegenCx,
 
     unsafe {
         llvm::LLVMRustDIBuilderCreateStaticVariable(DIB(cx),
-                                                    var_scope,
+                                                    NonNull::new(var_scope),
                                                     var_name.as_ptr(),
                                                     // If null, linkage_name field is omitted,
                                                     // which is what we want for no_mangle statics
@@ -1695,7 +1697,7 @@ pub fn create_global_var_metadata(cx: &CodegenCx,
                                                     type_metadata,
                                                     is_local_to_unit,
                                                     global,
-                                                    ptr::null_mut(),
+                                                    None,
                                                     global_align.abi() as u32,
         );
     }
@@ -1749,10 +1751,10 @@ pub fn create_vtable_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             Size::ZERO.bits(),
             cx.tcx.data_layout.pointer_align.abi_bits() as u32,
             DIFlags::FlagArtificial,
-            ptr::null_mut(),
+            None,
             empty_array,
             0,
-            type_metadata,
+            NonNull::new(type_metadata),
             name.as_ptr()
         );
 
@@ -1771,7 +1773,7 @@ pub fn create_vtable_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                                     vtable_type,
                                                     true,
                                                     vtable,
-                                                    ptr::null_mut(),
+                                                    None,
                                                     0);
     }
 }

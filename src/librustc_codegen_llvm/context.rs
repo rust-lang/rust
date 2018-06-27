@@ -35,7 +35,6 @@ use rustc_target::spec::{HasTargetSpec, Target};
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
-use std::ptr;
 use std::iter;
 use std::str;
 use std::sync::Arc;
@@ -280,7 +279,9 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
                 None
             };
 
-            let mut cx = CodegenCx {
+            let isize_ty = Type::ix_llcx(llcx, tcx.data_layout.pointer_size.bits());
+
+            CodegenCx {
                 tcx,
                 check_overflow,
                 use_dll_storage_attrs,
@@ -300,16 +301,14 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
                 lltypes: RefCell::new(FxHashMap()),
                 scalar_lltypes: RefCell::new(FxHashMap()),
                 pointee_infos: RefCell::new(FxHashMap()),
-                isize_ty: Type::from_ref(ptr::null_mut()),
+                isize_ty,
                 dbg_cx,
                 eh_personality: Cell::new(None),
                 eh_unwind_resume: Cell::new(None),
                 rust_try_fn: Cell::new(None),
                 intrinsics: RefCell::new(FxHashMap()),
                 local_gen_sym_counter: Cell::new(0),
-            };
-            cx.isize_ty = Type::isize(&cx);
-            cx
+            }
         }
     }
 

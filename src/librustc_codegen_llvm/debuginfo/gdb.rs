@@ -18,7 +18,6 @@ use declare;
 use type_::Type;
 use rustc::session::config::NoDebugInfo;
 
-use std::ptr;
 use syntax::attr;
 
 
@@ -50,7 +49,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx)
                                  c_section_var_name.as_ptr() as *const _)
     };
 
-    if section_var == ptr::null_mut() {
+    if section_var.is_null() {
         let section_name = b".debug_gdb_scripts\0";
         let section_contents = b"\x01gdb_load_rust_pretty_printers.py\0";
 

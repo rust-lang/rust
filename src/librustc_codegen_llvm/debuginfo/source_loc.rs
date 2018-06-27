@@ -15,18 +15,18 @@ use super::metadata::UNKNOWN_COLUMN_NUMBER;
 use super::FunctionDebugContext;
 
 use llvm;
-use llvm::debuginfo::DIScope;
+use llvm::debuginfo::{DIScope_opaque, DIScope};
 use builder::Builder;
 
 use libc::c_uint;
-use std::ptr;
+use std::ptr::NonNull;
 use syntax_pos::{Span, Pos};
 
 /// Sets the current debug location at the beginning of the span.
 ///
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...).
 pub fn set_source_location(
-    debug_context: &FunctionDebugContext, bx: &Builder, scope: DIScope, span: Span
+    debug_context: &FunctionDebugContext, bx: &Builder, scope: Option<NonNull<DIScope_opaque>>, span: Span
 ) {
     let function_debug_context = match *debug_context {
         FunctionDebugContext::DebugInfoDisabled => return,
@@ -40,7 +40,7 @@ pub fn set_source_location(
     let dbg_loc = if function_debug_context.source_locations_enabled.get() {
         debug!("set_source_location: {}", bx.sess().codemap().span_to_string(span));
         let loc = span_start(bx.cx, span);
-        InternalDebugLocation::new(scope, loc.line, loc.col.to_usize())
+        InternalDebugLocation::new(scope.unwrap().as_ptr(), loc.line, loc.col.to_usize())
     } else {
         UnknownLocation
     };
@@ -93,17 +93,17 @@ pub fn set_debug_location(bx: &Builder, debug_location: InternalDebugLocation) {
             debug!("setting debug location to {} {}", line, col);
 
             unsafe {
-                llvm::LLVMRustDIBuilderCreateDebugLocation(
+                NonNull::new(llvm::LLVMRustDIBuilderCreateDebugLocation(
                     debug_context(bx.cx).llcontext,
                     line as c_uint,
                     col_used,
                     scope,
-                    ptr::null_mut())
+                    None))
             }
         }
         UnknownLocation => {
             debug!("clearing debug location ");
-            ptr::null_mut()
+            None
         }
     };
 

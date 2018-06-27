@@ -17,9 +17,10 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::DefIdTree;
 
 use llvm;
-use llvm::debuginfo::{DIScope, DIBuilderRef, DIDescriptor, DIArray};
+use llvm::debuginfo::{DIScope, DIBuilderRef, DIDescriptor_opaque, DIArray};
 use common::{CodegenCx};
 
+use std::ptr::NonNull;
 use syntax_pos::{self, Span};
 
 pub fn is_node_local_to_unit(cx: &CodegenCx, def_id: DefId) -> bool
@@ -36,7 +37,7 @@ pub fn is_node_local_to_unit(cx: &CodegenCx, def_id: DefId) -> bool
 }
 
 #[allow(non_snake_case)]
-pub fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
+pub fn create_DIArray(builder: DIBuilderRef, arr: &[Option<NonNull<DIDescriptor_opaque>>]) -> DIArray {
     return unsafe {
         llvm::LLVMRustDIBuilderGetOrCreateArray(builder, arr.as_ptr(), arr.len() as u32)
     };

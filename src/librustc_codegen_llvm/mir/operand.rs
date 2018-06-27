@@ -24,7 +24,6 @@ use value::Value;
 use type_of::LayoutLlvmExt;
 
 use std::fmt;
-use std::ptr;
 
 use super::{FunctionCx, LocalRef};
 use super::constant::scalar_to_llvm;
@@ -160,7 +159,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         let projected_ty = self.layout.ty.builtin_deref(true)
             .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self)).ty;
         let (llptr, llextra) = match self.val {
-            OperandValue::Immediate(llptr) => (llptr, ptr::null_mut()),
+            OperandValue::Immediate(llptr) => (llptr, 0 as *mut _),
             OperandValue::Pair(llptr, llextra) => (llptr, llextra),
             OperandValue::Ref(..) => bug!("Deref of by-Ref operand {:?}", self)
         };

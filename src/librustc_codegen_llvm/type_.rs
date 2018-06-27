@@ -22,7 +22,6 @@ use rustc::ty::layout::{self, Align, Size};
 use std::ffi::CString;
 use std::fmt;
 use std::mem;
-use std::ptr;
 
 use libc::c_uint;
 
@@ -103,6 +102,11 @@ impl Type {
         ty!(llvm::LLVMIntTypeInContext(cx.llcx, num_bits as c_uint))
     }
 
+    // Creates an integer type with the given number of bits, e.g. i24
+    pub fn ix_llcx(llcx: ContextRef, num_bits: u64) -> Type {
+        ty!(llvm::LLVMIntTypeInContext(llcx, num_bits as c_uint))
+    }
+
     pub fn f32(cx: &CodegenCx) -> Type {
         ty!(llvm::LLVMFloatTypeInContext(cx.llcx))
     }
@@ -128,12 +132,7 @@ impl Type {
     }
 
     pub fn isize(cx: &CodegenCx) -> Type {
-        match &cx.tcx.sess.target.target.target_pointer_width[..] {
-            "16" => Type::i16(cx),
-            "32" => Type::i32(cx),
-            "64" => Type::i64(cx),
-            tws => bug!("Unsupported target word size for int: {}", tws),
-        }
+        cx.isize_ty
     }
 
     pub fn c_int(cx: &CodegenCx) -> Type {
@@ -241,7 +240,7 @@ impl Type {
     pub fn func_params(&self) -> Vec<Type> {
         unsafe {
             let n_args = llvm::LLVMCountParamTypes(self.to_ref()) as usize;
-            let mut args = vec![Type { rf: ptr::null_mut() }; n_args];
+            let mut args = vec![Type { rf: 0 as *mut _ }; n_args];
             llvm::LLVMGetParamTypes(self.to_ref(),
                                     args.as_mut_ptr() as *mut TypeRef);
             args

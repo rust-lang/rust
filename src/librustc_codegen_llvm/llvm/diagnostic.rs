@@ -14,7 +14,6 @@ pub use self::OptimizationDiagnosticKind::*;
 pub use self::Diagnostic::*;
 
 use libc::c_uint;
-use std::ptr;
 
 use super::{DiagnosticInfoRef, TwineRef, ValueRef};
 
@@ -56,7 +55,7 @@ impl OptimizationDiagnostic {
     unsafe fn unpack(kind: OptimizationDiagnosticKind,
                      di: DiagnosticInfoRef)
                      -> OptimizationDiagnostic {
-        let mut function = ptr::null_mut();
+        let mut function = 0 as *mut _;
         let mut line = 0;
         let mut column = 0;
 
@@ -105,8 +104,8 @@ impl InlineAsmDiagnostic {
 
         let mut opt = InlineAsmDiagnostic {
             cookie: 0,
-            message: ptr::null_mut(),
-            instruction: ptr::null_mut(),
+            message: 0 as *mut _,
+            instruction: 0 as *mut _,
         };
 
         super::LLVMRustUnpackInlineAsmDiagnostic(di,

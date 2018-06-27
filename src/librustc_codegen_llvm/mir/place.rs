@@ -24,8 +24,6 @@ use value::Value;
 use glue;
 use mir::constant::const_alloc_to_llvm;
 
-use std::ptr;
-
 use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
 
@@ -51,7 +49,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                      -> PlaceRef<'tcx> {
         PlaceRef {
             llval,
-            llextra: ptr::null_mut(),
+            llextra: 0 as *mut _,
             layout,
             align
         }
@@ -126,7 +124,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         };
 
         let val = if self.layout.is_llvm_immediate() {
-            let mut const_llval = ptr::null_mut();
+            let mut const_llval = 0 as *mut _;
             unsafe {
                 let global = llvm::LLVMIsAGlobalVariable(self.llval);
                 if !global.is_null() && llvm::LLVMIsGlobalConstant(global) == llvm::True {
@@ -187,7 +185,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                 llextra: if cx.type_has_metadata(field.ty) {
                     self.llextra
                 } else {
-                    ptr::null_mut()
+                    0 as *mut _
                 },
                 layout: field,
                 align,
@@ -390,7 +388,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                          -> PlaceRef<'tcx> {
         PlaceRef {
             llval: bx.inbounds_gep(self.llval, &[C_usize(bx.cx, 0), llindex]),
-            llextra: ptr::null_mut(),
+            llextra: 0 as *mut _,
             layout: self.layout.field(bx.cx, 0),
             align: self.align
         }

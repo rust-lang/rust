@@ -22,7 +22,7 @@ use rustc::hir::map::DefPathData;
 use common::CodegenCx;
 
 use std::ffi::CString;
-use std::ptr;
+use std::ptr::NonNull;
 
 pub fn mangled_name_of_instance<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
@@ -38,11 +38,11 @@ pub fn item_namespace(cx: &CodegenCx, def_id: DefId) -> DIScope {
     }
 
     let def_key = cx.tcx.def_key(def_id);
-    let parent_scope = def_key.parent.map_or(ptr::null_mut(), |parent| {
-        item_namespace(cx, DefId {
+    let parent_scope = def_key.parent.and_then(|parent| {
+        NonNull::new(item_namespace(cx, DefId {
             krate: def_id.krate,
             index: parent
-        })
+        }))
     });
 
     let namespace_name = match def_key.disambiguated_data.data {

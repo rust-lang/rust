@@ -21,6 +21,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(custom_attribute)]
+#![feature(extern_types)]
 #![feature(fs_read_write)]
 #![allow(unused_attributes)]
 #![feature(libc)]

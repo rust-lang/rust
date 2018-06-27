@@ -39,7 +39,7 @@ use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
 use libc::c_uint;
 use std::cell::{Cell, RefCell};
 use std::ffi::CString;
-use std::ptr;
+use std::ptr::NonNull;
 
 use syntax_pos::{self, Span, Pos};
 use syntax::ast;
@@ -290,7 +290,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             cx.sess().opts.optimize != config::OptLevel::No,
             llfn,
             template_parameters,
-            ptr::null_mut())
+            None)
     };
 
     // Initialize fn debug context (including scope map and namespace map)
@@ -312,8 +312,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
         // Return type -- llvm::DIBuilder wants this at index 0
         signature.push(match sig.output().sty {
-            ty::TyTuple(ref tys) if tys.is_empty() => ptr::null_mut(),
-            _ => type_metadata(cx, sig.output(), syntax_pos::DUMMY_SP)
+            ty::TyTuple(ref tys) if tys.is_empty() => None,
+            _ => NonNull::new(type_metadata(cx, sig.output(), syntax_pos::DUMMY_SP))
         });
 
         let inputs = if sig.abi == Abi::RustCall {
@@ -342,19 +342,20 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                     }
                     _ => t
                 };
-                type_metadata(cx, t, syntax_pos::DUMMY_SP)
+                NonNull::new(type_metadata(cx, t, syntax_pos::DUMMY_SP))
             }));
         } else {
             signature.extend(inputs.iter().map(|t| {
-                type_metadata(cx, t, syntax_pos::DUMMY_SP)
+                NonNull::new(type_metadata(cx, t, syntax_pos::DUMMY_SP))
             }));
         }
 
         if sig.abi == Abi::RustCall && !sig.inputs().is_empty() {
             if let ty::TyTuple(args) = sig.inputs()[sig.inputs().len() - 1].sty {
                 signature.extend(
-                    args.iter().map(|argument_type|
-                        type_metadata(cx, argument_type, syntax_pos::DUMMY_SP))
+                    args.iter().map(|argument_type| {
+                        NonNull::new(type_metadata(cx, argument_type, syntax_pos::DUMMY_SP))
+                    })
                 );
             }
         }
@@ -398,14 +399,14 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                         type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
                     let name = CString::new(name.as_str().as_bytes()).unwrap();
                     Some(unsafe {
-                        llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
+                        NonNull::new(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                             DIB(cx),
-                            ptr::null_mut(),
+                            None,
                             name.as_ptr(),
                             actual_type_metadata,
                             file_metadata,
                             0,
-                            0)
+                            0))
                     })
                 } else {
                     None
