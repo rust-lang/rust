@@ -616,7 +616,7 @@ impl<'hir> Map<'hir> {
             NodeItem(&Item { node: ItemTrait(..), .. }) => {
                 keywords::SelfType.name()
             }
-            NodeGenericParam(param) => param.name.ident(),
+            NodeGenericParam(param) => param.name.ident().name,
             _ => bug!("ty_param_name: {} not a type parameter", self.node_to_string(id)),
         }
     }
@@ -955,7 +955,7 @@ impl<'hir> Map<'hir> {
             NodeField(f) => f.ident.name,
             NodeLifetime(lt) => lt.name.ident().name,
             NodeGenericParam(param) => param.name.ident().name,
-            NodeBinding(&Pat { node: PatKind::Binding(_,_,l,_), .. }) => l.node,
+            NodeBinding(&Pat { node: PatKind::Binding(_,_,l,_), .. }) => l.name,
             NodeStructCtor(_) => self.name(self.get_parent(id)),
             _ => bug!("no name for {}", self.node_to_string(id))
         }
@@ -1021,7 +1021,7 @@ impl<'hir> Map<'hir> {
             Some(EntryBlock(_, _, block)) => block.span,
             Some(EntryStructCtor(_, _, _)) => self.expect_item(self.get_parent(id)).span,
             Some(EntryLifetime(_, _, lifetime)) => lifetime.span,
-            Some(EntryGenericParam(_, _, param)) => param.ident.span,
+            Some(EntryGenericParam(_, _, param)) => param.span,
             Some(EntryVisibility(_, _, &Visibility::Restricted { ref path, .. })) => path.span,
             Some(EntryVisibility(_, _, v)) => bug!("unexpected Visibility {:?}", v),
             Some(EntryLocal(_, _, local)) => local.span,

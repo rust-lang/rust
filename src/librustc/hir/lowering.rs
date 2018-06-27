@@ -676,7 +676,7 @@ impl<'a> LoweringContext<'a> {
                 // that collisions are ok here and this shouldn't
                 // really show up for end-user.
                 let str_name = match hir_name {
-                    ParamName::Plain(ident) => name.as_interned_str(),
+                    ParamName::Plain(ident) => ident.as_interned_str(),
                     ParamName::Fresh(_) => keywords::UnderscoreLifetime.name().as_interned_str(),
                 };
 
@@ -684,7 +684,7 @@ impl<'a> LoweringContext<'a> {
                 self.resolver.definitions().create_def_with_parent(
                     parent_id.index,
                     def_node_id,
-                    DefPathData::LifetimeDef(str_name),
+                    DefPathData::LifetimeParam(str_name),
                     DefIndexAddressSpace::High,
                     Mark::root(),
                     span,
@@ -719,10 +719,10 @@ impl<'a> LoweringContext<'a> {
             return;
         }
 
-        let hir_name = ParamName::Plain(name);
+        let hir_name = ParamName::Plain(ident);
 
         if self.lifetimes_to_define.iter()
-                                   .any(|(_, lt_name)| *lt_name.modern() == hir_name.modern()) {
+                                   .any(|(_, lt_name)| lt_name.modern() == hir_name.modern()) {
             return;
         }
 
@@ -1185,10 +1185,11 @@ impl<'a> LoweringContext<'a> {
                         let ident = Ident::from_str(&pprust::ty_to_string(t)).with_span_pos(span);
                         self.in_band_ty_params.push(hir::GenericParam {
                             id: def_node_id,
-                            ident: ParamName::Plain(ident),
+                            name: ParamName::Plain(ident),
                             pure_wrt_drop: false,
                             attrs: hir_vec![],
                             bounds: hir_bounds,
+                            span,
                             kind: hir::GenericParamKind::Type {
                                 default: None,
                                 synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
@@ -1438,7 +1439,7 @@ impl<'a> LoweringContext<'a> {
 
                     let name = match name {
                         hir::LifetimeName::Underscore => {
-                            hir::ParamName::Plain(keywords::UnderscoreLifetime.name())
+                            hir::ParamName::Plain(keywords::UnderscoreLifetime.ident())
                         }
                         hir::LifetimeName::Param(param_name) => param_name,
                         _ => bug!("expected LifetimeName::Param or ParamName::Plain"),
@@ -2101,7 +2102,7 @@ impl<'a> LoweringContext<'a> {
             let future_params = P(hir::GenericArgs {
                 args: hir_vec![],
                 bindings: hir_vec![hir::TypeBinding {
-                    name: Symbol::intern(FN_OUTPUT_NAME),
+                    ident: Ident::from_str(FN_OUTPUT_NAME),
                     ty: output_ty,
                     id: this.next_id().node_id,
                     span,
@@ -2163,7 +2164,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_lifetime(&mut self, l: &Lifetime) -> hir::Lifetime {
         let span = l.ident.span;
-        match self.lower_ident(l.ident) {
+        match l.ident {
             ident if ident.name == keywords::StaticLifetime.name() =>
                 self.new_named_lifetime(l.id, span, hir::LifetimeName::Static),
             ident if ident.name == keywords::UnderscoreLifetime.name() =>
@@ -2221,7 +2222,7 @@ impl<'a> LoweringContext<'a> {
                 let lt = self.lower_lifetime(&Lifetime { id: param.id, ident: param.ident });
                 let param_name = match lt.name {
                     hir::LifetimeName::Param(param_name) => param_name,
-                    _ => hir::ParamName::Plain(lt.name.name()),
+                    _ => hir::ParamName::Plain(lt.name.ident()),
                 };
                 let param = hir::GenericParam {
                     id: lt.id,
@@ -2238,14 +2239,14 @@ impl<'a> LoweringContext<'a> {
                 param
             }
             GenericParamKind::Type { ref default, .. } => {
-                let mut name = self.lower_ident(param.ident);
-
                 // Don't expose `Self` (recovered "keyword used as ident" parse error).
                 // `rustc::ty` expects `Self` to be only used for a trait's `Self`.
                 // Instead, use gensym("Self") to create a distinct name that looks the same.
-                if name == keywords::SelfType.name() {
-                    name = Symbol::gensym("Self");
-                }
+                let ident = if param.ident.name == keywords::SelfType.name() {
+                    param.ident.gensym()
+                } else {
+                    param.ident
+                };
 
                 let add_bounds = add_bounds.get(&param.id).map_or(&[][..], |x| &x);
                 if !add_bounds.is_empty() {
@@ -2256,11 +2257,11 @@ impl<'a> LoweringContext<'a> {
 
                 hir::GenericParam {
                     id: self.lower_node_id(param.id).node_id,
-                    name: hir::ParamName::Plain(name),
-                    span: param.ident.span,
+                    name: hir::ParamName::Plain(ident),
                     pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
                     attrs: self.lower_attrs(&param.attrs),
                     bounds,
+                    span: ident.span,
                     kind: hir::GenericParamKind::Type {
                         default: default.as_ref().map(|x| {
                             self.lower_ty(x, ImplTraitContext::Disallowed)
@@ -3656,7 +3657,7 @@ impl<'a> LoweringContext<'a> {
                 let e2 = self.lower_expr(e2);
                 let ty_path = P(self.std_path(span, &["ops", "RangeInclusive"], None, false));
                 let ty = P(self.ty_path(id, span, hir::QPath::Resolved(None, ty_path)));
-                let new_seg = P(hir::PathSegment::from_name(Ident::from_str("new")));
+                let new_seg = P(hir::PathSegment::from_ident(Ident::from_str("new")));
                 let new_path = hir::QPath::TypeRelative(ty, new_seg);
                 let new = P(self.expr(span, hir::ExprPath(new_path), ThinVec::new()));
                 hir::ExprCall(new, hir_vec![e1, e2])

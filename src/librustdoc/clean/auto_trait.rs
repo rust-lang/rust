@@ -251,7 +251,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             match param.kind {
                 ty::GenericParamDefKind::Lifetime => {
                     let name = if param.name == "" {
-                        hir::ParamName::Plain(keywords::StaticLifetime.name())
+                        hir::ParamName::Plain(keywords::StaticLifetime.ident())
                     } else {
                         hir::ParamName::Plain(ast::Ident::from_interned_str(param.name))
                     };

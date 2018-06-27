@@ -331,7 +331,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
                     err.span_suggestion_with_applicability(
                         p.span,
                         "to match on the variant, qualify the path",
-                        format!("{}::{}", ty_path, name.node),
+                        format!("{}::{}", ty_path, ident),
                         Applicability::MachineApplicable
                     );
                     err.emit();

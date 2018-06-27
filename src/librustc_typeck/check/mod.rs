@@ -3836,7 +3836,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // ... except when we try to 'break rust;'.
                         // ICE this expression in particular (see #43162).
                         if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = e.node {
-                            if path.segments.len() == 1 && path.segments[0].name == "rust" {
+                            if path.segments.len() == 1 && path.segments[0].ident.name == "rust" {
                                 fatally_break_rust(self.tcx.sess);
                             }
                         }

@@ -1497,17 +1497,17 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         args: Option<P<hir::GenericArgs>>,
         is_value: bool
     ) -> hir::Path {
-        let mut segments = iter::once(keywords::CrateRoot.name())
+        let mut segments = iter::once(keywords::CrateRoot.ident())
             .chain(
                 crate_root.into_iter()
                     .chain(components.iter().cloned())
-                    .map(Symbol::intern)
-            ).map(hir::PathSegment::from_name).collect::<Vec<_>>();
+                    .map(Ident::from_str)
+            ).map(hir::PathSegment::from_ident).collect::<Vec<_>>();
 
         if let Some(args) = args {
-            let name = segments.last().unwrap().name;
+            let ident = segments.last().unwrap().ident;
             *segments.last_mut().unwrap() = hir::PathSegment {
-                name,
+                ident,
                 args: Some(args),
                 infer_types: true,
             };

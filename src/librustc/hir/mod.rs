@@ -201,7 +201,7 @@ pub struct Lifetime {
 #[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub enum ParamName {
     /// Some user-given name like `T` or `'x`.
-    Plain(Name),
+    Plain(Ident),
 
     /// Synthetic name generated when user elided a lifetime in an impl header,
     /// e.g. the lifetimes in cases like these:
@@ -220,10 +220,17 @@ pub enum ParamName {
 }
 
 impl ParamName {
-    pub fn name(&self) -> Name {
+    pub fn ident(&self) -> Ident {
         match *self {
-            ParamName::Plain(name) => name,
-            ParamName::Fresh(_) => keywords::UnderscoreLifetime.name(),
+            ParamName::Plain(ident) => ident,
+            ParamName::Fresh(_) => keywords::UnderscoreLifetime.ident(),
+        }
+    }
+
+    pub fn modern(&self) -> ParamName {
+        match *self {
+            ParamName::Plain(ident) => ParamName::Plain(ident.modern()),
+            param_name => param_name,
         }
     }
 }
@@ -247,24 +254,22 @@ impl LifetimeName {
     pub fn ident(&self) -> Ident {
         match *self {
             LifetimeName::Implicit => keywords::Invalid.ident(),
-            LifetimeName::Fresh(_) | LifetimeName::Underscore =>
-                keywords::UnderscoreLifetime.ident(),
+            LifetimeName::Underscore => keywords::UnderscoreLifetime.ident(),
             LifetimeName::Static => keywords::StaticLifetime.ident(),
-            LifetimeName::Ident(ident) => ident,
+            LifetimeName::Param(param_name) => param_name.ident(),
         }
     }
 
     pub fn is_elided(&self) -> bool {
-        use self::LifetimeName::*;
         match self {
-            Implicit | Underscore => true,
+            LifetimeName::Implicit | LifetimeName::Underscore => true,
 
             // It might seem surprising that `Fresh(_)` counts as
             // *not* elided -- but this is because, as far as the code
             // in the compiler is concerned -- `Fresh(_)` variants act
             // equivalently to "some fresh name". They correspond to
             // early-bound regions on an impl, in other words.
-            Param(_) | Static => false,
+            LifetimeName::Param(_) | LifetimeName::Static => false,
         }
     }
 
@@ -274,7 +279,7 @@ impl LifetimeName {
 
     pub fn modern(&self) -> LifetimeName {
         match *self {
-            LifetimeName::Ident(ident) => LifetimeName::Ident(ident.modern()),
+            LifetimeName::Param(param_name) => LifetimeName::Param(param_name.modern()),
             lifetime_name => lifetime_name,
         }
     }
@@ -492,6 +497,7 @@ pub struct GenericParam {
     pub name: ParamName,
     pub attrs: HirVec<Attribute>,
     pub bounds: GenericBounds,
+    pub span: Span,
     pub pure_wrt_drop: bool,
 
     pub kind: GenericParamKind,

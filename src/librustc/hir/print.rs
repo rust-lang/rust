@@ -2113,7 +2113,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_generic_param(&mut self, param: &GenericParam) -> io::Result<()> {
-        self.print_name(param.name.name())?;
+        self.print_ident(param.name.ident())?;
         match param.kind {
             GenericParamKind::Lifetime { .. } => {
                 let mut sep = ":";
@@ -2144,7 +2144,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_lifetime(&mut self, lifetime: &hir::Lifetime) -> io::Result<()> {
-        self.print_name(lifetime.name.name())
+        self.print_ident(lifetime.name.ident())
     }
 
     pub fn print_where_clause(&mut self, where_clause: &hir::WhereClause) -> io::Result<()> {

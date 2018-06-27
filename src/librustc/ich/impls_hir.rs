@@ -203,6 +203,7 @@ impl_stable_hash_for!(struct hir::GenericParam {
     pure_wrt_drop,
     attrs,
     bounds,
+    span,
     kind
 });
 

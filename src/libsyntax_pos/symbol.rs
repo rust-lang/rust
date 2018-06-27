@@ -59,6 +59,11 @@ impl Ident {
         Ident::new(Symbol::intern(self.as_str().trim_left_matches('\'')), self.span)
     }
 
+    /// "Normalize" ident for use in comparisons using "item hygiene".
+    /// Identifiers with same string value become same if they came from the same "modern" macro
+    /// (e.g. `macro` item, but not `macro_rules` item) and stay different if they came from
+    /// different "modern" macros.
+    /// Technically, this operation strips all non-opaque marks from ident's syntactic context.
     pub fn modern(self) -> Ident {
         Ident::new(self.name, self.span.modern())
     }

@@ -1896,19 +1896,19 @@ impl Clean<GenericParamDef> for hir::GenericParam {
                         hir::GenericBound::Outlives(lt) => lt,
                         _ => panic!(),
                     });
-                    let name = bounds.next().unwrap().name.name();
-                    let mut s = format!("{}: {}", self.name.name(), name);
+                    let name = bounds.next().unwrap().name.ident();
+                    let mut s = format!("{}: {}", self.name.ident(), name);
                     for bound in bounds {
-                        s.push_str(&format!(" + {}", bound.name.name()));
+                        s.push_str(&format!(" + {}", bound.name.ident()));
                     }
                     s
                 } else {
-                    self.name.name().to_string()
+                    self.name.ident().to_string()
                 };
                 (name, GenericParamDefKind::Lifetime)
             }
             hir::GenericParamKind::Type { ref default, synthetic, .. } => {
-                (self.name.name().clean(cx), GenericParamDefKind::Type {
+                (self.name.ident().name.clean(cx), GenericParamDefKind::Type {
                     did: cx.tcx.hir.local_def_id(self.id),
                     bounds: self.bounds.clean(cx),
                     default: default.clean(cx),
