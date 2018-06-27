@@ -12,23 +12,23 @@ use super::{EvalContext, Machine};
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M>
     where M: Clone + Eq + Hash,
 {
-    /// Returns `true` if the loop detector should take a snapshot during the current step.
-    pub fn is_loop_detector_scheduled(&self) -> bool {
+    pub fn inc_step_counter_and_detect_loops(&mut self) -> EvalResult<'tcx, ()> {
         /// The number of steps between loop detector snapshots.
         /// Should be a power of two for performance reasons.
-        const DETECTOR_SNAPSHOT_PERIOD: isize = 1 << 8;
+        const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 
-        let steps = self.steps_until_detector_enabled;
-        steps <= 0 && steps % DETECTOR_SNAPSHOT_PERIOD == 0
-    }
+        {
+            let steps = &mut self.steps_since_detector_enabled;
 
-    pub fn inc_step_counter_and_detect_loops(&mut self, n: usize) -> EvalResult<'tcx, ()> {
-        // TODO: Remove `as` cast
-        self.steps_until_detector_enabled =
-            self.steps_until_detector_enabled.saturating_sub(n as isize);
+            *steps += 1;
+            if *steps < 0 {
+                return Ok(());
+            }
 
-        if !self.is_loop_detector_scheduled() {
-            return Ok(());
+            *steps %= DETECTOR_SNAPSHOT_PERIOD;
+            if *steps != 0 {
+                return Ok(());
+            }
         }
 
         if self.loop_detector.is_empty() {
@@ -61,7 +61,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M>
             return Ok(true);
         }
 
-        self.inc_step_counter_and_detect_loops(1)?;
+        self.inc_step_counter_and_detect_loops()?;
 
         let terminator = basic_block.terminator();
         assert_eq!(old_frames, self.cur_frame());

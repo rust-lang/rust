@@ -43,9 +43,11 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// The maximum number of stack frames allowed
     pub(crate) stack_limit: usize,
 
-    /// The number of terminators to be evaluated before enabling the infinite
-    /// loop detector.
-    pub(crate) steps_until_detector_enabled: isize,
+    /// When this value is negative, it indicates the number of interpreter
+    /// steps *until* the loop detector is enabled. When it is positive, it is
+    /// the number of steps after the detector has been enabled modulo the loop
+    /// detector period.
+    pub(crate) steps_since_detector_enabled: isize,
 
     pub(crate) loop_detector: InfiniteLoopDetector<'a, 'mir, 'tcx, M>,
 }
@@ -148,14 +150,15 @@ type EvalSnapshot<'a, 'mir, 'tcx, M>
 pub(crate) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// The set of all `EvalSnapshot` *hashes* observed by this detector.
     ///
-    /// When a collision occurs in this table, we store the full snapshot in `snapshots`.
+    /// When a collision occurs in this table, we store the full snapshot in
+    /// `snapshots`.
     hashes: FxHashSet<u64>,
 
     /// The set of all `EvalSnapshot`s observed by this detector.
     ///
-    /// An `EvalSnapshot` will only be fully cloned once it has caused a collision in `hashes`. As
-    /// a result, the detector must observe at least *two* full cycles of an infinite loop before
-    /// it triggers.
+    /// An `EvalSnapshot` will only be fully cloned once it has caused a
+    /// collision in `hashes`. As a result, the detector must observe at least
+    /// *two* full cycles of an infinite loop before it triggers.
     snapshots: FxHashSet<EvalSnapshot<'a, 'mir, 'tcx, M>>,
 }
 
@@ -291,7 +294,7 @@ impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf
     }
 }
 
-const MAX_TERMINATORS: isize = 1_000_000;
+const STEPS_UNTIL_DETECTOR_ENABLED: isize = 1_000_000;
 
 impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn new(
@@ -310,16 +313,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             stack: Vec::new(),
             stack_limit: tcx.sess.const_eval_stack_frame_limit,
             loop_detector: Default::default(),
-            steps_until_detector_enabled: MAX_TERMINATORS,
+            steps_since_detector_enabled: -STEPS_UNTIL_DETECTOR_ENABLED,
         }
     }
 
     pub(crate) fn with_fresh_body<F: FnOnce(&mut Self) -> R, R>(&mut self, f: F) -> R {
         let stack = mem::replace(&mut self.stack, Vec::new());
-        let steps = mem::replace(&mut self.steps_until_detector_enabled, MAX_TERMINATORS);
+        let steps = mem::replace(&mut self.steps_since_detector_enabled, -STEPS_UNTIL_DETECTOR_ENABLED);
         let r = f(self);
         self.stack = stack;
-        self.steps_until_detector_enabled = steps;
+        self.steps_since_detector_enabled = steps;
         r
     }
 
@@ -661,8 +664,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
 
             Aggregate(ref kind, ref operands) => {
-                self.inc_step_counter_and_detect_loops(operands.len())?;
-
                 let (dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
                         self.write_discriminant_value(dest_ty, dest, variant_index)?;
