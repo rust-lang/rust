@@ -165,6 +165,7 @@ impl<'tcx> CValue<'tcx> {
 
     pub fn const_val<'a>(fx: &mut FunctionCx<'a, 'tcx>, ty: Ty<'tcx>, const_val: i64) -> CValue<'tcx> where 'tcx: 'a {
         let cton_ty = fx.cton_type(ty).unwrap();
+        let cton_ty = fixup_cton_ty(cton_ty);
         let layout = fx.layout_of(ty);
         CValue::ByVal(fx.bcx.ins().iconst(cton_ty, const_val), layout)
     }

@@ -18,10 +18,10 @@ trait Mul<RHS = Self> {
     fn mul(self, rhs: RHS) -> Self::Output;
 }
 
-impl Mul for u32 {
-    type Output = u32;
+impl Mul for u8 {
+    type Output = Self;
 
-    fn mul(self, rhs: u32) -> u32 {
+    fn mul(self, rhs: Self) -> Self {
         self * rhs
     }
 }
@@ -39,11 +39,11 @@ unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     drop_in_place(to_drop);
 }
 
-fn abc(a: u32) -> u32 {
+fn abc(a: u8) -> u8 {
     a * 2
 }
 
-fn bcd(b: bool, a: u32) -> u32 {
+fn bcd(b: bool, a: u8) -> u8 {
     if b {
         a * 2
     } else {
@@ -73,6 +73,6 @@ fn option_unwrap_or(o: BoolOption, d: bool) -> bool {
     }
 }
 
-fn ret_42() -> u32 {
+fn ret_42() -> u8 {
     42
 }

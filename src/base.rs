@@ -514,6 +514,10 @@ fn trans_operand<'a, 'tcx>(fx: &mut FunctionCx<'a, 'tcx>, operand: &Operand<'tcx
                 Literal::Value { value } => {
                     let layout = fx.layout_of(const_.ty);
                     match const_.ty.sty {
+                        TypeVariants::TyBool => {
+                            let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
+                            CValue::const_val(fx, const_.ty, bits as u64 as i64)
+                        }
                         TypeVariants::TyUint(_) => {
                             let bits = value.to_scalar().unwrap().to_bits(layout.size).unwrap();
                             CValue::const_val(fx, const_.ty, bits as u64 as i64)
