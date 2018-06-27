@@ -11,25 +11,25 @@
 use rustc::infer::canonical::{Canonical, QueryResult};
 use rustc::traits::query::type_op::subtype::Subtype;
 use rustc::traits::query::NoSolution;
-use rustc::traits::{FulfillmentContext, ObligationCause};
+use rustc::traits::ObligationCause;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::sync::Lrc;
-use syntax::codemap::DUMMY_SP;
 
 crate fn type_op_subtype<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     canonicalized: Canonical<'tcx, Subtype<'tcx>>,
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, ()>>>, NoSolution> {
-    let tcx = tcx.global_tcx();
-    tcx.infer_ctxt().enter(|ref infcx| {
-        let (Subtype { param_env, sub, sup }, canonical_inference_vars) =
-            infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonicalized);
-        let fulfill_cx = &mut FulfillmentContext::new();
-        let obligations = match infcx.at(&ObligationCause::dummy(), param_env).sup(sup, sub) {
-            Ok(v) => v.into_obligations(),
-            Err(_) => return Err(NoSolution),
-        };
-        fulfill_cx.register_predicate_obligations(infcx, obligations);
-        infcx.make_canonicalized_query_result(canonical_inference_vars, (), fulfill_cx)
-    })
+    tcx.infer_ctxt().enter_canonical_trait_query(
+        &canonicalized,
+        |infcx,
+         Subtype {
+             param_env,
+             sub,
+             sup,
+         }| {
+            Ok(infcx
+                .at(&ObligationCause::dummy(), param_env)
+                .sup(sup, sub)?)
+        },
+    )
 }
