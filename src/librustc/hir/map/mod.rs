@@ -671,7 +671,14 @@ impl<'hir> Map<'hir> {
                 NodeTraitItem(ref trait_item) => Some(&trait_item.generics),
                 NodeItem(ref item) => {
                     match item.node {
-                        ItemFn(_, _, ref generics, _) => Some(generics),
+                        ItemFn(_, _, ref generics, _) |
+                        ItemTy(_, ref generics) |
+                        ItemEnum(_, ref generics) |
+                        ItemStruct(_, ref generics) |
+                        ItemUnion(_, ref generics) |
+                        ItemTrait(_, _, ref generics, ..) |
+                        ItemTraitAlias(ref generics, _) |
+                        ItemImpl(_, _, _, ref generics, ..) => Some(generics),
                         _ => None,
                     }
                 }
