@@ -64,7 +64,7 @@ use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::collections::hash_map::{self, Entry};
 use std::hash::{Hash, Hasher};
-use std::fmt::Debug;
+use std::fmt;
 use std::mem;
 use std::ops::Deref;
 use std::iter;
@@ -1504,8 +1504,8 @@ impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
 /// contain the TypeVariants key or if the address of the interned
 /// pointer differs. The latter case is possible if a primitive type,
 /// e.g. `()` or `u8`, was interned in a different context.
-pub trait Lift<'tcx>: Debug {
-    type Lifted: Debug + 'tcx;
+pub trait Lift<'tcx>: fmt::Debug {
+    type Lifted: fmt::Debug + 'tcx;
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted>;
 }
 
