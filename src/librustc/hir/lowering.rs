@@ -1352,9 +1352,8 @@ impl<'a> LoweringContext<'a> {
             }
 
             fn visit_ty(&mut self, t: &'v hir::Ty) {
-                match t.node {
                     // Don't collect elided lifetimes used inside of `fn()` syntax
-                    hir::Ty_::TyBareFn(_) => {
+                if let hir::Ty_::TyBareFn(_) = t.node {
                         let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
                         self.collect_elided_lifetimes = false;
 
@@ -1365,8 +1364,8 @@ impl<'a> LoweringContext<'a> {
                         self.currently_bound_lifetimes.truncate(old_len);
 
                         self.collect_elided_lifetimes = old_collect_elided_lifetimes;
-                    },
-                    _ => hir::intravisit::walk_ty(self, t),
+                } else {
+                    hir::intravisit::walk_ty(self, t)
                 }
             }
 
