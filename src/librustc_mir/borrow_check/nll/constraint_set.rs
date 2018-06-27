@@ -15,6 +15,7 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
 use std::fmt;
 use syntax_pos::Span;
+use std::ops::Deref;
 
 #[derive(Clone, Default)]
 crate struct ConstraintSet {
@@ -35,10 +36,6 @@ impl ConstraintSet {
         if self.seen_constraints.insert(constraint.dedup_key()) {
             self.constraints.push(constraint);
         }
-    }
-
-    pub fn inner(&self) -> &IndexVec<ConstraintIndex, OutlivesConstraint> {
-        &self.constraints
     }
 
     pub fn link(&mut self, len: usize) -> IndexVec<RegionVid, Option<ConstraintIndex>> {
@@ -64,6 +61,12 @@ impl ConstraintSet {
             opt_dep_idx = self.constraints[dep_idx].next;
         }
     }
+}
+
+impl Deref for ConstraintSet {
+    type Target = IndexVec<ConstraintIndex, OutlivesConstraint>;
+
+    fn deref(&self) -> &Self::Target { &self.constraints }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

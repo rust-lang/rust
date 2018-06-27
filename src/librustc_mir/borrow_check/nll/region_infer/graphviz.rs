@@ -57,7 +57,7 @@ impl<'this, 'tcx> dot::GraphWalk<'this> for RegionInferenceContext<'tcx> {
         vids.into_cow()
     }
     fn edges(&'this self) -> dot::Edges<'this, OutlivesConstraint> {
-        (&self.constraints.inner().raw[..]).into_cow()
+        (&self.constraints.raw[..]).into_cow()
     }
 
     // Render `a: b` as `a <- b`, indicating the flow
