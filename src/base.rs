@@ -352,13 +352,11 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                         TypeVariants::TyInt(_) => {
                             trans_int_binop(fx, *bin_op, lhs, rhs, ty, true, false)
                         }
-                        _ => unimplemented!(),
+                        _ => unimplemented!("bin op {:?} for {:?}", bin_op, ty),
                     };
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::CheckedBinaryOp(bin_op, lhs, rhs) => {
-                    // TODO correctly write output tuple
-
                     let ty = fx.monomorphize(&lhs.ty(&fx.mir.local_decls, fx.tcx));
                     let lhs = trans_operand(fx, lhs).load_value(fx);
                     let rhs = trans_operand(fx, rhs).load_value(fx);
@@ -370,10 +368,23 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                         TypeVariants::TyInt(_) => {
                             trans_int_binop(fx, *bin_op, lhs, rhs, ty, true, true)
                         }
-                        _ => unimplemented!(),
+                        _ => unimplemented!("checked bin op {:?} for {:?}", bin_op, ty),
                     };
                     lval.write_cvalue(fx, res);
                     unimplemented!("checked bin op {:?}", bin_op);
+                }
+                Rvalue::UnaryOp(un_op, operand) => {
+                    let ty = fx.monomorphize(&operand.ty(&fx.mir.local_decls, fx.tcx));
+                    let layout = fx.layout_of(ty);
+                    let val = trans_operand(fx, operand).load_value(fx);
+                    let res = match un_op {
+                        UnOp::Not => fx.bcx.ins().bnot(val),
+                        UnOp::Neg => match ty.sty {
+                            TypeVariants::TyFloat(_) => fx.bcx.ins().fneg(val),
+                            ref ty => unimplemented!("un op Neg for {:?}", ty),
+                        }
+                    };
+                    lval.write_cvalue(fx, CValue::ByVal(res, layout));
                 }
                 Rvalue::Cast(CastKind::ReifyFnPointer, operand, ty) => {
                     let operand = trans_operand(fx, operand);
