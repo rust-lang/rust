@@ -10,7 +10,7 @@
 
 use super::universal_regions::UniversalRegions;
 use borrow_check::nll::region_infer::values::ToElementIndex;
-use borrow_check::nll::constraint_set::ConstraintSet;
+use borrow_check::nll::constraint_set::{ConstraintIndex, ConstraintSet, OutlivesConstraint};
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
@@ -26,7 +26,6 @@ use rustc::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::{self, ErrorReported};
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use std::fmt;
 use std::rc::Rc;
 use syntax_pos::Span;
 
@@ -114,43 +113,6 @@ pub(crate) enum Cause {
     /// part of the initial set of values for a universally quantified region
     UniversalRegion(RegionVid),
 }
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct OutlivesConstraint {
-    // NB. The ordering here is not significant for correctness, but
-    // it is for convenience. Before we dump the constraints in the
-    // debugging logs, we sort them, and we'd like the "super region"
-    // to be first, etc. (In particular, span should remain last.)
-    /// The region SUP must outlive SUB...
-    pub sup: RegionVid,
-
-    /// Region that must be outlived.
-    pub sub: RegionVid,
-
-    /// At this location.
-    pub point: Location,
-
-    /// Later on, we thread the constraints onto a linked list
-    /// grouped by their `sub` field. So if you had:
-    ///
-    /// Index | Constraint | Next Field
-    /// ----- | ---------- | ----------
-    /// 0     | `'a: 'b`   | Some(2)
-    /// 1     | `'b: 'c`   | None
-    /// 2     | `'c: 'b`   | None
-    pub next: Option<ConstraintIndex>,
-
-    /// Where did this constraint arise?
-    pub span: Span,
-}
-
-impl OutlivesConstraint {
-    pub fn dedup_key(&self) -> (RegionVid, RegionVid) {
-        (self.sup, self.sub)
-    }
-}
-
-newtype_index!(ConstraintIndex { DEBUG_FORMAT = "ConstraintIndex({})" });
 
 /// A "type test" corresponds to an outlives constraint between a type
 /// and a lifetime, like `T: 'x` or `<T as Foo>::Bar: 'x`.  They are
@@ -1150,16 +1112,6 @@ impl<'tcx> RegionDefinition<'tcx> {
             is_universal: false,
             external_name: None,
         }
-    }
-}
-
-impl fmt::Debug for OutlivesConstraint {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            formatter,
-            "({:?}: {:?} @ {:?}) due to {:?}",
-            self.sup, self.sub, self.point, self.span
-        )
     }
 }
 
