@@ -1,8 +1,11 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/issue-51415.rs:16:47
+  --> $DIR/issue-51415.rs:16:42
    |
 LL |     let opt = a.iter().enumerate().find(|(_, &s)| {
-   |                                               ^ cannot move out of borrowed content
+   |                                          ^^^^^-^
+   |                                          |    |
+   |                                          |    help: to prevent move, use ref or ref mut: `ref s`
+   |                                          cannot move out of borrowed content
 
 error: aborting due to previous error
 

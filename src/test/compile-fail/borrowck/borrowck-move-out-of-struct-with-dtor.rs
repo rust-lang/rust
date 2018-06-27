@@ -18,9 +18,9 @@ impl Drop for S {
 
 fn move_in_match() {
     match (S {f:"foo".to_string()}) {
+        //[mir]~^ ERROR [E0509]
         S {f:_s} => {}
         //[ast]~^ ERROR cannot move out of type `S`, which implements the `Drop` trait [E0509]
-        //[mir]~^^ ERROR [E0509]
     }
 }
 
