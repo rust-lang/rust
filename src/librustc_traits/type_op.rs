@@ -9,15 +9,15 @@
 // except according to those terms.
 
 use rustc::infer::canonical::{Canonical, QueryResult};
-use rustc::infer::{InferCtxt, InferOk};
+use rustc::infer::InferCtxt;
 use rustc::traits::query::type_op::eq::Eq;
 use rustc::traits::query::type_op::normalize::Normalize;
 use rustc::traits::query::type_op::prove_predicate::ProvePredicate;
 use rustc::traits::query::type_op::subtype::Subtype;
 use rustc::traits::query::{Fallible, NoSolution};
-use rustc::traits::{Obligation, Normalized, ObligationCause};
+use rustc::traits::{FulfillmentContext, Normalized, Obligation, ObligationCause, TraitEngine, TraitEngineExt};
 use rustc::ty::query::Providers;
-use rustc::ty::{ParamEnvAnd, FnSig, Lift, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{FnSig, Lift, ParamEnvAnd, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::sync::Lrc;
 use std::fmt;
 
@@ -39,16 +39,20 @@ fn type_op_eq<'tcx>(
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Eq<'tcx>>>,
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, ()>>>, NoSolution> {
     tcx.infer_ctxt()
-        .enter_canonical_trait_query(&canonicalized, |infcx, key| {
+        .enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
             let (param_env, Eq { a, b }) = key.into_parts();
-            Ok(infcx.at(&ObligationCause::dummy(), param_env).eq(a, b)?)
+            Ok(infcx
+                .at(&ObligationCause::dummy(), param_env)
+                .eq(a, b)?
+                .into_value_registering_obligations(infcx, fulfill_cx))
         })
 }
 
 fn type_op_normalize<T>(
     infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+    fulfill_cx: &mut FulfillmentContext<'tcx>,
     key: ParamEnvAnd<'tcx, Normalize<T>>,
-) -> Fallible<InferOk<'tcx, T>>
+) -> Fallible<T>
 where
     T: fmt::Debug + TypeFoldable<'tcx> + Lift<'gcx>,
 {
@@ -56,7 +60,8 @@ where
     let Normalized { value, obligations } = infcx
         .at(&ObligationCause::dummy(), param_env)
         .normalize(&value)?;
-    Ok(InferOk { value, obligations }) // ugh we should merge these two structs
+    fulfill_cx.register_predicate_obligations(infcx, obligations);
+    Ok(value)
 }
 
 fn type_op_normalize_ty(
@@ -95,14 +100,14 @@ fn type_op_subtype<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Subtype<'tcx>>>,
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, ()>>>, NoSolution> {
-    tcx.infer_ctxt().enter_canonical_trait_query(
-        &canonicalized, |infcx, key| {
+    tcx.infer_ctxt()
+        .enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
             let (param_env, Subtype { sub, sup }) = key.into_parts();
             Ok(infcx
                 .at(&ObligationCause::dummy(), param_env)
-                .sup(sup, sub)?)
-        },
-    )
+                .sup(sup, sub)?
+                .into_value_registering_obligations(infcx, fulfill_cx))
+        })
 }
 
 fn type_op_prove_predicate<'tcx>(
@@ -110,15 +115,12 @@ fn type_op_prove_predicate<'tcx>(
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, ProvePredicate<'tcx>>>,
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, ()>>>, NoSolution> {
     tcx.infer_ctxt()
-        .enter_canonical_trait_query(&canonicalized, |_infcx, key| {
+        .enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
             let (param_env, ProvePredicate { predicate }) = key.into_parts();
-            Ok(InferOk {
-                value: (),
-                obligations: vec![Obligation::new(
-                    ObligationCause::dummy(),
-                    param_env,
-                    predicate,
-                )],
-            })
+            fulfill_cx.register_predicate_obligation(
+                infcx,
+                Obligation::new(ObligationCause::dummy(), param_env, predicate),
+            );
+            Ok(())
         })
 }

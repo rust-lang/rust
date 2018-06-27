@@ -27,7 +27,7 @@ use ty::{self, Ty, TyCtxt, GenericParamDefKind};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::TypeFoldable;
 use ty::relate::RelateResult;
-use traits::{self, ObligationCause, PredicateObligations};
+use traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 use rustc_data_structures::unify as ut;
 use std::cell::{Cell, RefCell, Ref, RefMut};
 use std::collections::BTreeMap;
@@ -484,6 +484,19 @@ impl<T> ExpectedFound<T> {
 impl<'tcx, T> InferOk<'tcx, T> {
     pub fn unit(self) -> InferOk<'tcx, ()> {
         InferOk { value: (), obligations: self.obligations }
+    }
+
+    /// Extract `value`, registering any obligations into `fulfill_cx`
+    pub fn into_value_registering_obligations(
+        self,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
+        fulfill_cx: &mut impl TraitEngine<'tcx>,
+    ) -> T {
+        let InferOk { value, obligations } = self;
+        for obligation in obligations {
+            fulfill_cx.register_predicate_obligation(infcx, obligation);
+        }
+        value
     }
 }
 

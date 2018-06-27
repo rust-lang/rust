@@ -9,9 +9,8 @@
 // except according to those terms.
 
 use rustc::infer::canonical::{Canonical, QueryResult};
-use rustc::infer::InferOk;
 use rustc::traits::query::{normalize::NormalizationResult, CanonicalProjectionGoal, NoSolution};
-use rustc::traits::{self, ObligationCause, SelectionContext};
+use rustc::traits::{self, ObligationCause, SelectionContext, TraitEngineExt};
 use rustc::ty::query::Providers;
 use rustc::ty::{ParamEnvAnd, TyCtxt};
 use rustc_data_structures::sync::Lrc;
@@ -39,6 +38,7 @@ fn normalize_projection_ty<'tcx>(
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
         |infcx,
+         fulfill_cx,
          ParamEnvAnd {
              param_env,
              value: goal,
@@ -54,11 +54,9 @@ fn normalize_projection_ty<'tcx>(
                 0,
                 &mut obligations,
             );
-            Ok(InferOk {
-                value: NormalizationResult {
-                    normalized_ty: answer,
-                },
-                obligations,
+            fulfill_cx.register_predicate_obligations(infcx, obligations);
+            Ok(NormalizationResult {
+                normalized_ty: answer,
             })
         },
     )

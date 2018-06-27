@@ -12,7 +12,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::{Canonical, QueryResult};
 use rustc::traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstraint};
 use rustc::traits::query::{CanonicalTyGoal, NoSolution};
-use rustc::traits::{FulfillmentContext, Normalized, ObligationCause};
+use rustc::traits::{FulfillmentContext, Normalized, ObligationCause, TraitEngineExt};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};

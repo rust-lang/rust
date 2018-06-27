@@ -56,7 +56,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
     pub fn enter_canonical_trait_query<K, R>(
         &'tcx mut self,
         canonical_key: &Canonical<'tcx, K>,
-        op: impl FnOnce(&InferCtxt<'_, 'gcx, 'tcx>, K) -> Fallible<InferOk<'tcx, R>>,
+        op: impl FnOnce(&InferCtxt<'_, 'gcx, 'tcx>, &mut FulfillmentContext<'tcx>, K) -> Fallible<R>,
     ) -> Fallible<CanonicalizedQueryResult<'gcx, R>>
     where
         K: TypeFoldable<'tcx>,
@@ -65,9 +65,8 @@ impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
         self.enter(|ref infcx| {
             let (key, canonical_inference_vars) =
                 infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_key);
-            let InferOk { value, obligations } = op(infcx, key)?;
             let fulfill_cx = &mut FulfillmentContext::new();
-            fulfill_cx.register_predicate_obligations(infcx, obligations);
+            let value = op(infcx, fulfill_cx, key)?;
             infcx.make_canonicalized_query_result(canonical_inference_vars, value, fulfill_cx)
         })
     }
