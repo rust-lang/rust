@@ -216,7 +216,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         type_tests: Vec<TypeTest<'tcx>>,
     ) -> Self {
         // The `next` field should not yet have been initialized:
-        debug_assert!(outlives_constraints.iner().iter().all(|c| c.next.is_none()));
+        debug_assert!(outlives_constraints.inner().iter().all(|c| c.next.is_none()));
 
         let num_region_variables = var_infos.len();
         let num_universal_regions = universal_regions.len();
@@ -438,7 +438,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn compute_region_values(&self, _mir: &Mir<'tcx>) -> RegionValues {
         debug!("compute_region_values()");
         debug!("compute_region_values: constraints={:#?}", {
-            let mut constraints: Vec<_> = self.constraints.iner().iter().collect();
+            let mut constraints: Vec<_> = self.constraints.inner().iter().collect();
             constraints.sort();
             constraints
         });
@@ -450,7 +450,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let dependency_map = self.dependency_map.as_ref().unwrap();
 
         // Constraints that may need to be repropagated (initially all):
-        let mut dirty_list: Vec<_> = self.constraints.iner().indices().collect();
+        let mut dirty_list: Vec<_> = self.constraints.inner().indices().collect();
 
         // Set to 0 for each constraint that is on the dirty list:
         let mut clean_bit_vec = BitVector::new(dirty_list.len());
@@ -459,7 +459,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         while let Some(constraint_idx) = dirty_list.pop() {
             clean_bit_vec.insert(constraint_idx.index());
 
-            let constraint = &self.constraints.iner()[constraint_idx];
+            let constraint = &self.constraints.inner()[constraint_idx];
             debug!("propagate_constraints: constraint={:?}", constraint);
 
             if inferred_values.add_region(constraint.sup, constraint.sub) {
@@ -471,7 +471,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     if clean_bit_vec.remove(dep_idx.index()) {
                         dirty_list.push(dep_idx);
                     }
-                    opt_dep_idx = self.constraints.iner()[dep_idx].next;
+                    opt_dep_idx = self.constraints.inner()[dep_idx].next;
                 }
             }
 
@@ -488,7 +488,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn build_dependency_map(&mut self) -> IndexVec<RegionVid, Option<ConstraintIndex>> {
         let mut map = IndexVec::from_elem(None, &self.definitions);
 
-        for (idx, constraint) in self.constraints.iner_mut().iter_enumerated_mut().rev() {
+        for (idx, constraint) in self.constraints.inner_mut().iter_enumerated_mut().rev() {
             let mut head = &mut map[constraint.sub];
             debug_assert!(constraint.next.is_none());
             constraint.next = *head;
@@ -936,7 +936,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             );
 
             let blame_index = self.blame_constraint(longer_fr, shorter_fr);
-            let blame_span = self.constraints.iner()[blame_index].span;
+            let blame_span = self.constraints.inner()[blame_index].span;
 
             if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
                 // Shrink `fr` until we find a non-local region (if we do).
@@ -1027,7 +1027,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // - `fr1: X` transitively
         // - and `Y` is live at `elem`
         let index = self.blame_constraint(fr1, elem);
-        let region_sub = self.constraints.iner()[index].sub;
+        let region_sub = self.constraints.inner()[index].sub;
 
         // then return why `Y` was live at `elem`
         self.liveness_constraints.cause(region_sub, elem)
@@ -1048,7 +1048,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // of dependencies, which doesn't account for the locations of
         // contraints at all. But it will do for now.
         let relevant_constraint = self.constraints
-            .iner()
+            .inner()
             .iter_enumerated()
             .filter_map(|(i, constraint)| {
                 if !self.liveness_constraints.contains(constraint.sub, elem) {
@@ -1084,7 +1084,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         while changed {
             changed = false;
-            for constraint in self.constraints.iner() {
+            for constraint in self.constraints.inner() {
                 if let Some(n) = result_set[constraint.sup] {
                     let m = n + 1;
                     if result_set[constraint.sub]

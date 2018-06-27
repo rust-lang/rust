@@ -1,3 +1,13 @@
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::fx::FxHashSet;
 use rustc::ty::RegionVid;
@@ -14,7 +24,10 @@ crate struct ConstraintSet {
 
 impl ConstraintSet {
     pub fn push(&mut self, outlives_constraint: OutlivesConstraint) {
-        debug!("add_outlives({:?}: {:?} @ {:?}", outlives_constraint.sup, outlives_constraint.sub, outlives_constraint.point);
+        debug!("add_outlives({:?}: {:?} @ {:?}",
+               outlives_constraint.sup,
+               outlives_constraint.sub,
+               outlives_constraint.point);
         if outlives_constraint.sup == outlives_constraint.sub {
             // 'a: 'a is pretty uninteresting
             return;
@@ -24,12 +37,14 @@ impl ConstraintSet {
         }
     }
 
-    pub fn iner(&self) -> &IndexVec<ConstraintIndex, OutlivesConstraint> {
+    pub fn inner(&self) -> &IndexVec<ConstraintIndex, OutlivesConstraint> {
         &self.constraints
     }
 
-    /// Do Not use this to add nor remove items to the Vec, nor change the `sup`, nor `sub` of the data.
-    pub fn iner_mut(&mut self) -> &mut IndexVec<ConstraintIndex, OutlivesConstraint> {
+    /// Do Not use this to add nor remove items to the Vec,
+    /// nor change the `sup`,
+    /// nor `sub` of the data.
+    pub fn inner_mut(&mut self) -> &mut IndexVec<ConstraintIndex, OutlivesConstraint> {
         &mut self.constraints
     }
 }
