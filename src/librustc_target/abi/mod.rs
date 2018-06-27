@@ -240,6 +240,7 @@ impl Size {
         }
     }
 
+    #[inline]
     pub fn bytes(self) -> u64 {
         self.raw
     }
