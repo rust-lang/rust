@@ -2265,21 +2265,22 @@ fn document_stability(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) 
 
 fn document_non_exhaustive(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
     if item.non_exhaustive {
+        let name = item.type_();
         write!(w, r##"
         <div class='non-exhaustive'>
             <div class='stab non-exhaustive'>
                 <details>
                     <summary>
                         <span class=microscope>🔬</span>
-                        This type is marked as non exhaustive.
+                        This {} is marked as non exhaustive.
                     </summary>
                     <p>
-                    This type will require a wildcard arm in any match statements or constructors.
+                    This {} will require a wildcard arm in any match statements or constructors.
                     </p>
                 </details>
             </div>
         </div>
-        "##)?;
+        "##, name, name)?;
     }
 
     Ok(())

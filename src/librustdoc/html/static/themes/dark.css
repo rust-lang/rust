@@ -188,6 +188,7 @@ a.test-arrow {
 	border-color: #008dfd;
 }
 
+.stab.non-exhaustive { background: #2a2a2a; border-color: #707070; }
 .stab.unstable { background: #FFF5D6; border-color: #FFC600; color: #404040; }
 .stab.deprecated { background: #F3DFFF; border-color: #7F0087;  color: #404040; }
 .stab.portability { background: #C4ECFF; border-color: #7BA5DB;  color: #404040; }
