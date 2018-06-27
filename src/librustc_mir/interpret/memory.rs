@@ -595,6 +595,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         size: Size,
         nonoverlapping: bool,
     ) -> EvalResult<'tcx> {
+        self.copy_repeatedly(src, src_align, dest, dest_align, size, 1, nonoverlapping)
+    }
+
+    pub fn copy_repeatedly(
+        &mut self,
+        src: Scalar,
+        src_align: Align,
+        dest: Scalar,
+        dest_align: Align,
+        size: Size,
+        length: u64,
+        nonoverlapping: bool,
+    ) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be aligned
         self.check_align(src, src_align)?;
         self.check_align(dest, dest_align)?;
@@ -617,7 +630,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             .collect();
 
         let src_bytes = self.get_bytes_unchecked(src, size, src_align)?.as_ptr();
-        let dest_bytes = self.get_bytes_mut(dest, size, dest_align)?.as_mut_ptr();
+        let dest_bytes = self.get_bytes_mut(dest, size * length, dest_align)?.as_mut_ptr();
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
         // behind `src` and `dest`. Also, we use the overlapping-safe `ptr::copy` if `src` and
@@ -634,13 +647,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                         ));
                     }
                 }
-                ptr::copy(src_bytes, dest_bytes, size.bytes() as usize);
+
+                for i in 0..length {
+                    ptr::copy(src_bytes, dest_bytes.offset((size.bytes() * i) as isize), size.bytes() as usize);
+                }
             } else {
-                ptr::copy_nonoverlapping(src_bytes, dest_bytes, size.bytes() as usize);
+                for i in 0..length {
+                    ptr::copy_nonoverlapping(src_bytes, dest_bytes.offset((size.bytes() * i) as isize), size.bytes() as usize);
+                }
             }
         }
 
-        self.copy_undef_mask(src, dest, size)?;
+        self.copy_undef_mask(src, dest, size * length)?;
         // copy back the relocations
         self.get_mut(dest.alloc_id)?.relocations.insert_presorted(relocations);
 
