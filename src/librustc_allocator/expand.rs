@@ -103,6 +103,7 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
             format: MacroAttribute(Symbol::intern(name)),
             allow_internal_unstable: true,
             allow_internal_unsafe: false,
+            local_inner_macros: false,
             edition: hygiene::default_edition(),
         });
 

@@ -542,6 +542,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             format: MacroAttribute(Symbol::intern(&format!("{}", attr.path))),
             allow_internal_unstable: false,
             allow_internal_unsafe: false,
+            local_inner_macros: false,
             edition: ext.edition(),
         });
 
@@ -695,6 +696,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                           def_site_span: Option<Span>,
                                           allow_internal_unstable,
                                           allow_internal_unsafe,
+                                          local_inner_macros,
                                           // can't infer this type
                                           unstable_feature: Option<(Symbol, u32)>,
                                           edition| {
@@ -729,6 +731,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 format: macro_bang_format(path),
                 allow_internal_unstable,
                 allow_internal_unsafe,
+                local_inner_macros,
                 edition,
             });
             Ok(())
@@ -737,7 +740,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let opt_expanded = match *ext {
             DeclMacro(ref expand, def_span, edition) => {
                 if let Err(dummy_span) = validate_and_set_expn_info(self, def_span.map(|(_, s)| s),
-                                                                    false, false, None,
+                                                                    false, false, false, None,
                                                                     edition) {
                     dummy_span
                 } else {
@@ -750,12 +753,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 def_info,
                 allow_internal_unstable,
                 allow_internal_unsafe,
+                local_inner_macros,
                 unstable_feature,
                 edition,
             } => {
                 if let Err(dummy_span) = validate_and_set_expn_info(self, def_info.map(|(_, s)| s),
                                                                     allow_internal_unstable,
                                                                     allow_internal_unsafe,
+                                                                    local_inner_macros,
                                                                     unstable_feature,
                                                                     edition) {
                     dummy_span
@@ -777,6 +782,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         format: macro_bang_format(path),
                         allow_internal_unstable,
                         allow_internal_unsafe: false,
+                        local_inner_macros: false,
                         edition: hygiene::default_edition(),
                     });
 
@@ -816,6 +822,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         // FIXME probably want to follow macro_rules macros here.
                         allow_internal_unstable,
                         allow_internal_unsafe: false,
+                        local_inner_macros: false,
                         edition,
                     });
 
@@ -890,6 +897,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             format: MacroAttribute(pretty_name),
             allow_internal_unstable: false,
             allow_internal_unsafe: false,
+            local_inner_macros: false,
             edition: ext.edition(),
         };
 

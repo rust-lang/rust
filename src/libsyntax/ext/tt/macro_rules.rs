@@ -286,6 +286,12 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: 
     if body.legacy {
         let allow_internal_unstable = attr::contains_name(&def.attrs, "allow_internal_unstable");
         let allow_internal_unsafe = attr::contains_name(&def.attrs, "allow_internal_unsafe");
+        let mut local_inner_macros = false;
+        if let Some(macro_export) = attr::find_by_name(&def.attrs, "macro_export") {
+            if let Some(l) = macro_export.meta_item_list() {
+                local_inner_macros = attr::list_contains_name(&l, "local_inner_macros");
+            }
+        }
 
         let unstable_feature = attr::find_stability(&sess.span_diagnostic,
                                                     &def.attrs, def.span).and_then(|stability| {
@@ -301,6 +307,7 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: 
             def_info: Some((def.id, def.span)),
             allow_internal_unstable,
             allow_internal_unsafe,
+            local_inner_macros,
             unstable_feature,
             edition,
         }

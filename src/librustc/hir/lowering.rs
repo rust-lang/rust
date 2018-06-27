@@ -616,6 +616,7 @@ impl<'a> LoweringContext<'a> {
             format: codemap::CompilerDesugaring(reason),
             allow_internal_unstable: true,
             allow_internal_unsafe: false,
+            local_inner_macros: false,
             edition: codemap::hygiene::default_edition(),
         });
         span.with_ctxt(SyntaxContext::empty().apply_mark(mark))

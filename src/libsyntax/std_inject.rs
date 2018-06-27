@@ -29,6 +29,7 @@ fn ignored_span(sp: Span) -> Span {
         format: MacroAttribute(Symbol::intern("std_inject")),
         allow_internal_unstable: true,
         allow_internal_unsafe: false,
+        local_inner_macros: false,
         edition: hygiene::default_edition(),
     });
     sp.with_ctxt(SyntaxContext::empty().apply_mark(mark))

@@ -451,10 +451,17 @@ impl<'a> Resolver<'a> {
                                   kind: MacroKind, force: bool)
                                   -> Result<Def, Determinacy> {
         let ast::Path { ref segments, span } = *path;
-        let path: Vec<_> = segments.iter().map(|seg| seg.ident).collect();
+        let mut path: Vec<_> = segments.iter().map(|seg| seg.ident).collect();
         let invocation = self.invocations[&scope];
         let module = invocation.module.get();
         self.current_module = if module.is_trait() { module.parent.unwrap() } else { module };
+
+        // Possibly apply the macro helper hack
+        if self.use_extern_macros && kind == MacroKind::Bang && path.len() == 1 &&
+           path[0].span.ctxt().outer().expn_info().map_or(false, |info| info.local_inner_macros) {
+            let root = Ident::new(keywords::DollarCrate.name(), path[0].span);
+            path.insert(0, root);
+        }
 
         if path.len() > 1 {
             if !self.use_extern_macros && self.gated_errors.insert(span) {

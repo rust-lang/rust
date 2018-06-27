@@ -311,6 +311,7 @@ fn generate_test_harness(sess: &ParseSess,
         format: MacroAttribute(Symbol::intern("test")),
         allow_internal_unstable: true,
         allow_internal_unsafe: false,
+        local_inner_macros: false,
         edition: hygiene::default_edition(),
     });
 

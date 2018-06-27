@@ -108,6 +108,7 @@ impl<'a> Registry<'a> {
                 def_info: _,
                 allow_internal_unstable,
                 allow_internal_unsafe,
+                local_inner_macros,
                 unstable_feature,
                 edition,
             } => {
@@ -117,6 +118,7 @@ impl<'a> Registry<'a> {
                     def_info: Some((nid, self.krate_span)),
                     allow_internal_unstable,
                     allow_internal_unsafe,
+                    local_inner_macros,
                     unstable_feature,
                     edition,
                 }
@@ -152,6 +154,7 @@ impl<'a> Registry<'a> {
             def_info: None,
             allow_internal_unstable: false,
             allow_internal_unsafe: false,
+            local_inner_macros: false,
             unstable_feature: None,
             edition: hygiene::default_edition(),
         });
