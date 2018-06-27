@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --edition=2015
+// edition:2015
 // aux-build:edition-kw-macro-2018.rs
 
 #![feature(raw_identifiers)]

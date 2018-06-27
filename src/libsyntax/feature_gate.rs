@@ -1359,17 +1359,17 @@ pub const EXPLAIN_LITERAL_MATCHER: &'static str =
     ":literal fragment specifier is experimental and subject to change";
 
 pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &'static str =
-    "Unsized tuple coercion is not stable enough for use and is subject to change";
+    "unsized tuple coercion is not stable enough for use and is subject to change";
 
 pub const EXPLAIN_MACRO_AT_MOST_ONCE_REP: &'static str =
-    "Using the `?` macro Kleene operator for \"at most one\" repetition is unstable";
+    "using the `?` macro Kleene operator for \"at most one\" repetition is unstable";
 
 pub const EXPLAIN_MACROS_IN_EXTERN: &'static str =
-    "Macro invocations in `extern {}` blocks are experimental.";
+    "macro invocations in `extern {}` blocks are experimental.";
 
 // mention proc-macros when enabled
 pub const EXPLAIN_PROC_MACROS_IN_EXTERN: &'static str =
-    "Macro and proc-macro invocations in `extern {}` blocks are experimental.";
+    "macro and proc-macro invocations in `extern {}` blocks are experimental.";
 
 struct PostExpansionVisitor<'a> {
     context: &'a Context<'a>,

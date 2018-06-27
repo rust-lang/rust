@@ -11,7 +11,7 @@
 // tests that the anonymous_parameters lint is warn-by-default on the 2018 edition
 
 // compile-pass
-// compile-flags: --edition=2018
+// edition:2018
 // run-rustfix
 
 trait Foo {

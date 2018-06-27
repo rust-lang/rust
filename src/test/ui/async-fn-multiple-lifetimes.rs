@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --edition=2018
+// edition:2018
 
 #![feature(arbitrary_self_types, async_await, await_macro, futures_api, pin)]
 

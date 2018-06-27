@@ -10,5 +10,5 @@
 
 fn main() {
     let _ : &(Send,) = &((),);
-    //~^ ERROR Unsized tuple coercion is not stable enough
+    //~^ ERROR unsized tuple coercion is not stable enough
 }

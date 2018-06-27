@@ -124,10 +124,10 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                         let concrete_ty = generic_ty.subst(self.tcx(), substs);
                         self.anon_depth += 1;
                         if concrete_ty == ty {
-                            println!("generic_ty: {:#?}", generic_ty);
-                            println!("substs {:#?}", substs);
+                            bug!("infinite recursion generic_ty: {:#?}, substs: {:#?}, \
+                                  concrete_ty: {:#?}, ty: {:#?}", generic_ty, substs, concrete_ty,
+                                  ty);
                         }
-                        assert_ne!(concrete_ty, ty, "infinite recursion");
                         let folded_ty = self.fold_ty(concrete_ty);
                         self.anon_depth -= 1;
                         folded_ty
