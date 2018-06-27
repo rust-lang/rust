@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::fx::FxHashSet;
-use rustc::ty::RegionVid;
 use rustc::mir::Location;
+use rustc::ty::RegionVid;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
 use std::fmt;
 use syntax_pos::Span;
@@ -23,15 +23,11 @@ crate struct ConstraintSet {
 }
 
 impl ConstraintSet {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
     pub fn push(&mut self, constraint: OutlivesConstraint) {
-        debug!("add_outlives({:?}: {:?} @ {:?}",
-               constraint.sup,
-               constraint.sub,
-               constraint.point);
+        debug!(
+            "add_outlives({:?}: {:?} @ {:?}",
+            constraint.sup, constraint.sub, constraint.point
+        );
         if constraint.sup == constraint.sub {
             // 'a: 'a is pretty uninteresting
             return;
@@ -56,6 +52,17 @@ impl ConstraintSet {
         }
 
         map
+    }
+
+    pub fn each_affected_by_dirty(
+        &self,
+        mut opt_dep_idx: Option<ConstraintIndex>,
+        mut op: impl FnMut(ConstraintIndex),
+    ) {
+        while let Some(dep_idx) = opt_dep_idx {
+            op(dep_idx);
+            opt_dep_idx = self.constraints[dep_idx].next;
+        }
     }
 }
 
@@ -105,4 +112,3 @@ impl fmt::Debug for OutlivesConstraint {
 }
 
 newtype_index!(ConstraintIndex { DEBUG_FORMAT = "ConstraintIndex({})" });
-

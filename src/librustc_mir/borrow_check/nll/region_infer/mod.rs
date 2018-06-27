@@ -466,13 +466,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 debug!("propagate_constraints:   sub={:?}", constraint.sub);
                 debug!("propagate_constraints:   sup={:?}", constraint.sup);
 
-                let mut opt_dep_idx = dependency_map[constraint.sup];
-                while let Some(dep_idx) = opt_dep_idx {
+                self.constraints.each_affected_by_dirty(dependency_map[constraint.sup], |dep_idx| {
                     if clean_bit_vec.remove(dep_idx.index()) {
                         dirty_list.push(dep_idx);
                     }
-                    opt_dep_idx = self.constraints.inner()[dep_idx].next;
-                }
+                });
             }
 
             debug!("\n");
