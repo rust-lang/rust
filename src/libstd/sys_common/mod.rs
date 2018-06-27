@@ -54,6 +54,7 @@ pub mod util;
 pub mod wtf8;
 pub mod bytestring;
 pub mod process;
+pub mod unixsocket;
 
 cfg_if! {
     if #[cfg(any(target_os = "cloudabi", target_os = "l4re", target_os = "redox"))] {

@@ -25,32 +25,34 @@ mod libc {
     pub struct sockaddr_un;
 }
 
-use ascii;
-use ffi::OsStr;
 use fmt;
-use io::{self, Initializer};
+use io;
 use mem;
 use net::{self, Shutdown};
 use os::unix::ffi::OsStrExt;
 use os::unix::io::{RawFd, AsRawFd, FromRawFd, IntoRawFd};
 use path::Path;
 use time::Duration;
-use sys::{self, cvt};
+use sys::ext::unixsocket as inner;
 use sys::net::Socket;
+use sys::{self, cvt};
 use sys_common::{self, AsInner, FromInner, IntoInner};
+
+#[stable(feature = "unix_socket", since = "1.10.0")]
+pub use sys_common::unixsocket::*;
 
 #[cfg(any(target_os = "linux", target_os = "android",
           target_os = "dragonfly", target_os = "freebsd",
           target_os = "openbsd", target_os = "netbsd",
           target_os = "haiku", target_os = "bitrig"))]
-use libc::MSG_NOSIGNAL;
+pub(crate) use libc::MSG_NOSIGNAL;
 #[cfg(not(any(target_os = "linux", target_os = "android",
               target_os = "dragonfly", target_os = "freebsd",
               target_os = "openbsd", target_os = "netbsd",
               target_os = "haiku", target_os = "bitrig")))]
-const MSG_NOSIGNAL: libc::c_int = 0x0;
+pub(crate) const MSG_NOSIGNAL: libc::c_int = 0x0;
 
-fn sun_path_offset() -> usize {
+pub(crate) fn sun_path_offset() -> usize {
     // Work with an actual instance of the type since using a null pointer is UB
     let addr: libc::sockaddr_un = unsafe { mem::uninitialized() };
     let base = &addr as *const _ as usize;
@@ -58,7 +60,7 @@ fn sun_path_offset() -> usize {
     path - base
 }
 
-unsafe fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::socklen_t)> {
+pub(crate) unsafe fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::socklen_t)> {
     let mut addr: libc::sockaddr_un = mem::zeroed();
     addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
 
@@ -87,557 +89,22 @@ unsafe fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::sockl
     Ok((addr, len as libc::socklen_t))
 }
 
-enum AddressKind<'a> {
-    Unnamed,
-    Pathname(&'a Path),
-    Abstract(&'a [u8]),
-}
-
-/// An address associated with a Unix socket.
-///
-/// # Examples
-///
-/// ```
-/// use std::os::unix::net::UnixListener;
-///
-/// let socket = match UnixListener::bind("/tmp/sock") {
-///     Ok(sock) => sock,
-///     Err(e) => {
-///         println!("Couldn't bind: {:?}", e);
-///         return
-///     }
-/// };
-/// let addr = socket.local_addr().expect("Couldn't get local address");
-/// ```
-#[derive(Clone)]
-#[stable(feature = "unix_socket", since = "1.10.0")]
-pub struct SocketAddr {
-    addr: libc::sockaddr_un,
-    len: libc::socklen_t,
-}
-
-impl SocketAddr {
-    fn new<F>(f: F) -> io::Result<SocketAddr>
-        where F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int
-    {
-        unsafe {
-            let mut addr: libc::sockaddr_un = mem::zeroed();
-            let mut len = mem::size_of::<libc::sockaddr_un>() as libc::socklen_t;
-            cvt(f(&mut addr as *mut _ as *mut _, &mut len))?;
-            SocketAddr::from_parts(addr, len)
-        }
-    }
-
-    fn from_parts(addr: libc::sockaddr_un, mut len: libc::socklen_t) -> io::Result<SocketAddr> {
-        if len == 0 {
-            // When there is a datagram from unnamed unix socket
-            // linux returns zero bytes of address
-            len = sun_path_offset() as libc::socklen_t;  // i.e. zero-length address
-        } else if addr.sun_family != libc::AF_UNIX as libc::sa_family_t {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                      "file descriptor did not correspond to a Unix socket"));
-        }
-
-        Ok(SocketAddr {
-            addr,
-            len,
-        })
-    }
-
-    /// Returns true if and only if the address is unnamed.
-    ///
-    /// # Examples
-    ///
-    /// A named address:
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixListener;
-    ///
-    /// let socket = UnixListener::bind("/tmp/sock").unwrap();
-    /// let addr = socket.local_addr().expect("Couldn't get local address");
-    /// assert_eq!(addr.is_unnamed(), false);
-    /// ```
-    ///
-    /// An unnamed address:
-    ///
-    /// ```
-    /// use std::os::unix::net::UnixDatagram;
-    ///
-    /// let socket = UnixDatagram::unbound().unwrap();
-    /// let addr = socket.local_addr().expect("Couldn't get local address");
-    /// assert_eq!(addr.is_unnamed(), true);
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn is_unnamed(&self) -> bool {
-        if let AddressKind::Unnamed = self.address() {
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Returns the contents of this address if it is a `pathname` address.
-    ///
-    /// # Examples
-    ///
-    /// With a pathname:
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixListener;
-    /// use std::path::Path;
-    ///
-    /// let socket = UnixListener::bind("/tmp/sock").unwrap();
-    /// let addr = socket.local_addr().expect("Couldn't get local address");
-    /// assert_eq!(addr.as_pathname(), Some(Path::new("/tmp/sock")));
-    /// ```
-    ///
-    /// Without a pathname:
-    ///
-    /// ```
-    /// use std::os::unix::net::UnixDatagram;
-    ///
-    /// let socket = UnixDatagram::unbound().unwrap();
-    /// let addr = socket.local_addr().expect("Couldn't get local address");
-    /// assert_eq!(addr.as_pathname(), None);
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn as_pathname(&self) -> Option<&Path> {
-        if let AddressKind::Pathname(path) = self.address() {
-            Some(path)
-        } else {
-            None
-        }
-    }
-
-    fn address<'a>(&'a self) -> AddressKind<'a> {
-        let len = self.len as usize - sun_path_offset();
-        let path = unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&self.addr.sun_path) };
-
-        // macOS seems to return a len of 16 and a zeroed sun_path for unnamed addresses
-        if len == 0
-            || (cfg!(not(any(target_os = "linux", target_os = "android")))
-                && self.addr.sun_path[0] == 0)
-        {
-            AddressKind::Unnamed
-        } else if self.addr.sun_path[0] == 0 {
-            AddressKind::Abstract(&path[1..len])
-        } else {
-            AddressKind::Pathname(OsStr::from_bytes(&path[..len - 1]).as_ref())
-        }
-    }
-}
-
-#[stable(feature = "unix_socket", since = "1.10.0")]
-impl fmt::Debug for SocketAddr {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match self.address() {
-            AddressKind::Unnamed => write!(fmt, "(unnamed)"),
-            AddressKind::Abstract(name) => write!(fmt, "{} (abstract)", AsciiEscaped(name)),
-            AddressKind::Pathname(path) => write!(fmt, "{:?} (pathname)", path),
-        }
-    }
-}
-
-struct AsciiEscaped<'a>(&'a [u8]);
-
-impl<'a> fmt::Display for AsciiEscaped<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "\"")?;
-        for byte in self.0.iter().cloned().flat_map(ascii::escape_default) {
-            write!(fmt, "{}", byte as char)?;
-        }
-        write!(fmt, "\"")
-    }
-}
-
-/// A Unix stream socket.
-///
-/// # Examples
-///
-/// ```no_run
-/// use std::os::unix::net::UnixStream;
-/// use std::io::prelude::*;
-///
-/// let mut stream = UnixStream::connect("/path/to/my/socket").unwrap();
-/// stream.write_all(b"hello world").unwrap();
-/// let mut response = String::new();
-/// stream.read_to_string(&mut response).unwrap();
-/// println!("{}", response);
-/// ```
-#[stable(feature = "unix_socket", since = "1.10.0")]
-pub struct UnixStream(Socket);
-
-#[stable(feature = "unix_socket", since = "1.10.0")]
-impl fmt::Debug for UnixStream {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let mut builder = fmt.debug_struct("UnixStream");
-        builder.field("fd", self.0.as_inner());
-        if let Ok(addr) = self.local_addr() {
-            builder.field("local", &addr);
-        }
-        if let Ok(addr) = self.peer_addr() {
-            builder.field("peer", &addr);
-        }
-        builder.finish()
-    }
-}
-
-impl UnixStream {
-    /// Connects to the socket named by `path`.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixStream;
-    ///
-    /// let socket = match UnixStream::connect("/tmp/sock") {
-    ///     Ok(sock) => sock,
-    ///     Err(e) => {
-    ///         println!("Couldn't connect: {:?}", e);
-    ///         return
-    ///     }
-    /// };
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn connect<P: AsRef<Path>>(path: P) -> io::Result<UnixStream> {
-        fn inner(path: &Path) -> io::Result<UnixStream> {
-            unsafe {
-                let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
-                let (addr, len) = sockaddr_un(path)?;
-
-                cvt(libc::connect(*inner.as_inner(), &addr as *const _ as *const _, len))?;
-                Ok(UnixStream(inner))
-            }
-        }
-        inner(path.as_ref())
-    }
-
-    /// Creates an unnamed pair of connected sockets.
-    ///
-    /// Returns two `UnixStream`s which are connected to each other.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixStream;
-    ///
-    /// let (sock1, sock2) = match UnixStream::pair() {
-    ///     Ok((sock1, sock2)) => (sock1, sock2),
-    ///     Err(e) => {
-    ///         println!("Couldn't create a pair of sockets: {:?}", e);
-    ///         return
-    ///     }
-    /// };
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn pair() -> io::Result<(UnixStream, UnixStream)> {
-        let (i1, i2) = Socket::new_pair(libc::AF_UNIX, libc::SOCK_STREAM)?;
-        Ok((UnixStream(i1), UnixStream(i2)))
-    }
-
-    /// Creates a new independently owned handle to the underlying socket.
-    ///
-    /// The returned `UnixStream` is a reference to the same stream that this
-    /// object references. Both handles will read and write the same stream of
-    /// data, and options set on one stream will be propagated to the other
-    /// stream.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixStream;
-    ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// let sock_copy = socket.try_clone().expect("Couldn't clone socket");
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn try_clone(&self) -> io::Result<UnixStream> {
-        self.0.duplicate().map(UnixStream)
-    }
-
-    /// Returns the socket address of the local half of this connection.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixStream;
-    ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// let addr = socket.local_addr().expect("Couldn't get local address");
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
-    }
-
-    /// Returns the socket address of the remote half of this connection.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixStream;
-    ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// let addr = socket.peer_addr().expect("Couldn't get peer address");
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        SocketAddr::new(|addr, len| unsafe { libc::getpeername(*self.0.as_inner(), addr, len) })
-    }
-
-    /// Sets the read timeout for the socket.
-    ///
-    /// If the provided value is [`None`], then [`read`] calls will block
-    /// indefinitely. An [`Err`] is returned if the zero [`Duration`] is passed to this
-    /// method.
-    ///
-    /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
-    /// [`Err`]: ../../../../std/result/enum.Result.html#variant.Err
-    /// [`read`]: ../../../../std/io/trait.Read.html#tymethod.read
-    /// [`Duration`]: ../../../../std/time/struct.Duration.html
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixStream;
-    /// use std::time::Duration;
-    ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
-    /// ```
-    ///
-    /// An [`Err`] is returned if the zero [`Duration`] is passed to this
-    /// method:
-    ///
-    /// ```no_run
-    /// use std::io;
-    /// use std::os::unix::net::UnixStream;
-    /// use std::time::Duration;
-    ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// let result = socket.set_read_timeout(Some(Duration::new(0, 0)));
-    /// let err = result.unwrap_err();
-    /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
-        self.0.set_timeout(timeout, libc::SO_RCVTIMEO)
-    }
-
-    /// Sets the write timeout for the socket.
-    ///
-    /// If the provided value is [`None`], then [`write`] calls will block
-    /// indefinitely. An [`Err`] is returned if the zero [`Duration`] is
-    /// passed to this method.
-    ///
-    /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
-    /// [`Err`]: ../../../../std/result/enum.Result.html#variant.Err
-    /// [`write`]: ../../../../std/io/trait.Write.html#tymethod.write
-    /// [`Duration`]: ../../../../std/time/struct.Duration.html
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixStream;
-    /// use std::time::Duration;
-    ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// socket.set_write_timeout(Some(Duration::new(1, 0))).expect("Couldn't set write timeout");
-    /// ```
-    ///
-    /// An [`Err`] is returned if the zero [`Duration`] is passed to this
-    /// method:
-    ///
-    /// ```no_run
-    /// use std::io;
-    /// use std::net::UdpSocket;
-    /// use std::time::Duration;
-    ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").unwrap();
-    /// let result = socket.set_write_timeout(Some(Duration::new(0, 0)));
-    /// let err = result.unwrap_err();
-    /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
-        self.0.set_timeout(timeout, libc::SO_SNDTIMEO)
-    }
-
-    /// Returns the read timeout of this socket.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixStream;
-    /// use std::time::Duration;
-    ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
-    /// assert_eq!(socket.read_timeout().unwrap(), Some(Duration::new(1, 0)));
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
-        self.0.timeout(libc::SO_RCVTIMEO)
-    }
-
-    /// Returns the write timeout of this socket.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixStream;
-    /// use std::time::Duration;
-    ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// socket.set_write_timeout(Some(Duration::new(1, 0))).expect("Couldn't set write timeout");
-    /// assert_eq!(socket.write_timeout().unwrap(), Some(Duration::new(1, 0)));
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
-        self.0.timeout(libc::SO_SNDTIMEO)
-    }
-
-    /// Moves the socket into or out of nonblocking mode.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixStream;
-    ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// socket.set_nonblocking(true).expect("Couldn't set nonblocking");
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
-        self.0.set_nonblocking(nonblocking)
-    }
-
-    /// Returns the value of the `SO_ERROR` option.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixStream;
-    ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// if let Ok(Some(err)) = socket.take_error() {
-    ///     println!("Got error: {:?}", err);
-    /// }
-    /// ```
-    ///
-    /// # Platform specific
-    /// On Redox this always returns None.
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        self.0.take_error()
-    }
-
-    /// Shuts down the read, write, or both halves of this connection.
-    ///
-    /// This function will cause all pending and future I/O calls on the
-    /// specified portions to immediately return with an appropriate value
-    /// (see the documentation of [`Shutdown`]).
-    ///
-    /// [`Shutdown`]: ../../../../std/net/enum.Shutdown.html
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixStream;
-    /// use std::net::Shutdown;
-    ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// socket.shutdown(Shutdown::Both).expect("shutdown function failed");
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
-        self.0.shutdown(how)
-    }
-}
-
-#[stable(feature = "unix_socket", since = "1.10.0")]
-impl io::Read for UnixStream {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        io::Read::read(&mut &*self, buf)
-    }
-
-    #[inline]
-    unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
-    }
-}
-
-#[stable(feature = "unix_socket", since = "1.10.0")]
-impl<'a> io::Read for &'a UnixStream {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.0.read(buf)
-    }
-
-    #[inline]
-    unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
-    }
-}
-
-#[stable(feature = "unix_socket", since = "1.10.0")]
-impl io::Write for UnixStream {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        io::Write::write(&mut &*self, buf)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        io::Write::flush(&mut &*self)
-    }
-}
-
-#[stable(feature = "unix_socket", since = "1.10.0")]
-impl<'a> io::Write for &'a UnixStream {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.0.write(buf)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-#[stable(feature = "unix_socket", since = "1.10.0")]
-impl AsRawFd for UnixStream {
-    fn as_raw_fd(&self) -> RawFd {
-        *self.0.as_inner()
-    }
-}
-
-#[stable(feature = "unix_socket", since = "1.10.0")]
-impl FromRawFd for UnixStream {
-    unsafe fn from_raw_fd(fd: RawFd) -> UnixStream {
-        UnixStream(Socket::from_inner(fd))
-    }
-}
-
-#[stable(feature = "unix_socket", since = "1.10.0")]
-impl IntoRawFd for UnixStream {
-    fn into_raw_fd(self) -> RawFd {
-        self.0.into_inner()
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "into_raw_os", since = "1.4.0")]
 impl AsRawFd for net::TcpStream {
     fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "into_raw_os", since = "1.4.0")]
 impl AsRawFd for net::TcpListener {
     fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "into_raw_os", since = "1.4.0")]
 impl AsRawFd for net::UdpSocket {
     fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
 }
 
-#[stable(feature = "from_raw_os", since = "1.1.0")]
+#[stable(feature = "into_raw_os", since = "1.4.0")]
 impl FromRawFd for net::TcpStream {
     unsafe fn from_raw_fd(fd: RawFd) -> net::TcpStream {
         let socket = sys::net::Socket::from_inner(fd);
@@ -645,7 +112,7 @@ impl FromRawFd for net::TcpStream {
     }
 }
 
-#[stable(feature = "from_raw_os", since = "1.1.0")]
+#[stable(feature = "into_raw_os", since = "1.4.0")]
 impl FromRawFd for net::TcpListener {
     unsafe fn from_raw_fd(fd: RawFd) -> net::TcpListener {
         let socket = sys::net::Socket::from_inner(fd);
@@ -653,7 +120,7 @@ impl FromRawFd for net::TcpListener {
     }
 }
 
-#[stable(feature = "from_raw_os", since = "1.1.0")]
+#[stable(feature = "into_raw_os", since = "1.4.0")]
 impl FromRawFd for net::UdpSocket {
     unsafe fn from_raw_fd(fd: RawFd) -> net::UdpSocket {
         let socket = sys::net::Socket::from_inner(fd);
@@ -677,300 +144,6 @@ impl IntoRawFd for net::TcpListener {
 impl IntoRawFd for net::UdpSocket {
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_socket().into_inner()
-    }
-}
-
-/// A structure representing a Unix domain socket server.
-///
-/// # Examples
-///
-/// ```no_run
-/// use std::thread;
-/// use std::os::unix::net::{UnixStream, UnixListener};
-///
-/// fn handle_client(stream: UnixStream) {
-///     // ...
-/// }
-///
-/// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
-///
-/// // accept connections and process them, spawning a new thread for each one
-/// for stream in listener.incoming() {
-///     match stream {
-///         Ok(stream) => {
-///             /* connection succeeded */
-///             thread::spawn(|| handle_client(stream));
-///         }
-///         Err(err) => {
-///             /* connection failed */
-///             break;
-///         }
-///     }
-/// }
-/// ```
-#[stable(feature = "unix_socket", since = "1.10.0")]
-pub struct UnixListener(Socket);
-
-#[stable(feature = "unix_socket", since = "1.10.0")]
-impl fmt::Debug for UnixListener {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let mut builder = fmt.debug_struct("UnixListener");
-        builder.field("fd", self.0.as_inner());
-        if let Ok(addr) = self.local_addr() {
-            builder.field("local", &addr);
-        }
-        builder.finish()
-    }
-}
-
-impl UnixListener {
-    /// Creates a new `UnixListener` bound to the specified socket.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixListener;
-    ///
-    /// let listener = match UnixListener::bind("/path/to/the/socket") {
-    ///     Ok(sock) => sock,
-    ///     Err(e) => {
-    ///         println!("Couldn't connect: {:?}", e);
-    ///         return
-    ///     }
-    /// };
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
-        fn inner(path: &Path) -> io::Result<UnixListener> {
-            unsafe {
-                let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
-                let (addr, len) = sockaddr_un(path)?;
-
-                cvt(libc::bind(*inner.as_inner(), &addr as *const _ as *const _, len as _))?;
-                cvt(libc::listen(*inner.as_inner(), 128))?;
-
-                Ok(UnixListener(inner))
-            }
-        }
-        inner(path.as_ref())
-    }
-
-    /// Accepts a new incoming connection to this listener.
-    ///
-    /// This function will block the calling thread until a new Unix connection
-    /// is established. When established, the corresponding [`UnixStream`] and
-    /// the remote peer's address will be returned.
-    ///
-    /// [`UnixStream`]: ../../../../std/os/unix/net/struct.UnixStream.html
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixListener;
-    ///
-    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
-    ///
-    /// match listener.accept() {
-    ///     Ok((socket, addr)) => println!("Got a client: {:?}", addr),
-    ///     Err(e) => println!("accept function failed: {:?}", e),
-    /// }
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
-        let mut storage: libc::sockaddr_un = unsafe { mem::zeroed() };
-        let mut len = mem::size_of_val(&storage) as libc::socklen_t;
-        let sock = self.0.accept(&mut storage as *mut _ as *mut _, &mut len)?;
-        let addr = SocketAddr::from_parts(storage, len)?;
-        Ok((UnixStream(sock), addr))
-    }
-
-    /// Creates a new independently owned handle to the underlying socket.
-    ///
-    /// The returned `UnixListener` is a reference to the same socket that this
-    /// object references. Both handles can be used to accept incoming
-    /// connections and options set on one listener will affect the other.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixListener;
-    ///
-    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
-    ///
-    /// let listener_copy = listener.try_clone().expect("try_clone failed");
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn try_clone(&self) -> io::Result<UnixListener> {
-        self.0.duplicate().map(UnixListener)
-    }
-
-    /// Returns the local socket address of this listener.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixListener;
-    ///
-    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
-    ///
-    /// let addr = listener.local_addr().expect("Couldn't get local address");
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
-    }
-
-    /// Moves the socket into or out of nonblocking mode.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixListener;
-    ///
-    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
-    ///
-    /// listener.set_nonblocking(true).expect("Couldn't set non blocking");
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
-        self.0.set_nonblocking(nonblocking)
-    }
-
-    /// Returns the value of the `SO_ERROR` option.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::os::unix::net::UnixListener;
-    ///
-    /// let listener = UnixListener::bind("/tmp/sock").unwrap();
-    ///
-    /// if let Ok(Some(err)) = listener.take_error() {
-    ///     println!("Got error: {:?}", err);
-    /// }
-    /// ```
-    ///
-    /// # Platform specific
-    /// On Redox this always returns None.
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        self.0.take_error()
-    }
-
-    /// Returns an iterator over incoming connections.
-    ///
-    /// The iterator will never return [`None`] and will also not yield the
-    /// peer's [`SocketAddr`] structure.
-    ///
-    /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
-    /// [`SocketAddr`]: struct.SocketAddr.html
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::thread;
-    /// use std::os::unix::net::{UnixStream, UnixListener};
-    ///
-    /// fn handle_client(stream: UnixStream) {
-    ///     // ...
-    /// }
-    ///
-    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
-    ///
-    /// for stream in listener.incoming() {
-    ///     match stream {
-    ///         Ok(stream) => {
-    ///             thread::spawn(|| handle_client(stream));
-    ///         }
-    ///         Err(err) => {
-    ///             break;
-    ///         }
-    ///     }
-    /// }
-    /// ```
-    #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub fn incoming<'a>(&'a self) -> Incoming<'a> {
-        Incoming { listener: self }
-    }
-}
-
-#[stable(feature = "unix_socket", since = "1.10.0")]
-impl AsRawFd for UnixListener {
-    fn as_raw_fd(&self) -> RawFd {
-        *self.0.as_inner()
-    }
-}
-
-#[stable(feature = "unix_socket", since = "1.10.0")]
-impl FromRawFd for UnixListener {
-    unsafe fn from_raw_fd(fd: RawFd) -> UnixListener {
-        UnixListener(Socket::from_inner(fd))
-    }
-}
-
-#[stable(feature = "unix_socket", since = "1.10.0")]
-impl IntoRawFd for UnixListener {
-    fn into_raw_fd(self) -> RawFd {
-        self.0.into_inner()
-    }
-}
-
-#[stable(feature = "unix_socket", since = "1.10.0")]
-impl<'a> IntoIterator for &'a UnixListener {
-    type Item = io::Result<UnixStream>;
-    type IntoIter = Incoming<'a>;
-
-    fn into_iter(self) -> Incoming<'a> {
-        self.incoming()
-    }
-}
-
-/// An iterator over incoming connections to a [`UnixListener`].
-///
-/// It will never return [`None`].
-///
-/// [`None`]: ../../../../std/option/enum.Option.html#variant.None
-/// [`UnixListener`]: struct.UnixListener.html
-///
-/// # Examples
-///
-/// ```no_run
-/// use std::thread;
-/// use std::os::unix::net::{UnixStream, UnixListener};
-///
-/// fn handle_client(stream: UnixStream) {
-///     // ...
-/// }
-///
-/// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
-///
-/// for stream in listener.incoming() {
-///     match stream {
-///         Ok(stream) => {
-///             thread::spawn(|| handle_client(stream));
-///         }
-///         Err(err) => {
-///             break;
-///         }
-///     }
-/// }
-/// ```
-#[derive(Debug)]
-#[stable(feature = "unix_socket", since = "1.10.0")]
-pub struct Incoming<'a> {
-    listener: &'a UnixListener,
-}
-
-#[stable(feature = "unix_socket", since = "1.10.0")]
-impl<'a> Iterator for Incoming<'a> {
-    type Item = io::Result<UnixStream>;
-
-    fn next(&mut self) -> Option<io::Result<UnixStream>> {
-        Some(self.listener.accept().map(|s| s.0))
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (usize::max_value(), None)
     }
 }
 
@@ -1150,7 +323,8 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
+        inner::SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
+            .map(SocketAddr)
     }
 
     /// Returns the address of this socket's peer.
@@ -1171,7 +345,8 @@ impl UnixDatagram {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        SocketAddr::new(|addr, len| unsafe { libc::getpeername(*self.0.as_inner(), addr, len) })
+        inner::SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
+            .map(SocketAddr)
     }
 
     /// Receives data from the socket.
@@ -1194,7 +369,7 @@ impl UnixDatagram {
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         let mut count = 0;
-        let addr = SocketAddr::new(|addr, len| {
+        let addr = SocketAddr(inner::SocketAddr::new(|addr, len| {
             unsafe {
                 count = libc::recvfrom(*self.0.as_inner(),
                                        buf.as_mut_ptr() as *mut _,
@@ -1210,7 +385,7 @@ impl UnixDatagram {
                     -1
                 }
             }
-        })?;
+        })?);
 
         Ok((count as usize, addr))
     }
