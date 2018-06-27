@@ -192,6 +192,7 @@ impl<'a, 'tcx, 'rcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx, 'rcx> 
                     visibility: Some(Public),
                     stability: get_stability(cx, def_id),
                     deprecation: get_deprecation(cx, def_id),
+                    non_exhaustive: false,
                     def_id,
                     inner: PrimitiveItem(prim),
                 }
@@ -204,6 +205,7 @@ impl<'a, 'tcx, 'rcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx, 'rcx> 
                     visibility: Some(Public),
                     stability: get_stability(cx, def_id),
                     deprecation: get_deprecation(cx, def_id),
+                    non_exhaustive: false,
                     def_id,
                     inner: KeywordItem(kw),
                 }
@@ -366,6 +368,7 @@ pub struct Item {
     pub def_id: DefId,
     pub stability: Option<Stability>,
     pub deprecation: Option<Deprecation>,
+    pub non_exhaustive: bool,
 }
 
 impl fmt::Debug for Item {
@@ -625,6 +628,7 @@ impl Clean<Item> for doctree::Module {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
+            non_exhaustive: false,
             def_id: cx.tcx.hir.local_def_id(self.id),
             inner: ModuleItem(Module {
                is_crate: self.is_crate,
@@ -2117,6 +2121,7 @@ impl Clean<Item> for doctree::Function {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
+            non_exhaustive: false,
             def_id: cx.tcx.hir.local_def_id(self.id),
             inner: FunctionItem(Function {
                 decl,
@@ -2298,6 +2303,7 @@ impl Clean<Item> for doctree::Trait {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
+            non_exhaustive: false,
             inner: TraitItem(Trait {
                 auto: self.is_auto.clean(cx),
                 unsafety: self.unsafety,
@@ -2367,6 +2373,7 @@ impl Clean<Item> for hir::TraitItem {
             visibility: None,
             stability: get_stability(cx, cx.tcx.hir.local_def_id(self.id)),
             deprecation: get_deprecation(cx, cx.tcx.hir.local_def_id(self.id)),
+            non_exhaustive: false,
             inner,
         }
     }
@@ -2395,6 +2402,7 @@ impl Clean<Item> for hir::ImplItem {
             visibility: self.vis.clean(cx),
             stability: get_stability(cx, cx.tcx.hir.local_def_id(self.id)),
             deprecation: get_deprecation(cx, cx.tcx.hir.local_def_id(self.id)),
+            non_exhaustive: false,
             inner,
         }
     }
@@ -2541,6 +2549,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
             visibility,
             stability: get_stability(cx, self.def_id),
             deprecation: get_deprecation(cx, self.def_id),
+            non_exhaustive: false,
             def_id: self.def_id,
             attrs: inline::load_attrs(cx, self.def_id),
             source: cx.tcx.def_span(self.def_id).clean(cx),
@@ -3194,6 +3203,7 @@ impl Clean<Item> for hir::StructField {
             visibility: self.vis.clean(cx),
             stability: get_stability(cx, cx.tcx.hir.local_def_id(self.id)),
             deprecation: get_deprecation(cx, cx.tcx.hir.local_def_id(self.id)),
+            non_exhaustive: false,
             def_id: cx.tcx.hir.local_def_id(self.id),
             inner: StructFieldItem(self.ty.clean(cx)),
         }
@@ -3209,6 +3219,7 @@ impl<'tcx> Clean<Item> for ty::FieldDef {
             visibility: self.vis.clean(cx),
             stability: get_stability(cx, self.did),
             deprecation: get_deprecation(cx, self.did),
+            non_exhaustive: false,
             def_id: self.did,
             inner: StructFieldItem(cx.tcx.type_of(self.did).clean(cx)),
         }
@@ -3273,6 +3284,7 @@ impl Clean<Vec<Item>> for doctree::Struct {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
+            non_exhaustive: self.non_exhaustive,
             inner: StructItem(Struct {
                 struct_type: self.struct_type,
                 generics: self.generics.clean(cx),
@@ -3298,6 +3310,7 @@ impl Clean<Vec<Item>> for doctree::Union {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
+            non_exhaustive: false,
             inner: UnionItem(Union {
                 struct_type: self.struct_type,
                 generics: self.generics.clean(cx),
@@ -3350,6 +3363,7 @@ impl Clean<Vec<Item>> for doctree::Enum {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
+            non_exhaustive: self.non_exhaustive,
             inner: EnumItem(Enum {
                 variants: self.variants.clean(cx),
                 generics: self.generics.clean(cx),
@@ -3375,6 +3389,7 @@ impl Clean<Item> for doctree::Variant {
             visibility: None,
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
+            non_exhaustive: false,
             def_id: cx.tcx.hir.local_def_id(self.def.id()),
             inner: VariantItem(Variant {
                 kind: self.def.clean(cx),
@@ -3405,6 +3420,7 @@ impl<'tcx> Clean<Item> for ty::VariantDef {
                             def_id: field.did,
                             stability: get_stability(cx, field.did),
                             deprecation: get_deprecation(cx, field.did),
+                            non_exhaustive: false,
                             inner: StructFieldItem(cx.tcx.type_of(field.did).clean(cx))
                         }
                     }).collect()
@@ -3420,6 +3436,7 @@ impl<'tcx> Clean<Item> for ty::VariantDef {
             inner: VariantItem(Variant { kind: kind }),
             stability: get_stability(cx, self.did),
             deprecation: get_deprecation(cx, self.did),
+            non_exhaustive: false,
         }
     }
 }
@@ -3671,6 +3688,7 @@ impl Clean<Item> for doctree::Typedef {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
+            non_exhaustive: false,
             inner: TypedefItem(Typedef {
                 type_: self.ty.clean(cx),
                 generics: self.gen.clean(cx),
@@ -3722,6 +3740,7 @@ impl Clean<Item> for doctree::Static {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
+            non_exhaustive: false,
             inner: StaticItem(Static {
                 type_: self.type_.clean(cx),
                 mutability: self.mutability.clean(cx),
@@ -3747,6 +3766,7 @@ impl Clean<Item> for doctree::Constant {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
+            non_exhaustive: false,
             inner: ConstantItem(Constant {
                 type_: self.type_.clean(cx),
                 expr: print_const_expr(cx, self.expr),
@@ -3835,6 +3855,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
+            non_exhaustive: false,
             inner: ImplItem(Impl {
                 unsafety: self.unsafety,
                 generics: self.generics.clean(cx),
@@ -3921,6 +3942,7 @@ impl Clean<Item> for doctree::ExternCrate {
             visibility: self.vis.clean(cx),
             stability: None,
             deprecation: None,
+            non_exhaustive: false,
             inner: ExternCrateItem(self.name.clean(cx), self.path.clone())
         }
     }
@@ -3967,6 +3989,7 @@ impl Clean<Vec<Item>> for doctree::Import {
             visibility: self.vis.clean(cx),
             stability: None,
             deprecation: None,
+            non_exhaustive: false,
             inner: ImportItem(inner)
         }]
     }
@@ -4035,6 +4058,7 @@ impl Clean<Item> for hir::ForeignItem {
             visibility: self.vis.clean(cx),
             stability: get_stability(cx, cx.tcx.hir.local_def_id(self.id)),
             deprecation: get_deprecation(cx, cx.tcx.hir.local_def_id(self.id)),
+            non_exhaustive: false,
             inner,
         }
     }
@@ -4209,6 +4233,7 @@ impl Clean<Item> for doctree::Macro {
             visibility: Some(Public),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
+            non_exhaustive: false,
             def_id: self.def_id,
             inner: MacroItem(Macro {
                 source: format!("macro_rules! {} {{\n{}}}",

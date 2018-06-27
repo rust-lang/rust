@@ -89,6 +89,12 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             .and_then(|def_id| self.cx.tcx.lookup_deprecation(def_id))
     }
 
+    fn non_exhaustive(&self, id: ast::NodeId) -> bool {
+        self.cx.tcx.hir.opt_local_def_id(id)
+            .map(|def_id| self.cx.tcx.has_attr(def_id, "non_exhaustive"))
+            .unwrap_or(false)
+    }
+
     pub fn visit(&mut self, krate: &hir::Crate) {
         self.attrs = krate.attrs.clone();
 
@@ -119,6 +125,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             vis: item.vis.clone(),
             stab: self.stability(item.id),
             depr: self.deprecation(item.id),
+            non_exhaustive: self.non_exhaustive(item.id),
             attrs: item.attrs.clone(),
             generics: generics.clone(),
             fields: sd.fields().iter().cloned().collect(),
@@ -162,6 +169,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             vis: it.vis.clone(),
             stab: self.stability(it.id),
             depr: self.deprecation(it.id),
+            non_exhaustive: self.non_exhaustive(it.id),
             generics: params.clone(),
             attrs: it.attrs.clone(),
             id: it.id,

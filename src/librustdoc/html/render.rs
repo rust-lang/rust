@@ -2194,6 +2194,7 @@ fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Re
         info!("Documenting {}", name);
     }
     document_stability(w, cx, item)?;
+    document_non_exhaustive(w, item)?;
     let prefix = render_assoc_const_value(item);
     document_full(w, item, cx, &prefix)?;
     Ok(())
@@ -2259,6 +2260,28 @@ fn document_stability(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) 
         }
         write!(w, "</div>")?;
     }
+    Ok(())
+}
+
+fn document_non_exhaustive(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
+    if item.non_exhaustive {
+        write!(w, r##"
+        <div class='non-exhaustive'>
+            <div class='stab non-exhaustive'>
+                <details>
+                    <summary>
+                        <span class=microscope>🔬</span>
+                        This type is marked as non exhaustive.
+                    </summary>
+                    <p>
+                    This type will require a wildcard arm in any match statements or constructors.
+                    </p>
+                </details>
+            </div>
+        </div>
+        "##)?;
+    }
+
     Ok(())
 }
 
