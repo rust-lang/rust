@@ -1996,12 +1996,10 @@ $EndFeature, "
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_to_from_bytes)]
-        ///
         /// let bytes = i32::min_value().to_be().to_bytes();
         /// assert_eq!(bytes, [0x80, 0, 0, 0]);
         /// ```
-        #[unstable(feature = "int_to_from_bytes", issue = "49792")]
+        #[stable(feature = "int_to_from_bytes", since = "1.29.0")]
         #[inline]
         pub fn to_bytes(self) -> [u8; mem::size_of::<Self>()] {
             unsafe { mem::transmute(self) }
@@ -2018,12 +2016,10 @@ $EndFeature, "
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_to_from_bytes)]
-        ///
         /// let int = i32::from_be(i32::from_bytes([0x80, 0, 0, 0]));
         /// assert_eq!(int, i32::min_value());
         /// ```
-        #[unstable(feature = "int_to_from_bytes", issue = "49792")]
+        #[stable(feature = "int_to_from_bytes", since = "1.29.0")]
         #[inline]
         pub fn from_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
             unsafe { mem::transmute(bytes) }
@@ -3702,12 +3698,10 @@ $EndFeature, "
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_to_from_bytes)]
-        ///
         /// let bytes = 0x1234_5678_u32.to_be().to_bytes();
         /// assert_eq!(bytes, [0x12, 0x34, 0x56, 0x78]);
         /// ```
-        #[unstable(feature = "int_to_from_bytes", issue = "49792")]
+        #[stable(feature = "int_to_from_bytes", since = "1.29.0")]
         #[inline]
         pub fn to_bytes(self) -> [u8; mem::size_of::<Self>()] {
             unsafe { mem::transmute(self) }
@@ -3724,12 +3718,10 @@ $EndFeature, "
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_to_from_bytes)]
-        ///
         /// let int = u32::from_be(u32::from_bytes([0x12, 0x34, 0x56, 0x78]));
         /// assert_eq!(int, 0x1234_5678_u32);
         /// ```
-        #[unstable(feature = "int_to_from_bytes", issue = "49792")]
+        #[stable(feature = "int_to_from_bytes", since = "1.29.0")]
         #[inline]
         pub fn from_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
             unsafe { mem::transmute(bytes) }
