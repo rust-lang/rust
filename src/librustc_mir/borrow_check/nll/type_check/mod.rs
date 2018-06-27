@@ -873,6 +873,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     );
                 }
                 self.check_rvalue(mir, rv, location);
+                let trait_ref = ty::TraitRef {
+                    def_id: tcx.lang_items().sized_trait().unwrap(),
+                    substs: tcx.mk_substs_trait(place_ty, &[]),
+                };
+                self.prove_trait_ref(trait_ref, location);
             }
             StatementKind::SetDiscriminant {
                 ref place,
@@ -1720,6 +1725,14 @@ impl MirPass for TypeckMir {
             // broken MIR, so try not to report duplicate errors.
             return;
         }
+
+        if tcx.is_struct_constructor(def_id) {
+            // We just assume that the automatically generated struct constructors are
+            // correct. See the comment in the `mir_borrowck` implementation for an
+            // explanation why we need this.
+            return;
+        }
+
         let param_env = tcx.param_env(def_id);
         tcx.infer_ctxt().enter(|infcx| {
             let _ = type_check_internal(

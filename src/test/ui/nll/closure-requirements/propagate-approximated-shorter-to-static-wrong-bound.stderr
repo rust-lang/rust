@@ -24,15 +24,16 @@ LL | |     });
    = note: where '_#1r: '_#0r
 
 error: free region `ReFree(DefId(0/0:6 ~ propagate_approximated_shorter_to_static_wrong_bound[317d]::supply[0]), BrNamed(crate0:DefIndex(1:16), 'a))` does not outlive free region `ReStatic`
-  --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:48:5
+  --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:48:47
    |
-LL | /     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+LL |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+   |  _______________________________________________^
 LL | |         //~^ ERROR does not outlive free region
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
 LL | |         //~^ WARNING not reporting region error due to nll
 LL | |     });
-   | |______^
+   | |_____^
 
 note: No external requirements
   --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:47:1
