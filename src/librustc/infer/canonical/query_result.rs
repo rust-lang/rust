@@ -220,7 +220,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// query. This is contrast to other parts of the compiler, which
     /// would prefer for those `QueryRegionConstraint` to be converted
     /// into the older infcx-style constraints (e.g., calls to
-    /// [`sub_regions()`] or [`register_region_obligation()`]).
+    /// `sub_regions` or `register_region_obligation`).
     ///
     /// Therefore, `instantiate_nll_query_result_and_region_obligations` performs the same
     /// basic operations as `instantiate_query_result_and_region_obligations` but
@@ -241,9 +241,6 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ///   are propagated back in the return value.
     /// - Finally, the query result (of type `R`) is propagated back,
     ///   after applying the substitution `S`.
-    ///
-    /// [`register_region_obligation()`: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/infer/struct.InferCtxt.html#method.register_region_obligation
-    /// [`sub_regions()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/infer/struct.InferCtxt.html#method.sub_regions
     pub fn instantiate_nll_query_result_and_region_obligations<R>(
         &self,
         cause: &ObligationCause<'tcx>,
