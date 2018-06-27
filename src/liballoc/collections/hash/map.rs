@@ -12,14 +12,14 @@ use self::Entry::*;
 use self::VacantEntryState::*;
 
 use collections::CollectionAllocErr;
-use borrow::Borrow;
-use cmp::max;
-use fmt::{self, Debug};
+use core::borrow::Borrow;
+use core::cmp::max;
+use core::fmt::{self, Debug};
 #[allow(deprecated)]
-use hash::{Hash, Hasher, BuildHasher, SipHasher13};
-use iter::{FromIterator, FusedIterator};
-use mem::{self, replace};
-use ops::{Deref, Index};
+use core::hash::{Hash, Hasher, BuildHasher, SipHasher13};
+use core::iter::{FromIterator, FusedIterator};
+use core::mem::{self, replace};
+use core::ops::{Deref, Index};
 
 use super::table::{self, Bucket, EmptyBucket, Fallibility, FullBucket, FullBucketMut, RawTable,
                    SafeHash};
@@ -2559,7 +2559,7 @@ impl<'a, K, V, S> Extend<(&'a K, &'a V)> for HashMap<K, V, S>
 /// instances are unlikely to produce the same result for the same values.
 ///
 /// [`HashMap`]: struct.HashMap.html
-/// [`Hasher`]: ../../hash/trait.Hasher.html
+/// [`Hasher`]: ../../../std/hash/trait.Hasher.html
 ///
 /// # Examples
 ///
@@ -2625,7 +2625,7 @@ impl BuildHasher for RandomState {
 /// not be relied upon over releases.
 ///
 /// [`RandomState`]: struct.RandomState.html
-/// [`Hasher`]: ../../hash/trait.Hasher.html
+/// [`Hasher`]: ../../../std/hash/trait.Hasher.html
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
 #[allow(deprecated)]
 #[derive(Clone, Debug)]
@@ -2759,11 +2759,12 @@ mod test_map {
     use super::HashMap;
     use super::Entry::{Occupied, Vacant};
     use super::RandomState;
-    use cell::RefCell;
+    use core::cell::RefCell;
     use rand::{thread_rng, Rng};
-    use realstd::collections::CollectionAllocErr::*;
-    use realstd::mem::size_of;
-    use realstd::usize;
+    use collections::CollectionAllocErr::*;
+    use std::mem::size_of;
+    use std::usize;
+    use vec::Vec;
 
     #[test]
     fn test_zero_capacities() {

@@ -23,4 +23,7 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
 #[lang = "oom"]
 fn oom() {}
 
+#[lang = "hashmap_random_keys"]
+fn hashmap_random_keys() {}
+
 extern crate alloc;

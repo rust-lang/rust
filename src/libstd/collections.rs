@@ -431,30 +431,13 @@ pub use alloc_crate::collections::{LinkedList, VecDeque};
 pub use alloc_crate::collections::{binary_heap, btree_map, btree_set};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::collections::{linked_list, vec_deque};
-
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::hash_map::HashMap;
+pub use alloc_crate::collections::{HashMap, HashSet};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::hash_set::HashSet;
+pub use alloc_crate::collections::{hash_map, hash_set};
 
 #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
 pub use alloc_crate::collections::CollectionAllocErr;
-
-mod hash;
-
-#[stable(feature = "rust1", since = "1.0.0")]
-pub mod hash_map {
-    //! A hash map implemented with linear probing and Robin Hood bucket stealing.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub use super::hash::map::*;
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-pub mod hash_set {
-    //! A hash set implemented as a `HashMap` where the value is `()`.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub use super::hash::set::*;
-}
 
 #[cfg(not(stage0))]
 #[cfg_attr(not(test), lang = "hashmap_random_keys")]

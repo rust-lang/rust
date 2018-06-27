@@ -69,7 +69,7 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
-       test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
+       test(no_crate_inject, attr(allow(unused_variables, unused_mut), deny(warnings))))]
 #![no_std]
 #![needs_allocator]
 #![deny(missing_debug_implementations)]
@@ -122,6 +122,8 @@
 #![feature(inclusive_range_methods)]
 #![feature(rustc_const_unstable)]
 #![feature(const_vec_new)]
+#![feature(unwind_attributes)]
+#![feature(hashmap_internals)]
 
 #![cfg_attr(not(test), feature(fn_traits, i128))]
 #![cfg_attr(test, feature(test))]
