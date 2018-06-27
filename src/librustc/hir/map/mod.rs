@@ -25,7 +25,7 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID};
 use syntax::codemap::Spanned;
 use syntax::ext::base::MacroKind;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 use hir::*;
 use hir::print::Nested;
@@ -662,6 +662,26 @@ impl<'hir> Map<'hir> {
 
     pub fn get_if_local(&self, id: DefId) -> Option<Node<'hir>> {
         self.as_local_node_id(id).map(|id| self.get(id)) // read recorded by `get`
+    }
+
+    pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics> {
+        self.get_if_local(id).and_then(|node| {
+            match node {
+                NodeImplItem(ref impl_item) => Some(&impl_item.generics),
+                NodeTraitItem(ref trait_item) => Some(&trait_item.generics),
+                NodeItem(ref item) => {
+                    match item.node {
+                        ItemFn(_, _, ref generics, _) => Some(generics),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            }
+        })
+    }
+
+    pub fn get_generics_span(&self, id: DefId) -> Option<Span> {
+        self.get_generics(id).map(|generics| generics.span).filter(|sp| *sp != DUMMY_SP)
     }
 
     /// Retrieve the Node corresponding to `id`, returning None if

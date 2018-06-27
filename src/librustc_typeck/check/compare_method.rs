@@ -356,7 +356,6 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 impl_generics: &ty::Generics,
                                                 trait_to_skol_substs: &Substs<'tcx>)
                                                 -> Result<(), ErrorReported> {
-    let span = tcx.sess.codemap().def_span(span);
     let trait_params = trait_generics.own_counts().lifetimes;
     let impl_params = impl_generics.own_counts().lifetimes;
 
@@ -378,16 +377,20 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // are zero. Since I don't quite know how to phrase things at
     // the moment, give a kind of vague error message.
     if trait_params != impl_params {
-        let mut err = struct_span_err!(tcx.sess,
-                                       span,
-                                       E0195,
-                                       "lifetime parameters or bounds on method `{}` do not match \
-                                        the trait declaration",
-                                       impl_m.ident);
+        let def_span = tcx.sess.codemap().def_span(span);
+        let span = tcx.hir.get_generics_span(impl_m.def_id).unwrap_or(def_span);
+        let mut err = struct_span_err!(
+            tcx.sess,
+            span,
+            E0195,
+            "lifetime parameters or bounds on method `{}` do not match the trait declaration",
+            impl_m.ident,
+        );
         err.span_label(span, "lifetimes do not match method in trait");
         if let Some(sp) = tcx.hir.span_if_local(trait_m.def_id) {
-            err.span_label(tcx.sess.codemap().def_span(sp),
-                           "lifetimes in impl do not match this method in trait");
+            let def_sp = tcx.sess.codemap().def_span(sp);
+            let sp = tcx.hir.get_generics_span(trait_m.def_id).unwrap_or(def_sp);
+            err.span_label(sp, "lifetimes in impl do not match this method in trait");
         }
         err.emit();
         return Err(ErrorReported);
