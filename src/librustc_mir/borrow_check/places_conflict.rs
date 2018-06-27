@@ -38,8 +38,8 @@ pub(super) fn places_conflict<'gcx, 'tcx>(
 fn place_components_conflict<'gcx, 'tcx>(
     tcx: TyCtxt<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
-    borrow_components: PlaceComponentsIter<'_, 'tcx>,
-    access_components: PlaceComponentsIter<'_, 'tcx>,
+    mut borrow_components: PlaceComponentsIter<'_, 'tcx>,
+    mut access_components: PlaceComponentsIter<'_, 'tcx>,
     access: ShallowOrDeep,
 ) -> bool {
     // The borrowck rules for proving disjointness are applied from the "root" of the
@@ -83,11 +83,14 @@ fn place_components_conflict<'gcx, 'tcx>(
     //  - If we didn't run out of access to match, our borrow and access are comparable
     //    and either equal or disjoint.
     //  - If we did run out of accesss, the borrow can access a part of it.
-    for (borrow_c, access_c) in borrow_components.zip(access_components) {
+    loop {
         // loop invariant: borrow_c is always either equal to access_c or disjoint from it.
-        debug!("places_conflict: {:?} vs. {:?}", borrow_c, access_c);
-        if let Some(borrow_c) = borrow_c {
-            if let Some(access_c) = access_c {
+        if let Some(borrow_c) = borrow_components.next() {
+            debug!("places_conflict: borrow_c = {:?}", borrow_c);
+
+            if let Some(access_c) = access_components.next() {
+                debug!("places_conflict: access_c = {:?}", access_c);
+
                 // Borrow and access path both have more components.
                 //
                 // Examples:
@@ -214,7 +217,6 @@ fn place_components_conflict<'gcx, 'tcx>(
             return true;
         }
     }
-    unreachable!("iter::repeat returned None")
 }
 
 /// A linked list of places running up the stack; begins with the
@@ -243,19 +245,21 @@ impl<'p, 'tcx> PlaceComponents<'p, 'tcx> {
 
 /// Iterator over components; see `PlaceComponents::iter` for more
 /// information.
+///
+/// NB: This is not a *true* Rust iterator -- the code above just
+/// manually invokes `next`. This is because we (sometimes) want to
+/// keep executing even after `None` has been returned.
 struct PlaceComponentsIter<'p, 'tcx: 'p> {
     value: Option<&'p PlaceComponents<'p, 'tcx>>
 }
 
-impl<'p, 'tcx> Iterator for PlaceComponentsIter<'p, 'tcx> {
-    type Item = Option<&'p Place<'tcx>>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<'p, 'tcx> PlaceComponentsIter<'p, 'tcx> {
+    fn next(&mut self) -> Option<&'p Place<'tcx>> {
         if let Some(&PlaceComponents { component, next }) = self.value {
             self.value = next;
-            Some(Some(component))
+            Some(component)
         } else {
-            Some(None)
+            None
         }
     }
 }
