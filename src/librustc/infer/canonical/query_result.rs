@@ -46,6 +46,13 @@ impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
     /// canonical result created.
     ///
     /// Returns `NoSolution` in the event of any error.
+    ///
+    /// (It might be mildly nicer to implement this on `TyCtxt`, and
+    /// not `InferCtxtBuilder`, but that is a bit tricky right now.
+    /// In part because we would need a `for<'gcx: 'tcx>` sort of
+    /// bound for the closure and in part because it is convenient to
+    /// have `'tcx` be free on this function so that we can talk about
+    /// `K: TypeFoldable<'tcx>`.)
     pub fn enter_canonical_trait_query<K, R>(
         &'tcx mut self,
         canonical_key: &Canonical<'tcx, K>,
