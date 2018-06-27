@@ -60,6 +60,7 @@ mod flows;
 mod location;
 mod path_utils;
 crate mod place_ext;
+mod places_conflict;
 mod prefixes;
 mod used_muts;
 
@@ -1307,7 +1308,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // that is merged.
         let sd = if might_be_alive { Deep } else { Shallow(None) };
 
-        if places_conflict(self.tcx, self.mir, place, root_place, sd) {
+        if places_conflict::places_conflict(self.tcx, self.mir, place, root_place, sd) {
             debug!("check_for_invalidation_at_exit({:?}): INVALID", place);
             // FIXME: should be talking about the region lifetime instead
             // of just a span here.
@@ -1398,7 +1399,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         for i in flow_state.ever_inits.iter_incoming() {
             let init = self.move_data.inits[i];
             let init_place = &self.move_data.move_paths[init.path].place;
-            if places_conflict(self.tcx, self.mir, &init_place, place, Deep) {
+            if places_conflict::places_conflict(self.tcx, self.mir, &init_place, place, Deep) {
                 self.report_illegal_reassignment(context, (place, span), init.span, err_place);
                 break;
             }
