@@ -19,12 +19,10 @@ use crate::utils::span_lint_and_sugg;
 ///
 /// ```rust
 /// // Bad
-/// Insert a short example of code that triggers the lint
 ///    let v: f32 = 0.123_456_789_9;
 ///    println!("{}", v); //  0.123_456_789
 ///
 /// // Good
-/// Insert a short example of improved code that doesn't trigger the lint
 ///    let v: f64 = 0.123_456_789_9;
 ///    println!("{}", v); //  0.123_456_789_9
 /// ```
