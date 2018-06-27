@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --edition=2018 -Zunstable-options
+// edition:2018
 
 #![feature(extern_absolute_paths)]
 

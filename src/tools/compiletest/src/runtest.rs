@@ -1368,6 +1368,7 @@ impl<'test> TestCx<'test> {
             .arg(out_dir)
             .arg(&self.testpaths.file)
             .args(&self.props.compile_flags);
+
         if let Some(ref linker) = self.config.linker {
             rustdoc
                 .arg("--linker")
