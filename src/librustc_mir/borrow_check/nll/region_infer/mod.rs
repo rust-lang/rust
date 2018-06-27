@@ -251,7 +251,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         var_infos: VarInfos,
         universal_regions: UniversalRegions<'tcx>,
         mir: &Mir<'tcx>,
-        outlives_constraints: Vec<OutlivesConstraint>,
+        mut outlives_constraints: Vec<OutlivesConstraint>,
         type_tests: Vec<TypeTest<'tcx>>,
     ) -> Self {
         // The `next` field should not yet have been initialized:
@@ -268,21 +268,21 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .map(|info| RegionDefinition::new(info.origin))
             .collect();
 
+        let mut seen_constraints: FxHashSet<(RegionVid, RegionVid)> = Default::default();
+
+        outlives_constraints.retain(|c| c.sup != c.sub && seen_constraints.insert(c.dedup_key()));
+
         let mut result = Self {
             definitions,
             elements: elements.clone(),
             liveness_constraints: RegionValues::new(elements, num_region_variables),
             inferred_values: None,
             dependency_map: None,
-            constraints: Default::default(),
-            seen_constraints: Default::default(),
+            constraints: IndexVec::from_raw(outlives_constraints),
+            seen_constraints,
             type_tests,
             universal_regions,
         };
-
-        for c in outlives_constraints {
-            result.add_outlives_iner(c);
-        }
 
         result.init_universal_regions();
 
