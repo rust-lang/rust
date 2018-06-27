@@ -19,16 +19,17 @@ pub struct ProvePredicate<'tcx> {
 
 impl<'tcx> ProvePredicate<'tcx> {
     pub fn new(predicate: Predicate<'tcx>) -> Self {
-        ProvePredicate {
-            predicate,
-        }
+        ProvePredicate { predicate }
     }
 }
 
 impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for ProvePredicate<'tcx> {
     type QueryResult = ();
 
-    fn try_fast_path(_tcx: TyCtxt<'_, 'gcx, 'tcx>, _key: &ParamEnvAnd<'tcx, Self>) -> Option<Self::QueryResult> {
+    fn try_fast_path(
+        _tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        _key: &ParamEnvAnd<'tcx, Self>,
+    ) -> Option<Self::QueryResult> {
         None
     }
 

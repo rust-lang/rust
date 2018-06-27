@@ -15,7 +15,8 @@ use rustc::traits::query::type_op::normalize::Normalize;
 use rustc::traits::query::type_op::prove_predicate::ProvePredicate;
 use rustc::traits::query::type_op::subtype::Subtype;
 use rustc::traits::query::{Fallible, NoSolution};
-use rustc::traits::{FulfillmentContext, Normalized, Obligation, ObligationCause, TraitEngine, TraitEngineExt};
+use rustc::traits::{FulfillmentContext, Normalized, Obligation, ObligationCause, TraitEngine,
+                    TraitEngineExt};
 use rustc::ty::query::Providers;
 use rustc::ty::{FnSig, Lift, ParamEnvAnd, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::sync::Lrc;

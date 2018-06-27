@@ -27,7 +27,10 @@ impl<'tcx> Eq<'tcx> {
 impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Eq<'tcx> {
     type QueryResult = ();
 
-    fn try_fast_path(_tcx: TyCtxt<'_, 'gcx, 'tcx>, key: &ParamEnvAnd<'tcx, Eq<'tcx>>) -> Option<Self::QueryResult> {
+    fn try_fast_path(
+        _tcx: TyCtxt<'_, 'gcx, 'tcx>,
+        key: &ParamEnvAnd<'tcx, Eq<'tcx>>,
+    ) -> Option<Self::QueryResult> {
         if key.value.a == key.value.b {
             Some(())
         } else {
