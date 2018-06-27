@@ -15,11 +15,9 @@ use rustc::hir;
 use rustc::mir::{Mir, Place};
 use rustc::mir::{Projection, ProjectionElem};
 use rustc::ty::{self, TyCtxt};
-use rustc_data_structures::small_vec::SmallVec;
-use std::iter;
 
-pub(super) fn places_conflict<'a, 'gcx: 'tcx, 'tcx>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+pub(super) fn places_conflict<'gcx, 'tcx>(
+    tcx: TyCtxt<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     borrow_place: &Place<'tcx>,
     access_place: &Place<'tcx>,
@@ -30,21 +28,20 @@ pub(super) fn places_conflict<'a, 'gcx: 'tcx, 'tcx>(
         borrow_place, access_place, access
     );
 
-    let borrow_components = place_elements(borrow_place);
-    let access_components = place_elements(access_place);
-    debug!(
-        "places_conflict: components {:?} / {:?}",
-        borrow_components, access_components
-    );
+    unroll_place(borrow_place, None, |borrow_components| {
+        unroll_place(access_place, None, |access_components| {
+            place_components_conflict(tcx, mir, borrow_components, access_components, access)
+        })
+    })
+}
 
-    let borrow_components = borrow_components
-        .into_iter()
-        .map(Some)
-        .chain(iter::repeat(None));
-    let access_components = access_components
-        .into_iter()
-        .map(Some)
-        .chain(iter::repeat(None));
+fn place_components_conflict<'gcx, 'tcx>(
+    tcx: TyCtxt<'_, 'gcx, 'tcx>,
+    mir: &Mir<'tcx>,
+    borrow_components: PlaceComponentsIter<'_, 'tcx>,
+    access_components: PlaceComponentsIter<'_, 'tcx>,
+    access: ShallowOrDeep,
+) -> bool {
     // The borrowck rules for proving disjointness are applied from the "root" of the
     // borrow forwards, iterating over "similar" projections in lockstep until
     // we can prove overlap one way or another. Essentially, we treat `Overlap` as
@@ -89,24 +86,56 @@ pub(super) fn places_conflict<'a, 'gcx: 'tcx, 'tcx>(
     for (borrow_c, access_c) in borrow_components.zip(access_components) {
         // loop invariant: borrow_c is always either equal to access_c or disjoint from it.
         debug!("places_conflict: {:?} vs. {:?}", borrow_c, access_c);
-        match (borrow_c, access_c) {
-            (None, _) => {
-                // If we didn't run out of access, the borrow can access all of our
-                // place (e.g. a borrow of `a.b` with an access to `a.b.c`),
-                // so we have a conflict.
+        if let Some(borrow_c) = borrow_c {
+            if let Some(access_c) = access_c {
+                // Borrow and access path both have more components.
                 //
-                // If we did, then we still know that the borrow can access a *part*
-                // of our place that our access cares about (a borrow of `a.b.c`
-                // with an access to `a.b`), so we still have a conflict.
+                // Examples:
                 //
-                // FIXME: Differs from AST-borrowck; includes drive-by fix
-                // to #38899. Will probably need back-compat mode flag.
-                debug!("places_conflict: full borrow, CONFLICT");
-                return true;
-            }
-            (Some(borrow_c), None) => {
-                // We know that the borrow can access a part of our place. This
-                // is a conflict if that is a part our access cares about.
+                // - borrow of `a.(...)`, access to `a.(...)`
+                // - borrow of `a.(...)`, access to `b.(...)`
+                //
+                // Here we only see the components we have checked so
+                // far (in our examples, just the first component). We
+                // check whether the components being borrowed vs
+                // accessed are disjoint (as in the second example,
+                // but not the first).
+                match place_element_conflict(tcx, mir, borrow_c, access_c) {
+                    Overlap::Arbitrary => {
+                        // We have encountered different fields of potentially
+                        // the same union - the borrow now partially overlaps.
+                        //
+                        // There is no *easy* way of comparing the fields
+                        // further on, because they might have different types
+                        // (e.g. borrows of `u.a.0` and `u.b.y` where `.0` and
+                        // `.y` come from different structs).
+                        //
+                        // We could try to do some things here - e.g. count
+                        // dereferences - but that's probably not a good
+                        // idea, at least for now, so just give up and
+                        // report a conflict. This is unsafe code anyway so
+                        // the user could always use raw pointers.
+                        debug!("places_conflict: arbitrary -> conflict");
+                        return true;
+                    }
+                    Overlap::EqualOrDisjoint => {
+                        // This is the recursive case - proceed to the next element.
+                    }
+                    Overlap::Disjoint => {
+                        // We have proven the borrow disjoint - further
+                        // projections will remain disjoint.
+                        debug!("places_conflict: disjoint");
+                        return false;
+                    }
+                }
+            } else {
+                // Borrow path is longer than the access path. Examples:
+                //
+                // - borrow of `a.b.c`, access to `a.b`
+                //
+                // Here, we know that the borrow can access a part of
+                // our place. This is a conflict if that is a part our
+                // access cares about.
 
                 let (base, elem) = match borrow_c {
                     Place::Projection(box Projection { base, elem }) => (base, elem),
@@ -164,56 +193,98 @@ pub(super) fn places_conflict<'a, 'gcx: 'tcx, 'tcx>(
                         }
                 }
             }
-            (Some(borrow_c), Some(access_c)) => {
-                match place_element_conflict(tcx, mir, &borrow_c, access_c) {
-                    Overlap::Arbitrary => {
-                        // We have encountered different fields of potentially
-                        // the same union - the borrow now partially overlaps.
-                        //
-                        // There is no *easy* way of comparing the fields
-                        // further on, because they might have different types
-                        // (e.g. borrows of `u.a.0` and `u.b.y` where `.0` and
-                        // `.y` come from different structs).
-                        //
-                        // We could try to do some things here - e.g. count
-                        // dereferences - but that's probably not a good
-                        // idea, at least for now, so just give up and
-                        // report a conflict. This is unsafe code anyway so
-                        // the user could always use raw pointers.
-                        debug!("places_conflict: arbitrary -> conflict");
-                        return true;
-                    }
-                    Overlap::EqualOrDisjoint => {
-                        // This is the recursive case - proceed to the next element.
-                    }
-                    Overlap::Disjoint => {
-                        // We have proven the borrow disjoint - further
-                        // projections will remain disjoint.
-                        debug!("places_conflict: disjoint");
-                        return false;
-                    }
-                }
-            }
+        } else {
+            // Borrow path ran out but access path may not
+            // have. Examples:
+            //
+            // - borrow of `a.b`, access to `a.b.c`
+            // - borrow of `a.b`, access to `a.b`
+            //
+            // In the first example, where we didn't run out of
+            // access, the borrow can access all of our place, so we
+            // have a conflict.
+            //
+            // If the second example, where we did, then we still know
+            // that the borrow can access a *part* of our place that
+            // our access cares about, so we still have a conflict.
+            //
+            // FIXME: Differs from AST-borrowck; includes drive-by fix
+            // to #38899. Will probably need back-compat mode flag.
+            debug!("places_conflict: full borrow, CONFLICT");
+            return true;
         }
     }
     unreachable!("iter::repeat returned None")
 }
 
-/// Return all the prefixes of `place` in reverse order, including
-/// downcasts.
-fn place_elements<'a, 'tcx>(place: &'a Place<'tcx>) -> SmallVec<[&'a Place<'tcx>; 8]> {
-    let mut result = SmallVec::new();
-    let mut place = place;
-    loop {
-        result.push(place);
-        match place {
-            Place::Projection(interior) => {
-                place = &interior.base;
-            }
-            Place::Local(_) | Place::Static(_) => {
-                result.reverse();
-                return result;
-            }
+/// A linked list of places running up the stack; begins with the
+/// innermost place and extends to projections (e.g., `a.b` would have
+/// the place `a` with a "next" pointer to `a.b`).  Created by
+/// `unroll_place`.
+struct PlaceComponents<'p, 'tcx: 'p> {
+    component: &'p Place<'tcx>,
+    next: Option<&'p PlaceComponents<'p, 'tcx>>,
+}
+
+impl<'p, 'tcx> PlaceComponents<'p, 'tcx> {
+    /// Converts a list of `Place` components into an iterator; this
+    /// iterator yields up a never-ending stream of `Option<&Place>`.
+    /// These begin with the "innermst" place and then with each
+    /// projection therefrom. So given a place like `a.b.c` it would
+    /// yield up:
+    ///
+    /// ```notrust
+    /// Some(`a`), Some(`a.b`), Some(`a.b.c`), None, None, ...
+    /// ```
+    fn iter(&self) -> PlaceComponentsIter<'_, 'tcx> {
+        PlaceComponentsIter { value: Some(self) }
+    }
+}
+
+/// Iterator over components; see `PlaceComponents::iter` for more
+/// information.
+struct PlaceComponentsIter<'p, 'tcx: 'p> {
+    value: Option<&'p PlaceComponents<'p, 'tcx>>
+}
+
+impl<'p, 'tcx> Iterator for PlaceComponentsIter<'p, 'tcx> {
+    type Item = Option<&'p Place<'tcx>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(&PlaceComponents { component, next }) = self.value {
+            self.value = next;
+            Some(Some(component))
+        } else {
+            Some(None)
+        }
+    }
+}
+
+/// Recursively "unroll" a place into a `PlaceComponents` list,
+/// invoking `op` with a `PlaceComponentsIter`.
+fn unroll_place<'tcx, R>(
+    place: &Place<'tcx>,
+    next: Option<&PlaceComponents<'_, 'tcx>>,
+    op: impl FnOnce(PlaceComponentsIter<'_, 'tcx>) -> R
+) -> R {
+    match place {
+        Place::Projection(interior) => {
+            unroll_place(
+                &interior.base,
+                Some(&PlaceComponents {
+                    component: place,
+                    next,
+                }),
+                op,
+            )
+        }
+
+        Place::Local(_) | Place::Static(_) => {
+            let list = PlaceComponents {
+                component: place,
+                next,
+            };
+            op(list.iter())
         }
     }
 }
