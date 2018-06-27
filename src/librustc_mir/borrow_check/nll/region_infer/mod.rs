@@ -486,16 +486,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// These are constraints like Y: X @ P -- so if X changed, we may
     /// need to grow Y.
     fn build_dependency_map(&mut self) -> IndexVec<RegionVid, Option<ConstraintIndex>> {
-        let mut map = IndexVec::from_elem(None, &self.definitions);
-
-        for (idx, constraint) in self.constraints.inner_mut().iter_enumerated_mut().rev() {
-            let mut head = &mut map[constraint.sub];
-            debug_assert!(constraint.next.is_none());
-            constraint.next = *head;
-            *head = Some(idx);
-        }
-
-        map
+        self.constraints.link(self.definitions.len())
     }
 
     /// Once regions have been propagated, this method is used to see

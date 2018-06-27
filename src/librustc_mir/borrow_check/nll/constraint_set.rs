@@ -23,17 +23,21 @@ crate struct ConstraintSet {
 }
 
 impl ConstraintSet {
-    pub fn push(&mut self, outlives_constraint: OutlivesConstraint) {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn push(&mut self, constraint: OutlivesConstraint) {
         debug!("add_outlives({:?}: {:?} @ {:?}",
-               outlives_constraint.sup,
-               outlives_constraint.sub,
-               outlives_constraint.point);
-        if outlives_constraint.sup == outlives_constraint.sub {
+               constraint.sup,
+               constraint.sub,
+               constraint.point);
+        if constraint.sup == constraint.sub {
             // 'a: 'a is pretty uninteresting
             return;
         }
-        if self.seen_constraints.insert(outlives_constraint.dedup_key()) {
-            self.constraints.push(outlives_constraint);
+        if self.seen_constraints.insert(constraint.dedup_key()) {
+            self.constraints.push(constraint);
         }
     }
 
@@ -41,11 +45,17 @@ impl ConstraintSet {
         &self.constraints
     }
 
-    /// Do Not use this to add nor remove items to the Vec,
-    /// nor change the `sup`,
-    /// nor `sub` of the data.
-    pub fn inner_mut(&mut self) -> &mut IndexVec<ConstraintIndex, OutlivesConstraint> {
-        &mut self.constraints
+    pub fn link(&mut self, len: usize) -> IndexVec<RegionVid, Option<ConstraintIndex>> {
+        let mut map = IndexVec::from_elem_n(None, len);
+
+        for (idx, constraint) in self.constraints.iter_enumerated_mut().rev() {
+            let mut head = &mut map[constraint.sub];
+            debug_assert!(constraint.next.is_none());
+            constraint.next = *head;
+            *head = Some(idx);
+        }
+
+        map
     }
 }
 
