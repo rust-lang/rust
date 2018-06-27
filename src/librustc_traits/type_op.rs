@@ -10,12 +10,25 @@
 
 use rustc::infer::canonical::{Canonical, QueryResult};
 use rustc::infer::{InferCtxt, InferOk};
+use rustc::traits::query::type_op::eq::Eq;
 use rustc::traits::query::type_op::normalize::Normalize;
+use rustc::traits::query::type_op::prove_predicate::ProvePredicate;
+use rustc::traits::query::type_op::subtype::Subtype;
 use rustc::traits::query::{Fallible, NoSolution};
-use rustc::traits::{Normalized, ObligationCause};
+use rustc::traits::{Obligation, Normalized, ObligationCause};
 use rustc::ty::{FnSig, Lift, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::sync::Lrc;
 use std::fmt;
+
+crate fn type_op_eq<'tcx>(
+    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    canonicalized: Canonical<'tcx, Eq<'tcx>>,
+) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, ()>>>, NoSolution> {
+    tcx.infer_ctxt()
+        .enter_canonical_trait_query(&canonicalized, |infcx, Eq { param_env, a, b }| {
+            Ok(infcx.at(&ObligationCause::dummy(), param_env).eq(a, b)?)
+        })
+}
 
 fn type_op_normalize<T>(
     infcx: &InferCtxt<'_, 'gcx, 'tcx>,
@@ -61,4 +74,44 @@ crate fn type_op_normalize_poly_fn_sig(
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, PolyFnSig<'tcx>>>>, NoSolution> {
     tcx.infer_ctxt()
         .enter_canonical_trait_query(&canonicalized, type_op_normalize)
+}
+
+crate fn type_op_subtype<'tcx>(
+    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    canonicalized: Canonical<'tcx, Subtype<'tcx>>,
+) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, ()>>>, NoSolution> {
+    tcx.infer_ctxt().enter_canonical_trait_query(
+        &canonicalized,
+        |infcx,
+         Subtype {
+             param_env,
+             sub,
+             sup,
+         }| {
+            Ok(infcx
+                .at(&ObligationCause::dummy(), param_env)
+                .sup(sup, sub)?)
+        },
+    )
+}
+
+crate fn type_op_prove_predicate<'tcx>(
+    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    canonicalized: Canonical<'tcx, ProvePredicate<'tcx>>,
+) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, ()>>>, NoSolution> {
+    tcx.infer_ctxt()
+        .enter_canonical_trait_query(&canonicalized, |_infcx, key| {
+            let ProvePredicate {
+                param_env,
+                predicate,
+            } = key;
+            Ok(InferOk {
+                value: (),
+                obligations: vec![Obligation::new(
+                    ObligationCause::dummy(),
+                    param_env,
+                    predicate,
+                )],
+            })
+        })
 }
