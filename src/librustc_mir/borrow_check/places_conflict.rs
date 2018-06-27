@@ -10,7 +10,7 @@
 
 use borrow_check::ArtificialField;
 use borrow_check::Overlap;
-use borrow_check::{ShallowOrDeep, Deep, Shallow};
+use borrow_check::{Deep, Shallow, ShallowOrDeep};
 use rustc::hir;
 use rustc::mir::{Mir, Place};
 use rustc::mir::{Projection, ProjectionElem};
@@ -148,19 +148,19 @@ fn place_components_conflict<'gcx, 'tcx>(
 
                 match (elem, &base_ty.sty, access) {
                     (_, _, Shallow(Some(ArtificialField::Discriminant)))
-                        | (_, _, Shallow(Some(ArtificialField::ArrayLength))) => {
-                            // The discriminant and array length are like
-                            // additional fields on the type; they do not
-                            // overlap any existing data there. Furthermore,
-                            // they cannot actually be a prefix of any
-                            // borrowed place (at least in MIR as it is
-                            // currently.)
-                            //
-                            // e.g. a (mutable) borrow of `a[5]` while we read the
-                            // array length of `a`.
-                            debug!("places_conflict: implicit field");
-                            return false;
-                        }
+                    | (_, _, Shallow(Some(ArtificialField::ArrayLength))) => {
+                        // The discriminant and array length are like
+                        // additional fields on the type; they do not
+                        // overlap any existing data there. Furthermore,
+                        // they cannot actually be a prefix of any
+                        // borrowed place (at least in MIR as it is
+                        // currently.)
+                        //
+                        // e.g. a (mutable) borrow of `a[5]` while we read the
+                        // array length of `a`.
+                        debug!("places_conflict: implicit field");
+                        return false;
+                    }
 
                     (ProjectionElem::Deref, _, Shallow(None)) => {
                         // e.g. a borrow of `*x.y` while we shallowly access `x.y` or some
@@ -169,11 +169,7 @@ fn place_components_conflict<'gcx, 'tcx>(
                         debug!("places_conflict: shallow access behind ptr");
                         return false;
                     }
-                    (
-                        ProjectionElem::Deref,
-                        ty::TyRef( _, _, hir::MutImmutable),
-                        _,
-                    ) => {
+                    (ProjectionElem::Deref, ty::TyRef(_, _, hir::MutImmutable), _) => {
                         // the borrow goes through a dereference of a shared reference.
                         //
                         // I'm not sure why we are tracking these borrows - shared
@@ -184,16 +180,16 @@ fn place_components_conflict<'gcx, 'tcx>(
                     }
 
                     (ProjectionElem::Deref, _, Deep)
-                        | (ProjectionElem::Field { .. }, _, _)
-                        | (ProjectionElem::Index { .. }, _, _)
-                        | (ProjectionElem::ConstantIndex { .. }, _, _)
-                        | (ProjectionElem::Subslice { .. }, _, _)
-                        | (ProjectionElem::Downcast { .. }, _, _) => {
-                            // Recursive case. This can still be disjoint on a
-                            // further iteration if this a shallow access and
-                            // there's a deref later on, e.g. a borrow
-                            // of `*x.y` while accessing `x`.
-                        }
+                    | (ProjectionElem::Field { .. }, _, _)
+                    | (ProjectionElem::Index { .. }, _, _)
+                    | (ProjectionElem::ConstantIndex { .. }, _, _)
+                    | (ProjectionElem::Subslice { .. }, _, _)
+                    | (ProjectionElem::Downcast { .. }, _, _) => {
+                        // Recursive case. This can still be disjoint on a
+                        // further iteration if this a shallow access and
+                        // there's a deref later on, e.g. a borrow
+                        // of `*x.y` while accessing `x`.
+                    }
                 }
             }
         } else {
@@ -250,7 +246,7 @@ impl<'p, 'tcx> PlaceComponents<'p, 'tcx> {
 /// manually invokes `next`. This is because we (sometimes) want to
 /// keep executing even after `None` has been returned.
 struct PlaceComponentsIter<'p, 'tcx: 'p> {
-    value: Option<&'p PlaceComponents<'p, 'tcx>>
+    value: Option<&'p PlaceComponents<'p, 'tcx>>,
 }
 
 impl<'p, 'tcx> PlaceComponentsIter<'p, 'tcx> {
@@ -269,19 +265,17 @@ impl<'p, 'tcx> PlaceComponentsIter<'p, 'tcx> {
 fn unroll_place<'tcx, R>(
     place: &Place<'tcx>,
     next: Option<&PlaceComponents<'_, 'tcx>>,
-    op: impl FnOnce(PlaceComponentsIter<'_, 'tcx>) -> R
+    op: impl FnOnce(PlaceComponentsIter<'_, 'tcx>) -> R,
 ) -> R {
     match place {
-        Place::Projection(interior) => {
-            unroll_place(
-                &interior.base,
-                Some(&PlaceComponents {
-                    component: place,
-                    next,
-                }),
-                op,
-            )
-        }
+        Place::Projection(interior) => unroll_place(
+            &interior.base,
+            Some(&PlaceComponents {
+                component: place,
+                next,
+            }),
+            op,
+        ),
 
         Place::Local(_) | Place::Static(_) => {
             let list = PlaceComponents {
@@ -300,7 +294,7 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
     elem1: &Place<'tcx>,
-    elem2: &Place<'tcx>
+    elem2: &Place<'tcx>,
 ) -> Overlap {
     match (elem1, elem2) {
         (Place::Local(l1), Place::Local(l2)) => {
@@ -318,8 +312,7 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
             if static1.def_id != static2.def_id {
                 debug!("place_element_conflict: DISJOINT-STATIC");
                 Overlap::Disjoint
-            } else if tcx.is_static(static1.def_id) ==
-                        Some(hir::Mutability::MutMutable) {
+            } else if tcx.is_static(static1.def_id) == Some(hir::Mutability::MutMutable) {
                 // We ignore mutable statics - they can only be unsafe code.
                 debug!("place_element_conflict: IGNORE-STATIC-MUT");
                 Overlap::Disjoint
@@ -397,10 +390,7 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
                 | (ProjectionElem::Index(..), ProjectionElem::ConstantIndex { .. })
                 | (ProjectionElem::Index(..), ProjectionElem::Subslice { .. })
                 | (ProjectionElem::ConstantIndex { .. }, ProjectionElem::Index(..))
-                | (
-                    ProjectionElem::ConstantIndex { .. },
-                    ProjectionElem::ConstantIndex { .. },
-                )
+                | (ProjectionElem::ConstantIndex { .. }, ProjectionElem::ConstantIndex { .. })
                 | (ProjectionElem::ConstantIndex { .. }, ProjectionElem::Subslice { .. })
                 | (ProjectionElem::Subslice { .. }, ProjectionElem::Index(..))
                 | (ProjectionElem::Subslice { .. }, ProjectionElem::ConstantIndex { .. })
