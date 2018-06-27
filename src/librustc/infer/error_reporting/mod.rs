@@ -189,6 +189,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self,
         region: ty::Region<'tcx>,
     ) -> (String, Option<Span>) {
+        let cm = self.sess.codemap();
+
         let scope = region.free_region_binding_scope(self);
         let node = self.hir.as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
         let unknown;
@@ -219,10 +221,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
         };
         let (prefix, span) = match *region {
-            ty::ReEarlyBound(ref br) => (
-                format!("the lifetime {} as defined on", br.name),
-                self.sess.codemap().def_span(self.hir.span(node)),
-            ),
+            ty::ReEarlyBound(ref br) => {
+                let mut sp = cm.def_span(self.hir.span(node));
+                if let Some(generics) = self.hir.get_generics(scope) {
+                    for param in &generics.params {
+                        if param.name.name().as_str() == br.name.as_str() {
+                            sp = param.span;
+                        }
+                    }
+                }
+                (format!("the lifetime {} as defined on", br.name), sp)
+            }
             ty::ReFree(ref fr) => match fr.bound_region {
                 ty::BrAnon(idx) => (
                     format!("the anonymous lifetime #{} defined on", idx + 1),
@@ -234,7 +243,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 ),
                 _ => (
                     format!("the lifetime {} as defined on", fr.bound_region),
-                    self.sess.codemap().def_span(self.hir.span(node)),
+                    cm.def_span(self.hir.span(node)),
                 ),
             },
             _ => bug!(),

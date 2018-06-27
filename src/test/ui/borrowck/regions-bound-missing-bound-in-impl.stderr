@@ -29,6 +29,25 @@ note: the lifetime 'c as defined on the method body at 37:5...
    |
 LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...does not necessarily outlive the lifetime 'c as defined on the method body at 37:24
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:37:24
+   |
+LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
+   |                        ^^
+
+error[E0308]: method not compatible with trait
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:37:5
+   |
+LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected type `fn(&'a isize, Inv<'c>, Inv<'c>, Inv<'d>)`
+              found type `fn(&'a isize, Inv<'_>, Inv<'c>, Inv<'d>)`
+note: the lifetime 'c as defined on the method body at 37:24...
+  --> $DIR/regions-bound-missing-bound-in-impl.rs:37:24
+   |
+LL |     fn wrong_bound1<'b,'c,'d:'a+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>) {
+   |                        ^^
 note: ...does not necessarily outlive the lifetime 'c as defined on the method body at 37:5
   --> $DIR/regions-bound-missing-bound-in-impl.rs:37:5
    |
@@ -53,7 +72,7 @@ LL |     fn another_bound<'x: 'a>(self, x: Inv<'x>, y: Inv<'t>);
 LL |     fn another_bound<'x: 't>(self, x: Inv<'x>, y: Inv<'t>) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `'x: 't`
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 Some errors occurred: E0195, E0276, E0308.
 For more information about an error, try `rustc --explain E0195`.
