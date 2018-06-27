@@ -375,10 +375,8 @@ pub enum ThreadLocalMode {
 }
 
 // Opaque pointer types
-extern { pub type Module_opaque; }
-pub type ModuleRef = *mut Module_opaque;
-extern { pub type Context_opaque; }
-pub type ContextRef = *mut Context_opaque;
+extern { pub type Module; }
+extern { pub type Context; }
 extern { pub type Type_opaque; }
 pub type TypeRef = *mut Type_opaque;
 extern { pub type Value_opaque; }
@@ -407,8 +405,8 @@ extern { pub type SectionIterator_opaque; }
 pub type SectionIteratorRef = *mut SectionIterator_opaque;
 extern { pub type Pass_opaque; }
 pub type PassRef = *mut Pass_opaque;
-extern { pub type TargetMachine_opaque; }
-pub type TargetMachineRef = *mut TargetMachine_opaque;
+extern { pub type TargetMachine; }
+pub type TargetMachineRef = *const TargetMachine;
 extern { pub type Archive_opaque; }
 pub type ArchiveRef = *mut Archive_opaque;
 extern { pub type ArchiveIterator_opaque; }
@@ -498,43 +496,42 @@ extern { pub type ModuleBuffer; }
 #[allow(improper_ctypes)] // TODO remove this (use for NonNull)
 extern "C" {
     // Create and destroy contexts.
-    pub fn LLVMRustContextCreate(shouldDiscardNames: bool) -> ContextRef;
-    pub fn LLVMContextDispose(C: ContextRef);
-    pub fn LLVMGetMDKindIDInContext(C: ContextRef, Name: *const c_char, SLen: c_uint) -> c_uint;
+    pub fn LLVMRustContextCreate(shouldDiscardNames: bool) -> &'static mut Context;
+    pub fn LLVMContextDispose(C: &'static mut Context);
+    pub fn LLVMGetMDKindIDInContext(C: &Context, Name: *const c_char, SLen: c_uint) -> c_uint;
 
-    // Create and destroy modules.
-    pub fn LLVMModuleCreateWithNameInContext(ModuleID: *const c_char, C: ContextRef) -> ModuleRef;
-    pub fn LLVMGetModuleContext(M: ModuleRef) -> ContextRef;
-    pub fn LLVMCloneModule(M: ModuleRef) -> ModuleRef;
-    pub fn LLVMDisposeModule(M: ModuleRef);
+    // Create modules.
+    pub fn LLVMModuleCreateWithNameInContext(ModuleID: *const c_char, C: &Context) -> &Module;
+    pub fn LLVMGetModuleContext(M: &Module) -> &Context;
+    pub fn LLVMCloneModule(M: &Module) -> &Module;
 
     /// Data layout. See Module::getDataLayout.
-    pub fn LLVMGetDataLayout(M: ModuleRef) -> *const c_char;
-    pub fn LLVMSetDataLayout(M: ModuleRef, Triple: *const c_char);
+    pub fn LLVMGetDataLayout(M: &Module) -> *const c_char;
+    pub fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
 
     /// See Module::dump.
-    pub fn LLVMDumpModule(M: ModuleRef);
+    pub fn LLVMDumpModule(M: &Module);
 
     /// See Module::setModuleInlineAsm.
-    pub fn LLVMSetModuleInlineAsm(M: ModuleRef, Asm: *const c_char);
-    pub fn LLVMRustAppendModuleInlineAsm(M: ModuleRef, Asm: *const c_char);
+    pub fn LLVMSetModuleInlineAsm(M: &Module, Asm: *const c_char);
+    pub fn LLVMRustAppendModuleInlineAsm(M: &Module, Asm: *const c_char);
 
     /// See llvm::LLVMTypeKind::getTypeID.
     pub fn LLVMRustGetTypeKind(Ty: TypeRef) -> TypeKind;
 
     // Operations on integer types
-    pub fn LLVMInt1TypeInContext(C: ContextRef) -> TypeRef;
-    pub fn LLVMInt8TypeInContext(C: ContextRef) -> TypeRef;
-    pub fn LLVMInt16TypeInContext(C: ContextRef) -> TypeRef;
-    pub fn LLVMInt32TypeInContext(C: ContextRef) -> TypeRef;
-    pub fn LLVMInt64TypeInContext(C: ContextRef) -> TypeRef;
-    pub fn LLVMIntTypeInContext(C: ContextRef, NumBits: c_uint) -> TypeRef;
+    pub fn LLVMInt1TypeInContext(C: &Context) -> TypeRef;
+    pub fn LLVMInt8TypeInContext(C: &Context) -> TypeRef;
+    pub fn LLVMInt16TypeInContext(C: &Context) -> TypeRef;
+    pub fn LLVMInt32TypeInContext(C: &Context) -> TypeRef;
+    pub fn LLVMInt64TypeInContext(C: &Context) -> TypeRef;
+    pub fn LLVMIntTypeInContext(C: &Context, NumBits: c_uint) -> TypeRef;
 
     pub fn LLVMGetIntTypeWidth(IntegerTy: TypeRef) -> c_uint;
 
     // Operations on real types
-    pub fn LLVMFloatTypeInContext(C: ContextRef) -> TypeRef;
-    pub fn LLVMDoubleTypeInContext(C: ContextRef) -> TypeRef;
+    pub fn LLVMFloatTypeInContext(C: &Context) -> TypeRef;
+    pub fn LLVMDoubleTypeInContext(C: &Context) -> TypeRef;
 
     // Operations on function types
     pub fn LLVMFunctionType(ReturnType: TypeRef,
@@ -547,7 +544,7 @@ extern "C" {
     pub fn LLVMGetParamTypes(FunctionTy: TypeRef, Dest: *mut TypeRef);
 
     // Operations on struct types
-    pub fn LLVMStructTypeInContext(C: ContextRef,
+    pub fn LLVMStructTypeInContext(C: &Context,
                                    ElementTypes: *const TypeRef,
                                    ElementCount: c_uint,
                                    Packed: Bool)
@@ -563,9 +560,9 @@ extern "C" {
     pub fn LLVMGetVectorSize(VectorTy: TypeRef) -> c_uint;
 
     // Operations on other types
-    pub fn LLVMVoidTypeInContext(C: ContextRef) -> TypeRef;
-    pub fn LLVMX86MMXTypeInContext(C: ContextRef) -> TypeRef;
-    pub fn LLVMRustMetadataTypeInContext(C: ContextRef) -> TypeRef;
+    pub fn LLVMVoidTypeInContext(C: &Context) -> TypeRef;
+    pub fn LLVMX86MMXTypeInContext(C: &Context) -> TypeRef;
+    pub fn LLVMRustMetadataTypeInContext(C: &Context) -> TypeRef;
 
     // Operations on all values
     pub fn LLVMTypeOf(Val: ValueRef) -> TypeRef;
@@ -589,9 +586,9 @@ extern "C" {
     pub fn LLVMGetUndef(Ty: TypeRef) -> ValueRef;
 
     // Operations on metadata
-    pub fn LLVMMDStringInContext(C: ContextRef, Str: *const c_char, SLen: c_uint) -> ValueRef;
-    pub fn LLVMMDNodeInContext(C: ContextRef, Vals: *const ValueRef, Count: c_uint) -> ValueRef;
-    pub fn LLVMAddNamedMetadataOperand(M: ModuleRef, Name: *const c_char, Val: ValueRef);
+    pub fn LLVMMDStringInContext(C: &Context, Str: *const c_char, SLen: c_uint) -> ValueRef;
+    pub fn LLVMMDNodeInContext(C: &Context, Vals: *const ValueRef, Count: c_uint) -> ValueRef;
+    pub fn LLVMAddNamedMetadataOperand(M: &Module, Name: *const c_char, Val: ValueRef);
 
     // Operations on scalar constants
     pub fn LLVMConstInt(IntTy: TypeRef, N: c_ulonglong, SignExtend: Bool) -> ValueRef;
@@ -604,12 +601,12 @@ extern "C" {
 
 
     // Operations on composite constants
-    pub fn LLVMConstStringInContext(C: ContextRef,
+    pub fn LLVMConstStringInContext(C: &Context,
                                     Str: *const c_char,
                                     Length: c_uint,
                                     DontNullTerminate: Bool)
                                     -> ValueRef;
-    pub fn LLVMConstStructInContext(C: ContextRef,
+    pub fn LLVMConstStructInContext(C: &Context,
                                     ConstantVals: *const ValueRef,
                                     Count: c_uint,
                                     Packed: Bool)
@@ -679,7 +676,6 @@ extern "C" {
 
 
     // Operations on global variables, functions, and aliases (globals)
-    pub fn LLVMGetGlobalParent(Global: ValueRef) -> ModuleRef;
     pub fn LLVMIsDeclaration(Global: ValueRef) -> Bool;
     pub fn LLVMRustGetLinkage(Global: ValueRef) -> Linkage;
     pub fn LLVMRustSetLinkage(Global: ValueRef, RustLinkage: Linkage);
@@ -694,10 +690,10 @@ extern "C" {
 
     // Operations on global variables
     pub fn LLVMIsAGlobalVariable(GlobalVar: ValueRef) -> ValueRef;
-    pub fn LLVMAddGlobal(M: ModuleRef, Ty: TypeRef, Name: *const c_char) -> ValueRef;
-    pub fn LLVMGetNamedGlobal(M: ModuleRef, Name: *const c_char) -> ValueRef;
-    pub fn LLVMRustGetOrInsertGlobal(M: ModuleRef, Name: *const c_char, T: TypeRef) -> ValueRef;
-    pub fn LLVMGetFirstGlobal(M: ModuleRef) -> ValueRef;
+    pub fn LLVMAddGlobal(M: &Module, Ty: TypeRef, Name: *const c_char) -> ValueRef;
+    pub fn LLVMGetNamedGlobal(M: &Module, Name: *const c_char) -> ValueRef;
+    pub fn LLVMRustGetOrInsertGlobal(M: &Module, Name: *const c_char, T: TypeRef) -> ValueRef;
+    pub fn LLVMGetFirstGlobal(M: &Module) -> ValueRef;
     pub fn LLVMGetNextGlobal(GlobalVar: ValueRef) -> ValueRef;
     pub fn LLVMDeleteGlobal(GlobalVar: ValueRef);
     pub fn LLVMGetInitializer(GlobalVar: ValueRef) -> ValueRef;
@@ -706,15 +702,15 @@ extern "C" {
     pub fn LLVMSetThreadLocalMode(GlobalVar: ValueRef, Mode: ThreadLocalMode);
     pub fn LLVMIsGlobalConstant(GlobalVar: ValueRef) -> Bool;
     pub fn LLVMSetGlobalConstant(GlobalVar: ValueRef, IsConstant: Bool);
-    pub fn LLVMRustGetNamedValue(M: ModuleRef, Name: *const c_char) -> ValueRef;
+    pub fn LLVMRustGetNamedValue(M: &Module, Name: *const c_char) -> ValueRef;
     pub fn LLVMSetTailCall(CallInst: ValueRef, IsTailCall: Bool);
 
     // Operations on functions
-    pub fn LLVMAddFunction(M: ModuleRef, Name: *const c_char, FunctionTy: TypeRef) -> ValueRef;
-    pub fn LLVMGetNamedFunction(M: ModuleRef, Name: *const c_char) -> ValueRef;
-    pub fn LLVMGetFirstFunction(M: ModuleRef) -> ValueRef;
+    pub fn LLVMAddFunction(M: &Module, Name: *const c_char, FunctionTy: TypeRef) -> ValueRef;
+    pub fn LLVMGetNamedFunction(M: &Module, Name: *const c_char) -> ValueRef;
+    pub fn LLVMGetFirstFunction(M: &Module) -> ValueRef;
     pub fn LLVMGetNextFunction(Fn: ValueRef) -> ValueRef;
-    pub fn LLVMRustGetOrInsertFunction(M: ModuleRef,
+    pub fn LLVMRustGetOrInsertFunction(M: &Module,
                                        Name: *const c_char,
                                        FunctionTy: TypeRef)
                                        -> ValueRef;
@@ -736,7 +732,7 @@ extern "C" {
     // Operations on basic blocks
     pub fn LLVMBasicBlockAsValue(BB: BasicBlockRef) -> ValueRef;
     pub fn LLVMGetBasicBlockParent(BB: BasicBlockRef) -> ValueRef;
-    pub fn LLVMAppendBasicBlockInContext(C: ContextRef,
+    pub fn LLVMAppendBasicBlockInContext(C: &Context,
                                          Fn: ValueRef,
                                          Name: *const c_char)
                                          -> BasicBlockRef;
@@ -767,7 +763,7 @@ extern "C" {
                            Count: c_uint);
 
     // Instruction builders
-    pub fn LLVMCreateBuilderInContext(C: ContextRef) -> BuilderRef;
+    pub fn LLVMCreateBuilderInContext(C: &Context) -> BuilderRef;
     pub fn LLVMPositionBuilder(Builder: BuilderRef, Block: BasicBlockRef, Instr: ValueRef);
     pub fn LLVMPositionBuilderBefore(Builder: BuilderRef, Instr: ValueRef);
     pub fn LLVMPositionBuilderAtEnd(Builder: BuilderRef, Block: BasicBlockRef);
@@ -1277,7 +1273,7 @@ extern "C" {
     pub fn LLVMIsAStoreInst(Inst: ValueRef) -> ValueRef;
 
     /// Writes a module to the specified path. Returns 0 on success.
-    pub fn LLVMWriteBitcodeToFile(M: ModuleRef, Path: *const c_char) -> c_int;
+    pub fn LLVMWriteBitcodeToFile(M: &Module, Path: *const c_char) -> c_int;
 
     /// Creates target data from a target layout string.
     pub fn LLVMCreateTargetData(StringRep: *const c_char) -> TargetDataRef;
@@ -1289,13 +1285,13 @@ extern "C" {
     pub fn LLVMCreatePassManager() -> PassManagerRef;
 
     /// Creates a function-by-function pass manager
-    pub fn LLVMCreateFunctionPassManagerForModule(M: ModuleRef) -> PassManagerRef;
+    pub fn LLVMCreateFunctionPassManagerForModule(M: &Module) -> PassManagerRef;
 
     /// Disposes a pass manager.
     pub fn LLVMDisposePassManager(PM: PassManagerRef);
 
     /// Runs a pass manager on a module.
-    pub fn LLVMRunPassManager(PM: PassManagerRef, M: ModuleRef) -> Bool;
+    pub fn LLVMRunPassManager(PM: PassManagerRef, M: &Module) -> Bool;
 
     pub fn LLVMInitializePasses();
 
@@ -1351,7 +1347,7 @@ extern "C" {
     /// Print the pass timings since static dtors aren't picking them up.
     pub fn LLVMRustPrintPassTimings();
 
-    pub fn LLVMStructCreateNamed(C: ContextRef, Name: *const c_char) -> TypeRef;
+    pub fn LLVMStructCreateNamed(C: &Context, Name: *const c_char) -> TypeRef;
 
     pub fn LLVMStructSetBody(StructTy: TypeRef,
                              ElementTypes: *const TypeRef,
@@ -1371,11 +1367,11 @@ extern "C" {
     pub fn LLVMRustVersionMajor() -> u32;
     pub fn LLVMRustVersionMinor() -> u32;
 
-    pub fn LLVMRustAddModuleFlag(M: ModuleRef, name: *const c_char, value: u32);
+    pub fn LLVMRustAddModuleFlag(M: &Module, name: *const c_char, value: u32);
 
-    pub fn LLVMRustMetadataAsValue(C: ContextRef, MD: MetadataRef) -> ValueRef;
+    pub fn LLVMRustMetadataAsValue(C: &Context, MD: MetadataRef) -> ValueRef;
 
-    pub fn LLVMRustDIBuilderCreate(M: ModuleRef) -> DIBuilderRef;
+    pub fn LLVMRustDIBuilderCreate(M: &Module) -> DIBuilderRef;
 
     pub fn LLVMRustDIBuilderDispose(Builder: DIBuilderRef);
 
@@ -1582,7 +1578,7 @@ extern "C" {
                                                TypeArray: DIArray);
 
 
-    pub fn LLVMRustDIBuilderCreateDebugLocation(Context: ContextRef,
+    pub fn LLVMRustDIBuilderCreateDebugLocation(Context: &Context,
                                                 Line: c_uint,
                                                 Column: c_uint,
                                                 Scope: DIScope,
@@ -1618,11 +1614,11 @@ extern "C" {
                                        DataSections: bool,
                                        TrapUnreachable: bool,
                                        Singlethread: bool)
-                                       -> TargetMachineRef;
-    pub fn LLVMRustDisposeTargetMachine(T: TargetMachineRef);
-    pub fn LLVMRustAddAnalysisPasses(T: TargetMachineRef, PM: PassManagerRef, M: ModuleRef);
+                                       -> Option<&'static mut TargetMachine>;
+    pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
+    pub fn LLVMRustAddAnalysisPasses(T: TargetMachineRef, PM: PassManagerRef, M: &Module);
     pub fn LLVMRustAddBuilderLibraryInfo(PMB: PassManagerBuilderRef,
-                                         M: ModuleRef,
+                                         M: &Module,
                                          DisableSimplifyLibCalls: bool);
     pub fn LLVMRustConfigurePassManagerBuilder(PMB: PassManagerBuilderRef,
                                                OptLevel: CodeGenOptLevel,
@@ -1633,17 +1629,17 @@ extern "C" {
                                                PGOGenPath: *const c_char,
                                                PGOUsePath: *const c_char);
     pub fn LLVMRustAddLibraryInfo(PM: PassManagerRef,
-                                  M: ModuleRef,
+                                  M: &Module,
                                   DisableSimplifyLibCalls: bool);
-    pub fn LLVMRustRunFunctionPassManager(PM: PassManagerRef, M: ModuleRef);
+    pub fn LLVMRustRunFunctionPassManager(PM: PassManagerRef, M: &Module);
     pub fn LLVMRustWriteOutputFile(T: TargetMachineRef,
                                    PM: PassManagerRef,
-                                   M: ModuleRef,
+                                   M: &Module,
                                    Output: *const c_char,
                                    FileType: FileType)
                                    -> LLVMRustResult;
     pub fn LLVMRustPrintModule(PM: PassManagerRef,
-                               M: ModuleRef,
+                               M: &Module,
                                Output: *const c_char,
                                Demangle: extern fn(*const c_char,
                                                    size_t,
@@ -1651,10 +1647,10 @@ extern "C" {
                                                    size_t) -> size_t);
     pub fn LLVMRustSetLLVMOptions(Argc: c_int, Argv: *const *const c_char);
     pub fn LLVMRustPrintPasses();
-    pub fn LLVMRustSetNormalizedTarget(M: ModuleRef, triple: *const c_char);
+    pub fn LLVMRustSetNormalizedTarget(M: &Module, triple: *const c_char);
     pub fn LLVMRustAddAlwaysInlinePass(P: PassManagerBuilderRef, AddLifetimes: bool);
-    pub fn LLVMRustRunRestrictionPass(M: ModuleRef, syms: *const *const c_char, len: size_t);
-    pub fn LLVMRustMarkAllFunctionsNounwind(M: ModuleRef);
+    pub fn LLVMRustRunRestrictionPass(M: &Module, syms: *const *const c_char, len: size_t);
+    pub fn LLVMRustMarkAllFunctionsNounwind(M: &Module);
 
     pub fn LLVMRustOpenArchive(path: *const c_char) -> ArchiveRef;
     pub fn LLVMRustArchiveIteratorNew(AR: ArchiveRef) -> ArchiveIteratorRef;
@@ -1669,7 +1665,7 @@ extern "C" {
 
     pub fn LLVMRustWriteTwineToString(T: TwineRef, s: RustStringRef);
 
-    pub fn LLVMContextSetDiagnosticHandler(C: ContextRef,
+    pub fn LLVMContextSetDiagnosticHandler(C: &Context,
                                            Handler: DiagnosticHandler,
                                            DiagnosticContext: *mut c_void);
 
@@ -1688,7 +1684,7 @@ extern "C" {
     pub fn LLVMRustWriteDiagnosticInfoToString(DI: DiagnosticInfoRef, s: RustStringRef);
     pub fn LLVMRustGetDiagInfoKind(DI: DiagnosticInfoRef) -> DiagnosticKind;
 
-    pub fn LLVMRustSetInlineAsmDiagnosticHandler(C: ContextRef,
+    pub fn LLVMRustSetInlineAsmDiagnosticHandler(C: &Context,
                                                  H: InlineAsmDiagHandler,
                                                  CX: *mut c_void);
 
@@ -1706,7 +1702,7 @@ extern "C" {
                                     -> RustArchiveMemberRef;
     pub fn LLVMRustArchiveMemberFree(Member: RustArchiveMemberRef);
 
-    pub fn LLVMRustSetDataLayoutFromTargetMachine(M: ModuleRef, TM: TargetMachineRef);
+    pub fn LLVMRustSetDataLayoutFromTargetMachine(M: &Module, TM: TargetMachineRef);
 
     pub fn LLVMRustBuildOperandBundleDef(Name: *const c_char,
                                          Inputs: *const ValueRef,
@@ -1716,21 +1712,21 @@ extern "C" {
 
     pub fn LLVMRustPositionBuilderAtStart(B: BuilderRef, BB: BasicBlockRef);
 
-    pub fn LLVMRustSetComdat(M: ModuleRef, V: ValueRef, Name: *const c_char);
+    pub fn LLVMRustSetComdat(M: &Module, V: ValueRef, Name: *const c_char);
     pub fn LLVMRustUnsetComdat(V: ValueRef);
-    pub fn LLVMRustSetModulePIELevel(M: ModuleRef);
-    pub fn LLVMRustModuleBufferCreate(M: ModuleRef) -> *mut ModuleBuffer;
+    pub fn LLVMRustSetModulePIELevel(M: &Module);
+    pub fn LLVMRustModuleBufferCreate(M: &Module) -> *mut ModuleBuffer;
     pub fn LLVMRustModuleBufferPtr(p: *const ModuleBuffer) -> *const u8;
     pub fn LLVMRustModuleBufferLen(p: *const ModuleBuffer) -> usize;
     pub fn LLVMRustModuleBufferFree(p: *mut ModuleBuffer);
-    pub fn LLVMRustModuleCost(M: ModuleRef) -> u64;
+    pub fn LLVMRustModuleCost(M: &Module) -> u64;
 
     pub fn LLVMRustThinLTOAvailable() -> bool;
     pub fn LLVMRustPGOAvailable() -> bool;
     pub fn LLVMRustWriteThinBitcodeToFile(PMR: PassManagerRef,
-                                          M: ModuleRef,
+                                          M: &Module,
                                           BC: *const c_char) -> bool;
-    pub fn LLVMRustThinLTOBufferCreate(M: ModuleRef) -> *mut ThinLTOBuffer;
+    pub fn LLVMRustThinLTOBufferCreate(M: &Module) -> *mut ThinLTOBuffer;
     pub fn LLVMRustThinLTOBufferFree(M: *mut ThinLTOBuffer);
     pub fn LLVMRustThinLTOBufferPtr(M: *const ThinLTOBuffer) -> *const c_char;
     pub fn LLVMRustThinLTOBufferLen(M: *const ThinLTOBuffer) -> size_t;
@@ -1742,34 +1738,34 @@ extern "C" {
     ) -> *mut ThinLTOData;
     pub fn LLVMRustPrepareThinLTORename(
         Data: *const ThinLTOData,
-        Module: ModuleRef,
+        Module: &Module,
     ) -> bool;
     pub fn LLVMRustPrepareThinLTOResolveWeak(
         Data: *const ThinLTOData,
-        Module: ModuleRef,
+        Module: &Module,
     ) -> bool;
     pub fn LLVMRustPrepareThinLTOInternalize(
         Data: *const ThinLTOData,
-        Module: ModuleRef,
+        Module: &Module,
     ) -> bool;
     pub fn LLVMRustPrepareThinLTOImport(
         Data: *const ThinLTOData,
-        Module: ModuleRef,
+        Module: &Module,
     ) -> bool;
     pub fn LLVMRustFreeThinLTOData(Data: *mut ThinLTOData);
     pub fn LLVMRustParseBitcodeForThinLTO(
-        Context: ContextRef,
+        Context: &Context,
         Data: *const u8,
         len: usize,
         Identifier: *const c_char,
-    ) -> ModuleRef;
-    pub fn LLVMGetModuleIdentifier(M: ModuleRef, size: *mut usize) -> *const c_char;
-    pub fn LLVMRustThinLTOGetDICompileUnit(M: ModuleRef,
+    ) -> Option<&Module>;
+    pub fn LLVMGetModuleIdentifier(M: &Module, size: *mut usize) -> *const c_char;
+    pub fn LLVMRustThinLTOGetDICompileUnit(M: &Module,
                                            CU1: *mut *mut c_void,
                                            CU2: *mut *mut c_void);
-    pub fn LLVMRustThinLTOPatchDICompileUnit(M: ModuleRef, CU: *mut c_void);
+    pub fn LLVMRustThinLTOPatchDICompileUnit(M: &Module, CU: *mut c_void);
 
-    pub fn LLVMRustLinkerNew(M: ModuleRef) -> LinkerRef;
+    pub fn LLVMRustLinkerNew(M: &Module) -> LinkerRef;
     pub fn LLVMRustLinkerAdd(linker: LinkerRef,
                              bytecode: *const c_char,
                              bytecode_len: usize) -> bool;

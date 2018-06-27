@@ -21,7 +21,7 @@ use self::metadata::{type_metadata, file_metadata, TypeMap};
 use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 
 use llvm;
-use llvm::{ModuleRef, ContextRef, ValueRef};
+use llvm::ValueRef;
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray, DIFlags};
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum};
@@ -67,9 +67,9 @@ const DW_TAG_auto_variable: c_uint = 0x100;
 const DW_TAG_arg_variable: c_uint = 0x101;
 
 /// A context object for maintaining all state needed by the debuginfo module.
-pub struct CrateDebugContext<'tcx> {
-    llcontext: ContextRef,
-    llmod: ModuleRef,
+pub struct CrateDebugContext<'a, 'tcx> {
+    llcontext: &'a llvm::Context,
+    llmod: &'a llvm::Module,
     builder: DIBuilderRef,
     created_files: RefCell<FxHashMap<(Symbol, Symbol), DIFile>>,
     created_enum_disr_types: RefCell<FxHashMap<(DefId, layout::Primitive), DIType>>,
@@ -82,8 +82,8 @@ pub struct CrateDebugContext<'tcx> {
     composite_types_completed: RefCell<FxHashSet<DIType>>,
 }
 
-impl<'tcx> CrateDebugContext<'tcx> {
-    pub fn new(llmod: ModuleRef) -> CrateDebugContext<'tcx> {
+impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
+    pub fn new(llmod: &'a llvm::Module) -> Self {
         debug!("CrateDebugContext::new");
         let builder = unsafe { llvm::LLVMRustDIBuilderCreate(llmod) };
         // DIBuilder inherits context from the module, so we'd better use the same one

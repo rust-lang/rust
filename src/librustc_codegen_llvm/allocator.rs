@@ -20,8 +20,8 @@ use ModuleLlvm;
 use llvm::{self, False, True};
 
 pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) {
-    let llcx = mods.llcx;
-    let llmod = mods.llmod;
+    let llcx = &*mods.llcx;
+    let llmod = mods.llmod();
     let usize = match &tcx.sess.target.target.target_pointer_width[..] {
         "16" => llvm::LLVMInt16TypeInContext(llcx),
         "32" => llvm::LLVMInt32TypeInContext(llcx),

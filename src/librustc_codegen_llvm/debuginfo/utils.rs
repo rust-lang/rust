@@ -50,7 +50,7 @@ pub fn span_start(cx: &CodegenCx, span: Span) -> syntax_pos::Loc {
 
 #[inline]
 pub fn debug_context<'a, 'tcx>(cx: &'a CodegenCx<'a, 'tcx>)
-                           -> &'a CrateDebugContext<'tcx> {
+                           -> &'a CrateDebugContext<'a, 'tcx> {
     cx.dbg_cx.as_ref().unwrap()
 }
 

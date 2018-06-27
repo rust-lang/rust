@@ -26,8 +26,8 @@ use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 use time_graph::{self, TimeGraph, Timeline};
 use llvm;
-use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
-use llvm::{SMDiagnosticRef, ContextRef};
+use llvm::{TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
+use llvm::SMDiagnosticRef;
 use {CodegenResults, ModuleSource, ModuleCodegen, CompiledModule, ModuleKind};
 use CrateInfo;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -96,7 +96,7 @@ pub fn write_output_file(
         handler: &errors::Handler,
         target: llvm::TargetMachineRef,
         pm: llvm::PassManagerRef,
-        m: ModuleRef,
+        m: &llvm::Module,
         output: &Path,
         file_type: llvm::FileType) -> Result<(), FatalError> {
     unsafe {
@@ -130,7 +130,7 @@ fn get_llvm_opt_size(optimize: config::OptLevel) -> llvm::CodeGenOptSize {
     }
 }
 
-pub fn create_target_machine(sess: &Session, find_features: bool) -> TargetMachineRef {
+pub fn create_target_machine(sess: &Session, find_features: bool) -> &'static mut llvm::TargetMachine {
     target_machine_factory(sess, find_features)().unwrap_or_else(|err| {
         llvm_err(sess.diagnostic(), err).raise()
     })
@@ -140,7 +140,7 @@ pub fn create_target_machine(sess: &Session, find_features: bool) -> TargetMachi
 // that `is_pie_binary` is false. When we discover LLVM target features
 // `sess.crate_types` is uninitialized so we cannot access it.
 pub fn target_machine_factory(sess: &Session, find_features: bool)
-    -> Arc<dyn Fn() -> Result<TargetMachineRef, String> + Send + Sync>
+    -> Arc<dyn Fn() -> Result<&'static mut llvm::TargetMachine, String> + Send + Sync>
 {
     let reloc_model = get_reloc_model(sess);
 
@@ -199,12 +199,10 @@ pub fn target_machine_factory(sess: &Session, find_features: bool)
             )
         };
 
-        if tm.is_null() {
-            Err(format!("Could not create LLVM TargetMachine for triple: {}",
-                        triple.to_str().unwrap()))
-        } else {
-            Ok(tm)
-        }
+        tm.ok_or_else(|| {
+            format!("Could not create LLVM TargetMachine for triple: {}",
+                    triple.to_str().unwrap())
+        })
     })
 }
 
@@ -343,7 +341,7 @@ pub struct CodegenContext {
     regular_module_config: Arc<ModuleConfig>,
     metadata_module_config: Arc<ModuleConfig>,
     allocator_module_config: Arc<ModuleConfig>,
-    pub tm_factory: Arc<dyn Fn() -> Result<TargetMachineRef, String> + Send + Sync>,
+    pub tm_factory: Arc<dyn Fn() -> Result<&'static mut llvm::TargetMachine, String> + Send + Sync>,
     pub msvc_imps_needed: bool,
     pub target_pointer_width: String,
     debuginfo: config::DebugInfoLevel,
@@ -392,7 +390,7 @@ impl CodegenContext {
             let cgu = Some(&module.name[..]);
             let path = self.output_filenames.temp_path_ext(&ext, cgu);
             let cstr = path2cstr(&path);
-            let llmod = module.llvm().unwrap().llmod;
+            let llmod = module.llvm().unwrap().llmod();
             llvm::LLVMWriteBitcodeToFile(llmod, cstr.as_ptr());
         }
     }
@@ -400,13 +398,13 @@ impl CodegenContext {
 
 struct DiagnosticHandlers<'a> {
     data: *mut (&'a CodegenContext, &'a Handler),
-    llcx: ContextRef,
+    llcx: &'a llvm::Context,
 }
 
 impl<'a> DiagnosticHandlers<'a> {
     fn new(cgcx: &'a CodegenContext,
            handler: &'a Handler,
-           llcx: ContextRef) -> DiagnosticHandlers<'a> {
+           llcx: &'a llvm::Context) -> Self {
         let data = Box::into_raw(Box::new((cgcx, handler)));
         unsafe {
             llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, data as *mut _);
@@ -495,7 +493,7 @@ unsafe fn optimize(cgcx: &CodegenContext,
     -> Result<(), FatalError>
 {
     let (llmod, llcx, tm) = match module.source {
-        ModuleSource::Codegened(ref llvm) => (llvm.llmod, llvm.llcx, llvm.tm),
+        ModuleSource::Codegened(ref llvm) => (llvm.llmod(), &*llvm.llcx, &*llvm.tm),
         ModuleSource::Preexisting(_) => {
             bug!("optimize_and_codegen: called with ModuleSource::Preexisting")
         }
@@ -617,192 +615,191 @@ unsafe fn codegen(cgcx: &CodegenContext,
     -> Result<CompiledModule, FatalError>
 {
     timeline.record("codegen");
-    let (llmod, llcx, tm) = match module.source {
-        ModuleSource::Codegened(ref llvm) => (llvm.llmod, llvm.llcx, llvm.tm),
-        ModuleSource::Preexisting(_) => {
-            bug!("codegen: called with ModuleSource::Preexisting")
-        }
-    };
-    let module_name = module.name.clone();
-    let module_name = Some(&module_name[..]);
-    let handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
-
-    if cgcx.msvc_imps_needed {
-        create_msvc_imps(cgcx, llcx, llmod);
-    }
-
-    // A codegen-specific pass manager is used to generate object
-    // files for an LLVM module.
-    //
-    // Apparently each of these pass managers is a one-shot kind of
-    // thing, so we create a new one for each type of output. The
-    // pass manager passed to the closure should be ensured to not
-    // escape the closure itself, and the manager should only be
-    // used once.
-    unsafe fn with_codegen<F, R>(tm: TargetMachineRef,
-                                 llmod: ModuleRef,
-                                 no_builtins: bool,
-                                 f: F) -> R
-        where F: FnOnce(PassManagerRef) -> R,
     {
-        let cpm = llvm::LLVMCreatePassManager();
-        llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);
-        llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
-        f(cpm)
-    }
-
-    // If we don't have the integrated assembler, then we need to emit asm
-    // from LLVM and use `gcc` to create the object file.
-    let asm_to_obj = config.emit_obj && config.no_integrated_as;
-
-    // Change what we write and cleanup based on whether obj files are
-    // just llvm bitcode. In that case write bitcode, and possibly
-    // delete the bitcode if it wasn't requested. Don't generate the
-    // machine code, instead copy the .o file from the .bc
-    let write_bc = config.emit_bc || config.obj_is_bitcode;
-    let rm_bc = !config.emit_bc && config.obj_is_bitcode;
-    let write_obj = config.emit_obj && !config.obj_is_bitcode && !asm_to_obj;
-    let copy_bc_to_obj = config.emit_obj && config.obj_is_bitcode;
-
-    let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
-    let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
-
-
-    if write_bc || config.emit_bc_compressed || config.embed_bitcode {
-        let thin;
-        let old;
-        let data = if llvm::LLVMRustThinLTOAvailable() {
-            thin = ThinBuffer::new(llmod);
-            thin.data()
-        } else {
-            old = ModuleBuffer::new(llmod);
-            old.data()
+        let (llmod, llcx, tm) = match module.source {
+            ModuleSource::Codegened(ref llvm) => (llvm.llmod(), &*llvm.llcx, &*llvm.tm),
+            ModuleSource::Preexisting(_) => {
+                bug!("codegen: called with ModuleSource::Preexisting")
+            }
         };
-        timeline.record("make-bc");
+        let module_name = module.name.clone();
+        let module_name = Some(&module_name[..]);
+        let handlers = DiagnosticHandlers::new(cgcx, diag_handler, llcx);
 
-        if write_bc {
-            if let Err(e) = fs::write(&bc_out, data) {
-                diag_handler.err(&format!("failed to write bytecode: {}", e));
+        if cgcx.msvc_imps_needed {
+            create_msvc_imps(cgcx, llcx, llmod);
+        }
+
+        // A codegen-specific pass manager is used to generate object
+        // files for an LLVM module.
+        //
+        // Apparently each of these pass managers is a one-shot kind of
+        // thing, so we create a new one for each type of output. The
+        // pass manager passed to the closure should be ensured to not
+        // escape the closure itself, and the manager should only be
+        // used once.
+        unsafe fn with_codegen<F, R>(tm: TargetMachineRef,
+                                    llmod: &llvm::Module,
+                                    no_builtins: bool,
+                                    f: F) -> R
+            where F: FnOnce(PassManagerRef) -> R,
+        {
+            let cpm = llvm::LLVMCreatePassManager();
+            llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);
+            llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
+            f(cpm)
+        }
+
+        // If we don't have the integrated assembler, then we need to emit asm
+        // from LLVM and use `gcc` to create the object file.
+        let asm_to_obj = config.emit_obj && config.no_integrated_as;
+
+        // Change what we write and cleanup based on whether obj files are
+        // just llvm bitcode. In that case write bitcode, and possibly
+        // delete the bitcode if it wasn't requested. Don't generate the
+        // machine code, instead copy the .o file from the .bc
+        let write_bc = config.emit_bc || config.obj_is_bitcode;
+        let rm_bc = !config.emit_bc && config.obj_is_bitcode;
+        let write_obj = config.emit_obj && !config.obj_is_bitcode && !asm_to_obj;
+        let copy_bc_to_obj = config.emit_obj && config.obj_is_bitcode;
+
+        let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
+        let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
+
+
+        if write_bc || config.emit_bc_compressed || config.embed_bitcode {
+            let thin;
+            let old;
+            let data = if llvm::LLVMRustThinLTOAvailable() {
+                thin = ThinBuffer::new(llmod);
+                thin.data()
+            } else {
+                old = ModuleBuffer::new(llmod);
+                old.data()
+            };
+            timeline.record("make-bc");
+
+            if write_bc {
+                if let Err(e) = fs::write(&bc_out, data) {
+                    diag_handler.err(&format!("failed to write bytecode: {}", e));
+                }
+                timeline.record("write-bc");
             }
-            timeline.record("write-bc");
-        }
 
-        if config.embed_bitcode {
-            embed_bitcode(cgcx, llcx, llmod, Some(data));
-            timeline.record("embed-bc");
-        }
-
-        if config.emit_bc_compressed {
-            let dst = bc_out.with_extension(RLIB_BYTECODE_EXTENSION);
-            let data = bytecode::encode(&module.llmod_id, data);
-            if let Err(e) = fs::write(&dst, data) {
-                diag_handler.err(&format!("failed to write bytecode: {}", e));
+            if config.embed_bitcode {
+                embed_bitcode(cgcx, llcx, llmod, Some(data));
+                timeline.record("embed-bc");
             }
-            timeline.record("compress-bc");
+
+            if config.emit_bc_compressed {
+                let dst = bc_out.with_extension(RLIB_BYTECODE_EXTENSION);
+                let data = bytecode::encode(&module.llmod_id, data);
+                if let Err(e) = fs::write(&dst, data) {
+                    diag_handler.err(&format!("failed to write bytecode: {}", e));
+                }
+                timeline.record("compress-bc");
+            }
+        } else if config.embed_bitcode_marker {
+            embed_bitcode(cgcx, llcx, llmod, None);
         }
-    } else if config.embed_bitcode_marker {
-        embed_bitcode(cgcx, llcx, llmod, None);
-    }
 
-    time_ext(config.time_passes, None, &format!("codegen passes [{}]", module_name.unwrap()),
-         || -> Result<(), FatalError> {
-        if config.emit_ir {
-            let out = cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);
-            let out = path2cstr(&out);
+        time_ext(config.time_passes, None, &format!("codegen passes [{}]", module_name.unwrap()),
+            || -> Result<(), FatalError> {
+            if config.emit_ir {
+                let out = cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);
+                let out = path2cstr(&out);
 
-            extern "C" fn demangle_callback(input_ptr: *const c_char,
-                                            input_len: size_t,
-                                            output_ptr: *mut c_char,
-                                            output_len: size_t) -> size_t {
-                let input = unsafe {
-                    slice::from_raw_parts(input_ptr as *const u8, input_len as usize)
-                };
+                extern "C" fn demangle_callback(input_ptr: *const c_char,
+                                                input_len: size_t,
+                                                output_ptr: *mut c_char,
+                                                output_len: size_t) -> size_t {
+                    let input = unsafe {
+                        slice::from_raw_parts(input_ptr as *const u8, input_len as usize)
+                    };
 
-                let input = match str::from_utf8(input) {
-                    Ok(s) => s,
-                    Err(_) => return 0,
-                };
+                    let input = match str::from_utf8(input) {
+                        Ok(s) => s,
+                        Err(_) => return 0,
+                    };
 
-                let output = unsafe {
-                    slice::from_raw_parts_mut(output_ptr as *mut u8, output_len as usize)
-                };
-                let mut cursor = io::Cursor::new(output);
+                    let output = unsafe {
+                        slice::from_raw_parts_mut(output_ptr as *mut u8, output_len as usize)
+                    };
+                    let mut cursor = io::Cursor::new(output);
 
-                let demangled = match rustc_demangle::try_demangle(input) {
-                    Ok(d) => d,
-                    Err(_) => return 0,
-                };
+                    let demangled = match rustc_demangle::try_demangle(input) {
+                        Ok(d) => d,
+                        Err(_) => return 0,
+                    };
 
-                if let Err(_) = write!(cursor, "{:#}", demangled) {
-                    // Possible only if provided buffer is not big enough
-                    return 0;
+                    if let Err(_) = write!(cursor, "{:#}", demangled) {
+                        // Possible only if provided buffer is not big enough
+                        return 0;
+                    }
+
+                    cursor.position() as size_t
                 }
 
-                cursor.position() as size_t
+                with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                    llvm::LLVMRustPrintModule(cpm, llmod, out.as_ptr(), demangle_callback);
+                    llvm::LLVMDisposePassManager(cpm);
+                });
+                timeline.record("ir");
             }
 
-            with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                llvm::LLVMRustPrintModule(cpm, llmod, out.as_ptr(), demangle_callback);
-                llvm::LLVMDisposePassManager(cpm);
-            });
-            timeline.record("ir");
-        }
+            if config.emit_asm || asm_to_obj {
+                let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
 
-        if config.emit_asm || asm_to_obj {
-            let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
-
-            // We can't use the same module for asm and binary output, because that triggers
-            // various errors like invalid IR or broken binaries, so we might have to clone the
-            // module to produce the asm output
-            let llmod = if config.emit_obj {
-                llvm::LLVMCloneModule(llmod)
-            } else {
-                llmod
-            };
-            with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(diag_handler, tm, cpm, llmod, &path,
-                                  llvm::FileType::AssemblyFile)
-            })?;
-            if config.emit_obj {
-                llvm::LLVMDisposeModule(llmod);
+                // We can't use the same module for asm and binary output, because that triggers
+                // various errors like invalid IR or broken binaries, so we might have to clone the
+                // module to produce the asm output
+                let llmod = if config.emit_obj {
+                    llvm::LLVMCloneModule(llmod)
+                } else {
+                    llmod
+                };
+                with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                    write_output_file(diag_handler, tm, cpm, llmod, &path,
+                                    llvm::FileType::AssemblyFile)
+                })?;
+                timeline.record("asm");
             }
-            timeline.record("asm");
-        }
 
-        if write_obj {
-            with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(diag_handler, tm, cpm, llmod, &obj_out,
-                                  llvm::FileType::ObjectFile)
-            })?;
-            timeline.record("obj");
-        } else if asm_to_obj {
-            let assembly = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
-            run_assembler(cgcx, diag_handler, &assembly, &obj_out);
-            timeline.record("asm_to_obj");
+            if write_obj {
+                with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                    write_output_file(diag_handler, tm, cpm, llmod, &obj_out,
+                                    llvm::FileType::ObjectFile)
+                })?;
+                timeline.record("obj");
+            } else if asm_to_obj {
+                let assembly = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
+                run_assembler(cgcx, diag_handler, &assembly, &obj_out);
+                timeline.record("asm_to_obj");
 
-            if !config.emit_asm && !cgcx.save_temps {
-                drop(fs::remove_file(&assembly));
+                if !config.emit_asm && !cgcx.save_temps {
+                    drop(fs::remove_file(&assembly));
+                }
+            }
+
+            Ok(())
+        })?;
+
+        if copy_bc_to_obj {
+            debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
+            if let Err(e) = link_or_copy(&bc_out, &obj_out) {
+                diag_handler.err(&format!("failed to copy bitcode to object file: {}", e));
             }
         }
 
-        Ok(())
-    })?;
-
-    if copy_bc_to_obj {
-        debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
-        if let Err(e) = link_or_copy(&bc_out, &obj_out) {
-            diag_handler.err(&format!("failed to copy bitcode to object file: {}", e));
+        if rm_bc {
+            debug!("removing_bitcode {:?}", bc_out);
+            if let Err(e) = fs::remove_file(&bc_out) {
+                diag_handler.err(&format!("failed to remove bitcode: {}", e));
+            }
         }
+
+        drop(handlers);
     }
-
-    if rm_bc {
-        debug!("removing_bitcode {:?}", bc_out);
-        if let Err(e) = fs::remove_file(&bc_out) {
-            diag_handler.err(&format!("failed to remove bitcode: {}", e));
-        }
-    }
-
-    drop(handlers);
     Ok(module.into_compiled_module(config.emit_obj,
                                    config.emit_bc,
                                    config.emit_bc_compressed,
@@ -828,8 +825,8 @@ unsafe fn codegen(cgcx: &CodegenContext,
 /// Basically all of this is us attempting to follow in the footsteps of clang
 /// on iOS. See #35968 for lots more info.
 unsafe fn embed_bitcode(cgcx: &CodegenContext,
-                        llcx: ContextRef,
-                        llmod: ModuleRef,
+                        llcx: &llvm::Context,
+                        llmod: &llvm::Module,
                         bitcode: Option<&[u8]>) {
     let llconst = C_bytes_in_context(llcx, bitcode.unwrap_or(&[]));
     let llglobal = llvm::LLVMAddGlobal(
@@ -2050,7 +2047,7 @@ pub fn run_assembler(cgcx: &CodegenContext, handler: &Handler, assembly: &Path, 
     }
 }
 
-pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
+pub unsafe fn with_llvm_pmb(llmod: &llvm::Module,
                             config: &ModuleConfig,
                             opt_level: llvm::CodeGenOptLevel,
                             prepare_for_thin_lto: bool,
@@ -2353,7 +2350,7 @@ fn msvc_imps_needed(tcx: TyCtxt) -> bool {
 // when using MSVC linker.  We do this only for data, as linker can fix up
 // code references on its own.
 // See #26591, #27438
-fn create_msvc_imps(cgcx: &CodegenContext, llcx: ContextRef, llmod: ModuleRef) {
+fn create_msvc_imps(cgcx: &CodegenContext, llcx: &llvm::Context, llmod: &llvm::Module) {
     if !cgcx.msvc_imps_needed {
         return
     }

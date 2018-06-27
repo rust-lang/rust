@@ -30,8 +30,8 @@ use super::ModuleKind;
 
 use abi;
 use back::link;
-use back::write::{self, OngoingCodegen, create_target_machine};
-use llvm::{ContextRef, ModuleRef, ValueRef, Vector, get_param};
+use back::write::{self, OngoingCodegen};
+use llvm::{ValueRef, Vector, get_param};
 use llvm;
 use metadata;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -59,7 +59,7 @@ use rustc_mir::monomorphize::collector::{self, MonoItemCollectionMode};
 use rustc_mir::monomorphize::item::DefPathBasedNames;
 use common::{self, C_struct_in_context, C_array, val_ty};
 use consts;
-use context::{self, CodegenCx};
+use context::CodegenCx;
 use debuginfo;
 use declare;
 use meth;
@@ -77,7 +77,6 @@ use rustc_data_structures::sync::Lrc;
 
 use std::any::Any;
 use std::ffi::CString;
-use std::str;
 use std::sync::Arc;
 use std::time::{Instant, Duration};
 use std::i32;
@@ -609,16 +608,14 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
 }
 
 fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
-                            llmod_id: &str,
+                            llvm_module: &ModuleLlvm,
                             link_meta: &LinkMeta)
-                            -> (ContextRef, ModuleRef, EncodedMetadata) {
+                            -> EncodedMetadata {
     use std::io::Write;
     use flate2::Compression;
     use flate2::write::DeflateEncoder;
 
-    let (metadata_llcx, metadata_llmod) = unsafe {
-        context::create_context_and_module(tcx.sess, llmod_id)
-    };
+    let (metadata_llcx, metadata_llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
     enum MetadataKind {
@@ -641,14 +638,12 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     }).max().unwrap_or(MetadataKind::None);
 
     if kind == MetadataKind::None {
-        return (metadata_llcx,
-                metadata_llmod,
-                EncodedMetadata::new());
+        return EncodedMetadata::new();
     }
 
     let metadata = tcx.encode_metadata(link_meta);
     if kind == MetadataKind::Uncompressed {
-        return (metadata_llcx, metadata_llmod, metadata);
+        return metadata;
     }
 
     assert!(kind == MetadataKind::Compressed);
@@ -676,7 +671,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
         let directive = CString::new(directive).unwrap();
         llvm::LLVMSetModuleInlineAsm(metadata_llmod, directive.as_ptr())
     }
-    return (metadata_llcx, metadata_llmod, metadata);
+    return metadata;
 }
 
 pub struct ValueIter {
@@ -698,7 +693,7 @@ impl Iterator for ValueIter {
     }
 }
 
-pub fn iter_globals(llmod: llvm::ModuleRef) -> ValueIter {
+pub fn iter_globals(llmod: &llvm::Module) -> ValueIter {
     unsafe {
         ValueIter {
             cur: llvm::LLVMGetFirstGlobal(llmod),
@@ -731,19 +726,15 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Codegen the metadata.
     let llmod_id = "metadata";
-    let (metadata_llcx, metadata_llmod, metadata) =
-        time(tcx.sess, "write metadata", || {
-            write_metadata(tcx, llmod_id, &link_meta)
-        });
+    let metadata_llvm_module = ModuleLlvm::new(tcx.sess, llmod_id);
+    let metadata = time(tcx.sess, "write metadata", || {
+        write_metadata(tcx, &metadata_llvm_module, &link_meta)
+    });
 
     let metadata_module = ModuleCodegen {
         name: link::METADATA_MODULE_NAME.to_string(),
         llmod_id: llmod_id.to_string(),
-        source: ModuleSource::Codegened(ModuleLlvm {
-            llcx: metadata_llcx,
-            llmod: metadata_llmod,
-            tm: create_target_machine(tcx.sess, false),
-        }),
+        source: ModuleSource::Codegened(metadata_llvm_module),
         kind: ModuleKind::Metadata,
     };
 
@@ -803,13 +794,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let allocator_module = if let Some(kind) = *tcx.sess.allocator_kind.get() {
         unsafe {
             let llmod_id = "allocator";
-            let (llcx, llmod) =
-                context::create_context_and_module(tcx.sess, llmod_id);
-            let modules = ModuleLlvm {
-                llmod,
-                llcx,
-                tm: create_target_machine(tcx.sess, false),
-            };
+            let modules = ModuleLlvm::new(tcx.sess, llmod_id);
             time(tcx.sess, "write allocator module", || {
                 allocator::codegen(tcx, &modules, kind)
             });
@@ -1200,8 +1185,9 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    .to_fingerprint().to_hex());
 
         // Instantiate monomorphizations without filling out definitions yet...
-        let cx = CodegenCx::new(tcx, cgu, &llmod_id);
-        let module = {
+        let llvm_module = ModuleLlvm::new(tcx.sess, &llmod_id);
+        let stats = {
+            let cx = CodegenCx::new(tcx, cgu, &llvm_module);
             let mono_items = cx.codegen_unit
                                  .items_in_deterministic_order(cx.tcx);
             for &(mono_item, (linkage, visibility)) in &mono_items {
@@ -1248,21 +1234,15 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 debuginfo::finalize(&cx);
             }
 
-            let llvm_module = ModuleLlvm {
-                llcx: cx.llcx,
-                llmod: cx.llmod,
-                tm: create_target_machine(cx.sess(), false),
-            };
-
-            ModuleCodegen {
-                name: cgu_name,
-                source: ModuleSource::Codegened(llvm_module),
-                kind: ModuleKind::Regular,
-                llmod_id,
-            }
+            cx.stats.into_inner()
         };
 
-        (cx.into_stats(), module)
+        (stats, ModuleCodegen {
+            name: cgu_name,
+            source: ModuleSource::Codegened(llvm_module),
+            kind: ModuleKind::Regular,
+            llmod_id,
+        })
     }
 }
 

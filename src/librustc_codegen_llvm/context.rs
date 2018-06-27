@@ -10,7 +10,7 @@
 
 use common;
 use llvm;
-use llvm::{ContextRef, ModuleRef, ValueRef};
+use llvm::ValueRef;
 use rustc::dep_graph::DepGraphSafe;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -42,16 +42,16 @@ use syntax::symbol::LocalInternedString;
 use abi::Abi;
 
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
-/// `ContextRef` so that several compilation units may be optimized in parallel.
-/// All other LLVM data structures in the `CodegenCx` are tied to that `ContextRef`.
+/// `llvm::Context` so that several compilation units may be optimized in parallel.
+/// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
 pub struct CodegenCx<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub check_overflow: bool,
     pub use_dll_storage_attrs: bool,
     pub tls_model: llvm::ThreadLocalMode,
 
-    pub llmod: ModuleRef,
-    pub llcx: ContextRef,
+    pub llmod: &'a llvm::Module,
+    pub llcx: &'a llvm::Context,
     pub stats: RefCell<Stats>,
     pub codegen_unit: Arc<CodegenUnit<'tcx>>,
 
@@ -94,7 +94,7 @@ pub struct CodegenCx<'a, 'tcx: 'a> {
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
     pub isize_ty: Type,
 
-    pub dbg_cx: Option<debuginfo::CrateDebugContext<'tcx>>,
+    pub dbg_cx: Option<debuginfo::CrateDebugContext<'a, 'tcx>>,
 
     eh_personality: Cell<Option<ValueRef>>,
     eh_unwind_resume: Cell<Option<ValueRef>>,
@@ -155,8 +155,7 @@ pub fn is_pie_binary(sess: &Session) -> bool {
     !is_any_library(sess) && get_reloc_model(sess) == llvm::RelocMode::PIC
 }
 
-pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
-    let llcx = llvm::LLVMRustContextCreate(sess.fewer_names());
+pub unsafe fn create_module(sess: &Session, llcx: &'ll llvm::Context, mod_name: &str) -> &'ll llvm::Module {
     let mod_name = CString::new(mod_name).unwrap();
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
@@ -208,13 +207,13 @@ pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (Cont
         llvm::LLVMRustSetModulePIELevel(llmod);
     }
 
-    (llcx, llmod)
+    llmod
 }
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    crate fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                codegen_unit: Arc<CodegenUnit<'tcx>>,
-               llmod_id: &str)
+               llvm_module: &'a ::ModuleLlvm)
                -> CodegenCx<'a, 'tcx> {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
@@ -265,55 +264,48 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
 
         let tls_model = get_tls_model(&tcx.sess);
 
-        unsafe {
-            let (llcx, llmod) = create_context_and_module(&tcx.sess,
-                                                          &llmod_id[..]);
+        let (llcx, llmod) = (&*llvm_module.llcx, llvm_module.llmod());
 
-            let dbg_cx = if tcx.sess.opts.debuginfo != NoDebugInfo {
-                let dctx = debuginfo::CrateDebugContext::new(llmod);
-                debuginfo::metadata::compile_unit_metadata(tcx,
-                                                           &codegen_unit.name().as_str(),
-                                                           &dctx);
-                Some(dctx)
-            } else {
-                None
-            };
+        let dbg_cx = if tcx.sess.opts.debuginfo != NoDebugInfo {
+            let dctx = debuginfo::CrateDebugContext::new(llmod);
+            debuginfo::metadata::compile_unit_metadata(tcx,
+                                                        &codegen_unit.name().as_str(),
+                                                        &dctx);
+            Some(dctx)
+        } else {
+            None
+        };
 
-            let isize_ty = Type::ix_llcx(llcx, tcx.data_layout.pointer_size.bits());
+        let isize_ty = Type::ix_llcx(llcx, tcx.data_layout.pointer_size.bits());
 
-            CodegenCx {
-                tcx,
-                check_overflow,
-                use_dll_storage_attrs,
-                tls_model,
-                llmod,
-                llcx,
-                stats: RefCell::new(Stats::default()),
-                codegen_unit,
-                instances: RefCell::new(FxHashMap()),
-                vtables: RefCell::new(FxHashMap()),
-                const_cstr_cache: RefCell::new(FxHashMap()),
-                const_unsized: RefCell::new(FxHashMap()),
-                const_globals: RefCell::new(FxHashMap()),
-                statics: RefCell::new(FxHashMap()),
-                statics_to_rauw: RefCell::new(Vec::new()),
-                used_statics: RefCell::new(Vec::new()),
-                lltypes: RefCell::new(FxHashMap()),
-                scalar_lltypes: RefCell::new(FxHashMap()),
-                pointee_infos: RefCell::new(FxHashMap()),
-                isize_ty,
-                dbg_cx,
-                eh_personality: Cell::new(None),
-                eh_unwind_resume: Cell::new(None),
-                rust_try_fn: Cell::new(None),
-                intrinsics: RefCell::new(FxHashMap()),
-                local_gen_sym_counter: Cell::new(0),
-            }
+        CodegenCx {
+            tcx,
+            check_overflow,
+            use_dll_storage_attrs,
+            tls_model,
+            llmod,
+            llcx,
+            stats: RefCell::new(Stats::default()),
+            codegen_unit,
+            instances: RefCell::new(FxHashMap()),
+            vtables: RefCell::new(FxHashMap()),
+            const_cstr_cache: RefCell::new(FxHashMap()),
+            const_unsized: RefCell::new(FxHashMap()),
+            const_globals: RefCell::new(FxHashMap()),
+            statics: RefCell::new(FxHashMap()),
+            statics_to_rauw: RefCell::new(Vec::new()),
+            used_statics: RefCell::new(Vec::new()),
+            lltypes: RefCell::new(FxHashMap()),
+            scalar_lltypes: RefCell::new(FxHashMap()),
+            pointee_infos: RefCell::new(FxHashMap()),
+            isize_ty,
+            dbg_cx,
+            eh_personality: Cell::new(None),
+            eh_unwind_resume: Cell::new(None),
+            rust_try_fn: Cell::new(None),
+            intrinsics: RefCell::new(FxHashMap()),
+            local_gen_sym_counter: Cell::new(0),
         }
-    }
-
-    pub fn into_stats(self) -> Stats {
-        self.stats.into_inner()
     }
 }
 

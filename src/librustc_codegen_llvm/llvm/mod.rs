@@ -127,7 +127,7 @@ pub fn SetFunctionCallConv(fn_: ValueRef, cc: CallConv) {
 // value's name as the comdat value to make sure that it is in a 1-to-1 relationship to the
 // function.
 // For more details on COMDAT sections see e.g. http://www.airs.com/blog/archives/52
-pub fn SetUniqueComdat(llmod: ModuleRef, val: ValueRef) {
+pub fn SetUniqueComdat(llmod: &Module, val: ValueRef) {
     unsafe {
         LLVMRustSetComdat(llmod, val, LLVMGetValueName(val));
     }

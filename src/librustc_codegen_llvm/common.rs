@@ -13,7 +13,7 @@
 //! Code that is useful in various codegen modules.
 
 use llvm;
-use llvm::{ValueRef, ContextRef, TypeKind};
+use llvm::{ValueRef, TypeKind};
 use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
@@ -225,7 +225,7 @@ pub fn C_struct(cx: &CodegenCx, elts: &[ValueRef], packed: bool) -> ValueRef {
     C_struct_in_context(cx.llcx, elts, packed)
 }
 
-pub fn C_struct_in_context(llcx: ContextRef, elts: &[ValueRef], packed: bool) -> ValueRef {
+pub fn C_struct_in_context(llcx: &llvm::Context, elts: &[ValueRef], packed: bool) -> ValueRef {
     unsafe {
         llvm::LLVMConstStructInContext(llcx,
                                        elts.as_ptr(), elts.len() as c_uint,
@@ -249,7 +249,7 @@ pub fn C_bytes(cx: &CodegenCx, bytes: &[u8]) -> ValueRef {
     C_bytes_in_context(cx.llcx, bytes)
 }
 
-pub fn C_bytes_in_context(llcx: ContextRef, bytes: &[u8]) -> ValueRef {
+pub fn C_bytes_in_context(llcx: &llvm::Context, bytes: &[u8]) -> ValueRef {
     unsafe {
         let ptr = bytes.as_ptr() as *const c_char;
         return llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True);

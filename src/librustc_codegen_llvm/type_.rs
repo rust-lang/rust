@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use llvm;
-use llvm::{ContextRef, TypeRef, Bool, False, True, TypeKind};
+use llvm::{TypeRef, Bool, False, True, TypeKind};
 use llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 
 use context::CodegenCx;
@@ -77,7 +77,7 @@ impl Type {
         ty!(llvm::LLVMInt8TypeInContext(cx.llcx))
     }
 
-    pub fn i8_llcx(llcx: ContextRef) -> Type {
+    pub fn i8_llcx(llcx: &llvm::Context) -> Type {
         ty!(llvm::LLVMInt8TypeInContext(llcx))
     }
 
@@ -103,7 +103,7 @@ impl Type {
     }
 
     // Creates an integer type with the given number of bits, e.g. i24
-    pub fn ix_llcx(llcx: ContextRef, num_bits: u64) -> Type {
+    pub fn ix_llcx(llcx: &llvm::Context, num_bits: u64) -> Type {
         ty!(llvm::LLVMIntTypeInContext(llcx, num_bits as c_uint))
     }
 
@@ -127,7 +127,7 @@ impl Type {
         Type::i8(cx).ptr_to()
     }
 
-    pub fn i8p_llcx(llcx: ContextRef) -> Type {
+    pub fn i8p_llcx(llcx: &llvm::Context) -> Type {
         Type::i8_llcx(llcx).ptr_to()
     }
 

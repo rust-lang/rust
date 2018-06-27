@@ -862,7 +862,7 @@ pub fn compile_unit_metadata(tcx: TyCtxt,
         return unit_metadata;
     };
 
-    fn path_to_mdstring(llcx: llvm::ContextRef, path: &Path) -> llvm::ValueRef {
+    fn path_to_mdstring(llcx: &llvm::Context, path: &Path) -> llvm::ValueRef {
         let path_str = path2cstr(path);
         unsafe {
             llvm::LLVMMDStringInContext(llcx,
