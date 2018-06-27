@@ -55,10 +55,10 @@ where
         T::type_op_method(tcx, canonicalized)
     }
 
-    fn upcast_result(
+    fn cast_to_tcx_lifetime(
         v: &'a CanonicalizedQueryResult<'gcx, T>,
     ) -> &'a Canonical<'tcx, QueryResult<'tcx, T>> {
-        T::upcast_result(v)
+        T::cast_to_tcx_lifetime(v)
     }
 }
 
@@ -70,7 +70,7 @@ pub trait Normalizable<'gcx, 'tcx>: fmt::Debug + TypeFoldable<'tcx> + Lift<'gcx>
 
     /// Convert from the `'gcx` (lifted) form of `Self` into the `tcx`
     /// form of `Self`.
-    fn upcast_result(
+    fn cast_to_tcx_lifetime(
         v: &'a CanonicalizedQueryResult<'gcx, Self>,
     ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self>>;
 }
@@ -86,7 +86,7 @@ where
         tcx.type_op_normalize_ty(canonicalized)
     }
 
-    fn upcast_result(
+    fn cast_to_tcx_lifetime(
         v: &'a CanonicalizedQueryResult<'gcx, Self>,
     ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self>> {
         v
@@ -104,7 +104,7 @@ where
         tcx.type_op_normalize_predicate(canonicalized)
     }
 
-    fn upcast_result(
+    fn cast_to_tcx_lifetime(
         v: &'a CanonicalizedQueryResult<'gcx, Self>,
     ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self>> {
         v
@@ -122,7 +122,7 @@ where
         tcx.type_op_normalize_poly_fn_sig(canonicalized)
     }
 
-    fn upcast_result(
+    fn cast_to_tcx_lifetime(
         v: &'a CanonicalizedQueryResult<'gcx, Self>,
     ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self>> {
         v
@@ -140,7 +140,7 @@ where
         tcx.type_op_normalize_fn_sig(canonicalized)
     }
 
-    fn upcast_result(
+    fn cast_to_tcx_lifetime(
         v: &'a CanonicalizedQueryResult<'gcx, Self>,
     ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self>> {
         v

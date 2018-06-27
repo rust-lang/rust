@@ -54,14 +54,19 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>: fmt::Debug + Sized {
         canonicalized: Canonicalized<'gcx, Self::QueryKey>,
     ) -> Fallible<CanonicalizedQueryResult<'gcx, Self::QueryResult>>;
 
-    /// "Upcasts" a lifted query result (which is in the gcx lifetime)
+    /// Casts a lifted query result (which is in the gcx lifetime)
     /// into the tcx lifetime. This is always just an identity cast,
-    /// but the generic code does't realize it, so we have to push the
-    /// operation into the impls that know more specifically what
+    /// but the generic code doesn't realize it -- put another way, in
+    /// the generic code, we have a `Lifted<'gcx, Self::QueryResult>`
+    /// and we want to convert that to a `Self::QueryResult`. This is
+    /// not a priori valid, so we can't do it -- but in practice, it
+    /// is always a no-op (e.g., the lifted form of a type,
+    /// `Ty<'gcx>`, is a subtype of `Ty<'tcx>`). So we have to push
+    /// the operation into the impls that know more specifically what
     /// `QueryResult` is. This operation would (maybe) be nicer with
     /// something like HKTs or GATs, since then we could make
     /// `QueryResult` parametric and `'gcx` and `'tcx` etc.
-    fn upcast_result(
+    fn cast_to_tcx_lifetime(
         lifted_query_result: &'a CanonicalizedQueryResult<'gcx, Self::QueryResult>,
     ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self::QueryResult>>;
 
@@ -80,7 +85,7 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>: fmt::Debug + Sized {
                 let (canonical_self, canonical_var_values) =
                     infcx.canonicalize_hr_query_hack(&query_key);
                 let canonical_result = Self::perform_query(infcx.tcx, canonical_self)?;
-                let canonical_result = Self::upcast_result(&canonical_result);
+                let canonical_result = Self::cast_to_tcx_lifetime(&canonical_result);
 
                 let param_env = Self::param_env(&query_key);
 
