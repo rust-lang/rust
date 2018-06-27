@@ -339,7 +339,12 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                 Rvalue::Use(operand) => {
                     let val = trans_operand(fx, operand);
                     lval.write_cvalue(fx, val);
-                },
+                }
+                Rvalue::Ref(_, _, place) => {
+                    let place = trans_place(fx, place);
+                    let addr = place.expect_addr();
+                    lval.write_cvalue(fx, CValue::ByVal(addr, dest_layout));
+                }
                 Rvalue::BinaryOp(bin_op, lhs, rhs) => {
                     let ty = fx.monomorphize(&lhs.ty(&fx.mir.local_decls, fx.tcx));
                     let lhs = trans_operand(fx, lhs).load_value(fx);
@@ -381,7 +386,7 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                         UnOp::Not => fx.bcx.ins().bnot(val),
                         UnOp::Neg => match ty.sty {
                             TypeVariants::TyFloat(_) => fx.bcx.ins().fneg(val),
-                            ref ty => unimplemented!("un op Neg for {:?}", ty),
+                            _ => unimplemented!("un op Neg for {:?}", ty),
                         }
                     };
                     lval.write_cvalue(fx, CValue::ByVal(res, layout));
