@@ -1352,18 +1352,18 @@ impl<'a> LoweringContext<'a> {
             }
 
             fn visit_ty(&mut self, t: &'v hir::Ty) {
-                    // Don't collect elided lifetimes used inside of `fn()` syntax
+                // Don't collect elided lifetimes used inside of `fn()` syntax
                 if let hir::Ty_::TyBareFn(_) = t.node {
-                        let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
-                        self.collect_elided_lifetimes = false;
+                    let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
+                    self.collect_elided_lifetimes = false;
 
-                        // Record the "stack height" of `for<'a>` lifetime bindings
-                        // to be able to later fully undo their introduction.
-                        let old_len = self.currently_bound_lifetimes.len();
-                        hir::intravisit::walk_ty(self, t);
-                        self.currently_bound_lifetimes.truncate(old_len);
+                    // Record the "stack height" of `for<'a>` lifetime bindings
+                    // to be able to later fully undo their introduction.
+                    let old_len = self.currently_bound_lifetimes.len();
+                    hir::intravisit::walk_ty(self, t);
+                    self.currently_bound_lifetimes.truncate(old_len);
 
-                        self.collect_elided_lifetimes = old_collect_elided_lifetimes;
+                    self.collect_elided_lifetimes = old_collect_elided_lifetimes;
                 } else {
                     hir::intravisit::walk_ty(self, t)
                 }
@@ -2579,17 +2579,12 @@ impl<'a> LoweringContext<'a> {
                         }
                     });
 
-                    let asyncness = match header.asyncness {
-                        IsAsync::Async { return_impl_trait_id, .. } => Some(return_impl_trait_id),
-                        IsAsync::NotAsync => None,
-                    };
-
                     let (generics, fn_decl) = this.add_in_band_defs(
                         generics,
                         fn_def_id,
                         AnonymousLifetimeMode::PassThrough,
                         |this| this.lower_fn_decl(
-                            decl, Some(fn_def_id), true, asyncness)
+                            decl, Some(fn_def_id), true, header.asyncness.opt_return_id())
                     );
 
                     hir::ItemFn(
@@ -3016,11 +3011,6 @@ impl<'a> LoweringContext<'a> {
                 });
                 let impl_trait_return_allow = !self.is_in_trait_impl;
 
-                let asyncness = match sig.header.asyncness {
-                    IsAsync::Async { return_impl_trait_id, .. } => Some(return_impl_trait_id),
-                    IsAsync::NotAsync => None,
-                };
-
                 self.add_in_band_defs(
                     &i.generics,
                     impl_item_def_id,
@@ -3031,7 +3021,7 @@ impl<'a> LoweringContext<'a> {
                                 sig,
                                 impl_item_def_id,
                                 impl_trait_return_allow,
-                                asyncness,
+                                sig.header.asyncness.opt_return_id(),
                             ),
                             body_id,
                         )
@@ -3136,8 +3126,8 @@ impl<'a> LoweringContext<'a> {
             ItemKind::MacroDef(..) => SmallVector::new(),
             ItemKind::Fn(ref decl, ref header, ..) => {
                 let mut ids = SmallVector::one(hir::ItemId { id: i.id });
-                if let IsAsync::Async { return_impl_trait_id, .. } = header.asyncness {
-                    ids.push(hir::ItemId { id: return_impl_trait_id });
+                if let Some(id) = header.asyncness.opt_return_id() {
+                    ids.push(hir::ItemId { id });
                 }
                 self.lower_impl_trait_ids(decl, &mut ids);
                 ids
@@ -3146,8 +3136,8 @@ impl<'a> LoweringContext<'a> {
                 let mut ids = SmallVector::one(hir::ItemId { id: i.id });
                 for item in items {
                     if let ImplItemKind::Method(ref sig, _) = item.node {
-                        if let IsAsync::Async { return_impl_trait_id, .. } = sig.header.asyncness {
-                            ids.push(hir::ItemId { id: return_impl_trait_id });
+                        if let Some(id) = sig.header.asyncness.opt_return_id() {
+                            ids.push(hir::ItemId { id });
                         }
                         self.lower_impl_trait_ids(&sig.decl, &mut ids);
                     }

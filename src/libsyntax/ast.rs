@@ -1737,6 +1737,13 @@ impl IsAsync {
             false
         }
     }
+    /// In case this is an `Async` return the `NodeId` for the generated impl Trait item
+    pub fn opt_return_id(self) -> Option<NodeId> {
+        match self {
+            IsAsync::Async { return_impl_trait_id, .. } => Some(return_impl_trait_id),
+            IsAsync::NotAsync => None,
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
