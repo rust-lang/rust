@@ -113,7 +113,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::type_op_eq<'tcx> {
 
 impl<'tcx> QueryDescription<'tcx> for queries::type_op_subtype<'tcx> {
     fn describe(_tcx: TyCtxt, goal: CanonicalTypeOpSubtypeGoal<'tcx>) -> String {
-        format!("evaluating `type_op_eq` `{:?}`", goal)
+        format!("evaluating `type_op_subtype` `{:?}`", goal)
     }
 }
 
