@@ -52,6 +52,15 @@ where
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, Self::QueryKey>,
     ) -> Fallible<CanonicalizedQueryResult<'gcx, Self::QueryResult>> {
+        // Subtle: note that we are not invoking
+        // `infcx.at(...).dropck_outlives(...)` here, but rather the
+        // underlying `dropck_outlives` query. This same underlying
+        // query is also used by the
+        // `infcx.at(...).dropck_outlives(...)` fn. Avoiding the
+        // wrapper means we don't need an infcx in this code, which is
+        // good because the interface doesn't give us one (so that we
+        // know we are not registering any subregion relations or
+        // other things).
         tcx.dropck_outlives(canonicalized)
     }
 

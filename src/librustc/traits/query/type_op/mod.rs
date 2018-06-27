@@ -49,6 +49,12 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>: fmt::Debug + Sized {
 
     fn param_env(key: &Self::QueryKey) -> ParamEnv<'tcx>;
 
+    /// Performs the actual query with the canonicalized key -- the
+    /// real work happens here. This method is not given an `infcx`
+    /// because it shouldn't need one -- and if it had access to one,
+    /// it might do things like invoke `sub_regions`, which would be
+    /// bad, because it would create subregion relationships that are
+    /// not captured in the return value.
     fn perform_query(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         canonicalized: Canonicalized<'gcx, Self::QueryKey>,
