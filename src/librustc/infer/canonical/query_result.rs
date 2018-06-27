@@ -206,16 +206,44 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         })
     }
 
-    /// NLL does a lot of queries that have a particular form that we
-    /// can take advantage of to be more efficient. These queries do
-    /// not have any *type* inference variables, only region inference
-    /// variables. Therefore, when we instantiate the query result, we
-    /// only ever produce new *region constraints* and never other
-    /// forms of obligations (moreover, since we only determine
-    /// satisfiability modulo region constraints, instantiation is
-    /// infallible). Therefore, the return value need only be a larger
-    /// set of query region constraints. These constraints can then be
-    /// added directly to the NLL inference context.
+    /// An alternative to
+    /// `instantiate_query_result_and_region_obligations` that is more
+    /// efficient for NLL. NLL is a bit more advanced in the
+    /// "transition to chalk" than the rest of the compiler. During
+    /// the NLL type check, all of the "processing" of types and
+    /// things happens in queries -- the NLL checker itself is only
+    /// interested in the region obligations (`'a: 'b` or `T: 'b`)
+    /// that come out of these queries, which it wants to convert into
+    /// MIR-based constraints and solve. Therefore, it is most
+    /// convenient for the NLL Type Checker to **directly consume**
+    /// the `QueryRegionConstraint` values that arise from doing a
+    /// query. This is contrast to other parts of the compiler, which
+    /// would prefer for those `QueryRegionConstraint` to be converted
+    /// into the older infcx-style constraints (e.g., calls to
+    /// [`sub_regions()`] or [`register_region_obligation()`]).
+    ///
+    /// Therefore, `instantiate_nll_query_result_and_region_obligations` performs the same
+    /// basic operations as `instantiate_query_result_and_region_obligations` but
+    /// it returns its result differently:
+    ///
+    /// - It creates a substitution `S` that maps from the original
+    ///   query variables to the values computed in the query
+    ///   result. If any errors arise, they are propagated back as an
+    ///   `Err` result.
+    /// - In the case of a successful substitution, we will append
+    ///   `QueryRegionConstraint` values onto the
+    ///   `output_query_region_constraints` vector for the solver to
+    ///   use (if an error arises, some values may also be pushed, but
+    ///   they should be ignored).
+    /// - It **can happen** (though it rarely does currently) that
+    ///   equating types and things will give rise to subobligations
+    ///   that must be processed.  In this case, those subobligations
+    ///   are propagated back in the return value.
+    /// - Finally, the query result (of type `R`) is propagated back,
+    ///   after applying the substitution `S`.
+    ///
+    /// [`register_region_obligation()`: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/infer/struct.InferCtxt.html#method.register_region_obligation
+    /// [`sub_regions()`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/infer/struct.InferCtxt.html#method.sub_regions
     pub fn instantiate_nll_query_result_and_region_obligations<R>(
         &self,
         cause: &ObligationCause<'tcx>,
