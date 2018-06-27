@@ -342,63 +342,37 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                 },
                 Rvalue::BinaryOp(bin_op, lhs, rhs) => {
                     let ty = fx.monomorphize(&lhs.ty(&fx.mir.local_decls, fx.tcx));
-                    let layout = fx.layout_of(ty);
                     let lhs = trans_operand(fx, lhs).load_value(fx);
                     let rhs = trans_operand(fx, rhs).load_value(fx);
 
                     let res = match ty.sty {
                         TypeVariants::TyUint(_) => {
-                            match bin_op {
-                                BinOp::Add => fx.bcx.ins().iadd(lhs, rhs),
-                                BinOp::Sub => fx.bcx.ins().isub(lhs, rhs),
-                                BinOp::Mul => fx.bcx.ins().imul(lhs, rhs),
-                                BinOp::Div => fx.bcx.ins().udiv(lhs, rhs),
-                                bin_op => unimplemented!("checked uint bin op {:?} {:?} {:?}", bin_op, lhs, rhs),
-                            }
+                            trans_int_binop(fx, *bin_op, lhs, rhs, ty, false, false)
                         }
                         TypeVariants::TyInt(_) => {
-                            match bin_op {
-                                BinOp::Add => fx.bcx.ins().iadd(lhs, rhs),
-                                BinOp::Sub => fx.bcx.ins().isub(lhs, rhs),
-                                BinOp::Mul => fx.bcx.ins().imul(lhs, rhs),
-                                BinOp::Div => fx.bcx.ins().sdiv(lhs, rhs),
-                                bin_op => unimplemented!("checked int bin op {:?} {:?} {:?}", bin_op, lhs, rhs),
-                            }
+                            trans_int_binop(fx, *bin_op, lhs, rhs, ty, true, false)
                         }
                         _ => unimplemented!(),
                     };
-                    lval.write_cvalue(fx, CValue::ByVal(res, layout));
+                    lval.write_cvalue(fx, res);
                 }
                 Rvalue::CheckedBinaryOp(bin_op, lhs, rhs) => {
                     // TODO correctly write output tuple
 
                     let ty = fx.monomorphize(&lhs.ty(&fx.mir.local_decls, fx.tcx));
-                    let layout = fx.layout_of(ty);
                     let lhs = trans_operand(fx, lhs).load_value(fx);
                     let rhs = trans_operand(fx, rhs).load_value(fx);
 
                     let res = match ty.sty {
                         TypeVariants::TyUint(_) => {
-                            match bin_op {
-                                BinOp::Add => fx.bcx.ins().iadd(lhs, rhs),
-                                BinOp::Sub => fx.bcx.ins().isub(lhs, rhs),
-                                BinOp::Mul => fx.bcx.ins().imul(lhs, rhs),
-                                BinOp::Div => fx.bcx.ins().udiv(lhs, rhs),
-                                bin_op => unimplemented!("checked uint bin op {:?} {:?} {:?}", bin_op, lhs, rhs),
-                            }
+                            trans_int_binop(fx, *bin_op, lhs, rhs, ty, false, true)
                         }
                         TypeVariants::TyInt(_) => {
-                            match bin_op {
-                                BinOp::Add => fx.bcx.ins().iadd(lhs, rhs),
-                                BinOp::Sub => fx.bcx.ins().isub(lhs, rhs),
-                                BinOp::Mul => fx.bcx.ins().imul(lhs, rhs),
-                                BinOp::Div => fx.bcx.ins().sdiv(lhs, rhs),
-                                bin_op => unimplemented!("checked int bin op {:?} {:?} {:?}", bin_op, lhs, rhs),
-                            }
+                            trans_int_binop(fx, *bin_op, lhs, rhs, ty, true, true)
                         }
                         _ => unimplemented!(),
                     };
-                    lval.write_cvalue(fx, CValue::ByVal(res, layout));
+                    lval.write_cvalue(fx, res);
                     unimplemented!("checked bin op {:?}", bin_op);
                 }
                 Rvalue::Cast(CastKind::ReifyFnPointer, operand, ty) => {
@@ -478,6 +452,37 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
         StatementKind::StorageLive(_) | StatementKind::StorageDead(_) | StatementKind::Nop => {}
         _ => unimplemented!("stmt {:?}", stmt),
     }
+}
+
+fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>, signed: bool, checked: bool) -> CValue<'tcx> {
+    let res = match (bin_op, signed) {
+        (BinOp::Add, _) => fx.bcx.ins().iadd(lhs, rhs),
+        (BinOp::Sub, _) => fx.bcx.ins().isub(lhs, rhs),
+        (BinOp::Mul, _) => fx.bcx.ins().imul(lhs, rhs),
+        (BinOp::Div, false) => fx.bcx.ins().udiv(lhs, rhs),
+        (BinOp::Div, true) => fx.bcx.ins().sdiv(lhs, rhs),
+        (BinOp::Rem, false) => fx.bcx.ins().urem(lhs, rhs),
+        (BinOp::Rem, true) => fx.bcx.ins().srem(lhs, rhs),
+        (BinOp::BitXor, _) => fx.bcx.ins().bxor(lhs, rhs),
+        (BinOp::BitAnd, _) => fx.bcx.ins().band(lhs, rhs),
+        (BinOp::BitOr, _) => fx.bcx.ins().bor(lhs, rhs),
+        (BinOp::Shl, _) => fx.bcx.ins().ishl(lhs, rhs),
+        (BinOp::Shr, false) => fx.bcx.ins().ushr(lhs, rhs),
+        (BinOp::Shr, true) => fx.bcx.ins().sshr(lhs, rhs),
+        (BinOp::Eq, _) => fx.bcx.ins().icmp(IntCC::Equal , lhs, rhs),
+        (BinOp::Lt, false) => fx.bcx.ins().icmp(IntCC::UnsignedLessThan , lhs, rhs),
+        (BinOp::Lt, true) => fx.bcx.ins().icmp(IntCC::SignedLessThan , lhs, rhs),
+        (BinOp::Le, false) => fx.bcx.ins().icmp(IntCC::UnsignedLessThanOrEqual , lhs, rhs),
+        (BinOp::Le, true) => fx.bcx.ins().icmp(IntCC::SignedLessThanOrEqual , lhs, rhs),
+        (BinOp::Ne, _) => fx.bcx.ins().icmp(IntCC::NotEqual , lhs, rhs),
+        (BinOp::Ge, false) => fx.bcx.ins().icmp(IntCC::UnsignedGreaterThanOrEqual , lhs, rhs),
+        (BinOp::Ge, true) => fx.bcx.ins().icmp(IntCC::SignedGreaterThanOrEqual , lhs, rhs),
+        (BinOp::Gt, false) => fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan , lhs, rhs),
+        (BinOp::Gt, true) => fx.bcx.ins().icmp(IntCC::SignedGreaterThan , lhs, rhs),
+        (BinOp::Offset, _) => bug!("bin op Offset on non ptr lhs: {:?} rhs: {:?}", lhs, rhs),
+    };
+    // TODO: return correct value for checked binops
+    CValue::ByVal(res, fx.layout_of(ty))
 }
 
 fn trans_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, place: &Place<'tcx>) -> CPlace<'tcx> {
