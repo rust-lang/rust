@@ -113,6 +113,34 @@ impl<'a> io::Write for &'a UnixStream {
 }
 
 impl SocketAddr {
+    /// Returns true if and only if the address is unnamed.
+    ///
+    /// # Examples
+    ///
+    /// A named address:
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixListener;
+    ///
+    /// let socket = UnixListener::bind("/tmp/sock").unwrap();
+    /// let addr = socket.local_addr().expect("Couldn't get local address");
+    /// assert_eq!(addr.is_unnamed(), false);
+    /// ```
+    ///
+    /// An unnamed address:
+    ///
+    /// ```
+    /// use std::os::unix::net::UnixDatagram;
+    ///
+    /// let socket = UnixDatagram::unbound().unwrap();
+    /// let addr = socket.local_addr().expect("Couldn't get local address");
+    /// assert_eq!(addr.is_unnamed(), true);
+    /// ```
+    #[stable(feature = "unix_socket", since = "1.10.0")]
+    pub fn is_unnamed(&self) -> bool {
+        self.0.is_unnamed()
+    }
+
     /// Returns the contents of this address if it is a `pathname` address.
     ///
     /// # Examples

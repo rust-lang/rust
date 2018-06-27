@@ -20,11 +20,15 @@ use sys::{cvt, fd::FileDesc, syscall};
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 #[derive(Clone)]
-pub(crate) struct SocketAddr(());
+pub struct SocketAddr(());
 
 impl SocketAddr {
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn as_pathname(&self) -> Option<&Path> {
+    pub fn is_unnamed(&self) -> bool {
+        false
+    }
+    #[stable(feature = "unix_socket", since = "1.10.0")]
+    pub fn as_pathname(&self) -> Option<&Path> {
         None
     }
 }
@@ -36,7 +40,7 @@ impl fmt::Debug for SocketAddr {
 }
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
-pub(crate) struct UnixStream(FileDesc);
+pub struct UnixStream(FileDesc);
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl fmt::Debug for UnixStream {
@@ -55,7 +59,7 @@ impl fmt::Debug for UnixStream {
 
 impl UnixStream {
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn connect(path: &Path) -> io::Result<UnixStream> {
+    pub fn connect(path: &Path) -> io::Result<UnixStream> {
         if let Some(s) = path.to_str() {
             cvt(syscall::open(format!("chan:{}", s), syscall::O_CLOEXEC))
                 .map(FileDesc::new)
@@ -69,7 +73,7 @@ impl UnixStream {
     }
 
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn pair() -> io::Result<(UnixStream, UnixStream)> {
+    pub fn pair() -> io::Result<(UnixStream, UnixStream)> {
         let server = cvt(syscall::open("chan:", syscall::O_CREAT | syscall::O_CLOEXEC))
             .map(FileDesc::new)?;
         let client = server.duplicate_path(b"connect")?;
@@ -78,52 +82,52 @@ impl UnixStream {
     }
 
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn try_clone(&self) -> io::Result<UnixStream> {
+    pub fn try_clone(&self) -> io::Result<UnixStream> {
         self.0.duplicate().map(UnixStream)
     }
 
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn local_addr(&self) -> io::Result<SocketAddr> {
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
         Err(Error::new(ErrorKind::Other, "UnixStream::local_addr unimplemented on redox"))
     }
 
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn peer_addr(&self) -> io::Result<SocketAddr> {
+    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         Err(Error::new(ErrorKind::Other, "UnixStream::peer_addr unimplemented on redox"))
     }
 
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn set_read_timeout(&self, _timeout: Option<Duration>) -> io::Result<()> {
+    pub fn set_read_timeout(&self, _timeout: Option<Duration>) -> io::Result<()> {
         Err(Error::new(ErrorKind::Other, "UnixStream::set_read_timeout unimplemented on redox"))
     }
 
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn set_write_timeout(&self, _timeout: Option<Duration>) -> io::Result<()> {
+    pub fn set_write_timeout(&self, _timeout: Option<Duration>) -> io::Result<()> {
         Err(Error::new(ErrorKind::Other, "UnixStream::set_write_timeout unimplemented on redox"))
     }
 
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn read_timeout(&self) -> io::Result<Option<Duration>> {
+    pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
         Err(Error::new(ErrorKind::Other, "UnixStream::read_timeout unimplemented on redox"))
     }
 
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn write_timeout(&self) -> io::Result<Option<Duration>> {
+    pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
         Err(Error::new(ErrorKind::Other, "UnixStream::write_timeout unimplemented on redox"))
     }
 
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
     }
 
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn take_error(&self) -> io::Result<Option<io::Error>> {
+    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         Ok(None)
     }
 
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn shutdown(&self, _how: Shutdown) -> io::Result<()> {
+    pub fn shutdown(&self, _how: Shutdown) -> io::Result<()> {
         Err(Error::new(ErrorKind::Other, "UnixStream::shutdown unimplemented on redox"))
     }
 }
@@ -173,7 +177,7 @@ impl IntoRawFd for UnixStream {
 }
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
-pub(crate) struct UnixListener(FileDesc);
+pub struct UnixListener(FileDesc);
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl fmt::Debug for UnixListener {
@@ -189,7 +193,7 @@ impl fmt::Debug for UnixListener {
 
 impl UnixListener {
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn bind(path: &Path) -> io::Result<UnixListener> {
+    pub fn bind(path: &Path) -> io::Result<UnixListener> {
         if let Some(s) = path.to_str() {
             cvt(syscall::open(format!("chan:{}", s), syscall::O_CREAT | syscall::O_CLOEXEC))
                 .map(FileDesc::new)
@@ -203,27 +207,27 @@ impl UnixListener {
     }
 
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
+    pub fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
         self.0.duplicate_path(b"listen").map(|fd| (UnixStream(fd), SocketAddr(())))
     }
 
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn try_clone(&self) -> io::Result<UnixListener> {
+    pub fn try_clone(&self) -> io::Result<UnixListener> {
         self.0.duplicate().map(UnixListener)
     }
 
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn local_addr(&self) -> io::Result<SocketAddr> {
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
         Err(Error::new(ErrorKind::Other, "UnixListener::local_addr unimplemented on redox"))
     }
 
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
     }
 
     #[stable(feature = "unix_socket", since = "1.10.0")]
-    pub(crate) fn take_error(&self) -> io::Result<Option<io::Error>> {
+    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         Ok(None)
     }
 }

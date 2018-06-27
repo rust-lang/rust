@@ -54,7 +54,8 @@ pub struct SocketAddr {
 }
 
 impl SocketAddr {
-    pub(crate) fn new<F>(f: F) -> io::Result<SocketAddr>
+    #[stable(feature = "unix_socket", since = "1.10.0")]
+    pub fn new<F>(f: F) -> io::Result<SocketAddr>
         where F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int
     {
         unsafe {
@@ -65,7 +66,8 @@ impl SocketAddr {
         }
     }
 
-    pub(crate) fn from_parts(addr: libc::sockaddr_un, mut len: libc::socklen_t)
+    #[stable(feature = "unix_socket", since = "1.10.0")]
+    pub fn from_parts(addr: libc::sockaddr_un, mut len: libc::socklen_t)
         -> io::Result<SocketAddr>
     {
         if len == 0 {
