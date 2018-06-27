@@ -11,23 +11,15 @@
 #![deny(const_err)]
 
 pub const A: i8 = -std::i8::MIN;
-//~^ ERROR attempt to negate with overflow
-//~| ERROR this expression will panic at runtime
-//~| ERROR this constant cannot be used
+//~^ ERROR this constant cannot be used
 pub const B: i8 = A;
 //~^ ERROR const_err
-//~| ERROR const_err
-//~| ERROR const_err
 //~| ERROR const_err
 pub const C: u8 = A as u8;
 //~^ ERROR const_err
 //~| ERROR const_err
-//~| ERROR const_err
-//~| ERROR const_err
 pub const D: i8 = 50 - A;
 //~^ ERROR const_err
-//~| ERROR const_err
-//~| ERROR const_err
 //~| ERROR const_err
 
 fn main() {

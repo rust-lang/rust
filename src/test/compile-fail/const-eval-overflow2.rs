@@ -25,54 +25,46 @@ const VALS_I8: (i8,) =
      //~^ ERROR this constant cannot be used
     (
      i8::MIN - 1,
-     //~^ ERROR attempt to subtract with overflow
      );
 
 const VALS_I16: (i16,) =
      //~^ ERROR this constant cannot be used
     (
      i16::MIN - 1,
-     //~^ ERROR attempt to subtract with overflow
      );
 
 const VALS_I32: (i32,) =
      //~^ ERROR this constant cannot be used
     (
      i32::MIN - 1,
-     //~^ ERROR attempt to subtract with overflow
      );
 
 const VALS_I64: (i64,) =
      //~^ ERROR this constant cannot be used
     (
      i64::MIN - 1,
-     //~^ ERROR attempt to subtract with overflow
      );
 
 const VALS_U8: (u8,) =
      //~^ ERROR this constant cannot be used
     (
      u8::MIN - 1,
-     //~^ ERROR attempt to subtract with overflow
      );
 
 const VALS_U16: (u16,) = (
      //~^ ERROR this constant cannot be used
      u16::MIN - 1,
-     //~^ ERROR attempt to subtract with overflow
      );
 
 const VALS_U32: (u32,) = (
      //~^ ERROR this constant cannot be used
      u32::MIN - 1,
-     //~^ ERROR attempt to subtract with overflow
      );
 
 const VALS_U64: (u64,) =
      //~^ ERROR this constant cannot be used
     (
      u64::MIN - 1,
-     //~^ ERROR attempt to subtract with overflow
      );
 
 fn main() {

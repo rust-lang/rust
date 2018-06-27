@@ -1,15 +1,3 @@
-warning: attempt to subtract with overflow
-  --> $DIR/conditional_array_execution.rs:15:19
-   |
-LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
-   |                   ^^^^^
-   |
-note: lint level defined here
-  --> $DIR/conditional_array_execution.rs:11:9
-   |
-LL | #![warn(const_err)]
-   |         ^^^^^^^^^
-
 warning: this constant cannot be used
   --> $DIR/conditional_array_execution.rs:15:1
    |
@@ -17,9 +5,15 @@ LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
    | ^^^^^^^^^^^^^^^^^^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                   |
    |                   attempt to subtract with overflow
+   |
+note: lint level defined here
+  --> $DIR/conditional_array_execution.rs:11:9
+   |
+LL | #![warn(const_err)]
+   |         ^^^^^^^^^
 
 warning: referenced constant
-  --> $DIR/conditional_array_execution.rs:20:20
+  --> $DIR/conditional_array_execution.rs:19:20
    |
 LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
    |                   ----- attempt to subtract with overflow
@@ -28,13 +22,13 @@ LL |     println!("{}", FOO);
    |                    ^^^
 
 warning: this expression will panic at runtime
-  --> $DIR/conditional_array_execution.rs:20:20
+  --> $DIR/conditional_array_execution.rs:19:20
    |
 LL |     println!("{}", FOO);
    |                    ^^^ referenced constant has errors
 
 error[E0080]: referenced constant
-  --> $DIR/conditional_array_execution.rs:20:5
+  --> $DIR/conditional_array_execution.rs:19:5
    |
 LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
    |                   ----- attempt to subtract with overflow
@@ -45,7 +39,7 @@ LL |     println!("{}", FOO);
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error[E0080]: erroneous constant used
-  --> $DIR/conditional_array_execution.rs:20:5
+  --> $DIR/conditional_array_execution.rs:19:5
    |
 LL |     println!("{}", FOO);
    |     ^^^^^^^^^^^^^^^---^^
@@ -55,7 +49,7 @@ LL |     println!("{}", FOO);
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error[E0080]: referenced constant
-  --> $DIR/conditional_array_execution.rs:20:20
+  --> $DIR/conditional_array_execution.rs:19:20
    |
 LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
    |                   ----- attempt to subtract with overflow
@@ -64,7 +58,7 @@ LL |     println!("{}", FOO);
    |                    ^^^
 
 error[E0080]: erroneous constant used
-  --> $DIR/conditional_array_execution.rs:20:20
+  --> $DIR/conditional_array_execution.rs:19:20
    |
 LL |     println!("{}", FOO);
    |                    ^^^ referenced constant has errors

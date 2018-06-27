@@ -45,8 +45,11 @@ impl MirPass for ConstProp {
             return;
         }
         match tcx.describe_def(source.def_id) {
-            // skip statics because they'll be evaluated by miri anyway
+            // skip statics/consts because they'll be evaluated by miri anyway
+            Some(Def::Const(..)) |
             Some(Def::Static(..)) => return,
+            // we still run on associated constants, because they might not get evaluated
+            // within the current crate
             _ => {},
         }
         trace!("ConstProp starting for {:?}", source.def_id);
