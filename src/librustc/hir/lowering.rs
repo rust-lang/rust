@@ -1870,7 +1870,8 @@ impl<'a> LoweringContext<'a> {
     //      This guards against trait declarations and implementations where impl Trait is
     //      disallowed.
     // make_ret_async: if `Some`, converts `-> T` into `-> impl Future<Output = T>` in the
-    //      return type. This is used for `async fn` declarations.
+    //      return type. This is used for `async fn` declarations. The `NodeId` is the id of the
+    //      return type impl Trait item.
     fn lower_fn_decl(
         &mut self,
         decl: &FnDecl,
