@@ -13,6 +13,7 @@ use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::{OutlivesConstraint, RegionTest, TypeTest};
 use borrow_check::nll::type_check::Locations;
 use borrow_check::nll::universal_regions::UniversalRegions;
+use borrow_check::nll::constraint_set::ConstraintSet;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc::infer::region_constraints::{GenericKind, VerifyBound};
@@ -31,7 +32,7 @@ crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
     implicit_region_bound: Option<ty::Region<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
     locations: Locations,
-    outlives_constraints: &'a mut Vec<OutlivesConstraint>,
+    outlives_constraints: &'a mut ConstraintSet,
     type_tests: &'a mut Vec<TypeTest<'tcx>>,
     all_facts: &'a mut Option<AllFacts>,
 }
@@ -46,7 +47,7 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
         implicit_region_bound: Option<ty::Region<'tcx>>,
         param_env: ty::ParamEnv<'tcx>,
         locations: Locations,
-        outlives_constraints: &'a mut Vec<OutlivesConstraint>,
+        outlives_constraints: &'a mut ConstraintSet,
         type_tests: &'a mut Vec<TypeTest<'tcx>>,
         all_facts: &'a mut Option<AllFacts>,
     ) -> Self {

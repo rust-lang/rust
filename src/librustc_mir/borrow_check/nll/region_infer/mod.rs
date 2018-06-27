@@ -10,6 +10,7 @@
 
 use super::universal_regions::UniversalRegions;
 use borrow_check::nll::region_infer::values::ToElementIndex;
+use borrow_check::nll::constraint_set::ConstraintSet;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
@@ -24,7 +25,6 @@ use rustc::mir::{
 use rustc::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::{self, ErrorReported};
 use rustc_data_structures::bitvec::BitVector;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use std::fmt;
 use std::rc::Rc;
@@ -66,8 +66,7 @@ pub struct RegionInferenceContext<'tcx> {
     dependency_map: Option<IndexVec<RegionVid, Option<ConstraintIndex>>>,
 
     /// The constraints we have accumulated and used during solving.
-    constraints: IndexVec<ConstraintIndex, OutlivesConstraint>,
-    seen_constraints: FxHashSet<(RegionVid, RegionVid)>,
+    constraints: ConstraintSet,
 
     /// Type constraints that we check after solving.
     type_tests: Vec<TypeTest<'tcx>>,
@@ -146,7 +145,7 @@ pub struct OutlivesConstraint {
 }
 
 impl OutlivesConstraint {
-    fn dedup_key(&self) -> (RegionVid, RegionVid) {
+    pub fn dedup_key(&self) -> (RegionVid, RegionVid) {
         (self.sup, self.sub)
     }
 }
@@ -251,11 +250,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         var_infos: VarInfos,
         universal_regions: UniversalRegions<'tcx>,
         mir: &Mir<'tcx>,
-        mut outlives_constraints: Vec<OutlivesConstraint>,
+        outlives_constraints: ConstraintSet,
         type_tests: Vec<TypeTest<'tcx>>,
     ) -> Self {
         // The `next` field should not yet have been initialized:
-        debug_assert!(outlives_constraints.iter().all(|c| c.next.is_none()));
+        debug_assert!(outlives_constraints.iner().iter().all(|c| c.next.is_none()));
 
         let num_region_variables = var_infos.len();
         let num_universal_regions = universal_regions.len();
@@ -268,18 +267,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .map(|info| RegionDefinition::new(info.origin))
             .collect();
 
-        let mut seen_constraints: FxHashSet<(RegionVid, RegionVid)> = Default::default();
-
-        outlives_constraints.retain(|c| c.sup != c.sub && seen_constraints.insert(c.dedup_key()));
-
         let mut result = Self {
             definitions,
             elements: elements.clone(),
             liveness_constraints: RegionValues::new(elements, num_region_variables),
             inferred_values: None,
             dependency_map: None,
-            constraints: IndexVec::from_raw(outlives_constraints),
-            seen_constraints,
+            constraints: outlives_constraints,
             type_tests,
             universal_regions,
         };
@@ -405,29 +399,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         sub: RegionVid,
         point: Location,
     ) {
-        self.add_outlives_iner(OutlivesConstraint {
+        assert!(self.inferred_values.is_none(), "values already inferred");
+        self.constraints.push(OutlivesConstraint {
             span,
             sup,
             sub,
             point,
             next: None,
         })
-    }
-
-    /// Indicates that the region variable `sup` must outlive `sub` is live at the point `point`.
-    fn add_outlives_iner(
-        &mut self,
-        outlives_constraint: OutlivesConstraint
-    ) {
-        debug!("add_outlives({:?}: {:?} @ {:?}", outlives_constraint.sup, outlives_constraint.sub, outlives_constraint.point);
-        assert!(self.inferred_values.is_none(), "values already inferred");
-        if outlives_constraint.sup == outlives_constraint.sub {
-            // 'a: 'a is pretty uninteresting
-            return;
-        }
-        if self.seen_constraints.insert(outlives_constraint.dedup_key()) {
-            self.constraints.push(outlives_constraint);
-        }
     }
 
     /// Perform region inference and report errors if we see any
@@ -497,7 +476,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn compute_region_values(&self, _mir: &Mir<'tcx>) -> RegionValues {
         debug!("compute_region_values()");
         debug!("compute_region_values: constraints={:#?}", {
-            let mut constraints: Vec<_> = self.constraints.iter().collect();
+            let mut constraints: Vec<_> = self.constraints.iner().iter().collect();
             constraints.sort();
             constraints
         });
@@ -509,7 +488,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let dependency_map = self.dependency_map.as_ref().unwrap();
 
         // Constraints that may need to be repropagated (initially all):
-        let mut dirty_list: Vec<_> = self.constraints.indices().collect();
+        let mut dirty_list: Vec<_> = self.constraints.iner().indices().collect();
 
         // Set to 0 for each constraint that is on the dirty list:
         let mut clean_bit_vec = BitVector::new(dirty_list.len());
@@ -518,7 +497,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         while let Some(constraint_idx) = dirty_list.pop() {
             clean_bit_vec.insert(constraint_idx.index());
 
-            let constraint = &self.constraints[constraint_idx];
+            let constraint = &self.constraints.iner()[constraint_idx];
             debug!("propagate_constraints: constraint={:?}", constraint);
 
             if inferred_values.add_region(constraint.sup, constraint.sub) {
@@ -530,7 +509,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     if clean_bit_vec.remove(dep_idx.index()) {
                         dirty_list.push(dep_idx);
                     }
-                    opt_dep_idx = self.constraints[dep_idx].next;
+                    opt_dep_idx = self.constraints.iner()[dep_idx].next;
                 }
             }
 
@@ -547,7 +526,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn build_dependency_map(&mut self) -> IndexVec<RegionVid, Option<ConstraintIndex>> {
         let mut map = IndexVec::from_elem(None, &self.definitions);
 
-        for (idx, constraint) in self.constraints.iter_enumerated_mut().rev() {
+        for (idx, constraint) in self.constraints.iner_mut().iter_enumerated_mut().rev() {
             let mut head = &mut map[constraint.sub];
             debug_assert!(constraint.next.is_none());
             constraint.next = *head;
@@ -995,7 +974,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             );
 
             let blame_index = self.blame_constraint(longer_fr, shorter_fr);
-            let blame_span = self.constraints[blame_index].span;
+            let blame_span = self.constraints.iner()[blame_index].span;
 
             if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
                 // Shrink `fr` until we find a non-local region (if we do).
@@ -1086,7 +1065,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // - `fr1: X` transitively
         // - and `Y` is live at `elem`
         let index = self.blame_constraint(fr1, elem);
-        let region_sub = self.constraints[index].sub;
+        let region_sub = self.constraints.iner()[index].sub;
 
         // then return why `Y` was live at `elem`
         self.liveness_constraints.cause(region_sub, elem)
@@ -1107,6 +1086,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // of dependencies, which doesn't account for the locations of
         // contraints at all. But it will do for now.
         let relevant_constraint = self.constraints
+            .iner()
             .iter_enumerated()
             .filter_map(|(i, constraint)| {
                 if !self.liveness_constraints.contains(constraint.sub, elem) {
@@ -1142,7 +1122,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         while changed {
             changed = false;
-            for constraint in &self.constraints {
+            for constraint in self.constraints.iner() {
                 if let Some(n) = result_set[constraint.sup] {
                     let m = n + 1;
                     if result_set[constraint.sub]
