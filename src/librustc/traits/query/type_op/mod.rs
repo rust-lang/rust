@@ -26,6 +26,9 @@ pub mod prove_predicate;
 use self::prove_predicate::ProvePredicate;
 pub mod subtype;
 
+/// "Type ops" are used in NLL to perform some particular action and
+/// extract out the resulting region constraints (or an error if it
+/// cannot be completed).
 pub trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     type Output;
 
@@ -38,14 +41,23 @@ pub trait TypeOp<'gcx, 'tcx>: Sized + fmt::Debug {
     ) -> Fallible<(Self::Output, Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>)>;
 }
 
+/// "Query type ops" are type ops that are implemented using a
+/// [canonical query][c]. The `Self` type here contains the kernel of
+/// information needed to do the operation -- `TypeOp` is actually
+/// implemented for `ParamEnvAnd<Self>`, since we always need to bring
+/// along a parameter environment as well. For query type-ops, we will
+/// first canonicalize the key and then invoke the query on the tcx,
+/// which produces the resulting query region constraints.
+///
+/// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html
 pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>:
     fmt::Debug + Sized + TypeFoldable<'tcx> + Lift<'gcx>
 {
     type QueryResult: TypeFoldable<'tcx> + Lift<'gcx>;
 
-    /// Either converts `self` directly into a `QueryResult` (for
-    /// simple cases) or into a `QueryKey` (for more complex cases
-    /// where we actually have work to do).
+    /// Give query the option for a simple fast path that never
+    /// actually hits the tcx cache lookup etc. Return `Some(r)` with
+    /// a final result or `None` to do the full path.
     fn try_fast_path(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
