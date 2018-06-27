@@ -34,7 +34,7 @@ where
 {
     type QueryResult = T;
 
-    fn prequery(_tcx: TyCtxt<'_, 'gcx, 'tcx>, key: &ParamEnvAnd<'tcx, Self>) -> Option<T> {
+    fn try_fast_path(_tcx: TyCtxt<'_, 'gcx, 'tcx>, key: &ParamEnvAnd<'tcx, Self>) -> Option<T> {
         if !key.value.value.has_projections() {
             Some(key.value.value)
         } else {

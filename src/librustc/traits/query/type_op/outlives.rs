@@ -31,7 +31,7 @@ where
 {
     type QueryResult = DropckOutlivesResult<'tcx>;
 
-    fn prequery(
+    fn try_fast_path(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResult> {

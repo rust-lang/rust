@@ -28,7 +28,7 @@ impl<'tcx> ProvePredicate<'tcx> {
 impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for ProvePredicate<'tcx> {
     type QueryResult = ();
 
-    fn prequery(_tcx: TyCtxt<'_, 'gcx, 'tcx>, _key: &ParamEnvAnd<'tcx, Self>) -> Option<Self::QueryResult> {
+    fn try_fast_path(_tcx: TyCtxt<'_, 'gcx, 'tcx>, _key: &ParamEnvAnd<'tcx, Self>) -> Option<Self::QueryResult> {
         None
     }
 

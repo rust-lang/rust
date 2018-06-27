@@ -46,7 +46,7 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>:
     /// Either converts `self` directly into a `QueryResult` (for
     /// simple cases) or into a `QueryKey` (for more complex cases
     /// where we actually have work to do).
-    fn prequery(
+    fn try_fast_path(
         tcx: TyCtxt<'_, 'gcx, 'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResult>;
@@ -83,7 +83,7 @@ pub trait QueryTypeOp<'gcx: 'tcx, 'tcx>:
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
         output_query_region_constraints: &mut Vec<QueryRegionConstraint<'tcx>>,
     ) -> Fallible<Self::QueryResult> {
-        if let Some(result) = QueryTypeOp::prequery(infcx.tcx, &query_key) {
+        if let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &query_key) {
             return Ok(result);
         }
 
