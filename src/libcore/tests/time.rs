@@ -162,6 +162,20 @@ fn checked_div() {
 }
 
 #[test]
+fn correct_sum() {
+    let durations = [
+        Duration::new(1, 999_999_999),
+        Duration::new(2, 999_999_999),
+        Duration::new(0, 999_999_999),
+        Duration::new(0, 999_999_999),
+        Duration::new(0, 999_999_999),
+        Duration::new(5, 0),
+    ];
+    let sum = durations.iter().sum::<Duration>();
+    assert_eq!(sum, Duration::new(1+2+5+4, 1_000_000_000 - 5));
+}
+
+#[test]
 fn debug_formatting_extreme_values() {
     assert_eq!(
         format!("{:?}", Duration::new(18_446_744_073_709_551_615, 123_456_789)),
