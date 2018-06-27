@@ -46,7 +46,7 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for ProvePredicate<'tcx> {
         tcx.type_op_prove_predicate(canonicalized)
     }
 
-    fn cast_to_tcx_lifetime(
+    fn shrink_to_tcx_lifetime(
         v: &'a CanonicalizedQueryResult<'gcx, ()>,
     ) -> &'a Canonical<'tcx, QueryResult<'tcx, ()>> {
         v

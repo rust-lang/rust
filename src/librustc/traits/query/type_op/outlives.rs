@@ -64,7 +64,7 @@ where
         tcx.dropck_outlives(canonicalized)
     }
 
-    fn cast_to_tcx_lifetime(
+    fn shrink_to_tcx_lifetime(
         lifted_query_result: &'a CanonicalizedQueryResult<'gcx, Self::QueryResult>,
     ) -> &'a Canonical<'tcx, QueryResult<'tcx, Self::QueryResult>> {
         lifted_query_result

@@ -48,7 +48,7 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for Eq<'tcx> {
         tcx.type_op_eq(canonicalized)
     }
 
-    fn cast_to_tcx_lifetime(
+    fn shrink_to_tcx_lifetime(
         v: &'a CanonicalizedQueryResult<'gcx, ()>,
     ) -> &'a Canonical<'tcx, QueryResult<'tcx, ()>> {
         v
