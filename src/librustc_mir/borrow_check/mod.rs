@@ -35,7 +35,6 @@ use syntax_pos::Span;
 
 use dataflow::indexes::BorrowIndex;
 use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
-use dataflow::move_paths::{IllegalMoveOriginKind, MoveError};
 use dataflow::Borrows;
 use dataflow::DataflowResultsConsumer;
 use dataflow::FlowAtLocation;
@@ -62,6 +61,7 @@ mod path_utils;
 crate mod place_ext;
 mod prefixes;
 mod used_muts;
+mod move_errors;
 
 pub(crate) mod nll;
 
@@ -117,40 +117,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let move_data: MoveData<'tcx> = match MoveData::gather_moves(mir, tcx) {
         Ok(move_data) => move_data,
         Err((move_data, move_errors)) => {
-            for move_error in move_errors {
-                let (span, kind): (Span, IllegalMoveOriginKind) = match move_error {
-                    MoveError::UnionMove { .. } => {
-                        unimplemented!("don't know how to report union move errors yet.")
-                    }
-                    MoveError::IllegalMove {
-                        cannot_move_out_of: o,
-                    } => (o.span, o.kind),
-                };
-                let origin = Origin::Mir;
-                let mut err = match kind {
-                    IllegalMoveOriginKind::Static => {
-                        tcx.cannot_move_out_of(span, "static item", origin)
-                    }
-                    IllegalMoveOriginKind::BorrowedContent { target_ty: ty } => {
-                        // Inspect the type of the content behind the
-                        // borrow to provide feedback about why this
-                        // was a move rather than a copy.
-                        match ty.sty {
-                            ty::TyArray(..) | ty::TySlice(..) => {
-                                tcx.cannot_move_out_of_interior_noncopy(span, ty, None, origin)
-                            }
-                            _ => tcx.cannot_move_out_of(span, "borrowed content", origin),
-                        }
-                    }
-                    IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
-                        tcx.cannot_move_out_of_interior_of_drop(span, ty, origin)
-                    }
-                    IllegalMoveOriginKind::InteriorOfSliceOrArray { ty, is_index } => {
-                        tcx.cannot_move_out_of_interior_noncopy(span, ty, Some(is_index), origin)
-                    }
-                };
-                err.emit();
-            }
+            move_errors::report_move_errors(&mir, tcx, move_errors, &move_data);
             move_data
         }
     };

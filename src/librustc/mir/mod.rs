@@ -497,8 +497,8 @@ pub enum LocalKind {
     ReturnPointer,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct VarBindingForm {
+#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub struct VarBindingForm<'tcx> {
     /// Is variable bound via `x`, `mut x`, `ref x`, or `ref mut x`?
     pub binding_mode: ty::BindingMode,
     /// If an explicit type was provided for this variable binding,
@@ -508,21 +508,49 @@ pub struct VarBindingForm {
     /// doing so breaks incremental compilation (as of this writing),
     /// while a `Span` does not cause our tests to fail.
     pub opt_ty_info: Option<Span>,
+    /// Place of the RHS of the =, or the subject of the `match` where this
+    /// variable is initialized. None in the case of `let PATTERN;`.
+    /// Some((None, ..)) in the case of and `let [mut] x = ...` because
+    /// (a) the right-hand side isn't evaluated as a place expression.
+    /// (b) it gives a way to separate this case from the remaining cases
+    ///     for diagnostics.
+    pub opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub enum BindingForm {
+#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub enum BindingForm<'tcx> {
     /// This is a binding for a non-`self` binding, or a `self` that has an explicit type.
-    Var(VarBindingForm),
+    Var(VarBindingForm<'tcx>),
     /// Binding for a `self`/`&self`/`&mut self` binding where the type is implicit.
     ImplicitSelf,
 }
 
-CloneTypeFoldableAndLiftImpls! { BindingForm, }
+CloneTypeFoldableAndLiftImpls! { BindingForm<'tcx>, }
 
-impl_stable_hash_for!(struct self::VarBindingForm { binding_mode, opt_ty_info });
+impl_stable_hash_for!(struct self::VarBindingForm<'tcx> {
+    binding_mode,
+    opt_ty_info,
+    opt_match_place
+});
 
-impl_stable_hash_for!(enum self::BindingForm { Var(binding), ImplicitSelf, });
+mod binding_form_impl {
+    use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
+    use ich::StableHashingContext;
+
+    impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for super::BindingForm<'tcx> {
+        fn hash_stable<W: StableHasherResult>(&self,
+                                            hcx: &mut StableHashingContext<'a>,
+                                            hasher: &mut StableHasher<W>) {
+            use super::BindingForm::*;
+            ::std::mem::discriminant(self).hash_stable(hcx, hasher);
+
+            match self {
+                Var(binding) => binding.hash_stable(hcx, hasher),
+                ImplicitSelf => (),
+            }
+        }
+    }
+}
 
 /// A MIR local.
 ///
@@ -542,7 +570,7 @@ pub struct LocalDecl<'tcx> {
     /// therefore it need not be visible across crates. pnkfelix
     /// currently hypothesized we *need* to wrap this in a
     /// `ClearCrossCrate` as long as it carries as `HirId`.
-    pub is_user_variable: Option<ClearCrossCrate<BindingForm>>,
+    pub is_user_variable: Option<ClearCrossCrate<BindingForm<'tcx>>>,
 
     /// True if this is an internal local
     ///
@@ -670,6 +698,7 @@ impl<'tcx> LocalDecl<'tcx> {
             Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode: ty::BindingMode::BindByValue(_),
                 opt_ty_info: _,
+                opt_match_place: _,
             }))) => true,
 
             // FIXME: might be able to thread the distinction between
@@ -688,6 +717,7 @@ impl<'tcx> LocalDecl<'tcx> {
             Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode: ty::BindingMode::BindByValue(_),
                 opt_ty_info: _,
+                opt_match_place: _,
             }))) => true,
 
             Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf)) => true,
