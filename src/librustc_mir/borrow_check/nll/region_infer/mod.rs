@@ -24,6 +24,7 @@ use rustc::mir::{
 use rustc::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::{self, ErrorReported};
 use rustc_data_structures::bitvec::BitVector;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use std::fmt;
 use std::rc::Rc;
@@ -66,6 +67,7 @@ pub struct RegionInferenceContext<'tcx> {
 
     /// The constraints we have accumulated and used during solving.
     constraints: IndexVec<ConstraintIndex, OutlivesConstraint>,
+    seen_constraints: FxHashSet<(RegionVid, RegionVid)>,
 
     /// Type constraints that we check after solving.
     type_tests: Vec<TypeTest<'tcx>>,
@@ -141,6 +143,12 @@ pub struct OutlivesConstraint {
 
     /// Where did this constraint arise?
     pub span: Span,
+}
+
+impl OutlivesConstraint {
+    fn dedup_key(&self) -> (RegionVid, RegionVid) {
+        (self.sup, self.sub)
+    }
 }
 
 newtype_index!(ConstraintIndex { DEBUG_FORMAT = "ConstraintIndex({})" });
@@ -266,10 +274,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             liveness_constraints: RegionValues::new(elements, num_region_variables),
             inferred_values: None,
             dependency_map: None,
-            constraints: IndexVec::from_raw(outlives_constraints),
+            constraints: Default::default(),
+            seen_constraints: Default::default(),
             type_tests,
             universal_regions,
         };
+
+        for c in outlives_constraints {
+            result.add_outlives_iner(c);
+        }
 
         result.init_universal_regions();
 
@@ -392,15 +405,29 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         sub: RegionVid,
         point: Location,
     ) {
-        debug!("add_outlives({:?}: {:?} @ {:?}", sup, sub, point);
-        assert!(self.inferred_values.is_none(), "values already inferred");
-        self.constraints.push(OutlivesConstraint {
+        self.add_outlives_iner(OutlivesConstraint {
             span,
             sup,
             sub,
             point,
             next: None,
-        });
+        })
+    }
+
+    /// Indicates that the region variable `sup` must outlive `sub` is live at the point `point`.
+    fn add_outlives_iner(
+        &mut self,
+        outlives_constraint: OutlivesConstraint
+    ) {
+        debug!("add_outlives({:?}: {:?} @ {:?}", outlives_constraint.sup, outlives_constraint.sub, outlives_constraint.point);
+        assert!(self.inferred_values.is_none(), "values already inferred");
+        if outlives_constraint.sup == outlives_constraint.sub {
+            // 'a: 'a is pretty uninteresting
+            return;
+        }
+        if self.seen_constraints.insert(outlives_constraint.dedup_key()) {
+            self.constraints.push(outlives_constraint);
+        }
     }
 
     /// Perform region inference and report errors if we see any
