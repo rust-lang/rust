@@ -17,7 +17,7 @@ LL |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
    |                           ^^^^^^^^^^
 
 error[E0667]: `impl Trait` is not allowed in path parameters
-  --> $DIR/impl_trait_projections.rs:43:29
+  --> $DIR/impl_trait_projections.rs:42:29
    |
 LL |     -> <dyn Iterator<Item = impl Debug> as Iterator>::Item
    |                             ^^^^^^^^^^
@@ -30,34 +30,7 @@ LL | fn projection_is_disallowed(x: impl Iterator) -> <impl Iterator>::Item {
    |
    = note: specify the type using the syntax `<impl std::iter::Iterator as Trait>::Item`
 
-error[E0277]: the trait bound `impl std::fmt::Debug: std::iter::Step` is not satisfied
-  --> $DIR/impl_trait_projections.rs:38:1
-   |
-LL | / { //~ ERROR trait bound `impl std::fmt::Debug: std::iter::Step` is not satisfied
-LL | |     (1i32..100).next().unwrap() //~ ERROR mismatched types
-LL | | }
-   | |_^ the trait `std::iter::Step` is not implemented for `impl std::fmt::Debug`
-   |
-   = note: required because of the requirements on the impl of `std::iter::Iterator` for `std::ops::Range<impl std::fmt::Debug>`
+error: aborting due to 5 previous errors
 
-error[E0308]: mismatched types
-  --> $DIR/impl_trait_projections.rs:39:5
-   |
-LL |     (1i32..100).next().unwrap() //~ ERROR mismatched types
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected anonymized type, found i32
-   |
-   = note: expected type `impl std::fmt::Debug`
-              found type `i32`
-
-error[E0277]: the trait bound `impl std::fmt::Debug: std::iter::Step` is not satisfied
-  --> $DIR/impl_trait_projections.rs:35:8
-   |
-LL |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::iter::Step` is not implemented for `impl std::fmt::Debug`
-   |
-   = note: required because of the requirements on the impl of `std::iter::Iterator` for `std::ops::Range<impl std::fmt::Debug>`
-
-error: aborting due to 8 previous errors
-
-Some errors occurred: E0223, E0277, E0308, E0667.
+Some errors occurred: E0223, E0667.
 For more information about an error, try `rustc --explain E0223`.
