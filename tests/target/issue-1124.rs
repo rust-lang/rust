@@ -1,5 +1,3 @@
-// rustfmt-normalize_comments: true
-
 use a;
 use b;
 use c;
