@@ -16,11 +16,25 @@ use rustc::traits::query::type_op::prove_predicate::ProvePredicate;
 use rustc::traits::query::type_op::subtype::Subtype;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::{Obligation, Normalized, ObligationCause};
+use rustc::ty::query::Providers;
 use rustc::ty::{FnSig, Lift, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::sync::Lrc;
 use std::fmt;
 
-crate fn type_op_eq<'tcx>(
+crate fn provide(p: &mut Providers) {
+    *p = Providers {
+        type_op_eq,
+        type_op_prove_predicate,
+        type_op_subtype,
+        type_op_normalize_ty,
+        type_op_normalize_predicate,
+        type_op_normalize_fn_sig,
+        type_op_normalize_poly_fn_sig,
+        ..*p
+    };
+}
+
+fn type_op_eq<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     canonicalized: Canonical<'tcx, Eq<'tcx>>,
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, ()>>>, NoSolution> {
@@ -44,7 +58,7 @@ where
     Ok(InferOk { value, obligations }) // ugh we should merge these two structs
 }
 
-crate fn type_op_normalize_ty(
+fn type_op_normalize_ty(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     canonicalized: Canonical<'tcx, Normalize<'tcx, Ty<'tcx>>>,
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, Ty<'tcx>>>>, NoSolution> {
@@ -52,7 +66,7 @@ crate fn type_op_normalize_ty(
         .enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 
-crate fn type_op_normalize_predicate(
+fn type_op_normalize_predicate(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     canonicalized: Canonical<'tcx, Normalize<'tcx, Predicate<'tcx>>>,
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, Predicate<'tcx>>>>, NoSolution> {
@@ -60,7 +74,7 @@ crate fn type_op_normalize_predicate(
         .enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 
-crate fn type_op_normalize_fn_sig(
+fn type_op_normalize_fn_sig(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     canonicalized: Canonical<'tcx, Normalize<'tcx, FnSig<'tcx>>>,
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, FnSig<'tcx>>>>, NoSolution> {
@@ -68,7 +82,7 @@ crate fn type_op_normalize_fn_sig(
         .enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 
-crate fn type_op_normalize_poly_fn_sig(
+fn type_op_normalize_poly_fn_sig(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     canonicalized: Canonical<'tcx, Normalize<'tcx, PolyFnSig<'tcx>>>,
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, PolyFnSig<'tcx>>>>, NoSolution> {
@@ -76,7 +90,7 @@ crate fn type_op_normalize_poly_fn_sig(
         .enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 
-crate fn type_op_subtype<'tcx>(
+fn type_op_subtype<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     canonicalized: Canonical<'tcx, Subtype<'tcx>>,
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, ()>>>, NoSolution> {
@@ -95,7 +109,7 @@ crate fn type_op_subtype<'tcx>(
     )
 }
 
-crate fn type_op_prove_predicate<'tcx>(
+fn type_op_prove_predicate<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     canonicalized: Canonical<'tcx, ProvePredicate<'tcx>>,
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, ()>>>, NoSolution> {

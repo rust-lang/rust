@@ -11,10 +11,18 @@
 use rustc::traits::{EvaluationResult, Obligation, ObligationCause,
                     OverflowError, SelectionContext, TraitQueryMode};
 use rustc::traits::query::CanonicalPredicateGoal;
+use rustc::ty::query::Providers;
 use rustc::ty::{ParamEnvAnd, TyCtxt};
 use syntax::codemap::DUMMY_SP;
 
-crate fn evaluate_obligation<'tcx>(
+crate fn provide(p: &mut Providers) {
+    *p = Providers {
+        evaluate_obligation,
+        ..*p
+    };
+}
+
+fn evaluate_obligation<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     goal: CanonicalPredicateGoal<'tcx>,
 ) -> Result<EvaluationResult, OverflowError> {

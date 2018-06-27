@@ -39,22 +39,10 @@ mod type_op;
 use rustc::ty::query::Providers;
 
 pub fn provide(p: &mut Providers) {
-    *p = Providers {
-        dropck_outlives: dropck_outlives::dropck_outlives,
-        adt_dtorck_constraint: dropck_outlives::adt_dtorck_constraint,
-        normalize_projection_ty: normalize_projection_ty::normalize_projection_ty,
-        normalize_ty_after_erasing_regions:
-            normalize_erasing_regions::normalize_ty_after_erasing_regions,
-        program_clauses_for: lowering::program_clauses_for,
-        program_clauses_for_env: lowering::program_clauses_for_env,
-        evaluate_obligation: evaluate_obligation::evaluate_obligation,
-        type_op_eq: type_op::type_op_eq,
-        type_op_prove_predicate: type_op::type_op_prove_predicate,
-        type_op_subtype: type_op::type_op_subtype,
-        type_op_normalize_ty: type_op::type_op_normalize_ty,
-        type_op_normalize_predicate: type_op::type_op_normalize_predicate,
-        type_op_normalize_fn_sig: type_op::type_op_normalize_fn_sig,
-        type_op_normalize_poly_fn_sig: type_op::type_op_normalize_poly_fn_sig,
-        ..*p
-    };
+    dropck_outlives::provide(p);
+    evaluate_obligation::provide(p);
+    lowering::provide(p);
+    normalize_projection_ty::provide(p);
+    normalize_erasing_regions::provide(p);
+    type_op::provide(p);
 }

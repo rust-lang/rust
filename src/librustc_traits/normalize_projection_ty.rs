@@ -12,13 +12,21 @@ use rustc::infer::canonical::{Canonical, QueryResult};
 use rustc::infer::InferOk;
 use rustc::traits::query::{normalize::NormalizationResult, CanonicalProjectionGoal, NoSolution};
 use rustc::traits::{self, ObligationCause, SelectionContext};
+use rustc::ty::query::Providers;
 use rustc::ty::{ParamEnvAnd, TyCtxt};
 use rustc_data_structures::sync::Lrc;
 use std::sync::atomic::Ordering;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::DUMMY_SP;
 
-crate fn normalize_projection_ty<'tcx>(
+crate fn provide(p: &mut Providers) {
+    *p = Providers {
+        normalize_projection_ty,
+        ..*p
+    };
+}
+
+fn normalize_projection_ty<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     goal: CanonicalProjectionGoal<'tcx>,
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, NormalizationResult<'tcx>>>>, NoSolution> {

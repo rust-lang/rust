@@ -13,13 +13,22 @@ use rustc::infer::canonical::{Canonical, QueryResult};
 use rustc::traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstraint};
 use rustc::traits::query::{CanonicalTyGoal, NoSolution};
 use rustc::traits::{FulfillmentContext, Normalized, ObligationCause};
+use rustc::ty::query::Providers;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use syntax::codemap::{Span, DUMMY_SP};
 
-crate fn dropck_outlives<'tcx>(
+crate fn provide(p: &mut Providers) {
+    *p = Providers {
+        dropck_outlives,
+        adt_dtorck_constraint,
+        ..*p
+    };
+}
+
+fn dropck_outlives<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     goal: CanonicalTyGoal<'tcx>,
 ) -> Result<Lrc<Canonical<'tcx, QueryResult<'tcx, DropckOutlivesResult<'tcx>>>>, NoSolution> {
