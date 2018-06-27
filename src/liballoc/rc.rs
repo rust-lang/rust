@@ -253,7 +253,7 @@ use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 use core::marker;
 use core::marker::{Unsize, PhantomData};
-use core::mem::{self, align_of_val, forget, size_of_val, uninitialized};
+use core::mem::{self, align_of_val, forget, size_of_val};
 use core::ops::Deref;
 use core::ops::CoerceUnsized;
 use core::ptr::{self, NonNull};
@@ -1182,13 +1182,13 @@ impl<T> Weak<T> {
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     pub fn new() -> Weak<T> {
         unsafe {
-            Weak {
-                ptr: Box::into_raw_non_null(box RcBox {
-                    strong: Cell::new(0),
-                    weak: Cell::new(1),
-                    value: uninitialized(),
-                }),
-            }
+            let layout = Layout::new::<RcBox<T>>();
+            let mut ptr = Global.alloc(layout)
+                .unwrap_or_else(|_| handle_alloc_error(layout))
+                .cast::<RcBox<T>>();
+            ptr::write(&mut ptr.as_mut().strong, Cell::new(0));
+            ptr::write(&mut ptr.as_mut().weak, Cell::new(1));
+            Weak { ptr }
         }
     }
 }
