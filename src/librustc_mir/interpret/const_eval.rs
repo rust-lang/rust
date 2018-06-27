@@ -76,7 +76,7 @@ pub fn value_to_const_value<'tcx>(
     val: Value,
     ty: Ty<'tcx>,
 ) -> &'tcx ty::Const<'tcx> {
-    let layout = ecx.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap();
+    let layout = ecx.layout_of(ty).unwrap();
     match (val, &layout.abi) {
         (Value::Scalar(Scalar::Bits { defined: 0, ..}), _) if layout.is_zst() => {},
         (Value::ByRef(..), _) |
