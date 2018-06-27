@@ -38,6 +38,10 @@ impl ConstraintSet {
         }
     }
 
+    /// Once all constraints have been added, `link()` is used to thread together the constraints
+    /// based on which would be affected when a particular region changes. See the next field of
+    /// `OutlivesContraint` for more details.
+    /// link returns a map that is needed later by `each_affected_by_dirty`.
     pub fn link(&mut self, len: usize) -> IndexVec<RegionVid, Option<ConstraintIndex>> {
         let mut map = IndexVec::from_elem_n(None, len);
 
@@ -51,6 +55,11 @@ impl ConstraintSet {
         map
     }
 
+    /// When a region R1 changes, we need to reprocess all constraints R2: R1 to take into account
+    /// any new elements that R1 now has. This method will quickly enumerate all such constraints
+    /// (that is, constraints where R1 is in the "subregion" position).
+    /// To use it, invoke with `map[R1]` where map is the map returned by `link`;
+    /// the callback op will be invoked for each affected constraint.
     pub fn each_affected_by_dirty(
         &self,
         mut opt_dep_idx: Option<ConstraintIndex>,
