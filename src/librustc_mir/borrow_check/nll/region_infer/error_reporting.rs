@@ -37,11 +37,11 @@ enum ConstraintCategory {
 impl fmt::Display for ConstraintCategory {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ConstraintCategory::Assignment => write!(f, "Assignment"),
-            ConstraintCategory::Return => write!(f, "Return"),
-            ConstraintCategory::Cast => write!(f, "Cast"),
-            ConstraintCategory::CallArgument => write!(f, "Argument"),
-            _ => write!(f, "Free region"),
+            ConstraintCategory::Assignment => write!(f, "assignment"),
+            ConstraintCategory::Return => write!(f, "return"),
+            ConstraintCategory::Cast => write!(f, "cast"),
+            ConstraintCategory::CallArgument => write!(f, "argument"),
+            _ => write!(f, "free region"),
         }
     }
 }

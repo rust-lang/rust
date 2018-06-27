@@ -31,7 +31,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: number of external vids: 3
    = note: where '_#1r: '_#2r
 
-error: Argument requires that data must outlive free region `ReFree(DefId(0/0:8 ~ projection_one_region_trait_bound_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:16), 'a))`
+error: argument requires that data must outlive free region `ReFree(DefId(0/0:8 ~ projection_one_region_trait_bound_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:16), 'a))`
   --> $DIR/projection-one-region-trait-bound-closure.rs:47:5
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
@@ -45,7 +45,7 @@ LL | | where
 LL | |     T: Anything<'b>,
 LL | | {
 ...  |
-LL | |     //~| ERROR Argument requires that data must outlive free region
+LL | |     //~| ERROR argument requires that data must outlive free region
 LL | | }
    | |_^
    |
@@ -70,7 +70,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: number of external vids: 4
    = note: where '_#2r: '_#3r
 
-error: Argument requires that data must outlive free region `ReEarlyBound(0, 'a)`
+error: argument requires that data must outlive free region `ReEarlyBound(0, 'a)`
   --> $DIR/projection-one-region-trait-bound-closure.rs:58:5
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
@@ -84,7 +84,7 @@ LL | | where
 LL | |     T: Anything<'b>,
 LL | |     'a: 'a,
 ...  |
-LL | |     //~| ERROR Argument requires that data must outlive free region
+LL | |     //~| ERROR argument requires that data must outlive free region
 LL | | }
    | |_^
    |
@@ -110,7 +110,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: number of external vids: 4
    = note: where '_#2r: '_#3r
 
-error: Argument requires that data must outlive free region `ReEarlyBound(0, 'a)`
+error: argument requires that data must outlive free region `ReEarlyBound(0, 'a)`
   --> $DIR/projection-one-region-trait-bound-closure.rs:79:5
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
@@ -124,7 +124,7 @@ LL | | where
 LL | |     T: Anything<'b>,
 LL | |     T::AssocType: 'a,
 ...  |
-LL | |     //~| ERROR Argument requires that data must outlive free region
+LL | |     //~| ERROR argument requires that data must outlive free region
 LL | | }
    | |_^
    |

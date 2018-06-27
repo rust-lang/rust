@@ -9,7 +9,7 @@ note: External requirements
    |
 LL |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
    |  _______________________________________________^
-LL | |         //~^ ERROR Argument requires that data must outlive free region
+LL | |         //~^ ERROR argument requires that data must outlive free region
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
 LL | |         //~^ WARNING not reporting region error due to nll
@@ -23,11 +23,11 @@ LL | |     });
    = note: number of external vids: 3
    = note: where '_#1r: '_#0r
 
-error: Argument requires that data must outlive free region `ReStatic`
+error: argument requires that data must outlive free region `ReStatic`
   --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:48:5
    |
 LL | /     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-LL | |         //~^ ERROR Argument requires that data must outlive free region
+LL | |         //~^ ERROR argument requires that data must outlive free region
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
 LL | |         //~^ WARNING not reporting region error due to nll
@@ -39,7 +39,7 @@ note: No external requirements
    |
 LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
 LL | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-LL | |         //~^ ERROR Argument requires that data must outlive free region
+LL | |         //~^ ERROR argument requires that data must outlive free region
 LL | |         // Only works if 'x: 'y:
 ...  |
 LL | |     });
