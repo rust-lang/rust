@@ -65,7 +65,7 @@
 //! which can fallback to `into`. So if one of the `ExprKind` variants is not, in fact,
 //! implemented in the category where it is supposed to be, there will be a problem.
 //!
-//! Of those fallbacks, the most interesting one is `as_temp`, because
+//! Of those fallbacks, the most interesting one is `into`, because
 //! it discriminates based on the category of the expression. This is
 //! basically the point where the "by value" operations are bridged
 //! over to the "by reference" mode (`as_place`).
