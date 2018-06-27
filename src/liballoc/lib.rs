@@ -108,6 +108,7 @@
 #![cfg_attr(stage0, feature(repr_transparent))]
 #![feature(rustc_attrs)]
 #![feature(specialization)]
+#![feature(split_ascii_whitespace)]
 #![feature(staged_api)]
 #![feature(str_internals)]
 #![feature(trusted_len)]
