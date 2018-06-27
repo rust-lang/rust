@@ -29,7 +29,7 @@ LL | |         //~| ERROR could not evaluate repeat length
 LL | |         let mut n = 113383; // #20 in A006884
 LL | |         while n != 0 { //~ ERROR constant contains unimplemented expression type
 LL | |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
-   | |                    ---------- program will never terminate
+   | |                    ---------- duplicate interpreter state observed while executing this expression, const evaluation will never terminate
 LL | |         }
 LL | |         n
 LL | |     }];

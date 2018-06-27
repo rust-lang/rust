@@ -399,7 +399,9 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
             RemainderByZero => "attempt to calculate the remainder with a divisor of zero",
             GeneratorResumedAfterReturn => "generator resumed after completion",
             GeneratorResumedAfterPanic => "generator resumed after panicking",
-            InfiniteLoop => "program will never terminate",
+            InfiniteLoop =>
+                "duplicate interpreter state observed while executing this expression, \
+                const evaluation will never terminate",
         }
     }
 }
