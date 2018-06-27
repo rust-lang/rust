@@ -2520,6 +2520,28 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
+    fn lower_async_body(
+        &mut self,
+        decl: &FnDecl,
+        asyncness: IsAsync,
+        body: &Block,
+    ) -> hir::BodyId {
+        self.lower_body(Some(decl), |this| {
+            if let IsAsync::Async(async_node_id) = asyncness {
+                let async_expr = this.make_async_expr(
+                    CaptureBy::Value, async_node_id, None,
+                    |this| {
+                        let body = this.lower_block(body, false);
+                        this.expr_block(body, ThinVec::new())
+                    });
+                this.expr(body.span, async_expr, ThinVec::new())
+            } else {
+                let body = this.lower_block(body, false);
+                this.expr_block(body, ThinVec::new())
+            }
+        })
+    }
+
     fn lower_item_kind(
         &mut self,
         id: NodeId,
@@ -2559,20 +2581,7 @@ impl<'a> LoweringContext<'a> {
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
                     // declaration (decl), not the return types.
-                    let body_id = this.lower_body(Some(decl), |this| {
-                        if let IsAsync::Async { closure_id, .. } = header.asyncness {
-                            let async_expr = this.make_async_expr(
-                                CaptureBy::Value, closure_id, None,
-                                |this| {
-                                    let body = this.lower_block(body, false);
-                                    this.expr_block(body, ThinVec::new())
-                                });
-                            this.expr(body.span, async_expr, ThinVec::new())
-                        } else {
-                            let body = this.lower_block(body, false);
-                            this.expr_block(body, ThinVec::new())
-                        }
-                    });
+                    let body_id = this.lower_async_body(decl, header.asyncness, body);
 
                     let (generics, fn_decl) = this.add_in_band_defs(
                         generics,
@@ -2990,20 +2999,7 @@ impl<'a> LoweringContext<'a> {
                 )
             }
             ImplItemKind::Method(ref sig, ref body) => {
-                let body_id = self.lower_body(Some(&sig.decl), |this| {
-                    if let IsAsync::Async { closure_id, .. } = sig.header.asyncness {
-                        let async_expr = this.make_async_expr(
-                            CaptureBy::Value, closure_id, None,
-                            |this| {
-                                let body = this.lower_block(body, false);
-                                this.expr_block(body, ThinVec::new())
-                            });
-                        this.expr(body.span, async_expr, ThinVec::new())
-                    } else {
-                        let body = this.lower_block(body, false);
-                        this.expr_block(body, ThinVec::new())
-                    }
-                });
+                let body_id = self.lower_async_body(&sig.decl, sig.header.asyncness, body);
                 let impl_trait_return_allow = !self.is_in_trait_impl;
 
                 self.add_in_band_defs(
