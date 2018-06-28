@@ -203,7 +203,7 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                 METHODS_WITH_NEGATION
                     .iter().cloned()
                     .flat_map(|(a, b)| vec![(a, b), (b, a)])
-                    .find(|&(a, _)| a == path.name.as_str())
+                    .find(|&(a, _)| a == path.ident.as_str())
                     .and_then(|(_, neg_method)| Some(format!("{}.{}()", self.snip(&args[0])?, neg_method)))
             },
             _ => None,

@@ -54,7 +54,7 @@ impl QuestionMarkPass {
         if_chain! {
             if let ExprIf(ref if_expr, ref body, _) = expr.node;
             if let ExprMethodCall(ref segment, _, ref args) = if_expr.node;
-            if segment.name == "is_none";
+            if segment.ident.name == "is_none";
             if Self::expression_returns_none(cx, body);
             if let Some(subject) = args.get(0);
             if Self::is_option(cx, subject);

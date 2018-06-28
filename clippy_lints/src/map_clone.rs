@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::hir::*;
 use rustc::ty;
 use syntax::ast;
-use crate::utils::{get_arg_name, is_adjusted, iter_input_pats, match_qpath, match_trait_method, match_type,
+use crate::utils::{get_arg_ident, is_adjusted, iter_input_pats, match_qpath, match_trait_method, match_type,
             paths, remove_blocks, snippet, span_help_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
 
 /// **What it does:** Checks for mapping `clone()` over an iterator.
@@ -31,7 +31,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // call to .map()
         if let ExprMethodCall(ref method, _, ref args) = expr.node {
-            if method.name == "map" && args.len() == 2 {
+            if method.ident.name == "map" && args.len() == 2 {
                 match args[1].node {
                     ExprClosure(_, ref decl, closure_eid, _, _) => {
                         let body = cx.tcx.hir.body(closure_eid);
@@ -40,7 +40,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             // nothing special in the argument, besides reference bindings
                             // (e.g. .map(|&x| x) )
                             if let Some(first_arg) = iter_input_pats(decl, body).next();
-                            if let Some(arg_ident) = get_arg_name(&first_arg.pat);
+                            if let Some(arg_ident) = get_arg_ident(&first_arg.pat);
                             // the method is being called on a known type (option or iterator)
                             if let Some(type_name) = get_type_name(cx, expr, &args[0]);
                             then {
@@ -63,7 +63,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                 }
                                 // explicit clone() calls ( .map(|x| x.clone()) )
                                 else if let ExprMethodCall(ref clone_call, _, ref clone_args) = closure_expr.node {
-                                    if clone_call.name == "clone" &&
+                                    if clone_call.ident.name == "clone" &&
                                         clone_args.len() == 1 &&
                                         match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) &&
                                         expr_eq_name(&clone_args[0], arg_ident)
@@ -98,12 +98,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn expr_eq_name(expr: &Expr, id: ast::Name) -> bool {
+fn expr_eq_name(expr: &Expr, id: ast::Ident) -> bool {
     match expr.node {
         ExprPath(QPath::Resolved(None, ref path)) => {
             let arg_segment = [
                 PathSegment {
-                    name: id,
+                    ident: id,
                     args: None,
                     infer_types: true,
                 },
@@ -124,7 +124,7 @@ fn get_type_name(cx: &LateContext, expr: &Expr, arg: &Expr) -> Option<&'static s
     }
 }
 
-fn only_derefs(cx: &LateContext, expr: &Expr, id: ast::Name) -> bool {
+fn only_derefs(cx: &LateContext, expr: &Expr, id: ast::Ident) -> bool {
     match expr.node {
         ExprUnary(UnDeref, ref subexpr) if !is_adjusted(cx, subexpr) => only_derefs(cx, subexpr, id),
         _ => expr_eq_name(expr, id),

@@ -36,7 +36,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Serde {
                     let mut seen_str = None;
                     let mut seen_string = None;
                     for item in items {
-                        match &*item.name.as_str() {
+                        match &*item.ident.as_str() {
                             "visit_str" => seen_str = Some(item.span),
                             "visit_string" => seen_string = Some(item.span),
                             _ => {},

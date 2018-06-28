@@ -186,7 +186,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             },
             // write!()
             ExprMethodCall(ref fun, _, ref args) => {
-                if fun.name == "write_fmt" {
+                if fun.ident.name == "write_fmt" {
                     check_write_variants(cx, expr, args);
                 }
             },
@@ -471,13 +471,13 @@ pub fn check_unformatted(format_field: &Expr) -> bool {
         if let ExprStruct(_, ref fields, _) = format_field.node;
         if let Some(width_field) = fields.iter().find(|f| f.ident.name == "width");
         if let ExprPath(ref qpath) = width_field.expr.node;
-        if last_path_segment(qpath).name == "Implied";
+        if last_path_segment(qpath).ident.name == "Implied";
         if let Some(align_field) = fields.iter().find(|f| f.ident.name == "align");
         if let ExprPath(ref qpath) = align_field.expr.node;
-        if last_path_segment(qpath).name == "Unknown";
+        if last_path_segment(qpath).ident.name == "Unknown";
         if let Some(precision_field) = fields.iter().find(|f| f.ident.name == "precision");
         if let ExprPath(ref qpath_precision) = precision_field.expr.node;
-        if last_path_segment(qpath_precision).name == "Implied";
+        if last_path_segment(qpath_precision).ident.name == "Implied";
         then {
             return true;
         }

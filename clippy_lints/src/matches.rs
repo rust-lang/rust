@@ -270,7 +270,7 @@ fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: 
             }
             print::to_string(print::NO_ANN, |s| s.print_qpath(path, false))
         },
-        PatKind::Binding(BindingAnnotation::Unannotated, _, ident, None) => ident.node.to_string(),
+        PatKind::Binding(BindingAnnotation::Unannotated, _, ident, None) => ident.to_string(),
         PatKind::Path(ref path) => print::to_string(print::NO_ANN, |s| s.print_qpath(path, false)),
         _ => return,
     };
@@ -552,14 +552,14 @@ fn is_ref_some_arm(arm: &Arm) -> Option<BindingAnnotation> {
     if_chain! {
         if let PatKind::TupleStruct(ref path, ref pats, _) = arm.pats[0].node;
         if pats.len() == 1 && match_qpath(path, &paths::OPTION_SOME);
-        if let PatKind::Binding(rb, _, ref ident, _) = pats[0].node;
+        if let PatKind::Binding(rb, _, ident, _) = pats[0].node;
         if rb == BindingAnnotation::Ref || rb == BindingAnnotation::RefMut;
         if let ExprCall(ref e, ref args) = remove_blocks(&arm.body).node;
         if let ExprPath(ref some_path) = e.node;
         if match_qpath(some_path, &paths::OPTION_SOME) && args.len() == 1;
         if let ExprPath(ref qpath) = args[0].node;
         if let &QPath::Resolved(_, ref path2) = qpath;
-        if path2.segments.len() == 1 && ident.node == path2.segments[0].name;
+        if path2.segments.len() == 1 && ident.name == path2.segments[0].ident.name;
         then {
             return Some(rb)
         }

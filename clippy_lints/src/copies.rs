@@ -269,8 +269,8 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<LocalInt
             PatKind::TupleStruct(_, ref pats, _) => for pat in pats {
                 bindings_impl(cx, pat, map);
             },
-            PatKind::Binding(_, _, ref ident, ref as_pat) => {
-                if let Entry::Vacant(v) = map.entry(ident.node.as_str()) {
+            PatKind::Binding(_, _, ident, ref as_pat) => {
+                if let Entry::Vacant(v) = map.entry(ident.as_str()) {
                     v.insert(cx.tables.pat_ty(pat));
                 }
                 if let Some(ref as_pat) = *as_pat {

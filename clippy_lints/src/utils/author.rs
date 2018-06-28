@@ -395,7 +395,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let obj_pat = self.next("object");
                 let field_name_pat = self.next("field_name");
                 println!("Field(ref {}, ref {}) = {};", obj_pat, field_name_pat, current);
-                println!("    if {}.node.as_str() == {:?}", field_name_pat, field_ident.name.as_str());
+                println!("    if {}.node.as_str() == {:?}", field_name_pat, field_ident.as_str());
                 self.current = obj_pat;
                 self.visit_expr(object);
             },
@@ -487,7 +487,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
         let current = format!("{}.node", self.current);
         match pat.node {
             PatKind::Wild => println!("Wild = {};", current),
-            PatKind::Binding(anno, _, name, ref sub) => {
+            PatKind::Binding(anno, _, ident, ref sub) => {
                 let anno_pat = match anno {
                     BindingAnnotation::Unannotated => "BindingAnnotation::Unannotated",
                     BindingAnnotation::Mutable => "BindingAnnotation::Mutable",
@@ -503,7 +503,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 } else {
                     println!("Binding({}, _, {}, None) = {};", anno_pat, name_pat, current);
                 }
-                println!("    if {}.node.as_str() == \"{}\";", name_pat, name.node.as_str());
+                println!("    if {}.node.as_str() == \"{}\";", name_pat, ident.as_str());
             }
             PatKind::Struct(ref path, ref fields, ignore) => {
                 let path_pat = self.next("path");
@@ -671,7 +671,7 @@ fn print_path(path: &QPath, first: &mut bool) {
             } else {
                 print!(", ");
             }
-            print!("{:?}", segment.name.as_str());
+            print!("{:?}", segment.ident.as_str());
         },
         QPath::TypeRelative(ref ty, ref segment) => match ty.node {
             hir::Ty_::TyPath(ref inner_path) => {
@@ -681,7 +681,7 @@ fn print_path(path: &QPath, first: &mut bool) {
                 } else {
                     print!(", ");
                 }
-                print!("{:?}", segment.name.as_str());
+                print!("{:?}", segment.ident.as_str());
             },
             ref other => print!("/* unimplemented: {:?}*/", other),
         },

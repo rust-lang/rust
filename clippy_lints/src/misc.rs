@@ -379,7 +379,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         }
         let binding = match expr.node {
             ExprPath(ref qpath) => {
-                let binding = last_path_segment(qpath).name.as_str();
+                let binding = last_path_segment(qpath).ident.as_str();
                 if binding.starts_with('_') &&
                     !binding.starts_with("__") &&
                     binding != "_result" && // FIXME: #944
@@ -417,13 +417,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 
     fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat) {
-        if let PatKind::Binding(_, _, ref ident, Some(ref right)) = pat.node {
+        if let PatKind::Binding(_, _, ident, Some(ref right)) = pat.node {
             if right.node == PatKind::Wild {
                 span_lint(
                     cx,
                     REDUNDANT_PATTERN,
                     pat.span,
-                    &format!("the `{} @ _` pattern can be written as just `{}`", ident.node, ident.node),
+                    &format!("the `{} @ _` pattern can be written as just `{}`", ident.name, ident.name),
                 );
             }
         }
@@ -433,7 +433,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 fn check_nan(cx: &LateContext, path: &Path, expr: &Expr) {
     if !in_constant(cx, expr.id) {
         if let Some(seg) = path.segments.last() {
-            if seg.name == "NAN" {
+            if seg.ident.name == "NAN" {
                 span_lint(
                     cx,
                     CMP_NAN,

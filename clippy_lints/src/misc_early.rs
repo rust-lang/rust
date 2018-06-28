@@ -190,7 +190,7 @@ impl EarlyLintPass for MiscEarly {
     fn check_generics(&mut self, cx: &EarlyContext, gen: &Generics) {
         for param in &gen.params {
             if let GenericParamKind::Type { .. } = param.kind {
-                let name = param.ident.name.as_str();
+                let name = param.ident.as_str();
                 if constants::BUILTIN_TYPES.contains(&&*name) {
                     span_lint(
                         cx,
@@ -268,7 +268,7 @@ impl EarlyLintPass for MiscEarly {
 
         for arg in &decl.inputs {
             if let PatKind::Ident(_, ident, None) = arg.pat.node {
-                let arg_name = ident.name.to_string();
+                let arg_name = ident.to_string();
 
                 if arg_name.starts_with('_') {
                     if let Some(correspondence) = registered_names.get(&arg_name[1..]) {

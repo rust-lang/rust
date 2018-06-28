@@ -152,8 +152,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
             // Ignore `self`s.
             if idx == 0 {
-                if let PatKind::Binding(_, _, name, ..) = arg.pat.node {
-                    if name.node.as_str() == "self" {
+                if let PatKind::Binding(_, _, ident, ..) = arg.pat.node {
+                    if ident.as_str() == "self" {
                         continue;
                     }
                 }
@@ -217,7 +217,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")]);
                             if let TyPath(QPath::Resolved(_, ref path)) = input.node;
                             if let Some(elem_ty) = path.segments.iter()
-                                .find(|seg| seg.name == "Vec")
+                                .find(|seg| seg.ident.name == "Vec")
                                 .and_then(|ps| ps.args.as_ref())
                                 .map(|params| params.args.iter().find_map(|arg| match arg {
                                     GenericArg::Type(ty) => Some(ty),

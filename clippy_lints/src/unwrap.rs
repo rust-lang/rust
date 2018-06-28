@@ -95,7 +95,7 @@ fn collect_unwrap_info<'a, 'tcx: 'a>(
             if let Expr_::ExprPath(QPath::Resolved(None, path)) = &args[0].node;
             let ty = cx.tables.expr_ty(&args[0]);
             if match_type(cx, ty, &paths::OPTION) || match_type(cx, ty, &paths::RESULT);
-            let name = method_name.name.as_str();
+            let name = method_name.ident.as_str();
             if ["is_some", "is_none", "is_ok", "is_err"].contains(&&*name);
             then {
                 assert!(args.len() == 1);
@@ -142,8 +142,8 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
             if_chain! {
                 if let Expr_::ExprMethodCall(ref method_name, _, ref args) = expr.node;
                 if let Expr_::ExprPath(QPath::Resolved(None, ref path)) = args[0].node;
-                if ["unwrap", "unwrap_err"].contains(&&*method_name.name.as_str());
-                let call_to_unwrap = method_name.name == "unwrap";
+                if ["unwrap", "unwrap_err"].contains(&&*method_name.ident.as_str());
+                let call_to_unwrap = method_name.ident.name == "unwrap";
                 if let Some(unwrappable) = self.unwrappables.iter()
                     .find(|u| u.ident.def == path.def);
                 then {
@@ -154,7 +154,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                             expr.span,
                             &format!("You checked before that `{}()` cannot fail. \
                             Instead of checking and unwrapping, it's better to use `if let` or `match`.",
-                            method_name.name),
+                            method_name.ident.name),
                             |db| { db.span_label(unwrappable.check.span, "the check is happening here"); },
                         );
                     } else {
@@ -163,7 +163,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                             PANICKING_UNWRAP,
                             expr.span,
                             &format!("This call to `{}()` will always panic.",
-                            method_name.name),
+                            method_name.ident.name),
                             |db| { db.span_label(unwrappable.check.span, "because of this check"); },
                         );
                     }

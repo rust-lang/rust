@@ -50,7 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if !has_attr(&item.attrs) {
             return;
         }
-        println!("impl item `{}`", item.name);
+        println!("impl item `{}`", item.ident.name);
         match item.vis {
             hir::Visibility::Public => println!("public"),
             hir::Visibility::Crate(_) => println!("visible crate wide"),
@@ -181,7 +181,7 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
         },
         hir::ExprMethodCall(ref path, _, ref args) => {
             println!("{}MethodCall", ind);
-            println!("{}method name: {}", ind, path.name);
+            println!("{}method name: {}", ind, path.ident.name);
             for arg in args {
                 print_expr(cx, arg, indent + 1);
             }
@@ -268,7 +268,7 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
             println!("{}rhs:", ind);
             print_expr(cx, rhs, indent + 1);
         },
-        hir::ExprField(ref e, ref ident) => {
+        hir::ExprField(ref e, ident) => {
             println!("{}Field", ind);
             println!("{}field name: {}", ind, ident.name);
             println!("{}struct expr:", ind);
@@ -417,10 +417,10 @@ fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
     println!("{}+", ind);
     match pat.node {
         hir::PatKind::Wild => println!("{}Wild", ind),
-        hir::PatKind::Binding(ref mode, _, ref name, ref inner) => {
+        hir::PatKind::Binding(ref mode, _, ident, ref inner) => {
             println!("{}Binding", ind);
             println!("{}mode: {:?}", ind, mode);
-            println!("{}name: {}", ind, name.node);
+            println!("{}name: {}", ind, ident.name);
             if let Some(ref inner) = *inner {
                 println!("{}inner:", ind);
                 print_pat(cx, inner, indent + 1);

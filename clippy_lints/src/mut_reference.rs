@@ -48,7 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
                 let def_id = cx.tables.type_dependent_defs()[e.hir_id].def_id();
                 let substs = cx.tables.node_substs(e.hir_id);
                 let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);
-                check_arguments(cx, arguments, method_type, &path.name.as_str())
+                check_arguments(cx, arguments, method_type, &path.ident.as_str())
             },
             _ => (),
         }

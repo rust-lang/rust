@@ -78,7 +78,7 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
                             // If it's a proper path, it can't be a local variable
                             return;
                         }
-                        if p.segments[0].name != ident.node {
+                        if p.segments[0].ident.name != ident.name {
                             // The two idents should be the same
                             return;
                         }

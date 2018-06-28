@@ -317,7 +317,7 @@ fn check_ty_rptr(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool, lt: &Lifeti
                     let ltopt = if lt.is_elided() {
                         "".to_owned()
                     } else {
-                        format!("{} ", lt.name.name().as_str())
+                        format!("{} ", lt.name.ident().name.as_str())
                     };
                     let mutopt = if mut_ty.mutbl == Mutability::MutMutable {
                         "mut "
@@ -1993,10 +1993,10 @@ impl<'a, 'b, 'tcx: 'a + 'b> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'
                 }
 
                 if match_path(ty_path, &paths::HASHMAP) {
-                    if method.name == "new" {
+                    if method.ident.name == "new" {
                         self.suggestions
                             .insert(e.span, "HashMap::default()".to_string());
-                    } else if method.name == "with_capacity" {
+                    } else if method.ident.name == "with_capacity" {
                         self.suggestions.insert(
                             e.span,
                             format!(
@@ -2006,10 +2006,10 @@ impl<'a, 'b, 'tcx: 'a + 'b> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'
                         );
                     }
                 } else if match_path(ty_path, &paths::HASHSET) {
-                    if method.name == "new" {
+                    if method.ident.name == "new" {
                         self.suggestions
                             .insert(e.span, "HashSet::default()".to_string());
-                    } else if method.name == "with_capacity" {
+                    } else if method.ident.name == "with_capacity" {
                         self.suggestions.insert(
                             e.span,
                             format!(

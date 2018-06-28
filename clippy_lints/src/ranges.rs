@@ -89,7 +89,7 @@ impl LintPass for Pass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprMethodCall(ref path, _, ref args) = expr.node {
-            let name = path.name.as_str();
+            let name = path.ident.as_str();
 
             // Range with step_by(0).
             if name == "step_by" && args.len() == 2 && has_step_by(cx, &args[0]) {
@@ -108,13 +108,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 if_chain! {
                     // .iter() call
                     if let ExprMethodCall(ref iter_path, _, ref iter_args ) = *iter;
-                    if iter_path.name == "iter";
+                    if iter_path.ident.name == "iter";
                     // range expression in .zip() call: 0..x.len()
                     if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(cx, zip_arg);
                     if is_integer_literal(start, 0);
                     // .len() call
                     if let ExprMethodCall(ref len_path, _, ref len_args) = end.node;
-                    if len_path.name == "len" && len_args.len() == 1;
+                    if len_path.ident.name == "len" && len_args.len() == 1;
                     // .iter() and .len() called on same Path
                     if let ExprPath(QPath::Resolved(_, ref iter_path)) = iter_args[0].node;
                     if let ExprPath(QPath::Resolved(_, ref len_path)) = len_args[0].node;

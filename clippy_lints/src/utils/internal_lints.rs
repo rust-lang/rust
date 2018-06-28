@@ -78,7 +78,7 @@ impl EarlyLintPass for Clippy {
                     if let ItemKind::Mod(ref paths_mod) = paths.node {
                         let mut last_name: Option<LocalInternedString> = None;
                         for item in &paths_mod.items {
-                            let name = item.ident.name.as_str();
+                            let name = item.ident.as_str();
                             if let Some(ref last_name) = last_name {
                                 if **last_name > *name {
                                     span_lint(
@@ -196,7 +196,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for LintCollector<'a, 'tcx> {
 
     fn visit_path(&mut self, path: &'tcx Path, _: NodeId) {
         if path.segments.len() == 1 {
-            self.output.insert(path.segments[0].name);
+            self.output.insert(path.segments[0].ident.name);
         }
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {

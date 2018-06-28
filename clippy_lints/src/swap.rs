@@ -64,7 +64,7 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
             if let StmtDecl(ref tmp, _) = w[0].node;
             if let DeclLocal(ref tmp) = tmp.node;
             if let Some(ref tmp_init) = tmp.init;
-            if let PatKind::Binding(_, _, ref tmp_name, None) = tmp.pat.node;
+            if let PatKind::Binding(_, _, ident, None) = tmp.pat.node;
 
             // foo() = bar();
             if let StmtSemi(ref first, _) = w[1].node;
@@ -76,7 +76,7 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
             if let ExprPath(QPath::Resolved(None, ref rhs2)) = rhs2.node;
             if rhs2.segments.len() == 1;
 
-            if tmp_name.node.as_str() == rhs2.segments[0].name.as_str();
+            if ident.as_str() == rhs2.segments[0].ident.as_str();
             if SpanlessEq::new(cx).ignore_fn().eq_expr(tmp_init, lhs1);
             if SpanlessEq::new(cx).ignore_fn().eq_expr(rhs1, lhs2);
             then {

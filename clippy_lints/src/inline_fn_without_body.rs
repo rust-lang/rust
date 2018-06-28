@@ -38,7 +38,7 @@ impl LintPass for Pass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         if let TraitItemKind::Method(_, TraitMethod::Required(_)) = item.node {
-            check_attrs(cx, item.name, &item.attrs);
+            check_attrs(cx, item.ident.name, &item.attrs);
         }
     }
 }

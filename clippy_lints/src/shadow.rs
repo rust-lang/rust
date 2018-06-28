@@ -100,7 +100,7 @@ fn check_fn<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, body: &'tc
     let mut bindings = Vec::new();
     for arg in iter_input_pats(decl, body) {
         if let PatKind::Binding(_, _, ident, _) = arg.pat.node {
-            bindings.push((ident.node, ident.span))
+            bindings.push((ident.name, ident.span))
         }
     }
     check_expr(cx, &body.value, &mut bindings);
@@ -164,8 +164,8 @@ fn check_pat<'a, 'tcx>(
 ) {
     // TODO: match more stuff / destructuring
     match pat.node {
-        PatKind::Binding(_, _, ref ident, ref inner) => {
-            let name = ident.node;
+        PatKind::Binding(_, _, ident, ref inner) => {
+            let name = ident.name;
             if is_binding(cx, pat.hir_id) {
                 let mut new_binding = true;
                 for tup in bindings.iter_mut() {
@@ -378,5 +378,5 @@ fn is_self_shadow(name: Name, expr: &Expr) -> bool {
 }
 
 fn path_eq_name(name: Name, path: &Path) -> bool {
-    !path.is_global() && path.segments.len() == 1 && path.segments[0].name.as_str() == name.as_str()
+    !path.is_global() && path.segments.len() == 1 && path.segments[0].ident.as_str() == name.as_str()
 }
