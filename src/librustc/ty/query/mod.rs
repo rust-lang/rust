@@ -26,10 +26,10 @@ use middle::resolve_lifetime::{ResolveLifetimes, Region, ObjectLifetimeDefault};
 use middle::stability::{self, DeprecationEntry};
 use middle::lang_items::{LanguageItems, LangItem};
 use middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
-use middle::const_val::EvalResult;
+use mir::interpret::ConstEvalResult;
 use mir::mono::{CodegenUnit, Stats};
 use mir;
-use mir::interpret::{GlobalId, Allocation, ConstValue};
+use mir::interpret::{GlobalId, Allocation};
 use session::{CompileResult, CrateDisambiguator};
 use session::config::OutputFilenames;
 use traits::{self, Vtable};
@@ -230,11 +230,11 @@ define_queries! { <'tcx>
     /// Results of evaluating const items or constants embedded in
     /// other items (such as enum variant explicit discriminants).
     [] fn const_eval: const_eval_dep_node(ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
-        -> EvalResult<'tcx>,
+        -> ConstEvalResult<'tcx>,
 
     /// Converts a constant value to an constant allocation
     [] fn const_value_to_allocation: const_value_to_allocation(
-        (ConstValue<'tcx>, Ty<'tcx>)
+        &'tcx ty::Const<'tcx>
     ) -> &'tcx Allocation,
 
     [] fn check_match: CheckMatch(DefId)
@@ -570,9 +570,9 @@ fn erase_regions_ty<'tcx>(ty: Ty<'tcx>) -> DepConstructor<'tcx> {
 }
 
 fn const_value_to_allocation<'tcx>(
-    (val, ty): (ConstValue<'tcx>, Ty<'tcx>)
+    val: &'tcx ty::Const<'tcx>,
 ) -> DepConstructor<'tcx> {
-    DepConstructor::ConstValueToAllocation { val, ty }
+    DepConstructor::ConstValueToAllocation { val }
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {

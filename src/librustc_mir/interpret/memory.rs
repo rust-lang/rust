@@ -7,7 +7,6 @@ use rustc::ty::ParamEnv;
 use rustc::ty::query::TyCtxtAt;
 use rustc::ty::layout::{self, Align, TargetDataLayout, Size};
 use syntax::ast::Mutability;
-use rustc::middle::const_val::ConstVal;
 
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc::mir::interpret::{Pointer, AllocId, Allocation, AccessKind, Value,
@@ -285,16 +284,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             instance,
             promoted: None,
         };
-        self.tcx.const_eval(ParamEnv::reveal_all().and(gid)).map_err(|_| {
+        self.tcx.const_eval(ParamEnv::reveal_all().and(gid)).map_err(|err| {
             // no need to report anything, the const_eval call takes care of that for statics
             assert!(self.tcx.is_static(def_id).is_some());
-            EvalErrorKind::TypeckError.into()
+            EvalErrorKind::ReferencedConstant(err).into()
         }).map(|val| {
-            let const_val = match val.val {
-                ConstVal::Value(val) => val,
-                ConstVal::Unevaluated(..) => bug!("should be evaluated"),
-            };
-            self.tcx.const_value_to_allocation((const_val, val.ty))
+            self.tcx.const_value_to_allocation(val)
         })
     }
 

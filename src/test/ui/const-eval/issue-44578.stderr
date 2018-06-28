@@ -1,4 +1,4 @@
-error[E0080]: referenced constant
+error[E0080]: referenced constant has errors
   --> $DIR/issue-44578.rs:35:20
    |
 LL |     const AMT: usize = [A::AMT][(A::AMT > B::AMT) as usize];

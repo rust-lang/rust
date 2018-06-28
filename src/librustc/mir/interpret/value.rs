@@ -2,13 +2,19 @@
 
 use ty::layout::{Align, HasDataLayout, Size};
 use ty;
+use ty::subst::Substs;
+use hir::def_id::DefId;
 
 use super::{EvalResult, Pointer, PointerArithmetic, Allocation};
 
 /// Represents a constant value in Rust. ByVal and ScalarPair are optimizations which
 /// matches Value's optimizations for easy conversions between these two types
-#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
 pub enum ConstValue<'tcx> {
+    /// Never returned from the `const_eval` query, but the HIR contains these frequently in order
+    /// to allow HIR creation to happen for everything before needing to be able to run constant
+    /// evaluation
+    Unevaluated(DefId, &'tcx Substs<'tcx>),
     /// Used only for types with layout::abi::Scalar ABI and ZSTs which use Scalar::undef()
     Scalar(Scalar),
     /// Used only for types with layout::abi::ScalarPair
@@ -30,6 +36,7 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn to_byval_value(&self) -> Option<Value> {
         match *self {
+            ConstValue::Unevaluated(..) |
             ConstValue::ByRef(..) => None,
             ConstValue::ScalarPair(a, b) => Some(Value::ScalarPair(a, b)),
             ConstValue::Scalar(val) => Some(Value::Scalar(val)),
@@ -44,7 +51,8 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn to_scalar(&self) -> Option<Scalar> {
         match *self {
-            ConstValue::ByRef(..) => None,
+            ConstValue::Unevaluated(..) |
+            ConstValue::ByRef(..) |
             ConstValue::ScalarPair(..) => None,
             ConstValue::Scalar(val) => Some(val),
         }

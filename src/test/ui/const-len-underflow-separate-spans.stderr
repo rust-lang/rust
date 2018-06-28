@@ -1,19 +1,20 @@
-error: attempt to subtract with overflow
-  --> $DIR/const-len-underflow-separate-spans.rs:17:20
+error[E0080]: referenced constant has errors
+  --> $DIR/const-len-underflow-separate-spans.rs:20:17
    |
 LL | const LEN: usize = ONE - TWO;
-   |                    ^^^^^^^^^
-   |
-   = note: #[deny(const_err)] on by default
+   |                    --------- attempt to subtract with overflow
+...
+LL |     let a: [i8; LEN] = unimplemented!();
+   |                 ^^^
 
-error[E0080]: constant evaluation error
-  --> $DIR/const-len-underflow-separate-spans.rs:17:20
+error[E0080]: could not evaluate constant
+  --> $DIR/const-len-underflow-separate-spans.rs:20:17
    |
-LL | const LEN: usize = ONE - TWO;
-   |                    ^^^^^^^^^ attempt to subtract with overflow
+LL |     let a: [i8; LEN] = unimplemented!();
+   |                 ^^^ referenced constant has errors
 
-error[E0080]: referenced constant
-  --> $DIR/const-len-underflow-separate-spans.rs:22:12
+error[E0080]: referenced constant has errors
+  --> $DIR/const-len-underflow-separate-spans.rs:20:12
    |
 LL | const LEN: usize = ONE - TWO;
    |                    --------- attempt to subtract with overflow
@@ -22,7 +23,7 @@ LL |     let a: [i8; LEN] = unimplemented!();
    |            ^^^^^^^^^
 
 error[E0080]: could not evaluate constant expression
-  --> $DIR/const-len-underflow-separate-spans.rs:22:12
+  --> $DIR/const-len-underflow-separate-spans.rs:20:12
    |
 LL |     let a: [i8; LEN] = unimplemented!();
    |            ^^^^^---^

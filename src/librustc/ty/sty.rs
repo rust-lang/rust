@@ -12,7 +12,7 @@
 
 use hir::def_id::DefId;
 
-use middle::const_val::ConstVal;
+use mir::interpret::ConstValue;
 use middle::region;
 use polonius_engine::Atom;
 use rustc_data_structures::indexed_vec::Idx;
@@ -20,7 +20,7 @@ use ty::subst::{Substs, Subst, Kind, UnpackedKind};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use ty::{Slice, TyS, ParamEnvAnd, ParamEnv};
 use util::captures::Captures;
-use mir::interpret::{Scalar, Pointer, Value, ConstValue};
+use mir::interpret::{Scalar, Pointer, Value};
 
 use std::iter;
 use std::cmp::Ordering;
@@ -1859,7 +1859,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 pub struct Const<'tcx> {
     pub ty: Ty<'tcx>,
 
-    pub val: ConstVal<'tcx>,
+    pub val: ConstValue<'tcx>,
 }
 
 impl<'tcx> Const<'tcx> {
@@ -1870,19 +1870,7 @@ impl<'tcx> Const<'tcx> {
         ty: Ty<'tcx>,
     ) -> &'tcx Self {
         tcx.mk_const(Const {
-            val: ConstVal::Unevaluated(def_id, substs),
-            ty,
-        })
-    }
-
-    #[inline]
-    pub fn from_const_val(
-        tcx: TyCtxt<'_, '_, 'tcx>,
-        val: ConstVal<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> &'tcx Self {
-        tcx.mk_const(Const {
-            val,
+            val: ConstValue::Unevaluated(def_id, substs),
             ty,
         })
     }
@@ -1893,7 +1881,10 @@ impl<'tcx> Const<'tcx> {
         val: ConstValue<'tcx>,
         ty: Ty<'tcx>,
     ) -> &'tcx Self {
-        Self::from_const_val(tcx, ConstVal::Value(val), ty)
+        tcx.mk_const(Const {
+            val,
+            ty,
+        })
     }
 
     #[inline]
@@ -1956,34 +1947,22 @@ impl<'tcx> Const<'tcx> {
         }
         let ty = tcx.lift_to_global(&ty).unwrap();
         let size = tcx.layout_of(ty).ok()?.size;
-        match self.val {
-            ConstVal::Value(val) => val.to_bits(size),
-            _ => None,
-        }
+        self.val.to_bits(size)
     }
 
     #[inline]
     pub fn to_ptr(&self) -> Option<Pointer> {
-        match self.val {
-            ConstVal::Value(val) => val.to_ptr(),
-            _ => None,
-        }
+        self.val.to_ptr()
     }
 
     #[inline]
     pub fn to_byval_value(&self) -> Option<Value> {
-        match self.val {
-            ConstVal::Value(val) => val.to_byval_value(),
-            _ => None,
-        }
+        self.val.to_byval_value()
     }
 
     #[inline]
     pub fn to_scalar(&self) -> Option<Scalar> {
-        match self.val {
-            ConstVal::Value(val) => val.to_scalar(),
-            _ => None,
-        }
+        self.val.to_scalar()
     }
 
     #[inline]
@@ -1995,10 +1974,7 @@ impl<'tcx> Const<'tcx> {
         assert_eq!(self.ty, ty.value);
         let ty = tcx.lift_to_global(&ty).unwrap();
         let size = tcx.layout_of(ty).ok()?.size;
-        match self.val {
-            ConstVal::Value(val) => val.to_bits(size),
-            _ => None,
-        }
+        self.val.to_bits(size)
     }
 
     #[inline]

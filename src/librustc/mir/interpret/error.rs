@@ -1,15 +1,120 @@
 use std::{fmt, env};
 
 use mir;
-use middle::const_val::ConstEvalErr;
 use ty::{FnSig, Ty, layout};
 use ty::layout::{Size, Align};
+use rustc_data_structures::sync::Lrc;
 
 use super::{
     Pointer, Lock, AccessKind
 };
 
 use backtrace::Backtrace;
+
+use ty;
+use ty::query::TyCtxtAt;
+use errors::DiagnosticBuilder;
+
+use syntax_pos::Span;
+use syntax::ast;
+
+pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, Lrc<ConstEvalErr<'tcx>>>;
+
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct ConstEvalErr<'tcx> {
+    pub span: Span,
+    pub error: ::mir::interpret::EvalError<'tcx>,
+    pub stacktrace: Vec<FrameInfo>,
+}
+
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct FrameInfo {
+    pub span: Span,
+    pub location: String,
+    pub lint_root: Option<ast::NodeId>,
+}
+
+impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
+    pub fn struct_error(&self,
+        tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
+        message: &str)
+        -> Option<DiagnosticBuilder<'tcx>>
+    {
+        self.struct_generic(tcx, message, None)
+    }
+
+    pub fn report_as_error(&self,
+        tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
+        message: &str
+    ) {
+        let err = self.struct_generic(tcx, message, None);
+        if let Some(mut err) = err {
+            err.emit();
+        }
+    }
+
+    pub fn report_as_lint(&self,
+        tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
+        message: &str,
+        lint_root: ast::NodeId,
+    ) {
+        let lint = self.struct_generic(
+            tcx,
+            message,
+            Some(lint_root),
+        );
+        if let Some(mut lint) = lint {
+            lint.emit();
+        }
+    }
+
+    fn struct_generic(
+        &self,
+        tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
+        message: &str,
+        lint_root: Option<ast::NodeId>,
+    ) -> Option<DiagnosticBuilder<'tcx>> {
+        match self.error.kind {
+            ::mir::interpret::EvalErrorKind::TypeckError |
+            ::mir::interpret::EvalErrorKind::TooGeneric |
+            ::mir::interpret::EvalErrorKind::CheckMatchError |
+            ::mir::interpret::EvalErrorKind::Layout(_) => return None,
+            ::mir::interpret::EvalErrorKind::ReferencedConstant(ref inner) => {
+                inner.struct_generic(tcx, "referenced constant has errors", lint_root)?.emit();
+            },
+            _ => {},
+        }
+        trace!("reporting const eval failure at {:?}", self.span);
+        let mut err = if let Some(lint_root) = lint_root {
+            let node_id = self.stacktrace
+                .iter()
+                .rev()
+                .filter_map(|frame| frame.lint_root)
+                .next()
+                .unwrap_or(lint_root);
+            tcx.struct_span_lint_node(
+                ::rustc::lint::builtin::CONST_ERR,
+                node_id,
+                tcx.span,
+                message,
+            )
+        } else {
+            struct_error(tcx, message)
+        };
+        err.span_label(self.span, self.error.to_string());
+        for FrameInfo { span, location, .. } in &self.stacktrace {
+            err.span_label(*span, format!("inside call to `{}`", location));
+        }
+        Some(err)
+    }
+}
+
+pub fn struct_error<'a, 'gcx, 'tcx>(
+    tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
+    msg: &str,
+) -> DiagnosticBuilder<'tcx> {
+    struct_span_err!(tcx.sess, tcx.span, E0080, "{}", msg)
+}
 
 #[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 pub struct EvalError<'tcx> {
@@ -150,9 +255,12 @@ pub enum EvalErrorKind<'tcx, O> {
     UnimplementedTraitSelection,
     /// Abort in case type errors are reached
     TypeckError,
+    /// Resolution can fail if we are in a too generic context
+    TooGeneric,
+    CheckMatchError,
     /// Cannot compute this constant because it depends on another one
     /// which already produced an error
-    ReferencedConstant(ConstEvalErr<'tcx>),
+    ReferencedConstant(Lrc<ConstEvalErr<'tcx>>),
     GeneratorResumedAfterReturn,
     GeneratorResumedAfterPanic,
 }
@@ -268,6 +376,10 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
                 "there were unresolved type arguments during trait selection",
             TypeckError =>
                 "encountered constants with type errors, stopping evaluation",
+            TooGeneric =>
+                "encountered overly generic constant",
+            CheckMatchError =>
+                "match checking failed",
             ReferencedConstant(_) =>
                 "referenced constant has errors",
             Overflow(mir::BinOp::Add) => "attempt to add with overflow",

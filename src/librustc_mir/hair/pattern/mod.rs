@@ -18,7 +18,6 @@ pub(crate) use self::check_match::check_match;
 
 use interpret::{const_val_field, const_variant_index, self};
 
-use rustc::middle::const_val::ConstVal;
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, Value};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
@@ -120,13 +119,6 @@ pub enum PatternKind<'tcx> {
         slice: Option<Pattern<'tcx>>,
         suffix: Vec<Pattern<'tcx>>,
     },
-}
-
-fn print_const_val(value: &ty::Const, f: &mut fmt::Formatter) -> fmt::Result {
-    match value.val {
-        ConstVal::Value(..) => fmt_const_val(f, value),
-        ConstVal::Unevaluated(..) => bug!("{:?} not printable in a pattern", value)
-    }
 }
 
 impl<'tcx> fmt::Display for Pattern<'tcx> {
@@ -236,15 +228,15 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                 write!(f, "{}", subpattern)
             }
             PatternKind::Constant { value } => {
-                print_const_val(value, f)
+                fmt_const_val(f, value)
             }
             PatternKind::Range { lo, hi, end } => {
-                print_const_val(lo, f)?;
+                fmt_const_val(f, lo)?;
                 match end {
                     RangeEnd::Included => write!(f, "...")?,
                     RangeEnd::Excluded => write!(f, "..")?,
                 }
-                print_const_val(hi, f)
+                fmt_const_val(f, hi)
             }
             PatternKind::Slice { ref prefix, ref slice, ref suffix } |
             PatternKind::Array { ref prefix, ref slice, ref suffix } => {
@@ -795,13 +787,10 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         debug!("const_to_pat: cv={:#?}", cv);
         let adt_subpattern = |i, variant_opt| {
             let field = Field::new(i);
-            let val = match cv.val {
-                ConstVal::Value(miri) => const_val_field(
-                    self.tcx, self.param_env, instance,
-                    variant_opt, field, miri, cv.ty,
-                ).expect("field access failed"),
-                _ => bug!("{:#?} is not a valid adt", cv),
-            };
+            let val = const_val_field(
+                self.tcx, self.param_env, instance,
+                variant_opt, field, cv,
+            ).expect("field access failed");
             self.const_to_pat(instance, val, id, span)
         };
         let adt_subpatterns = |n, variant_opt| {
@@ -840,24 +829,18 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 PatternKind::Wild
             },
             ty::TyAdt(adt_def, substs) if adt_def.is_enum() => {
-                match cv.val {
-                    ConstVal::Value(val) => {
-                        let variant_index = const_variant_index(
-                            self.tcx, self.param_env, instance, val, cv.ty
-                        ).expect("const_variant_index failed");
-                        let subpatterns = adt_subpatterns(
-                            adt_def.variants[variant_index].fields.len(),
-                            Some(variant_index),
-                        );
-                        PatternKind::Variant {
-                            adt_def,
-                            substs,
-                            variant_index,
-                            subpatterns,
-                        }
-                    },
-                    ConstVal::Unevaluated(..) =>
-                        span_bug!(span, "{:#?} is not a valid enum constant", cv),
+                let variant_index = const_variant_index(
+                    self.tcx, self.param_env, instance, cv
+                ).expect("const_variant_index failed");
+                let subpatterns = adt_subpatterns(
+                    adt_def.variants[variant_index].fields.len(),
+                    Some(variant_index),
+                );
+                PatternKind::Variant {
+                    adt_def,
+                    substs,
+                    variant_index,
+                    subpatterns,
                 }
             },
             ty::TyAdt(adt_def, _) => {
