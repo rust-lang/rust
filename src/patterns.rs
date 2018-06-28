@@ -15,15 +15,14 @@ use syntax::ptr;
 
 use codemap::SpanUtils;
 use comment::FindUncommented;
-use expr::{
-    can_be_overflowed_expr, rewrite_pair, rewrite_unary_prefix, wrap_struct_field, PairParts,
-};
+use expr::{can_be_overflowed_expr, rewrite_unary_prefix, wrap_struct_field};
 use lists::{
     itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape, struct_lit_tactic,
     write_list,
 };
 use macros::{rewrite_macro, MacroPosition};
 use overflow;
+use pairs::{rewrite_pair, PairParts};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;

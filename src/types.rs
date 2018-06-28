@@ -18,12 +18,11 @@ use syntax::symbol::keywords;
 
 use codemap::SpanUtils;
 use config::{IndentStyle, TypeDensity};
-use expr::{
-    rewrite_assign_rhs, rewrite_pair, rewrite_tuple, rewrite_unary_prefix, PairParts, ToExpr,
-};
+use expr::{rewrite_assign_rhs, rewrite_tuple, rewrite_unary_prefix, ToExpr};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use macros::{rewrite_macro, MacroPosition};
 use overflow;
+use pairs::{rewrite_pair, PairParts};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;
