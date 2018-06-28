@@ -308,7 +308,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
 fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
     pat.walk(|p| {
-        if let PatKind::Binding(_, _, name, None) = p.node {
+        if let PatKind::Binding(_, _, ident, None) = p.node {
             let bm = *cx.tables
                         .pat_binding_modes()
                         .get(p.hir_id)
@@ -321,17 +321,17 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
             let pat_ty = cx.tables.pat_ty(p);
             if let ty::TyAdt(edef, _) = pat_ty.sty {
                 if edef.is_enum() && edef.variants.iter().any(|variant| {
-                    variant.name == name.node && variant.ctor_kind == CtorKind::Const
+                    variant.name == ident.name && variant.ctor_kind == CtorKind::Const
                 }) {
                     let ty_path = cx.tcx.item_path_str(edef.did);
                     let mut err = struct_span_warn!(cx.tcx.sess, p.span, E0170,
                         "pattern binding `{}` is named the same as one \
                          of the variants of the type `{}`",
-                        name.node, ty_path);
+                        ident, ty_path);
                     err.span_suggestion_with_applicability(
                         p.span,
                         "to match on the variant, qualify the path",
-                        format!("{}::{}", ty_path, name.node),
+                        format!("{}::{}", ty_path, ident),
                         Applicability::MachineApplicable
                     );
                     err.emit();

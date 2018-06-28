@@ -830,8 +830,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             let is_local_static = if let Def::Static(..) = def { def_id.is_local() } else { false };
             if !self.item_is_accessible(def_id) && !is_local_static {
                 let name = match *qpath {
-                    hir::QPath::Resolved(_, ref path) => format!("{}", path),
-                    hir::QPath::TypeRelative(_, ref segment) => segment.name.to_string(),
+                    hir::QPath::Resolved(_, ref path) => path.to_string(),
+                    hir::QPath::TypeRelative(_, ref segment) => segment.ident.to_string(),
                 };
                 let msg = format!("{} `{}` is private", def.kind_name(), name);
                 self.tcx.sess.span_err(span, &msg);

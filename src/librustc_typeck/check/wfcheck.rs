@@ -632,7 +632,7 @@ fn check_variances_for_type_defn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         let param = &hir_generics.params[index];
-        report_bivariance(tcx, param.span, param.name.name());
+        report_bivariance(tcx, param.span, param.name.ident().name);
     }
 }
 

@@ -1497,17 +1497,17 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         args: Option<P<hir::GenericArgs>>,
         is_value: bool
     ) -> hir::Path {
-        let mut segments = iter::once(keywords::CrateRoot.name())
+        let mut segments = iter::once(keywords::CrateRoot.ident())
             .chain(
                 crate_root.into_iter()
                     .chain(components.iter().cloned())
-                    .map(Symbol::intern)
-            ).map(hir::PathSegment::from_name).collect::<Vec<_>>();
+                    .map(Ident::from_str)
+            ).map(hir::PathSegment::from_ident).collect::<Vec<_>>();
 
         if let Some(args) = args {
-            let name = segments.last().unwrap().name;
+            let ident = segments.last().unwrap().ident;
             *segments.last_mut().unwrap() = hir::PathSegment {
-                name,
+                ident,
                 args: Some(args),
                 infer_types: true,
             };
@@ -1550,16 +1550,16 @@ impl<'a> Resolver<'a> {
             hir::Path {
                 span,
                 def: Def::Err,
-                segments: iter::once(keywords::CrateRoot.name()).chain({
-                    path_str.split("::").skip(1).map(Symbol::intern)
-                }).map(hir::PathSegment::from_name).collect(),
+                segments: iter::once(keywords::CrateRoot.ident()).chain({
+                    path_str.split("::").skip(1).map(Ident::from_str)
+                }).map(hir::PathSegment::from_ident).collect(),
             }
         } else {
             hir::Path {
                 span,
                 def: Def::Err,
-                segments: path_str.split("::").map(Symbol::intern)
-                                  .map(hir::PathSegment::from_name).collect(),
+                segments: path_str.split("::").map(Ident::from_str)
+                                  .map(hir::PathSegment::from_ident).collect(),
             }
         };
         self.resolve_hir_path_cb(&mut path, is_value, |_, _, _| errored = true);
@@ -1572,13 +1572,11 @@ impl<'a> Resolver<'a> {
 
     /// resolve_hir_path, but takes a callback in case there was an error
     fn resolve_hir_path_cb<F>(&mut self, path: &mut hir::Path, is_value: bool, error_callback: F)
-            where F: for<'c, 'b> FnOnce(&'c mut Resolver, Span, ResolutionError<'b>)
-        {
+        where F: for<'c, 'b> FnOnce(&'c mut Resolver, Span, ResolutionError<'b>)
+    {
         let namespace = if is_value { ValueNS } else { TypeNS };
         let hir::Path { ref segments, span, ref mut def } = *path;
-        let path: Vec<Ident> = segments.iter()
-            .map(|seg| Ident::new(seg.name, span))
-            .collect();
+        let path: Vec<_> = segments.iter().map(|seg| seg.ident).collect();
         // FIXME (Manishearth): Intra doc links won't get warned of epoch changes
         match self.resolve_path(&path, Some(namespace), true, span, CrateLint::No) {
             PathResult::Module(module) => *def = module.def().unwrap(),
@@ -3507,7 +3505,7 @@ impl<'a> Resolver<'a> {
 
         match path.get(1) {
             // If this import looks like `crate::...` it's already good
-            Some(name) if name.name == keywords::Crate.name() => return,
+            Some(ident) if ident.name == keywords::Crate.name() => return,
             // Otherwise go below to see if it's an extern crate
             Some(_) => {}
             // If the path has length one (and it's `CrateRoot` most likely)

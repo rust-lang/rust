@@ -18,7 +18,7 @@ use rustc::{infer, traits};
 use rustc::ty::{self, TyCtxt, TypeFoldable, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc_target::spec::abi;
-use syntax::symbol::Symbol;
+use syntax::ast::Ident;
 use syntax_pos::Span;
 
 use rustc::hir;
@@ -157,9 +157,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                              MethodCallee<'tcx>)> {
         // Try the options that are least restrictive on the caller first.
         for &(opt_trait_def_id, method_name, borrow) in
-            &[(self.tcx.lang_items().fn_trait(), Symbol::intern("call"), true),
-              (self.tcx.lang_items().fn_mut_trait(), Symbol::intern("call_mut"), true),
-              (self.tcx.lang_items().fn_once_trait(), Symbol::intern("call_once"), false)] {
+            &[(self.tcx.lang_items().fn_trait(), Ident::from_str("call"), true),
+              (self.tcx.lang_items().fn_mut_trait(), Ident::from_str("call_mut"), true),
+              (self.tcx.lang_items().fn_once_trait(), Ident::from_str("call_once"), false)] {
             let trait_def_id = match opt_trait_def_id {
                 Some(def_id) => def_id,
                 None => continue,

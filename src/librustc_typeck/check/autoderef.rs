@@ -21,7 +21,7 @@ use rustc::ty::{ToPredicate, TypeFoldable};
 use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
 
 use syntax_pos::Span;
-use syntax::symbol::Symbol;
+use syntax::ast::Ident;
 
 use std::iter;
 
@@ -134,7 +134,7 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
                                                               ty::ProjectionTy::from_ref_and_name(
                                                                   tcx,
                                                                   trait_ref,
-                                                                  Symbol::intern("Target"),
+                                                                  Ident::from_str("Target"),
                                                               ),
                                                               cause,
                                                               0,

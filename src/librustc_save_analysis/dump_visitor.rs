@@ -316,14 +316,14 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         sig: &'l ast::MethodSig,
         body: Option<&'l ast::Block>,
         id: ast::NodeId,
-        name: ast::Ident,
+        ident: ast::Ident,
         generics: &'l ast::Generics,
         vis: ast::Visibility,
         span: Span,
     ) {
-        debug!("process_method: {}:{}", id, name);
+        debug!("process_method: {}:{}", id, ident);
 
-        if let Some(mut method_data) = self.save_ctxt.get_method_data(id, name.name, span) {
+        if let Some(mut method_data) = self.save_ctxt.get_method_data(id, ident.name, span) {
             let sig_str = ::make_signature(&sig.decl, &generics);
             if body.is_some() {
                 self.nest_tables(
@@ -335,7 +335,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             self.process_generic_params(&generics, span, &method_data.qualname, id);
 
             method_data.value = sig_str;
-            method_data.sig = sig::method_signature(id, name, generics, sig, &self.save_ctxt);
+            method_data.sig = sig::method_signature(id, ident, generics, sig, &self.save_ctxt);
             self.dumper.dump_def(&access_from!(self.save_ctxt, vis, id), method_data);
         }
 

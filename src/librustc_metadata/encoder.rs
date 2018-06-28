@@ -39,9 +39,8 @@ use std::path::Path;
 use rustc_data_structures::sync::Lrc;
 use std::u32;
 use syntax::ast::{self, CRATE_NODE_ID};
-use syntax::codemap::Spanned;
 use syntax::attr;
-use syntax::symbol::Symbol;
+use syntax::symbol::keywords;
 use syntax_pos::{self, hygiene, FileName, FileMap, Span, DUMMY_SP};
 
 use rustc::hir::{self, PatKind};
@@ -975,16 +974,15 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             let body = self.tcx.hir.body(body_id);
             self.lazy_seq(body.arguments.iter().map(|arg| {
                 match arg.pat.node {
-                    PatKind::Binding(_, _, name, _) => name.node,
-                    _ => Symbol::intern("")
+                    PatKind::Binding(_, _, ident, _) => ident.name,
+                    _ => keywords::Invalid.name(),
                 }
             }))
         })
     }
 
-    fn encode_fn_arg_names(&mut self, names: &[Spanned<ast::Name>])
-                           -> LazySeq<ast::Name> {
-        self.lazy_seq(names.iter().map(|name| name.node))
+    fn encode_fn_arg_names(&mut self, param_names: &[ast::Ident]) -> LazySeq<ast::Name> {
+        self.lazy_seq(param_names.iter().map(|ident| ident.name))
     }
 
     fn encode_optimized_mir(&mut self, def_id: DefId) -> Option<Lazy<mir::Mir<'tcx>>> {

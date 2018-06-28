@@ -146,7 +146,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let methods = self.get_conversion_methods(expr.span, expected, checked_ty);
             if let Ok(expr_text) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
                 let suggestions = iter::repeat(expr_text).zip(methods.iter())
-                    .map(|(receiver, method)| format!("{}.{}()", receiver, method.name))
+                    .map(|(receiver, method)| format!("{}.{}()", receiver, method.ident))
                     .collect::<Vec<_>>();
                 if !suggestions.is_empty() {
                     err.span_suggestions(expr.span,
@@ -226,7 +226,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     })), 1) = (self.tcx.hir.find(parent), decl.inputs.len()) {
                         let self_ty = self.tables.borrow().node_id_to_type(expr[0].hir_id);
                         let self_ty = format!("{:?}", self_ty);
-                        let name = path.name.as_str();
+                        let name = path.ident.as_str();
                         let is_as_ref_able = (
                             self_ty.starts_with("&std::option::Option") ||
                             self_ty.starts_with("&std::result::Result") ||

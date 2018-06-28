@@ -94,7 +94,7 @@ impl Region {
         let def_id = hir_map.local_def_id(param.id);
         let origin = LifetimeDefOrigin::from_param(param);
         debug!("Region::early: index={} def_id={:?}", i, def_id);
-        (param.name, Region::EarlyBound(i, def_id, origin))
+        (param.name.modern(), Region::EarlyBound(i, def_id, origin))
     }
 
     fn late(hir_map: &Map, param: &GenericParam) -> (ParamName, Region) {
@@ -108,7 +108,7 @@ impl Region {
             def_id,
             origin,
         );
-        (param.name, Region::LateBound(depth, def_id, origin))
+        (param.name.modern(), Region::LateBound(depth, def_id, origin))
     }
 
     fn late_anon(index: &Cell<u32>) -> Region {
@@ -254,7 +254,7 @@ struct LifetimeContext<'a, 'tcx: 'a> {
     is_in_fn_syntax: bool,
 
     /// List of labels in the function/method currently under analysis.
-    labels_in_fn: Vec<(ast::Name, Span)>,
+    labels_in_fn: Vec<ast::Ident>,
 
     /// Cache for cross-crate per-definition object lifetime defaults.
     xcrate_object_lifetime_defaults: DefIdMap<Vec<ObjectLifetimeDefault>>,
@@ -689,7 +689,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         GenericParamKind::Lifetime { .. } => {
                             let (name, reg) = Region::early(&self.tcx.hir, &mut index, &param);
                             if let hir::ParamName::Plain(param_name) = name {
-                                if param_name == keywords::UnderscoreLifetime.name() {
+                                if param_name.name == keywords::UnderscoreLifetime.name() {
                                     // Pick the elided lifetime "definition" if one exists
                                     // and use it to make an elision scope.
                                     elision = Some(reg);
@@ -1109,7 +1109,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
     struct GatherLabels<'a, 'tcx: 'a> {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         scope: ScopeRef<'a>,
-        labels_in_fn: &'a mut Vec<(ast::Name, Span)>,
+        labels_in_fn: &'a mut Vec<ast::Ident>,
     }
 
     let mut gather = GatherLabels {
@@ -1125,32 +1125,31 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
         }
 
         fn visit_expr(&mut self, ex: &hir::Expr) {
-            if let Some((label, label_span)) = expression_label(ex) {
-                for &(prior, prior_span) in &self.labels_in_fn[..] {
+            if let Some(label) = expression_label(ex) {
+                for prior_label in &self.labels_in_fn[..] {
                     // FIXME (#24278): non-hygienic comparison
-                    if label == prior {
+                    if label.name == prior_label.name {
                         signal_shadowing_problem(
                             self.tcx,
-                            label,
-                            original_label(prior_span),
-                            shadower_label(label_span),
+                            label.name,
+                            original_label(prior_label.span),
+                            shadower_label(label.span),
                         );
                     }
                 }
 
-                check_if_label_shadows_lifetime(self.tcx, self.scope, label, label_span);
+                check_if_label_shadows_lifetime(self.tcx, self.scope, label);
 
-                self.labels_in_fn.push((label, label_span));
+                self.labels_in_fn.push(label);
             }
             intravisit::walk_expr(self, ex)
         }
     }
 
-    fn expression_label(ex: &hir::Expr) -> Option<(ast::Name, Span)> {
+    fn expression_label(ex: &hir::Expr) -> Option<ast::Ident> {
         match ex.node {
-            hir::ExprWhile(.., Some(label)) | hir::ExprLoop(_, Some(label), _) => {
-                Some((label.name, label.span))
-            }
+            hir::ExprWhile(.., Some(label)) |
+            hir::ExprLoop(_, Some(label), _) => Some(label.ident),
             _ => None,
         }
     }
@@ -1158,8 +1157,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
     fn check_if_label_shadows_lifetime(
         tcx: TyCtxt<'_, '_, '_>,
         mut scope: ScopeRef<'_>,
-        label: ast::Name,
-        label_span: Span,
+        label: ast::Ident,
     ) {
         loop {
             match *scope {
@@ -1177,15 +1175,14 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
                     ref lifetimes, s, ..
                 } => {
                     // FIXME (#24278): non-hygienic comparison
-                    let param_name = hir::ParamName::Plain(label);
-                    if let Some(def) = lifetimes.get(&param_name) {
+                    if let Some(def) = lifetimes.get(&hir::ParamName::Plain(label.modern())) {
                         let node_id = tcx.hir.as_local_node_id(def.id().unwrap()).unwrap();
 
                         signal_shadowing_problem(
                             tcx,
-                            label,
+                            label.name,
                             original_lifetime(tcx.hir.span(node_id)),
-                            shadower_label(label_span),
+                            shadower_label(label.span),
                         );
                         return;
                     }
@@ -1220,7 +1217,7 @@ fn compute_object_lifetime_defaults(
                                 generics.params.iter().find_map(|param| match param.kind {
                                         GenericParamKind::Lifetime { .. } => {
                                             if i == 0 {
-                                                return Some(param.name.name().to_string());
+                                                return Some(param.name.ident().to_string());
                                             }
                                             i -= 1;
                                             None
@@ -1254,7 +1251,7 @@ fn object_lifetime_defaults_for_item(
     fn add_bounds(set: &mut Set1<hir::LifetimeName>, bounds: &[hir::GenericBound]) {
         for bound in bounds {
             if let hir::GenericBound::Outlives(ref lifetime) = *bound {
-                set.insert(lifetime.name);
+                set.insert(lifetime.name.modern());
             }
         }
     }
@@ -1400,10 +1397,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     debug!("node id first={:?}", node_id);
                     if let Some((id, span, name)) = match self.tcx.hir.get(node_id) {
                         hir::map::NodeLifetime(hir_lifetime) => {
-                            Some((hir_lifetime.id, hir_lifetime.span, hir_lifetime.name.name()))
+                            Some((hir_lifetime.id, hir_lifetime.span, hir_lifetime.name.ident()))
                         }
                         hir::map::NodeGenericParam(param) => {
-                            Some((param.id, param.span, param.name.name()))
+                            Some((param.id, param.span, param.name.ident()))
                         }
                         _ => None,
                     } {
@@ -1426,10 +1423,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
                     if let Some((id, span, name)) = match self.tcx.hir.get(node_id) {
                         hir::map::NodeLifetime(hir_lifetime) => {
-                            Some((hir_lifetime.id, hir_lifetime.span, hir_lifetime.name.name()))
+                            Some((hir_lifetime.id, hir_lifetime.span, hir_lifetime.name.ident()))
                         }
                         hir::map::NodeGenericParam(param) => {
-                            Some((param.id, param.span, param.name.name()))
+                            Some((param.id, param.span, param.name.ident()))
                         }
                         _ => None,
                     } {
@@ -1582,7 +1579,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         LifetimeName::Param(param_name) => param_name,
                         _ => bug!("expected LifetimeName::Param"),
                     };
-                    if let Some(&def) = lifetimes.get(&name) {
+                    if let Some(&def) = lifetimes.get(&name.modern()) {
                         break Some(def.shifted(late_depth));
                     } else {
                         late_depth += 1;
@@ -1651,7 +1648,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 lifetime_ref.span,
                 E0261,
                 "use of undeclared lifetime name `{}`",
-                lifetime_ref.name.name()
+                lifetime_ref
             ).span_label(lifetime_ref.span, "undeclared lifetime")
                 .emit();
         }
@@ -2246,7 +2243,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }).collect();
         for (i, (lifetime_i, lifetime_i_name)) in lifetimes.iter().enumerate() {
             if let hir::ParamName::Plain(_) = lifetime_i_name {
-                let name = lifetime_i_name.name();
+                let name = lifetime_i_name.ident().name;
                 if name == keywords::UnderscoreLifetime.name() ||
                    name == keywords::StaticLifetime.name() {
                     let mut err = struct_span_err!(
@@ -2254,7 +2251,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         lifetime_i.span,
                         E0262,
                         "invalid lifetime parameter name: `{}`",
-                        name
+                        lifetime_i.name.ident(),
                     );
                     err.span_label(
                         lifetime_i.span,
@@ -2272,7 +2269,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         lifetime_j.span,
                         E0263,
                         "lifetime name `{}` declared twice in the same scope",
-                        lifetime_j.name.name()
+                        lifetime_j.name.ident()
                     ).span_label(lifetime_j.span, "declared twice")
                      .span_label(lifetime_i.span, "previous declaration here")
                      .emit();
@@ -2301,12 +2298,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                 lifetime_i.span.to(lt.span),
                                 &format!(
                                     "unnecessary lifetime parameter `{}`",
-                                    lifetime_i.name.name(),
+                                    lifetime_i.name.ident(),
                                 ),
                             ).help(&format!(
                                 "you can use the `'static` lifetime directly, in place \
                                     of `{}`",
-                                lifetime_i.name.name(),
+                                lifetime_i.name.ident(),
                             )).emit();
                         }
                         hir::LifetimeName::Param(_)
@@ -2325,13 +2322,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         mut old_scope: ScopeRef,
         param: &'tcx hir::GenericParam,
     ) {
-        for &(label, label_span) in &self.labels_in_fn {
+        for label in &self.labels_in_fn {
             // FIXME (#24278): non-hygienic comparison
-            if param.name.name() == label {
+            if param.name.ident().name == label.name {
                 signal_shadowing_problem(
                     self.tcx,
-                    label,
-                    original_label(label_span),
+                    label.name,
+                    original_label(label.span),
                     shadower_lifetime(&param),
                 );
                 return;
@@ -2353,12 +2350,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 Scope::Binder {
                     ref lifetimes, s, ..
                 } => {
-                    if let Some(&def) = lifetimes.get(&param.name) {
+                    if let Some(&def) = lifetimes.get(&param.name.modern()) {
                         let node_id = self.tcx.hir.as_local_node_id(def.id().unwrap()).unwrap();
 
                         signal_shadowing_problem(
                             self.tcx,
-                            param.name.name(),
+                            param.name.ident().name,
                             original_lifetime(self.tcx.hir.span(node_id)),
                             shadower_lifetime(&param),
                         );
@@ -2520,7 +2517,8 @@ fn insert_late_bound_lifetimes(
             hir::GenericParamKind::Lifetime { .. } => {
                 if !param.bounds.is_empty() {
                     // `'a: 'b` means both `'a` and `'b` are referenced
-                    appears_in_where_clause.regions.insert(hir::LifetimeName::Param(param.name));
+                    appears_in_where_clause
+                        .regions.insert(hir::LifetimeName::Param(param.name.modern()));
                 }
             }
             hir::GenericParamKind::Type { .. } => {}
@@ -2537,7 +2535,7 @@ fn insert_late_bound_lifetimes(
     // - do not appear in the where-clauses
     // - are not implicitly captured by `impl Trait`
     for param in &generics.params {
-        let lt_name = hir::LifetimeName::Param(param.name);
+        let lt_name = hir::LifetimeName::Param(param.name.modern());
         // appears in the where clauses? early-bound.
         if appears_in_where_clause.regions.contains(&lt_name) {
             continue;
@@ -2551,7 +2549,7 @@ fn insert_late_bound_lifetimes(
         }
 
         debug!("insert_late_bound_lifetimes: lifetime {:?} with id {:?} is late-bound",
-               param.name.name(),
+               param.name.ident(),
                param.id);
 
         let inserted = map.late_bound.insert(param.id);
@@ -2596,7 +2594,7 @@ fn insert_late_bound_lifetimes(
         }
 
         fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
-            self.regions.insert(lifetime_ref.name);
+            self.regions.insert(lifetime_ref.name.modern());
         }
     }
 
@@ -2610,7 +2608,7 @@ fn insert_late_bound_lifetimes(
         }
 
         fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
-            self.regions.insert(lifetime_ref.name);
+            self.regions.insert(lifetime_ref.name.modern());
         }
     }
 }

@@ -184,14 +184,14 @@ fn enforce_impl_items_are_distinct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             hir::ImplItemKind::Type(_) => &mut seen_type_items,
             _                    => &mut seen_value_items,
         };
-        match seen_items.entry(impl_item.name) {
+        match seen_items.entry(impl_item.ident.modern()) {
             Occupied(entry) => {
                 let mut err = struct_span_err!(tcx.sess, impl_item.span, E0201,
                                                "duplicate definitions with name `{}`:",
-                                               impl_item.name);
+                                               impl_item.ident);
                 err.span_label(*entry.get(),
                                format!("previous definition of `{}` here",
-                                        impl_item.name));
+                                        impl_item.ident));
                 err.span_label(impl_item.span, "duplicate definition");
                 err.emit();
             }

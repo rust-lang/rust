@@ -616,7 +616,7 @@ impl<'hir> Map<'hir> {
             NodeItem(&Item { node: ItemTrait(..), .. }) => {
                 keywords::SelfType.name()
             }
-            NodeGenericParam(param) => param.name.name(),
+            NodeGenericParam(param) => param.name.ident().name,
             _ => bug!("ty_param_name: {} not a type parameter", self.node_to_string(id)),
         }
     }
@@ -949,13 +949,13 @@ impl<'hir> Map<'hir> {
         match self.get(id) {
             NodeItem(i) => i.name,
             NodeForeignItem(i) => i.name,
-            NodeImplItem(ii) => ii.name,
-            NodeTraitItem(ti) => ti.name,
+            NodeImplItem(ii) => ii.ident.name,
+            NodeTraitItem(ti) => ti.ident.name,
             NodeVariant(v) => v.node.name,
             NodeField(f) => f.ident.name,
-            NodeLifetime(lt) => lt.name.name(),
-            NodeGenericParam(param) => param.name.name(),
-            NodeBinding(&Pat { node: PatKind::Binding(_,_,l,_), .. }) => l.node,
+            NodeLifetime(lt) => lt.name.ident().name,
+            NodeGenericParam(param) => param.name.ident().name,
+            NodeBinding(&Pat { node: PatKind::Binding(_,_,l,_), .. }) => l.name,
             NodeStructCtor(_) => self.name(self.get_parent(id)),
             _ => bug!("no name for {}", self.node_to_string(id))
         }
@@ -1149,8 +1149,8 @@ impl Named for Item { fn name(&self) -> Name { self.name } }
 impl Named for ForeignItem { fn name(&self) -> Name { self.name } }
 impl Named for Variant_ { fn name(&self) -> Name { self.name } }
 impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
-impl Named for TraitItem { fn name(&self) -> Name { self.name } }
-impl Named for ImplItem { fn name(&self) -> Name { self.name } }
+impl Named for TraitItem { fn name(&self) -> Name { self.ident.name } }
+impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
 
 
 pub fn map_crate<'hir>(sess: &::session::Session,
@@ -1309,13 +1309,13 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         Some(NodeImplItem(ii)) => {
             match ii.node {
                 ImplItemKind::Const(..) => {
-                    format!("assoc const {} in {}{}", ii.name, path_str(), id_str)
+                    format!("assoc const {} in {}{}", ii.ident, path_str(), id_str)
                 }
                 ImplItemKind::Method(..) => {
-                    format!("method {} in {}{}", ii.name, path_str(), id_str)
+                    format!("method {} in {}{}", ii.ident, path_str(), id_str)
                 }
                 ImplItemKind::Type(_) => {
-                    format!("assoc type {} in {}{}", ii.name, path_str(), id_str)
+                    format!("assoc type {} in {}{}", ii.ident, path_str(), id_str)
                 }
             }
         }
@@ -1326,7 +1326,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 TraitItemKind::Type(..) => "assoc type",
             };
 
-            format!("{} {} in {}{}", kind, ti.name, path_str(), id_str)
+            format!("{} {} in {}{}", kind, ti.ident, path_str(), id_str)
         }
         Some(NodeVariant(ref variant)) => {
             format!("variant {} in {}{}",
