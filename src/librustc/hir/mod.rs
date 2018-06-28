@@ -550,7 +550,7 @@ impl Generics {
 
     pub fn get_named(&self, name: &InternedString) -> Option<&GenericParam> {
         for param in &self.params {
-            if *name == param.name.name().as_interned_str() {
+            if *name == param.name.ident().as_interned_str() {
                 return Some(param);
             }
         }
