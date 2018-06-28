@@ -242,7 +242,7 @@ impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD> where BD: Bi
             {
                 let sets = builder.flow_state.sets.for_block(bb_idx);
                 debug_assert!(in_out.words().len() == sets.on_entry.words().len());
-                in_out.clone_from(sets.on_entry);
+                in_out.overwrite(sets.on_entry);
                 in_out.union(sets.gen_set);
                 in_out.subtract(sets.kill_set);
             }
