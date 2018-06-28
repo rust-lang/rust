@@ -96,7 +96,11 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn lookup_and_handle_method(&mut self, id: hir::HirId) {
-        self.check_def_id(self.tables.type_dependent_defs()[id].def_id());
+        if let Some(def) = self.tables.type_dependent_defs().get(id) {
+            self.check_def_id(def.def_id());
+        } else {
+            bug!("no type-dependent def for method");
+        }
     }
 
     fn handle_field_access(&mut self, lhs: &hir::Expr, node_id: ast::NodeId) {
