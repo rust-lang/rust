@@ -1,15 +1,3 @@
-warning: attempt to subtract with overflow
-  --> $DIR/pub_const_err_bin.rs:14:20
-   |
-LL | pub const Z: u32 = 0 - 1;
-   |                    ^^^^^
-   |
-note: lint level defined here
-  --> $DIR/pub_const_err_bin.rs:12:9
-   |
-LL | #![warn(const_err)]
-   |         ^^^^^^^^^
-
 warning: this constant cannot be used
   --> $DIR/pub_const_err_bin.rs:14:1
    |
@@ -17,15 +5,21 @@ LL | pub const Z: u32 = 0 - 1;
    | ^^^^^^^^^^^^^^^^^^^-----^
    |                    |
    |                    attempt to subtract with overflow
+   |
+note: lint level defined here
+  --> $DIR/pub_const_err_bin.rs:12:9
+   |
+LL | #![warn(const_err)]
+   |         ^^^^^^^^^
 
 warning: attempt to subtract with overflow
-  --> $DIR/pub_const_err_bin.rs:18:22
+  --> $DIR/pub_const_err_bin.rs:17:22
    |
 LL | pub type Foo = [i32; 0 - 1];
    |                      ^^^^^
 
 warning: this array length cannot be used
-  --> $DIR/pub_const_err_bin.rs:18:22
+  --> $DIR/pub_const_err_bin.rs:17:22
    |
 LL | pub type Foo = [i32; 0 - 1];
    |                      ^^^^^ attempt to subtract with overflow

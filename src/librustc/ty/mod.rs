@@ -2065,7 +2065,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                     })
                 } else {
                     info!("invalid enum discriminant: {:#?}", val);
-                    ::middle::const_val::struct_error(
+                    ::mir::interpret::struct_error(
                         tcx.at(tcx.def_span(expr_did)),
                         "constant evaluation of enum discriminant resulted in non-integer",
                     ).emit();

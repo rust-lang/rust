@@ -14,7 +14,10 @@ LL | fn main() {
    |           - expected `()` because of default return type
 ...
 LL |   let u: &str = if true { s[..2] } else { s };
-   |                           ^^^^^^ expected &str, found str
+   |                           ^^^^^^
+   |                           |
+   |                           expected &str, found str
+   |                           help: consider borrowing here: `&s[..2]`
    |
    = note: expected type `&str`
               found type `str`

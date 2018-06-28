@@ -9,12 +9,13 @@
 // except according to those terms.
 
 use llvm::{ValueRef, LLVMConstInBoundsGEP};
-use rustc::middle::const_val::ConstEvalErr;
+use rustc::mir::interpret::ConstEvalErr;
 use rustc::mir;
 use rustc::mir::interpret::ConstValue;
 use rustc::ty;
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::sync::Lrc;
 
 use base;
 use common::{self, CodegenCx, C_null, C_undef, C_usize};
@@ -95,16 +96,16 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     }
 
     pub fn from_const(bx: &Builder<'a, 'tcx>,
-                      val: ConstValue<'tcx>,
-                      ty: ty::Ty<'tcx>)
-                      -> Result<OperandRef<'tcx>, ConstEvalErr<'tcx>> {
-        let layout = bx.cx.layout_of(ty);
+                      val: &'tcx ty::Const<'tcx>)
+                      -> Result<OperandRef<'tcx>, Lrc<ConstEvalErr<'tcx>>> {
+        let layout = bx.cx.layout_of(val.ty);
 
         if layout.is_zst() {
             return Ok(OperandRef::new_zst(bx.cx, layout));
         }
 
-        let val = match val {
+        let val = match val.val {
+            ConstValue::Unevaluated(..) => bug!(),
             ConstValue::Scalar(x) => {
                 let scalar = match layout.abi {
                     layout::Abi::Scalar(ref x) => x,
@@ -408,8 +409,8 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
 
             mir::Operand::Constant(ref constant) => {
                 let ty = self.monomorphize(&constant.ty);
-                self.mir_constant_to_const_value(bx, constant)
-                    .and_then(|c| OperandRef::from_const(bx, c, ty))
+                self.eval_mir_constant(bx, constant)
+                    .and_then(|c| OperandRef::from_const(bx, c))
                     .unwrap_or_else(|err| {
                         match constant.literal {
                             mir::Literal::Promoted { .. } => {

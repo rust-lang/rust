@@ -39,7 +39,7 @@
 //! These methods return true to indicate that the visitor has found what it is looking for
 //! and does not need to visit anything else.
 
-use middle::const_val::ConstVal;
+use mir::interpret::ConstValue;
 use hir::def_id::DefId;
 use ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 
@@ -685,7 +685,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     }
 
     fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
-        if let ConstVal::Unevaluated(..) = c.val {
+        if let ConstValue::Unevaluated(..) = c.val {
             let projection_flags = TypeFlags::HAS_NORMALIZABLE_PROJECTION |
                 TypeFlags::HAS_PROJECTION;
             if projection_flags.intersects(self.flags) {

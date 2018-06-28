@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::const_val::ConstVal;
+use mir::interpret::ConstValue;
 use ty::subst::Substs;
 use ty::{self, Ty, TypeFlags, TypeFoldable};
 
@@ -233,12 +233,9 @@ impl FlagComputation {
 
     fn add_const(&mut self, constant: &ty::Const) {
         self.add_ty(constant.ty);
-        match constant.val {
-            ConstVal::Value(_) => {}
-            ConstVal::Unevaluated(_, substs) => {
-                self.add_flags(TypeFlags::HAS_PROJECTION);
-                self.add_substs(substs);
-            }
+        if let ConstValue::Unevaluated(_, substs) = constant.val {
+            self.add_flags(TypeFlags::HAS_PROJECTION);
+            self.add_substs(substs);
         }
     }
 

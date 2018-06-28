@@ -1642,8 +1642,8 @@ impl<T> [T] {
     /// [`split_at_mut`]: #method.split_at_mut
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     pub fn copy_from_slice(&mut self, src: &[T]) where T: Copy {
-        assert!(self.len() == src.len(),
-                "destination and source slices have different lengths");
+        assert_eq!(self.len(), src.len(),
+                   "destination and source slices have different lengths");
         unsafe {
             ptr::copy_nonoverlapping(
                 src.as_ptr(), self.as_mut_ptr(), self.len());

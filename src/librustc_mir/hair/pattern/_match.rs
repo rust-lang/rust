@@ -12,8 +12,6 @@ use self::Constructor::*;
 use self::Usefulness::*;
 use self::WitnessPreference::*;
 
-use rustc::middle::const_val::ConstVal;
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -544,14 +542,9 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
 
     for row in patterns {
         match *row.kind {
-            PatternKind::Constant {
-                value: const_val @ &ty::Const {
-                    val: ConstVal::Value(..),
-                    ..
-                }
-            } => {
-                if let Some(ptr) = const_val.to_ptr() {
-                    let is_array_ptr = const_val.ty
+            PatternKind::Constant { value } => {
+                if let Some(ptr) = value.to_ptr() {
+                    let is_array_ptr = value.ty
                         .builtin_deref(true)
                         .and_then(|t| t.ty.builtin_index())
                         .map_or(false, |t| t == cx.tcx.types.u8);
@@ -933,13 +926,14 @@ fn slice_pat_covered_by_constructor<'tcx>(
     suffix: &[Pattern<'tcx>]
 ) -> Result<bool, ErrorReported> {
     let data: &[u8] = match *ctor {
-        ConstantValue(&ty::Const { val: ConstVal::Value(const_val), ty }) => {
-            let val = match const_val {
-                ConstValue::ByRef(..) => bug!("unexpected ConstValue::ByRef"),
+        ConstantValue(const_val) => {
+            let val = match const_val.val {
+                ConstValue::Unevaluated(..) |
+                ConstValue::ByRef(..) => bug!("unexpected ConstValue: {:?}", const_val),
                 ConstValue::Scalar(val) | ConstValue::ScalarPair(val, _) => val,
             };
             if let Ok(ptr) = val.to_ptr() {
-                let is_array_ptr = ty
+                let is_array_ptr = const_val.ty
                     .builtin_deref(true)
                     .and_then(|t| t.ty.builtin_index())
                     .map_or(false, |t| t == tcx.types.u8);

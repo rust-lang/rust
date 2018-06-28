@@ -364,27 +364,6 @@ impl_stable_hash_for!(struct ty::FieldDef {
 });
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
-for ::middle::const_val::ConstVal<'gcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        use middle::const_val::ConstVal::*;
-
-        mem::discriminant(self).hash_stable(hcx, hasher);
-
-        match *self {
-            Unevaluated(def_id, substs) => {
-                def_id.hash_stable(hcx, hasher);
-                substs.hash_stable(hcx, hasher);
-            }
-            Value(ref value) => {
-                value.hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
-
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
 for ::mir::interpret::ConstValue<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
@@ -394,6 +373,10 @@ for ::mir::interpret::ConstValue<'gcx> {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
+            Unevaluated(def_id, substs) => {
+                def_id.hash_stable(hcx, hasher);
+                substs.hash_stable(hcx, hasher);
+            }
             Scalar(val) => {
                 val.hash_stable(hcx, hasher);
             }
@@ -497,39 +480,17 @@ impl_stable_hash_for!(struct ty::Const<'tcx> {
     val
 });
 
-impl_stable_hash_for!(struct ::middle::const_val::ConstEvalErr<'tcx> {
+impl_stable_hash_for!(struct ::mir::interpret::ConstEvalErr<'tcx> {
     span,
-    kind
+    stacktrace,
+    error
 });
 
-impl_stable_hash_for!(struct ::middle::const_val::FrameInfo {
+impl_stable_hash_for!(struct ::mir::interpret::FrameInfo {
     span,
     lint_root,
     location
 });
-
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
-for ::middle::const_val::ErrKind<'gcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        use middle::const_val::ErrKind::*;
-
-        mem::discriminant(self).hash_stable(hcx, hasher);
-
-        match *self {
-            TypeckError |
-            CouldNotResolve |
-            CheckMatchError => {
-                // nothing to do
-            }
-            Miri(ref err, ref trace) => {
-                err.hash_stable(hcx, hasher);
-                trace.hash_stable(hcx, hasher);
-            },
-        }
-    }
-}
 
 impl_stable_hash_for!(struct ty::ClosureSubsts<'tcx> { substs });
 impl_stable_hash_for!(struct ty::GeneratorSubsts<'tcx> { substs });
@@ -579,6 +540,8 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             ReadFromReturnPointer |
             UnimplementedTraitSelection |
             TypeckError |
+            TooGeneric |
+            CheckMatchError |
             DerefFunctionPointer |
             ExecuteMemory |
             OverflowNeg |

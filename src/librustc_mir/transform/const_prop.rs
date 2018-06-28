@@ -17,7 +17,7 @@ use rustc::mir::{Constant, Literal, Location, Place, Mir, Operand, Rvalue, Local
 use rustc::mir::{NullOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext};
-use rustc::middle::const_val::{ConstVal, ConstEvalErr, ErrKind};
+use rustc::mir::interpret::ConstEvalErr;
 use rustc::ty::{TyCtxt, self, Instance};
 use rustc::mir::interpret::{Value, Scalar, GlobalId, EvalResult};
 use interpret::EvalContext;
@@ -45,8 +45,11 @@ impl MirPass for ConstProp {
             return;
         }
         match tcx.describe_def(source.def_id) {
-            // skip statics because they'll be evaluated by miri anyway
+            // skip statics/consts because they'll be evaluated by miri anyway
+            Some(Def::Const(..)) |
             Some(Def::Static(..)) => return,
+            // we still run on associated constants, because they might not get evaluated
+            // within the current crate
             _ => {},
         }
         trace!("ConstProp starting for {:?}", source.def_id);
@@ -145,7 +148,8 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 let (frames, span) = self.ecx.generate_stacktrace(None);
                 let err = ConstEvalErr {
                     span,
-                    kind: ErrKind::Miri(err, frames).into(),
+                    error: err,
+                    stacktrace: frames,
                 };
                 err.report_as_lint(
                     self.ecx.tcx,
@@ -159,54 +163,30 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
         r
     }
 
-    fn const_eval(&mut self, cid: GlobalId<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
-        let value = match self.tcx.const_eval(self.param_env.and(cid)) {
-            Ok(val) => val,
-            Err(err) => {
-                err.report_as_error(
-                    self.tcx.at(err.span),
-                    "constant evaluation error",
-                );
-                return None;
-            },
-        };
-        let val = match value.val {
-            ConstVal::Value(v) => {
-                self.use_ecx(source_info, |this| this.ecx.const_value_to_value(v, value.ty))?
-            },
-            _ => bug!("eval produced: {:?}", value),
-        };
-        let val = (val, value.ty, source_info.span);
-        trace!("evaluated {:?} to {:?}", cid, val);
-        Some(val)
-    }
-
     fn eval_constant(
         &mut self,
         c: &Constant<'tcx>,
         source_info: SourceInfo,
     ) -> Option<Const<'tcx>> {
         match c.literal {
-            Literal::Value { value } => match value.val {
-                ConstVal::Value(v) => {
-                    let v = self.use_ecx(source_info, |this| {
-                        this.ecx.const_value_to_value(v, value.ty)
-                    })?;
-                    Some((v, value.ty, c.span))
-                },
-                ConstVal::Unevaluated(did, substs) => {
-                    let instance = Instance::resolve(
-                        self.tcx,
-                        self.param_env,
-                        did,
-                        substs,
-                    )?;
-                    let cid = GlobalId {
-                        instance,
-                        promoted: None,
-                    };
-                    self.const_eval(cid, source_info)
-                },
+            Literal::Value { value } => {
+                self.ecx.tcx.span = source_info.span;
+                match self.ecx.const_to_value(value.val) {
+                    Ok(val) => Some((val, value.ty, c.span)),
+                    Err(error) => {
+                        let (stacktrace, span) = self.ecx.generate_stacktrace(None);
+                        let err = ConstEvalErr {
+                            span,
+                            error,
+                            stacktrace,
+                        };
+                        err.report_as_error(
+                            self.tcx.at(source_info.span),
+                            "could not evaluate constant",
+                        );
+                        None
+                    },
+                }
             },
             // evaluate the promoted and replace the constant with the evaluated result
             Literal::Promoted { index } => {

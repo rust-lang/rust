@@ -11,7 +11,7 @@
 use dep_graph::SerializedDepNodeIndex;
 use dep_graph::DepNode;
 use hir::def_id::{CrateNum, DefId, DefIndex};
-use mir::interpret::{GlobalId, ConstValue};
+use mir::interpret::GlobalId;
 use traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpEqGoal,
     CanonicalTypeOpNormalizeGoal, CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal,
@@ -191,8 +191,8 @@ impl<'tcx> QueryDescription<'tcx> for queries::super_predicates_of<'tcx> {
 }
 
 impl<'tcx> QueryDescription<'tcx> for queries::const_value_to_allocation<'tcx> {
-    fn describe(_tcx: TyCtxt, (val, ty): (ConstValue<'tcx>, Ty<'tcx>)) -> String {
-        format!("converting value `{:?}` ({}) to an allocation", val, ty)
+    fn describe(_tcx: TyCtxt, val: &'tcx ty::Const<'tcx>) -> String {
+        format!("converting value `{:?}` to an allocation", val)
     }
 }
 

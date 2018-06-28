@@ -193,7 +193,6 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
-use rustc::middle::const_val::ConstVal;
 use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::ty::subst::Substs;
@@ -1210,15 +1209,12 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         match tcx.const_eval(param_env.and(cid)) {
             Ok(val) => collect_const(tcx, val, instance.substs, output),
             Err(err) => {
-                use rustc::middle::const_val::ErrKind;
                 use rustc::mir::interpret::EvalErrorKind;
-                if let ErrKind::Miri(ref miri, ..) = *err.kind {
-                    if let EvalErrorKind::ReferencedConstant(_) = miri.kind {
-                        err.report_as_error(
-                            tcx.at(mir.promoted[i].span),
-                            "erroneous constant used",
-                        );
-                    }
+                if let EvalErrorKind::ReferencedConstant(_) = err.error.kind {
+                    err.report_as_error(
+                        tcx.at(mir.promoted[i].span),
+                        "erroneous constant used",
+                    );
                 }
             },
         }
@@ -1243,7 +1239,7 @@ fn collect_const<'a, 'tcx>(
     debug!("visiting const {:?}", *constant);
 
     let val = match constant.val {
-        ConstVal::Unevaluated(def_id, substs) => {
+        ConstValue::Unevaluated(def_id, substs) => {
             let param_env = ty::ParamEnv::reveal_all();
             let substs = tcx.subst_and_normalize_erasing_regions(
                 param_substs,
@@ -1274,16 +1270,16 @@ fn collect_const<'a, 'tcx>(
         _ => constant.val,
     };
     match val {
-        ConstVal::Unevaluated(..) => bug!("const eval yielded unevaluated const"),
-        ConstVal::Value(ConstValue::ScalarPair(Scalar::Ptr(a), Scalar::Ptr(b))) => {
+        ConstValue::Unevaluated(..) => bug!("const eval yielded unevaluated const"),
+        ConstValue::ScalarPair(Scalar::Ptr(a), Scalar::Ptr(b)) => {
             collect_miri(tcx, a.alloc_id, output);
             collect_miri(tcx, b.alloc_id, output);
         }
-        ConstVal::Value(ConstValue::ScalarPair(_, Scalar::Ptr(ptr))) |
-        ConstVal::Value(ConstValue::ScalarPair(Scalar::Ptr(ptr), _)) |
-        ConstVal::Value(ConstValue::Scalar(Scalar::Ptr(ptr))) =>
+        ConstValue::ScalarPair(_, Scalar::Ptr(ptr)) |
+        ConstValue::ScalarPair(Scalar::Ptr(ptr), _) |
+        ConstValue::Scalar(Scalar::Ptr(ptr)) =>
             collect_miri(tcx, ptr.alloc_id, output),
-        ConstVal::Value(ConstValue::ByRef(alloc, _offset)) => {
+        ConstValue::ByRef(alloc, _offset) => {
             for &id in alloc.relocations.values() {
                 collect_miri(tcx, id, output);
             }

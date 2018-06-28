@@ -8,17 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![warn(const_err)]
+enum Foo {
+    // test that we detect overflows for non-u32 discriminants
+    X = 1 << ((u32::max_value() as u64) + 1), //~ ERROR E0080
+    Y = 42,
+}
 
-const X: u32 = 5;
-const Y: u32 = 6;
-const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
-//~^ WARN this constant cannot be used
 
 fn main() {
-    println!("{}", FOO);
-    //~^ WARN this expression will panic at runtime
-    //~| WARN referenced constant
-    //~| ERROR erroneous constant used
-    //~| E0080
 }

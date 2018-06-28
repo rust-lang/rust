@@ -28,7 +28,7 @@ use super::util;
 use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk};
 use infer::type_variable::TypeVariableOrigin;
-use middle::const_val::ConstVal;
+use mir::interpret::ConstValue;
 use mir::interpret::{GlobalId};
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use syntax::ast::Ident;
@@ -426,7 +426,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
     }
 
     fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ConstVal::Unevaluated(def_id, substs) = constant.val {
+        if let ConstValue::Unevaluated(def_id, substs) = constant.val {
             let tcx = self.selcx.tcx().global_tcx();
             if let Some(param_env) = self.tcx().lift_to_global(&self.param_env) {
                 if substs.needs_infer() || substs.has_skol() {
