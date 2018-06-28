@@ -177,9 +177,7 @@ enum ImplTraitContext {
     /// Treat `impl Trait` as shorthand for a new universal generic parameter.
     /// Example: `fn foo(x: impl Debug)`, where `impl Debug` is conceptually
     /// equivalent to a fresh universal parameter like `fn foo<T: Debug>(x: T)`.
-    ///
-    /// We store a DefId here so we can look up necessary information later
-    Universal(DefId),
+    Universal,
 
     /// Treat `impl Trait` as shorthand for a new universal existential parameter.
     /// Example: `fn foo() -> impl Debug`, where `impl Debug` is conceptually
@@ -803,7 +801,7 @@ impl<'a> LoweringContext<'a> {
         let (in_band_defs, (mut lowered_generics, res)) = self.with_in_scope_lifetime_defs(
             &generics.params,
             |this| {
-                let itctx = ImplTraitContext::Universal(parent_id);
+                let itctx = ImplTraitContext::Universal;
                 this.collect_in_band_defs(parent_id, anonymous_lifetime_mode, |this| {
                     (this.lower_generics(generics, itctx), f(this))
                 })
@@ -1169,7 +1167,7 @@ impl<'a> LoweringContext<'a> {
                             |this| this.lower_param_bounds(bounds, itctx),
                         )
                     }
-                    ImplTraitContext::Universal(_def_id) => {
+                    ImplTraitContext::Universal => {
                         self.lower_node_id(def_node_id);
                         // Add a definition for the in-band TyParam
                         let def_index = self
@@ -1875,8 +1873,8 @@ impl<'a> LoweringContext<'a> {
         let inputs = decl.inputs
             .iter()
             .map(|arg| {
-                if let Some(def_id) = fn_def_id {
-                    self.lower_ty_direct(&arg.ty, ImplTraitContext::Universal(def_id))
+                if fn_def_id.is_some() {
+                    self.lower_ty_direct(&arg.ty, ImplTraitContext::Universal)
                 } else {
                     self.lower_ty_direct(&arg.ty, ImplTraitContext::Disallowed)
                 }
@@ -2527,9 +2525,9 @@ impl<'a> LoweringContext<'a> {
         body: &Block,
     ) -> hir::BodyId {
         self.lower_body(Some(decl), |this| {
-            if let IsAsync::Async(async_node_id) = asyncness {
+            if let IsAsync::Async { closure_id, .. } = asyncness {
                 let async_expr = this.make_async_expr(
-                    CaptureBy::Value, async_node_id, None,
+                    CaptureBy::Value, closure_id, None,
                     |this| {
                         let body = this.lower_block(body, false);
                         this.expr_block(body, ThinVec::new())
