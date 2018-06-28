@@ -976,11 +976,9 @@ impl FileMap {
     }
 
     /// Return the BytePos of the beginning of the current line.
-    pub fn line_begin_pos(&self) -> BytePos {
-        match self.lines.last() {
-            Some(&line_pos) => line_pos,
-            None => self.start_pos,
-        }
+    pub fn line_begin_pos(&self, pos: BytePos) -> BytePos {
+        let line_index = self.lookup_line(pos).unwrap();
+        self.lines[line_index]
     }
 
     /// Add externally loaded source.

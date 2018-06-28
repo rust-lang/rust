@@ -240,9 +240,11 @@ fn read_block_comment(rdr: &mut StringReader,
     let mut lines: Vec<String> = Vec::new();
 
     // Count the number of chars since the start of the line by rescanning.
-    let mut src_index = rdr.src_index(rdr.filemap.line_begin_pos());
+    let mut src_index = rdr.src_index(rdr.filemap.line_begin_pos(rdr.pos));
     let end_src_index = rdr.src_index(rdr.pos);
-    assert!(src_index <= end_src_index);
+    assert!(src_index <= end_src_index,
+        "src_index={}, end_src_index={}, line_begin_pos={}",
+        src_index, end_src_index, rdr.filemap.line_begin_pos(rdr.pos).to_u32());
     let mut n = 0;
     while src_index < end_src_index {
         let c = char_at(&rdr.src, src_index);
