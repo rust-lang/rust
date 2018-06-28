@@ -1177,6 +1177,23 @@ impl LintPass for InvalidNoMangleItems {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+        let suggest_make_pub = |vis: &hir::Visibility, err: &mut DiagnosticBuilder| {
+            let suggestion = match vis.node {
+                hir::VisibilityInherited => {
+                    // inherited visibility is empty span at item start; need an extra space
+                    Some("pub ".to_owned())
+                },
+                hir::VisibilityRestricted { .. } |
+                hir::VisibilityCrate(_) => {
+                    Some("pub".to_owned())
+                },
+                hir::VisibilityPublic => None
+            };
+            if let Some(replacement) = suggestion {
+                err.span_suggestion(vis.span, "try making it public", replacement);
+            }
+        };
+
         match it.node {
             hir::ItemFn(.., ref generics, _) => {
                 if let Some(no_mangle_attr) = attr::find_by_name(&it.attrs, "no_mangle") {
@@ -1186,12 +1203,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                     if !cx.access_levels.is_reachable(it.id) {
                         let msg = "function is marked #[no_mangle], but not exported";
                         let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_FNS, it.span, msg);
-                        let insertion_span = it.span.shrink_to_lo();
-                        if it.vis.node == hir::VisibilityInherited {
-                            err.span_suggestion(insertion_span,
-                                                "try making it public",
-                                                "pub ".to_owned());
-                        }
+                        suggest_make_pub(&it.vis, &mut err);
                         err.emit();
                     }
                     for param in &generics.params {
@@ -1214,17 +1226,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
             }
             hir::ItemStatic(..) => {
                 if attr::contains_name(&it.attrs, "no_mangle") &&
-                   !cx.access_levels.is_reachable(it.id) {
-                       let msg = "static is marked #[no_mangle], but not exported";
-                       let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, msg);
-                       let insertion_span = it.span.shrink_to_lo();
-                       if it.vis.node == hir::VisibilityInherited {
-                           err.span_suggestion(insertion_span,
-                                               "try making it public",
-                                               "pub ".to_owned());
-                       }
-                       err.emit();
-                }
+                    !cx.access_levels.is_reachable(it.id) {
+                        let msg = "static is marked #[no_mangle], but not exported";
+                        let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, msg);
+                        suggest_make_pub(&it.vis, &mut err);
+                        err.emit();
+                    }
             }
             hir::ItemConst(..) => {
                 if attr::contains_name(&it.attrs, "no_mangle") {

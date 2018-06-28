@@ -34,6 +34,12 @@ mod badlands {
     //~^ WARN static is marked
     #[no_mangle] pub fn val_jean() {}
     //~^ WARN function is marked
+
+    // ... but we can suggest just-`pub` instead of restricted
+    #[no_mangle] pub(crate) static VETAR: bool = true;
+    //~^ WARN static is marked
+    #[no_mangle] pub(crate) fn crossfield() {}
+    //~^ WARN function is marked
 }
 
 struct Equinox {

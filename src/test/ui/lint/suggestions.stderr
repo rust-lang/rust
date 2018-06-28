@@ -1,5 +1,5 @@
 warning: unnecessary parentheses around assigned value
-  --> $DIR/suggestions.rs:48:21
+  --> $DIR/suggestions.rs:54:21
    |
 LL |         let mut a = (1); // should suggest no `mut`, no parens
    |                     ^^^ help: remove these parentheses
@@ -11,7 +11,7 @@ LL | #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issu
    |                     ^^^^^^^^^^^^^
 
 warning: use of deprecated attribute `no_debug`: the `#[no_debug]` attribute was an experimental feature that has been deprecated due to lack of demand. See https://github.com/rust-lang/rust/issues/29721
-  --> $DIR/suggestions.rs:43:1
+  --> $DIR/suggestions.rs:49:1
    |
 LL | #[no_debug] // should suggest removal of deprecated attribute
    | ^^^^^^^^^^^ help: remove this attribute
@@ -19,7 +19,7 @@ LL | #[no_debug] // should suggest removal of deprecated attribute
    = note: #[warn(deprecated)] on by default
 
 warning: variable does not need to be mutable
-  --> $DIR/suggestions.rs:48:13
+  --> $DIR/suggestions.rs:54:13
    |
 LL |         let mut a = (1); // should suggest no `mut`, no parens
    |             ----^
@@ -33,7 +33,7 @@ LL | #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issu
    |         ^^^^^^^^^^
 
 warning: variable does not need to be mutable
-  --> $DIR/suggestions.rs:52:13
+  --> $DIR/suggestions.rs:58:13
    |
 LL |            let mut
    |   _____________^
@@ -96,8 +96,24 @@ warning: function is marked #[no_mangle], but not exported
 LL |     #[no_mangle] pub fn val_jean() {}
    |                  ^^^^^^^^^^^^^^^^^^^^
 
+warning: static is marked #[no_mangle], but not exported
+  --> $DIR/suggestions.rs:39:18
+   |
+LL |     #[no_mangle] pub(crate) static VETAR: bool = true;
+   |                  ----------^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  |
+   |                  help: try making it public: `pub`
+
+warning: function is marked #[no_mangle], but not exported
+  --> $DIR/suggestions.rs:41:18
+   |
+LL |     #[no_mangle] pub(crate) fn crossfield() {}
+   |                  ----------^^^^^^^^^^^^^^^^^^^
+   |                  |
+   |                  help: try making it public: `pub`
+
 warning: denote infinite loops with `loop { ... }`
-  --> $DIR/suggestions.rs:46:5
+  --> $DIR/suggestions.rs:52:5
    |
 LL |     while true { // should suggest `loop`
    |     ^^^^^^^^^^ help: use `loop`
@@ -105,7 +121,7 @@ LL |     while true { // should suggest `loop`
    = note: #[warn(while_true)] on by default
 
 warning: the `warp_factor:` in this pattern is redundant
-  --> $DIR/suggestions.rs:57:23
+  --> $DIR/suggestions.rs:63:23
    |
 LL |             Equinox { warp_factor: warp_factor } => {} // should suggest shorthand
    |                       ------------^^^^^^^^^^^^
