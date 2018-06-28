@@ -4937,46 +4937,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => {}
         }
 
-        let mut type_segment = None;
-        let mut fn_segment = None;
-        match def {
-            // Case 1. Reference to a struct/variant constructor.
-            Def::StructCtor(def_id, ..) |
-            Def::VariantCtor(def_id, ..) => {
-                // Everything but the final segment should have no
-                // parameters at all.
-                let mut generics = self.tcx.generics_of(def_id);
-                if let Some(def_id) = generics.parent {
-                    // Variant and struct constructors use the
-                    // generics of their parent type definition.
-                    generics = self.tcx.generics_of(def_id);
-                }
-                type_segment = Some((segments.last().unwrap(), generics));
-            }
-
-            // Case 2. Reference to a top-level value.
-            Def::Fn(def_id) |
-            Def::Const(def_id) |
-            Def::Static(def_id, _) => {
-                fn_segment = Some((segments.last().unwrap(), self.tcx.generics_of(def_id)));
-            }
-
-            // Case 3. Reference to a method or associated const.
-            Def::Method(def_id) |
-            Def::AssociatedConst(def_id) => {
-                let generics = self.tcx.generics_of(def_id);
-                if segments.len() >= 2 {
-                    let parent_generics = self.tcx.generics_of(generics.parent.unwrap());
-                    type_segment = Some((&segments[segments.len() - 2], parent_generics));
-                }
-                fn_segment = Some((segments.last().unwrap(), generics));
-            }
-
-            _ => {}
-        }
-
-        debug!("type_segment={:?} fn_segment={:?}", type_segment, fn_segment);
-
         // Now we have to compare the types that the user *actually*
         // provided against the types that were *expected*. If the user
         // did not provide any types, then we want to substitute inference
@@ -5004,14 +4964,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }).unwrap_or(false);
 
         let def_id = def.def_id();
-        let defs = self.tcx.generics_of(def_id);
-        let count = defs.count();
+        let mut parent_defs = self.tcx.generics_of(def_id);
+        let count = parent_defs.count();
         let mut substs = if count <= 8 {
             AccumulateVec::Array(ArrayVec::new())
         } else {
             AccumulateVec::Heap(Vec::with_capacity(count))
         };
-        let mut parent_defs = defs;
         let mut stack = vec![(def_id, parent_defs)];
         while let Some(def_id) = parent_defs.parent {
             parent_defs = self.tcx.generics_of(def_id);
@@ -5030,7 +4989,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 let infer_types = if let Some(&PathSeg(_, index)) = path_segs
                     .iter()
-                    .find(|&PathSeg(di, _)| *di == def_id) {
+                    .find(|&PathSeg(did, _)| *did == def_id) {
 
                     if let Some(ref data) = segments[index].args {
                         let lifetime_offset = if infer_lifetimes[&index] {
@@ -5048,7 +5007,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     _ => bug!("expected a lifetime arg"),
                                 }
                                 GenericParamDefKind::Type { .. } => match arg {
-                                    // A provided type parameter.
                                     GenericArg::Type(ty) => self.to_ty(ty).into(),
                                     _ => bug!("expected a type arg"),
                                 }
@@ -5088,15 +5046,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // The things we are substituting into the type should not contain
         // escaping late-bound regions, and nor should the base type scheme.
-        let ty = self.tcx.type_of(def.def_id());
+        let ty = self.tcx.type_of(def_id);
         assert!(!substs.has_escaping_regions());
         assert!(!ty.has_escaping_regions());
 
         // Add all the obligations that are required, substituting and
         // normalized appropriately.
-        let bounds = self.instantiate_bounds(span, def.def_id(), &substs);
+        let bounds = self.instantiate_bounds(span, def_id, &substs);
         self.add_obligations_for_parameters(
-            traits::ObligationCause::new(span, self.body_id, traits::ItemObligation(def.def_id())),
+            traits::ObligationCause::new(span, self.body_id, traits::ItemObligation(def_id)),
             &bounds);
 
         // Substitute the values for the type parameters into the type of
@@ -5122,7 +5080,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        self.check_rustc_args_require_const(def.def_id(), node_id, span);
+        self.check_rustc_args_require_const(def_id, node_id, span);
 
         debug!("instantiate_value_path: type of {:?} is {:?}",
                node_id,
