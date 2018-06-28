@@ -5162,9 +5162,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let ty_accepted = ty_params.accepted;
         let ty_required = ty_params.required;
 
-        let count_type_params = |n| format!("{} type parameter{}", n, if n == 1 { "" } else { "s" });
-        let expected_text = count_type_params(ty_accepted);
-        let actual_text = count_type_params(types.len());
+        let count_ty_params = |n| format!("{} type parameter{}", n, if n == 1 { "" } else { "s" });
+        let expected_text = count_ty_params(ty_accepted);
+        let actual_text = count_ty_params(types.len());
         if let Some((mut err, span)) = if types.len() > ty_accepted {
             // To prevent derived errors to accumulate due to extra
             // type parameters, we force instantiate_value_path to

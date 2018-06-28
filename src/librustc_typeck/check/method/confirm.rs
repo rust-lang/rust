@@ -316,7 +316,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // variables.
         let method_generics = self.tcx.generics_of(pick.item.def_id);
         let supress_mismatch = self.fcx.check_impl_trait(self.span, segment, &method_generics);
-        self.fcx.check_generic_arg_count(self.span, &segment, &method_generics, true, supress_mismatch);
+        self.fcx.check_generic_arg_count(self.span, &segment, &method_generics, true,
+                                         supress_mismatch);
 
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.
@@ -324,14 +325,18 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         let provided = &segment.args;
         let own_counts = method_generics.own_counts();
         // FIXME(varkor): Separating out the parameters is messy.
-        let lifetimes: Vec<_> = provided.iter().flat_map(|data| data.args.iter().filter_map(|arg| match arg {
-            GenericArg::Lifetime(ty) => Some(ty),
-            _ => None,
-        })).collect();
-        let types: Vec<_> = provided.iter().flat_map(|data| data.args.iter().filter_map(|arg| match arg {
-            GenericArg::Type(ty) => Some(ty),
-            _ => None,
-        })).collect();
+        let lifetimes: Vec<_> = provided.iter().flat_map(|data| {
+                data.args.iter().filter_map(|arg| match arg {
+                GenericArg::Lifetime(ty) => Some(ty),
+                _ => None,
+            })
+        }).collect();
+        let types: Vec<_> = provided.iter().flat_map(|data| {
+                data.args.iter().filter_map(|arg| match arg {
+                GenericArg::Type(ty) => Some(ty),
+                _ => None,
+            })
+        }).collect();
         Substs::for_item(self.tcx, pick.item.def_id, |param, _| {
             let i = param.index as usize;
             if i < parent_substs.len() {
@@ -339,13 +344,15 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             } else {
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
-                        if let Some(lifetime) = lifetimes.get(i - parent_substs.len()) {
+                        let idx = i - parent_substs.len();
+                        if let Some(lifetime) = lifetimes.get(idx) {
                             return AstConv::ast_region_to_region(
                                 self.fcx, lifetime, Some(param)).into();
                         }
                     }
                     GenericParamDefKind::Type { .. } => {
-                        if let Some(ast_ty) = types.get(i - parent_substs.len() - own_counts.lifetimes) {
+                        let idx = i - parent_substs.len() - own_counts.lifetimes;
+                        if let Some(ast_ty) = types.get(idx) {
                             return self.to_ty(ast_ty).into();
                         }
                     }

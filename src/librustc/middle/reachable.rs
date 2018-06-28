@@ -20,7 +20,7 @@ use hir::map as hir_map;
 use hir::def::Def;
 use hir::def_id::{DefId, CrateNum};
 use rustc_data_structures::sync::Lrc;
-use ty::{self, TyCtxt, GenericParamDefKind};
+use ty::{self, TyCtxt};
 use ty::query::Providers;
 use middle::privacy;
 use session::config;
