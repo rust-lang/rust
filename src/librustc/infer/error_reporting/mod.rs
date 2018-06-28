@@ -223,12 +223,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let (prefix, span) = match *region {
             ty::ReEarlyBound(ref br) => {
                 let mut sp = cm.def_span(self.hir.span(node));
-                if let Some(generics) = self.hir.get_generics(scope) {
-                    for param in &generics.params {
-                        if param.name.name().as_str() == br.name.as_str() {
-                            sp = param.span;
-                        }
-                    }
+                if let Some(param) = self.hir.get_generics(scope).and_then(|generics| {
+                    generics.get_named(&br.name)
+                }) {
+                    sp = param.span;
                 }
                 (format!("the lifetime {} as defined on", br.name), sp)
             }
@@ -236,12 +234,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 bound_region: ty::BoundRegion::BrNamed(_, ref name), ..
             }) => {
                 let mut sp = cm.def_span(self.hir.span(node));
-                if let Some(generics) = self.hir.get_generics(scope) {
-                    for param in &generics.params {
-                        if param.name.name().as_str() == name.as_str() {
-                            sp = param.span;
-                        }
-                    }
+                if let Some(param) = self.hir.get_generics(scope).and_then(|generics| {
+                    generics.get_named(&name)
+                }) {
+                    sp = param.span;
                 }
                 (format!("the lifetime {} as defined on", name), sp)
             }
