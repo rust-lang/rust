@@ -14,7 +14,7 @@
 
 use infer::{InferCtxt, InferOk};
 use infer::at::At;
-use mir::interpret::{GlobalId, ConstVal};
+use mir::interpret::{GlobalId, ConstValue};
 use traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use traits::project::Normalized;
 use ty::{self, Ty, TyCtxt};
