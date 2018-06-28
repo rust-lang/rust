@@ -1177,7 +1177,7 @@ impl LintPass for InvalidNoMangleItems {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
-        let suggest_make_pub = |vis: &hir::Visibility, err: &mut DiagnosticBuilder| {
+        let suggest_export = |vis: &hir::Visibility, err: &mut DiagnosticBuilder| {
             let suggestion = match vis.node {
                 hir::VisibilityInherited => {
                     // inherited visibility is empty span at item start; need an extra space
@@ -1187,7 +1187,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                 hir::VisibilityCrate(_) => {
                     Some("pub".to_owned())
                 },
-                hir::VisibilityPublic => None
+                hir::VisibilityPublic => {
+                    err.help("try exporting the item with a `pub use` statement");
+                    None
+                }
             };
             if let Some(replacement) = suggestion {
                 err.span_suggestion(vis.span, "try making it public", replacement);
@@ -1203,7 +1206,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                     if !cx.access_levels.is_reachable(it.id) {
                         let msg = "function is marked #[no_mangle], but not exported";
                         let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_FNS, it.span, msg);
-                        suggest_make_pub(&it.vis, &mut err);
+                        suggest_export(&it.vis, &mut err);
                         err.emit();
                     }
                     for param in &generics.params {
@@ -1229,7 +1232,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                     !cx.access_levels.is_reachable(it.id) {
                         let msg = "static is marked #[no_mangle], but not exported";
                         let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, msg);
-                        suggest_make_pub(&it.vis, &mut err);
+                        suggest_export(&it.vis, &mut err);
                         err.emit();
                     }
             }
