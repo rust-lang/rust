@@ -371,8 +371,8 @@ impl MiscEarly {
                     let mut seen = (false, false);
                     for ch in src.chars() {
                         match ch {
-                            'a' ... 'f' => seen.0 = true,
-                            'A' ... 'F' => seen.1 = true,
+                            'a' ..= 'f' => seen.0 = true,
+                            'A' ..= 'F' => seen.1 = true,
                             'i' | 'u'   => break,   // start of suffix already
                             _ => ()
                         }
