@@ -277,7 +277,7 @@ Whether to use different formatting for items and expressions if they satisfy a 
 
 - **Default value**: `Default`
 - **Possible values**: `Default`, `Off`
-- **Stable**: Yess
+- **Stable**: Yes
 
 #### `Default` (default):
 
