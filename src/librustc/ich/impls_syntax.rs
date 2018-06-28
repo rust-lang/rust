@@ -456,27 +456,21 @@ impl<'a> HashStable<StableHashingContext<'a>> for FileMap {
         src_hash.hash_stable(hcx, hasher);
 
         // We only hash the relative position within this filemap
-        lines.with_lock(|lines| {
-            lines.len().hash_stable(hcx, hasher);
-            for &line in lines.iter() {
-                stable_byte_pos(line, start_pos).hash_stable(hcx, hasher);
-            }
-        });
+        lines.len().hash_stable(hcx, hasher);
+        for &line in lines.iter() {
+            stable_byte_pos(line, start_pos).hash_stable(hcx, hasher);
+        }
 
         // We only hash the relative position within this filemap
-        multibyte_chars.with_lock(|multibyte_chars| {
-            multibyte_chars.len().hash_stable(hcx, hasher);
-            for &char_pos in multibyte_chars.iter() {
-                stable_multibyte_char(char_pos, start_pos).hash_stable(hcx, hasher);
-            }
-        });
+        multibyte_chars.len().hash_stable(hcx, hasher);
+        for &char_pos in multibyte_chars.iter() {
+            stable_multibyte_char(char_pos, start_pos).hash_stable(hcx, hasher);
+        }
 
-        non_narrow_chars.with_lock(|non_narrow_chars| {
-            non_narrow_chars.len().hash_stable(hcx, hasher);
-            for &char_pos in non_narrow_chars.iter() {
-                stable_non_narrow_char(char_pos, start_pos).hash_stable(hcx, hasher);
-            }
-        });
+        non_narrow_chars.len().hash_stable(hcx, hasher);
+        for &char_pos in non_narrow_chars.iter() {
+            stable_non_narrow_char(char_pos, start_pos).hash_stable(hcx, hasher);
+        }
     }
 }
 

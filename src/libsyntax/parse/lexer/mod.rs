@@ -51,11 +51,7 @@ pub struct StringReader<'a> {
     pub ch: Option<char>,
     pub filemap: Lrc<syntax_pos::FileMap>,
     /// Stop reading src at this index.
-    end_src_index: usize,
-    /// Whether to record new-lines and multibyte chars in filemap.
-    /// This is only necessary the first time a filemap is lexed.
-    /// If part of a filemap is being re-lexed, this should be set to false.
-    save_new_lines_and_multibyte: bool,
+    pub end_src_index: usize,
     // cached:
     peek_tok: token::Token,
     peek_span: Span,
@@ -188,7 +184,6 @@ impl<'a> StringReader<'a> {
             ch: Some('\n'),
             filemap,
             end_src_index: src.len(),
-            save_new_lines_and_multibyte: true,
             // dummy values; not read
             peek_tok: token::Eof,
             peek_span: syntax_pos::DUMMY_SP,
@@ -225,7 +220,6 @@ impl<'a> StringReader<'a> {
         let mut sr = StringReader::new_raw_internal(sess, begin.fm, None);
 
         // Seek the lexer to the right byte range.
-        sr.save_new_lines_and_multibyte = false;
         sr.next_pos = span.lo();
         sr.end_src_index = sr.src_index(span.hi());
 
@@ -457,18 +451,6 @@ impl<'a> StringReader<'a> {
         if next_src_index < self.end_src_index {
             let next_ch = char_at(&self.src, next_src_index);
             let next_ch_len = next_ch.len_utf8();
-
-            if self.ch.unwrap() == '\n' {
-                if self.save_new_lines_and_multibyte {
-                    self.filemap.next_line(self.next_pos);
-                }
-            }
-            if next_ch_len > 1 {
-                if self.save_new_lines_and_multibyte {
-                    self.filemap.record_multibyte_char(self.next_pos, next_ch_len);
-                }
-            }
-            self.filemap.record_width(self.next_pos, next_ch);
 
             self.ch = Some(next_ch);
             self.pos = self.next_pos;

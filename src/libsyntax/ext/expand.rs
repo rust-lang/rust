@@ -1495,9 +1495,11 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                     match String::from_utf8(buf) {
                         Ok(src) => {
+                            let src_interned = Symbol::intern(&src);
+
                             // Add this input file to the code map to make it available as
                             // dependency information
-                            self.cx.codemap().new_filemap_and_lines(&filename, &src);
+                            self.cx.codemap().new_filemap(filename.into(), src);
 
                             let include_info = vec![
                                 dummy_spanned(ast::NestedMetaItemKind::MetaItem(
@@ -1505,7 +1507,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                                                                      dummy_spanned(file)))),
                                 dummy_spanned(ast::NestedMetaItemKind::MetaItem(
                                         attr::mk_name_value_item_str(Ident::from_str("contents"),
-                                                            dummy_spanned(Symbol::intern(&src))))),
+                                                            dummy_spanned(src_interned)))),
                             ];
 
                             let include_ident = Ident::from_str("include");

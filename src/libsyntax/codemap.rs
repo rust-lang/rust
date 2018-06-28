@@ -211,8 +211,7 @@ impl CodeMap {
         }
     }
 
-    /// Creates a new filemap without setting its line information. If you don't
-    /// intend to set the line information yourself, you should use new_filemap_and_lines.
+    /// Creates a new filemap.
     /// This does not ensure that only one FileMap exists per file name.
     pub fn new_filemap(&self, filename: FileName, src: String) -> Lrc<FileMap> {
         let start_pos = self.next_start_pos();
@@ -246,22 +245,6 @@ impl CodeMap {
 
         filemap
     }
-
-    /// Creates a new filemap and sets its line information.
-    /// This does not ensure that only one FileMap exists per file name.
-    pub fn new_filemap_and_lines(&self, filename: &Path, src: &str) -> Lrc<FileMap> {
-        let fm = self.new_filemap(filename.to_owned().into(), src.to_owned());
-        let mut byte_pos: u32 = fm.start_pos.0;
-        for line in src.lines() {
-            // register the start of this line
-            fm.next_line(BytePos(byte_pos));
-
-            // update byte_pos to include this line and the \n at the end
-            byte_pos += line.len() as u32 + 1;
-        }
-        fm
-    }
-
 
     /// Allocates a new FileMap representing a source file from an external
     /// crate. The source code of such an "imported filemap" is not available,
@@ -305,9 +288,9 @@ impl CodeMap {
             external_src: Lock::new(ExternalSource::AbsentOk),
             start_pos,
             end_pos,
-            lines: Lock::new(file_local_lines),
-            multibyte_chars: Lock::new(file_local_multibyte_chars),
-            non_narrow_chars: Lock::new(file_local_non_narrow_chars),
+            lines: file_local_lines,
+            multibyte_chars: file_local_multibyte_chars,
+            non_narrow_chars: file_local_non_narrow_chars,
             name_hash,
         });
 
@@ -345,21 +328,22 @@ impl CodeMap {
         match self.lookup_line(pos) {
             Ok(FileMapAndLine { fm: f, line: a }) => {
                 let line = a + 1; // Line numbers start at 1
-                let linebpos = (*f.lines.borrow())[a];
+                let linebpos = f.lines[a];
                 let linechpos = self.bytepos_to_file_charpos(linebpos);
                 let col = chpos - linechpos;
 
                 let col_display = {
-                    let non_narrow_chars = f.non_narrow_chars.borrow();
-                    let start_width_idx = non_narrow_chars
+                    let start_width_idx = f
+                        .non_narrow_chars
                         .binary_search_by_key(&linebpos, |x| x.pos())
                         .unwrap_or_else(|x| x);
-                    let end_width_idx = non_narrow_chars
+                    let end_width_idx = f
+                        .non_narrow_chars
                         .binary_search_by_key(&pos, |x| x.pos())
                         .unwrap_or_else(|x| x);
                     let special_chars = end_width_idx - start_width_idx;
-                    let non_narrow: usize =
-                        non_narrow_chars[start_width_idx..end_width_idx]
+                    let non_narrow: usize = f
+                        .non_narrow_chars[start_width_idx..end_width_idx]
                         .into_iter()
                         .map(|x| x.width())
                         .sum();
@@ -380,12 +364,12 @@ impl CodeMap {
             }
             Err(f) => {
                 let col_display = {
-                    let non_narrow_chars = f.non_narrow_chars.borrow();
-                    let end_width_idx = non_narrow_chars
+                    let end_width_idx = f
+                        .non_narrow_chars
                         .binary_search_by_key(&pos, |x| x.pos())
                         .unwrap_or_else(|x| x);
-                    let non_narrow: usize =
-                        non_narrow_chars[0..end_width_idx]
+                    let non_narrow: usize = f
+                        .non_narrow_chars[0..end_width_idx]
                         .into_iter()
                         .map(|x| x.width())
                         .sum();
@@ -830,22 +814,22 @@ impl CodeMap {
         // The number of extra bytes due to multibyte chars in the FileMap
         let mut total_extra_bytes = 0;
 
-        for mbc in map.multibyte_chars.borrow().iter() {
+        for mbc in map.multibyte_chars.iter() {
             debug!("{}-byte char at {:?}", mbc.bytes, mbc.pos);
             if mbc.pos < bpos {
                 // every character is at least one byte, so we only
                 // count the actual extra bytes.
-                total_extra_bytes += mbc.bytes - 1;
+                total_extra_bytes += mbc.bytes as u32 - 1;
                 // We should never see a byte position in the middle of a
                 // character
-                assert!(bpos.to_usize() >= mbc.pos.to_usize() + mbc.bytes);
+                assert!(bpos.to_u32() >= mbc.pos.to_u32() + mbc.bytes as u32);
             } else {
                 break;
             }
         }
 
-        assert!(map.start_pos.to_usize() + total_extra_bytes <= bpos.to_usize());
-        CharPos(bpos.to_usize() - map.start_pos.to_usize() - total_extra_bytes)
+        assert!(map.start_pos.to_u32() + total_extra_bytes <= bpos.to_u32());
+        CharPos(bpos.to_usize() - map.start_pos.to_usize() - total_extra_bytes as usize)
     }
 
     // Return the index of the filemap (in self.files) which contains pos.
@@ -1028,51 +1012,16 @@ impl FilePathMapping {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::borrow::Cow;
     use rustc_data_structures::sync::Lrc;
-
-    #[test]
-    fn t1 () {
-        let cm = CodeMap::new(FilePathMapping::empty());
-        let fm = cm.new_filemap(PathBuf::from("blork.rs").into(),
-                                "first line.\nsecond line".to_string());
-        fm.next_line(BytePos(0));
-        // Test we can get lines with partial line info.
-        assert_eq!(fm.get_line(0), Some(Cow::from("first line.")));
-        // TESTING BROKEN BEHAVIOR: line break declared before actual line break.
-        fm.next_line(BytePos(10));
-        assert_eq!(fm.get_line(1), Some(Cow::from(".")));
-        fm.next_line(BytePos(12));
-        assert_eq!(fm.get_line(2), Some(Cow::from("second line")));
-    }
-
-    #[test]
-    #[should_panic]
-    fn t2 () {
-        let cm = CodeMap::new(FilePathMapping::empty());
-        let fm = cm.new_filemap(PathBuf::from("blork.rs").into(),
-                                "first line.\nsecond line".to_string());
-        // TESTING *REALLY* BROKEN BEHAVIOR:
-        fm.next_line(BytePos(0));
-        fm.next_line(BytePos(10));
-        fm.next_line(BytePos(2));
-    }
 
     fn init_code_map() -> CodeMap {
         let cm = CodeMap::new(FilePathMapping::empty());
-        let fm1 = cm.new_filemap(PathBuf::from("blork.rs").into(),
-                                 "first line.\nsecond line".to_string());
-        let fm2 = cm.new_filemap(PathBuf::from("empty.rs").into(),
-                                 "".to_string());
-        let fm3 = cm.new_filemap(PathBuf::from("blork2.rs").into(),
-                                 "first line.\nsecond line".to_string());
-
-        fm1.next_line(BytePos(0));
-        fm1.next_line(BytePos(12));
-        fm2.next_line(fm2.start_pos);
-        fm3.next_line(fm3.start_pos);
-        fm3.next_line(fm3.start_pos + BytePos(12));
-
+        cm.new_filemap(PathBuf::from("blork.rs").into(),
+                       "first line.\nsecond line".to_string());
+        cm.new_filemap(PathBuf::from("empty.rs").into(),
+                       "".to_string());
+        cm.new_filemap(PathBuf::from("blork2.rs").into(),
+                       "first line.\nsecond line".to_string());
         cm
     }
 
@@ -1125,26 +1074,10 @@ mod tests {
     fn init_code_map_mbc() -> CodeMap {
         let cm = CodeMap::new(FilePathMapping::empty());
         // € is a three byte utf8 char.
-        let fm1 =
-            cm.new_filemap(PathBuf::from("blork.rs").into(),
-                           "fir€st €€€€ line.\nsecond line".to_string());
-        let fm2 = cm.new_filemap(PathBuf::from("blork2.rs").into(),
-                                 "first line€€.\n€ second line".to_string());
-
-        fm1.next_line(BytePos(0));
-        fm1.next_line(BytePos(28));
-        fm2.next_line(fm2.start_pos);
-        fm2.next_line(fm2.start_pos + BytePos(20));
-
-        fm1.record_multibyte_char(BytePos(3), 3);
-        fm1.record_multibyte_char(BytePos(9), 3);
-        fm1.record_multibyte_char(BytePos(12), 3);
-        fm1.record_multibyte_char(BytePos(15), 3);
-        fm1.record_multibyte_char(BytePos(18), 3);
-        fm2.record_multibyte_char(fm2.start_pos + BytePos(10), 3);
-        fm2.record_multibyte_char(fm2.start_pos + BytePos(13), 3);
-        fm2.record_multibyte_char(fm2.start_pos + BytePos(18), 3);
-
+        cm.new_filemap(PathBuf::from("blork.rs").into(),
+                       "fir€st €€€€ line.\nsecond line".to_string());
+        cm.new_filemap(PathBuf::from("blork2.rs").into(),
+                       "first line€€.\n€ second line".to_string());
         cm
     }
 
@@ -1196,7 +1129,7 @@ mod tests {
         let cm = CodeMap::new(FilePathMapping::empty());
         let inputtext = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
         let selection = "     \n    ~~\n~~~\n~~~~~     \n   \n";
-        cm.new_filemap_and_lines(Path::new("blork.rs"), inputtext);
+        cm.new_filemap(Path::new("blork.rs").to_owned().into(), inputtext.to_string());
         let span = span_from_selection(inputtext, selection);
 
         // check that we are extracting the text we thought we were extracting
@@ -1239,7 +1172,7 @@ mod tests {
         let inputtext  = "bbbb BB\ncc CCC\n";
         let selection1 = "     ~~\n      \n";
         let selection2 = "       \n   ~~~\n";
-        cm.new_filemap_and_lines(Path::new("blork.rs"), inputtext);
+        cm.new_filemap(Path::new("blork.rs").to_owned().into(), inputtext.to_owned());
         let span1 = span_from_selection(inputtext, selection1);
         let span2 = span_from_selection(inputtext, selection2);
 
