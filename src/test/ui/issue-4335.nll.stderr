@@ -13,11 +13,11 @@ LL |     id(Box::new(|| *v))
 LL | }
    | - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'r as defined on the function body at 15:1...
-  --> $DIR/issue-4335.rs:15:1
+note: borrowed value must be valid for the lifetime 'r as defined on the function body at 15:6...
+  --> $DIR/issue-4335.rs:15:6
    |
 LL | fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |      ^^
 
 error: aborting due to 2 previous errors
 

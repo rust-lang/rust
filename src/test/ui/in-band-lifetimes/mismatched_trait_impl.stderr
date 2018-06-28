@@ -11,11 +11,11 @@ LL | /     fn foo(&self, x: &u32, y: &'a u32) -> &'a u32 { //~ ERROR cannot infe
 LL | |         x
 LL | |     }
    | |_____^
-note: ...but the lifetime must also be valid for the lifetime 'a as defined on the method body at 19:5...
-  --> $DIR/mismatched_trait_impl.rs:19:5
+note: ...but the lifetime must also be valid for the lifetime 'a as defined on the method body at 19:32...
+  --> $DIR/mismatched_trait_impl.rs:19:32
    |
 LL |     fn foo(&self, x: &u32, y: &'a u32) -> &'a u32 { //~ ERROR cannot infer
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                ^^
    = note: ...so that the method type is compatible with trait:
            expected fn(&i32, &'a u32, &u32) -> &'a u32
               found fn(&i32, &u32, &u32) -> &u32

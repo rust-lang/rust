@@ -232,6 +232,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
                 (format!("the lifetime {} as defined on", br.name), sp)
             }
+            ty::ReFree(ty::FreeRegion {
+                bound_region: ty::BoundRegion::BrNamed(_, ref name), ..
+            }) => {
+                let mut sp = cm.def_span(self.hir.span(node));
+                if let Some(generics) = self.hir.get_generics(scope) {
+                    for param in &generics.params {
+                        if param.name.name().as_str() == name.as_str() {
+                            sp = param.span;
+                        }
+                    }
+                }
+                (format!("the lifetime {} as defined on", name), sp)
+            }
             ty::ReFree(ref fr) => match fr.bound_region {
                 ty::BrAnon(idx) => (
                     format!("the anonymous lifetime #{} defined on", idx + 1),
