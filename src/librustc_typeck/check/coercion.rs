@@ -1203,9 +1203,14 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                                       "supposed to be part of a block tail expression, but the \
                                        expression is empty");
                         });
-                        fcx.suggest_mismatched_types_on_tail(&mut db, expr,
-                                                             expected, found,
-                                                             cause.span, blk_id);
+                        fcx.suggest_mismatched_types_on_tail(
+                            &mut db,
+                            expr,
+                            expected,
+                            found,
+                            cause.span,
+                            blk_id,
+                        );
                     }
                     _ => {
                         db = fcx.report_mismatched_types(cause, expected, found, err);
