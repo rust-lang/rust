@@ -183,7 +183,7 @@ pub fn format_expr(
         } else {
             Some("yield".to_string())
         },
-        ast::ExprKind::Closure(capture, movability, ref fn_decl, ref body, _) => {
+        ast::ExprKind::Closure(capture, _, movability, ref fn_decl, ref body, _) => {
             closures::rewrite_closure(
                 capture, movability, fn_decl, body, expr.span, context, shape,
             )
@@ -344,6 +344,8 @@ pub fn format_expr(
         }
         // FIXME(#2743)
         ast::ExprKind::ObsoleteInPlace(..) => unimplemented!(),
+        // FIXME(topecongiro) Format async block.
+        ast::ExprKind::Async(..) => None,
     };
 
     expr_rw

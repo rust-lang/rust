@@ -31,6 +31,7 @@ use utils::{last_line_width, left_most_sub_expr, stmt_expr};
 //     statement without needing a semi-colon), then adding or removing braces
 //     can change whether it is treated as an expression or statement.
 
+// FIXME(topecongiro) Format async closures (#2813).
 pub fn rewrite_closure(
     capture: ast::CaptureBy,
     movability: ast::Movability,
@@ -288,7 +289,7 @@ pub fn rewrite_last_closure(
     expr: &ast::Expr,
     shape: Shape,
 ) -> Option<String> {
-    if let ast::ExprKind::Closure(capture, movability, ref fn_decl, ref body, _) = expr.node {
+    if let ast::ExprKind::Closure(capture, _, movability, ref fn_decl, ref body, _) = expr.node {
         let body = match body.node {
             ast::ExprKind::Block(ref block, _)
                 if !is_unsafe_block(block)
