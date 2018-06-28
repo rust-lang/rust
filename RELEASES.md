@@ -56,7 +56,6 @@ Stabilized APIs
 - [`Take::set_limit`]
 - [`hint::unreachable_unchecked`]
 - [`os::unix::process::parent_id`]
-- [`process::id`]
 - [`ptr::swap_nonoverlapping`]
 - [`slice::rsplit_mut`]
 - [`slice::rsplit`]
