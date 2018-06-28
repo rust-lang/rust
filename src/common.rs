@@ -31,7 +31,7 @@ fn cton_type_from_ty(ty: Ty) -> Option<types::Type> {
                 UintTy::U16 => types::I16,
                 UintTy::U32 => types::I32,
                 UintTy::U64 => types::I64,
-                UintTy::U128 => unimplemented!(),
+                UintTy::U128 => unimplemented!("u128"),
                 UintTy::Usize => types::I64,
             }
         }
@@ -41,7 +41,7 @@ fn cton_type_from_ty(ty: Ty) -> Option<types::Type> {
                 IntTy::I16 => types::I16,
                 IntTy::I32 => types::I32,
                 IntTy::I64 => types::I64,
-                IntTy::I128 => unimplemented!(),
+                IntTy::I128 => unimplemented!("i128"),
                 IntTy::Isize => types::I64,
             }
         }
@@ -213,7 +213,11 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     }
 
     pub fn write_cvalue(self, fx: &mut FunctionCx<'a, 'tcx>, from: CValue<'tcx>) {
-        assert_eq!(self.layout().ty, from.layout().ty, "Can't write value of incompatible type to place");
+        assert_eq!(
+            self.layout().ty, from.layout().ty,
+            "Can't write value of incompatible type to place {:?} {:?}",
+            self.layout().ty.sty, from.layout().ty.sty
+        );
 
         match self {
             CPlace::Var(var, _) => {

@@ -281,8 +281,14 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
             TerminatorKind::FalseUnwind { .. } => {
                 bug!("shouldn't exist at trans {:?}", bb_data.terminator());
             }
-            TerminatorKind::Drop { .. } | TerminatorKind::DropAndReplace { .. } | TerminatorKind::GeneratorDrop { .. } => {
-                unimplemented!("terminator {:?}", bb_data.terminator());
+            TerminatorKind::Drop { target, .. } | TerminatorKind::DropAndReplace { target, .. } => {
+                // TODO call drop impl
+                // unimplemented!("terminator {:?}", bb_data.terminator());
+                let target_ebb = fx.get_ebb(*target);
+                fx.bcx.ins().jump(target_ebb, &[]);
+            }
+            TerminatorKind::GeneratorDrop => {
+                unimplemented!("terminator GeneratorDrop");
             }
         }
     }
