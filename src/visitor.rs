@@ -252,6 +252,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
     // Note that this only gets called for function definitions. Required methods
     // on traits do not get handled here.
+    // FIXME(topecongiro) Format async fn (#2812).
     fn visit_fn(
         &mut self,
         fk: visit::FnKind,
@@ -264,7 +265,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let indent = self.block_indent;
         let block;
         let rewrite = match fk {
-            visit::FnKind::ItemFn(ident, _, _, _, _, b) | visit::FnKind::Method(ident, _, _, b) => {
+            visit::FnKind::ItemFn(ident, _, _, b) | visit::FnKind::Method(ident, _, _, b) => {
                 block = b;
                 self.rewrite_fn(
                     indent,
@@ -392,10 +393,10 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => {
                 self.visit_static(&StaticParts::from_item(item));
             }
-            ast::ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
+            ast::ItemKind::Fn(ref decl, fn_header, ref generics, ref body) => {
                 let inner_attrs = inner_attributes(&item.attrs);
                 self.visit_fn(
-                    visit::FnKind::ItemFn(item.ident, unsafety, constness, abi, &item.vis, body),
+                    visit::FnKind::ItemFn(item.ident, fn_header, &item.vis, body),
                     generics,
                     decl,
                     item.span,

@@ -192,10 +192,10 @@ impl<'a> FnSig<'a> {
         generics: &'a ast::Generics,
     ) -> FnSig<'a> {
         FnSig {
-            unsafety: method_sig.unsafety,
-            constness: method_sig.constness.node,
+            unsafety: method_sig.header.unsafety,
+            constness: method_sig.header.constness.node,
             defaultness: ast::Defaultness::Final,
-            abi: method_sig.abi,
+            abi: method_sig.header.abi,
             decl: &*method_sig.decl,
             generics,
             visibility: DEFAULT_VISIBILITY,
@@ -209,13 +209,13 @@ impl<'a> FnSig<'a> {
         defaultness: ast::Defaultness,
     ) -> FnSig<'a> {
         match *fn_kind {
-            visit::FnKind::ItemFn(_, unsafety, constness, abi, visibility, _) => FnSig {
+            visit::FnKind::ItemFn(_, fn_header, visibility, _) => FnSig {
                 decl,
                 generics,
-                abi,
-                constness: constness.node,
+                abi: fn_header.abi,
+                constness: fn_header.constness.node,
                 defaultness,
-                unsafety,
+                unsafety: fn_header.unsafety,
                 visibility: visibility.clone(),
             },
             visit::FnKind::Method(_, method_sig, vis, _) => {
