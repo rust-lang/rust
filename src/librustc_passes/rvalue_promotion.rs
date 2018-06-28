@@ -307,8 +307,8 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
                     assert!(op.node == hir::BiEq || op.node == hir::BiNe ||
                             op.node == hir::BiLe || op.node == hir::BiLt ||
                             op.node == hir::BiGe || op.node == hir::BiGt ||
-                            op.node == hir::BiAdd || op.node == hir::BiSub || 
-                            op.node == hir::BiBitAnd || op.node == hir::BiBitOr );
+                            op.node == hir::BiAdd || op.node == hir::BiSub ||
+                            op.node == hir::BiBitAnd || op.node == hir::BiBitOr);
 
                     v.promotable = false;
                 }
