@@ -60,7 +60,8 @@ pub fn trans_crate<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Box<Any> {
                         match ::cretonne::codegen::verify_function(&f, &flags) {
                             Ok(_) => {}
                             Err(err) => {
-                                tcx.sess.fatal(&format!("cretonne verify error: {}", err));
+                                let pretty_error = ::cretonne::codegen::print_errors::pretty_verifier_error(&f, None, &err);
+                                tcx.sess.fatal(&format!("cretonne verify error:\n{}", pretty_error));
                             }
                         }
 
@@ -375,8 +376,8 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                         }
                         _ => unimplemented!("checked bin op {:?} for {:?}", bin_op, ty),
                     };
-                    lval.write_cvalue(fx, res);
                     unimplemented!("checked bin op {:?}", bin_op);
+                    lval.write_cvalue(fx, res);
                 }
                 Rvalue::UnaryOp(un_op, operand) => {
                     let ty = fx.monomorphize(&operand.ty(&fx.mir.local_decls, fx.tcx));
