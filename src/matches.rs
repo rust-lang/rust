@@ -289,7 +289,13 @@ fn rewrite_match_pattern(
     let pats_str = rewrite_multiple_patterns(context, pats, pat_shape)?;
 
     // Guard
-    let guard_str = rewrite_guard(context, guard, shape, trimmed_last_line_width(&pats_str))?;
+    let guard_str = rewrite_guard(
+        context,
+        guard,
+        shape,
+        trimmed_last_line_width(&pats_str),
+        pats_str.contains("\n"),
+    )?;
 
     Some(format!("{}{}", pats_str, guard_str))
 }
@@ -450,6 +456,7 @@ fn rewrite_guard(
     // The amount of space used up on this line for the pattern in
     // the arm (excludes offset).
     pattern_width: usize,
+    multiline_pattern: bool,
 ) -> Option<String> {
     if let Some(ref guard) = *guard {
         // First try to fit the guard string on the same line as the pattern.
@@ -457,10 +464,12 @@ fn rewrite_guard(
         let cond_shape = shape
             .offset_left(pattern_width + 4)
             .and_then(|s| s.sub_width(5));
-        if let Some(cond_shape) = cond_shape {
-            if let Some(cond_str) = guard.rewrite(context, cond_shape) {
-                if !cond_str.contains('\n') || pattern_width <= context.config.tab_spaces() {
-                    return Some(format!(" if {}", cond_str));
+        if !multiline_pattern {
+            if let Some(cond_shape) = cond_shape {
+                if let Some(cond_str) = guard.rewrite(context, cond_shape) {
+                    if !cond_str.contains('\n') || pattern_width <= context.config.tab_spaces() {
+                        return Some(format!(" if {}", cond_str));
+                    }
                 }
             }
         }

@@ -491,3 +491,19 @@ fn issue_2621() {
         | Foo::I => println!("With comment"), // Comment after line
     }
 }
+
+fn issue_2377() {
+    match tok {
+        Tok::Not
+        | Tok::BNot
+        | Tok::Plus
+        | Tok::Minus
+        | Tok::PlusPlus
+        | Tok::MinusMinus
+        | Tok::Void
+        | Tok::Delete if prec <= 16 => {
+            // code here...
+        }
+        Tok::TypeOf if prec <= 16 => {}
+    }
+}

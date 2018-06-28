@@ -10,18 +10,19 @@
 
 //! Format attributes and meta items.
 
+use comment::{contains_comment, rewrite_doc_comment};
 use config::lists::*;
 use config::IndentStyle;
-use syntax::ast;
-use syntax::codemap::Span;
-
-use comment::{combine_strs_with_missing_comments, contains_comment, rewrite_doc_comment};
 use expr::rewrite_literal;
 use lists::{itemize_list, write_list, ListFormatting};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use types::{rewrite_path, PathContext};
 use utils::{count_newlines, mk_sp};
+
+use std::borrow::Cow;
+use syntax::ast;
+use syntax::codemap::{BytePos, Span, DUMMY_SP};
 
 /// Returns attributes on the given statement.
 pub fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
@@ -47,42 +48,63 @@ fn is_derive(attr: &ast::Attribute) -> bool {
 }
 
 /// Returns the arguments of `#[derive(...)]`.
-fn get_derive_args<'a>(context: &'a RewriteContext, attr: &ast::Attribute) -> Option<Vec<&'a str>> {
+fn get_derive_spans<'a>(attr: &ast::Attribute) -> Option<Vec<Span>> {
     attr.meta_item_list().map(|meta_item_list| {
         meta_item_list
             .iter()
-            .map(|nested_meta_item| context.snippet(nested_meta_item.span))
+            .map(|nested_meta_item| nested_meta_item.span)
             .collect()
     })
 }
 
-// Format `#[derive(..)]`, using visual indent & mixed style when we need to go multiline.
-fn format_derive(context: &RewriteContext, derive_args: &[&str], shape: Shape) -> Option<String> {
+// The shape of the arguments to a function-like attribute.
+fn argument_shape(
+    left: usize,
+    right: usize,
+    shape: Shape,
+    context: &RewriteContext,
+) -> Option<Shape> {
+    match context.config.indent_style() {
+        IndentStyle::Block => Some(
+            shape
+                .block_indent(context.config.tab_spaces())
+                .with_max_width(context.config),
+        ),
+        IndentStyle::Visual => shape
+            .visual_indent(0)
+            .shrink_left(left)
+            .and_then(|s| s.sub_width(right)),
+    }
+}
+
+fn format_derive(
+    derive_args: &[Span],
+    prefix: &str,
+    shape: Shape,
+    context: &RewriteContext,
+) -> Option<String> {
     let mut result = String::with_capacity(128);
-    result.push_str("#[derive(");
-    // 11 = `#[derive()]`
-    let initial_budget = shape.width.checked_sub(11)?;
-    let mut budget = initial_budget;
-    let num = derive_args.len();
-    for (i, a) in derive_args.iter().enumerate() {
-        // 2 = `, ` or `)]`
-        let width = a.len() + 2;
-        if width > budget {
-            if i > 0 {
-                // Remove trailing whitespace.
-                result.pop();
-            }
-            result.push('\n');
-            // 9 = `#[derive(`
-            result.push_str(&(shape.indent + 9).to_string(context.config));
-            budget = initial_budget;
-        } else {
-            budget = budget.saturating_sub(width);
-        }
-        result.push_str(a);
-        if i != num - 1 {
-            result.push_str(", ")
-        }
+    result.push_str(prefix);
+    result.push_str("[derive(");
+
+    let argument_shape = argument_shape(10 + prefix.len(), 2, shape, context)?;
+    let item_str = format_arg_list(
+        derive_args.iter(),
+        |_| DUMMY_SP.lo(),
+        |_| DUMMY_SP.hi(),
+        |sp| Some(context.snippet(**sp).to_owned()),
+        DUMMY_SP,
+        context,
+        argument_shape,
+        // 10 = "[derive()]", 3 = "()" and "]"
+        shape.offset_left(10 + prefix.len())?.sub_width(3)?,
+        None,
+    )?;
+
+    result.push_str(&item_str);
+    if item_str.starts_with('\n') {
+        result.push(',');
+        result.push_str(&shape.indent.to_string_with_newline(context.config));
     }
     result.push_str(")]");
     Some(result)
@@ -120,15 +142,14 @@ where
     &attrs[..len]
 }
 
-/// Rewrite the same kind of attributes at the same time. This includes doc
-/// comments and derives.
-fn rewrite_first_group_attrs(
+/// Rewrite the any doc comments which come before any other attributes.
+fn rewrite_initial_doc_comments(
     context: &RewriteContext,
     attrs: &[ast::Attribute],
     shape: Shape,
-) -> Option<(usize, String)> {
+) -> Option<(usize, Option<String>)> {
     if attrs.is_empty() {
-        return Some((0, String::new()));
+        return Some((0, None));
     }
     // Rewrite doc comments
     let sugared_docs = take_while_with_pred(context, attrs, |a| a.is_sugared_doc);
@@ -140,22 +161,15 @@ fn rewrite_first_group_attrs(
             .join("\n");
         return Some((
             sugared_docs.len(),
-            rewrite_doc_comment(&snippet, shape.comment(context.config), context.config)?,
+            Some(rewrite_doc_comment(
+                &snippet,
+                shape.comment(context.config),
+                context.config,
+            )?),
         ));
     }
-    // Rewrite `#[derive(..)]`s.
-    if context.config.merge_derives() {
-        let derives = take_while_with_pred(context, attrs, is_derive);
-        if !derives.is_empty() {
-            let mut derive_args = vec![];
-            for derive in derives {
-                derive_args.append(&mut get_derive_args(context, derive)?);
-            }
-            return Some((derives.len(), format_derive(context, &derive_args, shape)?));
-        }
-    }
-    // Rewrite the first attribute.
-    Some((1, attrs[0].rewrite(context, shape)?))
+
+    Some((0, None))
 }
 
 impl Rewrite for ast::NestedMetaItem {
@@ -185,19 +199,6 @@ fn has_newlines_before_after_comment(comment: &str) -> (&str, &str) {
     (if mlb { "\n" } else { "" }, if mla { "\n" } else { "" })
 }
 
-fn allow_mixed_tactic_for_nested_metaitem_list(list: &[ast::NestedMetaItem]) -> bool {
-    list.iter().all(|nested_metaitem| {
-        if let ast::NestedMetaItemKind::MetaItem(ref inner_metaitem) = nested_metaitem.node {
-            match inner_metaitem.node {
-                ast::MetaItemKind::List(..) | ast::MetaItemKind::NameValue(..) => false,
-                _ => true,
-            }
-        } else {
-            true
-        }
-    })
-}
-
 impl Rewrite for ast::MetaItem {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         Some(match self.node {
@@ -206,62 +207,37 @@ impl Rewrite for ast::MetaItem {
             }
             ast::MetaItemKind::List(ref list) => {
                 let path = rewrite_path(context, PathContext::Type, None, &self.ident, shape)?;
-                let item_shape = match context.config.indent_style() {
-                    IndentStyle::Block => shape
-                        .block_indent(context.config.tab_spaces())
-                        .with_max_width(context.config),
-                    // 1 = `(`, 2 = `]` and `)`
-                    IndentStyle::Visual => shape
-                        .visual_indent(0)
-                        .shrink_left(path.len() + 1)
-                        .and_then(|s| s.sub_width(2))?,
-                };
-                let items = itemize_list(
-                    context.snippet_provider,
+
+                let snippet = context.snippet(self.span);
+                // 2 = )] (this might go wrong if there is whitespace between the brackets, but
+                // it's close enough).
+                let snippet = snippet[..snippet.len() - 2].trim();
+                let trailing_comma = if snippet.ends_with(',') { "," } else { "" };
+
+                let argument_shape =
+                    argument_shape(path.len() + 1, 2 + trailing_comma.len(), shape, context)?;
+                let item_str = format_arg_list(
                     list.iter(),
-                    ")",
-                    ",",
                     |nested_meta_item| nested_meta_item.span.lo(),
                     |nested_meta_item| nested_meta_item.span.hi(),
-                    |nested_meta_item| nested_meta_item.rewrite(context, item_shape),
-                    self.span.lo(),
-                    self.span.hi(),
-                    false,
-                );
-                let item_vec = items.collect::<Vec<_>>();
-                let tactic = if allow_mixed_tactic_for_nested_metaitem_list(list) {
-                    DefinitiveListTactic::Mixed
+                    |nested_meta_item| nested_meta_item.rewrite(context, argument_shape),
+                    self.span,
+                    context,
+                    argument_shape,
+                    // 3 = "()" and "]"
+                    shape
+                        .offset_left(path.len())?
+                        .sub_width(3 + trailing_comma.len())?,
+                    Some(context.config.width_heuristics().fn_call_width),
+                )?;
+
+                let indent = if item_str.starts_with('\n') {
+                    shape.indent.to_string_with_newline(context.config)
                 } else {
-                    ::lists::definitive_tactic(
-                        &item_vec,
-                        ListTactic::HorizontalVertical,
-                        ::lists::Separator::Comma,
-                        item_shape.width,
-                    )
+                    Cow::Borrowed("")
                 };
-                let fmt = ListFormatting {
-                    tactic,
-                    separator: ",",
-                    trailing_separator: SeparatorTactic::Never,
-                    separator_place: SeparatorPlace::Back,
-                    shape: item_shape,
-                    ends_with_newline: false,
-                    preserve_newline: false,
-                    nested: false,
-                    config: context.config,
-                };
-                let item_str = write_list(&item_vec, &fmt)?;
-                // 3 = "()" and "]"
-                let one_line_budget = shape.offset_left(path.len())?.sub_width(3)?.width;
-                if context.config.indent_style() == IndentStyle::Visual
-                    || (!item_str.contains('\n') && item_str.len() <= one_line_budget)
-                {
-                    format!("{}({})", path, item_str)
-                } else {
-                    let indent = shape.indent.to_string_with_newline(context.config);
-                    let nested_indent = item_shape.indent.to_string_with_newline(context.config);
-                    format!("{}({}{}{})", path, nested_indent, item_str, indent)
-                }
+
+                format!("{}({}{}{})", path, item_str, trailing_comma, indent)
             }
             ast::MetaItemKind::NameValue(ref literal) => {
                 let path = rewrite_path(context, PathContext::Type, None, &self.ident, shape)?;
@@ -281,16 +257,76 @@ impl Rewrite for ast::MetaItem {
     }
 }
 
+fn format_arg_list<I, T, F1, F2, F3>(
+    list: I,
+    get_lo: F1,
+    get_hi: F2,
+    get_item_string: F3,
+    span: Span,
+    context: &RewriteContext,
+    shape: Shape,
+    one_line_shape: Shape,
+    one_line_limit: Option<usize>,
+) -> Option<String>
+where
+    I: Iterator<Item = T>,
+    F1: Fn(&T) -> BytePos,
+    F2: Fn(&T) -> BytePos,
+    F3: Fn(&T) -> Option<String>,
+{
+    let items = itemize_list(
+        context.snippet_provider,
+        list,
+        ")",
+        ",",
+        get_lo,
+        get_hi,
+        get_item_string,
+        span.lo(),
+        span.hi(),
+        false,
+    );
+    let item_vec = items.collect::<Vec<_>>();
+    let tactic = if let Some(limit) = one_line_limit {
+        ListTactic::LimitedHorizontalVertical(limit)
+    } else {
+        ListTactic::HorizontalVertical
+    };
+
+    let tactic =
+        ::lists::definitive_tactic(&item_vec, tactic, ::lists::Separator::Comma, shape.width);
+    let fmt = ListFormatting {
+        tactic,
+        separator: ",",
+        trailing_separator: SeparatorTactic::Never,
+        separator_place: SeparatorPlace::Back,
+        shape,
+        ends_with_newline: false,
+        preserve_newline: false,
+        nested: false,
+        config: context.config,
+    };
+    let item_str = write_list(&item_vec, &fmt)?;
+
+    let one_line_budget = one_line_shape.width;
+    if context.config.indent_style() == IndentStyle::Visual
+        || (!item_str.contains('\n') && item_str.len() <= one_line_budget)
+    {
+        Some(item_str)
+    } else {
+        let nested_indent = shape.indent.to_string_with_newline(context.config);
+        Some(format!("{}{}", nested_indent, item_str))
+    }
+}
+
 impl Rewrite for ast::Attribute {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        let prefix = match self.style {
-            ast::AttrStyle::Inner => "#!",
-            ast::AttrStyle::Outer => "#",
-        };
         let snippet = context.snippet(self.span);
         if self.is_sugared_doc {
             rewrite_doc_comment(snippet, shape.comment(context.config), context.config)
         } else {
+            let prefix = attr_prefix(self);
+
             if contains_comment(snippet) {
                 return Some(snippet.to_owned());
             }
@@ -310,47 +346,126 @@ impl<'a> Rewrite for [ast::Attribute] {
         if self.is_empty() {
             return Some(String::new());
         }
-        let (first_group_len, first_group_str) = rewrite_first_group_attrs(context, self, shape)?;
-        if self.len() == 1 || first_group_len == self.len() {
-            Some(first_group_str)
-        } else {
-            let rest_str = self[first_group_len..].rewrite(context, shape)?;
-            let missing_span = mk_sp(
-                self[first_group_len - 1].span.hi(),
-                self[first_group_len].span.lo(),
-            );
-            // Preserve an empty line before/after doc comments.
-            if self[0].is_sugared_doc || self[first_group_len].is_sugared_doc {
-                let snippet = context.snippet(missing_span);
-                let (mla, mlb) = has_newlines_before_after_comment(snippet);
+
+        // The current remaining attributes.
+        let mut attrs = self;
+        let mut result = String::new();
+
+        // This is not just a simple map because we need to handle doc comments
+        // (where we take as many doc comment attributes as possible) and possibly
+        // merging derives into a single attribute.
+        loop {
+            if attrs.is_empty() {
+                return Some(result);
+            }
+
+            // Handle doc comments.
+            let (doc_comment_len, doc_comment_str) =
+                rewrite_initial_doc_comments(context, attrs, shape)?;
+            if doc_comment_len > 0 {
+                let doc_comment_str = doc_comment_str.expect("doc comments, but no result");
+                result.push_str(&doc_comment_str);
+
+                let missing_span = attrs
+                    .get(doc_comment_len)
+                    .map(|next| mk_sp(attrs[doc_comment_len - 1].span.hi(), next.span.lo()));
+                if let Some(missing_span) = missing_span {
+                    let snippet = context.snippet(missing_span);
+                    let (mla, mlb) = has_newlines_before_after_comment(snippet);
+                    let comment = ::comment::recover_missing_comment_in_span(
+                        missing_span,
+                        shape.with_max_width(context.config),
+                        context,
+                        0,
+                    )?;
+                    let comment = if comment.is_empty() {
+                        format!("\n{}", mlb)
+                    } else {
+                        format!("{}{}\n{}", mla, comment, mlb)
+                    };
+                    result.push_str(&comment);
+                    result.push_str(&shape.indent.to_string(context.config));
+                }
+
+                attrs = &attrs[doc_comment_len..];
+
+                continue;
+            }
+
+            // Handle derives if we will merge them.
+            if context.config.merge_derives() && is_derive(&attrs[0]) {
+                let derives = take_while_with_pred(context, attrs, is_derive);
+                let mut derive_spans = vec![];
+                for derive in derives {
+                    derive_spans.append(&mut get_derive_spans(derive)?);
+                }
+                let derive_str =
+                    format_derive(&derive_spans, attr_prefix(&attrs[0]), shape, context)?;
+                result.push_str(&derive_str);
+
+                let missing_span = attrs
+                    .get(derives.len())
+                    .map(|next| mk_sp(attrs[derives.len() - 1].span.hi(), next.span.lo()));
+                if let Some(missing_span) = missing_span {
+                    let comment = ::comment::recover_missing_comment_in_span(
+                        missing_span,
+                        shape.with_max_width(context.config),
+                        context,
+                        0,
+                    )?;
+                    result.push_str(&comment);
+                    if let Some(next) = attrs.get(derives.len()) {
+                        if next.is_sugared_doc {
+                            let snippet = context.snippet(missing_span);
+                            let (_, mlb) = has_newlines_before_after_comment(snippet);
+                            result.push_str(&mlb);
+                        }
+                    }
+                    result.push('\n');
+                    result.push_str(&shape.indent.to_string(context.config));
+                }
+
+                attrs = &attrs[derives.len()..];
+
+                continue;
+            }
+
+            // If we get here, then we have a regular attribute, just handle one
+            // at a time.
+
+            let formatted_attr = attrs[0].rewrite(context, shape)?;
+            result.push_str(&formatted_attr);
+
+            let missing_span = attrs
+                .get(1)
+                .map(|next| mk_sp(attrs[0].span.hi(), next.span.lo()));
+            if let Some(missing_span) = missing_span {
                 let comment = ::comment::recover_missing_comment_in_span(
                     missing_span,
                     shape.with_max_width(context.config),
                     context,
                     0,
                 )?;
-                let comment = if comment.is_empty() {
-                    format!("\n{}", mlb)
-                } else {
-                    format!("{}{}\n{}", mla, comment, mlb)
-                };
-                Some(format!(
-                    "{}{}{}{}",
-                    first_group_str,
-                    comment,
-                    shape.indent.to_string(context.config),
-                    rest_str
-                ))
-            } else {
-                combine_strs_with_missing_comments(
-                    context,
-                    &first_group_str,
-                    &rest_str,
-                    missing_span,
-                    shape,
-                    false,
-                )
+                result.push_str(&comment);
+                if let Some(next) = attrs.get(1) {
+                    if next.is_sugared_doc {
+                        let snippet = context.snippet(missing_span);
+                        let (_, mlb) = has_newlines_before_after_comment(snippet);
+                        result.push_str(&mlb);
+                    }
+                }
+                result.push('\n');
+                result.push_str(&shape.indent.to_string(context.config));
             }
+
+            attrs = &attrs[1..];
         }
+    }
+}
+
+fn attr_prefix(attr: &ast::Attribute) -> &'static str {
+    match attr.style {
+        ast::AttrStyle::Inner => "#!",
+        ast::AttrStyle::Outer => "#",
     }
 }

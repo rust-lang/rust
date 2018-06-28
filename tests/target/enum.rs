@@ -255,7 +255,12 @@ pub enum QlError {
     #[fail(display = "Translation error: from {} to {}", 0, 1)]
     TranslationError(String, String),
     // (kind, input, expected)
-    #[fail(display = "Could not find {}: Found: {}, expected: {:?}", 0, 1, 2)]
+    #[fail(
+        display = "Could not find {}: Found: {}, expected: {:?}",
+        0,
+        1,
+        2
+    )]
     ResolveError(&'static str, String, Option<String>),
 }
 
