@@ -1523,7 +1523,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             AggregateKind::Array(_) | AggregateKind::Tuple => ty::InstantiatedPredicates::empty(),
         };
 
-        self.normalize_and_prove_instantiated_predicates(instantiated_predicates, location.boring());
+        self.normalize_and_prove_instantiated_predicates(
+            instantiated_predicates,
+            location.boring(),
+        );
     }
 
     fn prove_trait_ref(&mut self, trait_ref: ty::TraitRef<'tcx>, locations: Locations) {
