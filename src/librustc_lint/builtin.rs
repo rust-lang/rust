@@ -1386,31 +1386,32 @@ impl LintPass for UnreachablePub {
 
 impl UnreachablePub {
     fn perform_lint(&self, cx: &LateContext, what: &str, id: ast::NodeId,
-                    vis: &hir::Visibility, span: Span, exportable: bool,
-                    mut applicability: Applicability) {
-        if !cx.access_levels.is_reachable(id) && vis.node.is_pub() {
-            if span.ctxt().outer().expn_info().is_some() {
-                applicability = Applicability::MaybeIncorrect;
-            }
-            let def_span = cx.tcx.sess.codemap().def_span(span);
-            let mut err = cx.struct_span_lint(UNREACHABLE_PUB, def_span,
-                                              &format!("unreachable `pub` {}", what));
-            // We are presuming that visibility is token at start of
-            // declaration (can be macro variable rather than literal `pub`)
-            let pub_span = cx.tcx.sess.codemap().span_until_char(def_span, ' ');
-            let replacement = if cx.tcx.features().crate_visibility_modifier {
-                "crate"
-            } else {
-                "pub(crate)"
-            }.to_owned();
-            err.span_suggestion_with_applicability(pub_span,
-                                                   "consider restricting its visibility",
-                                                   replacement,
-                                                   applicability);
-            if exportable {
-                err.help("or consider exporting it for use by other crates");
-            }
-            err.emit();
+                    vis: &hir::Visibility, span: Span, exportable: bool) {
+        let mut applicability = Applicability::MachineApplicable;
+        match vis.node {
+            hir::VisibilityPublic if !cx.access_levels.is_reachable(id) => {
+                if span.ctxt().outer().expn_info().is_some() {
+                    applicability = Applicability::MaybeIncorrect;
+                }
+                let def_span = cx.tcx.sess.codemap().def_span(span);
+                let mut err = cx.struct_span_lint(UNREACHABLE_PUB, def_span,
+                                                  &format!("unreachable `pub` {}", what));
+                let replacement = if cx.tcx.features().crate_visibility_modifier {
+                    "crate"
+                } else {
+                    "pub(crate)"
+                }.to_owned();
+
+                err.span_suggestion_with_applicability(vis.span,
+                                                       "consider restricting its visibility",
+                                                       replacement,
+                                                       applicability);
+                if exportable {
+                    err.help("or consider exporting it for use by other crates");
+                }
+                err.emit();
+            },
+            _ => {}
         }
     }
 }
@@ -1418,28 +1419,20 @@ impl UnreachablePub {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
-        let applicability = match item.node {
-            // suggestion span-manipulation is inadequate for `pub use
-            // module::{item}` (Issue #50455)
-            hir::ItemUse(..) => Applicability::MaybeIncorrect,
-            _ => Applicability::MachineApplicable,
-        };
-        self.perform_lint(cx, "item", item.id, &item.vis, item.span, true, applicability);
+        self.perform_lint(cx, "item", item.id, &item.vis, item.span, true);
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext, foreign_item: &hir::ForeignItem) {
         self.perform_lint(cx, "item", foreign_item.id, &foreign_item.vis,
-                          foreign_item.span, true, Applicability::MachineApplicable);
+                          foreign_item.span, true);
     }
 
     fn check_struct_field(&mut self, cx: &LateContext, field: &hir::StructField) {
-        self.perform_lint(cx, "field", field.id, &field.vis, field.span, false,
-                          Applicability::MachineApplicable);
+        self.perform_lint(cx, "field", field.id, &field.vis, field.span, false);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext, impl_item: &hir::ImplItem) {
-        self.perform_lint(cx, "item", impl_item.id, &impl_item.vis, impl_item.span, false,
-                          Applicability::MachineApplicable);
+        self.perform_lint(cx, "item", impl_item.id, &impl_item.vis, impl_item.span, false);
     }
 }
 
