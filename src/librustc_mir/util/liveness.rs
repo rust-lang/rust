@@ -179,27 +179,6 @@ impl LivenessResult {
             block,
             statement_index,
         };
-        let terminator_defs_uses = self.defs_uses(mir, terminator_location, &data.terminator);
-        terminator_defs_uses.apply(&mut bits);
-        callback(terminator_location, &bits);
-
-        // Compute liveness before each statement (in rev order) and invoke callback.
-        for statement in data.statements.iter().rev() {
-            statement_index -= 1;
-            let statement_location = Location {
-                block,
-                statement_index,
-            };
-            let statement_defs_uses = self.defs_uses(mir, statement_location, statement);
-            statement_defs_uses.apply(&mut bits);
-            callback(statement_location, &bits);
-        }
-    }
-
-    fn defs_uses<'tcx, V>(&self, mir: &Mir<'tcx>, location: Location, thing: &V) -> DefsUses
-    where
-        V: MirVisitable<'tcx>,
-    {
         let locals = mir.local_decls.len();
         let mut visitor = DefsUsesVisitor {
             mode: self.mode,
@@ -208,12 +187,22 @@ impl LivenessResult {
                 uses: LocalSet::new_empty(locals),
             },
         };
-
         // Visit the various parts of the basic block in reverse. If we go
         // forward, the logic in `add_def` and `add_use` would be wrong.
-        thing.apply(location, &mut visitor);
+        visitor.update_bits_and_do_callback(terminator_location, &data.terminator, &mut bits,
+                                            &mut callback);
 
-        visitor.defs_uses
+        // Compute liveness before each statement (in rev order) and invoke callback.
+        for statement in data.statements.iter().rev() {
+            statement_index -= 1;
+            let statement_location = Location {
+                block,
+                statement_index,
+            };
+            visitor.defs_uses.clear();
+            visitor.update_bits_and_do_callback(statement_location, statement, &mut bits,
+                                                &mut callback);
+        }
     }
 }
 
@@ -304,6 +293,11 @@ struct DefsUses {
 }
 
 impl DefsUses {
+    fn clear(&mut self) {
+        self.uses.clear();
+        self.defs.clear();
+    }
+
     fn apply(&self, bits: &mut LocalSet) -> bool {
         bits.subtract(&self.defs) | bits.union(&self.uses)
     }
@@ -335,6 +329,22 @@ impl DefsUses {
         //     use(X)
         self.defs.remove(&index);
         self.uses.add(&index);
+    }
+}
+
+impl DefsUsesVisitor {
+    /// Update `bits` with the effects of `value` and call `callback`. We
+    /// should always visit in reverse order. This method assumes that we have
+    /// not visited anything before; if you have, clear `bits` first.
+    fn update_bits_and_do_callback<'tcx, OP>(&mut self, location: Location,
+                                             value: &impl MirVisitable<'tcx>, bits: &mut LocalSet,
+                                             callback: &mut OP)
+    where
+        OP: FnMut(Location, &LocalSet),
+    {
+        value.apply(location, self);
+        self.defs_uses.apply(bits);
+        callback(location, bits);
     }
 }
 
