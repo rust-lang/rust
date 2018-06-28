@@ -901,7 +901,7 @@ mod tests {
 
         let d = i16x8::new(0, 3, 6, 9, 12, 15, 18, i16::max_value());
 
-        assert_eq!(d, vec_madds(a, b, c).into_bits());
+        assert_eq!(d, vec_mradds(a, b, c).into_bits());
     }
 
     #[simd_test(enable = "altivec")]
