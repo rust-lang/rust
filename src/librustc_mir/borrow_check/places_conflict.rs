@@ -219,6 +219,10 @@ fn place_components_conflict<'gcx, 'tcx>(
 /// innermost place and extends to projections (e.g., `a.b` would have
 /// the place `a` with a "next" pointer to `a.b`).  Created by
 /// `unroll_place`.
+///
+/// NB: This particular impl strategy is not the most obvious.  It was
+/// chosen because it makes a measurable difference to NLL
+/// performance, as this code (`places_conflict`) is somewhat hot.
 struct PlaceComponents<'p, 'tcx: 'p> {
     component: &'p Place<'tcx>,
     next: Option<&'p PlaceComponents<'p, 'tcx>>,
