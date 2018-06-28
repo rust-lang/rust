@@ -21,7 +21,7 @@ use hir::map::DefPathData;
 use hir::svh::Svh;
 use ich::Fingerprint;
 use ich::StableHashingContext;
-use infer::canonical::{Canonical, Canonicalize};
+use infer::canonical::Canonical;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::privacy::AccessLevels;
 use middle::resolve_lifetime::ObjectLifetimeDefault;
@@ -590,15 +590,6 @@ impl<'tcx> serialize::UseSpecializedEncodable for Ty<'tcx> {}
 impl<'tcx> serialize::UseSpecializedDecodable for Ty<'tcx> {}
 
 pub type CanonicalTy<'gcx> = Canonical<'gcx, Ty<'gcx>>;
-
-impl <'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for Ty<'tcx> {
-    type Canonicalized = CanonicalTy<'gcx>;
-
-    fn intern(_gcx: TyCtxt<'_, 'gcx, 'gcx>,
-              value: Canonical<'gcx, Self::Lifted>) -> Self::Canonicalized {
-        value
-    }
-}
 
 extern {
     /// A dummy type used to force Slice to by unsized without requiring fat pointers

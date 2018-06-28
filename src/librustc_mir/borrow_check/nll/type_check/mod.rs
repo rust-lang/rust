@@ -20,19 +20,18 @@ use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;
 use rustc::hir::def_id::DefId;
-use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
-use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
+use rustc::infer::canonical::QueryRegionConstraint;
+use rustc::infer::region_constraints::GenericKind;
+use rustc::infer::{InferCtxt, LateBoundRegionConversionTime};
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::*;
-use rustc::traits::query::NoSolution;
-use rustc::traits::{self, ObligationCause, Normalized, TraitEngine};
-use rustc::ty::error::TypeError;
+use rustc::traits::query::type_op;
+use rustc::traits::query::{Fallible, NoSolution};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
 use std::fmt;
-use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
 use transform::{MirPass, MirSource};
 use util::liveness::LivenessResults;
@@ -286,9 +285,10 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
                     let instantiated_predicates =
                         tcx.predicates_of(def_id).instantiate(tcx, substs);
-                    let predicates =
-                        type_checker.normalize(&instantiated_predicates.predicates, location);
-                    type_checker.prove_predicates(predicates, location);
+                    type_checker.normalize_and_prove_instantiated_predicates(
+                        instantiated_predicates,
+                        location,
+                    );
                 }
 
                 value.ty
@@ -344,7 +344,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             Place::Static(box Static { def_id, ty: sty }) => {
                 let sty = self.sanitize_type(place, sty);
                 let ty = self.tcx().type_of(def_id);
-                let ty = self.cx.normalize(&ty, location);
+                let ty = self.cx.normalize(ty, location);
                 if let Err(terr) = self.cx.eq_types(ty, sty, location.at_self()) {
                     span_mirbug!(
                         self,
@@ -731,15 +731,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn fully_perform_op<R>(
         &mut self,
         locations: Locations,
-        describe_op: impl Fn() -> String,
-        op: impl FnOnce(&mut Self) -> InferResult<'tcx, R>,
-    ) -> Result<R, TypeError<'tcx>> {
-        let (r, opt_data) = self.fully_perform_op_and_get_region_constraint_data(
-            || format!("{} at {:?}", describe_op(), locations),
-            op,
-        )?;
+        op: impl type_op::TypeOp<'gcx, 'tcx, Output = R>,
+    ) -> Fallible<R> {
+        let (r, opt_data) = op.fully_perform(self.infcx)?;
 
-        if let Some(data) = opt_data {
+        if let Some(data) = &opt_data {
             self.push_region_constraints(locations, data);
         }
 
@@ -749,7 +745,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn push_region_constraints(
         &mut self,
         locations: Locations,
-        data: Rc<RegionConstraintData<'tcx>>,
+        data: &[QueryRegionConstraint<'tcx>],
     ) {
         debug!(
             "push_region_constraints: constraints generated at {:?} are {:#?}",
@@ -758,55 +754,18 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
         if let Some(borrowck_context) = &mut self.borrowck_context {
             constraint_conversion::ConstraintConversion::new(
+                self.infcx.tcx,
                 self.mir,
                 borrowck_context.universal_regions,
                 borrowck_context.location_table,
+                self.region_bound_pairs,
+                self.implicit_region_bound,
+                self.param_env,
+                locations,
                 &mut self.constraints.outlives_constraints,
                 &mut self.constraints.type_tests,
                 &mut borrowck_context.all_facts,
-            ).convert(locations, &data);
-        }
-    }
-
-    /// Helper for `fully_perform_op`, but also used on its own
-    /// sometimes to enable better caching: executes `op` fully (along
-    /// with resulting obligations) and returns the full set of region
-    /// obligations. If the same `op` were to be performed at some
-    /// other location, then the same set of region obligations would
-    /// be generated there, so this can be useful for caching.
-    fn fully_perform_op_and_get_region_constraint_data<R>(
-        &mut self,
-        describe_op: impl Fn() -> String,
-        op: impl FnOnce(&mut Self) -> InferResult<'tcx, R>,
-    ) -> Result<(R, Option<Rc<RegionConstraintData<'tcx>>>), TypeError<'tcx>> {
-        if cfg!(debug_assertions) {
-            info!(
-                "fully_perform_op_and_get_region_constraint_data({})",
-                describe_op(),
-            );
-        }
-
-        let mut fulfill_cx = TraitEngine::new(self.infcx.tcx);
-        let dummy_body_id = ObligationCause::dummy().body_id;
-        let InferOk { value, obligations } = self.infcx.commit_if_ok(|_| op(self))?;
-        debug_assert!(obligations.iter().all(|o| o.cause.body_id == dummy_body_id));
-        fulfill_cx.register_predicate_obligations(self.infcx, obligations);
-        if let Err(e) = fulfill_cx.select_all_or_error(self.infcx) {
-            span_mirbug!(self, "", "errors selecting obligation: {:?}", e);
-        }
-
-        self.infcx.process_registered_region_obligations(
-            self.region_bound_pairs,
-            self.implicit_region_bound,
-            self.param_env,
-            dummy_body_id,
-        );
-
-        let data = self.infcx.take_and_reset_region_constraints();
-        if data.is_empty() {
-            Ok((value, None))
-        } else {
-            Ok((value, Some(Rc::new(data))))
+            ).convert_all(&data);
         }
     }
 
@@ -815,38 +774,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         sub: Ty<'tcx>,
         sup: Ty<'tcx>,
         locations: Locations,
-    ) -> UnitResult<'tcx> {
-        // Micro-optimization.
-        if sub == sup {
-            return Ok(());
-        }
-
+    ) -> Fallible<()> {
+        let param_env = self.param_env;
         self.fully_perform_op(
             locations,
-            || format!("sub_types({:?} <: {:?})", sub, sup),
-            |this| {
-                this.infcx
-                    .at(&ObligationCause::dummy(), this.param_env)
-                    .sup(sup, sub)
-            },
+            param_env.and(type_op::subtype::Subtype::new(sub, sup)),
         )
     }
 
-    fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> UnitResult<'tcx> {
-        // Micro-optimization.
-        if a == b {
-            return Ok(());
-        }
-
-        self.fully_perform_op(
-            locations,
-            || format!("eq_types({:?} = {:?})", a, b),
-            |this| {
-                this.infcx
-                    .at(&ObligationCause::dummy(), this.param_env)
-                    .eq(b, a)
-            },
-        )
+    fn eq_types(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, locations: Locations) -> Fallible<()> {
+        let param_env = self.param_env;
+        self.fully_perform_op(locations, param_env.and(type_op::eq::Eq::new(b, a)))
     }
 
     fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
@@ -1040,7 +978,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     LateBoundRegionConversionTime::FnCall,
                     &sig,
                 );
-                let sig = self.normalize(&sig, term_location);
+                let sig = self.normalize(sig, term_location);
                 self.check_call_dest(mir, term, &sig, destination, term_location);
 
                 self.prove_predicates(
@@ -1328,7 +1266,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let variant = &def.variants[variant_index];
                 let adj_field_index = active_field_index.unwrap_or(field_index);
                 if let Some(field) = variant.fields.get(adj_field_index) {
-                    Ok(self.normalize(&field.ty(tcx, substs), location))
+                    Ok(self.normalize(field.ty(tcx, substs), location))
                 } else {
                     Err(FieldAccessError::OutOfRange {
                         field_count: variant.fields.len(),
@@ -1402,7 +1340,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     // function definition. When we extract the
                     // signature, it comes from the `fn_sig` query,
                     // and hence may contain unnormalized results.
-                    let fn_sig = self.normalize(&fn_sig, location);
+                    let fn_sig = self.normalize(fn_sig, location);
 
                     let ty_fn_ptr_from = tcx.mk_fn_ptr(fn_sig);
 
@@ -1447,7 +1385,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     // function definition. When we extract the
                     // signature, it comes from the `fn_sig` query,
                     // and hence may contain unnormalized results.
-                    let fn_sig = self.normalize(&fn_sig, location);
+                    let fn_sig = self.normalize(fn_sig, location);
 
                     let ty_fn_ptr_from = tcx.safe_to_unsafe_fn_ty(fn_sig);
 
@@ -1573,13 +1511,16 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 if let Some(closure_region_requirements) =
                     tcx.mir_borrowck(*def_id).closure_requirements
                 {
-                    let dummy_body_id = ObligationCause::dummy().body_id;
-                    closure_region_requirements.apply_requirements(
-                        self.infcx,
-                        dummy_body_id,
+                    let closure_constraints = closure_region_requirements.apply_requirements(
+                        self.infcx.tcx,
                         location,
                         *def_id,
                         *substs,
+                    );
+
+                    self.push_region_constraints(
+                        location.at_self(),
+                        &closure_constraints,
                     );
                 }
 
@@ -1593,9 +1534,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             AggregateKind::Array(_) | AggregateKind::Tuple => ty::InstantiatedPredicates::empty(),
         };
 
-        let predicates = self.normalize(&instantiated_predicates.predicates, location);
-        debug!("prove_aggregate_predicates: predicates={:?}", predicates);
-        self.prove_predicates(predicates, location);
+        self.normalize_and_prove_instantiated_predicates(instantiated_predicates, location);
     }
 
     fn prove_trait_ref(&mut self, trait_ref: ty::TraitRef<'tcx>, location: Location) {
@@ -1607,46 +1546,45 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         );
     }
 
-    fn prove_predicates<T>(&mut self, predicates: T, location: Location)
-    where
-        T: IntoIterator<Item = ty::Predicate<'tcx>> + Clone,
-    {
-        let cause = ObligationCause::dummy();
-        let obligations: Vec<_> = predicates
-            .into_iter()
-            .map(|p| traits::Obligation::new(cause.clone(), self.param_env, p))
-            .collect();
-
-        // Micro-optimization
-        if obligations.is_empty() {
-            return;
+    fn normalize_and_prove_instantiated_predicates(
+        &mut self,
+        instantiated_predicates: ty::InstantiatedPredicates<'tcx>,
+        location: Location,
+    ) {
+        for predicate in instantiated_predicates.predicates {
+            let predicate = self.normalize(predicate, location);
+            self.prove_predicate(predicate, location);
         }
+    }
 
-        // This intermediate vector is mildly unfortunate, in that we
-        // sometimes create it even when logging is disabled, but only
-        // if debug-info is enabled, and I doubt it is actually
-        // expensive. -nmatsakis
-        let predicates_vec: Vec<_> = if cfg!(debug_assertions) {
-            obligations.iter().map(|o| o.predicate).collect()
-        } else {
-            Vec::new()
-        };
+    fn prove_predicates(
+        &mut self,
+        predicates: impl IntoIterator<Item = ty::Predicate<'tcx>>,
+        location: Location,
+    ) {
+        for predicate in predicates {
+            debug!(
+                "prove_predicates(predicate={:?}, location={:?})",
+                predicate, location,
+            );
 
+            self.prove_predicate(predicate, location);
+        }
+    }
+
+    fn prove_predicate(&mut self, predicate: ty::Predicate<'tcx>, location: Location) {
         debug!(
-            "prove_predicates(predicates={:?}, location={:?})",
-            predicates_vec, location,
+            "prove_predicate(predicate={:?}, location={:?})",
+            predicate, location,
         );
 
+        let param_env = self.param_env;
         self.fully_perform_op(
             location.at_self(),
-            || format!("prove_predicates({:?})", predicates_vec),
-            |_this| {
-                Ok(InferOk {
-                    value: (),
-                    obligations,
-                })
-            },
-        ).unwrap()
+            param_env.and(type_op::prove_predicate::ProvePredicate::new(predicate)),
+        ).unwrap_or_else(|NoSolution| {
+            span_mirbug!(self, NoSolution, "could not prove {:?}", predicate);
+        })
     }
 
     fn typeck_mir(&mut self, mir: &Mir<'tcx>) {
@@ -1675,35 +1613,19 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn normalize<T>(&mut self, value: &T, location: impl ToLocations) -> T
+    fn normalize<T>(&mut self, value: T, location: impl ToLocations) -> T
     where
-        T: fmt::Debug + TypeFoldable<'tcx>,
+        T: type_op::normalize::Normalizable<'gcx, 'tcx> + Copy,
     {
-        // Micro-optimization: avoid work when we don't have to
-        if !value.has_projections() {
-            return value.clone();
-        }
-
         debug!("normalize(value={:?}, location={:?})", value, location);
+        let param_env = self.param_env;
         self.fully_perform_op(
             location.to_locations(),
-            || format!("normalize(value={:?})", value),
-            |this| {
-                let Normalized { value, obligations } = this
-                    .infcx
-                    .at(&ObligationCause::dummy(), this.param_env)
-                    .normalize(value)
-                    .unwrap_or_else(|NoSolution| {
-                        span_bug!(
-                            this.last_span,
-                            "normalization of `{:?}` failed at {:?}",
-                            value,
-                            location,
-                        );
-                    });
-                Ok(InferOk { value, obligations })
-            },
-        ).unwrap()
+            param_env.and(type_op::normalize::Normalize::new(value)),
+        ).unwrap_or_else(|NoSolution| {
+            span_mirbug!(self, NoSolution, "failed to normalize `{:?}`", value);
+            value
+        })
     }
 }
 
@@ -1735,16 +1657,8 @@ impl MirPass for TypeckMir {
 
         let param_env = tcx.param_env(def_id);
         tcx.infer_ctxt().enter(|infcx| {
-            let _ = type_check_internal(
-                &infcx,
-                def_id,
-                param_env,
-                mir,
-                &[],
-                None,
-                None,
-                &mut |_| (),
-            );
+            let _ =
+                type_check_internal(&infcx, def_id, param_env, mir, &[], None, None, &mut |_| ());
 
             // For verification purposes, we just ignore the resulting
             // region constraint sets. Not our problem. =)

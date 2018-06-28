@@ -1028,6 +1028,13 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::NormalizeTyAfterErasingRegions |
         DepKind::DropckOutlives |
         DepKind::EvaluateObligation |
+        DepKind::TypeOpEq |
+        DepKind::TypeOpSubtype |
+        DepKind::TypeOpProvePredicate |
+        DepKind::TypeOpNormalizeTy |
+        DepKind::TypeOpNormalizePredicate |
+        DepKind::TypeOpNormalizePolyFnSig |
+        DepKind::TypeOpNormalizeFnSig |
         DepKind::SubstituteNormalizeAndTestPredicates |
         DepKind::InstanceDefSizeEstimate |
         DepKind::ProgramClausesForEnv |

@@ -108,7 +108,7 @@ use rustc::infer::InferOk;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::query::Providers;
-use rustc::traits::{ObligationCause, ObligationCauseCode, TraitEngine};
+use rustc::traits::{ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt};
 use session::{CompileIncomplete, config};
 use util::common::time;
 

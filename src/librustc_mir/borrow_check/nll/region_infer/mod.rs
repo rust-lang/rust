@@ -11,25 +11,22 @@
 use super::universal_regions::UniversalRegions;
 use borrow_check::nll::region_infer::values::ToElementIndex;
 use rustc::hir::def_id::DefId;
+use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::region_constraints::{GenericKind, VarInfos};
 use rustc::infer::InferCtxt;
 use rustc::infer::NLLRegionVariableOrigin;
-use rustc::infer::RegionObligation;
 use rustc::infer::RegionVariableOrigin;
-use rustc::infer::SubregionOrigin;
 use rustc::mir::{
     ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements, Local, Location,
     Mir,
 };
-use rustc::traits::ObligationCause;
-use rustc::ty::{self, RegionVid, Ty, TypeFoldable};
+use rustc::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::{self, ErrorReported};
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use std::fmt;
 use std::rc::Rc;
-use syntax::ast;
 use syntax_pos::Span;
 
 mod annotation;
@@ -1162,16 +1159,15 @@ impl fmt::Debug for OutlivesConstraint {
 pub trait ClosureRegionRequirementsExt<'gcx, 'tcx> {
     fn apply_requirements(
         &self,
-        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
-        body_id: ast::NodeId,
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
         location: Location,
         closure_def_id: DefId,
         closure_substs: ty::ClosureSubsts<'tcx>,
-    );
+    ) -> Vec<QueryRegionConstraint<'tcx>>;
 
     fn subst_closure_mapping<T>(
         &self,
-        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
         closure_mapping: &IndexVec<RegionVid, ty::Region<'tcx>>,
         value: &T,
     ) -> T
@@ -1194,14 +1190,11 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
     /// requirements.
     fn apply_requirements(
         &self,
-        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
-        body_id: ast::NodeId,
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
         location: Location,
         closure_def_id: DefId,
         closure_substs: ty::ClosureSubsts<'tcx>,
-    ) {
-        let tcx = infcx.tcx;
-
+    ) -> Vec<QueryRegionConstraint<'tcx>> {
         debug!(
             "apply_requirements(location={:?}, closure_def_id={:?}, closure_substs={:?})",
             location, closure_def_id, closure_substs
@@ -1215,59 +1208,52 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
         // into a vector.  These are the regions that we will be
         // relating to one another.
         let closure_mapping =
-            &UniversalRegions::closure_mapping(infcx, user_closure_ty, self.num_external_vids);
+            &UniversalRegions::closure_mapping(tcx, user_closure_ty, self.num_external_vids);
         debug!("apply_requirements: closure_mapping={:?}", closure_mapping);
 
         // Create the predicates.
-        for outlives_requirement in &self.outlives_requirements {
-            let outlived_region = closure_mapping[outlives_requirement.outlived_free_region];
+        self.outlives_requirements
+            .iter()
+            .map(|outlives_requirement| {
+                let outlived_region = closure_mapping[outlives_requirement.outlived_free_region];
 
-            // FIXME, this origin is not entirely suitable.
-            let origin = SubregionOrigin::CallRcvr(outlives_requirement.blame_span);
+                match outlives_requirement.subject {
+                    ClosureOutlivesSubject::Region(region) => {
+                        let region = closure_mapping[region];
+                        debug!(
+                            "apply_requirements: region={:?} \
+                             outlived_region={:?} \
+                             outlives_requirement={:?}",
+                            region, outlived_region, outlives_requirement,
+                        );
+                        ty::Binder::dummy(ty::OutlivesPredicate(region.into(), outlived_region))
+                    }
 
-            match outlives_requirement.subject {
-                ClosureOutlivesSubject::Region(region) => {
-                    let region = closure_mapping[region];
-                    debug!(
-                        "apply_requirements: region={:?} \
-                         outlived_region={:?} \
-                         outlives_requirement={:?}",
-                        region, outlived_region, outlives_requirement,
-                    );
-                    infcx.sub_regions(origin, outlived_region, region);
+                    ClosureOutlivesSubject::Ty(ty) => {
+                        let ty = self.subst_closure_mapping(tcx, closure_mapping, &ty);
+                        debug!(
+                            "apply_requirements: ty={:?} \
+                             outlived_region={:?} \
+                             outlives_requirement={:?}",
+                            ty, outlived_region, outlives_requirement,
+                        );
+                        ty::Binder::dummy(ty::OutlivesPredicate(ty.into(), outlived_region))
+                    }
                 }
-
-                ClosureOutlivesSubject::Ty(ty) => {
-                    let ty = self.subst_closure_mapping(infcx, closure_mapping, &ty);
-                    debug!(
-                        "apply_requirements: ty={:?} \
-                         outlived_region={:?} \
-                         outlives_requirement={:?}",
-                        ty, outlived_region, outlives_requirement,
-                    );
-                    infcx.register_region_obligation(
-                        body_id,
-                        RegionObligation {
-                            sup_type: ty,
-                            sub_region: outlived_region,
-                            cause: ObligationCause::misc(outlives_requirement.blame_span, body_id),
-                        },
-                    );
-                }
-            }
-        }
+            })
+            .collect()
     }
 
     fn subst_closure_mapping<T>(
         &self,
-        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
         closure_mapping: &IndexVec<RegionVid, ty::Region<'tcx>>,
         value: &T,
     ) -> T
     where
         T: TypeFoldable<'tcx>,
     {
-        infcx.tcx.fold_regions(value, &mut false, |r, _depth| {
+        tcx.fold_regions(value, &mut false, |r, _depth| {
             if let ty::ReClosureBound(vid) = r {
                 closure_mapping[*vid]
             } else {

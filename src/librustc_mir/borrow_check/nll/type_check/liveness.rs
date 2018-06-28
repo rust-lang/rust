@@ -13,11 +13,12 @@ use borrow_check::nll::type_check::AtLocation;
 use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow::MaybeInitializedPlaces;
 use dataflow::{FlowAtLocation, FlowsAtLocation};
-use rustc::infer::region_constraints::RegionConstraintData;
+use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::mir::Local;
 use rustc::mir::{BasicBlock, Location, Mir};
-use rustc::traits::ObligationCause;
-use rustc::ty::subst::Kind;
+use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
+use rustc::traits::query::type_op::outlives::DropckOutlives;
+use rustc::traits::query::type_op::TypeOp;
 use rustc::ty::{Ty, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use std::rc::Rc;
@@ -70,8 +71,8 @@ where
 }
 
 struct DropData<'tcx> {
-    dropped_kinds: Vec<Kind<'tcx>>,
-    region_constraint_data: Option<Rc<RegionConstraintData<'tcx>>>,
+    dropck_result: DropckOutlivesResult<'tcx>,
+    region_constraint_data: Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>,
 }
 
 impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flow, 'gcx, 'tcx> {
@@ -170,8 +171,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         );
 
         cx.tcx().for_each_free_region(&value, |live_region| {
-            cx
-                .constraints
+            cx.constraints
                 .liveness_set
                 .push((live_region, location, cause.clone()));
         });
@@ -199,14 +199,19 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         });
 
         if let Some(data) = &drop_data.region_constraint_data {
-            self.cx
-                .push_region_constraints(location.at_self(), data.clone());
+            self.cx.push_region_constraints(location.at_self(), data);
         }
+
+        drop_data.dropck_result.report_overflows(
+            self.cx.infcx.tcx,
+            self.mir.source_info(location).span,
+            dropped_ty,
+        );
 
         // All things in the `outlives` array may be touched by
         // the destructor and must be live at this point.
         let cause = Cause::DropVar(dropped_local, location);
-        for &kind in &drop_data.dropped_kinds {
+        for &kind in &drop_data.dropck_result.kinds {
             Self::push_type_live_constraint(&mut self.cx, kind, location, cause);
         }
     }
@@ -217,19 +222,14 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
     ) -> DropData<'tcx> {
         debug!("compute_drop_data(dropped_ty={:?})", dropped_ty,);
 
-        let (dropped_kinds, region_constraint_data) =
-            cx.fully_perform_op_and_get_region_constraint_data(
-                || format!("compute_drop_data(dropped_ty={:?})", dropped_ty),
-                |cx| {
-                    Ok(cx
-                        .infcx
-                        .at(&ObligationCause::dummy(), cx.param_env)
-                        .dropck_outlives(dropped_ty))
-                },
-            ).unwrap();
+        let param_env = cx.param_env;
+        let (dropck_result, region_constraint_data) = param_env
+            .and(DropckOutlives::new(dropped_ty))
+            .fully_perform(cx.infcx)
+            .unwrap();
 
         DropData {
-            dropped_kinds,
+            dropck_result,
             region_constraint_data,
         }
     }

@@ -10,10 +10,18 @@
 
 use rustc::traits::{Normalized, ObligationCause};
 use rustc::traits::query::NoSolution;
+use rustc::ty::query::Providers;
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use std::sync::atomic::Ordering;
 
-crate fn normalize_ty_after_erasing_regions<'tcx>(
+crate fn provide(p: &mut Providers) {
+    *p = Providers {
+        normalize_ty_after_erasing_regions,
+        ..*p
+    };
+}
+
+fn normalize_ty_after_erasing_regions<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     goal: ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Ty<'tcx> {

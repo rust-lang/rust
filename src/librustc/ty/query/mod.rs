@@ -34,7 +34,8 @@ use session::{CompileResult, CrateDisambiguator};
 use session::config::OutputFilenames;
 use traits::{self, Vtable};
 use traits::query::{CanonicalPredicateGoal, CanonicalProjectionGoal,
-                    CanonicalTyGoal, NoSolution};
+                    CanonicalTyGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpSubtypeGoal,
+                    CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpNormalizeGoal, NoSolution};
 use traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
 use traits::query::normalize::NormalizationResult;
 use traits::specialization_graph;
@@ -445,6 +446,62 @@ define_queries! { <'tcx>
     [] fn evaluate_obligation: EvaluateObligation(
         CanonicalPredicateGoal<'tcx>
     ) -> Result<traits::EvaluationResult, traits::OverflowError>,
+
+    /// Do not call this query directly: part of the `Eq` type-op
+    [] fn type_op_eq: TypeOpEq(
+        CanonicalTypeOpEqGoal<'tcx>
+    ) -> Result<
+        Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, ()>>>,
+        NoSolution,
+    >,
+
+    /// Do not call this query directly: part of the `Subtype` type-op
+    [] fn type_op_subtype: TypeOpSubtype(
+        CanonicalTypeOpSubtypeGoal<'tcx>
+    ) -> Result<
+        Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, ()>>>,
+        NoSolution,
+    >,
+
+    /// Do not call this query directly: part of the `ProvePredicate` type-op
+    [] fn type_op_prove_predicate: TypeOpProvePredicate(
+        CanonicalTypeOpProvePredicateGoal<'tcx>
+    ) -> Result<
+        Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, ()>>>,
+        NoSolution,
+    >,
+
+    /// Do not call this query directly: part of the `Normalize` type-op
+    [] fn type_op_normalize_ty: TypeOpNormalizeTy(
+        CanonicalTypeOpNormalizeGoal<'tcx, Ty<'tcx>>
+    ) -> Result<
+        Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, Ty<'tcx>>>>,
+        NoSolution,
+    >,
+
+    /// Do not call this query directly: part of the `Normalize` type-op
+    [] fn type_op_normalize_predicate: TypeOpNormalizePredicate(
+        CanonicalTypeOpNormalizeGoal<'tcx, ty::Predicate<'tcx>>
+    ) -> Result<
+        Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, ty::Predicate<'tcx>>>>,
+        NoSolution,
+    >,
+
+    /// Do not call this query directly: part of the `Normalize` type-op
+    [] fn type_op_normalize_poly_fn_sig: TypeOpNormalizePolyFnSig(
+        CanonicalTypeOpNormalizeGoal<'tcx, ty::PolyFnSig<'tcx>>
+    ) -> Result<
+        Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, ty::PolyFnSig<'tcx>>>>,
+        NoSolution,
+    >,
+
+    /// Do not call this query directly: part of the `Normalize` type-op
+    [] fn type_op_normalize_fn_sig: TypeOpNormalizeFnSig(
+        CanonicalTypeOpNormalizeGoal<'tcx, ty::FnSig<'tcx>>
+    ) -> Result<
+        Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, ty::FnSig<'tcx>>>>,
+        NoSolution,
+    >,
 
     [] fn substitute_normalize_and_test_predicates:
         substitute_normalize_and_test_predicates_node((DefId, &'tcx Substs<'tcx>)) -> bool,

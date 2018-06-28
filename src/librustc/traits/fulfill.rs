@@ -21,7 +21,7 @@ use middle::const_val::{ConstEvalErr, ErrKind};
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
 use super::CodeSelectionError;
-use super::engine::TraitEngine;
+use super::engine::{TraitEngine, TraitEngineExt};
 use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation, Obligation};
 use super::project;
@@ -83,16 +83,6 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         FulfillmentContext {
             predicates: ObligationForest::new(),
             register_region_obligations: false
-        }
-    }
-
-    pub fn register_predicate_obligations<I>(&mut self,
-                                             infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                             obligations: I)
-        where I: IntoIterator<Item = PredicateObligation<'tcx>>
-    {
-        for obligation in obligations {
-            self.register_predicate_obligation(infcx, obligation);
         }
     }
 
