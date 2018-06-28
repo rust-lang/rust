@@ -17,6 +17,7 @@ use rustc_target::spec::PanicStrategy;
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
+use hir::def_id::DefId;
 use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::intravisit;
 use hir;
@@ -142,6 +143,15 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
             self.register(&lang_item.as_str(), i.span);
         }
         intravisit::walk_foreign_item(self, i)
+    }
+}
+
+impl<'a, 'tcx, 'gcx> TyCtxt<'a, 'tcx, 'gcx> {
+    pub fn is_weak_lang_item(&self, item_def_id: DefId) -> bool {
+        let lang_items = self.lang_items();
+        let did = Some(item_def_id);
+
+        $(lang_items.$name() == did)||+
     }
 }
 
