@@ -95,9 +95,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         // These ops can have an RHS with a different numeric type.
         if right_kind.is_int() && (bin_op == Shl || bin_op == Shr) {
             let signed = left_layout.abi.is_signed();
+            let mut oflo = (r as u32 as u128) != r;
             let mut r = r as u32;
             let size = left_layout.size.bits() as u32;
-            let oflo = r >= size;
+            oflo |= r >= size;
             if oflo {
                 r %= size;
             }
