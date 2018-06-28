@@ -16,7 +16,9 @@ pub fn target() -> Result<Target, String> {
                 vec!["-s".to_string(),
                      "ERROR_ON_UNDEFINED_SYMBOLS=1".to_string(),
                      "-s".to_string(),
-                     "ABORTING_MALLOC=0".to_string()]);
+                     "ABORTING_MALLOC=0".to_string(),
+                     "-s".to_string(),
+                     "WASM=0".to_string()]);
 
     let opts = TargetOptions {
         dynamic_linking: false,
