@@ -28,7 +28,8 @@ pub(super) struct RegionValueElements {
 impl RegionValueElements {
     pub(super) fn new(mir: &Mir<'_>, num_universal_regions: usize) -> Self {
         let mut num_points = 0;
-        let statements_before_block = mir.basic_blocks()
+        let statements_before_block = mir
+            .basic_blocks()
             .iter()
             .map(|block_data| {
                 let v = num_points;
@@ -96,7 +97,8 @@ impl RegionValueElements {
             // be (BB2, 20).
             //
             // Nit: we could do a binary search here but I'm too lazy.
-            let (block, &first_index) = self.statements_before_block
+            let (block, &first_index) = self
+                .statements_before_block
                 .iter_enumerated()
                 .filter(|(_, first_index)| **first_index <= point_index)
                 .last()
@@ -203,11 +205,7 @@ impl RegionValues {
 
     /// Adds the given element to the value for the given region. Returns true if
     /// the element is newly added (i.e., was not already present).
-    pub(super) fn add_element<E: ToElementIndex>(
-        &mut self,
-        r: RegionVid,
-        elem: E,
-    ) -> bool {
+    pub(super) fn add_element<E: ToElementIndex>(&mut self, r: RegionVid, elem: E) -> bool {
         let i = self.elements.index(elem);
         debug!("add(r={:?}, elem={:?})", r, elem);
         self.matrix.add(r, i)

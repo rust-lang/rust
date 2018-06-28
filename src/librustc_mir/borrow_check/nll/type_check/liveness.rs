@@ -168,9 +168,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         );
 
         cx.tcx().for_each_free_region(&value, |live_region| {
-            cx.constraints
-                .liveness_set
-                .push((live_region, location));
+            cx.constraints.liveness_set.push((live_region, location));
         });
     }
 
