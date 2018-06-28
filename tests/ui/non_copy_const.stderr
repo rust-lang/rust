@@ -1,0 +1,275 @@
+error: a const item should never be interior mutable
+  --> $DIR/non_copy_const.rs:10:1
+   |
+10 | const ATOMIC: AtomicUsize = AtomicUsize::new(5); //~ ERROR interior mutable
+   | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: make this a static item: `static`
+   |
+   = note: #[deny(declare_interior_mutable_const)] on by default
+
+error: a const item should never be interior mutable
+  --> $DIR/non_copy_const.rs:11:1
+   |
+11 | const CELL: Cell<usize> = Cell::new(6); //~ ERROR interior mutable
+   | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: make this a static item: `static`
+
+error: a const item should never be interior mutable
+  --> $DIR/non_copy_const.rs:12:1
+   |
+12 | const ATOMIC_TUPLE: ([AtomicUsize; 1], Vec<AtomicUsize>, u8) = ([ATOMIC], Vec::new(), 7);
+   | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | help: make this a static item: `static`
+
+error: a const item should never be interior mutable
+  --> $DIR/non_copy_const.rs:16:42
+   |
+16 |     ($name:ident: $ty:ty = $e:expr) => { const $name: $ty = $e; };
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^
+17 | }
+18 | declare_const!(_ONCE: Once = Once::new()); //~ ERROR interior mutable
+   | ------------------------------------------ in this macro invocation
+
+error: a const item should never be interior mutable
+  --> $DIR/non_copy_const.rs:39:5
+   |
+39 |     const ATOMIC: AtomicUsize; //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a const item should never be interior mutable
+  --> $DIR/non_copy_const.rs:43:5
+   |
+43 |     const INPUT: T;
+   |     ^^^^^^^^^^^^^^^
+   |
+help: consider requiring `T` to be `Copy`
+  --> $DIR/non_copy_const.rs:43:18
+   |
+43 |     const INPUT: T;
+   |                  ^
+
+error: a const item should never be interior mutable
+  --> $DIR/non_copy_const.rs:46:5
+   |
+46 |     const ASSOC: Self::NonCopyType;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider requiring `<Self as Trait<T>>::NonCopyType` to be `Copy`
+  --> $DIR/non_copy_const.rs:46:18
+   |
+46 |     const ASSOC: Self::NonCopyType;
+   |                  ^^^^^^^^^^^^^^^^^
+
+error: a const item should never be interior mutable
+  --> $DIR/non_copy_const.rs:50:5
+   |
+50 |     const AN_INPUT: T = Self::INPUT;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider requiring `T` to be `Copy`
+  --> $DIR/non_copy_const.rs:50:21
+   |
+50 |     const AN_INPUT: T = Self::INPUT;
+   |                     ^
+
+error: a const item should never be interior mutable
+  --> $DIR/non_copy_const.rs:16:42
+   |
+16 |     ($name:ident: $ty:ty = $e:expr) => { const $name: $ty = $e; };
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^
+...
+53 |     declare_const!(ANOTHER_INPUT: T = Self::INPUT); //~ ERROR interior mutable
+   |     ----------------------------------------------- in this macro invocation
+
+error: a const item should never be interior mutable
+  --> $DIR/non_copy_const.rs:59:5
+   |
+59 |     const SELF_2: Self;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+help: consider requiring `Self` to be `Copy`
+  --> $DIR/non_copy_const.rs:59:19
+   |
+59 |     const SELF_2: Self;
+   |                   ^^^^
+
+error: a const item should never be interior mutable
+  --> $DIR/non_copy_const.rs:80:5
+   |
+80 |     const ASSOC_3: AtomicUsize = AtomicUsize::new(14); //~ ERROR interior mutable
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a const item should never be interior mutable
+  --> $DIR/non_copy_const.rs:83:5
+   |
+83 |     const U_SELF: U = U::SELF_2;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider requiring `U` to be `Copy`
+  --> $DIR/non_copy_const.rs:83:19
+   |
+83 |     const U_SELF: U = U::SELF_2;
+   |                   ^
+
+error: a const item should never be interior mutable
+  --> $DIR/non_copy_const.rs:86:5
+   |
+86 |     const T_ASSOC: T::NonCopyType = T::ASSOC;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider requiring `<T as Trait<u32>>::NonCopyType` to be `Copy`
+  --> $DIR/non_copy_const.rs:86:20
+   |
+86 |     const T_ASSOC: T::NonCopyType = T::ASSOC;
+   |                    ^^^^^^^^^^^^^^
+
+error: a const item with interior mutability should not be borrowed
+  --> $DIR/non_copy_const.rs:93:5
+   |
+93 |     ATOMIC.store(1, Ordering::SeqCst); //~ ERROR interior mutability
+   |     ^^^^^^
+   |
+   = note: #[deny(borrow_interior_mutable_const)] on by default
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+  --> $DIR/non_copy_const.rs:94:16
+   |
+94 |     assert_eq!(ATOMIC.load(Ordering::SeqCst), 5); //~ ERROR interior mutability
+   |                ^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+  --> $DIR/non_copy_const.rs:96:5
+   |
+96 |     ATOMIC_USIZE_INIT.store(2, Ordering::SeqCst); //~ ERROR interior mutability
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+  --> $DIR/non_copy_const.rs:97:16
+   |
+97 |     assert_eq!(ATOMIC_USIZE_INIT.load(Ordering::SeqCst), 0); //~ ERROR interior mutability
+   |                ^^^^^^^^^^^^^^^^^
+   |
+   = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+   --> $DIR/non_copy_const.rs:100:22
+    |
+100 |     let _once_ref = &ONCE_INIT; //~ ERROR interior mutability
+    |                      ^^^^^^^^^
+    |
+    = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+   --> $DIR/non_copy_const.rs:101:25
+    |
+101 |     let _once_ref_2 = &&ONCE_INIT; //~ ERROR interior mutability
+    |                         ^^^^^^^^^
+    |
+    = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+   --> $DIR/non_copy_const.rs:102:27
+    |
+102 |     let _once_ref_4 = &&&&ONCE_INIT; //~ ERROR interior mutability
+    |                           ^^^^^^^^^
+    |
+    = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+   --> $DIR/non_copy_const.rs:103:26
+    |
+103 |     let _once_mut = &mut ONCE_INIT; //~ ERROR interior mutability
+    |                          ^^^^^^^^^
+    |
+    = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+   --> $DIR/non_copy_const.rs:114:14
+    |
+114 |     let _ = &ATOMIC_TUPLE; //~ ERROR interior mutability
+    |              ^^^^^^^^^^^^
+    |
+    = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+   --> $DIR/non_copy_const.rs:115:14
+    |
+115 |     let _ = &ATOMIC_TUPLE.0; //~ ERROR interior mutability
+    |              ^^^^^^^^^^^^
+    |
+    = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+   --> $DIR/non_copy_const.rs:116:19
+    |
+116 |     let _ = &(&&&&ATOMIC_TUPLE).0; //~ ERROR interior mutability
+    |                   ^^^^^^^^^^^^
+    |
+    = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+   --> $DIR/non_copy_const.rs:117:14
+    |
+117 |     let _ = &ATOMIC_TUPLE.0[0]; //~ ERROR interior mutability
+    |              ^^^^^^^^^^^^
+    |
+    = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+   --> $DIR/non_copy_const.rs:118:13
+    |
+118 |     let _ = ATOMIC_TUPLE.0[0].load(Ordering::SeqCst); //~ ERROR interior mutability
+    |             ^^^^^^^^^^^^
+    |
+    = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+   --> $DIR/non_copy_const.rs:124:13
+    |
+124 |     let _ = ATOMIC_TUPLE.0[0]; //~ ERROR interior mutability
+    |             ^^^^^^^^^^^^
+    |
+    = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+   --> $DIR/non_copy_const.rs:129:5
+    |
+129 |     CELL.set(2); //~ ERROR interior mutability
+    |     ^^^^
+    |
+    = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+   --> $DIR/non_copy_const.rs:130:16
+    |
+130 |     assert_eq!(CELL.get(), 6); //~ ERROR interior mutability
+    |                ^^^^
+    |
+    = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+   --> $DIR/non_copy_const.rs:143:5
+    |
+143 |     u64::ATOMIC.store(5, Ordering::SeqCst); //~ ERROR interior mutability
+    |     ^^^^^^^^^^^
+    |
+    = help: assign this const to a local or static variable, and use the variable here
+
+error: a const item with interior mutability should not be borrowed
+   --> $DIR/non_copy_const.rs:144:16
+    |
+144 |     assert_eq!(u64::ATOMIC.load(Ordering::SeqCst), 9); //~ ERROR interior mutability
+    |                ^^^^^^^^^^^
+    |
+    = help: assign this const to a local or static variable, and use the variable here
+
+error: aborting due to 31 previous errors
+

@@ -148,6 +148,7 @@ pub mod neg_cmp_op_on_partial_ord;
 pub mod neg_multiply;
 pub mod new_without_default;
 pub mod no_effect;
+pub mod non_copy_const;
 pub mod non_expressive_names;
 pub mod ok_if_let;
 pub mod open_options;
@@ -405,6 +406,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box duration_subsec::DurationSubsec);
     reg.register_late_lint_pass(box default_trait_access::DefaultTraitAccess);
     reg.register_late_lint_pass(box indexing_slicing::IndexingSlicing);
+    reg.register_late_lint_pass(box non_copy_const::NonCopyConst);
 
     reg.register_lint_group("clippy_restriction", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -613,6 +615,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         new_without_default::NEW_WITHOUT_DEFAULT_DERIVE,
         no_effect::NO_EFFECT,
         no_effect::UNNECESSARY_OPERATION,
+        non_copy_const::BORROW_INTERIOR_MUTABLE_CONST,
+        non_copy_const::DECLARE_INTERIOR_MUTABLE_CONST,
         non_expressive_names::JUST_UNDERSCORES_AND_DIGITS,
         non_expressive_names::MANY_SINGLE_CHAR_NAMES,
         ok_if_let::IF_LET_SOME_RESULT,
@@ -868,6 +872,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         misc::CMP_NAN,
         misc::FLOAT_CMP,
         misc::MODULO_ONE,
+        non_copy_const::BORROW_INTERIOR_MUTABLE_CONST,
+        non_copy_const::DECLARE_INTERIOR_MUTABLE_CONST,
         open_options::NONSENSICAL_OPEN_OPTIONS,
         ptr::MUT_FROM_REF,
         ranges::ITERATOR_STEP_BY_ZERO,
