@@ -42,6 +42,7 @@ pub struct OverlapError {
     pub trait_desc: String,
     pub self_desc: Option<String>,
     pub intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
+    pub used_to_be_allowed: bool,
 }
 
 /// Given a subst for the requested impl, translate it to a subst
@@ -325,56 +326,82 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
          def_id.index.as_array_index())
     });
 
+    let mut overlaps = Vec::new();
+
     for impl_def_id in trait_impls {
         if impl_def_id.is_local() {
-            // This is where impl overlap checking happens:
             let insert_result = sg.insert(tcx, impl_def_id);
-            // Report error if there was one.
-            let (overlap, used_to_be_allowed) = match insert_result {
-                Err(overlap) => (Some(overlap), false),
-                Ok(opt_overlap) => (opt_overlap, true)
+            match insert_result {
+                Ok(Some(mut opt_overlaps)) => {
+                    // record any overlap that occurs between two impl
+                    // later those recordings are processed to establish
+                    // if an intersection impl is present between two overlapping impls
+                    // if no an overlap error is emitted
+                    for opt_overlap in opt_overlaps {
+                        overlaps.push((impl_def_id, opt_overlap));
+                    }
+                }
+                _ => {}
             };
+        } else {
+            let parent = tcx.impl_parent(impl_def_id).unwrap_or(trait_id);
+            sg.record_impl_from_cstore(tcx, parent, impl_def_id)
+        }
+    }
 
-            if let Some(overlap) = overlap {
-                let msg = format!("conflicting implementations of trait `{}`{}:{}",
+    if overlaps.len() > 0 {
+        // Build the graph only if there is at least an overlap
+        let (graph, nodes_idx) = sg.build_graph();
+        for (impl_def_id, overlap) in overlaps {
+            if !sg.check_overlap(&graph, &nodes_idx, impl_def_id, overlap.with_impl, tcx) {
+                let msg = format!(
+                    "conflicting implementations of trait `{}`{}:{}",
                     overlap.trait_desc,
-                    overlap.self_desc.clone().map_or(
-                        String::new(), |ty| {
-                            format!(" for type `{}`", ty)
-                        }),
-                    if used_to_be_allowed { " (E0119)" } else { "" }
+                    overlap
+                        .self_desc
+                        .clone()
+                        .map_or(String::new(), |ty| format!(" for type `{}`", ty)),
+                    if overlap.used_to_be_allowed {
+                        " (E0119)"
+                    } else {
+                        ""
+                    }
                 );
-                let impl_span = tcx.sess.codemap().def_span(
-                    tcx.span_of_impl(impl_def_id).unwrap()
-                );
-                let mut err = if used_to_be_allowed {
+                let impl_span = tcx.sess
+                    .codemap()
+                    .def_span(tcx.span_of_impl(impl_def_id).unwrap());
+                let mut err = if overlap.used_to_be_allowed {
                     tcx.struct_span_lint_node(
                         lint::builtin::INCOHERENT_FUNDAMENTAL_IMPLS,
                         tcx.hir.as_local_node_id(impl_def_id).unwrap(),
                         impl_span,
-                        &msg)
+                        &msg,
+                    )
                 } else {
-                    struct_span_err!(tcx.sess,
-                                     impl_span,
-                                     E0119,
-                                     "{}",
-                                     msg)
+                    struct_span_err!(tcx.sess, impl_span, E0119, "{}", msg)
                 };
 
                 match tcx.span_of_impl(overlap.with_impl) {
                     Ok(span) => {
-                        err.span_label(tcx.sess.codemap().def_span(span),
-                                       format!("first implementation here"));
-                        err.span_label(impl_span,
-                                       format!("conflicting implementation{}",
-                                                overlap.self_desc
-                                                    .map_or(String::new(),
-                                                            |ty| format!(" for `{}`", ty))));
+                        err.span_label(
+                            tcx.sess.codemap().def_span(span),
+                            format!("first implementation here"),
+                        );
+                        err.span_label(
+                            impl_span,
+                            format!(
+                                "conflicting implementation{}",
+                                overlap
+                                    .self_desc
+                                    .map_or(String::new(), |ty| format!(" for `{}`", ty))
+                            ),
+                        );
                     }
                     Err(cname) => {
                         let msg = match to_pretty_impl_header(tcx, overlap.with_impl) {
-                            Some(s) => format!(
-                                "conflicting implementation in crate `{}`:\n- {}", cname, s),
+                            Some(s) => {
+                                format!("conflicting implementation in crate `{}`:\n- {}", cname, s)
+                            }
                             None => format!("conflicting implementation in crate `{}`", cname),
                         };
                         err.note(&msg);
@@ -387,9 +414,6 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
 
                 err.emit();
             }
-        } else {
-            let parent = tcx.impl_parent(impl_def_id).unwrap_or(trait_id);
-            sg.record_impl_from_cstore(tcx, parent, impl_def_id)
         }
     }
 
