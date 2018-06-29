@@ -628,6 +628,14 @@ impl From<OsString> for Box<OsStr> {
     }
 }
 
+#[stable(feature = "more_box_slice_clone", since = "1.29.0")]
+impl Clone for Box<OsStr> {
+    #[inline]
+    fn clone(&self) -> Self {
+        self.to_os_string().into_boxed_os_str()
+    }
+}
+
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Arc<OsStr> {
     #[inline]
