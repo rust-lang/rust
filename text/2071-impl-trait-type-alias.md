@@ -409,7 +409,7 @@ For example, the following code has to examine the body of `foo` in order to
 determine that the concrete type of `Foo` is `i32`:
 
 ```rust
-existential type Foo = impl Debug;
+existential type Foo: Debug;
 
 fn foo() -> Foo {
     5i32
@@ -496,7 +496,7 @@ should be "no" since doing so would give away the underlying type being
 hidden beneath the impl. Still, some version of this feature could be
 used eventually to implement traits or functions for closures, or
 to express conditional bounds in existential type signatures
-(e.g. `existential type Foo<T> = impl Debug; impl<T: Clone> Clone for Foo<T> { ... }`).
+(e.g. `existential type Foo<T>: Debug; impl<T: Clone> Clone for Foo<T> { ... }`).
 This is a complicated design space which has not yet been explored fully
 enough. In the future, such a feature could be added backwards-compatibly.
 
