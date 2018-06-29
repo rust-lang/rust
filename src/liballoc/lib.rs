@@ -100,6 +100,7 @@
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(needs_allocator)]
+#![feature(never_type)]
 #![feature(optin_builtin_traits)]
 #![feature(pattern)]
 #![feature(pin)]
