@@ -132,7 +132,7 @@ impl<'tcx> Scalar {
                         bits: layout.offset(bits as u64, i.bytes())? as u128,
                         defined: pointer_size,
                     })
-            }
+                }
             }
             Scalar::Ptr(ptr) => ptr.offset(i, layout).map(Scalar::Ptr),
         }
