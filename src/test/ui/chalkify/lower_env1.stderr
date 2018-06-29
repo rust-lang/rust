@@ -4,7 +4,7 @@ error: program clause dump
 LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: FromEnv(Self: Bar) :- FromEnv(Self: Bar).
+   = note: FromEnv(Self: Foo) :- FromEnv(Self: Bar).
    = note: FromEnv(Self: Foo) :- FromEnv(Self: Bar).
    = note: Implemented(Self: Bar) :- FromEnv(Self: Bar).
 
@@ -14,7 +14,7 @@ error: program clause dump
 LL | #[rustc_dump_env_program_clauses] //~ ERROR program clause dump
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: FromEnv(Self: Bar) :- FromEnv(Self: Bar).
+   = note: FromEnv(Self: Foo) :- FromEnv(Self: Bar).
    = note: FromEnv(Self: Foo) :- FromEnv(Self: Bar).
    = note: Implemented(Self: Bar) :- FromEnv(Self: Bar).
    = note: Implemented(Self: Foo) :- FromEnv(Self: Foo).

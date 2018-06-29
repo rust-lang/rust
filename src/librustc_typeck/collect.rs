@@ -1336,12 +1336,17 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let node = tcx.hir.get(node_id);
 
     let mut is_trait = None;
+    let mut is_trait_item = false;
     let mut is_default_impl_trait = None;
 
     let icx = ItemCtxt::new(tcx, def_id);
     let no_generics = hir::Generics::empty();
     let ast_generics = match node {
-        NodeTraitItem(item) => &item.generics,
+        NodeTraitItem(item) => {
+            is_trait_item = true;
+            &item.generics
+        }
+
         NodeImplItem(item) => &item.generics,
 
         NodeItem(item) => {
@@ -1409,12 +1414,8 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // and the explicit where-clauses, but to get the full set of predicates
     // on a trait we need to add in the supertrait bounds and bounds found on
     // associated types.
-    if let Some((trait_ref, _)) = is_trait {
+    if let Some((_trait_ref, _)) = is_trait {
         predicates = tcx.super_predicates_of(def_id).predicates;
-
-        // Add in a predicate that `Self:Trait` (where `Trait` is the
-        // current trait).  This is needed for builtin bounds.
-        predicates.push(trait_ref.to_poly_trait_ref().to_predicate());
     }
 
     // In default impls, we can assume that the self type implements
@@ -1427,6 +1428,14 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // set of defaults that can be incorporated into another impl.
     if let Some(trait_ref) = is_default_impl_trait {
         predicates.push(trait_ref.to_poly_trait_ref().to_predicate());
+    }
+
+    // For trait items, add `Self: Trait` predicate.
+    if is_trait_item {
+        let parent_id = tcx.hir.get_parent(node_id);
+        let parent_def_id = tcx.hir.local_def_id(parent_id);
+        debug_assert!(ty::is_trait_node(tcx, parent_id));
+        predicates.push(ty::TraitRef::identity(tcx, parent_def_id).to_predicate());
     }
 
     // Collect the region predicates that were declared inline as

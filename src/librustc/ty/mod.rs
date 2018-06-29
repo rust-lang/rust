@@ -2863,7 +2863,7 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Compute the bounds on Self and the type parameters.
 
     let bounds = tcx.predicates_of(def_id).instantiate_identity(tcx);
-    let predicates = bounds.predicates;
+    let mut predicates = bounds.predicates;
 
     // Finally, we have to normalize the bounds in the environment, in
     // case they contain any associated type projections. This process
@@ -2877,6 +2877,11 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // are any errors at that point, so after type checking you can be
     // sure that this will succeed without errors anyway.
 
+    if is_trait(tcx, def_id) {
+        // Add `Self: Trait` into the ParamEnv.
+        predicates.push(ty::TraitRef::identity(tcx, def_id).to_predicate());
+    }
+
     let unnormalized_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
                                              traits::Reveal::UserFacing);
 
@@ -2885,6 +2890,22 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
+}
+
+pub fn is_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
+    match tcx.def_key(def_id).disambiguated_data.data {
+        DefPathData::Trait(_) => true,
+        _ => false,
+    }
+}
+
+pub fn is_trait_node<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: NodeId) -> bool {
+    if let Some(hir::map::NodeItem(item)) = tcx.hir.find(id) {
+        if let hir::ItemTrait(..) = item.node {
+            return true;
+        }
+    }
+    false
 }
 
 fn crate_disambiguator<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

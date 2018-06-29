@@ -170,10 +170,11 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     /// Pushes the obligations required for `trait_ref` to be WF into
     /// `self.out`.
     fn compute_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>, elaborate: Elaborate) {
-        let obligations = self.nominal_obligations(trait_ref.def_id, trait_ref.substs);
+        let param_env = self.param_env;
+
+        let obligations = self.nominal_trait_obligations(trait_ref);
 
         let cause = self.cause(traits::MiscObligation);
-        let param_env = self.param_env;
 
         if let Elaborate::All = elaborate {
             let predicates = obligations.iter()
@@ -439,6 +440,33 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         let cause = self.cause(traits::ItemObligation(def_id));
         predicates.predicates
                   .into_iter()
+                  .map(|pred| traits::Obligation::new(cause.clone(),
+                                                      self.param_env,
+                                                      pred))
+                  .filter(|pred| !pred.has_escaping_regions())
+                  .collect()
+    }
+
+    fn nominal_trait_obligations(&mut self,
+                                 trait_ref: &ty::TraitRef<'tcx>)
+                                 -> Vec<traits::PredicateObligation<'tcx>>
+    {
+        // Add in a predicate that `Self:Trait` (where `Trait` is the
+        // current trait).
+        let self_trait = if !trait_ref.has_escaping_regions() {
+            Some(trait_ref.to_predicate())
+        } else {
+            None
+        };
+
+        let predicates = self.infcx.tcx.predicates_of(trait_ref.def_id)
+                                       .instantiate(self.infcx.tcx, trait_ref.substs)
+                                       .predicates;
+
+        let cause = self.cause(traits::ItemObligation(trait_ref.def_id));
+
+        self_trait.into_iter()
+                  .chain(predicates.into_iter())
                   .map(|pred| traits::Obligation::new(cause.clone(),
                                                       self.param_env,
                                                       pred))

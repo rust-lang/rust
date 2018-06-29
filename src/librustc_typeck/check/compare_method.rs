@@ -30,7 +30,6 @@ use super::{Inherited, FnCtxt};
 /// - impl_m_span: span to use for reporting errors
 /// - trait_m: the method in the trait
 /// - impl_trait_ref: the TraitRef corresponding to the trait implementation
-
 pub fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      impl_m: &ty::AssociatedItem,
                                      impl_m_span: Span,
@@ -182,7 +181,31 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
     let impl_m_predicates = tcx.predicates_of(impl_m.def_id);
-    let trait_m_predicates = tcx.predicates_of(trait_m.def_id);
+    let mut trait_m_predicates = tcx.predicates_of(trait_m.def_id);
+
+    // A `Self: Trait` predicate on trait items breaks selection, so filter it out.
+    // FIXME: This is a big hack!
+    if let Some(trait_def_id) = trait_m_predicates.parent {
+        trait_m_predicates.predicates.retain(|pred| {
+            match pred {
+                ty::Predicate::Trait(trait_ref) => {
+                    if trait_ref.def_id() == trait_def_id {
+                        use ty::TypeVariants::TyParam;
+                        if let TyParam(param) = trait_ref.skip_binder().self_ty().sty {
+                            if param.is_self() {
+                                debug!(
+                                    "compare_impl_method: removing `{:?}` from trait_m_predicates",
+                                    pred);
+                                return false;
+                            }
+                        }
+                    }
+                    true
+                }
+                _ => true
+            }
+        });
+    }
 
     // Check region bounds.
     check_region_bounds_on_impl_method(tcx,
@@ -212,6 +235,8 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // if all constraints hold.
     hybrid_preds.predicates
                 .extend(trait_m_predicates.instantiate_own(tcx, trait_to_skol_substs).predicates);
+
+    debug!("compare_impl_method: impl_bounds+trait_bounds={:?}", hybrid_preds);
 
     // Construct trait parameter environment and then shift it into the skolemized viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
