@@ -1434,9 +1434,12 @@ pub mod __internal {
         CURRENT_SESS.with(|p| {
             let _reset = Reset { prev: p.get() };
 
-            // No way to determine def location for a proc macro rigth now, so use call location.
+            // No way to determine def location for a proc macro right now, so use call location.
             let location = cx.current_expansion.mark.expn_info().unwrap().call_site;
             // Opaque mark was already created by expansion, now create its transparent twin.
+            // We can't use the call-site span literally here, even if it appears to provide
+            // correct name resolution, because it has all the `ExpnInfo` wrong, so the edition
+            // checks, lint macro checks, macro backtraces will all break.
             let opaque_mark = cx.current_expansion.mark;
             let transparent_mark = Mark::fresh_cloned(opaque_mark);
             transparent_mark.set_transparency(Transparency::Transparent);

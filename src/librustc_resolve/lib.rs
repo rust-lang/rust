@@ -2005,10 +2005,9 @@ impl<'a> Resolver<'a> {
                 }
             }
             // Then find the last legacy mark from the end if it exists.
-            while let Some(&mark) = iter.peek() {
+            for mark in iter {
                 if mark.transparency() == Transparency::SemiTransparent {
                     result = Some(mark);
-                    iter.next();
                 } else {
                     break;
                 }

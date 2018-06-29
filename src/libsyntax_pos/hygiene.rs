@@ -57,7 +57,6 @@ struct MarkData {
 pub enum Transparency {
     /// Identifier produced by a transparent expansion is always resolved at call-site.
     /// Call-site spans in procedural macros, hygiene opt-out in `macro` should use this.
-    /// (Not used yet.)
     Transparent,
     /// Identifier produced by a semi-transparent expansion may be resolved
     /// either at call-site or at definition-site.
