@@ -213,7 +213,16 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
             }
         }
 
-        clone_subtree(self.root.as_ref())
+        if self.len() == 0 {
+            // Ideally we'd call `BTreeMap::new` here, but that has the `K:
+            // Ord` constraint, which this method lacks.
+            BTreeMap {
+                root: node::Root::shared_empty_root(),
+                length: 0,
+            }
+        } else {
+            clone_subtree(self.root.as_ref())
+        }
     }
 }
 
