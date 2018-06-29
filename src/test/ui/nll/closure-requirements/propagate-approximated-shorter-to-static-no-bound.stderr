@@ -32,7 +32,7 @@ LL | |
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to nll
 LL | |     });
-   | |_____^
+   | |______^
 
 note: No external requirements
   --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:44:1

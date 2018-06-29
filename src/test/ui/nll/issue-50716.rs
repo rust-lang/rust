@@ -22,7 +22,7 @@ where
     for<'b> &'b T: A,
     <&'static T as A>::X: Sized
 {
-    let _x = *s; //~ ERROR free region `'a` does not outlive free region `'static`
+    let _x = *s; //~ ERROR assignment requires that data must outlive free region `'static`
 }
 
 fn main() {}
