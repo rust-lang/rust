@@ -36,7 +36,7 @@ use ty::codec::TyDecoder;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::num::NonZeroU32;
 
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Lock {
     NoLock,
     WriteLock(DynamicLifetime),
