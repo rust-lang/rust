@@ -25,7 +25,7 @@ use std::path::PathBuf;
 struct MiriCompilerCalls {
     default: Box<RustcDefaultCalls>,
     /// Whether to begin interpretation at the start_fn lang item or not
-    /// 
+    ///
     /// If false, the interpretation begins at the `main` function
     start_fn: bool,
 }
@@ -115,7 +115,7 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>, use_start_fn: bo
         );
         impl<'a, 'tcx: 'a, 'hir> itemlikevisit::ItemLikeVisitor<'hir> for Visitor<'a, 'tcx> {
             fn visit_item(&mut self, i: &'hir hir::Item) {
-                if let hir::Item_::ItemFn(_, _, _, _, _, body_id) = i.node {
+                if let hir::Item_::ItemFn(.., body_id) = i.node {
                     if i.attrs.iter().any(|attr| {
                         attr.name() == "test"
                     })
