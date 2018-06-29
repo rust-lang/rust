@@ -465,10 +465,8 @@
                             var res = buildHrefAndPath(obj);
                             obj.displayPath = pathSplitter(res[0]);
                             obj.fullPath = obj.displayPath + obj.name;
-                            if (obj.ty === TY_KEYWORD) {
-                                // To be sure than it isn't considered as duplicate with items.
-                                obj.fullPath += '|k';
-                            }
+                            // To be sure than it some items aren't considered as duplicate.
+                            obj.fullPath += '|' + obj.ty;
                             obj.href = res[1];
                             out.push(obj);
                             if (out.length >= MAX_RESULTS) {
