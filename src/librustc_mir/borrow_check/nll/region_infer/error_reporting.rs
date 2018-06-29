@@ -63,12 +63,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Regions that have been visited.
         let mut visited = FxHashSet();
         // Ends of paths.
-        let mut end_regions: Vec<RegionVid> = Vec::new();
+        let mut end_regions = FxHashSet();
 
         // When we've still got points to visit...
         while let Some(current) = next.pop() {
             // ...take the next point...
-            debug!("find_constraint_paths_from_region: current={:?} next={:?}", current, next);
+            debug!("find_constraint_paths_from_region: current={:?} visited={:?} next={:?}",
+                   current, visited, next);
+            // ...but make sure not to visit this point again...
+            visited.insert(current);
 
             // ...find the edges containing it...
             let mut upcoming = Vec::new();
@@ -93,16 +96,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if upcoming.is_empty() {
                 // If we didn't find any edges then this is the end of a path...
                 debug!("find_constraint_paths_from_region: new end region current={:?}", current);
-                end_regions.push(current);
+                end_regions.insert(current);
             } else {
-                // ...but, if we did find edges, then add these to the regions yet to visit...
+                // ...but, if we did find edges, then add these to the regions yet to visit.
                 debug!("find_constraint_paths_from_region: extend next upcoming={:?}", upcoming);
                 next.extend(upcoming);
             }
 
-            // ...and don't visit it again.
-            visited.insert(current.clone());
-            debug!("find_constraint_paths_from_region: next={:?} visited={:?}", next, visited);
         }
 
         // Now we've visited each point, compute the final paths.
