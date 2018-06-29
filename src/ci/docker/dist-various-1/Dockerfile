@@ -38,6 +38,9 @@ RUN ./install-mips-musl.sh
 COPY dist-various-1/install-mipsel-musl.sh /build
 RUN ./install-mipsel-musl.sh
 
+COPY dist-various-1/install-msp430-elf.sh /build
+RUN ./install-msp430-elf.sh
+
 # Suppress some warnings in the openwrt toolchains we downloaded
 ENV STAGING_DIR=/tmp
 
@@ -98,6 +101,10 @@ ENV TARGETS=$TARGETS,thumbv7m-none-eabi
 ENV TARGETS=$TARGETS,thumbv7em-none-eabi
 ENV TARGETS=$TARGETS,thumbv7em-none-eabihf
 
+# The targets below are not required to build, so they can be commented
+# out in case of regressions or other unwanted breakage.
+ENV TARGETS=$TARGETS,msp430-none-elf
+
 # FIXME: remove armv5te vars after https://github.com/alexcrichton/cc-rs/issues/271
 #        get fixed and cc update
 ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
@@ -107,7 +114,8 @@ ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_armv5te_unknown_linux_gnueabi=arm-linux-gnueabi-gcc \
     CFLAGS_armv5te_unknown_linux_gnueabi="-march=armv5te -marm -mfloat-abi=soft" \
     CC_armv5te_unknown_linux_musleabi=arm-linux-gnueabi-gcc \
-    CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft"
+    CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft" \
+    CC_msp430_none_elf=msp430-elf-gcc
 
 ENV RUST_CONFIGURE_ARGS \
       --musl-root-armv5te=/musl-armv5te \

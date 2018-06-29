@@ -36,6 +36,8 @@ use vec::Vec;
 
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
 const MINIMUM_CAPACITY: usize = 1; // 2 - 1
+#[cfg(target_pointer_width = "16")]
+const MAXIMUM_ZST_CAPACITY: usize = 1 << (16 - 1); // Largest possible power of two
 #[cfg(target_pointer_width = "32")]
 const MAXIMUM_ZST_CAPACITY: usize = 1 << (32 - 1); // Largest possible power of two
 #[cfg(target_pointer_width = "64")]
