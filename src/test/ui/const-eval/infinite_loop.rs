@@ -16,7 +16,7 @@ fn main() {
     let _ = [(); {
         //~^ WARNING Constant evaluating a complex constant, this might take some time
         //~| ERROR could not evaluate repeat length
-        let mut n = 113383; // #20 in A006884
+        let mut n = 113383; // #20 in https://oeis.org/A006884
         while n != 0 { //~ ERROR constant contains unimplemented expression type
             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
         }

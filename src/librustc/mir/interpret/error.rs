@@ -400,8 +400,7 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
             GeneratorResumedAfterReturn => "generator resumed after completion",
             GeneratorResumedAfterPanic => "generator resumed after panicking",
             InfiniteLoop =>
-                "duplicate interpreter state observed while executing this expression, \
-                const evaluation will never terminate",
+                "duplicate interpreter state observed here, const evaluation will never terminate",
         }
     }
 }
