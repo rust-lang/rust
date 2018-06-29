@@ -192,12 +192,28 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     }
 
     pub fn write_cvalue(self, fx: &mut FunctionCx<'a, 'tcx>, from: CValue<'tcx>) {
-        assert_eq!(
-            self.layout().ty, from.layout().ty,
-            "Can't write value of incompatible type to place {:?} {:?}\n\n{:#?}",
-            self.layout().ty.sty, from.layout().ty.sty,
-            fx,
-        );
+        match (&self.layout().ty.sty, &from.layout().ty.sty) {
+            (TypeVariants::TyRef(_, t, dest_mut), TypeVariants::TyRef(_, u, src_mut)) if (
+                if *dest_mut != ::rustc::hir::Mutability::MutImmutable && src_mut != dest_mut {
+                    false
+                } else if t != u {
+                    false
+                } else {
+                    true
+                }
+            ) => {
+                // &mut T -> &T is allowed
+                // &'a T -> &'b T is allowed
+            }
+            _ => {
+                assert_eq!(
+                    self.layout().ty, from.layout().ty,
+                    "Can't write value of incompatible type to place {:?} {:?}\n\n{:#?}",
+                    self.layout().ty.sty, from.layout().ty.sty,
+                    fx,
+                );
+            }
+        }
 
         match self {
             CPlace::Var(var, _) => {
