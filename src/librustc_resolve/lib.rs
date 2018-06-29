@@ -1989,7 +1989,31 @@ impl<'a> Resolver<'a> {
             // When resolving `$crate` from a `macro_rules!` invoked in a `macro`,
             // we don't want to pretend that the `macro_rules!` definition is in the `macro`
             // as described in `SyntaxContext::apply_mark`, so we ignore prepended modern marks.
-            ctxt.marks().into_iter().rev().find(|m| m.transparency() != Transparency::Transparent)
+            // FIXME: This is only a guess and it doesn't work correctly for `macro_rules!`
+            // definitions actually produced by `macro` and `macro` definitions produced by
+            // `macro_rules!`, but at least such configurations are not stable yet.
+            ctxt = ctxt.modern_and_legacy();
+            let mut iter = ctxt.marks().into_iter().rev().peekable();
+            let mut result = None;
+            // Find the last modern mark from the end if it exists.
+            while let Some(&mark) = iter.peek() {
+                if mark.transparency() == Transparency::Opaque {
+                    result = Some(mark);
+                    iter.next();
+                } else {
+                    break;
+                }
+            }
+            // Then find the last legacy mark from the end if it exists.
+            while let Some(&mark) = iter.peek() {
+                if mark.transparency() == Transparency::SemiTransparent {
+                    result = Some(mark);
+                    iter.next();
+                } else {
+                    break;
+                }
+            }
+            result
         } else {
             ctxt = ctxt.modern();
             ctxt.adjust(Mark::root())
