@@ -43,9 +43,6 @@ use vec::Vec;
 /// necessarily) at _exactly_ `MAX_REFCOUNT + 1` references.
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 
-/// A sentinel value that is used for the pointer of `Weak::new()`.
-const WEAK_EMPTY: usize = 1;
-
 /// A thread-safe reference-counting pointer. 'Arc' stands for 'Atomically
 /// Reference Counted'.
 ///
@@ -239,9 +236,9 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 #[stable(feature = "arc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
     // This is a `NonNull` to allow optimizing the size of this type in enums,
-    // but it is actually not truly "non-null". A `Weak::new()` will set this
-    // to a sentinel value, instead of needing to allocate some space in the
-    // heap.
+    // but it is not necessarily a valid pointer.
+    // `Weak::new` sets this to a dangling pointer so that it doesn’t need
+    // to allocate space on the heap.
     ptr: NonNull<ArcInner<T>>,
 }
 
@@ -1035,12 +1032,16 @@ impl<T> Weak<T> {
     /// ```
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     pub fn new() -> Weak<T> {
-        unsafe {
-            Weak {
-                ptr: NonNull::new_unchecked(WEAK_EMPTY as *mut _),
-            }
+        Weak {
+            ptr: NonNull::dangling(),
         }
     }
+}
+
+fn is_dangling<T: ?Sized>(ptr: NonNull<T>) -> bool {
+    let address = ptr.as_ptr() as *mut () as usize;
+    let align = align_of_val(unsafe { ptr.as_ref() });
+    address == align
 }
 
 impl<T: ?Sized> Weak<T> {
@@ -1074,11 +1075,7 @@ impl<T: ?Sized> Weak<T> {
     pub fn upgrade(&self) -> Option<Arc<T>> {
         // We use a CAS loop to increment the strong count instead of a
         // fetch_add because once the count hits 0 it must never be above 0.
-        let inner = if self.ptr.as_ptr() as *const u8 as usize == WEAK_EMPTY {
-            return None;
-        } else {
-            unsafe { self.ptr.as_ref() }
-        };
+        let inner = self.inner()?;
 
         // Relaxed load because any write of 0 that we can observe
         // leaves the field in a permanently zero state (so a
@@ -1109,6 +1106,17 @@ impl<T: ?Sized> Weak<T> {
             }
         }
     }
+
+    /// Return `None` when the pointer is dangling and there is no allocated `ArcInner`,
+    /// i.e. this `Weak` was created by `Weak::new`
+    #[inline]
+    fn inner(&self) -> Option<&ArcInner<T>> {
+        if is_dangling(self.ptr) {
+            None
+        } else {
+            Some(unsafe { self.ptr.as_ref() })
+        }
+    }
 }
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
@@ -1126,10 +1134,10 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// ```
     #[inline]
     fn clone(&self) -> Weak<T> {
-        let inner = if self.ptr.as_ptr() as *const u8 as usize == WEAK_EMPTY {
-            return Weak { ptr: self.ptr };
+        let inner = if let Some(inner) = self.inner() {
+            inner
         } else {
-            unsafe { self.ptr.as_ref() }
+            return Weak { ptr: self.ptr };
         };
         // See comments in Arc::clone() for why this is relaxed.  This can use a
         // fetch_add (ignoring the lock) because the weak count is only locked
@@ -1204,10 +1212,10 @@ impl<T: ?Sized> Drop for Weak<T> {
         // weak count can only be locked if there was precisely one weak ref,
         // meaning that drop could only subsequently run ON that remaining weak
         // ref, which can only happen after the lock is released.
-        let inner = if self.ptr.as_ptr() as *const u8 as usize == WEAK_EMPTY {
-            return;
+        let inner = if let Some(inner) = self.inner() {
+            inner
         } else {
-            unsafe { self.ptr.as_ref() }
+            return
         };
 
         if inner.weak.fetch_sub(1, Release) == 1 {
