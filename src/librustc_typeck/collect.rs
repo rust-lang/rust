@@ -274,10 +274,9 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ItemTrait(_, _, ref generics, ..) => {
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_node_id {
-                        result.predicates.push(ty::TraitRef {
-                            def_id: item_def_id,
-                            substs: Substs::identity_for_item(tcx, item_def_id)
-                        }.to_predicate());
+                        result.predicates.push(
+                            ty::TraitRef::identity(tcx, item_def_id).to_predicate()
+                        );
                     }
                     generics
                 }
@@ -1359,10 +1358,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ItemUnion(_, ref generics) => generics,
 
                 ItemTrait(_, _, ref generics, .., ref items) => {
-                    is_trait = Some((ty::TraitRef {
-                        def_id,
-                        substs: Substs::identity_for_item(tcx, def_id)
-                    }, items));
+                    is_trait = Some((ty::TraitRef::identity(tcx, def_id), items));
                     generics
                 }
                 ItemExistential(ref exist_ty) => {

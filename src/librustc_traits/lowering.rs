@@ -15,7 +15,6 @@ use rustc::hir::{self, ImplPolarity};
 use rustc::traits::{Clause, Clauses, DomainGoal, Goal, PolyDomainGoal, ProgramClause,
                     WhereClause, FromEnv, WellFormed};
 use rustc::ty::query::Providers;
-use rustc::ty::subst::Substs;
 use rustc::ty::{self, Slice, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use std::mem;
@@ -225,10 +224,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
 
     // `Self: Trait<P1..Pn>`
     let trait_pred = ty::TraitPredicate {
-        trait_ref: ty::TraitRef {
-            def_id,
-            substs: Substs::identity_for_item(tcx, def_id),
-        },
+        trait_ref: ty::TraitRef::identity(tcx, def_id),
     };
 
     // `Implemented(Self: Trait<P1..Pn>)`
