@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   sudo \
   gdb \
-  llvm-3.9-tools \
+  llvm-5.0-tools \
   libedit-dev \
   zlib1g-dev \
   xz-utils
@@ -22,6 +22,6 @@ RUN sh /scripts/sccache.sh
 # using llvm-link-shared due to libffi issues -- see #34486
 ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
-      --llvm-root=/usr/lib/llvm-3.9 \
+      --llvm-root=/usr/lib/llvm-5.0 \
       --enable-llvm-link-shared
 ENV RUST_CHECK_TARGET check

@@ -666,11 +666,7 @@ impl<'a, 'tcx> FnTypeExt<'a, 'tcx> for FnType<'tcx, Ty<'tcx>> {
                 layout::Int(..) if !scalar.is_bool() => {
                     let range = scalar.valid_range_exclusive(bx.cx);
                     if range.start != range.end {
-                        // FIXME(nox): This causes very weird type errors about
-                        // SHL operators in constants in stage 2 with LLVM 3.9.
-                        if unsafe { llvm::LLVMRustVersionMajor() >= 4 } {
-                            bx.range_metadata(callsite, range);
-                        }
+                        bx.range_metadata(callsite, range);
                     }
                 }
                 _ => {}

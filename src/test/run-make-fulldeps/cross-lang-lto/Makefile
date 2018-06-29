@@ -1,5 +1,3 @@
-
-# min-llvm-version 4.0
 # ignore-msvc
 
 -include ../tools.mk

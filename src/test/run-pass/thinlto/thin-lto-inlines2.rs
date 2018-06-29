@@ -10,7 +10,6 @@
 
 // compile-flags: -C codegen-units=8 -O -C lto=thin
 // aux-build:thin-lto-inlines-aux.rs
-// min-llvm-version 4.0
 // no-prefer-dynamic
 // ignore-emscripten can't inspect instructions on emscripten
 
