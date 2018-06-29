@@ -485,8 +485,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             {
                 let iter_expr = &method_args[0];
                 let lhs_constructor = last_path_segment(qpath);
-                if method_path.name == "next" && match_trait_method(cx, match_expr, &paths::ITERATOR)
-                    && lhs_constructor.name == "Some" && !is_refutable(cx, &pat_args[0])
+                if method_path.ident.name == "next" && match_trait_method(cx, match_expr, &paths::ITERATOR)
+                    && lhs_constructor.ident.name == "Some" && !is_refutable(cx, &pat_args[0])
                     && !is_iterator_used_after_while_let(cx, iter_expr)
                     && !is_nested(cx, expr, &method_args[0])
                 {
@@ -513,7 +513,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         if let StmtSemi(ref expr, _) = stmt.node {
             if let ExprMethodCall(ref method, _, ref args) = expr.node {
-                if args.len() == 1 && method.name == "collect" && match_trait_method(cx, expr, &paths::ITERATOR) {
+                if args.len() == 1 && method.ident.name == "collect" && match_trait_method(cx, expr, &paths::ITERATOR) {
                     span_lint(
                         cx,
                         UNUSED_COLLECT,
@@ -811,7 +811,7 @@ fn fetch_cloned_fixed_offset_var<'a, 'tcx>(
 ) -> Option<FixedOffsetVar> {
     if_chain! {
         if let ExprMethodCall(ref method, _, ref args) = expr.node;
-        if method.name == "clone";
+        if method.ident.name == "clone";
         if args.len() == 1;
         if let Some(arg) = args.get(0);
         then {
@@ -907,7 +907,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
             let print_limit = |end: &Option<&Expr>, offset: Offset, var_name: &str| if let Some(end) = *end {
                 if_chain! {
                     if let ExprMethodCall(ref method, _, ref len_args) = end.node;
-                    if method.name == "len";
+                    if method.ident.name == "len";
                     if len_args.len() == 1;
                     if let Some(arg) = len_args.get(0);
                     if snippet(cx, arg.span, "??") == var_name;
@@ -985,7 +985,7 @@ fn check_for_loop_range<'a, 'tcx>(
     }) = higher::range(cx, arg)
     {
         // the var must be a single name
-        if let PatKind::Binding(_, canonical_id, ref ident, _) = pat.node {
+        if let PatKind::Binding(_, canonical_id, ident, _) = pat.node {
             let mut visitor = VarVisitor {
                 cx,
                 var: canonical_id,
@@ -1058,13 +1058,13 @@ fn check_for_loop_range<'a, 'tcx>(
                         cx,
                         NEEDLESS_RANGE_LOOP,
                         expr.span,
-                        &format!("the loop variable `{}` is used to index `{}`", ident.node, indexed),
+                        &format!("the loop variable `{}` is used to index `{}`", ident.name, indexed),
                         |db| {
                             multispan_sugg(
                                 db,
                                 "consider using an iterator".to_string(),
                                 vec![
-                                    (pat.span, format!("({}, <item>)", ident.node)),
+                                    (pat.span, format!("({}, <item>)", ident.name)),
                                     (arg.span, format!("{}.{}().enumerate(){}{}", indexed, method, take, skip)),
                                 ],
                             );
@@ -1081,7 +1081,7 @@ fn check_for_loop_range<'a, 'tcx>(
                         cx,
                         NEEDLESS_RANGE_LOOP,
                         expr.span,
-                        &format!("the loop variable `{}` is only used to index `{}`.", ident.node, indexed),
+                        &format!("the loop variable `{}` is only used to index `{}`.", ident.name, indexed),
                         |db| {
                             multispan_sugg(
                                 db,
@@ -1100,10 +1100,10 @@ fn is_len_call(expr: &Expr, var: Name) -> bool {
     if_chain! {
         if let ExprMethodCall(ref method, _, ref len_args) = expr.node;
         if len_args.len() == 1;
-        if method.name == "len";
+        if method.ident.name == "len";
         if let ExprPath(QPath::Resolved(_, ref path)) = len_args[0].node;
         if path.segments.len() == 1;
-        if path.segments[0].name == var;
+        if path.segments[0].ident.name == var;
         then {
             return true;
         }
@@ -1206,7 +1206,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
     if let ExprMethodCall(ref method, _, ref args) = arg.node {
         // just the receiver, no arguments
         if args.len() == 1 {
-            let method_name = &*method.name.as_str();
+            let method_name = &*method.ident.as_str();
             // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
             if method_name == "iter" || method_name == "iter_mut" {
                 if is_ref_iterable_type(cx, &args[0]) {
@@ -1520,9 +1520,9 @@ fn check_for_mutation(cx: &LateContext, body: &Expr, bound_ids: &[Option<NodeId>
 fn pat_is_wild<'tcx>(pat: &'tcx PatKind, body: &'tcx Expr) -> bool {
     match *pat {
         PatKind::Wild => true,
-        PatKind::Binding(_, _, ident, None) if ident.node.as_str().starts_with('_') => {
+        PatKind::Binding(_, _, ident, None) if ident.as_str().starts_with('_') => {
             let mut visitor = UsedVisitor {
-                var: ident.node,
+                var: ident.name,
                 used: false,
             };
             walk_expr(&mut visitor, body);
@@ -1615,7 +1615,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
 
                 if indexed_indirectly || index_used_directly {
                     if self.prefer_mutable {
-                        self.indexed_mut.insert(seqvar.segments[0].name);
+                        self.indexed_mut.insert(seqvar.segments[0].ident.name);
                     }
                     let def = self.cx.tables.qpath_def(seqpath, seqexpr.hir_id);
                     match def {
@@ -1626,19 +1626,19 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                             let parent_def_id = self.cx.tcx.hir.local_def_id(parent_id);
                             let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
                             if indexed_indirectly {
-                                self.indexed_indirectly.insert(seqvar.segments[0].name, Some(extent));
+                                self.indexed_indirectly.insert(seqvar.segments[0].ident.name, Some(extent));
                             }
                             if index_used_directly {
-                                self.indexed_directly.insert(seqvar.segments[0].name, Some(extent));
+                                self.indexed_directly.insert(seqvar.segments[0].ident.name, Some(extent));
                             }
                             return false;  // no need to walk further *on the variable*
                         }
                         Def::Static(..) | Def::Const(..) => {
                             if indexed_indirectly {
-                                self.indexed_indirectly.insert(seqvar.segments[0].name, None);
+                                self.indexed_indirectly.insert(seqvar.segments[0].ident.name, None);
                             }
                             if index_used_directly {
-                                self.indexed_directly.insert(seqvar.segments[0].name, None);
+                                self.indexed_directly.insert(seqvar.segments[0].ident.name, None);
                             }
                             return false;  // no need to walk further *on the variable*
                         }
@@ -1656,8 +1656,8 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
         if_chain! {
             // a range index op
             if let ExprMethodCall(ref meth, _, ref args) = expr.node;
-            if (meth.name == "index" && match_trait_method(self.cx, expr, &paths::INDEX))
-                || (meth.name == "index_mut" && match_trait_method(self.cx, expr, &paths::INDEX_MUT));
+            if (meth.ident.name == "index" && match_trait_method(self.cx, expr, &paths::INDEX))
+                || (meth.ident.name == "index_mut" && match_trait_method(self.cx, expr, &paths::INDEX_MUT));
             if !self.check(&args[1], &args[0], expr);
             then { return }
         }
@@ -1681,7 +1681,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     self.nonindex = true;
                 } else {
                     // not the correct variable, but still a variable
-                    self.referenced.insert(path.segments[0].name);
+                    self.referenced.insert(path.segments[0].ident.name);
                 }
             }
         }
@@ -1933,8 +1933,8 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         // Look for declarations of the variable
         if let DeclLocal(ref local) = decl.node {
             if local.pat.id == self.var_id {
-                if let PatKind::Binding(_, _, ref ident, _) = local.pat.node {
-                    self.name = Some(ident.node);
+                if let PatKind::Binding(_, _, ident, _) = local.pat.node {
+                    self.name = Some(ident.name);
 
                     self.state = if let Some(ref init) = local.init {
                         if is_integer_literal(init, 0) {
@@ -2123,7 +2123,7 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
             return;
         }
         if let PatKind::Binding(_, _, span_name, _) = pat.node {
-            if self.iterator == span_name.node {
+            if self.iterator == span_name.name {
                 self.nesting = RuledOut;
                 return;
             }
@@ -2140,7 +2140,7 @@ fn path_name(e: &Expr) -> Option<Name> {
     if let ExprPath(QPath::Resolved(_, ref path)) = e.node {
         let segments = &path.segments;
         if segments.len() == 1 {
-            return Some(segments[0].name);
+            return Some(segments[0].ident.name);
         }
     };
     None

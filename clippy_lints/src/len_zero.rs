@@ -107,7 +107,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
 
 fn check_trait_items(cx: &LateContext, visited_trait: &Item, trait_items: &[TraitItemRef]) {
     fn is_named_self(cx: &LateContext, item: &TraitItemRef, name: &str) -> bool {
-        item.name == name && if let AssociatedItemKind::Method { has_self } = item.kind {
+        item.ident.name == name && if let AssociatedItemKind::Method { has_self } = item.kind {
             has_self && {
                 let did = cx.tcx.hir.local_def_id(item.id.node_id);
                 cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
@@ -135,7 +135,7 @@ fn check_trait_items(cx: &LateContext, visited_trait: &Item, trait_items: &[Trai
             .iter()
             .flat_map(|&i| cx.tcx.associated_items(i))
             .any(|i| {
-                i.kind == ty::AssociatedKind::Method && i.method_has_self_argument && i.name == "is_empty"
+                i.kind == ty::AssociatedKind::Method && i.method_has_self_argument && i.ident.name == "is_empty"
                     && cx.tcx.fn_sig(i.def_id).inputs().skip_binder().len() == 1
             });
 
@@ -155,7 +155,7 @@ fn check_trait_items(cx: &LateContext, visited_trait: &Item, trait_items: &[Trai
 
 fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
     fn is_named_self(cx: &LateContext, item: &ImplItemRef, name: &str) -> bool {
-        item.name == name && if let AssociatedItemKind::Method { has_self } = item.kind {
+        item.ident.name == name && if let AssociatedItemKind::Method { has_self } = item.kind {
             has_self && {
                 let did = cx.tcx.hir.local_def_id(item.id.node_id);
                 cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
@@ -202,7 +202,7 @@ fn check_cmp(cx: &LateContext, span: Span, method: &Expr, lit: &Expr, op: &str, 
             }
         }
 
-        check_len(cx, span, method_path.name, args, lit, op, compare_to)
+        check_len(cx, span, method_path.ident.name, args, lit, op, compare_to)
     }
 }
 
@@ -235,7 +235,7 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
     /// Get an `AssociatedItem` and return true if it matches `is_empty(self)`.
     fn is_is_empty(cx: &LateContext, item: &ty::AssociatedItem) -> bool {
         if let ty::AssociatedKind::Method = item.kind {
-            if item.name == "is_empty" {
+            if item.ident.name == "is_empty" {
                 let sig = cx.tcx.fn_sig(item.def_id);
                 let ty = sig.skip_binder();
                 ty.inputs().len() == 1

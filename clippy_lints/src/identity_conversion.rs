@@ -56,7 +56,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
             },
 
             ExprMethodCall(ref name, .., ref args) => {
-                if match_trait_method(cx, e, &paths::INTO[..]) && &*name.name.as_str() == "into" {
+                if match_trait_method(cx, e, &paths::INTO[..]) && &*name.ident.as_str() == "into" {
                     let a = cx.tables.expr_ty(e);
                     let b = cx.tables.expr_ty(&args[0]);
                     if same_tys(cx, a, b) {

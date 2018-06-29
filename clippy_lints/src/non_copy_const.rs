@@ -5,7 +5,7 @@
 use rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
 use rustc::hir::*;
 use rustc::hir::def::Def;
-use rustc::ty::{self, TyRef, TypeFlags};
+use rustc::ty::{self, TypeFlags};
 use rustc::ty::adjustment::Adjust;
 use rustc_errors::Applicability;
 use rustc_typeck::hir_ty_to_ty;

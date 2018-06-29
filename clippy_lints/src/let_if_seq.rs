@@ -67,7 +67,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                 if let Some(expr) = it.peek();
                 if let hir::StmtDecl(ref decl, _) = stmt.node;
                 if let hir::DeclLocal(ref decl) = decl.node;
-                if let hir::PatKind::Binding(mode, canonical_id, ref name, None) = decl.pat.node;
+                if let hir::PatKind::Binding(mode, canonical_id, ident, None) = decl.pat.node;
                 if let hir::StmtExpr(ref if_, _) = expr.node;
                 if let hir::ExprIf(ref cond, ref then, ref else_) = if_.node;
                 if !used_in_expr(cx, canonical_id, cond);
@@ -106,7 +106,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                     let sug = format!(
                         "let {mut}{name} = if {cond} {{{then} {value} }} else {{{else} {default} }};",
                         mut=mutability,
-                        name=name.node,
+                        name=ident.name,
                         cond=snippet(cx, cond.span, "_"),
                         then=if then.stmts.len() > 1 { " ..;" } else { "" },
                         else=if default_multi_stmts { " ..;" } else { "" },

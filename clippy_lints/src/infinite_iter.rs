@@ -143,7 +143,7 @@ fn is_infinite(cx: &LateContext, expr: &Expr) -> Finiteness {
     match expr.node {
         ExprMethodCall(ref method, _, ref args) => {
             for &(name, len, heuristic, cap) in HEURISTICS.iter() {
-                if method.name == name && args.len() == len {
+                if method.ident.name == name && args.len() == len {
                     return (match heuristic {
                         Always => Infinite,
                         First => is_infinite(cx, &args[0]),
@@ -152,7 +152,7 @@ fn is_infinite(cx: &LateContext, expr: &Expr) -> Finiteness {
                     }).and(cap);
                 }
             }
-            if method.name == "flat_map" && args.len() == 2 {
+            if method.ident.name == "flat_map" && args.len() == 2 {
                 if let ExprClosure(_, _, body_id, _, _) = args[1].node {
                     let body = cx.tcx.hir.body(body_id);
                     return is_infinite(cx, &body.value);
@@ -207,16 +207,16 @@ fn complete_infinite_iter(cx: &LateContext, expr: &Expr) -> Finiteness {
     match expr.node {
         ExprMethodCall(ref method, _, ref args) => {
             for &(name, len) in COMPLETING_METHODS.iter() {
-                if method.name == name && args.len() == len {
+                if method.ident.name == name && args.len() == len {
                     return is_infinite(cx, &args[0]);
                 }
             }
             for &(name, len) in POSSIBLY_COMPLETING_METHODS.iter() {
-                if method.name == name && args.len() == len {
+                if method.ident.name == name && args.len() == len {
                     return MaybeInfinite.and(is_infinite(cx, &args[0]));
                 }
             }
-            if method.name == "last" && args.len() == 1 {
+            if method.ident.name == "last" && args.len() == 1 {
                 let not_double_ended = get_trait_def_id(cx, &paths::DOUBLE_ENDED_ITERATOR)
                     .map_or(false, |id| !implements_trait(cx, cx.tables.expr_ty(&args[0]), id, &[]));
                 if not_double_ended {

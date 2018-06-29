@@ -44,7 +44,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if trait_ref.path.def.def_id() == eq_trait;
             then {
                 for impl_item in impl_items {
-                    if impl_item.name == "ne" {
+                    if impl_item.ident.name == "ne" {
                         span_lint(cx,
                                   PARTIALEQ_NE_IMPL,
                                   impl_item.span,

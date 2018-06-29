@@ -121,7 +121,7 @@ impl LintPass for EnumVariantNames {
 }
 
 fn var2str(var: &Variant) -> LocalInternedString {
-    var.node.ident.name.as_str()
+    var.node.ident.as_str()
 }
 
 /// Returns the number of chars that match from the start
@@ -245,7 +245,7 @@ impl EarlyLintPass for EnumVariantNames {
     }
 
     fn check_item(&mut self, cx: &EarlyContext, item: &Item) {
-        let item_name = item.ident.name.as_str();
+        let item_name = item.ident.as_str();
         let item_name_chars = item_name.chars().count();
         let item_camel = to_camel_case(&item_name);
         if !in_macro(item.span) {

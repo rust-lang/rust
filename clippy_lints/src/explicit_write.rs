@@ -36,12 +36,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if_chain! {
             // match call to unwrap
             if let ExprMethodCall(ref unwrap_fun, _, ref unwrap_args) = expr.node;
-            if unwrap_fun.name == "unwrap";
+            if unwrap_fun.ident.name == "unwrap";
             // match call to write_fmt
             if unwrap_args.len() > 0;
             if let ExprMethodCall(ref write_fun, _, ref write_args) =
                 unwrap_args[0].node;
-            if write_fun.name == "write_fmt";
+            if write_fun.ident.name == "write_fmt";
             // match calls to std::io::stdout() / std::io::stderr ()
             if write_args.len() > 0;
             if let ExprCall(ref dest_fun, _) = write_args[0].node;

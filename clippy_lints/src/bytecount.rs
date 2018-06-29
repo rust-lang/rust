@@ -39,10 +39,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if_chain! {
             if let ExprMethodCall(ref count, _, ref count_args) = expr.node;
-            if count.name == "count";
+            if count.ident.name == "count";
             if count_args.len() == 1;
             if let ExprMethodCall(ref filter, _, ref filter_args) = count_args[0].node;
-            if filter.name == "filter";
+            if filter.ident.name == "filter";
             if filter_args.len() == 2;
             if let ExprClosure(_, _, body_id, _, _) = filter_args[1].node;
             then {
@@ -68,7 +68,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
                         }
                         let haystack = if let ExprMethodCall(ref path, _, ref args) =
                                 filter_args[0].node {
-                            let p = path.name;
+                            let p = path.ident.name;
                             if (p == "iter" || p == "iter_mut") && args.len() == 1 {
                                 &args[0]
                             } else {
@@ -104,7 +104,7 @@ fn get_path_name(expr: &Expr) -> Option<Name> {
         } else {
             None
         },
-        ExprPath(ref qpath) => single_segment_path(qpath).map(|ps| ps.name),
+        ExprPath(ref qpath) => single_segment_path(qpath).map(|ps| ps.ident.name),
         _ => None,
     }
 }

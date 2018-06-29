@@ -114,7 +114,7 @@ impl ReturnPass {
             if let Some(ref initexpr) = local.init;
             if let ast::PatKind::Ident(_, ident, _) = local.pat.node;
             if let ast::ExprKind::Path(_, ref path) = retexpr.node;
-            if match_path_ast(path, &[&ident.name.as_str()]);
+            if match_path_ast(path, &[&ident.as_str()]);
             if !in_external_macro(cx, initexpr.span);
             then {
                     span_note_and_lint(cx,

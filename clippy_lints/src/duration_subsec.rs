@@ -43,7 +43,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DurationSubsec {
             if match_type(cx, walk_ptrs_ty(cx.tables.expr_ty(&args[0])), &paths::DURATION);
             if let Some((Constant::Int(divisor), _)) = constant(cx, cx.tables, right);
             then {
-                let suggested_fn = match (method_path.name.as_str().as_ref(), divisor) {
+                let suggested_fn = match (method_path.ident.as_str().as_ref(), divisor) {
                     ("subsec_micros", 1_000) => "subsec_millis",
                     ("subsec_nanos", 1_000) => "subsec_micros",
                     ("subsec_nanos", 1_000_000) => "subsec_millis",

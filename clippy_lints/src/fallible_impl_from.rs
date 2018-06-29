@@ -93,7 +93,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
 
     for impl_item in impl_items {
         if_chain! {
-            if impl_item.name == "from";
+            if impl_item.ident.name == "from";
             if let ImplItemKind::Method(_, body_id) =
                 cx.tcx.hir.impl_item(impl_item.id).node;
             then {

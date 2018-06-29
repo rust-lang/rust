@@ -90,7 +90,7 @@ fn check_cond<'a, 'tcx, 'b>(
     if_chain! {
         if let ExprMethodCall(ref path, _, ref params) = check.node;
         if params.len() >= 2;
-        if path.name == "contains_key";
+        if path.ident.name == "contains_key";
         if let ExprAddrOf(_, ref key) = params[1].node;
         then {
             let map = &params[0];
@@ -125,7 +125,7 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for InsertVisitor<'a, 'tcx, 'b> {
         if_chain! {
             if let ExprMethodCall(ref path, _, ref params) = expr.node;
             if params.len() == 3;
-            if path.name == "insert";
+            if path.ident.name == "insert";
             if get_item_name(self.cx, self.map) == get_item_name(self.cx, &params[0]);
             if SpanlessEq::new(self.cx).eq_expr(self.key, &params[1]);
             then {

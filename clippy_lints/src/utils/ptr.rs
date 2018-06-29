@@ -56,12 +56,12 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
         }
         if let ExprMethodCall(ref seg, _, ref args) = expr.node {
             if args.len() == 1 && match_var(&args[0], self.name) {
-                if seg.name == "capacity" {
+                if seg.ident.name == "capacity" {
                     self.abort = true;
                     return;
                 }
                 for &(fn_name, suffix) in self.replace {
-                    if seg.name == fn_name {
+                    if seg.ident.name == fn_name {
                         self.spans
                             .push((expr.span, snippet(self.cx, args[0].span, "_") + suffix));
                         return;

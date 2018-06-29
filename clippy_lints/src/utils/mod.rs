@@ -175,7 +175,7 @@ pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool 
 /// Check if an expression references a variable of the given name.
 pub fn match_var(expr: &Expr, var: Name) -> bool {
     if let ExprPath(QPath::Resolved(None, ref path)) = expr.node {
-        if path.segments.len() == 1 && path.segments[0].name == var {
+        if path.segments.len() == 1 && path.segments[0].ident.name == var {
             return true;
         }
     }
@@ -212,7 +212,7 @@ pub fn match_qpath(path: &QPath, segments: &[&str]) -> bool {
         QPath::TypeRelative(ref ty, ref segment) => match ty.node {
             TyPath(ref inner_path) => {
                 !segments.is_empty() && match_qpath(inner_path, &segments[..(segments.len() - 1)])
-                    && segment.name == segments[segments.len() - 1]
+                    && segment.ident.name == segments[segments.len() - 1]
             },
             _ => false,
         },
@@ -224,7 +224,7 @@ pub fn match_path(path: &Path, segments: &[&str]) -> bool {
         .iter()
         .rev()
         .zip(segments.iter().rev())
-        .all(|(a, b)| a.name == *b)
+        .all(|(a, b)| a.ident.name == *b)
 }
 
 /// Match a `Path` against a slice of segment string literals, e.g.
@@ -331,7 +331,7 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
     for method_name in methods.iter().rev() {
         // method chains are stored last -> first
         if let ExprMethodCall(ref path, _, ref args) = current.node {
-            if path.name == *method_name {
+            if path.ident.name == *method_name {
                 if args.iter().any(|e| in_macro(e.span)) {
                     return None;
                 }
@@ -353,9 +353,9 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
 pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
     let parent_id = cx.tcx.hir.get_parent(expr.id);
     match cx.tcx.hir.find(parent_id) {
-        Some(Node::NodeItem(&Item { ref name, .. })) |
-        Some(Node::NodeTraitItem(&TraitItem { ref name, .. })) |
-        Some(Node::NodeImplItem(&ImplItem { ref name, .. })) => Some(*name),
+        Some(Node::NodeItem(&Item { ref name, .. })) => Some(*name),
+        Some(Node::NodeTraitItem(&TraitItem { ident, .. })) |
+        Some(Node::NodeImplItem(&ImplItem { ident, .. })) => Some(ident.name),
         _ => None,
     }
 }
@@ -363,8 +363,8 @@ pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
 /// Get the name of a `Pat`, if any
 pub fn get_pat_name(pat: &Pat) -> Option<Name> {
     match pat.node {
-        PatKind::Binding(_, _, ref spname, _) => Some(spname.node),
-        PatKind::Path(ref qpath) => single_segment_path(qpath).map(|ps| ps.name),
+        PatKind::Binding(_, _, ref spname, _) => Some(spname.name),
+        PatKind::Path(ref qpath) => single_segment_path(qpath).map(|ps| ps.ident.name),
         PatKind::Box(ref p) | PatKind::Ref(ref p, _) => get_pat_name(&*p),
         _ => None,
     }
@@ -431,7 +431,7 @@ pub fn snippet_block<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'
 pub fn last_line_of_span<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Span {
     let file_map_and_line = cx.sess().codemap().lookup_line(span.lo()).unwrap();
     let line_no = file_map_and_line.line;
-    let line_start = &file_map_and_line.fm.lines.clone().into_inner()[line_no];
+    let line_start = &file_map_and_line.fm.lines[line_no];
     Span::new(*line_start, span.hi(), span.ctxt())
 }
 
@@ -990,7 +990,7 @@ pub fn opt_def_id(def: Def) -> Option<DefId> {
 
 pub fn is_self(slf: &Arg) -> bool {
     if let PatKind::Binding(_, _, name, _) = slf.pat.node {
-        name.node == keywords::SelfValue.name()
+        name.name == keywords::SelfValue.name()
     } else {
         false
     }
@@ -1068,8 +1068,16 @@ pub fn is_allowed(cx: &LateContext, lint: &'static Lint, id: NodeId) -> bool {
 
 pub fn get_arg_name(pat: &Pat) -> Option<ast::Name> {
     match pat.node {
-        PatKind::Binding(_, _, name, None) => Some(name.node),
+        PatKind::Binding(_, _, ident, None) => Some(ident.name),
         PatKind::Ref(ref subpat, _) => get_arg_name(subpat),
+        _ => None,
+    }
+}
+
+pub fn get_arg_ident(pat: &Pat) -> Option<ast::Ident> {
+    match pat.node {
+        PatKind::Binding(_, _, ident, None) => Some(ident),
+        PatKind::Ref(ref subpat, _) => get_arg_ident(subpat),
         _ => None,
     }
 }

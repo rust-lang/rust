@@ -126,7 +126,7 @@ fn check_fn_inner<'a, 'tcx>(
                         GenericArg::Type(_) => None,
                     });
                     for bound in lifetimes {
-                        if bound.name.name() != "'static" && !bound.is_elided() {
+                        if bound.name.ident().name != "'static" && !bound.is_elided() {
                             return;
                         }
                         bounds_lts.push(bound);
@@ -240,7 +240,7 @@ fn allowed_lts_from(named_generics: &[GenericParam]) -> HashSet<RefLt> {
     for par in named_generics.iter() {
         if let GenericParamKind::Lifetime { .. } = par.kind {
             if par.bounds.is_empty() {
-                allowed_lts.insert(RefLt::Named(par.name.name()));
+                allowed_lts.insert(RefLt::Named(par.name.ident().name));
             }
         }
     }
@@ -251,8 +251,8 @@ fn allowed_lts_from(named_generics: &[GenericParam]) -> HashSet<RefLt> {
 
 fn lts_from_bounds<'a, T: Iterator<Item = &'a Lifetime>>(mut vec: Vec<RefLt>, bounds_lts: T) -> Vec<RefLt> {
     for lt in bounds_lts {
-        if lt.name.name() != "'static" {
-            vec.push(RefLt::Named(lt.name.name()));
+        if lt.name.ident().name != "'static" {
+            vec.push(RefLt::Named(lt.name.ident().name));
         }
     }
 
@@ -282,12 +282,12 @@ impl<'v, 't> RefVisitor<'v, 't> {
 
     fn record(&mut self, lifetime: &Option<Lifetime>) {
         if let Some(ref lt) = *lifetime {
-            if lt.name.name() == "'static" {
+            if lt.name.ident().name == "'static" {
                 self.lts.push(RefLt::Static);
             } else if lt.is_elided() {
                 self.lts.push(RefLt::Unnamed);
             } else {
-                self.lts.push(RefLt::Named(lt.name.name()));
+                self.lts.push(RefLt::Named(lt.name.ident().name));
             }
         } else {
             self.lts.push(RefLt::Unnamed);
@@ -421,7 +421,7 @@ struct LifetimeChecker {
 impl<'tcx> Visitor<'tcx> for LifetimeChecker {
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
-        self.map.remove(&lifetime.name.name());
+        self.map.remove(&lifetime.name.ident().name);
     }
 
     fn visit_generic_param(&mut self, param: &'tcx GenericParam) {
@@ -442,7 +442,7 @@ impl<'tcx> Visitor<'tcx> for LifetimeChecker {
 fn report_extra_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, func: &'tcx FnDecl, generics: &'tcx Generics) {
     let hs = generics.params.iter()
         .filter_map(|par| match par.kind {
-            GenericParamKind::Lifetime { .. } => Some((par.name.name(), par.span)),
+            GenericParamKind::Lifetime { .. } => Some((par.name.ident().name, par.span)),
             _ => None,
         })
         .collect();
@@ -463,7 +463,7 @@ struct BodyLifetimeChecker {
 impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker {
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
-        if lifetime.name.name() != keywords::Invalid.name() && lifetime.name.name() != "'static" {
+        if lifetime.name.ident().name != keywords::Invalid.name() && lifetime.name.ident().name != "'static" {
             self.lifetimes_used_in_body = true;
         }
     }

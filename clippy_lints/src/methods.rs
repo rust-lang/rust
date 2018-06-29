@@ -771,18 +771,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     lint_unnecessary_fold(cx, expr, arglists[0]);
                 }
 
-                lint_or_fun_call(cx, expr, *method_span, &method_call.name.as_str(), args);
-                lint_expect_fun_call(cx, expr, *method_span, &method_call.name.as_str(), args);
+                lint_or_fun_call(cx, expr, *method_span, &method_call.ident.as_str(), args);
+                lint_expect_fun_call(cx, expr, *method_span, &method_call.ident.as_str(), args);
 
                 let self_ty = cx.tables.expr_ty_adjusted(&args[0]);
-                if args.len() == 1 && method_call.name == "clone" {
+                if args.len() == 1 && method_call.ident.name == "clone" {
                     lint_clone_on_copy(cx, expr, &args[0], self_ty);
                     lint_clone_on_ref_ptr(cx, expr, &args[0]);
                 }
 
                 match self_ty.sty {
                     ty::TyRef(_, ty, _) if ty.sty == ty::TyStr => for &(method, pos) in &PATTERN_METHODS {
-                        if method_call.name == method && args.len() > pos {
+                        if method_call.ident.name == method && args.len() > pos {
                             lint_single_char_pattern(cx, expr, &args[pos]);
                         }
                     },
@@ -806,7 +806,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if in_external_macro(cx, implitem.span) {
             return;
         }
-        let name = implitem.name;
+        let name = implitem.ident.name;
         let parent = cx.tcx.hir.get_parent(implitem.id);
         let item = cx.tcx.hir.expect_item(parent);
         if_chain! {
@@ -890,7 +890,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, name:
 
         if name == "unwrap_or" {
             if let hir::ExprPath(ref qpath) = fun.node {
-                let path = &*last_path_segment(qpath).name.as_str();
+                let path = &*last_path_segment(qpath).ident.as_str();
 
                 if ["default", "new"].contains(&path) {
                     let arg_ty = cx.tables.expr_ty(arg);
@@ -1438,7 +1438,7 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: Ty) -> Option<sugg::S
     }
 
     if let hir::ExprMethodCall(ref path, _, ref args) = expr.node {
-        if path.name == "iter" && may_slice(cx, cx.tables.expr_ty(&args[0])) {
+        if path.ident.name == "iter" && may_slice(cx, cx.tables.expr_ty(&args[0])) {
             sugg::Sugg::hir_opt(cx, &args[0]).map(|sugg| sugg.addr())
         } else {
             None
@@ -1794,7 +1794,7 @@ fn lint_chars_cmp<'a, 'tcx>(
         if arg_char.len() == 1;
         if let hir::ExprPath(ref qpath) = fun.node;
         if let Some(segment) = single_segment_path(qpath);
-        if segment.name == "Some";
+        if segment.ident.name == "Some";
         then {
             let self_ty = walk_ptrs_ty(cx.tables.expr_ty_adjusted(&args[0][0]));
 
@@ -2093,7 +2093,7 @@ fn is_as_ref_or_mut_trait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Gener
     single_segment_ty(ty).map_or(false, |seg| {
         generics.params.iter().any(|param| match param.kind {
             hir::GenericParamKind::Type { .. } => {
-                param.name.name() == seg.name && param.bounds.iter().any(|bound| {
+                param.name.ident().name == seg.ident.name && param.bounds.iter().any(|bound| {
                     if let hir::GenericBound::Trait(ref ptr, ..) = *bound {
                         let path = &ptr.trait_ref.path;
                         match_path(path, name) && path.segments.last().map_or(false, |s| {
@@ -2132,8 +2132,8 @@ fn is_ty(ty: &hir::Ty, self_ty: &hir::Ty) -> bool {
         ) => ty_path
             .segments
             .iter()
-            .map(|seg| seg.name)
-            .eq(self_ty_path.segments.iter().map(|seg| seg.name)),
+            .map(|seg| seg.ident.name)
+            .eq(self_ty_path.segments.iter().map(|seg| seg.ident.name)),
         _ => false,
     }
 }

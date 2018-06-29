@@ -617,6 +617,7 @@ All notable changes to this project will be documented in this file.
 [`block_in_if_condition_expr`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#block_in_if_condition_expr
 [`block_in_if_condition_stmt`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#block_in_if_condition_stmt
 [`bool_comparison`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#bool_comparison
+[`borrow_interior_mutable_const`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#borrow_interior_mutable_const
 [`borrowed_box`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#borrowed_box
 [`box_vec`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#box_vec
 [`boxed_local`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#boxed_local
@@ -641,6 +642,7 @@ All notable changes to this project will be documented in this file.
 [`crosspointer_transmute`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#crosspointer_transmute
 [`cyclomatic_complexity`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cyclomatic_complexity
 [`decimal_literal_representation`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#decimal_literal_representation
+[`declare_interior_mutable_const`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#declare_interior_mutable_const
 [`default_trait_access`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#default_trait_access
 [`deprecated_semver`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#deprecated_semver
 [`deref_addrof`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#deref_addrof
