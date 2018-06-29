@@ -164,7 +164,9 @@ impl<'tcx> TypeFoldable<'tcx> for Kind<'tcx> {
     }
 
     fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
-        match self.unpack() {
+        let unpacked = self.unpack();
+        mem::discriminant(&unpacked).hash(hasher);
+        match unpacked {
             UnpackedKind::Lifetime(lt) => lt.hash_with(hasher),
             UnpackedKind::Type(ty) => ty.hash_with(hasher),
         }

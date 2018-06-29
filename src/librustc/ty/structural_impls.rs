@@ -20,6 +20,7 @@ use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use mir::interpret;
 
+use std::mem;
 use std::rc::Rc;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -860,6 +861,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::instance::Instance<'tcx> {
     fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
         use ty::InstanceDef::*;
         self.substs.hash_with(hasher);
+        mem::discriminant(&self.def).hash(hasher);
         match self.def {
             Item(did) => did.hash_with(hasher),
             Intrinsic(did) => did.hash_with(hasher),
@@ -982,6 +984,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
     fn super_hash_with<H: TypeHasher<'tcx>>(&self, hasher: &mut H) -> u64 {
         hasher.hash_hashable(self.region_depth);
         hasher.hash_hashable(self.flags);
+        mem::discriminant(&self.sty).hash(hasher);
         match self.sty {
             ty::TyRawPtr(ref tm) => { tm.hash_with(hasher); }
             ty::TyArray(typ, sz) => {

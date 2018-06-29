@@ -520,6 +520,7 @@ macro_rules! EnumTypeFoldableImpl {
     };
 
     (@HashVariants($this:expr, $hasher:expr) input() output($($output:tt)*)) => {
+        ::std::mem::discriminant($this).hash($hasher);
         match $this {
             $($output)*
         }
