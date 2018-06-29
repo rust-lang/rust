@@ -19,7 +19,7 @@ use core::iter::{Peekable, FromIterator, FusedIterator};
 use core::ops::{BitOr, BitAnd, BitXor, Sub, RangeBounds};
 
 use borrow::Borrow;
-use btree_map::{BTreeMap, Keys};
+use collections::btree_map::{self, BTreeMap, Keys};
 use super::Recover;
 
 // FIXME(conventions): implement bounded iterators
@@ -104,7 +104,7 @@ impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct IntoIter<T> {
-    iter: ::btree_map::IntoIter<T, ()>,
+    iter: btree_map::IntoIter<T, ()>,
 }
 
 /// An iterator over a sub-range of items in a `BTreeSet`.
@@ -117,7 +117,7 @@ pub struct IntoIter<T> {
 #[derive(Debug)]
 #[stable(feature = "btree_range", since = "1.17.0")]
 pub struct Range<'a, T: 'a> {
-    iter: ::btree_map::Range<'a, T, ()>,
+    iter: btree_map::Range<'a, T, ()>,
 }
 
 /// A lazy iterator producing elements in the difference of `BTreeSet`s.

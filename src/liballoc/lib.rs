@@ -13,10 +13,10 @@
 //! This library provides smart pointers and collections for managing
 //! heap-allocated values.
 //!
-//! This library, like libcore, is not intended for general usage, but rather as
-//! a building block of other libraries. The types and interfaces in this
-//! library are re-exported through the [standard library](../std/index.html),
-//! and should not be used through this library.
+//! This library, like libcore, normally doesn’t need to be used directly
+//! since its contents are re-exported in the [`std` crate](../std/index.html).
+//! Crates that use the `#![no_std]` attribute however will typically
+//! not depend on `std`, so they’d use this crate instead.
 //!
 //! ## Boxed values
 //!
@@ -40,7 +40,7 @@
 //!
 //! ## Atomically reference counted pointers
 //!
-//! The [`Arc`](arc/index.html) type is the threadsafe equivalent of the `Rc`
+//! The [`Arc`](sync/index.html) type is the threadsafe equivalent of the `Rc`
 //! type. It provides all the same functionality of `Rc`, except it requires
 //! that the contained type `T` is shareable. Additionally, `Arc<T>` is itself
 //! sendable while `Rc<T>` is not.
@@ -141,13 +141,6 @@ extern crate rand;
 #[macro_use]
 mod macros;
 
-#[rustc_deprecated(since = "1.27.0", reason = "use the heap module in core, alloc, or std instead")]
-#[unstable(feature = "allocator_api", issue = "32838")]
-/// Use the `alloc` module instead.
-pub mod allocator {
-    pub use alloc::*;
-}
-
 // Heaps provided for low-level allocation strategies
 
 pub mod alloc;
@@ -169,60 +162,20 @@ mod boxed {
 }
 #[cfg(test)]
 mod boxed_test;
+pub mod collections;
 #[cfg(target_has_atomic = "ptr")]
-pub mod arc;
+pub mod sync;
 pub mod rc;
 pub mod raw_vec;
 
-// collections modules
-pub mod binary_heap;
-mod btree;
 pub mod borrow;
 pub mod fmt;
-pub mod linked_list;
 pub mod slice;
 pub mod str;
 pub mod string;
 pub mod vec;
-pub mod vec_deque;
-
-#[stable(feature = "rust1", since = "1.0.0")]
-pub mod btree_map {
-    //! A map based on a B-Tree.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub use btree::map::*;
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-pub mod btree_set {
-    //! A set based on a B-Tree.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub use btree::set::*;
-}
 
 #[cfg(not(test))]
 mod std {
     pub use core::ops;      // RangeFull
 }
-
-/// An intermediate trait for specialization of `Extend`.
-#[doc(hidden)]
-trait SpecExtend<I: IntoIterator> {
-    /// Extends `self` with the contents of the given iterator.
-    fn spec_extend(&mut self, iter: I);
-}
-
-#[doc(no_inline)]
-pub use binary_heap::BinaryHeap;
-#[doc(no_inline)]
-pub use btree_map::BTreeMap;
-#[doc(no_inline)]
-pub use btree_set::BTreeSet;
-#[doc(no_inline)]
-pub use linked_list::LinkedList;
-#[doc(no_inline)]
-pub use vec_deque::VecDeque;
-#[doc(no_inline)]
-pub use string::String;
-#[doc(no_inline)]
-pub use vec::Vec;

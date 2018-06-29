@@ -80,7 +80,7 @@ use core::ptr;
 use core::ptr::NonNull;
 use core::slice;
 
-use alloc::CollectionAllocErr;
+use collections::CollectionAllocErr;
 use borrow::ToOwned;
 use borrow::Cow;
 use boxed::Box;

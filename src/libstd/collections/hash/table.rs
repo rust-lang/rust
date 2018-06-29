@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use alloc::{Global, Alloc, Layout, LayoutErr, CollectionAllocErr, handle_alloc_error};
+use alloc::{Global, Alloc, Layout, LayoutErr, handle_alloc_error};
+use collections::CollectionAllocErr;
 use hash::{BuildHasher, Hash, Hasher};
 use marker;
 use mem::{size_of, needs_drop};

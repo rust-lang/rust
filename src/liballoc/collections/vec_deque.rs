@@ -30,7 +30,7 @@ use core::slice;
 use core::hash::{Hash, Hasher};
 use core::cmp;
 
-use alloc::CollectionAllocErr;
+use collections::CollectionAllocErr;
 use raw_vec::RawVec;
 use vec::Vec;
 
@@ -2891,7 +2891,7 @@ mod tests {
 
     #[test]
     fn test_from_vec() {
-        use super::super::vec::Vec;
+        use vec::Vec;
         for cap in 0..35 {
             for len in 0..cap + 1 {
                 let mut vec = Vec::with_capacity(cap);
@@ -2907,7 +2907,7 @@ mod tests {
 
     #[test]
     fn test_vec_from_vecdeque() {
-        use super::super::vec::Vec;
+        use vec::Vec;
 
         fn create_vec_and_test_convert(cap: usize, offset: usize, len: usize) {
             let mut vd = VecDeque::with_capacity(cap);

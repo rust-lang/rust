@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![unstable(feature = "raw_vec_internals", reason = "implemention detail", issue = "0")]
+#![doc(hidden)]
+
 use core::cmp;
 use core::mem;
 use core::ops::Drop;
@@ -15,8 +18,8 @@ use core::ptr::{self, NonNull, Unique};
 use core::slice;
 
 use alloc::{Alloc, Layout, Global, handle_alloc_error};
-use alloc::CollectionAllocErr;
-use alloc::CollectionAllocErr::*;
+use collections::CollectionAllocErr;
+use collections::CollectionAllocErr::*;
 use boxed::Box;
 
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating
@@ -264,7 +267,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(alloc, raw_vec_internals)]
     /// # extern crate alloc;
     /// # use std::ptr;
     /// # use alloc::raw_vec::RawVec;
@@ -468,7 +471,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(alloc, raw_vec_internals)]
     /// # extern crate alloc;
     /// # use std::ptr;
     /// # use alloc::raw_vec::RawVec;
