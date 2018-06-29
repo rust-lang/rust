@@ -273,5 +273,6 @@ fn codegen_backend_stamp(builder: &Builder,
 /// Cargo's output path for rustdoc in a given stage, compiled by a particular
 /// compiler for the specified target.
 pub fn rustdoc_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    builder.cargo_out(compiler, Mode::ToolRustc, target).join(".rustdoc-check.stamp")
+    builder.cargo_out(compiler, Mode::ToolRustc, target)
+        .join(".rustdoc-check.stamp")
 }

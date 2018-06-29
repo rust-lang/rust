@@ -799,14 +799,22 @@ impl Step for Rustdoc {
         builder.ensure(tool::Rustdoc { host: compiler.host });
 
         // Symlink compiler docs to the output directory of rustdoc documentation.
-        let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target).join("doc");
+        let out_dir = builder.stage_out(compiler, Mode::ToolRustc)
+            .join(target)
+            .join("doc");
         t!(fs::create_dir_all(&out_dir));
         builder.clear_if_dirty(&out, &rustdoc);
         t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
         // Build cargo command.
         let mut cargo = prepare_tool_cargo(
-            builder, compiler, Mode::ToolRustc, target, "doc", "src/tools/rustdoc");
+            builder,
+            compiler,
+            Mode::ToolRustc,
+            target,
+            "doc",
+            "src/tools/rustdoc",
+        );
 
         cargo.env("RUSTDOCFLAGS", "--document-private-items");
         builder.run(&mut cargo);

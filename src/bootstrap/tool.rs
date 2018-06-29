@@ -104,9 +104,10 @@ impl Step for ToolBuild {
         let is_ext_tool = self.is_ext_tool;
 
         match self.mode {
-            Mode::ToolStd => builder.ensure(compile::Std { compiler, target }),
-            Mode::ToolTest => builder.ensure(compile::Test { compiler, target }),
-            Mode::ToolRustc => builder.ensure(compile::Rustc { compiler, target }),
+            Mode::ToolRustc => {
+                builder.ensure(compile::Rustc { compiler, target })
+            }
+            Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
             _ => panic!("unexpected Mode for tool build")
         }
 
@@ -341,17 +342,17 @@ macro_rules! tool {
 }
 
 tool!(
-    Rustbook, "src/tools/rustbook", "rustbook", Mode::ToolRustc;
+    Rustbook, "src/tools/rustbook", "rustbook", Mode::ToolBootstrap;
     ErrorIndex, "src/tools/error_index_generator", "error_index_generator", Mode::ToolRustc;
-    UnstableBookGen, "src/tools/unstable-book-gen", "unstable-book-gen", Mode::ToolStd;
-    Tidy, "src/tools/tidy", "tidy", Mode::ToolStd;
-    Linkchecker, "src/tools/linkchecker", "linkchecker", Mode::ToolStd;
-    CargoTest, "src/tools/cargotest", "cargotest", Mode::ToolStd;
-    Compiletest, "src/tools/compiletest", "compiletest", Mode::ToolTest, llvm_tools = true;
-    BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::ToolStd;
-    RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::ToolStd;
-    RustInstaller, "src/tools/rust-installer", "fabricate", Mode::ToolStd;
-    RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes", Mode::ToolStd;
+    UnstableBookGen, "src/tools/unstable-book-gen", "unstable-book-gen", Mode::ToolBootstrap;
+    Tidy, "src/tools/tidy", "tidy", Mode::ToolBootstrap;
+    Linkchecker, "src/tools/linkchecker", "linkchecker", Mode::ToolBootstrap;
+    CargoTest, "src/tools/cargotest", "cargotest", Mode::ToolBootstrap;
+    Compiletest, "src/tools/compiletest", "compiletest", Mode::ToolBootstrap, llvm_tools = true;
+    BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::ToolBootstrap;
+    RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::ToolBootstrap;
+    RustInstaller, "src/tools/rust-installer", "fabricate", Mode::ToolBootstrap;
+    RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes", Mode::ToolBootstrap;
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -379,7 +380,7 @@ impl Step for RemoteTestServer {
             compiler: self.compiler,
             target: self.target,
             tool: "remote-test-server",
-            mode: Mode::ToolStd,
+            mode: Mode::ToolBootstrap,
             path: "src/tools/remote-test-server",
             is_ext_tool: false,
             extra_features: Vec::new(),
@@ -604,7 +605,11 @@ impl<'a> Builder<'a> {
     fn prepare_tool_cmd(&self, compiler: Compiler, tool: Tool, cmd: &mut Command) {
         let host = &compiler.host;
         let mut lib_paths: Vec<PathBuf> = vec![
-            PathBuf::from(&self.sysroot_libdir(compiler, compiler.host)),
+            if compiler.stage == 0 {
+                self.build.rustc_snapshot_libdir()
+            } else {
+                PathBuf::from(&self.sysroot_libdir(compiler, compiler.host))
+            },
             self.cargo_out(compiler, tool.get_mode(), *host).join("deps"),
         ];
 
