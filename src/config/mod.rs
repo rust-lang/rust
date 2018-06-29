@@ -89,6 +89,8 @@ create_config! {
     combine_control_expr: bool, true, false, "Combine control expressions with function calls";
     struct_field_align_threshold: usize, 0, false, "Align struct fields if their diffs fits within \
                                              threshold";
+    enum_discrim_align_threshold: usize, 0, false,
+        "Align enum variants discrims, if their diffs fit within threshold";
     match_arm_blocks: bool, true, false, "Wrap the body of arms in blocks when it does not fit on \
         the same line with the pattern of arms";
     force_multiline_blocks: bool, false, false,

@@ -885,6 +885,52 @@ impl Lorem {
 See also [`brace_style`](#brace_style), [`control_brace_style`](#control_brace_style).
 
 
+## `enum_discrim_align_threshold`
+
+The maximum diff of width between enum variants to have discriminants aligned with each other.
+Variants without discriminants would be ignored for the purpose of alignment.
+
+- **Default value** : 0
+- **Possible values**: any positive integer
+- **Stable**: No
+
+#### `0` (default):
+
+```rust
+enum Foo {
+    A = 0,
+    Bb = 1,
+    RandomLongVariantWithoutDiscriminant,
+    Ccc = 71,
+}
+
+enum Bar {
+    A = 0,
+    Bb = 1,
+    ThisOneisWithDiscriminantAndPreventsAlignment = 10,
+    Ccc = 71,
+}
+```
+
+#### `20`:
+
+```rust
+enum Foo {
+    A   = 0,
+    Bb  = 1,
+    RandomLongVariantWithoutDiscriminant,
+    Ccc = 2,
+}
+
+enum Bar {
+    A = 0,
+    Bb = 1,
+    ThisOneisWithDiscriminantAndPreventsAlignment = 10,
+    Ccc = 71,
+}
+```
+
+
 ## `fn_single_line`
 
 Put single-expression functions on a single line

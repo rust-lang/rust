@@ -500,6 +500,24 @@ impl<'a> FmtVisitor<'a> {
         let original_offset = self.block_indent;
         self.block_indent = self.block_indent.block_indent(self.config);
 
+        // If enum variants have discriminants, try to vertically align those,
+        // provided it does not result in too much padding
+        let pad_discrim_ident_to;
+        let diff_threshold = self.config.enum_discrim_align_threshold();
+        let discr_ident_lens: Vec<_> = enum_def
+            .variants
+            .iter()
+            .filter(|var| var.node.disr_expr.is_some())
+            .map(|var| rewrite_ident(&self.get_context(), var.node.ident).len())
+            .collect();
+        let shortest_w_discr = *discr_ident_lens.iter().min().unwrap_or(&0);
+        let longest_w_discr = *discr_ident_lens.iter().max().unwrap_or(&0);
+        if longest_w_discr > shortest_w_discr + diff_threshold {
+            pad_discrim_ident_to = 0;
+        } else {
+            pad_discrim_ident_to = longest_w_discr;
+        }
+
         let itemize_list_with = |one_line_width: usize| {
             itemize_list(
                 self.snippet_provider,
@@ -514,7 +532,7 @@ impl<'a> FmtVisitor<'a> {
                     }
                 },
                 |f| f.span.hi(),
-                |f| self.format_variant(f, one_line_width),
+                |f| self.format_variant(f, one_line_width, pad_discrim_ident_to),
                 body_lo,
                 body_hi,
                 false,
@@ -543,7 +561,12 @@ impl<'a> FmtVisitor<'a> {
     }
 
     // Variant of an enum.
-    fn format_variant(&self, field: &ast::Variant, one_line_width: usize) -> Option<String> {
+    fn format_variant(
+        &self,
+        field: &ast::Variant,
+        one_line_width: usize,
+        pad_discrim_ident_to: usize,
+    ) -> Option<String> {
         if contains_skip(&field.node.attrs) {
             let lo = field.node.attrs[0].span.lo();
             let span = mk_sp(lo, field.span.hi());
@@ -570,7 +593,11 @@ impl<'a> FmtVisitor<'a> {
             )?,
             ast::VariantData::Unit(..) => {
                 if let Some(ref expr) = field.node.disr_expr {
-                    let lhs = format!("{} =", rewrite_ident(&context, field.node.ident));
+                    let lhs = format!(
+                        "{:1$} =",
+                        rewrite_ident(&context, field.node.ident),
+                        pad_discrim_ident_to
+                    );
                     rewrite_assign_rhs(&context, lhs, &*expr.value, shape)?
                 } else {
                     rewrite_ident(&context, field.node.ident).to_owned()
