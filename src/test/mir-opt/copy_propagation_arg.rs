@@ -117,13 +117,11 @@ fn main() {
 // START rustc.arg_src.CopyPropagation.before.mir
 // bb0: {
 //      ...
-//      _3 = _1;
-//      _2 = move _3;
+//      _2 = _1;
 //      ...
 //      _1 = const 123i32;
 //      ...
-//      _4 = _2;
-//      _0 = move _4;
+//      _0 = _2;
 //      ...
 //      return;
 //  }
@@ -131,11 +129,11 @@ fn main() {
 // START rustc.arg_src.CopyPropagation.after.mir
 // bb0: {
 //     ...
-//     _3 = _1;
+//     _2 = _1;
 //     ...
 //     _1 = const 123i32;
 //     ...
-//     _0 = move _3;
+//     _0 = _2;
 //     ...
 //     return;
 // }

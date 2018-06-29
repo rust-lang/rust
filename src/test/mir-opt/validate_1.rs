@@ -67,10 +67,7 @@ fn main() {
 //         Validate(Suspend(ReScope(Remainder(BlockRemainder { block: ItemLocalId(25), first_statement_index: 0 }))), [(*_2): i32]);
 //         _3 = &ReErased (*_2);
 //         Validate(Acquire, [(*_3): i32/ReScope(Remainder(BlockRemainder { block: ItemLocalId(25), first_statement_index: 0 })) (imm)]);
-//         StorageLive(_4);
-//         _4 = (*_3);
-//         _0 = move _4;
-//         StorageDead(_4);
+//         _0 = (*_3);
 //         EndRegion(ReScope(Remainder(BlockRemainder { block: ItemLocalId(25), first_statement_index: 0 })));
 //         StorageDead(_3);
 //         return;

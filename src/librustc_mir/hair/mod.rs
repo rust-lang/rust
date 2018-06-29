@@ -315,6 +315,15 @@ pub enum LogicalOp {
     Or,
 }
 
+impl<'tcx> ExprRef<'tcx> {
+    pub fn span(&self) -> Span {
+        match self {
+            ExprRef::Hair(expr) => expr.span,
+            ExprRef::Mirror(expr) => expr.span,
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // The Mirror trait
 

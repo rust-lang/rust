@@ -176,11 +176,11 @@ fn main() {
 //     ...
 //     _1 = const compiler_builtins::int::addsub::rust_i128_sub(_1, const 2i128) -> bb6;
 //     ...
-//     _11 = const 7i32 as u32 (Misc);
-//     _1 = const compiler_builtins::int::shift::rust_i128_shr(_1, move _11) -> bb9;
+//     _10 = const 7i32 as u32 (Misc);
+//     _1 = const compiler_builtins::int::shift::rust_i128_shr(_1, move _10) -> bb9;
 //     ...
-//     _12 = const 6i32 as u32 (Misc);
-//     _1 = const compiler_builtins::int::shift::rust_i128_shl(_1, move _12) -> bb10;
+//     _11 = const 6i32 as u32 (Misc);
+//     _1 = const compiler_builtins::int::shift::rust_i128_shl(_1, move _11) -> bb10;
 // END rustc.test_signed.Lower128Bit.after.mir
 
 // START rustc.test_unsigned.Lower128Bit.after.mir
@@ -194,9 +194,9 @@ fn main() {
 //     ...
 //     _1 = const compiler_builtins::int::addsub::rust_u128_sub(_1, const 2u128) -> bb4;
 //     ...
-//     _5 = const 7i32 as u32 (Misc);
-//     _1 = const compiler_builtins::int::shift::rust_u128_shr(_1, move _5) -> bb7;
+//     _4 = const 7i32 as u32 (Misc);
+//     _1 = const compiler_builtins::int::shift::rust_u128_shr(_1, move _4) -> bb7;
 //     ...
-//     _6 = const 6i32 as u32 (Misc);
-//     _1 = const compiler_builtins::int::shift::rust_u128_shl(_1, move _6) -> bb8;
+//     _5 = const 6i32 as u32 (Misc);
+//     _1 = const compiler_builtins::int::shift::rust_u128_shl(_1, move _5) -> bb8;
 // END rustc.test_unsigned.Lower128Bit.after.mir

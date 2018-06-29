@@ -705,6 +705,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             if let Some(pattern) = pattern {
                 let pattern = self.hir.pattern_from_hir(pattern);
+                let span = pattern.span;
 
                 match *pattern.kind {
                     // Don't introduce extra copies for simple bindings
@@ -716,15 +717,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             } else {
                                 let binding_mode = ty::BindingMode::BindByValue(mutability.into());
                                 Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                                    binding_mode, opt_ty_info })))
+                                    binding_mode,
+                                    opt_ty_info,
+                                    opt_match_place: Some((Some(place.clone()), span)),
+                                })))
                             };
                         self.var_indices.insert(var, LocalsForNode::One(local));
                     }
                     _ => {
                         scope = self.declare_bindings(scope, ast_body.span,
                                                       LintLevel::Inherited, &pattern,
-                                                      matches::ArmHasGuard(false));
-                        unpack!(block = self.place_into_pattern(block, pattern, &place));
+                                                      matches::ArmHasGuard(false),
+                                                      Some((Some(&place), span)));
+                        unpack!(block = self.place_into_pattern(block, pattern, &place, false));
                     }
                 }
             }
