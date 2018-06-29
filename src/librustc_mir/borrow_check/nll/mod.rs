@@ -280,7 +280,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
                 // that are live on exit from the basic block.
                 PassWhere::AfterTerminator(bb) => {
                     let s = live_variable_set(&liveness.regular.outs[bb], &liveness.drop.outs[bb]);
-                    writeln!(out, "    | Live variables on entry to {:?}: {}", bb, s)?;
+                    writeln!(out, "    | Live variables on exit from {:?}: {}", bb, s)?;
                 }
 
                 PassWhere::BeforeBlock(_) | PassWhere::AfterLocation(_) | PassWhere::AfterCFG => {}
