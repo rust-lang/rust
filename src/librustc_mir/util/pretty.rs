@@ -44,6 +44,9 @@ pub enum PassWhere {
 
     /// We just dumped the given statement or terminator.
     AfterLocation(Location),
+
+    /// We just dumped the terminator for a block but not the closing `}`.
+    AfterTerminator(BasicBlock),
 }
 
 /// If the session is properly configured, dumps a human-readable
@@ -351,6 +354,7 @@ where
     })?;
 
     extra_data(PassWhere::AfterLocation(current_location), w)?;
+    extra_data(PassWhere::AfterTerminator(block), w)?;
 
     writeln!(w, "{}}}", INDENT)
 }

@@ -56,9 +56,6 @@ pub struct LivenessResult {
     /// Liveness mode in use when these results were computed.
     pub mode: LivenessMode,
 
-    /// Live variables on entry to each basic block.
-    pub ins: IndexVec<BasicBlock, LocalSet>,
-
     /// Live variables on exit to each basic block. This is equal to
     /// the union of the `ins` for each successor.
     pub outs: IndexVec<BasicBlock, LocalSet>,
@@ -125,11 +122,10 @@ pub fn liveness_of_locals<'tcx>(mir: &Mir<'tcx>, mode: LivenessMode) -> Liveness
         .map(|b| block(mode, b, locals))
         .collect();
 
-    let mut ins: IndexVec<_, _> = mir.basic_blocks()
+    let mut outs: IndexVec<_, _> = mir.basic_blocks()
         .indices()
         .map(|_| LocalSet::new_empty(locals))
         .collect();
-    let mut outs = ins.clone();
 
     let mut bits = LocalSet::new_empty(locals);
 
@@ -140,28 +136,21 @@ pub fn liveness_of_locals<'tcx>(mir: &Mir<'tcx>, mode: LivenessMode) -> Liveness
     let predecessors = mir.predecessors();
 
     while let Some(bb) = dirty_queue.pop() {
-        // outs[b] = ∪ {ins of successors}
-        bits.clear();
-        for &successor in mir[bb].terminator().successors() {
-            bits.union(&ins[successor]);
-        }
-        outs[bb].overwrite(&bits);
-
         // bits = use ∪ (bits - def)
+        bits.overwrite(&outs[bb]);
         def_use[bb].apply(&mut bits);
 
-        // update bits on entry and, if they have changed, enqueue all
-        // of our predecessors, since their inputs have now changed
-        if ins[bb] != bits {
-            ins[bb].overwrite(&bits);
-
-            for &pred_bb in &predecessors[bb] {
+        // add `bits` to the out set for each predecessor; if those
+        // bits were not already present, then enqueue the predecessor
+        // as dirty.
+        for &pred_bb in &predecessors[bb] {
+            if outs[pred_bb].union(&bits) {
                 dirty_queue.insert(pred_bb);
             }
         }
     }
 
-    LivenessResult { mode, ins, outs }
+    LivenessResult { mode, outs }
 }
 
 impl LivenessResult {
@@ -202,8 +191,6 @@ impl LivenessResult {
             statement_defs_uses.apply(&mut bits);
             callback(statement_location, &bits);
         }
-
-        assert_eq!(bits, self.ins[block]);
     }
 
     fn defs_uses<'tcx, V>(&self, mir: &Mir<'tcx>, location: Location, thing: &V) -> DefsUses
@@ -445,7 +432,6 @@ pub fn write_mir_fn<'a, 'tcx>(
                 .collect();
             writeln!(w, "{} {{{}}}", prefix, live.join(", "))
         };
-        print(w, "   ", &result.ins)?;
         write_basic_block(tcx, block, mir, &mut |_, _| Ok(()), w)?;
         print(w, "   ", &result.outs)?;
         if block.index() + 1 != mir.basic_blocks().len() {
