@@ -37,6 +37,7 @@ use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::indexed_set::IdxSetBuf;
+use rustc_data_structures::work_queue::WorkQueue;
 use util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
 use rustc::ty::item_path;
 use rustc::mir::visit::MirVisitable;
@@ -130,26 +131,32 @@ pub fn liveness_of_locals<'tcx>(mir: &Mir<'tcx>, mode: LivenessMode) -> Liveness
         .collect();
     let mut outs = ins.clone();
 
-    let mut changed = true;
     let mut bits = LocalSet::new_empty(locals);
-    while changed {
-        changed = false;
 
-        for b in mir.basic_blocks().indices().rev() {
-            // outs[b] = ∪ {ins of successors}
-            bits.clear();
-            for &successor in mir.basic_blocks()[b].terminator().successors() {
-                bits.union(&ins[successor]);
-            }
-            outs[b].overwrite(&bits);
+    // queue of things that need to be re-processed, and a set containing
+    // the things currently in the queue
+    let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_all(mir.basic_blocks().len());
 
-            // bits = use ∪ (bits - def)
-            def_use[b].apply(&mut bits);
+    let predecessors = mir.predecessors();
 
-            // update bits on entry and flag if they have changed
-            if ins[b] != bits {
-                ins[b].overwrite(&bits);
-                changed = true;
+    while let Some(bb) = dirty_queue.pop() {
+        // outs[b] = ∪ {ins of successors}
+        bits.clear();
+        for &successor in mir[bb].terminator().successors() {
+            bits.union(&ins[successor]);
+        }
+        outs[bb].overwrite(&bits);
+
+        // bits = use ∪ (bits - def)
+        def_use[bb].apply(&mut bits);
+
+        // update bits on entry and, if they have changed, enqueue all
+        // of our predecessors, since their inputs have now changed
+        if ins[bb] != bits {
+            ins[bb].overwrite(&bits);
+
+            for &pred_bb in &predecessors[bb] {
+                dirty_queue.insert(pred_bb);
             }
         }
     }
