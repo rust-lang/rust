@@ -3,6 +3,8 @@ error: expected item, found `;`
    |
 LL | }; //~ ERROR expected item, found `;`
    |  ^ help: consider removing this semicolon
+   |
+   = help: braced struct declarations are not followed by a semicolon
 
 error: aborting due to previous error
 
