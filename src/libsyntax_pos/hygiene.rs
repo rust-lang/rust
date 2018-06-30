@@ -27,16 +27,16 @@ use std::fmt;
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
 #[derive(Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
-pub struct SyntaxContext(pub(super) u32);
+pub struct SyntaxContext(u32);
 
 #[derive(Copy, Clone, Debug)]
-pub struct SyntaxContextData {
-    pub outer_mark: Mark,
-    pub prev_ctxt: SyntaxContext,
+struct SyntaxContextData {
+    outer_mark: Mark,
+    prev_ctxt: SyntaxContext,
     // This context, but with all transparent and semi-transparent marks filtered away.
-    pub opaque: SyntaxContext,
+    opaque: SyntaxContext,
     // This context, but with all transparent marks filtered away.
-    pub opaque_and_semitransparent: SyntaxContext,
+    opaque_and_semitransparent: SyntaxContext,
 }
 
 /// A mark is a unique id associated with a macro expansion.
@@ -198,7 +198,7 @@ impl Mark {
 }
 
 #[derive(Debug)]
-pub struct HygieneData {
+crate struct HygieneData {
     marks: Vec<MarkData>,
     syntax_contexts: Vec<SyntaxContextData>,
     markings: HashMap<(SyntaxContext, Mark), SyntaxContext>,
@@ -206,7 +206,7 @@ pub struct HygieneData {
 }
 
 impl HygieneData {
-    pub fn new() -> Self {
+    crate fn new() -> Self {
         HygieneData {
             marks: vec![MarkData {
                 parent: Mark::root(),
@@ -247,6 +247,14 @@ pub fn clear_markings() {
 impl SyntaxContext {
     pub const fn empty() -> Self {
         SyntaxContext(0)
+    }
+
+    crate fn as_u32(self) -> u32 {
+        self.0
+    }
+
+    crate fn from_u32(raw: u32) -> SyntaxContext {
+        SyntaxContext(raw)
     }
 
     // Allocate a new SyntaxContext with the given ExpnInfo. This is used when

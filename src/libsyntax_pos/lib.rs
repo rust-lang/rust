@@ -19,10 +19,10 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(const_fn)]
+#![feature(crate_visibility_modifier)]
 #![feature(custom_attribute)]
 #![feature(non_exhaustive)]
 #![feature(optin_builtin_traits)]
-#![allow(unused_attributes)]
 #![feature(specialization)]
 #![feature(stdsimd)]
 
