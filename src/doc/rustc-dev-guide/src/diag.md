@@ -5,14 +5,17 @@ This chapter is about how to emit compile errors and lints from the compiler.
 
 ## `Span`
 
-`Span` is the primary data structure in `rustc` used to represent a location in
-the code being compiled. `Span`s are attached to most constructs in HIR and MIR,
-allowing for easier error reporting whenever an error comes up.
+[`Span`][span] is the primary data structure in `rustc` used to represent a
+location in the code being compiled. `Span`s are attached to most constructs in
+HIR and MIR, allowing for easier error reporting whenever an error comes up.
 
-A `Span` can be looked up in a `CodeMap` to get a "snippet" useful for
-displaying errors with [`span_to_snippet` and other similar methods][sptosnip]
-on the `CodeMap`.
+[span]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/codemap/struct.Span.html
 
+A `Span` can be looked up in a [`CodeMap`][codemap] to get a "snippet" useful
+for displaying errors with [`span_to_snippet`][sptosnip] and other similar
+methods on the `CodeMap`.
+
+[codemap]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/codemap/struct.CodeMap.html
 [sptosnip]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/codemap/struct.CodeMap.html#method.span_to_snippet
 
 ## Error messages
@@ -70,14 +73,16 @@ err.emit();
 ## Suggestions
 
 We would like to make edition transitions as smooth as possible. To that end,
-`rustfix` can use compiler suggestions to automatically fix code. For example,
-we could use `rustfix` to mechanically apply the `qux` suggestion from the
-previous example. However, not all suggestions are mechanically applicable.  We
-use the [`span_suggestion_with_applicability`][sswa] method of
-`DiagnosticBuilder` to inform the emitter of whether a suggestion is
-mechanically applicable or not.  This information, in turn, is outputed by
-rustc when the error format is `json`, which is used by `rustfix`.
+[`rustfix`][rustfix] can use compiler suggestions to automatically fix
+code. For example, we could use `rustfix` to mechanically apply the `qux`
+suggestion from the previous example. However, not all suggestions are
+mechanically applicable.  We use the
+[`span_suggestion_with_applicability`][sswa] method of `DiagnosticBuilder` to
+inform the emitter of whether a suggestion is mechanically applicable or not.
+This information, in turn, is outputed by rustc when the error format is
+`json`, which is used by `rustfix`.
 
+[rustfix]: https://github.com/rust-lang-nursery/rustfix/
 [sswa]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagnosticBuilder.html#method.span_suggestion_with_applicability
 
 For example, to make our `qux` suggestion machine-applicable, we would do:
