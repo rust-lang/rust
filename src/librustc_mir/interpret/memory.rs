@@ -883,17 +883,26 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // The bits have to be saved locally before writing to dest in case src and dest overlap.
         assert_eq!(size.bytes() as usize as u64, size.bytes());
         let mut v = Vec::with_capacity(size.bytes() as usize);
-        for i in 0..size.bytes() {
-            let defined = self.get(src.alloc_id)?.undef_mask.get(src.offset + Size::from_bytes(i));
-            v.push(defined);
+
+        {
+            let src_allocation = self.get(src.alloc_id)?;
+            for i in 0..size.bytes() {
+                let defined = src_allocation.undef_mask.get(src.offset + Size::from_bytes(i));
+                v.push(defined);
+            }
         }
-        for (i, defined) in v.into_iter().enumerate() {
-            self.get_mut(dest.alloc_id)?.undef_mask.set(
-                dest.offset +
-                    Size::from_bytes(i as u64),
-                defined,
-            );
+
+        {
+            let dest_allocation = self.get_mut(dest.alloc_id)?;
+            for (i, defined) in v.into_iter().enumerate() {
+                dest_allocation.undef_mask.set(
+                    dest.offset +
+                        Size::from_bytes(i as u64),
+                    defined,
+                );
+            }
         }
+
         Ok(())
     }
 
