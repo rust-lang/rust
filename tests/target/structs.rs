@@ -334,3 +334,11 @@ struct Test {
     #[serde(default)]
     pub tls: bool,
 }
+
+// #2818
+struct Paren((i32))
+where
+    i32: Trait;
+struct Parens((i32, i32))
+where
+    i32: Trait;
