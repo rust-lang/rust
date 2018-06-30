@@ -9,6 +9,10 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
                 def: InstanceDef::Item(def_id),
                 substs,
             } => {
+                let mut mir = ::std::io::Cursor::new(Vec::new());
+                ::rustc_mir::util::write_mir_pretty(tcx, Some(def_id), &mut mir).unwrap();
+                tcx.sess.warn(&format!("{:?}:\n\n{}", def_id, String::from_utf8_lossy(&mir.into_inner())));
+
                 let sig = tcx.fn_sig(def_id);
                 let sig = cton_sig_from_fn_sig(tcx, sig, substs);
                 let func_id = {
@@ -22,10 +26,6 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
                 };
 
                 let mut f = Function::with_name_signature(ExternalName::user(0, func_id.index() as u32), sig);
-
-                let mut mir = ::std::io::Cursor::new(Vec::new());
-                ::rustc_mir::util::write_mir_pretty(tcx, Some(def_id), &mut mir).unwrap();
-                tcx.sess.warn(&format!("{:?}:\n\n{}", def_id, String::from_utf8_lossy(&mir.into_inner())));
 
                 ::base::trans_fn(cx, &mut f, inst);
 

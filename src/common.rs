@@ -47,6 +47,7 @@ fn cton_type_from_ty(ty: Ty) -> Option<types::Type> {
         }
         TypeVariants::TyFnPtr(_) => types::I64,
         TypeVariants::TyRef(..) | TypeVariants::TyRawPtr(..) => types::I64,
+        TypeVariants::TyParam(_)  => bug!("{:?}", ty),
         _ => return None,
     })
 }
