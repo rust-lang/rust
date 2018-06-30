@@ -107,11 +107,6 @@ fn main() {
              env::join_paths(&dylib_path).unwrap());
     let mut maybe_crate = None;
 
-    // Don't use metadata only backend for snapshot compiler, because it may be broken
-    if env::var("RUSTC_SHOULD_USE_METADATA_ONLY_BACKEND").is_err() {
-        cmd.arg("--cfg").arg("codegen_backend=\"llvm\"");
-    }
-
     // Print backtrace in case of ICE
     if env::var("RUSTC_BACKTRACE_ON_ICE").is_ok() && env::var("RUST_BACKTRACE").is_err() {
         cmd.env("RUST_BACKTRACE", "1");

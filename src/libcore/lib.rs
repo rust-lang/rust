@@ -241,13 +241,12 @@ macro_rules! vector_impl { ($([$f:ident, $($args:tt)*]),*) => { $($f!($($args)*)
 #[path = "../stdsimd/coresimd/mod.rs"]
 #[allow(missing_docs, missing_debug_implementations, dead_code, unused_imports)]
 #[unstable(feature = "stdsimd", issue = "48556")]
-// allow changes to how stdsimd works in stage0 and don't use whithout LLVM
-#[cfg(all(not(stage0), codegen_backend="llvm"))]
+#[cfg(not(stage0))] // allow changes to how stdsimd works in stage0
 mod coresimd;
 
 #[unstable(feature = "stdsimd", issue = "48556")]
-#[cfg(all(not(stage0), codegen_backend="llvm"))]
+#[cfg(not(stage0))]
 pub use coresimd::simd;
 #[stable(feature = "simd_arch", since = "1.27.0")]
-#[cfg(all(not(stage0), codegen_backend="llvm"))]
+#[cfg(not(stage0))]
 pub use coresimd::arch;

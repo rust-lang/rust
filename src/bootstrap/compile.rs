@@ -182,13 +182,11 @@ pub fn std_cargo(builder: &Builder,
             // missing
             // We also only build the runtimes when --enable-sanitizers (or its
             // config.toml equivalent) is used
-            if !builder.config.rust_codegen_backends.is_empty() {
-                let llvm_config = builder.ensure(native::Llvm {
-                    target: builder.config.build,
-                    emscripten: false,
-                });
-                cargo.env("LLVM_CONFIG", llvm_config);
-            }
+            let llvm_config = builder.ensure(native::Llvm {
+                target: builder.config.build,
+                emscripten: false,
+            });
+            cargo.env("LLVM_CONFIG", llvm_config);
         }
 
         cargo.arg("--features").arg(features)
@@ -645,13 +643,14 @@ impl Step for CodegenBackend {
 
     fn make_run(run: RunConfig) {
         let backend = run.builder.config.rust_codegen_backends.get(0);
-        if let Some(backend) = backend.cloned() {
-            run.builder.ensure(CodegenBackend {
-                compiler: run.builder.compiler(run.builder.top_stage, run.host),
-                target: run.target,
-                backend,
-            });
-        }
+        let backend = backend.cloned().unwrap_or_else(|| {
+            INTERNER.intern_str("llvm")
+        });
+        run.builder.ensure(CodegenBackend {
+            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            target: run.target,
+            backend,
+        });
     }
 
     fn run(self, builder: &Builder) {

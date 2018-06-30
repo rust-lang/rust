@@ -1418,18 +1418,6 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     if sess.opts.crate_types.contains(&CrateTypeProcMacro) {
         ret.insert((Symbol::intern("proc_macro"), None));
     }
-    /*if nightly_options::is_nightly_build() {
-        let backend_name = sess.opts
-            .debugging_opts
-            .codegen_backend
-            .as_ref()
-            .map(|s| s as &str)
-            .unwrap_or("llvm");
-        ret.insert((
-            Symbol::intern("codegen_backend"),
-            Some(Symbol::intern(backend_name)),
-        ));
-    }*/
     return ret;
 }
 
