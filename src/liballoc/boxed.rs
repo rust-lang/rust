@@ -950,29 +950,29 @@ unsafe impl<T, F: Future<Output = T> + 'static> UnsafeFutureObj<T> for PinBox<F>
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<T, F: Future<Output = T> + Send + 'static> Into<FutureObj<T>> for PinBox<F> {
-    fn into(self) -> FutureObj<T> {
-        FutureObj::new(self)
+impl<F: Future<Output = ()> + Send + 'static> From<PinBox<F>> for FutureObj<()> {
+    fn from(boxed: PinBox<F>) -> Self {
+        FutureObj::new(boxed)
     }
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<T, F: Future<Output = T> + Send + 'static> Into<FutureObj<T>> for Box<F> {
-    fn into(self) -> FutureObj<T> {
-        FutureObj::new(PinBox::from(self))
+impl<F: Future<Output = ()> + Send + 'static> From<Box<F>> for FutureObj<()> {
+    fn from(boxed: Box<F>) -> Self {
+        FutureObj::new(PinBox::from(boxed))
     }
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<T, F: Future<Output = T> + 'static> Into<LocalFutureObj<T>> for PinBox<F> {
-    fn into(self) -> LocalFutureObj<T> {
-        LocalFutureObj::new(self)
+impl<F: Future<Output = ()> + 'static> From<PinBox<F>> for LocalFutureObj<()> {
+    fn from(boxed: PinBox<F>) -> Self {
+        LocalFutureObj::new(boxed)
     }
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<T, F: Future<Output = T> + 'static> Into<LocalFutureObj<T>> for Box<F> {
-    fn into(self) -> LocalFutureObj<T> {
-        LocalFutureObj::new(PinBox::from(self))
+impl<F: Future<Output = ()> + 'static> From<Box<F>> for LocalFutureObj<()> {
+    fn from(boxed: Box<F>) -> Self {
+        LocalFutureObj::new(PinBox::from(boxed))
     }
 }
