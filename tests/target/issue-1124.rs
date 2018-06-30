@@ -1,3 +1,5 @@
+// rustfmt-reorder_imports: true
+
 use a;
 use b;
 use c;
