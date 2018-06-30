@@ -1726,7 +1726,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                     "labels on blocks are unstable");
                 }
             }
-            ast::ExprKind::Closure(_, ast::IsAsync::Async(_), ..) => {
+            ast::ExprKind::Closure(_, ast::IsAsync::Async { .. }, ..) => {
                 gate_feature_post!(&self, async_await, e.span, "async closures are unstable");
             }
             ast::ExprKind::Async(..) => {

@@ -374,10 +374,8 @@ pub enum DefPathData {
     StructCtor,
     /// A constant expression (see {ast,hir}::AnonConst).
     AnonConst,
-    /// An `impl Trait` type node in argument position.
-    UniversalImplTrait,
-    /// An `impl Trait` type node in return position.
-    ExistentialImplTrait,
+    /// An `impl Trait` type node
+    ImplTrait,
 
     /// GlobalMetaData identifies a piece of crate metadata that is global to
     /// a whole crate (as opposed to just one item). GlobalMetaData components
@@ -641,8 +639,7 @@ impl DefPathData {
             ClosureExpr |
             StructCtor |
             AnonConst |
-            ExistentialImplTrait |
-            UniversalImplTrait => None
+            ImplTrait => None
         }
     }
 
@@ -672,8 +669,7 @@ impl DefPathData {
             ClosureExpr => "{{closure}}",
             StructCtor => "{{constructor}}",
             AnonConst => "{{constant}}",
-            ExistentialImplTrait => "{{exist-impl-Trait}}",
-            UniversalImplTrait => "{{univ-impl-Trait}}",
+            ImplTrait => "{{impl-Trait}}",
         };
 
         Symbol::intern(s).as_interned_str()

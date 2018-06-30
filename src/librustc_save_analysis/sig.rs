@@ -306,7 +306,7 @@ impl Sig for ast::Ty {
                 let nested = pprust::bounds_to_string(bounds);
                 Ok(text_sig(nested))
             }
-            ast::TyKind::ImplTrait(ref bounds) => {
+            ast::TyKind::ImplTrait(_, ref bounds) => {
                 // FIXME recurse into bounds
                 let nested = pprust::bounds_to_string(bounds);
                 Ok(text_sig(format!("impl {}", nested)))

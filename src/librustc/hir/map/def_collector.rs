@@ -77,6 +77,7 @@ impl<'a> DefCollector<'a> {
         &mut self,
         id: NodeId,
         async_node_id: NodeId,
+        return_impl_trait_id: NodeId,
         name: Name,
         span: Span,
         visit_fn: impl FnOnce(&mut DefCollector<'a>)
@@ -86,6 +87,7 @@ impl<'a> DefCollector<'a> {
         let fn_def_data = DefPathData::ValueNs(name.as_interned_str());
         let fn_def = self.create_def(id, fn_def_data, ITEM_LIKE_SPACE, span);
         return self.with_parent(fn_def, |this| {
+            this.create_def(return_impl_trait_id, DefPathData::ImplTrait, REGULAR_SPACE, span);
             let closure_def = this.create_def(async_node_id,
                                   DefPathData::ClosureExpr,
                                   REGULAR_SPACE,
@@ -120,10 +122,14 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             ItemKind::Mod(..) if i.ident == keywords::Invalid.ident() => {
                 return visit::walk_item(self, i);
             }
-            ItemKind::Fn(_, FnHeader { asyncness: IsAsync::Async(async_node_id), .. }, ..) => {
+            ItemKind::Fn(_, FnHeader { asyncness: IsAsync::Async {
+                closure_id,
+                return_impl_trait_id,
+            }, .. }, ..) => {
                 return self.visit_async_fn(
                     i.id,
-                    async_node_id,
+                    closure_id,
+                    return_impl_trait_id,
                     i.ident.name,
                     i.span,
                     |this| visit::walk_item(this, i)
@@ -227,11 +233,15 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {
         let def_data = match ii.node {
             ImplItemKind::Method(MethodSig {
-                header: FnHeader { asyncness: IsAsync::Async(async_node_id), .. }, ..
+                header: FnHeader { asyncness: IsAsync::Async {
+                    closure_id,
+                    return_impl_trait_id,
+                }, .. }, ..
             }, ..) => {
                 return self.visit_async_fn(
                     ii.id,
-                    async_node_id,
+                    closure_id,
+                    return_impl_trait_id,
                     ii.ident.name,
                     ii.span,
                     |this| visit::walk_impl_item(this, ii)
@@ -276,8 +286,8 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
                 // Async closures desugar to closures inside of closures, so
                 // we must create two defs.
-                if let IsAsync::Async(async_id) = asyncness {
-                    let async_def = self.create_def(async_id,
+                if let IsAsync::Async { closure_id, .. } = asyncness {
+                    let async_def = self.create_def(closure_id,
                                                     DefPathData::ClosureExpr,
                                                     REGULAR_SPACE,
                                                     expr.span);
@@ -301,6 +311,9 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     fn visit_ty(&mut self, ty: &'a Ty) {
         match ty.node {
             TyKind::Mac(..) => return self.visit_macro_invoc(ty.id),
+            TyKind::ImplTrait(node_id, _) => {
+                self.create_def(node_id, DefPathData::ImplTrait, REGULAR_SPACE, ty.span);
+            }
             _ => {}
         }
         visit::walk_ty(self, ty);

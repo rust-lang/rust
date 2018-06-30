@@ -1547,7 +1547,11 @@ pub enum TyKind {
     TraitObject(GenericBounds, TraitObjectSyntax),
     /// An `impl Bound1 + Bound2 + Bound3` type
     /// where `Bound` is a trait or a lifetime.
-    ImplTrait(GenericBounds),
+    ///
+    /// The `NodeId` exists to prevent lowering from having to
+    /// generate `NodeId`s on the fly, which would complicate
+    /// the generation of `existential type` items significantly
+    ImplTrait(NodeId, GenericBounds),
     /// No-op; kept solely so that we can pretty-print faithfully
     Paren(P<Ty>),
     /// Unused for now
@@ -1718,16 +1722,26 @@ pub enum Unsafety {
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum IsAsync {
-    Async(NodeId),
+    Async {
+        closure_id: NodeId,
+        return_impl_trait_id: NodeId,
+    },
     NotAsync,
 }
 
 impl IsAsync {
     pub fn is_async(self) -> bool {
-        if let IsAsync::Async(_) = self {
+        if let IsAsync::Async { .. } = self {
             true
         } else {
             false
+        }
+    }
+    /// In case this is an `Async` return the `NodeId` for the generated impl Trait item
+    pub fn opt_return_id(self) -> Option<NodeId> {
+        match self {
+            IsAsync::Async { return_impl_trait_id, .. } => Some(return_impl_trait_id),
+            IsAsync::NotAsync => None,
         }
     }
 }

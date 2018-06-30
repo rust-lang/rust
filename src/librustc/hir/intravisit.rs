@@ -607,9 +607,11 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             }
             visitor.visit_lifetime(lifetime);
         }
-        TyImplTraitExistential(item_id, def_id, ref lifetimes) => {
+        TyImplTraitExistential(_, def_id, ref lifetimes) => {
+            // we are not recursing into the `existential` item, because it is already being visited
+            // as part of the surrounding module. The `NodeId` just exists so we don't have to look
+            // it up everywhere else in the compiler
             visitor.visit_def_mention(Def::Existential(def_id));
-            visitor.visit_nested_item(item_id);
             walk_list!(visitor, visit_lifetime, lifetimes);
         }
         TyTypeof(ref expression) => {

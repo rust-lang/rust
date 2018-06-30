@@ -221,9 +221,9 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         // Make sure that the DepNode of some node coincides with the HirId
         // owner of that node.
         if cfg!(debug_assertions) {
-            let hir_id_owner = self.definitions.node_to_hir_id(id).owner;
+            let hir_id = self.definitions.node_to_hir_id(id);
 
-            if hir_id_owner != self.current_dep_node_owner {
+            if hir_id.owner != self.current_dep_node_owner {
                 let node_str = match self.definitions.opt_def_index(id) {
                     Some(def_index) => {
                         self.definitions.def_path(def_index).to_string_no_crate()
@@ -231,13 +231,17 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                     None => format!("{:?}", node)
                 };
 
+                if hir_id == ::hir::DUMMY_HIR_ID {
+                    debug!("Maybe you forgot to lower the node id {:?}?", id);
+                }
+
                 bug!("inconsistent DepNode for `{}`: \
                       current_dep_node_owner={}, hir_id.owner={}",
                     node_str,
                     self.definitions
                         .def_path(self.current_dep_node_owner)
                         .to_string_no_crate(),
-                    self.definitions.def_path(hir_id_owner).to_string_no_crate())
+                    self.definitions.def_path(hir_id.owner).to_string_no_crate())
             }
         }
 

@@ -777,8 +777,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         visit::walk_fn_ret_ty(self, &declaration.output);
 
         // Resolve the function body, potentially inside the body of an async closure
-        if let IsAsync::Async(async_closure_id) = asyncness {
-            let rib_kind = ClosureRibKind(async_closure_id);
+        if let IsAsync::Async { closure_id, .. } = asyncness {
+            let rib_kind = ClosureRibKind(closure_id);
             self.ribs[ValueNS].push(Rib::new(rib_kind));
             self.label_ribs.push(Rib::new(rib_kind));
         }
@@ -3933,8 +3933,9 @@ impl<'a> Resolver<'a> {
             // resolve the arguments within the proper scopes so that usages of them inside the
             // closure are detected as upvars rather than normal closure arg usages.
             ExprKind::Closure(
-                _, IsAsync::Async(inner_closure_id), _, ref fn_decl, ref body, _span) =>
-            {
+                _, IsAsync::Async { closure_id: inner_closure_id, .. }, _,
+                ref fn_decl, ref body, _span,
+            ) => {
                 let rib_kind = ClosureRibKind(expr.id);
                 self.ribs[ValueNS].push(Rib::new(rib_kind));
                 self.label_ribs.push(Rib::new(rib_kind));
