@@ -491,16 +491,18 @@ impl Step for Rustc {
 
             // Copy over lld if it's there
             if builder.config.lld_enabled {
-                let exe = exe("lld", &compiler.host);
+                let src_exe = exe("lld", &compiler.host);
+                let dst_exe = exe("rust-lld", &compiler.host);
                 let src = builder.sysroot_libdir(compiler, host)
                     .parent()
                     .unwrap()
                     .join("bin")
-                    .join(&exe);
+                    .join(&src_exe);
+                // for the rationale about this rename check `compile::copy_lld_to_sysroot`
                 let dst = image.join("lib/rustlib")
                     .join(&*host)
                     .join("bin")
-                    .join(&exe);
+                    .join(&dst_exe);
                 t!(fs::create_dir_all(&dst.parent().unwrap()));
                 builder.copy(&src, &dst);
             }

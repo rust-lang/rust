@@ -51,6 +51,9 @@ pub fn target() -> Result<Target, String> {
         // no dynamic linking, no need for default visibility!
         default_hidden_visibility: true,
 
+        // we use the LLD shipped with the Rust toolchain by default
+        linker: Some("rust-lld".to_owned()),
+
         .. Default::default()
     };
     Ok(Target {
