@@ -666,7 +666,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             }
         }
 
-        self.copy_undef_mask(src, dest, size * length)?;
+        self.copy_undef_mask(src, dest, size, length)?;
         // copy back the relocations
         self.get_mut(dest.alloc_id)?.relocations.insert_presorted(relocations);
 
@@ -887,6 +887,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         src: Pointer,
         dest: Pointer,
         size: Size,
+        repeat: u64,
     ) -> EvalResult<'tcx> {
         // The bits have to be saved locally before writing to dest in case src and dest overlap.
         assert_eq!(size.bytes() as usize as u64, size.bytes());
@@ -896,10 +897,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         for i in 0..size.bytes() {
             let defined = undef_mask.get(src.offset + Size::from_bytes(i));
-            dest_allocation.undef_mask.set(
-                dest.offset + Size::from_bytes(i),
-                defined
-            );
+            
+            for j in 0..repeat {
+                dest_allocation.undef_mask.set(
+                    dest.offset + Size::from_bytes(i + (size.bytes() * j)),
+                    defined
+                );
+            }
         }
 
         Ok(())
