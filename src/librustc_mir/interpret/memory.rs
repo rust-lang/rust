@@ -621,13 +621,21 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // first copy the relocations to a temporary buffer, because
         // `get_bytes_mut` will clear the relocations, which is correct,
         // since we don't want to keep any relocations at the target.
-        let relocations: Vec<_> = self.relocations(src, size)?
-            .iter()
-            .map(|&(offset, alloc_id)| {
-                // Update relocation offsets for the new positions in the destination allocation.
-                (offset + dest.offset - src.offset, alloc_id)
-            })
-            .collect();
+        let relocations = {
+            let relocations = self.relocations(src, size)?;
+            let mut new_relocations = Vec::with_capacity(relocations.len() * (length as usize));
+            for i in 0..length {
+                new_relocations.extend(
+                    relocations
+                    .iter()
+                    .map(|&(offset, alloc_id)| {
+                    (offset + dest.offset - src.offset + (i * size * relocations.len() as u64), alloc_id)
+                    })
+                );
+            }
+
+            new_relocations
+        };
 
         let src_bytes = self.get_bytes_unchecked(src, size, src_align)?.as_ptr();
         let dest_bytes = self.get_bytes_mut(dest, size * length, dest_align)?.as_mut_ptr();
