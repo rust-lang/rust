@@ -250,7 +250,7 @@ pub fn codegen_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     unsafe {
         let g = get_static(cx, def_id);
 
-        let v = match ::mir::codegen_static_initializer(cx, def_id) {
+        let (v, alloc) = match ::mir::codegen_static_initializer(cx, def_id) {
             Ok(v) => v,
             // Error has already been reported
             Err(_) => return,
@@ -309,6 +309,44 @@ pub fn codegen_static<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
         if attr::contains_name(attrs, "thread_local") {
             llvm::set_thread_local_mode(g, cx.tls_model);
+
+            // Do not allow LLVM to change the alignment of a TLS on macOS.
+            //
+            // By default a global's alignment can be freely increased.
+            // This allows LLVM to generate more performant instructions
+            // e.g. using load-aligned into a SIMD register.
+            //
+            // However, on macOS 10.10 or below, the dynamic linker does not
+            // respect any alignment given on the TLS (radar 24221680).
+            // This will violate the alignment assumption, and causing segfault at runtime.
+            //
+            // This bug is very easy to trigger. In `println!` and `panic!`,
+            // the `LOCAL_STDOUT`/`LOCAL_STDERR` handles are stored in a TLS,
+            // which the values would be `mem::replace`d on initialization.
+            // The implementation of `mem::replace` will use SIMD
+            // whenever the size is 32 bytes or higher. LLVM notices SIMD is used
+            // and tries to align `LOCAL_STDOUT`/`LOCAL_STDERR` to a 32-byte boundary,
+            // which macOS's dyld disregarded and causing crashes
+            // (see issues #51794, #51758, #50867, #48866 and #44056).
+            //
+            // To workaround the bug, we trick LLVM into not increasing
+            // the global's alignment by explicitly assigning a section to it
+            // (equivalent to automatically generating a `#[link_section]` attribute).
+            // See the comment in the `GlobalValue::canIncreaseAlignment()` function
+            // of `lib/IR/Globals.cpp` for why this works.
+            //
+            // When the alignment is not increased, the optimized `mem::replace`
+            // will use load-unaligned instructions instead, and thus avoiding the crash.
+            //
+            // We could remove this hack whenever we decide to drop macOS 10.10 support.
+            if cx.tcx.sess.target.target.options.is_like_osx {
+                let sect_name = if alloc.bytes.iter().all(|b| *b == 0) {
+                    CStr::from_bytes_with_nul_unchecked(b"__DATA,__thread_bss\0")
+                } else {
+                    CStr::from_bytes_with_nul_unchecked(b"__DATA,__thread_data\0")
+                };
+                llvm::LLVMSetSection(g, sect_name.as_ptr());
+            }
         }
 
         base::set_link_section(cx, g, attrs);
