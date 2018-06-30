@@ -100,7 +100,6 @@
 #![feature(optin_builtin_traits)]
 #![feature(prelude_import)]
 #![feature(repr_simd, platform_intrinsics)]
-#![cfg_attr(stage0, feature(repr_transparent))]
 #![feature(rustc_attrs)]
 #![feature(rustc_const_unstable)]
 #![feature(simd_ffi)]

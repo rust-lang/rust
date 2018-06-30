@@ -37,7 +37,6 @@
             issue = "0")]
 
 use fmt;
-#[cfg(not(stage0))]
 use panic::{Location, PanicInfo};
 
 #[cold] #[inline(never)] // this is the slow path, always
@@ -61,20 +60,6 @@ fn panic_bounds_check(file_line_col: &(&'static str, u32, u32),
                            len, index), file_line_col)
 }
 
-#[cfg(stage0)]
-#[cold] #[inline(never)]
-pub fn panic_fmt(fmt: fmt::Arguments, file_line_col: &(&'static str, u32, u32)) -> ! {
-    #[allow(improper_ctypes)]
-    extern {
-        #[lang = "panic_fmt"]
-        #[unwind(allowed)]
-        fn panic_impl(fmt: fmt::Arguments, file: &'static str, line: u32, col: u32) -> !;
-    }
-    let (file, line, col) = *file_line_col;
-    unsafe { panic_impl(fmt, file, line, col) }
-}
-
-#[cfg(not(stage0))]
 #[cold] #[inline(never)]
 pub fn panic_fmt(fmt: fmt::Arguments, file_line_col: &(&'static str, u32, u32)) -> ! {
     // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call

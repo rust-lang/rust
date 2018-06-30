@@ -322,7 +322,7 @@
 #![feature(doc_keyword)]
 #![feature(float_internals)]
 #![feature(panic_info_message)]
-#![cfg_attr(not(stage0), feature(panic_implementation))]
+#![feature(panic_implementation)]
 
 #![default_lib_allocator]
 
@@ -332,9 +332,6 @@
 // `force_alloc_system` is *only* intended as a workaround for local rebuilds
 // with a rustc without jemalloc.
 // FIXME(#44236) shouldn't need MSVC logic
-#![cfg_attr(all(not(target_env = "msvc"),
-                any(all(stage0, not(test)), feature = "force_alloc_system")),
-            feature(global_allocator))]
 #[cfg(all(not(target_env = "msvc"),
           any(all(stage0, not(test)), feature = "force_alloc_system")))]
 #[global_allocator]
