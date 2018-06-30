@@ -158,7 +158,7 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
             offset: None,
         });
         let ty = mir.local_decls[local].ty;
-        let cton_type = ::common::fixup_cton_ty(fx.cton_type(ty).unwrap_or(types::I64));
+        let cton_type = fx.cton_type(ty).unwrap_or(types::I64);
         (local, fx.bcx.append_ebb_param(start_ebb, cton_type), ty, stack_slot)
     }).collect::<Vec<(Local, Value, Ty, StackSlot)>>();
 
@@ -197,23 +197,24 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
             trans_stmt(fx, stmt);
         }
 
-        match &bb_data.terminator().kind {
+        let inst = match &bb_data.terminator().kind {
             TerminatorKind::Goto { target } => {
                 let ebb = fx.get_ebb(*target);
-                fx.bcx.ins().jump(ebb, &[]);
+                fx.bcx.ins().jump(ebb, &[])
             }
             TerminatorKind::Return => {
-                fx.bcx.ins().return_(&[]);
+                fx.bcx.ins().return_(&[])
             }
             TerminatorKind::Assert { cond, expected, msg: _, target, cleanup: _ } => {
                 let cond = trans_operand(fx, cond).load_value(fx);
                 let target = fx.get_ebb(*target);
-                if *expected {
-                    fx.bcx.ins().brz(cond, target, &[]);
+                let inst = if *expected {
+                    fx.bcx.ins().brz(cond, target, &[])
                 } else {
-                    fx.bcx.ins().brnz(cond, target, &[]);
-                }
+                    fx.bcx.ins().brnz(cond, target, &[])
+                };
                 fx.bcx.ins().trap(TrapCode::User(!0));
+                inst
             }
 
             TerminatorKind::SwitchInt { discr, switch_ty, values, targets } => {
@@ -224,9 +225,10 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
                     jt_data.set_entry(*value as usize, ebb);
                 }
                 let mut jump_table = fx.bcx.create_jump_table(jt_data);
-                fx.bcx.ins().br_table(discr, jump_table);
+                let inst = fx.bcx.ins().br_table(discr, jump_table);
                 let otherwise_ebb = fx.get_ebb(targets[targets.len() - 1]);
                 fx.bcx.ins().jump(otherwise_ebb, &[]);
+                inst
             }
             TerminatorKind::Call { func, args, destination, cleanup: _ } => {
                 let func_ty = func.ty(&fx.mir.local_decls, fx.tcx);
@@ -251,9 +253,9 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
                                 }
                             })
                     ).collect::<Vec<_>>();
-                match func {
+                let inst = match func {
                     CValue::Func(func, _) => {
-                        fx.bcx.ins().call(func, &args);
+                        fx.bcx.ins().call(func, &args)
                     }
                     func => {
                         let func = func.load_value(fx);
@@ -263,18 +265,19 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
                             _ => bug!("Calling non function type {:?}", func_ty),
                         };
                         let sig = fx.bcx.import_signature(cton_sig_from_fn_sig(fx.tcx, sig, fx.param_substs));
-                        fx.bcx.ins().call_indirect(sig, func, &args);
+                        fx.bcx.ins().call_indirect(sig, func, &args)
                     }
-                }
+                };
                 if let Some((_, dest)) = *destination {
                     let ret_ebb = fx.get_ebb(dest);
                     fx.bcx.ins().jump(ret_ebb, &[]);
                 } else {
                     fx.bcx.ins().trap(TrapCode::User(!0));
                 }
+                inst
             }
             TerminatorKind::Resume | TerminatorKind::Abort | TerminatorKind::Unreachable => {
-                fx.bcx.ins().trap(TrapCode::User(!0));
+                fx.bcx.ins().trap(TrapCode::User(!0))
             }
             TerminatorKind::Yield { .. } |
             TerminatorKind::FalseEdges { .. } |
@@ -285,12 +288,16 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
                 // TODO call drop impl
                 // unimplemented!("terminator {:?}", bb_data.terminator());
                 let target_ebb = fx.get_ebb(*target);
-                fx.bcx.ins().jump(target_ebb, &[]);
+                fx.bcx.ins().jump(target_ebb, &[])
             }
             TerminatorKind::GeneratorDrop => {
                 unimplemented!("terminator GeneratorDrop");
             }
-        }
+        };
+
+        let mut terminator_head = "\n".to_string();
+        bb_data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
+        fx.bcx.func.comments[inst] = terminator_head;
     }
 
     fx.bcx.seal_all_blocks();
@@ -298,6 +305,8 @@ fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut 
 }
 
 fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx>) {
+    let nop_inst = fx.bcx.ins().nop();
+
     match &stmt.kind {
         StatementKind::SetDiscriminant { place, variant_index } => {
             let place = trans_place(fx, place);
@@ -472,9 +481,15 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
                 rval => unimplemented!("rval {:?}", rval),
             }
         }
-        StatementKind::StorageLive(_) | StatementKind::StorageDead(_) | StatementKind::Nop => {}
+        StatementKind::StorageLive(_) | StatementKind::StorageDead(_) | StatementKind::Nop => {
+            fx.bcx.ins().nop();
+        }
         _ => unimplemented!("stmt {:?}", stmt),
     }
+
+    let inst = fx.bcx.func.layout.next_inst(nop_inst).unwrap();
+    fx.bcx.func.layout.remove_inst(nop_inst);
+    fx.bcx.func.comments[inst] = format!("{:?}", stmt);
 }
 
 fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>, signed: bool, checked: bool) -> CValue<'tcx> {

@@ -1,0 +1,29 @@
+From cc175e6a3f59c7fe1523fd441214e0303f8fee80 Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Sat, 30 Jun 2018 12:30:30 +0200
+Subject: [PATCH] Disable stdsimd in libcore
+
+---
+ src/libcore/lib.rs | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/libcore/lib.rs b/src/libcore/lib.rs
+index 40caee8554..f038d155a1 100644
+--- a/src/libcore/lib.rs
++++ b/src/libcore/lib.rs
+@@ -240,6 +240,7 @@ macro_rules! test_v256 { ($item:item) => {}; }
+ macro_rules! test_v512 { ($item:item) => {}; }
+ #[allow(unused_macros)]
+ macro_rules! vector_impl { ($([$f:ident, $($args:tt)*]),*) => { $($f!($($args)*);)* } }
++/*
+ #[path = "../stdsimd/coresimd/mod.rs"]
+ #[allow(missing_docs, missing_debug_implementations, dead_code, unused_imports)]
+ #[unstable(feature = "stdsimd", issue = "48556")]
+@@ -252,3 +253,4 @@ pub use coresimd::simd;
+ #[stable(feature = "simd_arch", since = "1.27.0")]
+ #[cfg(not(stage0))]
+ pub use coresimd::arch;
++*/
+-- 
+2.15.2 (Apple Git-101.1)
+

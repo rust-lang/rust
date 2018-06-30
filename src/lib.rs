@@ -1,4 +1,5 @@
 #![feature(rustc_private)]
+#![allow(intra_doc_link_resolution_failure)]
 
 extern crate syntax;
 #[macro_use]

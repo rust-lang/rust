@@ -51,36 +51,6 @@ fn cton_type_from_ty(ty: Ty) -> Option<types::Type> {
     })
 }
 
-// FIXME(cretonne) fix types smaller than I32
-pub fn fixup_cton_ty(ty: Type) -> Type {
-    match ty {
-        types::I64X2 | types::I64 | types::I32 => ty,
-        _ => types::I32,
-    }
-}
-
-// FIXME(cretonne) fix load.i8
-fn load_workaround(fx: &mut FunctionCx, ty: Type, addr: Value, offset: i32) -> Value {
-    use cretonne::codegen::ir::types::*;
-    match ty {
-        I8 => fx.bcx.ins().uload8(I32, MemFlags::new(), addr, offset),
-        I16 => fx.bcx.ins().uload16(I32, MemFlags::new(), addr, offset),
-        // I32 and I64 work
-        _ => fx.bcx.ins().load(ty, MemFlags::new(), addr, offset),
-    }
-}
-
-// FIXME(cretonne) fix store.i8
-fn store_workaround(fx: &mut FunctionCx, ty: Type, addr: Value, val: Value, offset: i32) {
-    use cretonne::codegen::ir::types::*;
-    match ty {
-        I8 => fx.bcx.ins().istore8(MemFlags::new(), val, addr, offset),
-        I16 => fx.bcx.ins().istore16(MemFlags::new(), val, addr, offset),
-        // I32 and I64 work
-        _ => fx.bcx.ins().store(MemFlags::new(), val, addr, offset),
-    };
-}
-
 #[derive(Debug, Copy, Clone)]
 pub enum CValue<'tcx> {
     ByRef(Value, TyLayout<'tcx>),
@@ -118,9 +88,9 @@ impl<'tcx> CValue<'tcx> {
 
     pub fn load_value<'a>(self, fx: &mut FunctionCx<'a, 'tcx>) -> Value where 'tcx: 'a{
         match self {
-            CValue::ByRef(value, layout) => {
+            CValue::ByRef(addr, layout) => {
                 let cton_ty = fx.cton_type(layout.ty).expect(&format!("{:?}", layout.ty));
-                load_workaround(fx, cton_ty, value, 0)
+                fx.bcx.ins().load(cton_ty, MemFlags::new(), addr, 0)
             }
             CValue::ByVal(value, _layout) => value,
             CValue::Func(func, _layout) => {
@@ -165,7 +135,6 @@ impl<'tcx> CValue<'tcx> {
 
     pub fn const_val<'a>(fx: &mut FunctionCx<'a, 'tcx>, ty: Ty<'tcx>, const_val: i64) -> CValue<'tcx> where 'tcx: 'a {
         let cton_ty = fx.cton_type(ty).unwrap();
-        let cton_ty = fixup_cton_ty(cton_ty);
         let layout = fx.layout_of(ty);
         CValue::ByVal(fx.bcx.ins().iconst(cton_ty, const_val), layout)
     }
@@ -229,12 +198,12 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 
                 if let Some(cton_ty) = fx.cton_type(layout.ty) {
                     let data = from.load_value(fx);
-                    store_workaround(fx, cton_ty, addr, data, 0);
+                    fx.bcx.ins().store(MemFlags::new(), data, addr, 0);
                 } else {
                     for i in 0..size {
                         let from = from.expect_byref();
-                        let byte = load_workaround(fx, types::I8, from.0, i);
-                        store_workaround(fx, types::I8, addr, byte, i);
+                        let byte = fx.bcx.ins().load(types::I8, MemFlags::new(), from.0, i);
+                        fx.bcx.ins().store(MemFlags::new(), byte, addr, i);
                     }
                 }
             }
@@ -288,7 +257,7 @@ pub fn cton_sig_from_mono_fn_sig<'a ,'tcx: 'a>(sig: PolyFnSig<'tcx>) -> Signatur
     };
     Signature {
         params: Some(types::I64).into_iter() // First param is place to put return val
-            .chain(inputs.into_iter().map(|ty| fixup_cton_ty(cton_type_from_ty(ty).unwrap_or(types::I64))))
+            .chain(inputs.into_iter().map(|ty| cton_type_from_ty(ty).unwrap_or(types::I64)))
             .map(AbiParam::new).collect(),
         returns: vec![],
         call_conv,
