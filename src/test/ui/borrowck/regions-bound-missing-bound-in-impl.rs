@@ -20,6 +20,7 @@ pub trait Foo<'a, 't> {
     fn no_bound<'b>(self, b: Inv<'b>);
     fn has_bound<'b:'a>(self, b: Inv<'b>);
     fn wrong_bound1<'b,'c,'d:'a+'b>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>);
+    fn wrong_bound2<'b,'c,'d:'a+'b>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>);
     fn okay_bound<'b,'c,'d:'a+'b+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>);
     fn another_bound<'x: 'a>(self, x: Inv<'x>, y: Inv<'t>);
 }
@@ -45,6 +46,10 @@ impl<'a, 't> Foo<'a, 't> for &'a isize {
         // information about the lifetime declarations in the trait so
         // that we can compare better to the impl, even in cross-crate
         // cases.
+    }
+
+    fn wrong_bound2(self, b: Inv, c: Inv, d: Inv) {
+        //~^ ERROR lifetime parameters or bounds on method `wrong_bound2` do not match the trait
     }
 
     fn okay_bound<'b,'c,'e:'b+'c>(self, b: Inv<'b>, c: Inv<'c>, e: Inv<'e>) {

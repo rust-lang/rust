@@ -43,11 +43,11 @@ LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x
 LL |     };
    |     - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 64:5...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:64:5
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 64:10...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:64:10
    |
 LL |     fn g<'a>(x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          ^^
 
 error[E0597]: `y` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:65:17
@@ -58,11 +58,11 @@ LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x
 LL |     };
    |     - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 64:5...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:64:5
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 64:10...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:64:10
    |
 LL |     fn g<'a>(x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          ^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:76:17
@@ -73,11 +73,11 @@ LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x
 LL |     };
    |     - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 75:5...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:75:5
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 75:10...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:75:10
    |
 LL |     fn g<'a>(x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          ^^
 
 error[E0597]: `y` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:76:17
@@ -88,11 +88,11 @@ LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x
 LL |     };
    |     - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 75:5...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:75:5
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 75:10...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:75:10
    |
 LL |     fn g<'a>(x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          ^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:100:21
@@ -103,11 +103,11 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 99:9...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:99:9
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 99:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:99:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^
 
 error[E0597]: `y` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:100:21
@@ -118,11 +118,11 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 99:9...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:99:9
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 99:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:99:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:114:21
@@ -133,11 +133,11 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 113:9...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:113:9
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 113:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:113:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^
 
 error[E0597]: `y` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:114:21
@@ -148,11 +148,11 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 113:9...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:113:9
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 113:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:113:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:142:21
@@ -163,11 +163,11 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 141:9...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:141:9
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 141:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:141:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^
 
 error[E0597]: `y` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:142:21
@@ -178,11 +178,11 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 141:9...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:141:9
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 141:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:141:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:157:21
@@ -193,11 +193,11 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 156:9...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:156:9
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 156:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:156:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^
 
 error[E0597]: `y` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:157:21
@@ -208,11 +208,11 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 156:9...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:156:9
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 156:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:156:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:185:21
@@ -223,11 +223,11 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 184:9...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:184:9
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 184:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:184:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^
 
 error[E0597]: `y` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:185:21
@@ -238,11 +238,11 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 184:9...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:184:9
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 184:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:184:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:199:21
@@ -253,11 +253,11 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 198:9...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:198:9
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 198:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:198:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^
 
 error[E0597]: `y` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:199:21
@@ -268,11 +268,11 @@ LL |             let f = |t: bool| if t { x } else { y }; // (separate errors fo
 LL |         }
    |         - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the method body at 198:9...
-  --> $DIR/region-borrow-params-issue-29793-small.rs:198:9
+note: borrowed value must be valid for the lifetime 'a as defined on the method body at 198:14...
+  --> $DIR/region-borrow-params-issue-29793-small.rs:198:14
    |
 LL |         fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^
 
 error: aborting due to 20 previous errors
 
