@@ -99,7 +99,7 @@ impl Rewrite for Pat {
                 }
             }
             PatKind::Range(ref lhs, ref rhs, ref end_kind) => {
-                let infix = match *end_kind {
+                let infix = match end_kind.node {
                     RangeEnd::Included(RangeSyntax::DotDotDot) => "...",
                     RangeEnd::Included(RangeSyntax::DotDotEq) => "..=",
                     RangeEnd::Excluded => "..",
