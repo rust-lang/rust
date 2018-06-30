@@ -2265,22 +2265,35 @@ fn document_stability(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) 
 
 fn document_non_exhaustive(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
     if item.non_exhaustive {
-        let name = item.type_();
-        write!(w, r##"
-        <div class='non-exhaustive'>
-            <div class='stab non-exhaustive'>
-                <details>
-                    <summary>
-                        <span class=microscope>🔬</span>
-                        This {} is marked as non exhaustive.
-                    </summary>
-                    <p>
-                    This {} will require a wildcard arm in any match statements or constructors.
-                    </p>
-                </details>
-            </div>
-        </div>
-        "##, name, name)?;
+        write!(w, "<div class='non-exhaustive'><div class='stab non-exhaustive'>")?;
+        write!(w, "<details><summary><span class=microscope>🔬</span>")?;
+
+        if item.is_struct() {
+            write!(w, "This struct is marked as non exhaustive.")?;
+        } else if item.is_enum() {
+            write!(w, "This enum is marked as non exhaustive.")?;
+        } else {
+            write!(w, "This type is marked as non exhaustive.")?;
+        }
+
+        write!(w, "</summary><p>")?;
+
+        if item.is_struct() {
+            write!(w, "This struct is marked as non-exhaustive as additional fields may be \
+                       added in the future. This means that this struct cannot be constructed in \
+                       external crates using the traditional <code>Struct {{ .. }}</code> syntax;
+                       cannot be matched against without a wildcard <code>..</code>; and \
+                       functional-record-updates do not work on this struct.")?;
+        } else if item.is_enum() {
+            write!(w, "This enum is marked as non-exhaustive, and additional variants may be \
+                       added in the future. When matching over values of this type, an extra \
+                       <code>_</code> arm must be added to account for future extensions.")?;
+        } else {
+            write!(w, "This type will require a wildcard arm in any match statements or \
+                       constructors.")?;
+        }
+
+        write!(w, "</p></details></div></div>")?;
     }
 
     Ok(())
