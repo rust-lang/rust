@@ -1823,8 +1823,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(keywords::False) {
             LitKind::Bool(false)
         } else {
-            let lit = self.parse_lit_token()?;
-            lit
+            self.parse_lit_token()?
         };
         Ok(codemap::Spanned { node: lit, span: lo.to(self.prev_span) })
     }
@@ -1835,10 +1834,8 @@ impl<'a> Parser<'a> {
 
         let minus_lo = self.span;
         let minus_present = self.eat(&token::BinOp(token::Minus));
-        let lo = self.span;
         let literal = P(self.parse_lit()?);
-        let hi = self.prev_span;
-        let expr = self.mk_expr(lo.to(hi), ExprKind::Lit(literal), ThinVec::new());
+        let expr = self.mk_expr(literal.span, ExprKind::Lit(literal), ThinVec::new());
 
         if minus_present {
             let minus_hi = self.prev_span;
@@ -2459,14 +2456,13 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            match self.expect_one_of(&[token::Comma],
-                                     &[token::CloseDelim(token::Brace)]) {
-                Ok(()) => {}
-                Err(mut e) => {
-                    e.emit();
-                    self.recover_stmt();
-                    break;
-                }
+            if let Err(mut e) = self.expect_one_of(
+                &[token::Comma],
+                &[token::CloseDelim(token::Brace)],
+            ) {
+                e.emit();
+                self.recover_stmt();
+                break;
             }
         }
 
@@ -2848,7 +2844,7 @@ impl<'a> Parser<'a> {
                     return self.parse_dot_or_call_expr(Some(attrs));
                 }
             }
-            _ => { return self.parse_dot_or_call_expr(Some(attrs)); }
+            _ => return self.parse_dot_or_call_expr(Some(attrs)),
         };
         return Ok(self.mk_expr(lo.to(hi), ex, attrs));
     }
@@ -2966,7 +2962,7 @@ impl<'a> Parser<'a> {
                     RangeLimits::Closed
                 };
 
-                let r = try!(self.mk_range(Some(lhs), rhs, limits));
+                let r = self.mk_range(Some(lhs), rhs, limits)?;
                 lhs = self.mk_expr(lhs_span.to(rhs_span), r, ThinVec::new());
                 break
             }
@@ -3174,9 +3170,7 @@ impl<'a> Parser<'a> {
             RangeLimits::Closed
         };
 
-        let r = try!(self.mk_range(None,
-                                   opt_end,
-                                   limits));
+        let r = self.mk_range(None, opt_end, limits)?;
         Ok(self.mk_expr(lo.to(hi), r, attrs))
     }
 
