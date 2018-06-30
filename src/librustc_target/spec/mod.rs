@@ -572,6 +572,9 @@ pub struct TargetOptions {
     /// Don't use this field; instead use the `.max_atomic_width()` method.
     pub max_atomic_width: Option<u64>,
 
+    /// Whether the target supports atomic CAS operations natively
+    pub atomic_cas: bool,
+
     /// Panic strategy: "unwind" or "abort"
     pub panic_strategy: PanicStrategy,
 
@@ -690,6 +693,7 @@ impl Default for TargetOptions {
             no_integrated_as: false,
             min_atomic_width: None,
             max_atomic_width: None,
+            atomic_cas: true,
             panic_strategy: PanicStrategy::Unwind,
             abi_blacklist: vec![],
             crt_static_allows_dylibs: false,
@@ -946,6 +950,7 @@ impl Target {
         key!(no_integrated_as, bool);
         key!(max_atomic_width, Option<u64>);
         key!(min_atomic_width, Option<u64>);
+        key!(atomic_cas, bool);
         try!(key!(panic_strategy, PanicStrategy));
         key!(crt_static_allows_dylibs, bool);
         key!(crt_static_default, bool);
@@ -1154,6 +1159,7 @@ impl ToJson for Target {
         target_option_val!(no_integrated_as);
         target_option_val!(min_atomic_width);
         target_option_val!(max_atomic_width);
+        target_option_val!(atomic_cas);
         target_option_val!(panic_strategy);
         target_option_val!(crt_static_allows_dylibs);
         target_option_val!(crt_static_default);

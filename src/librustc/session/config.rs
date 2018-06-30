@@ -1367,6 +1367,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let vendor = &sess.target.target.target_vendor;
     let min_atomic_width = sess.target.target.min_atomic_width();
     let max_atomic_width = sess.target.target.max_atomic_width();
+    let atomic_cas = sess.target.target.options.atomic_cas;
 
     let mut ret = HashSet::new();
     // Target bindings.
@@ -1405,6 +1406,9 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
                 ));
             }
         }
+    }
+    if atomic_cas {
+        ret.insert((Symbol::intern("target_has_atomic_cas"), None));
     }
     if sess.opts.debug_assertions {
         ret.insert((Symbol::intern("debug_assertions"), None));

@@ -479,6 +479,9 @@ declare_features! (
 
     // Allows async and await syntax
     (active, async_await, "1.28.0", Some(50547), None),
+
+    // Allows async and await syntax
+    (active, cfg_target_has_atomic_cas, "1.28.0", Some(0), None),
 );
 
 declare_features! (
@@ -1099,6 +1102,7 @@ const GATED_CFGS: &[(&str, &str, fn(&Features) -> bool)] = &[
     ("target_vendor", "cfg_target_vendor", cfg_fn!(cfg_target_vendor)),
     ("target_thread_local", "cfg_target_thread_local", cfg_fn!(cfg_target_thread_local)),
     ("target_has_atomic", "cfg_target_has_atomic", cfg_fn!(cfg_target_has_atomic)),
+    ("target_has_atomic_cas", "cfg_target_has_atomic_cas", cfg_fn!(cfg_target_has_atomic_cas)),
 ];
 
 #[derive(Debug, Eq, PartialEq)]
