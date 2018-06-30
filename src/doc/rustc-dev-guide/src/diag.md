@@ -7,7 +7,7 @@ This chapter is about how to emit compile errors and lints from the compiler.
 
 [`Span`][span] is the primary data structure in `rustc` used to represent a
 location in the code being compiled. `Span`s are attached to most constructs in
-HIR and MIR, allowing for easier error reporting whenever an error comes up.
+HIR and MIR, allowing for more informative error reporting.
 
 [span]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/codemap/struct.Span.html
 
