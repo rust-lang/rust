@@ -37,6 +37,7 @@ mod base;
 mod common;
 
 mod prelude {
+    pub use std::any::Any;
     pub use std::collections::HashMap;
 
     pub use rustc::hir::def_id::{DefId, LOCAL_CRATE};
@@ -49,19 +50,29 @@ mod prelude {
         TypeFoldable, TypeVariants,
     };
     pub use rustc_data_structures::{indexed_vec::Idx, sync::Lrc};
-    pub use rustc_mir::monomorphize::collector;
+    pub use rustc_mir::monomorphize::{MonoItem, collector};
 
     pub use cretonne::codegen::ir::{
         condcodes::IntCC, function::Function, ExternalName, FuncRef, StackSlot,
     };
     pub use cretonne::codegen::Context;
     pub use cretonne::prelude::*;
+    pub use cretonne_module::{Module, Backend, FuncId, Linkage};
+    pub use cretonne_simplejit::{SimpleJITBuilder, SimpleJITBackend};
 
     pub use common::Variable;
     pub use common::*;
+
+    pub use CodegenCx;
 }
 
 use prelude::*;
+
+pub struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'a> {
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub module: &'a mut Module<B>,
+    pub def_id_fn_id_map: &'a mut HashMap<Instance<'tcx>, FuncId>,
+}
 
 struct CretonneCodegenBackend(());
 
@@ -151,7 +162,60 @@ impl CodegenBackend for CretonneCodegenBackend {
         }
         tcx.sess.abort_if_errors();
 
-        base::trans_crate(tcx)
+        let link_meta = ::build_link_meta(tcx.crate_hash(LOCAL_CRATE));
+        let metadata = tcx.encode_metadata(&link_meta);
+
+        let mut module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
+        let mut context = Context::new();
+        let mut def_id_fn_id_map = HashMap::new();
+
+        {
+            let mut cx = CodegenCx {
+                tcx,
+                module: &mut module,
+                def_id_fn_id_map: &mut def_id_fn_id_map,
+            };
+
+            for mono_item in
+                collector::collect_crate_mono_items(
+                    tcx,
+                    collector::MonoItemCollectionMode::Eager
+                ).0 {
+                base::trans_mono_item(&mut cx, &mut context, mono_item)
+            }
+        }
+
+        tcx.sess.warn("Compiled everything");
+
+        module.finalize_all();
+
+        tcx.sess.warn("Finalized everything");
+
+        for (inst, func_id) in def_id_fn_id_map.iter() {
+            //if tcx.absolute_item_path_str(inst.def_id()) != "example::ret_42" {
+            if tcx.absolute_item_path_str(inst.def_id()) != "example::option_unwrap_or" {
+                continue;
+            }
+            let finalized_function: *const u8 = module.finalize_function(*func_id);
+            /*let f: extern "C" fn(&mut u32) = unsafe { ::std::mem::transmute(finalized_function) };
+            let mut res = 0u32;
+            f(&mut res);
+            tcx.sess.warn(&format!("ret_42 returned {}", res));*/
+            let f: extern "C" fn(&mut bool, &u8, bool) = unsafe { ::std::mem::transmute(finalized_function) };
+            let mut res = false;
+            f(&mut res, &3, false);
+            tcx.sess.warn(&format!("option_unwrap_or returned {}", res));
+        }
+
+        module.finish();
+
+        tcx.sess.fatal("unimplemented");
+
+        Box::new(::OngoingCodegen {
+            metadata: metadata,
+            //translated_module: Module::new(::cretonne_faerie::FaerieBuilder::new(,
+            crate_name: tcx.crate_name(LOCAL_CRATE),
+        })
     }
 
     fn join_codegen_and_link(

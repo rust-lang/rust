@@ -1,121 +1,55 @@
-use rustc_mir::monomorphize::MonoItem;
-
-use cretonne_module::{Module, Backend, FuncId, Linkage};
-use cretonne_simplejit::{SimpleJITBuilder, SimpleJITBackend};
-
-use std::any::Any;
-use std::collections::HashMap;
-
 use prelude::*;
 
-pub fn trans_crate<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Box<Any> {
-    let link_meta = ::build_link_meta(tcx.crate_hash(LOCAL_CRATE));
-    let metadata = tcx.encode_metadata(&link_meta);
+pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, context: &mut Context, mono_item: MonoItem<'tcx>) {
+    let tcx = cx.tcx;
 
-    let mut module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
-    let mut context = Context::new();
-    let mut def_id_fn_id_map = HashMap::new();
+    match mono_item {
+        MonoItem::Fn(inst) => match inst {
+            Instance {
+                def: InstanceDef::Item(def_id),
+                substs,
+            } => {
+                let sig = tcx.fn_sig(def_id);
+                let sig = cton_sig_from_fn_sig(tcx, sig, substs);
+                let func_id = {
+                    let module = &mut cx.module;
+                    *cx.def_id_fn_id_map.entry(inst).or_insert_with(|| {
+                        module.declare_function(&tcx.absolute_item_path_str(def_id), Linkage::Local, &sig).unwrap()
+                    })
+                };
 
-    {
-        let mut cx = CodegenCx {
-            tcx,
-            module: &mut module,
-            def_id_fn_id_map: &mut def_id_fn_id_map,
-        };
-        let cx = &mut cx;
+                let mut f = Function::with_name_signature(ExternalName::user(0, func_id.index() as u32), sig);
 
-        for mono_item in
-            collector::collect_crate_mono_items(
-                tcx,
-                collector::MonoItemCollectionMode::Eager
-            ).0 {
-            match mono_item {
-                MonoItem::Fn(inst) => match inst {
-                    Instance {
-                        def: InstanceDef::Item(def_id),
-                        substs,
-                    } => {
-                        let sig = tcx.fn_sig(def_id);
-                        let sig = cton_sig_from_fn_sig(tcx, sig, substs);
-                        let func_id = {
-                            let module = &mut cx.module;
-                            *cx.def_id_fn_id_map.entry(inst).or_insert_with(|| {
-                                module.declare_function(&tcx.absolute_item_path_str(def_id), Linkage::Local, &sig).unwrap()
-                            })
-                        };
+                let mut mir = ::std::io::Cursor::new(Vec::new());
+                ::rustc_mir::util::write_mir_pretty(tcx, Some(def_id), &mut mir).unwrap();
+                tcx.sess.warn(&format!("{:?}:\n\n{}", def_id, String::from_utf8_lossy(&mir.into_inner())));
 
-                        let mut f = Function::with_name_signature(ExternalName::user(0, func_id.index() as u32), sig);
+                ::base::trans_fn(cx, &mut f, inst);
 
-                        let mut mir = ::std::io::Cursor::new(Vec::new());
-                        ::rustc_mir::util::write_mir_pretty(cx.tcx, Some(def_id), &mut mir).unwrap();
-                        tcx.sess.warn(&format!("{:?}:\n\n{}", def_id, String::from_utf8_lossy(&mir.into_inner())));
+                let mut cton = String::new();
+                ::cretonne::codegen::write_function(&mut cton, &f, None).unwrap();
+                tcx.sess.warn(&cton);
 
-                        trans_fn(cx, &mut f, inst);
-
-                        let mut cton = String::new();
-                        ::cretonne::codegen::write_function(&mut cton, &f, None).unwrap();
-                        tcx.sess.warn(&cton);
-
-                        let flags = settings::Flags::new(settings::builder());
-                        match ::cretonne::codegen::verify_function(&f, &flags) {
-                            Ok(_) => {}
-                            Err(err) => {
-                                let pretty_error = ::cretonne::codegen::print_errors::pretty_verifier_error(&f, None, &err);
-                                tcx.sess.fatal(&format!("cretonne verify error:\n{}", pretty_error));
-                            }
-                        }
-
-                        context.func = f;
-                        cx.module.define_function(func_id, &mut context).unwrap();
-                        context.clear();
+                let flags = settings::Flags::new(settings::builder());
+                match ::cretonne::codegen::verify_function(&f, &flags) {
+                    Ok(_) => {}
+                    Err(err) => {
+                        let pretty_error = ::cretonne::codegen::print_errors::pretty_verifier_error(&f, None, &err);
+                        tcx.sess.fatal(&format!("cretonne verify error:\n{}", pretty_error));
                     }
-                    _ => {}
                 }
-                _ => {}
+
+                context.func = f;
+                cx.module.define_function(func_id, context).unwrap();
+                context.clear();
             }
+            _ => {}
         }
+        _ => {}
     }
-
-    tcx.sess.warn("Compiled everything");
-
-    module.finalize_all();
-
-    tcx.sess.warn("Finalized everything");
-
-    for (inst, func_id) in def_id_fn_id_map.iter() {
-        //if tcx.absolute_item_path_str(inst.def_id()) != "example::ret_42" {
-        if tcx.absolute_item_path_str(inst.def_id()) != "example::option_unwrap_or" {
-            continue;
-        }
-        let finalized_function: *const u8 = module.finalize_function(*func_id);
-        /*let f: extern "C" fn(&mut u32) = unsafe { ::std::mem::transmute(finalized_function) };
-        let mut res = 0u32;
-        f(&mut res);
-        tcx.sess.warn(&format!("ret_42 returned {}", res));*/
-        let f: extern "C" fn(&mut bool, &u8, bool) = unsafe { ::std::mem::transmute(finalized_function) };
-        let mut res = false;
-        f(&mut res, &3, false);
-        tcx.sess.warn(&format!("option_unwrap_or returned {}", res));
-    }
-
-    module.finish();
-
-    tcx.sess.fatal("unimplemented");
-
-    Box::new(::OngoingCodegen {
-        metadata: metadata,
-        //translated_module: Module::new(::cretonne_faerie::FaerieBuilder::new(,
-        crate_name: tcx.crate_name(LOCAL_CRATE),
-    })
 }
 
-struct CodegenCx<'a, 'tcx: 'a, B: Backend + 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    module: &'a mut Module<B>,
-    def_id_fn_id_map: &'a mut HashMap<Instance<'tcx>, FuncId>,
-}
-
-fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut Function, instance: Instance<'tcx>) {
+pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &mut Function, instance: Instance<'tcx>) {
     let mir = cx.tcx.optimized_mir(instance.def_id());
     let mut func_ctx = FunctionBuilderContext::new();
     let mut bcx: FunctionBuilder<Variable> = FunctionBuilder::new(f, &mut func_ctx);
