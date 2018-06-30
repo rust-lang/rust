@@ -1330,13 +1330,10 @@ fn format_tuple_struct(
     } else {
         // This is a dirty hack to work around a missing `)` from the span of the last field.
         let last_arg_span = fields[fields.len() - 1].span;
-        if context.snippet(last_arg_span).ends_with(')') {
-            last_arg_span.hi()
-        } else {
-            context
-                .snippet_provider
-                .span_after(mk_sp(last_arg_span.hi(), span.hi()), ")")
-        }
+        context
+            .snippet_provider
+            .opt_span_after(mk_sp(last_arg_span.hi(), span.hi()), ")")
+            .unwrap_or(last_arg_span.hi())
     };
 
     let where_clause_str = match struct_parts.generics {
