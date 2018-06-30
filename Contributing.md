@@ -205,7 +205,7 @@ and `ListFormatting` the key structure for configuration. You'll need to make a
 
 Rustfmt strives to be highly configurable. Often the first part of a patch is
 creating a configuration option for the feature you are implementing. All
-handling of configuration options is done in [src/config.rs](src/config.rs). Look for the
+handling of configuration options is done in [src/config/mod.rs](src/config/mod.rs). Look for the
 `create_config!` macro at the end of the file for all the options. The rest of
 the file defines a bunch of enums used for options, and the machinery to produce
 the config struct and parse a config file, etc. Checking an option is done by

@@ -1,5 +1,3 @@
-// rustfmt-control_brace_style: AlwaysSameLine
-
 fn main() {
     if false
     {

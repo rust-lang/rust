@@ -1,5 +1,4 @@
 // rustfmt-normalize_comments: true
-// rustfmt-indent_style: Block
 
 fn foo() {
     foo();

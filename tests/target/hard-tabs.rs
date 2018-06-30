@@ -1,7 +1,6 @@
 // rustfmt-normalize_comments: true
 // rustfmt-wrap_comments: true
 // rustfmt-hard_tabs: true
-// rustfmt-error_on_line_overflow: false
 
 fn main() {
 	let x = Bar;

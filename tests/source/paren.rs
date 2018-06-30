@@ -1,5 +1,3 @@
-// rustfmt-remove_nested_parens: true
-
 fn main() {
     let x = (((1)));
     let y = (/* comment */((2)));

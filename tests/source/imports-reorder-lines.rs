@@ -1,5 +1,3 @@
-// rustfmt-reorder_imports: true
-
 use std::str;
 use std::cmp::{d, c, b, a};
 use std::cmp::{b, e, g, f};

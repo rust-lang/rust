@@ -281,6 +281,7 @@ macro_rules! create_config {
                 match key {
                     $(
                         stringify!($i) => {
+                            self.$i.1 = true;
                             self.$i.2 = val.parse::<$ty>()
                                 .expect(&format!("Failed to parse override for {} (\"{}\") as a {}",
                                                  stringify!($i),
@@ -420,6 +421,16 @@ macro_rules! create_config {
 
             fn set_ignore(&mut self, dir: &Path) {
                 self.ignore.2.add_prefix(dir);
+            }
+
+            /// Returns true if the config key was explicitely set and is the default value.
+            pub fn is_default(&self, key: &str) -> bool {
+                $(
+                    if let stringify!($i) = key {
+                        return self.$i.1 && self.$i.2 == $def;
+                    }
+                 )+
+                false
             }
         }
 

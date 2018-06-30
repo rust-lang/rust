@@ -1,4 +1,3 @@
-// rustfmt-indent_style: Block
 // rustfmt-brace_style: PreferSameLine
 // Test different indents.
 

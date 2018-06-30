@@ -1,5 +1,3 @@
-// rustfmt-error_on_line_overflow: false
-
 macro_rules! m {
     () => {};
     ($x:ident) => {};

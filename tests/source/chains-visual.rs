@@ -1,4 +1,3 @@
-// rustfmt-normalize_comments: true
 // rustfmt-indent_style: Visual
 // Test chain formatting.
 

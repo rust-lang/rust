@@ -1,5 +1,4 @@
 // rustfmt-normalize_comments: true
-// rustfmt-error_on_line_overflow: false
 
 // Imports.
 
