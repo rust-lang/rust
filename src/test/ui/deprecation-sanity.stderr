@@ -2,7 +2,7 @@ error[E0541]: unknown meta item 'reason'
   --> $DIR/deprecation-sanity.rs:14:43
    |
 LL |     #[deprecated(since = "a", note = "a", reason)] //~ ERROR unknown meta item 'reason'
-   |                                           ^^^^^^
+   |                                           ^^^^^^ expected one of `since`, `note`
 
 error[E0551]: incorrect meta item
   --> $DIR/deprecation-sanity.rs:17:31

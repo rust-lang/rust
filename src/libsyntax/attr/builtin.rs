@@ -20,7 +20,7 @@ use super::{list_contains_name, mark_used, MetaItemKind};
 
 enum AttrError {
     MultipleItem(Name),
-    UnknownMetaItem(Name),
+    UnknownMetaItem(Name, &'static [&'static str]),
     MissingSince,
     MissingFeature,
     MultipleStabilityLevels,
@@ -31,8 +31,15 @@ fn handle_errors(diag: &Handler, span: Span, error: AttrError) {
     match error {
         AttrError::MultipleItem(item) => span_err!(diag, span, E0538,
                                                    "multiple '{}' items", item),
-        AttrError::UnknownMetaItem(item) => span_err!(diag, span, E0541,
-                                                      "unknown meta item '{}'", item),
+        AttrError::UnknownMetaItem(item, expected) => {
+            let expected = expected
+                .iter()
+                .map(|name| format!("`{}`", name))
+                .collect::<Vec<_>>();
+            struct_span_err!(diag, span, E0541, "unknown meta item '{}'", item)
+                .span_label(span, format!("expected one of {}", expected.join(", ")))
+                .emit();
+        }
         AttrError::MissingSince => span_err!(diag, span, E0542, "missing 'since'"),
         AttrError::MissingFeature => span_err!(diag, span, E0546, "missing 'feature'"),
         AttrError::MultipleStabilityLevels => span_err!(diag, span, E0544,
@@ -213,8 +220,11 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                         => if !get(mi, &mut $name) { continue 'outer },
                                 )+
                                 _ => {
-                                    handle_errors(diagnostic, mi.span,
-                                                  AttrError::UnknownMetaItem(mi.name()));
+                                    let expected = &[ $( stringify!($name) ),+ ];
+                                    handle_errors(
+                                        diagnostic,
+                                        mi.span,
+                                        AttrError::UnknownMetaItem(mi.name(), expected));
                                     continue 'outer
                                 }
                             }
@@ -286,8 +296,14 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                 "reason" => if !get(mi, &mut reason) { continue 'outer },
                                 "issue" => if !get(mi, &mut issue) { continue 'outer },
                                 _ => {
-                                    handle_errors(diagnostic, meta.span,
-                                                  AttrError::UnknownMetaItem(mi.name()));
+                                    handle_errors(
+                                        diagnostic,
+                                        meta.span,
+                                        AttrError::UnknownMetaItem(
+                                            mi.name(),
+                                            &["feature", "reason", "issue"]
+                                        ),
+                                    );
                                     continue 'outer
                                 }
                             }
@@ -341,8 +357,11 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                 "feature" => if !get(mi, &mut feature) { continue 'outer },
                                 "since" => if !get(mi, &mut since) { continue 'outer },
                                 _ => {
-                                    handle_errors(diagnostic, meta.span,
-                                                  AttrError::UnknownMetaItem(mi.name()));
+                                    handle_errors(
+                                        diagnostic,
+                                        meta.span,
+                                        AttrError::UnknownMetaItem(mi.name(), &["since", "note"]),
+                                    );
                                     continue 'outer
                                 }
                             }
@@ -520,8 +539,11 @@ fn find_deprecation_generic<'a, I>(diagnostic: &Handler,
                         "since" => if !get(mi, &mut since) { continue 'outer },
                         "note" => if !get(mi, &mut note) { continue 'outer },
                         _ => {
-                            handle_errors(diagnostic, meta.span,
-                                          AttrError::UnknownMetaItem(mi.name()));
+                            handle_errors(
+                                diagnostic,
+                                meta.span,
+                                AttrError::UnknownMetaItem(mi.name(), &["since", "note"]),
+                            );
                             continue 'outer
                         }
                     }
