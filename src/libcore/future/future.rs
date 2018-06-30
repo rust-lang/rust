@@ -12,8 +12,6 @@
             reason = "futures in libcore are unstable",
             issue = "50547")]
 
-//! Asynchronous values.
-
 use mem::PinMut;
 use marker::Unpin;
 use task::{self, Poll};

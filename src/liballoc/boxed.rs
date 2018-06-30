@@ -66,7 +66,8 @@ use core::marker::{Unpin, Unsize};
 use core::mem::{self, PinMut};
 use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
 use core::ptr::{self, NonNull, Unique};
-use core::task::{Context, Poll, UnsafeFutureObj, FutureObj, LocalFutureObj};
+use core::future::{FutureObj, LocalFutureObj, UnsafeFutureObj};
+use core::task::{Context, Poll};
 use core::convert::From;
 
 use raw_vec::RawVec;
@@ -915,7 +916,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<PinBox<U>> for PinBox<T> {}
 impl<T: ?Sized> Unpin for PinBox<T> {}
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<'a, F: ?Sized + Future + Unpin> Future for Box<F> {
+impl<F: ?Sized + Future + Unpin> Future for Box<F> {
     type Output = F::Output;
 
     fn poll(mut self: PinMut<Self>, cx: &mut Context) -> Poll<Self::Output> {
@@ -924,7 +925,7 @@ impl<'a, F: ?Sized + Future + Unpin> Future for Box<F> {
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<'a, F: ?Sized + Future> Future for PinBox<F> {
+impl<F: ?Sized + Future> Future for PinBox<F> {
     type Output = F::Output;
 
     fn poll(mut self: PinMut<Self>, cx: &mut Context) -> Poll<Self::Output> {
@@ -933,7 +934,7 @@ impl<'a, F: ?Sized + Future> Future for PinBox<F> {
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-unsafe impl<T, F: Future<Output = T> + 'static> UnsafeFutureObj<T> for PinBox<F> {
+unsafe impl<'a, T, F: Future<Output = T> + 'a> UnsafeFutureObj<'a, T> for PinBox<F> {
     fn into_raw(self) -> *mut () {
         PinBox::into_raw(self) as *mut ()
     }
@@ -950,28 +951,28 @@ unsafe impl<T, F: Future<Output = T> + 'static> UnsafeFutureObj<T> for PinBox<F>
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<F: Future<Output = ()> + Send + 'static> From<PinBox<F>> for FutureObj<()> {
+impl<'a, F: Future<Output = ()> + Send + 'a> From<PinBox<F>> for FutureObj<'a, ()> {
     fn from(boxed: PinBox<F>) -> Self {
         FutureObj::new(boxed)
     }
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<F: Future<Output = ()> + Send + 'static> From<Box<F>> for FutureObj<()> {
+impl<'a, F: Future<Output = ()> + Send + 'a> From<Box<F>> for FutureObj<'a, ()> {
     fn from(boxed: Box<F>) -> Self {
         FutureObj::new(PinBox::from(boxed))
     }
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<F: Future<Output = ()> + 'static> From<PinBox<F>> for LocalFutureObj<()> {
+impl<'a, F: Future<Output = ()> + 'a> From<PinBox<F>> for LocalFutureObj<'a, ()> {
     fn from(boxed: PinBox<F>) -> Self {
         LocalFutureObj::new(boxed)
     }
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<F: Future<Output = ()> + 'static> From<Box<F>> for LocalFutureObj<()> {
+impl<'a, F: Future<Output = ()> + 'a> From<Box<F>> for LocalFutureObj<'a, ()> {
     fn from(boxed: Box<F>) -> Self {
         LocalFutureObj::new(PinBox::from(boxed))
     }

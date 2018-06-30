@@ -13,7 +13,7 @@
             issue = "50547")]
 
 use fmt;
-use super::{FutureObj, LocalFutureObj};
+use future::{FutureObj, LocalFutureObj};
 
 /// A task executor.
 ///
@@ -29,7 +29,7 @@ pub trait Executor {
     ///
     /// The executor may be unable to spawn tasks, either because it has
     /// been shut down or is resource-constrained.
-    fn spawn_obj(&mut self, task: FutureObj<()>) -> Result<(), SpawnObjError>;
+    fn spawn_obj(&mut self, task: FutureObj<'static, ()>) -> Result<(), SpawnObjError>;
 
     /// Determine whether the executor is able to spawn new tasks.
     ///
@@ -76,7 +76,7 @@ pub struct SpawnObjError {
     pub kind: SpawnErrorKind,
 
     /// The task for which spawning was attempted
-    pub task: FutureObj<()>,
+    pub task: FutureObj<'static, ()>,
 }
 
 /// The result of a failed spawn
@@ -86,5 +86,5 @@ pub struct SpawnLocalObjError {
     pub kind: SpawnErrorKind,
 
     /// The task for which spawning was attempted
-    pub task: LocalFutureObj<()>,
+    pub task: LocalFutureObj<'static, ()>,
 }
