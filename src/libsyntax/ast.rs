@@ -1298,6 +1298,16 @@ impl LitKind {
         }
     }
 
+    /// Returns true if this is a numeric literal.
+    pub fn is_numeric(&self) -> bool {
+        match *self {
+            LitKind::Int(..) |
+            LitKind::Float(..) |
+            LitKind::FloatUnsuffixed(..) => true,
+            _ => false,
+        }
+    }
+
     /// Returns true if this literal has no suffix. Note: this will return true
     /// for literals with prefixes such as raw strings and byte strings.
     pub fn is_unsuffixed(&self) -> bool {
