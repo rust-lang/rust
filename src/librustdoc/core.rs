@@ -235,6 +235,14 @@ pub fn run_core(search_paths: SearchPaths,
         let mut sess = session::build_session_(
             sessopts, cpath, diagnostic_handler, codemap,
         );
+
+        let shutdown_lints = [lint::builtin::UNUSED_IMPORTS,
+                              lint::builtin::UNUSED_EXTERN_CRATES];
+
+        for l in &shutdown_lints {
+            sess.driver_lint_caps.insert(lint::LintId::of(l), lint::Allow);
+        }
+
         let codegen_backend = rustc_driver::get_codegen_backend(&sess);
         let cstore = Rc::new(CStore::new(codegen_backend.metadata_loader()));
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
@@ -299,7 +307,6 @@ pub fn run_core(search_paths: SearchPaths,
                                                             &sess);
 
         let resolver = RefCell::new(resolver);
-
         abort_on_err(driver::phase_3_run_analysis_passes(&*codegen_backend,
                                                         control,
                                                         &sess,
