@@ -14,7 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils \
   libssl-dev \
   pkg-config \
-  mingw-w64
+  mingw-w64 \
+  dnsutils
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

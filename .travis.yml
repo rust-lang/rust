@@ -13,16 +13,16 @@ matrix:
   include:
     # Images used in testing PR and try-build should be run first.
     - env: IMAGE=x86_64-gnu-llvm-3.9 RUST_BACKTRACE=1
-      if: type = pull_request OR branch = auto
+      if: branch = auto
 
     - env: IMAGE=dist-x86_64-linux DEPLOY=1
-      if: branch = try OR branch = auto
+      if: branch = auto
 
     # "alternate" deployments, these are "nightlies" but have LLVM assertions
     # turned on, they're deployed to a different location primarily for
     # additional testing.
     - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1 CI_JOB_NAME=dist-x86_64-linux-alt
-      if: branch = try OR branch = auto
+      if: branch = auto
 
     - env: >
         RUST_CHECK_TARGET=dist
@@ -177,7 +177,6 @@ matrix:
     - env: IMAGE=x86_64-gnu-distcheck
       if: branch = auto
     - env: IMAGE=mingw-check
-      if: type = pull_request OR branch = auto
 
     - stage: publish toolstate
       if: branch = master AND type = push
