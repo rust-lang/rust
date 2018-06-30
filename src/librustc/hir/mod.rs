@@ -31,7 +31,7 @@ use hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use util::nodemap::{NodeMap, FxHashSet};
 use mir::mono::Linkage;
 
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
 use syntax::codemap::{self, Spanned};
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
@@ -546,6 +546,15 @@ impl Generics {
         }
 
         own_counts
+    }
+
+    pub fn get_named(&self, name: &InternedString) -> Option<&GenericParam> {
+        for param in &self.params {
+            if *name == param.name.ident().as_interned_str() {
+                return Some(param);
+            }
+        }
+        None
     }
 }
 

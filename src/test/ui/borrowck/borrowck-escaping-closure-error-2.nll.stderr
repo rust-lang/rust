@@ -7,11 +7,11 @@ LL |     //~^ ERROR E0373
 LL | }
    | - borrowed value only lives until here
    |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 19:1...
-  --> $DIR/borrowck-escaping-closure-error-2.rs:19:1
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 19:8...
+  --> $DIR/borrowck-escaping-closure-error-2.rs:19:8
    |
 LL | fn foo<'a>(x: &'a i32) -> Box<FnMut()+'a> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^
 
 error: aborting due to previous error
 
