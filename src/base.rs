@@ -151,7 +151,7 @@ pub fn trans_fn<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend>, f: &
                 inst
             }
 
-            TerminatorKind::SwitchInt { discr, switch_ty, values, targets } => {
+            TerminatorKind::SwitchInt { discr, switch_ty: _, values, targets } => {
                 let discr = trans_operand(fx, discr).load_value(fx);
                 let mut jt_data = JumpTableData::new();
                 for (i, value) in values.iter().enumerate() {
@@ -426,7 +426,7 @@ fn trans_stmt<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, stmt: &Statement<'tcx
     fx.bcx.func.comments[inst] = format!("{:?}", stmt);
 }
 
-fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>, signed: bool, checked: bool) -> CValue<'tcx> {
+fn trans_int_binop<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, bin_op: BinOp, lhs: Value, rhs: Value, ty: Ty<'tcx>, signed: bool, _checked: bool) -> CValue<'tcx> {
     let res = match (bin_op, signed) {
         (BinOp::Add, _) => fx.bcx.ins().iadd(lhs, rhs),
         (BinOp::Sub, _) => fx.bcx.ins().isub(lhs, rhs),
@@ -466,10 +466,10 @@ fn trans_place<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx>, place: &Place<'tcx>)
                 ProjectionElem::Deref => {
                     CPlace::Addr(base.to_cvalue(fx).load_value(fx), fx.layout_of(place.ty(&*fx.mir, fx.tcx).to_ty(fx.tcx)))
                 }
-                ProjectionElem::Field(field, ty) => {
+                ProjectionElem::Field(field, _ty) => {
                     base.place_field(fx, field)
                 }
-                ProjectionElem::Downcast(adt_def, variant) => {
+                ProjectionElem::Downcast(_adt_def, variant) => {
                     base.downcast_variant(fx, variant)
                 }
                 _ => unimplemented!("projection {:?}", projection),

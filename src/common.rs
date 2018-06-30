@@ -196,7 +196,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             CPlace::Addr(addr, layout) => {
                 let size = layout.size.bytes() as i32;
 
-                if let Some(cton_ty) = fx.cton_type(layout.ty) {
+                if let Some(_) = fx.cton_type(layout.ty) {
                     let data = from.load_value(fx);
                     fx.bcx.ins().store(MemFlags::new(), data, addr, 0);
                 } else {
