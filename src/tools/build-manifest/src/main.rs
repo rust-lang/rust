@@ -298,11 +298,11 @@ impl Builder {
         self.package("rls-preview", &mut manifest.pkg, HOSTS);
         self.package("rustfmt-preview", &mut manifest.pkg, HOSTS);
         self.package("rust-analysis", &mut manifest.pkg, TARGETS);
-        self.package("llvm-tools", &mut manifest.pkg, TARGETS);
+        self.package("llvm-tools-preview", &mut manifest.pkg, TARGETS);
 
         let rls_present = manifest.pkg.contains_key("rls-preview");
         let rustfmt_present = manifest.pkg.contains_key("rustfmt-preview");
-        let llvm_tools_present = manifest.pkg.contains_key("llvm-tools");
+        let llvm_tools_present = manifest.pkg.contains_key("llvm-tools-preview");
 
         if rls_present {
             manifest.renames.insert("rls".to_owned(), Rename { to: "rls-preview".to_owned() });
@@ -359,7 +359,7 @@ impl Builder {
             }
             if llvm_tools_present {
                 extensions.push(Component {
-                    pkg: "llvm-tools".to_string(),
+                    pkg: "llvm-tools-preview".to_string(),
                     target: host.to_string(),
                 });
             }
@@ -486,7 +486,7 @@ impl Builder {
             &self.rls_version
         } else if component == "rustfmt" || component == "rustfmt-preview" {
             &self.rustfmt_version
-        } else if component == "llvm-tools" {
+        } else if component == "llvm-tools" || component == "llvm-tools-preview" {
             &self.llvm_tools_version
         } else {
             &self.rust_version
@@ -500,7 +500,7 @@ impl Builder {
             &self.rls_git_commit_hash
         } else if component == "rustfmt" || component == "rustfmt-preview" {
             &self.rustfmt_git_commit_hash
-        } else if component == "llvm-tools" {
+        } else if component == "llvm-tools" || component == "llvm-tools-preview" {
             &self.llvm_tools_git_commit_hash
         } else {
             &self.rust_git_commit_hash
