@@ -141,14 +141,14 @@ pub fn liveness_of_locals<'tcx>(mir: &Mir<'tcx>, mode: LivenessMode) -> Liveness
             for &successor in mir.basic_blocks()[b].terminator().successors() {
                 bits.union(&ins[successor]);
             }
-            outs[b].clone_from(&bits);
+            outs[b].overwrite(&bits);
 
             // bits = use ∪ (bits - def)
             def_use[b].apply(&mut bits);
 
             // update bits on entry and flag if they have changed
             if ins[b] != bits {
-                ins[b].clone_from(&bits);
+                ins[b].overwrite(&bits);
                 changed = true;
             }
         }

@@ -139,7 +139,7 @@ impl<BD> FlowsAtLocation for FlowAtLocation<BD>
     where BD: BitDenotation
 {
     fn reset_to_entry_of(&mut self, bb: BasicBlock) {
-        (*self.curr_state).clone_from(self.base_results.sets().on_entry_set_for(bb.index()));
+        self.curr_state.overwrite(self.base_results.sets().on_entry_set_for(bb.index()));
     }
 
     fn reconstruct_statement_effect(&mut self, loc: Location) {
