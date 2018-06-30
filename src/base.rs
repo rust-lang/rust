@@ -47,9 +47,9 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(cx: &mut CodegenCx<'a, 'tcx, CurrentBackend
                 cx.module.define_function(func_id, context).unwrap();
                 context.clear();
             }
-            _ => {}
+            inst => cx.tcx.sess.warn(&format!("Unimplemented instance {:?}", inst)),
         }
-        _ => {}
+        mono_item => cx.tcx.sess.warn(&format!("Unimplemented mono item {:?}", mono_item)),
     }
 }
 
