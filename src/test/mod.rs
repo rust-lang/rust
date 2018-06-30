@@ -363,6 +363,9 @@ fn read_config(filename: &Path) -> Config {
     for (key, val) in &sig_comments {
         if key != "target" && key != "config" {
             config.override_value(key, val);
+            if config.is_default(key) {
+                warn!("Default value {} used explicitly for {}", val, key);
+            }
         }
     }
 
