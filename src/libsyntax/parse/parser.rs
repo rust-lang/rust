@@ -1029,6 +1029,13 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn check_tokens(&mut self, kets: &[&token::Token], expect: TokenExpectType) -> bool {
+        kets.iter().any(|k| match expect {
+            TokenExpectType::Expect => self.check(k),
+            TokenExpectType::NoExpect => self.token == **k,
+        })
+    }
+
     /// Eat and discard tokens until one of `kets` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
     fn eat_to_tokens(&mut self, kets: &[&token::Token]) {
@@ -1080,12 +1087,7 @@ impl<'a> Parser<'a> {
     {
         let mut first: bool = true;
         let mut v = vec![];
-        while !kets.iter().any(|k| {
-                match expect {
-                    TokenExpectType::Expect => self.check(k),
-                    TokenExpectType::NoExpect => self.token == **k,
-                }
-            }) {
+        while !self.check_tokens(kets, expect) {
             match self.token {
                 token::CloseDelim(..) | token::Eof => break,
                 _ => {}
@@ -1116,12 +1118,7 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-            if sep.trailing_sep_allowed && kets.iter().any(|k| {
-                match expect {
-                    TokenExpectType::Expect => self.check(k),
-                    TokenExpectType::NoExpect => self.token == **k,
-                }
-            }) {
+            if sep.trailing_sep_allowed && self.check_tokens(kets, expect) {
                 break;
             }
 
