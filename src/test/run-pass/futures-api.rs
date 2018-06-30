@@ -22,7 +22,7 @@ use std::sync::{
 use std::task::{
     Context, Poll,
     Wake, Waker, LocalWaker,
-    Executor, TaskObj, SpawnObjError,
+    Executor, FutureObj, SpawnObjError,
     local_waker, local_waker_from_nonlocal,
 };
 
@@ -44,7 +44,7 @@ impl Wake for Counter {
 struct NoopExecutor;
 
 impl Executor for NoopExecutor {
-    fn spawn_obj(&mut self, _: TaskObj) -> Result<(), SpawnObjError> {
+    fn spawn_obj(&mut self, _: FutureObj<()>) -> Result<(), SpawnObjError> {
         Ok(())
     }
 }

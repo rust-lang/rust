@@ -66,7 +66,7 @@ use core::marker::{Unpin, Unsize};
 use core::mem::{self, PinMut};
 use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
 use core::ptr::{self, NonNull, Unique};
-use core::task::{Context, Poll, UnsafeTask, TaskObj, LocalTaskObj};
+use core::task::{Context, Poll, UnsafeFutureObj, FutureObj, LocalFutureObj};
 use core::convert::From;
 
 use raw_vec::RawVec;
@@ -933,12 +933,12 @@ impl<'a, F: ?Sized + Future> Future for PinBox<F> {
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-unsafe impl<F: Future<Output = ()> + 'static> UnsafeTask for PinBox<F> {
+unsafe impl<T, F: Future<Output = T> + 'static> UnsafeFutureObj<T> for PinBox<F> {
     fn into_raw(self) -> *mut () {
         PinBox::into_raw(self) as *mut ()
     }
 
-    unsafe fn poll(task: *mut (), cx: &mut Context) -> Poll<()> {
+    unsafe fn poll(task: *mut (), cx: &mut Context) -> Poll<T> {
         let ptr = task as *mut F;
         let pin: PinMut<F> = PinMut::new_unchecked(&mut *ptr);
         pin.poll(cx)
@@ -950,29 +950,29 @@ unsafe impl<F: Future<Output = ()> + 'static> UnsafeTask for PinBox<F> {
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<F: Future<Output = ()> + Send + 'static> From<PinBox<F>> for TaskObj {
-    fn from(boxed: PinBox<F>) -> Self {
-        TaskObj::new(boxed)
+impl<T, F: Future<Output = T> + Send + 'static> Into<FutureObj<T>> for PinBox<F> {
+    fn into(self) -> FutureObj<T> {
+        FutureObj::new(self)
     }
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<F: Future<Output = ()> + Send + 'static> From<Box<F>> for TaskObj {
-    fn from(boxed: Box<F>) -> Self {
-        TaskObj::new(PinBox::from(boxed))
+impl<T, F: Future<Output = T> + Send + 'static> Into<FutureObj<T>> for Box<F> {
+    fn into(self) -> FutureObj<T> {
+        FutureObj::new(PinBox::from(self))
     }
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<F: Future<Output = ()> + 'static> From<PinBox<F>> for LocalTaskObj {
-    fn from(boxed: PinBox<F>) -> Self {
-        LocalTaskObj::new(boxed)
+impl<T, F: Future<Output = T> + 'static> Into<LocalFutureObj<T>> for PinBox<F> {
+    fn into(self) -> LocalFutureObj<T> {
+        LocalFutureObj::new(self)
     }
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-impl<F: Future<Output = ()> + 'static> From<Box<F>> for LocalTaskObj {
-    fn from(boxed: Box<F>) -> Self {
-        LocalTaskObj::new(PinBox::from(boxed))
+impl<T, F: Future<Output = T> + 'static> Into<LocalFutureObj<T>> for Box<F> {
+    fn into(self) -> LocalFutureObj<T> {
+        LocalFutureObj::new(PinBox::from(self))
     }
 }
