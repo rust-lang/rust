@@ -1142,9 +1142,7 @@ impl<'a> Parser<'a> {
     {
         self.expect(bra)?;
         let result = self.parse_seq_to_before_end(ket, sep, f)?;
-        if self.token == *ket {
-            self.bump();
-        }
+        self.eat(ket);
         Ok(result)
     }
 
@@ -1340,8 +1338,7 @@ impl<'a> Parser<'a> {
             let ident = self.parse_ident()?;
             self.expect(&token::Colon)?;
             let ty = self.parse_ty()?;
-            let default = if self.check(&token::Eq) {
-                self.bump();
+            let default = if self.eat(&token::Eq) {
                 let expr = self.parse_expr()?;
                 self.expect(&token::Semi)?;
                 Some(expr)
@@ -2200,10 +2197,8 @@ impl<'a> Parser<'a> {
                 while self.token != token::CloseDelim(token::Paren) {
                     es.push(self.parse_expr()?);
                     self.expect_one_of(&[], &[token::Comma, token::CloseDelim(token::Paren)])?;
-                    if self.check(&token::Comma) {
+                    if self.eat(&token::Comma) {
                         trailing_comma = true;
-
-                        self.bump();
                     } else {
                         trailing_comma = false;
                         break;
@@ -2229,25 +2224,22 @@ impl<'a> Parser<'a> {
 
                 attrs.extend(self.parse_inner_attributes()?);
 
-                if self.check(&token::CloseDelim(token::Bracket)) {
+                if self.eat(&token::CloseDelim(token::Bracket)) {
                     // Empty vector.
-                    self.bump();
                     ex = ExprKind::Array(Vec::new());
                 } else {
                     // Nonempty vector.
                     let first_expr = self.parse_expr()?;
-                    if self.check(&token::Semi) {
+                    if self.eat(&token::Semi) {
                         // Repeating array syntax: [ 0; 512 ]
-                        self.bump();
                         let count = AnonConst {
                             id: ast::DUMMY_NODE_ID,
                             value: self.parse_expr()?,
                         };
                         self.expect(&token::CloseDelim(token::Bracket))?;
                         ex = ExprKind::Repeat(first_expr, count);
-                    } else if self.check(&token::Comma) {
+                    } else if self.eat(&token::Comma) {
                         // Vector with two or more elements.
-                        self.bump();
                         let remaining_exprs = self.parse_seq_to_end(
                             &token::CloseDelim(token::Bracket),
                             SeqSep::trailing_allowed(token::Comma),
@@ -3550,8 +3542,7 @@ impl<'a> Parser<'a> {
 
     /// Parse the RHS of a local variable declaration (e.g. '= 14;')
     fn parse_initializer(&mut self, skip_eq: bool) -> PResult<'a, Option<P<Expr>>> {
-        if self.check(&token::Eq) {
-            self.bump();
+        if self.eat(&token::Eq) {
             Ok(Some(self.parse_expr()?))
         } else if skip_eq {
             Ok(Some(self.parse_expr()?))
@@ -3577,8 +3568,7 @@ impl<'a> Parser<'a> {
                 );
                 err.emit();
                 self.bump();
-            } else if self.check(&token::BinOp(token::Or)) {
-                self.bump();
+            } else if self.eat(&token::BinOp(token::Or)) {
             } else {
                 return Ok(pats);
             }
@@ -6175,8 +6165,7 @@ impl<'a> Parser<'a> {
 
         let id_span = self.span;
         let id = self.parse_ident()?;
-        if self.check(&token::Semi) {
-            self.bump();
+        if self.eat(&token::Semi) {
             if in_cfg && self.recurse_into_file_modules {
                 // This mod is in an external file. Let's go get it!
                 let ModulePathSuccess { path, directory_ownership, warn } =
