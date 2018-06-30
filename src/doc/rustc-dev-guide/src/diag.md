@@ -74,17 +74,21 @@ err.emit();
 
 ## Suggestions
 
-We would like to make edition transitions as smooth as possible. To that end,
-[`rustfix`][rustfix] can use compiler suggestions to automatically fix
-code. For example, we could use `rustfix` to mechanically apply the `qux`
-suggestion from the previous example. However, not all suggestions are
-mechanically applicable.  We use the
-[`span_suggestion_with_applicability`][sswa] method of `DiagnosticBuilder` to
-inform the emitter of whether a suggestion is mechanically applicable or not.
-This information, in turn, is outputed by rustc when the error format is
-`json`, which is used by `rustfix`.
+In addition to telling the user exactly _why_ their code is wrong, it's
+oftentimes furthermore possible to tell them how to fix it. To this end,
+`DiagnosticBuilder` offers a structured suggestions API, which formats code
+suggestions pleasingly in the terminal, or (when the `--error-format json` flag
+is passed) as JSON for consumption by tools, most notably the [Rust Language
+Server][rls] and [`rustfix`][rustfix].
 
-[rustfix]: https://github.com/rust-lang-nursery/rustfix/
+[rls]: https://github.com/rust-lang-nursery/rls
+[rustfix]: https://github.com/rust-lang-nursery/rustfix
+
+Not all suggestions should be applied mechanically. Use the
+[`span_suggestion_with_applicability`][sswa] method of `DiagnosticBuilder` to
+make a suggestion while providing a hint to tools whether the suggestion is
+mechanically applicable or not.
+
 [sswa]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagnosticBuilder.html#method.span_suggestion_with_applicability
 
 For example, to make our `qux` suggestion machine-applicable, we would do:
