@@ -365,6 +365,10 @@ impl Token {
         self == &Lt || self == &BinOp(Shl)
     }
 
+    crate fn is_args_start(&self) -> bool {
+        self.is_qpath_start() || self == &OpenDelim(Paren)
+    }
+
     crate fn is_path_start(&self) -> bool {
         self == &ModSep || self.is_qpath_start() || self.is_path() ||
         self.is_path_segment_keyword() || self.is_ident() && !self.is_reserved_ident()

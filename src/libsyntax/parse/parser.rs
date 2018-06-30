@@ -1969,20 +1969,16 @@ impl<'a> Parser<'a> {
                           -> PResult<'a, PathSegment> {
         let ident = self.parse_path_segment_ident()?;
 
-        let is_args_start = |token: &token::Token| match *token {
-            token::Lt | token::BinOp(token::Shl) | token::OpenDelim(token::Paren) => true,
-            _ => false,
-        };
         let check_args_start = |this: &mut Self| {
             this.expected_tokens.extend_from_slice(
                 &[TokenType::Token(token::Lt), TokenType::Token(token::OpenDelim(token::Paren))]
             );
-            is_args_start(&this.token)
+            this.token.is_args_start()
         };
 
         Ok(if style == PathStyle::Type && check_args_start(self) ||
               style != PathStyle::Mod && self.check(&token::ModSep)
-                                      && self.look_ahead(1, |t| is_args_start(t)) {
+                                      && self.look_ahead(1, |t| t.is_args_start()) {
             // Generic arguments are found - `<`, `(`, `::<` or `::(`.
             let lo = self.span;
             if self.eat(&token::ModSep) && style == PathStyle::Type && enable_warning {
