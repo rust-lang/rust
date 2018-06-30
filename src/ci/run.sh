@@ -9,6 +9,12 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
+dig s3-us-west-1.amazonaws.com
+dig @1.1.1.1 s3-us-west-1.amazonaws.com
+dig @1.0.0.1 s3-us-west-1.amazonaws.com
+dig @8.8.8.8 s3-us-west-1.amazonaws.com
+dig @8.8.4.4 s3-us-west-1.amazonaws.com
+
 set -e
 
 if [ -n "$CI_JOB_NAME" ]; then

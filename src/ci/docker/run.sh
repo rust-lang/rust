@@ -119,7 +119,7 @@ fi
 args="$args --privileged"
 
 if [ "$CI" != "" ]; then
-    args="$args --dns 8.8.8.8 --dns 8.8.4.4 --dns 1.1.1.1 --dns 1.0.0.1"
+    args="$args --dns 1.1.1.1 --dns 1.0.0.1 --dns 8.8.8.8 --dns 8.8.4.4"
 fi
 
 exec docker \
