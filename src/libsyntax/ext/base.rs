@@ -597,11 +597,11 @@ pub enum SyntaxExtension {
     MultiModifier(Box<MultiItemModifier + sync::Sync + sync::Send>),
 
     /// A function-like procedural macro. TokenStream -> TokenStream.
-    ProcMacro(
-        /* expander: */ Box<ProcMacro + sync::Sync + sync::Send>,
-        /* allow_internal_unstable: */ bool,
-        /* edition: */ Edition,
-    ),
+    ProcMacro {
+        expander: Box<ProcMacro + sync::Sync + sync::Send>,
+        allow_internal_unstable: bool,
+        edition: Edition,
+    },
 
     /// An attribute-like procedural macro. TokenStream, TokenStream -> TokenStream.
     /// The first TokenSteam is the attribute, the second is the annotated item.
@@ -646,19 +646,22 @@ pub enum SyntaxExtension {
     BuiltinDerive(BuiltinDeriveFn),
 
     /// A declarative macro, e.g. `macro m() {}`.
-    ///
-    /// The second element is the definition site span.
-    DeclMacro(Box<TTMacroExpander + sync::Sync + sync::Send>, Option<(ast::NodeId, Span)>, Edition),
+    DeclMacro {
+        expander: Box<TTMacroExpander + sync::Sync + sync::Send>,
+        def_info: Option<(ast::NodeId, Span)>,
+        is_transparent: bool,
+        edition: Edition,
+    }
 }
 
 impl SyntaxExtension {
     /// Return which kind of macro calls this syntax extension.
     pub fn kind(&self) -> MacroKind {
         match *self {
-            SyntaxExtension::DeclMacro(..) |
+            SyntaxExtension::DeclMacro { .. } |
             SyntaxExtension::NormalTT { .. } |
             SyntaxExtension::IdentTT(..) |
-            SyntaxExtension::ProcMacro(..) =>
+            SyntaxExtension::ProcMacro { .. } =>
                 MacroKind::Bang,
             SyntaxExtension::MultiDecorator(..) |
             SyntaxExtension::MultiModifier(..) |
@@ -672,10 +675,17 @@ impl SyntaxExtension {
 
     pub fn is_modern(&self) -> bool {
         match *self {
-            SyntaxExtension::DeclMacro(..) |
-            SyntaxExtension::ProcMacro(..) |
+            SyntaxExtension::DeclMacro { .. } |
+            SyntaxExtension::ProcMacro { .. } |
             SyntaxExtension::AttrProcMacro(..) |
             SyntaxExtension::ProcMacroDerive(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_transparent(&self) -> bool {
+        match *self {
+            SyntaxExtension::DeclMacro { is_transparent, .. } => is_transparent,
             _ => false,
         }
     }
@@ -683,8 +693,8 @@ impl SyntaxExtension {
     pub fn edition(&self) -> Edition {
         match *self {
             SyntaxExtension::NormalTT { edition, .. } |
-            SyntaxExtension::DeclMacro(.., edition) |
-            SyntaxExtension::ProcMacro(.., edition) |
+            SyntaxExtension::DeclMacro { edition, .. } |
+            SyntaxExtension::ProcMacro { edition, .. } |
             SyntaxExtension::AttrProcMacro(.., edition) |
             SyntaxExtension::ProcMacroDerive(.., edition) => edition,
             // Unstable legacy stuff

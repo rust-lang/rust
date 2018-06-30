@@ -155,10 +155,9 @@ impl<'a> base::Resolver for Resolver<'a> {
                     }
                 });
 
-                let ident = path.segments[0].ident;
-                if ident.name == keywords::DollarCrate.name() {
+                if path.segments[0].ident.name == keywords::DollarCrate.name() {
+                    let module = self.0.resolve_crate_root(path.segments[0].ident);
                     path.segments[0].ident.name = keywords::CrateRoot.name();
-                    let module = self.0.resolve_crate_root(ident.span.ctxt(), true);
                     if !module.is_local() {
                         let span = path.segments[0].ident.span;
                         path.segments.insert(1, match module.kind {
@@ -333,7 +332,9 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.unused_macros.remove(&def_id);
         let ext = self.get_macro(def);
         if ext.is_modern() {
-            invoc.expansion_data.mark.set_transparency(Transparency::Opaque);
+            let transparency =
+                if ext.is_transparent() { Transparency::Transparent } else { Transparency::Opaque };
+            invoc.expansion_data.mark.set_transparency(transparency);
         } else if def_id.krate == BUILTIN_MACROS_CRATE {
             invoc.expansion_data.mark.set_is_builtin(true);
         }
@@ -351,8 +352,8 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn check_unused_macros(&self) {
         for did in self.unused_macros.iter() {
             let id_span = match *self.macro_map[did] {
-                SyntaxExtension::NormalTT { def_info, .. } => def_info,
-                SyntaxExtension::DeclMacro(.., osp, _) => osp,
+                SyntaxExtension::NormalTT { def_info, .. } |
+                SyntaxExtension::DeclMacro { def_info, .. } => def_info,
                 _ => None,
             };
             if let Some((id, span)) = id_span {
@@ -849,8 +850,6 @@ impl<'a> Resolver<'a> {
     /// Error if `ext` is a Macros 1.1 procedural macro being imported by `#[macro_use]`
     fn err_if_macro_use_proc_macro(&mut self, name: Name, use_span: Span,
                                    binding: &NameBinding<'a>) {
-        use self::SyntaxExtension::*;
-
         let krate = binding.def().def_id().krate;
 
         // Plugin-based syntax extensions are exempt from this check
@@ -860,15 +859,16 @@ impl<'a> Resolver<'a> {
 
         match *ext {
             // If `ext` is a procedural macro, check if we've already warned about it
-            AttrProcMacro(..) | ProcMacro(..) =>
+            SyntaxExtension::AttrProcMacro(..) | SyntaxExtension::ProcMacro { .. } =>
                 if !self.warned_proc_macros.insert(name) { return; },
             _ => return,
         }
 
         let warn_msg = match *ext {
-            AttrProcMacro(..) => "attribute procedural macros cannot be \
-                                  imported with `#[macro_use]`",
-            ProcMacro(..) => "procedural macros cannot be imported with `#[macro_use]`",
+            SyntaxExtension::AttrProcMacro(..) =>
+                "attribute procedural macros cannot be imported with `#[macro_use]`",
+            SyntaxExtension::ProcMacro { .. } =>
+                "procedural macros cannot be imported with `#[macro_use]`",
             _ => return,
         };
 

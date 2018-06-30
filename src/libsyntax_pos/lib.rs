@@ -248,6 +248,13 @@ impl Span {
         self.data().with_ctxt(ctxt)
     }
 
+    /// Returns `true` if this is a dummy span with any hygienic context.
+    #[inline]
+    pub fn is_dummy(self) -> bool {
+        let span = self.data();
+        span.lo.0 == 0 && span.hi.0 == 0
+    }
+
     /// Returns a new span representing an empty span at the beginning of this span
     #[inline]
     pub fn shrink_to_lo(self) -> Span {
@@ -263,7 +270,7 @@ impl Span {
 
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
     pub fn substitute_dummy(self, other: Span) -> Span {
-        if self.source_equal(&DUMMY_SP) { other } else { self }
+        if self.is_dummy() { other } else { self }
     }
 
     /// Return true if `self` fully encloses `other`.
@@ -490,6 +497,12 @@ impl Span {
     pub fn modern(self) -> Span {
         let span = self.data();
         span.with_ctxt(span.ctxt.modern())
+    }
+
+    #[inline]
+    pub fn modern_and_legacy(self) -> Span {
+        let span = self.data();
+        span.with_ctxt(span.ctxt.modern_and_legacy())
     }
 }
 

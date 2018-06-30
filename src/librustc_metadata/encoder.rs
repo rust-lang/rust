@@ -41,7 +41,7 @@ use std::u32;
 use syntax::ast::{self, CRATE_NODE_ID};
 use syntax::attr;
 use syntax::symbol::keywords;
-use syntax_pos::{self, hygiene, FileName, FileMap, Span, DUMMY_SP};
+use syntax_pos::{self, hygiene, FileName, FileMap, Span};
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -147,7 +147,7 @@ impl<'a, 'tcx> SpecializedEncoder<DefIndex> for EncodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, span: &Span) -> Result<(), Self::Error> {
-        if *span == DUMMY_SP {
+        if span.is_dummy() {
             return TAG_INVALID_SPAN.encode(self)
         }
 

@@ -518,8 +518,11 @@ impl CrateStore for cstore::CStore {
             return LoadedMacro::ProcMacro(proc_macros[id.index.to_proc_macro_index()].1.clone());
         } else if data.name == "proc_macro" &&
                   self.get_crate_data(id.krate).item_name(id.index) == "quote" {
-            let ext = SyntaxExtension::ProcMacro(Box::new(::proc_macro::__internal::Quoter),
-                                                 true, data.root.edition);
+            let ext = SyntaxExtension::ProcMacro {
+                expander: Box::new(::proc_macro::__internal::Quoter),
+                allow_internal_unstable: true,
+                edition: data.root.edition,
+            };
             return LoadedMacro::ProcMacro(Lrc::new(ext));
         }
 

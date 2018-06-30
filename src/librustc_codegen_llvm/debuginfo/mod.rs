@@ -219,7 +219,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     let span = mir.span;
 
     // This can be the case for functions inlined from another crate
-    if span == syntax_pos::DUMMY_SP {
+    if span.is_dummy() {
         // FIXME(simulacrum): Probably can't happen; remove.
         return FunctionDebugContext::FunctionWithoutDebugInfo;
     }

@@ -1850,6 +1850,8 @@ impl<'a> Resolver<'a> {
             } else {
                 ident.span.modern()
             }
+        } else {
+            ident = ident.modern_and_legacy();
         }
 
         // Walk backwards up the ribs in scope.
@@ -1981,12 +1983,36 @@ impl<'a> Resolver<'a> {
         result
     }
 
-    fn resolve_crate_root(&mut self, mut ctxt: SyntaxContext, legacy: bool) -> Module<'a> {
-        let mark = if legacy {
+    fn resolve_crate_root(&mut self, ident: Ident) -> Module<'a> {
+        let mut ctxt = ident.span.ctxt();
+        let mark = if ident.name == keywords::DollarCrate.name() {
             // When resolving `$crate` from a `macro_rules!` invoked in a `macro`,
             // we don't want to pretend that the `macro_rules!` definition is in the `macro`
             // as described in `SyntaxContext::apply_mark`, so we ignore prepended modern marks.
-            ctxt.marks().into_iter().find(|&mark| mark.transparency() != Transparency::Opaque)
+            // FIXME: This is only a guess and it doesn't work correctly for `macro_rules!`
+            // definitions actually produced by `macro` and `macro` definitions produced by
+            // `macro_rules!`, but at least such configurations are not stable yet.
+            ctxt = ctxt.modern_and_legacy();
+            let mut iter = ctxt.marks().into_iter().rev().peekable();
+            let mut result = None;
+            // Find the last modern mark from the end if it exists.
+            while let Some(&mark) = iter.peek() {
+                if mark.transparency() == Transparency::Opaque {
+                    result = Some(mark);
+                    iter.next();
+                } else {
+                    break;
+                }
+            }
+            // Then find the last legacy mark from the end if it exists.
+            for mark in iter {
+                if mark.transparency() == Transparency::SemiTransparent {
+                    result = Some(mark);
+                } else {
+                    break;
+                }
+            }
+            result
         } else {
             ctxt = ctxt.modern();
             ctxt.adjust(Mark::root())
@@ -2627,6 +2653,7 @@ impl<'a> Resolver<'a> {
         // must not add it if it's in the bindings map
         // because that breaks the assumptions later
         // passes make about or-patterns.)
+        let ident = ident.modern_and_legacy();
         let mut def = Def::Local(pat_id);
         match bindings.get(&ident).cloned() {
             Some(id) if id == outer_pat_id => {
@@ -2857,7 +2884,7 @@ impl<'a> Resolver<'a> {
                     .map(|suggestion| import_candidate_to_paths(&suggestion)).collect::<Vec<_>>();
                 enum_candidates.sort();
                 for (sp, variant_path, enum_path) in enum_candidates {
-                    if sp == DUMMY_SP {
+                    if sp.is_dummy() {
                         let msg = format!("there is an enum variant `{}`, \
                                         try using `{}`?",
                                         variant_path,
@@ -3345,14 +3372,11 @@ impl<'a> Resolver<'a> {
             if ns == TypeNS {
                 if (i == 0 && name == keywords::CrateRoot.name()) ||
                    (i == 0 && name == keywords::Crate.name()) ||
+                   (i == 0 && name == keywords::DollarCrate.name()) ||
                    (i == 1 && name == keywords::Crate.name() &&
                               path[0].name == keywords::CrateRoot.name()) {
-                    // `::a::b` or `::crate::a::b`
-                    module = Some(self.resolve_crate_root(ident.span.ctxt(), false));
-                    continue
-                } else if i == 0 && name == keywords::DollarCrate.name() {
-                    // `$crate::a::b`
-                    module = Some(self.resolve_crate_root(ident.span.ctxt(), true));
+                    // `::a::b`, `crate::a::b`, `::crate::a::b` or `$crate::a::b`
+                    module = Some(self.resolve_crate_root(ident));
                     continue
                 } else if i == 1 && !ident.is_path_segment_keyword() {
                     let prev_name = path[0].name;
@@ -3784,7 +3808,8 @@ impl<'a> Resolver<'a> {
             self.unused_labels.insert(id, label.ident.span);
             let def = Def::Label(id);
             self.with_label_rib(|this| {
-                this.label_ribs.last_mut().unwrap().bindings.insert(label.ident, def);
+                let ident = label.ident.modern_and_legacy();
+                this.label_ribs.last_mut().unwrap().bindings.insert(ident, def);
                 f(this);
             });
         } else {
@@ -3815,7 +3840,10 @@ impl<'a> Resolver<'a> {
             }
 
             ExprKind::Break(Some(label), _) | ExprKind::Continue(Some(label)) => {
-                match self.search_label(label.ident, |rib, id| rib.bindings.get(&id).cloned()) {
+                let def = self.search_label(label.ident, |rib, ident| {
+                    rib.bindings.get(&ident.modern_and_legacy()).cloned()
+                });
+                match def {
                     None => {
                         // Search again for close matches...
                         // Picks the first label that is "close enough", which is not necessarily
@@ -4281,7 +4309,7 @@ impl<'a> Resolver<'a> {
             let mut err = struct_span_err!(self.session, span, E0659, "`{}` is ambiguous", name);
             err.span_note(b1.span, &msg1);
             match b2.def() {
-                Def::Macro(..) if b2.span == DUMMY_SP =>
+                Def::Macro(..) if b2.span.is_dummy() =>
                     err.note(&format!("`{}` is also a builtin macro", name)),
                 _ => err.span_note(b2.span, &msg2),
             };
@@ -4394,14 +4422,14 @@ impl<'a> Resolver<'a> {
                           container));
 
         err.span_label(span, format!("`{}` re{} here", name, new_participle));
-        if old_binding.span != DUMMY_SP {
+        if !old_binding.span.is_dummy() {
             err.span_label(self.session.codemap().def_span(old_binding.span),
                            format!("previous {} of the {} `{}` here", old_noun, old_kind, name));
         }
 
         // See https://github.com/rust-lang/rust/issues/32354
         if old_binding.is_import() || new_binding.is_import() {
-            let binding = if new_binding.is_import() && new_binding.span != DUMMY_SP {
+            let binding = if new_binding.is_import() && !new_binding.span.is_dummy() {
                 new_binding
             } else {
                 old_binding

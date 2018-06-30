@@ -8,20 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:bang_proc_macro2.rs
+// aux-build:call-site.rs
 // ignore-stage1
 
-#![feature(use_extern_macros, proc_macro_non_items)]
-#![allow(unused_macros)]
+#![feature(proc_macro, proc_macro_non_items)]
 
-extern crate bang_proc_macro2;
-
-use bang_proc_macro2::bang_proc_macro2;
+extern crate call_site;
+use call_site::*;
 
 fn main() {
-    let foobar = 42;
-    bang_proc_macro2!();
-    //~^ ERROR cannot find value `foobar2` in this scope
-    //~^^ did you mean `foobar`?
-    println!("{}", x);
+    let x1 = 10;
+    call_site::check!(let x2 = x1;);
+    let x6 = x5;
 }

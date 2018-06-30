@@ -68,6 +68,15 @@ impl Ident {
         Ident::new(self.name, self.span.modern())
     }
 
+    /// "Normalize" ident for use in comparisons using "local variable hygiene".
+    /// Identifiers with same string value become same if they came from the same non-transparent
+    /// macro (e.g. `macro` or `macro_rules!` items) and stay different if they came from different
+    /// non-transparent macros.
+    /// Technically, this operation strips all transparent marks from ident's syntactic context.
+    pub fn modern_and_legacy(self) -> Ident {
+        Ident::new(self.name, self.span.modern_and_legacy())
+    }
+
     pub fn gensym(self) -> Ident {
         Ident::new(self.name.gensymed(), self.span)
     }
