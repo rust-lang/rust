@@ -261,4 +261,5 @@ For example,
 ```
 
 This defines the `nonstandard_style` group which turns on the listed lints. A
-user can turn on these lints by using `!#[warn(nonstandard_style)]`.
+user can turn on these lints with a `!#[warn(nonstandard_style)]` attribute in
+the source code, or by passing `-W nonstandard-style` on the command line.
