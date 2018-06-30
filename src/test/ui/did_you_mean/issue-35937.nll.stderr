@@ -6,26 +6,24 @@ LL |     let f = Foo { v: Vec::new() };
 LL |     f.v.push("cat".to_string()); //~ ERROR cannot borrow
    |     ^^^ cannot borrow as mutable
 
-error[E0384]: cannot assign twice to immutable variable `s.x`
+error[E0384]: cannot assign twice to immutable variable `s`
   --> $DIR/issue-35937.rs:26:5
    |
 LL |     let s = S { x: 42 };
-   |         -   ----------- first assignment to `s.x`
+   |         -
    |         |
+   |         first assignment to `s`
    |         consider changing this to `mut s`
 LL |     s.x += 1; //~ ERROR cannot assign
    |     ^^^^^^^^ cannot assign twice to immutable variable
 
-error[E0384]: cannot assign twice to immutable variable `s.x`
+error[E0384]: cannot assign to immutable argument `s`
   --> $DIR/issue-35937.rs:30:5
    |
 LL | fn bar(s: S) {
-   |        -
-   |        |
-   |        first assignment to `s.x`
-   |        consider changing this to `mut s`
+   |        - consider changing this to `mut s`
 LL |     s.x += 1; //~ ERROR cannot assign
-   |     ^^^^^^^^ cannot assign twice to immutable variable
+   |     ^^^^^^^^ cannot assign to immutable argument
 
 error: aborting due to 3 previous errors
 
