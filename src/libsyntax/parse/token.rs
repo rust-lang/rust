@@ -14,7 +14,7 @@ pub use self::DelimToken::*;
 pub use self::Lit::*;
 pub use self::Token::*;
 
-use ast::{self};
+use ast;
 use parse::ParseSess;
 use print::pprust;
 use ptr::P;
