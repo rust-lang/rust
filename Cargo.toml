@@ -7,7 +7,7 @@ readme = "README.md"
 keywords = ["semver", "plugin"]
 categories = ["development-tools", "development-tools::cargo-plugins"]
 
-version = "0.1.14"
+version = "0.1.15"
 
 authors = ["Inokentiy Babushkin <twk@twki.de>"]
 license-file = "LICENSE"
