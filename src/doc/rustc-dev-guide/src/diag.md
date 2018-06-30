@@ -41,13 +41,15 @@ directly and ones that allow finer control over what to emit. For example,
 [`DiagnosticBuilder`][diagbuild].
 
 `DiagnosticBuilder` allows you to add related notes and suggestions to an error
-before emitting it by calling the [`emit`][emit] method. See the
+before emitting it by calling the [`emit`][emit] method. (Failing to either
+emit or [cancel][cancel] a `DiagnosticBuilder` will result in an ICE.) See the
 [docs][diagbuild] for more info on what you can do.
 
 [spanerr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/session/struct.Session.html#method.span_err
 [strspanerr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/session/struct.Session.html#method.struct_span_err
 [diagbuild]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/diagnostic_builder/struct.DiagnosticBuilder.html
 [emit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/diagnostic_builder/struct.DiagnosticBuilder.html#method.emit
+[cancel]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diagnostic.html#method.cancel
 
 ```rust,ignore
 // Get a DiagnosticBuilder. This does _not_ emit an error yet.
