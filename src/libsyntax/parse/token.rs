@@ -224,6 +224,17 @@ impl Token {
         }
     }
 
+    crate fn to_meta_ident(&self) -> Option<ast::Path> {
+        if let Interpolated(ref nt) = self {
+            if let NtMeta(ref meta) = nt.0 {
+                if let ast::MetaItemKind::Word = meta.node {
+                    return Some(meta.ident.clone());
+                }
+            }
+        }
+        None
+    }
+
     /// Returns `true` if the token can appear at the start of an expression.
     crate fn can_begin_expr(&self) -> bool {
         match *self {
