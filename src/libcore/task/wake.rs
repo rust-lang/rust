@@ -13,6 +13,7 @@
             issue = "50547")]
 
 use fmt;
+use marker::Unpin;
 use ptr::NonNull;
 
 /// A `Waker` is a handle for waking up a task by notifying its executor that it
@@ -25,6 +26,7 @@ pub struct Waker {
     inner: NonNull<UnsafeWake>,
 }
 
+impl Unpin for Waker {}
 unsafe impl Send for Waker {}
 unsafe impl Sync for Waker {}
 
@@ -99,6 +101,7 @@ pub struct LocalWaker {
     inner: NonNull<UnsafeWake>,
 }
 
+impl Unpin for LocalWaker {}
 impl !Send for LocalWaker {}
 impl !Sync for LocalWaker {}
 
