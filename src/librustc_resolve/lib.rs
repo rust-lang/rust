@@ -1996,8 +1996,8 @@ impl<'a> Resolver<'a> {
             let mut iter = ctxt.marks().into_iter().rev().peekable();
             let mut result = None;
             // Find the last modern mark from the end if it exists.
-            while let Some(&mark) = iter.peek() {
-                if mark.transparency() == Transparency::Opaque {
+            while let Some(&(mark, transparency)) = iter.peek() {
+                if transparency == Transparency::Opaque {
                     result = Some(mark);
                     iter.next();
                 } else {
@@ -2005,8 +2005,8 @@ impl<'a> Resolver<'a> {
                 }
             }
             // Then find the last legacy mark from the end if it exists.
-            for mark in iter {
-                if mark.transparency() == Transparency::SemiTransparent {
+            for (mark, transparency) in iter {
+                if transparency == Transparency::SemiTransparent {
                     result = Some(mark);
                 } else {
                     break;
