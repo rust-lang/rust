@@ -57,8 +57,8 @@ impl Delimited {
 
     /// Returns the opening delimiter as a token tree.
     pub fn open_tt(&self, span: Span) -> TokenTree {
-        let open_span = if span == DUMMY_SP {
-            DUMMY_SP
+        let open_span = if span.is_dummy() {
+            span
         } else {
             span.with_hi(span.lo() + BytePos(self.delim.len() as u32))
         };
@@ -67,8 +67,8 @@ impl Delimited {
 
     /// Returns the closing delimiter as a token tree.
     pub fn close_tt(&self, span: Span) -> TokenTree {
-        let close_span = if span == DUMMY_SP {
-            DUMMY_SP
+        let close_span = if span.is_dummy() {
+            span
         } else {
             span.with_lo(span.hi() - BytePos(self.delim.len() as u32))
         };

@@ -20,7 +20,7 @@ use ty::{self, TyCtxt};
 use middle::privacy::AccessLevels;
 use session::DiagnosticMessageId;
 use syntax::symbol::Symbol;
-use syntax_pos::{Span, MultiSpan, DUMMY_SP};
+use syntax_pos::{Span, MultiSpan};
 use syntax::ast;
 use syntax::ast::{NodeId, Attribute};
 use syntax::feature_gate::{GateIssue, emit_feature_err, find_lang_feature_accepted_version};
@@ -687,7 +687,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let msp: MultiSpan = span.into();
                 let cm = &self.sess.parse_sess.codemap();
                 let span_key = msp.primary_span().and_then(|sp: Span|
-                    if sp != DUMMY_SP {
+                    if !sp.is_dummy() {
                         let file = cm.lookup_char_pos(sp.lo()).file;
                         if file.name.is_macros() {
                             None
@@ -725,7 +725,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         match item.node {
             hir::ItemExternCrate(_) => {
                 // compiler-generated `extern crate` items have a dummy span.
-                if item.span == DUMMY_SP { return }
+                if item.span.is_dummy() { return }
 
                 let def_id = self.tcx.hir.local_def_id(item.id);
                 let cnum = match self.tcx.extern_mod_stmt_cnum(def_id) {

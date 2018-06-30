@@ -1219,7 +1219,7 @@ fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
     let res = resolver
         .resolve_macro_to_def_inner(mark, &path, MacroKind::Bang, false);
     if let Ok(def) = res {
-        if let SyntaxExtension::DeclMacro(..) = *resolver.get_macro(def) {
+        if let SyntaxExtension::DeclMacro { .. } = *resolver.get_macro(def) {
             Some(def)
         } else {
             None
@@ -3464,7 +3464,7 @@ impl Span {
 
 impl Clean<Span> for syntax_pos::Span {
     fn clean(&self, cx: &DocContext) -> Span {
-        if *self == DUMMY_SP {
+        if self.is_dummy() {
             return Span::empty();
         }
 

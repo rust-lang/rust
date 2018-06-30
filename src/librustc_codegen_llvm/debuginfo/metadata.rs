@@ -1662,7 +1662,7 @@ pub fn create_global_var_metadata(cx: &CodegenCx,
     let var_scope = get_namespace_for_item(cx, def_id);
     let span = tcx.def_span(def_id);
 
-    let (file_metadata, line_number) = if span != syntax_pos::DUMMY_SP {
+    let (file_metadata, line_number) = if !span.is_dummy() {
         let loc = span_start(cx, span);
         (file_metadata(cx, &loc.file.name, LOCAL_CRATE), loc.line as c_uint)
     } else {

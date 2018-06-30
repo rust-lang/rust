@@ -13,7 +13,7 @@
 use rustc_data_structures::sync::{Lrc, Lock};
 use ast::{self, CrateConfig};
 use codemap::{CodeMap, FilePathMapping};
-use syntax_pos::{self, Span, FileMap, NO_EXPANSION, FileName};
+use syntax_pos::{Span, FileMap, FileName};
 use errors::{Handler, ColorConfig, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
@@ -188,8 +188,8 @@ fn filemap_to_parser(sess: & ParseSess, filemap: Lrc<FileMap>) -> Parser {
     let end_pos = filemap.end_pos;
     let mut parser = stream_to_parser(sess, filemap_to_stream(sess, filemap, None));
 
-    if parser.token == token::Eof && parser.span == syntax_pos::DUMMY_SP {
-        parser.span = Span::new(end_pos, end_pos, NO_EXPANSION);
+    if parser.token == token::Eof && parser.span.is_dummy() {
+        parser.span = Span::new(end_pos, end_pos, parser.span.ctxt());
     }
 
     parser

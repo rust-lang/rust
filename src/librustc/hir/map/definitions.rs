@@ -486,12 +486,7 @@ impl Definitions {
     #[inline]
     pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
         if def_id.krate == LOCAL_CRATE {
-            let span = self.def_index_to_span.get(&def_id.index).cloned().unwrap_or(DUMMY_SP);
-            if span != DUMMY_SP {
-                Some(span)
-            } else {
-                None
-            }
+            self.def_index_to_span.get(&def_id.index).cloned()
         } else {
             None
         }
@@ -588,8 +583,8 @@ impl Definitions {
             self.opaque_expansions_that_defined.insert(index, expansion);
         }
 
-        // The span is added if it isn't DUMMY_SP
-        if span != DUMMY_SP {
+        // The span is added if it isn't dummy
+        if !span.is_dummy() {
             self.def_index_to_span.insert(index, span);
         }
 

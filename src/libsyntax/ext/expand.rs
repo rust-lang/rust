@@ -738,13 +738,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
 
         let opt_expanded = match *ext {
-            DeclMacro(ref expand, def_span, edition) => {
-                if let Err(dummy_span) = validate_and_set_expn_info(self, def_span.map(|(_, s)| s),
+            DeclMacro { ref expander, def_info, edition, .. } => {
+                if let Err(dummy_span) = validate_and_set_expn_info(self, def_info.map(|(_, s)| s),
                                                                     false, false, false, None,
                                                                     edition) {
                     dummy_span
                 } else {
-                    kind.make_from(expand.expand(self.cx, span, mac.node.stream()))
+                    kind.make_from(expander.expand(self.cx, span, mac.node.stream()))
                 }
             }
 
@@ -804,7 +804,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 kind.dummy(span)
             }
 
-            ProcMacro(ref expandfun, allow_internal_unstable, edition) => {
+            SyntaxExtension::ProcMacro { ref expander, allow_internal_unstable, edition } => {
                 if ident.name != keywords::Invalid.name() {
                     let msg =
                         format!("macro {}! expects no ident argument, given '{}'", path, ident);
@@ -826,7 +826,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         edition,
                     });
 
-                    let tok_result = expandfun.expand(self.cx, span, mac.node.stream());
+                    let tok_result = expander.expand(self.cx, span, mac.node.stream());
                     let result = self.parse_ast_fragment(tok_result, kind, path, span);
                     self.gate_proc_macro_expansion(span, &result);
                     result
@@ -1297,7 +1297,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 // Detect if this is an inline module (`mod m { ... }` as opposed to `mod m;`).
                 // In the non-inline case, `inner` is never the dummy span (c.f. `parse_item_mod`).
                 // Thus, if `inner` is the dummy span, we know the module is inline.
-                let inline_module = item.span.contains(inner) || inner == DUMMY_SP;
+                let inline_module = item.span.contains(inner) || inner.is_dummy();
 
                 if inline_module {
                     if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, "path") {

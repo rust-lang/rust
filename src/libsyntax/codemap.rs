@@ -443,7 +443,7 @@ impl CodeMap {
     }
 
     pub fn span_to_string(&self, sp: Span) -> String {
-        if self.files.borrow().file_maps.is_empty() && sp.source_equal(&DUMMY_SP) {
+        if self.files.borrow().file_maps.is_empty() && sp.is_dummy() {
             return "no-location".to_string();
         }
 
