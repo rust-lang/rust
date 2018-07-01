@@ -8,7 +8,6 @@ use rustc::ty::subst::{Substs, Subst};
 use rustc::traits::{self, TraitEngine};
 use rustc::infer::InferCtxt;
 use rustc::middle::region;
-use rustc::middle::const_val::ConstVal;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_mir::interpret::HasMemory;
 
@@ -719,14 +718,14 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 }
                 TyArray(elem_ty, len) => {
                     let len = match len.val {
-                        ConstVal::Unevaluated(def_id, substs) => {
+                        mir::interpret::ConstValue::Unevaluated(def_id, substs) => {
                             self.tcx.const_eval(self.tcx.param_env(def_id).and(GlobalId {
                                 instance: Instance::new(def_id, substs),
                                 promoted: None,
                             }))
                                 .map_err(|_err|EvalErrorKind::MachineError("<already reported>".to_string()))?
                         }
-                        ConstVal::Value(_) => len,
+                        _ => len,
                     };
                     let len = len.unwrap_usize(self.tcx.tcx);
                     for i in 0..len {
