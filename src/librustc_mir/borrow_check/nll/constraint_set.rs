@@ -10,7 +10,6 @@
 
 use rustc::mir::Location;
 use rustc::ty::RegionVid;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
 use std::fmt;
@@ -20,7 +19,6 @@ use std::ops::Deref;
 #[derive(Clone, Default)]
 crate struct ConstraintSet {
     constraints: IndexVec<ConstraintIndex, OutlivesConstraint>,
-    seen_constraints: FxHashSet<(RegionVid, RegionVid)>,
 }
 
 impl ConstraintSet {
@@ -33,9 +31,7 @@ impl ConstraintSet {
             // 'a: 'a is pretty uninteresting
             return;
         }
-        if self.seen_constraints.insert(constraint.dedup_key()) {
-            self.constraints.push(constraint);
-        }
+        self.constraints.push(constraint);
     }
 
     /// Once all constraints have been added, `link()` is used to thread together the constraints
@@ -105,12 +101,6 @@ pub struct OutlivesConstraint {
 
     /// Where did this constraint arise?
     pub span: Span,
-}
-
-impl OutlivesConstraint {
-    pub fn dedup_key(&self) -> (RegionVid, RegionVid) {
-        (self.sup, self.sub)
-    }
 }
 
 impl fmt::Debug for OutlivesConstraint {
