@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use super::universal_regions::UniversalRegions;
-use borrow_check::nll::constraint_set::{
+use borrow_check::nll::constraints::{
     ConstraintIndex, ConstraintGraph, ConstraintSet, OutlivesConstraint
 };
 use borrow_check::nll::type_check::Locations;

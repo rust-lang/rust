@@ -45,7 +45,7 @@ mod renumber;
 crate mod type_check;
 mod universal_regions;
 
-crate mod constraint_set;
+mod constraints;
 
 use self::facts::AllFacts;
 use self::region_infer::RegionInferenceContext;
