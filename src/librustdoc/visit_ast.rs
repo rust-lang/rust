@@ -96,7 +96,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         self.module = self.visit_mod_contents(krate.span,
                                               krate.attrs.clone(),
                                               Spanned { span: syntax_pos::DUMMY_SP,
-                                                        node: hir::VisibilityPublic },
+                                                        node: hir::VisibilityKind::Public },
                                               ast::CRATE_NODE_ID,
                                               &krate.module,
                                               None);

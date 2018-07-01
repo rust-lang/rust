@@ -320,7 +320,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_items(&mut self) -> Index {
         let krate = self.tcx.hir.krate();
         let mut index = IndexBuilder::new(self);
-        let vis = Spanned { span: syntax_pos::DUMMY_SP, node: hir::VisibilityPublic };
+        let vis = Spanned { span: syntax_pos::DUMMY_SP, node: hir::VisibilityKind::Public };
         index.record(DefId::local(CRATE_DEF_INDEX),
                      IsolatedEncoder::encode_info_for_mod,
                      FromId(CRATE_NODE_ID, (&krate.module, &krate.attrs, &vis)));

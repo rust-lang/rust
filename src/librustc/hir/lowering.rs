@@ -1285,7 +1285,7 @@ impl<'a> LoweringContext<'a> {
                 name: keywords::Invalid.name(),
                 attrs: Default::default(),
                 node: exist_ty_item_kind,
-                vis: respan(span.shrink_to_lo(), hir::VisibilityInherited),
+                vis: respan(span.shrink_to_lo(), hir::VisibilityKind::Inherited),
                 span: exist_ty_span,
             };
 
@@ -2771,11 +2771,11 @@ impl<'a> LoweringContext<'a> {
                         let path = this.lower_path_extra(def, &path, None, ParamMode::Explicit);
                         let item = hir::ItemUse(P(path), hir::UseKind::Single);
                         let vis_kind = match vis.node {
-                            hir::VisibilityPublic => hir::VisibilityPublic,
-                            hir::VisibilityCrate(sugar) => hir::VisibilityCrate(sugar),
-                            hir::VisibilityInherited => hir::VisibilityInherited,
-                            hir::VisibilityRestricted { ref path, id: _ } => {
-                                hir::VisibilityRestricted {
+                            hir::VisibilityKind::Public => hir::VisibilityKind::Public,
+                            hir::VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
+                            hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
+                            hir::VisibilityKind::Restricted { ref path, id: _ } => {
+                                hir::VisibilityKind::Restricted {
                                     path: path.clone(),
                                     // We are allocating a new NodeId here
                                     id: this.next_id().node_id,
@@ -2844,11 +2844,11 @@ impl<'a> LoweringContext<'a> {
 
                     self.with_hir_id_owner(new_id, |this| {
                         let vis_kind = match vis.node {
-                            hir::VisibilityPublic => hir::VisibilityPublic,
-                            hir::VisibilityCrate(sugar) => hir::VisibilityCrate(sugar),
-                            hir::VisibilityInherited => hir::VisibilityInherited,
-                            hir::VisibilityRestricted { ref path, id: _ } => {
-                                hir::VisibilityRestricted {
+                            hir::VisibilityKind::Public => hir::VisibilityKind::Public,
+                            hir::VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
+                            hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
+                            hir::VisibilityKind::Restricted { ref path, id: _ } => {
+                                hir::VisibilityKind::Restricted {
                                     path: path.clone(),
                                     // We are allocating a new NodeId here
                                     id: this.next_id().node_id,
@@ -2876,7 +2876,7 @@ impl<'a> LoweringContext<'a> {
                 // the stability of `use a::{};`, to avoid it showing up as
                 // a re-export by accident when `pub`, e.g. in documentation.
                 let path = P(self.lower_path(id, &prefix, ParamMode::Explicit));
-                *vis = respan(prefix.span.shrink_to_lo(), hir::VisibilityInherited);
+                *vis = respan(prefix.span.shrink_to_lo(), hir::VisibilityKind::Inherited);
                 hir::ItemUse(path, hir::UseKind::ListStem)
             }
         }
@@ -4277,9 +4277,9 @@ impl<'a> LoweringContext<'a> {
         explicit_owner: Option<NodeId>,
     ) -> hir::Visibility {
         let node = match v.node {
-            VisibilityKind::Public => hir::VisibilityPublic,
-            VisibilityKind::Crate(sugar) => hir::VisibilityCrate(sugar),
-            VisibilityKind::Restricted { ref path, id } => hir::VisibilityRestricted {
+            VisibilityKind::Public => hir::VisibilityKind::Public,
+            VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
+            VisibilityKind::Restricted { ref path, id } => hir::VisibilityKind::Restricted {
                 path: P(self.lower_path(id, path, ParamMode::Explicit)),
                 id: if let Some(owner) = explicit_owner {
                     self.lower_node_id_with_owner(id, owner).node_id
@@ -4287,7 +4287,7 @@ impl<'a> LoweringContext<'a> {
                     self.lower_node_id(id).node_id
                 },
             },
-            VisibilityKind::Inherited => hir::VisibilityInherited,
+            VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
         };
         respan(v.span, node)
     }

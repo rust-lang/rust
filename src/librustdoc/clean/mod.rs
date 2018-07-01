@@ -3226,10 +3226,10 @@ pub enum Visibility {
 impl Clean<Option<Visibility>> for hir::Visibility {
     fn clean(&self, cx: &DocContext) -> Option<Visibility> {
         Some(match self.node {
-            hir::VisibilityPublic => Visibility::Public,
-            hir::VisibilityInherited => Visibility::Inherited,
-            hir::VisibilityCrate(_) => Visibility::Crate,
-            hir::VisibilityRestricted { ref path, .. } => {
+            hir::VisibilityKind::Public => Visibility::Public,
+            hir::VisibilityKind::Inherited => Visibility::Inherited,
+            hir::VisibilityKind::Crate(_) => Visibility::Crate,
+            hir::VisibilityKind::Restricted { ref path, .. } => {
                 let path = path.clean(cx);
                 let did = register_def(cx, path.def);
                 Visibility::Restricted(did, path)

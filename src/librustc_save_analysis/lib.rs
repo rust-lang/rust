@@ -633,7 +633,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 ..
             }) |
             Node::NodeVisibility(&Spanned {
-                node: hir::VisibilityRestricted { ref path, .. }, .. }) => path.def,
+                node: hir::VisibilityKind::Restricted { ref path, .. }, .. }) => path.def,
 
             Node::NodeExpr(&hir::Expr {
                 node: hir::ExprStruct(ref qpath, ..),

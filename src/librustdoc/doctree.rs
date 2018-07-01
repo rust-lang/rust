@@ -54,7 +54,7 @@ impl Module {
         Module {
             name       : name,
             id: ast::CRATE_NODE_ID,
-            vis: Spanned { span: syntax_pos::DUMMY_SP, node: hir::VisibilityInherited },
+            vis: Spanned { span: syntax_pos::DUMMY_SP, node: hir::VisibilityKind::Inherited },
             stab: None,
             depr: None,
             where_outer: syntax_pos::DUMMY_SP,

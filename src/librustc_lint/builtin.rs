@@ -397,7 +397,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemUnion(..) => "a union",
             hir::ItemTrait(.., ref trait_item_refs) => {
                 // Issue #11592, traits are always considered exported, even when private.
-                if it.vis.node == hir::VisibilityInherited {
+                if it.vis.node == hir::VisibilityKind::Inherited {
                     self.private_traits.insert(it.id);
                     for trait_item_ref in trait_item_refs {
                         self.private_traits.insert(trait_item_ref.id.node_id);
@@ -414,7 +414,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 if let Some(node_id) = cx.tcx.hir.as_local_node_id(real_trait) {
                     match cx.tcx.hir.find(node_id) {
                         Some(hir_map::NodeItem(item)) => {
-                            if item.vis.node == hir::VisibilityInherited {
+                            if item.vis.node == hir::VisibilityKind::Inherited {
                                 for impl_item_ref in impl_item_refs {
                                     self.private_traits.insert(impl_item_ref.id.node_id);
                                 }
@@ -1179,15 +1179,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         let suggest_export = |vis: &hir::Visibility, err: &mut DiagnosticBuilder| {
             let suggestion = match vis.node {
-                hir::VisibilityInherited => {
+                hir::VisibilityKind::Inherited => {
                     // inherited visibility is empty span at item start; need an extra space
                     Some("pub ".to_owned())
                 },
-                hir::VisibilityRestricted { .. } |
-                hir::VisibilityCrate(_) => {
+                hir::VisibilityKind::Restricted { .. } |
+                hir::VisibilityKind::Crate(_) => {
                     Some("pub".to_owned())
                 },
-                hir::VisibilityPublic => {
+                hir::VisibilityKind::Public => {
                     err.help("try exporting the item with a `pub use` statement");
                     None
                 }
@@ -1399,7 +1399,7 @@ impl UnreachablePub {
                     vis: &hir::Visibility, span: Span, exportable: bool) {
         let mut applicability = Applicability::MachineApplicable;
         match vis.node {
-            hir::VisibilityPublic if !cx.access_levels.is_reachable(id) => {
+            hir::VisibilityKind::Public if !cx.access_levels.is_reachable(id) => {
                 if span.ctxt().outer().expn_info().is_some() {
                     applicability = Applicability::MaybeIncorrect;
                 }

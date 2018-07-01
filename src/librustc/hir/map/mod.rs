@@ -1050,7 +1050,7 @@ impl<'hir> Map<'hir> {
             Some(EntryLifetime(_, _, lifetime)) => lifetime.span,
             Some(EntryGenericParam(_, _, param)) => param.span,
             Some(EntryVisibility(_, _, &Spanned {
-                node: VisibilityRestricted { ref path, .. }, ..
+                node: VisibilityKind::Restricted { ref path, .. }, ..
             })) => path.span,
             Some(EntryVisibility(_, _, v)) => bug!("unexpected Visibility {:?}", v),
             Some(EntryLocal(_, _, local)) => local.span,

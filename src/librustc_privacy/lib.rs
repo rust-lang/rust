@@ -1469,8 +1469,8 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
                 }
                 if !vis.is_at_least(self.required_visibility, self.tcx) {
                     let vis_adj = match hir_vis.node {
-                        hir::VisibilityCrate(_) => "crate-visible",
-                        hir::VisibilityRestricted { .. } => "restricted",
+                        hir::VisibilityKind::Crate(_) => "crate-visible",
+                        hir::VisibilityKind::Restricted { .. } => "restricted",
                         _ => "private"
                     };
 
