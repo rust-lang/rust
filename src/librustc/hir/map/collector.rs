@@ -458,11 +458,11 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_vis(&mut self, visibility: &'hir Visibility) {
-        match *visibility {
-            Visibility::Public |
-            Visibility::Crate(_) |
-            Visibility::Inherited => {}
-            Visibility::Restricted { id, .. } => {
+        match visibility.node {
+            VisibilityPublic |
+            VisibilityCrate(_) |
+            VisibilityInherited => {}
+            VisibilityRestricted { id, .. } => {
                 self.insert(id, NodeVisibility(visibility));
                 self.with_parent(id, |this| {
                     intravisit::walk_vis(this, visibility);

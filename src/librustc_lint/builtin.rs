@@ -397,7 +397,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemUnion(..) => "a union",
             hir::ItemTrait(.., ref trait_item_refs) => {
                 // Issue #11592, traits are always considered exported, even when private.
-                if it.vis == hir::Visibility::Inherited {
+                if it.vis.node == hir::VisibilityInherited {
                     self.private_traits.insert(it.id);
                     for trait_item_ref in trait_item_refs {
                         self.private_traits.insert(trait_item_ref.id.node_id);
@@ -414,7 +414,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 if let Some(node_id) = cx.tcx.hir.as_local_node_id(real_trait) {
                     match cx.tcx.hir.find(node_id) {
                         Some(hir_map::NodeItem(item)) => {
-                            if item.vis == hir::Visibility::Inherited {
+                            if item.vis.node == hir::VisibilityInherited {
                                 for impl_item_ref in impl_item_refs {
                                     self.private_traits.insert(impl_item_ref.id.node_id);
                                 }
@@ -1187,7 +1187,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                         let msg = "function is marked #[no_mangle], but not exported";
                         let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_FNS, it.span, msg);
                         let insertion_span = it.span.shrink_to_lo();
-                        if it.vis == hir::Visibility::Inherited {
+                        if it.vis.node == hir::VisibilityInherited {
                             err.span_suggestion(insertion_span,
                                                 "try making it public",
                                                 "pub ".to_owned());
@@ -1218,7 +1218,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                        let msg = "static is marked #[no_mangle], but not exported";
                        let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, msg);
                        let insertion_span = it.span.shrink_to_lo();
-                       if it.vis == hir::Visibility::Inherited {
+                       if it.vis.node == hir::VisibilityInherited {
                            err.span_suggestion(insertion_span,
                                                "try making it public",
                                                "pub ".to_owned());
@@ -1388,7 +1388,7 @@ impl UnreachablePub {
     fn perform_lint(&self, cx: &LateContext, what: &str, id: ast::NodeId,
                     vis: &hir::Visibility, span: Span, exportable: bool,
                     mut applicability: Applicability) {
-        if !cx.access_levels.is_reachable(id) && *vis == hir::Visibility::Public {
+        if !cx.access_levels.is_reachable(id) && vis.node.is_pub() {
             if span.ctxt().outer().expn_info().is_some() {
                 applicability = Applicability::MaybeIncorrect;
             }

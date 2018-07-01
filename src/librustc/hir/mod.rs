@@ -24,7 +24,7 @@ pub use self::Stmt_::*;
 pub use self::Ty_::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
-pub use self::Visibility::{Public, Inherited};
+pub use self::Visibility_::*;
 
 use hir::def::Def;
 use hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
@@ -1929,22 +1929,30 @@ pub struct PolyTraitRef {
     pub span: Span,
 }
 
+pub type Visibility = Spanned<Visibility_>;
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum Visibility {
-    Public,
-    Crate(CrateSugar),
-    Restricted { path: P<Path>, id: NodeId },
-    Inherited,
+pub enum Visibility_ {
+    VisibilityPublic,
+    VisibilityCrate(CrateSugar),
+    VisibilityRestricted { path: P<Path>, id: NodeId },
+    VisibilityInherited,
 }
 
-impl Visibility {
+impl Visibility_ {
+    pub fn is_pub(&self) -> bool {
+        match *self {
+            VisibilityPublic => true,
+            _ => false
+        }
+    }
+
     pub fn is_pub_restricted(&self) -> bool {
-        use self::Visibility::*;
-        match self {
-            &Public |
-            &Inherited => false,
-            &Crate(_) |
-            &Restricted { .. } => true,
+        match *self {
+            VisibilityPublic |
+            VisibilityInherited => false,
+            VisibilityCrate(..) |
+            VisibilityRestricted { .. } => true,
         }
     }
 }

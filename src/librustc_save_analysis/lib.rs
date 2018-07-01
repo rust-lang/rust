@@ -55,6 +55,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use syntax::ast::{self, Attribute, NodeId, PatKind};
+use syntax::codemap::Spanned;
 use syntax::parse::lexer::comments::strip_doc_comment_decoration;
 use syntax::parse::token;
 use syntax::print::pprust;
@@ -631,7 +632,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 node: hir::ItemUse(ref path, _),
                 ..
             }) |
-            Node::NodeVisibility(&hir::Visibility::Restricted { ref path, .. }) => path.def,
+            Node::NodeVisibility(&Spanned {
+                node: hir::VisibilityRestricted { ref path, .. }, .. }) => path.def,
 
             Node::NodeExpr(&hir::Expr {
                 node: hir::ExprStruct(ref qpath, ..),

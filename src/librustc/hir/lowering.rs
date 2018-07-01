@@ -1285,7 +1285,7 @@ impl<'a> LoweringContext<'a> {
                 name: keywords::Invalid.name(),
                 attrs: Default::default(),
                 node: exist_ty_item_kind,
-                vis: hir::Visibility::Inherited,
+                vis: respan(span.shrink_to_lo(), hir::VisibilityInherited),
                 span: exist_ty_span,
             };
 
@@ -2770,18 +2770,19 @@ impl<'a> LoweringContext<'a> {
                         let new_id = this.lower_node_id(new_node_id);
                         let path = this.lower_path_extra(def, &path, None, ParamMode::Explicit);
                         let item = hir::ItemUse(P(path), hir::UseKind::Single);
-                        let vis = match vis {
-                            hir::Visibility::Public => hir::Visibility::Public,
-                            hir::Visibility::Crate(sugar) => hir::Visibility::Crate(sugar),
-                            hir::Visibility::Inherited => hir::Visibility::Inherited,
-                            hir::Visibility::Restricted { ref path, id: _ } => {
-                                hir::Visibility::Restricted {
+                        let vis_kind = match vis.node {
+                            hir::VisibilityPublic => hir::VisibilityPublic,
+                            hir::VisibilityCrate(sugar) => hir::VisibilityCrate(sugar),
+                            hir::VisibilityInherited => hir::VisibilityInherited,
+                            hir::VisibilityRestricted { ref path, id: _ } => {
+                                hir::VisibilityRestricted {
                                     path: path.clone(),
                                     // We are allocating a new NodeId here
                                     id: this.next_id().node_id,
                                 }
                             }
                         };
+                        let vis = respan(vis.span, vis_kind);
 
                         this.items.insert(
                             new_id.node_id,
@@ -2842,18 +2843,19 @@ impl<'a> LoweringContext<'a> {
                         self.lower_use_tree(use_tree, &prefix, new_id, &mut vis, &mut name, &attrs);
 
                     self.with_hir_id_owner(new_id, |this| {
-                        let vis = match vis {
-                            hir::Visibility::Public => hir::Visibility::Public,
-                            hir::Visibility::Crate(sugar) => hir::Visibility::Crate(sugar),
-                            hir::Visibility::Inherited => hir::Visibility::Inherited,
-                            hir::Visibility::Restricted { ref path, id: _ } => {
-                                hir::Visibility::Restricted {
+                        let vis_kind = match vis.node {
+                            hir::VisibilityPublic => hir::VisibilityPublic,
+                            hir::VisibilityCrate(sugar) => hir::VisibilityCrate(sugar),
+                            hir::VisibilityInherited => hir::VisibilityInherited,
+                            hir::VisibilityRestricted { ref path, id: _ } => {
+                                hir::VisibilityRestricted {
                                     path: path.clone(),
                                     // We are allocating a new NodeId here
                                     id: this.next_id().node_id,
                                 }
                             }
                         };
+                        let vis = respan(vis.span, vis_kind);
 
                         this.items.insert(
                             new_id,
@@ -2874,7 +2876,7 @@ impl<'a> LoweringContext<'a> {
                 // the stability of `use a::{};`, to avoid it showing up as
                 // a re-export by accident when `pub`, e.g. in documentation.
                 let path = P(self.lower_path(id, &prefix, ParamMode::Explicit));
-                *vis = hir::Inherited;
+                *vis = respan(prefix.span.shrink_to_lo(), hir::VisibilityInherited);
                 hir::ItemUse(path, hir::UseKind::ListStem)
             }
         }
@@ -4274,10 +4276,10 @@ impl<'a> LoweringContext<'a> {
         v: &Visibility,
         explicit_owner: Option<NodeId>,
     ) -> hir::Visibility {
-        match v.node {
-            VisibilityKind::Public => hir::Public,
-            VisibilityKind::Crate(sugar) => hir::Visibility::Crate(sugar),
-            VisibilityKind::Restricted { ref path, id, .. } => hir::Visibility::Restricted {
+        let node = match v.node {
+            VisibilityKind::Public => hir::VisibilityPublic,
+            VisibilityKind::Crate(sugar) => hir::VisibilityCrate(sugar),
+            VisibilityKind::Restricted { ref path, id } => hir::VisibilityRestricted {
                 path: P(self.lower_path(id, path, ParamMode::Explicit)),
                 id: if let Some(owner) = explicit_owner {
                     self.lower_node_id_with_owner(id, owner).node_id
@@ -4285,8 +4287,9 @@ impl<'a> LoweringContext<'a> {
                     self.lower_node_id(id).node_id
                 },
             },
-            VisibilityKind::Inherited => hir::Inherited,
-        }
+            VisibilityKind::Inherited => hir::VisibilityInherited,
+        };
+        respan(v.span, node)
     }
 
     fn lower_defaultness(&mut self, d: Defaultness, has_value: bool) -> hir::Defaultness {

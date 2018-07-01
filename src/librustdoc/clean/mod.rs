@@ -286,7 +286,7 @@ impl Clean<ExternalCrate> for CrateNum {
                         as_primitive(Def::Mod(cx.tcx.hir.local_def_id(id.id)))
                     }
                     hir::ItemUse(ref path, hir::UseKind::Single)
-                    if item.vis == hir::Visibility::Public => {
+                    if item.vis.node.is_pub() => {
                         as_primitive(path.def).map(|(_, prim, attrs)| {
                             // Pretend the primitive is local.
                             (cx.tcx.hir.local_def_id(id.id), prim, attrs)
@@ -328,7 +328,7 @@ impl Clean<ExternalCrate> for CrateNum {
                         as_keyword(Def::Mod(cx.tcx.hir.local_def_id(id.id)))
                     }
                     hir::ItemUse(ref path, hir::UseKind::Single)
-                    if item.vis == hir::Visibility::Public => {
+                    if item.vis.node.is_pub() => {
                         as_keyword(path.def).map(|(_, prim, attrs)| {
                             (cx.tcx.hir.local_def_id(id.id), prim, attrs)
                         })
@@ -3225,11 +3225,11 @@ pub enum Visibility {
 
 impl Clean<Option<Visibility>> for hir::Visibility {
     fn clean(&self, cx: &DocContext) -> Option<Visibility> {
-        Some(match *self {
-            hir::Visibility::Public => Visibility::Public,
-            hir::Visibility::Inherited => Visibility::Inherited,
-            hir::Visibility::Crate(_) => Visibility::Crate,
-            hir::Visibility::Restricted { ref path, .. } => {
+        Some(match self.node {
+            hir::VisibilityPublic => Visibility::Public,
+            hir::VisibilityInherited => Visibility::Inherited,
+            hir::VisibilityCrate(_) => Visibility::Crate,
+            hir::VisibilityRestricted { ref path, .. } => {
                 let path = path.clean(cx);
                 let did = register_def(cx, path.def);
                 Visibility::Restricted(did, path)
@@ -3932,7 +3932,7 @@ impl Clean<Vec<Item>> for doctree::Import {
         // forcefully don't inline if this is not public or if the
         // #[doc(no_inline)] attribute is present.
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
-        let denied = self.vis != hir::Public || self.attrs.iter().any(|a| {
+        let denied = !self.vis.node.is_pub() || self.attrs.iter().any(|a| {
             a.name() == "doc" && match a.meta_item_list() {
                 Some(l) => attr::list_contains_name(&l, "no_inline") ||
                            attr::list_contains_name(&l, "hidden"),

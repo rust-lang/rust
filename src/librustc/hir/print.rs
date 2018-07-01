@@ -12,7 +12,7 @@ pub use self::AnnNode::*;
 
 use rustc_target::spec::abi::Abi;
 use syntax::ast;
-use syntax::codemap::CodeMap;
+use syntax::codemap::{CodeMap, Spanned};
 use syntax::parse::ParseSess;
 use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, Breaks};
@@ -839,11 +839,11 @@ impl<'a> State<'a> {
     }
 
     pub fn print_visibility(&mut self, vis: &hir::Visibility) -> io::Result<()> {
-        match *vis {
-            hir::Public => self.word_nbsp("pub")?,
-            hir::Visibility::Crate(ast::CrateSugar::JustCrate) => self.word_nbsp("crate")?,
-            hir::Visibility::Crate(ast::CrateSugar::PubCrate) => self.word_nbsp("pub(crate)")?,
-            hir::Visibility::Restricted { ref path, .. } => {
+        match vis.node {
+            hir::VisibilityPublic => self.word_nbsp("pub")?,
+            hir::VisibilityCrate(ast::CrateSugar::JustCrate) => self.word_nbsp("crate")?,
+            hir::VisibilityCrate(ast::CrateSugar::PubCrate) => self.word_nbsp("pub(crate)")?,
+            hir::VisibilityRestricted { ref path, .. } => {
                 self.s.word("pub(")?;
                 if path.segments.len() == 1 &&
                    path.segments[0].ident.name == keywords::Super.name() {
@@ -856,7 +856,7 @@ impl<'a> State<'a> {
                 }
                 self.word_nbsp(")")?;
             }
-            hir::Inherited => ()
+            hir::VisibilityInherited => ()
         }
 
         Ok(())
@@ -952,17 +952,18 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&ti.attrs)?;
         match ti.node {
             hir::TraitItemKind::Const(ref ty, default) => {
-                self.print_associated_const(ti.ident, &ty, default, &hir::Inherited)?;
+                let vis = Spanned { span: syntax_pos::DUMMY_SP, node: hir::VisibilityInherited };
+                self.print_associated_const(ti.ident, &ty, default, &vis)?;
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref arg_names)) => {
-                self.print_method_sig(ti.ident, sig, &ti.generics, &hir::Inherited, arg_names,
-                    None)?;
+                let vis = Spanned { span: syntax_pos::DUMMY_SP, node: hir::VisibilityInherited };
+                self.print_method_sig(ti.ident, sig, &ti.generics, &vis, arg_names, None)?;
                 self.s.word(";")?;
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Provided(body)) => {
+                let vis = Spanned { span: syntax_pos::DUMMY_SP, node: hir::VisibilityInherited };
                 self.head("")?;
-                self.print_method_sig(ti.ident, sig, &ti.generics, &hir::Inherited, &[],
-                    Some(body))?;
+                self.print_method_sig(ti.ident, sig, &ti.generics, &vis, &[], Some(body))?;
                 self.nbsp()?;
                 self.end()?; // need to close a box
                 self.end()?; // need to close a box
@@ -2266,7 +2267,7 @@ impl<'a> State<'a> {
                       },
                       name,
                       &generics,
-                      &hir::Inherited,
+                      &Spanned { span: syntax_pos::DUMMY_SP, node: hir::VisibilityInherited },
                       arg_names,
                       None)?;
         self.end()
