@@ -692,8 +692,11 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                  -> Expr<'tcx> {
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
     let (def_id, substs) = custom_callee.unwrap_or_else(|| {
-        (cx.tables().type_dependent_defs()[expr.hir_id].def_id(),
-         cx.tables().node_substs(expr.hir_id))
+        if let Some(def) = cx.tables().type_dependent_defs().get(expr.hir_id) {
+            (def.def_id(), cx.tables().node_substs(expr.hir_id))
+        } else {
+            span_bug!(expr.span, "no type-dependent def for method callee")
+        }
     });
     let ty = cx.tcx().mk_fn_def(def_id, substs);
     Expr {
