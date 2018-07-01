@@ -245,12 +245,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             "f32"
                         };
                         match expr.node {
-                            hir::ExprLit(_) => {  // numeric literal
-                                let snippet = tcx.sess.codemap().span_to_snippet(expr.span)
+                            hir::ExprLit(ref lit) => {  // numeric literal
+                                let snippet = tcx.sess.codemap().span_to_snippet(lit.span)
                                     .unwrap_or("<numeric literal>".to_string());
-                                // FIXME: use the literal for missing snippet
 
-                                err.span_suggestion(expr.span,
+                                err.span_suggestion(lit.span,
                                                     &format!("you must specify a concrete type for \
                                                               this numeric value, like `{}`",
                                                              concrete_type),

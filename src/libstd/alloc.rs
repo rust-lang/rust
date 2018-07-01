@@ -61,7 +61,7 @@
 //! ```rust,ignore (demonstrates crates.io usage)
 //! extern crate jemallocator;
 //!
-//! use jemallacator::Jemalloc;
+//! use jemallocator::Jemalloc;
 //!
 //! #[global_allocator]
 //! static GLOBAL: Jemalloc = Jemalloc;

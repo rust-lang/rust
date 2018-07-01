@@ -491,16 +491,18 @@ impl Step for Rustc {
 
             // Copy over lld if it's there
             if builder.config.lld_enabled {
-                let exe = exe("lld", &compiler.host);
+                let src_exe = exe("lld", &compiler.host);
+                let dst_exe = exe("rust-lld", &compiler.host);
                 let src = builder.sysroot_libdir(compiler, host)
                     .parent()
                     .unwrap()
                     .join("bin")
-                    .join(&exe);
+                    .join(&src_exe);
+                // for the rationale about this rename check `compile::copy_lld_to_sysroot`
                 let dst = image.join("lib/rustlib")
                     .join(&*host)
                     .join("bin")
-                    .join(&exe);
+                    .join(&dst_exe);
                 t!(fs::create_dir_all(&dst.parent().unwrap()));
                 builder.copy(&src, &dst);
             }
@@ -1787,15 +1789,18 @@ impl Step for LlvmTools {
         let tmp = tmpdir(builder);
         let image = tmp.join("llvm-tools-image");
         drop(fs::remove_dir_all(&image));
-        t!(fs::create_dir_all(&image.join("bin")));
 
         // Prepare the image directory
+        let bindir = builder
+            .llvm_out(target)
+            .join("bin");
+        let dst = image.join("lib/rustlib")
+            .join(target)
+            .join("bin");
+        t!(fs::create_dir_all(&dst));
         for tool in LLVM_TOOLS {
-            let exe = builder
-                .llvm_out(target)
-                .join("bin")
-                .join(exe(tool, &target));
-            builder.install(&exe, &image.join("bin"), 0o755);
+            let exe = bindir.join(exe(tool, &target));
+            builder.install(&exe, &dst, 0o755);
         }
 
         // Prepare the overlay
@@ -1818,7 +1823,7 @@ impl Step for LlvmTools {
             .arg("--non-installed-overlay").arg(&overlay)
             .arg(format!("--package-name={}-{}", name, target))
             .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=llvm-tools");
+            .arg("--component-name=llvm-tools-preview");
 
 
         builder.run(&mut cmd);

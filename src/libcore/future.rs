@@ -45,18 +45,18 @@ pub trait Future {
     ///
     /// This function returns:
     ///
-    /// - `Poll::Pending` if the future is not ready yet
-    /// - `Poll::Ready(val)` with the result `val` of this future if it finished
-    /// successfully.
+    /// - [`Poll::Pending`] if the future is not ready yet
+    /// - [`Poll::Ready(val)`] with the result `val` of this future if it
+    ///   finished successfully.
     ///
     /// Once a future has finished, clients should not `poll` it again.
     ///
     /// When a future is not ready yet, `poll` returns
-    /// [`Poll::Pending`](::task::Poll). The future will *also* register the
+    /// `Poll::Pending`. The future will *also* register the
     /// interest of the current task in the value being produced. For example,
     /// if the future represents the availability of data on a socket, then the
     /// task is recorded so that when data arrives, it is woken up (via
-    /// [`cx.waker()`](::task::Context::waker)). Once a task has been woken up,
+    /// [`cx.waker()`]). Once a task has been woken up,
     /// it should attempt to `poll` the future again, which may or may not
     /// produce a final value.
     ///
@@ -90,6 +90,10 @@ pub trait Future {
     /// then any future calls to `poll` may panic, block forever, or otherwise
     /// cause bad behavior. The `Future` trait itself provides no guarantees
     /// about the behavior of `poll` after a future has completed.
+    ///
+    /// [`Poll::Pending`]: ../task/enum.Poll.html#variant.Pending
+    /// [`Poll::Ready(val)`]: ../task/enum.Poll.html#variant.Ready
+    /// [`cx.waker()`]: ../task/struct.Context.html#method.waker
     fn poll(self: PinMut<Self>, cx: &mut task::Context) -> Poll<Self::Output>;
 }
 
