@@ -786,8 +786,11 @@ fn copy_lld_to_sysroot(builder: &Builder,
         .join("bin");
     t!(fs::create_dir_all(&dst));
 
-    let exe = exe("lld", &target);
-    builder.copy(&lld_install_root.join("bin").join(&exe), &dst.join(&exe));
+    let src_exe = exe("lld", &target);
+    let dst_exe = exe("rust-lld", &target);
+    // we prepend this bin directory to the user PATH when linking Rust binaries. To
+    // avoid shadowing the system LLD we rename the LLD we provide to `rust-lld`.
+    builder.copy(&lld_install_root.join("bin").join(&src_exe), &dst.join(&dst_exe));
 }
 
 /// Cargo's output path for the standard library in a given stage, compiled
