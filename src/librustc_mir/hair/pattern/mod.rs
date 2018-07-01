@@ -743,8 +743,10 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         );
                         *self.const_to_pat(instance, val, expr.hir_id, lit.span).kind
                     },
-                    Err(()) => {
-                        self.errors.push(PatternError::FloatBug);
+                    Err(float_bug) => {
+                        if float_bug {
+                            self.errors.push(PatternError::FloatBug);
+                        }
                         PatternKind::Wild
                     },
                 }
@@ -764,8 +766,10 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         );
                         *self.const_to_pat(instance, val, expr.hir_id, lit.span).kind
                     },
-                    Err(()) => {
-                        self.errors.push(PatternError::FloatBug);
+                    Err(float_bug) => {
+                        if float_bug {
+                            self.errors.push(PatternError::FloatBug);
+                        }
                         PatternKind::Wild
                     },
                 }
@@ -1123,7 +1127,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           ty: Ty<'tcx>,
                           neg: bool)
-                          -> Result<&'tcx ty::Const<'tcx>, ()> {
+                          -> Result<&'tcx ty::Const<'tcx>, bool> {
     use syntax::ast::*;
 
     use rustc::mir::interpret::*;
@@ -1152,7 +1156,11 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
                 ty::TyInt(other) => Int::Signed(other),
                 ty::TyUint(UintTy::Usize) => Int::Unsigned(tcx.sess.target.usize_ty),
                 ty::TyUint(other) => Int::Unsigned(other),
-                _ => bug!(),
+                ty::TyError => {
+                    // Avoid ICE
+                    return Err(false);
+                }
+                _ => bug!("{:?}", ty.sty),
             };
             // This converts from LitKind::Int (which is sign extended) to
             // Scalar::Bytes (which is zero extended)
@@ -1182,14 +1190,14 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
             })
         },
         LitKind::Float(n, fty) => {
-            parse_float(n, fty, neg)?
+            parse_float(n, fty, neg).map_err(|_| true)?
         }
         LitKind::FloatUnsuffixed(n) => {
             let fty = match ty.sty {
                 ty::TyFloat(fty) => fty,
                 _ => bug!()
             };
-            parse_float(n, fty, neg)?
+            parse_float(n, fty, neg).map_err(|_| true)?
         }
         LitKind::Bool(b) => ConstValue::Scalar(Scalar::Bits {
             bits: b as u128,
