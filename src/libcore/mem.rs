@@ -1240,7 +1240,5 @@ unsafe impl<'a, T, F: Future<Output = T> + 'a> UnsafeFutureObj<'a, T> for PinMut
         PinMut::new_unchecked(&mut *(ptr as *mut F)).poll(cx)
     }
 
-    unsafe fn drop(ptr: *mut ()) {
-        drop(PinMut::new_unchecked(&mut *(ptr as *mut F)));
-    }
+    unsafe fn drop(_ptr: *mut ()) {}
 }
