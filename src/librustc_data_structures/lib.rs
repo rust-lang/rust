@@ -59,7 +59,6 @@ pub mod small_vec;
 pub mod base_n;
 pub mod bitslice;
 pub mod bitvec;
-pub mod graph;
 pub mod indexed_set;
 pub mod indexed_vec;
 pub mod obligation_forest;

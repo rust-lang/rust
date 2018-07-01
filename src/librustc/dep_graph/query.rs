@@ -9,7 +9,9 @@
 // except according to those terms.
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::graph::{Direction, INCOMING, Graph, NodeIndex, OUTGOING};
+use rustc_data_structures::control_flow_graph::implementation::{
+    Direction, INCOMING, Graph, NodeIndex, OUTGOING
+};
 
 use super::DepNode;
 

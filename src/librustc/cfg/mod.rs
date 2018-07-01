@@ -11,7 +11,7 @@
 //! Module that constructs a control-flow graph representing an item.
 //! Uses `Graph` as the underlying representation.
 
-use rustc_data_structures::graph;
+use rustc_data_structures::control_flow_graph::implementation as graph;
 use ty::TyCtxt;
 use hir;
 use hir::def_id::DefId;

@@ -11,6 +11,7 @@
 use super::indexed_vec::Idx;
 
 pub mod dominators;
+pub mod implementation;
 pub mod iterate;
 mod reference;
 
