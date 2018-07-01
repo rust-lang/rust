@@ -23,7 +23,7 @@ crate struct ConstraintSet {
 impl ConstraintSet {
     pub fn push(&mut self, constraint: OutlivesConstraint) {
         debug!(
-            "add_outlives({:?}: {:?} @ {:?})",
+            "ConstraintSet::push({:?}: {:?} @ {:?}",
             constraint.sup, constraint.sub, constraint.locations
         );
         if constraint.sup == constraint.sub {
