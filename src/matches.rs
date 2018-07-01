@@ -300,28 +300,38 @@ fn rewrite_match_pattern(
     Some(format!("{}{}", pats_str, guard_str))
 }
 
+fn block_can_be_flattened<'a>(
+    context: &RewriteContext,
+    expr: &'a ast::Expr,
+) -> Option<&'a ast::Block> {
+    match expr.node {
+        ast::ExprKind::Block(ref block, _)
+            if !is_unsafe_block(block)
+                && is_simple_block(block, Some(&expr.attrs), context.codemap) =>
+        {
+            Some(&*block)
+        }
+        _ => None,
+    }
+}
+
 // (extend, body)
 // @extend: true if the arm body can be put next to `=>`
 // @body: flattened body, if the body is block with a single expression
 fn flatten_arm_body<'a>(context: &'a RewriteContext, body: &'a ast::Expr) -> (bool, &'a ast::Expr) {
-    match body.node {
-        ast::ExprKind::Block(ref block, _)
-            if !is_unsafe_block(block)
-                && is_simple_block(block, Some(&body.attrs), context.codemap) =>
-        {
-            if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
-                (
-                    !context.config.force_multiline_blocks() && can_flatten_block_around_this(expr),
-                    &*expr,
-                )
-            } else {
-                (false, &*body)
-            }
+    if let Some(ref block) = block_can_be_flattened(context, body) {
+        if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
+            let can_extend_expr =
+                !context.config.force_multiline_blocks() && can_flatten_block_around_this(expr);
+            (can_extend_expr, &*expr)
+        } else {
+            (false, &*body)
         }
-        _ => (
+    } else {
+        (
             !context.config.force_multiline_blocks() && body.can_be_overflowed(context, 1),
             &*body,
-        ),
+        )
     }
 }
 
