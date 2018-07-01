@@ -108,6 +108,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         def_id,
         &universal_regions,
         location_table,
+        borrow_set,
         &liveness,
         &mut all_facts,
         flow_inits,

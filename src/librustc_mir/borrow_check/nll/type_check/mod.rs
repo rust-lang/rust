@@ -11,14 +11,17 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 #![allow(unreachable_code)]
 
+use borrow_check::borrow_set::BorrowSet;
 use borrow_check::location::LocationTable;
-use borrow_check::nll::constraint_set::ConstraintSet;
+use borrow_check::nll::constraint_set::{ConstraintSet, OutlivesConstraint};
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
 use borrow_check::nll::universal_regions::UniversalRegions;
+use borrow_check::nll::ToRegionVid;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;
+use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::region_constraints::GenericKind;
@@ -103,6 +106,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     mir_def_id: DefId,
     universal_regions: &UniversalRegions<'tcx>,
     location_table: &LocationTable,
+    borrow_set: &BorrowSet<'tcx>,
     liveness: &LivenessResults,
     all_facts: &mut Option<AllFacts>,
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
@@ -119,6 +123,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         Some(BorrowCheckContext {
             universal_regions,
             location_table,
+            borrow_set,
             all_facts,
         }),
         &mut |cx| {
@@ -141,6 +146,7 @@ fn type_check_internal<'gcx, 'tcx>(
 ) -> MirTypeckRegionConstraints<'tcx> {
     let mut checker = TypeChecker::new(
         infcx,
+        mir,
         mir_def_id,
         param_env,
         region_bound_pairs,
@@ -592,6 +598,7 @@ struct TypeChecker<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'gcx>,
     last_span: Span,
+    mir: &'a Mir<'tcx>,
     mir_def_id: DefId,
     region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: Option<ty::Region<'tcx>>,
@@ -604,6 +611,7 @@ struct BorrowCheckContext<'a, 'tcx: 'a> {
     universal_regions: &'a UniversalRegions<'tcx>,
     location_table: &'a LocationTable,
     all_facts: &'a mut Option<AllFacts>,
+    borrow_set: &'a BorrowSet<'tcx>,
 }
 
 /// A collection of region constraints that must be satisfied for the
@@ -704,6 +712,7 @@ impl Locations {
 impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn new(
         infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+        mir: &'a Mir<'tcx>,
         mir_def_id: DefId,
         param_env: ty::ParamEnv<'gcx>,
         region_bound_pairs: &'a [(ty::Region<'tcx>, GenericKind<'tcx>)],
@@ -713,6 +722,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         TypeChecker {
             infcx,
             last_span: DUMMY_SP,
+            mir,
             mir_def_id,
             param_env,
             region_bound_pairs,
@@ -857,8 +867,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             }
             StatementKind::UserAssertTy(ref c_ty, ref local) => {
                 let local_ty = mir.local_decls()[*local].ty;
-                let (ty, _) = self
-                    .infcx
+                let (ty, _) = self.infcx
                     .instantiate_canonical_with_fresh_inference_vars(stmt.source_info.span, c_ty);
                 debug!(
                     "check_stmt: user_assert_ty ty={:?} local_ty={:?}",
@@ -1400,9 +1409,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 CastKind::Misc => {}
             },
 
+            Rvalue::Ref(region, _borrow_kind, borrowed_place) => {
+                self.add_reborrow_constraint(location, region, borrowed_place);
+            }
+
             // FIXME: These other cases have to be implemented in future PRs
             Rvalue::Use(..)
-            | Rvalue::Ref(..)
             | Rvalue::Len(..)
             | Rvalue::BinaryOp(..)
             | Rvalue::CheckedBinaryOp(..)
@@ -1454,6 +1466,142 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     terr
                 );
             }
+        }
+    }
+
+    /// Add the constraints that arise from a borrow expression `&'a P` at the location `L`.
+    ///
+    /// # Parameters
+    ///
+    /// - `location`: the location `L` where the borrow expression occurs
+    /// - `borrow_region`: the region `'a` associated with the borrow
+    /// - `borrowed_place`: the place `P` being borrowed
+    fn add_reborrow_constraint(
+        &mut self,
+        location: Location,
+        borrow_region: ty::Region<'tcx>,
+        borrowed_place: &Place<'tcx>,
+    ) {
+        // These constraints are only meaningful during borrowck:
+        let BorrowCheckContext {
+            borrow_set,
+            location_table,
+            all_facts,
+            ..
+        } = match &mut self.borrowck_context {
+            Some(borrowck_context) => borrowck_context,
+            None => return,
+        };
+
+        // In Polonius mode, we also push a `borrow_region` fact
+        // linking the loan to the region (in some cases, though,
+        // there is no loan associated with this borrow expression --
+        // that occurs when we are borrowing an unsafe place, for
+        // example).
+        if let Some(all_facts) = all_facts {
+            if let Some(borrow_index) = borrow_set.location_map.get(&location) {
+                let region_vid = borrow_region.to_region_vid();
+                all_facts.borrow_region.push((
+                    region_vid,
+                    *borrow_index,
+                    location_table.mid_index(location),
+                ));
+            }
+        }
+
+        // If we are reborrowing the referent of another reference, we
+        // need to add outlives relationships. In a case like `&mut
+        // *p`, where the `p` has type `&'b mut Foo`, for example, we
+        // need to ensure that `'b: 'a`.
+
+        let mut borrowed_place = borrowed_place;
+
+        debug!(
+            "add_reborrow_constraint({:?}, {:?}, {:?})",
+            location, borrow_region, borrowed_place
+        );
+        while let Place::Projection(box PlaceProjection { base, elem }) = borrowed_place {
+            debug!("add_reborrow_constraint - iteration {:?}", borrowed_place);
+
+            match *elem {
+                ProjectionElem::Deref => {
+                    let tcx = self.infcx.tcx;
+                    let base_ty = base.ty(self.mir, tcx).to_ty(tcx);
+
+                    debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
+                    match base_ty.sty {
+                        ty::TyRef(ref_region, _, mutbl) => {
+                            self.constraints
+                                .outlives_constraints
+                                .push(OutlivesConstraint {
+                                    sup: ref_region.to_region_vid(),
+                                    sub: borrow_region.to_region_vid(),
+                                    locations: location.boring(),
+                                    next: None,
+                                });
+
+                            if let Some(all_facts) = all_facts {
+                                all_facts.outlives.push((
+                                    ref_region.to_region_vid(),
+                                    borrow_region.to_region_vid(),
+                                    location_table.mid_index(location),
+                                ));
+                            }
+
+                            match mutbl {
+                                hir::Mutability::MutImmutable => {
+                                    // Immutable reference. We don't need the base
+                                    // to be valid for the entire lifetime of
+                                    // the borrow.
+                                    break;
+                                }
+                                hir::Mutability::MutMutable => {
+                                    // Mutable reference. We *do* need the base
+                                    // to be valid, because after the base becomes
+                                    // invalid, someone else can use our mutable deref.
+
+                                    // This is in order to make the following function
+                                    // illegal:
+                                    // ```
+                                    // fn unsafe_deref<'a, 'b>(x: &'a &'b mut T) -> &'b mut T {
+                                    //     &mut *x
+                                    // }
+                                    // ```
+                                    //
+                                    // As otherwise you could clone `&mut T` using the
+                                    // following function:
+                                    // ```
+                                    // fn bad(x: &mut T) -> (&mut T, &mut T) {
+                                    //     let my_clone = unsafe_deref(&'a x);
+                                    //     ENDREGION 'a;
+                                    //     (my_clone, x)
+                                    // }
+                                    // ```
+                                }
+                            }
+                        }
+                        ty::TyRawPtr(..) => {
+                            // deref of raw pointer, guaranteed to be valid
+                            break;
+                        }
+                        ty::TyAdt(def, _) if def.is_box() => {
+                            // deref of `Box`, need the base to be valid - propagate
+                        }
+                        _ => bug!("unexpected deref ty {:?} in {:?}", base_ty, borrowed_place),
+                    }
+                }
+                ProjectionElem::Field(..)
+                | ProjectionElem::Downcast(..)
+                | ProjectionElem::Index(..)
+                | ProjectionElem::ConstantIndex { .. }
+                | ProjectionElem::Subslice { .. } => {
+                    // other field access
+                }
+            }
+
+            // The "propagate" case. We need to check that our base is valid
+            // for the borrow's lifetime.
+            borrowed_place = base;
         }
     }
 
