@@ -12,9 +12,10 @@
 #![allow(unreachable_code)]
 
 use borrow_check::location::LocationTable;
+use borrow_check::nll::constraint_set::ConstraintSet;
 use borrow_check::nll::facts::AllFacts;
 use borrow_check::nll::region_infer::Cause;
-use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, OutlivesConstraint, TypeTest};
+use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
@@ -621,7 +622,7 @@ crate struct MirTypeckRegionConstraints<'tcx> {
     /// hence it must report on their liveness constraints.
     crate liveness_set: Vec<(ty::Region<'tcx>, Location, Cause)>,
 
-    crate outlives_constraints: Vec<OutlivesConstraint>,
+    crate outlives_constraints: ConstraintSet,
 
     crate type_tests: Vec<TypeTest<'tcx>>,
 }

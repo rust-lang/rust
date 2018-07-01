@@ -17,6 +17,8 @@ use rustc_data_structures::indexed_vec::Idx;
 use std::borrow::Cow;
 use std::io::{self, Write};
 use super::*;
+use borrow_check::nll::constraint_set::OutlivesConstraint;
+
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Write out the region constraint graph.

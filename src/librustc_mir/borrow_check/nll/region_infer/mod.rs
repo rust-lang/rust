@@ -10,6 +10,7 @@
 
 use super::universal_regions::UniversalRegions;
 use borrow_check::nll::region_infer::values::ToElementIndex;
+use borrow_check::nll::constraint_set::{ConstraintIndex, ConstraintSet, OutlivesConstraint};
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
@@ -25,7 +26,6 @@ use rustc::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::{self, ErrorReported};
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use std::fmt;
 use std::rc::Rc;
 use syntax_pos::Span;
 
@@ -65,7 +65,7 @@ pub struct RegionInferenceContext<'tcx> {
     dependency_map: Option<IndexVec<RegionVid, Option<ConstraintIndex>>>,
 
     /// The constraints we have accumulated and used during solving.
-    constraints: IndexVec<ConstraintIndex, OutlivesConstraint>,
+    constraints: ConstraintSet,
 
     /// Type constraints that we check after solving.
     type_tests: Vec<TypeTest<'tcx>>,
@@ -113,37 +113,6 @@ pub(crate) enum Cause {
     /// part of the initial set of values for a universally quantified region
     UniversalRegion(RegionVid),
 }
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct OutlivesConstraint {
-    // NB. The ordering here is not significant for correctness, but
-    // it is for convenience. Before we dump the constraints in the
-    // debugging logs, we sort them, and we'd like the "super region"
-    // to be first, etc. (In particular, span should remain last.)
-    /// The region SUP must outlive SUB...
-    pub sup: RegionVid,
-
-    /// Region that must be outlived.
-    pub sub: RegionVid,
-
-    /// At this location.
-    pub point: Location,
-
-    /// Later on, we thread the constraints onto a linked list
-    /// grouped by their `sub` field. So if you had:
-    ///
-    /// Index | Constraint | Next Field
-    /// ----- | ---------- | ----------
-    /// 0     | `'a: 'b`   | Some(2)
-    /// 1     | `'b: 'c`   | None
-    /// 2     | `'c: 'b`   | None
-    pub next: Option<ConstraintIndex>,
-
-    /// Where did this constraint arise?
-    pub span: Span,
-}
-
-newtype_index!(ConstraintIndex { DEBUG_FORMAT = "ConstraintIndex({})" });
 
 /// A "type test" corresponds to an outlives constraint between a type
 /// and a lifetime, like `T: 'x` or `<T as Foo>::Bar: 'x`.  They are
@@ -243,7 +212,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         var_infos: VarInfos,
         universal_regions: UniversalRegions<'tcx>,
         mir: &Mir<'tcx>,
-        outlives_constraints: Vec<OutlivesConstraint>,
+        outlives_constraints: ConstraintSet,
         type_tests: Vec<TypeTest<'tcx>>,
     ) -> Self {
         // The `next` field should not yet have been initialized:
@@ -266,7 +235,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             liveness_constraints: RegionValues::new(elements, num_region_variables),
             inferred_values: None,
             dependency_map: None,
-            constraints: IndexVec::from_raw(outlives_constraints),
+            constraints: outlives_constraints,
             type_tests,
             universal_regions,
         };
@@ -392,7 +361,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         sub: RegionVid,
         point: Location,
     ) {
-        debug!("add_outlives({:?}: {:?} @ {:?}", sup, sub, point);
         assert!(self.inferred_values.is_none(), "values already inferred");
         self.constraints.push(OutlivesConstraint {
             span,
@@ -400,7 +368,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             sub,
             point,
             next: None,
-        });
+        })
     }
 
     /// Perform region inference and report errors if we see any
@@ -498,13 +466,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 debug!("propagate_constraints:   sub={:?}", constraint.sub);
                 debug!("propagate_constraints:   sup={:?}", constraint.sup);
 
-                let mut opt_dep_idx = dependency_map[constraint.sup];
-                while let Some(dep_idx) = opt_dep_idx {
+                self.constraints.each_affected_by_dirty(dependency_map[constraint.sup], |dep_idx| {
                     if clean_bit_vec.remove(dep_idx.index()) {
                         dirty_list.push(dep_idx);
                     }
-                    opt_dep_idx = self.constraints[dep_idx].next;
-                }
+                });
             }
 
             debug!("\n");
@@ -518,16 +484,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// These are constraints like Y: X @ P -- so if X changed, we may
     /// need to grow Y.
     fn build_dependency_map(&mut self) -> IndexVec<RegionVid, Option<ConstraintIndex>> {
-        let mut map = IndexVec::from_elem(None, &self.definitions);
-
-        for (idx, constraint) in self.constraints.iter_enumerated_mut().rev() {
-            let mut head = &mut map[constraint.sub];
-            debug_assert!(constraint.next.is_none());
-            constraint.next = *head;
-            *head = Some(idx);
-        }
-
-        map
+        self.constraints.link(self.definitions.len())
     }
 
     /// Once regions have been propagated, this method is used to see
@@ -1115,7 +1072,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         while changed {
             changed = false;
-            for constraint in &self.constraints {
+            for constraint in self.constraints.iter() {
                 if let Some(n) = result_set[constraint.sup] {
                     let m = n + 1;
                     if result_set[constraint.sub]
@@ -1143,16 +1100,6 @@ impl<'tcx> RegionDefinition<'tcx> {
             is_universal: false,
             external_name: None,
         }
-    }
-}
-
-impl fmt::Debug for OutlivesConstraint {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            formatter,
-            "({:?}: {:?} @ {:?}) due to {:?}",
-            self.sup, self.sub, self.point, self.span
-        )
     }
 }
 
