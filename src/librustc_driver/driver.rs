@@ -1211,6 +1211,7 @@ where
         .set(derive_registrar::find(&hir_map));
 
     time(sess, "loop checking", || loops::check_crate(sess, &hir_map));
+    sess.abort_if_errors();
 
     let mut local_providers = ty::query::Providers::default();
     default_provide(&mut local_providers);
