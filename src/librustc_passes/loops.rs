@@ -17,7 +17,7 @@ use rustc::hir::{self, Destination};
 use syntax::ast;
 use syntax_pos::Span;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum LoopKind {
     Loop(hir::LoopSource),
     WhileLoop,
@@ -34,7 +34,7 @@ impl LoopKind {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum Context {
     Normal,
     Loop(LoopKind),
