@@ -6,7 +6,7 @@
 #![allow(dead_code, needless_pass_by_value)]
 
 extern crate alloc;
-use alloc::linked_list::LinkedList;
+use alloc::collections::linked_list::LinkedList;
 
 trait Foo {
     type Baz = LinkedList<u8>;
