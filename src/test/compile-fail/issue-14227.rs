@@ -14,6 +14,9 @@ extern {
     pub static symbol: ();
 }
 static CRASH: () = symbol;
-//~^ ERROR constant evaluation error
+//~^ ERROR could not evaluate static initializer
+//~| tried to read from foreign (extern) static
+//~^^^ ERROR could not evaluate static initializer
+//~| tried to read from foreign (extern) static
 
 fn main() {}
