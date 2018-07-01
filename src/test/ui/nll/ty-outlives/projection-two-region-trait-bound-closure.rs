@@ -107,7 +107,7 @@ where
 {
     with_signature(cell, t, |cell, t| require(cell, t));
     //~^ WARNING not reporting region error due to nll
-    //~| ERROR does not outlive free region
+    //~| ERROR argument requires that data must outlive free region
 }
 
 #[rustc_regions]
