@@ -8,16 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(safe_extern_statics)]
+#![allow(dead_code)]
 
-extern {
-    static error_message_count: u32;
+struct A {
+    a: &'static (),
 }
 
-pub static BAZ: u32 = *&error_message_count;
-//~^ ERROR could not evaluate static initializer
-//~| tried to read from foreign (extern) static
-//~^^^ ERROR could not evaluate static initializer
-//~| tried to read from foreign (extern) static
+static B: &'static A = &A { a: &() };
+static C: &'static A = &B;
 
 fn main() {}

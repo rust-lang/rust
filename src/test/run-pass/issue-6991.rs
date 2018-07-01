@@ -8,12 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(dead_code, warnings)]
-
-static mut x: isize = 3;
-static mut y: isize = unsafe {
-    x
-//~^ ERROR cannot refer to other statics by value, use the address-of operator or a constant instea
-};
+static x: &'static usize = &1;
+static y: usize = *x;
 
 fn main() {}

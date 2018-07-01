@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static x: &'static usize = &1;
-static y: usize = *x;
-//~^ ERROR cannot refer to other statics by value,
-//         use the address-of operator or a constant instead
+#![feature(const_let)]
+
+pub static mut A: u32 = 0;
+pub static mut B: () = unsafe { A = 1; };
+//~^ ERROR statements in statics are unstable
+
+pub static mut C: u32 = unsafe { C = 1; 0 };
+//~^ ERROR statements in statics are unstable
+
+pub static D: u32 = D;
+
 fn main() {}

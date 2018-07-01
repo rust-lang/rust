@@ -374,7 +374,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
             Ok(None)
         } else {
             Err(
-                ConstEvalError::NeedsRfc("Pointer arithmetic or comparison".to_string()).into(),
+                ConstEvalError::NeedsRfc("pointer arithmetic or comparison".to_string()).into(),
             )
         }
     }
@@ -404,7 +404,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         _dest: Place,
     ) -> EvalResult<'tcx> {
         Err(
-            ConstEvalError::NeedsRfc("Heap allocations via `box` keyword".to_string()).into(),
+            ConstEvalError::NeedsRfc("heap allocations via `box` keyword".to_string()).into(),
         )
     }
 

@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(safe_extern_statics)]
+// revisions:rpass1 rpass2
 
-extern {
-    static error_message_count: u32;
+#[cfg(rpass1)]
+pub static A: u8 = 42;
+#[cfg(rpass2)]
+pub static A: u8 = 43;
+
+static B: &u8 = &C.1;
+static C: (&&u8, u8) = (&B, A);
+
+fn main() {
+    assert_eq!(*B, A);
+    assert_eq!(**C.0, A);
+    assert_eq!(C.1, A);
 }
-
-pub static BAZ: u32 = *&error_message_count;
-//~^ ERROR could not evaluate static initializer
-//~| tried to read from foreign (extern) static
-//~^^^ ERROR could not evaluate static initializer
-//~| tried to read from foreign (extern) static
-
-fn main() {}

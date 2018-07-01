@@ -279,6 +279,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 /// Allocation accessors
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     fn const_eval_static(&self, def_id: DefId) -> EvalResult<'tcx, &'tcx Allocation> {
+        if self.tcx.is_foreign_item(def_id) {
+            return err!(ReadForeignStatic);
+        }
         let instance = Instance::mono(self.tcx.tcx, def_id);
         let gid = GlobalId {
             instance,
@@ -302,7 +305,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 Some(alloc) => Ok(alloc),
                 None => {
                     // static alloc?
-                    match self.tcx.alloc_map.lock().get(id) {
+                    let alloc = self.tcx.alloc_map.lock().get(id);
+                    match alloc {
                         Some(AllocType::Memory(mem)) => Ok(mem),
                         Some(AllocType::Function(..)) => {
                             Err(EvalErrorKind::DerefFunctionPointer.into())

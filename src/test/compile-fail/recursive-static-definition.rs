@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(warnings)]
+pub static FOO: u32 = FOO;
+//~^ ERROR cycle detected when const-evaluating `FOO`
 
-static A: u32 = 0;
-static B: u32 = A;
-//~^ ERROR E0394
-
-fn main() {
-}
+fn main() {}
