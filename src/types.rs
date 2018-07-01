@@ -681,7 +681,7 @@ impl Rewrite for ast::Ty {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
             }
             ast::TyKind::ImplicitSelf => Some(String::from("")),
-            ast::TyKind::ImplTrait(ref it) => it
+            ast::TyKind::ImplTrait(_, ref it) => it
                 .rewrite(context, shape)
                 .map(|it_str| format!("impl {}", it_str)),
             ast::TyKind::Err | ast::TyKind::Typeof(..) => unreachable!(),
