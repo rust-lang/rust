@@ -49,6 +49,7 @@ use string;
 ///
 /// [`Result<T, E>`]: ../result/enum.Result.html
 /// [`Display`]: ../fmt/trait.Display.html
+/// [`Debug`]: ../fmt/trait.Debug.html
 /// [`cause`]: trait.Error.html#method.cause
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Error: Debug + Display {
