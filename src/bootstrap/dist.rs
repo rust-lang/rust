@@ -1787,15 +1787,18 @@ impl Step for LlvmTools {
         let tmp = tmpdir(builder);
         let image = tmp.join("llvm-tools-image");
         drop(fs::remove_dir_all(&image));
-        t!(fs::create_dir_all(&image.join("bin")));
 
         // Prepare the image directory
+        let bindir = builder
+            .llvm_out(target)
+            .join("bin");
+        let dst = image.join("lib/rustlib")
+            .join(target)
+            .join("bin");
+        t!(fs::create_dir_all(&dst));
         for tool in LLVM_TOOLS {
-            let exe = builder
-                .llvm_out(target)
-                .join("bin")
-                .join(exe(tool, &target));
-            builder.install(&exe, &image.join("bin"), 0o755);
+            let exe = bindir.join(exe(tool, &target));
+            builder.install(&exe, &dst, 0o755);
         }
 
         // Prepare the overlay
@@ -1818,7 +1821,7 @@ impl Step for LlvmTools {
             .arg("--non-installed-overlay").arg(&overlay)
             .arg(format!("--package-name={}-{}", name, target))
             .arg("--legacy-manifest-dirs=rustlib,cargo")
-            .arg("--component-name=llvm-tools");
+            .arg("--component-name=llvm-tools-preview");
 
 
         builder.run(&mut cmd);
