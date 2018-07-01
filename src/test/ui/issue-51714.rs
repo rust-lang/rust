@@ -9,16 +9,15 @@
 // except according to those terms.
 
 fn main() {
-    |_:  [_; return || {}] | {}
+    |_:  [_; return || {}] | {};
     //~^ ERROR return statement outside of function body
-}
 
-fn foo() {
     [(); return || {}];
     //~^ ERROR return statement outside of function body
-}
 
-fn bar() {
     [(); return |ice| {}];
+    //~^ ERROR return statement outside of function body
+
+    [(); return while let Some(n) = Some(0) {}];
     //~^ ERROR return statement outside of function body
 }
