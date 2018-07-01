@@ -103,6 +103,7 @@ pub struct LoweringContext<'a> {
     loop_scopes: Vec<NodeId>,
     is_in_loop_condition: bool,
     is_in_trait_impl: bool,
+    is_in_anon_const: bool,
 
     /// What to do when we encounter either an "anonymous lifetime
     /// reference". The term "anonymous" is meant to encompass both
@@ -230,6 +231,7 @@ pub fn lower_crate(
         node_id_to_hir_id: IndexVec::new(),
         is_generator: false,
         is_in_trait_impl: false,
+        is_in_anon_const: false,
         lifetimes_to_define: Vec::new(),
         is_collecting_in_band_lifetimes: false,
         in_scope_lifetimes: Vec::new(),
@@ -968,31 +970,30 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_loop_destination(&mut self, destination: Option<(NodeId, Label)>) -> hir::Destination {
-        match destination {
-            Some((id, label)) => {
-                let target_id = if let Def::Label(loop_id) = self.expect_full_def(id) {
-                    Ok(self.lower_node_id(loop_id).node_id)
-                } else {
-                    Err(hir::LoopIdError::UnresolvedLabel)
-                };
-                hir::Destination {
-                    label: self.lower_label(Some(label)),
-                    target_id,
+        let target_id = if self.is_in_anon_const {
+            Err(hir::LoopIdError::OutsideLoopScope)
+        } else {
+            match destination {
+                Some((id, _)) => {
+                    if let Def::Label(loop_id) = self.expect_full_def(id) {
+                        Ok(self.lower_node_id(loop_id).node_id)
+                    } else {
+                        Err(hir::LoopIdError::UnresolvedLabel)
+                    }
+                }
+                None => {
+                    self.loop_scopes
+                        .last()
+                        .map(|innermost_loop_id| *innermost_loop_id)
+                        .map(|id| Ok(self.lower_node_id(id).node_id))
+                        .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
+                        .into()
                 }
             }
-            None => {
-                let target_id = self.loop_scopes
-                    .last()
-                    .map(|innermost_loop_id| *innermost_loop_id)
-                    .map(|id| Ok(self.lower_node_id(id).node_id))
-                    .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
-                    .into();
-
-                hir::Destination {
-                    label: None,
-                    target_id,
-                }
-            }
+        };
+        hir::Destination {
+            label: self.lower_label(destination.map(|(_, label)| label)),
+            target_id,
         }
     }
 
@@ -3440,13 +3441,22 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_anon_const(&mut self, c: &AnonConst) -> hir::AnonConst {
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(c.id);
+        let was_in_loop_condition = self.is_in_loop_condition;
+        self.is_in_loop_condition = false;
+        let was_in_anon_const = self.is_in_anon_const;
+        self.is_in_anon_const = true;
 
-        hir::AnonConst {
+        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(c.id);
+        let anon_const = hir::AnonConst {
             id: node_id,
             hir_id,
             body: self.lower_body(None, |this| this.lower_expr(&c.value)),
-        }
+        };
+
+        self.is_in_anon_const = was_in_anon_const;
+        self.is_in_loop_condition = was_in_loop_condition;
+
+        anon_const
     }
 
     fn lower_expr(&mut self, e: &Expr) -> hir::Expr {
