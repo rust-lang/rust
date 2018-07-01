@@ -271,3 +271,35 @@ macro_rules! save_regs {
              :::: "intel", "volatile");
     };
 }
+
+// #2721
+macro_rules! impl_as_byte_slice_arrays {
+    ($n:expr,) => {};
+    ($n:expr, $N:ident, $($NN:ident,)*) => {
+        impl_as_byte_slice_arrays!($n - 1, $($NN,)*);
+
+        impl<T> AsByteSliceMut for [T; $n] where [T]: AsByteSliceMut {
+            fn as_byte_slice_mut(&mut self) -> &mut [u8] {
+                self[..].as_byte_slice_mut()
+            }
+
+            fn to_le(&mut self) {
+                self[..].to_le()
+            }
+        }
+    };
+    (!div $n:expr,) => {};
+    (!div $n:expr, $N:ident, $($NN:ident,)*) => {
+        impl_as_byte_slice_arrays!(!div $n / 2, $($NN,)*);
+
+        impl<T> AsByteSliceMut for [T; $n] where [T]: AsByteSliceMut {
+            fn as_byte_slice_mut(&mut self) -> &mut [u8] {
+                self[..].as_byte_slice_mut()
+            }
+
+            fn to_le(&mut self) {
+                self[..].to_le()
+            }
+        }
+    };
+}
