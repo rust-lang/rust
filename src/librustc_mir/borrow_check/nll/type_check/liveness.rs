@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::nll::region_infer::Cause;
 use borrow_check::nll::type_check::AtLocation;
 use dataflow::move_paths::{HasMoveData, MoveData};
 use dataflow::MaybeInitializedPlaces;
@@ -88,8 +87,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
             .simulate_block(self.mir, bb, |location, live_locals| {
                 for live_local in live_locals.iter() {
                     let live_local_ty = self.mir.local_decls[live_local].ty;
-                    let cause = Cause::LiveVar(live_local, location);
-                    Self::push_type_live_constraint(&mut self.cx, live_local_ty, location, cause);
+                    Self::push_type_live_constraint(&mut self.cx, live_local_ty, location);
                 }
             });
 
@@ -161,7 +159,6 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         cx: &mut TypeChecker<'_, 'gcx, 'tcx>,
         value: T,
         location: Location,
-        cause: Cause,
     ) where
         T: TypeFoldable<'tcx>,
     {
@@ -173,7 +170,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
         cx.tcx().for_each_free_region(&value, |live_region| {
             cx.constraints
                 .liveness_set
-                .push((live_region, location, cause.clone()));
+                .push((live_region, location));
         });
     }
 
@@ -210,9 +207,8 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
 
         // All things in the `outlives` array may be touched by
         // the destructor and must be live at this point.
-        let cause = Cause::DropVar(dropped_local, location);
         for &kind in &drop_data.dropck_result.kinds {
-            Self::push_type_live_constraint(&mut self.cx, kind, location, cause);
+            Self::push_type_live_constraint(&mut self.cx, kind, location);
         }
     }
 

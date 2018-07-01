@@ -38,87 +38,72 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         kind_place: Option<(WriteKind, &Place<'tcx>)>,
         err: &mut DiagnosticBuilder<'_>,
     ) {
-        let regioncx = &&self.nonlexical_regioncx;
+        debug!(
+            "explain_why_borrow_contains_point(context={:?}, borrow={:?}, kind_place={:?})",
+            context, borrow, kind_place,
+        );
+
+        let regioncx = &self.nonlexical_regioncx;
         let mir = self.mir;
+        let tcx = self.tcx;
 
         let borrow_region_vid = regioncx.to_region_vid(borrow.region);
-        if let Some(cause) = regioncx.why_region_contains_point(borrow_region_vid, context.loc) {
-            match cause {
-                Cause::LiveVar(local, location) => match find_use::regular_use(
-                    mir, regioncx, borrow, location, local,
-                ) {
-                    Some(p) => {
-                        err.span_label(mir.source_info(p).span, format!("borrow later used here"));
-                    }
 
-                    None => {
-                        span_bug!(
-                            mir.source_info(context.loc).span,
-                            "Cause should end in a LiveVar"
-                        );
-                    }
-                },
+        debug!(
+            "explain_why_borrow_contains_point: borrow_region_vid={:?}",
+            borrow_region_vid
+        );
 
-                Cause::DropVar(local, location) => match find_use::drop_use(
-                    mir, regioncx, borrow, location, local,
-                ) {
-                    Some(p) => match &mir.local_decls[local].name {
-                        Some(local_name) => {
-                            err.span_label(
-                                mir.source_info(p).span,
-                                format!("borrow later used here, when `{}` is dropped", local_name),
-                            );
+        let region_sub = regioncx.find_constraint(borrow_region_vid, context.loc);
 
-                            if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
-                                if let Place::Local(borrowed_local) = place {
-                                    let dropped_local_scope =
-                                        mir.local_decls[local].visibility_scope;
-                                    let borrowed_local_scope =
-                                        mir.local_decls[*borrowed_local].visibility_scope;
+        debug!(
+            "explain_why_borrow_contains_point: region_sub={:?}",
+            region_sub
+        );
 
-                                    if mir.is_sub_scope(borrowed_local_scope, dropped_local_scope) {
-                                        err.note(
-                                            "values in a scope are dropped \
-                                             in the opposite order they are defined",
-                                        );
-                                    }
-                                }
+        match find_use::find(mir, regioncx, tcx, region_sub, context.loc) {
+            Some(Cause::LiveVar(_local, location)) => {
+                err.span_label(
+                    mir.source_info(location).span,
+                    format!("borrow later used here"),
+                );
+            }
+
+            Some(Cause::DropVar(local, location)) => match &mir.local_decls[local].name {
+                Some(local_name) => {
+                    err.span_label(
+                        mir.source_info(location).span,
+                        format!("borrow later used here, when `{}` is dropped", local_name),
+                    );
+
+                    if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
+                        if let Place::Local(borrowed_local) = place {
+                            let dropped_local_scope = mir.local_decls[local].visibility_scope;
+                            let borrowed_local_scope =
+                                mir.local_decls[*borrowed_local].visibility_scope;
+
+                            if mir.is_sub_scope(borrowed_local_scope, dropped_local_scope) {
+                                err.note(
+                                    "values in a scope are dropped \
+                                     in the opposite order they are defined",
+                                );
                             }
                         }
-                        None => {
-                            err.span_label(
-                                mir.local_decls[local].source_info.span,
-                                "borrow may end up in a temporary, created here",
-                            );
-
-                            err.span_label(
-                                mir.source_info(p).span,
-                                "temporary later dropped here, \
-                                 potentially using the reference",
-                            );
-                        }
-                    },
-
-                    None => {
-                        span_bug!(
-                            mir.source_info(context.loc).span,
-                            "Cause should end in a DropVar"
-                        );
-                    }
-                },
-
-                Cause::UniversalRegion(region_vid) => {
-                    if let Some(region) = regioncx.to_error_region(region_vid) {
-                        self.tcx.note_and_explain_free_region(
-                            err,
-                            "borrowed value must be valid for ",
-                            region,
-                            "...",
-                        );
                     }
                 }
 
-                _ => {}
+                None => {}
+            },
+
+            None => {
+                if let Some(region) = regioncx.to_error_region(region_sub) {
+                    self.tcx.note_and_explain_free_region(
+                        err,
+                        "borrowed value must be valid for ",
+                        region,
+                        "...",
+                    );
+                }
             }
         }
     }

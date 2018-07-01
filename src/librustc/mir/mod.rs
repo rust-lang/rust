@@ -1000,6 +1000,10 @@ impl<'tcx> Terminator<'tcx> {
         self.kind.successors_mut()
     }
 
+    pub fn unwind(&self) -> Option<&Option<BasicBlock>> {
+        self.kind.unwind()
+    }
+
     pub fn unwind_mut(&mut self) -> Option<&mut Option<BasicBlock>> {
         self.kind.unwind_mut()
     }
@@ -1192,6 +1196,31 @@ impl<'tcx> TerminatorKind<'tcx> {
             } => Some(real_target)
                 .into_iter()
                 .chain(&mut imaginary_targets[..]),
+        }
+    }
+
+    pub fn unwind(&self) -> Option<&Option<BasicBlock>> {
+        match *self {
+            TerminatorKind::Goto { .. }
+            | TerminatorKind::Resume
+            | TerminatorKind::Abort
+            | TerminatorKind::Return
+            | TerminatorKind::Unreachable
+            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::Yield { .. }
+            | TerminatorKind::SwitchInt { .. }
+            | TerminatorKind::FalseEdges { .. } => None,
+            TerminatorKind::Call {
+                cleanup: ref unwind,
+                ..
+            }
+            | TerminatorKind::Assert {
+                cleanup: ref unwind,
+                ..
+            }
+            | TerminatorKind::DropAndReplace { ref unwind, .. }
+            | TerminatorKind::Drop { ref unwind, .. }
+            | TerminatorKind::FalseUnwind { ref unwind, .. } => Some(unwind),
         }
     }
 

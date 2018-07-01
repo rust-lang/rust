@@ -14,7 +14,6 @@
 use borrow_check::location::LocationTable;
 use borrow_check::nll::constraint_set::ConstraintSet;
 use borrow_check::nll::facts::AllFacts;
-use borrow_check::nll::region_infer::Cause;
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use dataflow::move_paths::MoveData;
@@ -615,7 +614,7 @@ crate struct MirTypeckRegionConstraints<'tcx> {
     /// not otherwise appear in the MIR -- in particular, the
     /// late-bound regions that it instantiates at call-sites -- and
     /// hence it must report on their liveness constraints.
-    crate liveness_set: Vec<(ty::Region<'tcx>, Location, Cause)>,
+    crate liveness_set: Vec<(ty::Region<'tcx>, Location)>,
 
     crate outlives_constraints: ConstraintSet,
 
@@ -986,7 +985,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     self.constraints.liveness_set.push((
                         late_bound_region,
                         term_location,
-                        Cause::LiveOther(term_location),
                     ));
                 }
 

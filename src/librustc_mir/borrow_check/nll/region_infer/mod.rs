@@ -75,8 +75,6 @@ pub struct RegionInferenceContext<'tcx> {
     universal_regions: UniversalRegions<'tcx>,
 }
 
-struct TrackCauses(bool);
-
 struct RegionDefinition<'tcx> {
     /// Why we created this variable. Mostly these will be
     /// `RegionVariableOrigin::NLL`, but some variables get created
@@ -105,13 +103,6 @@ pub(crate) enum Cause {
 
     /// point inserted because Local was dropped at the given Location
     DropVar(Local, Location),
-
-    /// point inserted because the type was live at the given Location,
-    /// but not as part of some local variable
-    LiveOther(Location),
-
-    /// part of the initial set of values for a universally quantified region
-    UniversalRegion(RegionVid),
 }
 
 /// A "type test" corresponds to an outlives constraint between a type
@@ -283,7 +274,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 self.liveness_constraints.add_element(
                     variable,
                     point_index,
-                    &Cause::UniversalRegion(variable),
                 );
             }
 
@@ -291,7 +281,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.liveness_constraints.add_element(
                 variable,
                 variable,
-                &Cause::UniversalRegion(variable),
             );
         }
     }
@@ -337,13 +326,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// Returns `true` if this constraint is new and `false` is the
     /// constraint was already present.
-    pub(super) fn add_live_point(&mut self, v: RegionVid, point: Location, cause: &Cause) -> bool {
+    pub(super) fn add_live_point(&mut self, v: RegionVid, point: Location) -> bool {
         debug!("add_live_point({:?}, {:?})", v, point);
         assert!(self.inferred_values.is_none(), "values already inferred");
-        debug!("add_live_point: @{:?} Adding cause {:?}", point, cause);
 
         let element = self.elements.index(point);
-        self.liveness_constraints.add_element(v, element, &cause)
+        self.liveness_constraints.add_element(v, element)
     }
 
     /// Indicates that the region variable `sup` must outlive `sub` is live at the point `point`.
@@ -436,7 +424,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // The initial values for each region are derived from the liveness
         // constraints we have accumulated.
-        let mut inferred_values = self.liveness_constraints.duplicate(TrackCauses(false));
+        let mut inferred_values = self.liveness_constraints.clone();
 
         let dependency_map = self.dependency_map.as_ref().unwrap();
 

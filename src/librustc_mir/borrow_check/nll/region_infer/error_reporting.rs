@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::fmt;
-use borrow_check::nll::region_infer::{Cause, ConstraintIndex, RegionInferenceContext};
+use borrow_check::nll::region_infer::{ConstraintIndex, RegionInferenceContext};
 use borrow_check::nll::region_infer::values::ToElementIndex;
 use borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
@@ -259,15 +259,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
-    crate fn why_region_contains_point(&self, fr1: RegionVid, elem: Location) -> Option<Cause> {
-        // Find some constraint `X: Y` where:
-        // - `fr1: X` transitively
-        // - and `Y` is live at `elem`
+    // Find some constraint `X: Y` where:
+    // - `fr1: X` transitively
+    // - and `Y` is live at `elem`
+    crate fn find_constraint(&self, fr1: RegionVid, elem: Location) -> RegionVid {
         let index = self.blame_constraint(fr1, elem);
-        let region_sub = self.constraints[index].sub;
-
-        // then return why `Y` was live at `elem`
-        self.liveness_constraints.cause(region_sub, elem)
+        self.constraints[index].sub
     }
 
     /// Tries to finds a good span to blame for the fact that `fr1`

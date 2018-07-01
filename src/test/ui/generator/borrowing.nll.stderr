@@ -2,15 +2,10 @@ error[E0597]: `a` does not live long enough
   --> $DIR/borrowing.rs:18:18
    |
 LL |         unsafe { (|| yield &a).resume() }
-   |                  ^^^^^^^^^^^^^
-   |                  |
-   |                  borrowed value does not live long enough
-   |                  borrow may end up in a temporary, created here
+   |                  ^^^^^^^^^^^^^ borrowed value does not live long enough
 LL |         //~^ ERROR: `a` does not live long enough
 LL |     };
-   |     -- temporary later dropped here, potentially using the reference
-   |     |
-   |     borrowed value only lives until here
+   |     - borrowed value only lives until here
 
 error[E0597]: `a` does not live long enough
   --> $DIR/borrowing.rs:24:9
