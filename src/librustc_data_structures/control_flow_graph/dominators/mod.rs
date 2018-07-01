@@ -14,9 +14,9 @@
 //! Rice Computer Science TS-06-33870
 //! <https://www.cs.rice.edu/~keith/EMBED/dom.pdf>
 
-use super::ControlFlowGraph;
+use super::super::indexed_vec::{Idx, IndexVec};
 use super::iterate::reverse_post_order;
-use super::super::indexed_vec::{IndexVec, Idx};
+use super::ControlFlowGraph;
 
 use std::fmt;
 
@@ -29,15 +29,16 @@ pub fn dominators<G: ControlFlowGraph>(graph: &G) -> Dominators<G::Node> {
     dominators_given_rpo(graph, &rpo)
 }
 
-pub fn dominators_given_rpo<G: ControlFlowGraph>(graph: &G,
-                                                 rpo: &[G::Node])
-                                                 -> Dominators<G::Node> {
+pub fn dominators_given_rpo<G: ControlFlowGraph>(
+    graph: &G,
+    rpo: &[G::Node],
+) -> Dominators<G::Node> {
     let start_node = graph.start_node();
     assert_eq!(rpo[0], start_node);
 
     // compute the post order index (rank) for each node
-    let mut post_order_rank: IndexVec<G::Node, usize> = IndexVec::from_elem_n(usize::default(),
-                                                                              graph.num_nodes());
+    let mut post_order_rank: IndexVec<G::Node, usize> =
+        IndexVec::from_elem_n(usize::default(), graph.num_nodes());
     for (index, node) in rpo.iter().rev().cloned().enumerate() {
         post_order_rank[node] = index;
     }
@@ -56,10 +57,12 @@ pub fn dominators_given_rpo<G: ControlFlowGraph>(graph: &G,
                 if immediate_dominators[pred].is_some() {
                     // (*)
                     // (*) dominators for `pred` have been calculated
-                    new_idom = intersect_opt(&post_order_rank,
-                                             &immediate_dominators,
-                                             new_idom,
-                                             Some(pred));
+                    new_idom = intersect_opt(
+                        &post_order_rank,
+                        &immediate_dominators,
+                        new_idom,
+                        Some(pred),
+                    );
                 }
             }
 
@@ -76,11 +79,12 @@ pub fn dominators_given_rpo<G: ControlFlowGraph>(graph: &G,
     }
 }
 
-fn intersect_opt<Node: Idx>(post_order_rank: &IndexVec<Node, usize>,
-                            immediate_dominators: &IndexVec<Node, Option<Node>>,
-                            node1: Option<Node>,
-                            node2: Option<Node>)
-                            -> Option<Node> {
+fn intersect_opt<Node: Idx>(
+    post_order_rank: &IndexVec<Node, usize>,
+    immediate_dominators: &IndexVec<Node, Option<Node>>,
+    node1: Option<Node>,
+    node2: Option<Node>,
+) -> Option<Node> {
     match (node1, node2) {
         (None, None) => None,
         (Some(n), None) | (None, Some(n)) => Some(n),
@@ -88,11 +92,12 @@ fn intersect_opt<Node: Idx>(post_order_rank: &IndexVec<Node, usize>,
     }
 }
 
-fn intersect<Node: Idx>(post_order_rank: &IndexVec<Node, usize>,
-                        immediate_dominators: &IndexVec<Node, Option<Node>>,
-                        mut node1: Node,
-                        mut node2: Node)
-                        -> Node {
+fn intersect<Node: Idx>(
+    post_order_rank: &IndexVec<Node, usize>,
+    immediate_dominators: &IndexVec<Node, Option<Node>>,
+    mut node1: Node,
+    mut node2: Node,
+) -> Node {
     while node1 != node2 {
         while post_order_rank[node1] < post_order_rank[node2] {
             node1 = immediate_dominators[node1].unwrap();
@@ -176,11 +181,13 @@ impl<Node: Idx> DominatorTree<Node> {
 
 impl<Node: Idx> fmt::Debug for DominatorTree<Node> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&DominatorTreeNode {
-                            tree: self,
-                            node: self.root,
-                        },
-                        fmt)
+        fmt::Debug::fmt(
+            &DominatorTreeNode {
+                tree: self,
+                node: self.root,
+            },
+            fmt,
+        )
     }
 }
 
@@ -194,11 +201,9 @@ impl<'tree, Node: Idx> fmt::Debug for DominatorTreeNode<'tree, Node> {
         let subtrees: Vec<_> = self.tree
             .children(self.node)
             .iter()
-            .map(|&child| {
-                DominatorTreeNode {
-                    tree: self.tree,
-                    node: child,
-                }
+            .map(|&child| DominatorTreeNode {
+                tree: self.tree,
+                node: child,
             })
             .collect();
         fmt.debug_tuple("")

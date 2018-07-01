@@ -17,18 +17,37 @@ mod reference;
 #[cfg(test)]
 mod test;
 
-pub trait ControlFlowGraph
-    where Self: for<'graph> GraphPredecessors<'graph, Item=<Self as ControlFlowGraph>::Node>,
-          Self: for<'graph> GraphSuccessors<'graph, Item=<Self as ControlFlowGraph>::Node>
-{
+pub trait DirectedGraph {
     type Node: Idx;
+}
 
+pub trait WithNumNodes: DirectedGraph {
     fn num_nodes(&self) -> usize;
-    fn start_node(&self) -> Self::Node;
-    fn predecessors<'graph>(&'graph self, node: Self::Node)
-                            -> <Self as GraphPredecessors<'graph>>::Iter;
-    fn successors<'graph>(&'graph self, node: Self::Node)
-                            -> <Self as GraphSuccessors<'graph>>::Iter;
+}
+
+pub trait WithSuccessors: DirectedGraph
+where
+    Self: for<'graph> GraphSuccessors<'graph, Item = <Self as DirectedGraph>::Node>,
+{
+    fn successors<'graph>(
+        &'graph self,
+        node: Self::Node,
+    ) -> <Self as GraphSuccessors<'graph>>::Iter;
+}
+
+pub trait GraphSuccessors<'graph> {
+    type Item;
+    type Iter: Iterator<Item = Self::Item>;
+}
+
+pub trait WithPredecessors: DirectedGraph
+where
+    Self: for<'graph> GraphPredecessors<'graph, Item = <Self as DirectedGraph>::Node>,
+{
+    fn predecessors<'graph>(
+        &'graph self,
+        node: Self::Node,
+    ) -> <Self as GraphPredecessors<'graph>>::Iter;
 }
 
 pub trait GraphPredecessors<'graph> {
@@ -36,7 +55,23 @@ pub trait GraphPredecessors<'graph> {
     type Iter: Iterator<Item = Self::Item>;
 }
 
-pub trait GraphSuccessors<'graph> {
-    type Item;
-    type Iter: Iterator<Item = Self::Item>;
+pub trait WithStartNode: DirectedGraph {
+    fn start_node(&self) -> Self::Node;
+}
+
+pub trait ControlFlowGraph:
+    DirectedGraph + WithStartNode + WithPredecessors + WithStartNode + WithSuccessors + WithNumNodes
+{
+    // convenient trait
+}
+
+impl<T> ControlFlowGraph for T
+where
+    T: DirectedGraph
+        + WithStartNode
+        + WithPredecessors
+        + WithStartNode
+        + WithSuccessors
+        + WithNumNodes,
+{
 }
