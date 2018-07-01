@@ -2794,7 +2794,7 @@ impl<'a> Resolver<'a> {
     /// A variant of `smart_resolve_path` where you also specify extra
     /// information about where the path came from; this extra info is
     /// sometimes needed for the lint that recommends rewriting
-    /// absoluate paths to `crate`, so that it knows how to frame the
+    /// absolute paths to `crate`, so that it knows how to frame the
     /// suggestion. If you are just resolving a path like `foo::bar`
     /// that appears...somewhere, though, then you just want
     /// `CrateLint::SimplePath`, which is what `smart_resolve_path`
