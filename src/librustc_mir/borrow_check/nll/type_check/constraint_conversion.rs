@@ -186,7 +186,6 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
             locations: self.locations,
             sub,
             sup,
-            next: None,
         });
     }
 

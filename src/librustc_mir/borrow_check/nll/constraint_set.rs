@@ -32,39 +32,6 @@ impl ConstraintSet {
         }
         self.constraints.push(constraint);
     }
-
-    /// Once all constraints have been added, `link()` is used to thread together the constraints
-    /// based on which would be affected when a particular region changes. See the next field of
-    /// `OutlivesContraint` for more details.
-    /// link returns a map that is needed later by `each_affected_by_dirty`.
-    pub fn link(&mut self, len: usize) -> IndexVec<RegionVid, Option<ConstraintIndex>> {
-        let mut map = IndexVec::from_elem_n(None, len);
-
-        for (idx, constraint) in self.constraints.iter_enumerated_mut().rev() {
-            let mut head = &mut map[constraint.sub];
-            debug_assert!(constraint.next.is_none());
-            constraint.next = *head;
-            *head = Some(idx);
-        }
-
-        map
-    }
-
-    /// When a region R1 changes, we need to reprocess all constraints R2: R1 to take into account
-    /// any new elements that R1 now has. This method will quickly enumerate all such constraints
-    /// (that is, constraints where R1 is in the "subregion" position).
-    /// To use it, invoke with `map[R1]` where map is the map returned by `link`;
-    /// the callback op will be invoked for each affected constraint.
-    pub fn each_affected_by_dirty(
-        &self,
-        mut opt_dep_idx: Option<ConstraintIndex>,
-        mut op: impl FnMut(ConstraintIndex),
-    ) {
-        while let Some(dep_idx) = opt_dep_idx {
-            op(dep_idx);
-            opt_dep_idx = self.constraints[dep_idx].next;
-        }
-    }
 }
 
 impl Deref for ConstraintSet {
@@ -85,16 +52,6 @@ pub struct OutlivesConstraint {
     /// Region that must be outlived.
     pub sub: RegionVid,
 
-    /// Later on, we thread the constraints onto a linked list
-    /// grouped by their `sub` field. So if you had:
-    ///
-    /// Index | Constraint | Next Field
-    /// ----- | ---------- | ----------
-    /// 0     | `'a: 'b`   | Some(2)
-    /// 1     | `'b: 'c`   | None
-    /// 2     | `'c: 'b`   | None
-    pub next: Option<ConstraintIndex>,
-
     /// Where did this constraint arise?
     pub locations: Locations,
 }
@@ -110,3 +67,46 @@ impl fmt::Debug for OutlivesConstraint {
 }
 
 newtype_index!(ConstraintIndex { DEBUG_FORMAT = "ConstraintIndex({})" });
+
+crate struct ConstraintGraph {
+    first_constraints: IndexVec<RegionVid, Option<ConstraintIndex>>,
+    next_constraints: IndexVec<ConstraintIndex, Option<ConstraintIndex>>,
+}
+
+impl ConstraintGraph {
+    /// Constraint a graph where each region constraint `R1: R2` is
+    /// treated as an edge `R2 -> R1`. This is useful for cheaply
+    /// finding dirty constraints.
+    crate fn new(set: &ConstraintSet, num_region_vars: usize) -> Self {
+        let mut first_constraints = IndexVec::from_elem_n(None, num_region_vars);
+        let mut next_constraints = IndexVec::from_elem(None, &set.constraints);
+
+        for (idx, constraint) in set.constraints.iter_enumerated().rev() {
+            let mut head = &mut first_constraints[constraint.sub];
+            let mut next = &mut next_constraints[idx];
+            debug_assert!(next.is_none());
+            *next = *head;
+            *head = Some(idx);
+        }
+
+        ConstraintGraph { first_constraints, next_constraints }
+    }
+
+    /// Invokes `op` with the index of any constraints of the form
+    /// `region_sup: region_sub`.  These are the constraints that must
+    /// be reprocessed when the value of `R1` changes. If you think of
+    /// each constraint `R1: R2` as an edge `R2 -> R1`, then this
+    /// gives the set of successors to R2.
+    crate fn for_each_dependent(
+        &self,
+        region_sub: RegionVid,
+        mut op: impl FnMut(ConstraintIndex),
+    ) {
+        let mut p = self.first_constraints[region_sub];
+        while let Some(dep_idx) = p {
+            op(dep_idx);
+            p = self.next_constraints[dep_idx];
+        }
+    }
+}
+

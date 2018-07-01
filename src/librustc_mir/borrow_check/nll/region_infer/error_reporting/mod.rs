@@ -89,8 +89,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         stack: &mut Vec<ConstraintIndex>,
         results: &mut Vec<Vec<ConstraintIndex>>,
     ) {
-        let dependency_map = self.dependency_map.as_ref().unwrap();
-
         // Check if we already visited this region.
         if !visited.insert(current_region) {
             return;
@@ -105,20 +103,19 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return;
         }
 
-        self.constraints
-            .each_affected_by_dirty(dependency_map[current_region], |constraint| {
-                assert_eq!(self.constraints[constraint].sub, current_region);
-                stack.push(constraint);
-                self.find_constraint_paths_between_regions_helper(
-                    from_region,
-                    self.constraints[constraint].sup,
-                    target_test,
-                    visited,
-                    stack,
-                    results,
-                );
-                stack.pop();
-            });
+        self.constraint_graph.for_each_dependent(current_region, |constraint| {
+            assert_eq!(self.constraints[constraint].sub, current_region);
+            stack.push(constraint);
+            self.find_constraint_paths_between_regions_helper(
+                from_region,
+                self.constraints[constraint].sup,
+                target_test,
+                visited,
+                stack,
+                results,
+            );
+            stack.pop();
+        });
     }
 
     /// This function will return true if a constraint is interesting and false if a constraint

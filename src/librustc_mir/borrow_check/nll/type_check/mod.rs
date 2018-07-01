@@ -1537,7 +1537,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                                     sup: ref_region.to_region_vid(),
                                     sub: borrow_region.to_region_vid(),
                                     locations: location.boring(),
-                                    next: None,
                                 });
 
                             if let Some(all_facts) = all_facts {

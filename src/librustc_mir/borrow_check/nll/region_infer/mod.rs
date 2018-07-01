@@ -9,7 +9,9 @@
 // except according to those terms.
 
 use super::universal_regions::UniversalRegions;
-use borrow_check::nll::constraint_set::{ConstraintIndex, ConstraintSet, OutlivesConstraint};
+use borrow_check::nll::constraint_set::{
+    ConstraintIndex, ConstraintGraph, ConstraintSet, OutlivesConstraint
+};
 use borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::QueryRegionConstraint;
@@ -57,15 +59,11 @@ pub struct RegionInferenceContext<'tcx> {
     /// until `solve` is invoked.
     inferred_values: Option<RegionValues>,
 
-    /// For each variable, stores the index of the first constraint
-    /// where that variable appears on the RHS. This is the start of a
-    /// 'linked list' threaded by the `next` field in `Constraint`.
-    ///
-    /// This map is build when values are inferred.
-    dependency_map: Option<IndexVec<RegionVid, Option<ConstraintIndex>>>,
-
     /// The constraints we have accumulated and used during solving.
     constraints: ConstraintSet,
+
+    /// The constraint-set, but organized by regions.
+    constraint_graph: ConstraintGraph,
 
     /// Type constraints that we check after solving.
     type_tests: Vec<TypeTest<'tcx>>,
@@ -203,27 +201,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         outlives_constraints: ConstraintSet,
         type_tests: Vec<TypeTest<'tcx>>,
     ) -> Self {
-        // The `next` field should not yet have been initialized:
-        debug_assert!(outlives_constraints.iter().all(|c| c.next.is_none()));
-
         let num_region_variables = var_infos.len();
         let num_universal_regions = universal_regions.len();
 
         let elements = &Rc::new(RegionValueElements::new(mir, num_universal_regions));
 
         // Create a RegionDefinition for each inference variable.
-        let definitions = var_infos
+        let definitions: IndexVec<_, _> = var_infos
             .into_iter()
             .map(|info| RegionDefinition::new(info.origin))
             .collect();
+
+        let constraint_graph = ConstraintGraph::new(&outlives_constraints, definitions.len());
 
         let mut result = Self {
             definitions,
             elements: elements.clone(),
             liveness_constraints: RegionValues::new(elements, num_region_variables),
             inferred_values: None,
-            dependency_map: None,
             constraints: outlives_constraints,
+            constraint_graph,
             type_tests,
             universal_regions,
         };
@@ -392,7 +389,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// satisfied. Note that some values may grow **too** large to be
     /// feasible, but we check this later.
     fn propagate_constraints(&mut self, mir: &Mir<'tcx>) {
-        self.dependency_map = Some(self.build_dependency_map());
+        assert!(self.inferred_values.is_none());
         let inferred_values = self.compute_region_values(mir);
         self.inferred_values = Some(inferred_values);
     }
@@ -408,8 +405,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // The initial values for each region are derived from the liveness
         // constraints we have accumulated.
         let mut inferred_values = self.liveness_constraints.clone();
-
-        let dependency_map = self.dependency_map.as_ref().unwrap();
 
         // Constraints that may need to be repropagated (initially all):
         let mut dirty_list: Vec<_> = self.constraints.indices().collect();
@@ -428,28 +423,21 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 debug!("propagate_constraints:   sub={:?}", constraint.sub);
                 debug!("propagate_constraints:   sup={:?}", constraint.sup);
 
-                self.constraints.each_affected_by_dirty(
-                    dependency_map[constraint.sup],
-                    |dep_idx| {
-                        if clean_bit_vec.remove(dep_idx.index()) {
-                            dirty_list.push(dep_idx);
-                        }
-                    },
-                );
+                // The region of `constraint.sup` changed, so find all
+                // constraints of the form `R: constriant.sup` and
+                // enqueue them as dirty.  We will have to reprocess
+                // them.
+                self.constraint_graph.for_each_dependent(constraint.sup, |dep_idx| {
+                    if clean_bit_vec.remove(dep_idx.index()) {
+                        dirty_list.push(dep_idx);
+                    }
+                });
             }
 
             debug!("\n");
         }
 
         inferred_values
-    }
-
-    /// Builds up a map from each region variable X to a vector with the
-    /// indices of constraints that need to be re-evaluated when X changes.
-    /// These are constraints like Y: X @ P -- so if X changed, we may
-    /// need to grow Y.
-    fn build_dependency_map(&mut self) -> IndexVec<RegionVid, Option<ConstraintIndex>> {
-        self.constraints.link(self.definitions.len())
     }
 
     /// Once regions have been propagated, this method is used to see
