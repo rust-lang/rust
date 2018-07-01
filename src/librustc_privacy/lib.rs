@@ -1456,29 +1456,36 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
         if let Some(def_id) = ty_def_id {
             // Non-local means public (private items can't leave their crate, modulo bugs)
             if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
-                let vis = match self.tcx.hir.find(node_id) {
+                let hir_vis = match self.tcx.hir.find(node_id) {
                     Some(hir::map::NodeItem(item)) => &item.vis,
                     Some(hir::map::NodeForeignItem(item)) => &item.vis,
                     _ => bug!("expected item of foreign item"),
                 };
 
-                let vis = ty::Visibility::from_hir(vis, node_id, self.tcx);
+                let vis = ty::Visibility::from_hir(hir_vis, node_id, self.tcx);
 
                 if !vis.is_at_least(self.min_visibility, self.tcx) {
                     self.min_visibility = vis;
                 }
                 if !vis.is_at_least(self.required_visibility, self.tcx) {
+                    let vis_adj = match hir_vis.node {
+                        hir::VisibilityCrate(_) => "crate-visible",
+                        hir::VisibilityRestricted { .. } => "restricted",
+                        _ => "private"
+                    };
+
                     if self.has_pub_restricted || self.has_old_errors || self.in_assoc_ty {
                         let mut err = struct_span_err!(self.tcx.sess, self.span, E0446,
-                            "private type `{}` in public interface", ty);
-                        err.span_label(self.span, "can't leak private type");
+                            "{} type `{}` in public interface", vis_adj, ty);
+                        err.span_label(self.span, format!("can't leak {} type", vis_adj));
+                        err.span_label(hir_vis.span, format!("`{}` declared as {}", ty, vis_adj));
                         err.emit();
                     } else {
                         self.tcx.lint_node(lint::builtin::PRIVATE_IN_PUBLIC,
                                            node_id,
                                            self.span,
-                                           &format!("private type `{}` in public \
-                                                     interface (error E0446)", ty));
+                                           &format!("{} type `{}` in public \
+                                                     interface (error E0446)", vis_adj, ty));
                     }
                 }
             }
