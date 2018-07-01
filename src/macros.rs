@@ -411,7 +411,10 @@ pub fn rewrite_macro_def(
         result += &arm_shape.indent.to_string_with_newline(context.config);
     }
 
-    result += write_list(&branch_items, &fmt)?.as_str();
+    match write_list(&branch_items, &fmt) {
+        Some(ref s) => result += s,
+        None => return snippet,
+    }
 
     if multi_branch_style {
         result += &indent.to_string_with_newline(context.config);
