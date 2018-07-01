@@ -126,7 +126,7 @@ fn check_fn_inner<'a, 'tcx>(
                         GenericArg::Type(_) => None,
                     });
                     for bound in lifetimes {
-                        if bound.name.ident().name != "'static" && !bound.is_elided() {
+                        if bound.name != LifetimeName::Static && !bound.is_elided() {
                             return;
                         }
                         bounds_lts.push(bound);
@@ -251,7 +251,7 @@ fn allowed_lts_from(named_generics: &[GenericParam]) -> HashSet<RefLt> {
 
 fn lts_from_bounds<'a, T: Iterator<Item = &'a Lifetime>>(mut vec: Vec<RefLt>, bounds_lts: T) -> Vec<RefLt> {
     for lt in bounds_lts {
-        if lt.name.ident().name != "'static" {
+        if lt.name != LifetimeName::Static {
             vec.push(RefLt::Named(lt.name.ident().name));
         }
     }
@@ -282,7 +282,7 @@ impl<'v, 't> RefVisitor<'v, 't> {
 
     fn record(&mut self, lifetime: &Option<Lifetime>) {
         if let Some(ref lt) = *lifetime {
-            if lt.name.ident().name == "'static" {
+            if lt.name == LifetimeName::Static {
                 self.lts.push(RefLt::Static);
             } else if lt.is_elided() {
                 self.lts.push(RefLt::Unnamed);
