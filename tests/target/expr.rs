@@ -476,3 +476,34 @@ fn issue2704() {
             .collect(),
     );
 }
+
+// #2782
+fn issue2782() {
+    {
+        let f = {
+            let f = {
+                {
+                    match f {
+                        F(f, _) => loop {
+                            let f = {
+                                match f {
+                                    F(f, _) => match f {
+                                        F(f, _) => loop {
+                                            let f = {
+                                                let f = {
+                                                    match f {
+                                                        '-' => F(f, ()),
+                                                    }
+                                                };
+                                            };
+                                        },
+                                    },
+                                }
+                            };
+                        },
+                    }
+                }
+            };
+        };
+    }
+}

@@ -511,21 +511,18 @@ fn shape_from_indent_style(
     overhead: usize,
     offset: usize,
 ) -> Shape {
-    if context.use_block_indent() {
-        // 1 = ","
-        shape
+    let (shape, overhead) = if context.use_block_indent() {
+        let shape = shape
             .block()
             .block_indent(context.config.tab_spaces())
-            .with_max_width(context.config)
-            .sub_width(1)
-            .unwrap()
+            .with_max_width(context.config);
+        (shape, 1) // 1 = ","
     } else {
-        let shape = shape.visual_indent(offset);
-        if let Some(shape) = shape.sub_width(overhead) {
-            shape
-        } else {
-            Shape { width: 0, ..shape }
-        }
+        (shape.visual_indent(offset), overhead)
+    };
+    Shape {
+        width: shape.width.saturating_sub(overhead),
+        ..shape
     }
 }
 
