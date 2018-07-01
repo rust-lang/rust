@@ -19,7 +19,7 @@ use mem::PinMut;
 use task::{Context, Poll};
 
 /// A custom trait object for polling futures, roughly akin to
-/// `Box<dyn Future<Output = T>>`.
+/// `Box<dyn Future<Output = T> + 'a>`.
 /// Contrary to `FutureObj`, `LocalFutureObj` does not have a `Send` bound.
 pub struct LocalFutureObj<'a, T> {
     ptr: *mut (),
@@ -86,7 +86,7 @@ impl<'a, T> Drop for LocalFutureObj<'a, T> {
 }
 
 /// A custom trait object for polling futures, roughly akin to
-/// `Box<dyn Future<Output = T>> + Send`.
+/// `Box<dyn Future<Output = T> + Send + 'a>`.
 pub struct FutureObj<'a, T>(LocalFutureObj<'a, T>);
 
 unsafe impl<'a, T> Send for FutureObj<'a, T> {}
@@ -135,7 +135,8 @@ pub unsafe trait UnsafeFutureObj<'a, T>: 'a {
     ///
     /// The trait implementor must guarantee that it is safe to repeatedly call
     /// `poll` with the result of `into_raw` until `drop` is called; such calls
-    /// are not, however, allowed to race with each other or with calls to `drop`.
+    /// are not, however, allowed to race with each other or with calls to
+    /// `drop`.
     unsafe fn poll(ptr: *mut (), cx: &mut Context) -> Poll<T>;
 
     /// Drops the future represented by the given void pointer.
