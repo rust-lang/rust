@@ -321,9 +321,13 @@ fn block_can_be_flattened<'a>(
 fn flatten_arm_body<'a>(context: &'a RewriteContext, body: &'a ast::Expr) -> (bool, &'a ast::Expr) {
     if let Some(ref block) = block_can_be_flattened(context, body) {
         if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
-            let can_extend_expr =
-                !context.config.force_multiline_blocks() && can_flatten_block_around_this(expr);
-            (can_extend_expr, &*expr)
+            if let ast::ExprKind::Block(..) = expr.node {
+                flatten_arm_body(context, expr)
+            } else {
+                let can_extend_expr =
+                    !context.config.force_multiline_blocks() && can_flatten_block_around_this(expr);
+                (can_extend_expr, &*expr)
+            }
         } else {
             (false, &*body)
         }
