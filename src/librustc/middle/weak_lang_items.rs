@@ -112,9 +112,13 @@ fn verify<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         if missing.contains(&lang_items::$item) &&
            !whitelisted(tcx, lang_items::$item) &&
            items.$name().is_none() {
-            tcx.sess.err(&format!("language item required, but not found: `{}`",
-                                  stringify!($name)));
-
+            if lang_items::$item == lang_items::PanicImplLangItem {
+                tcx.sess.err(&format!("`#[panic_implementation]` function required, \
+                                        but not found"));
+            } else {
+                tcx.sess.err(&format!("language item required, but not found: `{}`",
+                                        stringify!($name)));
+            }
         }
     )*
 }
