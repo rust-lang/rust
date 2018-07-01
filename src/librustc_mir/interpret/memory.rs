@@ -590,6 +590,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         size: Size,
         nonoverlapping: bool,
     ) -> EvalResult<'tcx> {
+        self.copy_repeatedly(src, src_align, dest, dest_align, size, 1, nonoverlapping)
+    }
+
+    pub fn copy_repeatedly(
+        &mut self,
+        src: Scalar,
+        src_align: Align,
+        dest: Scalar,
+        dest_align: Align,
+        size: Size,
+        length: u64,
+        nonoverlapping: bool,
+    ) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be aligned
         self.check_align(src, src_align)?;
         self.check_align(dest, dest_align)?;
@@ -603,16 +616,24 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // first copy the relocations to a temporary buffer, because
         // `get_bytes_mut` will clear the relocations, which is correct,
         // since we don't want to keep any relocations at the target.
-        let relocations: Vec<_> = self.relocations(src, size)?
-            .iter()
-            .map(|&(offset, alloc_id)| {
-                // Update relocation offsets for the new positions in the destination allocation.
-                (offset + dest.offset - src.offset, alloc_id)
-            })
-            .collect();
+        let relocations = {
+            let relocations = self.relocations(src, size)?;
+            let mut new_relocations = Vec::with_capacity(relocations.len() * (length as usize));
+            for i in 0..length {
+                new_relocations.extend(
+                    relocations
+                    .iter()
+                    .map(|&(offset, alloc_id)| {
+                    (offset + dest.offset - src.offset + (i * size * relocations.len() as u64), alloc_id)
+                    })
+                );
+            }
+
+            new_relocations
+        };
 
         let src_bytes = self.get_bytes_unchecked(src, size, src_align)?.as_ptr();
-        let dest_bytes = self.get_bytes_mut(dest, size, dest_align)?.as_mut_ptr();
+        let dest_bytes = self.get_bytes_mut(dest, size * length, dest_align)?.as_mut_ptr();
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
         // behind `src` and `dest`. Also, we use the overlapping-safe `ptr::copy` if `src` and
@@ -629,13 +650,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                         ));
                     }
                 }
-                ptr::copy(src_bytes, dest_bytes, size.bytes() as usize);
+
+                for i in 0..length {
+                    ptr::copy(src_bytes, dest_bytes.offset((size.bytes() * i) as isize), size.bytes() as usize);
+                }
             } else {
-                ptr::copy_nonoverlapping(src_bytes, dest_bytes, size.bytes() as usize);
+                for i in 0..length {
+                    ptr::copy_nonoverlapping(src_bytes, dest_bytes.offset((size.bytes() * i) as isize), size.bytes() as usize);
+                }
             }
         }
 
-        self.copy_undef_mask(src, dest, size)?;
+        self.copy_undef_mask(src, dest, size, length)?;
         // copy back the relocations
         self.get_mut(dest.alloc_id)?.relocations.insert_presorted(relocations);
 
@@ -856,21 +882,25 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         src: Pointer,
         dest: Pointer,
         size: Size,
+        repeat: u64,
     ) -> EvalResult<'tcx> {
         // The bits have to be saved locally before writing to dest in case src and dest overlap.
         assert_eq!(size.bytes() as usize as u64, size.bytes());
-        let mut v = Vec::with_capacity(size.bytes() as usize);
+
+        let undef_mask = self.get(src.alloc_id)?.undef_mask.clone();
+        let dest_allocation = self.get_mut(dest.alloc_id)?;
+
         for i in 0..size.bytes() {
-            let defined = self.get(src.alloc_id)?.undef_mask.get(src.offset + Size::from_bytes(i));
-            v.push(defined);
+            let defined = undef_mask.get(src.offset + Size::from_bytes(i));
+            
+            for j in 0..repeat {
+                dest_allocation.undef_mask.set(
+                    dest.offset + Size::from_bytes(i + (size.bytes() * j)),
+                    defined
+                );
+            }
         }
-        for (i, defined) in v.into_iter().enumerate() {
-            self.get_mut(dest.alloc_id)?.undef_mask.set(
-                dest.offset +
-                    Size::from_bytes(i as u64),
-                defined,
-            );
-        }
+
         Ok(())
     }
 

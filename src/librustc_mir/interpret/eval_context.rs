@@ -579,10 +579,14 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
                 let (dest, dest_align) = self.force_allocation(dest)?.to_ptr_align();
 
-                // FIXME: speed up repeat filling
-                for i in 0..length {
-                    let elem_dest = dest.ptr_offset(elem_size * i as u64, &self)?;
-                    self.write_value_to_ptr(value, elem_dest, dest_align, elem_ty)?;
+                if length > 0 {
+                    //write the first value
+                    self.write_value_to_ptr(value, dest, dest_align, elem_ty)?;
+
+                    if length > 1 {
+                        let rest = dest.ptr_offset(elem_size * 1 as u64, &self)?;
+                        self.memory.copy_repeatedly(dest, dest_align, rest, dest_align, elem_size, length - 1, false)?;
+                    }
                 }
             }
 
