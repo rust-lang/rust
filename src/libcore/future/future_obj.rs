@@ -126,7 +126,7 @@ impl<'a, T> Future for FutureObj<'a, T> {
 /// a non-concurrent fashion) with the result of `into_raw` until `drop` is
 /// called.
 pub unsafe trait UnsafeFutureObj<'a, T>: 'a {
-    /// Convert a owned instance into a (conceptually owned) void pointer.
+    /// Convert an owned instance into a (conceptually owned) void pointer.
     fn into_raw(self) -> *mut ();
 
     /// Poll the future represented by the given void pointer.
@@ -136,7 +136,7 @@ pub unsafe trait UnsafeFutureObj<'a, T>: 'a {
     /// The trait implementor must guarantee that it is safe to repeatedly call
     /// `poll` with the result of `into_raw` until `drop` is called; such calls
     /// are not, however, allowed to race with each other or with calls to `drop`.
-    unsafe fn poll(future: *mut (), cx: &mut Context) -> Poll<T>;
+    unsafe fn poll(ptr: *mut (), cx: &mut Context) -> Poll<T>;
 
     /// Drops the future represented by the given void pointer.
     ///
@@ -145,5 +145,5 @@ pub unsafe trait UnsafeFutureObj<'a, T>: 'a {
     /// The trait implementor must guarantee that it is safe to call this
     /// function once per `into_raw` invocation; that call cannot race with
     /// other calls to `drop` or `poll`.
-    unsafe fn drop(future: *mut ());
+    unsafe fn drop(ptr: *mut ());
 }

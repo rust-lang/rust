@@ -18,10 +18,12 @@
 use clone;
 use cmp;
 use fmt;
+use future::{Future, UnsafeFutureObj};
 use hash;
 use intrinsics;
 use marker::{Copy, PhantomData, Sized, Unpin, Unsize};
 use ptr;
+use task::{Context, Poll};
 use ops::{Deref, DerefMut, CoerceUnsized};
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1227,3 +1229,18 @@ impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<PinMut<'a, U>> for PinM
 
 #[unstable(feature = "pin", issue = "49150")]
 impl<'a, T: ?Sized> Unpin for PinMut<'a, T> {}
+
+#[unstable(feature = "futures_api", issue = "50547")]
+unsafe impl<'a, T, F: Future<Output = T> + 'a> UnsafeFutureObj<'a, T> for PinMut<'a, F> {
+    fn into_raw(self) -> *mut () {
+        unsafe { PinMut::get_mut_unchecked(self) as *mut F as *mut () }
+    }
+
+    unsafe fn poll(ptr: *mut (), cx: &mut Context) -> Poll<T> {
+        PinMut::new_unchecked(&mut *(ptr as *mut F)).poll(cx)
+    }
+
+    unsafe fn drop(ptr: *mut ()) {
+        drop(PinMut::new_unchecked(&mut *(ptr as *mut F)));
+    }
+}

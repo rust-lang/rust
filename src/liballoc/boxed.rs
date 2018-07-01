@@ -58,17 +58,16 @@
 use core::any::Any;
 use core::borrow;
 use core::cmp::Ordering;
+use core::convert::From;
 use core::fmt;
-use core::future::Future;
+use core::future::{Future, FutureObj, LocalFutureObj, UnsafeFutureObj};
 use core::hash::{Hash, Hasher};
 use core::iter::FusedIterator;
 use core::marker::{Unpin, Unsize};
 use core::mem::{self, PinMut};
 use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
 use core::ptr::{self, NonNull, Unique};
-use core::future::{FutureObj, LocalFutureObj, UnsafeFutureObj};
 use core::task::{Context, Poll};
-use core::convert::From;
 
 use raw_vec::RawVec;
 use str::from_boxed_utf8_unchecked;
@@ -939,14 +938,14 @@ unsafe impl<'a, T, F: Future<Output = T> + 'a> UnsafeFutureObj<'a, T> for PinBox
         PinBox::into_raw(self) as *mut ()
     }
 
-    unsafe fn poll(task: *mut (), cx: &mut Context) -> Poll<T> {
-        let ptr = task as *mut F;
+    unsafe fn poll(ptr: *mut (), cx: &mut Context) -> Poll<T> {
+        let ptr = ptr as *mut F;
         let pin: PinMut<F> = PinMut::new_unchecked(&mut *ptr);
         pin.poll(cx)
     }
 
-    unsafe fn drop(task: *mut ()) {
-        drop(PinBox::from_raw(task as *mut F))
+    unsafe fn drop(ptr: *mut ()) {
+        drop(PinBox::from_raw(ptr as *mut F))
     }
 }
 
