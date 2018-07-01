@@ -516,12 +516,12 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
     let mut by_ref_span = None;
     for pat in pats {
         pat.each_binding(|_, hir_id, span, _path| {
-            let bm = *cx.tables
-                        .pat_binding_modes()
-                        .get(hir_id)
-                        .expect("missing binding mode");
-            if let ty::BindByReference(..) = bm {
-                by_ref_span = Some(span);
+            if let Some(&bm) = cx.tables.pat_binding_modes().get(hir_id) {
+                if let ty::BindByReference(..) = bm {
+                    by_ref_span = Some(span);
+                }
+            } else {
+                cx.tcx.sess.delay_span_bug(pat.span, "missing binding mode");
             }
         })
     }
@@ -552,18 +552,18 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
     for pat in pats {
         pat.walk(|p| {
             if let PatKind::Binding(_, _, _, ref sub) = p.node {
-                let bm = *cx.tables
-                            .pat_binding_modes()
-                            .get(p.hir_id)
-                            .expect("missing binding mode");
-                match bm {
-                    ty::BindByValue(..) => {
-                        let pat_ty = cx.tables.node_id_to_type(p.hir_id);
-                        if pat_ty.moves_by_default(cx.tcx, cx.param_env, pat.span) {
-                            check_move(p, sub.as_ref().map(|p| &**p));
+                if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
+                    match bm {
+                        ty::BindByValue(..) => {
+                            let pat_ty = cx.tables.node_id_to_type(p.hir_id);
+                            if pat_ty.moves_by_default(cx.tcx, cx.param_env, pat.span) {
+                                check_move(p, sub.as_ref().map(|p| &**p));
+                            }
                         }
+                        _ => {}
                     }
-                    _ => {}
+                } else {
+                    cx.tcx.sess.delay_span_bug(pat.span, "missing binding mode");
                 }
             }
             true
