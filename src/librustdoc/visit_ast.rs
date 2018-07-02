@@ -15,7 +15,8 @@ use std::mem;
 
 use syntax::ast;
 use syntax::attr;
-use syntax_pos::Span;
+use syntax::codemap::Spanned;
+use syntax_pos::{self, Span};
 
 use rustc::hir::map as hir_map;
 use rustc::hir::def::Def;
@@ -94,7 +95,8 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
 
         self.module = self.visit_mod_contents(krate.span,
                                               krate.attrs.clone(),
-                                              hir::Public,
+                                              Spanned { span: syntax_pos::DUMMY_SP,
+                                                        node: hir::VisibilityKind::Public },
                                               ast::CRATE_NODE_ID,
                                               &krate.module,
                                               None);
@@ -204,7 +206,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         om.id = id;
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;
-        self.inside_public_path &= vis == hir::Public;
+        self.inside_public_path &= vis.node.is_pub();
         for i in &m.item_ids {
             let item = self.cx.tcx.hir.expect_item(i.id);
             self.visit_item(item, None, &mut om);
@@ -376,7 +378,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         debug!("Visiting item {:?}", item);
         let name = renamed.unwrap_or(item.name);
 
-        if item.vis == hir::Public {
+        if item.vis.node.is_pub() {
             let def_id = self.cx.tcx.hir.local_def_id(item.id);
             self.store_path(def_id);
         }
@@ -387,14 +389,14 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 om.foreigns.push(if self.inlining {
                     hir::ForeignMod {
                         abi: fm.abi,
-                        items: fm.items.iter().filter(|i| i.vis == hir::Public).cloned().collect(),
+                        items: fm.items.iter().filter(|i| i.vis.node.is_pub()).cloned().collect(),
                     }
                 } else {
                     fm.clone()
                 });
             }
             // If we're inlining, skip private items.
-            _ if self.inlining && item.vis != hir::Public => {}
+            _ if self.inlining && !item.vis.node.is_pub() => {}
             hir::ItemGlobalAsm(..) => {}
             hir::ItemExternCrate(orig_name) => {
                 let def_id = self.cx.tcx.hir.local_def_id(item.id);
@@ -414,7 +416,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
 
                 // If there was a private module in the current path then don't bother inlining
                 // anything as it will probably be stripped anyway.
-                if item.vis == hir::Public && self.inside_public_path {
+                if item.vis.node.is_pub() && self.inside_public_path {
                     let please_inline = item.attrs.iter().any(|item| {
                         match item.meta_item_list() {
                             Some(ref list) if item.check_name("doc") => {

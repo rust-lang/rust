@@ -17,6 +17,7 @@ use syntax::ast;
 use syntax::ast::{Name, NodeId};
 use syntax::attr;
 use syntax::ptr::P;
+use syntax::codemap::Spanned;
 use syntax_pos::{self, Span};
 
 use rustc::hir;
@@ -53,7 +54,7 @@ impl Module {
         Module {
             name       : name,
             id: ast::CRATE_NODE_ID,
-            vis: hir::Inherited,
+            vis: Spanned { span: syntax_pos::DUMMY_SP, node: hir::VisibilityKind::Inherited },
             stab: None,
             depr: None,
             where_outer: syntax_pos::DUMMY_SP,

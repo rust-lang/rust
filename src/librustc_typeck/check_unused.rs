@@ -39,7 +39,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CheckVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        if item.vis == hir::Public || item.span.is_dummy() {
+        if item.vis.node.is_pub() || item.span.is_dummy() {
             return;
         }
         if let hir::ItemUse(ref path, _) = item.node {
@@ -214,4 +214,3 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CollectExternCrateVisitor<'a, 'tcx> {
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
     }
 }
-

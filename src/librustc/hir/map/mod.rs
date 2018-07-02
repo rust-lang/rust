@@ -1049,7 +1049,9 @@ impl<'hir> Map<'hir> {
             Some(EntryStructCtor(_, _, _)) => self.expect_item(self.get_parent(id)).span,
             Some(EntryLifetime(_, _, lifetime)) => lifetime.span,
             Some(EntryGenericParam(_, _, param)) => param.span,
-            Some(EntryVisibility(_, _, &Visibility::Restricted { ref path, .. })) => path.span,
+            Some(EntryVisibility(_, _, &Spanned {
+                node: VisibilityKind::Restricted { ref path, .. }, ..
+            })) => path.span,
             Some(EntryVisibility(_, _, v)) => bug!("unexpected Visibility {:?}", v),
             Some(EntryLocal(_, _, local)) => local.span,
             Some(EntryMacroDef(_, macro_def)) => macro_def.span,

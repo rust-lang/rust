@@ -397,7 +397,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemUnion(..) => "a union",
             hir::ItemTrait(.., ref trait_item_refs) => {
                 // Issue #11592, traits are always considered exported, even when private.
-                if it.vis == hir::Visibility::Inherited {
+                if it.vis.node == hir::VisibilityKind::Inherited {
                     self.private_traits.insert(it.id);
                     for trait_item_ref in trait_item_refs {
                         self.private_traits.insert(trait_item_ref.id.node_id);
@@ -414,7 +414,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                 if let Some(node_id) = cx.tcx.hir.as_local_node_id(real_trait) {
                     match cx.tcx.hir.find(node_id) {
                         Some(hir_map::NodeItem(item)) => {
-                            if item.vis == hir::Visibility::Inherited {
+                            if item.vis.node == hir::VisibilityKind::Inherited {
                                 for impl_item_ref in impl_item_refs {
                                     self.private_traits.insert(impl_item_ref.id.node_id);
                                 }
@@ -1182,6 +1182,26 @@ impl LintPass for InvalidNoMangleItems {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+        let suggest_export = |vis: &hir::Visibility, err: &mut DiagnosticBuilder| {
+            let suggestion = match vis.node {
+                hir::VisibilityKind::Inherited => {
+                    // inherited visibility is empty span at item start; need an extra space
+                    Some("pub ".to_owned())
+                },
+                hir::VisibilityKind::Restricted { .. } |
+                hir::VisibilityKind::Crate(_) => {
+                    Some("pub".to_owned())
+                },
+                hir::VisibilityKind::Public => {
+                    err.help("try exporting the item with a `pub use` statement");
+                    None
+                }
+            };
+            if let Some(replacement) = suggestion {
+                err.span_suggestion(vis.span, "try making it public", replacement);
+            }
+        };
+
         match it.node {
             hir::ItemFn(.., ref generics, _) => {
                 if let Some(no_mangle_attr) = attr::find_by_name(&it.attrs, "no_mangle") {
@@ -1191,12 +1211,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                     if !cx.access_levels.is_reachable(it.id) {
                         let msg = "function is marked #[no_mangle], but not exported";
                         let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_FNS, it.span, msg);
-                        let insertion_span = it.span.shrink_to_lo();
-                        if it.vis == hir::Visibility::Inherited {
-                            err.span_suggestion(insertion_span,
-                                                "try making it public",
-                                                "pub ".to_owned());
-                        }
+                        suggest_export(&it.vis, &mut err);
                         err.emit();
                     }
                     for param in &generics.params {
@@ -1219,17 +1234,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
             }
             hir::ItemStatic(..) => {
                 if attr::contains_name(&it.attrs, "no_mangle") &&
-                   !cx.access_levels.is_reachable(it.id) {
-                       let msg = "static is marked #[no_mangle], but not exported";
-                       let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, msg);
-                       let insertion_span = it.span.shrink_to_lo();
-                       if it.vis == hir::Visibility::Inherited {
-                           err.span_suggestion(insertion_span,
-                                               "try making it public",
-                                               "pub ".to_owned());
-                       }
-                       err.emit();
-                }
+                    !cx.access_levels.is_reachable(it.id) {
+                        let msg = "static is marked #[no_mangle], but not exported";
+                        let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, msg);
+                        suggest_export(&it.vis, &mut err);
+                        err.emit();
+                    }
             }
             hir::ItemConst(..) => {
                 if attr::contains_name(&it.attrs, "no_mangle") {
@@ -1391,31 +1401,32 @@ impl LintPass for UnreachablePub {
 
 impl UnreachablePub {
     fn perform_lint(&self, cx: &LateContext, what: &str, id: ast::NodeId,
-                    vis: &hir::Visibility, span: Span, exportable: bool,
-                    mut applicability: Applicability) {
-        if !cx.access_levels.is_reachable(id) && *vis == hir::Visibility::Public {
-            if span.ctxt().outer().expn_info().is_some() {
-                applicability = Applicability::MaybeIncorrect;
-            }
-            let def_span = cx.tcx.sess.codemap().def_span(span);
-            let mut err = cx.struct_span_lint(UNREACHABLE_PUB, def_span,
-                                              &format!("unreachable `pub` {}", what));
-            // We are presuming that visibility is token at start of
-            // declaration (can be macro variable rather than literal `pub`)
-            let pub_span = cx.tcx.sess.codemap().span_until_char(def_span, ' ');
-            let replacement = if cx.tcx.features().crate_visibility_modifier {
-                "crate"
-            } else {
-                "pub(crate)"
-            }.to_owned();
-            err.span_suggestion_with_applicability(pub_span,
-                                                   "consider restricting its visibility",
-                                                   replacement,
-                                                   applicability);
-            if exportable {
-                err.help("or consider exporting it for use by other crates");
-            }
-            err.emit();
+                    vis: &hir::Visibility, span: Span, exportable: bool) {
+        let mut applicability = Applicability::MachineApplicable;
+        match vis.node {
+            hir::VisibilityKind::Public if !cx.access_levels.is_reachable(id) => {
+                if span.ctxt().outer().expn_info().is_some() {
+                    applicability = Applicability::MaybeIncorrect;
+                }
+                let def_span = cx.tcx.sess.codemap().def_span(span);
+                let mut err = cx.struct_span_lint(UNREACHABLE_PUB, def_span,
+                                                  &format!("unreachable `pub` {}", what));
+                let replacement = if cx.tcx.features().crate_visibility_modifier {
+                    "crate"
+                } else {
+                    "pub(crate)"
+                }.to_owned();
+
+                err.span_suggestion_with_applicability(vis.span,
+                                                       "consider restricting its visibility",
+                                                       replacement,
+                                                       applicability);
+                if exportable {
+                    err.help("or consider exporting it for use by other crates");
+                }
+                err.emit();
+            },
+            _ => {}
         }
     }
 }
@@ -1423,28 +1434,20 @@ impl UnreachablePub {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
-        let applicability = match item.node {
-            // suggestion span-manipulation is inadequate for `pub use
-            // module::{item}` (Issue #50455)
-            hir::ItemUse(..) => Applicability::MaybeIncorrect,
-            _ => Applicability::MachineApplicable,
-        };
-        self.perform_lint(cx, "item", item.id, &item.vis, item.span, true, applicability);
+        self.perform_lint(cx, "item", item.id, &item.vis, item.span, true);
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext, foreign_item: &hir::ForeignItem) {
         self.perform_lint(cx, "item", foreign_item.id, &foreign_item.vis,
-                          foreign_item.span, true, Applicability::MachineApplicable);
+                          foreign_item.span, true);
     }
 
     fn check_struct_field(&mut self, cx: &LateContext, field: &hir::StructField) {
-        self.perform_lint(cx, "field", field.id, &field.vis, field.span, false,
-                          Applicability::MachineApplicable);
+        self.perform_lint(cx, "field", field.id, &field.vis, field.span, false);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext, impl_item: &hir::ImplItem) {
-        self.perform_lint(cx, "item", impl_item.id, &impl_item.vis, impl_item.span, false,
-                          Applicability::MachineApplicable);
+        self.perform_lint(cx, "item", impl_item.id, &impl_item.vis, impl_item.span, false);
     }
 }
 

@@ -61,7 +61,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PubRestrictedVisitor<'a, 'tcx> {
         NestedVisitorMap::All(&self.tcx.hir)
     }
     fn visit_vis(&mut self, vis: &'tcx hir::Visibility) {
-        self.has_pub_restricted = self.has_pub_restricted || vis.is_pub_restricted();
+        self.has_pub_restricted = self.has_pub_restricted || vis.node.is_pub_restricted();
     }
 }
 
@@ -162,7 +162,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemTrait(..) | hir::ItemTraitAlias(..) |
             hir::ItemExistential(..) |
             hir::ItemTy(..) | hir::ItemUnion(..) | hir::ItemUse(..) => {
-                if item.vis == hir::Public { self.prev_level } else { None }
+                if item.vis.node.is_pub() { self.prev_level } else { None }
             }
         };
 
@@ -181,7 +181,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             }
             hir::ItemImpl(.., None, _, ref impl_item_refs) => {
                 for impl_item_ref in impl_item_refs {
-                    if impl_item_ref.vis == hir::Public {
+                    if impl_item_ref.vis.node.is_pub() {
                         self.update(impl_item_ref.id.node_id, item_level);
                     }
                 }
@@ -201,14 +201,14 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                     self.update(def.id(), item_level);
                 }
                 for field in def.fields() {
-                    if field.vis == hir::Public {
+                    if field.vis.node.is_pub() {
                         self.update(field.id, item_level);
                     }
                 }
             }
             hir::ItemForeignMod(ref foreign_mod) => {
                 for foreign_item in &foreign_mod.items {
-                    if foreign_item.vis == hir::Public {
+                    if foreign_item.vis.node.is_pub() {
                         self.update(foreign_item.id, item_level);
                     }
                 }
@@ -358,7 +358,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
 
         let module_did = ty::DefIdTree::parent(self.tcx, self.tcx.hir.local_def_id(md.id)).unwrap();
         let mut module_id = self.tcx.hir.as_local_node_id(module_did).unwrap();
-        let level = if md.vis == hir::Public { self.get(module_id) } else { None };
+        let level = if md.vis.node.is_pub() { self.get(module_id) } else { None };
         let level = self.update(md.id, level);
         if level.is_none() {
             return
@@ -1028,7 +1028,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
             // .. and it corresponds to a private type in the AST (this returns
             // None for type parameters)
             match self.tcx.hir.find(node_id) {
-                Some(hir::map::NodeItem(ref item)) => item.vis != hir::Public,
+                Some(hir::map::NodeItem(ref item)) => !item.vis.node.is_pub(),
                 Some(_) | None => false,
             }
         } else {
@@ -1051,7 +1051,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn item_is_public(&self, id: &ast::NodeId, vis: &hir::Visibility) -> bool {
-        self.access_levels.is_reachable(*id) || *vis == hir::Public
+        self.access_levels.is_reachable(*id) || vis.node.is_pub()
     }
 }
 
@@ -1322,7 +1322,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_struct_field(&mut self, s: &'tcx hir::StructField) {
-        if s.vis == hir::Public || self.in_variant {
+        if s.vis.node.is_pub() || self.in_variant {
             intravisit::walk_struct_field(self, s);
         }
     }
@@ -1461,29 +1461,36 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
         if let Some(def_id) = ty_def_id {
             // Non-local means public (private items can't leave their crate, modulo bugs)
             if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
-                let vis = match self.tcx.hir.find(node_id) {
+                let hir_vis = match self.tcx.hir.find(node_id) {
                     Some(hir::map::NodeItem(item)) => &item.vis,
                     Some(hir::map::NodeForeignItem(item)) => &item.vis,
                     _ => bug!("expected item of foreign item"),
                 };
 
-                let vis = ty::Visibility::from_hir(vis, node_id, self.tcx);
+                let vis = ty::Visibility::from_hir(hir_vis, node_id, self.tcx);
 
                 if !vis.is_at_least(self.min_visibility, self.tcx) {
                     self.min_visibility = vis;
                 }
                 if !vis.is_at_least(self.required_visibility, self.tcx) {
+                    let vis_adj = match hir_vis.node {
+                        hir::VisibilityKind::Crate(_) => "crate-visible",
+                        hir::VisibilityKind::Restricted { .. } => "restricted",
+                        _ => "private"
+                    };
+
                     if self.has_pub_restricted || self.has_old_errors || self.in_assoc_ty {
                         let mut err = struct_span_err!(self.tcx.sess, self.span, E0446,
-                            "private type `{}` in public interface", ty);
-                        err.span_label(self.span, "can't leak private type");
+                            "{} type `{}` in public interface", vis_adj, ty);
+                        err.span_label(self.span, format!("can't leak {} type", vis_adj));
+                        err.span_label(hir_vis.span, format!("`{}` declared as {}", ty, vis_adj));
                         err.emit();
                     } else {
                         self.tcx.lint_node(lint::builtin::PRIVATE_IN_PUBLIC,
                                            node_id,
                                            self.span,
-                                           &format!("private type `{}` in public \
-                                                     interface (error E0446)", ty));
+                                           &format!("{} type `{}` in public \
+                                                     interface (error E0446)", vis_adj, ty));
                     }
                 }
             }

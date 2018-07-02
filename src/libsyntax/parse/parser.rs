@@ -6032,7 +6032,10 @@ impl<'a> Parser<'a> {
         }
 
         if !self.eat_keyword(keywords::Pub) {
-            return Ok(respan(self.prev_span, VisibilityKind::Inherited))
+            // We need a span for our `Spanned<VisibilityKind>`, but there's inherently no
+            // keyword to grab a span from for inherited visibility; an empty span at the
+            // beginning of the current token would seem to be the "Schelling span".
+            return Ok(respan(self.span.shrink_to_lo(), VisibilityKind::Inherited))
         }
         let lo = self.prev_span;
 

@@ -17,7 +17,9 @@ warning: unreachable `pub` item
   --> $DIR/unreachable_pub.rs:22:24
    |
 LL |     pub use std::env::{Args}; // braced-use has different item spans than unbraced
-   |                        ^^^^ help: consider restricting its visibility: `crate`
+   |     ---                ^^^^
+   |     |
+   |     help: consider restricting its visibility: `crate`
    |
    = help: or consider exporting it for use by other crates
 
@@ -121,12 +123,13 @@ warning: unreachable `pub` item
   --> $DIR/unreachable_pub.rs:45:47
    |
 LL |         ($visibility: vis, $name: ident) => { $visibility struct $name {} }
-   |                                               -----------^^^^^^^^^^^^^
-   |                                               |
-   |                                               help: consider restricting its visibility: `crate`
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^
 LL |     }
 LL |     define_empty_struct_with_visibility!(pub, Fluorine);
-   |     ---------------------------------------------------- in this macro invocation
+   |     ----------------------------------------------------
+   |     |                                    |
+   |     |                                    help: consider restricting its visibility: `crate`
+   |     in this macro invocation
    |
    = help: or consider exporting it for use by other crates
 

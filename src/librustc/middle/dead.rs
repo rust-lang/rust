@@ -161,7 +161,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                         intravisit::walk_item(self, &item);
                     }
                     hir::ItemEnum(..) => {
-                        self.inherited_pub_visibility = item.vis == hir::Public;
+                        self.inherited_pub_visibility = item.vis.node.is_pub();
                         intravisit::walk_item(self, &item);
                     }
                     hir::ItemFn(..)
@@ -216,7 +216,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
         let has_repr_c = self.repr_has_repr_c;
         let inherited_pub_visibility = self.inherited_pub_visibility;
         let live_fields = def.fields().iter().filter(|f| {
-            has_repr_c || inherited_pub_visibility || f.vis == hir::Public
+            has_repr_c || inherited_pub_visibility || f.vis.node.is_pub()
         });
         self.live_symbols.extend(live_fields.map(|f| f.id));
 

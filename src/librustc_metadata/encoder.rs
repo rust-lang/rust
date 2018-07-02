@@ -40,6 +40,7 @@ use rustc_data_structures::sync::Lrc;
 use std::u32;
 use syntax::ast::{self, CRATE_NODE_ID};
 use syntax::attr;
+use syntax::codemap::Spanned;
 use syntax::symbol::keywords;
 use syntax_pos::{self, hygiene, FileName, FileMap, Span};
 
@@ -319,9 +320,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_items(&mut self) -> Index {
         let krate = self.tcx.hir.krate();
         let mut index = IndexBuilder::new(self);
+        let vis = Spanned { span: syntax_pos::DUMMY_SP, node: hir::VisibilityKind::Public };
         index.record(DefId::local(CRATE_DEF_INDEX),
                      IsolatedEncoder::encode_info_for_mod,
-                     FromId(CRATE_NODE_ID, (&krate.module, &krate.attrs, &hir::Public)));
+                     FromId(CRATE_NODE_ID, (&krate.module, &krate.attrs, &vis)));
         let mut visitor = EncodeVisitor { index: index };
         krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
         for macro_def in &krate.exported_macros {

@@ -710,20 +710,20 @@ impl_stable_hash_for!(enum ::syntax::ast::CrateSugar {
     PubCrate,
 });
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::Visibility {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::VisibilityKind {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            hir::Visibility::Public |
-            hir::Visibility::Inherited => {
+            hir::VisibilityKind::Public |
+            hir::VisibilityKind::Inherited => {
                 // No fields to hash.
             }
-            hir::Visibility::Crate(sugar) => {
+            hir::VisibilityKind::Crate(sugar) => {
                 sugar.hash_stable(hcx, hasher);
             }
-            hir::Visibility::Restricted { ref path, id } => {
+            hir::VisibilityKind::Restricted { ref path, id } => {
                 hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
                     id.hash_stable(hcx, hasher);
                 });
@@ -732,6 +732,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Visibility {
         }
     }
 }
+
+impl_stable_hash_for_spanned!(hir::VisibilityKind);
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Defaultness {
     fn hash_stable<W: StableHasherResult>(&self,
