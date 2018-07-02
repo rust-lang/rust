@@ -14,7 +14,7 @@
 
 use fmt;
 use future::Future;
-use marker::PhantomData;
+use marker::{PhantomData, Unpin};
 use mem::PinMut;
 use task::{Context, Poll};
 
@@ -162,4 +162,18 @@ pub unsafe trait UnsafeFutureObj<'a, T>: 'a {
     /// function once per `into_raw` invocation; that call cannot race with
     /// other calls to `drop` or `poll`.
     unsafe fn drop(ptr: *mut ());
+}
+
+unsafe impl<'a, T, F> UnsafeFutureObj<'a, T> for &'a mut F
+    where F: Future<Output = T> + Unpin + 'a
+{
+    fn into_raw(self) -> *mut () {
+        self as *mut F as *mut ()
+    }
+
+    unsafe fn poll(ptr: *mut (), cx: &mut Context) -> Poll<T> {
+        PinMut::new_unchecked(&mut *(ptr as *mut F)).poll(cx)
+    }
+
+    unsafe fn drop(_ptr: *mut ()) {}
 }

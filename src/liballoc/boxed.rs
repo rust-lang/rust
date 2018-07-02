@@ -933,7 +933,9 @@ impl<F: ?Sized + Future> Future for PinBox<F> {
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
-unsafe impl<'a, T, F: Future<Output = T> + 'a> UnsafeFutureObj<'a, T> for PinBox<F> {
+unsafe impl<'a, T, F> UnsafeFutureObj<'a, T> for PinBox<F>
+    where F: Future<Output = T> + 'a
+{
     fn into_raw(self) -> *mut () {
         PinBox::into_raw(self) as *mut ()
     }

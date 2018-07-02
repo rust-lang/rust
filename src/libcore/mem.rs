@@ -1231,7 +1231,9 @@ impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<PinMut<'a, U>> for PinM
 impl<'a, T: ?Sized> Unpin for PinMut<'a, T> {}
 
 #[unstable(feature = "futures_api", issue = "50547")]
-unsafe impl<'a, T, F: Future<Output = T> + 'a> UnsafeFutureObj<'a, T> for PinMut<'a, F> {
+unsafe impl<'a, T, F> UnsafeFutureObj<'a, T> for PinMut<'a, F>
+    where F: Future<Output = T> + 'a
+{
     fn into_raw(self) -> *mut () {
         unsafe { PinMut::get_mut_unchecked(self) as *mut F as *mut () }
     }
