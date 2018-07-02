@@ -89,7 +89,7 @@ pub enum MethodViolationCode {
     NonStandardSelfType,
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
     /// Returns the object safety violations that affect
     /// astconv - currently, Self in supertraits. This is needed

@@ -708,7 +708,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
 
                     ty::Predicate::ObjectSafe(trait_def_id) => {
-                        let violations = self.tcx.object_safety_violations(trait_def_id);
+                        let violations = self.tcx.global_tcx().object_safety_violations(trait_def_id);
                         self.tcx.report_object_safety_error(span,
                                                             trait_def_id,
                                                             violations)
@@ -835,7 +835,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
 
             TraitNotObjectSafe(did) => {
-                let violations = self.tcx.object_safety_violations(did);
+                let violations = self.tcx.global_tcx().object_safety_violations(did);
                 self.tcx.report_object_safety_error(span, did,
                                                     violations)
             }
