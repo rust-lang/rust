@@ -1,7 +1,7 @@
 - Feature Name: `option-replace`
 - Start Date: 2017-01-16
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2296](https://github.com/rust-lang/rfcs/pull/2296)
+- Rust Issue: [rust-lang/rust#51998](https://github.com/rust-lang/rust/issues/51998)
 
 # Summary
 [summary]: #summary
