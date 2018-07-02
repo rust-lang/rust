@@ -1,7 +1,7 @@
 - Feature Name: `do_not_recommend`
 - Start Date: 2018-04-07
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2397](https://github.com/rust-lang/rfcs/pull/2397)
+- Rust Issue: [rust-lang/rust#](https://github.com/rust-lang/rust/issues/)
 
 # Summary
 [summary]: #summary
