@@ -183,6 +183,8 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     // Solve the region constraints.
     let closure_region_requirements = regioncx.solve(infcx, &mir, def_id);
 
+    let mut simulate_buffer = liveness.make_simulate_buffer(mir);
+
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
     dump_mir_results(
@@ -192,6 +194,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         &mir,
         &regioncx,
         &closure_region_requirements,
+        &mut simulate_buffer,
     );
 
     // We also have a `#[rustc_nll]` annotation that causes us to dump
@@ -208,6 +211,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     mir: &Mir<'tcx>,
     regioncx: &RegionInferenceContext,
     closure_region_requirements: &Option<ClosureRegionRequirements>,
+    simulate_buffer: &mut LocalSet,
 ) {
     if !mir_util::dump_enabled(infcx.tcx, "nll", source) {
         return;
@@ -220,7 +224,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
             let mut results = vec![];
             liveness
                 .regular
-                .simulate_block(&mir, bb, |location, local_set| {
+                .simulate_block(&mir, bb, simulate_buffer, |location, local_set| {
                     results.push((location, local_set.clone()));
                 });
             results
@@ -234,7 +238,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
             let mut results = vec![];
             liveness
                 .drop
-                .simulate_block(&mir, bb, |location, local_set| {
+                .simulate_block(&mir, bb, simulate_buffer, |location, local_set| {
                     results.push((location, local_set.clone()));
                 });
             results

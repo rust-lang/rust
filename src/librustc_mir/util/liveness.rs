@@ -110,6 +110,13 @@ impl LivenessResults {
             ),
         }
     }
+
+    /// Create an empty `LocalSet` buffer to be mutably shared accross different calls to
+    /// `simulate_block`, hence reducing memory allocation.
+    pub fn make_simulate_buffer<'tcx>(&self, mir: &Mir<'tcx>) -> LocalSet {
+        let locals = mir.local_decls.len();
+        LocalSet::new_empty(locals)
+    }
 }
 
 /// Compute which local variables are live within the given function
@@ -161,14 +168,14 @@ impl LivenessResult {
     /// basic block `block`.  At each point within `block`, invokes
     /// the callback `op` with the current location and the set of
     /// variables that are live on entry to that location.
-    pub fn simulate_block<'tcx, OP>(&self, mir: &Mir<'tcx>, block: BasicBlock, mut callback: OP)
+    pub fn simulate_block<'tcx, OP>(&self, mir: &Mir<'tcx>, block: BasicBlock, buffer: &mut LocalSet, mut callback: OP)
     where
         OP: FnMut(Location, &LocalSet),
     {
         let data = &mir[block];
 
         // Get a copy of the bits on exit from the block.
-        let mut bits = self.outs[block].clone();
+        buffer.overwrite(&self.outs[block]);
 
         // Start with the maximal statement index -- i.e., right before
         // the terminator executes.
@@ -189,7 +196,7 @@ impl LivenessResult {
         };
         // Visit the various parts of the basic block in reverse. If we go
         // forward, the logic in `add_def` and `add_use` would be wrong.
-        visitor.update_bits_and_do_callback(terminator_location, &data.terminator, &mut bits,
+        visitor.update_bits_and_do_callback(terminator_location, &data.terminator, buffer,
                                             &mut callback);
 
         // Compute liveness before each statement (in rev order) and invoke callback.
@@ -200,7 +207,7 @@ impl LivenessResult {
                 statement_index,
             };
             visitor.defs_uses.clear();
-            visitor.update_bits_and_do_callback(statement_location, statement, &mut bits,
+            visitor.update_bits_and_do_callback(statement_location, statement, buffer,
                                                 &mut callback);
         }
     }
