@@ -433,8 +433,20 @@ pub use alloc_crate::collections::{binary_heap, btree_map, btree_set};
 pub use alloc_crate::collections::{linked_list, vec_deque};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::collections::{HashMap, HashSet};
+
+// We can't just re-export the modules directly since they are unstable in liballoc
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::collections::{hash_map, hash_set};
+pub mod hash_map {
+    //! A hash map implemented with linear probing and Robin Hood bucket stealing.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub use alloc_crate::collections::hash_map::*;
+}
+#[stable(feature = "rust1", since = "1.0.0")]
+pub mod hash_set {
+    //! A hash set implemented as a `HashMap` where the value is `()`.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub use alloc_crate::collections::hash_set::*;
+}
 
 #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
 pub use alloc_crate::collections::CollectionAllocErr;

@@ -32,14 +32,14 @@ pub mod btree_set {
     pub use super::btree::set::*;
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "alloc_hashmap", reason = "HashMap in liballoc is unstable", issue="0")]
 pub mod hash_map {
     //! A hash map implemented with linear probing and Robin Hood bucket stealing.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::hash::map::*;
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "alloc_hashmap", reason = "HashMap in liballoc is unstable", issue="0")]
 pub mod hash_set {
     //! A hash set implemented as a `HashMap` where the value is `()`.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -58,11 +58,11 @@ pub use self::btree_map::BTreeMap;
 #[doc(no_inline)]
 pub use self::btree_set::BTreeSet;
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "alloc_hashmap", reason = "HashMap in liballoc is unstable", issue="0")]
 #[doc(no_inline)]
 pub use self::hash_map::HashMap;
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "alloc_hashmap", reason = "HashMap in liballoc is unstable", issue="0")]
 #[doc(no_inline)]
 pub use self::hash_set::HashSet;
 
