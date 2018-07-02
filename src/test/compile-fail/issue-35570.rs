@@ -19,6 +19,8 @@ trait Trait2<'a> {
 
 fn _ice(param: Box<for <'a> Trait1<<() as Trait2<'a>>::Ty>>) {
     let _e: (usize, usize) = unsafe{mem::transmute(param)};
+    //~^ WARN transmutation to a type with an unspecified layout
+    //~| WARN transmutation from a type with an unspecified layout
 }
 
 trait Lifetime<'a> {

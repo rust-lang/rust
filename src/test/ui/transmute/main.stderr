@@ -16,19 +16,37 @@ LL |     let x: u8 = transmute(10u16); //~ ERROR transmute called with types of 
    = note: source type: u16 (16 bits)
    = note: target type: u8 (8 bits)
 
+warning[E0912]: transmutation from a type with an unspecified layout
+  --> $DIR/main.rs:34:17
+   |
+LL |     let x: u8 = transmute("test");
+   |                 ^^^^^^^^^
+   |
+   = note: &str has an unspecified layout
+   = note: this will become a hard error in the future
+
 error[E0512]: transmute called with types of different sizes
   --> $DIR/main.rs:34:17
    |
-LL |     let x: u8 = transmute("test"); //~ ERROR transmute called with types of different sizes
+LL |     let x: u8 = transmute("test");
    |                 ^^^^^^^^^
    |
    = note: source type: &str ($STR bits)
    = note: target type: u8 (8 bits)
 
-error[E0512]: transmute called with types of different sizes
-  --> $DIR/main.rs:39:18
+warning[E0912]: transmutation to a type with an unspecified layout
+  --> $DIR/main.rs:41:18
    |
-LL |     let x: Foo = transmute(10); //~ ERROR transmute called with types of different sizes
+LL |     let x: Foo = transmute(10);
+   |                  ^^^^^^^^^
+   |
+   = note: Foo has an unspecified layout
+   = note: this will become a hard error in the future
+
+error[E0512]: transmute called with types of different sizes
+  --> $DIR/main.rs:41:18
+   |
+LL |     let x: Foo = transmute(10);
    |                  ^^^^^^^^^
    |
    = note: source type: i32 (32 bits)
@@ -36,4 +54,5 @@ LL |     let x: Foo = transmute(10); //~ ERROR transmute called with types of di
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0512`.
+Some errors occurred: E0512, E0912.
+For more information about an error, try `rustc --explain E0512`.

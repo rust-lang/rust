@@ -1,3 +1,12 @@
+warning[E0912]: transmutation from a type with an unspecified layout
+  --> $DIR/transmute-from-fn-item-types-error.rs:14:13
+   |
+LL |     let i = mem::transmute(bar);
+   |             ^^^^^^^^^^^^^^
+   |
+   = note: unsafe fn() {bar} has an unspecified layout
+   = note: this will become a hard error in the future
+
 error[E0512]: transmute called with types of different sizes
   --> $DIR/transmute-from-fn-item-types-error.rs:14:13
    |
@@ -7,8 +16,17 @@ LL |     let i = mem::transmute(bar);
    = note: source type: unsafe fn() {bar} (0 bits)
    = note: target type: i8 (8 bits)
 
+warning[E0912]: transmutation from a type with an unspecified layout
+  --> $DIR/transmute-from-fn-item-types-error.rs:19:13
+   |
+LL |     let p = mem::transmute(foo);
+   |             ^^^^^^^^^^^^^^
+   |
+   = note: unsafe fn() -> (i8, *const (), std::option::Option<fn()>) {foo} has an unspecified layout
+   = note: this will become a hard error in the future
+
 error[E0591]: can't transmute zero-sized type
-  --> $DIR/transmute-from-fn-item-types-error.rs:18:13
+  --> $DIR/transmute-from-fn-item-types-error.rs:19:13
    |
 LL |     let p = mem::transmute(foo);
    |             ^^^^^^^^^^^^^^
@@ -17,8 +35,17 @@ LL |     let p = mem::transmute(foo);
    = note: target type: *const ()
    = help: cast with `as` to a pointer instead
 
+warning[E0912]: transmutation from a type with an unspecified layout
+  --> $DIR/transmute-from-fn-item-types-error.rs:24:14
+   |
+LL |     let of = mem::transmute(main);
+   |              ^^^^^^^^^^^^^^
+   |
+   = note: fn() {main} has an unspecified layout
+   = note: this will become a hard error in the future
+
 error[E0591]: can't transmute zero-sized type
-  --> $DIR/transmute-from-fn-item-types-error.rs:22:14
+  --> $DIR/transmute-from-fn-item-types-error.rs:24:14
    |
 LL |     let of = mem::transmute(main);
    |              ^^^^^^^^^^^^^^
@@ -27,8 +54,17 @@ LL |     let of = mem::transmute(main);
    = note: target type: std::option::Option<fn()>
    = help: cast with `as` to a pointer instead
 
+warning[E0912]: transmutation from a type with an unspecified layout
+  --> $DIR/transmute-from-fn-item-types-error.rs:34:5
+   |
+LL |     mem::transmute::<_, u8>(main);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: fn() {main} has an unspecified layout
+   = note: this will become a hard error in the future
+
 error[E0512]: transmute called with types of different sizes
-  --> $DIR/transmute-from-fn-item-types-error.rs:31:5
+  --> $DIR/transmute-from-fn-item-types-error.rs:34:5
    |
 LL |     mem::transmute::<_, u8>(main);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -36,8 +72,17 @@ LL |     mem::transmute::<_, u8>(main);
    = note: source type: fn() {main} (0 bits)
    = note: target type: u8 (8 bits)
 
+warning[E0912]: transmutation from a type with an unspecified layout
+  --> $DIR/transmute-from-fn-item-types-error.rs:39:5
+   |
+LL |     mem::transmute::<_, *mut ()>(foo);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: unsafe fn() -> (i8, *const (), std::option::Option<fn()>) {foo} has an unspecified layout
+   = note: this will become a hard error in the future
+
 error[E0591]: can't transmute zero-sized type
-  --> $DIR/transmute-from-fn-item-types-error.rs:35:5
+  --> $DIR/transmute-from-fn-item-types-error.rs:39:5
    |
 LL |     mem::transmute::<_, *mut ()>(foo);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -46,8 +91,17 @@ LL |     mem::transmute::<_, *mut ()>(foo);
    = note: target type: *mut ()
    = help: cast with `as` to a pointer instead
 
+warning[E0912]: transmutation from a type with an unspecified layout
+  --> $DIR/transmute-from-fn-item-types-error.rs:44:5
+   |
+LL |     mem::transmute::<_, fn()>(bar);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: unsafe fn() {bar} has an unspecified layout
+   = note: this will become a hard error in the future
+
 error[E0591]: can't transmute zero-sized type
-  --> $DIR/transmute-from-fn-item-types-error.rs:39:5
+  --> $DIR/transmute-from-fn-item-types-error.rs:44:5
    |
 LL |     mem::transmute::<_, fn()>(bar);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -56,8 +110,17 @@ LL |     mem::transmute::<_, fn()>(bar);
    = note: target type: fn()
    = help: cast with `as` to a pointer instead
 
+warning[E0912]: transmutation from a type with an unspecified layout
+  --> $DIR/transmute-from-fn-item-types-error.rs:54:5
+   |
+LL |     mem::transmute::<_, *mut ()>(Some(foo));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: std::option::Option<unsafe fn() -> (i8, *const (), std::option::Option<fn()>) {foo}> has an unspecified layout
+   = note: this will become a hard error in the future
+
 error[E0591]: can't transmute zero-sized type
-  --> $DIR/transmute-from-fn-item-types-error.rs:48:5
+  --> $DIR/transmute-from-fn-item-types-error.rs:54:5
    |
 LL |     mem::transmute::<_, *mut ()>(Some(foo));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -66,8 +129,17 @@ LL |     mem::transmute::<_, *mut ()>(Some(foo));
    = note: target type: *mut ()
    = help: cast with `as` to a pointer instead
 
+warning[E0912]: transmutation from a type with an unspecified layout
+  --> $DIR/transmute-from-fn-item-types-error.rs:59:5
+   |
+LL |     mem::transmute::<_, fn()>(Some(bar));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: std::option::Option<unsafe fn() {bar}> has an unspecified layout
+   = note: this will become a hard error in the future
+
 error[E0591]: can't transmute zero-sized type
-  --> $DIR/transmute-from-fn-item-types-error.rs:52:5
+  --> $DIR/transmute-from-fn-item-types-error.rs:59:5
    |
 LL |     mem::transmute::<_, fn()>(Some(bar));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -76,8 +148,17 @@ LL |     mem::transmute::<_, fn()>(Some(bar));
    = note: target type: fn()
    = help: cast with `as` to a pointer instead
 
+warning[E0912]: transmutation from a type with an unspecified layout
+  --> $DIR/transmute-from-fn-item-types-error.rs:64:5
+   |
+LL |     mem::transmute::<_, Option<fn()>>(Some(baz));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: std::option::Option<unsafe fn() {baz}> has an unspecified layout
+   = note: this will become a hard error in the future
+
 error[E0591]: can't transmute zero-sized type
-  --> $DIR/transmute-from-fn-item-types-error.rs:56:5
+  --> $DIR/transmute-from-fn-item-types-error.rs:64:5
    |
 LL |     mem::transmute::<_, Option<fn()>>(Some(baz));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -88,5 +169,5 @@ LL |     mem::transmute::<_, Option<fn()>>(Some(baz));
 
 error: aborting due to 9 previous errors
 
-Some errors occurred: E0512, E0591.
+Some errors occurred: E0512, E0591, E0912.
 For more information about an error, try `rustc --explain E0512`.
