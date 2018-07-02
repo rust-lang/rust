@@ -1,7 +1,7 @@
-- Feature Name: tuple_struct_self_ctor
+- Feature Name: `tuple_struct_self_ctor`
 - Start Date: 2017-01-18
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2302](https://github.com/rust-lang/rfcs/pull/2302)
+- Rust Issue: [rust-lang/rust#51994](https://github.com/rust-lang/rust/issues/51994)
 
 # Summary
 [summary]: #summary
