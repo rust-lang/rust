@@ -10,8 +10,10 @@
 
 use borrow_check::WriteKind;
 use rustc::middle::region::ScopeTree;
-use rustc::mir::{BorrowKind, Field, Local, LocalKind, Location, Operand};
-use rustc::mir::{Place, ProjectionElem, Rvalue, Statement, StatementKind};
+use rustc::mir::{BindingForm, BorrowKind, ClearCrossCrate, Field, Local};
+use rustc::mir::{LocalDecl, LocalKind, Location, Operand, Place};
+use rustc::mir::{ProjectionElem, Rvalue, Statement, StatementKind};
+use rustc::mir::VarBindingForm;
 use rustc::ty::{self, RegionKind};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::sync::Lrc;
@@ -622,42 +624,55 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         assigned_span: Span,
         err_place: &Place<'tcx>,
     ) {
-        let is_arg = if let Place::Local(local) = place {
-            if let LocalKind::Arg = self.mir.local_kind(*local) {
-                true
+        let (from_arg, local_decl) = if let Place::Local(local) = *err_place {
+            if let LocalKind::Arg = self.mir.local_kind(local) {
+                (true, Some(&self.mir.local_decls[local]))
             } else {
-                false
+                (false, Some(&self.mir.local_decls[local]))
             }
         } else {
-            false
+            (false, None)
+        };
+
+        // If root local is initialized immediately (everything apart from let
+        // PATTERN;) then make the error refer to that local, rather than the
+        // place being assigned later.
+        let (place_description, assigned_span) = match local_decl {
+            Some(LocalDecl { is_user_variable: Some(ClearCrossCrate::Clear), .. })
+            | Some(LocalDecl { is_user_variable: Some(ClearCrossCrate::Set(
+                BindingForm::Var(VarBindingForm {
+                    opt_match_place: None, ..
+            }))), ..})
+            | Some(LocalDecl { is_user_variable: None, .. })
+            | None => (self.describe_place(place), assigned_span),
+            Some(decl) => (self.describe_place(err_place), decl.source_info.span),
         };
 
         let mut err = self.tcx.cannot_reassign_immutable(
             span,
-            &self.describe_place(place).unwrap_or("_".to_owned()),
-            is_arg,
+            place_description.as_ref().map(AsRef::as_ref).unwrap_or("_"),
+            from_arg,
             Origin::Mir,
         );
-        let msg = if is_arg {
+        let msg = if from_arg {
             "cannot assign to immutable argument"
         } else {
             "cannot assign twice to immutable variable"
         };
         if span != assigned_span {
-            if !is_arg {
-                let value_msg = match self.describe_place(place) {
+            if !from_arg {
+                let value_msg = match place_description {
                     Some(name) => format!("`{}`", name),
                     None => "value".to_owned(),
                 };
                 err.span_label(assigned_span, format!("first assignment to {}", value_msg));
             }
         }
-        if let Place::Local(local) = err_place {
-            let local_decl = &self.mir.local_decls[*local];
-            if let Some(name) = local_decl.name {
-                if local_decl.can_be_made_mutable() {
+        if let Some(decl) = local_decl {
+            if let Some(name) = decl.name {
+                if decl.can_be_made_mutable() {
                     err.span_label(
-                        local_decl.source_info.span,
+                        decl.source_info.span,
                         format!("consider changing this to `mut {}`", name),
                     );
                 }
