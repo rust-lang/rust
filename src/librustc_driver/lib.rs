@@ -1504,7 +1504,7 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<Any + Send>>
             let err = io::Error::last_os_error();
             error!("in_rustc_thread: error calling getrlimit: {}", err);
             true
-        } else if rlim.rlim_max < STACK_SIZE as libc::rlim_t {
+        } else if rlim.rlim_max <= STACK_SIZE as libc::rlim_t {
             true
         } else {
             std::rt::deinit_stack_guard();
