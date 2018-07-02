@@ -109,7 +109,7 @@ pub trait FileExt {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "rw_exact_all_at", issue = "0")]
+    #[unstable(feature = "rw_exact_all_at", issue = "51984")]
     fn read_exact_at(&self, mut buf: &mut [u8], mut offset: u64) -> io::Result<()> {
         while !buf.is_empty() {
             match self.read_at(buf, offset) {
@@ -204,7 +204,7 @@ pub trait FileExt {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "rw_exact_all_at", issue = "0")]
+    #[unstable(feature = "rw_exact_all_at", issue = "51984")]
     fn write_all_at(&self, mut buf: &[u8], mut offset: u64) -> io::Result<()> {
         while !buf.is_empty() {
             match self.write_at(buf, offset) {
