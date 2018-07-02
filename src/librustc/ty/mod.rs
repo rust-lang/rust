@@ -2862,8 +2862,8 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
     // Compute the bounds on Self and the type parameters.
 
-    let bounds = tcx.predicates_of(def_id).instantiate_identity(tcx);
-    let predicates = bounds.predicates;
+    let InstantiatedPredicates { predicates } =
+        tcx.predicates_of(def_id).instantiate_identity(tcx);
 
     // Finally, we have to normalize the bounds in the environment, in
     // case they contain any associated type projections. This process
