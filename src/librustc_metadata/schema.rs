@@ -273,6 +273,7 @@ pub struct Entry<'tcx> {
     pub variances: LazySeq<ty::Variance>,
     pub generics: Option<Lazy<ty::Generics>>,
     pub predicates: Option<Lazy<ty::GenericPredicates<'tcx>>>,
+    pub predicates_defined_on: Option<Lazy<ty::GenericPredicates<'tcx>>>,
 
     pub mir: Option<Lazy<mir::Mir<'tcx>>>,
 }
@@ -290,6 +291,7 @@ impl_stable_hash_for!(struct Entry<'tcx> {
     variances,
     generics,
     predicates,
+    predicates_defined_on,
     mir
 });
 

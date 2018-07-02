@@ -101,10 +101,38 @@ define_queries! { <'tcx>
     [] fn type_of: TypeOfItem(DefId) -> Ty<'tcx>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
-    /// associated generics and predicates.
+    /// associated generics.
     [] fn generics_of: GenericsOfItem(DefId) -> &'tcx ty::Generics,
+
+    /// Maps from the def-id of an item (trait/struct/enum/fn) to the
+    /// predicates (where clauses) that must be proven true in order
+    /// to reference it. This is almost always the "predicates query"
+    /// that you want.
+    ///
+    /// `predicates_of` builds on `predicates_defined_on` -- in fact,
+    /// it is almost always the same as that query, except for the
+    /// case of traits. For traits, `predicates_of` contains
+    /// an additional `Self: Trait<...>` predicate that users don't
+    /// actually write. This reflects the fact that to invoke the
+    /// trait (e.g., via `Default::default`) you must supply types
+    /// that actually implement the trait. (However, this extra
+    /// predicate gets in the way of some checks, which are intended
+    /// to operate over only the actual where-clauses written by the
+    /// user.)
     [] fn predicates_of: PredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
+
+    /// Maps from the def-id of an item (trait/struct/enum/fn) to the
+    /// predicates (where clauses) directly defined on it. This is
+    /// equal to the `explicit_predicates_of` predicates plus the
+    /// `inferred_outlives_of` predicates.
+    [] fn predicates_defined_on: PredicatesDefinedOnItem(DefId) -> ty::GenericPredicates<'tcx>,
+
+    /// Returns the predicates written explicit by the user.
     [] fn explicit_predicates_of: ExplicitPredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
+
+    /// Returns the inferred outlives predicates (e.g., for `struct
+    /// Foo<'a, T> { x: &'a T }`, this would return `T: 'a`).
+    [] fn inferred_outlives_of: InferredOutlivesOf(DefId) -> Lrc<Vec<ty::Predicate<'tcx>>>,
 
     /// Maps from the def-id of a trait to the list of
     /// super-predicates. This is a subset of the full list of
@@ -140,9 +168,6 @@ define_queries! { <'tcx>
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
     [] fn variances_of: ItemVariances(DefId) -> Lrc<Vec<ty::Variance>>,
-
-    /// Maps from def-id of a type to its (inferred) outlives.
-    [] fn inferred_outlives_of: InferredOutlivesOf(DefId) -> Lrc<Vec<ty::Predicate<'tcx>>>,
 
     /// Maps from def-id of a type to its (inferred) outlives.
     [] fn inferred_outlives_crate: InferredOutlivesCrate(CrateNum)

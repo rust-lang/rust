@@ -1074,6 +1074,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::TypeOfItem => { force!(type_of, def_id!()); }
         DepKind::GenericsOfItem => { force!(generics_of, def_id!()); }
         DepKind::PredicatesOfItem => { force!(predicates_of, def_id!()); }
+        DepKind::PredicatesDefinedOnItem => { force!(predicates_defined_on, def_id!()); }
         DepKind::ExplicitPredicatesOfItem => { force!(explicit_predicates_of, def_id!()); }
         DepKind::InferredOutlivesOf => { force!(inferred_outlives_of, def_id!()); }
         DepKind::InferredOutlivesCrate => { force!(inferred_outlives_crate, LOCAL_CRATE); }

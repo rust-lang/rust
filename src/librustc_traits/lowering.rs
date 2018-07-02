@@ -252,10 +252,8 @@ fn program_clauses_for_trait<'a, 'tcx>(
     // ```
 
     // `FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn>)`, for each where clause WC
-    // FIXME: Remove the [1..] slice; this is a hack because the query
-    // predicates_of currently includes the trait itself (`Self: Trait<P1..Pn>`).
-    let where_clauses = &tcx.predicates_of(def_id).predicates;
-    let implied_bound_clauses = where_clauses[1..]
+    let where_clauses = &tcx.predicates_defined_on(def_id).predicates;
+    let implied_bound_clauses = where_clauses
         .into_iter()
         .map(|wc| wc.lower())
 
