@@ -756,13 +756,28 @@ impl_stable_hash_for!(enum hir::ImplPolarity {
     Negative
 });
 
-impl_stable_hash_for!(struct hir::Mod {
-    inner,
-    // We are not hashing the IDs of the items contained in the module.
-    // This is harmless and matches the current behavior but it's not
-    // actually correct. See issue #40876.
-    item_ids -> _,
-});
+impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        let hir::Mod {
+            inner: ref inner_span,
+            ref item_ids,
+        } = *self;
+
+        inner_span.hash_stable(hcx, hasher);
+
+        let mut item_ids: Vec<DefPathHash> = item_ids.iter().map(|id| {
+            let (def_path_hash, local_id) = id.id.to_stable_hash_key(hcx);
+            debug_assert_eq!(local_id, hir::ItemLocalId(0));
+            def_path_hash
+        }).collect();
+
+        item_ids.sort_unstable();
+
+        item_ids.hash_stable(hcx, hasher);
+    }
+}
 
 impl_stable_hash_for!(struct hir::ForeignMod {
     abi,
