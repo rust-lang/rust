@@ -20,7 +20,15 @@ use task::{Context, Poll};
 
 /// A custom trait object for polling futures, roughly akin to
 /// `Box<dyn Future<Output = T> + 'a>`.
-/// Contrary to `FutureObj`, `LocalFutureObj` does not have a `Send` bound.
+///
+/// This custom trait object was introduced for two reasons:
+/// - Currently it is not possible to take `dyn Trait` by value and
+///   `Box<dyn Trait>` is not available in no_std contexts.
+/// - The `Future` trait is currently not object safe: The `Future::poll`
+///   method makes uses the arbitrary self types feature and traits in which
+///   this feature is used are currently not object safe due to current compiler
+///   limitations. (See tracking issue for arbitray self types for more
+///   information #44874)
 pub struct LocalFutureObj<'a, T> {
     ptr: *mut (),
     poll_fn: unsafe fn(*mut (), &mut Context) -> Poll<T>,
@@ -87,6 +95,15 @@ impl<'a, T> Drop for LocalFutureObj<'a, T> {
 
 /// A custom trait object for polling futures, roughly akin to
 /// `Box<dyn Future<Output = T> + Send + 'a>`.
+///
+/// This custom trait object was introduced for two reasons:
+/// - Currently it is not possible to take `dyn Trait` by value and
+///   `Box<dyn Trait>` is not available in no_std contexts.
+/// - The `Future` trait is currently not object safe: The `Future::poll`
+///   method makes uses the arbitrary self types feature and traits in which
+///   this feature is used are currently not object safe due to current compiler
+///   limitations. (See tracking issue for arbitray self types for more
+///   information #44874)
 pub struct FutureObj<'a, T>(LocalFutureObj<'a, T>);
 
 unsafe impl<'a, T> Send for FutureObj<'a, T> {}
