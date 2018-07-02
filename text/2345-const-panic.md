@@ -1,7 +1,7 @@
-- Feature Name: const_panic
+- Feature Name: `const_panic`
 - Start Date: 2018-02-22
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2345](https://github.com/rust-lang/rfcs/pull/2345)
+- Rust Issue: [rust-lang/rust#51999](https://github.com/rust-lang/rust/issues/51999)
 
 # Summary
 [summary]: #summary
