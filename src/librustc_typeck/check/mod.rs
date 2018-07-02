@@ -4997,18 +4997,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         } else {
                             0
                         };
-                        let param_idx = param.index as usize - has_self as usize - lifetime_offset;
+                        let param_idx = (param.index as usize - has_self as usize)
+                            .saturating_sub(lifetime_offset);
                         if let Some(arg) = data.args.get(param_idx) {
-                            return match param.kind {
+                            match param.kind {
                                 GenericParamDefKind::Lifetime => match arg {
                                     GenericArg::Lifetime(lt) => {
-                                        AstConv::ast_region_to_region(self, lt, Some(param)).into()
+                                        return AstConv::ast_region_to_region(self,
+                                            lt, Some(param)).into();
                                     }
-                                    _ => bug!("expected a lifetime arg"),
+                                    _ => {}
                                 }
                                 GenericParamDefKind::Type { .. } => match arg {
-                                    GenericArg::Type(ty) => self.to_ty(ty).into(),
-                                    _ => bug!("expected a type arg"),
+                                    GenericArg::Type(ty) => return self.to_ty(ty).into(),
+                                    _ => {}
                                 }
                             }
                         }
