@@ -1039,11 +1039,13 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 match sub_pat.node {
                     // `ref x` pattern
                     PatKind::Binding(..) => {
-                        let bm = *mc.tables.pat_binding_modes().get(sub_pat.hir_id)
-                                                               .expect("missing binding mode");
-                        if let ty::BindByReference(mutbl) = bm {
-                            self.link_region_from_node_type(sub_pat.span, sub_pat.hir_id,
-                                                            mutbl, &sub_cmt);
+                        if let Some(&bm) = mc.tables.pat_binding_modes().get(sub_pat.hir_id) {
+                            if let ty::BindByReference(mutbl) = bm {
+                                self.link_region_from_node_type(sub_pat.span, sub_pat.hir_id,
+                                                                mutbl, &sub_cmt);
+                            }
+                        } else {
+                            self.tcx.sess.delay_span_bug(sub_pat.span, "missing binding mode");
                         }
                     }
                     _ => {}
