@@ -13,6 +13,7 @@ use syntax::ast::{self, MetaItem};
 use rustc_data_structures::indexed_set::{IdxSet, IdxSetBuf};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::bitslice::{bitwise, BitwiseOperator};
+use rustc_data_structures::work_queue::WorkQueue;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::{self, Mir, BasicBlock, BasicBlockData, Location, Statement, Terminator};
@@ -176,7 +177,6 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD> where BD: BitD
 struct PropagationContext<'b, 'a: 'b, 'tcx: 'a, O> where O: 'b + BitDenotation
 {
     builder: &'b mut DataflowAnalysis<'a, 'tcx, O>,
-    changed: bool,
 }
 
 impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD> where BD: BitDenotation
@@ -185,12 +185,9 @@ impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD> where BD: BitDenotation
         let mut temp = IdxSetBuf::new_empty(self.flow_state.sets.bits_per_block);
         let mut propcx = PropagationContext {
             builder: self,
-            changed: true,
         };
-        while propcx.changed {
-            propcx.changed = false;
-            propcx.walk_cfg(&mut temp);
-        }
+        propcx.walk_cfg(&mut temp);
+
     }
 
     fn build_sets(&mut self) {
@@ -236,18 +233,20 @@ impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD> where BD: BitDenotation
 impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD> where BD: BitDenotation
 {
     fn walk_cfg(&mut self, in_out: &mut IdxSet<BD::Idx>) {
+        let mut dirty_queue: WorkQueue<mir::BasicBlock> =
+            WorkQueue::with_all(self.builder.mir.basic_blocks().len());
         let mir = self.builder.mir;
-        for (bb_idx, bb_data) in mir.basic_blocks().iter().enumerate() {
-            let builder = &mut self.builder;
+        while let Some(bb) = dirty_queue.pop() {
+            let bb_data = &mir[bb];
             {
-                let sets = builder.flow_state.sets.for_block(bb_idx);
+                let sets = self.builder.flow_state.sets.for_block(bb.index());
                 debug_assert!(in_out.words().len() == sets.on_entry.words().len());
                 in_out.overwrite(sets.on_entry);
                 in_out.union(sets.gen_set);
                 in_out.subtract(sets.kill_set);
             }
-            builder.propagate_bits_into_graph_successors_of(
-                in_out, &mut self.changed, (mir::BasicBlock::new(bb_idx), bb_data));
+            self.builder.propagate_bits_into_graph_successors_of(
+                in_out, (bb, bb_data), &mut dirty_queue);
         }
     }
 }
@@ -806,8 +805,8 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
     fn propagate_bits_into_graph_successors_of(
         &mut self,
         in_out: &mut IdxSet<D::Idx>,
-        changed: &mut bool,
-        (bb, bb_data): (mir::BasicBlock, &mir::BasicBlockData))
+        (bb, bb_data): (mir::BasicBlock, &mir::BasicBlockData),
+        dirty_list: &mut WorkQueue<mir::BasicBlock>)
     {
         match bb_data.terminator().kind {
             mir::TerminatorKind::Return |
@@ -815,59 +814,59 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
             mir::TerminatorKind::Abort |
             mir::TerminatorKind::GeneratorDrop |
             mir::TerminatorKind::Unreachable => {}
-            mir::TerminatorKind::Goto { ref target } |
-            mir::TerminatorKind::Assert { ref target, cleanup: None, .. } |
-            mir::TerminatorKind::Yield { resume: ref target, drop: None, .. } |
-            mir::TerminatorKind::Drop { ref target, location: _, unwind: None } |
+            mir::TerminatorKind::Goto { target } |
+            mir::TerminatorKind::Assert { target, cleanup: None, .. } |
+            mir::TerminatorKind::Yield { resume: target, drop: None, .. } |
+            mir::TerminatorKind::Drop { target, location: _, unwind: None } |
             mir::TerminatorKind::DropAndReplace {
-                ref target, value: _, location: _, unwind: None
+                target, value: _, location: _, unwind: None
             } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, target);
+                self.propagate_bits_into_entry_set_for(in_out, target, dirty_list);
             }
-            mir::TerminatorKind::Yield { resume: ref target, drop: Some(ref drop), .. } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, target);
-                self.propagate_bits_into_entry_set_for(in_out, changed, drop);
+            mir::TerminatorKind::Yield { resume: target, drop: Some(drop), .. } => {
+                self.propagate_bits_into_entry_set_for(in_out, target, dirty_list);
+                self.propagate_bits_into_entry_set_for(in_out, drop, dirty_list);
             }
-            mir::TerminatorKind::Assert { ref target, cleanup: Some(ref unwind), .. } |
-            mir::TerminatorKind::Drop { ref target, location: _, unwind: Some(ref unwind) } |
+            mir::TerminatorKind::Assert { target, cleanup: Some(unwind), .. } |
+            mir::TerminatorKind::Drop { target, location: _, unwind: Some(unwind) } |
             mir::TerminatorKind::DropAndReplace {
-                ref target, value: _, location: _, unwind: Some(ref unwind)
+                target, value: _, location: _, unwind: Some(unwind)
             } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, target);
+                self.propagate_bits_into_entry_set_for(in_out, target, dirty_list);
                 if !self.dead_unwinds.contains(&bb) {
-                    self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
+                    self.propagate_bits_into_entry_set_for(in_out, unwind, dirty_list);
                 }
             }
             mir::TerminatorKind::SwitchInt { ref targets, .. } => {
                 for target in targets {
-                    self.propagate_bits_into_entry_set_for(in_out, changed, target);
+                    self.propagate_bits_into_entry_set_for(in_out, *target, dirty_list);
                 }
             }
-            mir::TerminatorKind::Call { ref cleanup, ref destination, func: _, args: _ } => {
-                if let Some(ref unwind) = *cleanup {
+            mir::TerminatorKind::Call { cleanup, ref destination, func: _, args: _ } => {
+                if let Some(unwind) = cleanup {
                     if !self.dead_unwinds.contains(&bb) {
-                        self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
+                        self.propagate_bits_into_entry_set_for(in_out, unwind, dirty_list);
                     }
                 }
-                if let Some((ref dest_place, ref dest_bb)) = *destination {
+                if let Some((ref dest_place, dest_bb)) = *destination {
                     // N.B.: This must be done *last*, after all other
                     // propagation, as documented in comment above.
                     self.flow_state.operator.propagate_call_return(
-                        in_out, bb, *dest_bb, dest_place);
-                    self.propagate_bits_into_entry_set_for(in_out, changed, dest_bb);
+                        in_out, bb, dest_bb, dest_place);
+                    self.propagate_bits_into_entry_set_for(in_out, dest_bb, dirty_list);
                 }
             }
-            mir::TerminatorKind::FalseEdges { ref real_target, ref imaginary_targets } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, real_target);
+            mir::TerminatorKind::FalseEdges { real_target, ref imaginary_targets } => {
+                self.propagate_bits_into_entry_set_for(in_out, real_target, dirty_list);
                 for target in imaginary_targets {
-                    self.propagate_bits_into_entry_set_for(in_out, changed, target);
+                    self.propagate_bits_into_entry_set_for(in_out, *target, dirty_list);
                 }
             }
-            mir::TerminatorKind::FalseUnwind { ref real_target, unwind } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, real_target);
-                if let Some(ref unwind) = unwind {
+            mir::TerminatorKind::FalseUnwind { real_target, unwind } => {
+                self.propagate_bits_into_entry_set_for(in_out, real_target, dirty_list);
+                if let Some(unwind) = unwind {
                     if !self.dead_unwinds.contains(&bb) {
-                        self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
+                        self.propagate_bits_into_entry_set_for(in_out, unwind, dirty_list);
                     }
                 }
             }
@@ -876,14 +875,15 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
 
     fn propagate_bits_into_entry_set_for(&mut self,
                                          in_out: &IdxSet<D::Idx>,
-                                         changed: &mut bool,
-                                         bb: &mir::BasicBlock) {
+                                         bb: mir::BasicBlock,
+                                         dirty_queue: &mut WorkQueue<mir::BasicBlock>) {
         let entry_set = self.flow_state.sets.for_block(bb.index()).on_entry;
         let set_changed = bitwise(entry_set.words_mut(),
                                   in_out.words(),
                                   &self.flow_state.operator);
         if set_changed {
-            *changed = true;
+            dirty_queue.insert(bb);
         }
     }
+
 }
