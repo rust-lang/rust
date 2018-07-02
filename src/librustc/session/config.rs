@@ -1970,6 +1970,13 @@ pub fn build_session_options_and_crate_config(
         );
     }
 
+    if debugging_opts.profile && incremental.is_some() {
+        early_error(
+            error_format,
+            "can't instrument with gcov profiling when compiling incrementally",
+        );
+    }
+
     let mut prints = Vec::<PrintRequest>::new();
     if cg.target_cpu.as_ref().map_or(false, |s| s == "help") {
         prints.push(PrintRequest::TargetCPUs);
