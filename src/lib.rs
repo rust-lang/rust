@@ -1038,9 +1038,14 @@ mod unit_tests {
     #[test]
     fn test_format_snippet() {
         let snippet = "fn main() { println!(\"hello, world\"); }";
+        #[cfg(not(windows))]
         let expected = "fn main() {\n    \
                         println!(\"hello, world\");\n\
                         }\n";
+        #[cfg(windows)]
+        let expected = "fn main() {\r\n    \
+                        println!(\"hello, world\");\r\n\
+                        }\r\n";
         assert!(test_format_inner(format_snippet, snippet, expected));
     }
 
