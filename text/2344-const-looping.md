@@ -1,7 +1,7 @@
-- Feature Name: const_looping
+- Feature Name: `const_looping`
 - Start Date: 2018-02-18
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2344](https://github.com/rust-lang/rfcs/pull/2344)
+- Rust Issue: [rust-lang/rust#52000](https://github.com/rust-lang/rust/issues/52000)
 
 # Summary
 [summary]: #summary
