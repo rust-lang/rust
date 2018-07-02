@@ -12,7 +12,7 @@
 //! which do not.
 
 use rustc_data_structures::bitvec::BitVector;
-use rustc_data_structures::control_flow_graph::dominators::Dominators;
+use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::mir::{self, Location, TerminatorKind};
 use rustc::mir::visit::{Visitor, PlaceContext};

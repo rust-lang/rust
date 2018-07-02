@@ -29,7 +29,7 @@ use rustc::mir::{Terminator, TerminatorKind};
 use rustc::mir::{Field, Operand, BorrowKind};
 use rustc::ty::{self, ParamEnv};
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::control_flow_graph::dominators::Dominators;
+use rustc_data_structures::graph::dominators::Dominators;
 
 pub(super) fn generate_invalidates<'cx, 'gcx, 'tcx>(
     infcx: &InferCtxt<'cx, 'gcx, 'tcx>,

@@ -10,7 +10,7 @@
 
 use cfg::*;
 use middle::region;
-use rustc_data_structures::control_flow_graph::implementation as graph;
+use rustc_data_structures::graph::implementation as graph;
 use syntax::ptr::P;
 use ty::{self, TyCtxt};
 

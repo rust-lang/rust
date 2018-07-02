@@ -70,7 +70,7 @@ pub mod transitive_relation;
 pub use ena::unify;
 pub mod fx;
 pub mod tuple_slice;
-pub mod control_flow_graph;
+pub mod graph;
 pub mod flock;
 pub mod sync;
 pub mod owning_ref;

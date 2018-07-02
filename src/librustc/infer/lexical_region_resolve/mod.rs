@@ -20,7 +20,7 @@ use infer::region_constraints::VerifyBound;
 use middle::free_region::RegionRelations;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::control_flow_graph::implementation::{Graph, Direction, NodeIndex, INCOMING, OUTGOING};
+use rustc_data_structures::graph::implementation::{Graph, Direction, NodeIndex, INCOMING, OUTGOING};
 use std::fmt;
 use std::u32;
 use ty::{self, TyCtxt};

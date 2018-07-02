@@ -22,7 +22,7 @@ use std::mem;
 use std::usize;
 use syntax::print::pprust::PrintState;
 
-use rustc_data_structures::control_flow_graph::implementation::OUTGOING;
+use rustc_data_structures::graph::implementation::OUTGOING;
 
 use util::nodemap::FxHashMap;
 use hir;
