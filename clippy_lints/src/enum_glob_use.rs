@@ -44,7 +44,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EnumGlobUse {
 
 impl EnumGlobUse {
     fn lint_item(&self, cx: &LateContext, item: &Item) {
-        if item.vis == Visibility::Public {
+        if item.vis.node == VisibilityKind::Public {
             return; // re-exports are fine
         }
         if let ItemUse(ref path, UseKind::Glob) = item.node {
