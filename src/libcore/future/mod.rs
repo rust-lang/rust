@@ -12,18 +12,10 @@
             reason = "futures in libcore are unstable",
             issue = "50547")]
 
-//! Types and Traits for working with asynchronous tasks.
+//! Asynchronous values.
 
-mod context;
-pub use self::context::Context;
+mod future;
+pub use self::future::Future;
 
-mod executor;
-pub use self::executor::{
-  Executor, SpawnErrorKind, SpawnObjError, SpawnLocalObjError
-};
-
-mod poll;
-pub use self::poll::Poll;
-
-mod wake;
-pub use self::wake::{Waker, LocalWaker, UnsafeWake};
+mod future_obj;
+pub use self::future_obj::{FutureObj, LocalFutureObj, UnsafeFutureObj};

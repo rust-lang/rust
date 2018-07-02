@@ -19,9 +19,10 @@ use std::sync::{
     Arc,
     atomic::{self, AtomicUsize},
 };
+use std::future::FutureObj;
 use std::task::{
     Context, Poll, Wake,
-    Executor, TaskObj, SpawnObjError,
+    Executor, SpawnObjError,
     local_waker_from_nonlocal,
 };
 
@@ -37,7 +38,7 @@ impl Wake for Counter {
 
 struct NoopExecutor;
 impl Executor for NoopExecutor {
-    fn spawn_obj(&mut self, _: TaskObj) -> Result<(), SpawnObjError> {
+    fn spawn_obj(&mut self, _: FutureObj<'static, ()>) -> Result<(), SpawnObjError> {
         Ok(())
     }
 }
