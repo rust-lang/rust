@@ -171,7 +171,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         // Return value
         let size = ecx.tcx.data_layout.pointer_size;
         let align = ecx.tcx.data_layout.pointer_align;
-        let ret_ptr = ecx.memory_mut().allocate(size, align, Some(MemoryKind::Stack))?;
+        let ret_ptr = ecx.memory_mut().allocate(size, align, MemoryKind::Stack)?;
         cleanup_ptr = Some(ret_ptr);
 
         // Push our stack frame
@@ -210,7 +210,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         let foo = ecx.memory.allocate_bytes(b"foo\0");
         let ptr_size = ecx.memory.pointer_size();
         let ptr_align = ecx.tcx.data_layout.pointer_align;
-        let foo_ptr = ecx.memory.allocate(ptr_size, ptr_align, None)?;
+        let foo_ptr = ecx.memory.allocate(ptr_size, ptr_align, MemoryKind::Stack)?;
         ecx.memory.write_scalar(foo_ptr.into(), ptr_align, Scalar::Ptr(foo), ptr_size, false)?;
         ecx.memory.mark_static_initialized(foo_ptr.alloc_id, Mutability::Immutable)?;
         ecx.write_ptr(dest, foo_ptr.into(), ty)?;
@@ -269,10 +269,10 @@ pub fn eval_main<'a, 'tcx: 'a>(
                     block.terminator().source_info.span
                 };
 
-                let mut err = mir::interpret::struct_error(ecx.tcx.tcx.at(span), "constant evaluation error");
+                let mut err = struct_error(ecx.tcx.tcx.at(span), "constant evaluation error");
                 let (frames, span) = ecx.generate_stacktrace(None);
                 err.span_label(span, e.to_string());
-                for mir::interpret::FrameInfo { span, location, .. } in frames {
+                for FrameInfo { span, location, .. } in frames {
                     err.span_note(span, &format!("inside call to `{}`", location));
                 }
                 err.emit();
@@ -404,7 +404,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         let ptr = ecx.memory.allocate(
             layout.size,
             layout.align,
-            None,
+            MemoryKind::Stack,
         )?;
 
         // Step 4: Cache allocation id for recursive statics

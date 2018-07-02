@@ -199,7 +199,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     self.write_null(dest, dest_ty)?;
                 } else {
                     let align = self.tcx.data_layout.pointer_align;
-                    let ptr = self.memory.allocate(Size::from_bytes(size), align, Some(MemoryKind::C.into()))?;
+                    let ptr = self.memory.allocate(Size::from_bytes(size), align, MemoryKind::C.into())?;
                     self.write_scalar(dest, Scalar::Ptr(ptr), dest_ty)?;
                 }
             }
@@ -395,7 +395,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     let value_copy = self.memory.allocate(
                         Size::from_bytes((value.len() + 1) as u64),
                         Align::from_bytes(1, 1).unwrap(),
-                        Some(MemoryKind::Env.into()),
+                        MemoryKind::Env.into(),
                     )?;
                     self.memory.write_bytes(value_copy.into(), &value)?;
                     let trailing_zero_ptr = value_copy.offset(Size::from_bytes(value.len() as u64), &self)?.into();
@@ -656,7 +656,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 }
                 let ptr = self.memory.allocate(Size::from_bytes(size),
                                                Align::from_bytes(align, align).unwrap(),
-                                               Some(MemoryKind::Rust.into()))?;
+                                               MemoryKind::Rust.into())?;
                 self.write_scalar(dest, Scalar::Ptr(ptr), dest_ty)?;
             }
             "alloc::alloc::::__rust_alloc_zeroed" => {
@@ -670,7 +670,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 }
                 let ptr = self.memory.allocate(Size::from_bytes(size),
                                                Align::from_bytes(align, align).unwrap(),
-                                               Some(MemoryKind::Rust.into()))?;
+                                               MemoryKind::Rust.into())?;
                 self.memory.write_repeat(ptr.into(), 0, Size::from_bytes(size))?;
                 self.write_scalar(dest, Scalar::Ptr(ptr), dest_ty)?;
             }
