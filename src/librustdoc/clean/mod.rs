@@ -2987,14 +2987,6 @@ impl Clean<Type> for hir::Ty {
                 }
             }
             TyBareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
-            TyImplTraitExistential(hir_id, _, _) => {
-                match cx.tcx.hir.expect_item(hir_id.id).node {
-                    hir::ItemExistential(ref exist_ty) => {
-                        ImplTrait(exist_ty.bounds.clean(cx))
-                    },
-                    ref other => panic!("impl Trait pointed to {:#?}", other),
-                }
-            },
             TyInfer | TyErr => Infer,
             TyTypeof(..) => panic!("Unimplemented type {:?}", self.node),
         }
