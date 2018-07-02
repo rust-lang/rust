@@ -14,8 +14,9 @@ use std::ptr;
 use attributes;
 use libc::c_uint;
 use rustc::middle::allocator::AllocatorKind;
+use rustc::session::InjectedDefaultOomHook;
 use rustc::ty::TyCtxt;
-use rustc_allocator::{ALLOCATOR_METHODS, AllocatorTy};
+use rustc_allocator::{ALLOCATOR_METHODS, OOM_HANDLING_METHODS, AllocatorTy};
 
 use ModuleLlvm;
 use llvm::{self, False, True};
@@ -33,9 +34,10 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind
     let i8p = llvm::LLVMPointerType(i8, 0);
     let void = llvm::LLVMVoidTypeInContext(llcx);
 
-    for method in ALLOCATOR_METHODS {
+    let build = |name: String, inputs: &[AllocatorTy], output: &AllocatorTy,
+                 callee: Option<String>| {
         let mut args = Vec::new();
-        for ty in method.inputs.iter() {
+        for ty in inputs.iter() {
             match *ty {
                 AllocatorTy::Layout => {
                     args.push(usize); // size
@@ -48,7 +50,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind
                 AllocatorTy::Unit => panic!("invalid allocator arg"),
             }
         }
-        let output = match method.output {
+        let output = match *output {
             AllocatorTy::ResultPtr => Some(i8p),
             AllocatorTy::Unit => None,
 
@@ -60,7 +62,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind
                                         args.as_ptr(),
                                         args.len() as c_uint,
                                         False);
-        let name = CString::new(format!("__rust_{}", method.name)).unwrap();
+        let name = CString::new(name).unwrap();
         let llfn = llvm::LLVMRustGetOrInsertFunction(llmod,
                                                      name.as_ptr(),
                                                      ty);
@@ -68,14 +70,9 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind
         if tcx.sess.target.target.options.default_hidden_visibility {
             llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
         }
-       if tcx.sess.target.target.options.requires_uwtable {
-           attributes::emit_uwtable(llfn, true);
-       }
-
-        let callee = CString::new(kind.fn_name(method.name)).unwrap();
-        let callee = llvm::LLVMRustGetOrInsertFunction(llmod,
-                                                       callee.as_ptr(),
-                                                       ty);
+        if tcx.sess.target.target.options.requires_uwtable {
+            attributes::emit_uwtable(llfn, true);
+        }
 
         let llbb = llvm::LLVMAppendBasicBlockInContext(llcx,
                                                        llfn,
@@ -83,6 +80,22 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind
 
         let llbuilder = llvm::LLVMCreateBuilderInContext(llcx);
         llvm::LLVMPositionBuilderAtEnd(llbuilder, llbb);
+
+        let callee = if let Some(callee) = callee {
+            callee
+        } else {
+            // Generate a no-op function
+            llvm::LLVMBuildRetVoid(llbuilder);
+            llvm::LLVMDisposeBuilder(llbuilder);
+            return
+        };
+
+        // Forward the call to another function
+        let callee = CString::new(callee).unwrap();
+        let callee = llvm::LLVMRustGetOrInsertFunction(llmod,
+                                                       callee.as_ptr(),
+                                                       ty);
+
         let args = args.iter().enumerate().map(|(i, _)| {
             llvm::LLVMGetParam(llfn, i as c_uint)
         }).collect::<Vec<_>>();
@@ -98,6 +111,28 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind
         } else {
             llvm::LLVMBuildRetVoid(llbuilder);
         }
+
         llvm::LLVMDisposeBuilder(llbuilder);
+    };
+
+    for method in ALLOCATOR_METHODS {
+        let name = format!("__rust_{}", method.name);
+        build(name, method.inputs, &method.output, Some(kind.fn_name(method.name)))
+    }
+
+    let has_plaftom_functions = match tcx.sess.injected_default_alloc_error_hook.get() {
+        InjectedDefaultOomHook::None => return,
+        InjectedDefaultOomHook::Noop => false,
+        InjectedDefaultOomHook::Platform => true,
+    };
+
+    for method in OOM_HANDLING_METHODS {
+        let callee = if has_plaftom_functions {
+            Some(format!("__rust_{}", method.name))
+        } else {
+            None
+        };
+        let name = format!("__rust_maybe_{}", method.name);
+        build(name, method.inputs, &method.output, callee)
     }
 }

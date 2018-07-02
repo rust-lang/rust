@@ -74,10 +74,6 @@
 
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
-use core::sync::atomic::{AtomicPtr, Ordering};
-use core::{mem, ptr};
-use sys_common::util::dumb_print;
-
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
 pub use alloc_crate::alloc::*;
@@ -86,64 +82,14 @@ pub use alloc_crate::alloc::*;
 #[doc(inline)]
 pub use alloc_system::System;
 
-static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
-
-/// Registers a custom allocation error hook, replacing any that was previously registered.
-///
-/// The allocation error hook is invoked when an infallible memory allocation fails, before
-/// the runtime aborts. The default hook prints a message to standard error,
-/// but this behavior can be customized with the [`set_alloc_error_hook`] and
-/// [`take_alloc_error_hook`] functions.
-///
-/// The hook is provided with a `Layout` struct which contains information
-/// about the allocation that failed.
-///
-/// The allocation error hook is a global resource.
-#[unstable(feature = "alloc_error_hook", issue = "51245")]
-pub fn set_alloc_error_hook(hook: fn(Layout)) {
-    HOOK.store(hook as *mut (), Ordering::SeqCst);
-}
-
-/// Unregisters the current allocation error hook, returning it.
-///
-/// *See also the function [`set_alloc_error_hook`].*
-///
-/// If no custom hook is registered, the default hook will be returned.
-#[unstable(feature = "alloc_error_hook", issue = "51245")]
-pub fn take_alloc_error_hook() -> fn(Layout) {
-    let hook = HOOK.swap(ptr::null_mut(), Ordering::SeqCst);
-    if hook.is_null() {
-        default_alloc_error_hook
-    } else {
-        unsafe { mem::transmute(hook) }
-    }
-}
-
-fn default_alloc_error_hook(layout: Layout) {
-    dumb_print(format_args!("memory allocation of {} bytes failed", layout.size()));
-}
-
-#[cfg(not(test))]
-#[doc(hidden)]
-#[lang = "oom"]
-#[unstable(feature = "alloc_internals", issue = "0")]
-pub extern fn rust_oom(layout: Layout) -> ! {
-    let hook = HOOK.load(Ordering::SeqCst);
-    let hook: fn(Layout) = if hook.is_null() {
-        default_alloc_error_hook
-    } else {
-        unsafe { mem::transmute(hook) }
-    };
-    hook(layout);
-    unsafe { ::sys::abort_internal(); }
-}
-
 #[cfg(not(test))]
 #[doc(hidden)]
 #[allow(unused_attributes)]
 #[unstable(feature = "alloc_internals", issue = "0")]
 pub mod __default_lib_allocator {
     use super::{System, Layout, GlobalAlloc};
+    use sys_common::util::dumb_print;
+
     // for symbol names src/librustc/middle/allocator.rs
     // for signatures src/librustc_allocator/lib.rs
 
@@ -180,5 +126,17 @@ pub mod __default_lib_allocator {
     pub unsafe extern fn __rdl_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
         let layout = Layout::from_size_align_unchecked(size, align);
         System.alloc_zeroed(layout)
+    }
+
+    #[no_mangle]
+    #[rustc_std_internal_symbol]
+    pub extern fn __rust_default_alloc_error_hook(size: usize, _align: usize) {
+        dumb_print(format_args!("memory allocation of {} bytes failed", size));
+    }
+
+    #[no_mangle]
+    #[rustc_std_internal_symbol]
+    pub unsafe extern fn __rust_abort_internal() {
+        ::sys::abort_internal()
     }
 }

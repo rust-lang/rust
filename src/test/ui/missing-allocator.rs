@@ -20,7 +20,4 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-#[lang = "oom"]
-fn oom() {}
-
 extern crate alloc;

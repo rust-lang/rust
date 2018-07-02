@@ -20,7 +20,7 @@ use rustc::hir::svh::Svh;
 use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::DepKind;
 use rustc::mir::interpret::AllocDecodingState;
-use rustc::session::{Session, CrateDisambiguator};
+use rustc::session::{Session, CrateDisambiguator, InjectedDefaultOomHook};
 use rustc::session::config::{Sanitizer, self};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc::session::search_paths::PathKind;
@@ -843,6 +843,7 @@ impl<'a> CrateLoader<'a> {
         if !needs_allocator {
             self.sess.injected_allocator.set(None);
             self.sess.allocator_kind.set(None);
+            self.sess.injected_default_alloc_error_hook.set(InjectedDefaultOomHook::None);
             return
         }
 
@@ -864,8 +865,21 @@ impl<'a> CrateLoader<'a> {
         if !need_lib_alloc && !need_exe_alloc {
             self.sess.injected_allocator.set(None);
             self.sess.allocator_kind.set(None);
+            self.sess.injected_default_alloc_error_hook.set(InjectedDefaultOomHook::None);
             return
         }
+
+        let mut has_default_lib_allocator = attr::contains_name(&krate.attrs,
+                                                                "default_lib_allocator");;
+        self.cstore.iter_crate_data(|_, data| {
+            has_default_lib_allocator = has_default_lib_allocator ||
+                                        data.root.has_default_lib_allocator;
+        });
+        self.sess.injected_default_alloc_error_hook.set(if has_default_lib_allocator {
+            InjectedDefaultOomHook::Platform
+        } else {
+            InjectedDefaultOomHook::Noop
+        });
 
         // Ok, we need an allocator. Not only that but we're actually going to
         // create an artifact that needs one linked in. Let's go find the one
