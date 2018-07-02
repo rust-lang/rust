@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-const_raw_ptr_to_usize_cast
+
 fn main() {
     const X: u32 = main as u32; //~ ERROR casting pointers to integers in constants is unstable
     const Y: u32 = 0;
