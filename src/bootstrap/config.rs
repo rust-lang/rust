@@ -23,7 +23,6 @@ use std::cmp;
 
 use num_cpus;
 use toml;
-use util::exe;
 use cache::{INTERNER, Interned};
 use flags::Flags;
 pub use flags::Subcommand;
@@ -367,9 +366,8 @@ impl Config {
         config.src = Config::path_from_python("SRC");
         config.out = Config::path_from_python("BUILD_DIR");
 
-        let stage0_root = config.out.join(&config.build).join("stage0/bin");
-        config.initial_rustc = stage0_root.join(exe("rustc", &config.build));
-        config.initial_cargo = stage0_root.join(exe("cargo", &config.build));
+        config.initial_rustc = Config::path_from_python("RUSTC");
+        config.initial_cargo = Config::path_from_python("CARGO");
 
         config
     }
