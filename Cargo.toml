@@ -45,6 +45,12 @@ clippy_lints = { version = "0.0.211", path = "clippy_lints" }
 regex = "1"
 semver = "0.9"
 
+# Not actually needed right now but required to make sure that clippy/ and cargo build
+# with the same set of features in rust-lang/rust
+num-traits = "0.2" # enable the default feature
+winapi = "0.3"
+backtrace = "0.3"
+
 [dev-dependencies]
 cargo_metadata = "0.5"
 compiletest_rs = "0.3.7"
