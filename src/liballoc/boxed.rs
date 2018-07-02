@@ -933,6 +933,25 @@ impl<F: ?Sized + Future> Future for PinBox<F> {
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
+unsafe impl<'a, T, F> UnsafeFutureObj<'a, T> for Box<F>
+    where F: Future<Output = T> + 'a
+{
+    fn into_raw(self) -> *mut () {
+        Box::into_raw(self) as *mut ()
+    }
+
+    unsafe fn poll(ptr: *mut (), cx: &mut Context) -> Poll<T> {
+        let ptr = ptr as *mut F;
+        let pin: PinMut<F> = PinMut::new_unchecked(&mut *ptr);
+        pin.poll(cx)
+    }
+
+    unsafe fn drop(ptr: *mut ()) {
+        drop(Box::from_raw(ptr as *mut F))
+    }
+}
+
+#[unstable(feature = "futures_api", issue = "50547")]
 unsafe impl<'a, T, F> UnsafeFutureObj<'a, T> for PinBox<F>
     where F: Future<Output = T> + 'a
 {
@@ -961,7 +980,7 @@ impl<'a, F: Future<Output = ()> + Send + 'a> From<PinBox<F>> for FutureObj<'a, (
 #[unstable(feature = "futures_api", issue = "50547")]
 impl<'a, F: Future<Output = ()> + Send + 'a> From<Box<F>> for FutureObj<'a, ()> {
     fn from(boxed: Box<F>) -> Self {
-        FutureObj::new(PinBox::from(boxed))
+        FutureObj::new(boxed)
     }
 }
 
@@ -975,6 +994,6 @@ impl<'a, F: Future<Output = ()> + 'a> From<PinBox<F>> for LocalFutureObj<'a, ()>
 #[unstable(feature = "futures_api", issue = "50547")]
 impl<'a, F: Future<Output = ()> + 'a> From<Box<F>> for LocalFutureObj<'a, ()> {
     fn from(boxed: Box<F>) -> Self {
-        LocalFutureObj::new(PinBox::from(boxed))
+        LocalFutureObj::new(boxed)
     }
 }
