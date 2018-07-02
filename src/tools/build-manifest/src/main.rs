@@ -183,6 +183,7 @@ struct Builder {
     rust_release: String,
     cargo_release: String,
     rls_release: String,
+    clippy_release: String,
     rustfmt_release: String,
     llvm_tools_release: String,
 
@@ -196,12 +197,14 @@ struct Builder {
     rust_version: Option<String>,
     cargo_version: Option<String>,
     rls_version: Option<String>,
+    clippy_version: Option<String>,
     rustfmt_version: Option<String>,
     llvm_tools_version: Option<String>,
 
     rust_git_commit_hash: Option<String>,
     cargo_git_commit_hash: Option<String>,
     rls_git_commit_hash: Option<String>,
+    clippy_git_commit_hash: Option<String>,
     rustfmt_git_commit_hash: Option<String>,
     llvm_tools_git_commit_hash: Option<String>,
 }
@@ -214,6 +217,7 @@ fn main() {
     let rust_release = args.next().unwrap();
     let cargo_release = args.next().unwrap();
     let rls_release = args.next().unwrap();
+    let clippy_release = args.next().unwrap();
     let rustfmt_release = args.next().unwrap();
     let llvm_tools_release = args.next().unwrap();
     let s3_address = args.next().unwrap();
@@ -224,6 +228,7 @@ fn main() {
         rust_release,
         cargo_release,
         rls_release,
+        clippy_release,
         rustfmt_release,
         llvm_tools_release,
 
@@ -237,12 +242,14 @@ fn main() {
         rust_version: None,
         cargo_version: None,
         rls_version: None,
+        clippy_version: None,
         rustfmt_version: None,
         llvm_tools_version: None,
 
         rust_git_commit_hash: None,
         cargo_git_commit_hash: None,
         rls_git_commit_hash: None,
+        clippy_git_commit_hash: None,
         rustfmt_git_commit_hash: None,
         llvm_tools_git_commit_hash: None,
     }.build();
@@ -259,6 +266,7 @@ impl Builder {
         self.rust_git_commit_hash = self.git_commit_hash("rust", "x86_64-unknown-linux-gnu");
         self.cargo_git_commit_hash = self.git_commit_hash("cargo", "x86_64-unknown-linux-gnu");
         self.rls_git_commit_hash = self.git_commit_hash("rls", "x86_64-unknown-linux-gnu");
+        self.clippy_git_commit_hash = self.git_commit_hash("clippy", "x86_64-unknown-linux-gnu");
         self.rustfmt_git_commit_hash = self.git_commit_hash("rustfmt", "x86_64-unknown-linux-gnu");
         self.llvm_tools_git_commit_hash = self.git_commit_hash("llvm-tools",
                                                                "x86_64-unknown-linux-gnu");
@@ -296,10 +304,12 @@ impl Builder {
         self.package("rust-docs", &mut manifest.pkg, TARGETS);
         self.package("rust-src", &mut manifest.pkg, &["*"]);
         self.package("rls-preview", &mut manifest.pkg, HOSTS);
+        self.package("clippy-preview", &mut manifest.pkg, HOSTS);
         self.package("rustfmt-preview", &mut manifest.pkg, HOSTS);
         self.package("rust-analysis", &mut manifest.pkg, TARGETS);
         self.package("llvm-tools-preview", &mut manifest.pkg, TARGETS);
 
+        let clippy_present = manifest.pkg.contains_key("clippy-preview");
         let rls_present = manifest.pkg.contains_key("rls-preview");
         let rustfmt_present = manifest.pkg.contains_key("rustfmt-preview");
         let llvm_tools_present = manifest.pkg.contains_key("llvm-tools-preview");
@@ -345,6 +355,12 @@ impl Builder {
                 });
             }
 
+            if clippy_present {
+                extensions.push(Component {
+                    pkg: "clippy-preview".to_string(),
+                    target: host.to_string(),
+                });
+            }
             if rls_present {
                 extensions.push(Component {
                     pkg: "rls-preview".to_string(),
@@ -470,6 +486,8 @@ impl Builder {
             format!("cargo-{}-{}.tar.gz", self.cargo_release, target)
         } else if component == "rls" || component == "rls-preview" {
             format!("rls-{}-{}.tar.gz", self.rls_release, target)
+        } else if component == "clippy" || component == "clippy-preview" {
+            format!("clippy-{}-{}.tar.gz", self.clippy_release, target)
         } else if component == "rustfmt" || component == "rustfmt-preview" {
             format!("rustfmt-{}-{}.tar.gz", self.rustfmt_release, target)
         } else if component == "llvm_tools" {
@@ -484,6 +502,8 @@ impl Builder {
             &self.cargo_version
         } else if component == "rls" || component == "rls-preview" {
             &self.rls_version
+        } else if component == "clippy" || component == "clippy-preview" {
+            &self.clippy_version
         } else if component == "rustfmt" || component == "rustfmt-preview" {
             &self.rustfmt_version
         } else if component == "llvm-tools" || component == "llvm-tools-preview" {
@@ -498,6 +518,8 @@ impl Builder {
             &self.cargo_git_commit_hash
         } else if component == "rls" || component == "rls-preview" {
             &self.rls_git_commit_hash
+        } else if component == "clippy" || component == "clippy-preview" {
+            &self.clippy_git_commit_hash
         } else if component == "rustfmt" || component == "rustfmt-preview" {
             &self.rustfmt_git_commit_hash
         } else if component == "llvm-tools" || component == "llvm-tools-preview" {

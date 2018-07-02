@@ -307,20 +307,23 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.0.202"
+version = "0.0.211"
 dependencies = [
  "ansi_term 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "backtrace 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo_metadata 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "clippy-mini-macro-test 0.2.0",
- "clippy_lints 0.0.202",
+ "clippy_lints 0.0.211",
  "compiletest_rs 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "derive-new 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-traits 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_version 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "semver 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.40 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -329,7 +332,8 @@ version = "0.2.0"
 
 [[package]]
 name = "clippy_lints"
-version = "0.0.202"
+version = "0.0.205"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cargo_metadata 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "if_chain 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -349,8 +353,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.0.205"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "0.0.211"
 dependencies = [
  "cargo_metadata 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "if_chain 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
