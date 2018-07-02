@@ -3,19 +3,18 @@ use std::fmt::Write;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
 use rustc::hir::map::definitions::DefPathData;
-use rustc::middle::const_val::{ConstVal, ErrKind};
 use rustc::mir;
 use rustc::ty::layout::{self, Size, Align, HasDataLayout, IntegerExt, LayoutOf, TyLayout};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt, TypeAndMut};
-use rustc::ty::maps::TyCtxtAt;
+use rustc::ty::query::TyCtxtAt;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc::middle::const_val::FrameInfo;
+use rustc::mir::interpret::FrameInfo;
 use syntax::codemap::{self, Span};
 use syntax::ast::Mutability;
 use rustc::mir::interpret::{
     GlobalId, Value, Scalar,
-    EvalError, EvalResult, EvalErrorKind, Pointer, ConstValue,
+    EvalResult, EvalErrorKind, Pointer, ConstValue,
 };
 use std::mem;
 
@@ -233,12 +232,18 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         Ok(Scalar::Ptr(ptr).to_value_with_len(s.len() as u64, self.tcx.tcx))
     }
 
-    pub fn const_value_to_value(
+    pub fn const_to_value(
         &mut self,
         val: ConstValue<'tcx>,
-        _ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Value> {
         match val {
+            ConstValue::Unevaluated(def_id, substs) => {
+                let instance = self.resolve(def_id, substs)?;
+                self.read_global_as_value(GlobalId {
+                    instance,
+                    promoted: None,
+                })
+            }
             ConstValue::ByRef(alloc, offset) => {
                 // FIXME: Allocate new AllocId for all constants inside
                 let id = self.memory.allocate_value(alloc.clone(), Some(MemoryKind::Stack))?;
@@ -246,23 +251,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             },
             ConstValue::ScalarPair(a, b) => Ok(Value::ScalarPair(a, b)),
             ConstValue::Scalar(val) => Ok(Value::Scalar(val)),
-        }
-    }
-
-    pub(super) fn const_to_value(
-        &mut self,
-        const_val: &ConstVal<'tcx>,
-        ty: Ty<'tcx>
-    ) -> EvalResult<'tcx, Value> {
-        match *const_val {
-            ConstVal::Unevaluated(def_id, substs) => {
-                let instance = self.resolve(def_id, substs)?;
-                self.read_global_as_value(GlobalId {
-                    instance,
-                    promoted: None,
-                }, ty)
-            }
-            ConstVal::Value(val) => self.const_value_to_value(val, ty)
         }
     }
 
@@ -280,7 +268,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             self.param_env,
             def_id,
             substs,
-        ).ok_or_else(|| EvalErrorKind::TypeckError.into()) // turn error prop into a panic to expose associated type in const issue
+        ).ok_or_else(|| EvalErrorKind::TooGeneric.into())
     }
 
     pub(super) fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
@@ -591,10 +579,14 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
                 let (dest, dest_align) = self.force_allocation(dest)?.to_ptr_align();
 
-                // FIXME: speed up repeat filling
-                for i in 0..length {
-                    let elem_dest = dest.ptr_offset(elem_size * i as u64, &self)?;
-                    self.write_value_to_ptr(value, elem_dest, dest_align, elem_ty)?;
+                if length > 0 {
+                    //write the first value
+                    self.write_value_to_ptr(value, dest, dest_align, elem_ty)?;
+
+                    if length > 1 {
+                        let rest = dest.ptr_offset(elem_size * 1 as u64, &self)?;
+                        self.memory.copy_repeatedly(dest, dest_align, rest, dest_align, elem_size, length - 1, false)?;
+                    }
                 }
             }
 
@@ -739,7 +731,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                     self.param_env,
                                     def_id,
                                     substs,
-                                ).ok_or_else(|| EvalErrorKind::TypeckError.into());
+                                ).ok_or_else(|| EvalErrorKind::TooGeneric.into());
                                 let fn_ptr = self.memory.create_fn_alloc(instance?);
                                 let valty = ValTy {
                                     value: Value::Scalar(fn_ptr.into()),
@@ -849,14 +841,14 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 use rustc::mir::Literal;
                 let mir::Constant { ref literal, .. } = **constant;
                 let value = match *literal {
-                    Literal::Value { ref value } => self.const_to_value(&value.val, ty)?,
+                    Literal::Value { ref value } => self.const_to_value(value.val)?,
 
                     Literal::Promoted { index } => {
                         let instance = self.frame().instance;
                         self.read_global_as_value(GlobalId {
                             instance,
                             promoted: Some(index),
-                        }, ty)?
+                        })?
                     }
                 };
 
@@ -1036,18 +1028,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         Ok(())
     }
 
-    pub fn read_global_as_value(&mut self, gid: GlobalId<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
-        if self.tcx.is_static(gid.instance.def_id()).is_some() {
-            let alloc_id = self
-                .tcx
-                .alloc_map
-                .lock()
-                .intern_static(gid.instance.def_id());
-            let layout = self.layout_of(ty)?;
-            return Ok(Value::ByRef(Scalar::Ptr(alloc_id.into()), layout.align))
-        }
+    pub fn read_global_as_value(&mut self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, Value> {
         let cv = self.const_eval(gid)?;
-        self.const_to_value(&cv.val, ty)
+        self.const_to_value(cv.val)
     }
 
     pub fn const_eval(&self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, &'tcx ty::Const<'tcx>> {
@@ -1056,15 +1039,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         } else {
             self.param_env
         };
-        self.tcx.const_eval(param_env.and(gid)).map_err(|err| match *err.kind {
-            ErrKind::Miri(ref err, _) => match err.kind {
-                EvalErrorKind::TypeckError |
-                EvalErrorKind::Layout(_) => EvalErrorKind::TypeckError.into(),
-                _ => EvalErrorKind::ReferencedConstant.into(),
-            },
-            ErrKind::TypeckError => EvalErrorKind::TypeckError.into(),
-            ref other => bug!("const eval returned {:?}", other),
-        })
+        self.tcx.const_eval(param_env.and(gid)).map_err(|err| EvalErrorKind::ReferencedConstant(err).into())
     }
 
     pub fn force_allocation(&mut self, place: Place) -> EvalResult<'tcx, Place> {
@@ -1626,7 +1601,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         let mut last_span = None;
         let mut frames = Vec::new();
         // skip 1 because the last frame is just the environment of the constant
-        for &Frame { instance, span, .. } in self.stack().iter().skip(1).rev() {
+        for &Frame { instance, span, mir, block, stmt, .. } in self.stack().iter().skip(1).rev() {
             // make sure we don't emit frames that are duplicates of the previous
             if explicit_span == Some(span) {
                 last_span = Some(span);
@@ -1644,82 +1619,20 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             } else {
                 instance.to_string()
             };
-            frames.push(FrameInfo { span, location });
+            let block = &mir.basic_blocks()[block];
+            let source_info = if stmt < block.statements.len() {
+                block.statements[stmt].source_info
+            } else {
+                block.terminator().source_info
+            };
+            let lint_root = match mir.source_scope_local_data {
+                mir::ClearCrossCrate::Set(ref ivs) => Some(ivs[source_info.scope].lint_root),
+                mir::ClearCrossCrate::Clear => None,
+            };
+            frames.push(FrameInfo { span, location, lint_root });
         }
         trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
         (frames, self.tcx.span)
-    }
-
-    pub fn report(&self, e: &mut EvalError, as_err: bool, explicit_span: Option<Span>) {
-        match e.kind {
-            EvalErrorKind::Layout(_) |
-            EvalErrorKind::TypeckError => return,
-            _ => {},
-        }
-        if let Some(ref mut backtrace) = e.backtrace {
-            let mut trace_text = "\n\nAn error occurred in miri:\n".to_string();
-            backtrace.resolve();
-            write!(trace_text, "backtrace frames: {}\n", backtrace.frames().len()).unwrap();
-            'frames: for (i, frame) in backtrace.frames().iter().enumerate() {
-                if frame.symbols().is_empty() {
-                    write!(trace_text, "{}: no symbols\n", i).unwrap();
-                }
-                for symbol in frame.symbols() {
-                    write!(trace_text, "{}: ", i).unwrap();
-                    if let Some(name) = symbol.name() {
-                        write!(trace_text, "{}\n", name).unwrap();
-                    } else {
-                        write!(trace_text, "<unknown>\n").unwrap();
-                    }
-                    write!(trace_text, "\tat ").unwrap();
-                    if let Some(file_path) = symbol.filename() {
-                        write!(trace_text, "{}", file_path.display()).unwrap();
-                    } else {
-                        write!(trace_text, "<unknown_file>").unwrap();
-                    }
-                    if let Some(line) = symbol.lineno() {
-                        write!(trace_text, ":{}\n", line).unwrap();
-                    } else {
-                        write!(trace_text, "\n").unwrap();
-                    }
-                }
-            }
-            error!("{}", trace_text);
-        }
-        if let Some(frame) = self.stack().last() {
-            let block = &frame.mir.basic_blocks()[frame.block];
-            let span = explicit_span.unwrap_or_else(|| if frame.stmt < block.statements.len() {
-                block.statements[frame.stmt].source_info.span
-            } else {
-                block.terminator().source_info.span
-            });
-            trace!("reporting const eval failure at {:?}", span);
-            let mut err = if as_err {
-                ::rustc::middle::const_val::struct_error(*self.tcx, span, "constant evaluation error")
-            } else {
-                let node_id = self
-                    .stack()
-                    .iter()
-                    .rev()
-                    .filter_map(|frame| self.tcx.hir.as_local_node_id(frame.instance.def_id()))
-                    .next()
-                    .expect("some part of a failing const eval must be local");
-                self.tcx.struct_span_lint_node(
-                    ::rustc::lint::builtin::CONST_ERR,
-                    node_id,
-                    span,
-                    "constant evaluation error",
-                )
-            };
-            let (frames, span) = self.generate_stacktrace(explicit_span);
-            err.span_label(span, e.to_string());
-            for FrameInfo { span, location } in frames {
-                err.span_note(span, &format!("inside call to `{}`", location));
-            }
-            err.emit();
-        } else {
-            self.tcx.sess.err(&e.to_string());
-        }
     }
 
     pub fn sign_extend(&self, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {

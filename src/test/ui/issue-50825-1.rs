@@ -10,7 +10,7 @@
 
 // run-pass
 // regression test for issue #50825
-// Make sure that the `impl` bound (): X<T = ()> is prefered over
+// Make sure that the `impl` bound (): X<T = ()> is preferred over
 // the (): X bound in the where clause.
 
 trait X {

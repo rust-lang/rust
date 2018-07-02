@@ -632,7 +632,7 @@ impl Step for Tidy {
         if !builder.config.vendor {
             cmd.arg("--no-vendor");
         }
-        if builder.config.quiet_tests {
+        if !builder.config.verbose_tests {
             cmd.arg("--quiet");
         }
 
@@ -1074,6 +1074,12 @@ impl Step for Compiletest {
         // Get test-args by striping suite path
         let mut test_args: Vec<&str> = paths
             .iter()
+            .map(|p| {
+                match p.strip_prefix(".") {
+                    Ok(path) => path,
+                    Err(_) => p,
+                }
+            })
             .filter(|p| p.starts_with(suite_path) && p.is_file())
             .map(|p| p.strip_prefix(suite_path).unwrap().to_str().unwrap())
             .collect();
@@ -1086,7 +1092,7 @@ impl Step for Compiletest {
             cmd.arg("--verbose");
         }
 
-        if builder.config.quiet_tests {
+        if !builder.config.verbose_tests {
             cmd.arg("--quiet");
         }
 
@@ -1397,10 +1403,10 @@ fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) -> bool
     let test_args = builder.config.cmd.test_args().join(" ");
     cmd.arg("--test-args").arg(test_args);
 
-    if builder.config.quiet_tests {
-        try_run_quiet(builder, &mut cmd)
-    } else {
+    if builder.config.verbose_tests {
         try_run(builder, &mut cmd)
+    } else {
+        try_run_quiet(builder, &mut cmd)
     }
 }
 
@@ -1632,7 +1638,7 @@ impl Step for Crate {
         cargo.arg("--");
         cargo.args(&builder.config.cmd.test_args());
 
-        if builder.config.quiet_tests {
+        if !builder.config.verbose_tests {
             cargo.arg("--quiet");
         }
 
@@ -1742,7 +1748,7 @@ impl Step for CrateRustdoc {
         cargo.arg("--");
         cargo.args(&builder.config.cmd.test_args());
 
-        if builder.config.quiet_tests {
+        if !builder.config.verbose_tests {
             cargo.arg("--quiet");
         }
 
@@ -1921,6 +1927,9 @@ impl Step for Bootstrap {
             cmd.arg("--no-fail-fast");
         }
         cmd.arg("--").args(&builder.config.cmd.test_args());
+        // rustbuild tests are racy on directory creation so just run them one at a time.
+        // Since there's not many this shouldn't be a problem.
+        cmd.arg("--test-threads=1");
         try_run(builder, &mut cmd);
     }
 

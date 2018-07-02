@@ -113,12 +113,12 @@ pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
 ///
 /// [`repeat_with`]: fn.repeat_with.html
 #[derive(Copy, Clone, Debug)]
-#[unstable(feature = "iterator_repeat_with", issue = "48169")]
+#[stable(feature = "iterator_repeat_with", since = "1.28.0")]
 pub struct RepeatWith<F> {
     repeater: F
 }
 
-#[unstable(feature = "iterator_repeat_with", issue = "48169")]
+#[stable(feature = "iterator_repeat_with", since = "1.28.0")]
 impl<A, F: FnMut() -> A> Iterator for RepeatWith<F> {
     type Item = A;
 
@@ -129,13 +129,7 @@ impl<A, F: FnMut() -> A> Iterator for RepeatWith<F> {
     fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
 }
 
-#[unstable(feature = "iterator_repeat_with", issue = "48169")]
-impl<A, F: FnMut() -> A> DoubleEndedIterator for RepeatWith<F> {
-    #[inline]
-    fn next_back(&mut self) -> Option<A> { self.next() }
-}
-
-#[unstable(feature = "iterator_repeat_with", issue = "48169")]
+#[stable(feature = "iterator_repeat_with", since = "1.28.0")]
 impl<A, F: FnMut() -> A> FusedIterator for RepeatWith<F> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -158,19 +152,15 @@ unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}
 ///
 /// [`repeat`]: fn.repeat.html
 ///
-/// An iterator produced by `repeat_with()` is a `DoubleEndedIterator`.
-/// It is important to note that reversing `repeat_with(f)` will produce
-/// the exact same sequence as the non-reversed iterator. In other words,
-/// `repeat_with(f).rev().collect::<Vec<_>>()` is equivalent to
-/// `repeat_with(f).collect::<Vec<_>>()`.
+/// An iterator produced by `repeat_with()` is not a `DoubleEndedIterator`.
+/// If you need `repeat_with()` to return a `DoubleEndedIterator`,
+/// please open a GitHub issue explaining your use case.
 ///
 /// # Examples
 ///
 /// Basic usage:
 ///
 /// ```
-/// #![feature(iterator_repeat_with)]
-///
 /// use std::iter;
 ///
 /// // let's assume we have some value of a type that is not `Clone`
@@ -191,8 +181,6 @@ unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}
 /// Using mutation and going finite:
 ///
 /// ```rust
-/// #![feature(iterator_repeat_with)]
-///
 /// use std::iter;
 ///
 /// // From the zeroth to the third power of two:
@@ -209,7 +197,7 @@ unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}
 /// assert_eq!(None, pow2.next());
 /// ```
 #[inline]
-#[unstable(feature = "iterator_repeat_with", issue = "48169")]
+#[stable(feature = "iterator_repeat_with", since = "1.28.0")]
 pub fn repeat_with<A, F: FnMut() -> A>(repeater: F) -> RepeatWith<F> {
     RepeatWith { repeater }
 }

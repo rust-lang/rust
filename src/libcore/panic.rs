@@ -35,7 +35,7 @@ use fmt;
 ///
 /// panic!("Normal panic");
 /// ```
-#[cfg_attr(not(stage0), lang = "panic_info")]
+#[lang = "panic_info"]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 #[derive(Debug)]
 pub struct PanicInfo<'a> {

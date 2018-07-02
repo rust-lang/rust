@@ -16,7 +16,7 @@ use codemap::{self, CodeMap, Spanned, respan};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
 use edition::Edition;
 use errors::{DiagnosticBuilder, DiagnosticId};
-use ext::expand::{self, Expansion, Invocation};
+use ext::expand::{self, AstFragment, Invocation};
 use ext::hygiene::{self, Mark, SyntaxContext};
 use fold::{self, Folder};
 use parse::{self, parser, DirectoryOwnership};
@@ -597,7 +597,11 @@ pub enum SyntaxExtension {
     MultiModifier(Box<MultiItemModifier + sync::Sync + sync::Send>),
 
     /// A function-like procedural macro. TokenStream -> TokenStream.
-    ProcMacro(Box<ProcMacro + sync::Sync + sync::Send>, Edition),
+    ProcMacro {
+        expander: Box<ProcMacro + sync::Sync + sync::Send>,
+        allow_internal_unstable: bool,
+        edition: Edition,
+    },
 
     /// An attribute-like procedural macro. TokenStream, TokenStream -> TokenStream.
     /// The first TokenSteam is the attribute, the second is the annotated item.
@@ -617,6 +621,9 @@ pub enum SyntaxExtension {
         /// Whether the contents of the macro can use `unsafe`
         /// without triggering the `unsafe_code` lint.
         allow_internal_unsafe: bool,
+        /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`)
+        /// for a given macro.
+        local_inner_macros: bool,
         /// The macro's feature name if it is unstable, and the stability feature
         unstable_feature: Option<(Symbol, u32)>,
         /// Edition of the crate in which the macro is defined
@@ -639,19 +646,22 @@ pub enum SyntaxExtension {
     BuiltinDerive(BuiltinDeriveFn),
 
     /// A declarative macro, e.g. `macro m() {}`.
-    ///
-    /// The second element is the definition site span.
-    DeclMacro(Box<TTMacroExpander + sync::Sync + sync::Send>, Option<(ast::NodeId, Span)>, Edition),
+    DeclMacro {
+        expander: Box<TTMacroExpander + sync::Sync + sync::Send>,
+        def_info: Option<(ast::NodeId, Span)>,
+        is_transparent: bool,
+        edition: Edition,
+    }
 }
 
 impl SyntaxExtension {
     /// Return which kind of macro calls this syntax extension.
     pub fn kind(&self) -> MacroKind {
         match *self {
-            SyntaxExtension::DeclMacro(..) |
+            SyntaxExtension::DeclMacro { .. } |
             SyntaxExtension::NormalTT { .. } |
             SyntaxExtension::IdentTT(..) |
-            SyntaxExtension::ProcMacro(..) =>
+            SyntaxExtension::ProcMacro { .. } =>
                 MacroKind::Bang,
             SyntaxExtension::MultiDecorator(..) |
             SyntaxExtension::MultiModifier(..) |
@@ -665,10 +675,17 @@ impl SyntaxExtension {
 
     pub fn is_modern(&self) -> bool {
         match *self {
-            SyntaxExtension::DeclMacro(..) |
-            SyntaxExtension::ProcMacro(..) |
+            SyntaxExtension::DeclMacro { .. } |
+            SyntaxExtension::ProcMacro { .. } |
             SyntaxExtension::AttrProcMacro(..) |
             SyntaxExtension::ProcMacroDerive(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_transparent(&self) -> bool {
+        match *self {
+            SyntaxExtension::DeclMacro { is_transparent, .. } => is_transparent,
             _ => false,
         }
     }
@@ -676,8 +693,8 @@ impl SyntaxExtension {
     pub fn edition(&self) -> Edition {
         match *self {
             SyntaxExtension::NormalTT { edition, .. } |
-            SyntaxExtension::DeclMacro(.., edition) |
-            SyntaxExtension::ProcMacro(.., edition) |
+            SyntaxExtension::DeclMacro { edition, .. } |
+            SyntaxExtension::ProcMacro { edition, .. } |
             SyntaxExtension::AttrProcMacro(.., edition) |
             SyntaxExtension::ProcMacroDerive(.., edition) => edition,
             // Unstable legacy stuff
@@ -697,7 +714,8 @@ pub trait Resolver {
     fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item>;
     fn is_whitelisted_legacy_custom_derive(&self, name: Name) -> bool;
 
-    fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion, derives: &[Mark]);
+    fn visit_ast_fragment_with_placeholders(&mut self, mark: Mark, fragment: &AstFragment,
+                                            derives: &[Mark]);
     fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>);
 
     fn resolve_imports(&mut self);
@@ -726,7 +744,8 @@ impl Resolver for DummyResolver {
     fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item> { item }
     fn is_whitelisted_legacy_custom_derive(&self, _name: Name) -> bool { false }
 
-    fn visit_expansion(&mut self, _invoc: Mark, _expansion: &Expansion, _derives: &[Mark]) {}
+    fn visit_ast_fragment_with_placeholders(&mut self, _invoc: Mark, _fragment: &AstFragment,
+                                            _derives: &[Mark]) {}
     fn add_builtin(&mut self, _ident: ast::Ident, _ext: Lrc<SyntaxExtension>) {}
 
     fn resolve_imports(&mut self) {}
@@ -828,7 +847,7 @@ impl<'a> ExtCtxt<'a> {
         let mut last_macro = None;
         loop {
             if ctxt.outer().expn_info().map_or(None, |info| {
-                if info.callee.name() == "include" {
+                if info.format.name() == "include" {
                     // Stop going up the backtrace once include! is encountered
                     return None;
                 }

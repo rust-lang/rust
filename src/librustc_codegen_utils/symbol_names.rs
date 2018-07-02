@@ -103,7 +103,7 @@ use rustc::hir::map::definitions::DefPathData;
 use rustc::ich::NodeIdHashingMode;
 use rustc::middle::weak_lang_items;
 use rustc::ty::item_path::{self, ItemPathBuffer, RootMode};
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::record_time;
@@ -424,7 +424,7 @@ pub fn sanitize(result: &mut String, s: &str) -> bool {
             '-' | ':' => result.push('.'),
 
             // These are legal symbols
-            'a'...'z' | 'A'...'Z' | '0'...'9' | '_' | '.' | '$' => result.push(c),
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '.' | '$' => result.push(c),
 
             _ => {
                 result.push('$');

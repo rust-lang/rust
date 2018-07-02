@@ -194,10 +194,12 @@ pub fn forget<T>(t: T) {
 /// u16 | 2
 /// u32 | 4
 /// u64 | 8
+/// u128 | 16
 /// i8 | 1
 /// i16 | 2
 /// i32 | 4
 /// i64 | 8
+/// i128 | 16
 /// f32 | 4
 /// f64 | 8
 /// char | 4
@@ -1117,6 +1119,12 @@ impl<'a, T: ?Sized + Unpin> PinMut<'a, T> {
     pub fn new(reference: &'a mut T) -> PinMut<'a, T> {
         PinMut { inner: reference }
     }
+
+    /// Get a mutable reference to the data inside of this `PinMut`.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub fn get_mut(this: PinMut<'a, T>) -> &'a mut T {
+        this.inner
+    }
 }
 
 
@@ -1148,21 +1156,21 @@ impl<'a, T: ?Sized> PinMut<'a, T> {
     /// the data out of the mutable reference you receive when you call this
     /// function.
     #[unstable(feature = "pin", issue = "49150")]
-    pub unsafe fn get_mut(this: PinMut<'a, T>) -> &'a mut T {
+    pub unsafe fn get_mut_unchecked(this: PinMut<'a, T>) -> &'a mut T {
         this.inner
     }
 
     /// Construct a new pin by mapping the interior value.
     ///
-    /// For example, if you  wanted to get a `PinMut` of a field of something, you
-    /// could use this to get access to that field in one line of code.
+    /// For example, if you  wanted to get a `PinMut` of a field of something,
+    /// you could use this to get access to that field in one line of code.
     ///
     /// This function is unsafe. You must guarantee that the data you return
     /// will not move so long as the argument value does not move (for example,
     /// because it is one of the fields of that value), and also that you do
     /// not move out of the argument you receive to the interior function.
     #[unstable(feature = "pin", issue = "49150")]
-    pub unsafe fn map<U, F>(this: PinMut<'a, T>, f: F) -> PinMut<'a, U> where
+    pub unsafe fn map_unchecked<U, F>(this: PinMut<'a, T>, f: F) -> PinMut<'a, U> where
         F: FnOnce(&mut T) -> &mut U
     {
         PinMut { inner: f(this.inner) }

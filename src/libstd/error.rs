@@ -23,13 +23,13 @@
 // coherence challenge (e.g., specialization, neg impls, etc) we can
 // reconsider what crate these items belong in.
 
+use alloc::{AllocErr, LayoutErr, CannotReallocInPlace};
 use any::TypeId;
 use borrow::Cow;
 use cell;
 use char;
 use core::array;
 use fmt::{self, Debug, Display};
-use heap::{AllocErr, LayoutErr, CannotReallocInPlace};
 use mem::transmute;
 use num;
 use str;
@@ -49,6 +49,7 @@ use string;
 ///
 /// [`Result<T, E>`]: ../result/enum.Result.html
 /// [`Display`]: ../fmt/trait.Display.html
+/// [`Debug`]: ../fmt/trait.Debug.html
 /// [`cause`]: trait.Error.html#method.cause
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Error: Debug + Display {

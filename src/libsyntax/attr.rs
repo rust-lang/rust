@@ -17,7 +17,7 @@ pub use self::IntType::*;
 use ast;
 use ast::{AttrId, Attribute, Name, Ident, Path, PathSegment};
 use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
-use ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind};
+use ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind, GenericParam};
 use codemap::{BytePos, Spanned, respan, dummy_spanned};
 use syntax_pos::Span;
 use errors::{Applicability, Handler};
@@ -1441,6 +1441,17 @@ impl HasAttrs for Stmt {
     fn attrs(&self) -> &[ast::Attribute] { self.node.attrs() }
     fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self {
         Stmt { id: self.id, node: self.node.map_attrs(f), span: self.span }
+    }
+}
+
+impl HasAttrs for GenericParam {
+    fn attrs(&self) -> &[ast::Attribute] {
+        &self.attrs
+    }
+
+    fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(mut self, f: F) -> Self {
+        self.attrs = self.attrs.map_attrs(f);
+        self
     }
 }
 

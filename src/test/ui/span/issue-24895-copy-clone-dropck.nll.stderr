@@ -8,6 +8,8 @@ LL | }
    | |
    | borrowed value only lives until here
    | borrow later used here, when `d2` is dropped
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
 
 error: aborting due to previous error
 

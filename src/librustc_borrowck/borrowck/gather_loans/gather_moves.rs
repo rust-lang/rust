@@ -109,10 +109,10 @@ pub fn gather_move_from_pat<'a, 'c, 'tcx: 'c>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                               cmt: &'c mc::cmt_<'tcx>) {
     let source = get_pattern_source(bccx.tcx,move_pat);
     let pat_span_path_opt = match move_pat.node {
-        PatKind::Binding(_, _, ref path1, _) => {
+        PatKind::Binding(_, _, ident, _) => {
             Some(MovePlace {
                      span: move_pat.span,
-                     name: path1.node,
+                     name: ident.name,
                      pat_source: source,
                  })
         }

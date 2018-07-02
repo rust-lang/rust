@@ -1230,7 +1230,7 @@ impl<T> [T] {
     /// assert_eq!(s.binary_search(&4),   Err(7));
     /// assert_eq!(s.binary_search(&100), Err(13));
     /// let r = s.binary_search(&1);
-    /// assert!(match r { Ok(1...4) => true, _ => false, });
+    /// assert!(match r { Ok(1..=4) => true, _ => false, });
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn binary_search(&self, x: &T) -> Result<usize, usize>
@@ -1268,7 +1268,7 @@ impl<T> [T] {
     /// assert_eq!(s.binary_search_by(|probe| probe.cmp(&seek)), Err(13));
     /// let seek = 1;
     /// let r = s.binary_search_by(|probe| probe.cmp(&seek));
-    /// assert!(match r { Ok(1...4) => true, _ => false, });
+    /// assert!(match r { Ok(1..=4) => true, _ => false, });
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1325,7 +1325,7 @@ impl<T> [T] {
     /// assert_eq!(s.binary_search_by_key(&4, |&(a,b)| b),   Err(7));
     /// assert_eq!(s.binary_search_by_key(&100, |&(a,b)| b), Err(13));
     /// let r = s.binary_search_by_key(&1, |&(a,b)| b);
-    /// assert!(match r { Ok(1...4) => true, _ => false, });
+    /// assert!(match r { Ok(1..=4) => true, _ => false, });
     /// ```
     #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
     #[inline]
@@ -1642,8 +1642,8 @@ impl<T> [T] {
     /// [`split_at_mut`]: #method.split_at_mut
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     pub fn copy_from_slice(&mut self, src: &[T]) where T: Copy {
-        assert!(self.len() == src.len(),
-                "destination and source slices have different lengths");
+        assert_eq!(self.len(), src.len(),
+                   "destination and source slices have different lengths");
         unsafe {
             ptr::copy_nonoverlapping(
                 src.as_ptr(), self.as_mut_ptr(), self.len());
@@ -1708,7 +1708,6 @@ impl<T> [T] {
     }
 
     /// Function to calculate lenghts of the middle and trailing slice for `align_to{,_mut}`.
-    #[cfg(not(stage0))]
     fn align_to_offsets<U>(&self) -> (usize, usize) {
         // What we gonna do about `rest` is figure out what multiple of `U`s we can put in a
         // lowest number of `T`s. And how many `T`s we need for each such "multiple".
@@ -1798,7 +1797,6 @@ impl<T> [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_align_to", issue = "44488")]
-    #[cfg(not(stage0))]
     pub unsafe fn align_to<U>(&self) -> (&[T], &[U], &[T]) {
         // Note that most of this function will be constant-evaluated,
         if ::mem::size_of::<U>() == 0 || ::mem::size_of::<T>() == 0 {
@@ -1851,7 +1849,6 @@ impl<T> [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_align_to", issue = "44488")]
-    #[cfg(not(stage0))]
     pub unsafe fn align_to_mut<U>(&mut self) -> (&mut [T], &mut [U], &mut [T]) {
         // Note that most of this function will be constant-evaluated,
         if ::mem::size_of::<U>() == 0 || ::mem::size_of::<T>() == 0 {
@@ -3873,9 +3870,11 @@ unsafe impl<'a, T> TrustedRandomAccess for ExactChunksMut<'a, T> {
 /// valid for `len` elements, nor whether the lifetime inferred is a suitable
 /// lifetime for the returned slice.
 ///
-/// `p` must be non-null and aligned, even for zero-length slices, as is
-/// required for all references. However, for zero-length slices, `p` can be
-/// a bogus non-dereferencable pointer such as [`NonNull::dangling()`].
+/// `data` must be non-null and aligned, even for zero-length slices. One
+/// reason for this is that enum layout optimizations may rely on references
+/// (including slices of any length) being aligned and non-null to distinguish
+/// them from other data. You can obtain a pointer that is usable as `data`
+/// for zero-length slices using [`NonNull::dangling()`].
 ///
 /// # Caveat
 ///
@@ -3910,8 +3909,8 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 ///
 /// This function is unsafe for the same reasons as `from_raw_parts`, as well
 /// as not being able to provide a non-aliasing guarantee of the returned
-/// mutable slice. `p` must be non-null and aligned even for zero-length slices as with
-/// `from_raw_parts`.
+/// mutable slice. `data` must be non-null and aligned even for zero-length
+/// slices as with `from_raw_parts`.
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {

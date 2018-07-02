@@ -33,23 +33,23 @@ fn main() {
     let &&x = &&(&1isize as &T);
 
     // n == m
-    let &x = &1isize as &T;      //~ ERROR type `&T` cannot be dereferenced
-    let &&x = &(&1isize as &T);  //~ ERROR type `&T` cannot be dereferenced
-    let box x = box 1isize as Box<T>; //~ ERROR type `std::boxed::Box<T>` cannot be dereferenced
+    let &x = &1isize as &T;      //~ ERROR type `&dyn T` cannot be dereferenced
+    let &&x = &(&1isize as &T);  //~ ERROR type `&dyn T` cannot be dereferenced
+    let box x = box 1isize as Box<T>; //~ ERROR type `std::boxed::Box<dyn T>` cannot be dereferenced
 
     // n > m
     let &&x = &1isize as &T;
     //~^ ERROR mismatched types
-    //~| expected type `T`
+    //~| expected type `dyn T`
     //~| found type `&_`
     //~| expected trait T, found reference
     let &&&x = &(&1isize as &T);
     //~^ ERROR mismatched types
-    //~| expected type `T`
+    //~| expected type `dyn T`
     //~| found type `&_`
     //~| expected trait T, found reference
     let box box x = box 1isize as Box<T>;
     //~^ ERROR mismatched types
-    //~| expected type `T`
+    //~| expected type `dyn T`
     //~| found type `std::boxed::Box<_>`
 }

@@ -425,7 +425,7 @@ pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             let tcx = cx.tcx;
             let sig = substs.poly_sig(def_id, cx.tcx);
 
-            let env_region = ty::ReLateBound(ty::DebruijnIndex::INNERMOST, ty::BrEnv);
+            let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
             let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
 
             sig.map_bound(|sig| {

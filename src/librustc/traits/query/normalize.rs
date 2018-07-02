@@ -14,12 +14,8 @@
 
 use infer::{InferCtxt, InferOk};
 use infer::at::At;
-use infer::canonical::{Canonical, Canonicalize, QueryResult};
-use middle::const_val::ConstVal;
-use mir::interpret::GlobalId;
-use rustc_data_structures::sync::Lrc;
+use mir::interpret::{GlobalId, ConstValue};
 use traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
-use traits::query::CanonicalProjectionGoal;
 use traits::project::Normalized;
 use ty::{self, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder};
@@ -123,6 +119,11 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                         let generic_ty = self.tcx().type_of(def_id);
                         let concrete_ty = generic_ty.subst(self.tcx(), substs);
                         self.anon_depth += 1;
+                        if concrete_ty == ty {
+                            bug!("infinite recursion generic_ty: {:#?}, substs: {:#?}, \
+                                  concrete_ty: {:#?}, ty: {:#?}", generic_ty, substs, concrete_ty,
+                                  ty);
+                        }
                         let folded_ty = self.fold_ty(concrete_ty);
                         self.anon_depth -= 1;
                         folded_ty
@@ -158,7 +159,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                             return ty;
                         }
 
-                        match self.infcx.instantiate_query_result(
+                        match self.infcx.instantiate_query_result_and_region_obligations(
                             self.cause,
                             self.param_env,
                             &orig_values,
@@ -193,7 +194,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
     }
 
     fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ConstVal::Unevaluated(def_id, substs) = constant.val {
+        if let ConstValue::Unevaluated(def_id, substs) = constant.val {
             let tcx = self.infcx.tcx.global_tcx();
             if let Some(param_env) = self.tcx().lift_to_global(&self.param_env) {
                 if substs.needs_infer() || substs.has_skol() {
@@ -243,29 +244,6 @@ BraceStructLiftImpl! {
     impl<'a, 'tcx> Lift<'tcx> for NormalizationResult<'a> {
         type Lifted = NormalizationResult<'tcx>;
         normalized_ty
-    }
-}
-
-impl<'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for ty::ParamEnvAnd<'tcx, ty::ProjectionTy<'tcx>> {
-    type Canonicalized = CanonicalProjectionGoal<'gcx>;
-
-    fn intern(
-        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
-        value: Canonical<'gcx, Self::Lifted>,
-    ) -> Self::Canonicalized {
-        value
-    }
-}
-
-impl<'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for QueryResult<'tcx, NormalizationResult<'tcx>> {
-    // we ought to intern this, but I'm too lazy just now
-    type Canonicalized = Lrc<Canonical<'gcx, QueryResult<'gcx, NormalizationResult<'gcx>>>>;
-
-    fn intern(
-        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
-        value: Canonical<'gcx, Self::Lifted>,
-    ) -> Self::Canonicalized {
-        Lrc::new(value)
     }
 }
 

@@ -21,5 +21,5 @@ pub fn main() {
     let f: Fat<[isize; 3]> = Fat { ptr: [5, 6, 7] };
     let g: &Fat<[isize]> = &f;
     let h: &Fat<Fat<[isize]>> = &Fat { ptr: *g };
-    //~^ ERROR `[isize]: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
 }

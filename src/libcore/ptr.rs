@@ -1243,25 +1243,12 @@ impl<T: ?Sized> *const T {
     /// # } }
     /// ```
     #[unstable(feature = "align_offset", issue = "44488")]
-    #[cfg(not(stage0))]
     pub fn align_offset(self, align: usize) -> usize where T: Sized {
         if !align.is_power_of_two() {
             panic!("align_offset: align is not a power-of-two");
         }
         unsafe {
             align_offset(self, align)
-        }
-    }
-
-    /// definitely docs.
-    #[unstable(feature = "align_offset", issue = "44488")]
-    #[cfg(stage0)]
-    pub fn align_offset(self, align: usize) -> usize where T: Sized {
-        if !align.is_power_of_two() {
-            panic!("align_offset: align is not a power-of-two");
-        }
-        unsafe {
-            intrinsics::align_offset(self as *const (), align)
         }
     }
 }
@@ -2308,25 +2295,12 @@ impl<T: ?Sized> *mut T {
     /// # } }
     /// ```
     #[unstable(feature = "align_offset", issue = "44488")]
-    #[cfg(not(stage0))]
     pub fn align_offset(self, align: usize) -> usize where T: Sized {
         if !align.is_power_of_two() {
             panic!("align_offset: align is not a power-of-two");
         }
         unsafe {
             align_offset(self, align)
-        }
-    }
-
-    /// definitely docs.
-    #[unstable(feature = "align_offset", issue = "44488")]
-    #[cfg(stage0)]
-    pub fn align_offset(self, align: usize) -> usize where T: Sized {
-        if !align.is_power_of_two() {
-            panic!("align_offset: align is not a power-of-two");
-        }
-        unsafe {
-            intrinsics::align_offset(self as *const (), align)
         }
     }
 }
@@ -2346,7 +2320,6 @@ impl<T: ?Sized> *mut T {
 ///
 /// Any questions go to @nagisa.
 #[lang="align_offset"]
-#[cfg(not(stage0))]
 pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     /// Calculate multiplicative modular inverse of `x` modulo `m`.
     ///
@@ -2920,14 +2893,6 @@ impl<T: ?Sized> NonNull<T> {
     pub fn cast<U>(self) -> NonNull<U> {
         unsafe {
             NonNull::new_unchecked(self.as_ptr() as *mut U)
-        }
-    }
-
-    /// Cast to an `Opaque` pointer
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn as_opaque(self) -> NonNull<::alloc::Opaque> {
-        unsafe {
-            NonNull::new_unchecked(self.as_ptr() as _)
         }
     }
 }

@@ -189,6 +189,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self,
         region: ty::Region<'tcx>,
     ) -> (String, Option<Span>) {
+        let cm = self.sess.codemap();
+
         let scope = region.free_region_binding_scope(self);
         let node = self.hir.as_local_node_id(scope).unwrap_or(DUMMY_NODE_ID);
         let unknown;
@@ -219,10 +221,26 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
         };
         let (prefix, span) = match *region {
-            ty::ReEarlyBound(ref br) => (
-                format!("the lifetime {} as defined on", br.name),
-                self.sess.codemap().def_span(self.hir.span(node)),
-            ),
+            ty::ReEarlyBound(ref br) => {
+                let mut sp = cm.def_span(self.hir.span(node));
+                if let Some(param) = self.hir.get_generics(scope).and_then(|generics| {
+                    generics.get_named(&br.name)
+                }) {
+                    sp = param.span;
+                }
+                (format!("the lifetime {} as defined on", br.name), sp)
+            }
+            ty::ReFree(ty::FreeRegion {
+                bound_region: ty::BoundRegion::BrNamed(_, ref name), ..
+            }) => {
+                let mut sp = cm.def_span(self.hir.span(node));
+                if let Some(param) = self.hir.get_generics(scope).and_then(|generics| {
+                    generics.get_named(&name)
+                }) {
+                    sp = param.span;
+                }
+                (format!("the lifetime {} as defined on", name), sp)
+            }
             ty::ReFree(ref fr) => match fr.bound_region {
                 ty::BrAnon(idx) => (
                     format!("the anonymous lifetime #{} defined on", idx + 1),
@@ -234,7 +252,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 ),
                 _ => (
                     format!("the lifetime {} as defined on", fr.bound_region),
-                    self.sess.codemap().def_span(self.hir.span(node)),
+                    cm.def_span(self.hir.span(node)),
                 ),
             },
             _ => bug!(),
@@ -1036,15 +1054,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             // Get the `hir::TyParam` to verify whether it already has any bounds.
                             // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                             // instead we suggest `T: 'a + 'b` in that case.
-                            let has_lifetimes = if let hir_map::NodeTyParam(ref p) = hir.get(id) {
-                                p.bounds.len() > 0
-                            } else {
-                                false
-                            };
+                            let mut has_bounds = false;
+                            if let hir_map::NodeGenericParam(ref param) = hir.get(id) {
+                                has_bounds = !param.bounds.is_empty();
+                            }
                             let sp = hir.span(id);
                             // `sp` only covers `T`, change it so that it covers
                             // `T:` when appropriate
-                            let sp = if has_lifetimes {
+                            let sp = if has_bounds {
                                 sp.to(self.tcx
                                     .sess
                                     .codemap()
@@ -1052,7 +1069,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             } else {
                                 sp
                             };
-                            (sp, has_lifetimes)
+                            (sp, has_bounds)
                         })
                     } else {
                         None
@@ -1256,7 +1273,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             infer::LateBoundRegion(_, br, infer::AssocTypeProjection(def_id)) => format!(
                 " for lifetime parameter {}in trait containing associated type `{}`",
                 br_string(br),
-                self.tcx.associated_item(def_id).name
+                self.tcx.associated_item(def_id).ident
             ),
             infer::EarlyBoundRegion(_, name) => format!(" for lifetime parameter `{}`", name),
             infer::BoundRegionInCoherence(name) => {

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(global_allocator)]
 
 #[global_allocator]
 fn foo() {} //~ ERROR: allocators must be statics

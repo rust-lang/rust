@@ -10,7 +10,7 @@
 
 //! Trait Resolution. See [rustc guide] for more info on how this works.
 //!
-//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/trait-resolution.html
+//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/traits/resolution.html
 
 pub use self::SelectionError::*;
 pub use self::FulfillmentErrorCode::*;
@@ -22,12 +22,11 @@ use hir;
 use hir::def_id::DefId;
 use infer::outlives::env::OutlivesEnvironment;
 use middle::region;
-use middle::const_val::ConstEvalErr;
+use mir::interpret::ConstEvalErr;
 use ty::subst::Substs;
 use ty::{self, AdtKind, Slice, Ty, TyCtxt, GenericParamDefKind, ToPredicate};
 use ty::error::{ExpectedFound, TypeError};
 use ty::fold::{TypeFolder, TypeFoldable, TypeVisitor};
-use infer::canonical::{Canonical, Canonicalize};
 use infer::{InferCtxt};
 
 use rustc_data_structures::sync::Lrc;
@@ -48,7 +47,7 @@ pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};
 pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError};
 pub use self::specialize::{OverlapError, specialization_graph, translate_substs};
 pub use self::specialize::{SpecializesCache, find_associated_item};
-pub use self::engine::TraitEngine;
+pub use self::engine::{TraitEngine, TraitEngineExt};
 pub use self::util::elaborate_predicates;
 pub use self::util::supertraits;
 pub use self::util::Supertraits;
@@ -269,7 +268,9 @@ pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
 pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 
 /// The following types:
-/// * `WhereClauseAtom`
+/// * `WhereClause`
+/// * `WellFormed`
+/// * `FromEnv`
 /// * `DomainGoal`
 /// * `Goal`
 /// * `Clause`
@@ -277,21 +278,31 @@ pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 /// logic programming clauses. They are part of the interface
 /// for the chalk SLG solver.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum WhereClauseAtom<'tcx> {
+pub enum WhereClause<'tcx> {
     Implemented(ty::TraitPredicate<'tcx>),
     ProjectionEq(ty::ProjectionPredicate<'tcx>),
+    RegionOutlives(ty::RegionOutlivesPredicate<'tcx>),
+    TypeOutlives(ty::TypeOutlivesPredicate<'tcx>),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum WellFormed<'tcx> {
+    Trait(ty::TraitPredicate<'tcx>),
+    Ty(Ty<'tcx>),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum FromEnv<'tcx> {
+    Trait(ty::TraitPredicate<'tcx>),
+    Ty(Ty<'tcx>),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum DomainGoal<'tcx> {
-    Holds(WhereClauseAtom<'tcx>),
-    WellFormed(WhereClauseAtom<'tcx>),
-    FromEnv(WhereClauseAtom<'tcx>),
-    WellFormedTy(Ty<'tcx>),
+    Holds(WhereClause<'tcx>),
+    WellFormed(WellFormed<'tcx>),
+    FromEnv(FromEnv<'tcx>),
     Normalize(ty::ProjectionPredicate<'tcx>),
-    FromEnvTy(Ty<'tcx>),
-    RegionOutlives(ty::RegionOutlivesPredicate<'tcx>),
-    TypeOutlives(ty::TypeOutlivesPredicate<'tcx>),
 }
 
 pub type PolyDomainGoal<'tcx> = ty::Binder<DomainGoal<'tcx>>;
@@ -314,24 +325,24 @@ pub enum Goal<'tcx> {
 
 pub type Goals<'tcx> = &'tcx Slice<Goal<'tcx>>;
 
+impl<'tcx> DomainGoal<'tcx> {
+    pub fn into_goal(self) -> Goal<'tcx> {
+        Goal::DomainGoal(self)
+    }
+}
+
 impl<'tcx> Goal<'tcx> {
     pub fn from_poly_domain_goal<'a>(
         domain_goal: PolyDomainGoal<'tcx>,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ) -> Goal<'tcx> {
         match domain_goal.no_late_bound_regions() {
-            Some(p) => p.into(),
+            Some(p) => p.into_goal(),
             None => Goal::Quantified(
                 QuantifierKind::Universal,
-                domain_goal.map_bound(|p| tcx.mk_goal(Goal::from(p)))
+                domain_goal.map_bound(|p| tcx.mk_goal(p.into_goal()))
             ),
         }
-    }
-}
-
-impl<'tcx> From<DomainGoal<'tcx>> for Goal<'tcx> {
-    fn from(domain_goal: DomainGoal<'tcx>) -> Self {
-        Goal::DomainGoal(domain_goal)
     }
 }
 
@@ -370,7 +381,7 @@ pub enum SelectionError<'tcx> {
                                 ty::PolyTraitRef<'tcx>,
                                 ty::error::TypeError<'tcx>),
     TraitNotObjectSafe(DefId),
-    ConstEvalFailure(ConstEvalErr<'tcx>),
+    ConstEvalFailure(Lrc<ConstEvalErr<'tcx>>),
     Overflow,
 }
 
@@ -648,12 +659,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let predicates: Vec<_> =
         util::elaborate_predicates(tcx, unnormalized_env.caller_bounds.to_vec())
-        .filter(|p| !p.is_global() || p.has_late_bound_regions()) // (*)
         .collect();
-
-    // (*) FIXME(#50825) This shouldn't be needed.
-    // Removing the bounds here stopped them from being prefered in selection.
-    // See the issue-50825 ui tests for examples
 
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}",
            predicates);
@@ -996,8 +1002,8 @@ impl<'tcx> TraitObligation<'tcx> {
     }
 }
 
-pub fn provide(providers: &mut ty::maps::Providers) {
-    *providers = ty::maps::Providers {
+pub fn provide(providers: &mut ty::query::Providers) {
+    *providers = ty::query::Providers {
         is_object_safe: object_safety::is_object_safe_provider,
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
@@ -1006,18 +1012,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         substitute_normalize_and_test_predicates,
         ..*providers
     };
-}
-
-impl<'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for ty::ParamEnvAnd<'tcx, Goal<'tcx>> {
-    // we ought to intern this, but I'm too lazy just now
-    type Canonicalized = Canonical<'gcx, ty::ParamEnvAnd<'gcx, Goal<'gcx>>>;
-
-    fn intern(
-        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
-        value: Canonical<'gcx, Self::Lifted>,
-    ) -> Self::Canonicalized {
-        value
-    }
 }
 
 pub trait ExClauseFold<'tcx>
@@ -1045,21 +1039,4 @@ where
         ex_clause: &chalk_engine::ExClause<Self>,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
     ) -> Option<Self::LiftedExClause>;
-}
-
-impl<'gcx: 'tcx, 'tcx, C> Canonicalize<'gcx, 'tcx> for chalk_engine::ExClause<C>
-where
-    C: chalk_engine::context::Context + Clone,
-    C: ExClauseLift<'gcx> + ExClauseFold<'tcx>,
-    C::Substitution: Clone,
-    C::RegionConstraint: Clone,
-{
-    type Canonicalized = Canonical<'gcx, C::LiftedExClause>;
-
-    fn intern(
-        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
-        value: Canonical<'gcx, Self::Lifted>,
-    ) -> Self::Canonicalized {
-        value
-    }
 }

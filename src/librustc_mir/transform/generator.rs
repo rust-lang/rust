@@ -303,7 +303,7 @@ fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
         source_info,
         visibility_scope: source_info.scope,
         internal: false,
-        is_user_variable: false,
+        is_user_variable: None,
     };
     let new_ret_local = Local::new(mir.local_decls.len());
     mir.local_decls.push(new_ret);
@@ -644,7 +644,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
         source_info,
         visibility_scope: source_info.scope,
         internal: false,
-        is_user_variable: false,
+        is_user_variable: None,
     };
 
     make_generator_state_argument_indirect(tcx, def_id, &mut mir);
@@ -660,7 +660,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
         source_info,
         visibility_scope: source_info.scope,
         internal: false,
-        is_user_variable: false,
+        is_user_variable: None,
     };
 
     no_landing_pads(tcx, &mut mir);

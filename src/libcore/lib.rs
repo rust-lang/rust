@@ -89,8 +89,6 @@
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(intrinsics)]
-#![feature(iterator_flatten)]
-#![feature(iterator_repeat_with)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
 #![feature(never_type)]
@@ -207,16 +205,13 @@ pub mod time;
 
 pub mod unicode;
 
+/* Async */
+pub mod future;
+pub mod task;
+
 /* Heap memory allocator trait */
 #[allow(missing_docs)]
 pub mod alloc;
-
-#[unstable(feature = "allocator_api", issue = "32838")]
-#[rustc_deprecated(since = "1.27.0", reason = "module renamed to `alloc`")]
-/// Use the `alloc` module instead.
-pub mod heap {
-    pub use alloc::*;
-}
 
 // note: does not need to be public
 mod iter_private;

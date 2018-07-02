@@ -27,7 +27,7 @@ fn main() {
                            //~| WARNING hard error
                            //~| ERROR floating-point types cannot be used in patterns
                            //~| WARNING hard error
-        39.0 ... 70.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+        39.0 ..= 70.0 => {}, //~ ERROR floating-point types cannot be used in patterns
                              //~| WARNING hard error
                              //~| ERROR floating-point types cannot be used in patterns
                              //~| WARNING hard error

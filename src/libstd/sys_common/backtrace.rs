@@ -263,7 +263,7 @@ pub fn demangle(writer: &mut Write, mut s: &str, format: PrintFormat) -> io::Res
         let candidate = &s[i + llvm.len()..];
         let all_hex = candidate.chars().all(|c| {
             match c {
-                'A' ... 'F' | '0' ... '9' => true,
+                'A' ..= 'F' | '0' ..= '9' => true,
                 _ => false,
             }
         });

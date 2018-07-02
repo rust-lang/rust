@@ -212,7 +212,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             NodeBlock(n) => EntryBlock(parent, dep_node_index, n),
             NodeStructCtor(n) => EntryStructCtor(parent, dep_node_index, n),
             NodeLifetime(n) => EntryLifetime(parent, dep_node_index, n),
-            NodeTyParam(n) => EntryTyParam(parent, dep_node_index, n),
+            NodeGenericParam(n) => EntryGenericParam(parent, dep_node_index, n),
             NodeVisibility(n) => EntryVisibility(parent, dep_node_index, n),
             NodeLocal(n) => EntryLocal(parent, dep_node_index, n),
             NodeMacroDef(n) => EntryMacroDef(dep_node_index, n),
@@ -221,9 +221,9 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         // Make sure that the DepNode of some node coincides with the HirId
         // owner of that node.
         if cfg!(debug_assertions) {
-            let hir_id_owner = self.definitions.node_to_hir_id(id).owner;
+            let hir_id = self.definitions.node_to_hir_id(id);
 
-            if hir_id_owner != self.current_dep_node_owner {
+            if hir_id.owner != self.current_dep_node_owner {
                 let node_str = match self.definitions.opt_def_index(id) {
                     Some(def_index) => {
                         self.definitions.def_path(def_index).to_string_no_crate()
@@ -231,13 +231,17 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                     None => format!("{:?}", node)
                 };
 
+                if hir_id == ::hir::DUMMY_HIR_ID {
+                    debug!("Maybe you forgot to lower the node id {:?}?", id);
+                }
+
                 bug!("inconsistent DepNode for `{}`: \
                       current_dep_node_owner={}, hir_id.owner={}",
                     node_str,
                     self.definitions
                         .def_path(self.current_dep_node_owner)
                         .to_string_no_crate(),
-                    self.definitions.def_path(hir_id_owner).to_string_no_crate())
+                    self.definitions.def_path(hir_id.owner).to_string_no_crate())
             }
         }
 
@@ -347,14 +351,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_generic_param(&mut self, param: &'hir GenericParam) {
-        match *param {
-            GenericParam::Lifetime(ref ld) => {
-                self.insert(ld.lifetime.id, NodeLifetime(&ld.lifetime));
-            }
-            GenericParam::Type(ref ty_param) => {
-                self.insert(ty_param.id, NodeTyParam(ty_param));
-            }
-        }
+        self.insert(param.id, NodeGenericParam(param));
         intravisit::walk_generic_param(self, param);
     }
 
@@ -461,11 +458,11 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_vis(&mut self, visibility: &'hir Visibility) {
-        match *visibility {
-            Visibility::Public |
-            Visibility::Crate(_) |
-            Visibility::Inherited => {}
-            Visibility::Restricted { id, .. } => {
+        match visibility.node {
+            VisibilityKind::Public |
+            VisibilityKind::Crate(_) |
+            VisibilityKind::Inherited => {}
+            VisibilityKind::Restricted { id, .. } => {
                 self.insert(id, NodeVisibility(visibility));
                 self.with_parent(id, |this| {
                     intravisit::walk_vis(this, visibility);
@@ -502,7 +499,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         // map the actual nodes, not the duplicate ones in the *Ref.
         let TraitItemRef {
             id,
-            name: _,
+            ident: _,
             kind: _,
             span: _,
             defaultness: _,
@@ -516,7 +513,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         // map the actual nodes, not the duplicate ones in the *Ref.
         let ImplItemRef {
             id,
-            name: _,
+            ident: _,
             kind: _,
             span: _,
             vis: _,

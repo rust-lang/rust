@@ -366,9 +366,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         if let Some(k) = obligation.cause.span.compiler_desugaring_kind() {
-            let desugaring = k.as_symbol().as_str();
             flags.push(("from_desugaring".to_string(), None));
-            flags.push(("from_desugaring".to_string(), Some(desugaring.to_string())));
+            flags.push(("from_desugaring".to_string(), Some(k.name().to_string())));
         }
         let generics = self.tcx.generics_of(def_id);
         let self_ty = trait_ref.self_ty();
@@ -827,10 +826,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
 
             ConstEvalFailure(ref err) => {
-                if let ::middle::const_val::ErrKind::TypeckError = *err.kind {
-                    return;
+                match err.struct_error(
+                    self.tcx.at(span),
+                    "could not evaluate constant expression",
+                ) {
+                    Some(err) => err,
+                    None => return,
                 }
-                err.struct_error(self.tcx, span, "constant expression")
             }
 
             Overflow => {
@@ -961,7 +963,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ..
             }) => {
                 (self.tcx.sess.codemap().def_span(span), decl.inputs.iter()
-                        .map(|arg| match arg.clone().into_inner().node {
+                        .map(|arg| match arg.clone().node {
                     hir::TyTup(ref tys) => ArgKind::Tuple(
                         Some(arg.span),
                         tys.iter()

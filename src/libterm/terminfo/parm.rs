@@ -215,7 +215,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                             return Err("stack is empty".to_string());
                         }
                     }
-                    ':' | '#' | ' ' | '.' | '0'...'9' => {
+                    ':' | '#' | ' ' | '.' | '0'..='9' => {
                         let mut flags = Flags::new();
                         let mut fstate = FormatStateFlags;
                         match cur {
@@ -223,7 +223,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                             '#' => flags.alternate = true,
                             ' ' => flags.space = true,
                             '.' => fstate = FormatStatePrecision,
-                            '0'...'9' => {
+                            '0'..='9' => {
                                 flags.width = cur as usize - '0' as usize;
                                 fstate = FormatStateWidth;
                             }
@@ -337,14 +337,14 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                     (FormatStateFlags, ' ') => {
                         flags.space = true;
                     }
-                    (FormatStateFlags, '0'...'9') => {
+                    (FormatStateFlags, '0'..='9') => {
                         flags.width = cur as usize - '0' as usize;
                         *fstate = FormatStateWidth;
                     }
                     (FormatStateFlags, '.') => {
                         *fstate = FormatStatePrecision;
                     }
-                    (FormatStateWidth, '0'...'9') => {
+                    (FormatStateWidth, '0'..='9') => {
                         let old = flags.width;
                         flags.width = flags.width * 10 + (cur as usize - '0' as usize);
                         if flags.width < old {
@@ -354,7 +354,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                     (FormatStateWidth, '.') => {
                         *fstate = FormatStatePrecision;
                     }
-                    (FormatStatePrecision, '0'...'9') => {
+                    (FormatStatePrecision, '0'..='9') => {
                         let old = flags.precision;
                         flags.precision = flags.precision * 10 + (cur as usize - '0' as usize);
                         if flags.precision < old {

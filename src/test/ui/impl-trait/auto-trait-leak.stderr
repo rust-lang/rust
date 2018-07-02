@@ -1,60 +1,29 @@
-error[E0277]: the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` is not satisfied in `impl std::ops::Fn<(i32,)>`
-  --> $DIR/auto-trait-leak.rs:25:5
-   |
-LL |     send(before());
-   |     ^^^^ `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
-   |
-   = help: within `impl std::ops::Fn<(i32,)>`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<std::cell::Cell<i32>>`
-   = note: required because it appears within the type `[closure@$DIR/auto-trait-leak.rs:19:5: 19:22 p:std::rc::Rc<std::cell::Cell<i32>>]`
-   = note: required because it appears within the type `impl std::ops::Fn<(i32,)>`
-note: required by `send`
-  --> $DIR/auto-trait-leak.rs:22:1
-   |
-LL | fn send<T: Send>(_: T) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0277]: the trait bound `std::rc::Rc<std::cell::Cell<i32>>: std::marker::Send` is not satisfied in `impl std::ops::Fn<(i32,)>`
-  --> $DIR/auto-trait-leak.rs:28:5
-   |
-LL |     send(after());
-   |     ^^^^ `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
-   |
-   = help: within `impl std::ops::Fn<(i32,)>`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<std::cell::Cell<i32>>`
-   = note: required because it appears within the type `[closure@$DIR/auto-trait-leak.rs:36:5: 36:22 p:std::rc::Rc<std::cell::Cell<i32>>]`
-   = note: required because it appears within the type `impl std::ops::Fn<(i32,)>`
-note: required by `send`
-  --> $DIR/auto-trait-leak.rs:22:1
-   |
-LL | fn send<T: Send>(_: T) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0391]: cycle detected when processing `cycle1`
-  --> $DIR/auto-trait-leak.rs:42:1
+  --> $DIR/auto-trait-leak.rs:24:1
    |
 LL | fn cycle1() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: ...which requires evaluating trait selection obligation `impl std::clone::Clone: std::marker::Send`...
 note: ...which requires processing `cycle2::{{impl-Trait}}`...
-  --> $DIR/auto-trait-leak.rs:49:16
+  --> $DIR/auto-trait-leak.rs:31:16
    |
 LL | fn cycle2() -> impl Clone {
    |                ^^^^^^^^^^
 note: ...which requires processing `cycle2`...
-  --> $DIR/auto-trait-leak.rs:49:1
+  --> $DIR/auto-trait-leak.rs:31:1
    |
 LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires evaluating trait selection obligation `impl std::clone::Clone: std::marker::Send`...
 note: ...which requires processing `cycle1::{{impl-Trait}}`...
-  --> $DIR/auto-trait-leak.rs:42:16
+  --> $DIR/auto-trait-leak.rs:24:16
    |
 LL | fn cycle1() -> impl Clone {
    |                ^^^^^^^^^^
    = note: ...which again requires processing `cycle1`, completing the cycle
 note: cycle used when type-checking all item bodies
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 
-Some errors occurred: E0277, E0391.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0391`.

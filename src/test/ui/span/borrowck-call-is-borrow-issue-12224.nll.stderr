@@ -15,16 +15,18 @@ LL | |     }));
 error[E0596]: cannot borrow immutable item `*f` as mutable
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:35:5
    |
+LL | fn test2<F>(f: &F) where F: FnMut() {
+   |                -- help: consider changing this to be a mutable reference: `&mut F`
 LL |     (*f)();
-   |     ^^^^ cannot borrow as mutable
+   |     ^^^^ `f` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow immutable item `*f.f` as mutable
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:44:5
    |
+LL | fn test4(f: &Test) {
+   |             ----- help: consider changing this to be a mutable reference: `&mut Test<'_>`
 LL |     f.f.call_mut(())
-   |     ^^^ cannot borrow as mutable
-   |
-   = note: the value which is causing this path not to be mutable is...: `*f`
+   |     ^^^ `f` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:66:13

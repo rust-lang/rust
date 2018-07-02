@@ -20,12 +20,12 @@ pub fn main() {
 
     #[path = "auxiliary"]
     mod foo {
-        mod two_macros;
+        mod two_macros_2;
     }
 
     #[path = "auxiliary"]
     mod bar {
-        macro_rules! m { () => { mod two_macros; } }
+        macro_rules! m { () => { mod two_macros_2; } }
         m!();
     }
 }

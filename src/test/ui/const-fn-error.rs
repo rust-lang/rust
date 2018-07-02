@@ -19,7 +19,6 @@ const fn f(x: usize) -> usize {
     for i in 0..x {
         //~^ ERROR E0015
         //~| ERROR E0019
-        //~| ERROR E0080
         sum += i;
     }
     sum
@@ -27,5 +26,5 @@ const fn f(x: usize) -> usize {
 
 #[allow(unused_variables)]
 fn main() {
-    let a : [i32; f(X)];
+    let a : [i32; f(X)]; //~ ERROR E0080
 }

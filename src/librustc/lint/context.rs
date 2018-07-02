@@ -178,10 +178,10 @@ impl LintStore {
                                         sess: Option<&Session>,
                                         from_plugin: bool,
                                         pass: &Box<P>) {
-        for &lint in pass.get_lints() {
-            self.lints.push((*lint, from_plugin));
+        for lint in pass.get_lints() {
+            self.lints.push((lint, from_plugin));
 
-            let id = LintId::of(*lint);
+            let id = LintId::of(lint);
             if self.by_name.insert(lint.name_lower(), Id(id)).is_some() {
                 let msg = format!("duplicate specification of lint {}", lint.name_lower());
                 match (sess, from_plugin) {
@@ -654,6 +654,9 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
         self.param_env = self.tcx.param_env(self.tcx.hir.local_def_id(id));
         f(self);
         self.param_env = old_param_env;
+    }
+    pub fn current_lint_root(&self) -> ast::NodeId {
+        self.last_ast_node_with_lint_attrs
     }
 }
 

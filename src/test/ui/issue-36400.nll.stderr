@@ -1,10 +1,10 @@
 error[E0596]: cannot borrow immutable item `*x` as mutable
   --> $DIR/issue-36400.rs:15:7
    |
+LL |     let x = Box::new(3);
+   |         - help: consider changing this to be mutable: `mut x`
 LL |     f(&mut *x); //~ ERROR cannot borrow immutable
    |       ^^^^^^^ cannot borrow as mutable
-   |
-   = note: the value which is causing this path not to be mutable is...: `x`
 
 error: aborting due to previous error
 

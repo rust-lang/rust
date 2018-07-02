@@ -38,11 +38,11 @@ LL |       L = M; //~ ERROR missing
 LL | |     Z = { 2 + 3 }; //~ ERROR expected one of
    | |____^ missing `fn`, `type`, or `const`
 
-error: expected one of `const`, `extern`, `fn`, `type`, `unsafe`, or `}`, found `;`
+error: expected one of `async`, `const`, `extern`, `fn`, `type`, `unsafe`, or `}`, found `;`
   --> $DIR/issue-40006.rs:23:18
    |
 LL |     Z = { 2 + 3 }; //~ ERROR expected one of
-   |                  ^ expected one of `const`, `extern`, `fn`, `type`, `unsafe`, or `}` here
+   |                  ^ expected one of 7 possible tokens here
 
 error: expected one of `!` or `::`, found `(`
   --> $DIR/issue-40006.rs:24:9

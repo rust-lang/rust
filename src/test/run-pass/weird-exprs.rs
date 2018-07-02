@@ -84,23 +84,26 @@ fn dots() {
                                .. .. .. .. .. .. .. .. .. .. .. ..));
 }
 
-fn you_eight() {
-    assert_eq!(8, {
-        macro_rules! u8 {
-            (u8) => {
-                mod u8 {
-                    pub fn u8<'u8>(u8: &'u8 u8) -> &'u8 u8 {
-                        "u8";
-                        u8
+fn u8(u8: u8) {
+    if u8 != 0u8 {
+        assert_eq!(8u8, {
+            macro_rules! u8 {
+                (u8) => {
+                    mod u8 {
+                        pub fn u8<'u8: 'u8 + 'u8>(u8: &'u8 u8) -> &'u8 u8 {
+                            "u8";
+                            u8
+                        }
                     }
-                }
-            };
-        }
+                };
+            }
 
-        u8!(u8);
-        let &u8: &u8 = u8::u8(&8u8);
-        u8
-    });
+            u8!(u8);
+            let &u8: &u8 = u8::u8(&8u8);
+            ::u8(0u8);
+            u8
+        });
+    }
 }
 
 fn fishy() {
@@ -128,7 +131,7 @@ pub fn main() {
     angrydome();
     evil_lincoln();
     dots();
-    you_eight();
+    u8(8u8);
     fishy();
     union();
     special_characters();

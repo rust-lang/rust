@@ -20,7 +20,7 @@ use ty::{self, TyCtxt};
 use middle::privacy::AccessLevels;
 use session::DiagnosticMessageId;
 use syntax::symbol::Symbol;
-use syntax_pos::{Span, MultiSpan, DUMMY_SP};
+use syntax_pos::{Span, MultiSpan};
 use syntax::ast;
 use syntax::ast::{NodeId, Attribute};
 use syntax::feature_gate::{GateIssue, emit_feature_err, find_lang_feature_accepted_version};
@@ -614,10 +614,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         debug!("stability: \
                 inspecting def_id={:?} span={:?} of stability={:?}", def_id, span, stability);
 
-        if let Some(&Stability{rustc_depr: Some(attr::RustcDeprecation { reason, .. }), ..})
+        if let Some(&Stability{rustc_depr: Some(attr::RustcDeprecation { reason, since }), ..})
                 = stability {
             if let Some(id) = id {
-                lint_deprecated(def_id, id, Some(reason));
+                if deprecation_in_effect(&since.as_str()) {
+                    lint_deprecated(def_id, id, Some(reason));
+                }
             }
         }
 
@@ -685,7 +687,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let msp: MultiSpan = span.into();
                 let cm = &self.sess.parse_sess.codemap();
                 let span_key = msp.primary_span().and_then(|sp: Span|
-                    if sp != DUMMY_SP {
+                    if !sp.is_dummy() {
                         let file = cm.lookup_char_pos(sp.lo()).file;
                         if file.name.is_macros() {
                             None
@@ -723,7 +725,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         match item.node {
             hir::ItemExternCrate(_) => {
                 // compiler-generated `extern crate` items have a dummy span.
-                if item.span == DUMMY_SP { return }
+                if item.span.is_dummy() { return }
 
                 let def_id = self.tcx.hir.local_def_id(item.id);
                 let cnum = match self.tcx.extern_mod_stmt_cnum(def_id) {
@@ -742,7 +744,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     for impl_item_ref in impl_item_refs {
                         let impl_item = self.tcx.hir.impl_item(impl_item_ref.id);
                         let trait_item_def_id = self.tcx.associated_items(trait_did)
-                            .find(|item| item.name == impl_item.name).map(|item| item.def_id);
+                            .find(|item| item.ident.name == impl_item.ident.name)
+                            .map(|item| item.def_id);
                         if let Some(def_id) = trait_item_def_id {
                             // Pass `None` to skip deprecation warnings.
                             self.tcx.check_stability(def_id, None, impl_item.span);

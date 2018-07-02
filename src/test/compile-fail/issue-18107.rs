@@ -12,7 +12,7 @@ pub trait AbstractRenderer {}
 
 fn _create_render(_: &()) ->
     AbstractRenderer
-//~^ ERROR: `AbstractRenderer + 'static: std::marker::Sized` is not satisfied
+//~^ ERROR the size for value values of type
 {
     match 0 {
         _ => unimplemented!()

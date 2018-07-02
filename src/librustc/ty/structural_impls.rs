@@ -13,12 +13,11 @@
 //! hand, though we've recently added some macros (e.g.,
 //! `BraceStructLiftImpl!`) to help with the tedium.
 
-use middle::const_val::{self, ConstVal, ConstEvalErr};
+use mir::interpret::{ConstValue, ConstEvalErr};
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc_data_structures::sync::Lrc;
 use mir::interpret;
 
 use std::rc::Rc;
@@ -462,10 +461,11 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ConstEvalErr<'a> {
     type Lifted = ConstEvalErr<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&*self.kind).map(|kind| {
+        tcx.lift(&self.error).map(|error| {
             ConstEvalErr {
                 span: self.span,
-                kind: Lrc::new(kind),
+                stacktrace: self.stacktrace.clone(),
+                error,
             }
         })
     }
@@ -476,7 +476,6 @@ impl<'a, 'tcx> Lift<'tcx> for interpret::EvalError<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         Some(interpret::EvalError {
             kind: tcx.lift(&self.kind)?,
-            backtrace: self.backtrace.clone(),
         })
     }
 }
@@ -507,6 +506,7 @@ impl<'a, 'tcx, O: Lift<'tcx>> Lift<'tcx> for interpret::EvalErrorKind<'a, O> {
             InvalidNullPointerUsage => InvalidNullPointerUsage,
             ReadPointerAsBytes => ReadPointerAsBytes,
             ReadBytesAsPointer => ReadBytesAsPointer,
+            ReadForeignStatic => ReadForeignStatic,
             InvalidPointerMath => InvalidPointerMath,
             ReadUndefBytes => ReadUndefBytes,
             DeadLocal => DeadLocal,
@@ -578,34 +578,15 @@ impl<'a, 'tcx, O: Lift<'tcx>> Lift<'tcx> for interpret::EvalErrorKind<'a, O> {
             PathNotFound(ref v) => PathNotFound(v.clone()),
             UnimplementedTraitSelection => UnimplementedTraitSelection,
             TypeckError => TypeckError,
-            ReferencedConstant => ReferencedConstant,
+            TooGeneric => TooGeneric,
+            CheckMatchError => CheckMatchError,
+            ReferencedConstant(ref err) => ReferencedConstant(tcx.lift(&**err)?.into()),
             OverflowNeg => OverflowNeg,
             Overflow(op) => Overflow(op),
             DivisionByZero => DivisionByZero,
             RemainderByZero => RemainderByZero,
             GeneratorResumedAfterReturn => GeneratorResumedAfterReturn,
             GeneratorResumedAfterPanic => GeneratorResumedAfterPanic,
-        })
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for const_val::ErrKind<'a> {
-    type Lifted = const_val::ErrKind<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        use middle::const_val::ErrKind::*;
-
-        Some(match *self {
-            NonConstPath => NonConstPath,
-            UnimplementedConstVal(s) => UnimplementedConstVal(s),
-            IndexOutOfBounds { len, index } => IndexOutOfBounds { len, index },
-
-            LayoutError(ref e) => {
-                return tcx.lift(e).map(LayoutError)
-            }
-
-            TypeckError => TypeckError,
-            CheckMatchError => CheckMatchError,
-            Miri(ref e, ref frames) => return tcx.lift(e).map(|e| Miri(e, frames.clone())),
         })
     }
 }
@@ -1147,20 +1128,24 @@ EnumTypeFoldableImpl! {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ConstVal<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
-            ConstVal::Value(v) => ConstVal::Value(v),
-            ConstVal::Unevaluated(def_id, substs) => {
-                ConstVal::Unevaluated(def_id, substs.fold_with(folder))
+            ConstValue::Scalar(v) => ConstValue::Scalar(v),
+            ConstValue::ScalarPair(a, b) => ConstValue::ScalarPair(a, b),
+            ConstValue::ByRef(alloc, offset) => ConstValue::ByRef(alloc, offset),
+            ConstValue::Unevaluated(def_id, substs) => {
+                ConstValue::Unevaluated(def_id, substs.fold_with(folder))
             }
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
-            ConstVal::Value(_) => false,
-            ConstVal::Unevaluated(_, substs) => substs.visit_with(visitor),
+            ConstValue::Scalar(_) |
+            ConstValue::ScalarPair(_, _) |
+            ConstValue::ByRef(_, _) => false,
+            ConstValue::Unevaluated(_, substs) => substs.visit_with(visitor),
         }
     }
 }

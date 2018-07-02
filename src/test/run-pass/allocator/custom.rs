@@ -11,11 +11,11 @@
 // aux-build:helper.rs
 // no-prefer-dynamic
 
-#![feature(global_allocator, heap_api, allocator_api)]
+#![feature(allocator_api)]
 
 extern crate helper;
 
-use std::alloc::{self, Global, Alloc, System, Layout, Opaque};
+use std::alloc::{self, Global, Alloc, System, Layout};
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 static HITS: AtomicUsize = ATOMIC_USIZE_INIT;
@@ -23,12 +23,12 @@ static HITS: AtomicUsize = ATOMIC_USIZE_INIT;
 struct A;
 
 unsafe impl alloc::GlobalAlloc for A {
-    unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         HITS.fetch_add(1, Ordering::SeqCst);
         System.alloc(layout)
     }
 
-    unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout) {
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         HITS.fetch_add(1, Ordering::SeqCst);
         System.dealloc(ptr, layout)
     }

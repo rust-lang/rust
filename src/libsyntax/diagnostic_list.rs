@@ -93,6 +93,68 @@ For more information about the cfg attribute, read:
 https://doc.rust-lang.org/reference.html#conditional-compilation
 "##,
 
+E0538: r##"
+Attribute contains same meta item more than once.
+
+Erroneous code example:
+
+```compile_fail,E0538
+#[deprecated(
+    since="1.0.0",
+    note="First deprecation note.",
+    note="Second deprecation note." // error: multiple same meta item
+)]
+fn deprecated_function() {}
+```
+
+Meta items are the key-value pairs inside of an attribute. Each key may only be
+used once in each attribute.
+
+To fix the problem, remove all but one of the meta items with the same key.
+
+Example:
+
+```
+#[deprecated(
+    since="1.0.0",
+    note="First deprecation note."
+)]
+fn deprecated_function() {}
+```
+"##,
+
+E0541: r##"
+An unknown meta item was used.
+
+Erroneous code example:
+
+```compile_fail,E0541
+#[deprecated(
+    since="1.0.0",
+    // error: unknown meta item
+    reason="Example invalid meta item. Should be 'note'")
+]
+fn deprecated_function() {}
+```
+
+Meta items are the key-value pairs inside of an attribute. The keys provided
+must be one of the valid keys for the specified attribute.
+
+To fix the problem, either remove the unknown meta item, or rename it if you
+provided the wrong name.
+
+In the erroneous code example above, the wrong name was provided, so changing
+to a correct one it will fix the error. Example:
+
+```
+#[deprecated(
+    since="1.0.0",
+    note="This is a valid meta item for the deprecated attribute."
+)]
+fn deprecated_function() {}
+```
+"##,
+
 E0552: r##"
 A unrecognized representation attribute was used.
 
@@ -315,10 +377,8 @@ and likely to change in the future.
 }
 
 register_diagnostics! {
-    E0538, // multiple [same] items
     E0539, // incorrect meta item
     E0540, // multiple rustc_deprecated attributes
-    E0541, // unknown meta item
     E0542, // missing 'since'
     E0543, // missing 'reason'
     E0544, // multiple stability levels
@@ -337,4 +397,6 @@ register_diagnostics! {
     E0630, // rustc_const_unstable attribute must be paired with stable/unstable attribute
     E0693, // incorrect `repr(align)` attribute format
     E0694, // an unknown tool name found in scoped attributes
+    E0703, // invalid ABI
+    E0704, // incorrect visibility restriction
 }

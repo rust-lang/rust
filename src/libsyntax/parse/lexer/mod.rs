@@ -52,15 +52,11 @@ pub struct StringReader<'a> {
     pub filemap: Lrc<syntax_pos::FileMap>,
     /// Stop reading src at this index.
     pub end_src_index: usize,
-    /// Whether to record new-lines and multibyte chars in filemap.
-    /// This is only necessary the first time a filemap is lexed.
-    /// If part of a filemap is being re-lexed, this should be set to false.
-    pub save_new_lines_and_multibyte: bool,
     // cached:
     peek_tok: token::Token,
     peek_span: Span,
     peek_span_src_raw: Span,
-    pub fatal_errs: Vec<DiagnosticBuilder<'a>>,
+    fatal_errs: Vec<DiagnosticBuilder<'a>>,
     // cache a direct reference to the source text, so that we don't have to
     // retrieve it via `self.filemap.src.as_ref().unwrap()` all the time.
     src: Lrc<String>,
@@ -70,7 +66,7 @@ pub struct StringReader<'a> {
     /// The raw source span which *does not* take `override_span` into account
     span_src_raw: Span,
     open_braces: Vec<(token::DelimToken, Span)>,
-    pub override_span: Option<Span>,
+    crate override_span: Option<Span>,
 }
 
 impl<'a> StringReader<'a> {
@@ -163,11 +159,9 @@ impl<'a> StringReader<'a> {
             sp: self.peek_span,
         }
     }
-}
 
-impl<'a> StringReader<'a> {
     /// For comments.rs, which hackily pokes into next_pos and ch
-    pub fn new_raw(sess: &'a ParseSess, filemap: Lrc<syntax_pos::FileMap>,
+    fn new_raw(sess: &'a ParseSess, filemap: Lrc<syntax_pos::FileMap>,
                    override_span: Option<Span>) -> Self {
         let mut sr = StringReader::new_raw_internal(sess, filemap, override_span);
         sr.bump();
@@ -190,7 +184,6 @@ impl<'a> StringReader<'a> {
             ch: Some('\n'),
             filemap,
             end_src_index: src.len(),
-            save_new_lines_and_multibyte: true,
             // dummy values; not read
             peek_tok: token::Eof,
             peek_span: syntax_pos::DUMMY_SP,
@@ -227,7 +220,6 @@ impl<'a> StringReader<'a> {
         let mut sr = StringReader::new_raw_internal(sess, begin.fm, None);
 
         // Seek the lexer to the right byte range.
-        sr.save_new_lines_and_multibyte = false;
         sr.next_pos = span.lo();
         sr.end_src_index = sr.src_index(span.hi());
 
@@ -240,17 +232,17 @@ impl<'a> StringReader<'a> {
         sr
     }
 
-    pub fn ch_is(&self, c: char) -> bool {
+    fn ch_is(&self, c: char) -> bool {
         self.ch == Some(c)
     }
 
     /// Report a fatal lexical error with a given span.
-    pub fn fatal_span(&self, sp: Span, m: &str) -> FatalError {
+    fn fatal_span(&self, sp: Span, m: &str) -> FatalError {
         self.sess.span_diagnostic.span_fatal(sp, m)
     }
 
     /// Report a lexical error with a given span.
-    pub fn err_span(&self, sp: Span, m: &str) {
+    fn err_span(&self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_err(sp, m)
     }
 
@@ -268,7 +260,7 @@ impl<'a> StringReader<'a> {
     /// Pushes a character to a message string for error reporting
     fn push_escaped_char_for_msg(m: &mut String, c: char) {
         match c {
-            '\u{20}'...'\u{7e}' => {
+            '\u{20}'..='\u{7e}' => {
                 // Don't escape \, ' or " for user-facing messages
                 m.push(c);
             }
@@ -375,7 +367,7 @@ impl<'a> StringReader<'a> {
     /// Calls `f` with a string slice of the source text spanning from `start`
     /// up to but excluding `self.pos`, meaning the slice does not include
     /// the character `self.ch`.
-    pub fn with_str_from<T, F>(&self, start: BytePos, f: F) -> T
+    fn with_str_from<T, F>(&self, start: BytePos, f: F) -> T
         where F: FnOnce(&str) -> T
     {
         self.with_str_from_to(start, self.pos, f)
@@ -384,13 +376,13 @@ impl<'a> StringReader<'a> {
     /// Create a Name from a given offset to the current offset, each
     /// adjusted 1 towards each other (assumes that on either side there is a
     /// single-byte delimiter).
-    pub fn name_from(&self, start: BytePos) -> ast::Name {
+    fn name_from(&self, start: BytePos) -> ast::Name {
         debug!("taking an ident from {:?} to {:?}", start, self.pos);
         self.with_str_from(start, Symbol::intern)
     }
 
     /// As name_from, with an explicit endpoint.
-    pub fn name_from_to(&self, start: BytePos, end: BytePos) -> ast::Name {
+    fn name_from_to(&self, start: BytePos, end: BytePos) -> ast::Name {
         debug!("taking an ident from {:?} to {:?}", start, end);
         self.with_str_from_to(start, end, Symbol::intern)
     }
@@ -454,23 +446,11 @@ impl<'a> StringReader<'a> {
 
     /// Advance the StringReader by one character. If a newline is
     /// discovered, add it to the FileMap's list of line start offsets.
-    pub fn bump(&mut self) {
+    crate fn bump(&mut self) {
         let next_src_index = self.src_index(self.next_pos);
         if next_src_index < self.end_src_index {
             let next_ch = char_at(&self.src, next_src_index);
             let next_ch_len = next_ch.len_utf8();
-
-            if self.ch.unwrap() == '\n' {
-                if self.save_new_lines_and_multibyte {
-                    self.filemap.next_line(self.next_pos);
-                }
-            }
-            if next_ch_len > 1 {
-                if self.save_new_lines_and_multibyte {
-                    self.filemap.record_multibyte_char(self.next_pos, next_ch_len);
-                }
-            }
-            self.filemap.record_width(self.next_pos, next_ch);
 
             self.ch = Some(next_ch);
             self.pos = self.next_pos;
@@ -481,7 +461,7 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    pub fn nextch(&self) -> Option<char> {
+    fn nextch(&self) -> Option<char> {
         let next_src_index = self.src_index(self.next_pos);
         if next_src_index < self.end_src_index {
             Some(char_at(&self.src, next_src_index))
@@ -490,11 +470,11 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    pub fn nextch_is(&self, c: char) -> bool {
+    fn nextch_is(&self, c: char) -> bool {
         self.nextch() == Some(c)
     }
 
-    pub fn nextnextch(&self) -> Option<char> {
+    fn nextnextch(&self) -> Option<char> {
         let next_src_index = self.src_index(self.next_pos);
         if next_src_index < self.end_src_index {
             let next_next_src_index =
@@ -506,7 +486,7 @@ impl<'a> StringReader<'a> {
         None
     }
 
-    pub fn nextnextch_is(&self, c: char) -> bool {
+    fn nextnextch_is(&self, c: char) -> bool {
         self.nextnextch() == Some(c)
     }
 
@@ -781,7 +761,7 @@ impl<'a> StringReader<'a> {
                     base = 16;
                     num_digits = self.scan_digits(16, 16);
                 }
-                '0'...'9' | '_' | '.' | 'e' | 'E' => {
+                '0'..='9' | '_' | '.' | 'e' | 'E' => {
                     num_digits = self.scan_digits(10, 10) + 1;
                 }
                 _ => {
@@ -1452,6 +1432,13 @@ impl<'a> StringReader<'a> {
                 self.bump();
                 let mut hash_count: u16 = 0;
                 while self.ch_is('#') {
+                    if hash_count == 65535 {
+                        let bpos = self.next_pos;
+                        self.fatal_span_(start_bpos,
+                                         bpos,
+                                         "too many `#` symbols: raw strings may be \
+                                         delimited by up to 65535 `#` symbols").raise();
+                    }
                     self.bump();
                     hash_count += 1;
                 }
@@ -1682,6 +1669,13 @@ impl<'a> StringReader<'a> {
         self.bump();
         let mut hash_count = 0;
         while self.ch_is('#') {
+            if hash_count == 65535 {
+                let bpos = self.next_pos;
+                self.fatal_span_(start_bpos,
+                                 bpos,
+                                 "too many `#` symbols: raw byte strings may be \
+                                 delimited by up to 65535 `#` symbols").raise();
+            }
             self.bump();
             hash_count += 1;
         }
@@ -1732,7 +1726,7 @@ impl<'a> StringReader<'a> {
 
 // This tests the character for the unicode property 'PATTERN_WHITE_SPACE' which
 // is guaranteed to be forward compatible. http://unicode.org/reports/tr31/#R3
-pub fn is_pattern_whitespace(c: Option<char>) -> bool {
+crate fn is_pattern_whitespace(c: Option<char>) -> bool {
     c.map_or(false, Pattern_White_Space)
 }
 
@@ -1747,14 +1741,14 @@ fn is_dec_digit(c: Option<char>) -> bool {
     in_range(c, '0', '9')
 }
 
-pub fn is_doc_comment(s: &str) -> bool {
+fn is_doc_comment(s: &str) -> bool {
     let res = (s.starts_with("///") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'/') ||
               s.starts_with("//!");
     debug!("is {:?} a doc comment? {}", s, res);
     res
 }
 
-pub fn is_block_doc_comment(s: &str) -> bool {
+fn is_block_doc_comment(s: &str) -> bool {
     // Prevent `/**/` from being parsed as a doc comment
     let res = ((s.starts_with("/**") && *s.as_bytes().get(3).unwrap_or(&b' ') != b'*') ||
                s.starts_with("/*!")) && s.len() >= 5;

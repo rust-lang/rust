@@ -164,6 +164,7 @@ function loadContent(content) {
     m._compile(content, "tmp.js");
     m.exports.ignore_order = content.indexOf("\n// ignore-order\n") !== -1;
     m.exports.exact_check = content.indexOf("\n// exact-check\n") !== -1;
+    m.exports.should_fail = content.indexOf("\n// should-fail\n") !== -1;
     return m.exports;
 }
 
@@ -259,6 +260,7 @@ function main(argv) {
         const query = loadedFile.QUERY;
         const ignore_order = loadedFile.ignore_order;
         const exact_check = loadedFile.exact_check;
+        const should_fail = loadedFile.should_fail;
         var results = loaded.execSearch(loaded.getQuery(query), index);
         process.stdout.write('Checking "' + file + '" ... ');
         var error_text = [];
@@ -289,7 +291,11 @@ function main(argv) {
                 }
             }
         }
-        if (error_text.length !== 0) {
+        if (error_text.length === 0 && should_fail === true) {
+            errors += 1;
+            console.error("FAILED");
+            console.error("==> Test was supposed to fail but all items were found...");
+        } else if (error_text.length !== 0 && should_fail === false) {
             errors += 1;
             console.error("FAILED");
             console.error(error_text.join("\n"));

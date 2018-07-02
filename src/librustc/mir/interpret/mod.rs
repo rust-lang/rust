@@ -8,7 +8,10 @@ macro_rules! err {
 mod error;
 mod value;
 
-pub use self::error::{EvalError, EvalResult, EvalErrorKind, AssertMessage};
+pub use self::error::{
+    EvalError, EvalResult, EvalErrorKind, AssertMessage, ConstEvalErr, struct_error,
+    FrameInfo, ConstEvalResult,
+};
 
 pub use self::value::{Scalar, Value, ConstValue};
 
@@ -635,11 +638,13 @@ impl UndefMask {
         }
     }
 
+    #[inline]
     pub fn get(&self, i: Size) -> bool {
         let (block, bit) = bit_index(i);
         (self.blocks[block] & 1 << bit) != 0
     }
 
+    #[inline]
     pub fn set(&mut self, i: Size, new_state: bool) {
         let (block, bit) = bit_index(i);
         if new_state {
@@ -664,6 +669,7 @@ impl UndefMask {
     }
 }
 
+#[inline]
 fn bit_index(bits: Size) -> (usize, usize) {
     let bits = bits.bytes();
     let a = bits / BLOCK_SIZE;

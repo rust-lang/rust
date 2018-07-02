@@ -10,8 +10,8 @@
 
 fn main() {
     static foo: Fn() -> u32 = || -> u32 {
-        //~^ ERROR: mismatched types
-        //~| ERROR: `std::ops::Fn() -> u32 + 'static: std::marker::Sized` is not satisfied
+        //~^ ERROR mismatched types
+        //~| ERROR the size for value values of type
         0
     };
 }

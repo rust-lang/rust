@@ -116,6 +116,23 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name, visited: &mut FxHa
     Some(ret)
 }
 
+pub fn try_inline_glob(cx: &DocContext, def: Def, visited: &mut FxHashSet<DefId>)
+    -> Option<Vec<clean::Item>>
+{
+    if def == Def::Err { return None }
+    let did = def.def_id();
+    if did.is_local() { return None }
+
+    match def {
+        Def::Mod(did) => {
+            let m = build_module(cx, did, visited);
+            Some(m.items)
+        }
+        // glob imports on things like enums aren't inlined even for local exports, so just bail
+        _ => None,
+    }
+}
+
 pub fn load_attrs(cx: &DocContext, did: DefId) -> clean::Attributes {
     cx.tcx.get_attrs(did).clean(cx)
 }
@@ -181,9 +198,12 @@ fn build_external_function(cx: &DocContext, did: DefId) -> clean::Function {
     clean::Function {
         decl: (did, sig).clean(cx),
         generics: (cx.tcx.generics_of(did), &predicates).clean(cx),
-        unsafety: sig.unsafety(),
-        constness,
-        abi: sig.abi(),
+        header: hir::FnHeader {
+            unsafety: sig.unsafety(),
+            abi: sig.abi(),
+            constness,
+            asyncness: hir::IsAsync::NotAsync,
+        }
     }
 }
 
@@ -357,8 +377,8 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     let polarity = tcx.impl_polarity(did);
     let trait_ = associated_trait.clean(cx).map(|bound| {
         match bound {
-            clean::TraitBound(polyt, _) => polyt.trait_,
-            clean::RegionBound(..) => unreachable!(),
+            clean::GenericBound::TraitBound(polyt, _) => polyt.trait_,
+            clean::GenericBound::Outlives(..) => unreachable!(),
         }
     });
     if trait_.def_id() == tcx.lang_items().deref_trait() {
@@ -370,9 +390,9 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
 
     let provided = trait_.def_id().map(|did| {
         tcx.provided_trait_methods(did)
-            .into_iter()
-            .map(|meth| meth.name.to_string())
-            .collect()
+           .into_iter()
+           .map(|meth| meth.ident.to_string())
+           .collect()
     }).unwrap_or(FxHashSet());
 
     ret.push(clean::Item {
@@ -457,7 +477,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
             } if *s == "Self" => {
                 bounds.retain(|bound| {
                     match *bound {
-                        clean::TyParamBound::TraitBound(clean::PolyTrait {
+                        clean::GenericBound::TraitBound(clean::PolyTrait {
                             trait_: clean::ResolvedPath { did, .. },
                             ..
                         }, _) => did != trait_did,
@@ -488,7 +508,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
 /// the metadata for a crate, so we want to separate those out and create a new
 /// list of explicit supertrait bounds to render nicely.
 fn separate_supertrait_bounds(mut g: clean::Generics)
-                              -> (clean::Generics, Vec<clean::TyParamBound>) {
+                              -> (clean::Generics, Vec<clean::GenericBound>) {
     let mut ty_bounds = Vec::new();
     g.where_predicates.retain(|pred| {
         match *pred {

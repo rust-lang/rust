@@ -218,6 +218,12 @@ impl StepDescription {
             }
         } else {
             for path in paths {
+                // strip CurDir prefix if present
+                let path = match path.strip_prefix(".") {
+                    Ok(p) => p,
+                    Err(_) => path,
+                };
+
                 let mut attempted_run = false;
                 for (desc, should_run) in v.iter().zip(&should_runs) {
                     if let Some(suite) = should_run.is_suite_path(path) {
@@ -339,6 +345,7 @@ impl<'a> Builder<'a> {
                 compile::Std,
                 compile::Test,
                 compile::Rustc,
+                compile::CodegenBackend,
                 compile::StartupObjects,
                 tool::BuildManifest,
                 tool::Rustbook,
@@ -369,7 +376,6 @@ impl<'a> Builder<'a> {
             ),
             Kind::Test => describe!(
                 test::Tidy,
-                test::Bootstrap,
                 test::Ui,
                 test::RunPass,
                 test::CompileFail,
@@ -415,6 +421,8 @@ impl<'a> Builder<'a> {
                 test::Clippy,
                 test::RustdocJS,
                 test::RustdocTheme,
+                // Run bootstrap close to the end as it's unlikely to fail
+                test::Bootstrap,
                 // Run run-make last, since these won't pass without make on Windows
                 test::RunMake,
                 test::RustdocUi
@@ -451,6 +459,7 @@ impl<'a> Builder<'a> {
                 dist::Cargo,
                 dist::Rls,
                 dist::Rustfmt,
+                dist::LlvmTools,
                 dist::Extended,
                 dist::HashSign
             ),
@@ -800,10 +809,7 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_ERROR_FORMAT", error_format);
         }
         if cmd != "build" && cmd != "check" && want_rustdoc {
-            cargo.env(
-                "RUSTDOC_LIBDIR",
-                self.rustc_libdir(self.compiler(2, self.config.build)),
-            );
+            cargo.env("RUSTDOC_LIBDIR", self.sysroot_libdir(compiler, self.config.build));
         }
 
         if mode.is_tool() {

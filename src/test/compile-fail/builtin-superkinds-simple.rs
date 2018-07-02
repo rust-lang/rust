@@ -14,6 +14,6 @@
 trait Foo : Send { }
 
 impl Foo for std::rc::Rc<i8> { }
-//~^ ERROR `std::rc::Rc<i8>: std::marker::Send` is not satisfied
+//~^ ERROR `std::rc::Rc<i8>` cannot be sent between threads safely
 
 fn main() { }

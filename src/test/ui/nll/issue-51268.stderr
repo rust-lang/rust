@@ -1,0 +1,20 @@
+error[E0502]: cannot borrow `self.thing` as mutable because it is also borrowed as immutable
+  --> $DIR/issue-51268.rs:28:9
+   |
+LL |            self.thing.bar(|| {
+   |            ^              -- immutable borrow occurs here
+   |   _________|
+   |  |_________|
+   | ||
+LL | ||         //~^ ERROR cannot borrow `self.thing` as mutable because it is also borrowed as immutable [E0502]
+LL | ||             &self.number;
+   | ||              ---- previous borrow occurs due to use of `self` in closure
+LL | ||         });
+   | ||          ^
+   | ||__________|
+   | |___________mutable borrow occurs here
+   |             borrow later used here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0502`.

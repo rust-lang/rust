@@ -15,7 +15,7 @@ use tokenstream::{Delimited, TokenStream, TokenTree};
 
 impl<'a> StringReader<'a> {
     // Parse a stream of tokens into a list of `TokenTree`s, up to an `Eof`.
-    pub fn parse_all_token_trees(&mut self) -> PResult<'a, TokenStream> {
+    crate fn parse_all_token_trees(&mut self) -> PResult<'a, TokenStream> {
         let mut tts = Vec::new();
         while self.token != token::Eof {
             tts.push(self.parse_token_tree()?);

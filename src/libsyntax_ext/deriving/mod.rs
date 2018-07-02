@@ -134,9 +134,12 @@ fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
         match item.node {
             ast::ItemKind::Struct(_, ast::Generics { ref params, .. }) |
             ast::ItemKind::Enum(_, ast::Generics { ref params, .. }) => {
-                for param in params.iter() {
-                    if let ast::GenericParam::Type(ref ty) = *param{
-                        typaram.push_str(&ty.ident.as_str());
+                for param in params {
+                    match param.kind {
+                        ast::GenericParamKind::Type { .. } => {
+                            typaram.push_str(&param.ident.as_str());
+                        }
+                        _ => {}
                     }
                 }
             }
@@ -154,11 +157,11 @@ fn call_intrinsic(cx: &ExtCtxt,
                   intrinsic: &str,
                   args: Vec<P<ast::Expr>>)
                   -> P<ast::Expr> {
-    if cx.current_expansion.mark.expn_info().unwrap().callee.allow_internal_unstable {
+    if cx.current_expansion.mark.expn_info().unwrap().allow_internal_unstable {
         span = span.with_ctxt(cx.backtrace());
     } else { // Avoid instability errors with user defined curstom derives, cc #36316
         let mut info = cx.current_expansion.mark.expn_info().unwrap();
-        info.callee.allow_internal_unstable = true;
+        info.allow_internal_unstable = true;
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(info);
         span = span.with_ctxt(SyntaxContext::empty().apply_mark(mark));

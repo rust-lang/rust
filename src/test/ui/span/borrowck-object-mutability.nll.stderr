@@ -1,16 +1,20 @@
 error[E0596]: cannot borrow immutable item `*x` as mutable
   --> $DIR/borrowck-object-mutability.rs:19:5
    |
+LL | fn borrowed_receiver(x: &Foo) {
+   |                         ---- help: consider changing this to be a mutable reference: `&mut dyn Foo`
+LL |     x.borrowed();
 LL |     x.borrowed_mut(); //~ ERROR cannot borrow
-   |     ^ cannot borrow as mutable
+   |     ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error[E0596]: cannot borrow immutable item `*x` as mutable
   --> $DIR/borrowck-object-mutability.rs:29:5
    |
+LL | fn owned_receiver(x: Box<Foo>) {
+   |                   - help: consider changing this to be mutable: `mut x`
+LL |     x.borrowed();
 LL |     x.borrowed_mut(); //~ ERROR cannot borrow
    |     ^ cannot borrow as mutable
-   |
-   = note: the value which is causing this path not to be mutable is...: `x`
 
 error: aborting due to 2 previous errors
 

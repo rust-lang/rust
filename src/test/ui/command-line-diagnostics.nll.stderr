@@ -2,7 +2,9 @@ error[E0384]: cannot assign twice to immutable variable `x`
   --> $DIR/command-line-diagnostics.rs:16:5
    |
 LL |     let x = 42;
-   |             -- first assignment to `x`
+   |         -   -- first assignment to `x`
+   |         |
+   |         consider changing this to `mut x`
 LL |     x = 43;
    |     ^^^^^^ cannot assign twice to immutable variable
 

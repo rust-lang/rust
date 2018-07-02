@@ -60,7 +60,7 @@ fn main()
 
     let _ = 42usize as *const [u8]; //~ ERROR is invalid
     let _ = v as *const [u8]; //~ ERROR cannot cast
-    let _ = fat_v as *const Foo; //~ ERROR is not satisfied
+    let _ = fat_v as *const Foo; //~ ERROR the size for value values of type
     let _ = foo as *const str; //~ ERROR is invalid
     let _ = foo as *mut str; //~ ERROR is invalid
     let _ = main as *mut str; //~ ERROR is invalid
@@ -69,7 +69,7 @@ fn main()
     let _ = fat_sv as usize; //~ ERROR is invalid
 
     let a : *const str = "hello";
-    let _ = a as *const Foo; //~ ERROR is not satisfied
+    let _ = a as *const Foo; //~ ERROR the size for value values of type
 
     // check no error cascade
     let _ = main.f as *const u32; //~ ERROR no field

@@ -1958,8 +1958,6 @@ representation hints.
 Erroneous code example:
 
 ```compile_fail,E0692
-#![feature(repr_transparent)]
-
 #[repr(transparent, C)] // error: incompatible representation hints
 struct Grams(f32);
 ```
@@ -1969,8 +1967,6 @@ another type, so adding more representation hints is contradictory. Remove
 either the `transparent` hint or the other hints, like this:
 
 ```
-#![feature(repr_transparent)]
-
 #[repr(transparent)]
 struct Grams(f32);
 ```
@@ -1978,8 +1974,6 @@ struct Grams(f32);
 Alternatively, move the other attributes to the contained type:
 
 ```
-#![feature(repr_transparent)]
-
 #[repr(C)]
 struct Foo {
     x: i32,
@@ -1994,8 +1988,6 @@ Note that introducing another `struct` just to have a place for the other
 attributes may have unintended side effects on the representation:
 
 ```
-#![feature(repr_transparent)]
-
 #[repr(transparent)]
 struct Grams(f32);
 
@@ -2011,13 +2003,13 @@ a (non-transparent) struct containing a single float, while `Grams` is a
 transparent wrapper around a float. This can make a difference for the ABI.
 "##,
 
-E0909: r##"
+E0700: r##"
 The `impl Trait` return type captures lifetime parameters that do not
 appear within the `impl Trait` itself.
 
 Erroneous code example:
 
-```compile-fail,E0909
+```compile-fail,E0700
 use std::cell::Cell;
 
 trait Trait<'a> { }
@@ -2058,13 +2050,13 @@ where 'x: 'y
 ```
 "##,
 
-E0910: r##"
+E0701: r##"
 This error indicates that a `#[non_exhaustive]` attribute was incorrectly placed
 on something other than a struct or enum.
 
 Examples of erroneous code:
 
-```compile_fail,E0910
+```compile_fail,E0701
 # #![feature(non_exhaustive)]
 
 #[non_exhaustive]
@@ -2072,13 +2064,13 @@ trait Foo { }
 ```
 "##,
 
-E0911: r##"
+E0702: r##"
 This error indicates that a `#[non_exhaustive]` attribute had a value. The
 `#[non_exhaustive]` should be empty.
 
 Examples of erroneous code:
 
-```compile_fail,E0911
+```compile_fail,E0702
 # #![feature(non_exhaustive)]
 
 #[non_exhaustive(anything)]
@@ -2140,5 +2132,9 @@ register_diagnostics! {
     E0687, // in-band lifetimes cannot be used in `fn`/`Fn` syntax
     E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
 
-    E0906, // closures cannot be static
+    E0697, // closures cannot be static
+
+    E0707, // multiple elided lifetimes used in arguments of `async fn`
+    E0708, // `async` non-`move` closures with arguments are not currently supported
+    E0709, // multiple different lifetimes used in arguments of `async fn`
 }

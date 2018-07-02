@@ -54,6 +54,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
             def_info: None,
             allow_internal_unstable: false,
             allow_internal_unsafe: false,
+            local_inner_macros: false,
             unstable_feature: None,
             edition: hygiene::default_edition(),
         });

@@ -22,7 +22,6 @@ mod Y {
 
 static foo: *const Y::X = Y::foo(Y::x as *const Y::X);
 //~^ ERROR `*const usize` cannot be shared between threads safely [E0277]
-//~| ERROR cannot refer to other statics by value, use the address-of operator or a constant instead
 //~| ERROR E0015
 
 fn main() {}

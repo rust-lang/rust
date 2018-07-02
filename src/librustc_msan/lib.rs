@@ -9,10 +9,8 @@
 // except according to those terms.
 
 #![sanitizer_runtime]
-#![feature(sanitizer_runtime)]
 #![feature(alloc_system)]
-#![feature(allocator_api)]
-#![feature(global_allocator)]
+#![feature(sanitizer_runtime)]
 #![feature(staged_api)]
 #![no_std]
 #![unstable(feature = "sanitizer_runtime_lib",

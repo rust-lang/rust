@@ -77,7 +77,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             tcx: self.tcx,
             bound_region: *br,
             found_type: None,
-            current_index: ty::DebruijnIndex::INNERMOST,
+            current_index: ty::INNERMOST,
         };
         nested_visitor.visit_ty(arg);
         nested_visitor.found_type

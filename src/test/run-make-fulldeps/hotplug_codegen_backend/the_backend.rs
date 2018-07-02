@@ -20,7 +20,7 @@ use syntax::symbol::Symbol;
 use rustc::session::{Session, CompileIncomplete};
 use rustc::session::config::OutputFilenames;
 use rustc::ty::TyCtxt;
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
 use rustc_codegen_utils::codegen_backend::{CodegenBackend, MetadataOnlyCodegenBackend};

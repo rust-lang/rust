@@ -7,7 +7,7 @@ LL |     //~^ value moved here
 LL |     let _y = a.y; //~ ERROR use of moved
    |              ^^^ value used here after move
    |
-   = note: move occurs because `a.y` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+   = note: move occurs because `a.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `a.y`
   --> $DIR/borrowck-box-insensitivity.rs:108:14
@@ -18,7 +18,7 @@ LL |     //~^ value moved here
 LL |     let _y = a.y; //~ ERROR use of collaterally moved
    |              ^^^ value used here after move
    |
-   = note: move occurs because `a.y` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+   = note: move occurs because `a.x.x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
 error: aborting due to 2 previous errors
 

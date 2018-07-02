@@ -46,7 +46,7 @@ use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
 use ty::GenericParamDefKind;
 use ty::layout::{LayoutDetails, TargetDataLayout};
-use ty::maps;
+use ty::query;
 use ty::steal::Steal;
 use ty::BindingMode;
 use ty::CanonicalTy;
@@ -64,6 +64,7 @@ use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::collections::hash_map::{self, Entry};
 use std::hash::{Hash, Hasher};
+use std::fmt;
 use std::mem;
 use std::ops::Deref;
 use std::iter;
@@ -427,6 +428,10 @@ pub struct TypeckTables<'tcx> {
     /// its where clauses and parameter types. These are then
     /// read-again by borrowck.
     pub free_region_map: FreeRegionMap<'tcx>,
+
+    /// All the existential types that are restricted to concrete types
+    /// by this function
+    pub concrete_existential_types: FxHashMap<DefId, Ty<'tcx>>,
 }
 
 impl<'tcx> TypeckTables<'tcx> {
@@ -449,6 +454,7 @@ impl<'tcx> TypeckTables<'tcx> {
             used_trait_imports: Lrc::new(DefIdSet()),
             tainted_by_errors: false,
             free_region_map: FreeRegionMap::new(),
+            concrete_existential_types: FxHashMap(),
         }
     }
 
@@ -746,6 +752,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
             ref used_trait_imports,
             tainted_by_errors,
             ref free_region_map,
+            ref concrete_existential_types,
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
@@ -786,6 +793,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
             used_trait_imports.hash_stable(hcx, hasher);
             tainted_by_errors.hash_stable(hcx, hasher);
             free_region_map.hash_stable(hcx, hasher);
+            concrete_existential_types.hash_stable(hcx, hasher);
         })
     }
 }
@@ -863,11 +871,6 @@ pub struct GlobalCtxt<'tcx> {
 
     pub dep_graph: DepGraph,
 
-    /// This provides access to the incr. comp. on-disk cache for query results.
-    /// Do not access this directly. It is only meant to be used by
-    /// `DepGraph::try_mark_green()` and the query infrastructure in `ty::maps`.
-    pub(crate) on_disk_query_result_cache: maps::OnDiskCache<'tcx>,
-
     /// Common types, pre-interned for your convenience.
     pub types: CommonTypes<'tcx>,
 
@@ -886,7 +889,7 @@ pub struct GlobalCtxt<'tcx> {
     /// as well as all upstream crates. Only populated in incremental mode.
     pub def_path_hash_to_def_id: Option<FxHashMap<DefPathHash, DefId>>,
 
-    pub maps: maps::Maps<'tcx>,
+    pub(crate) queries: query::Queries<'tcx>,
 
     // Records the free variables refrenced by every closure
     // expression. Do not track deps for this, just recompute it from
@@ -1074,12 +1077,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// reference to the context, to allow formatting values that need it.
     pub fn create_and_enter<F, R>(s: &'tcx Session,
                                   cstore: &'tcx CrateStoreDyn,
-                                  local_providers: ty::maps::Providers<'tcx>,
-                                  extern_providers: ty::maps::Providers<'tcx>,
+                                  local_providers: ty::query::Providers<'tcx>,
+                                  extern_providers: ty::query::Providers<'tcx>,
                                   arenas: &'tcx AllArenas<'tcx>,
                                   resolutions: ty::Resolutions,
                                   hir: hir_map::Map<'tcx>,
-                                  on_disk_query_result_cache: maps::OnDiskCache<'tcx>,
+                                  on_disk_query_result_cache: query::OnDiskCache<'tcx>,
                                   crate_name: &str,
                                   tx: mpsc::Sender<Box<dyn Any + Send>>,
                                   output_filenames: &OutputFilenames,
@@ -1144,7 +1147,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             global_arenas: &arenas.global,
             global_interners: interners,
             dep_graph: dep_graph.clone(),
-            on_disk_query_result_cache,
             types: common_types,
             trait_map,
             export_map: resolutions.export_map.into_iter().map(|(k, v)| {
@@ -1165,7 +1167,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     .collect(),
             hir,
             def_path_hash_to_def_id,
-            maps: maps::Maps::new(providers),
+            queries: query::Queries::new(providers, on_disk_query_result_cache),
             rcache: Lock::new(FxHashMap()),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
@@ -1343,7 +1345,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                            -> Result<(), E::Error>
         where E: ty::codec::TyEncoder
     {
-        self.on_disk_query_result_cache.serialize(self.global_tcx(), encoder)
+        self.queries.on_disk_cache.serialize(self.global_tcx(), encoder)
     }
 
     /// If true, we should use a naive AST walk to determine if match
@@ -1502,8 +1504,8 @@ impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
 /// contain the TypeVariants key or if the address of the interned
 /// pointer differs. The latter case is possible if a primitive type,
 /// e.g. `()` or `u8`, was interned in a different context.
-pub trait Lift<'tcx> {
-    type Lifted: 'tcx;
+pub trait Lift<'tcx>: fmt::Debug {
+    type Lifted: fmt::Debug + 'tcx;
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted>;
 }
 
@@ -1699,15 +1701,20 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<CanonicalVarInfo> {
 pub mod tls {
     use super::{GlobalCtxt, TyCtxt};
 
-    use std::cell::Cell;
     use std::fmt;
     use std::mem;
     use syntax_pos;
-    use ty::maps;
+    use ty::query;
     use errors::{Diagnostic, TRACK_DIAGNOSTICS};
     use rustc_data_structures::OnDrop;
-    use rustc_data_structures::sync::{self, Lrc};
+    use rustc_data_structures::sync::{self, Lrc, Lock};
     use dep_graph::OpenTask;
+
+    #[cfg(not(parallel_queries))]
+    use std::cell::Cell;
+
+    #[cfg(parallel_queries)]
+    use rayon_core;
 
     /// This is the implicit state of rustc. It contains the current
     /// TyCtxt and query. It is updated when creating a local interner or
@@ -1721,8 +1728,8 @@ pub mod tls {
         pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
         /// The current query job, if any. This is updated by start_job in
-        /// ty::maps::plumbing when executing a query
-        pub query: Option<Lrc<maps::QueryJob<'gcx>>>,
+        /// ty::query::plumbing when executing a query
+        pub query: Option<Lrc<query::QueryJob<'gcx>>>,
 
         /// Used to prevent layout from recursing too deeply.
         pub layout_depth: usize,
@@ -1732,9 +1739,29 @@ pub mod tls {
         pub task: &'a OpenTask,
     }
 
-    // A thread local value which stores a pointer to the current ImplicitCtxt
+    /// Sets Rayon's thread local variable which is preserved for Rayon jobs
+    /// to `value` during the call to `f`. It is restored to its previous value after.
+    /// This is used to set the pointer to the new ImplicitCtxt.
+    #[cfg(parallel_queries)]
+    fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
+        rayon_core::tlv::with(value, f)
+    }
+
+    /// Gets Rayon's thread local variable which is preserved for Rayon jobs.
+    /// This is used to get the pointer to the current ImplicitCtxt.
+    #[cfg(parallel_queries)]
+    fn get_tlv() -> usize {
+        rayon_core::tlv::get()
+    }
+
+    /// A thread local variable which stores a pointer to the current ImplicitCtxt
+    #[cfg(not(parallel_queries))]
     thread_local!(static TLV: Cell<usize> = Cell::new(0));
 
+    /// Sets TLV to `value` during the call to `f`.
+    /// It is restored to its previous value after.
+    /// This is used to set the pointer to the new ImplicitCtxt.
+    #[cfg(not(parallel_queries))]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
         let old = get_tlv();
         let _reset = OnDrop(move || TLV.with(|tlv| tlv.set(old)));
@@ -1742,6 +1769,8 @@ pub mod tls {
         f()
     }
 
+    /// This is used to get the pointer to the current ImplicitCtxt.
+    #[cfg(not(parallel_queries))]
     fn get_tlv() -> usize {
         TLV.with(|tlv| tlv.get())
     }
@@ -1810,6 +1839,15 @@ pub mod tls {
         where F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'gcx>) -> R
     {
         with_thread_locals(|| {
+            // Update GCX_PTR to indicate there's a GlobalCtxt available
+            GCX_PTR.with(|lock| {
+                *lock.lock() = gcx as *const _ as usize;
+            });
+            // Set GCX_PTR back to 0 when we exit
+            let _on_drop = OnDrop(move || {
+                GCX_PTR.with(|lock| *lock.lock() = 0);
+            });
+
             let tcx = TyCtxt {
                 gcx,
                 interners: &gcx.global_interners,
@@ -1824,6 +1862,32 @@ pub mod tls {
                 f(tcx)
             })
         })
+    }
+
+    /// Stores a pointer to the GlobalCtxt if one is available.
+    /// This is used to access the GlobalCtxt in the deadlock handler
+    /// given to Rayon.
+    scoped_thread_local!(pub static GCX_PTR: Lock<usize>);
+
+    /// Creates a TyCtxt and ImplicitCtxt based on the GCX_PTR thread local.
+    /// This is used in the deadlock handler.
+    pub unsafe fn with_global<F, R>(f: F) -> R
+        where F: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
+    {
+        let gcx = GCX_PTR.with(|lock| *lock.lock());
+        assert!(gcx != 0);
+        let gcx = &*(gcx as *const GlobalCtxt<'_>);
+        let tcx = TyCtxt {
+            gcx,
+            interners: &gcx.global_interners,
+        };
+        let icx = ImplicitCtxt {
+            query: None,
+            tcx,
+            layout_depth: 0,
+            task: &OpenTask::Ignore,
+        };
+        enter_context(&icx, |_| f(tcx))
     }
 
     /// Allows access to the current ImplicitCtxt in a closure if one is available
@@ -2452,7 +2516,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn intern_existential_predicates(self, eps: &[ExistentialPredicate<'tcx>])
         -> &'tcx Slice<ExistentialPredicate<'tcx>> {
         assert!(!eps.is_empty());
-        assert!(eps.windows(2).all(|w| w[0].cmp(self, &w[1]) != Ordering::Greater));
+        assert!(eps.windows(2).all(|w| w[0].stable_cmp(self, &w[1]) != Ordering::Greater));
         self._intern_existential_predicates(eps)
     }
 
@@ -2730,7 +2794,7 @@ impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
     }
 }
 
-pub fn provide(providers: &mut ty::maps::Providers) {
+pub fn provide(providers: &mut ty::query::Providers) {
     // FIXME(#44234) - almost all of these queries have no sub-queries and
     // therefore no actual inputs, they're just reading tables calculated in
     // resolve! Does this work? Unsure! That's what the issue is about

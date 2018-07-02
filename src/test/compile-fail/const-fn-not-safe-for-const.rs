@@ -29,7 +29,6 @@ static Y: u32 = 0;
 const fn get_Y() -> u32 {
     Y
         //~^ ERROR E0013
-        //~| ERROR cannot refer to statics by value
 }
 
 const fn get_Y_addr() -> &'static u32 {
@@ -49,5 +48,4 @@ const fn get() -> u32 {
     //~| ERROR let bindings in constant functions are unstable
 }
 
-fn main() {
-}
+fn main() {}

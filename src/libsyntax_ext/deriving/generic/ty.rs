@@ -15,7 +15,7 @@ pub use self::PtrTy::*;
 pub use self::Ty::*;
 
 use syntax::ast;
-use syntax::ast::{Expr, GenericParam, Generics, Ident, SelfKind};
+use syntax::ast::{Expr, GenericParamKind, Generics, Ident, SelfKind, GenericArg};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::codemap::{respan, DUMMY_SP};
@@ -86,15 +86,20 @@ impl<'a> Path<'a> {
                    -> ast::Path {
         let mut idents = self.path.iter().map(|s| cx.ident_of(*s)).collect();
         let lt = mk_lifetimes(cx, span, &self.lifetime);
-        let tys = self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
+        let tys: Vec<P<ast::Ty>> =
+            self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
+        let params = lt.into_iter()
+                       .map(|lt| GenericArg::Lifetime(lt))
+                       .chain(tys.into_iter().map(|ty| GenericArg::Type(ty)))
+                       .collect();
 
         match self.kind {
-            PathKind::Global => cx.path_all(span, true, idents, lt, tys, Vec::new()),
-            PathKind::Local => cx.path_all(span, false, idents, lt, tys, Vec::new()),
+            PathKind::Global => cx.path_all(span, true, idents, params, Vec::new()),
+            PathKind::Local => cx.path_all(span, false, idents, params, Vec::new()),
             PathKind::Std => {
                 let def_site = DUMMY_SP.apply_mark(cx.current_expansion.mark);
                 idents.insert(0, Ident::new(keywords::DollarCrate.name(), def_site));
-                cx.path_all(span, false, idents, lt, tys, Vec::new())
+                cx.path_all(span, false, idents, params, Vec::new())
             }
         }
 
@@ -180,34 +185,22 @@ impl<'a> Ty<'a> {
                    cx: &ExtCtxt,
                    span: Span,
                    self_ty: Ident,
-                   self_generics: &Generics)
+                   generics: &Generics)
                    -> ast::Path {
         match *self {
             Self_ => {
-                let self_params = self_generics.params
-                    .iter()
-                    .filter_map(|param| match *param {
-                        GenericParam::Type(ref ty_param) => Some(cx.ty_ident(span, ty_param.ident)),
-                        _ => None,
-                    })
-                    .collect();
+                let params: Vec<_> = generics.params.iter().map(|param| match param.kind {
+                    GenericParamKind::Lifetime { .. } => {
+                        GenericArg::Lifetime(ast::Lifetime { id: param.id, ident: param.ident })
+                    }
+                    GenericParamKind::Type { .. } => {
+                        GenericArg::Type(cx.ty_ident(span, param.ident))
+                    }
+                }).collect();
 
-                let lifetimes: Vec<ast::Lifetime> = self_generics.params
-                    .iter()
-                    .filter_map(|param| match *param {
-                        GenericParam::Lifetime(ref ld) => Some(ld.lifetime),
-                        _ => None,
-                    })
-                    .collect();
-
-                cx.path_all(span,
-                            false,
-                            vec![self_ty],
-                            lifetimes,
-                            self_params,
-                            Vec::new())
+                cx.path_all(span, false, vec![self_ty], params, vec![])
             }
-            Literal(ref p) => p.to_path(cx, span, self_ty, self_generics),
+            Literal(ref p) => p.to_path(cx, span, self_ty, generics),
             Ptr(..) => cx.span_bug(span, "pointer in a path in generic `derive`"),
             Tuple(..) => cx.span_bug(span, "tuple in a path in generic `derive`"),
         }
@@ -222,17 +215,17 @@ fn mk_ty_param(cx: &ExtCtxt,
                bounds: &[Path],
                self_ident: Ident,
                self_generics: &Generics)
-               -> ast::TyParam {
+               -> ast::GenericParam {
     let bounds = bounds.iter()
         .map(|b| {
             let path = b.to_path(cx, span, self_ident, self_generics);
-            cx.typarambound(path)
+            cx.trait_bound(path)
         })
         .collect();
     cx.typaram(span, cx.ident_of(name), attrs.to_owned(), bounds, None)
 }
 
-fn mk_generics(params: Vec<GenericParam>, span: Span) -> Generics {
+fn mk_generics(params: Vec<ast::GenericParam>, span: Span) -> Generics {
     Generics {
         params,
         where_clause: ast::WhereClause {
@@ -268,17 +261,14 @@ impl<'a> LifetimeBounds<'a> {
             .iter()
             .map(|&(lt, ref bounds)| {
                 let bounds = bounds.iter()
-                    .map(|b| cx.lifetime(span, Ident::from_str(b)))
-                    .collect();
-                GenericParam::Lifetime(cx.lifetime_def(span, Ident::from_str(lt), vec![], bounds))
+                    .map(|b| ast::GenericBound::Outlives(cx.lifetime(span, Ident::from_str(b))));
+                cx.lifetime_def(span, Ident::from_str(lt), vec![], bounds.collect())
             })
             .chain(self.bounds
                 .iter()
                 .map(|t| {
                     let (name, ref bounds) = *t;
-                    GenericParam::Type(mk_ty_param(
-                        cx, span, name, &[], &bounds, self_ty, self_generics
-                    ))
+                    mk_ty_param(cx, span, name, &[], &bounds, self_ty, self_generics)
                 })
             )
             .collect();

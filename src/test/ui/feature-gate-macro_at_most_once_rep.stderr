@@ -1,4 +1,4 @@
-error[E0658]: Using the `?` macro Kleene operator for "at most one" repetition is unstable (see issue #48075)
+error[E0658]: using the `?` macro Kleene operator for "at most one" repetition is unstable (see issue #48075)
   --> $DIR/feature-gate-macro_at_most_once_rep.rs:14:20
    |
 LL | macro_rules! m { ($(a)?) => {} }

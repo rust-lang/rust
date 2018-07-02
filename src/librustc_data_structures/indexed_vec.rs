@@ -368,6 +368,11 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
+    pub fn from_raw(raw: Vec<T>) -> Self {
+        IndexVec { raw, _marker: PhantomData }
+    }
+
+    #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
         IndexVec { raw: Vec::with_capacity(capacity), _marker: PhantomData }
     }

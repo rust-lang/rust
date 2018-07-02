@@ -125,9 +125,9 @@ impl char {
             panic!("to_digit: radix is too high (maximum 36)");
         }
         let val = match self {
-          '0' ... '9' => self as u32 - '0' as u32,
-          'a' ... 'z' => self as u32 - 'a' as u32 + 10,
-          'A' ... 'Z' => self as u32 - 'A' as u32 + 10,
+          '0' ..= '9' => self as u32 - '0' as u32,
+          'a' ..= 'z' => self as u32 - 'a' as u32 + 10,
+          'A' ..= 'Z' => self as u32 - 'A' as u32 + 10,
           _ => return None,
         };
         if val < radix { Some(val) }
@@ -305,7 +305,7 @@ impl char {
             '\r' => EscapeDefaultState::Backslash('r'),
             '\n' => EscapeDefaultState::Backslash('n'),
             '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
-            '\x20' ... '\x7e' => EscapeDefaultState::Char(self),
+            '\x20' ..= '\x7e' => EscapeDefaultState::Char(self),
             _ => EscapeDefaultState::Unicode(self.escape_unicode())
         };
         EscapeDefault { state: init_state }
@@ -543,7 +543,7 @@ impl char {
     #[inline]
     pub fn is_alphabetic(self) -> bool {
         match self {
-            'a'...'z' | 'A'...'Z' => true,
+            'a'..='z' | 'A'..='Z' => true,
             c if c > '\x7f' => derived_property::Alphabetic(c),
             _ => false,
         }
@@ -599,7 +599,7 @@ impl char {
     #[inline]
     pub fn is_lowercase(self) -> bool {
         match self {
-            'a'...'z' => true,
+            'a'..='z' => true,
             c if c > '\x7f' => derived_property::Lowercase(c),
             _ => false,
         }
@@ -627,7 +627,7 @@ impl char {
     #[inline]
     pub fn is_uppercase(self) -> bool {
         match self {
-            'A'...'Z' => true,
+            'A'..='Z' => true,
             c if c > '\x7f' => derived_property::Uppercase(c),
             _ => false,
         }
@@ -654,7 +654,7 @@ impl char {
     #[inline]
     pub fn is_whitespace(self) -> bool {
         match self {
-            ' ' | '\x09'...'\x0d' => true,
+            ' ' | '\x09'..='\x0d' => true,
             c if c > '\x7f' => property::White_Space(c),
             _ => false,
         }
@@ -737,7 +737,7 @@ impl char {
     #[inline]
     pub fn is_numeric(self) -> bool {
         match self {
-            '0'...'9' => true,
+            '0'..='9' => true,
             c if c > '\x7f' => general_category::N(c),
             _ => false,
         }

@@ -42,8 +42,8 @@ pub fn main() {
     let z: Box<ToBar> = Box::new(Bar1 {f: 36});
     f5.2 = Bar1 {f: 36};
     //~^ ERROR mismatched types
-    //~| expected type `ToBar`
+    //~| expected type `dyn ToBar`
     //~| found type `Bar1`
     //~| expected trait ToBar, found struct `Bar1`
-    //~| ERROR `ToBar: std::marker::Sized` is not satisfied
+    //~| ERROR the size for value values of type
 }

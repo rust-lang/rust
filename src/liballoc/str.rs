@@ -51,7 +51,6 @@ use boxed::Box;
 use slice::{SliceConcatExt, SliceIndex};
 use string::String;
 use vec::Vec;
-use vec_deque::VecDeque;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{FromStr, Utf8Error};
@@ -78,6 +77,8 @@ pub use core::str::SplitWhitespace;
 pub use core::str::pattern;
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub use core::str::EncodeUtf16;
+#[unstable(feature = "split_ascii_whitespace", issue = "48656")]
+pub use core::str::SplitAsciiWhitespace;
 
 #[unstable(feature = "slice_concat_ext",
            reason = "trait should not have to exist",

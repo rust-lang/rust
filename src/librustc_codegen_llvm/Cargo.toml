@@ -32,7 +32,7 @@ rustc_mir = { path = "../librustc_mir" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
-tempdir = "0.3"
+tempfile = "3.0"
 
 # not actually used but needed to make sure we enable the same feature set as
 # winapi used in librustc

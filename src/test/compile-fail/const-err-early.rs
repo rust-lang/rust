@@ -11,16 +11,10 @@
 #![deny(const_err)]
 
 pub const A: i8 = -std::i8::MIN; //~ ERROR const_err
-//~^ ERROR this constant cannot be used
-//~| ERROR constant evaluation error
 pub const B: u8 = 200u8 + 200u8; //~ ERROR const_err
-//~^ ERROR this constant cannot be used
 pub const C: u8 = 200u8 * 4; //~ ERROR const_err
-//~^ ERROR this constant cannot be used
 pub const D: u8 = 42u8 - (42u8 + 1); //~ ERROR const_err
-//~^ ERROR this constant cannot be used
 pub const E: u8 = [5u8][1]; //~ ERROR const_err
-//~| ERROR this constant cannot be used
 
 fn main() {
     let _a = A;

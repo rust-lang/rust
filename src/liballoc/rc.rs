@@ -259,7 +259,7 @@ use core::ops::CoerceUnsized;
 use core::ptr::{self, NonNull};
 use core::convert::From;
 
-use alloc::{Global, Alloc, Layout, Opaque, box_free, oom};
+use alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
 use string::String;
 use vec::Vec;
 
@@ -662,7 +662,7 @@ impl<T: ?Sized> Rc<T> {
         let layout = Layout::for_value(&*fake_ptr);
 
         let mem = Global.alloc(layout)
-            .unwrap_or_else(|_| oom(layout));
+            .unwrap_or_else(|_| handle_alloc_error(layout));
 
         // Initialize the real RcBox
         let inner = set_data_ptr(ptr as *mut T, mem.as_ptr() as *mut u8) as *mut RcBox<T>;
@@ -732,7 +732,7 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
         // In the event of a panic, elements that have been written
         // into the new RcBox will be dropped, then the memory freed.
         struct Guard<T> {
-            mem: NonNull<Opaque>,
+            mem: NonNull<u8>,
             elems: *mut T,
             layout: Layout,
             n_elems: usize,
@@ -755,7 +755,7 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
             let v_ptr = v as *const [T];
             let ptr = Self::allocate_for_ptr(v_ptr);
 
-            let mem = ptr as *mut _ as *mut Opaque;
+            let mem = ptr as *mut _ as *mut u8;
             let layout = Layout::for_value(&*ptr);
 
             // Pointer to first element
@@ -839,7 +839,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
                 self.dec_weak();
 
                 if self.weak() == 0 {
-                    Global.dealloc(self.ptr.as_opaque(), Layout::for_value(self.ptr.as_ref()));
+                    Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
                 }
             }
         }
@@ -1263,7 +1263,7 @@ impl<T: ?Sized> Drop for Weak<T> {
             // the weak count starts at 1, and will only go to zero if all
             // the strong pointers have disappeared.
             if self.weak() == 0 {
-                Global.dealloc(self.ptr.as_opaque(), Layout::for_value(self.ptr.as_ref()));
+                Global.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
             }
         }
     }

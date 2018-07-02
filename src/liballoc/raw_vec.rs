@@ -8,15 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![unstable(feature = "raw_vec_internals", reason = "implemention detail", issue = "0")]
+#![doc(hidden)]
+
 use core::cmp;
 use core::mem;
 use core::ops::Drop;
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
 
-use alloc::{Alloc, Layout, Global, oom};
-use alloc::CollectionAllocErr;
-use alloc::CollectionAllocErr::*;
+use alloc::{Alloc, Layout, Global, handle_alloc_error};
+use collections::CollectionAllocErr;
+use collections::CollectionAllocErr::*;
 use boxed::Box;
 
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating
@@ -93,7 +96,7 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             // handles ZSTs and `cap = 0` alike
             let ptr = if alloc_size == 0 {
-                NonNull::<T>::dangling().as_opaque()
+                NonNull::<T>::dangling()
             } else {
                 let align = mem::align_of::<T>();
                 let layout = Layout::from_size_align(alloc_size, align).unwrap();
@@ -103,13 +106,13 @@ impl<T, A: Alloc> RawVec<T, A> {
                     a.alloc(layout)
                 };
                 match result {
-                    Ok(ptr) => ptr,
-                    Err(_) => oom(layout),
+                    Ok(ptr) => ptr.cast(),
+                    Err(_) => handle_alloc_error(layout),
                 }
             };
 
             RawVec {
-                ptr: ptr.cast().into(),
+                ptr: ptr.into(),
                 cap,
                 a,
             }
@@ -264,7 +267,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(alloc, raw_vec_internals)]
     /// # extern crate alloc;
     /// # use std::ptr;
     /// # use alloc::raw_vec::RawVec;
@@ -314,12 +317,14 @@ impl<T, A: Alloc> RawVec<T, A> {
                     let new_cap = 2 * self.cap;
                     let new_size = new_cap * elem_size;
                     alloc_guard(new_size).unwrap_or_else(|_| capacity_overflow());
-                    let ptr_res = self.a.realloc(NonNull::from(self.ptr).as_opaque(),
+                    let ptr_res = self.a.realloc(NonNull::from(self.ptr).cast(),
                                                  cur,
                                                  new_size);
                     match ptr_res {
                         Ok(ptr) => (new_cap, ptr.cast().into()),
-                        Err(_) => oom(Layout::from_size_align_unchecked(new_size, cur.align())),
+                        Err(_) => handle_alloc_error(
+                            Layout::from_size_align_unchecked(new_size, cur.align())
+                        ),
                     }
                 }
                 None => {
@@ -328,7 +333,7 @@ impl<T, A: Alloc> RawVec<T, A> {
                     let new_cap = if elem_size > (!0) / 8 { 1 } else { 4 };
                     match self.a.alloc_array::<T>(new_cap) {
                         Ok(ptr) => (new_cap, ptr.into()),
-                        Err(_) => oom(Layout::array::<T>(new_cap).unwrap()),
+                        Err(_) => handle_alloc_error(Layout::array::<T>(new_cap).unwrap()),
                     }
                 }
             };
@@ -373,7 +378,7 @@ impl<T, A: Alloc> RawVec<T, A> {
             let new_cap = 2 * self.cap;
             let new_size = new_cap * elem_size;
             alloc_guard(new_size).unwrap_or_else(|_| capacity_overflow());
-            match self.a.grow_in_place(NonNull::from(self.ptr).as_opaque(), old_layout, new_size) {
+            match self.a.grow_in_place(NonNull::from(self.ptr).cast(), old_layout, new_size) {
                 Ok(_) => {
                     // We can't directly divide `size`.
                     self.cap = new_cap;
@@ -466,7 +471,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(alloc)]
+    /// # #![feature(alloc, raw_vec_internals)]
     /// # extern crate alloc;
     /// # use std::ptr;
     /// # use alloc::raw_vec::RawVec;
@@ -546,7 +551,7 @@ impl<T, A: Alloc> RawVec<T, A> {
             // FIXME: may crash and burn on over-reserve
             alloc_guard(new_layout.size()).unwrap_or_else(|_| capacity_overflow());
             match self.a.grow_in_place(
-                NonNull::from(self.ptr).as_opaque(), old_layout, new_layout.size(),
+                NonNull::from(self.ptr).cast(), old_layout, new_layout.size(),
             ) {
                 Ok(_) => {
                     self.cap = new_cap;
@@ -607,11 +612,13 @@ impl<T, A: Alloc> RawVec<T, A> {
                 let new_size = elem_size * amount;
                 let align = mem::align_of::<T>();
                 let old_layout = Layout::from_size_align_unchecked(old_size, align);
-                match self.a.realloc(NonNull::from(self.ptr).as_opaque(),
+                match self.a.realloc(NonNull::from(self.ptr).cast(),
                                      old_layout,
                                      new_size) {
                     Ok(p) => self.ptr = p.cast().into(),
-                    Err(_) => oom(Layout::from_size_align_unchecked(new_size, align)),
+                    Err(_) => handle_alloc_error(
+                        Layout::from_size_align_unchecked(new_size, align)
+                    ),
                 }
             }
             self.cap = amount;
@@ -667,13 +674,13 @@ impl<T, A: Alloc> RawVec<T, A> {
             let res = match self.current_layout() {
                 Some(layout) => {
                     debug_assert!(new_layout.align() == layout.align());
-                    self.a.realloc(NonNull::from(self.ptr).as_opaque(), layout, new_layout.size())
+                    self.a.realloc(NonNull::from(self.ptr).cast(), layout, new_layout.size())
                 }
                 None => self.a.alloc(new_layout),
             };
 
             match (&res, fallibility) {
-                (Err(AllocErr), Infallible) => oom(new_layout),
+                (Err(AllocErr), Infallible) => handle_alloc_error(new_layout),
                 _ => {}
             }
 
@@ -710,7 +717,7 @@ impl<T, A: Alloc> RawVec<T, A> {
         let elem_size = mem::size_of::<T>();
         if elem_size != 0 {
             if let Some(layout) = self.current_layout() {
-                self.a.dealloc(NonNull::from(self.ptr).as_opaque(), layout);
+                self.a.dealloc(NonNull::from(self.ptr).cast(), layout);
             }
         }
     }
@@ -753,7 +760,6 @@ fn capacity_overflow() -> ! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::Opaque;
 
     #[test]
     fn allocator_param() {
@@ -773,7 +779,7 @@ mod tests {
         // before allocation attempts start failing.
         struct BoundedAlloc { fuel: usize }
         unsafe impl Alloc for BoundedAlloc {
-            unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
+            unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
                 let size = layout.size();
                 if size > self.fuel {
                     return Err(AllocErr);
@@ -783,7 +789,7 @@ mod tests {
                     err @ Err(_) => err,
                 }
             }
-            unsafe fn dealloc(&mut self, ptr: NonNull<Opaque>, layout: Layout) {
+            unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
                 Global.dealloc(ptr, layout)
             }
         }

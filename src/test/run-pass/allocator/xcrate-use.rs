@@ -12,7 +12,7 @@
 // aux-build:helper.rs
 // no-prefer-dynamic
 
-#![feature(global_allocator, heap_api, allocator_api)]
+#![feature(allocator_api)]
 
 extern crate custom;
 extern crate helper;

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(repr_transparent, repr_align, attr_literals)]
+#![feature(repr_align, attr_literals)]
 
 // See also repr-transparent.rs
 

@@ -15,6 +15,9 @@ extern {
 }
 
 pub static BAZ: u32 = *&error_message_count;
-//~^ ERROR cannot refer to other statics by value
+//~^ ERROR could not evaluate static initializer
+//~| tried to read from foreign (extern) static
+//~^^^ ERROR could not evaluate static initializer
+//~| tried to read from foreign (extern) static
 
 fn main() {}

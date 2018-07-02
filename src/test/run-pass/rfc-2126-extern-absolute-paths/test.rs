@@ -12,7 +12,8 @@
 //
 // Regression test for #47075.
 
-// compile-flags: --test --edition=2018 -Zunstable-options
+// edition:2018
+// compile-flags: --test
 
 #![feature(extern_absolute_paths)]
 

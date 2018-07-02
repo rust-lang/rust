@@ -97,7 +97,7 @@ impl Diagnostic {
     /// Emit the diagnostic.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn emit(self) {
-        ::__internal::with_sess(move |(sess, _)| {
+        ::__internal::with_sess(move |sess, _| {
             let handler = &sess.span_diagnostic;
             let level = __internal::level_to_internal_level(self.level);
             let mut diag = rustc::DiagnosticBuilder::new(handler, level, &*self.message);

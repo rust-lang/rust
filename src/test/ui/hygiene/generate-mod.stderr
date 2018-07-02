@@ -1,0 +1,17 @@
+error[E0412]: cannot find type `S` in this scope
+  --> $DIR/generate-mod.rs:18:18
+   |
+LL |         type A = S; //~ ERROR cannot find type `S` in this scope
+   |                  ^ did you mean `A`?
+...
+LL | genmod!();
+   | ---------- in this macro invocation
+
+error[E0601]: `main` function not found in crate `generate_mod`
+   |
+   = note: consider adding a `main` function to `$DIR/generate-mod.rs`
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0412, E0601.
+For more information about an error, try `rustc --explain E0412`.

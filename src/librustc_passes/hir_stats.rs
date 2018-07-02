@@ -203,9 +203,9 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_impl_item(self, ii)
     }
 
-    fn visit_ty_param_bound(&mut self, bounds: &'v hir::TyParamBound) {
-        self.record("TyParamBound", Id::None, bounds);
-        hir_visit::walk_ty_param_bound(self, bounds)
+    fn visit_param_bound(&mut self, bounds: &'v hir::GenericBound) {
+        self.record("GenericBound", Id::None, bounds);
+        hir_visit::walk_param_bound(self, bounds)
     }
 
     fn visit_struct_field(&mut self, s: &'v hir::StructField) {
@@ -322,9 +322,9 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_impl_item(self, ii)
     }
 
-    fn visit_ty_param_bound(&mut self, bounds: &'v ast::TyParamBound) {
-        self.record("TyParamBound", Id::None, bounds);
-        ast_visit::walk_ty_param_bound(self, bounds)
+    fn visit_param_bound(&mut self, bounds: &'v ast::GenericBound) {
+        self.record("GenericBound", Id::None, bounds);
+        ast_visit::walk_param_bound(self, bounds)
     }
 
     fn visit_struct_field(&mut self, s: &'v ast::StructField) {

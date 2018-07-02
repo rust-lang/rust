@@ -4,14 +4,14 @@ error[E0495]: cannot infer an appropriate lifetime due to conflicting requiremen
 LL |     static_val(x); //~ ERROR cannot infer
    |                ^
    |
-note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 31:1...
-  --> $DIR/dyn-trait.rs:31:1
+note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 31:26...
+  --> $DIR/dyn-trait.rs:31:26
    |
 LL | fn with_dyn_debug_static<'a>(x: Box<dyn Debug + 'a>) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                          ^^
    = note: ...so that the expression is assignable:
-           expected std::boxed::Box<std::fmt::Debug>
-              found std::boxed::Box<std::fmt::Debug + 'a>
+           expected std::boxed::Box<dyn std::fmt::Debug>
+              found std::boxed::Box<(dyn std::fmt::Debug + 'a)>
    = note: but, the lifetime must be valid for the static lifetime...
    = note: ...so that the types are compatible:
            expected StaticTrait

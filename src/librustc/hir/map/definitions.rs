@@ -157,8 +157,13 @@ pub struct Definitions {
     node_to_def_index: NodeMap<DefIndex>,
     def_index_to_node: [Vec<ast::NodeId>; 2],
     pub(super) node_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
-    macro_def_scopes: FxHashMap<Mark, DefId>,
-    expansions: FxHashMap<DefIndex, Mark>,
+    /// If `Mark` is an ID of some macro expansion,
+    /// then `DefId` is the normal module (`mod`) in which the expanded macro was defined.
+    parent_modules_of_macro_defs: FxHashMap<Mark, DefId>,
+    /// Item with a given `DefIndex` was defined during opaque macro expansion with ID `Mark`.
+    /// It can actually be defined during transparent macro expansions inside that opaque expansion,
+    /// but transparent expansions are ignored here.
+    opaque_expansions_that_defined: FxHashMap<DefIndex, Mark>,
     next_disambiguator: FxHashMap<(DefIndex, DefPathData), u32>,
     def_index_to_span: FxHashMap<DefIndex, Span>,
 }
@@ -175,8 +180,8 @@ impl Clone for Definitions {
                 self.def_index_to_node[1].clone(),
             ],
             node_to_hir_id: self.node_to_hir_id.clone(),
-            macro_def_scopes: self.macro_def_scopes.clone(),
-            expansions: self.expansions.clone(),
+            parent_modules_of_macro_defs: self.parent_modules_of_macro_defs.clone(),
+            opaque_expansions_that_defined: self.opaque_expansions_that_defined.clone(),
             next_disambiguator: self.next_disambiguator.clone(),
             def_index_to_span: self.def_index_to_span.clone(),
         }
@@ -210,30 +215,9 @@ impl DefKey {
         } = self.disambiguated_data;
 
         ::std::mem::discriminant(data).hash(&mut hasher);
-        match *data {
-            DefPathData::TypeNs(name) |
-            DefPathData::Trait(name) |
-            DefPathData::AssocTypeInTrait(name) |
-            DefPathData::AssocTypeInImpl(name) |
-            DefPathData::ValueNs(name) |
-            DefPathData::Module(name) |
-            DefPathData::MacroDef(name) |
-            DefPathData::TypeParam(name) |
-            DefPathData::LifetimeDef(name) |
-            DefPathData::EnumVariant(name) |
-            DefPathData::Field(name) |
-            DefPathData::GlobalMetaData(name) => {
-                name.hash(&mut hasher);
-            }
-
-            DefPathData::Impl |
-            DefPathData::CrateRoot |
-            DefPathData::Misc |
-            DefPathData::ClosureExpr |
-            DefPathData::StructCtor |
-            DefPathData::AnonConst |
-            DefPathData::ImplTrait => {}
-        };
+        if let Some(name) = data.get_opt_name() {
+            name.hash(&mut hasher);
+        }
 
         disambiguator.hash(&mut hasher);
 
@@ -381,7 +365,7 @@ pub enum DefPathData {
     /// A type parameter (generic parameter)
     TypeParam(InternedString),
     /// A lifetime definition
-    LifetimeDef(InternedString),
+    LifetimeParam(InternedString),
     /// A variant of a enum
     EnumVariant(InternedString),
     /// A struct field
@@ -390,7 +374,7 @@ pub enum DefPathData {
     StructCtor,
     /// A constant expression (see {ast,hir}::AnonConst).
     AnonConst,
-    /// An `impl Trait` type node.
+    /// An `impl Trait` type node
     ImplTrait,
 
     /// GlobalMetaData identifies a piece of crate metadata that is global to
@@ -416,8 +400,8 @@ impl Definitions {
             node_to_def_index: NodeMap(),
             def_index_to_node: [vec![], vec![]],
             node_to_hir_id: IndexVec::new(),
-            macro_def_scopes: FxHashMap(),
-            expansions: FxHashMap(),
+            parent_modules_of_macro_defs: FxHashMap(),
+            opaque_expansions_that_defined: FxHashMap(),
             next_disambiguator: FxHashMap(),
             def_index_to_span: FxHashMap(),
         }
@@ -500,12 +484,7 @@ impl Definitions {
     #[inline]
     pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
         if def_id.krate == LOCAL_CRATE {
-            let span = self.def_index_to_span.get(&def_id.index).cloned().unwrap_or(DUMMY_SP);
-            if span != DUMMY_SP {
-                Some(span)
-            } else {
-                None
-            }
+            self.def_index_to_span.get(&def_id.index).cloned()
         } else {
             None
         }
@@ -599,11 +578,11 @@ impl Definitions {
 
         let expansion = expansion.modern();
         if expansion != Mark::root() {
-            self.expansions.insert(index, expansion);
+            self.opaque_expansions_that_defined.insert(index, expansion);
         }
 
-        // The span is added if it isn't DUMMY_SP
-        if span != DUMMY_SP {
+        // The span is added if it isn't dummy
+        if !span.is_dummy() {
             self.def_index_to_span.insert(index, span);
         }
 
@@ -619,16 +598,16 @@ impl Definitions {
         self.node_to_hir_id = mapping;
     }
 
-    pub fn expansion(&self, index: DefIndex) -> Mark {
-        self.expansions.get(&index).cloned().unwrap_or(Mark::root())
+    pub fn opaque_expansion_that_defined(&self, index: DefIndex) -> Mark {
+        self.opaque_expansions_that_defined.get(&index).cloned().unwrap_or(Mark::root())
     }
 
-    pub fn macro_def_scope(&self, mark: Mark) -> DefId {
-        self.macro_def_scopes[&mark]
+    pub fn parent_module_of_macro_def(&self, mark: Mark) -> DefId {
+        self.parent_modules_of_macro_defs[&mark]
     }
 
-    pub fn add_macro_def_scope(&mut self, mark: Mark, scope: DefId) {
-        self.macro_def_scopes.insert(mark, scope);
+    pub fn add_parent_module_of_macro_def(&mut self, mark: Mark, module: DefId) {
+        self.parent_modules_of_macro_defs.insert(mark, module);
     }
 }
 
@@ -644,7 +623,7 @@ impl DefPathData {
             Module(name) |
             MacroDef(name) |
             TypeParam(name) |
-            LifetimeDef(name) |
+            LifetimeParam(name) |
             EnumVariant(name) |
             Field(name) |
             GlobalMetaData(name) => Some(name),
@@ -670,7 +649,7 @@ impl DefPathData {
             Module(name) |
             MacroDef(name) |
             TypeParam(name) |
-            LifetimeDef(name) |
+            LifetimeParam(name) |
             EnumVariant(name) |
             Field(name) |
             GlobalMetaData(name) => {

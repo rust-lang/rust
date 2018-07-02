@@ -1,3 +1,147 @@
+Version 1.27.0 (2018-06-21)
+==========================
+
+Language
+--------
+- [Removed 'proc' from the reserved keywords list.][49699] This allows `proc` to
+  be used as an identifer.
+- [The dyn syntax is now available.][49968] This syntax is equivalent to the
+  bare `Trait` syntax, and should make it clearer when being used in tandem with
+  `impl Trait`. Since it is equivalent to the following syntax:
+  `&Trait == &dyn Trait`, `&mut Trait == &mut dyn Trait`, and
+  `Box<Trait> == Box<dyn Trait>`.
+- [Attributes on generic parameters such as types and lifetimes are
+  now stable.][48851] e.g.
+  `fn foo<#[lifetime_attr] 'a, #[type_attr] T: 'a>() {}`
+- [The `#[must_use]` attribute can now also be used on functions as well as
+  types.][48925] It provides a lint that by default warns users when the
+  value returned by a function has not been used.
+
+Compiler
+--------
+- [Added the `armv5te-unknown-linux-musl` target.][50423]
+
+Libraries
+---------
+- [SIMD (Single Instruction Multiple Data) on x86/x86_64 is now stable.][49664]
+  This includes [`arch::x86`] & [`arch::x86_64`] modules which contain
+  SIMD intrinsics, a new macro called `is_x86_feature_detected!`, the
+  `#[target_feature(enable="")]` attribute, and adding `target_feature = ""` to
+  the `cfg` attribute.
+- [A lot of methods for `[u8]`, `f32`, and `f64` previously only available in
+  std are now available in core.][49896]
+- [The generic `Rhs` type parameter on `ops::{Shl, ShlAssign, Shr}` now defaults
+  to `Self`.][49630]
+- [`std::str::replace` now has the `#[must_use]` attribute][50177] to clarify
+  that the operation isn't done in place.
+- [`Clone::clone`, `Iterator::collect`, and `ToOwned::to_owned` now have
+  the `#[must_use]` attribute][49533] to warn about unused potentially
+  expensive allocations.
+
+Stabilized APIs
+---------------
+- [`DoubleEndedIterator::rfind`]
+- [`DoubleEndedIterator::rfold`]
+- [`DoubleEndedIterator::try_rfold`]
+- [`Duration::from_micros`]
+- [`Duration::from_nanos`]
+- [`Duration::subsec_micros`]
+- [`Duration::subsec_millis`]
+- [`HashMap::remove_entry`]
+- [`Iterator::try_fold`]
+- [`Iterator::try_for_each`]
+- [`NonNull::cast`]
+- [`Option::filter`]
+- [`String::replace_range`]
+- [`Take::set_limit`]
+- [`hint::unreachable_unchecked`]
+- [`os::unix::process::parent_id`]
+- [`ptr::swap_nonoverlapping`]
+- [`slice::rsplit_mut`]
+- [`slice::rsplit`]
+- [`slice::swap_with_slice`]
+
+Cargo
+-----
+- [`cargo-metadata` now includes `authors`, `categories`, `keywords`,
+  `readme`, and `repository` fields.][cargo/5386]
+- [Added the `--target-dir` optional argument.][cargo/5393] This allows you to specify
+  a different directory than `target` for placing compilation artifacts.
+- [Cargo will be adding automatic target inference for binaries, benchmarks,
+  examples, and tests in the Rust 2018 edition.][cargo/5335] If your project specifies
+  specific targets e.g. using `[[bin]]` and have other binaries in locations
+  where cargo would infer a binary, Cargo will produce a warning. You can
+  disable this feature ahead of time by setting any of the following `autobins`,
+  `autobenches`, `autoexamples`, `autotests` to false.
+- [Cargo will now cache compiler information.][cargo/5359] This can be disabled by
+  setting `CARGO_CACHE_RUSTC_INFO=0` in your environment.
+
+Misc
+----
+- [Added “The Rustc book” into the official documentation.][49707]
+  [“The Rustc book”] documents and teaches how to use the rustc compiler.
+- [All books available on `doc.rust-lang.org` are now searchable.][49623]
+
+Compatibility Notes
+-------------------
+- [Calling a `CharExt` or `StrExt` method directly on core will no longer
+  work.][49896] e.g. `::core::prelude::v1::StrExt::is_empty("")` will not
+  compile, `"".is_empty()` will still compile.
+- [`Debug` output on `atomic::{AtomicBool, AtomicIsize, AtomicPtr, AtomicUsize}`
+  will only print the inner type.][48553] e.g.
+  `print!("{:?}", AtomicBool::new(true))` will print `true`
+  not `AtomicBool(true)`.
+- [The maximum number for `repr(align(N))` is now 2²⁹.][50378] Previously you
+  could enter higher numbers but they were not supported by LLVM. Up to 512MB
+  alignment should cover all use cases.
+
+[48553]: https://github.com/rust-lang/rust/pull/48553/
+[48851]: https://github.com/rust-lang/rust/pull/48851/
+[48925]: https://github.com/rust-lang/rust/pull/48925/
+[49533]: https://github.com/rust-lang/rust/pull/49533/
+[49623]: https://github.com/rust-lang/rust/pull/49623/
+[49630]: https://github.com/rust-lang/rust/pull/49630/
+[49664]: https://github.com/rust-lang/rust/pull/49664/
+[49699]: https://github.com/rust-lang/rust/pull/49699/
+[49707]: https://github.com/rust-lang/rust/pull/49707/
+[49719]: https://github.com/rust-lang/rust/pull/49719/
+[49896]: https://github.com/rust-lang/rust/pull/49896/
+[49968]: https://github.com/rust-lang/rust/pull/49968/
+[50177]: https://github.com/rust-lang/rust/pull/50177/
+[50378]: https://github.com/rust-lang/rust/pull/50378/
+[50398]: https://github.com/rust-lang/rust/pull/50398/
+[50423]: https://github.com/rust-lang/rust/pull/50423/
+[cargo/5203]: https://github.com/rust-lang/cargo/pull/5203/
+[cargo/5335]: https://github.com/rust-lang/cargo/pull/5335/
+[cargo/5359]: https://github.com/rust-lang/cargo/pull/5359/
+[cargo/5386]: https://github.com/rust-lang/cargo/pull/5386/
+[cargo/5393]: https://github.com/rust-lang/cargo/pull/5393/
+[`DoubleEndedIterator::rfind`]: https://doc.rust-lang.org/std/iter/trait.DoubleEndedIterator.html#method.rfind
+[`DoubleEndedIterator::rfold`]: https://doc.rust-lang.org/std/iter/trait.DoubleEndedIterator.html#method.rfold
+[`DoubleEndedIterator::try_rfold`]: https://doc.rust-lang.org/std/iter/trait.DoubleEndedIterator.html#method.try_rfold
+[`Duration::from_micros`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.from_micros
+[`Duration::from_nanos`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.from_nanos
+[`Duration::subsec_micros`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.subsec_micros
+[`Duration::subsec_millis`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.subsec_millis
+[`HashMap::remove_entry`]: https://doc.rust-lang.org/std/collections/struct.HashMap.html#method.remove_entry
+[`Iterator::try_fold`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.try_fold
+[`Iterator::try_for_each`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.try_for_each
+[`NonNull::cast`]: https://doc.rust-lang.org/std/ptr/struct.NonNull.html#method.cast
+[`Option::filter`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.filter
+[`String::replace_range`]: https://doc.rust-lang.org/std/string/struct.String.html#method.replace_range
+[`Take::set_limit`]: https://doc.rust-lang.org/std/io/struct.Take.html#method.set_limit
+[`hint::unreachable_unchecked`]: https://doc.rust-lang.org/std/hint/fn.unreachable_unchecked.html
+[`os::unix::process::parent_id`]: https://doc.rust-lang.org/std/os/unix/process/fn.parent_id.html
+[`process::id`]: https://doc.rust-lang.org/std/process/fn.id.html
+[`ptr::swap_nonoverlapping`]: https://doc.rust-lang.org/std/ptr/fn.swap_nonoverlapping.html
+[`slice::rsplit_mut`]: https://doc.rust-lang.org/std/primitive.slice.html#method.rsplit_mut
+[`slice::rsplit`]: https://doc.rust-lang.org/std/primitive.slice.html#method.rsplit
+[`slice::swap_with_slice`]: https://doc.rust-lang.org/std/primitive.slice.html#method.swap_with_slice
+[`arch::x86_64`]: https://doc.rust-lang.org/std/arch/x86_64/index.html
+[`arch::x86`]: https://doc.rust-lang.org/std/arch/x86/index.html
+[“The Rustc book”]: https://doc.rust-lang.org/rustc
+
+
 Version 1.26.2 (2018-06-05)
 ==========================
 
@@ -8,6 +152,7 @@ Compatibility Notes
 
 [51117]: https://github.com/rust-lang/rust/issues/51117
 
+
 Version 1.26.1 (2018-05-29)
 ==========================
 
@@ -16,6 +161,7 @@ Tools
 
 - [RLS now works on Windows][50646]
 - [Rustfmt stopped badly formatting text in some cases][rustfmt/2695]
+
 
 Compatibility Notes
 --------
@@ -131,7 +277,6 @@ Cargo
 - [Cargo will now output path to custom commands when `-v` is
   passed with `--list`][cargo/5041]
 - [The Cargo binary version is now the same as the Rust version][cargo/5083]
-- [`Cargo.lock` files are now included in published crates.][cargo/5093]
 
 Misc
 ----
@@ -235,7 +380,6 @@ Compatibility Notes
 [`String::retain`]: https://doc.rust-lang.org/std/string/struct.String.html#method.retain
 [cargo/5041]: https://github.com/rust-lang/cargo/pull/5041
 [cargo/5083]: https://github.com/rust-lang/cargo/pull/5083
-[cargo/5093]: https://github.com/rust-lang/cargo/pull/5093
 
 
 Version 1.25.0 (2018-03-29)

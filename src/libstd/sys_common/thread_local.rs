@@ -162,13 +162,12 @@ impl StaticKey {
         // we just simplify the whole branch.
         if imp::requires_synchronized_create() {
             static INIT_LOCK: Mutex = Mutex::new();
-            INIT_LOCK.lock();
+            let _guard = INIT_LOCK.lock();
             let mut key = self.key.load(Ordering::SeqCst);
             if key == 0 {
                 key = imp::create(self.dtor) as usize;
                 self.key.store(key, Ordering::SeqCst);
             }
-            INIT_LOCK.unlock();
             rtassert!(key != 0);
             return key
         }

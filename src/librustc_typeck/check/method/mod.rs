@@ -40,7 +40,7 @@ mod suggest;
 
 use self::probe::{IsSuggestion, ProbeScope};
 
-pub fn provide(providers: &mut ty::maps::Providers) {
+pub fn provide(providers: &mut ty::query::Providers) {
     suggest::provide(providers);
 }
 
@@ -120,7 +120,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          allow_private: bool)
                          -> bool {
         let mode = probe::Mode::MethodCall;
-        match self.probe_for_name(method_name.span, mode, method_name.name,
+        match self.probe_for_name(method_name.span, mode, method_name,
                                   IsSuggestion(false), self_ty, call_expr_id,
                                   ProbeScope::TraitsInScope) {
             Ok(..) => true,
@@ -157,14 +157,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          self_expr: &'gcx hir::Expr)
                          -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
         debug!("lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
-               segment.name,
+               segment.ident,
                self_ty,
                call_expr,
                self_expr);
 
         let pick = self.lookup_probe(
             span,
-            segment.name,
+            segment.ident,
             self_ty,
             call_expr,
             ProbeScope::TraitsInScope
@@ -192,7 +192,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // We probe again, taking all traits into account (not only those in scope).
             let candidates =
                 match self.lookup_probe(span,
-                                        segment.name,
+                                        segment.ident,
                                         self_ty,
                                         call_expr,
                                         ProbeScope::AllTraits) {
@@ -222,7 +222,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn lookup_probe(&self,
                     span: Span,
-                    method_name: ast::Name,
+                    method_name: ast::Ident,
                     self_ty: Ty<'tcx>,
                     call_expr: &'gcx hir::Expr,
                     scope: ProbeScope)
@@ -244,7 +244,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// of this method is basically the same as confirmation.
     pub fn lookup_method_in_trait(&self,
                                   span: Span,
-                                  m_name: ast::Name,
+                                  m_name: ast::Ident,
                                   trait_def_id: DefId,
                                   self_ty: Ty<'tcx>,
                                   opt_input_types: Option<&[Ty<'tcx>]>)
@@ -289,7 +289,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Trait must have a method named `m_name` and it should not have
         // type parameters or early-bound regions.
         let tcx = self.tcx;
-        let method_item = self.associated_item(trait_def_id, m_name, Namespace::Value).unwrap();
+        let method_item =
+            self.associated_item(trait_def_id, m_name, Namespace::Value).unwrap();
         let def_id = method_item.def_id;
         let generics = tcx.generics_of(def_id);
         assert_eq!(generics.params.len(), 0);
@@ -362,7 +363,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn resolve_ufcs(&self,
                         span: Span,
-                        method_name: ast::Name,
+                        method_name: ast::Ident,
                         self_ty: Ty<'tcx>,
                         expr_id: ast::NodeId)
                         -> Result<Def, MethodError<'tcx>> {
@@ -385,10 +386,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// Find item with name `item_name` defined in impl/trait `def_id`
     /// and return it, or `None`, if no such item was defined there.
-    pub fn associated_item(&self, def_id: DefId, item_name: ast::Name, ns: Namespace)
+    pub fn associated_item(&self, def_id: DefId, item_name: ast::Ident, ns: Namespace)
                            -> Option<ty::AssociatedItem> {
-        self.tcx.associated_items(def_id)
-                .find(|item| Namespace::from(item.kind) == ns &&
-                             self.tcx.hygienic_eq(item_name, item.name, def_id))
+        self.tcx.associated_items(def_id).find(|item| {
+            Namespace::from(item.kind) == ns &&
+            self.tcx.hygienic_eq(item_name, item.ident, def_id)
+        })
     }
 }

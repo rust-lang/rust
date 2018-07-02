@@ -298,7 +298,11 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                         let mut signed = false;
                         if let layout::Abi::Scalar(ref scalar) = operand.layout.abi {
                             if let layout::Int(_, s) = scalar.value {
-                                signed = s;
+                                // We use `i1` for bytes that are always `0` or `1`,
+                                // e.g. `#[repr(i8)] enum E { A, B }`, but we can't
+                                // let LLVM interpret the `i1` as signed, because
+                                // then `i1 1` (i.e. E::B) is effectively `i8 -1`.
+                                signed = !scalar.is_bool() && s;
 
                                 if scalar.valid_range.end() > scalar.valid_range.start() {
                                     // We want `table[e as usize]` to not

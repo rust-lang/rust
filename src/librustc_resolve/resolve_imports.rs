@@ -18,13 +18,14 @@ use {names_to_string, module_to_string};
 use {resolve_error, ResolutionError};
 
 use rustc::ty;
-use rustc::lint::builtin::PUB_USE_OF_PRIVATE_EXTERN_CRATE;
+use rustc::lint::builtin::BuiltinLintDiagnostics;
+use rustc::lint::builtin::{DUPLICATE_MACRO_EXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::def::*;
 use rustc::session::DiagnosticMessageId;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
-use syntax::ast::{Ident, Name, NodeId};
+use syntax::ast::{Ident, Name, NodeId, CRATE_NODE_ID};
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::hygiene::Mark;
 use syntax::symbol::keywords;
@@ -697,7 +698,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                          "crate root imports need to be explicitly named: \
                                           `use crate as name;`".to_string()));
                         } else {
-                            Some(self.resolve_crate_root(source.span.ctxt().modern(), false))
+                            Some(self.resolve_crate_root(source))
                         }
                     } else if is_extern && !source.is_path_segment_keyword() {
                         let crate_id =
@@ -917,7 +918,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
         self.per_ns(|this, ns| if let Some(binding) = result[ns].get().ok() {
-            this.def_map.entry(directive.id).or_insert(PathResolution::new(binding.def()));
+            let mut import = this.import_map.entry(directive.id).or_default();
+            import[ns] = Some(PathResolution::new(binding.def()));
         });
 
         debug!("(resolving single import) successfully resolved import");
@@ -974,7 +976,16 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         if module as *const _ == self.graph_root as *const _ {
             let macro_exports = mem::replace(&mut self.macro_exports, Vec::new());
             for export in macro_exports.into_iter().rev() {
-                if exported_macro_names.insert(export.ident.modern(), export.span).is_none() {
+                if let Some(later_span) = exported_macro_names.insert(export.ident.modern(),
+                                                                      export.span) {
+                    self.session.buffer_lint_with_diagnostic(
+                        DUPLICATE_MACRO_EXPORTS,
+                        CRATE_NODE_ID,
+                        later_span,
+                        &format!("a macro named `{}` has already been exported", export.ident),
+                        BuiltinLintDiagnostics::DuplicatedMacroExports(
+                            export.ident, export.span, later_span));
+                } else {
                     reexports.push(export);
                 }
             }

@@ -47,7 +47,7 @@ struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     span: Span,
     mode: Mode,
-    method_name: Option<ast::Name>,
+    method_name: Option<ast::Ident>,
     return_type: Option<Ty<'tcx>>,
     steps: Rc<Vec<CandidateStep<'tcx>>>,
     inherent_candidates: Vec<Candidate<'tcx>>,
@@ -213,7 +213,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn probe_for_name(&self,
                           span: Span,
                           mode: Mode,
-                          item_name: ast::Name,
+                          item_name: ast::Ident,
                           is_suggestion: IsSuggestion,
                           self_ty: Ty<'tcx>,
                           scope_expr_id: ast::NodeId,
@@ -237,7 +237,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn probe_op<OP,R>(&'a self,
                       span: Span,
                       mode: Mode,
-                      method_name: Option<ast::Name>,
+                      method_name: Option<ast::Ident>,
                       return_type: Option<Ty<'tcx>>,
                       is_suggestion: IsSuggestion,
                       self_ty: Ty<'tcx>,
@@ -335,7 +335,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // so we do a future-compat lint here for the 2015 edition
                         // (see https://github.com/rust-lang/rust/issues/46906)
                         if self.tcx.sess.rust_2018() {
-                          span_err!(self.tcx.sess, span, E0908,
+                          span_err!(self.tcx.sess, span, E0699,
                                     "the type of this value must be known \
                                      to call a method on a raw pointer on it");
                         } else {
@@ -382,7 +382,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     fn new(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
            span: Span,
            mode: Mode,
-           method_name: Option<ast::Name>,
+           method_name: Option<ast::Ident>,
            return_type: Option<Ty<'tcx>>,
            steps: Rc<Vec<CandidateStep<'tcx>>>,
            is_suggestion: IsSuggestion)
@@ -422,8 +422,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     {
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
-            let def_scope =
-                self.tcx.adjust_ident(name.to_ident(), item.container.id(), self.body_id).1;
+            let def_scope = self.tcx.adjust_ident(name, item.container.id(), self.body_id).1;
             item.vis.is_accessible_from(def_scope, self.tcx)
         } else {
             true
@@ -799,7 +798,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         Ok(())
     }
 
-    fn candidate_method_names(&self) -> Vec<ast::Name> {
+    fn candidate_method_names(&self) -> Vec<ast::Ident> {
         let mut set = FxHashSet();
         let mut names: Vec<_> = self.inherent_candidates
             .iter()
@@ -811,7 +810,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     true
                 }
             })
-            .map(|candidate| candidate.item.name)
+            .map(|candidate| candidate.item.ident)
             .filter(|&name| set.insert(name))
             .collect();
 
@@ -1310,14 +1309,14 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 Ok(None)
             } else {
                 let best_name = {
-                    let names = applicable_close_candidates.iter().map(|cand| &cand.name);
+                    let names = applicable_close_candidates.iter().map(|cand| &cand.ident.name);
                     find_best_match_for_name(names,
                                              &self.method_name.unwrap().as_str(),
                                              None)
                 }.unwrap();
                 Ok(applicable_close_candidates
                    .into_iter()
-                   .find(|method| method.name == best_name))
+                   .find(|method| method.ident.name == best_name))
             }
         })
     }
@@ -1457,7 +1456,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 let max_dist = max(name.as_str().len(), 3) / 3;
                 self.tcx.associated_items(def_id)
                     .filter(|x| {
-                        let dist = lev_distance(&*name.as_str(), &x.name.as_str());
+                        let dist = lev_distance(&*name.as_str(), &x.ident.as_str());
                         Namespace::from(x.kind) == Namespace::Value && dist > 0
                         && dist <= max_dist
                     })

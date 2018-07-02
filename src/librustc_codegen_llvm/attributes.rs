@@ -17,7 +17,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::session::Session;
 use rustc::session::config::Sanitizer;
 use rustc::ty::TyCtxt;
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::PanicStrategy;
@@ -95,6 +95,11 @@ pub fn set_probestack(cx: &CodegenCx, llfn: ValueRef) {
 
     // probestack doesn't play nice either with pgo-gen.
     if cx.sess().opts.debugging_opts.pgo_gen.is_some() {
+        return;
+    }
+
+    // probestack doesn't play nice either with gcov profiling.
+    if cx.sess().opts.debugging_opts.profile {
         return;
     }
 

@@ -523,7 +523,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let count = match cx.tcx.at(span).const_eval(cx.param_env.and(global_id)) {
                 Ok(cv) => cv.unwrap_usize(cx.tcx),
                 Err(e) => {
-                    e.report(cx.tcx, cx.tcx.def_span(def_id), "array length");
+                    e.report_as_error(cx.tcx.at(span), "could not evaluate array length");
                     0
                 },
             };
@@ -543,7 +543,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 Err(err) => bug!("invalid loop id for break: {}", err)
             }
         }
-        hir::ExprAgain(dest) => {
+        hir::ExprContinue(dest) => {
             match dest.target_id {
                 Ok(loop_id) => ExprKind::Continue {
                     label: region::Scope::Node(cx.tcx.hir.node_to_hir_id(loop_id).local_id),
@@ -692,8 +692,11 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                  -> Expr<'tcx> {
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
     let (def_id, substs) = custom_callee.unwrap_or_else(|| {
-        (cx.tables().type_dependent_defs()[expr.hir_id].def_id(),
-         cx.tables().node_substs(expr.hir_id))
+        if let Some(def) = cx.tables().type_dependent_defs().get(expr.hir_id) {
+            (def.def_id(), cx.tables().node_substs(expr.hir_id))
+        } else {
+            span_bug!(expr.span, "no type-dependent def for method callee")
+        }
     });
     let ty = cx.tcx().mk_fn_def(def_id, substs);
     Expr {

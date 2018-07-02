@@ -25,8 +25,7 @@ use hir as ast;
 use hir::map::{self, Node};
 use hir::{Expr, FnDecl};
 use hir::intravisit::FnKind;
-use rustc_target::spec::abi;
-use syntax::ast::{Attribute, Name, NodeId};
+use syntax::ast::{Attribute, Ident, Name, NodeId};
 use syntax_pos::Span;
 
 /// An FnLikeNode is a Node that is like a fn, in that it has a decl
@@ -105,9 +104,7 @@ impl<'a> Code<'a> {
 struct ItemFnParts<'a> {
     name:     Name,
     decl:     &'a ast::FnDecl,
-    unsafety: ast::Unsafety,
-    constness: ast::Constness,
-    abi:      abi::Abi,
+    header:   ast::FnHeader,
     vis:      &'a ast::Visibility,
     generics: &'a ast::Generics,
     body:     ast::BodyId,
@@ -183,37 +180,37 @@ impl<'a> FnLikeNode<'a> {
 
     pub fn constness(self) -> ast::Constness {
         match self.kind() {
-            FnKind::ItemFn(_, _, _, constness, ..) => {
-                constness
-            }
-            FnKind::Method(_, m, ..) => {
-                m.constness
-            }
+            FnKind::ItemFn(_, _, header, ..) => header.constness,
+            FnKind::Method(_, m, ..) => m.header.constness,
             _ => ast::Constness::NotConst
+        }
+    }
+
+    pub fn asyncness(self) -> ast::IsAsync {
+        match self.kind() {
+            FnKind::ItemFn(_, _, header, ..) => header.asyncness,
+            FnKind::Method(_, m, ..) => m.header.asyncness,
+            _ => ast::IsAsync::NotAsync
         }
     }
 
     pub fn unsafety(self) -> ast::Unsafety {
         match self.kind() {
-            FnKind::ItemFn(_, _, unsafety, ..) => {
-                unsafety
-            }
-            FnKind::Method(_, m, ..) => {
-                m.unsafety
-            }
+            FnKind::ItemFn(_, _, header, ..) => header.unsafety,
+            FnKind::Method(_, m, ..) => m.header.unsafety,
             _ => ast::Unsafety::Normal
         }
     }
 
     pub fn kind(self) -> FnKind<'a> {
         let item = |p: ItemFnParts<'a>| -> FnKind<'a> {
-            FnKind::ItemFn(p.name, p.generics, p.unsafety, p.constness, p.abi, p.vis, p.attrs)
+            FnKind::ItemFn(p.name, p.generics, p.header, p.vis, p.attrs)
         };
         let closure = |c: ClosureParts<'a>| {
             FnKind::Closure(c.attrs)
         };
-        let method = |_, name: Name, sig: &'a ast::MethodSig, vis, _, _, attrs| {
-            FnKind::Method(name, sig, vis, attrs)
+        let method = |_, ident: Ident, sig: &'a ast::MethodSig, vis, _, _, attrs| {
+            FnKind::Method(ident, sig, vis, attrs)
         };
         self.handle(item, method, closure)
     }
@@ -221,7 +218,7 @@ impl<'a> FnLikeNode<'a> {
     fn handle<A, I, M, C>(self, item_fn: I, method: M, closure: C) -> A where
         I: FnOnce(ItemFnParts<'a>) -> A,
         M: FnOnce(NodeId,
-                  Name,
+                  Ident,
                   &'a ast::MethodSig,
                   Option<&'a ast::Visibility>,
                   ast::BodyId,
@@ -232,32 +229,30 @@ impl<'a> FnLikeNode<'a> {
     {
         match self.node {
             map::NodeItem(i) => match i.node {
-                ast::ItemFn(ref decl, unsafety, constness, abi, ref generics, block) =>
+                ast::ItemFn(ref decl, header, ref generics, block) =>
                     item_fn(ItemFnParts {
                         id: i.id,
                         name: i.name,
                         decl: &decl,
-                        unsafety,
                         body: block,
-                        generics,
-                        abi,
                         vis: &i.vis,
-                        constness,
                         span: i.span,
                         attrs: &i.attrs,
+                        header,
+                        generics,
                     }),
                 _ => bug!("item FnLikeNode that is not fn-like"),
             },
             map::NodeTraitItem(ti) => match ti.node {
                 ast::TraitItemKind::Method(ref sig, ast::TraitMethod::Provided(body)) => {
-                    method(ti.id, ti.name, sig, None, body, ti.span, &ti.attrs)
+                    method(ti.id, ti.ident, sig, None, body, ti.span, &ti.attrs)
                 }
                 _ => bug!("trait method FnLikeNode that is not fn-like"),
             },
             map::NodeImplItem(ii) => {
                 match ii.node {
                     ast::ImplItemKind::Method(ref sig, body) => {
-                        method(ii.id, ii.name, sig, Some(&ii.vis), body, ii.span, &ii.attrs)
+                        method(ii.id, ii.ident, sig, Some(&ii.vis), body, ii.span, &ii.attrs)
                     }
                     _ => {
                         bug!("impl method FnLikeNode that is not fn-like")

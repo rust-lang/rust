@@ -56,7 +56,7 @@ extern crate syntax_pos;
 extern crate rustc_errors as errors;
 extern crate serialize;
 extern crate cc; // Used to locate MSVC
-extern crate tempdir;
+extern crate tempfile;
 
 use back::bytecode::RLIB_BYTECODE_EXTENSION;
 
@@ -183,14 +183,14 @@ impl CodegenBackend for LlvmCodegenBackend {
         box metadata::LlvmMetadataLoader
     }
 
-    fn provide(&self, providers: &mut ty::maps::Providers) {
+    fn provide(&self, providers: &mut ty::query::Providers) {
         back::symbol_names::provide(providers);
         back::symbol_export::provide(providers);
         base::provide(providers);
         attributes::provide(providers);
     }
 
-    fn provide_extern(&self, providers: &mut ty::maps::Providers) {
+    fn provide_extern(&self, providers: &mut ty::query::Providers) {
         back::symbol_export::provide_extern(providers);
         base::provide_extern(providers);
         attributes::provide_extern(providers);

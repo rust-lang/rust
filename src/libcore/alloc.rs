@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![unstable(feature = "allocator_api",
-            reason = "the precise API and guarantees it provides may be tweaked \
-                      slightly, especially to possibly take into account the \
-                      types being stored to make room for a future \
-                      tracing garbage collector",
-            issue = "32838")]
+//! Memory allocation APIs
+
+#![stable(feature = "alloc_module", since = "1.28.0")]
 
 use cmp;
 use fmt;
@@ -22,30 +19,15 @@ use usize;
 use ptr::{self, NonNull};
 use num::NonZeroUsize;
 
-extern {
-    /// An opaque, unsized type. Used for pointers to allocated memory.
-    ///
-    /// This type can only be used behind a pointer like `*mut Opaque` or `ptr::NonNull<Opaque>`.
-    /// Such pointers are similar to C’s `void*` type.
-    pub type Opaque;
-}
-
-impl Opaque {
-    /// Similar to `std::ptr::null`, which requires `T: Sized`.
-    pub fn null() -> *const Self {
-        0 as _
-    }
-
-    /// Similar to `std::ptr::null_mut`, which requires `T: Sized`.
-    pub fn null_mut() -> *mut Self {
-        0 as _
-    }
-}
+#[unstable(feature = "alloc_internals", issue = "0")]
+#[cfg(stage0)]
+pub type Opaque = u8;
 
 /// Represents the combination of a starting address and
 /// a total capacity of the returned block.
+#[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Debug)]
-pub struct Excess(pub NonNull<Opaque>, pub usize);
+pub struct Excess(pub NonNull<u8>, pub usize);
 
 fn size_align<T>() -> (usize, usize) {
     (mem::size_of::<T>(), mem::align_of::<T>())
@@ -64,6 +46,7 @@ fn size_align<T>() -> (usize, usize) {
 /// requests have positive size. A caller to the `Alloc::alloc`
 /// method must either ensure that conditions like this are met, or
 /// use specific allocators with looser requirements.)
+#[stable(feature = "alloc_layout", since = "1.28.0")]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Layout {
     // size of the requested block of memory, measured in bytes.
@@ -84,11 +67,14 @@ impl Layout {
     /// or returns `LayoutErr` if either of the following conditions
     /// are not met:
     ///
+    /// * `align` must not be zero,
+    ///
     /// * `align` must be a power of two,
     ///
     /// * `size`, when rounded up to the nearest multiple of `align`,
     ///    must not overflow (i.e. the rounded value must be less than
     ///    `usize::MAX`).
+    #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
     pub fn from_size_align(size: usize, align: usize) -> Result<Self, LayoutErr> {
         if !align.is_power_of_two() {
@@ -124,20 +110,24 @@ impl Layout {
     ///
     /// This function is unsafe as it does not verify the preconditions from
     /// [`Layout::from_size_align`](#method.from_size_align).
+    #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
     pub unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
         Layout { size_: size, align_: NonZeroUsize::new_unchecked(align) }
     }
 
     /// The minimum size in bytes for a memory block of this layout.
+    #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
     pub fn size(&self) -> usize { self.size_ }
 
     /// The minimum byte alignment for a memory block of this layout.
+    #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
     pub fn align(&self) -> usize { self.align_.get() }
 
     /// Constructs a `Layout` suitable for holding a value of type `T`.
+    #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
     pub fn new<T>() -> Self {
         let (size, align) = size_align::<T>();
@@ -154,6 +144,7 @@ impl Layout {
     /// Produces layout describing a record that could be used to
     /// allocate backing structure for `T` (which could be a trait
     /// or other unsized type like a slice).
+    #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
     pub fn for_value<T: ?Sized>(t: &T) -> Self {
         let (size, align) = (mem::size_of_val(t), mem::align_of_val(t));
@@ -181,6 +172,7 @@ impl Layout {
     /// Panics if the combination of `self.size()` and the given `align`
     /// violates the conditions listed in
     /// [`Layout::from_size_align`](#method.from_size_align).
+    #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn align_to(&self, align: usize) -> Self {
         Layout::from_size_align(self.size(), cmp::max(self.align(), align)).unwrap()
@@ -202,6 +194,7 @@ impl Layout {
     /// to be less than or equal to the alignment of the starting
     /// address for the whole allocated block of memory. One way to
     /// satisfy this constraint is to ensure `align <= self.align()`.
+    #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn padding_needed_for(&self, align: usize) -> usize {
         let len = self.size();
@@ -238,6 +231,7 @@ impl Layout {
     /// of each element in the array.
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
+    #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutErr> {
         let padded_size = self.size().checked_add(self.padding_needed_for(self.align()))
@@ -263,6 +257,7 @@ impl Layout {
     /// (assuming that the record itself starts at offset 0).
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
+    #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn extend(&self, next: Self) -> Result<(Self, usize), LayoutErr> {
         let new_align = cmp::max(self.align(), next.align());
@@ -289,6 +284,7 @@ impl Layout {
     /// aligned.
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
+    #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutErr> {
         let size = self.size().checked_mul(n).ok_or(LayoutErr { private: () })?;
@@ -310,6 +306,7 @@ impl Layout {
     ///  `extend`.)
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
+    #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn extend_packed(&self, next: Self) -> Result<(Self, usize), LayoutErr> {
         let new_size = self.size().checked_add(next.size())
@@ -321,6 +318,7 @@ impl Layout {
     /// Creates a layout describing the record for a `[T; n]`.
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
+    #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn array<T>(n: usize) -> Result<Self, LayoutErr> {
         Layout::new::<T>()
@@ -332,28 +330,33 @@ impl Layout {
     }
 }
 
-/// The parameters given to `Layout::from_size_align` do not satisfy
-/// its documented constraints.
+/// The parameters given to `Layout::from_size_align`
+/// or some other `Layout` constructor
+/// do not satisfy its documented constraints.
+#[stable(feature = "alloc_layout", since = "1.28.0")]
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct LayoutErr {
     private: ()
 }
 
 // (we need this for downstream impl of trait Error)
+#[stable(feature = "alloc_layout", since = "1.28.0")]
 impl fmt::Display for LayoutErr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("invalid parameters to Layout::from_size_align")
     }
 }
 
-/// The `AllocErr` error specifies whether an allocation failure is
-/// specifically due to resource exhaustion or if it is due to
+/// The `AllocErr` error indicates an allocation failure
+/// that may be due to resource exhaustion or to
 /// something wrong when combining the given input arguments with this
 /// allocator.
+#[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AllocErr;
 
 // (we need this for downstream impl of trait Error)
+#[unstable(feature = "allocator_api", issue = "32838")]
 impl fmt::Display for AllocErr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("memory allocation failed")
@@ -363,9 +366,11 @@ impl fmt::Display for AllocErr {
 /// The `CannotReallocInPlace` error is used when `grow_in_place` or
 /// `shrink_in_place` were unable to reuse the given memory block for
 /// a requested layout.
+#[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct CannotReallocInPlace;
 
+#[unstable(feature = "allocator_api", issue = "32838")]
 impl CannotReallocInPlace {
     pub fn description(&self) -> &str {
         "cannot reallocate allocator's memory in place"
@@ -373,65 +378,141 @@ impl CannotReallocInPlace {
 }
 
 // (we need this for downstream impl of trait Error)
+#[unstable(feature = "allocator_api", issue = "32838")]
 impl fmt::Display for CannotReallocInPlace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.description())
     }
 }
 
-/// Augments `AllocErr` with a CapacityOverflow variant.
-#[derive(Clone, PartialEq, Eq, Debug)]
-#[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-pub enum CollectionAllocErr {
-    /// Error due to the computed capacity exceeding the collection's maximum
-    /// (usually `isize::MAX` bytes).
-    CapacityOverflow,
-    /// Error due to the allocator (see the `AllocErr` type's docs).
-    AllocErr,
-}
-
-#[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-impl From<AllocErr> for CollectionAllocErr {
-    #[inline]
-    fn from(AllocErr: AllocErr) -> Self {
-        CollectionAllocErr::AllocErr
-    }
-}
-
-#[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-impl From<LayoutErr> for CollectionAllocErr {
-    #[inline]
-    fn from(_: LayoutErr) -> Self {
-        CollectionAllocErr::CapacityOverflow
-    }
-}
-
-/// A memory allocator that can be registered to be the one backing `std::alloc::Global`
+/// A memory allocator that can be registered as the standard library’s default
 /// though the `#[global_allocator]` attributes.
+///
+/// Some of the methods require that a memory block be *currently
+/// allocated* via an allocator. This means that:
+///
+/// * the starting address for that memory block was previously
+///   returned by a previous call to an allocation method
+///   such as `alloc`, and
+///
+/// * the memory block has not been subsequently deallocated, where
+///   blocks are deallocated either by being passed to a deallocation
+///   method such as `dealloc` or by being
+///   passed to a reallocation method that returns a non-null pointer.
+///
+///
+/// # Example
+///
+/// ```no_run
+/// use std::alloc::{GlobalAlloc, Layout, alloc};
+/// use std::ptr::null_mut;
+///
+/// struct MyAllocator;
+///
+/// unsafe impl GlobalAlloc for MyAllocator {
+///     unsafe fn alloc(&self, _layout: Layout) -> *mut u8 { null_mut() }
+///     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
+/// }
+///
+/// #[global_allocator]
+/// static A: MyAllocator = MyAllocator;
+///
+/// fn main() {
+///     unsafe {
+///         assert!(alloc(Layout::new::<u32>()).is_null())
+///     }
+/// }
+/// ```
+///
+/// # Unsafety
+///
+/// The `GlobalAlloc` trait is an `unsafe` trait for a number of reasons, and
+/// implementors must ensure that they adhere to these contracts:
+///
+/// * It's undefined behavior if global allocators unwind.  This restriction may
+///   be lifted in the future, but currently a panic from any of these
+///   functions may lead to memory unsafety.
+///
+/// * `Layout` queries and calculations in general must be correct. Callers of
+///   this trait are allowed to rely on the contracts defined on each method,
+///   and implementors must ensure such contracts remain true.
+#[stable(feature = "global_alloc", since = "1.28.0")]
 pub unsafe trait GlobalAlloc {
     /// Allocate memory as described by the given `layout`.
     ///
     /// Returns a pointer to newly-allocated memory,
-    /// or NULL to indicate allocation failure.
+    /// or null to indicate allocation failure.
     ///
     /// # Safety
     ///
-    /// **FIXME:** what are the exact requirements?
-    unsafe fn alloc(&self, layout: Layout) -> *mut Opaque;
+    /// This function is unsafe because undefined behavior can result
+    /// if the caller does not ensure that `layout` has non-zero size.
+    ///
+    /// (Extension subtraits might provide more specific bounds on
+    /// behavior, e.g. guarantee a sentinel address or a null pointer
+    /// in response to a zero-size allocation request.)
+    ///
+    /// The allocated block of memory may or may not be initialized.
+    ///
+    /// # Errors
+    ///
+    /// Returning a null pointer indicates that either memory is exhausted
+    /// or `layout` does not meet allocator's size or alignment constraints.
+    ///
+    /// Implementations are encouraged to return null on memory
+    /// exhaustion rather than aborting, but this is not
+    /// a strict requirement. (Specifically: it is *legal* to
+    /// implement this trait atop an underlying native allocation
+    /// library that aborts on memory exhaustion.)
+    ///
+    /// Clients wishing to abort computation in response to an
+    /// allocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    #[stable(feature = "global_alloc", since = "1.28.0")]
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8;
 
     /// Deallocate the block of memory at the given `ptr` pointer with the given `layout`.
     ///
     /// # Safety
     ///
-    /// **FIXME:** what are the exact requirements?
-    /// In particular around layout *fit*. (See docs for the `Alloc` trait.)
-    unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout);
+    /// This function is unsafe because undefined behavior can result
+    /// if the caller does not ensure all of the following:
+    ///
+    /// * `ptr` must denote a block of memory currently allocated via
+    ///   this allocator,
+    ///
+    /// * `layout` must be the same layout that was used
+    ///   to allocated that block of memory,
+    #[stable(feature = "global_alloc", since = "1.28.0")]
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
 
-    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Opaque {
+    /// Behaves like `alloc`, but also ensures that the contents
+    /// are set to zero before being returned.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe for the same reasons that `alloc` is.
+    /// However the allocated block of memory is guaranteed to be initialized.
+    ///
+    /// # Errors
+    ///
+    /// Returning a null pointer indicates that either memory is exhausted
+    /// or `layout` does not meet allocator's size or alignment constraints,
+    /// just as in `alloc`.
+    ///
+    /// Clients wishing to abort computation in response to an
+    /// allocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    #[stable(feature = "global_alloc", since = "1.28.0")]
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
         let size = layout.size();
         let ptr = self.alloc(layout);
         if !ptr.is_null() {
-            ptr::write_bytes(ptr as *mut u8, 0, size);
+            ptr::write_bytes(ptr, 0, size);
         }
         ptr
     }
@@ -439,26 +520,61 @@ pub unsafe trait GlobalAlloc {
     /// Shink or grow a block of memory to the given `new_size`.
     /// The block is described by the given `ptr` pointer and `layout`.
     ///
-    /// Return a new pointer (which may or may not be the same as `ptr`),
-    /// or NULL to indicate reallocation failure.
+    /// If this returns a non-null pointer, then ownership of the memory block
+    /// referenced by `ptr` has been transferred to this alloctor.
+    /// The memory may or may not have been deallocated,
+    /// and should be considered unusable (unless of course it was
+    /// transferred back to the caller again via the return value of
+    /// this method).
     ///
-    /// If reallocation is successful, the old `ptr` pointer is considered
-    /// to have been deallocated.
+    /// If this method returns null, then ownership of the memory
+    /// block has not been transferred to this allocator, and the
+    /// contents of the memory block are unaltered.
     ///
     /// # Safety
     ///
-    /// `new_size`, when rounded up to the nearest multiple of `old_layout.align()`,
-    /// must not overflow (i.e. the rounded value must be less than `usize::MAX`).
+    /// This function is unsafe because undefined behavior can result
+    /// if the caller does not ensure all of the following:
     ///
-    /// **FIXME:** what are the exact requirements?
-    /// In particular around layout *fit*. (See docs for the `Alloc` trait.)
-    unsafe fn realloc(&self, ptr: *mut Opaque, layout: Layout, new_size: usize) -> *mut Opaque {
+    /// * `ptr` must be currently allocated via this allocator,
+    ///
+    /// * `layout` must be the same layout that was used
+    ///   to allocated that block of memory,
+    ///
+    /// * `new_size` must be greater than zero.
+    ///
+    /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`,
+    ///   must not overflow (i.e. the rounded value must be less than `usize::MAX`).
+    ///
+    /// (Extension subtraits might provide more specific bounds on
+    /// behavior, e.g. guarantee a sentinel address or a null pointer
+    /// in response to a zero-size allocation request.)
+    ///
+    /// # Errors
+    ///
+    /// Returns null if the new layout does not meet the size
+    /// and alignment constraints of the allocator, or if reallocation
+    /// otherwise fails.
+    ///
+    /// Implementations are encouraged to return null on memory
+    /// exhaustion rather than panicking or aborting, but this is not
+    /// a strict requirement. (Specifically: it is *legal* to
+    /// implement this trait atop an underlying native allocation
+    /// library that aborts on memory exhaustion.)
+    ///
+    /// Clients wishing to abort computation in response to a
+    /// reallocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    #[stable(feature = "global_alloc", since = "1.28.0")]
+    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
         let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
         let new_ptr = self.alloc(new_layout);
         if !new_ptr.is_null() {
             ptr::copy_nonoverlapping(
-                ptr as *const u8,
-                new_ptr as *mut u8,
+                ptr,
+                new_ptr,
                 cmp::min(layout.size(), new_size),
             );
             self.dealloc(ptr, layout);
@@ -540,27 +656,22 @@ pub unsafe trait GlobalAlloc {
 ///   retain their validity until at least the instance of `Alloc` is dropped
 ///   itself.
 ///
-/// * It's undefined behavior if global allocators unwind.  This restriction may
-///   be lifted in the future, but currently a panic from any of these
-///   functions may lead to memory unsafety. Note that as of the time of this
-///   writing allocators *not* intending to be global allocators can still panic
-///   in their implementation without violating memory safety.
-///
 /// * `Layout` queries and calculations in general must be correct. Callers of
 ///   this trait are allowed to rely on the contracts defined on each method,
 ///   and implementors must ensure such contracts remain true.
 ///
 /// Note that this list may get tweaked over time as clarifications are made in
-/// the future. Additionally global allocators may gain unique requirements for
-/// how to safely implement one in the future as well.
+/// the future.
+#[unstable(feature = "allocator_api", issue = "32838")]
 pub unsafe trait Alloc {
 
-    // (Note: existing allocators have unspecified but well-defined
+    // (Note: some existing allocators have unspecified but well-defined
     // behavior in response to a zero size allocation request ;
     // e.g. in C, `malloc` of 0 will either return a null pointer or a
     // unique pointer, but will not have arbitrary undefined
-    // behavior. Rust should consider revising the alloc::heap crate
-    // to reflect this reality.)
+    // behavior.
+    // However in jemalloc for example,
+    // `mallocx(0)` is documented as undefined behavior.)
 
     /// Returns a pointer meeting the size and alignment guarantees of
     /// `layout`.
@@ -596,9 +707,11 @@ pub unsafe trait Alloc {
     /// library that aborts on memory exhaustion.)
     ///
     /// Clients wishing to abort computation in response to an
-    /// allocation error are encouraged to call the allocator's `oom`
-    /// method, rather than directly invoking `panic!` or similar.
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr>;
+    /// allocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr>;
 
     /// Deallocate the memory referenced by `ptr`.
     ///
@@ -615,7 +728,7 @@ pub unsafe trait Alloc {
     /// * In addition to fitting the block of memory `layout`, the
     ///   alignment of the `layout` must match the alignment used
     ///   to allocate that block of memory.
-    unsafe fn dealloc(&mut self, ptr: NonNull<Opaque>, layout: Layout);
+    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout);
 
     // == ALLOCATOR-SPECIFIC QUANTITIES AND LIMITS ==
     // usable_size
@@ -703,13 +816,15 @@ pub unsafe trait Alloc {
     /// implement this trait atop an underlying native allocation
     /// library that aborts on memory exhaustion.)
     ///
-    /// Clients wishing to abort computation in response to an
-    /// reallocation error are encouraged to call the allocator's `oom`
-    /// method, rather than directly invoking `panic!` or similar.
+    /// Clients wishing to abort computation in response to a
+    /// reallocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     unsafe fn realloc(&mut self,
-                      ptr: NonNull<Opaque>,
+                      ptr: NonNull<u8>,
                       layout: Layout,
-                      new_size: usize) -> Result<NonNull<Opaque>, AllocErr> {
+                      new_size: usize) -> Result<NonNull<u8>, AllocErr> {
         let old_size = layout.size();
 
         if new_size >= old_size {
@@ -726,8 +841,8 @@ pub unsafe trait Alloc {
         let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
         let result = self.alloc(new_layout);
         if let Ok(new_ptr) = result {
-            ptr::copy_nonoverlapping(ptr.as_ptr() as *const u8,
-                                     new_ptr.as_ptr() as *mut u8,
+            ptr::copy_nonoverlapping(ptr.as_ptr(),
+                                     new_ptr.as_ptr(),
                                      cmp::min(old_size, new_size));
             self.dealloc(ptr, layout);
         }
@@ -748,13 +863,15 @@ pub unsafe trait Alloc {
     /// constraints, just as in `alloc`.
     ///
     /// Clients wishing to abort computation in response to an
-    /// allocation error are encouraged to call the allocator's `oom`
-    /// method, rather than directly invoking `panic!` or similar.
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
+    /// allocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
         let size = layout.size();
         let p = self.alloc(layout);
         if let Ok(p) = p {
-            ptr::write_bytes(p.as_ptr() as *mut u8, 0, size);
+            ptr::write_bytes(p.as_ptr(), 0, size);
         }
         p
     }
@@ -774,8 +891,10 @@ pub unsafe trait Alloc {
     /// constraints, just as in `alloc`.
     ///
     /// Clients wishing to abort computation in response to an
-    /// allocation error are encouraged to call the allocator's `oom`
-    /// method, rather than directly invoking `panic!` or similar.
+    /// allocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, AllocErr> {
         let usable_size = self.usable_size(&layout);
         self.alloc(layout).map(|p| Excess(p, usable_size.1))
@@ -795,11 +914,13 @@ pub unsafe trait Alloc {
     /// `layout` does not meet allocator's size or alignment
     /// constraints, just as in `realloc`.
     ///
-    /// Clients wishing to abort computation in response to an
-    /// reallocation error are encouraged to call the allocator's `oom`
-    /// method, rather than directly invoking `panic!` or similar.
+    /// Clients wishing to abort computation in response to a
+    /// reallocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     unsafe fn realloc_excess(&mut self,
-                             ptr: NonNull<Opaque>,
+                             ptr: NonNull<u8>,
                              layout: Layout,
                              new_size: usize) -> Result<Excess, AllocErr> {
         let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
@@ -839,12 +960,12 @@ pub unsafe trait Alloc {
     /// unable to assert that the memory block referenced by `ptr`
     /// could fit `layout`.
     ///
-    /// Note that one cannot pass `CannotReallocInPlace` to the `oom`
-    /// method; clients are expected either to be able to recover from
+    /// Note that one cannot pass `CannotReallocInPlace` to the `handle_alloc_error`
+    /// function; clients are expected either to be able to recover from
     /// `grow_in_place` failures without aborting, or to fall back on
     /// another reallocation method before resorting to an abort.
     unsafe fn grow_in_place(&mut self,
-                            ptr: NonNull<Opaque>,
+                            ptr: NonNull<u8>,
                             layout: Layout,
                             new_size: usize) -> Result<(), CannotReallocInPlace> {
         let _ = ptr; // this default implementation doesn't care about the actual address.
@@ -894,12 +1015,12 @@ pub unsafe trait Alloc {
     /// unable to assert that the memory block referenced by `ptr`
     /// could fit `layout`.
     ///
-    /// Note that one cannot pass `CannotReallocInPlace` to the `oom`
-    /// method; clients are expected either to be able to recover from
+    /// Note that one cannot pass `CannotReallocInPlace` to the `handle_alloc_error`
+    /// function; clients are expected either to be able to recover from
     /// `shrink_in_place` failures without aborting, or to fall back
     /// on another reallocation method before resorting to an abort.
     unsafe fn shrink_in_place(&mut self,
-                              ptr: NonNull<Opaque>,
+                              ptr: NonNull<u8>,
                               layout: Layout,
                               new_size: usize) -> Result<(), CannotReallocInPlace> {
         let _ = ptr; // this default implementation doesn't care about the actual address.
@@ -943,8 +1064,10 @@ pub unsafe trait Alloc {
     /// will *not* yield undefined behavior.
     ///
     /// Clients wishing to abort computation in response to an
-    /// allocation error are encouraged to call the allocator's `oom`
-    /// method, rather than directly invoking `panic!` or similar.
+    /// allocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     fn alloc_one<T>(&mut self) -> Result<NonNull<T>, AllocErr>
         where Self: Sized
     {
@@ -978,7 +1101,7 @@ pub unsafe trait Alloc {
     {
         let k = Layout::new::<T>();
         if k.size() > 0 {
-            self.dealloc(ptr.as_opaque(), k);
+            self.dealloc(ptr.cast(), k);
         }
     }
 
@@ -1010,8 +1133,10 @@ pub unsafe trait Alloc {
     /// Always returns `Err` on arithmetic overflow.
     ///
     /// Clients wishing to abort computation in response to an
-    /// allocation error are encouraged to call the allocator's `oom`
-    /// method, rather than directly invoking `panic!` or similar.
+    /// allocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     fn alloc_array<T>(&mut self, n: usize) -> Result<NonNull<T>, AllocErr>
         where Self: Sized
     {
@@ -1054,9 +1179,11 @@ pub unsafe trait Alloc {
     ///
     /// Always returns `Err` on arithmetic overflow.
     ///
-    /// Clients wishing to abort computation in response to an
-    /// reallocation error are encouraged to call the allocator's `oom`
-    /// method, rather than directly invoking `panic!` or similar.
+    /// Clients wishing to abort computation in response to a
+    /// reallocation error are encouraged to call the [`handle_alloc_error`] function,
+    /// rather than directly invoking `panic!` or similar.
+    ///
+    /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     unsafe fn realloc_array<T>(&mut self,
                                ptr: NonNull<T>,
                                n_old: usize,
@@ -1066,7 +1193,7 @@ pub unsafe trait Alloc {
         match (Layout::array::<T>(n_old), Layout::array::<T>(n_new)) {
             (Ok(ref k_old), Ok(ref k_new)) if k_old.size() > 0 && k_new.size() > 0 => {
                 debug_assert!(k_old.align() == k_new.align());
-                self.realloc(ptr.as_opaque(), k_old.clone(), k_new.size()).map(NonNull::cast)
+                self.realloc(ptr.cast(), k_old.clone(), k_new.size()).map(NonNull::cast)
             }
             _ => {
                 Err(AllocErr)
@@ -1099,7 +1226,7 @@ pub unsafe trait Alloc {
     {
         match Layout::array::<T>(n) {
             Ok(ref k) if k.size() > 0 => {
-                Ok(self.dealloc(ptr.as_opaque(), k.clone()))
+                Ok(self.dealloc(ptr.cast(), k.clone()))
             }
             _ => {
                 Err(AllocErr)

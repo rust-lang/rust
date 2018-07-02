@@ -25,7 +25,8 @@ use util::nodemap::FxHashSet;
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
 use errors::DiagnosticBuilder;
-use syntax_pos::Span;
+use syntax_pos::{Span, FileName};
+
 
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::hir;
@@ -76,7 +77,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn report_method_error(&self,
                                span: Span,
                                rcvr_ty: Ty<'tcx>,
-                               item_name: ast::Name,
+                               item_name: ast::Ident,
                                rcvr_expr: Option<&hir::Expr>,
                                error: MethodError<'tcx>,
                                args: Option<&'gcx [hir::Expr]>) {
@@ -187,7 +188,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 out_of_scope_traits,
                 lev_candidate,
                 mode,
-                ..
             }) => {
                 let tcx = self.tcx;
 
@@ -245,12 +245,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             "f32"
                         };
                         match expr.node {
-                            hir::ExprLit(_) => {  // numeric literal
-                                let snippet = tcx.sess.codemap().span_to_snippet(expr.span)
+                            hir::ExprLit(ref lit) => {  // numeric literal
+                                let snippet = tcx.sess.codemap().span_to_snippet(lit.span)
                                     .unwrap_or("<numeric literal>".to_string());
-                                // FIXME: use the literal for missing snippet
 
-                                err.span_suggestion(expr.span,
+                                err.span_suggestion(lit.span,
                                                     &format!("you must specify a concrete type for \
                                                               this numeric value, like `{}`",
                                                              concrete_type),
@@ -264,13 +263,35 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         let span = tcx.hir.span(node_id);
                                         let snippet = tcx.sess.codemap().span_to_snippet(span)
                                             .unwrap();
-                                        err.span_suggestion(span,
-                                                            &format!("you must specify a type for \
-                                                                      this binding, like `{}`",
-                                                                     concrete_type),
-                                                            format!("{}: {}",
-                                                                    snippet,
-                                                                    concrete_type));
+                                        let filename = tcx.sess.codemap().span_to_filename(span);
+
+                                        let parent_node = self.tcx.hir.get(
+                                            self.tcx.hir.get_parent_node(node_id),
+                                        );
+                                        let msg = format!(
+                                            "you must specify a type for this binding, like `{}`",
+                                            concrete_type,
+                                        );
+
+                                        match (filename, parent_node) {
+                                            (FileName::Real(_), hir_map::NodeLocal(hir::Local {
+                                                source: hir::LocalSource::Normal,
+                                                ty,
+                                                ..
+                                            })) => {
+                                                err.span_suggestion(
+                                                    // account for `let x: _ = 42;`
+                                                    //                  ^^^^
+                                                    span.to(ty.as_ref().map(|ty| ty.span)
+                                                        .unwrap_or(span)),
+                                                    &msg,
+                                                    format!("{}: {}", snippet, concrete_type),
+                                                );
+                                            }
+                                            _ => {
+                                                err.span_label(span, msg);
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -318,8 +339,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         match ty.sty {
                             ty::TyAdt(def, substs) if !def.is_enum() => {
                                 let variant = &def.non_enum_variant();
-                                if let Some(index) =
-                                        self.tcx.find_field_index(item_name.to_ident(), variant) {
+                                if let Some(index) = self.tcx.find_field_index(item_name, variant) {
                                     let field = &variant.fields[index];
                                     let snippet = tcx.sess.codemap().span_to_snippet(expr.span);
                                     let expr_string = match snippet {
@@ -371,7 +391,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             report_function!(expr.span, expr_string);
                         } else if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = expr.node {
                             if let Some(segment) = path.segments.last() {
-                                report_function!(expr.span, segment.name);
+                                report_function!(expr.span, segment.ident);
                             }
                         }
                     }
@@ -423,7 +443,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 if let Some(lev_candidate) = lev_candidate {
-                    err.help(&format!("did you mean `{}`?", lev_candidate.name));
+                    err.help(&format!("did you mean `{}`?", lev_candidate.ident));
                 }
                 err.emit();
             }
@@ -543,7 +563,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 err: &mut DiagnosticBuilder,
                                 span: Span,
                                 rcvr_ty: Ty<'tcx>,
-                                item_name: ast::Name,
+                                item_name: ast::Ident,
                                 rcvr_expr: Option<&hir::Expr>,
                                 valid_out_of_scope_traits: Vec<DefId>) {
         if self.suggest_valid_traits(err, valid_out_of_scope_traits) {
@@ -741,7 +761,7 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
     traits
 }
 
-pub fn provide(providers: &mut ty::maps::Providers) {
+pub fn provide(providers: &mut ty::query::Providers) {
     providers.all_traits = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         Lrc::new(compute_all_traits(tcx))

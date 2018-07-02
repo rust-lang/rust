@@ -25,7 +25,7 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID};
 use syntax::codemap::Spanned;
 use syntax::ext::base::MacroKind;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 use hir::*;
 use hir::print::Nested;
@@ -68,7 +68,7 @@ pub enum Node<'hir> {
     NodeStructCtor(&'hir VariantData),
 
     NodeLifetime(&'hir Lifetime),
-    NodeTyParam(&'hir TyParam),
+    NodeGenericParam(&'hir GenericParam),
     NodeVisibility(&'hir Visibility),
 }
 
@@ -96,7 +96,7 @@ enum MapEntry<'hir> {
     EntryBlock(NodeId, DepNodeIndex, &'hir Block),
     EntryStructCtor(NodeId, DepNodeIndex, &'hir VariantData),
     EntryLifetime(NodeId, DepNodeIndex, &'hir Lifetime),
-    EntryTyParam(NodeId, DepNodeIndex, &'hir TyParam),
+    EntryGenericParam(NodeId, DepNodeIndex, &'hir GenericParam),
     EntryVisibility(NodeId, DepNodeIndex, &'hir Visibility),
     EntryLocal(NodeId, DepNodeIndex, &'hir Local),
 
@@ -132,7 +132,7 @@ impl<'hir> MapEntry<'hir> {
             EntryBlock(id, _, _) => id,
             EntryStructCtor(id, _, _) => id,
             EntryLifetime(id, _, _) => id,
-            EntryTyParam(id, _, _) => id,
+            EntryGenericParam(id, _, _) => id,
             EntryVisibility(id, _, _) => id,
             EntryLocal(id, _, _) => id,
 
@@ -160,7 +160,7 @@ impl<'hir> MapEntry<'hir> {
             EntryBlock(_, _, n) => NodeBlock(n),
             EntryStructCtor(_, _, n) => NodeStructCtor(n),
             EntryLifetime(_, _, n) => NodeLifetime(n),
-            EntryTyParam(_, _, n) => NodeTyParam(n),
+            EntryGenericParam(_, _, n) => NodeGenericParam(n),
             EntryVisibility(_, _, n) => NodeVisibility(n),
             EntryLocal(_, _, n) => NodeLocal(n),
             EntryMacroDef(_, n) => NodeMacroDef(n),
@@ -170,13 +170,47 @@ impl<'hir> MapEntry<'hir> {
         })
     }
 
+    fn fn_decl(&self) -> Option<&FnDecl> {
+        match self {
+            EntryItem(_, _, ref item) => {
+                match item.node {
+                    ItemFn(ref fn_decl, _, _, _) => Some(&fn_decl),
+                    _ => None,
+                }
+            }
+
+            EntryTraitItem(_, _, ref item) => {
+                match item.node {
+                    TraitItemKind::Method(ref method_sig, _) => Some(&method_sig.decl),
+                    _ => None
+                }
+            }
+
+            EntryImplItem(_, _, ref item) => {
+                match item.node {
+                    ImplItemKind::Method(ref method_sig, _) => Some(&method_sig.decl),
+                    _ => None,
+                }
+            }
+
+            EntryExpr(_, _, ref expr) => {
+                match expr.node {
+                    ExprClosure(_, ref fn_decl, ..) => Some(&fn_decl),
+                    _ => None,
+                }
+            }
+
+            _ => None
+        }
+    }
+
     fn associated_body(self) -> Option<BodyId> {
         match self {
             EntryItem(_, _, item) => {
                 match item.node {
                     ItemConst(_, body) |
                     ItemStatic(.., body) |
-                    ItemFn(_, _, _, _, _, body) => Some(body),
+                    ItemFn(_, _, _, body) => Some(body),
                     _ => None,
                 }
             }
@@ -294,7 +328,7 @@ impl<'hir> Map<'hir> {
             EntryBlock(_, dep_node_index, _) |
             EntryStructCtor(_, dep_node_index, _) |
             EntryLifetime(_, dep_node_index, _) |
-            EntryTyParam(_, dep_node_index, _) |
+            EntryGenericParam(_, dep_node_index, _) |
             EntryVisibility(_, dep_node_index, _) |
             EntryAnonConst(_, dep_node_index, _) |
             EntryExpr(_, dep_node_index, _) |
@@ -398,6 +432,7 @@ impl<'hir> Map<'hir> {
                     ItemFn(..) => Some(Def::Fn(def_id())),
                     ItemMod(..) => Some(Def::Mod(def_id())),
                     ItemGlobalAsm(..) => Some(Def::GlobalAsm(def_id())),
+                    ItemExistential(..) => Some(Def::Existential(def_id())),
                     ItemTy(..) => Some(Def::TyAlias(def_id())),
                     ItemEnum(..) => Some(Def::Enum(def_id())),
                     ItemStruct(..) => Some(Def::Struct(def_id())),
@@ -459,8 +494,11 @@ impl<'hir> Map<'hir> {
                 Some(Def::Macro(self.local_def_id(macro_def.id),
                                 MacroKind::Bang))
             }
-            NodeTyParam(param) => {
-                Some(Def::TyParam(self.local_def_id(param.id)))
+            NodeGenericParam(param) => {
+                Some(match param.kind {
+                    GenericParamKind::Lifetime { .. } => Def::Local(param.id),
+                    GenericParamKind::Type { .. } => Def::TyParam(self.local_def_id(param.id)),
+                })
             }
         }
     }
@@ -499,6 +537,14 @@ impl<'hir> Map<'hir> {
         // NB: intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
         self.forest.krate.body(id)
+    }
+
+    pub fn fn_decl(&self, node_id: ast::NodeId) -> Option<FnDecl> {
+        if let Some(entry) = self.find_entry(node_id) {
+            entry.fn_decl().map(|fd| fd.clone())
+        } else {
+            bug!("no entry for node_id `{}`", node_id)
+        }
     }
 
     /// Returns the `NodeId` that corresponds to the definition of
@@ -557,7 +603,7 @@ impl<'hir> Map<'hir> {
     pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
         match self.get(id) {
             NodeItem(&Item { node: ItemTrait(..), .. }) => id,
-            NodeTyParam(_) => self.get_parent_node(id),
+            NodeGenericParam(_) => self.get_parent_node(id),
             _ => {
                 bug!("ty_param_owner: {} not a type parameter",
                     self.node_to_string(id))
@@ -570,11 +616,8 @@ impl<'hir> Map<'hir> {
             NodeItem(&Item { node: ItemTrait(..), .. }) => {
                 keywords::SelfType.name()
             }
-            NodeTyParam(tp) => tp.name,
-            _ => {
-                bug!("ty_param_name: {} not a type parameter",
-                    self.node_to_string(id))
-            }
+            NodeGenericParam(param) => param.name.ident().name,
+            _ => bug!("ty_param_name: {} not a type parameter", self.node_to_string(id)),
         }
     }
 
@@ -619,6 +662,33 @@ impl<'hir> Map<'hir> {
 
     pub fn get_if_local(&self, id: DefId) -> Option<Node<'hir>> {
         self.as_local_node_id(id).map(|id| self.get(id)) // read recorded by `get`
+    }
+
+    pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics> {
+        self.get_if_local(id).and_then(|node| {
+            match node {
+                NodeImplItem(ref impl_item) => Some(&impl_item.generics),
+                NodeTraitItem(ref trait_item) => Some(&trait_item.generics),
+                NodeItem(ref item) => {
+                    match item.node {
+                        ItemFn(_, _, ref generics, _) |
+                        ItemTy(_, ref generics) |
+                        ItemEnum(_, ref generics) |
+                        ItemStruct(_, ref generics) |
+                        ItemUnion(_, ref generics) |
+                        ItemTrait(_, _, ref generics, ..) |
+                        ItemTraitAlias(ref generics, _) |
+                        ItemImpl(_, _, _, ref generics, ..) => Some(generics),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            }
+        })
+    }
+
+    pub fn get_generics_span(&self, id: DefId) -> Option<Span> {
+        self.get_generics(id).map(|generics| generics.span).filter(|sp| *sp != DUMMY_SP)
     }
 
     /// Retrieve the Node corresponding to `id`, returning None if
@@ -767,7 +837,7 @@ impl<'hir> Map<'hir> {
 
     /// Retrieve the NodeId for `id`'s parent item, or `id` itself if no
     /// parent item is in this map. The "parent item" is the closest parent node
-    /// in the AST which is recorded by the map and is an item, either an item
+    /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
     pub fn get_parent(&self, id: NodeId) -> NodeId {
         match self.walk_parent_nodes(id, |node| match *node {
@@ -906,13 +976,13 @@ impl<'hir> Map<'hir> {
         match self.get(id) {
             NodeItem(i) => i.name,
             NodeForeignItem(i) => i.name,
-            NodeImplItem(ii) => ii.name,
-            NodeTraitItem(ti) => ti.name,
+            NodeImplItem(ii) => ii.ident.name,
+            NodeTraitItem(ti) => ti.ident.name,
             NodeVariant(v) => v.node.name,
             NodeField(f) => f.ident.name,
-            NodeLifetime(lt) => lt.name.name(),
-            NodeTyParam(tp) => tp.name,
-            NodeBinding(&Pat { node: PatKind::Binding(_,_,l,_), .. }) => l.node,
+            NodeLifetime(lt) => lt.name.ident().name,
+            NodeGenericParam(param) => param.name.ident().name,
+            NodeBinding(&Pat { node: PatKind::Binding(_,_,l,_), .. }) => l.name,
             NodeStructCtor(_) => self.name(self.get_parent(id)),
             _ => bug!("no name for {}", self.node_to_string(id))
         }
@@ -931,7 +1001,7 @@ impl<'hir> Map<'hir> {
             Some(NodeField(ref f)) => Some(&f.attrs[..]),
             Some(NodeExpr(ref e)) => Some(&*e.attrs),
             Some(NodeStmt(ref s)) => Some(s.node.attrs()),
-            Some(NodeTyParam(tp)) => Some(&tp.attrs[..]),
+            Some(NodeGenericParam(param)) => Some(&param.attrs[..]),
             // unit/tuple structs take the attributes straight from
             // the struct definition.
             Some(NodeStructCtor(_)) => {
@@ -978,8 +1048,10 @@ impl<'hir> Map<'hir> {
             Some(EntryBlock(_, _, block)) => block.span,
             Some(EntryStructCtor(_, _, _)) => self.expect_item(self.get_parent(id)).span,
             Some(EntryLifetime(_, _, lifetime)) => lifetime.span,
-            Some(EntryTyParam(_, _, ty_param)) => ty_param.span,
-            Some(EntryVisibility(_, _, &Visibility::Restricted { ref path, .. })) => path.span,
+            Some(EntryGenericParam(_, _, param)) => param.span,
+            Some(EntryVisibility(_, _, &Spanned {
+                node: VisibilityKind::Restricted { ref path, .. }, ..
+            })) => path.span,
             Some(EntryVisibility(_, _, v)) => bug!("unexpected Visibility {:?}", v),
             Some(EntryLocal(_, _, local)) => local.span,
             Some(EntryMacroDef(_, macro_def)) => macro_def.span,
@@ -1106,8 +1178,8 @@ impl Named for Item { fn name(&self) -> Name { self.name } }
 impl Named for ForeignItem { fn name(&self) -> Name { self.name } }
 impl Named for Variant_ { fn name(&self) -> Name { self.name } }
 impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
-impl Named for TraitItem { fn name(&self) -> Name { self.name } }
-impl Named for ImplItem { fn name(&self) -> Name { self.name } }
+impl Named for TraitItem { fn name(&self) -> Name { self.ident.name } }
+impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
 
 
 pub fn map_crate<'hir>(sess: &::session::Session,
@@ -1183,19 +1255,19 @@ impl<'hir> print::PpAnn for Map<'hir> {
 impl<'a> print::State<'a> {
     pub fn print_node(&mut self, node: Node) -> io::Result<()> {
         match node {
-            NodeItem(a)        => self.print_item(&a),
-            NodeForeignItem(a) => self.print_foreign_item(&a),
-            NodeTraitItem(a)   => self.print_trait_item(a),
-            NodeImplItem(a)    => self.print_impl_item(a),
-            NodeVariant(a)     => self.print_variant(&a),
-            NodeAnonConst(a)   => self.print_anon_const(&a),
-            NodeExpr(a)        => self.print_expr(&a),
-            NodeStmt(a)        => self.print_stmt(&a),
-            NodeTy(a)          => self.print_type(&a),
-            NodeTraitRef(a)    => self.print_trait_ref(&a),
+            NodeItem(a)         => self.print_item(&a),
+            NodeForeignItem(a)  => self.print_foreign_item(&a),
+            NodeTraitItem(a)    => self.print_trait_item(a),
+            NodeImplItem(a)     => self.print_impl_item(a),
+            NodeVariant(a)      => self.print_variant(&a),
+            NodeAnonConst(a)    => self.print_anon_const(&a),
+            NodeExpr(a)         => self.print_expr(&a),
+            NodeStmt(a)         => self.print_stmt(&a),
+            NodeTy(a)           => self.print_type(&a),
+            NodeTraitRef(a)     => self.print_trait_ref(&a),
             NodeBinding(a)       |
-            NodePat(a)         => self.print_pat(&a),
-            NodeBlock(a)       => {
+            NodePat(a)          => self.print_pat(&a),
+            NodeBlock(a)        => {
                 use syntax::print::pprust::PrintState;
 
                 // containing cbox, will be closed by print-block at }
@@ -1204,16 +1276,16 @@ impl<'a> print::State<'a> {
                 self.ibox(0)?;
                 self.print_block(&a)
             }
-            NodeLifetime(a)    => self.print_lifetime(&a),
-            NodeVisibility(a)  => self.print_visibility(&a),
-            NodeTyParam(_)     => bug!("cannot print TyParam"),
-            NodeField(_)       => bug!("cannot print StructField"),
+            NodeLifetime(a)     => self.print_lifetime(&a),
+            NodeVisibility(a)   => self.print_visibility(&a),
+            NodeGenericParam(_) => bug!("cannot print NodeGenericParam"),
+            NodeField(_)        => bug!("cannot print StructField"),
             // these cases do not carry enough information in the
             // hir_map to reconstruct their full structure for pretty
             // printing.
-            NodeStructCtor(_)  => bug!("cannot print isolated StructCtor"),
-            NodeLocal(a)       => self.print_local_decl(&a),
-            NodeMacroDef(_)    => bug!("cannot print MacroDef"),
+            NodeStructCtor(_)   => bug!("cannot print isolated StructCtor"),
+            NodeLocal(a)        => self.print_local_decl(&a),
+            NodeMacroDef(_)     => bug!("cannot print MacroDef"),
         }
     }
 }
@@ -1250,6 +1322,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemForeignMod(..) => "foreign mod",
                 ItemGlobalAsm(..) => "global asm",
                 ItemTy(..) => "ty",
+                ItemExistential(..) => "existential",
                 ItemEnum(..) => "enum",
                 ItemStruct(..) => "struct",
                 ItemUnion(..) => "union",
@@ -1265,13 +1338,13 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         Some(NodeImplItem(ii)) => {
             match ii.node {
                 ImplItemKind::Const(..) => {
-                    format!("assoc const {} in {}{}", ii.name, path_str(), id_str)
+                    format!("assoc const {} in {}{}", ii.ident, path_str(), id_str)
                 }
                 ImplItemKind::Method(..) => {
-                    format!("method {} in {}{}", ii.name, path_str(), id_str)
+                    format!("method {} in {}{}", ii.ident, path_str(), id_str)
                 }
                 ImplItemKind::Type(_) => {
-                    format!("assoc type {} in {}{}", ii.name, path_str(), id_str)
+                    format!("assoc type {} in {}{}", ii.ident, path_str(), id_str)
                 }
             }
         }
@@ -1282,7 +1355,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 TraitItemKind::Type(..) => "assoc type",
             };
 
-            format!("{} {} in {}{}", kind, ti.name, path_str(), id_str)
+            format!("{} {} in {}{}", kind, ti.ident, path_str(), id_str)
         }
         Some(NodeVariant(ref variant)) => {
             format!("variant {} in {}{}",
@@ -1327,8 +1400,8 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         Some(NodeLifetime(_)) => {
             format!("lifetime {}{}", map.node_to_pretty_string(id), id_str)
         }
-        Some(NodeTyParam(ref ty_param)) => {
-            format!("typaram {:?}{}", ty_param, id_str)
+        Some(NodeGenericParam(ref param)) => {
+            format!("generic_param {:?}{}", param, id_str)
         }
         Some(NodeVisibility(ref vis)) => {
             format!("visibility {:?}{}", vis, id_str)

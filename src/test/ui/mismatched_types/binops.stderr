@@ -30,19 +30,19 @@ LL |     4 / ""; //~ ERROR cannot divide `{integer}` by `&str`
    |
    = help: the trait `std::ops::Div<&str>` is not implemented for `{integer}`
 
-error[E0277]: the trait bound `{integer}: std::cmp::PartialOrd<std::string::String>` is not satisfied
+error[E0277]: can't compare `{integer}` with `std::string::String`
   --> $DIR/binops.rs:16:7
    |
-LL |     5 < String::new(); //~ ERROR is not satisfied
-   |       ^ can't compare `{integer}` with `std::string::String`
+LL |     5 < String::new(); //~ ERROR can't compare `{integer}` with `std::string::String`
+   |       ^ no implementation for `{integer} < std::string::String` and `{integer} > std::string::String`
    |
    = help: the trait `std::cmp::PartialOrd<std::string::String>` is not implemented for `{integer}`
 
-error[E0277]: the trait bound `{integer}: std::cmp::PartialEq<std::result::Result<{integer}, _>>` is not satisfied
+error[E0277]: can't compare `{integer}` with `std::result::Result<{integer}, _>`
   --> $DIR/binops.rs:17:7
    |
-LL |     6 == Ok(1); //~ ERROR is not satisfied
-   |       ^^ can't compare `{integer}` with `std::result::Result<{integer}, _>`
+LL |     6 == Ok(1); //~ ERROR can't compare `{integer}` with `std::result::Result<{integer}, _>`
+   |       ^^ no implementation for `{integer} == std::result::Result<{integer}, _>`
    |
    = help: the trait `std::cmp::PartialEq<std::result::Result<{integer}, _>>` is not implemented for `{integer}`
 

@@ -494,6 +494,13 @@ impl Input {
             Input::Str { .. } => "rust_out".to_string(),
         }
     }
+
+    pub fn get_input(&mut self) -> Option<&mut String> {
+        match *self {
+            Input::File(_) => None,
+            Input::Str { ref mut input, .. } => Some(input),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -1960,6 +1967,13 @@ pub fn build_session_options_and_crate_config(
         early_error(
             error_format,
             "can't perform LTO when compiling incrementally",
+        );
+    }
+
+    if debugging_opts.profile && incremental.is_some() {
+        early_error(
+            error_format,
+            "can't instrument with gcov profiling when compiling incrementally",
         );
     }
 

@@ -15,10 +15,10 @@ struct Misc<T:?Sized>(T);
 fn check<T: Iterator, U: ?Sized>() {
     // suggest a where-clause, if needed
     mem::size_of::<U>();
-    //~^ ERROR `U: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
 
     mem::size_of::<Misc<U>>();
-    //~^ ERROR `U: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
 
     // ... even if T occurs as a type parameter
 
@@ -36,10 +36,10 @@ fn check<T: Iterator, U: ?Sized>() {
     // ... and also not if the error is not related to the type
 
     mem::size_of::<[T]>();
-    //~^ ERROR `[T]: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
 
     mem::size_of::<[&U]>();
-    //~^ ERROR `[&U]: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
 }
 
 fn main() {

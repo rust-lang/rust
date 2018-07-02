@@ -12,8 +12,6 @@ use self::Constructor::*;
 use self::Usefulness::*;
 use self::WitnessPreference::*;
 
-use rustc::middle::const_val::ConstVal;
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -25,6 +23,7 @@ use rustc::hir::RangeEnd;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 use rustc::mir::Field;
+use rustc::mir::interpret::ConstValue;
 use rustc::util::common::ErrorReported;
 
 use syntax_pos::{Span, DUMMY_SP};
@@ -543,14 +542,9 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
 
     for row in patterns {
         match *row.kind {
-            PatternKind::Constant {
-                value: const_val @ &ty::Const {
-                    val: ConstVal::Value(..),
-                    ..
-                }
-            } => {
-                if let Some(ptr) = const_val.to_ptr() {
-                    let is_array_ptr = const_val.ty
+            PatternKind::Constant { value } => {
+                if let Some(ptr) = value.to_ptr() {
+                    let is_array_ptr = value.ty
                         .builtin_deref(true)
                         .and_then(|t| t.ty.builtin_index())
                         .map_or(false, |t| t == cx.tcx.types.u8);
@@ -932,8 +926,13 @@ fn slice_pat_covered_by_constructor<'tcx>(
     suffix: &[Pattern<'tcx>]
 ) -> Result<bool, ErrorReported> {
     let data: &[u8] = match *ctor {
-        ConstantValue(const_val @ &ty::Const { val: ConstVal::Value(..), .. }) => {
-            if let Some(ptr) = const_val.to_ptr() {
+        ConstantValue(const_val) => {
+            let val = match const_val.val {
+                ConstValue::Unevaluated(..) |
+                ConstValue::ByRef(..) => bug!("unexpected ConstValue: {:?}", const_val),
+                ConstValue::Scalar(val) | ConstValue::ScalarPair(val, _) => val,
+            };
+            if let Ok(ptr) = val.to_ptr() {
                 let is_array_ptr = const_val.ty
                     .builtin_deref(true)
                     .and_then(|t| t.ty.builtin_index())
@@ -941,7 +940,7 @@ fn slice_pat_covered_by_constructor<'tcx>(
                 assert!(is_array_ptr);
                 tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id).bytes.as_ref()
             } else {
-                bug!()
+                bug!("unexpected non-ptr ConstantValue")
             }
         }
         _ => bug!()

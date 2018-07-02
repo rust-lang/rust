@@ -569,9 +569,11 @@ impl<'a> CrateLoader<'a> {
             fn register_bang_proc_macro(&mut self,
                                         name: &str,
                                         expand: fn(TokenStream) -> TokenStream) {
-                let expand = SyntaxExtension::ProcMacro(
-                    Box::new(BangProcMacro { inner: expand }), self.edition
-                );
+                let expand = SyntaxExtension::ProcMacro {
+                    expander: Box::new(BangProcMacro { inner: expand }),
+                    allow_internal_unstable: false,
+                    edition: self.edition,
+                };
                 self.extensions.push((Symbol::intern(name), Lrc::new(expand)));
             }
         }
@@ -986,8 +988,10 @@ impl<'a> CrateLoader<'a> {
             },
             None => {
                 if !attr::contains_name(&krate.attrs, "default_lib_allocator") {
-                    self.sess.err("no #[default_lib_allocator] found but one is \
-                                   required; is libstd not linked?");
+                    self.sess.err("no global memory allocator found but one is \
+                                   required; link to std or \
+                                   add #[global_allocator] to a static item \
+                                   that implements the GlobalAlloc trait.");
                     return;
                 }
                 self.sess.allocator_kind.set(Some(AllocatorKind::DefaultLib));

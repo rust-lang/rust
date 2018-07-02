@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `i32: std::iter::FromIterator<i32>` is not satisfied
+error[E0277]: a collection of type `i32` cannot be built from an iterator over elements of type `i32`
   --> $DIR/type-check-defaults.rs:16:19
    |
 LL | struct WellFormed<Z = Foo<i32, i32>>(Z);
-   |                   ^ a collection of type `i32` cannot be built from an iterator over elements of type `i32`
+   |                   ^ a collection of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
    |
    = help: the trait `std::iter::FromIterator<i32>` is not implemented for `i32`
 note: required by `Foo`
@@ -11,11 +11,11 @@ note: required by `Foo`
 LL | struct Foo<T, U: FromIterator<T>>(T, U);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `i32: std::iter::FromIterator<i32>` is not satisfied
+error[E0277]: a collection of type `i32` cannot be built from an iterator over elements of type `i32`
   --> $DIR/type-check-defaults.rs:18:27
    |
 LL | struct WellFormedNoBounds<Z:?Sized = Foo<i32, i32>>(Z);
-   |                           ^ a collection of type `i32` cannot be built from an iterator over elements of type `i32`
+   |                           ^ a collection of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
    |
    = help: the trait `std::iter::FromIterator<i32>` is not implemented for `i32`
 note: required by `Foo`

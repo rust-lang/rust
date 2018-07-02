@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `*const u8: std::marker::Send` is not satisfied in `Foo`
+error[E0277]: `*const u8` cannot be sent between threads safely
   --> $DIR/E0277-2.rs:26:5
    |
 LL |     is_send::<Foo>();

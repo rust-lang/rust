@@ -17,6 +17,7 @@
 use errors::{Applicability, DiagnosticBuilder};
 use lint::{LintPass, LateLintPass, LintArray};
 use session::Session;
+use syntax::ast;
 use syntax::codemap::Span;
 
 declare_lint! {
@@ -207,6 +208,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub BAD_REPR,
+    Warn,
+    "detects incorrect use of `repr` attribute"
+}
+
+declare_lint! {
     pub DEPRECATED,
     Warn,
     "detects use of deprecated items"
@@ -274,6 +281,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub IRREFUTABLE_LET_PATTERNS,
+    Deny,
+    "detects irrefutable patterns in if-let and while-let statements"
+}
+
+declare_lint! {
     pub UNUSED_LABELS,
     Allow,
     "detects labels that are never used"
@@ -283,6 +296,24 @@ declare_lint! {
     pub DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
     Warn,
     "warns about duplicate associated type bindings in generics"
+}
+
+declare_lint! {
+    pub DUPLICATE_MACRO_EXPORTS,
+    Deny,
+    "detects duplicate macro exports"
+}
+
+declare_lint! {
+    pub INTRA_DOC_LINK_RESOLUTION_FAILURE,
+    Warn,
+    "warn about documentation intra links resolution failure"
+}
+
+declare_lint! {
+    pub WHERE_CLAUSES_OBJECT_SAFETY,
+    Warn,
+    "checks the object safety of where clauses"
 }
 
 /// Does nothing as a lint pass, but registers some `Lint`s
@@ -336,7 +367,11 @@ impl LintPass for HardwiredLints {
             BARE_TRAIT_OBJECTS,
             ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
             UNSTABLE_NAME_COLLISIONS,
+            IRREFUTABLE_LET_PATTERNS,
             DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
+            DUPLICATE_MACRO_EXPORTS,
+            INTRA_DOC_LINK_RESOLUTION_FAILURE,
+            WHERE_CLAUSES_OBJECT_SAFETY,
         )
     }
 }
@@ -348,6 +383,7 @@ pub enum BuiltinLintDiagnostics {
     Normal,
     BareTraitObject(Span, /* is_global */ bool),
     AbsPathWithModule(Span),
+    DuplicatedMacroExports(ast::Ident, Span, Span),
 }
 
 impl BuiltinLintDiagnostics {
@@ -379,6 +415,10 @@ impl BuiltinLintDiagnostics {
                     Err(_) => (format!("crate::<path>"), Applicability::HasPlaceholders)
                 };
                 db.span_suggestion_with_applicability(span, "use `crate`", sugg, app);
+            }
+            BuiltinLintDiagnostics::DuplicatedMacroExports(ident, earlier_span, later_span) => {
+                db.span_label(later_span, format!("`{}` already exported", ident));
+                db.span_note(earlier_span, "previous macro export is now shadowed");
             }
         }
     }

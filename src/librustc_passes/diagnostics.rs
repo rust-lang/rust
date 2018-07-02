@@ -310,4 +310,5 @@ register_diagnostics! {
     E0666, // nested `impl Trait` is illegal
     E0667, // `impl Trait` in projections
     E0696, // `continue` pointing to a labeled block
+    E0706, // `async fn` in trait
 }

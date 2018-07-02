@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn _test(ref _p: str) {}
-//~^ ERROR the trait bound `str: std::marker::Sized` is not satisfied [E0277]
+//~^ ERROR the size for value values of type
 
 fn main() { }

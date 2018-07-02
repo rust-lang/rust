@@ -46,11 +46,9 @@ impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
         let tcx = self.bccx.tcx;
         let mut mutables = FxHashMap();
         for p in pats {
-            p.each_binding(|_, hir_id, span, path1| {
-                let name = path1.node;
-
+            p.each_binding(|_, hir_id, span, ident| {
                 // Skip anything that looks like `_foo`
-                if name.as_str().starts_with("_") {
+                if ident.as_str().starts_with("_") {
                     return;
                 }
 
@@ -65,7 +63,7 @@ impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
                     _ => return,
                 }
 
-                mutables.entry(name).or_insert(Vec::new()).push((hir_id, span));
+                mutables.entry(ident.name).or_insert(Vec::new()).push((hir_id, span));
             });
         }
 

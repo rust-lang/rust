@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::iter;
-
 use check::FnCtxt;
 use rustc::infer::InferOk;
 use rustc::traits::ObligationCause;
@@ -140,25 +138,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        if let Some((sp, msg, suggestion)) = self.check_ref(expr, checked_ty, expected) {
-            err.span_suggestion(sp, msg, suggestion);
-        } else if !self.check_for_cast(&mut err, expr, expr_ty, expected) {
-            let methods = self.get_conversion_methods(expr.span, expected, checked_ty);
-            if let Ok(expr_text) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
-                let suggestions = iter::repeat(expr_text).zip(methods.iter())
-                    .map(|(receiver, method)| format!("{}.{}()", receiver, method.name))
-                    .collect::<Vec<_>>();
-                if !suggestions.is_empty() {
-                    err.span_suggestions(expr.span,
-                                         "try using a conversion method",
-                                         suggestions);
-                }
-            }
-        }
+        self.suggest_ref_or_into(&mut err, expr, expected, expr_ty);
+
         (expected, Some(err))
     }
 
-    fn get_conversion_methods(&self, span: Span, expected: Ty<'tcx>, checked_ty: Ty<'tcx>)
+    pub fn get_conversion_methods(&self, span: Span, expected: Ty<'tcx>, checked_ty: Ty<'tcx>)
                               -> Vec<AssociatedItem> {
         let mut methods = self.probe_for_return_type(span,
                                                      probe::Mode::MethodCall,
@@ -226,7 +211,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     })), 1) = (self.tcx.hir.find(parent), decl.inputs.len()) {
                         let self_ty = self.tables.borrow().node_id_to_type(expr[0].hir_id);
                         let self_ty = format!("{:?}", self_ty);
-                        let name = path.name.as_str();
+                        let name = path.ident.as_str();
                         let is_as_ref_able = (
                             self_ty.starts_with("&std::option::Option") ||
                             self_ty.starts_with("&std::result::Result") ||
@@ -261,19 +246,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// In addition of this check, it also checks between references mutability state. If the
     /// expected is mutable but the provided isn't, maybe we could just say "Hey, try with
     /// `&mut`!".
-    fn check_ref(&self,
+    pub fn check_ref(&self,
                  expr: &hir::Expr,
                  checked_ty: Ty<'tcx>,
                  expected: Ty<'tcx>)
                  -> Option<(Span, &'static str, String)> {
-        let sp = expr.span;
+        let cm = self.sess().codemap();
+        // Use the callsite's span if this is a macro call. #41858
+        let sp = cm.call_span_if_macro(expr.span);
+        if !cm.span_to_filename(sp).is_real() {
+            return None;
+        }
+
         match (&expected.sty, &checked_ty.sty) {
             (&ty::TyRef(_, exp, _), &ty::TyRef(_, check, _)) => match (&exp.sty, &check.sty) {
                 (&ty::TyStr, &ty::TyArray(arr, _)) |
                 (&ty::TyStr, &ty::TySlice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprLit(_) = expr.node {
-                        let sp = self.sess().codemap().call_span_if_macro(expr.span);
-                        if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(sp) {
+                        if let Ok(src) = cm.span_to_snippet(sp) {
                             return Some((sp,
                                          "consider removing the leading `b`",
                                          src[1..].to_string()));
@@ -283,8 +273,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 (&ty::TyArray(arr, _), &ty::TyStr) |
                 (&ty::TySlice(arr), &ty::TyStr) if arr == self.tcx.types.u8 => {
                     if let hir::ExprLit(_) = expr.node {
-                        let sp = self.sess().codemap().call_span_if_macro(expr.span);
-                        if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(sp) {
+                        if let Ok(src) = cm.span_to_snippet(sp) {
                             return Some((sp,
                                          "consider adding a leading `b`",
                                          format!("b{}", src)));
@@ -311,9 +300,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                        checked_ty),
                 };
                 if self.can_coerce(ref_ty, expected) {
-                    // Use the callsite's span if this is a macro call. #41858
-                    let sp = self.sess().codemap().call_span_if_macro(expr.span);
-                    if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(sp) {
+                    if let Ok(src) = cm.span_to_snippet(sp) {
                         let sugg_expr = match expr.node { // parenthesize if needed (Issue #46756)
                             hir::ExprCast(_, _) | hir::ExprBinary(_, _, _) => format!("({})", src),
                             _ => src,
@@ -342,11 +329,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // a macro; if so, it's hard to extract the text and make a good
                 // suggestion, so don't bother.)
                 if self.infcx.can_sub(self.param_env, checked, &expected).is_ok() &&
-                   expr.span.ctxt().outer().expn_info().is_none() {
+                   sp.ctxt().outer().expn_info().is_none() {
                     match expr.node {
                         // Maybe remove `&`?
                         hir::ExprAddrOf(_, ref expr) => {
-                            if let Ok(code) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
+                            if !cm.span_to_filename(expr.span).is_real() {
+                                return None;
+                            }
+                            if let Ok(code) = cm.span_to_snippet(expr.span) {
                                 return Some((sp, "consider removing the borrow", code));
                             }
                         }
@@ -355,9 +345,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         _ => {
                             if !self.infcx.type_moves_by_default(self.param_env,
                                                                 checked,
-                                                                expr.span) {
-                                let sp = self.sess().codemap().call_span_if_macro(expr.span);
-                                if let Ok(code) = self.tcx.sess.codemap().span_to_snippet(sp) {
+                                                                sp) {
+                                let sp = cm.call_span_if_macro(sp);
+                                if let Ok(code) = cm.span_to_snippet(sp) {
                                     return Some((sp,
                                                  "consider dereferencing the borrow",
                                                  format!("*{}", code)));
@@ -372,7 +362,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         None
     }
 
-    fn check_for_cast(&self,
+    pub fn check_for_cast(&self,
                       err: &mut DiagnosticBuilder<'tcx>,
                       expr: &hir::Expr,
                       checked_ty: Ty<'tcx>,

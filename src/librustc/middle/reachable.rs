@@ -20,8 +20,8 @@ use hir::map as hir_map;
 use hir::def::Def;
 use hir::def_id::{DefId, CrateNum};
 use rustc_data_structures::sync::Lrc;
-use ty::{self, TyCtxt};
-use ty::maps::Providers;
+use ty::{self, TyCtxt, GenericParamDefKind};
+use ty::query::Providers;
 use middle::privacy;
 use session::config;
 use util::nodemap::{NodeSet, FxHashSet};
@@ -37,21 +37,30 @@ use hir::intravisit;
 
 // Returns true if the given set of generics implies that the item it's
 // associated with must be inlined.
-fn generics_require_inlining(generics: &hir::Generics) -> bool {
-    generics.params.iter().any(|param| param.is_type_param())
+fn generics_require_inlining(generics: &ty::Generics) -> bool {
+    for param in &generics.params {
+        match param.kind {
+            GenericParamDefKind::Lifetime { .. } => {}
+            GenericParamDefKind::Type { .. } => return true,
+        }
+    }
+    false
 }
 
 // Returns true if the given item must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`. This will only return
 // true for functions.
-fn item_might_be_inlined(item: &hir::Item, attrs: CodegenFnAttrs) -> bool {
+fn item_might_be_inlined(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         item: &hir::Item,
+                         attrs: CodegenFnAttrs) -> bool {
     if attrs.requests_inline() {
         return true
     }
 
     match item.node {
-        hir::ItemImpl(_, _, _, ref generics, ..) |
-        hir::ItemFn(.., ref generics, _) => {
+        hir::ItemImpl(..) |
+        hir::ItemFn(..) => {
+            let generics = tcx.generics_of(tcx.hir.local_def_id(item.id));
             generics_require_inlining(generics)
         }
         _ => false,
@@ -62,14 +71,14 @@ fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      impl_item: &hir::ImplItem,
                                      impl_src: DefId) -> bool {
     let codegen_fn_attrs = tcx.codegen_fn_attrs(impl_item.hir_id.owner_def_id());
-    if codegen_fn_attrs.requests_inline() ||
-        generics_require_inlining(&impl_item.generics) {
+    let generics = tcx.generics_of(tcx.hir.local_def_id(impl_item.id));
+    if codegen_fn_attrs.requests_inline() || generics_require_inlining(generics) {
         return true
     }
     if let Some(impl_node_id) = tcx.hir.as_local_node_id(impl_src) {
         match tcx.hir.find(impl_node_id) {
             Some(hir_map::NodeItem(item)) =>
-                item_might_be_inlined(&item, codegen_fn_attrs),
+                item_might_be_inlined(tcx, &item, codegen_fn_attrs),
             Some(..) | None =>
                 span_bug!(impl_item.span, "impl did is not an item")
         }
@@ -111,7 +120,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
                 Some(self.tables.qpath_def(qpath, expr.hir_id))
             }
             hir::ExprMethodCall(..) => {
-                Some(self.tables.type_dependent_defs()[expr.hir_id])
+                self.tables.type_dependent_defs().get(expr.hir_id).cloned()
             }
             _ => None
         };
@@ -163,7 +172,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             Some(hir_map::NodeItem(item)) => {
                 match item.node {
                     hir::ItemFn(..) =>
-                        item_might_be_inlined(&item, self.tcx.codegen_fn_attrs(def_id)),
+                        item_might_be_inlined(self.tcx, &item, self.tcx.codegen_fn_attrs(def_id)),
                     _ => false,
                 }
             }
@@ -180,7 +189,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ImplItemKind::Const(..) => true,
                     hir::ImplItemKind::Method(..) => {
                         let attrs = self.tcx.codegen_fn_attrs(def_id);
-                        if generics_require_inlining(&impl_item.generics) ||
+                        let generics = self.tcx.generics_of(def_id);
+                        if generics_require_inlining(&generics) ||
                                 attrs.requests_inline() {
                             true
                         } else {
@@ -192,8 +202,9 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             // does too.
                             let impl_node_id = self.tcx.hir.as_local_node_id(impl_did).unwrap();
                             match self.tcx.hir.expect_item(impl_node_id).node {
-                                hir::ItemImpl(_, _, _, ref generics, ..) => {
-                                    generics_require_inlining(generics)
+                                hir::ItemImpl(..) => {
+                                    let generics = self.tcx.generics_of(impl_did);
+                                    generics_require_inlining(&generics)
                                 }
                                 _ => false
                             }
@@ -227,8 +238,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             // If we are building an executable, only explicitly extern
             // types need to be exported.
             if let hir_map::NodeItem(item) = *node {
-                let reachable = if let hir::ItemFn(.., abi, _, _) = item.node {
-                    abi != Abi::Rust
+                let reachable = if let hir::ItemFn(_, header, ..) = item.node {
+                    header.abi != Abi::Rust
                 } else {
                     false
                 };
@@ -251,7 +262,9 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 match item.node {
                     hir::ItemFn(.., body) => {
                         let def_id = self.tcx.hir.local_def_id(item.id);
-                        if item_might_be_inlined(&item, self.tcx.codegen_fn_attrs(def_id)) {
+                        if item_might_be_inlined(self.tcx,
+                                                 &item,
+                                                 self.tcx.codegen_fn_attrs(def_id)) {
                             self.visit_nested_body(body);
                         }
                     }
@@ -267,6 +280,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     // inherently and their children are already in the
                     // worklist, as determined by the privacy pass
                     hir::ItemExternCrate(_) | hir::ItemUse(..) |
+                    hir::ItemExistential(..) |
                     hir::ItemTy(..) | hir::ItemStatic(..) |
                     hir::ItemMod(..) | hir::ItemForeignMod(..) |
                     hir::ItemImpl(..) | hir::ItemTrait(..) | hir::ItemTraitAlias(..) |

@@ -14,7 +14,6 @@
 // See repr-transparent.rs
 
 #![crate_type="lib"]
-#![feature(repr_transparent)]
 
 
 #[repr(C)]

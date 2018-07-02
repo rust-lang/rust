@@ -531,7 +531,6 @@ assert_eq!(n.trailing_zeros(), 3);
             /// assert_eq!(m, Wrapping(-22016));
             /// ```
             #[unstable(feature = "reverse_bits", issue = "48763")]
-            #[cfg(not(stage0))]
             #[inline]
             pub fn reverse_bits(self) -> Self {
                 Wrapping(self.0.reverse_bits())

@@ -13,6 +13,6 @@ trait Trait {}
 pub fn main() {
     let x: Vec<Trait + Sized> = Vec::new();
     //~^ ERROR only auto traits can be used as additional traits in a trait object
-    //~| ERROR the trait bound `Trait: std::marker::Sized` is not satisfied
-    //~| ERROR the trait bound `Trait: std::marker::Sized` is not satisfied
+    //~| ERROR the size for value values of type
+    //~| ERROR the size for value values of type
 }

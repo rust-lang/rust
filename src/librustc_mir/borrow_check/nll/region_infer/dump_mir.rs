@@ -14,7 +14,7 @@
 //! context internal state.
 
 use std::io::{self, Write};
-use super::{Constraint, RegionInferenceContext};
+use super::{OutlivesConstraint, RegionInferenceContext};
 
 // Room for "'_#NNNNr" before things get misaligned.
 // Easy enough to fix if this ever doesn't seem like
@@ -79,19 +79,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut constraints: Vec<_> = self.constraints.iter().collect();
         constraints.sort();
         for constraint in &constraints {
-            let Constraint {
+            let OutlivesConstraint {
                 sup,
                 sub,
-                point,
-                span,
+                locations,
                 next: _,
             } = constraint;
             with_msg(&format!(
-                "{:?}: {:?} @ {:?} due to {:?}",
+                "{:?}: {:?} due to {:?}",
                 sup,
                 sub,
-                point,
-                span
+                locations,
             ))?;
         }
 

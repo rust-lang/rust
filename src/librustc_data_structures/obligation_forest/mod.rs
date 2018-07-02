@@ -41,7 +41,7 @@ pub trait ObligationProcessor {
 
     fn process_obligation(&mut self,
                           obligation: &mut Self::Obligation)
-                          -> Result<Option<Vec<Self::Obligation>>, Self::Error>;
+                          -> ProcessResult<Self::Obligation, Self::Error>;
 
     /// As we do the cycle check, we invoke this callback when we
     /// encounter an actual cycle. `cycle` is an iterator that starts
@@ -55,6 +55,14 @@ pub trait ObligationProcessor {
                                cycle: I,
                                _marker: PhantomData<&'c Self::Obligation>)
         where I: Clone + Iterator<Item=&'c Self::Obligation>;
+}
+
+/// The result type used by `process_obligation`.
+#[derive(Debug)]
+pub enum ProcessResult<O, E> {
+    Unchanged,
+    Changed(Vec<O>),
+    Error(E),
 }
 
 pub struct ObligationForest<O: ForestObligation> {
@@ -83,13 +91,14 @@ struct Node<O> {
     obligation: O,
     state: Cell<NodeState>,
 
+    /// The parent of a node - the original obligation of
+    /// which it is a subobligation. Except for error reporting,
+    /// it is just like any member of `dependents`.
+    parent: Option<NodeIndex>,
+
     /// Obligations that depend on this obligation for their
     /// completion. They must all be in a non-pending state.
     dependents: Vec<NodeIndex>,
-    /// The parent of a node - the original obligation of
-    /// which it is a subobligation. Except for error reporting,
-    /// this is just another member of `dependents`.
-    parent: Option<NodeIndex>,
 }
 
 /// The state of one node in some tree within the forest. This
@@ -136,8 +145,8 @@ pub struct Outcome<O, E> {
 
     /// If true, then we saw no successful obligations, which means
     /// there is no point in further iteration. This is based on the
-    /// assumption that when trait matching returns `Err` or
-    /// `Ok(None)`, those results do not affect environmental
+    /// assumption that when trait matching returns `Error` or
+    /// `Unchanged`, those results do not affect environmental
     /// inference state. (Note that if we invoke `process_obligations`
     /// with no pending obligations, stalled will be true.)
     pub stalled: bool,
@@ -185,15 +194,18 @@ impl<O: ForestObligation> ObligationForest<O> {
             Entry::Occupied(o) => {
                 debug!("register_obligation_at({:?}, {:?}) - duplicate of {:?}!",
                        obligation, parent, o.get());
+                let node = &mut self.nodes[o.get().get()];
                 if let Some(parent) = parent {
-                    if self.nodes[o.get().get()].dependents.contains(&parent) {
-                        debug!("register_obligation_at({:?}, {:?}) - duplicate subobligation",
-                               obligation, parent);
-                    } else {
-                        self.nodes[o.get().get()].dependents.push(parent);
+                    // If the node is already in `waiting_cache`, it's already
+                    // been marked with a parent. (It's possible that parent
+                    // has been cleared by `apply_rewrites`, though.) So just
+                    // dump `parent` into `node.dependents`... unless it's
+                    // already in `node.dependents` or `node.parent`.
+                    if !node.dependents.contains(&parent) && Some(parent) != node.parent {
+                        node.dependents.push(parent);
                     }
                 }
-                if let NodeState::Error = self.nodes[o.get().get()].state.get() {
+                if let NodeState::Error = node.state.get() {
                     Err(())
                 } else {
                     Ok(())
@@ -229,13 +241,13 @@ impl<O: ForestObligation> ObligationForest<O> {
     }
 
     /// Returns the set of obligations that are in a pending state.
-    pub fn pending_obligations(&self) -> Vec<O>
-        where O: Clone
+    pub fn map_pending_obligations<P, F>(&self, f: F) -> Vec<P>
+        where F: Fn(&O) -> P
     {
         self.nodes
             .iter()
             .filter(|n| n.state.get() == NodeState::Pending)
-            .map(|n| n.obligation.clone())
+            .map(|n| f(&n.obligation))
             .collect()
     }
 
@@ -270,11 +282,11 @@ impl<O: ForestObligation> ObligationForest<O> {
                    result);
 
             match result {
-                Ok(None) => {
-                    // no change in state
+                ProcessResult::Unchanged => {
+                    // No change in state.
                 }
-                Ok(Some(children)) => {
-                    // if we saw a Some(_) result, we are not (yet) stalled
+                ProcessResult::Changed(children) => {
+                    // We are not (yet) stalled.
                     stalled = false;
                     self.nodes[index].state.set(NodeState::Success);
 
@@ -290,7 +302,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                         }
                     }
                 }
-                Err(err) => {
+                ProcessResult::Error(err) => {
                     stalled = false;
                     let backtrace = self.error_at(index);
                     errors.push(Error {
@@ -372,10 +384,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             NodeState::Success => {
                 node.state.set(NodeState::OnDfsStack);
                 stack.push(index);
-                if let Some(parent) = node.parent {
-                    self.find_cycles_from_node(stack, processor, parent.get());
-                }
-                for dependent in &node.dependents {
+                for dependent in node.parent.iter().chain(node.dependents.iter()) {
                     self.find_cycles_from_node(stack, processor, dependent.get());
                 }
                 stack.pop();
@@ -419,7 +428,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             }
 
             error_stack.extend(
-                node.dependents.iter().cloned().chain(node.parent).map(|x| x.get())
+                node.parent.iter().chain(node.dependents.iter()).map(|x| x.get())
             );
         }
 
@@ -429,11 +438,7 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     #[inline]
     fn mark_neighbors_as_waiting_from(&self, node: &Node<O>) {
-        if let Some(parent) = node.parent {
-            self.mark_as_waiting_from(&self.nodes[parent.get()]);
-        }
-
-        for dependent in &node.dependents {
+        for dependent in node.parent.iter().chain(node.dependents.iter()) {
             self.mark_as_waiting_from(&self.nodes[dependent.get()]);
         }
     }
@@ -580,8 +585,8 @@ impl<O> Node<O> {
     fn new(parent: Option<NodeIndex>, obligation: O) -> Node<O> {
         Node {
             obligation,
-            parent,
             state: Cell::new(NodeState::Pending),
+            parent,
             dependents: vec![],
         }
     }

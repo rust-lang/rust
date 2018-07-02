@@ -37,7 +37,15 @@ impl Mutex {
     /// Behavior is undefined if the mutex has been moved between this and any
     /// previous function call.
     #[inline]
-    pub unsafe fn lock(&self) { self.0.lock() }
+    pub unsafe fn raw_lock(&self) { self.0.lock() }
+
+    /// Calls raw_lock() and then returns an RAII guard to guarantee the mutex
+    /// will be unlocked.
+    #[inline]
+    pub unsafe fn lock(&self) -> MutexGuard {
+        self.raw_lock();
+        MutexGuard(&self.0)
+    }
 
     /// Attempts to lock the mutex without blocking, returning whether it was
     /// successfully acquired or not.
@@ -51,8 +59,11 @@ impl Mutex {
     ///
     /// Behavior is undefined if the current thread does not actually hold the
     /// mutex.
+    ///
+    /// Consider switching from the pair of raw_lock() and raw_unlock() to
+    /// lock() whenever possible.
     #[inline]
-    pub unsafe fn unlock(&self) { self.0.unlock() }
+    pub unsafe fn raw_unlock(&self) { self.0.unlock() }
 
     /// Deallocates all resources associated with this mutex.
     ///
@@ -64,3 +75,14 @@ impl Mutex {
 
 // not meant to be exported to the outside world, just the containing module
 pub fn raw(mutex: &Mutex) -> &imp::Mutex { &mutex.0 }
+
+#[must_use]
+/// A simple RAII utility for the above Mutex without the poisoning semantics.
+pub struct MutexGuard<'a>(&'a imp::Mutex);
+
+impl<'a> Drop for MutexGuard<'a> {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe { self.0.unlock(); }
+    }
+}

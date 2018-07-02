@@ -374,10 +374,9 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
     let body = ir.tcx.hir.body(body_id);
 
     for arg in &body.arguments {
-        arg.pat.each_binding(|_bm, hir_id, _x, path1| {
+        arg.pat.each_binding(|_bm, hir_id, _x, ident| {
             debug!("adding argument {:?}", hir_id);
-            let name = path1.node;
-            fn_maps.add_variable(Arg(hir_id, name));
+            fn_maps.add_variable(Arg(hir_id, ident.name));
         })
     };
 
@@ -430,12 +429,11 @@ fn add_from_pat<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, pat: &P<hir::Pat>) {
         }
     }
 
-    pat.each_binding(|_bm, hir_id, _sp, path1| {
-        let name = path1.node;
-        ir.add_live_node_for_node(hir_id, VarDefNode(path1.span));
+    pat.each_binding(|_bm, hir_id, _sp, ident| {
+        ir.add_live_node_for_node(hir_id, VarDefNode(ident.span));
         ir.add_variable(Local(LocalInfo {
             id: hir_id,
-            name,
+            name: ident.name,
             is_shorthand: shorthand_field_ids.contains(&hir_id)
         }));
     });
@@ -502,7 +500,7 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
       hir::ExprArray(..) | hir::ExprCall(..) | hir::ExprMethodCall(..) |
       hir::ExprTup(..) | hir::ExprBinary(..) | hir::ExprAddrOf(..) |
       hir::ExprCast(..) | hir::ExprUnary(..) | hir::ExprBreak(..) |
-      hir::ExprAgain(_) | hir::ExprLit(_) | hir::ExprRet(..) |
+      hir::ExprContinue(_) | hir::ExprLit(_) | hir::ExprRet(..) |
       hir::ExprBlock(..) | hir::ExprAssign(..) | hir::ExprAssignOp(..) |
       hir::ExprStruct(..) | hir::ExprRepeat(..) |
       hir::ExprInlineAsm(..) | hir::ExprBox(..) | hir::ExprYield(..) |
@@ -1047,7 +1045,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               }
           }
 
-          hir::ExprAgain(label) => {
+          hir::ExprContinue(label) => {
               // Find which label this expr continues to
               let sc = match label.target_id {
                     Ok(node_id) => node_id,
@@ -1374,7 +1372,7 @@ fn check_local<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, local: &'tcx hir::Local)
         },
         None => {
             this.pat_bindings(&local.pat, |this, ln, var, sp, id| {
-                let span = local.pat.simple_span().unwrap_or(sp);
+                let span = local.pat.simple_ident().map_or(sp, |ident| ident.span);
                 this.warn_about_unused(span, id, ln, var);
             })
         }
@@ -1431,7 +1429,7 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
       hir::ExprIndex(..) | hir::ExprField(..) |
       hir::ExprArray(..) | hir::ExprTup(..) | hir::ExprBinary(..) |
       hir::ExprCast(..) | hir::ExprUnary(..) | hir::ExprRet(..) |
-      hir::ExprBreak(..) | hir::ExprAgain(..) | hir::ExprLit(_) |
+      hir::ExprBreak(..) | hir::ExprContinue(..) | hir::ExprLit(_) |
       hir::ExprBlock(..) | hir::ExprAddrOf(..) |
       hir::ExprStruct(..) | hir::ExprRepeat(..) |
       hir::ExprClosure(..) | hir::ExprPath(_) | hir::ExprYield(..) |
@@ -1475,12 +1473,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn warn_about_unused_args(&self, body: &hir::Body, entry_ln: LiveNode) {
         for arg in &body.arguments {
-            arg.pat.each_binding(|_bm, hir_id, _, path1| {
-                let sp = path1.span;
+            arg.pat.each_binding(|_bm, hir_id, _, ident| {
+                let sp = ident.span;
                 let var = self.variable(hir_id, sp);
                 // Ignore unused self.
-                let name = path1.node;
-                if name != keywords::SelfValue.name() {
+                if ident.name != keywords::SelfValue.name() {
                     if !self.warn_about_unused(sp, hir_id, entry_ln, var) {
                         if self.live_on_entry(entry_ln, var).is_none() {
                             self.report_dead_assign(hir_id, sp, var, true);

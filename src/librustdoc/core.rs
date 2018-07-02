@@ -17,7 +17,7 @@ use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt, AllArenas};
 use rustc::hir::map as hir_map;
-use rustc::lint;
+use rustc::lint::{self, LintPass};
 use rustc::session::config::ErrorOutputType;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_resolve as resolve;
@@ -77,7 +77,7 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     /// Table node id of lifetime parameter definition -> substituted lifetime
     pub lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
     /// Table DefId of `impl Trait` in argument position -> bounds
-    pub impl_trait_bounds: RefCell<FxHashMap<DefId, Vec<clean::TyParamBound>>>,
+    pub impl_trait_bounds: RefCell<FxHashMap<DefId, Vec<clean::GenericBound>>>,
     pub send_trait: Option<DefId>,
     pub fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
     pub all_fake_def_ids: RefCell<FxHashSet<DefId>>,
@@ -187,7 +187,20 @@ pub fn run_core(search_paths: SearchPaths,
         _ => None
     };
 
-    let warning_lint = lint::builtin::WARNINGS.name_lower();
+    let intra_link_resolution_failure_name = lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE.name;
+    let warnings_lint_name = lint::builtin::WARNINGS.name;
+    let lints = lint::builtin::HardwiredLints.get_lints()
+                    .into_iter()
+                    .chain(rustc_lint::SoftLints.get_lints().into_iter())
+                    .filter_map(|lint| {
+                        if lint.name == warnings_lint_name ||
+                           lint.name == intra_link_resolution_failure_name {
+                            None
+                        } else {
+                            Some((lint.name_lower(), lint::Allow))
+                        }
+                    })
+                    .collect::<Vec<_>>();
 
     let host_triple = TargetTriple::from_triple(config::host_triple());
     // plays with error output here!
@@ -195,8 +208,12 @@ pub fn run_core(search_paths: SearchPaths,
         maybe_sysroot,
         search_paths,
         crate_types: vec![config::CrateTypeRlib],
-        lint_opts: if !allow_warnings { vec![(warning_lint, lint::Allow)] } else { vec![] },
-        lint_cap: Some(lint::Allow),
+        lint_opts: if !allow_warnings {
+            lints
+        } else {
+            vec![]
+        },
+        lint_cap: Some(lint::Forbid),
         cg,
         externs,
         target_triple: triple.unwrap_or(host_triple),
@@ -250,9 +267,11 @@ pub fn run_core(search_paths: SearchPaths,
                                                         |_| Ok(()));
         let driver::InnerExpansionResult {
             mut hir_forest,
-            resolver,
+            mut resolver,
             ..
         } = abort_on_err(result, &sess);
+
+        resolver.ignore_extern_prelude_feature = true;
 
         // We need to hold on to the complete resolver, so we clone everything
         // for the analysis passes to use. Suboptimal, but necessary in the

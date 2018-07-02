@@ -118,7 +118,7 @@ impl<'a> Resolver<'a> {
             .collect();
 
         match use_tree.kind {
-            ast::UseTreeKind::Simple(rename) => {
+            ast::UseTreeKind::Simple(rename, ..) => {
                 let mut ident = use_tree.ident();
                 let mut source = module_path.pop().unwrap();
                 let mut type_ns_only = false;
@@ -156,7 +156,7 @@ impl<'a> Resolver<'a> {
 
                     // Disallow `use $crate;`
                     if source.name == keywords::DollarCrate.name() && path.segments.len() == 1 {
-                        let crate_root = self.resolve_crate_root(source.span.ctxt(), true);
+                        let crate_root = self.resolve_crate_root(source);
                         let crate_name = match crate_root.kind {
                             ModuleKind::Def(_, name) => name,
                             ModuleKind::Block(..) => unreachable!(),

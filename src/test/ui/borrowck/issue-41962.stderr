@@ -26,7 +26,7 @@ LL |           if let Some(thing) = maybe {
 LL | |         }
    | |_________^ value used here after move
    |
-   = note: move occurs because `maybe` has type `std::option::Option<std::vec::Vec<bool>>`, which does not implement the `Copy` trait
+   = note: move occurs because value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
 
 error[E0382]: borrow of moved value: `maybe` (Mir)
   --> $DIR/issue-41962.rs:17:9
@@ -38,7 +38,7 @@ LL |           if let Some(thing) = maybe {
 LL | |         }
    | |_________^ value borrowed here after move
    |
-   = note: move occurs because `maybe` has type `std::option::Option<std::vec::Vec<bool>>`, which does not implement the `Copy` trait
+   = note: move occurs because value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `maybe` (Mir)
   --> $DIR/issue-41962.rs:17:16
@@ -49,15 +49,15 @@ LL |         if let Some(thing) = maybe {
    |                |    value moved here
    |                value used here after move
    |
-   = note: move occurs because `maybe` has type `std::option::Option<std::vec::Vec<bool>>`, which does not implement the `Copy` trait
+   = note: move occurs because value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
 
-error[E0382]: use of moved value: `maybe.0` (Mir)
+error[E0382]: use of moved value (Mir)
   --> $DIR/issue-41962.rs:17:21
    |
 LL |         if let Some(thing) = maybe {
    |                     ^^^^^ value moved here in previous iteration of loop
    |
-   = note: move occurs because `maybe.0` has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
+   = note: move occurs because value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
 
 error: aborting due to 6 previous errors
 

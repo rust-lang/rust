@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir::{self, ImplItemKind, TraitItemKind};
+use rustc::hir::{self, GenericParamKind, ImplItemKind, TraitItemKind};
 use rustc::infer::{self, InferOk};
 use rustc::ty::{self, TyCtxt, GenericParamDefKind};
 use rustc::ty::util::ExplicitSelf;
@@ -100,7 +100,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         span: impl_m_span,
         body_id: impl_m_node_id,
         code: ObligationCauseCode::CompareImplMethodObligation {
-            item_name: impl_m.name,
+            item_name: impl_m.ident.name,
             impl_item_def_id: impl_m.def_id,
             trait_item_def_id: trait_m.def_id,
         },
@@ -318,7 +318,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             cause.span(&tcx),
                                             E0053,
                                             "method `{}` has an incompatible type for trait",
-                                            trait_m.name);
+                                            trait_m.ident);
 
             infcx.note_type_err(&mut diag,
                                 &cause,
@@ -356,7 +356,6 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 impl_generics: &ty::Generics,
                                                 trait_to_skol_substs: &Substs<'tcx>)
                                                 -> Result<(), ErrorReported> {
-    let span = tcx.sess.codemap().def_span(span);
     let trait_params = trait_generics.own_counts().lifetimes;
     let impl_params = impl_generics.own_counts().lifetimes;
 
@@ -378,16 +377,20 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // are zero. Since I don't quite know how to phrase things at
     // the moment, give a kind of vague error message.
     if trait_params != impl_params {
-        let mut err = struct_span_err!(tcx.sess,
-                                       span,
-                                       E0195,
-                                       "lifetime parameters or bounds on method `{}` do not match \
-                                        the trait declaration",
-                                       impl_m.name);
+        let def_span = tcx.sess.codemap().def_span(span);
+        let span = tcx.hir.get_generics_span(impl_m.def_id).unwrap_or(def_span);
+        let mut err = struct_span_err!(
+            tcx.sess,
+            span,
+            E0195,
+            "lifetime parameters or bounds on method `{}` do not match the trait declaration",
+            impl_m.ident,
+        );
         err.span_label(span, "lifetimes do not match method in trait");
         if let Some(sp) = tcx.hir.span_if_local(trait_m.def_id) {
-            err.span_label(tcx.sess.codemap().def_span(sp),
-                           "lifetimes in impl do not match this method in trait");
+            let def_sp = tcx.sess.codemap().def_span(sp);
+            let sp = tcx.hir.get_generics_span(trait_m.def_id).unwrap_or(def_sp);
+            err.span_label(sp, "lifetimes in impl do not match this method in trait");
         }
         err.emit();
         return Err(ErrorReported);
@@ -529,13 +532,13 @@ fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            E0185,
                                            "method `{}` has a `{}` declaration in the impl, but \
                                             not in the trait",
-                                           trait_m.name,
+                                           trait_m.ident,
                                            self_descr);
             err.span_label(impl_m_span, format!("`{}` used in impl", self_descr));
             if let Some(span) = tcx.hir.span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("trait method declared without `{}`", self_descr));
             } else {
-                err.note_trait_signature(trait_m.name.to_string(),
+                err.note_trait_signature(trait_m.ident.to_string(),
                                          trait_m.signature(&tcx));
             }
             err.emit();
@@ -549,13 +552,13 @@ fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            E0186,
                                            "method `{}` has a `{}` declaration in the trait, but \
                                             not in the impl",
-                                           trait_m.name,
+                                           trait_m.ident,
                                            self_descr);
             err.span_label(impl_m_span, format!("expected `{}` in impl", self_descr));
             if let Some(span) = tcx.hir.span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("`{}` used in trait", self_descr));
             } else {
-                err.note_trait_signature(trait_m.name.to_string(),
+                err.note_trait_signature(trait_m.ident.to_string(),
                                          trait_m.signature(&tcx));
             }
             err.emit();
@@ -590,7 +593,7 @@ fn compare_number_of_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        E0049,
                                        "method `{}` has {} type parameter{} but its trait \
                                         declaration has {} type parameter{}",
-                                       trait_m.name,
+                                       trait_m.ident,
                                        num_impl_m_type_params,
                                        if num_impl_m_type_params == 1 { "" } else { "s" },
                                        num_trait_m_type_params,
@@ -681,7 +684,7 @@ fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        E0050,
                                        "method `{}` has {} parameter{} but the declaration in \
                                         trait `{}` has {}",
-                                       trait_m.name,
+                                       trait_m.ident,
                                        impl_number_args,
                                        if impl_number_args == 1 { "" } else { "s" },
                                        tcx.item_path_str(trait_m.def_id),
@@ -695,7 +698,7 @@ fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         format!("{} parameter", trait_number_args)
                                     }));
         } else {
-            err.note_trait_signature(trait_m.name.to_string(),
+            err.note_trait_signature(trait_m.ident.to_string(),
                                      trait_m.signature(&tcx));
         }
         err.span_label(impl_span,
@@ -728,11 +731,9 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut error_found = false;
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
-    let impl_m_type_params = impl_m_generics.params.iter().filter_map(|param| {
-        match param.kind {
-            GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
-            GenericParamDefKind::Lifetime => None,
-        }
+    let impl_m_type_params = impl_m_generics.params.iter().filter_map(|param| match param.kind {
+        GenericParamDefKind::Type { synthetic, .. } => Some((param.def_id, synthetic)),
+        GenericParamDefKind::Lifetime => None,
     });
     let trait_m_type_params = trait_m_generics.params.iter().filter_map(|param| {
         match param.kind {
@@ -750,7 +751,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            impl_span,
                                            E0643,
                                            "method `{}` has incompatible signature for trait",
-                                           trait_m.name);
+                                           trait_m.ident);
             err.span_label(trait_span, "declaration in trait here");
             match (impl_synthetic, trait_synthetic) {
                 // The case where the impl method uses `impl Trait` but the trait method uses
@@ -843,19 +844,19 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         }
                         let span = visitor.0?;
 
-                        let param = impl_m.generics.params.iter().filter_map(|param| {
-                            match param {
-                                hir::GenericParam::Type(param) => {
+                        let bounds = impl_m.generics.params.iter().find_map(|param| {
+                            match param.kind {
+                                GenericParamKind::Lifetime { .. } => None,
+                                GenericParamKind::Type { .. } => {
                                     if param.id == impl_node_id {
-                                        Some(param)
+                                        Some(&param.bounds)
                                     } else {
                                         None
                                     }
-                                },
-                                hir::GenericParam::Lifetime(..) => None,
+                                }
                             }
-                        }).next()?;
-                        let bounds = param.bounds.first()?.span().to(param.bounds.last()?.span());
+                        })?;
+                        let bounds = bounds.first()?.span().to(bounds.last()?.span());
                         let bounds = tcx
                             .sess
                             .codemap()
@@ -950,7 +951,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             E0326,
                                             "implemented const `{}` has an incompatible type for \
                                              trait",
-                                            trait_c.name);
+                                            trait_c.ident);
 
             let trait_c_node_id = tcx.hir.as_local_node_id(trait_c.def_id);
             let trait_c_span = trait_c_node_id.map(|trait_c_node_id| {

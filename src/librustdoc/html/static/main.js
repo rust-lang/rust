@@ -465,6 +465,8 @@
                             var res = buildHrefAndPath(obj);
                             obj.displayPath = pathSplitter(res[0]);
                             obj.fullPath = obj.displayPath + obj.name;
+                            // To be sure than it some items aren't considered as duplicate.
+                            obj.fullPath += '|' + obj.ty;
                             obj.href = res[1];
                             out.push(obj);
                             if (out.length >= MAX_RESULTS) {
@@ -781,7 +783,7 @@
                     case "fn":
                         return (name == "method" || name == "tymethod");
                     case "type":
-                        return (name == "primitive");
+                        return (name == "primitive" || name == "keyword");
                 }
 
                 // No match
@@ -1775,7 +1777,7 @@
         }
     }
 
-    function toggleAllDocs(pageId) {
+    function toggleAllDocs(pageId, fromAutoCollapse) {
         var toggle = document.getElementById("toggle-all-docs");
         if (!toggle) {
             return;
@@ -1787,9 +1789,11 @@
                 e.innerHTML = labelForToggleButton(false);
             });
             toggle.title = "collapse all docs";
-            onEach(document.getElementsByClassName("collapse-toggle"), function(e) {
-                collapseDocs(e, "show");
-            });
+            if (fromAutoCollapse !== true) {
+                onEach(document.getElementsByClassName("collapse-toggle"), function(e) {
+                    collapseDocs(e, "show");
+                });
+            }
         } else {
             updateLocalStorage("rustdoc-collapse", "true");
             addClass(toggle, "will-expand");
@@ -1797,10 +1801,11 @@
                 e.innerHTML = labelForToggleButton(true);
             });
             toggle.title = "expand all docs";
-
-            onEach(document.getElementsByClassName("collapse-toggle"), function(e) {
-                collapseDocs(e, "hide", pageId);
-            });
+            if (fromAutoCollapse !== true) {
+                onEach(document.getElementsByClassName("collapse-toggle"), function(e) {
+                    collapseDocs(e, "hide", pageId);
+                });
+            }
         }
     }
 
@@ -1921,17 +1926,19 @@
         }
     }
 
-    function autoCollapseAllImpls(pageId) {
-        // Automatically minimize all non-inherent impls
-        onEach(document.getElementsByClassName('impl'), function(n) {
-            // inherent impl ids are like 'impl' or impl-<number>'
-            var inherent = (n.id.match(/^impl(?:-\d+)?$/) !== null);
-            if (!inherent) {
-                onEach(n.childNodes, function(m) {
-                    if (hasClass(m, "collapse-toggle")) {
-                        collapseDocs(m, "hide", pageId);
-                    }
-                });
+    function autoCollapse(pageId, collapse) {
+        if (collapse) {
+            toggleAllDocs(pageId, true);
+        }
+        onEach(document.getElementsByClassName("collapse-toggle"), function(e) {
+            // inherent impl ids are like 'impl' or impl-<number>'.
+            // they will never be hidden by default.
+            var n = e.parentNode;
+            if (n.id.match(/^impl(?:-\d+)?$/) === null) {
+                // Automatically minimize all non-inherent impls
+                if (collapse || hasClass(n, 'impl')) {
+                    collapseDocs(e, "hide", pageId);
+                }
             }
         });
     }
@@ -2043,8 +2050,6 @@
             }
         }
     });
-
-    autoCollapseAllImpls(getPageId());
 
     function createToggleWrapper(tog) {
         var span = document.createElement('span');
@@ -2175,9 +2180,7 @@
         hideSidebar();
     };
 
-    if (getCurrentValue("rustdoc-collapse") === "true") {
-        toggleAllDocs(getPageId());
-    }
+    autoCollapse(getPageId(), getCurrentValue("rustdoc-collapse") === "true");
 }());
 
 // Sets the focus on the search bar at the top of the page

@@ -10,11 +10,11 @@ note: unclosed delimiter
 LL |             callback(path.as_ref(); //~ ERROR expected one of
    |                     ^
 
-error: expected one of `,`, `.`, `?`, or an operator, found `;`
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `;`
   --> $DIR/token-error-correct-3.rs:24:35
    |
 LL |             callback(path.as_ref(); //~ ERROR expected one of
-   |                                   ^ expected one of `,`, `.`, `?`, or an operator here
+   |                                   ^ expected one of `)`, `,`, `.`, `?`, or an operator here
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
   --> $DIR/token-error-correct-3.rs:30:9

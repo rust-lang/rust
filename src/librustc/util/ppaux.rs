@@ -10,7 +10,7 @@
 
 use hir::def_id::DefId;
 use hir::map::definitions::DefPathData;
-use middle::const_val::ConstVal;
+use mir::interpret::ConstValue;
 use middle::region::{self, BlockRemainder};
 use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
@@ -287,7 +287,7 @@ impl PrintContext {
                     DefPathData::MacroDef(_) |
                     DefPathData::ClosureExpr |
                     DefPathData::TypeParam(_) |
-                    DefPathData::LifetimeDef(_) |
+                    DefPathData::LifetimeParam(_) |
                     DefPathData::Field(_) |
                     DefPathData::StructCtor |
                     DefPathData::AnonConst |
@@ -335,12 +335,10 @@ impl PrintContext {
 
             if !verbose {
                 let mut type_params =
-                    generics.params.iter().rev().filter_map(|param| {
-                        match param.kind {
-                            GenericParamDefKind::Type { has_default, .. } => {
-                                Some((param.def_id, has_default))
-                            }
-                            GenericParamDefKind::Lifetime => None,
+                    generics.params.iter().rev().filter_map(|param| match param.kind {
+                        GenericParamDefKind::Lifetime => None,
+                        GenericParamDefKind::Type { has_default, .. } => {
+                            Some((param.def_id, has_default))
                         }
                     }).peekable();
                 let has_default = {
@@ -430,7 +428,7 @@ impl PrintContext {
             ty::tls::with(|tcx|
                 print!(f, self,
                        write("{}=",
-                             tcx.associated_item(projection.projection_ty.item_def_id).name),
+                             tcx.associated_item(projection.projection_ty.item_def_id).ident),
                        print_display(projection.ty))
             )?;
         }
@@ -526,7 +524,7 @@ impl PrintContext {
                     ty::BrNamed(tcx.hir.local_def_id(CRATE_NODE_ID), name)
                 }
             };
-            tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::INNERMOST, br))
+            tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br))
         }).0;
         start_or_continue(f, "", "> ")?;
 
@@ -1063,10 +1061,14 @@ define_print! {
                 TyParam(ref param_ty) => write!(f, "{}", param_ty),
                 TyAdt(def, substs) => cx.parameterized(f, substs, def.did, &[]),
                 TyDynamic(data, r) => {
-                    data.print(f, cx)?;
                     let r = r.print_to_string(cx);
                     if !r.is_empty() {
-                        write!(f, " + {}", r)
+                        write!(f, "(")?;
+                    }
+                    write!(f, "dyn ")?;
+                    data.print(f, cx)?;
+                    if !r.is_empty() {
+                        write!(f, " + {})", r)
                     } else {
                         Ok(())
                     }
@@ -1192,12 +1194,12 @@ define_print! {
                 TyArray(ty, sz) => {
                     print!(f, cx, write("["), print(ty), write("; "))?;
                     match sz.val {
-                        ConstVal::Value(..) => ty::tls::with(|tcx| {
-                            write!(f, "{}", sz.unwrap_usize(tcx))
-                        })?,
-                        ConstVal::Unevaluated(_def_id, _substs) => {
+                        ConstValue::Unevaluated(_def_id, _substs) => {
                             write!(f, "_")?;
                         }
+                        _ => ty::tls::with(|tcx| {
+                            write!(f, "{}", sz.unwrap_usize(tcx))
+                        })?,
                     }
                     write!(f, "]")
                 }
@@ -1283,7 +1285,7 @@ define_print! {
             //   parameterized(f, self.substs, self.item_def_id, &[])
             // (which currently ICEs).
             let (trait_ref, item_name) = ty::tls::with(|tcx|
-                (self.trait_ref(tcx), tcx.associated_item(self.item_def_id).name)
+                (self.trait_ref(tcx), tcx.associated_item(self.item_def_id).ident)
             );
             print!(f, cx, print_debug(trait_ref), write("::{}", item_name))
         }

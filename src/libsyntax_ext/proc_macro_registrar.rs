@@ -14,7 +14,7 @@ use errors;
 
 use syntax::ast::{self, Ident, NodeId};
 use syntax::attr;
-use syntax::codemap::{ExpnInfo, NameAndSpan, MacroAttribute, hygiene, respan};
+use syntax::codemap::{ExpnInfo, MacroAttribute, hygiene, respan};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
@@ -364,13 +364,12 @@ fn mk_registrar(cx: &mut ExtCtxt,
     let mark = Mark::fresh(Mark::root());
     mark.set_expn_info(ExpnInfo {
         call_site: DUMMY_SP,
-        callee: NameAndSpan {
-            format: MacroAttribute(Symbol::intern("proc_macro")),
-            span: None,
-            allow_internal_unstable: true,
-            allow_internal_unsafe: false,
-            edition: hygiene::default_edition(),
-        }
+        def_site: None,
+        format: MacroAttribute(Symbol::intern("proc_macro")),
+        allow_internal_unstable: true,
+        allow_internal_unsafe: false,
+        local_inner_macros: false,
+        edition: hygiene::default_edition(),
     });
     let span = DUMMY_SP.apply_mark(mark);
 

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
 #![warn(const_err)]
 
 #![feature(const_fn)]
@@ -19,12 +18,16 @@ const fn foo(x: u32) -> u32 {
 
 fn main() {
     const X: u32 = 0-1;
-    //~^ WARN attempt to subtract with overflow
-    //~| WARN this constant cannot be used
+    //~^ WARN this constant cannot be used
     const Y: u32 = foo(0-1);
-    //~^ WARN attempt to subtract with overflow
-    //~| WARN this constant cannot be used
+    //~^ WARN this constant cannot be used
     println!("{} {}", X, Y);
-    //~^ WARN constant evaluation error
-    //~| WARN constant evaluation error
+    //~^ WARN this expression will panic at runtime
+    //~| WARN this expression will panic at runtime
+    //~| ERROR erroneous constant used
+    //~| ERROR erroneous constant used
+    //~| ERROR E0080
+    //~| ERROR E0080
+    //~| WARN referenced constant
+    //~| WARN referenced constant
 }

@@ -50,6 +50,8 @@ mod cross_crate {
         <Foo>::trait_deprecated_text(&foo);
         <Foo as Trait>::trait_deprecated_text(&foo);
 
+        deprecated_future(); // Fine; no error.
+
         deprecated_unstable();
         //~^ ERROR use of unstable library feature
         Trait::trait_deprecated_unstable(&foo);
@@ -218,6 +220,10 @@ mod this_crate {
     #[rustc_deprecated(since = "1.0.0", reason = "text")]
     pub fn deprecated_text() {}
 
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(since = "99.99.99", reason = "text")]
+    pub fn deprecated_future() {}
+
     #[unstable(feature = "test_feature", issue = "0")]
     pub fn unstable() {}
     #[unstable(feature = "test_feature", reason = "text", issue = "0")]
@@ -337,6 +343,8 @@ mod this_crate {
         Trait::trait_deprecated_text(&foo);
         <Foo>::trait_deprecated_text(&foo);
         <Foo as Trait>::trait_deprecated_text(&foo);
+
+        deprecated_future();
 
         unstable();
         foo.method_unstable();

@@ -59,8 +59,22 @@ impl Ident {
         Ident::new(Symbol::intern(self.as_str().trim_left_matches('\'')), self.span)
     }
 
+    /// "Normalize" ident for use in comparisons using "item hygiene".
+    /// Identifiers with same string value become same if they came from the same "modern" macro
+    /// (e.g. `macro` item, but not `macro_rules` item) and stay different if they came from
+    /// different "modern" macros.
+    /// Technically, this operation strips all non-opaque marks from ident's syntactic context.
     pub fn modern(self) -> Ident {
         Ident::new(self.name, self.span.modern())
+    }
+
+    /// "Normalize" ident for use in comparisons using "local variable hygiene".
+    /// Identifiers with same string value become same if they came from the same non-transparent
+    /// macro (e.g. `macro` or `macro_rules!` items) and stay different if they came from different
+    /// non-transparent macros.
+    /// Technically, this operation strips all transparent marks from ident's syntactic context.
+    pub fn modern_and_legacy(self) -> Ident {
+        Ident::new(self.name, self.span.modern_and_legacy())
     }
 
     pub fn gensym(self) -> Ident {
@@ -69,6 +83,10 @@ impl Ident {
 
     pub fn as_str(self) -> LocalInternedString {
         self.name.as_str()
+    }
+
+    pub fn as_interned_str(self) -> InternedString {
+        self.name.as_interned_str()
     }
 }
 
@@ -384,34 +402,30 @@ declare_keywords! {
 
     // Keywords reserved for future use.
     (40, Abstract,           "abstract")
-    (41, Alignof,            "alignof")
-    (42, Become,             "become")
-    (43, Do,                 "do")
-    (44, Final,              "final")
-    (45, Macro,              "macro")
-    (46, Offsetof,           "offsetof")
-    (47, Override,           "override")
-    (48, Priv,               "priv")
-    (49, Pure,               "pure")
-    (50, Sizeof,             "sizeof")
-    (51, Typeof,             "typeof")
-    (52, Unsized,            "unsized")
-    (53, Virtual,            "virtual")
-    (54, Yield,              "yield")
+    (41, Become,             "become")
+    (42, Do,                 "do")
+    (43, Final,              "final")
+    (44, Macro,              "macro")
+    (45, Override,           "override")
+    (46, Priv,               "priv")
+    (47, Typeof,             "typeof")
+    (48, Unsized,            "unsized")
+    (49, Virtual,            "virtual")
+    (50, Yield,              "yield")
 
     // Edition-specific keywords reserved for future use.
-    (55, Async,              "async") // >= 2018 Edition Only
+    (51, Async,              "async") // >= 2018 Edition Only
 
     // Special lifetime names
-    (56, UnderscoreLifetime, "'_")
-    (57, StaticLifetime,     "'static")
+    (52, UnderscoreLifetime, "'_")
+    (53, StaticLifetime,     "'static")
 
     // Weak keywords, have special meaning only in specific contexts.
-    (58, Auto,               "auto")
-    (59, Catch,              "catch")
-    (60, Default,            "default")
-    (61, Dyn,                "dyn")
-    (62, Union,              "union")
+    (54, Auto,               "auto")
+    (55, Catch,              "catch")
+    (56, Default,            "default")
+    (57, Dyn,                "dyn")
+    (58, Union,              "union")
 }
 
 impl Symbol {

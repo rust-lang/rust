@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::const_val::ConstVal;
+use mir::interpret::ConstValue;
 use ty::subst::Substs;
 use ty::{self, Ty, TypeFlags, TypeFoldable};
 
@@ -24,7 +24,7 @@ impl FlagComputation {
     fn new() -> FlagComputation {
         FlagComputation {
             flags: TypeFlags::empty(),
-            outer_exclusive_binder: ty::DebruijnIndex::INNERMOST,
+            outer_exclusive_binder: ty::INNERMOST,
         }
     }
 
@@ -60,7 +60,7 @@ impl FlagComputation {
         // a region binder, so subtract one from the region depth
         // within when adding the depth to `self`.
         let outer_exclusive_binder = computation.outer_exclusive_binder;
-        if outer_exclusive_binder > ty::DebruijnIndex::INNERMOST {
+        if outer_exclusive_binder > ty::INNERMOST {
             self.add_exclusive_binder(outer_exclusive_binder.shifted_out(1));
         } else {
             // otherwise, this binder captures nothing
@@ -233,12 +233,9 @@ impl FlagComputation {
 
     fn add_const(&mut self, constant: &ty::Const) {
         self.add_ty(constant.ty);
-        match constant.val {
-            ConstVal::Value(_) => {}
-            ConstVal::Unevaluated(_, substs) => {
-                self.add_flags(TypeFlags::HAS_PROJECTION);
-                self.add_substs(substs);
-            }
+        if let ConstValue::Unevaluated(_, substs) = constant.val {
+            self.add_flags(TypeFlags::HAS_PROJECTION);
+            self.add_substs(substs);
         }
     }
 

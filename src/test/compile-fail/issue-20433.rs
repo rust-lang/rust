@@ -14,5 +14,5 @@ struct The;
 
 impl The {
     fn iceman(c: Vec<[i32]>) {}
-    //~^ ERROR the trait bound `[i32]: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
 }

@@ -230,8 +230,7 @@ impl WasmEncoder {
     }
 
     fn u32(&mut self, val: u32) {
-        let at = self.data.len();
-        leb128::write_u32_leb128(&mut self.data, at, val);
+        leb128::write_u32_leb128(&mut self.data, val);
     }
 
     fn byte(&mut self, val: u8) {

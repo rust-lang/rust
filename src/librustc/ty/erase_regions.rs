@@ -11,8 +11,8 @@
 use ty::{self, Ty, TyCtxt};
 use ty::fold::{TypeFolder, TypeFoldable};
 
-pub(super) fn provide(providers: &mut ty::maps::Providers) {
-    *providers = ty::maps::Providers {
+pub(super) fn provide(providers: &mut ty::query::Providers) {
+    *providers = ty::query::Providers {
         erase_regions_ty,
         ..*providers
     };

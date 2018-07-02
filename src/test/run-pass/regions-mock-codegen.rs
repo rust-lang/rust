@@ -12,7 +12,7 @@
 
 #![feature(allocator_api)]
 
-use std::alloc::{Alloc, Global, Layout, oom};
+use std::alloc::{Alloc, Global, Layout, handle_alloc_error};
 use std::ptr::NonNull;
 
 struct arena(());
@@ -33,7 +33,7 @@ struct Ccx {
 fn alloc<'a>(_bcx : &'a arena) -> &'a Bcx<'a> {
     unsafe {
         let layout = Layout::new::<Bcx>();
-        let ptr = Global.alloc(layout).unwrap_or_else(|_| oom(layout));
+        let ptr = Global.alloc(layout).unwrap_or_else(|_| handle_alloc_error(layout));
         &*(ptr.as_ptr() as *const _)
     }
 }

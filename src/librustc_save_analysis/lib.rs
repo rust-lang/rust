@@ -12,7 +12,6 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(custom_attribute)]
-#![cfg_attr(stage0, feature(macro_lifetime_matcher))]
 #![allow(unused_attributes)]
 
 #![recursion_limit="256"]
@@ -56,6 +55,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use syntax::ast::{self, Attribute, NodeId, PatKind};
+use syntax::codemap::Spanned;
 use syntax::parse::lexer::comments::strip_doc_comment_decoration;
 use syntax::parse::token;
 use syntax::print::pprust;
@@ -438,7 +438,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                 qualname.push_str(&self.tcx.item_path_str(def_id));
                                 self.tcx
                                     .associated_items(def_id)
-                                    .find(|item| item.name == name)
+                                    .find(|item| item.ident.name == name)
                                     .map(|item| decl_id = Some(item.def_id));
                             }
                             qualname.push_str(">");
@@ -632,7 +632,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 node: hir::ItemUse(ref path, _),
                 ..
             }) |
-            Node::NodeVisibility(&hir::Visibility::Restricted { ref path, .. }) => path.def,
+            Node::NodeVisibility(&Spanned {
+                node: hir::VisibilityKind::Restricted { ref path, .. }, .. }) => path.def,
 
             Node::NodeExpr(&hir::Expr {
                 node: hir::ExprStruct(ref qpath, ..),
@@ -692,8 +693,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             if path.segments.len() != 1 {
                 return false;
             }
-            if let Some(ref params) = path.segments[0].parameters {
-                if let ast::PathParameters::Parenthesized(_) = **params {
+            if let Some(ref generic_args) = path.segments[0].args {
+                if let ast::GenericArgs::Parenthesized(_) = **generic_args {
                     return true;
                 }
             }
@@ -749,6 +750,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::TraitAlias(def_id) |
             HirDef::AssociatedTy(def_id) |
             HirDef::Trait(def_id) |
+            HirDef::Existential(def_id) |
             HirDef::TyParam(def_id) => {
                 let span = self.span_from_span(sub_span);
                 Some(Ref {
@@ -774,7 +776,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     let ti = self.tcx.associated_item(decl_id);
                     self.tcx
                         .associated_items(ti.container.id())
-                        .find(|item| item.name == ti.name && item.defaultness.has_value())
+                        .find(|item| item.ident.name == ti.ident.name &&
+                                     item.defaultness.has_value())
                         .map(|item| item.def_id)
                 } else {
                     None
@@ -843,7 +846,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let callsite = span.source_callsite();
         let callsite_span = self.span_from_span(callsite);
         let callee = span.source_callee()?;
-        let callee_span = callee.span?;
+        let callee_span = callee.def_site?;
 
         // Ignore attribute macros, their spans are usually mangled
         if let MacroAttribute(_) = callee.format {
@@ -871,7 +874,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let callee_span = self.span_from_span(callee_span);
         Some(MacroRef {
             span: callsite_span,
-            qualname: callee.name().to_string(), // FIXME: generate the real qualname
+            qualname: callee.format.name().to_string(), // FIXME: generate the real qualname
             callee_span,
         })
     }
@@ -933,10 +936,7 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
         sig.push_str(&generics
             .params
             .iter()
-            .map(|param| match *param {
-                ast::GenericParam::Lifetime(ref l) => l.lifetime.ident.name.to_string(),
-                ast::GenericParam::Type(ref t) => t.ident.to_string(),
-            })
+            .map(|param| param.ident.to_string())
             .collect::<Vec<_>>()
             .join(", "));
         sig.push_str("> ");
@@ -1158,7 +1158,7 @@ fn escape(s: String) -> String {
 // Helper function to determine if a span came from a
 // macro expansion or syntax extension.
 fn generated_code(span: Span) -> bool {
-    span.ctxt() != NO_EXPANSION || span == DUMMY_SP
+    span.ctxt() != NO_EXPANSION || span.is_dummy()
 }
 
 // DefId::index is a newtype and so the JSON serialisation is ugly. Therefore

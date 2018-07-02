@@ -32,7 +32,7 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::{ItemLocalSet, NodeSet};
 use rustc::hir;
@@ -469,7 +469,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
 
         // More control flow (also not very meaningful).
         hir::ExprBreak(..) |
-        hir::ExprAgain(_) |
+        hir::ExprContinue(_) |
         hir::ExprRet(_) |
 
         // Generator expressions

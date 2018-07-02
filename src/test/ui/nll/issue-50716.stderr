@@ -1,0 +1,8 @@
+error: assignment requires that data must outlive free region `'static`
+  --> $DIR/issue-50716.rs:25:14
+   |
+LL |     let _x = *s; //~ ERROR assignment requires that data must outlive free region `'static`
+   |              ^^
+
+error: aborting due to previous error
+

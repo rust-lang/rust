@@ -17,6 +17,7 @@ use rustc_target::spec::PanicStrategy;
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
+use hir::def_id::DefId;
 use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::intravisit;
 use hir;
@@ -111,9 +112,13 @@ fn verify<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         if missing.contains(&lang_items::$item) &&
            !whitelisted(tcx, lang_items::$item) &&
            items.$name().is_none() {
-            tcx.sess.err(&format!("language item required, but not found: `{}`",
-                                  stringify!($name)));
-
+            if lang_items::$item == lang_items::PanicImplLangItem {
+                tcx.sess.err(&format!("`#[panic_implementation]` function required, \
+                                        but not found"));
+            } else {
+                tcx.sess.err(&format!("language item required, but not found: `{}`",
+                                        stringify!($name)));
+            }
         }
     )*
 }
@@ -142,6 +147,15 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
             self.register(&lang_item.as_str(), i.span);
         }
         intravisit::walk_foreign_item(self, i)
+    }
+}
+
+impl<'a, 'tcx, 'gcx> TyCtxt<'a, 'tcx, 'gcx> {
+    pub fn is_weak_lang_item(&self, item_def_id: DefId) -> bool {
+        let lang_items = self.lang_items();
+        let did = Some(item_def_id);
+
+        $(lang_items.$name() == did)||+
     }
 }
 

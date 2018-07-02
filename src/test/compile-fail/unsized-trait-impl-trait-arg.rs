@@ -16,7 +16,7 @@ trait T2<Z> {
 }
 struct S4<Y: ?Sized>(Box<Y>);
 impl<X: ?Sized> T2<X> for S4<X> {
-    //~^ ERROR `X: std::marker::Sized` is not satisfied
+    //~^ ERROR the size for value values of type
 }
 
 fn main() { }

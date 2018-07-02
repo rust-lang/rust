@@ -12,7 +12,7 @@ use borrow_check::location::{LocationIndex, LocationTable};
 use dataflow::indexes::BorrowIndex;
 use polonius_engine::AllFacts as PoloniusAllFacts;
 use polonius_engine::Atom;
-use rustc::ty::RegionVid;
+use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
 use std::error::Error;
 use std::fmt::Debug;
@@ -23,6 +23,10 @@ use std::path::Path;
 crate type AllFacts = PoloniusAllFacts<RegionVid, BorrowIndex, LocationIndex>;
 
 crate trait AllFactsExt {
+    /// Returns true if there is a need to gather `AllFacts` given the
+    /// current `-Z` flags.
+    fn enabled(tcx: TyCtxt<'_, '_, '_>) -> bool;
+
     fn write_to_dir(
         &self,
         dir: impl AsRef<Path>,
@@ -31,6 +35,12 @@ crate trait AllFactsExt {
 }
 
 impl AllFactsExt for AllFacts {
+    /// Return
+    fn enabled(tcx: TyCtxt<'_, '_, '_>) -> bool {
+        tcx.sess.opts.debugging_opts.nll_facts
+            || tcx.sess.opts.debugging_opts.polonius
+    }
+
     fn write_to_dir(
         &self,
         dir: impl AsRef<Path>,

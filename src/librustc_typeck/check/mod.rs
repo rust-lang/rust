@@ -85,6 +85,7 @@ use self::method::MethodCallee;
 use self::TupleArgumentsFlag::*;
 
 use astconv::AstConv;
+use hir::GenericArg;
 use hir::def::Def;
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use std::slice;
@@ -99,7 +100,7 @@ use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate, RegionKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::maps::Providers;
+use rustc::ty::query::Providers;
 use rustc::ty::util::{Representability, IntTypeExt, Discr};
 use errors::{DiagnosticBuilder, DiagnosticId};
 
@@ -115,6 +116,7 @@ use rustc_data_structures::sync::Lrc;
 use std::collections::hash_map::Entry;
 use std::cmp;
 use std::fmt::Display;
+use std::iter;
 use std::mem::replace;
 use std::ops::{self, Deref};
 use rustc_target::spec::abi::Abi;
@@ -702,9 +704,9 @@ fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum
 {
     debug_assert!(crate_num == LOCAL_CRATE);
     Ok(tcx.sess.track_errors(|| {
-        for body_owner_def_id in tcx.body_owners() {
-            ty::maps::queries::typeck_tables_of::ensure(tcx, body_owner_def_id);
-        }
+        tcx.par_body_owners(|body_owner_def_id| {
+            ty::query::queries::typeck_tables_of::ensure(tcx, body_owner_def_id);
+        });
     })?)
 }
 
@@ -959,14 +961,14 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
 
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &'gcx hir::Pat) {
-        if let PatKind::Binding(_, _, ref path1, _) = p.node {
+        if let PatKind::Binding(_, _, ident, _) = p.node {
             let var_ty = self.assign(p.span, p.id, None);
 
             self.fcx.require_type_is_sized(var_ty, p.span,
                                            traits::VariableType(p.id));
 
             debug!("Pattern binding {} is assigned to {} with type {:?}",
-                   path1.node,
+                   ident,
                    self.fcx.ty_to_string(
                        self.fcx.locals.borrow().get(&p.id).unwrap().clone()),
                    var_ty);
@@ -1013,7 +1015,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     debug!("check_fn(sig={:?}, fn_id={}, param_env={:?})", fn_sig, fn_id, param_env);
 
     // Create the function context.  This is either derived from scratch or,
-    // in the case of function expressions, based on the outer context.
+    // in the case of closures, based on the outer context.
     let mut fcx = FnCtxt::new(inherited, param_env, body.value.id);
     *fcx.ps.borrow_mut() = UnsafetyState::function(fn_sig.unsafety, fn_id);
 
@@ -1049,7 +1051,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
-        if arg.pat.simple_name().is_none() {
+        if arg.pat.simple_ident().is_none() {
             fcx.require_type_is_sized(arg_ty, decl.output.span(), traits::MiscObligation);
         }
 
@@ -1131,7 +1133,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     // Check that a function marked as `#[panic_implementation]` has signature `fn(&PanicInfo) -> !`
     if let Some(panic_impl_did) = fcx.tcx.lang_items().panic_impl() {
-        if panic_impl_did == fn_hir_id.owner_def_id() {
+        if panic_impl_did == fcx.tcx.hir.local_def_id(fn_id) {
             if let Some(panic_info_did) = fcx.tcx.lang_items().panic_info() {
                 if declared_ret_ty.sty != ty::TyNever {
                     fcx.tcx.sess.span_err(
@@ -1163,7 +1165,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                     }
 
                     if let Node::NodeItem(item) = fcx.tcx.hir.get(fn_id) {
-                        if let Item_::ItemFn(_, _, _, _, ref generics, _) = item.node {
+                        if let Item_::ItemFn(_, _, ref generics, _) = item.node {
                             if !generics.params.is_empty() {
                                 fcx.tcx.sess.span_err(
                                     span,
@@ -1260,10 +1262,11 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
       hir::ItemUnion(..) => {
         check_union(tcx, it.id, it.span);
       }
-      hir::ItemTy(_, ref generics) => {
+      hir::ItemTy(..) => {
         let def_id = tcx.hir.local_def_id(it.id);
         let pty_ty = tcx.type_of(def_id);
-        check_bounds_are_used(tcx, generics, pty_ty);
+        let generics = tcx.generics_of(def_id);
+        check_bounds_are_used(tcx, &generics, pty_ty);
       }
       hir::ItemForeignMod(ref m) => {
         check_abi(tcx, it.span, m.abi);
@@ -1331,15 +1334,15 @@ fn report_forbidden_specialization<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.sess, impl_item.span, E0520,
         "`{}` specializes an item from a parent `impl`, but \
          that item is not marked `default`",
-        impl_item.name);
+        impl_item.ident);
     err.span_label(impl_item.span, format!("cannot specialize default item `{}`",
-                                            impl_item.name));
+                                            impl_item.ident));
 
     match tcx.span_of_impl(parent_impl) {
         Ok(span) => {
             err.span_label(span, "parent `impl` is here");
             err.note(&format!("to specialize, `{}` in the parent `impl` must be marked `default`",
-                              impl_item.name));
+                              impl_item.ident));
         }
         Err(cname) => {
             err.note(&format!("parent implementation is in crate `{}`", cname));
@@ -1363,7 +1366,7 @@ fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         hir::ImplItemKind::Type(_) => ty::AssociatedKind::Type
     };
 
-    let parent = ancestors.defs(tcx, trait_item.name, kind, trait_def.def_id).skip(1).next()
+    let parent = ancestors.defs(tcx, trait_item.ident, kind, trait_def.def_id).skip(1).next()
         .map(|node_item| node_item.map(|parent| parent.defaultness));
 
     if let Some(parent) = parent {
@@ -1398,11 +1401,11 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let ty_impl_item = tcx.associated_item(tcx.hir.local_def_id(impl_item.id));
         let ty_trait_item = tcx.associated_items(impl_trait_ref.def_id)
             .find(|ac| Namespace::from(&impl_item.node) == Namespace::from(ac.kind) &&
-                         tcx.hygienic_eq(ty_impl_item.name, ac.name, impl_trait_ref.def_id))
+                       tcx.hygienic_eq(ty_impl_item.ident, ac.ident, impl_trait_ref.def_id))
             .or_else(|| {
                 // Not compatible, but needed for the error message
                 tcx.associated_items(impl_trait_ref.def_id)
-                   .find(|ac| tcx.hygienic_eq(ty_impl_item.name, ac.name, impl_trait_ref.def_id))
+                   .find(|ac| tcx.hygienic_eq(ty_impl_item.ident, ac.ident, impl_trait_ref.def_id))
             });
 
         // Check that impl definition matches trait definition
@@ -1420,7 +1423,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          let mut err = struct_span_err!(tcx.sess, impl_item.span, E0323,
                                   "item `{}` is an associated const, \
                                   which doesn't match its trait `{}`",
-                                  ty_impl_item.name,
+                                  ty_impl_item.ident,
                                   impl_trait_ref);
                          err.span_label(impl_item.span, "does not match trait");
                          // We can only get the spans from local trait definition
@@ -1444,7 +1447,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         let mut err = struct_span_err!(tcx.sess, impl_item.span, E0324,
                                   "item `{}` is an associated method, \
                                   which doesn't match its trait `{}`",
-                                  ty_impl_item.name,
+                                  ty_impl_item.ident,
                                   impl_trait_ref);
                          err.span_label(impl_item.span, "does not match trait");
                          if let Some(trait_span) = tcx.hir.span_if_local(ty_trait_item.def_id) {
@@ -1462,7 +1465,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         let mut err = struct_span_err!(tcx.sess, impl_item.span, E0325,
                                   "item `{}` is an associated type, \
                                   which doesn't match its trait `{}`",
-                                  ty_impl_item.name,
+                                  ty_impl_item.ident,
                                   impl_trait_ref);
                          err.span_label(impl_item.span, "does not match trait");
                          if let Some(trait_span) = tcx.hir.span_if_local(ty_trait_item.def_id) {
@@ -1483,7 +1486,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let associated_type_overridden = overridden_associated_type.is_some();
     for trait_item in tcx.associated_items(impl_trait_ref.def_id) {
         let is_implemented = trait_def.ancestors(tcx, impl_id)
-            .defs(tcx, trait_item.name, trait_item.kind, impl_trait_ref.def_id)
+            .defs(tcx, trait_item.ident, trait_item.kind, impl_trait_ref.def_id)
             .next()
             .map(|node_item| !node_item.node.is_from_trait())
             .unwrap_or(false);
@@ -1492,7 +1495,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if !trait_item.defaultness.has_value() {
                 missing_items.push(trait_item);
             } else if associated_type_overridden {
-                invalidated_items.push(trait_item.name);
+                invalidated_items.push(trait_item.ident);
             }
         }
     }
@@ -1501,17 +1504,17 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let mut err = struct_span_err!(tcx.sess, impl_span, E0046,
             "not all trait items implemented, missing: `{}`",
             missing_items.iter()
-                  .map(|trait_item| trait_item.name.to_string())
+                  .map(|trait_item| trait_item.ident.to_string())
                   .collect::<Vec<_>>().join("`, `"));
         err.span_label(impl_span, format!("missing `{}` in implementation",
                 missing_items.iter()
-                    .map(|trait_item| trait_item.name.to_string())
+                    .map(|trait_item| trait_item.ident.to_string())
                     .collect::<Vec<_>>().join("`, `")));
         for trait_item in missing_items {
             if let Some(span) = tcx.hir.span_if_local(trait_item.def_id) {
-                err.span_label(span, format!("`{}` from trait", trait_item.name));
+                err.span_label(span, format!("`{}` from trait", trait_item.ident));
             } else {
-                err.note_trait_signature(trait_item.name.to_string(),
+                err.note_trait_signature(trait_item.ident.to_string(),
                                          trait_item.signature(&tcx));
             }
         }
@@ -1523,7 +1526,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         span_err!(tcx.sess, invalidator.span, E0399,
                   "the following trait items need to be reimplemented \
                    as `{}` was overridden: `{}`",
-                  invalidator.name,
+                  invalidator.ident,
                   invalidated_items.iter()
                                    .map(|name| name.to_string())
                                    .collect::<Vec<_>>().join("`, `"))
@@ -2329,7 +2332,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::ExprRepeat(..) |
             hir::ExprArray(..) |
             hir::ExprBreak(..) |
-            hir::ExprAgain(..) |
+            hir::ExprContinue(..) |
             hir::ExprRet(..) |
             hir::ExprWhile(..) |
             hir::ExprLoop(..) |
@@ -2466,7 +2469,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         None
     }
 
-    fn resolve_place_op(&self, op: PlaceOp, is_mut: bool) -> (Option<DefId>, Symbol) {
+    fn resolve_place_op(&self, op: PlaceOp, is_mut: bool) -> (Option<DefId>, ast::Ident) {
         let (tr, name) = match (op, is_mut) {
             (PlaceOp::Deref, false) =>
                 (self.tcx.lang_items().deref_trait(), "deref"),
@@ -2477,7 +2480,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             (PlaceOp::Index, true) =>
                 (self.tcx.lang_items().index_mut_trait(), "index_mut"),
         };
-        (tr, Symbol::intern(name))
+        (tr, ast::Ident::from_str(name))
     }
 
     fn try_overloaded_place_op(&self,
@@ -3002,10 +3005,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 Ok(method)
             }
             Err(error) => {
-                if segment.name != keywords::Invalid.name() {
+                if segment.ident.name != keywords::Invalid.name() {
                     self.report_method_error(span,
                                              rcvr_t,
-                                             segment.name,
+                                             segment.ident,
                                              Some(rcvr),
                                              error,
                                              Some(args));
@@ -3609,576 +3612,586 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let tcx = self.tcx;
         let id = expr.id;
         match expr.node {
-          hir::ExprBox(ref subexpr) => {
-            let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| {
-                match ty.sty {
-                    ty::TyAdt(def, _) if def.is_box()
-                        => Expectation::rvalue_hint(self, ty.boxed_ty()),
-                    _ => NoExpectation
-                }
-            });
-            let referent_ty = self.check_expr_with_expectation(subexpr, expected_inner);
-            tcx.mk_box(referent_ty)
-          }
+            hir::ExprBox(ref subexpr) => {
+                let expected_inner = expected.to_option(self).map_or(NoExpectation, |ty| {
+                    match ty.sty {
+                        ty::TyAdt(def, _) if def.is_box()
+                            => Expectation::rvalue_hint(self, ty.boxed_ty()),
+                        _ => NoExpectation
+                    }
+                });
+                let referent_ty = self.check_expr_with_expectation(subexpr, expected_inner);
+                tcx.mk_box(referent_ty)
+            }
 
-          hir::ExprLit(ref lit) => {
-            self.check_lit(&lit, expected)
-          }
-          hir::ExprBinary(op, ref lhs, ref rhs) => {
-            self.check_binop(expr, op, lhs, rhs)
-          }
-          hir::ExprAssignOp(op, ref lhs, ref rhs) => {
-            self.check_binop_assign(expr, op, lhs, rhs)
-          }
-          hir::ExprUnary(unop, ref oprnd) => {
-            let expected_inner = match unop {
-                hir::UnNot | hir::UnNeg => {
-                    expected
-                }
-                hir::UnDeref => {
-                    NoExpectation
-                }
-            };
-            let needs = match unop {
-                hir::UnDeref => needs,
-                _ => Needs::None
-            };
-            let mut oprnd_t = self.check_expr_with_expectation_and_needs(&oprnd,
-                                                                               expected_inner,
-                                                                               needs);
-
-            if !oprnd_t.references_error() {
-                oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
-                match unop {
+            hir::ExprLit(ref lit) => {
+                self.check_lit(&lit, expected)
+            }
+            hir::ExprBinary(op, ref lhs, ref rhs) => {
+                self.check_binop(expr, op, lhs, rhs)
+            }
+            hir::ExprAssignOp(op, ref lhs, ref rhs) => {
+                self.check_binop_assign(expr, op, lhs, rhs)
+            }
+            hir::ExprUnary(unop, ref oprnd) => {
+                let expected_inner = match unop {
+                    hir::UnNot | hir::UnNeg => {
+                        expected
+                    }
                     hir::UnDeref => {
-                        if let Some(mt) = oprnd_t.builtin_deref(true) {
-                            oprnd_t = mt.ty;
-                        } else if let Some(ok) = self.try_overloaded_deref(
-                                expr.span, oprnd_t, needs) {
-                            let method = self.register_infer_ok_obligations(ok);
-                            if let ty::TyRef(region, _, mutbl) = method.sig.inputs()[0].sty {
-                                let mutbl = match mutbl {
-                                    hir::MutImmutable => AutoBorrowMutability::Immutable,
-                                    hir::MutMutable => AutoBorrowMutability::Mutable {
-                                        // (It shouldn't actually matter for unary ops whether
-                                        // we enable two-phase borrows or not, since a unary
-                                        // op has no additional operands.)
-                                        allow_two_phase_borrow: AllowTwoPhase::No,
-                                    }
-                                };
-                                self.apply_adjustments(oprnd, vec![Adjustment {
-                                    kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
-                                    target: method.sig.inputs()[0]
-                                }]);
+                        NoExpectation
+                    }
+                };
+                let needs = match unop {
+                    hir::UnDeref => needs,
+                    _ => Needs::None
+                };
+                let mut oprnd_t = self.check_expr_with_expectation_and_needs(&oprnd,
+                                                                                    expected_inner,
+                                                                                    needs);
+
+                if !oprnd_t.references_error() {
+                    oprnd_t = self.structurally_resolved_type(expr.span, oprnd_t);
+                    match unop {
+                        hir::UnDeref => {
+                            if let Some(mt) = oprnd_t.builtin_deref(true) {
+                                oprnd_t = mt.ty;
+                            } else if let Some(ok) = self.try_overloaded_deref(
+                                    expr.span, oprnd_t, needs) {
+                                let method = self.register_infer_ok_obligations(ok);
+                                if let ty::TyRef(region, _, mutbl) = method.sig.inputs()[0].sty {
+                                    let mutbl = match mutbl {
+                                        hir::MutImmutable => AutoBorrowMutability::Immutable,
+                                        hir::MutMutable => AutoBorrowMutability::Mutable {
+                                            // (It shouldn't actually matter for unary ops whether
+                                            // we enable two-phase borrows or not, since a unary
+                                            // op has no additional operands.)
+                                            allow_two_phase_borrow: AllowTwoPhase::No,
+                                        }
+                                    };
+                                    self.apply_adjustments(oprnd, vec![Adjustment {
+                                        kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                                        target: method.sig.inputs()[0]
+                                    }]);
+                                }
+                                oprnd_t = self.make_overloaded_place_return_type(method).ty;
+                                self.write_method_call(expr.hir_id, method);
+                            } else {
+                                type_error_struct!(tcx.sess, expr.span, oprnd_t, E0614,
+                                                    "type `{}` cannot be dereferenced",
+                                                    oprnd_t).emit();
+                                oprnd_t = tcx.types.err;
                             }
-                            oprnd_t = self.make_overloaded_place_return_type(method).ty;
-                            self.write_method_call(expr.hir_id, method);
-                        } else {
-                            type_error_struct!(tcx.sess, expr.span, oprnd_t, E0614,
-                                               "type `{}` cannot be dereferenced",
-                                               oprnd_t).emit();
-                            oprnd_t = tcx.types.err;
                         }
-                    }
-                    hir::UnNot => {
-                        let result = self.check_user_unop(expr, oprnd_t, unop);
-                        // If it's builtin, we can reuse the type, this helps inference.
-                        if !(oprnd_t.is_integral() || oprnd_t.sty == ty::TyBool) {
-                            oprnd_t = result;
+                        hir::UnNot => {
+                            let result = self.check_user_unop(expr, oprnd_t, unop);
+                            // If it's builtin, we can reuse the type, this helps inference.
+                            if !(oprnd_t.is_integral() || oprnd_t.sty == ty::TyBool) {
+                                oprnd_t = result;
+                            }
                         }
-                    }
-                    hir::UnNeg => {
-                        let result = self.check_user_unop(expr, oprnd_t, unop);
-                        // If it's builtin, we can reuse the type, this helps inference.
-                        if !(oprnd_t.is_integral() || oprnd_t.is_fp()) {
-                            oprnd_t = result;
+                        hir::UnNeg => {
+                            let result = self.check_user_unop(expr, oprnd_t, unop);
+                            // If it's builtin, we can reuse the type, this helps inference.
+                            if !(oprnd_t.is_integral() || oprnd_t.is_fp()) {
+                                oprnd_t = result;
+                            }
                         }
                     }
                 }
+                oprnd_t
             }
-            oprnd_t
-          }
-          hir::ExprAddrOf(mutbl, ref oprnd) => {
-            let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
-                match ty.sty {
-                    ty::TyRef(_, ty, _) | ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
-                        if self.is_place_expr(&oprnd) {
-                            // Places may legitimately have unsized types.
-                            // For example, dereferences of a fat pointer and
-                            // the last field of a struct can be unsized.
-                            ExpectHasType(ty)
-                        } else {
-                            Expectation::rvalue_hint(self, ty)
+            hir::ExprAddrOf(mutbl, ref oprnd) => {
+                let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
+                    match ty.sty {
+                        ty::TyRef(_, ty, _) | ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
+                            if self.is_place_expr(&oprnd) {
+                                // Places may legitimately have unsized types.
+                                // For example, dereferences of a fat pointer and
+                                // the last field of a struct can be unsized.
+                                ExpectHasType(ty)
+                            } else {
+                                Expectation::rvalue_hint(self, ty)
+                            }
                         }
+                        _ => NoExpectation
                     }
-                    _ => NoExpectation
-                }
-            });
-            let needs = Needs::maybe_mut_place(mutbl);
-            let ty = self.check_expr_with_expectation_and_needs(&oprnd, hint, needs);
+                });
+                let needs = Needs::maybe_mut_place(mutbl);
+                let ty = self.check_expr_with_expectation_and_needs(&oprnd, hint, needs);
 
-            let tm = ty::TypeAndMut { ty: ty, mutbl: mutbl };
-            if tm.ty.references_error() {
-                tcx.types.err
-            } else {
-                // Note: at this point, we cannot say what the best lifetime
-                // is to use for resulting pointer.  We want to use the
-                // shortest lifetime possible so as to avoid spurious borrowck
-                // errors.  Moreover, the longest lifetime will depend on the
-                // precise details of the value whose address is being taken
-                // (and how long it is valid), which we don't know yet until type
-                // inference is complete.
-                //
-                // Therefore, here we simply generate a region variable.  The
-                // region inferencer will then select the ultimate value.
-                // Finally, borrowck is charged with guaranteeing that the
-                // value whose address was taken can actually be made to live
-                // as long as it needs to live.
-                let region = self.next_region_var(infer::AddrOfRegion(expr.span));
-                tcx.mk_ref(region, tm)
-            }
-          }
-          hir::ExprPath(ref qpath) => {
-              let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(qpath,
-                                                                         expr.id, expr.span);
-              let ty = if def != Def::Err {
-                  self.instantiate_value_path(segments, opt_ty, def, expr.span, id)
-              } else {
-                  self.set_tainted_by_errors();
-                  tcx.types.err
-              };
-
-              // We always require that the type provided as the value for
-              // a type parameter outlives the moment of instantiation.
-              let substs = self.tables.borrow().node_substs(expr.hir_id);
-              self.add_wf_bounds(substs, expr);
-
-              ty
-          }
-          hir::ExprInlineAsm(_, ref outputs, ref inputs) => {
-              for output in outputs {
-                  self.check_expr(output);
-              }
-              for input in inputs {
-                  self.check_expr(input);
-              }
-              tcx.mk_nil()
-          }
-          hir::ExprBreak(destination, ref expr_opt) => {
-              if let Ok(target_id) = destination.target_id {
-                  let (e_ty, cause);
-                  if let Some(ref e) = *expr_opt {
-                      // If this is a break with a value, we need to type-check
-                      // the expression. Get an expected type from the loop context.
-                      let opt_coerce_to = {
-                          let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-                          enclosing_breakables.find_breakable(target_id)
-                                              .coerce
-                                              .as_ref()
-                                              .map(|coerce| coerce.expected_ty())
-                      };
-
-                      // If the loop context is not a `loop { }`, then break with
-                      // a value is illegal, and `opt_coerce_to` will be `None`.
-                      // Just set expectation to error in that case.
-                      let coerce_to = opt_coerce_to.unwrap_or(tcx.types.err);
-
-                      // Recurse without `enclosing_breakables` borrowed.
-                      e_ty = self.check_expr_with_hint(e, coerce_to);
-                      cause = self.misc(e.span);
-                  } else {
-                      // Otherwise, this is a break *without* a value. That's
-                      // always legal, and is equivalent to `break ()`.
-                      e_ty = tcx.mk_nil();
-                      cause = self.misc(expr.span);
-                  }
-
-                  // Now that we have type-checked `expr_opt`, borrow
-                  // the `enclosing_loops` field and let's coerce the
-                  // type of `expr_opt` into what is expected.
-                  let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-                  let ctxt = enclosing_breakables.find_breakable(target_id);
-                  if let Some(ref mut coerce) = ctxt.coerce {
-                      if let Some(ref e) = *expr_opt {
-                          coerce.coerce(self, &cause, e, e_ty);
-                      } else {
-                          assert!(e_ty.is_nil());
-                          coerce.coerce_forced_unit(self, &cause, &mut |_| (), true);
-                      }
-                  } else {
-                      // If `ctxt.coerce` is `None`, we can just ignore
-                      // the type of the expresison.  This is because
-                      // either this was a break *without* a value, in
-                      // which case it is always a legal type (`()`), or
-                      // else an error would have been flagged by the
-                      // `loops` pass for using break with an expression
-                      // where you are not supposed to.
-                      assert!(expr_opt.is_none() || self.tcx.sess.err_count() > 0);
-                  }
-
-                  ctxt.may_break = true;
-
-                  // the type of a `break` is always `!`, since it diverges
-                  tcx.types.never
-              } else {
-                  // Otherwise, we failed to find the enclosing loop;
-                  // this can only happen if the `break` was not
-                  // inside a loop at all, which is caught by the
-                  // loop-checking pass.
-                  assert!(self.tcx.sess.err_count() > 0);
-
-                  // We still need to assign a type to the inner expression to
-                  // prevent the ICE in #43162.
-                  if let Some(ref e) = *expr_opt {
-                      self.check_expr_with_hint(e, tcx.types.err);
-
-                      // ... except when we try to 'break rust;'.
-                      // ICE this expression in particular (see #43162).
-                      if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = e.node {
-                          if path.segments.len() == 1 && path.segments[0].name == "rust" {
-                              fatally_break_rust(self.tcx.sess);
-                          }
-                      }
-                  }
-                  // There was an error, make typecheck fail
-                  tcx.types.err
-              }
-
-          }
-          hir::ExprAgain(_) => { tcx.types.never }
-          hir::ExprRet(ref expr_opt) => {
-            if self.ret_coercion.is_none() {
-                struct_span_err!(self.tcx.sess, expr.span, E0572,
-                                 "return statement outside of function body").emit();
-            } else if let Some(ref e) = *expr_opt {
-                self.check_return_expr(e);
-            } else {
-                let mut coercion = self.ret_coercion.as_ref().unwrap().borrow_mut();
-                let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
-                coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
-            }
-            tcx.types.never
-          }
-          hir::ExprAssign(ref lhs, ref rhs) => {
-            let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
-
-            let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty);
-
-            match expected {
-                ExpectIfCondition => {
-                    self.tcx.sess.delay_span_bug(lhs.span, "invalid lhs expression in if;\
-                                                            expected error elsehwere");
-                }
-                _ => {
-                    // Only check this if not in an `if` condition, as the
-                    // mistyped comparison help is more appropriate.
-                    if !self.is_place_expr(&lhs) {
-                        struct_span_err!(self.tcx.sess, expr.span, E0070,
-                                         "invalid left-hand side expression")
-                            .span_label(expr.span, "left-hand of expression not valid")
-                            .emit();
-                    }
+                let tm = ty::TypeAndMut { ty: ty, mutbl: mutbl };
+                if tm.ty.references_error() {
+                    tcx.types.err
+                } else {
+                    // Note: at this point, we cannot say what the best lifetime
+                    // is to use for resulting pointer.  We want to use the
+                    // shortest lifetime possible so as to avoid spurious borrowck
+                    // errors.  Moreover, the longest lifetime will depend on the
+                    // precise details of the value whose address is being taken
+                    // (and how long it is valid), which we don't know yet until type
+                    // inference is complete.
+                    //
+                    // Therefore, here we simply generate a region variable.  The
+                    // region inferencer will then select the ultimate value.
+                    // Finally, borrowck is charged with guaranteeing that the
+                    // value whose address was taken can actually be made to live
+                    // as long as it needs to live.
+                    let region = self.next_region_var(infer::AddrOfRegion(expr.span));
+                    tcx.mk_ref(region, tm)
                 }
             }
+            hir::ExprPath(ref qpath) => {
+                let (def, opt_ty, segs) = self.resolve_ty_and_def_ufcs(qpath, expr.id, expr.span);
+                let ty = if def != Def::Err {
+                    self.instantiate_value_path(segs, opt_ty, def, expr.span, id)
+                } else {
+                    self.set_tainted_by_errors();
+                    tcx.types.err
+                };
 
-            self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
+                // We always require that the type provided as the value for
+                // a type parameter outlives the moment of instantiation.
+                let substs = self.tables.borrow().node_substs(expr.hir_id);
+                self.add_wf_bounds(substs, expr);
 
-            if lhs_ty.references_error() || rhs_ty.references_error() {
-                tcx.types.err
-            } else {
+                ty
+            }
+            hir::ExprInlineAsm(_, ref outputs, ref inputs) => {
+                for output in outputs {
+                    self.check_expr(output);
+                }
+                for input in inputs {
+                    self.check_expr(input);
+                }
                 tcx.mk_nil()
             }
-          }
-          hir::ExprIf(ref cond, ref then_expr, ref opt_else_expr) => {
-              self.check_then_else(&cond, then_expr, opt_else_expr.as_ref().map(|e| &**e),
-                                   expr.span, expected)
-          }
-          hir::ExprWhile(ref cond, ref body, _) => {
-              let ctxt = BreakableCtxt {
-                  // cannot use break with a value from a while loop
-                  coerce: None,
-                  may_break: false,  // Will get updated if/when we find a `break`.
-              };
+            hir::ExprBreak(destination, ref expr_opt) => {
+                if let Ok(target_id) = destination.target_id {
+                    let (e_ty, cause);
+                    if let Some(ref e) = *expr_opt {
+                        // If this is a break with a value, we need to type-check
+                        // the expression. Get an expected type from the loop context.
+                        let opt_coerce_to = {
+                            let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
+                            enclosing_breakables.find_breakable(target_id)
+                                                .coerce
+                                                .as_ref()
+                                                .map(|coerce| coerce.expected_ty())
+                        };
 
-              let (ctxt, ()) = self.with_breakable_ctxt(expr.id, ctxt, || {
-                  self.check_expr_has_type_or_error(&cond, tcx.types.bool);
-                  let cond_diverging = self.diverges.get();
-                  self.check_block_no_value(&body);
+                        // If the loop context is not a `loop { }`, then break with
+                        // a value is illegal, and `opt_coerce_to` will be `None`.
+                        // Just set expectation to error in that case.
+                        let coerce_to = opt_coerce_to.unwrap_or(tcx.types.err);
 
-                  // We may never reach the body so it diverging means nothing.
-                  self.diverges.set(cond_diverging);
-              });
-
-              if ctxt.may_break {
-                  // No way to know whether it's diverging because
-                  // of a `break` or an outer `break` or `return`.
-                  self.diverges.set(Diverges::Maybe);
-              }
-
-              self.tcx.mk_nil()
-          }
-          hir::ExprLoop(ref body, _, source) => {
-              let coerce = match source {
-                  // you can only use break with a value from a normal `loop { }`
-                  hir::LoopSource::Loop => {
-                      let coerce_to = expected.coercion_target_type(self, body.span);
-                      Some(CoerceMany::new(coerce_to))
-                  }
-
-                  hir::LoopSource::WhileLet |
-                  hir::LoopSource::ForLoop => {
-                      None
-                  }
-              };
-
-              let ctxt = BreakableCtxt {
-                  coerce,
-                  may_break: false, // Will get updated if/when we find a `break`.
-              };
-
-              let (ctxt, ()) = self.with_breakable_ctxt(expr.id, ctxt, || {
-                  self.check_block_no_value(&body);
-              });
-
-              if ctxt.may_break {
-                  // No way to know whether it's diverging because
-                  // of a `break` or an outer `break` or `return`.
-                  self.diverges.set(Diverges::Maybe);
-              }
-
-              // If we permit break with a value, then result type is
-              // the LUB of the breaks (possibly ! if none); else, it
-              // is nil. This makes sense because infinite loops
-              // (which would have type !) are only possible iff we
-              // permit break with a value [1].
-              assert!(ctxt.coerce.is_some() || ctxt.may_break); // [1]
-              ctxt.coerce.map(|c| c.complete(self)).unwrap_or(self.tcx.mk_nil())
-          }
-          hir::ExprMatch(ref discrim, ref arms, match_src) => {
-            self.check_match(expr, &discrim, arms, expected, match_src)
-          }
-          hir::ExprClosure(capture, ref decl, body_id, _, gen) => {
-              self.check_expr_closure(expr, capture, &decl, body_id, gen, expected)
-          }
-          hir::ExprBlock(ref body, _) => {
-            self.check_block_with_expected(&body, expected)
-          }
-          hir::ExprCall(ref callee, ref args) => {
-              self.check_call(expr, &callee, args, expected)
-          }
-          hir::ExprMethodCall(ref segment, span, ref args) => {
-              self.check_method_call(expr, segment, span, args, expected, needs)
-          }
-          hir::ExprCast(ref e, ref t) => {
-            // Find the type of `e`. Supply hints based on the type we are casting to,
-            // if appropriate.
-            let t_cast = self.to_ty(t);
-            let t_cast = self.resolve_type_vars_if_possible(&t_cast);
-            let t_expr = self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
-            let t_cast = self.resolve_type_vars_if_possible(&t_cast);
-
-            // Eagerly check for some obvious errors.
-            if t_expr.references_error() || t_cast.references_error() {
-                tcx.types.err
-            } else {
-                // Defer other checks until we're done type checking.
-                let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
-                match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
-                    Ok(cast_check) => {
-                        deferred_cast_checks.push(cast_check);
-                        t_cast
+                        // Recurse without `enclosing_breakables` borrowed.
+                        e_ty = self.check_expr_with_hint(e, coerce_to);
+                        cause = self.misc(e.span);
+                    } else {
+                        // Otherwise, this is a break *without* a value. That's
+                        // always legal, and is equivalent to `break ()`.
+                        e_ty = tcx.mk_nil();
+                        cause = self.misc(expr.span);
                     }
-                    Err(ErrorReported) => {
-                        tcx.types.err
+
+                    // Now that we have type-checked `expr_opt`, borrow
+                    // the `enclosing_loops` field and let's coerce the
+                    // type of `expr_opt` into what is expected.
+                    let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
+                    let ctxt = enclosing_breakables.find_breakable(target_id);
+                    if let Some(ref mut coerce) = ctxt.coerce {
+                        if let Some(ref e) = *expr_opt {
+                            coerce.coerce(self, &cause, e, e_ty);
+                        } else {
+                            assert!(e_ty.is_nil());
+                            coerce.coerce_forced_unit(self, &cause, &mut |_| (), true);
+                        }
+                    } else {
+                        // If `ctxt.coerce` is `None`, we can just ignore
+                        // the type of the expresison.  This is because
+                        // either this was a break *without* a value, in
+                        // which case it is always a legal type (`()`), or
+                        // else an error would have been flagged by the
+                        // `loops` pass for using break with an expression
+                        // where you are not supposed to.
+                        assert!(expr_opt.is_none() || self.tcx.sess.err_count() > 0);
+                    }
+
+                    ctxt.may_break = true;
+
+                    // the type of a `break` is always `!`, since it diverges
+                    tcx.types.never
+                } else {
+                    // Otherwise, we failed to find the enclosing loop;
+                    // this can only happen if the `break` was not
+                    // inside a loop at all, which is caught by the
+                    // loop-checking pass.
+                    assert!(self.tcx.sess.err_count() > 0);
+
+                    // We still need to assign a type to the inner expression to
+                    // prevent the ICE in #43162.
+                    if let Some(ref e) = *expr_opt {
+                        self.check_expr_with_hint(e, tcx.types.err);
+
+                        // ... except when we try to 'break rust;'.
+                        // ICE this expression in particular (see #43162).
+                        if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = e.node {
+                            if path.segments.len() == 1 && path.segments[0].ident.name == "rust" {
+                                fatally_break_rust(self.tcx.sess);
+                            }
+                        }
+                    }
+                    // There was an error, make typecheck fail
+                    tcx.types.err
+                }
+
+            }
+            hir::ExprContinue(destination) => {
+                if let Ok(_) = destination.target_id {
+                    tcx.types.never
+                } else {
+                    // There was an error, make typecheck fail
+                    tcx.types.err
+                }
+            }
+            hir::ExprRet(ref expr_opt) => {
+                if self.ret_coercion.is_none() {
+                    struct_span_err!(self.tcx.sess, expr.span, E0572,
+                                        "return statement outside of function body").emit();
+                } else if let Some(ref e) = *expr_opt {
+                    self.check_return_expr(e);
+                } else {
+                    let mut coercion = self.ret_coercion.as_ref().unwrap().borrow_mut();
+                    let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
+                    coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
+                }
+                tcx.types.never
+            }
+            hir::ExprAssign(ref lhs, ref rhs) => {
+                let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
+
+                let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty);
+
+                match expected {
+                    ExpectIfCondition => {
+                        self.tcx.sess.delay_span_bug(lhs.span, "invalid lhs expression in if;\
+                                                                expected error elsehwere");
+                    }
+                    _ => {
+                        // Only check this if not in an `if` condition, as the
+                        // mistyped comparison help is more appropriate.
+                        if !self.is_place_expr(&lhs) {
+                            struct_span_err!(self.tcx.sess, expr.span, E0070,
+                                                "invalid left-hand side expression")
+                                .span_label(expr.span, "left-hand of expression not valid")
+                                .emit();
+                        }
+                    }
+                }
+
+                self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
+
+                if lhs_ty.references_error() || rhs_ty.references_error() {
+                    tcx.types.err
+                } else {
+                    tcx.mk_nil()
+                }
+            }
+            hir::ExprIf(ref cond, ref then_expr, ref opt_else_expr) => {
+                self.check_then_else(&cond, then_expr, opt_else_expr.as_ref().map(|e| &**e),
+                                    expr.span, expected)
+            }
+            hir::ExprWhile(ref cond, ref body, _) => {
+                let ctxt = BreakableCtxt {
+                    // cannot use break with a value from a while loop
+                    coerce: None,
+                    may_break: false,  // Will get updated if/when we find a `break`.
+                };
+
+                let (ctxt, ()) = self.with_breakable_ctxt(expr.id, ctxt, || {
+                    self.check_expr_has_type_or_error(&cond, tcx.types.bool);
+                    let cond_diverging = self.diverges.get();
+                    self.check_block_no_value(&body);
+
+                    // We may never reach the body so it diverging means nothing.
+                    self.diverges.set(cond_diverging);
+                });
+
+                if ctxt.may_break {
+                    // No way to know whether it's diverging because
+                    // of a `break` or an outer `break` or `return`.
+                    self.diverges.set(Diverges::Maybe);
+                }
+
+                self.tcx.mk_nil()
+            }
+            hir::ExprLoop(ref body, _, source) => {
+                let coerce = match source {
+                    // you can only use break with a value from a normal `loop { }`
+                    hir::LoopSource::Loop => {
+                        let coerce_to = expected.coercion_target_type(self, body.span);
+                        Some(CoerceMany::new(coerce_to))
+                    }
+
+                    hir::LoopSource::WhileLet |
+                    hir::LoopSource::ForLoop => {
+                        None
+                    }
+                };
+
+                let ctxt = BreakableCtxt {
+                    coerce,
+                    may_break: false, // Will get updated if/when we find a `break`.
+                };
+
+                let (ctxt, ()) = self.with_breakable_ctxt(expr.id, ctxt, || {
+                    self.check_block_no_value(&body);
+                });
+
+                if ctxt.may_break {
+                    // No way to know whether it's diverging because
+                    // of a `break` or an outer `break` or `return`.
+                    self.diverges.set(Diverges::Maybe);
+                }
+
+                // If we permit break with a value, then result type is
+                // the LUB of the breaks (possibly ! if none); else, it
+                // is nil. This makes sense because infinite loops
+                // (which would have type !) are only possible iff we
+                // permit break with a value [1].
+                assert!(ctxt.coerce.is_some() || ctxt.may_break); // [1]
+                ctxt.coerce.map(|c| c.complete(self)).unwrap_or(self.tcx.mk_nil())
+            }
+            hir::ExprMatch(ref discrim, ref arms, match_src) => {
+                self.check_match(expr, &discrim, arms, expected, match_src)
+            }
+            hir::ExprClosure(capture, ref decl, body_id, _, gen) => {
+                self.check_expr_closure(expr, capture, &decl, body_id, gen, expected)
+            }
+            hir::ExprBlock(ref body, _) => {
+                self.check_block_with_expected(&body, expected)
+            }
+            hir::ExprCall(ref callee, ref args) => {
+                self.check_call(expr, &callee, args, expected)
+            }
+            hir::ExprMethodCall(ref segment, span, ref args) => {
+                self.check_method_call(expr, segment, span, args, expected, needs)
+            }
+            hir::ExprCast(ref e, ref t) => {
+                // Find the type of `e`. Supply hints based on the type we are casting to,
+                // if appropriate.
+                let t_cast = self.to_ty(t);
+                let t_cast = self.resolve_type_vars_if_possible(&t_cast);
+                let t_expr = self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
+                let t_cast = self.resolve_type_vars_if_possible(&t_cast);
+
+                // Eagerly check for some obvious errors.
+                if t_expr.references_error() || t_cast.references_error() {
+                    tcx.types.err
+                } else {
+                    // Defer other checks until we're done type checking.
+                    let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
+                    match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
+                        Ok(cast_check) => {
+                            deferred_cast_checks.push(cast_check);
+                            t_cast
+                        }
+                        Err(ErrorReported) => {
+                            tcx.types.err
+                        }
                     }
                 }
             }
-          }
-          hir::ExprType(ref e, ref t) => {
-            let typ = self.to_ty(&t);
-            self.check_expr_eq_type(&e, typ);
-            typ
-          }
-          hir::ExprArray(ref args) => {
-              let uty = expected.to_option(self).and_then(|uty| {
-                  match uty.sty {
-                      ty::TyArray(ty, _) | ty::TySlice(ty) => Some(ty),
-                      _ => None
-                  }
-              });
-
-              let element_ty = if !args.is_empty() {
-                  let coerce_to = uty.unwrap_or_else(
-                      || self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span)));
-                  let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
-                  assert_eq!(self.diverges.get(), Diverges::Maybe);
-                  for e in args {
-                      let e_ty = self.check_expr_with_hint(e, coerce_to);
-                      let cause = self.misc(e.span);
-                      coerce.coerce(self, &cause, e, e_ty);
-                  }
-                  coerce.complete(self)
-              } else {
-                  self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span))
-              };
-              tcx.mk_array(element_ty, args.len() as u64)
-          }
-          hir::ExprRepeat(ref element, ref count) => {
-            let count_def_id = tcx.hir.local_def_id(count.id);
-            let param_env = ty::ParamEnv::empty();
-            let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
-            let instance = ty::Instance::resolve(
-                tcx.global_tcx(),
-                param_env,
-                count_def_id,
-                substs,
-            ).unwrap();
-            let global_id = GlobalId {
-                instance,
-                promoted: None
-            };
-            let count = tcx.const_eval(param_env.and(global_id));
-
-            if let Err(ref err) = count {
-                err.report(tcx, tcx.def_span(count_def_id), "constant expression");
+            hir::ExprType(ref e, ref t) => {
+                let ty = self.to_ty(&t);
+                self.check_expr_eq_type(&e, ty);
+                ty
             }
-
-            let uty = match expected {
-                ExpectHasType(uty) => {
+            hir::ExprArray(ref args) => {
+                let uty = expected.to_option(self).and_then(|uty| {
                     match uty.sty {
                         ty::TyArray(ty, _) | ty::TySlice(ty) => Some(ty),
                         _ => None
                     }
-                }
-                _ => None
-            };
+                });
 
-            let (element_ty, t) = match uty {
-                Some(uty) => {
-                    self.check_expr_coercable_to_type(&element, uty);
-                    (uty, uty)
-                }
-                None => {
-                    let t: Ty = self.next_ty_var(TypeVariableOrigin::MiscVariable(element.span));
-                    let element_ty = self.check_expr_has_type_or_error(&element, t);
-                    (element_ty, t)
-                }
-            };
-
-            if let Ok(count) = count {
-                let zero_or_one = count.assert_usize(tcx).map_or(false, |count| count <= 1);
-                if !zero_or_one {
-                    // For [foo, ..n] where n > 1, `foo` must have
-                    // Copy type:
-                    let lang_item = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);
-                    self.require_type_meets(t, expr.span, traits::RepeatVec, lang_item);
-                }
-            }
-
-            if element_ty.references_error() {
-                tcx.types.err
-            } else if let Ok(count) = count {
-                tcx.mk_ty(ty::TyArray(t, count))
-            } else {
-                tcx.types.err
-            }
-          }
-          hir::ExprTup(ref elts) => {
-            let flds = expected.only_has_type(self).and_then(|ty| {
-                let ty = self.resolve_type_vars_with_obligations(ty);
-                match ty.sty {
-                    ty::TyTuple(ref flds) => Some(&flds[..]),
-                    _ => None
-                }
-            });
-
-            let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| {
-                let t = match flds {
-                    Some(ref fs) if i < fs.len() => {
-                        let ety = fs[i];
-                        self.check_expr_coercable_to_type(&e, ety);
-                        ety
+                let element_ty = if !args.is_empty() {
+                    let coerce_to = uty.unwrap_or_else(
+                        || self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span)));
+                    let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
+                    assert_eq!(self.diverges.get(), Diverges::Maybe);
+                    for e in args {
+                        let e_ty = self.check_expr_with_hint(e, coerce_to);
+                        let cause = self.misc(e.span);
+                        coerce.coerce(self, &cause, e, e_ty);
                     }
-                    _ => {
-                        self.check_expr_with_expectation(&e, NoExpectation)
+                    coerce.complete(self)
+                } else {
+                    self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span))
+                };
+                tcx.mk_array(element_ty, args.len() as u64)
+            }
+            hir::ExprRepeat(ref element, ref count) => {
+                let count_def_id = tcx.hir.local_def_id(count.id);
+                let param_env = ty::ParamEnv::empty();
+                let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
+                let instance = ty::Instance::resolve(
+                    tcx.global_tcx(),
+                    param_env,
+                    count_def_id,
+                    substs,
+                ).unwrap();
+                let global_id = GlobalId {
+                    instance,
+                    promoted: None
+                };
+                let count = tcx.const_eval(param_env.and(global_id));
+
+                if let Err(ref err) = count {
+                    err.report_as_error(
+                        tcx.at(tcx.def_span(count_def_id)),
+                        "could not evaluate repeat length",
+                    );
+                }
+
+                let uty = match expected {
+                    ExpectHasType(uty) => {
+                        match uty.sty {
+                            ty::TyArray(ty, _) | ty::TySlice(ty) => Some(ty),
+                            _ => None
+                        }
+                    }
+                    _ => None
+                };
+
+                let (element_ty, t) = match uty {
+                    Some(uty) => {
+                        self.check_expr_coercable_to_type(&element, uty);
+                        (uty, uty)
+                    }
+                    None => {
+                        let ty = self.next_ty_var(TypeVariableOrigin::MiscVariable(element.span));
+                        let element_ty = self.check_expr_has_type_or_error(&element, ty);
+                        (element_ty, ty)
                     }
                 };
-                t
-            });
-            let tuple = tcx.mk_tup(elt_ts_iter);
-            if tuple.references_error() {
-                tcx.types.err
-            } else {
-                self.require_type_is_sized(tuple, expr.span, traits::TupleInitializerSized);
-                tuple
-            }
-          }
-          hir::ExprStruct(ref qpath, ref fields, ref base_expr) => {
-            self.check_expr_struct(expr, expected, qpath, fields, base_expr)
-          }
-          hir::ExprField(ref base, field) => {
-            self.check_field(expr, needs, &base, field)
-          }
-          hir::ExprIndex(ref base, ref idx) => {
-              let base_t = self.check_expr_with_needs(&base, needs);
-              let idx_t = self.check_expr(&idx);
 
-              if base_t.references_error() {
-                  base_t
-              } else if idx_t.references_error() {
-                  idx_t
-              } else {
-                  let base_t = self.structurally_resolved_type(base.span, base_t);
-                  match self.lookup_indexing(expr, base, base_t, idx_t, needs) {
-                      Some((index_ty, element_ty)) => {
-                          // two-phase not needed because index_ty is never mutable
-                          self.demand_coerce(idx, idx_t, index_ty, AllowTwoPhase::No);
-                          element_ty
-                      }
-                      None => {
-                          let mut err = type_error_struct!(tcx.sess, expr.span, base_t, E0608,
-                                                           "cannot index into a value of type `{}`",
-                                                           base_t);
-                          // Try to give some advice about indexing tuples.
-                          if let ty::TyTuple(..) = base_t.sty {
-                              let mut needs_note = true;
-                              // If the index is an integer, we can show the actual
-                              // fixed expression:
-                              if let hir::ExprLit(ref lit) = idx.node {
-                                  if let ast::LitKind::Int(i,
-                                            ast::LitIntType::Unsuffixed) = lit.node {
-                                      let snip = tcx.sess.codemap().span_to_snippet(base.span);
-                                      if let Ok(snip) = snip {
-                                          err.span_suggestion(expr.span,
-                                                              "to access tuple elements, use",
-                                                              format!("{}.{}", snip, i));
-                                          needs_note = false;
-                                      }
-                                  }
-                              }
-                              if needs_note {
-                                  err.help("to access tuple elements, use tuple indexing \
-                                            syntax (e.g. `tuple.0`)");
-                              }
-                          }
-                          err.emit();
-                          self.tcx.types.err
-                      }
-                  }
-              }
-           }
-          hir::ExprYield(ref value) => {
-            match self.yield_ty {
-                Some(ty) => {
-                    self.check_expr_coercable_to_type(&value, ty);
+                if let Ok(count) = count {
+                    let zero_or_one = count.assert_usize(tcx).map_or(false, |count| count <= 1);
+                    if !zero_or_one {
+                        // For [foo, ..n] where n > 1, `foo` must have
+                        // Copy type:
+                        let lang_item = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);
+                        self.require_type_meets(t, expr.span, traits::RepeatVec, lang_item);
+                    }
                 }
-                None => {
-                    struct_span_err!(self.tcx.sess, expr.span, E0627,
-                                 "yield statement outside of generator literal").emit();
+
+                if element_ty.references_error() {
+                    tcx.types.err
+                } else if let Ok(count) = count {
+                    tcx.mk_ty(ty::TyArray(t, count))
+                } else {
+                    tcx.types.err
                 }
             }
-            tcx.mk_nil()
-          }
+            hir::ExprTup(ref elts) => {
+                let flds = expected.only_has_type(self).and_then(|ty| {
+                    let ty = self.resolve_type_vars_with_obligations(ty);
+                    match ty.sty {
+                        ty::TyTuple(ref flds) => Some(&flds[..]),
+                        _ => None
+                    }
+                });
+
+                let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| {
+                    let t = match flds {
+                        Some(ref fs) if i < fs.len() => {
+                            let ety = fs[i];
+                            self.check_expr_coercable_to_type(&e, ety);
+                            ety
+                        }
+                        _ => {
+                            self.check_expr_with_expectation(&e, NoExpectation)
+                        }
+                    };
+                    t
+                });
+                let tuple = tcx.mk_tup(elt_ts_iter);
+                if tuple.references_error() {
+                    tcx.types.err
+                } else {
+                    self.require_type_is_sized(tuple, expr.span, traits::TupleInitializerSized);
+                    tuple
+                }
+            }
+            hir::ExprStruct(ref qpath, ref fields, ref base_expr) => {
+                self.check_expr_struct(expr, expected, qpath, fields, base_expr)
+            }
+            hir::ExprField(ref base, field) => {
+                self.check_field(expr, needs, &base, field)
+            }
+            hir::ExprIndex(ref base, ref idx) => {
+                let base_t = self.check_expr_with_needs(&base, needs);
+                let idx_t = self.check_expr(&idx);
+
+                if base_t.references_error() {
+                    base_t
+                } else if idx_t.references_error() {
+                    idx_t
+                } else {
+                    let base_t = self.structurally_resolved_type(base.span, base_t);
+                    match self.lookup_indexing(expr, base, base_t, idx_t, needs) {
+                        Some((index_ty, element_ty)) => {
+                            // two-phase not needed because index_ty is never mutable
+                            self.demand_coerce(idx, idx_t, index_ty, AllowTwoPhase::No);
+                            element_ty
+                        }
+                        None => {
+                            let mut err =
+                                type_error_struct!(tcx.sess, expr.span, base_t, E0608,
+                                                   "cannot index into a value of type `{}`",
+                                                   base_t);
+                            // Try to give some advice about indexing tuples.
+                            if let ty::TyTuple(..) = base_t.sty {
+                                let mut needs_note = true;
+                                // If the index is an integer, we can show the actual
+                                // fixed expression:
+                                if let hir::ExprLit(ref lit) = idx.node {
+                                    if let ast::LitKind::Int(i,
+                                            ast::LitIntType::Unsuffixed) = lit.node {
+                                        let snip = tcx.sess.codemap().span_to_snippet(base.span);
+                                        if let Ok(snip) = snip {
+                                            err.span_suggestion(expr.span,
+                                                                "to access tuple elements, use",
+                                                                format!("{}.{}", snip, i));
+                                            needs_note = false;
+                                        }
+                                    }
+                                }
+                                if needs_note {
+                                    err.help("to access tuple elements, use tuple indexing \
+                                            syntax (e.g. `tuple.0`)");
+                                }
+                            }
+                            err.emit();
+                            self.tcx.types.err
+                        }
+                    }
+                }
+            }
+            hir::ExprYield(ref value) => {
+                match self.yield_ty {
+                    Some(ty) => {
+                        self.check_expr_coercable_to_type(&value, ty);
+                    }
+                    None => {
+                        struct_span_err!(self.tcx.sess, expr.span, E0627,
+                                        "yield statement outside of generator literal").emit();
+                    }
+                }
+                tcx.mk_nil()
+            }
         }
     }
 
@@ -4240,7 +4253,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // errors with default match binding modes. See #44614.
             return (*cached_def, Some(ty), slice::from_ref(&**item_segment))
         }
-        let item_name = item_segment.name;
+        let item_name = item_segment.ident;
         let def = match self.resolve_ufcs(span, item_name, ty, node_id) {
             Ok(def) => def,
             Err(error) => {
@@ -4248,7 +4261,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     method::MethodError::PrivateMatch(def, _) => def,
                     _ => Def::Err,
                 };
-                if item_name != keywords::Invalid.name() {
+                if item_name.name != keywords::Invalid.name() {
                     self.report_method_error(span, ty, item_name, None, error, None);
                 }
                 def
@@ -4527,9 +4540,31 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             cause_span: Span,
                                             blk_id: ast::NodeId) {
         self.suggest_missing_semicolon(err, expression, expected, cause_span);
-
         if let Some((fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
             self.suggest_missing_return_type(err, &fn_decl, expected, found, can_suggest);
+        }
+        self.suggest_ref_or_into(err, expression, expected, found);
+    }
+
+    pub fn suggest_ref_or_into(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        expr: &hir::Expr,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) {
+        if let Some((sp, msg, suggestion)) = self.check_ref(expr, found, expected) {
+            err.span_suggestion(sp, msg, suggestion);
+        } else if !self.check_for_cast(err, expr, found, expected) {
+            let methods = self.get_conversion_methods(expr.span, expected, found);
+            if let Ok(expr_text) = self.sess().codemap().span_to_snippet(expr.span) {
+                let suggestions = iter::repeat(expr_text).zip(methods.iter())
+                    .map(|(receiver, method)| format!("{}.{}()", receiver, method.ident))
+                    .collect::<Vec<_>>();
+                if !suggestions.is_empty() {
+                    err.span_suggestions(expr.span, "try using a conversion method", suggestions);
+                }
+            }
         }
     }
 
@@ -4590,21 +4625,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                    can_suggest: bool) {
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
-        match (&fn_decl.output, found.is_suggestable(), can_suggest) {
-            (&hir::FunctionRetTy::DefaultReturn(span), true, true) => {
+        match (&fn_decl.output, found.is_suggestable(), can_suggest, expected.is_nil()) {
+            (&hir::FunctionRetTy::DefaultReturn(span), true, true, true) => {
                 err.span_suggestion(span,
                                     "try adding a return type",
                                     format!("-> {} ",
                                             self.resolve_type_vars_with_obligations(found)));
             }
-            (&hir::FunctionRetTy::DefaultReturn(span), false, true) => {
+            (&hir::FunctionRetTy::DefaultReturn(span), false, true, true) => {
                 err.span_label(span, "possibly return type missing here?");
             }
-            (&hir::FunctionRetTy::DefaultReturn(span), _, _) => {
+            (&hir::FunctionRetTy::DefaultReturn(span), _, false, true) => {
                 // `fn main()` must return `()`, do not suggest changing return type
                 err.span_label(span, "expected `()` because of default return type");
             }
-            (&hir::FunctionRetTy::Return(ref ty), _, _) => {
+            // expectation was caused by something else, not the default return
+            (&hir::FunctionRetTy::DefaultReturn(_), _, _, false) => {}
+            (&hir::FunctionRetTy::Return(ref ty), _, _, _) => {
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.node);
@@ -4737,8 +4774,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::Fn(def_id) |
             Def::Const(def_id) |
             Def::Static(def_id, _) => {
-                fn_segment = Some((segments.last().unwrap(),
-                                   self.tcx.generics_of(def_id)));
+                fn_segment = Some((segments.last().unwrap(), self.tcx.generics_of(def_id)));
             }
 
             // Case 3. Reference to a method or associated const.
@@ -4778,7 +4814,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // errors if type parameters are provided in an inappropriate place.
         let poly_segments = type_segment.is_some() as usize +
                             fn_segment.is_some() as usize;
-        AstConv::prohibit_type_params(self, &segments[..segments.len() - poly_segments]);
+        AstConv::prohibit_generics(self, &segments[..segments.len() - poly_segments]);
 
         match def {
             Def::Local(nid) | Def::Upvar(nid, ..) => {
@@ -4797,8 +4833,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
         let supress_mismatch = self.check_impl_trait(span, fn_segment);
-        self.check_path_parameter_count(span, &mut type_segment, false, supress_mismatch);
-        self.check_path_parameter_count(span, &mut fn_segment, false, supress_mismatch);
+        self.check_generic_arg_count(span, &mut type_segment, false, supress_mismatch);
+        self.check_generic_arg_count(span, &mut fn_segment, false, supress_mismatch);
 
         let (fn_start, has_self) = match (type_segment, fn_segment) {
             (_, Some((_, generics))) => {
@@ -4809,11 +4845,42 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             (None, None) => (0, false)
         };
+        // FIXME(varkor): Separating out the parameters is messy.
+        let mut lifetimes_type_seg = vec![];
+        let mut types_type_seg = vec![];
+        let mut infer_types_type_seg = true;
+        if let Some((seg, _)) = type_segment {
+            if let Some(ref data) = seg.args {
+                for arg in &data.args {
+                    match arg {
+                        GenericArg::Lifetime(lt) => lifetimes_type_seg.push(lt),
+                        GenericArg::Type(ty) => types_type_seg.push(ty),
+                    }
+                }
+            }
+            infer_types_type_seg = seg.infer_types;
+        }
+
+        let mut lifetimes_fn_seg = vec![];
+        let mut types_fn_seg = vec![];
+        let mut infer_types_fn_seg = true;
+        if let Some((seg, _)) = fn_segment {
+            if let Some(ref data) = seg.args {
+                for arg in &data.args {
+                    match arg {
+                        GenericArg::Lifetime(lt) => lifetimes_fn_seg.push(lt),
+                        GenericArg::Type(ty) => types_fn_seg.push(ty),
+                    }
+                }
+            }
+            infer_types_fn_seg = seg.infer_types;
+        }
+
         let substs = Substs::for_item(self.tcx, def.def_id(), |param, substs| {
             let mut i = param.index as usize;
 
-            let segment = if i < fn_start {
-                if let GenericParamDefKind::Type {..} = param.kind {
+            let (segment, lifetimes, types, infer_types) = if i < fn_start {
+                if let GenericParamDefKind::Type { .. } = param.kind {
                     // Handle Self first, so we can adjust the index to match the AST.
                     if has_self && i == 0 {
                         return opt_self_ty.map(|ty| ty.into()).unwrap_or_else(|| {
@@ -4822,29 +4889,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
                 i -= has_self as usize;
-                type_segment
+                (type_segment, &lifetimes_type_seg, &types_type_seg, infer_types_type_seg)
             } else {
                 i -= fn_start;
-                fn_segment
+                (fn_segment, &lifetimes_fn_seg, &types_fn_seg, infer_types_fn_seg)
             };
 
             match param.kind {
                 GenericParamDefKind::Lifetime => {
-                    let lifetimes = segment.map_or(&[][..], |(s, _)| {
-                        s.parameters.as_ref().map_or(&[][..], |p| &p.lifetimes[..])
-                    });
-
                     if let Some(lifetime) = lifetimes.get(i) {
                         AstConv::ast_region_to_region(self, lifetime, Some(param)).into()
                     } else {
                         self.re_infer(span, Some(param)).unwrap().into()
                     }
                 }
-                GenericParamDefKind::Type {..} => {
-                    let (types, infer_types) = segment.map_or((&[][..], true), |(s, _)| {
-                        (s.parameters.as_ref().map_or(&[][..], |p| &p.types[..]), s.infer_types)
-                    });
-
+                GenericParamDefKind::Type { .. } => {
                     // Skip over the lifetimes in the same segment.
                     if let Some((_, generics)) = segment {
                         i -= generics.own_counts().lifetimes;
@@ -4952,25 +5011,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Report errors if the provided parameters are too few or too many.
-    fn check_path_parameter_count(&self,
-                                  span: Span,
-                                  segment: &mut Option<(&hir::PathSegment, &ty::Generics)>,
-                                  is_method_call: bool,
-                                  supress_mismatch_error: bool) {
+    fn check_generic_arg_count(&self,
+                               span: Span,
+                               segment: &mut Option<(&hir::PathSegment, &ty::Generics)>,
+                               is_method_call: bool,
+                               supress_mismatch_error: bool) {
         let (lifetimes, types, infer_types, bindings) = segment.map_or(
-            (&[][..], &[][..], true, &[][..]),
-            |(s, _)| s.parameters.as_ref().map_or(
-                (&[][..], &[][..], s.infer_types, &[][..]),
-                |p| (&p.lifetimes[..], &p.types[..],
-                     s.infer_types, &p.bindings[..])));
-        let infer_lifetimes = lifetimes.len() == 0;
-
-        let count_lifetime_params = |n| {
-            format!("{} lifetime parameter{}", n, if n == 1 { "" } else { "s" })
-        };
-        let count_type_params = |n| {
-            format!("{} type parameter{}", n, if n == 1 { "" } else { "s" })
-        };
+            (vec![], vec![], true, &[][..]),
+            |(s, _)| {
+                s.args.as_ref().map_or(
+                    (vec![], vec![], s.infer_types, &[][..]),
+                    |data| {
+                        let (mut lifetimes, mut types) = (vec![], vec![]);
+                        data.args.iter().for_each(|arg| match arg {
+                            GenericArg::Lifetime(lt) => lifetimes.push(lt),
+                            GenericArg::Type(ty) => types.push(ty),
+                        });
+                        (lifetimes, types, s.infer_types, &data.bindings[..])
+                    }
+                )
+            });
 
         // Check provided parameters.
         let ((ty_required, ty_accepted), lt_accepted) =
@@ -4984,9 +5044,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let mut ty_params = ParamRange { required: 0, accepted: 0 };
                 for param in &generics.params {
                     match param.kind {
-                        GenericParamDefKind::Lifetime => {
-                            lt_accepted += 1;
-                        }
+                        GenericParamDefKind::Lifetime => lt_accepted += 1,
                         GenericParamDefKind::Type { has_default, .. } => {
                             ty_params.accepted += 1;
                             if !has_default {
@@ -5003,36 +5061,37 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 ((ty_params.required, ty_params.accepted), lt_accepted)
             });
 
-        if types.len() > ty_accepted {
-            let span = types[ty_accepted].span;
-            let expected_text = count_type_params(ty_accepted);
-            let actual_text = count_type_params(types.len());
-            struct_span_err!(self.tcx.sess, span, E0087,
-                             "too many type parameters provided: \
-                              expected at most {}, found {}",
-                             expected_text, actual_text)
-                .span_label(span, format!("expected {}", expected_text))
-                .emit();
-
+        let count_type_params = |n| {
+            format!("{} type parameter{}", n, if n == 1 { "" } else { "s" })
+        };
+        let expected_text = count_type_params(ty_accepted);
+        let actual_text = count_type_params(types.len());
+        if let Some((mut err, span)) = if types.len() > ty_accepted {
             // To prevent derived errors to accumulate due to extra
             // type parameters, we force instantiate_value_path to
             // use inference variables instead of the provided types.
             *segment = None;
+            let span = types[ty_accepted].span;
+            Some((struct_span_err!(self.tcx.sess, span, E0087,
+                                  "too many type parameters provided: \
+                                  expected at most {}, found {}",
+                                  expected_text, actual_text), span))
         } else if types.len() < ty_required && !infer_types && !supress_mismatch_error {
-            let expected_text = count_type_params(ty_required);
-            let actual_text = count_type_params(types.len());
-            struct_span_err!(self.tcx.sess, span, E0089,
-                             "too few type parameters provided: \
-                              expected {}, found {}",
-                             expected_text, actual_text)
-                .span_label(span, format!("expected {}", expected_text))
-                .emit();
+            Some((struct_span_err!(self.tcx.sess, span, E0089,
+                                  "too few type parameters provided: \
+                                  expected {}, found {}",
+                                  expected_text, actual_text), span))
+        } else {
+            None
+        } {
+            err.span_label(span, format!("expected {}", expected_text)).emit();
         }
 
         if !bindings.is_empty() {
             AstConv::prohibit_projection(self, bindings[0].span);
         }
 
+        let infer_lifetimes = lifetimes.len() == 0;
         // Prohibit explicit lifetime arguments if late bound lifetime parameters are present.
         let has_late_bound_lifetime_defs =
             segment.map_or(None, |(_, generics)| generics.has_late_bound_regions);
@@ -5056,25 +5115,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        if lifetimes.len() > lt_accepted {
+        let count_lifetime_params = |n| {
+            format!("{} lifetime parameter{}", n, if n == 1 { "" } else { "s" })
+        };
+        let expected_text = count_lifetime_params(lt_accepted);
+        let actual_text = count_lifetime_params(lifetimes.len());
+        if let Some((mut err, span)) = if lifetimes.len() > lt_accepted {
             let span = lifetimes[lt_accepted].span;
-            let expected_text = count_lifetime_params(lt_accepted);
-            let actual_text = count_lifetime_params(lifetimes.len());
-            struct_span_err!(self.tcx.sess, span, E0088,
-                             "too many lifetime parameters provided: \
-                              expected at most {}, found {}",
-                             expected_text, actual_text)
-                .span_label(span, format!("expected {}", expected_text))
-                .emit();
+            Some((struct_span_err!(self.tcx.sess, span, E0088,
+                                  "too many lifetime parameters provided: \
+                                  expected at most {}, found {}",
+                                  expected_text, actual_text), span))
         } else if lifetimes.len() < lt_accepted && !infer_lifetimes {
-            let expected_text = count_lifetime_params(lt_accepted);
-            let actual_text = count_lifetime_params(lifetimes.len());
-            struct_span_err!(self.tcx.sess, span, E0090,
-                             "too few lifetime parameters provided: \
-                              expected {}, found {}",
-                             expected_text, actual_text)
-                .span_label(span, format!("expected {}", expected_text))
-                .emit();
+            Some((struct_span_err!(self.tcx.sess, span, E0090,
+                                  "too few lifetime parameters provided: \
+                                  expected {}, found {}",
+                                  expected_text, actual_text), span))
+        } else {
+            None
+        } {
+            err.span_label(span, format!("expected {}", expected_text)).emit();
         }
     }
 
@@ -5085,13 +5145,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         -> bool {
         let segment = segment.map(|(path_segment, generics)| {
             let explicit = !path_segment.infer_types;
-            let impl_trait = generics.params.iter().any(|param| {
-                match param.kind {
-                    ty::GenericParamDefKind::Type {
-                        synthetic: Some(hir::SyntheticTyParamKind::ImplTrait), ..
-                    } => true,
-                    _ => false,
-                }
+            let impl_trait = generics.params.iter().any(|param| match param.kind {
+                ty::GenericParamDefKind::Type {
+                    synthetic: Some(hir::SyntheticTyParamKind::ImplTrait), ..
+                } => true,
+                _ => false,
             });
 
             if explicit && impl_trait {
@@ -5152,34 +5210,39 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 }
 
 pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                       generics: &hir::Generics,
+                                       generics: &ty::Generics,
                                        ty: Ty<'tcx>) {
-    debug!("check_bounds_are_used(n_tps={}, ty={:?})",
-           generics.ty_params().count(),  ty);
+    let own_counts = generics.own_counts();
+    debug!("check_bounds_are_used(n_tps={}, ty={:?})", own_counts.types, ty);
 
-    // make a vector of booleans initially false, set to true when used
-    if generics.ty_params().next().is_none() { return; }
-    let mut tps_used = vec![false; generics.ty_params().count()];
-
-    let lifetime_count = generics.lifetimes().count();
+    if own_counts.types == 0 {
+        return;
+    }
+    // Make a vector of booleans initially false, set to true when used.
+    let mut types_used = vec![false; own_counts.types];
 
     for leaf_ty in ty.walk() {
-        if let ty::TyParam(ty::ParamTy {idx, ..}) = leaf_ty.sty {
+        if let ty::TyParam(ty::ParamTy { idx, .. }) = leaf_ty.sty {
             debug!("Found use of ty param num {}", idx);
-            tps_used[idx as usize - lifetime_count] = true;
+            types_used[idx as usize - own_counts.lifetimes] = true;
         } else if let ty::TyError = leaf_ty.sty {
-            // If there already another error, do not emit an error for not using a type Parameter
+            // If there is already another error, do not emit
+            // an error for not using a type Parameter.
             assert!(tcx.sess.err_count() > 0);
             return;
         }
     }
 
-    for (&used, param) in tps_used.iter().zip(generics.ty_params()) {
+    let types = generics.params.iter().filter(|param| match param.kind {
+        ty::GenericParamDefKind::Type { .. } => true,
+        _ => false,
+    });
+    for (&used, param) in types_used.iter().zip(types) {
         if !used {
-            struct_span_err!(tcx.sess, param.span, E0091,
-                "type parameter `{}` is unused",
-                param.name)
-                .span_label(param.span, "unused type parameter")
+            let id = tcx.hir.as_local_node_id(param.def_id).unwrap();
+            let span = tcx.hir.span(id);
+            struct_span_err!(tcx.sess, span, E0091, "type parameter `{}` is unused", param.name)
+                .span_label(span, "unused type parameter")
                 .emit();
         }
     }

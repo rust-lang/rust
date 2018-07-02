@@ -38,7 +38,7 @@ error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/feature-gate-trivial_bounds.rs:30:1
    |
 LL | / impl Foo for () where i32: Foo { //~ ERROR
-LL | |     fn test(&self) { //~ ERROR
+LL | |     fn test(&self) {
 LL | |         3i32.test();
 LL | |         Foo::test(&4i32);
 LL | |         generic_function(5i32);
@@ -87,66 +87,44 @@ LL | | }
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
+error[E0277]: the size for value values of type `str` cannot be known at compilation time
   --> $DIR/feature-gate-trivial_bounds.rs:62:1
    |
 LL | struct TwoStrs(str, str) where str: Sized; //~ ERROR
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `str` does not have a constant size known at compile-time
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
-  --> $DIR/feature-gate-trivial_bounds.rs:62:16
-   |
-LL | struct TwoStrs(str, str) where str: Sized; //~ ERROR
-   |                ^^^ `str` does not have a constant size known at compile-time
-   |
-   = help: the trait `std::marker::Sized` is not implemented for `str`
-   = note: only the last field of a struct may have a dynamically sized type
-
-error[E0277]: the trait bound `A + 'static: std::marker::Sized` is not satisfied in `Dst<A + 'static>`
+error[E0277]: the size for value values of type `(dyn A + 'static)` cannot be known at compilation time
   --> $DIR/feature-gate-trivial_bounds.rs:65:1
    |
 LL | / fn unsized_local() where Dst<A>: Sized { //~ ERROR
 LL | |     let x: Dst<A> = *(Box::new(Dst { x: 1 }) as Box<Dst<A>>);
 LL | | }
-   | |_^ `A + 'static` does not have a constant size known at compile-time
+   | |_^ doesn't have a size known at compile-time
    |
-   = help: within `Dst<A + 'static>`, the trait `std::marker::Sized` is not implemented for `A + 'static`
-   = note: required because it appears within the type `Dst<A + 'static>`
+   = help: within `Dst<(dyn A + 'static)>`, the trait `std::marker::Sized` is not implemented for `(dyn A + 'static)`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
+   = note: required because it appears within the type `Dst<(dyn A + 'static)>`
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: the trait bound `str: std::marker::Sized` is not satisfied
+error[E0277]: the size for value values of type `str` cannot be known at compilation time
   --> $DIR/feature-gate-trivial_bounds.rs:69:1
    |
 LL | / fn return_str() -> str where str: Sized { //~ ERROR
 LL | |     *"Sized".to_string().into_boxed_str()
 LL | | }
-   | |_^ `str` does not have a constant size known at compile-time
+   | |_^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types--sized>
    = help: see issue #48214
    = help: add #![feature(trivial_bounds)] to the crate attributes to enable
 
-error[E0277]: the trait bound `i32: Foo` is not satisfied
-  --> $DIR/feature-gate-trivial_bounds.rs:31:5
-   |
-LL | /     fn test(&self) { //~ ERROR
-LL | |         3i32.test();
-LL | |         Foo::test(&4i32);
-LL | |         generic_function(5i32);
-LL | |     }
-   | |_____^ the trait `Foo` is not implemented for `i32`
-   |
-note: required by `Foo`
-  --> $DIR/feature-gate-trivial_bounds.rs:14:1
-   |
-LL | pub trait Foo {
-   | ^^^^^^^^^^^^^
-
-error: aborting due to 13 previous errors
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

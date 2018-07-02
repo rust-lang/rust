@@ -52,7 +52,8 @@ impl Fingerprint {
     pub fn encode_opaque(&self, encoder: &mut Encoder) -> EncodeResult {
         let bytes: [u8; 16] = unsafe { mem::transmute([self.0.to_le(), self.1.to_le()]) };
 
-        encoder.emit_raw_bytes(&bytes)
+        encoder.emit_raw_bytes(&bytes);
+        Ok(())
     }
 
     pub fn decode_opaque<'a>(decoder: &mut Decoder<'a>) -> Result<Fingerprint, String> {
@@ -92,7 +93,7 @@ impl serialize::UseSpecializedEncodable for Fingerprint { }
 
 impl serialize::UseSpecializedDecodable for Fingerprint { }
 
-impl<'a> serialize::SpecializedEncoder<Fingerprint> for serialize::opaque::Encoder<'a> {
+impl serialize::SpecializedEncoder<Fingerprint> for serialize::opaque::Encoder {
     fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
         f.encode_opaque(self)
     }

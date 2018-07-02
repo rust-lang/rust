@@ -27,9 +27,9 @@ macro_rules! emits_nothing(
 #[link(name = "rust_test_helpers", kind = "static")]
 extern {
     returns_isize!(rust_get_test_int);
-    //~^ ERROR Macro invocations in `extern {}` blocks are experimental.
+    //~^ ERROR macro invocations in `extern {}` blocks are experimental.
     takes_u32_returns_u32!(rust_dbg_extern_identity_u32);
-    //~^ ERROR Macro invocations in `extern {}` blocks are experimental.
+    //~^ ERROR macro invocations in `extern {}` blocks are experimental.
     emits_nothing!();
-    //~^ ERROR Macro invocations in `extern {}` blocks are experimental.
+    //~^ ERROR macro invocations in `extern {}` blocks are experimental.
 }

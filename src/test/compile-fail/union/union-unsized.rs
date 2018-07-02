@@ -11,13 +11,16 @@
 #![feature(untagged_unions)]
 
 union U {
-    a: str, //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
+    a: str,
+    //~^ ERROR the size for value values of type
+
     b: u8,
 }
 
 union W {
     a: u8,
-    b: str, //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
+    b: str,
+    //~^ ERROR the size for value values of type
 }
 
 fn main() {}

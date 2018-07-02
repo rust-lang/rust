@@ -385,7 +385,7 @@ impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
                     // michaelwoerister and vitiral came up with a possible solution,
                     // to just do this before every query
                     // ```
-                    // ::rustc::ty::maps::plumbing::force_from_dep_node(tcx, dep_node)
+                    // ::rustc::ty::query::plumbing::force_from_dep_node(tcx, dep_node)
                     // ```
                     //
                     // However, this did not seem to work effectively and more bugs were hit.

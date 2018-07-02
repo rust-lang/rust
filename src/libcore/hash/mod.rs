@@ -603,6 +603,13 @@ mod impls {
         }
     }
 
+    #[stable(feature = "never_hash", since = "1.29.0")]
+    impl Hash for ! {
+        fn hash<H: Hasher>(&self, _: &mut H) {
+            *self
+        }
+    }
+
     macro_rules! impl_hash_tuple {
         () => (
             #[stable(feature = "rust1", since = "1.0.0")]

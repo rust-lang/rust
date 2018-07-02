@@ -146,7 +146,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use iter::{FromIterator, FusedIterator, TrustedLen};
-use {mem, ops};
+use {hint, mem, ops};
 use mem::PinMut;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
@@ -275,7 +275,7 @@ impl<T> Option<T> {
     #[unstable(feature = "pin", issue = "49150")]
     pub fn as_pin_mut<'a>(self: PinMut<'a, Self>) -> Option<PinMut<'a, T>> {
         unsafe {
-            PinMut::get_mut(self).as_mut().map(|x| PinMut::new_unchecked(x))
+            PinMut::get_mut_unchecked(self).as_mut().map(|x| PinMut::new_unchecked(x))
         }
     }
 
@@ -784,7 +784,7 @@ impl<T> Option<T> {
 
         match *self {
             Some(ref mut v) => v,
-            _ => unreachable!(),
+            None => unsafe { hint::unreachable_unchecked() },
         }
     }
 
@@ -817,7 +817,7 @@ impl<T> Option<T> {
 
         match *self {
             Some(ref mut v) => v,
-            _ => unreachable!(),
+            None => unsafe { hint::unreachable_unchecked() },
         }
     }
 

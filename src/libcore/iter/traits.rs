@@ -10,7 +10,7 @@
 use ops::{Mul, Add, Try};
 use num::Wrapping;
 
-use super::{AlwaysOk, LoopState};
+use super::LoopState;
 
 /// Conversion from an `Iterator`.
 ///
@@ -104,8 +104,11 @@ use super::{AlwaysOk, LoopState};
 /// assert_eq!(c.0, vec![0, 1, 2, 3, 4]);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented="a collection of type `{Self}` cannot be \
-                          built from an iterator over elements of type `{A}`"]
+#[rustc_on_unimplemented(
+    message="a collection of type `{Self}` cannot be built from an iterator \
+             over elements of type `{A}`",
+    label="a collection of type `{Self}` cannot be built from `std::iter::Iterator<Item={A}>`",
+)]
 pub trait FromIterator<A>: Sized {
     /// Creates a value from an iterator.
     ///
@@ -524,7 +527,7 @@ pub trait DoubleEndedIterator: Iterator {
     fn rfold<B, F>(mut self, accum: B, mut f: F) -> B where
         Self: Sized, F: FnMut(B, Self::Item) -> B,
     {
-        self.try_rfold(accum, move |acc, x| AlwaysOk(f(acc, x))).0
+        self.try_rfold(accum, move |acc, x| Ok::<B, !>(f(acc, x))).unwrap()
     }
 
     /// Searches for an element of an iterator from the back that satisfies a predicate.

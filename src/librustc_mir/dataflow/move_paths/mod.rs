@@ -209,7 +209,7 @@ pub enum InitKind {
     Deep,
     /// Only does a shallow init
     Shallow,
-    /// This doesn't initialize the variabe on panic (and a panic is possible).
+    /// This doesn't initialize the variable on panic (and a panic is possible).
     NonPanicPathOnly,
 }
 
@@ -271,15 +271,29 @@ impl<'tcx> MovePathLookup<'tcx> {
 
 #[derive(Debug)]
 pub struct IllegalMoveOrigin<'tcx> {
-    pub(crate) span: Span,
+    pub(crate) location: Location,
     pub(crate) kind: IllegalMoveOriginKind<'tcx>,
 }
 
 #[derive(Debug)]
 pub(crate) enum IllegalMoveOriginKind<'tcx> {
+    /// Illegal move due to attempt to move from `static` variable.
     Static,
-    BorrowedContent,
+
+    /// Illegal move due to attempt to move from behind a reference.
+    BorrowedContent {
+        /// The content's type: if erroneous code was trying to move
+        /// from `*x` where `x: &T`, then this will be `T`.
+        target_ty: ty::Ty<'tcx>,
+    },
+
+    /// Illegal move due to attempt to move from field of an ADT that
+    /// implements `Drop`. Rust maintains invariant that all `Drop`
+    /// ADT's remain fully-initialized so that user-defined destructor
+    /// can safely read from all of the ADT's fields.
     InteriorOfTypeWithDestructor { container_ty: ty::Ty<'tcx> },
+
+    /// Illegal move due to attempt to move out of a slice or array.
     InteriorOfSliceOrArray { ty: ty::Ty<'tcx>, is_index: bool, },
 }
 
@@ -290,8 +304,8 @@ pub enum MoveError<'tcx> {
 }
 
 impl<'tcx> MoveError<'tcx> {
-    fn cannot_move_out_of(span: Span, kind: IllegalMoveOriginKind<'tcx>) -> Self {
-        let origin = IllegalMoveOrigin { span, kind };
+    fn cannot_move_out_of(location: Location, kind: IllegalMoveOriginKind<'tcx>) -> Self {
+        let origin = IllegalMoveOrigin { location, kind };
         MoveError::IllegalMove { cannot_move_out_of: origin }
     }
 }

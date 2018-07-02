@@ -15,9 +15,9 @@
 trait Foo<T> : Sized { fn take(self, x: &T) { } } // Note: T is sized
 
 impl Foo<[isize]> for usize { }
-//~^ ERROR `[isize]: std::marker::Sized` is not satisfied
+//~^ ERROR the size for value values of type
 
 impl Foo<isize> for [usize] { }
-//~^ ERROR `[usize]: std::marker::Sized` is not satisfied
+//~^ ERROR the size for value values of type
 
 pub fn main() { }

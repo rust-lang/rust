@@ -374,7 +374,7 @@ pub mod printf {
 
         if let Start = state {
             match c {
-                '1'...'9' => {
+                '1'..='9' => {
                     let end = at_next_cp_while(next, is_digit);
                     match end.next_cp() {
                         // Yes, this *is* the parameter.
@@ -416,7 +416,7 @@ pub mod printf {
                     state = WidthArg;
                     move_to!(next);
                 },
-                '1' ... '9' => {
+                '1' ..= '9' => {
                     let end = at_next_cp_while(next, is_digit);
                     state = Prec;
                     width = Some(Num::from_str(at.slice_between(end).unwrap(), None));
@@ -477,7 +477,7 @@ pub mod printf {
                         }
                     }
                 },
-                '0' ... '9' => {
+                '0' ..= '9' => {
                     let end = at_next_cp_while(next, is_digit);
                     state = Length;
                     precision = Some(Num::from_str(at.slice_between(end).unwrap(), None));
@@ -570,7 +570,7 @@ pub mod printf {
 
     fn is_digit(c: char) -> bool {
         match c {
-            '0' ... '9' => true,
+            '0' ..= '9' => true,
             _ => false
         }
     }
@@ -799,7 +799,7 @@ pub mod shell {
             let start = s.find('$')?;
             match s[start+1..].chars().next()? {
                 '$' => return Some((Substitution::Escape, &s[start+2..])),
-                c @ '0' ... '9' => {
+                c @ '0' ..= '9' => {
                     let n = (c as u8) - b'0';
                     return Some((Substitution::Ordinal(n), &s[start+2..]));
                 },
@@ -836,14 +836,14 @@ pub mod shell {
 
     fn is_ident_head(c: char) -> bool {
         match c {
-            'a' ... 'z' | 'A' ... 'Z' | '_' => true,
+            'a' ..= 'z' | 'A' ..= 'Z' | '_' => true,
             _ => false
         }
     }
 
     fn is_ident_tail(c: char) -> bool {
         match c {
-            '0' ... '9' => true,
+            '0' ..= '9' => true,
             c => is_ident_head(c)
         }
     }

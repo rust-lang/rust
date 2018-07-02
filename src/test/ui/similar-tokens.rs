@@ -14,6 +14,6 @@ mod x {
 }
 
 // `.` is similar to `,` so list parsing should continue to closing `}`
-use x::{A. B}; //~ ERROR expected one of `,`, `::`, or `as`, found `.`
+use x::{A. B}; //~ ERROR expected one of `,`, `::`, `as`, or `}`, found `.`
 
 fn main() {}

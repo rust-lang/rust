@@ -13,10 +13,10 @@
 
 use std::mem;
 
-use rustc_target::spec::abi;
 use syntax::ast;
 use syntax::attr;
-use syntax_pos::Span;
+use syntax::codemap::Spanned;
+use syntax_pos::{self, Span};
 
 use rustc::hir::map as hir_map;
 use rustc::hir::def::Def;
@@ -95,7 +95,8 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
 
         self.module = self.visit_mod_contents(krate.span,
                                               krate.attrs.clone(),
-                                              hir::Public,
+                                              Spanned { span: syntax_pos::DUMMY_SP,
+                                                        node: hir::VisibilityKind::Public },
                                               ast::CRATE_NODE_ID,
                                               &krate.module,
                                               None);
@@ -172,9 +173,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
 
     pub fn visit_fn(&mut self, item: &hir::Item,
                     name: ast::Name, fd: &hir::FnDecl,
-                    unsafety: &hir::Unsafety,
-                    constness: hir::Constness,
-                    abi: &abi::Abi,
+                    header: hir::FnHeader,
                     gen: &hir::Generics,
                     body: hir::BodyId) -> Function {
         debug!("Visiting fn");
@@ -188,9 +187,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             name,
             whence: item.span,
             generics: gen.clone(),
-            unsafety: *unsafety,
-            constness,
-            abi: *abi,
+            header,
             body,
         }
     }
@@ -209,7 +206,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         om.id = id;
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;
-        self.inside_public_path &= vis == hir::Public;
+        self.inside_public_path &= vis.node.is_pub();
         for i in &m.item_ids {
             let item = self.cx.tcx.hir.expect_item(i.id);
             self.visit_item(item, None, &mut om);
@@ -244,10 +241,10 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                         def_id,
                         attrs: def.attrs.clone().into(),
                         name: def.ident.name,
-                        whence: def.span,
+                        whence: self.cx.tcx.def_span(def_id),
                         matchers,
-                        stab: self.stability(def.id),
-                        depr: self.deprecation(def.id),
+                        stab: self.cx.tcx.lookup_stability(def_id).cloned(),
+                        depr: self.cx.tcx.lookup_deprecation(def_id),
                         imported_from: Some(imported_from),
                     })
                 }
@@ -365,6 +362,11 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 });
                 true
             }
+            hir_map::NodeStructCtor(_) if !glob => {
+                // struct constructors always show up alongside their struct definitions, we've
+                // already processed that so just discard this
+                true
+            }
             _ => false,
         };
         self.view_item_stack.remove(&def_node_id);
@@ -376,7 +378,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         debug!("Visiting item {:?}", item);
         let name = renamed.unwrap_or(item.name);
 
-        if item.vis == hir::Public {
+        if item.vis.node.is_pub() {
             let def_id = self.cx.tcx.hir.local_def_id(item.id);
             self.store_path(def_id);
         }
@@ -387,14 +389,14 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 om.foreigns.push(if self.inlining {
                     hir::ForeignMod {
                         abi: fm.abi,
-                        items: fm.items.iter().filter(|i| i.vis == hir::Public).cloned().collect(),
+                        items: fm.items.iter().filter(|i| i.vis.node.is_pub()).cloned().collect(),
                     }
                 } else {
                     fm.clone()
                 });
             }
             // If we're inlining, skip private items.
-            _ if self.inlining && item.vis != hir::Public => {}
+            _ if self.inlining && !item.vis.node.is_pub() => {}
             hir::ItemGlobalAsm(..) => {}
             hir::ItemExternCrate(orig_name) => {
                 let def_id = self.cx.tcx.hir.local_def_id(item.id);
@@ -414,7 +416,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
 
                 // If there was a private module in the current path then don't bother inlining
                 // anything as it will probably be stripped anyway.
-                if item.vis == hir::Public && self.inside_public_path {
+                if item.vis.node.is_pub() && self.inside_public_path {
                     let please_inline = item.attrs.iter().any(|item| {
                         match item.meta_item_list() {
                             Some(ref list) if item.check_name("doc") => {
@@ -458,9 +460,8 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 om.structs.push(self.visit_variant_data(item, name, sd, gen)),
             hir::ItemUnion(ref sd, ref gen) =>
                 om.unions.push(self.visit_union_data(item, name, sd, gen)),
-            hir::ItemFn(ref fd, ref unsafety, constness, ref abi, ref gen, body) =>
-                om.fns.push(self.visit_fn(item, name, &**fd, unsafety,
-                                          constness, abi, gen, body)),
+            hir::ItemFn(ref fd, header, ref gen, body) =>
+                om.fns.push(self.visit_fn(item, name, &**fd, header, gen, body)),
             hir::ItemTy(ref ty, ref gen) => {
                 let t = Typedef {
                     ty: ty.clone(),
@@ -559,6 +560,9 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                     om.impls.push(i);
                 }
             },
+            hir::ItemExistential(_) => {
+                // FIXME(oli-obk): actually generate docs for real existential items
+            }
         }
     }
 
