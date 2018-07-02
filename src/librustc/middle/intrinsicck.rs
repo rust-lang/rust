@@ -206,10 +206,17 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
         assert!(!to.has_infer_types());
 
         let unspecified_layout = |msg, ty| {
-            struct_span_err!(self.tcx.sess, span, E0912, "{}", msg)
-                .note(&format!("{} has an unspecified layout", ty))
-                .note("this will become a hard error in the future")
-                .emit();
+            if ::std::env::var("RUSTC_BOOTSTRAP").is_ok() {
+                struct_span_warn!(self.tcx.sess, span, E0912, "{}", msg)
+                    .note(&format!("{} has an unspecified layout", ty))
+                    .note("this will become a hard error in the future")
+                    .emit();
+            } else {
+                struct_span_err!(self.tcx.sess, span, E0912, "{}", msg)
+                    .note(&format!("{} has an unspecified layout", ty))
+                    .note("this will become a hard error in the future")
+                    .emit();
+            }
         };
 
         if self.is_layout_specified(from) == Some(false) {
