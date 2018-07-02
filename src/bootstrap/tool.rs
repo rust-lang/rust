@@ -107,6 +107,9 @@ impl Step for ToolBuild {
             Mode::ToolRustc => {
                 builder.ensure(compile::Rustc { compiler, target })
             }
+            Mode::ToolStd => {
+                builder.ensure(compile::Std { compiler, target })
+            }
             Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
             _ => panic!("unexpected Mode for tool build")
         }
@@ -380,7 +383,7 @@ impl Step for RemoteTestServer {
             compiler: self.compiler,
             target: self.target,
             tool: "remote-test-server",
-            mode: Mode::ToolBootstrap,
+            mode: Mode::ToolStd,
             path: "src/tools/remote-test-server",
             is_ext_tool: false,
             extra_features: Vec::new(),
