@@ -114,6 +114,7 @@ impl_stable_hash_for!(enum ::rustc_target::spec::abi::Abi {
     PtxKernel,
     Msp430Interrupt,
     X86Interrupt,
+    AmdGpuKernel,
     Rust,
     C,
     System,

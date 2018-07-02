@@ -343,6 +343,7 @@ impl<'a, 'tcx> FnTypeExt<'a, 'tcx> for FnType<'tcx, Ty<'tcx>> {
             PtxKernel => Conv::PtxKernel,
             Msp430Interrupt => Conv::Msp430Intr,
             X86Interrupt => Conv::X86Intr,
+            AmdGpuKernel => Conv::AmdGpuKernel,
 
             // These API constants ought to be more specific...
             Cdecl => Conv::C,
@@ -608,6 +609,7 @@ impl<'a, 'tcx> FnTypeExt<'a, 'tcx> for FnType<'tcx, Ty<'tcx>> {
     fn llvm_cconv(&self) -> llvm::CallConv {
         match self.conv {
             Conv::C => llvm::CCallConv,
+            Conv::AmdGpuKernel => llvm::AmdGpuKernel,
             Conv::ArmAapcs => llvm::ArmAapcsCallConv,
             Conv::Msp430Intr => llvm::Msp430Intr,
             Conv::PtxKernel => llvm::PtxKernel,

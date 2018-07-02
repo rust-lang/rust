@@ -484,6 +484,8 @@ declare_features! (
 
     // #[alloc_error_handler]
     (active, alloc_error_handler, "1.29.0", Some(51540), None),
+
+    (active, abi_amdgpu_kernel, "1.29.0", Some(51575), None),
 );
 
 declare_features! (
@@ -1438,6 +1440,10 @@ impl<'a> PostExpansionVisitor<'a> {
             Abi::X86Interrupt => {
                 gate_feature_post!(&self, abi_x86_interrupt, span,
                                    "x86-interrupt ABI is experimental and subject to change");
+            },
+            Abi::AmdGpuKernel => {
+                gate_feature_post!(&self, abi_amdgpu_kernel, span,
+                                   "amdgpu-kernel ABI is experimental and subject to change");
             },
             // Stable
             Abi::Cdecl |
