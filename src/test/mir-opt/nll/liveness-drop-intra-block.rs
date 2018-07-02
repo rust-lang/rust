@@ -25,7 +25,6 @@ fn main() {
 
 // END RUST SOURCE
 // START rustc.main.nll.0.mir
-//    | Live variables on entry to bb3: []
 //    bb3: {
 //            | Live variables on entry to bb3[0]: []
 //        _1 = const 55usize;
@@ -37,5 +36,6 @@ fn main() {
 //        _4 = _1;
 //            | Live variables on entry to bb3[4]: [_4]
 //        _3 = const use_x(move _4) -> [return: bb4, unwind: bb1];
+//            | Live variables on exit from bb3: [_3]
 //    }
 // END rustc.main.nll.0.mir

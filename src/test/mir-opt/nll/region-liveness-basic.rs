@@ -42,6 +42,7 @@ fn main() {
 //        _2 = &'_#2r _1[_3];
 //            | Live variables on entry to bb2[1]: [_2]
 //        switchInt(const true) -> [false: bb4, otherwise: bb3];
+//            | Live variables on exit from bb2: [_2]
 //    }
 // END rustc.main.nll.0.mir
 // START rustc.main.nll.0.mir
@@ -52,5 +53,6 @@ fn main() {
 //        _7 = (*_2);
 //            | Live variables on entry to bb3[2]: [_7]
 //        _6 = const use_x(move _7) -> [return: bb5, unwind: bb1];
+//            | Live variables on exit from bb3: []
 //    }
 // END rustc.main.nll.0.mir

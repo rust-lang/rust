@@ -77,6 +77,7 @@ pub mod sync;
 pub mod owning_ref;
 pub mod tiny_list;
 pub mod sorted_map;
+pub mod work_queue;
 
 pub struct OnDrop<F: Fn()>(pub F);
 

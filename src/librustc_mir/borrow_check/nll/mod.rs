@@ -263,13 +263,6 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
                     }
                 }
 
-                // Before each basic block, dump out the values
-                // that are live on entry to the basic block.
-                PassWhere::BeforeBlock(bb) => {
-                    let s = live_variable_set(&liveness.regular.ins[bb], &liveness.drop.ins[bb]);
-                    writeln!(out, "    | Live variables on entry to {:?}: {}", bb, s)?;
-                }
-
                 PassWhere::BeforeLocation(location) => {
                     let s = live_variable_set(
                         &regular_liveness_per_location[&location],
@@ -285,7 +278,14 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
                     )?;
                 }
 
-                PassWhere::AfterLocation(_) | PassWhere::AfterCFG => {}
+                // After each basic block, dump out the values
+                // that are live on exit from the basic block.
+                PassWhere::AfterTerminator(bb) => {
+                    let s = live_variable_set(&liveness.regular.outs[bb], &liveness.drop.outs[bb]);
+                    writeln!(out, "    | Live variables on exit from {:?}: {}", bb, s)?;
+                }
+
+                PassWhere::BeforeBlock(_) | PassWhere::AfterLocation(_) | PassWhere::AfterCFG => {}
             }
             Ok(())
         },
