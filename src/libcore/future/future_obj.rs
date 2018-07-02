@@ -33,8 +33,7 @@ pub struct LocalFutureObj<'a, T> {
     ptr: *mut (),
     poll_fn: unsafe fn(*mut (), &mut Context) -> Poll<T>,
     drop_fn: unsafe fn(*mut ()),
-    _marker1: PhantomData<T>,
-    _marker2: PhantomData<&'a ()>,
+    _marker: PhantomData<&'a ()>,
 }
 
 impl<'a, T> LocalFutureObj<'a, T> {
@@ -45,8 +44,7 @@ impl<'a, T> LocalFutureObj<'a, T> {
             ptr: f.into_raw(),
             poll_fn: F::poll,
             drop_fn: F::drop,
-            _marker1: PhantomData,
-            _marker2: PhantomData,
+            _marker: PhantomData,
         }
     }
 
