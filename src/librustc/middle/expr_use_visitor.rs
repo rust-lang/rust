@@ -319,7 +319,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             let fn_body_scope_r =
                 self.tcx().mk_region(ty::ReScope(region::Scope::Node(body.value.hir_id.local_id)));
             let arg_cmt = Rc::new(self.mc.cat_rvalue(
-                arg.id,
+                arg.hir_id,
                 arg.pat.span,
                 fn_body_scope_r, // Args live only as long as the fn body.
                 arg_ty));
@@ -860,7 +860,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 // Each match binding is effectively an assignment to the
                 // binding being produced.
                 let def = Def::Local(canonical_id);
-                if let Ok(ref binding_cmt) = mc.cat_def(pat.id, pat.span, pat_ty, def) {
+                if let Ok(ref binding_cmt) = mc.cat_def(pat.hir_id, pat.span, pat_ty, def) {
                     delegate.mutate(pat.id, pat.span, binding_cmt, MutateMode::Init);
                 }
 
@@ -923,7 +923,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                     closure_expr_id: closure_def_id.to_local(),
                 };
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
-                let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
+                let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.hir_id,
                                                                    fn_decl_span,
                                                                    freevar));
                 match upvar_capture {
@@ -948,7 +948,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn cat_captured_var(&mut self,
-                        closure_id: ast::NodeId,
+                        closure_hir_id: hir::HirId,
                         closure_span: Span,
                         upvar: &hir::Freevar)
                         -> mc::McResult<mc::cmt_<'tcx>> {
@@ -956,7 +956,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         // caller's perspective
         let var_hir_id = self.tcx().hir.node_to_hir_id(upvar.var_id());
         let var_ty = self.mc.node_ty(var_hir_id)?;
-        self.mc.cat_def(closure_id, closure_span, var_ty, upvar.def)
+        self.mc.cat_def(closure_hir_id, closure_span, var_ty, upvar.def)
     }
 }
 
