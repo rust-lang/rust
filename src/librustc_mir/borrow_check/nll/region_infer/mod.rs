@@ -53,11 +53,11 @@ pub struct RegionInferenceContext<'tcx> {
     /// regions, these start out empty and steadily grow, though for
     /// each universally quantified region R they start out containing
     /// the entire CFG and `end(R)`.
-    liveness_constraints: RegionValues,
+    liveness_constraints: RegionValues<RegionVid>,
 
     /// The final inferred values of the inference variables; `None`
     /// until `solve` is invoked.
-    inferred_values: Option<RegionValues>,
+    inferred_values: Option<RegionValues<RegionVid>>,
 
     /// The constraints we have accumulated and used during solving.
     constraints: ConstraintSet,
@@ -394,7 +394,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.inferred_values = Some(inferred_values);
     }
 
-    fn compute_region_values(&self, _mir: &Mir<'tcx>) -> RegionValues {
+    fn compute_region_values(&self, _mir: &Mir<'tcx>) -> RegionValues<RegionVid> {
         debug!("compute_region_values()");
         debug!("compute_region_values: constraints={:#?}", {
             let mut constraints: Vec<_> = self.constraints.iter().collect();
