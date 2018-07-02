@@ -23,7 +23,7 @@ use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
 use value::Value;
 
-pub fn size_and_align_of_dst<'a, 'tcx>(bx: &Builder<'a, 'tcx>, t: Ty<'tcx>, info: ValueRef)
+pub fn size_and_align_of_dst(bx: &Builder<'a, 'll, 'tcx>, t: Ty<'tcx>, info: ValueRef)
                                        -> (ValueRef, ValueRef) {
     debug!("calculate size of DST: {}; with lost info: {:?}",
            t, Value(info));

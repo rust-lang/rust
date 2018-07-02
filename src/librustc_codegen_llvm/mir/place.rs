@@ -56,7 +56,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
     }
 
     pub fn from_const_alloc(
-        bx: &Builder<'a, 'tcx>,
+        bx: &Builder<'a, 'll, 'tcx>,
         layout: TyLayout<'tcx>,
         alloc: &mir::interpret::Allocation,
         offset: Size,
@@ -73,7 +73,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         PlaceRef::new_sized(llval, layout, alloc.align)
     }
 
-    pub fn alloca(bx: &Builder<'a, 'tcx>, layout: TyLayout<'tcx>, name: &str)
+    pub fn alloca(bx: &Builder<'a, 'll, 'tcx>, layout: TyLayout<'tcx>, name: &str)
                   -> PlaceRef<'tcx> {
         debug!("alloca({:?}: {:?})", name, layout);
         let tmp = bx.alloca(layout.llvm_type(bx.cx), name, layout.align);
@@ -98,7 +98,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         !self.llextra.is_null()
     }
 
-    pub fn load(&self, bx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
+    pub fn load(&self, bx: &Builder<'a, 'll, 'tcx>) -> OperandRef<'tcx> {
         debug!("PlaceRef::load: {:?}", self);
 
         assert!(!self.has_extra());
@@ -162,7 +162,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
     }
 
     /// Access a field, at a point when the value's case is known.
-    pub fn project_field(self, bx: &Builder<'a, 'tcx>, ix: usize) -> PlaceRef<'tcx> {
+    pub fn project_field(self, bx: &Builder<'a, 'll, 'tcx>, ix: usize) -> PlaceRef<'tcx> {
         let cx = bx.cx;
         let field = self.layout.field(cx, ix);
         let offset = self.layout.fields.offset(ix);
@@ -266,7 +266,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
     }
 
     /// Obtain the actual discriminant of a value.
-    pub fn codegen_get_discr(self, bx: &Builder<'a, 'tcx>, cast_to: Ty<'tcx>) -> ValueRef {
+    pub fn codegen_get_discr(self, bx: &Builder<'a, 'll, 'tcx>, cast_to: Ty<'tcx>) -> ValueRef {
         let cast_to = bx.cx.layout_of(cast_to).immediate_llvm_type(bx.cx);
         if self.layout.abi == layout::Abi::Uninhabited {
             return C_undef(cast_to);
@@ -330,7 +330,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
 
     /// Set the discriminant for a new value of the given case of the given
     /// representation.
-    pub fn codegen_set_discr(&self, bx: &Builder<'a, 'tcx>, variant_index: usize) {
+    pub fn codegen_set_discr(&self, bx: &Builder<'a, 'll, 'tcx>, variant_index: usize) {
         if self.layout.for_variant(bx.cx, variant_index).abi == layout::Abi::Uninhabited {
             return;
         }
@@ -384,7 +384,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         }
     }
 
-    pub fn project_index(&self, bx: &Builder<'a, 'tcx>, llindex: ValueRef)
+    pub fn project_index(&self, bx: &Builder<'a, 'll, 'tcx>, llindex: ValueRef)
                          -> PlaceRef<'tcx> {
         PlaceRef {
             llval: bx.inbounds_gep(self.llval, &[C_usize(bx.cx, 0), llindex]),
@@ -394,7 +394,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         }
     }
 
-    pub fn project_downcast(&self, bx: &Builder<'a, 'tcx>, variant_index: usize)
+    pub fn project_downcast(&self, bx: &Builder<'a, 'll, 'tcx>, variant_index: usize)
                             -> PlaceRef<'tcx> {
         let mut downcast = *self;
         downcast.layout = self.layout.for_variant(bx.cx, variant_index);
@@ -406,18 +406,18 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         downcast
     }
 
-    pub fn storage_live(&self, bx: &Builder<'a, 'tcx>) {
+    pub fn storage_live(&self, bx: &Builder<'a, 'll, 'tcx>) {
         bx.lifetime_start(self.llval, self.layout.size);
     }
 
-    pub fn storage_dead(&self, bx: &Builder<'a, 'tcx>) {
+    pub fn storage_dead(&self, bx: &Builder<'a, 'll, 'tcx>) {
         bx.lifetime_end(self.llval, self.layout.size);
     }
 }
 
-impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx> {
     pub fn codegen_place(&mut self,
-                        bx: &Builder<'a, 'tcx>,
+                        bx: &Builder<'a, 'll, 'tcx>,
                         place: &mir::Place<'tcx>)
                         -> PlaceRef<'tcx> {
         debug!("codegen_place(place={:?})", place);

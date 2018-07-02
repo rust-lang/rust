@@ -33,7 +33,7 @@ use super::FunctionCx;
 pub fn scalar_to_llvm(cx: &CodegenCx,
                        cv: Scalar,
                        layout: &layout::Scalar,
-                       llty: Type) -> ValueRef {
+                       llty: &Type) -> ValueRef {
     let bitsize = if layout.is_bool() { 1 } else { layout.value.size(cx).bits() };
     match cv {
         Scalar::Bits { defined, .. } if (defined as u64) < bitsize || defined == 0 => {
@@ -42,7 +42,7 @@ pub fn scalar_to_llvm(cx: &CodegenCx,
         Scalar::Bits { bits, .. } => {
             let llval = C_uint_big(Type::ix(cx, bitsize), bits);
             if layout.value == layout::Pointer {
-                unsafe { llvm::LLVMConstIntToPtr(llval, llty.to_ref()) }
+                unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
             } else {
                 consts::bitcast(llval, llty)
             }
@@ -73,7 +73,7 @@ pub fn scalar_to_llvm(cx: &CodegenCx,
                 1,
             ) };
             if layout.value != layout::Pointer {
-                unsafe { llvm::LLVMConstPtrToInt(llval, llty.to_ref()) }
+                unsafe { llvm::LLVMConstPtrToInt(llval, llty) }
             } else {
                 consts::bitcast(llval, llty)
             }
@@ -135,10 +135,10 @@ pub fn codegen_static_initializer<'a, 'tcx>(
     Ok((const_alloc_to_llvm(cx, alloc), alloc))
 }
 
-impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx> {
     fn fully_evaluate(
         &mut self,
-        bx: &Builder<'a, 'tcx>,
+        bx: &Builder<'a, 'll, 'tcx>,
         constant: &'tcx ty::Const<'tcx>,
     ) -> Result<&'tcx ty::Const<'tcx>, Lrc<ConstEvalErr<'tcx>>> {
         match constant.val {
@@ -158,7 +158,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
 
     pub fn eval_mir_constant(
         &mut self,
-        bx: &Builder<'a, 'tcx>,
+        bx: &Builder<'a, 'll, 'tcx>,
         constant: &mir::Constant<'tcx>,
     ) -> Result<&'tcx ty::Const<'tcx>, Lrc<ConstEvalErr<'tcx>>> {
         let c = self.monomorphize(&constant.literal);
@@ -168,7 +168,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     /// process constant containing SIMD shuffle indices
     pub fn simd_shuffle_indices(
         &mut self,
-        bx: &Builder<'a, 'tcx>,
+        bx: &Builder<'a, 'll, 'tcx>,
         span: Span,
         ty: Ty<'tcx>,
         constant: Result<&'tcx ty::Const<'tcx>, Lrc<ConstEvalErr<'tcx>>>,

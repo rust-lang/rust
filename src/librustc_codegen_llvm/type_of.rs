@@ -23,8 +23,8 @@ use std::fmt::Write;
 
 fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                 layout: TyLayout<'tcx>,
-                                defer: &mut Option<(Type, TyLayout<'tcx>)>)
-                                -> Type {
+                                defer: &mut Option<(&'a Type, TyLayout<'tcx>)>)
+                                -> &'a Type {
     match layout.abi {
         layout::Abi::Scalar(_) => bug!("handled elsewhere"),
         layout::Abi::Vector { ref element, count } => {
@@ -42,7 +42,7 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 return Type::x86_mmx(cx)
             } else {
                 let element = layout.scalar_llvm_type_at(cx, element, Size::ZERO);
-                return Type::vector(&element, count);
+                return Type::vector(element, count);
             }
         }
         layout::Abi::ScalarPair(..) => {
@@ -96,7 +96,7 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             }
         }
         layout::FieldPlacement::Array { count, .. } => {
-            Type::array(&layout.field(cx, 0).llvm_type(cx), count)
+            Type::array(layout.field(cx, 0).llvm_type(cx), count)
         }
         layout::FieldPlacement::Arbitrary { .. } => {
             match name {
@@ -116,14 +116,14 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
 fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                              layout: TyLayout<'tcx>)
-                             -> (Vec<Type>, bool) {
+                             -> (Vec<&'a Type>, bool) {
     debug!("struct_llfields: {:#?}", layout);
     let field_count = layout.fields.count();
 
     let mut packed = false;
     let mut offset = Size::ZERO;
     let mut prev_align = layout.align;
-    let mut result: Vec<Type> = Vec::with_capacity(1 + field_count * 2);
+    let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
     for i in layout.fields.index_by_increasing_offset() {
         let field = layout.field(cx, i);
         packed |= layout.align.abi() < field.align.abi();
@@ -201,12 +201,12 @@ pub struct PointeeInfo {
 pub trait LayoutLlvmExt<'tcx> {
     fn is_llvm_immediate(&self) -> bool;
     fn is_llvm_scalar_pair<'a>(&self) -> bool;
-    fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Type;
-    fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Type;
+    fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type;
+    fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type;
     fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
-                               scalar: &layout::Scalar, offset: Size) -> Type;
+                               scalar: &layout::Scalar, offset: Size) -> &'a Type;
     fn scalar_pair_element_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
-                                         index: usize, immediate: bool) -> Type;
+                                         index: usize, immediate: bool) -> &'a Type;
     fn llvm_field_index(&self, index: usize) -> u64;
     fn pointee_info_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, offset: Size)
                            -> Option<PointeeInfo>;
@@ -244,7 +244,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
     /// with the inner-most trailing unsized field using the "minimal unit"
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
-    fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Type {
+    fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
         if let layout::Abi::Scalar(ref scalar) = self.abi {
             // Use a different cache for scalars because pointers to DSTs
             // can be either fat or thin (data pointers of fat pointers).
@@ -304,7 +304,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
 
         cx.lltypes.borrow_mut().insert((self.ty, variant_index), llty);
 
-        if let Some((mut llty, layout)) = defer {
+        if let Some((llty, layout)) = defer {
             let (llfields, packed) = struct_llfields(cx, layout);
             llty.set_struct_body(&llfields, packed)
         }
@@ -312,7 +312,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         llty
     }
 
-    fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Type {
+    fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
         if let layout::Abi::Scalar(ref scalar) = self.abi {
             if scalar.is_bool() {
                 return Type::i1(cx);
@@ -322,7 +322,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
     }
 
     fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
-                               scalar: &layout::Scalar, offset: Size) -> Type {
+                               scalar: &layout::Scalar, offset: Size) -> &'a Type {
         match scalar.value {
             layout::Int(i, _) => Type::from_integer(cx, i),
             layout::Float(FloatTy::F32) => Type::f32(cx),
@@ -340,7 +340,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
     }
 
     fn scalar_pair_element_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
-                                         index: usize, immediate: bool) -> Type {
+                                         index: usize, immediate: bool) -> &'a Type {
         // HACK(eddyb) special-case fat pointers until LLVM removes
         // pointee types, to avoid bitcasting every `OperandRef::deref`.
         match self.ty.sty {

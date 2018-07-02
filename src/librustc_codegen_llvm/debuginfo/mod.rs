@@ -471,14 +471,16 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     }
 }
 
-pub fn declare_local<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
-                               dbg_context: &FunctionDebugContext,
-                               variable_name: ast::Name,
-                               variable_type: Ty<'tcx>,
-                               scope_metadata: DIScope,
-                               variable_access: VariableAccess,
-                               variable_kind: VariableKind,
-                               span: Span) {
+pub fn declare_local(
+    bx: &Builder<'a, 'll, 'tcx>,
+    dbg_context: &FunctionDebugContext,
+    variable_name: ast::Name,
+    variable_type: Ty<'tcx>,
+    scope_metadata: DIScope,
+    variable_access: VariableAccess,
+    variable_kind: VariableKind,
+    span: Span,
+) {
     assert!(!dbg_context.get_ref(span).source_locations_enabled.get());
     let cx = bx.cx;
 

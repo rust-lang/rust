@@ -31,15 +31,15 @@ use rustc::hir::{self, CodegenFnAttrs, CodegenFnAttrFlags};
 
 use std::ffi::{CStr, CString};
 
-pub fn ptrcast(val: ValueRef, ty: Type) -> ValueRef {
+pub fn ptrcast(val: ValueRef, ty: &Type) -> ValueRef {
     unsafe {
-        llvm::LLVMConstPointerCast(val, ty.to_ref())
+        llvm::LLVMConstPointerCast(val, ty)
     }
 }
 
-pub fn bitcast(val: ValueRef, ty: Type) -> ValueRef {
+pub fn bitcast(val: ValueRef, ty: &Type) -> ValueRef {
     unsafe {
-        llvm::LLVMConstBitCast(val, ty.to_ref())
+        llvm::LLVMConstBitCast(val, ty)
     }
 }
 
@@ -294,7 +294,7 @@ pub fn codegen_static<'a, 'tcx>(
         let mut val_llty = val_ty(v);
         let v = if val_llty == Type::i1(cx) {
             val_llty = Type::i8(cx);
-            llvm::LLVMConstZExt(v, val_llty.to_ref())
+            llvm::LLVMConstZExt(v, val_llty)
         } else {
             v
         };
@@ -316,7 +316,7 @@ pub fn codegen_static<'a, 'tcx>(
             let visibility = llvm::LLVMRustGetVisibility(g);
 
             let new_g = llvm::LLVMRustGetOrInsertGlobal(
-                cx.llmod, name_string.as_ptr(), val_llty.to_ref());
+                cx.llmod, name_string.as_ptr(), val_llty);
 
             llvm::LLVMRustSetLinkage(new_g, linkage);
             llvm::LLVMRustSetVisibility(new_g, visibility);
@@ -411,7 +411,7 @@ pub fn codegen_static<'a, 'tcx>(
 
         if attrs.flags.contains(CodegenFnAttrFlags::USED) {
             // This static will be stored in the llvm.used variable which is an array of i8*
-            let cast = llvm::LLVMConstPointerCast(g, Type::i8p(cx).to_ref());
+            let cast = llvm::LLVMConstPointerCast(g, Type::i8p(cx));
             cx.used_statics.borrow_mut().push(cast);
         }
     }

@@ -40,13 +40,13 @@ use std::ffi::CString;
 ///
 /// If there’s a value with the same name already declared, the function will
 /// return its ValueRef instead.
-pub fn declare_global(cx: &CodegenCx, name: &str, ty: Type) -> llvm::ValueRef {
+pub fn declare_global(cx: &CodegenCx, name: &str, ty: &Type) -> llvm::ValueRef {
     debug!("declare_global(name={:?})", name);
     let namebuf = CString::new(name).unwrap_or_else(|_|{
         bug!("name {:?} contains an interior null byte", name)
     });
     unsafe {
-        llvm::LLVMRustGetOrInsertGlobal(cx.llmod, namebuf.as_ptr(), ty.to_ref())
+        llvm::LLVMRustGetOrInsertGlobal(cx.llmod, namebuf.as_ptr(), ty)
     }
 }
 
@@ -55,13 +55,13 @@ pub fn declare_global(cx: &CodegenCx, name: &str, ty: Type) -> llvm::ValueRef {
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing ValueRef instead.
-fn declare_raw_fn(cx: &CodegenCx, name: &str, callconv: llvm::CallConv, ty: Type) -> ValueRef {
+fn declare_raw_fn(cx: &CodegenCx, name: &str, callconv: llvm::CallConv, ty: &Type) -> ValueRef {
     debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
     let namebuf = CString::new(name).unwrap_or_else(|_|{
         bug!("name {:?} contains an interior null byte", name)
     });
     let llfn = unsafe {
-        llvm::LLVMRustGetOrInsertFunction(cx.llmod, namebuf.as_ptr(), ty.to_ref())
+        llvm::LLVMRustGetOrInsertFunction(cx.llmod, namebuf.as_ptr(), ty)
     };
 
     llvm::SetFunctionCallConv(llfn, callconv);
@@ -115,7 +115,7 @@ fn declare_raw_fn(cx: &CodegenCx, name: &str, callconv: llvm::CallConv, ty: Type
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing ValueRef instead.
-pub fn declare_cfn(cx: &CodegenCx, name: &str, fn_type: Type) -> ValueRef {
+pub fn declare_cfn(cx: &CodegenCx, name: &str, fn_type: &Type) -> ValueRef {
     declare_raw_fn(cx, name, llvm::CCallConv, fn_type)
 }
 
@@ -154,7 +154,7 @@ pub fn declare_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, name: &str,
 /// return None if the name already has a definition associated with it. In that
 /// case an error should be reported to the user, because it usually happens due
 /// to user’s fault (e.g. misuse of #[no_mangle] or #[export_name] attributes).
-pub fn define_global(cx: &CodegenCx, name: &str, ty: Type) -> Option<ValueRef> {
+pub fn define_global(cx: &CodegenCx, name: &str, ty: &Type) -> Option<ValueRef> {
     if get_defined_value(cx, name).is_some() {
         None
     } else {

@@ -32,12 +32,12 @@ use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 
-impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx> {
     pub fn codegen_rvalue(&mut self,
-                        bx: Builder<'a, 'tcx>,
+                        bx: Builder<'a, 'll, 'tcx>,
                         dest: PlaceRef<'tcx>,
                         rvalue: &mir::Rvalue<'tcx>)
-                        -> Builder<'a, 'tcx>
+                        -> Builder<'a, 'll, 'tcx>
     {
         debug!("codegen_rvalue(dest.llval={:?}, rvalue={:?})",
                Value(dest.llval), rvalue);
@@ -176,9 +176,9 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 
     pub fn codegen_rvalue_operand(&mut self,
-                                bx: Builder<'a, 'tcx>,
+                                bx: Builder<'a, 'll, 'tcx>,
                                 rvalue: &mir::Rvalue<'tcx>)
-                                -> (Builder<'a, 'tcx>, OperandRef<'tcx>)
+                                -> (Builder<'a, 'll, 'tcx>, OperandRef<'tcx>)
     {
         assert!(self.rvalue_creates_operand(rvalue), "cannot codegen {:?} to operand", rvalue);
 
@@ -512,7 +512,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 
     fn evaluate_array_len(&mut self,
-                          bx: &Builder<'a, 'tcx>,
+                          bx: &Builder<'a, 'll, 'tcx>,
                           place: &mir::Place<'tcx>) -> ValueRef
     {
         // ZST are passed as operands and require special handling
@@ -531,7 +531,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 
     pub fn codegen_scalar_binop(&mut self,
-                              bx: &Builder<'a, 'tcx>,
+                              bx: &Builder<'a, 'll, 'tcx>,
                               op: mir::BinOp,
                               lhs: ValueRef,
                               rhs: ValueRef,
@@ -597,7 +597,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 
     pub fn codegen_fat_ptr_binop(&mut self,
-                               bx: &Builder<'a, 'tcx>,
+                               bx: &Builder<'a, 'll, 'tcx>,
                                op: mir::BinOp,
                                lhs_addr: ValueRef,
                                lhs_extra: ValueRef,
@@ -644,7 +644,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 
     pub fn codegen_scalar_checked_binop(&mut self,
-                                      bx: &Builder<'a, 'tcx>,
+                                      bx: &Builder<'a, 'll, 'tcx>,
                                       op: mir::BinOp,
                                       lhs: ValueRef,
                                       rhs: ValueRef,
@@ -796,11 +796,11 @@ fn get_overflow_intrinsic(oop: OverflowOp, bx: &Builder, ty: Ty) -> ValueRef {
     bx.cx.get_intrinsic(&name)
 }
 
-fn cast_int_to_float(bx: &Builder,
+fn cast_int_to_float(bx: &Builder<'_, 'll, '_>,
                      signed: bool,
                      x: ValueRef,
-                     int_ty: Type,
-                     float_ty: Type) -> ValueRef {
+                     int_ty: &'ll Type,
+                     float_ty: &'ll Type) -> ValueRef {
     // Most integer types, even i128, fit into [-f32::MAX, f32::MAX] after rounding.
     // It's only u128 -> f32 that can cause overflows (i.e., should yield infinity).
     // LLVM's uitofp produces undef in those cases, so we manually check for that case.
@@ -826,11 +826,11 @@ fn cast_int_to_float(bx: &Builder,
     }
 }
 
-fn cast_float_to_int(bx: &Builder,
+fn cast_float_to_int(bx: &Builder<'_, 'll, '_>,
                      signed: bool,
                      x: ValueRef,
-                     float_ty: Type,
-                     int_ty: Type) -> ValueRef {
+                     float_ty: &'ll Type,
+                     int_ty: &'ll Type) -> ValueRef {
     let fptosui_result = if signed {
         bx.fptosi(x, int_ty)
     } else {
@@ -859,14 +859,14 @@ fn cast_float_to_int(bx: &Builder,
     // On the other hand, f_max works even if int_ty::MAX is greater than float_ty::MAX. Because
     // we're rounding towards zero, we just get float_ty::MAX (which is always an integer).
     // This already happens today with u128::MAX = 2^128 - 1 > f32::MAX.
-    fn compute_clamp_bounds<F: Float>(signed: bool, int_ty: Type) -> (u128, u128) {
+    fn compute_clamp_bounds<F: Float>(signed: bool, int_ty: &Type) -> (u128, u128) {
         let rounded_min = F::from_i128_r(int_min(signed, int_ty), Round::TowardZero);
         assert_eq!(rounded_min.status, Status::OK);
         let rounded_max = F::from_u128_r(int_max(signed, int_ty), Round::TowardZero);
         assert!(rounded_max.value.is_finite());
         (rounded_min.value.to_bits(), rounded_max.value.to_bits())
     }
-    fn int_max(signed: bool, int_ty: Type) -> u128 {
+    fn int_max(signed: bool, int_ty: &Type) -> u128 {
         let shift_amount = 128 - int_ty.int_width();
         if signed {
             i128::MAX as u128 >> shift_amount
@@ -874,7 +874,7 @@ fn cast_float_to_int(bx: &Builder,
             u128::MAX >> shift_amount
         }
     }
-    fn int_min(signed: bool, int_ty: Type) -> i128 {
+    fn int_min(signed: bool, int_ty: &Type) -> i128 {
         if signed {
             i128::MIN >> (128 - int_ty.int_width())
         } else {

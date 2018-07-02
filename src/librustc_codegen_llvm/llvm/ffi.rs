@@ -377,8 +377,7 @@ pub enum ThreadLocalMode {
 // Opaque pointer types
 extern { pub type Module; }
 extern { pub type Context; }
-extern { pub type Type_opaque; }
-pub type TypeRef = *mut Type_opaque;
+extern { pub type Type; }
 extern { pub type Value_opaque; }
 pub type ValueRef = *mut Value_opaque;
 extern { pub type Metadata_opaque; }
@@ -517,55 +516,55 @@ extern "C" {
     pub fn LLVMRustAppendModuleInlineAsm(M: &Module, Asm: *const c_char);
 
     /// See llvm::LLVMTypeKind::getTypeID.
-    pub fn LLVMRustGetTypeKind(Ty: TypeRef) -> TypeKind;
+    pub fn LLVMRustGetTypeKind(Ty: &Type) -> TypeKind;
 
     // Operations on integer types
-    pub fn LLVMInt1TypeInContext(C: &Context) -> TypeRef;
-    pub fn LLVMInt8TypeInContext(C: &Context) -> TypeRef;
-    pub fn LLVMInt16TypeInContext(C: &Context) -> TypeRef;
-    pub fn LLVMInt32TypeInContext(C: &Context) -> TypeRef;
-    pub fn LLVMInt64TypeInContext(C: &Context) -> TypeRef;
-    pub fn LLVMIntTypeInContext(C: &Context, NumBits: c_uint) -> TypeRef;
+    pub fn LLVMInt1TypeInContext(C: &Context) -> &Type;
+    pub fn LLVMInt8TypeInContext(C: &Context) -> &Type;
+    pub fn LLVMInt16TypeInContext(C: &Context) -> &Type;
+    pub fn LLVMInt32TypeInContext(C: &Context) -> &Type;
+    pub fn LLVMInt64TypeInContext(C: &Context) -> &Type;
+    pub fn LLVMIntTypeInContext(C: &Context, NumBits: c_uint) -> &Type;
 
-    pub fn LLVMGetIntTypeWidth(IntegerTy: TypeRef) -> c_uint;
+    pub fn LLVMGetIntTypeWidth(IntegerTy: &Type) -> c_uint;
 
     // Operations on real types
-    pub fn LLVMFloatTypeInContext(C: &Context) -> TypeRef;
-    pub fn LLVMDoubleTypeInContext(C: &Context) -> TypeRef;
+    pub fn LLVMFloatTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMDoubleTypeInContext(C: &Context) -> &Type;
 
     // Operations on function types
-    pub fn LLVMFunctionType(ReturnType: TypeRef,
-                            ParamTypes: *const TypeRef,
+    pub fn LLVMFunctionType(ReturnType: &'a Type,
+                            ParamTypes: *const &'a Type,
                             ParamCount: c_uint,
                             IsVarArg: Bool)
-                            -> TypeRef;
-    pub fn LLVMGetReturnType(FunctionTy: TypeRef) -> TypeRef;
-    pub fn LLVMCountParamTypes(FunctionTy: TypeRef) -> c_uint;
-    pub fn LLVMGetParamTypes(FunctionTy: TypeRef, Dest: *mut TypeRef);
+                            -> &'a Type;
+    pub fn LLVMGetReturnType(FunctionTy: &Type) -> &Type;
+    pub fn LLVMCountParamTypes(FunctionTy: &Type) -> c_uint;
+    pub fn LLVMGetParamTypes(FunctionTy: &'a Type, Dest: *mut &'a Type);
 
     // Operations on struct types
-    pub fn LLVMStructTypeInContext(C: &Context,
-                                   ElementTypes: *const TypeRef,
+    pub fn LLVMStructTypeInContext(C: &'a Context,
+                                   ElementTypes: *const &'a Type,
                                    ElementCount: c_uint,
                                    Packed: Bool)
-                                   -> TypeRef;
-    pub fn LLVMIsPackedStruct(StructTy: TypeRef) -> Bool;
+                                   -> &'a Type;
+    pub fn LLVMIsPackedStruct(StructTy: &Type) -> Bool;
 
     // Operations on array, pointer, and vector types (sequence types)
-    pub fn LLVMRustArrayType(ElementType: TypeRef, ElementCount: u64) -> TypeRef;
-    pub fn LLVMPointerType(ElementType: TypeRef, AddressSpace: c_uint) -> TypeRef;
-    pub fn LLVMVectorType(ElementType: TypeRef, ElementCount: c_uint) -> TypeRef;
+    pub fn LLVMRustArrayType(ElementType: &Type, ElementCount: u64) -> &Type;
+    pub fn LLVMPointerType(ElementType: &Type, AddressSpace: c_uint) -> &Type;
+    pub fn LLVMVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
 
-    pub fn LLVMGetElementType(Ty: TypeRef) -> TypeRef;
-    pub fn LLVMGetVectorSize(VectorTy: TypeRef) -> c_uint;
+    pub fn LLVMGetElementType(Ty: &Type) -> &Type;
+    pub fn LLVMGetVectorSize(VectorTy: &Type) -> c_uint;
 
     // Operations on other types
-    pub fn LLVMVoidTypeInContext(C: &Context) -> TypeRef;
-    pub fn LLVMX86MMXTypeInContext(C: &Context) -> TypeRef;
-    pub fn LLVMRustMetadataTypeInContext(C: &Context) -> TypeRef;
+    pub fn LLVMVoidTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMX86MMXTypeInContext(C: &Context) -> &Type;
+    pub fn LLVMRustMetadataTypeInContext(C: &Context) -> &Type;
 
     // Operations on all values
-    pub fn LLVMTypeOf(Val: ValueRef) -> TypeRef;
+    pub fn LLVMTypeOf(Val: &Value_opaque) -> &Type;
     pub fn LLVMGetValueName(Val: ValueRef) -> *const c_char;
     pub fn LLVMSetValueName(Val: ValueRef, Name: *const c_char);
     pub fn LLVMReplaceAllUsesWith(OldVal: ValueRef, NewVal: ValueRef);
@@ -580,10 +579,10 @@ extern "C" {
     pub fn LLVMGetOperand(Val: ValueRef, Index: c_uint) -> ValueRef;
 
     // Operations on constants of any type
-    pub fn LLVMConstNull(Ty: TypeRef) -> ValueRef;
+    pub fn LLVMConstNull(Ty: &Type) -> ValueRef;
     pub fn LLVMConstICmp(Pred: IntPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef;
     pub fn LLVMConstFCmp(Pred: RealPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef;
-    pub fn LLVMGetUndef(Ty: TypeRef) -> ValueRef;
+    pub fn LLVMGetUndef(Ty: &Type) -> ValueRef;
 
     // Operations on metadata
     pub fn LLVMMDStringInContext(C: &Context, Str: *const c_char, SLen: c_uint) -> ValueRef;
@@ -591,8 +590,8 @@ extern "C" {
     pub fn LLVMAddNamedMetadataOperand(M: &Module, Name: *const c_char, Val: ValueRef);
 
     // Operations on scalar constants
-    pub fn LLVMConstInt(IntTy: TypeRef, N: c_ulonglong, SignExtend: Bool) -> ValueRef;
-    pub fn LLVMConstIntOfArbitraryPrecision(IntTy: TypeRef, Wn: c_uint, Ws: *const u64) -> ValueRef;
+    pub fn LLVMConstInt(IntTy: &Type, N: c_ulonglong, SignExtend: Bool) -> ValueRef;
+    pub fn LLVMConstIntOfArbitraryPrecision(IntTy: &Type, Wn: c_uint, Ws: *const u64) -> ValueRef;
     pub fn LLVMConstIntGetZExtValue(ConstantVal: ValueRef) -> c_ulonglong;
     pub fn LLVMConstIntGetSExtValue(ConstantVal: ValueRef) -> c_longlong;
     pub fn LLVMRustConstInt128Get(ConstantVal: ValueRef, SExt: bool,
@@ -612,14 +611,14 @@ extern "C" {
                                     Packed: Bool)
                                     -> ValueRef;
 
-    pub fn LLVMConstArray(ElementTy: TypeRef,
+    pub fn LLVMConstArray(ElementTy: &Type,
                           ConstantVals: *const ValueRef,
                           Length: c_uint)
                           -> ValueRef;
     pub fn LLVMConstVector(ScalarConstantVals: *const ValueRef, Size: c_uint) -> ValueRef;
 
     // Constant expressions
-    pub fn LLVMSizeOf(Ty: TypeRef) -> ValueRef;
+    pub fn LLVMSizeOf(Ty: &Type) -> ValueRef;
     pub fn LLVMConstNeg(ConstantVal: ValueRef) -> ValueRef;
     pub fn LLVMConstFNeg(ConstantVal: ValueRef) -> ValueRef;
     pub fn LLVMConstNot(ConstantVal: ValueRef) -> ValueRef;
@@ -651,23 +650,23 @@ extern "C" {
         ConstantIndices: *const ValueRef,
         NumIndices: c_uint,
     ) -> ValueRef;
-    pub fn LLVMConstTrunc(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
-    pub fn LLVMConstZExt(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
-    pub fn LLVMConstUIToFP(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
-    pub fn LLVMConstSIToFP(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
-    pub fn LLVMConstFPToUI(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
-    pub fn LLVMConstFPToSI(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
-    pub fn LLVMConstPtrToInt(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
-    pub fn LLVMConstIntToPtr(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
-    pub fn LLVMConstBitCast(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
-    pub fn LLVMConstPointerCast(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
-    pub fn LLVMConstIntCast(ConstantVal: ValueRef, ToType: TypeRef, isSigned: Bool) -> ValueRef;
-    pub fn LLVMConstFPCast(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
+    pub fn LLVMConstTrunc(ConstantVal: ValueRef, ToType: &Type) -> ValueRef;
+    pub fn LLVMConstZExt(ConstantVal: ValueRef, ToType: &Type) -> ValueRef;
+    pub fn LLVMConstUIToFP(ConstantVal: ValueRef, ToType: &Type) -> ValueRef;
+    pub fn LLVMConstSIToFP(ConstantVal: ValueRef, ToType: &Type) -> ValueRef;
+    pub fn LLVMConstFPToUI(ConstantVal: ValueRef, ToType: &Type) -> ValueRef;
+    pub fn LLVMConstFPToSI(ConstantVal: ValueRef, ToType: &Type) -> ValueRef;
+    pub fn LLVMConstPtrToInt(ConstantVal: ValueRef, ToType: &Type) -> ValueRef;
+    pub fn LLVMConstIntToPtr(ConstantVal: ValueRef, ToType: &Type) -> ValueRef;
+    pub fn LLVMConstBitCast(ConstantVal: ValueRef, ToType: &Type) -> ValueRef;
+    pub fn LLVMConstPointerCast(ConstantVal: ValueRef, ToType: &Type) -> ValueRef;
+    pub fn LLVMConstIntCast(ConstantVal: ValueRef, ToType: &Type, isSigned: Bool) -> ValueRef;
+    pub fn LLVMConstFPCast(ConstantVal: ValueRef, ToType: &Type) -> ValueRef;
     pub fn LLVMConstExtractValue(AggConstant: ValueRef,
                                  IdxList: *const c_uint,
                                  NumIdx: c_uint)
                                  -> ValueRef;
-    pub fn LLVMConstInlineAsm(Ty: TypeRef,
+    pub fn LLVMConstInlineAsm(Ty: &Type,
                               AsmString: *const c_char,
                               Constraints: *const c_char,
                               HasSideEffects: Bool,
@@ -690,9 +689,9 @@ extern "C" {
 
     // Operations on global variables
     pub fn LLVMIsAGlobalVariable(GlobalVar: ValueRef) -> ValueRef;
-    pub fn LLVMAddGlobal(M: &Module, Ty: TypeRef, Name: *const c_char) -> ValueRef;
+    pub fn LLVMAddGlobal(M: &Module, Ty: &Type, Name: *const c_char) -> ValueRef;
     pub fn LLVMGetNamedGlobal(M: &Module, Name: *const c_char) -> ValueRef;
-    pub fn LLVMRustGetOrInsertGlobal(M: &Module, Name: *const c_char, T: TypeRef) -> ValueRef;
+    pub fn LLVMRustGetOrInsertGlobal(M: &Module, Name: *const c_char, T: &Type) -> ValueRef;
     pub fn LLVMGetFirstGlobal(M: &Module) -> ValueRef;
     pub fn LLVMGetNextGlobal(GlobalVar: ValueRef) -> ValueRef;
     pub fn LLVMDeleteGlobal(GlobalVar: ValueRef);
@@ -706,13 +705,13 @@ extern "C" {
     pub fn LLVMSetTailCall(CallInst: ValueRef, IsTailCall: Bool);
 
     // Operations on functions
-    pub fn LLVMAddFunction(M: &Module, Name: *const c_char, FunctionTy: TypeRef) -> ValueRef;
+    pub fn LLVMAddFunction(M: &Module, Name: *const c_char, FunctionTy: &Type) -> ValueRef;
     pub fn LLVMGetNamedFunction(M: &Module, Name: *const c_char) -> ValueRef;
     pub fn LLVMGetFirstFunction(M: &Module) -> ValueRef;
     pub fn LLVMGetNextFunction(Fn: ValueRef) -> ValueRef;
     pub fn LLVMRustGetOrInsertFunction(M: &Module,
                                        Name: *const c_char,
-                                       FunctionTy: TypeRef)
+                                       FunctionTy: &Type)
                                        -> ValueRef;
     pub fn LLVMSetFunctionCallConv(Fn: ValueRef, CC: c_uint);
     pub fn LLVMRustAddAlignmentAttr(Fn: ValueRef, index: c_uint, bytes: u32);
@@ -801,7 +800,7 @@ extern "C" {
                                Name: *const c_char)
                                -> ValueRef;
     pub fn LLVMBuildLandingPad(B: BuilderRef,
-                               Ty: TypeRef,
+                               Ty: &Type,
                                PersFn: ValueRef,
                                NumClauses: c_uint,
                                Name: *const c_char)
@@ -989,7 +988,7 @@ extern "C" {
     pub fn LLVMRustSetHasUnsafeAlgebra(Instr: ValueRef);
 
     // Memory
-    pub fn LLVMBuildAlloca(B: BuilderRef, Ty: TypeRef, Name: *const c_char) -> ValueRef;
+    pub fn LLVMBuildAlloca(B: BuilderRef, Ty: &Type, Name: *const c_char) -> ValueRef;
     pub fn LLVMBuildFree(B: BuilderRef, PointerVal: ValueRef) -> ValueRef;
     pub fn LLVMBuildLoad(B: BuilderRef, PointerVal: ValueRef, Name: *const c_char) -> ValueRef;
 
@@ -1024,98 +1023,98 @@ extern "C" {
     // Casts
     pub fn LLVMBuildTrunc(B: BuilderRef,
                           Val: ValueRef,
-                          DestTy: TypeRef,
+                          DestTy: &Type,
                           Name: *const c_char)
                           -> ValueRef;
     pub fn LLVMBuildZExt(B: BuilderRef,
                          Val: ValueRef,
-                         DestTy: TypeRef,
+                         DestTy: &Type,
                          Name: *const c_char)
                          -> ValueRef;
     pub fn LLVMBuildSExt(B: BuilderRef,
                          Val: ValueRef,
-                         DestTy: TypeRef,
+                         DestTy: &Type,
                          Name: *const c_char)
                          -> ValueRef;
     pub fn LLVMBuildFPToUI(B: BuilderRef,
                            Val: ValueRef,
-                           DestTy: TypeRef,
+                           DestTy: &Type,
                            Name: *const c_char)
                            -> ValueRef;
     pub fn LLVMBuildFPToSI(B: BuilderRef,
                            Val: ValueRef,
-                           DestTy: TypeRef,
+                           DestTy: &Type,
                            Name: *const c_char)
                            -> ValueRef;
     pub fn LLVMBuildUIToFP(B: BuilderRef,
                            Val: ValueRef,
-                           DestTy: TypeRef,
+                           DestTy: &Type,
                            Name: *const c_char)
                            -> ValueRef;
     pub fn LLVMBuildSIToFP(B: BuilderRef,
                            Val: ValueRef,
-                           DestTy: TypeRef,
+                           DestTy: &Type,
                            Name: *const c_char)
                            -> ValueRef;
     pub fn LLVMBuildFPTrunc(B: BuilderRef,
                             Val: ValueRef,
-                            DestTy: TypeRef,
+                            DestTy: &Type,
                             Name: *const c_char)
                             -> ValueRef;
     pub fn LLVMBuildFPExt(B: BuilderRef,
                           Val: ValueRef,
-                          DestTy: TypeRef,
+                          DestTy: &Type,
                           Name: *const c_char)
                           -> ValueRef;
     pub fn LLVMBuildPtrToInt(B: BuilderRef,
                              Val: ValueRef,
-                             DestTy: TypeRef,
+                             DestTy: &Type,
                              Name: *const c_char)
                              -> ValueRef;
     pub fn LLVMBuildIntToPtr(B: BuilderRef,
                              Val: ValueRef,
-                             DestTy: TypeRef,
+                             DestTy: &Type,
                              Name: *const c_char)
                              -> ValueRef;
     pub fn LLVMBuildBitCast(B: BuilderRef,
                             Val: ValueRef,
-                            DestTy: TypeRef,
+                            DestTy: &Type,
                             Name: *const c_char)
                             -> ValueRef;
     pub fn LLVMBuildZExtOrBitCast(B: BuilderRef,
                                   Val: ValueRef,
-                                  DestTy: TypeRef,
+                                  DestTy: &Type,
                                   Name: *const c_char)
                                   -> ValueRef;
     pub fn LLVMBuildSExtOrBitCast(B: BuilderRef,
                                   Val: ValueRef,
-                                  DestTy: TypeRef,
+                                  DestTy: &Type,
                                   Name: *const c_char)
                                   -> ValueRef;
     pub fn LLVMBuildTruncOrBitCast(B: BuilderRef,
                                    Val: ValueRef,
-                                   DestTy: TypeRef,
+                                   DestTy: &Type,
                                    Name: *const c_char)
                                    -> ValueRef;
     pub fn LLVMBuildCast(B: BuilderRef,
                          Op: Opcode,
                          Val: ValueRef,
-                         DestTy: TypeRef,
+                         DestTy: &Type,
                          Name: *const c_char)
                          -> ValueRef;
     pub fn LLVMBuildPointerCast(B: BuilderRef,
                                 Val: ValueRef,
-                                DestTy: TypeRef,
+                                DestTy: &Type,
                                 Name: *const c_char)
                                 -> ValueRef;
     pub fn LLVMRustBuildIntCast(B: BuilderRef,
                                 Val: ValueRef,
-                                DestTy: TypeRef,
+                                DestTy: &Type,
                                 IsSized: bool)
                                 -> ValueRef;
     pub fn LLVMBuildFPCast(B: BuilderRef,
                            Val: ValueRef,
-                           DestTy: TypeRef,
+                           DestTy: &Type,
                            Name: *const c_char)
                            -> ValueRef;
 
@@ -1134,7 +1133,7 @@ extern "C" {
                          -> ValueRef;
 
     // Miscellaneous instructions
-    pub fn LLVMBuildPhi(B: BuilderRef, Ty: TypeRef, Name: *const c_char) -> ValueRef;
+    pub fn LLVMBuildPhi(B: BuilderRef, Ty: &Type, Name: *const c_char) -> ValueRef;
     pub fn LLVMRustBuildCall(B: BuilderRef,
                              Fn: ValueRef,
                              Args: *const ValueRef,
@@ -1150,7 +1149,7 @@ extern "C" {
                            -> ValueRef;
     pub fn LLVMBuildVAArg(B: BuilderRef,
                           list: ValueRef,
-                          Ty: TypeRef,
+                          Ty: &Type,
                           Name: *const c_char)
                           -> ValueRef;
     pub fn LLVMBuildExtractElement(B: BuilderRef,
@@ -1347,15 +1346,15 @@ extern "C" {
     /// Print the pass timings since static dtors aren't picking them up.
     pub fn LLVMRustPrintPassTimings();
 
-    pub fn LLVMStructCreateNamed(C: &Context, Name: *const c_char) -> TypeRef;
+    pub fn LLVMStructCreateNamed(C: &Context, Name: *const c_char) -> &Type;
 
-    pub fn LLVMStructSetBody(StructTy: TypeRef,
-                             ElementTypes: *const TypeRef,
+    pub fn LLVMStructSetBody(StructTy: &'a Type,
+                             ElementTypes: *const &'a Type,
                              ElementCount: c_uint,
                              Packed: Bool);
 
     /// Prepares inline assembly.
-    pub fn LLVMRustInlineAsm(Ty: TypeRef,
+    pub fn LLVMRustInlineAsm(Ty: &Type,
                              AsmString: *const c_char,
                              Constraints: *const c_char,
                              SideEffects: Bool,
@@ -1587,7 +1586,7 @@ extern "C" {
     pub fn LLVMRustDIBuilderCreateOpDeref() -> i64;
     pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> i64;
 
-    pub fn LLVMRustWriteTypeToString(Type: TypeRef, s: RustStringRef);
+    pub fn LLVMRustWriteTypeToString(Type: &Type, s: RustStringRef);
     pub fn LLVMRustWriteValueToString(value_ref: ValueRef, s: RustStringRef);
 
     pub fn LLVMIsAConstantInt(value_ref: ValueRef) -> ValueRef;

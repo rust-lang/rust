@@ -33,7 +33,7 @@ impl<'a, 'tcx> VirtualIndex {
         VirtualIndex(index as u64 + 3)
     }
 
-    pub fn get_fn(self, bx: &Builder<'a, 'tcx>,
+    pub fn get_fn(self, bx: &Builder<'a, 'll, 'tcx>,
                   llvtable: ValueRef,
                   fn_ty: &FnType<'tcx, Ty<'tcx>>) -> ValueRef {
         // Load the data pointer from the object.
@@ -48,7 +48,7 @@ impl<'a, 'tcx> VirtualIndex {
         ptr
     }
 
-    pub fn get_usize(self, bx: &Builder<'a, 'tcx>, llvtable: ValueRef) -> ValueRef {
+    pub fn get_usize(self, bx: &Builder<'a, 'll, 'tcx>, llvtable: ValueRef) -> ValueRef {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", Value(llvtable), self);
 

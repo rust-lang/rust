@@ -33,7 +33,7 @@ use super::place::PlaceRef;
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
-impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx> {
     pub fn codegen_block(&mut self, bb: mir::BasicBlock) {
         let mut bx = self.build_block(bb);
         let data = &self.mir[bb];
@@ -48,7 +48,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 
     fn codegen_terminator(&mut self,
-                        mut bx: Builder<'a, 'tcx>,
+                        mut bx: Builder<'a, 'll, 'tcx>,
                         bb: mir::BasicBlock,
                         terminator: &mir::Terminator<'tcx>)
     {
@@ -110,7 +110,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
 
         let do_call = |
             this: &mut Self,
-            bx: Builder<'a, 'tcx>,
+            bx: Builder<'a, 'll, 'tcx>,
             fn_ty: FnType<'tcx, Ty<'tcx>>,
             fn_ptr: ValueRef,
             llargs: &[ValueRef],
@@ -627,7 +627,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 
     fn codegen_argument(&mut self,
-                      bx: &Builder<'a, 'tcx>,
+                      bx: &Builder<'a, 'll, 'tcx>,
                       op: OperandRef<'tcx>,
                       llargs: &mut Vec<ValueRef>,
                       arg: &ArgType<'tcx, Ty<'tcx>>) {
@@ -706,7 +706,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 
     fn codegen_arguments_untupled(&mut self,
-                                bx: &Builder<'a, 'tcx>,
+                                bx: &Builder<'a, 'll, 'tcx>,
                                 operand: &mir::Operand<'tcx>,
                                 llargs: &mut Vec<ValueRef>,
                                 args: &[ArgType<'tcx, Ty<'tcx>>]) {
@@ -728,7 +728,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         }
     }
 
-    fn get_personality_slot(&mut self, bx: &Builder<'a, 'tcx>) -> PlaceRef<'tcx> {
+    fn get_personality_slot(&mut self, bx: &Builder<'a, 'll, 'tcx>) -> PlaceRef<'tcx> {
         let cx = bx.cx;
         if let Some(slot) = self.personality_slot {
             slot
@@ -777,7 +777,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         bx.llbb()
     }
 
-    fn landing_pad_type(&self) -> Type {
+    fn landing_pad_type(&self) -> &'ll Type {
         let cx = self.cx;
         Type::struct_(cx, &[Type::i8p(cx), Type::i32(cx)], false)
     }
@@ -791,17 +791,17 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         })
     }
 
-    pub fn new_block(&self, name: &str) -> Builder<'a, 'tcx> {
+    pub fn new_block(&self, name: &str) -> Builder<'a, 'll, 'tcx> {
         Builder::new_block(self.cx, self.llfn, name)
     }
 
-    pub fn build_block(&self, bb: mir::BasicBlock) -> Builder<'a, 'tcx> {
+    pub fn build_block(&self, bb: mir::BasicBlock) -> Builder<'a, 'll, 'tcx> {
         let bx = Builder::with_cx(self.cx);
         bx.position_at_end(self.blocks[bb]);
         bx
     }
 
-    fn make_return_dest(&mut self, bx: &Builder<'a, 'tcx>,
+    fn make_return_dest(&mut self, bx: &Builder<'a, 'll, 'tcx>,
                         dest: &mir::Place<'tcx>, fn_ret: &ArgType<'tcx, Ty<'tcx>>,
                         llargs: &mut Vec<ValueRef>, is_intrinsic: bool)
                         -> ReturnDest<'tcx> {
@@ -857,7 +857,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         }
     }
 
-    fn codegen_transmute(&mut self, bx: &Builder<'a, 'tcx>,
+    fn codegen_transmute(&mut self, bx: &Builder<'a, 'll, 'tcx>,
                        src: &mir::Operand<'tcx>,
                        dst: &mir::Place<'tcx>) {
         if let mir::Place::Local(index) = *dst {
@@ -884,7 +884,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         }
     }
 
-    fn codegen_transmute_into(&mut self, bx: &Builder<'a, 'tcx>,
+    fn codegen_transmute_into(&mut self, bx: &Builder<'a, 'll, 'tcx>,
                             src: &mir::Operand<'tcx>,
                             dst: PlaceRef<'tcx>) {
         let src = self.codegen_operand(bx, src);
@@ -897,7 +897,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
 
     // Stores the return value of a function call into it's final location.
     fn store_return(&mut self,
-                    bx: &Builder<'a, 'tcx>,
+                    bx: &Builder<'a, 'll, 'tcx>,
                     dest: ReturnDest<'tcx>,
                     ret_ty: &ArgType<'tcx, Ty<'tcx>>,
                     llval: ValueRef) {

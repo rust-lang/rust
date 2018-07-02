@@ -16,11 +16,11 @@ use builder::Builder;
 use super::FunctionCx;
 use super::LocalRef;
 
-impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx> {
     pub fn codegen_statement(&mut self,
-                           bx: Builder<'a, 'tcx>,
+                           bx: Builder<'a, 'll, 'tcx>,
                            statement: &mir::Statement<'tcx>)
-                           -> Builder<'a, 'tcx> {
+                           -> Builder<'a, 'll, 'tcx> {
         debug!("codegen_statement(statement={:?})", statement);
 
         self.set_debug_loc(&bx, statement.source_info);

@@ -24,8 +24,8 @@ use syntax::ast::AsmDialect;
 use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
-pub fn codegen_inline_asm<'a, 'tcx>(
-    bx: &Builder<'a, 'tcx>,
+pub fn codegen_inline_asm(
+    bx: &Builder<'a, 'll, 'tcx>,
     ia: &hir::InlineAsm,
     outputs: Vec<PlaceRef<'tcx>>,
     mut inputs: Vec<ValueRef>

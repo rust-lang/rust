@@ -112,41 +112,42 @@ impl Funclet {
     }
 }
 
-pub fn val_ty(v: ValueRef) -> Type {
+// TODO: use proper lifetime in return type
+pub fn val_ty(v: ValueRef) -> &'static Type {
     unsafe {
-        Type::from_ref(llvm::LLVMTypeOf(v))
+        llvm::LLVMTypeOf(&*v)
     }
 }
 
 // LLVM constant constructors.
-pub fn C_null(t: Type) -> ValueRef {
+pub fn C_null(t: &Type) -> ValueRef {
     unsafe {
-        llvm::LLVMConstNull(t.to_ref())
+        llvm::LLVMConstNull(t)
     }
 }
 
-pub fn C_undef(t: Type) -> ValueRef {
+pub fn C_undef(t: &Type) -> ValueRef {
     unsafe {
-        llvm::LLVMGetUndef(t.to_ref())
+        llvm::LLVMGetUndef(t)
     }
 }
 
-pub fn C_int(t: Type, i: i64) -> ValueRef {
+pub fn C_int(t: &Type, i: i64) -> ValueRef {
     unsafe {
-        llvm::LLVMConstInt(t.to_ref(), i as u64, True)
+        llvm::LLVMConstInt(t, i as u64, True)
     }
 }
 
-pub fn C_uint(t: Type, i: u64) -> ValueRef {
+pub fn C_uint(t: &Type, i: u64) -> ValueRef {
     unsafe {
-        llvm::LLVMConstInt(t.to_ref(), i, False)
+        llvm::LLVMConstInt(t, i, False)
     }
 }
 
-pub fn C_uint_big(t: Type, u: u128) -> ValueRef {
+pub fn C_uint_big(t: &Type, u: u128) -> ValueRef {
     unsafe {
         let words = [u as u64, (u >> 64) as u64];
-        llvm::LLVMConstIntOfArbitraryPrecision(t.to_ref(), 2, words.as_ptr())
+        llvm::LLVMConstIntOfArbitraryPrecision(t, 2, words.as_ptr())
     }
 }
 
@@ -233,9 +234,9 @@ pub fn C_struct_in_context(llcx: &llvm::Context, elts: &[ValueRef], packed: bool
     }
 }
 
-pub fn C_array(ty: Type, elts: &[ValueRef]) -> ValueRef {
+pub fn C_array(ty: &Type, elts: &[ValueRef]) -> ValueRef {
     unsafe {
-        return llvm::LLVMConstArray(ty.to_ref(), elts.as_ptr(), elts.len() as c_uint);
+        return llvm::LLVMConstArray(ty, elts.as_ptr(), elts.len() as c_uint);
     }
 }
 
@@ -345,8 +346,8 @@ pub fn langcall(tcx: TyCtxt,
 // all shifts). For 32- and 64-bit types, this matches the semantics
 // of Java. (See related discussion on #1877 and #10183.)
 
-pub fn build_unchecked_lshift<'a, 'tcx>(
-    bx: &Builder<'a, 'tcx>,
+pub fn build_unchecked_lshift(
+    bx: &Builder<'a, 'll, 'tcx>,
     lhs: ValueRef,
     rhs: ValueRef
 ) -> ValueRef {
@@ -356,8 +357,8 @@ pub fn build_unchecked_lshift<'a, 'tcx>(
     bx.shl(lhs, rhs)
 }
 
-pub fn build_unchecked_rshift<'a, 'tcx>(
-    bx: &Builder<'a, 'tcx>, lhs_t: Ty<'tcx>, lhs: ValueRef, rhs: ValueRef
+pub fn build_unchecked_rshift(
+    bx: &Builder<'a, 'll, 'tcx>, lhs_t: Ty<'tcx>, lhs: ValueRef, rhs: ValueRef
 ) -> ValueRef {
     let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
@@ -370,15 +371,15 @@ pub fn build_unchecked_rshift<'a, 'tcx>(
     }
 }
 
-fn shift_mask_rhs<'a, 'tcx>(bx: &Builder<'a, 'tcx>, rhs: ValueRef) -> ValueRef {
+fn shift_mask_rhs(bx: &Builder<'a, 'll, 'tcx>, rhs: ValueRef) -> ValueRef {
     let rhs_llty = val_ty(rhs);
     bx.and(rhs, shift_mask_val(bx, rhs_llty, rhs_llty, false))
 }
 
-pub fn shift_mask_val<'a, 'tcx>(
-    bx: &Builder<'a, 'tcx>,
-    llty: Type,
-    mask_llty: Type,
+pub fn shift_mask_val(
+    bx: &Builder<'a, 'll, 'tcx>,
+    llty: &'ll Type,
+    mask_llty: &'ll Type,
     invert: bool
 ) -> ValueRef {
     let kind = llty.kind();

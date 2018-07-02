@@ -19,9 +19,9 @@
 //!
 //!   * There's no way to find out the Ty type of a ValueRef.  Doing so
 //!     would be "trying to get the eggs out of an omelette" (credit:
-//!     pcwalton).  You can, instead, find out its TypeRef by calling val_ty,
-//!     but one TypeRef corresponds to many `Ty`s; for instance, tup(int, int,
-//!     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
+//!     pcwalton).  You can, instead, find out its llvm::Type by calling val_ty,
+//!     but one llvm::Type corresponds to many `Ty`s; for instance, tup(int, int,
+//!     int) and rec(x=int, y=int, z=int) will have the same llvm::Type.
 
 use super::ModuleLlvm;
 use super::ModuleSource;
@@ -91,14 +91,14 @@ use mir::operand::OperandValue;
 
 use rustc_codegen_utils::check_for_rustc_errors_attr;
 
-pub struct StatRecorder<'a, 'tcx: 'a> {
-    cx: &'a CodegenCx<'a, 'tcx>,
+pub struct StatRecorder<'a, 'll: 'a, 'tcx: 'll> {
+    cx: &'a CodegenCx<'ll, 'tcx>,
     name: Option<String>,
     istart: usize,
 }
 
-impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
-    pub fn new(cx: &'a CodegenCx<'a, 'tcx>, name: String) -> StatRecorder<'a, 'tcx> {
+impl StatRecorder<'a, 'll, 'tcx> {
+    pub fn new(cx: &'a CodegenCx<'ll, 'tcx>, name: String) -> Self {
         let istart = cx.stats.borrow().n_llvm_insns;
         StatRecorder {
             cx,
@@ -108,7 +108,7 @@ impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
+impl Drop for StatRecorder<'a, 'll, 'tcx> {
     fn drop(&mut self) {
         if self.cx.sess().codegen_stats() {
             let mut stats = self.cx.stats.borrow_mut();
@@ -155,12 +155,12 @@ pub fn bin_op_to_fcmp_predicate(op: hir::BinOpKind) -> llvm::RealPredicate {
     }
 }
 
-pub fn compare_simd_types<'a, 'tcx>(
-    bx: &Builder<'a, 'tcx>,
+pub fn compare_simd_types(
+    bx: &Builder<'a, 'll, 'tcx>,
     lhs: ValueRef,
     rhs: ValueRef,
     t: Ty<'tcx>,
-    ret_ty: Type,
+    ret_ty: &'ll Type,
     op: hir::BinOpKind
 ) -> ValueRef {
     let signed = match t.sty {
@@ -216,8 +216,8 @@ pub fn unsized_info<'cx, 'tcx>(cx: &CodegenCx<'cx, 'tcx>,
 }
 
 /// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
-pub fn unsize_thin_ptr<'a, 'tcx>(
-    bx: &Builder<'a, 'tcx>,
+pub fn unsize_thin_ptr(
+    bx: &Builder<'a, 'll, 'tcx>,
     src: ValueRef,
     src_ty: Ty<'tcx>,
     dst_ty: Ty<'tcx>
@@ -271,9 +271,11 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
 
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
-pub fn coerce_unsized_into<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
-                                     src: PlaceRef<'tcx>,
-                                     dst: PlaceRef<'tcx>) {
+pub fn coerce_unsized_into(
+    bx: &Builder<'a, 'll, 'tcx>,
+    src: PlaceRef<'tcx>,
+    dst: PlaceRef<'tcx>
+) {
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
     let coerce_ptr = || {
@@ -334,14 +336,14 @@ pub fn cast_shift_expr_rhs(
     cast_shift_rhs(op, lhs, rhs, |a, b| cx.trunc(a, b), |a, b| cx.zext(a, b))
 }
 
-fn cast_shift_rhs<F, G>(op: hir::BinOpKind,
+fn cast_shift_rhs<'ll, F, G>(op: hir::BinOpKind,
                         lhs: ValueRef,
                         rhs: ValueRef,
                         trunc: F,
                         zext: G)
                         -> ValueRef
-    where F: FnOnce(ValueRef, Type) -> ValueRef,
-          G: FnOnce(ValueRef, Type) -> ValueRef
+    where F: FnOnce(ValueRef, &'ll Type) -> ValueRef,
+          G: FnOnce(ValueRef, &'ll Type) -> ValueRef
 {
     // Shifts may have any size int on the rhs
     if op.is_shift() {
@@ -378,7 +380,7 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.target.options.is_like_msvc
 }
 
-pub fn call_assume<'a, 'tcx>(bx: &Builder<'a, 'tcx>, val: ValueRef) {
+pub fn call_assume(bx: &Builder<'a, 'll, 'tcx>, val: ValueRef) {
     let assume_intrinsic = bx.cx.get_intrinsic("llvm.assume");
     bx.call(assume_intrinsic, &[val], None);
 }
@@ -430,8 +432,8 @@ pub fn call_memcpy(bx: &Builder,
     bx.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
-pub fn memcpy_ty<'a, 'tcx>(
-    bx: &Builder<'a, 'tcx>,
+pub fn memcpy_ty(
+    bx: &Builder<'a, 'll, 'tcx>,
     dst: ValueRef,
     src: ValueRef,
     layout: TyLayout<'tcx>,
@@ -446,12 +448,14 @@ pub fn memcpy_ty<'a, 'tcx>(
     call_memcpy(bx, dst, src, C_usize(bx.cx, size), align, flags);
 }
 
-pub fn call_memset<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
-                             ptr: ValueRef,
-                             fill_byte: ValueRef,
-                             size: ValueRef,
-                             align: ValueRef,
-                             volatile: bool) -> ValueRef {
+pub fn call_memset(
+    bx: &Builder<'a, 'll, 'tcx>,
+    ptr: ValueRef,
+    fill_byte: ValueRef,
+    size: ValueRef,
+    align: ValueRef,
+    volatile: bool,
+) -> ValueRef {
     let ptr_width = &bx.cx.sess().target.target.target_pointer_width;
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
     let llintrinsicfn = bx.cx.get_intrinsic(&intrinsic_key);
@@ -553,7 +557,7 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
                        rust_main: ValueRef,
                        rust_main_def_id: DefId,
                        use_start_lang_item: bool) {
-        let llfty = Type::func(&[Type::c_int(cx), Type::i8p(cx).ptr_to()], &Type::c_int(cx));
+        let llfty = Type::func(&[Type::c_int(cx), Type::i8p(cx).ptr_to()], Type::c_int(cx));
 
         let main_ret_ty = cx.tcx.fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,
@@ -656,7 +660,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     let name = exported_symbols::metadata_symbol_name(tcx);
     let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
-        llvm::LLVMAddGlobal(metadata_llmod, val_ty(llconst).to_ref(), buf.as_ptr())
+        llvm::LLVMAddGlobal(metadata_llmod, val_ty(llconst), buf.as_ptr())
     };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
@@ -1206,7 +1210,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // Run replace-all-uses-with for statics that need it
             for &(old_g, new_g) in cx.statics_to_rauw.borrow().iter() {
                 unsafe {
-                    let bitcast = llvm::LLVMConstPointerCast(new_g, llvm::LLVMTypeOf(old_g));
+                    let bitcast = llvm::LLVMConstPointerCast(new_g, val_ty(old_g));
                     llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
                     llvm::LLVMDeleteGlobal(old_g);
                 }
@@ -1221,7 +1225,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                 unsafe {
                     let g = llvm::LLVMAddGlobal(cx.llmod,
-                                                val_ty(array).to_ref(),
+                                                val_ty(array),
                                                 name.as_ptr());
                     llvm::LLVMSetInitializer(g, array);
                     llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);

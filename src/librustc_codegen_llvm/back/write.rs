@@ -831,7 +831,7 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext,
     let llconst = C_bytes_in_context(llcx, bitcode.unwrap_or(&[]));
     let llglobal = llvm::LLVMAddGlobal(
         llmod,
-        val_ty(llconst).to_ref(),
+        val_ty(llconst),
         "rustc.embedded.module\0".as_ptr() as *const _,
     );
     llvm::LLVMSetInitializer(llglobal, llconst);
@@ -851,7 +851,7 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext,
     let llconst = C_bytes_in_context(llcx, &[]);
     let llglobal = llvm::LLVMAddGlobal(
         llmod,
-        val_ty(llconst).to_ref(),
+        val_ty(llconst),
         "rustc.embedded.cmdline\0".as_ptr() as *const _,
     );
     llvm::LLVMSetInitializer(llglobal, llconst);
@@ -2380,7 +2380,7 @@ fn create_msvc_imps(cgcx: &CodegenContext, llcx: &llvm::Context, llmod: &llvm::M
             .collect::<Vec<_>>();
         for (imp_name, val) in globals {
             let imp = llvm::LLVMAddGlobal(llmod,
-                                          i8p_ty.to_ref(),
+                                          i8p_ty,
                                           imp_name.as_ptr() as *const _);
             llvm::LLVMSetInitializer(imp, consts::ptrcast(val, i8p_ty));
             llvm::LLVMRustSetLinkage(imp, llvm::Linkage::ExternalLinkage);

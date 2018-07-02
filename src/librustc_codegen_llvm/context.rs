@@ -89,10 +89,10 @@ pub struct CodegenCx<'a, 'tcx: 'a> {
     /// See http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable for details
     pub used_statics: RefCell<Vec<ValueRef>>,
 
-    pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), Type>>,
-    pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
+    pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), &'a Type>>,
+    pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'a Type>>,
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
-    pub isize_ty: Type,
+    pub isize_ty: &'a Type,
 
     pub dbg_cx: Option<debuginfo::CrateDebugContext<'a, 'tcx>>,
 
@@ -373,7 +373,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
                 } else {
                     "rust_eh_personality"
                 };
-                let fty = Type::variadic_func(&[], &Type::i32(self));
+                let fty = Type::variadic_func(&[], Type::i32(self));
                 declare::declare_cfn(self, name, fty)
             }
         };
@@ -439,25 +439,25 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ty::layout::HasDataLayout for &'a CodegenCx<'a, 'tcx> {
+impl ty::layout::HasDataLayout for &'a CodegenCx<'ll, 'tcx> {
     fn data_layout(&self) -> &ty::layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'a, 'tcx> HasTargetSpec for &'a CodegenCx<'a, 'tcx> {
+impl HasTargetSpec for &'a CodegenCx<'ll, 'tcx> {
     fn target_spec(&self) -> &Target {
         &self.tcx.sess.target.target
     }
 }
 
-impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a CodegenCx<'a, 'tcx> {
+impl ty::layout::HasTyCtxt<'tcx> for &'a CodegenCx<'ll, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
         self.tcx
     }
 }
 
-impl<'a, 'tcx> LayoutOf for &'a CodegenCx<'a, 'tcx> {
+impl LayoutOf for &'a CodegenCx<'ll, 'tcx> {
     type Ty = Ty<'tcx>;
     type TyLayout = TyLayout<'tcx>;
 
@@ -475,7 +475,7 @@ fn declare_intrinsic(cx: &CodegenCx, key: &str) -> Option<ValueRef> {
     macro_rules! ifn {
         ($name:expr, fn() -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(cx, $name, Type::func(&[], &$ret));
+                let f = declare::declare_cfn(cx, $name, Type::func(&[], $ret));
                 llvm::SetUnnamedAddr(f, false);
                 cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
@@ -483,7 +483,7 @@ fn declare_intrinsic(cx: &CodegenCx, key: &str) -> Option<ValueRef> {
         );
         ($name:expr, fn(...) -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(cx, $name, Type::variadic_func(&[], &$ret));
+                let f = declare::declare_cfn(cx, $name, Type::variadic_func(&[], $ret));
                 llvm::SetUnnamedAddr(f, false);
                 cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
@@ -491,7 +491,7 @@ fn declare_intrinsic(cx: &CodegenCx, key: &str) -> Option<ValueRef> {
         );
         ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(cx, $name, Type::func(&[$($arg),*], &$ret));
+                let f = declare::declare_cfn(cx, $name, Type::func(&[$($arg),*], $ret));
                 llvm::SetUnnamedAddr(f, false);
                 cx.intrinsics.borrow_mut().insert($name, f.clone());
                 return Some(f);
@@ -513,14 +513,14 @@ fn declare_intrinsic(cx: &CodegenCx, key: &str) -> Option<ValueRef> {
     let t_f32 = Type::f32(cx);
     let t_f64 = Type::f64(cx);
 
-    let t_v2f32 = Type::vector(&t_f32, 2);
-    let t_v4f32 = Type::vector(&t_f32, 4);
-    let t_v8f32 = Type::vector(&t_f32, 8);
-    let t_v16f32 = Type::vector(&t_f32, 16);
+    let t_v2f32 = Type::vector(t_f32, 2);
+    let t_v4f32 = Type::vector(t_f32, 4);
+    let t_v8f32 = Type::vector(t_f32, 8);
+    let t_v16f32 = Type::vector(t_f32, 16);
 
-    let t_v2f64 = Type::vector(&t_f64, 2);
-    let t_v4f64 = Type::vector(&t_f64, 4);
-    let t_v8f64 = Type::vector(&t_f64, 8);
+    let t_v2f64 = Type::vector(t_f64, 2);
+    let t_v4f64 = Type::vector(t_f64, 4);
+    let t_v8f64 = Type::vector(t_f64, 8);
 
     ifn!("llvm.memcpy.p0i8.p0i8.i16", fn(i8p, i8p, t_i16, t_i32, i1) -> void);
     ifn!("llvm.memcpy.p0i8.p0i8.i32", fn(i8p, i8p, t_i32, t_i32, i1) -> void);

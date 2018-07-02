@@ -92,7 +92,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         }
     }
 
-    pub fn from_const(bx: &Builder<'a, 'tcx>,
+    pub fn from_const(bx: &Builder<'a, 'll, 'tcx>,
                       val: &'tcx ty::Const<'tcx>)
                       -> Result<OperandRef<'tcx>, Lrc<ConstEvalErr<'tcx>>> {
         let layout = bx.cx.layout_of(val.ty);
@@ -174,7 +174,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
     /// If this operand is a `Pair`, we return an aggregate with the two values.
     /// For other cases, see `immediate`.
-    pub fn immediate_or_packed_pair(self, bx: &Builder<'a, 'tcx>) -> ValueRef {
+    pub fn immediate_or_packed_pair(self, bx: &Builder<'a, 'll, 'tcx>) -> ValueRef {
         if let OperandValue::Pair(a, b) = self.val {
             let llty = self.layout.llvm_type(bx.cx);
             debug!("Operand::immediate_or_packed_pair: packing {:?} into {:?}",
@@ -190,7 +190,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     }
 
     /// If the type is a pair, we return a `Pair`, otherwise, an `Immediate`.
-    pub fn from_immediate_or_packed_pair(bx: &Builder<'a, 'tcx>,
+    pub fn from_immediate_or_packed_pair(bx: &Builder<'a, 'll, 'tcx>,
                                          llval: ValueRef,
                                          layout: TyLayout<'tcx>)
                                          -> OperandRef<'tcx> {
@@ -208,7 +208,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         OperandRef { val, layout }
     }
 
-    pub fn extract_field(&self, bx: &Builder<'a, 'tcx>, i: usize) -> OperandRef<'tcx> {
+    pub fn extract_field(&self, bx: &Builder<'a, 'll, 'tcx>, i: usize) -> OperandRef<'tcx> {
         let field = self.layout.field(bx.cx, i);
         let offset = self.layout.fields.offset(i);
 
@@ -267,23 +267,23 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 }
 
 impl<'a, 'tcx> OperandValue {
-    pub fn store(self, bx: &Builder<'a, 'tcx>, dest: PlaceRef<'tcx>) {
+    pub fn store(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'tcx>) {
         self.store_with_flags(bx, dest, MemFlags::empty());
     }
 
-    pub fn volatile_store(self, bx: &Builder<'a, 'tcx>, dest: PlaceRef<'tcx>) {
+    pub fn volatile_store(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'tcx>) {
         self.store_with_flags(bx, dest, MemFlags::VOLATILE);
     }
 
-    pub fn unaligned_volatile_store(self, bx: &Builder<'a, 'tcx>, dest: PlaceRef<'tcx>) {
+    pub fn unaligned_volatile_store(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'tcx>) {
         self.store_with_flags(bx, dest, MemFlags::VOLATILE | MemFlags::UNALIGNED);
     }
 
-    pub fn nontemporal_store(self, bx: &Builder<'a, 'tcx>, dest: PlaceRef<'tcx>) {
+    pub fn nontemporal_store(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'tcx>) {
         self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
     }
 
-    fn store_with_flags(self, bx: &Builder<'a, 'tcx>, dest: PlaceRef<'tcx>, flags: MemFlags) {
+    fn store_with_flags(self, bx: &Builder<'a, 'll, 'tcx>, dest: PlaceRef<'tcx>, flags: MemFlags) {
         debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
         // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
         // value is through `undef`, and store itself is useless.
@@ -310,9 +310,9 @@ impl<'a, 'tcx> OperandValue {
     }
 }
 
-impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx> {
     fn maybe_codegen_consume_direct(&mut self,
-                                  bx: &Builder<'a, 'tcx>,
+                                  bx: &Builder<'a, 'll, 'tcx>,
                                   place: &mir::Place<'tcx>)
                                    -> Option<OperandRef<'tcx>>
     {
@@ -360,7 +360,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 
     pub fn codegen_consume(&mut self,
-                         bx: &Builder<'a, 'tcx>,
+                         bx: &Builder<'a, 'll, 'tcx>,
                          place: &mir::Place<'tcx>)
                          -> OperandRef<'tcx>
     {
@@ -384,7 +384,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 
     pub fn codegen_operand(&mut self,
-                         bx: &Builder<'a, 'tcx>,
+                         bx: &Builder<'a, 'll, 'tcx>,
                          operand: &mir::Operand<'tcx>)
                          -> OperandRef<'tcx>
     {

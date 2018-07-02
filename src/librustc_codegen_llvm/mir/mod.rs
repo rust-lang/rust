@@ -43,7 +43,7 @@ use rustc::mir::traversal;
 use self::operand::{OperandRef, OperandValue};
 
 /// Master context for codegenning from MIR.
-pub struct FunctionCx<'a, 'tcx:'a> {
+pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
     instance: Instance<'tcx>,
 
     mir: &'a mir::Mir<'tcx>,
@@ -52,7 +52,7 @@ pub struct FunctionCx<'a, 'tcx:'a> {
 
     llfn: ValueRef,
 
-    cx: &'a CodegenCx<'a, 'tcx>,
+    cx: &'a CodegenCx<'ll, 'tcx>,
 
     fn_ty: FnType<'tcx, Ty<'tcx>>,
 
@@ -106,7 +106,7 @@ pub struct FunctionCx<'a, 'tcx:'a> {
     param_substs: &'tcx Substs<'tcx>,
 }
 
-impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
+impl FunctionCx<'a, 'll, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
         where T: TypeFoldable<'tcx>
     {
@@ -198,8 +198,8 @@ impl<'a, 'tcx> LocalRef<'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn codegen_mir<'a, 'tcx: 'a>(
-    cx: &'a CodegenCx<'a, 'tcx>,
+pub fn codegen_mir(
+    cx: &'a CodegenCx<'ll, 'tcx>,
     llfn: ValueRef,
     mir: &'a Mir<'tcx>,
     instance: Instance<'tcx>,
@@ -344,9 +344,9 @@ pub fn codegen_mir<'a, 'tcx: 'a>(
     }
 }
 
-fn create_funclets<'a, 'tcx>(
+fn create_funclets(
     mir: &'a Mir<'tcx>,
-    bx: &Builder<'a, 'tcx>,
+    bx: &Builder<'a, 'll, 'tcx>,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
     block_bxs: &IndexVec<mir::BasicBlock, BasicBlockRef>)
     -> (IndexVec<mir::BasicBlock, Option<BasicBlockRef>>,
@@ -413,11 +413,12 @@ fn create_funclets<'a, 'tcx>(
 /// Produce, for each argument, a `ValueRef` pointing at the
 /// argument's value. As arguments are places, these are always
 /// indirect.
-fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
-                            fx: &FunctionCx<'a, 'tcx>,
-                            scopes: &IndexVec<mir::SourceScope, debuginfo::MirDebugScope>,
-                            memory_locals: &BitVector<mir::Local>)
-                            -> Vec<LocalRef<'tcx>> {
+fn arg_local_refs(
+    bx: &Builder<'a, 'll, 'tcx>,
+    fx: &FunctionCx<'a, 'll, 'tcx>,
+    scopes: &IndexVec<mir::SourceScope, debuginfo::MirDebugScope>,
+    memory_locals: &BitVector<mir::Local>,
+) -> Vec<LocalRef<'tcx>> {
     let mir = fx.mir;
     let tcx = bx.tcx();
     let mut idx = 0;

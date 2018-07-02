@@ -31,12 +31,12 @@ use syntax_pos::Span;
 
 // All Builders must have an llfn associated with them
 #[must_use]
-pub struct Builder<'a, 'tcx: 'a> {
+pub struct Builder<'a, 'll: 'a, 'tcx: 'll> {
     pub llbuilder: BuilderRef,
-    pub cx: &'a CodegenCx<'a, 'tcx>,
+    pub cx: &'a CodegenCx<'ll, 'tcx>,
 }
 
-impl<'a, 'tcx> Drop for Builder<'a, 'tcx> {
+impl Drop for Builder<'a, 'll, 'tcx> {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMDisposeBuilder(self.llbuilder);
@@ -59,8 +59,8 @@ bitflags! {
     }
 }
 
-impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub fn new_block<'b>(cx: &'a CodegenCx<'a, 'tcx>, llfn: ValueRef, name: &'b str) -> Self {
+impl Builder<'a, 'll, 'tcx> {
+    pub fn new_block<'b>(cx: &'a CodegenCx<'ll, 'tcx>, llfn: ValueRef, name: &'b str) -> Self {
         let bx = Builder::with_cx(cx);
         let llbb = unsafe {
             let name = CString::new(name).unwrap();
@@ -74,7 +74,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         bx
     }
 
-    pub fn with_cx(cx: &'a CodegenCx<'a, 'tcx>) -> Self {
+    pub fn with_cx(cx: &'a CodegenCx<'ll, 'tcx>) -> Self {
         // Create a fresh builder from the crate context.
         let llbuilder = unsafe {
             llvm::LLVMCreateBuilderInContext(cx.llcx)
@@ -85,7 +85,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn build_sibling_block<'b>(&self, name: &'b str) -> Builder<'a, 'tcx> {
+    pub fn build_sibling_block<'b>(&self, name: &'b str) -> Builder<'a, 'll, 'tcx> {
         Builder::new_block(self.cx, self.llfn(), name)
     }
 
@@ -504,7 +504,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn alloca(&self, ty: Type, name: &str, align: Align) -> ValueRef {
+    pub fn alloca(&self, ty: &'ll Type, name: &str, align: Align) -> ValueRef {
         let bx = Builder::with_cx(self.cx);
         bx.position_at_start(unsafe {
             llvm::LLVMGetFirstBasicBlock(self.llfn())
@@ -512,14 +512,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         bx.dynamic_alloca(ty, name, align)
     }
 
-    pub fn dynamic_alloca(&self, ty: Type, name: &str, align: Align) -> ValueRef {
+    pub fn dynamic_alloca(&self, ty: &'ll Type, name: &str, align: Align) -> ValueRef {
         self.count_insn("alloca");
         unsafe {
             let alloca = if name.is_empty() {
-                llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(), noname())
+                llvm::LLVMBuildAlloca(self.llbuilder, ty, noname())
             } else {
                 let name = CString::new(name).unwrap();
-                llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(),
+                llvm::LLVMBuildAlloca(self.llbuilder, ty,
                                       name.as_ptr())
             };
             llvm::LLVMSetAlignment(alloca, align.abi() as c_uint);
@@ -678,136 +678,136 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /* Casts */
-    pub fn trunc(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn trunc(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("trunc");
         unsafe {
-            llvm::LLVMBuildTrunc(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildTrunc(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    pub fn zext(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn zext(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("zext");
         unsafe {
-            llvm::LLVMBuildZExt(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildZExt(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    pub fn sext(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn sext(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("sext");
         unsafe {
-            llvm::LLVMBuildSExt(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildSExt(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    pub fn fptoui(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn fptoui(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("fptoui");
         unsafe {
-            llvm::LLVMBuildFPToUI(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildFPToUI(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    pub fn fptosi(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn fptosi(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("fptosi");
         unsafe {
-            llvm::LLVMBuildFPToSI(self.llbuilder, val, dest_ty.to_ref(),noname())
+            llvm::LLVMBuildFPToSI(self.llbuilder, val, dest_ty,noname())
         }
     }
 
-    pub fn uitofp(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn uitofp(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("uitofp");
         unsafe {
-            llvm::LLVMBuildUIToFP(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildUIToFP(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    pub fn sitofp(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn sitofp(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("sitofp");
         unsafe {
-            llvm::LLVMBuildSIToFP(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildSIToFP(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    pub fn fptrunc(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn fptrunc(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("fptrunc");
         unsafe {
-            llvm::LLVMBuildFPTrunc(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildFPTrunc(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    pub fn fpext(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn fpext(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("fpext");
         unsafe {
-            llvm::LLVMBuildFPExt(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildFPExt(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    pub fn ptrtoint(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn ptrtoint(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("ptrtoint");
         unsafe {
-            llvm::LLVMBuildPtrToInt(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildPtrToInt(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    pub fn inttoptr(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn inttoptr(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("inttoptr");
         unsafe {
-            llvm::LLVMBuildIntToPtr(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildIntToPtr(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    pub fn bitcast(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn bitcast(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("bitcast");
         unsafe {
-            llvm::LLVMBuildBitCast(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildBitCast(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    pub fn zext_or_bitcast(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn zext_or_bitcast(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("zextorbitcast");
         unsafe {
-            llvm::LLVMBuildZExtOrBitCast(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildZExtOrBitCast(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    pub fn sext_or_bitcast(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn sext_or_bitcast(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("sextorbitcast");
         unsafe {
-            llvm::LLVMBuildSExtOrBitCast(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildSExtOrBitCast(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    pub fn trunc_or_bitcast(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn trunc_or_bitcast(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("truncorbitcast");
         unsafe {
-            llvm::LLVMBuildTruncOrBitCast(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildTruncOrBitCast(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    pub fn cast(&self, op: Opcode, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn cast(&self, op: Opcode, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("cast");
         unsafe {
-            llvm::LLVMBuildCast(self.llbuilder, op, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildCast(self.llbuilder, op, val, dest_ty, noname())
         }
     }
 
-    pub fn pointercast(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn pointercast(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("pointercast");
         unsafe {
-            llvm::LLVMBuildPointerCast(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildPointerCast(self.llbuilder, val, dest_ty, noname())
         }
     }
 
-    pub fn intcast(&self, val: ValueRef, dest_ty: Type, is_signed: bool) -> ValueRef {
+    pub fn intcast(&self, val: ValueRef, dest_ty: &'ll Type, is_signed: bool) -> ValueRef {
         self.count_insn("intcast");
         unsafe {
-            llvm::LLVMRustBuildIntCast(self.llbuilder, val, dest_ty.to_ref(), is_signed)
+            llvm::LLVMRustBuildIntCast(self.llbuilder, val, dest_ty, is_signed)
         }
     }
 
-    pub fn fpcast(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn fpcast(&self, val: ValueRef, dest_ty: &'ll Type) -> ValueRef {
         self.count_insn("fpcast");
         unsafe {
-            llvm::LLVMBuildFPCast(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMBuildFPCast(self.llbuilder, val, dest_ty, noname())
         }
     }
 
@@ -828,14 +828,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /* Miscellaneous instructions */
-    pub fn empty_phi(&self, ty: Type) -> ValueRef {
+    pub fn empty_phi(&self, ty: &'ll Type) -> ValueRef {
         self.count_insn("emptyphi");
         unsafe {
-            llvm::LLVMBuildPhi(self.llbuilder, ty.to_ref(), noname())
+            llvm::LLVMBuildPhi(self.llbuilder, ty, noname())
         }
     }
 
-    pub fn phi(&self, ty: Type, vals: &[ValueRef], bbs: &[BasicBlockRef]) -> ValueRef {
+    pub fn phi(&self, ty: &'ll Type, vals: &[ValueRef], bbs: &[BasicBlockRef]) -> ValueRef {
         assert_eq!(vals.len(), bbs.len());
         let phi = self.empty_phi(ty);
         self.count_insn("addincoming");
@@ -865,7 +865,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.count_insn("inlineasm");
             let comment_text = CString::new(comment_text).unwrap();
             let asm = unsafe {
-                llvm::LLVMConstInlineAsm(Type::func(&[], &Type::void(self.cx)).to_ref(),
+                llvm::LLVMConstInlineAsm(Type::func(&[], Type::void(self.cx)),
                                          comment_text.as_ptr(), noname(), False,
                                          False)
             };
@@ -874,7 +874,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn inline_asm_call(&self, asm: *const c_char, cons: *const c_char,
-                         inputs: &[ValueRef], output: Type,
+                         inputs: &[ValueRef], output: &'ll Type,
                          volatile: bool, alignstack: bool,
                          dia: AsmDialect) -> ValueRef {
         self.count_insn("inlineasm");
@@ -890,10 +890,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }).collect::<Vec<_>>();
 
         debug!("Asm Output Type: {:?}", output);
-        let fty = Type::func(&argtys[..], &output);
+        let fty = Type::func(&argtys[..], output);
         unsafe {
             let v = llvm::LLVMRustInlineAsm(
-                fty.to_ref(), asm, cons, volatile, alignstack, dia);
+                fty, asm, cons, volatile, alignstack, dia);
             self.call(v, inputs, None)
         }
     }
@@ -946,10 +946,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn va_arg(&self, list: ValueRef, ty: Type) -> ValueRef {
+    pub fn va_arg(&self, list: ValueRef, ty: &'ll Type) -> ValueRef {
         self.count_insn("vaarg");
         unsafe {
-            llvm::LLVMBuildVAArg(self.llbuilder, list, ty.to_ref(), noname())
+            llvm::LLVMBuildVAArg(self.llbuilder, list, ty, noname())
         }
     }
 
@@ -977,9 +977,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn vector_splat(&self, num_elts: usize, elt: ValueRef) -> ValueRef {
         unsafe {
             let elt_ty = val_ty(elt);
-            let undef = llvm::LLVMGetUndef(Type::vector(&elt_ty, num_elts as u64).to_ref());
+            let undef = llvm::LLVMGetUndef(Type::vector(elt_ty, num_elts as u64));
             let vec = self.insert_element(undef, elt, C_i32(self.cx, 0));
-            let vec_i32_ty = Type::vector(&Type::i32(self.cx), num_elts as u64);
+            let vec_i32_ty = Type::vector(Type::i32(self.cx), num_elts as u64);
             self.shuffle_vector(vec, undef, C_null(vec_i32_ty))
         }
     }
@@ -1164,11 +1164,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn landing_pad(&self, ty: Type, pers_fn: ValueRef,
+    pub fn landing_pad(&self, ty: &'ll Type, pers_fn: ValueRef,
                        num_clauses: usize) -> ValueRef {
         self.count_insn("landingpad");
         unsafe {
-            llvm::LLVMBuildLandingPad(self.llbuilder, ty.to_ref(), pers_fn,
+            llvm::LLVMBuildLandingPad(self.llbuilder, ty, pers_fn,
                                       num_clauses as c_uint, noname())
         }
     }
