@@ -14,6 +14,7 @@ pub mod dominators;
 pub mod implementation;
 pub mod iterate;
 mod reference;
+pub mod scc;
 
 #[cfg(test)]
 mod test;
