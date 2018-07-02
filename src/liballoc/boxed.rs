@@ -414,37 +414,73 @@ impl<T: ?Sized + Hasher> Hasher for Box<T> {
     }
 }
 
+/// First From
 #[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Box<T> {
+    /// Converts a T into a Box.
+    /// This conversion does allocate memory.
+    /// This conversion is not free.
+    
     fn from(t: T) -> Self {
         Box::new(t)
     }
+    /// The result is allocated on the heap.
+    /// The conversion copies the data.
+    /// This conversion is more expensive because the <T> is not already on the heap.
+ 
 }
-
+/// Second From
 #[stable(feature = "box_from_slice", since = "1.17.0")]
 impl<'a, T: Copy> From<&'a [T]> for Box<[T]> {
+    /// Copies a T in to a box.
+    /// This conversion copies the data.
+    /// This conversion does allocate memory.
+    /// 
     fn from(slice: &'a [T]) -> Box<[T]> {
         let mut boxed = unsafe { RawVec::with_capacity(slice.len()).into_box() };
         boxed.copy_from_slice(slice);
         boxed
     }
+    /// The result is allocated on the heap
+    /// This is cheaper because it is already on the heap
+    /// and the pointer moves along
+
 }
 
+/// Third From
 #[stable(feature = "box_from_slice", since = "1.17.0")]
 impl<'a> From<&'a str> for Box<str> {
+    /// Copies a string in to a box.
+    /// This conversion copies the data.
+    /// This conversion does allocate memory.
     #[inline]
     fn from(s: &'a str) -> Box<str> {
         unsafe { from_boxed_utf8_unchecked(Box::from(s.as_bytes())) }
     }
-}
+    /// The result is not allocated on the heap
+    /// This function is unsafe. Data can't be moved from this reference.
+    /// The conversion is slightly more expensive because the string is not
+    /// on the heap.
+    
 
+}
+/// Fourth From
 #[stable(feature = "boxed_str_conv", since = "1.19.0")]
 impl From<Box<str>> for Box<[u8]> {
+    /// Converts a string within a Box in to an
+    /// integer within the Box.
+    /// This conversion happens in place.
+    /// This conversion does not allocate memory.
+    
     #[inline]
     fn from(s: Box<str>) -> Self {
         unsafe { Box::from_raw(Box::into_raw(s) as *mut [u8]) }
     }
+    /// This conversion is cheaper because the string is already 
+    /// on the heap.
+    /// This function is unsafe. Data can't be moved from this reference.
 }
+
 
 impl Box<Any> {
     #[inline]
@@ -854,19 +890,31 @@ impl<T: ?Sized> PinBox<T> {
     }
 }
 
+/// Fifth From
 #[unstable(feature = "pin", issue = "49150")]
 impl<T: ?Sized> From<Box<T>> for PinBox<T> {
+    /// Converts an Sized Box in to a PinBox. 
+    /// This conversion copies the data.
+    /// This conversion does allocate memory.
     fn from(boxed: Box<T>) -> PinBox<T> {
         PinBox { inner: boxed }
     }
+    /// This conversion is cheaper because the unpinned box is already on the 
+    /// heap.
 }
-
+/// Sixth From
 #[unstable(feature = "pin", issue = "49150")]
 impl<T: Unpin + ?Sized> From<PinBox<T>> for Box<T> {
+    /// Converts a PinBox in to Box.
+    /// This conversion copies the data.
+    /// This conversion does allocate the memory.
     fn from(pinned: PinBox<T>) -> Box<T> {
         pinned.inner
     }
+    /// This conversion is cheaper because the box is already on the
+    /// heap.
 }
+
 
 #[unstable(feature = "pin", issue = "49150")]
 impl<T: ?Sized> Deref for PinBox<T> {
@@ -949,18 +997,30 @@ unsafe impl<F: Future<Output = ()> + 'static> UnsafeTask for PinBox<F> {
     }
 }
 
+/// Seventh From
 #[unstable(feature = "futures_api", issue = "50547")]
 impl<F: Future<Output = ()> + Send + 'static> From<PinBox<F>> for TaskObj {
+    /// Converts a Pinbox in to a Task Object.
+    /// This conversion copies the data.
+    /// This conversion does allocate.
+    /// 
     fn from(boxed: PinBox<F>) -> Self {
         TaskObj::new(boxed)
     }
-}
+    /// This conversion is cheaper because the PinBox is already on the heap.
 
+}
+/// Eighth From
 #[unstable(feature = "futures_api", issue = "50547")]
 impl<F: Future<Output = ()> + Send + 'static> From<Box<F>> for TaskObj {
+    /// Converts a Box in to a Task Object.
+    /// This conversion copies the data.
+    /// This conversion does allocate.
     fn from(boxed: Box<F>) -> Self {
         TaskObj::new(PinBox::from(boxed))
     }
+    /// This conversion is cheaper because the Box is already on the heap.
+
 }
 
 #[unstable(feature = "futures_api", issue = "50547")]
