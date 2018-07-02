@@ -47,7 +47,7 @@ impl<'a, T> LocalFutureObj<'a, T> {
     /// instance from which this `LocalFutureObj` was created actually
     /// implements `Send`.
     #[inline]
-    pub unsafe fn as_future_obj(self) -> FutureObj<'a, T> {
+    pub unsafe fn into_future_obj(self) -> FutureObj<'a, T> {
         FutureObj(self)
     }
 }
