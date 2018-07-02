@@ -1240,8 +1240,7 @@ impl Step for Clippy {
         drop(fs::remove_dir_all(&overlay));
         t!(fs::create_dir_all(&overlay));
         builder.install(&src.join("README.md"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-MIT"), &overlay, 0o644);
-        builder.install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
+        builder.install(&src.join("LICENSE"), &doc, 0o644);
         builder.create(&overlay.join("version"), &version);
 
         // Generate the installer tarball
