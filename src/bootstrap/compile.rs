@@ -873,7 +873,7 @@ impl Step for Assemble {
     type Output = Compiler;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.all_krates("rustc-main")
+        run.never()
     }
 
     /// Prepare a new compiler from the artifacts in `stage`
