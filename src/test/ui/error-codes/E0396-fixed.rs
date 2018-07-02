@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//compile-pass
+#![feature(const_raw_ptr_deref)]
 
-#![feature(const_fn_union)]
+const REG_ADDR: *const u8 = 0x5f3759df as *const u8;
 
-fn main() {}
+const VALUE: u8 = unsafe { *REG_ADDR };
+//~^ ERROR this constant cannot be used
 
-static FOO: u32 = 42;
-
-union Foo {
-    f: Float,
-    r: &'static u32,
+fn main() {
 }
-
-#[cfg(target_pointer_width="64")]
-type Float = f64;
-
-#[cfg(target_pointer_width="32")]
-type Float = f32;
-
-static BAR: Float = unsafe { Foo { r: &FOO }.f };

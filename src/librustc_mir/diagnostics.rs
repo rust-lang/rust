@@ -619,38 +619,6 @@ If you really want global mutable state, try using `static mut` or a global
 `UnsafeCell`.
 "##,
 
-E0018: r##"
-
-The value of static and constant integers must be known at compile time. You
-can't cast a pointer to an integer because the address of a pointer can
-vary.
-
-For example, if you write:
-
-```compile_fail,E0018
-static MY_STATIC: u32 = 42;
-static MY_STATIC_ADDR: usize = &MY_STATIC as *const _ as usize;
-static WHAT: usize = (MY_STATIC_ADDR^17) + MY_STATIC_ADDR;
-```
-
-Then `MY_STATIC_ADDR` would contain the address of `MY_STATIC`. However,
-the address can change when the program is linked, as well as change
-between different executions due to ASLR, and many linkers would
-not be able to calculate the value of `WHAT`.
-
-On the other hand, static and constant pointers can point either to
-a known numeric address or to the address of a symbol.
-
-```
-static MY_STATIC: u32 = 42;
-static MY_STATIC_ADDR: &'static u32 = &MY_STATIC;
-const CONST_ADDR: *const u8 = 0x5f3759df as *const u8;
-```
-
-This does not pose a problem by itself because they can't be
-accessed directly.
-"##,
-
 E0019: r##"
 A function call isn't allowed in the const's initialization expression
 because the expression's value must be known at compile-time. Erroneous code
@@ -1205,29 +1173,6 @@ fn main() {
     let array: &[isize] = &[1, 2, 3];
     let _x: Box<&[isize]> = box array; // ok!
 }
-```
-"##,
-
-E0396: r##"
-The value behind a raw pointer can't be determined at compile-time
-(or even link-time), which means it can't be used in a constant
-expression. Erroneous code example:
-
-```compile_fail,E0396
-const REG_ADDR: *const u8 = 0x5f3759df as *const u8;
-
-const VALUE: u8 = unsafe { *REG_ADDR };
-// error: raw pointers cannot be dereferenced in constants
-```
-
-A possible fix is to dereference your pointer at some point in run-time.
-
-For example:
-
-```
-const REG_ADDR: *const u8 = 0x5f3759df as *const u8;
-
-let reg_value = unsafe { *REG_ADDR };
 ```
 "##,
 

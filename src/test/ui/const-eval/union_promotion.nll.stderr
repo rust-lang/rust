@@ -1,0 +1,11 @@
+error: internal compiler error: unexpected region for local data ReStatic
+  --> $DIR/union_promotion.rs:19:29
+   |
+LL |       let x: &'static bool = &unsafe { //~ borrowed value does not live long enough
+   |  _____________________________^
+LL | |         Foo { a: &1 }.b == Foo { a: &2 }.b
+LL | |     };
+   | |_____^
+
+error: aborting due to previous error
+

@@ -216,6 +216,15 @@ declare_features! (
     // Allows let bindings and destructuring in `const fn` functions and constants.
     (active, const_let, "1.22.1", Some(48821), None),
 
+    // Allows accessing fields of unions inside const fn
+    (active, const_fn_union, "1.27.0", Some(51909), None),
+
+    // Allows casting raw pointers to `usize` during const eval
+    (active, const_raw_ptr_to_usize_cast, "1.27.0", Some(51910), None),
+
+    // Allows dereferencing raw pointers during const eval
+    (active, const_raw_ptr_deref, "1.27.0", Some(51911), None),
+
     // Allows using #[prelude_import] on glob `use` items.
     //
     // rustc internal

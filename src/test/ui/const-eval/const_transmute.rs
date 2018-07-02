@@ -11,6 +11,8 @@
 // compile-pass
 // run-pass
 
+#![feature(const_fn_union)]
+
 union Transmute<T: Copy, U: Copy> {
     t: T,
     u: U,
