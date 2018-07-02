@@ -24,7 +24,6 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str;
-use std::cmp::min;
 
 use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
@@ -67,6 +66,18 @@ impl Step for Std {
     fn run(self, builder: &Builder) {
         let target = self.target;
         let compiler = self.compiler;
+
+        if let Some(keep_stage) = builder.config.keep_stage {
+            if keep_stage <= compiler.stage {
+                println!("Warning: Using a potentially old libstd. This may not behave well.");
+                builder.ensure(StdLink {
+                    compiler: compiler,
+                    target_compiler: compiler,
+                    target,
+                });
+                return;
+            }
+        }
 
         builder.ensure(StartupObjects { compiler, target });
 
@@ -351,6 +362,18 @@ impl Step for Test {
         let target = self.target;
         let compiler = self.compiler;
 
+        if let Some(keep_stage) = builder.config.keep_stage {
+            if keep_stage <= compiler.stage {
+                println!("Warning: Using a potentially old libtest. This may not behave well.");
+                builder.ensure(TestLink {
+                    compiler: compiler,
+                    target_compiler: compiler,
+                    target,
+                });
+                return;
+            }
+        }
+
         builder.ensure(Std { compiler, target });
 
         if builder.force_use_stage1(compiler, target) {
@@ -466,6 +489,18 @@ impl Step for Rustc {
     fn run(self, builder: &Builder) {
         let compiler = self.compiler;
         let target = self.target;
+
+        if let Some(keep_stage) = builder.config.keep_stage {
+            if keep_stage <= compiler.stage {
+                println!("Warning: Using a potentially old librustc. This may not behave well.");
+                builder.ensure(RustcLink {
+                    compiler: compiler,
+                    target_compiler: compiler,
+                    target,
+                });
+                return;
+            }
+        }
 
         builder.ensure(Test { compiler, target });
 
@@ -915,28 +950,16 @@ impl Step for Assemble {
         // link to these. (FIXME: Is that correct? It seems to be correct most
         // of the time but I think we do link to these for stage2/bin compilers
         // when not performing a full bootstrap).
-        if builder.config.keep_stage.map_or(false, |s| target_compiler.stage <= s) {
-            builder.verbose("skipping compilation of compiler due to --keep-stage");
-            let compiler = build_compiler;
-            for stage in 0..min(target_compiler.stage, builder.config.keep_stage.unwrap()) {
-                let target_compiler = builder.compiler(stage, target_compiler.host);
-                let target = target_compiler.host;
-                builder.ensure(StdLink { compiler, target_compiler, target });
-                builder.ensure(TestLink { compiler, target_compiler, target });
-                builder.ensure(RustcLink { compiler, target_compiler, target });
-            }
-        } else {
-            builder.ensure(Rustc {
+        builder.ensure(Rustc {
+            compiler: build_compiler,
+            target: target_compiler.host,
+        });
+        for &backend in builder.config.rust_codegen_backends.iter() {
+            builder.ensure(CodegenBackend {
                 compiler: build_compiler,
                 target: target_compiler.host,
+                backend,
             });
-            for &backend in builder.config.rust_codegen_backends.iter() {
-                builder.ensure(CodegenBackend {
-                    compiler: build_compiler,
-                    target: target_compiler.host,
-                    backend,
-                });
-            }
         }
 
         let lld_install = if builder.config.lld_enabled {
