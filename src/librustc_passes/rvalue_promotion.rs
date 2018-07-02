@@ -259,7 +259,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
             }
         }
 
-        intravisit::walk_expr(self, ex);
+//        intravisit::walk_expr(self, ex);
 
         // Handle borrows on (or inside the autorefs of) this expression.
         if self.mut_rvalue_borrows.remove(&ex.id) {
