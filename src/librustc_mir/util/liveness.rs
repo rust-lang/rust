@@ -140,9 +140,12 @@ pub fn liveness_of_locals<'tcx>(mir: &Mir<'tcx>, mode: LivenessMode) -> Liveness
         bits.overwrite(&outs[bb]);
         def_use[bb].apply(&mut bits);
 
-        // add `bits` to the out set for each predecessor; if those
+        // `bits` now contains the live variables on entry. Therefore,
+        // add `bits` to the `out` set for each predecessor; if those
         // bits were not already present, then enqueue the predecessor
         // as dirty.
+        //
+        // (note that `union` returns true if the `self` set changed)
         for &pred_bb in &predecessors[bb] {
             if outs[pred_bb].union(&bits) {
                 dirty_queue.insert(pred_bb);
