@@ -1,28 +1,28 @@
 warning: not reporting region error due to nll
   --> $DIR/propagate-approximated-fail-no-postdom.rs:55:21
    |
-LL |             let p = x.get();
+LL |             let p = x.get(); //~ ERROR
    |                     ^^^^^^^
 
 error: unsatisfied lifetime constraints
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:57:13
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:55:21
    |
 LL |         |_outlives1, _outlives2, _outlives3, x, y| {
    |          ----------              ---------- lifetime `'2` appears in this argument
    |          |
    |          lifetime `'1` appears in this argument
-...
-LL |             demand_y(x, y, p) //~ ERROR
-   |             ^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+LL |             // Only works if 'x: 'y:
+LL |             let p = x.get(); //~ ERROR
+   |                     ^^^^^^^ argument requires that `'1` must outlive `'2`
 
 note: No external requirements
   --> $DIR/propagate-approximated-fail-no-postdom.rs:53:9
    |
 LL | /         |_outlives1, _outlives2, _outlives3, x, y| {
 LL | |             // Only works if 'x: 'y:
-LL | |             let p = x.get();
+LL | |             let p = x.get(); //~ ERROR
 LL | |             //~^ WARN not reporting region error due to nll
-LL | |             demand_y(x, y, p) //~ ERROR
+LL | |             demand_y(x, y, p)
 LL | |         },
    | |_________^
    |

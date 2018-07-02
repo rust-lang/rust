@@ -76,7 +76,7 @@ fn precompute_borrows_out_of_scope<'a, 'tcx>(
     while let Some(location) = stack.pop() {
         // If region does not contain a point at the location, then add to list and skip
         // successor locations.
-        if !regioncx.region_contains_point(borrow_region, location) {
+        if !regioncx.region_contains(borrow_region, location) {
             debug!("borrow {:?} gets killed at {:?}", borrow_index, location);
             borrows_out_of_scope_at_location
                 .entry(location)

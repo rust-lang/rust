@@ -9,11 +9,14 @@
 // except according to those terms.
 
 use rustc::ty::RegionVid;
+use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use borrow_check::nll::type_check::Locations;
 
 use std::fmt;
 use std::ops::Deref;
+
+crate mod graph;
 
 #[derive(Clone, Default)]
 crate struct ConstraintSet {
@@ -21,7 +24,7 @@ crate struct ConstraintSet {
 }
 
 impl ConstraintSet {
-    pub fn push(&mut self, constraint: OutlivesConstraint) {
+    crate fn push(&mut self, constraint: OutlivesConstraint) {
         debug!(
             "ConstraintSet::push({:?}: {:?} @ {:?}",
             constraint.sup, constraint.sub, constraint.locations
@@ -32,12 +35,33 @@ impl ConstraintSet {
         }
         self.constraints.push(constraint);
     }
+
+    /// Constructs a graph from the constraint set; the graph makes it
+    /// easy to find the constriants affecting a particular region
+    /// (you should not mutate the set once this graph is
+    /// constructed).
+    crate fn graph(&self, num_region_vars: usize) -> graph::ConstraintGraph {
+        graph::ConstraintGraph::new(self, num_region_vars)
+    }
+
+    /// Compute cycles (SCCs) in the graph of regions. In particular,
+    /// find all regions R1, R2 such that R1: R2 and R2: R1 and group
+    /// them into an SCC, and find the relationships between SCCs.
+    crate fn compute_sccs(
+        &self,
+        constraint_graph: &graph::ConstraintGraph,
+    ) -> Sccs<RegionVid, ConstraintSccIndex> {
+        let region_graph = &graph::RegionGraph::new(self, constraint_graph);
+        Sccs::new(region_graph)
+    }
 }
 
 impl Deref for ConstraintSet {
     type Target = IndexVec<ConstraintIndex, OutlivesConstraint>;
 
-    fn deref(&self) -> &Self::Target { &self.constraints }
+    fn deref(&self) -> &Self::Target {
+        &self.constraints
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -68,45 +92,4 @@ impl fmt::Debug for OutlivesConstraint {
 
 newtype_index!(ConstraintIndex { DEBUG_FORMAT = "ConstraintIndex({})" });
 
-crate struct ConstraintGraph {
-    first_constraints: IndexVec<RegionVid, Option<ConstraintIndex>>,
-    next_constraints: IndexVec<ConstraintIndex, Option<ConstraintIndex>>,
-}
-
-impl ConstraintGraph {
-    /// Constraint a graph where each region constraint `R1: R2` is
-    /// treated as an edge `R2 -> R1`. This is useful for cheaply
-    /// finding dirty constraints.
-    crate fn new(set: &ConstraintSet, num_region_vars: usize) -> Self {
-        let mut first_constraints = IndexVec::from_elem_n(None, num_region_vars);
-        let mut next_constraints = IndexVec::from_elem(None, &set.constraints);
-
-        for (idx, constraint) in set.constraints.iter_enumerated().rev() {
-            let mut head = &mut first_constraints[constraint.sub];
-            let mut next = &mut next_constraints[idx];
-            debug_assert!(next.is_none());
-            *next = *head;
-            *head = Some(idx);
-        }
-
-        ConstraintGraph { first_constraints, next_constraints }
-    }
-
-    /// Invokes `op` with the index of any constraints of the form
-    /// `region_sup: region_sub`.  These are the constraints that must
-    /// be reprocessed when the value of `R1` changes. If you think of
-    /// each constraint `R1: R2` as an edge `R2 -> R1`, then this
-    /// gives the set of successors to R2.
-    crate fn for_each_dependent(
-        &self,
-        region_sub: RegionVid,
-        mut op: impl FnMut(ConstraintIndex),
-    ) {
-        let mut p = self.first_constraints[region_sub];
-        while let Some(dep_idx) = p {
-            op(dep_idx);
-            p = self.next_constraints[dep_idx];
-        }
-    }
-}
-
+newtype_index!(ConstraintSccIndex { DEBUG_FORMAT = "ConstraintSccIndex({})" });

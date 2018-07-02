@@ -50,18 +50,10 @@ impl fmt::Display for ConstraintCategory {
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Walks the graph of constraints (where `'a: 'b` is considered
-    /// an edge `'b -> 'a`) to find all paths from `from_region` to
+    /// an edge `'a -> 'b`) to find all paths from `from_region` to
     /// `to_region`. The paths are accumulated into the vector
     /// `results`. The paths are stored as a series of
     /// `ConstraintIndex` values -- in other words, a list of *edges*.
-    ///
-    /// # Parameters
-    ///
-    /// - `from_region`
-    /// When reporting an error, it is useful to be able to determine
-    /// which constraints influenced the region being reported as an
-    /// error. This function finds all of the paths from the
-    /// constraint.
     fn find_constraint_paths_between_regions(
         &self,
         from_region: RegionVid,
@@ -97,25 +89,25 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Check if we reached the region we were looking for.
         if target_test(current_region) {
             if !stack.is_empty() {
-                assert_eq!(self.constraints[stack[0]].sub, from_region);
+                assert_eq!(self.constraints[stack[0]].sup, from_region);
                 results.push(stack.clone());
             }
             return;
         }
 
-        self.constraint_graph.for_each_dependent(current_region, |constraint| {
-            assert_eq!(self.constraints[constraint].sub, current_region);
+        for constraint in self.constraint_graph.outgoing_edges(current_region) {
+            assert_eq!(self.constraints[constraint].sup, current_region);
             stack.push(constraint);
             self.find_constraint_paths_between_regions_helper(
                 from_region,
-                self.constraints[constraint].sup,
+                self.constraints[constraint].sub,
                 target_test,
                 visited,
                 stack,
                 results,
             );
             stack.pop();
-        });
+        }
     }
 
     /// This function will return true if a constraint is interesting and false if a constraint
@@ -207,7 +199,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         // Find all paths
-        let constraint_paths = self.find_constraint_paths_between_regions(outlived_fr, |r| r == fr);
+        let constraint_paths = self.find_constraint_paths_between_regions(fr, |r| r == outlived_fr);
         debug!("report_error: constraint_paths={:#?}", constraint_paths);
 
         // Find the shortest such path.
@@ -316,7 +308,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         while changed {
             changed = false;
-            for constraint in &*self.constraints {
+            for constraint in self.constraints.iter() {
                 if let Some(n) = result_set[constraint.sup] {
                     let m = n + 1;
                     if result_set[constraint.sub]

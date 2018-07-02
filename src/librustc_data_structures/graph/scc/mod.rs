@@ -54,6 +54,11 @@ impl<N: Idx, S: Idx> Sccs<N, S> {
         self.scc_data.len()
     }
 
+    /// Returns the number of SCCs in the graph.
+    pub fn all_sccs(&self) -> impl Iterator<Item = S> {
+        (0 .. self.scc_data.len()).map(S::new)
+    }
+
     /// Returns the SCC to which a node `r` belongs.
     pub fn scc(&self, r: N) -> S {
         self.scc_indices[r]

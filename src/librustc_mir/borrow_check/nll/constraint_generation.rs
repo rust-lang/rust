@@ -210,7 +210,7 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
         for (region, location) in liveness_set {
             debug!("generate: {:#?} is live at {:#?}", region, location);
             let region_vid = regioncx.to_region_vid(region);
-            regioncx.add_live_point(region_vid, *location);
+            regioncx.add_live_element(region_vid, *location);
         }
 
         if let Some(all_facts) = all_facts {
@@ -242,7 +242,7 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
             .tcx
             .for_each_free_region(&live_ty, |live_region| {
                 let vid = live_region.to_region_vid();
-                self.regioncx.add_live_point(vid, location);
+                self.regioncx.add_live_element(vid, location);
             });
     }
 }
