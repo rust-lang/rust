@@ -40,9 +40,6 @@ impl Step for Std {
         let target = self.target;
         let compiler = builder.compiler(0, builder.config.build);
 
-        let out_dir = builder.stage_out(compiler, Mode::Std);
-        builder.clear_if_dirty(&out_dir, &builder.rustc(compiler));
-
         let mut cargo = builder.cargo(compiler, Mode::Std, target, "check");
         std_cargo(builder, &compiler, target, &mut cargo);
 
@@ -87,10 +84,6 @@ impl Step for Rustc {
     fn run(self, builder: &Builder) {
         let compiler = builder.compiler(0, builder.config.build);
         let target = self.target;
-
-        let stage_out = builder.stage_out(compiler, Mode::Rustc);
-        builder.clear_if_dirty(&stage_out, &libstd_stamp(builder, compiler, target));
-        builder.clear_if_dirty(&stage_out, &libtest_stamp(builder, compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "check");
         rustc_cargo(builder, &mut cargo);
@@ -179,9 +172,6 @@ impl Step for Test {
     fn run(self, builder: &Builder) {
         let compiler = builder.compiler(0, builder.config.build);
         let target = self.target;
-
-        let out_dir = builder.stage_out(compiler, Mode::Test);
-        builder.clear_if_dirty(&out_dir, &libstd_stamp(builder, compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Test, target, "check");
         test_cargo(builder, &compiler, target, &mut cargo);

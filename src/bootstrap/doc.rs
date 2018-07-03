@@ -455,7 +455,6 @@ impl Step for Std {
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, builder.config.build);
-        let rustdoc = builder.rustdoc(compiler.host);
         let compiler = if builder.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
         } else {
@@ -480,7 +479,6 @@ impl Step for Std {
         // This way rustdoc generates output directly into the output, and rustdoc
         // will also directly handle merging.
         let my_out = builder.crate_doc_out(target);
-        builder.clear_if_dirty(&my_out, &rustdoc);
         t!(symlink_dir_force(&builder.config, &my_out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Std, target, "doc");
@@ -535,7 +533,6 @@ impl Step for Test {
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, builder.config.build);
-        let rustdoc = builder.rustdoc(compiler.host);
         let compiler = if builder.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
         } else {
@@ -551,7 +548,6 @@ impl Step for Test {
 
         // See docs in std above for why we symlink
         let my_out = builder.crate_doc_out(target);
-        builder.clear_if_dirty(&my_out, &rustdoc);
         t!(symlink_dir_force(&builder.config, &my_out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Test, target, "doc");
@@ -603,7 +599,6 @@ impl Step for WhitelistedRustc {
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, builder.config.build);
-        let rustdoc = builder.rustdoc(compiler.host);
         let compiler = if builder.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
         } else {
@@ -619,7 +614,6 @@ impl Step for WhitelistedRustc {
 
         // See docs in std above for why we symlink
         let my_out = builder.crate_doc_out(target);
-        builder.clear_if_dirty(&my_out, &rustdoc);
         t!(symlink_dir_force(&builder.config, &my_out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "doc");
@@ -678,7 +672,6 @@ impl Step for Rustc {
 
         // Get the correct compiler for this stage.
         let compiler = builder.compiler(stage, builder.config.build);
-        let rustdoc = builder.rustdoc(compiler.host);
         let compiler = if builder.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
         } else {
@@ -699,7 +692,6 @@ impl Step for Rustc {
         // We do not symlink to the same shared folder that already contains std library
         // documentation from previous steps as we do not want to include that.
         let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target).join("doc");
-        builder.clear_if_dirty(&out, &rustdoc);
         t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
         // Build cargo command.
@@ -780,7 +772,6 @@ impl Step for Rustdoc {
 
         // Get the correct compiler for this stage.
         let compiler = builder.compiler(stage, builder.config.build);
-        let rustdoc = builder.rustdoc(compiler.host);
         let compiler = if builder.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
         } else {
@@ -803,7 +794,6 @@ impl Step for Rustdoc {
             .join(target)
             .join("doc");
         t!(fs::create_dir_all(&out_dir));
-        builder.clear_if_dirty(&out, &rustdoc);
         t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
         // Build cargo command.
