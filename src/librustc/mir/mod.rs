@@ -15,7 +15,7 @@
 use graphviz::IntoCow;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
-use hir::{self, InlineAsm};
+use hir::{self, HirId, InlineAsm};
 use middle::region;
 use mir::interpret::{EvalErrorKind, Scalar, Value};
 use mir::visit::MirVisitable;
@@ -784,6 +784,9 @@ impl<'tcx> LocalDecl<'tcx> {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct UpvarDecl {
     pub debug_name: Name,
+
+    /// `HirId` of the captured variable
+    pub var_hir_id: ClearCrossCrate<HirId>,
 
     /// If true, the capture is behind a reference.
     pub by_ref: bool,
