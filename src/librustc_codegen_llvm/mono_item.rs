@@ -25,11 +25,10 @@ use monomorphize::Instance;
 use type_of::LayoutLlvmExt;
 use rustc::hir;
 use rustc::hir::def::Def;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::TypeFoldable;
 use rustc::ty::layout::LayoutOf;
-use syntax::attr;
 use std::fmt;
 
 pub use rustc::mir::mono::MonoItem;
@@ -173,7 +172,7 @@ fn predefine_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     // visibility as we're going to link this object all over the place but
     // don't want the symbols to get exported.
     if linkage != Linkage::Internal && linkage != Linkage::Private &&
-       attr::contains_name(cx.tcx.hir.krate_attrs(), "compiler_builtins") {
+       cx.tcx.is_compiler_builtins(LOCAL_CRATE) {
         unsafe {
             llvm::LLVMRustSetVisibility(lldecl, llvm::Visibility::Hidden);
         }

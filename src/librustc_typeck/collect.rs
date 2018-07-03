@@ -875,10 +875,6 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
 
-        NodeTy(&hir::Ty { node: hir::TyImplTraitExistential(..), .. }) => {
-            bug!("impl Trait is desugared to existential type items");
-        }
-
         _ => &no_generics,
     };
 

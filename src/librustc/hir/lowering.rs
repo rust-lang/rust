@@ -1306,13 +1306,20 @@ impl<'a> LoweringContext<'a> {
             lctx.items.insert(exist_ty_id.node_id, exist_ty_item);
 
             // `impl Trait` now just becomes `Foo<'a, 'b, ..>`
-            hir::TyImplTraitExistential(
-                hir::ItemId {
-                    id: exist_ty_id.node_id
-                },
-                DefId::local(exist_ty_def_index),
-                lifetimes,
-            )
+            let path = P(hir::Path {
+                span: exist_ty_span,
+                def: Def::Existential(DefId::local(exist_ty_def_index)),
+                segments: hir_vec![hir::PathSegment {
+                    infer_types: false,
+                    ident: Ident::new(keywords::Invalid.name(), exist_ty_span),
+                    args: Some(P(hir::GenericArgs {
+                        parenthesized: false,
+                        bindings: HirVec::new(),
+                        args: lifetimes,
+                    }))
+                }],
+            });
+            hir::TyPath(hir::QPath::Resolved(None, path))
         })
     }
 
@@ -1321,7 +1328,7 @@ impl<'a> LoweringContext<'a> {
         exist_ty_id: NodeId,
         parent_index: DefIndex,
         bounds: &hir::GenericBounds,
-    ) -> (HirVec<hir::Lifetime>, HirVec<hir::GenericParam>) {
+    ) -> (HirVec<hir::GenericArg>, HirVec<hir::GenericParam>) {
         // This visitor walks over impl trait bounds and creates defs for all lifetimes which
         // appear in the bounds, excluding lifetimes that are created within the bounds.
         // e.g. 'a, 'b, but not 'c in `impl for<'c> SomeTrait<'a, 'b, 'c>`
@@ -1332,7 +1339,7 @@ impl<'a> LoweringContext<'a> {
             collect_elided_lifetimes: bool,
             currently_bound_lifetimes: Vec<hir::LifetimeName>,
             already_defined_lifetimes: HashSet<hir::LifetimeName>,
-            output_lifetimes: Vec<hir::Lifetime>,
+            output_lifetimes: Vec<hir::GenericArg>,
             output_lifetime_params: Vec<hir::GenericParam>,
         }
 
@@ -1416,11 +1423,11 @@ impl<'a> LoweringContext<'a> {
                     && !self.already_defined_lifetimes.contains(&name) {
                     self.already_defined_lifetimes.insert(name);
 
-                    self.output_lifetimes.push(hir::Lifetime {
+                    self.output_lifetimes.push(hir::GenericArg::Lifetime(hir::Lifetime {
                         id: self.context.next_id().node_id,
                         span: lifetime.span,
                         name,
-                    });
+                    }));
 
                     // We need to manually create the ids here, because the
                     // definitions will go into the explicit `existential type`
