@@ -14,7 +14,7 @@
 use hir;
 use hir::map::DefPathHash;
 use hir::def_id::{DefId, LocalDefId, CrateNum, CRATE_DEF_INDEX};
-use ich::{StableHashingContext, NodeIdHashingMode};
+use ich::{StableHashingContext, NodeIdHashingMode, Fingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
 use std::mem;
@@ -755,13 +755,34 @@ impl_stable_hash_for!(enum hir::ImplPolarity {
     Negative
 });
 
-impl_stable_hash_for!(struct hir::Mod {
-    inner,
-    // We are not hashing the IDs of the items contained in the module.
-    // This is harmless and matches the current behavior but it's not
-    // actually correct. See issue #40876.
-    item_ids -> _,
-});
+impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        let hir::Mod {
+            inner: ref inner_span,
+            ref item_ids,
+        } = *self;
+
+        inner_span.hash_stable(hcx, hasher);
+
+        // Combining the DefPathHashes directly is faster than feeding them
+        // into the hasher. Because we use a commutative combine, we also don't
+        // have to sort the array.
+        let item_ids_hash = item_ids
+            .iter()
+            .map(|id| {
+                let (def_path_hash, local_id) = id.id.to_stable_hash_key(hcx);
+                debug_assert_eq!(local_id, hir::ItemLocalId(0));
+                def_path_hash.0
+            }).fold(Fingerprint::ZERO, |a, b| {
+                a.combine_commutative(b)
+            });
+
+        item_ids.len().hash_stable(hcx, hasher);
+        item_ids_hash.hash_stable(hcx, hasher);
+    }
+}
 
 impl_stable_hash_for!(struct hir::ForeignMod {
     abi,
