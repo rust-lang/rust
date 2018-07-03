@@ -16,17 +16,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "alloc_jemalloc"
-version = "0.0.0"
-dependencies = [
- "build_helper 0.1.0",
- "cc 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiler_builtins 0.0.0",
- "core 0.0.0",
- "libc 0.0.0",
-]
-
-[[package]]
 name = "alloc_system"
 version = "0.0.0"
 dependencies = [
@@ -2638,7 +2627,6 @@ name = "std"
 version = "0.0.0"
 dependencies = [
  "alloc 0.0.0",
- "alloc_jemalloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cc 1.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
