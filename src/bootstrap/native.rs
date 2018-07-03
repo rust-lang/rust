@@ -149,7 +149,6 @@ impl Step for Llvm {
            .define("WITH_POLLY", "OFF")
            .define("LLVM_ENABLE_TERMINFO", "OFF")
            .define("LLVM_ENABLE_LIBEDIT", "OFF")
-           .define("LLVM_ENABLE_LIBXML2", "OFF")
            .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
@@ -163,6 +162,14 @@ impl Step for Llvm {
         cfg.define("LLVM_OCAML_INSTALL_PATH",
             env::var_os("LLVM_OCAML_INSTALL_PATH").unwrap_or_else(|| "usr/lib/ocaml".into()));
 
+        // Build clang and lldb if asked, or if doing a macOS nightly
+        // build.  LLVM_ENABLE_PROJECTS allows them to be checked out
+        // parallel to src/llvm, and makes conditionally building them
+        // simpler.
+        let want_lldb = builder.config.lldb_enabled ||
+            (target.contains("apple-darwin") &&
+             builder.config.channel == "nightly");
+
         // This setting makes the LLVM tools link to the dynamic LLVM library,
         // which saves both memory during parallel links and overall disk space
         // for the tools.  We don't distribute any of those tools, so this is
@@ -170,12 +177,13 @@ impl Step for Llvm {
         //
         // If we are shipping llvm tools then we statically link them LLVM
         if (target.contains("linux-gnu") || target.contains("apple-darwin")) &&
-            !builder.config.llvm_tools_enabled {
+            !builder.config.llvm_tools_enabled &&
+            !want_lldb {
                 cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
         // For distribution we want the LLVM tools to be *statically* linked to libstdc++
-        if builder.config.llvm_tools_enabled {
+        if builder.config.llvm_tools_enabled || want_lldb {
             if !target.contains("windows") {
                 if target.contains("apple") {
                     cfg.define("CMAKE_EXE_LINKER_FLAGS", "-static-libstdc++");
@@ -194,6 +202,12 @@ impl Step for Llvm {
 
         if target.starts_with("i686") {
             cfg.define("LLVM_BUILD_32_BITS", "ON");
+        }
+
+        if want_lldb {
+            cfg.define("LLVM_ENABLE_PROJECTS", "clang;lldb");
+        } else {
+            cfg.define("LLVM_ENABLE_LIBXML2", "OFF");
         }
 
         if let Some(num_linkers) = builder.config.llvm_link_jobs {
