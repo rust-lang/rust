@@ -4997,7 +4997,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         } else {
                             0
                         };
-                        let param_idx = (param.index as usize - has_self as usize)
+                        let self_offset = (defs.parent_count == 0 && has_self) as usize;
+                        let param_idx =
+                            (param.index as usize - defs.parent_count - self_offset as usize)
                             .saturating_sub(lifetime_offset);
                         if let Some(arg) = data.args.get(param_idx) {
                             match param.kind {
