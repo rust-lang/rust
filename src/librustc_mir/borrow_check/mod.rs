@@ -128,6 +128,8 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     input_mir: &Mir<'gcx>,
     def_id: DefId,
 ) -> BorrowCheckResult<'gcx> {
+    debug!("do_mir_borrowck(def_id = {:?})", def_id);
+
     let tcx = infcx.tcx;
     let attributes = tcx.get_attrs(def_id);
     let param_env = tcx.param_env(def_id);
@@ -319,10 +321,14 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         }
     }
 
-    BorrowCheckResult {
+    let result = BorrowCheckResult {
         closure_requirements: opt_closure_req,
         used_mut_upvars: mbcx.used_mut_upvars,
-    }
+    };
+
+    debug!("do_mir_borrowck: result = {:#?}", result);
+
+    result
 }
 
 #[allow(dead_code)]

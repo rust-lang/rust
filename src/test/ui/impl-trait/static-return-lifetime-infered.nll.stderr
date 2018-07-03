@@ -10,17 +10,19 @@ warning: not reporting region error due to nll
 LL |         self.x.iter().map(|a| a.0)
    |                ^^^^
 
-error: free region `` does not outlive free region `'static`
+error: unsatisfied lifetime constraints
   --> $DIR/static-return-lifetime-infered.rs:17:9
    |
+LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
+   |                         ----- lifetime `'1` appears in this argument
 LL |         self.x.iter().map(|a| a.0)
-   |         ^^^^^^^^^^^^^
+   |         ^^^^^^ cast requires that `'1` must outlive `'static`
 
-error: free region `'a` does not outlive free region `'static`
+error: unsatisfied lifetime constraints
   --> $DIR/static-return-lifetime-infered.rs:21:9
    |
 LL |         self.x.iter().map(|a| a.0)
-   |         ^^^^^^^^^^^^^
+   |         ^^^^^^ cast requires that `'a` must outlive `'static`
 
 error: aborting due to 2 previous errors
 

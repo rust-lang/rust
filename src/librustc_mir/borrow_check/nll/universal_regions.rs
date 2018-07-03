@@ -22,6 +22,7 @@
 //! The code in this file doesn't *do anything* with those results; it
 //! just returns them for other code to use.
 
+use either::Either;
 use rustc::hir::def_id::DefId;
 use rustc::hir::{self, BodyOwnerKind, HirId};
 use rustc::infer::outlives::bounds::{self, OutlivesBound};
@@ -126,6 +127,34 @@ pub enum DefiningTy<'tcx> {
     /// is that it has no inputs and a single return value, which is
     /// the value of the constant.
     Const(DefId, &'tcx Substs<'tcx>),
+}
+
+impl<'tcx> DefiningTy<'tcx> {
+    /// Returns a list of all the upvar types for this MIR. If this is
+    /// not a closure or generator, there are no upvars, and hence it
+    /// will be an empty list. The order of types in this list will
+    /// match up with the `upvar_decls` field of `Mir`.
+    pub fn upvar_tys(self, tcx: TyCtxt<'_, '_, 'tcx>) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
+        match self {
+            DefiningTy::Closure(def_id, substs) => Either::Left(substs.upvar_tys(def_id, tcx)),
+            DefiningTy::Generator(def_id, substs, _) => {
+                Either::Right(Either::Left(substs.upvar_tys(def_id, tcx)))
+            }
+            DefiningTy::FnDef(..) | DefiningTy::Const(..) => {
+                Either::Right(Either::Right(iter::empty()))
+            }
+        }
+    }
+
+    /// Number of implicit inputs -- notably the "environment"
+    /// parameter for closures -- that appear in MIR but not in the
+    /// user's code.
+    pub fn implicit_inputs(self) -> usize {
+        match self {
+            DefiningTy::Closure(..) | DefiningTy::Generator(..) => 1,
+            DefiningTy::FnDef(..) | DefiningTy::Const(..) => 0,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -542,6 +571,8 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                     tables.node_id_to_type(self.mir_hir_id)
                 };
 
+                debug!("defining_ty (pre-replacement): {:?}", defining_ty);
+
                 let defining_ty = self.infcx
                     .replace_free_regions_with_nll_infer_vars(FR, &defining_ty);
 
@@ -802,6 +833,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     /// insert the `ReFree` version of those into the map as
     /// well. These are used for error reporting.
     fn insert_late_bound_region(&mut self, r: ty::Region<'tcx>, vid: ty::RegionVid) {
+        debug!("insert_late_bound_region({:?}, {:?})", r, vid);
         self.indices.insert(r, vid);
     }
 

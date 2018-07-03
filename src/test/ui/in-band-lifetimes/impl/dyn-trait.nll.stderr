@@ -4,11 +4,11 @@ warning: not reporting region error due to nll
 LL |     static_val(x); //~ ERROR cannot infer
    |                ^
 
-error: free region `'a` does not outlive free region `'static`
+error: unsatisfied lifetime constraints
   --> $DIR/dyn-trait.rs:32:5
    |
 LL |     static_val(x); //~ ERROR cannot infer
-   |     ^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^ argument requires that `'a` must outlive `'static`
 
 error: aborting due to previous error
 

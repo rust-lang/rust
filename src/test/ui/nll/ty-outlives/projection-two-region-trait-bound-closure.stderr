@@ -239,11 +239,11 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: number of external vids: 3
    = note: where <T as Anything<ReClosureBound('_#1r), ReClosureBound('_#1r)>>::AssocType: '_#2r
 
-error: argument requires that data must outlive free region `ReFree(DefId(0/0:13 ~ projection_two_region_trait_bound_closure[317d]::two_regions[0]), BrNamed(crate0:DefIndex(1:43), 'a))`
+error: unsatisfied lifetime constraints
   --> $DIR/projection-two-region-trait-bound-closure.rs:108:5
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: No external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:104:1
@@ -253,7 +253,7 @@ LL | | where
 LL | |     T: Anything<'b, 'b>,
 LL | | {
 ...  |
-LL | |     //~| ERROR argument requires that data must outlive free region
+LL | |     //~| ERROR
 LL | | }
    | |_^
    |

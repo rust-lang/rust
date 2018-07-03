@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use borrow_check::nll::region_infer::values::ToElementIndex;
-use borrow_check::nll::region_infer::{Cause, ConstraintIndex, RegionInferenceContext};
 use borrow_check::nll::region_infer::{ConstraintIndex, RegionInferenceContext};
 use borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
@@ -21,6 +20,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt;
 use syntax_pos::Span;
+
+mod region_name;
 
 /// Constraints that are considered interesting can be categorized to
 /// determine why they are interesting. Order of variants indicates
@@ -200,26 +201,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) {
         debug!("report_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let fr_name = self.to_error_region(fr);
-        let outlived_fr_name = self.to_error_region(outlived_fr);
-
-        if let (Some(f), Some(o)) = (fr_name, outlived_fr_name) {
+        if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
             let tables = infcx.tcx.typeck_tables_of(mir_def_id);
             let nice = NiceRegionError::new_from_span(infcx.tcx, blame_span, o, f, Some(tables));
             if let Some(_error_reported) = nice.try_report() {
                 return;
             }
         }
-
-        let fr_string = match fr_name {
-            Some(r) => format!("free region `{}`", r),
-            None => format!("free region `{:?}`", fr),
-        };
-
-        let outlived_fr_string = match outlived_fr_name {
-            Some(r) => format!("free region `{}`", r),
-            None => format!("free region `{:?}`", outlived_fr),
-        };
 
         // Find all paths
         let constraint_paths = self.find_constraint_paths_between_regions(outlived_fr, |r| r == fr);
@@ -239,25 +227,34 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         categorized_path.sort_by(|p0, p1| p0.0.cmp(&p1.0));
         debug!("report_error: sorted_path={:?}", categorized_path);
 
-        // If we found something, cite that as the main cause of the problem.
-        if let Some((category, span)) = categorized_path.first() {
-            let mut diag = infcx.tcx.sess.struct_span_err(
-                *span,
-                &format!(
-                    "{} requires that data must outlive {}",
-                    category, outlived_fr_string
-                ),
-            );
+        // Get a span
+        let (category, span) = categorized_path.first().unwrap();
+        let diag = &mut infcx.tcx.sess.struct_span_err(
+            *span,
+            &format!("unsatisfied lifetime constraints"), // FIXME
+        );
 
-            diag.emit();
-        } else {
-            let mut diag = infcx.tcx.sess.struct_span_err(
-                blame_span,
-                &format!("{} does not outlive {}", fr_string, outlived_fr_string,),
-            );
+        // Figure out how we can refer
+        let counter = &mut 1;
+        let fr_name = self.give_region_a_name(infcx.tcx, mir, mir_def_id, fr, counter, diag);
+        let outlived_fr_name = self.give_region_a_name(
+            infcx.tcx,
+            mir,
+            mir_def_id,
+            outlived_fr,
+            counter,
+            diag,
+        );
 
-            diag.emit();
-        }
+        diag.span_label(
+            *span,
+            format!(
+                "{} requires that `{}` must outlive `{}`",
+                category, fr_name, outlived_fr_name,
+            ),
+        );
+
+        diag.emit();
     }
 
     // Find some constraint `X: Y` where:

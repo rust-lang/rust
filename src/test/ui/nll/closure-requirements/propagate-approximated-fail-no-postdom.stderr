@@ -4,11 +4,16 @@ warning: not reporting region error due to nll
 LL |             let p = x.get();
    |                     ^^^^^^^
 
-error: free region `ReFree(DefId(0/1:20 ~ propagate_approximated_fail_no_postdom[317d]::supply[0]::{{closure}}[0]), BrAnon(1))` does not outlive free region `ReFree(DefId(0/1:20 ~ propagate_approximated_fail_no_postdom[317d]::supply[0]::{{closure}}[0]), BrAnon(2))`
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:55:17
+error: unsatisfied lifetime constraints
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:57:13
    |
-LL |             let p = x.get();
-   |                 ^
+LL |         |_outlives1, _outlives2, _outlives3, x, y| {
+   |          ----------              ---------- lifetime `'2` appears in this argument
+   |          |
+   |          lifetime `'1` appears in this argument
+...
+LL |             demand_y(x, y, p) //~ ERROR
+   |             ^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
 
 note: No external requirements
   --> $DIR/propagate-approximated-fail-no-postdom.rs:53:9
@@ -17,8 +22,7 @@ LL | /         |_outlives1, _outlives2, _outlives3, x, y| {
 LL | |             // Only works if 'x: 'y:
 LL | |             let p = x.get();
 LL | |             //~^ WARN not reporting region error due to nll
-LL | |             //~| ERROR does not outlive free region
-LL | |             demand_y(x, y, p)
+LL | |             demand_y(x, y, p) //~ ERROR
 LL | |         },
    | |_________^
    |

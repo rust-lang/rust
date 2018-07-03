@@ -9,7 +9,7 @@ note: External requirements
    |
 LL |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
    |  _______________________________________________^
-LL | |         //~^ ERROR argument requires that data must outlive free region
+LL | |         //~^ ERROR
 LL | |
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to nll
@@ -23,23 +23,23 @@ LL | |     });
    = note: number of external vids: 2
    = note: where '_#1r: '_#0r
 
-error: argument requires that data must outlive free region `ReStatic`
+error: unsatisfied lifetime constraints
   --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:45:5
    |
 LL | /     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-LL | |         //~^ ERROR argument requires that data must outlive free region
+LL | |         //~^ ERROR
 LL | |
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get()) //~ WARNING not reporting region error due to nll
 LL | |     });
-   | |______^
+   | |______^ argument requires that `'a` must outlive `'static`
 
 note: No external requirements
   --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:44:1
    |
 LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
 LL | |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-LL | |         //~^ ERROR argument requires that data must outlive free region
+LL | |         //~^ ERROR
 LL | |
 ...  |
 LL | |     });

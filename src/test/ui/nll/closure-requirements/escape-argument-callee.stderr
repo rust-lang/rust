@@ -4,11 +4,14 @@ warning: not reporting region error due to nll
 LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                                  ^
 
-error: free region `ReFree(DefId(0/1:9 ~ escape_argument_callee[317d]::test[0]::{{closure}}[0]), BrAnon(3))` does not outlive free region `ReFree(DefId(0/1:9 ~ escape_argument_callee[317d]::test[0]::{{closure}}[0]), BrAnon(2))`
+error: unsatisfied lifetime constraints
   --> $DIR/escape-argument-callee.rs:36:45
    |
 LL |         let mut closure = expect_sig(|p, y| *p = y);
-   |                                             ^^^^^^
+   |                                       -  -  ^^^^^^ free region requires that `'1` must outlive `'2`
+   |                                       |  |
+   |                                       |  lifetime `'1` appears in this argument
+   |                                       lifetime `'2` appears in this argument
 
 note: No external requirements
   --> $DIR/escape-argument-callee.rs:36:38

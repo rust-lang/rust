@@ -256,6 +256,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn init_universal_regions(&mut self) {
         // Update the names (if any)
         for (external_name, variable) in self.universal_regions.named_universal_regions() {
+            debug!(
+                "init_universal_regions: region {:?} has external name {:?}",
+                variable,
+                external_name
+            );
             self.definitions[variable].external_name = Some(external_name);
         }
 
