@@ -12,7 +12,7 @@
 // ignore-stage1
 // ignore-wasm32
 
-#![feature(proc_macro)]
+#![feature(use_extern_macros)]
 
 extern crate test_macros;
 

@@ -10,7 +10,7 @@
 
 // aux-build:more-gates.rs
 
-#![feature(proc_macro)]
+#![feature(use_extern_macros)]
 
 extern crate more_gates as foo;
 

@@ -7,6 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
 #![feature(box_syntax, plugin, plugin_registrar, rustc_private)]
 #![feature(macro_vis_matcher)]
 #![feature(macro_at_most_once_rep)]

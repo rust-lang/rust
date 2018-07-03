@@ -12,14 +12,13 @@
 // ignore-stage1
 
 #![allow(warnings)]
-#![feature(proc_macro, proc_macro_path_invoc)]
+#![feature(use_extern_macros)]
 
 extern crate attr_args;
-use attr_args::attr_with_args;
+use attr_args::{attr_with_args, identity};
 
 #[attr_with_args(text = "Hello, world!")]
 fn foo() {}
 
-#[::attr_args::identity(
-  fn main() { assert_eq!(foo(), "Hello, world!"); })]
+#[identity(fn main() { assert_eq!(foo(), "Hello, world!"); })]
 struct Dummy;

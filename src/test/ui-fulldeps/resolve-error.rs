@@ -13,7 +13,7 @@
 // aux-build:attr_proc_macro.rs
 // aux-build:bang_proc_macro.rs
 
-#![feature(proc_macro)]
+#![feature(use_extern_macros)]
 
 #[macro_use]
 extern crate derive_foo;

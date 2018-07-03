@@ -9,8 +9,9 @@
 // except according to those terms.
 
 // no-prefer-dynamic
-#![feature(proc_macro)]
+
 #![crate_type = "proc-macro"]
+#![feature(proc_macro_diagnostic, proc_macro_span)]
 
 extern crate proc_macro;
 

@@ -1073,7 +1073,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 return attrs;
             }
 
-            if self.cx.ecfg.proc_macro_enabled() {
+            if self.cx.ecfg.use_extern_macros_enabled() {
                 attr = find_attr_invoc(&mut attrs);
             }
             traits = collect_derives(&mut self.cx, &mut attrs);
@@ -1096,7 +1096,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 return attrs;
             }
 
-            if self.cx.ecfg.proc_macro_enabled() {
+            if self.cx.ecfg.use_extern_macros_enabled() {
                 attr = find_attr_invoc(&mut attrs);
             }
             attrs
@@ -1406,7 +1406,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                          foreign_item: ast::ForeignItem) -> SmallVector<ast::ForeignItem> {
         let (attr, traits, foreign_item) = self.classify_item(foreign_item);
 
-        let explain = if self.cx.ecfg.proc_macro_enabled() {
+        let explain = if self.cx.ecfg.use_extern_macros_enabled() {
             feature_gate::EXPLAIN_PROC_MACROS_IN_EXTERN
         } else {
             feature_gate::EXPLAIN_MACROS_IN_EXTERN
@@ -1592,7 +1592,7 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_trace_macros = trace_macros,
         fn enable_allow_internal_unstable = allow_internal_unstable,
         fn enable_custom_derive = custom_derive,
-        fn proc_macro_enabled = proc_macro,
+        fn use_extern_macros_enabled = use_extern_macros,
         fn macros_in_extern_enabled = macros_in_extern,
         fn proc_macro_mod = proc_macro_mod,
         fn proc_macro_gen = proc_macro_gen,

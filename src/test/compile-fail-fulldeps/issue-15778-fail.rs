@@ -12,7 +12,7 @@
 // ignore-stage1
 // compile-flags: -D crate-not-okay
 
-#![feature(plugin, custom_attribute)] //~ ERROR crate is not marked with #![crate_okay]
+#![feature(plugin)] //~ ERROR crate is not marked with #![crate_okay]
 #![plugin(lint_for_crate)]
 
 pub fn main() { }

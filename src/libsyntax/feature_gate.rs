@@ -39,13 +39,6 @@ use symbol::{keywords, Symbol};
 use std::{env, path};
 
 macro_rules! set {
-    (proc_macro) => {{
-        fn f(features: &mut Features, span: Span) {
-            features.declared_lib_features.push((Symbol::intern("proc_macro"), span));
-            features.proc_macro = true;
-        }
-        f as fn(&mut Features, Span)
-    }};
     ($field: ident) => {{
         fn f(features: &mut Features, _: Span) {
             features.$field = true;
@@ -302,9 +295,6 @@ declare_features! (
     // The `unadjusted` ABI. Perma unstable.
     // rustc internal
     (active, abi_unadjusted, "1.16.0", None, None),
-
-    // Procedural macros 2.0.
-    (active, proc_macro, "1.16.0", Some(38356), Some(Edition::Edition2018)),
 
     // Declarative macros 2.0 (`macro`).
     (active, decl_macro, "1.17.0", Some(39412), None),
@@ -626,6 +616,8 @@ declare_features! (
     (accepted, global_allocator, "1.28.0", Some(27389), None),
     // Allows `#[repr(transparent)]` attribute on newtype structs
     (accepted, repr_transparent, "1.28.0", Some(43036), None),
+    // Defining procedural macros in `proc-macro` crates
+    (accepted, proc_macro, "1.29.0", Some(38356), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1033,15 +1025,8 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
 
     ("windows_subsystem", Whitelisted, Ungated),
 
-    ("proc_macro_attribute", Normal, Gated(Stability::Unstable,
-                                           "proc_macro",
-                                           "attribute proc macros are currently unstable",
-                                           cfg_fn!(proc_macro))),
-
-    ("proc_macro", Normal, Gated(Stability::Unstable,
-                                 "proc_macro",
-                                 "function-like proc macros are currently unstable",
-                                 cfg_fn!(proc_macro))),
+    ("proc_macro_attribute", Normal, Ungated),
+    ("proc_macro", Normal, Ungated),
 
     ("rustc_derive_registrar", Normal, Gated(Stability::Unstable,
                                              "rustc_derive_registrar",
@@ -1542,7 +1527,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
         }
 
-        if self.context.features.proc_macro && attr::is_known(attr) {
+        if self.context.features.use_extern_macros && attr::is_known(attr) {
             return
         }
 
@@ -1990,7 +1975,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
 /// A collector for mutually exclusive and interdependent features and their flag spans.
 #[derive(Default)]
 struct FeatureChecker {
-    proc_macro: Option<Span>,
+    use_extern_macros: Option<Span>,
     custom_attribute: Option<Span>,
 }
 
@@ -1999,9 +1984,9 @@ impl FeatureChecker {
     // the branching can be eliminated by modifying `set!()` to set these spans
     // only for the features that need to be checked for mutual exclusion.
     fn collect(&mut self, features: &Features, span: Span) {
-        if features.proc_macro {
-            // If self.proc_macro is None, set to Some(span)
-            self.proc_macro = self.proc_macro.or(Some(span));
+        if features.use_extern_macros {
+            // If self.use_extern_macros is None, set to Some(span)
+            self.use_extern_macros = self.use_extern_macros.or(Some(span));
         }
 
         if features.custom_attribute {
@@ -2010,8 +1995,8 @@ impl FeatureChecker {
     }
 
     fn check(self, handler: &Handler) {
-        if let (Some(pm_span), Some(ca_span)) = (self.proc_macro, self.custom_attribute) {
-            handler.struct_span_err(pm_span, "Cannot use `#![feature(proc_macro)]` and \
+        if let (Some(pm_span), Some(ca_span)) = (self.use_extern_macros, self.custom_attribute) {
+            handler.struct_span_err(pm_span, "Cannot use `#![feature(use_extern_macros)]` and \
                                               `#![feature(custom_attribute)] at the same time")
                 .span_note(ca_span, "`#![feature(custom_attribute)]` declared here")
                 .emit();
