@@ -8,17 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt;
-use borrow_check::nll::region_infer::{ConstraintIndex, RegionInferenceContext};
 use borrow_check::nll::region_infer::values::ToElementIndex;
+use borrow_check::nll::region_infer::{Cause, ConstraintIndex, RegionInferenceContext};
+use borrow_check::nll::region_infer::{ConstraintIndex, RegionInferenceContext};
 use borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
-use rustc::infer::InferCtxt;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
-use rustc::mir::{self, Location, Mir, Place, StatementKind, TerminatorKind, Rvalue};
+use rustc::infer::InferCtxt;
+use rustc::mir::{self, Location, Mir, Place, Rvalue, StatementKind, TerminatorKind};
 use rustc::ty::RegionVid;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
+use std::fmt;
 use syntax_pos::Span;
 
 /// Constraints that are considered interesting can be categorized to
@@ -50,16 +51,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// When reporting an error, it is useful to be able to determine which constraints influenced
     /// the region being reported as an error. This function finds all of the paths from the
     /// constraint.
-    fn find_constraint_paths_from_region(
-        &self,
-        r0: RegionVid
-    ) -> Vec<Vec<ConstraintIndex>> {
+    fn find_constraint_paths_from_region(&self, r0: RegionVid) -> Vec<Vec<ConstraintIndex>> {
         let constraints = self.constraints.clone();
 
         // Mapping of regions to the previous region and constraint index that led to it.
         let mut previous = FxHashMap();
         // Regions yet to be visited.
-        let mut next = vec! [ r0 ];
+        let mut next = vec![r0];
         // Regions that have been visited.
         let mut visited = FxHashSet();
         // Ends of paths.
@@ -68,8 +66,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // When we've still got points to visit...
         while let Some(current) = next.pop() {
             // ...take the next point...
-            debug!("find_constraint_paths_from_region: current={:?} visited={:?} next={:?}",
-                   current, visited, next);
+            debug!(
+                "find_constraint_paths_from_region: current={:?} visited={:?} next={:?}",
+                current, visited, next
+            );
             // ...but make sure not to visit this point again...
             visited.insert(current);
 
@@ -78,8 +78,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             for (index, constraint) in constraints.iter_enumerated() {
                 if constraint.sub == current {
                     // ...add the regions that join us with to the path we've taken...
-                    debug!("find_constraint_paths_from_region: index={:?} constraint={:?}",
-                           index, constraint);
+                    debug!(
+                        "find_constraint_paths_from_region: index={:?} constraint={:?}",
+                        index, constraint
+                    );
                     let next_region = constraint.sup.clone();
 
                     // ...unless we've visited it since this was added...
@@ -95,27 +97,41 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             if upcoming.is_empty() {
                 // If we didn't find any edges then this is the end of a path...
-                debug!("find_constraint_paths_from_region: new end region current={:?}", current);
+                debug!(
+                    "find_constraint_paths_from_region: new end region current={:?}",
+                    current
+                );
                 end_regions.insert(current);
             } else {
                 // ...but, if we did find edges, then add these to the regions yet to visit.
-                debug!("find_constraint_paths_from_region: extend next upcoming={:?}", upcoming);
+                debug!(
+                    "find_constraint_paths_from_region: extend next upcoming={:?}",
+                    upcoming
+                );
                 next.extend(upcoming);
             }
-
         }
 
         // Now we've visited each point, compute the final paths.
         let mut paths: Vec<Vec<ConstraintIndex>> = Vec::new();
-        debug!("find_constraint_paths_from_region: end_regions={:?}", end_regions);
+        debug!(
+            "find_constraint_paths_from_region: end_regions={:?}",
+            end_regions
+        );
         for end_region in end_regions {
-            debug!("find_constraint_paths_from_region: end_region={:?}", end_region);
+            debug!(
+                "find_constraint_paths_from_region: end_region={:?}",
+                end_region
+            );
 
             // Get the constraint and region that led to this end point.
             // We can unwrap as we know if end_point was in the vector that it
             // must also be in our previous map.
             let (mut index, mut region) = previous.get(&end_region).unwrap();
-            debug!("find_constraint_paths_from_region: index={:?} region={:?}", index, region);
+            debug!(
+                "find_constraint_paths_from_region: index={:?} region={:?}",
+                index, region
+            );
 
             // Keep track of the indices.
             let mut path: Vec<ConstraintIndex> = vec![index];
@@ -125,7 +141,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 index = p.0;
                 region = p.1;
 
-                debug!("find_constraint_paths_from_region: index={:?} region={:?}", index, region);
+                debug!(
+                    "find_constraint_paths_from_region: index={:?} region={:?}",
+                    index, region
+                );
                 path.push(index);
             }
 
@@ -140,16 +159,28 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// This function will return true if a constraint is interesting and false if a constraint
     /// is not. It is useful in filtering constraint paths to only interesting points.
     fn constraint_is_interesting(&self, index: &ConstraintIndex) -> bool {
-        self.constraints.get(*index).filter(|constraint| {
-            debug!("constraint_is_interesting: locations={:?} constraint={:?}",
-                   constraint.locations, constraint);
-            if let Locations::Interesting(_) = constraint.locations { true } else { false }
-        }).is_some()
+        self.constraints
+            .get(*index)
+            .filter(|constraint| {
+                debug!(
+                    "constraint_is_interesting: locations={:?} constraint={:?}",
+                    constraint.locations, constraint
+                );
+                if let Locations::Interesting(_) = constraint.locations {
+                    true
+                } else {
+                    false
+                }
+            })
+            .is_some()
     }
 
     /// This function classifies a constraint from a location.
-    fn classify_constraint(&self, index: &ConstraintIndex,
-                           mir: &Mir<'tcx>) -> Option<(ConstraintCategory, Span)> {
+    fn classify_constraint(
+        &self,
+        index: &ConstraintIndex,
+        mir: &Mir<'tcx>,
+    ) -> Option<(ConstraintCategory, Span)> {
         let constraint = self.constraints.get(*index)?;
         let span = constraint.locations.span(mir);
         let location = constraint.locations.from_location()?;
@@ -182,7 +213,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                             _ => ConstraintCategory::Other,
                         }
                     }
-                },
+                }
                 _ => ConstraintCategory::Other,
             }
         };
@@ -234,9 +265,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let path = constraints.iter().min_by_key(|p| p.len()).unwrap();
         debug!("report_error: shortest_path={:?}", path);
 
-        let mut categorized_path = path.iter().filter_map(|index| {
-            self.classify_constraint(index, mir)
-        }).collect::<Vec<(ConstraintCategory, Span)>>();
+        let mut categorized_path = path.iter()
+            .filter_map(|index| self.classify_constraint(index, mir))
+            .collect::<Vec<(ConstraintCategory, Span)>>();
         debug!("report_error: categorized_path={:?}", categorized_path);
 
         categorized_path.sort_by(|p0, p1| p0.0.cmp(&p1.0));
@@ -244,8 +275,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         if let Some((category, span)) = &categorized_path.first() {
             let mut diag = infcx.tcx.sess.struct_span_err(
-                *span, &format!("{} requires that data must outlive {}",
-                                category, outlived_fr_string),
+                *span,
+                &format!(
+                    "{} requires that data must outlive {}",
+                    category, outlived_fr_string
+                ),
             );
 
             diag.emit();
@@ -269,8 +303,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Tries to finds a good span to blame for the fact that `fr1`
     /// contains `fr2`.
-    pub(super) fn blame_constraint(&self, fr1: RegionVid,
-                                   elem: impl ToElementIndex) -> ConstraintIndex {
+    pub(super) fn blame_constraint(
+        &self,
+        fr1: RegionVid,
+        elem: impl ToElementIndex,
+    ) -> ConstraintIndex {
         // Find everything that influenced final value of `fr`.
         let influenced_fr1 = self.dependencies(fr1);
 
