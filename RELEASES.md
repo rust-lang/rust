@@ -1,3 +1,26 @@
+Version 1.27.1 (2018-07-10)
+===========================
+
+Security Notes
+--------------
+
+- rustdoc would execute plugins in the /tmp/rustdoc/plugins directory
+  when running, which enabled executing code as some other user on a
+  given machine. This release fixes that vulnerability; you can read
+  more about this on the [blog][rustdoc-sec].
+
+  Thank you to Red Hat for responsibily disclosing this vulnerability to us.
+
+Compatibility Notes
+-------------------
+
+- The borrow checker was fixed to avoid an additional potential unsoundness when using
+  match ergonomics: [#51415][51415], [#49534][49534].
+
+[51415]: https://github.com/rust-lang/rust/issues/51415
+[49534]: https://github.com/rust-lang/rust/issues/49534
+[rustdoc-sec]: https://blog.rust-lang.org/2018/07/06/security-advisory-for-rustdoc.html
+
 Version 1.27.0 (2018-06-21)
 ==========================
 
