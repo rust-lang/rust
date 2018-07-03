@@ -17,7 +17,7 @@ use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
 use rustc::mir::{self, Location, Mir, Place, Rvalue, StatementKind, TerminatorKind};
 use rustc::ty::RegionVid;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt;
 use syntax_pos::Span;
@@ -48,140 +48,107 @@ impl fmt::Display for ConstraintCategory {
 }
 
 impl<'tcx> RegionInferenceContext<'tcx> {
-    /// When reporting an error, it is useful to be able to determine which constraints influenced
-    /// the region being reported as an error. This function finds all of the paths from the
+    /// Walks the graph of constraints (where `'a: 'b` is considered
+    /// an edge `'b -> 'a`) to find all paths from `from_region` to
+    /// `to_region`. The paths are accumulated into the vector
+    /// `results`. The paths are stored as a series of
+    /// `ConstraintIndex` values -- in other words, a list of *edges*.
+    ///
+    /// # Parameters
+    ///
+    /// - `from_region`
+    /// When reporting an error, it is useful to be able to determine
+    /// which constraints influenced the region being reported as an
+    /// error. This function finds all of the paths from the
     /// constraint.
-    fn find_constraint_paths_from_region(&self, r0: RegionVid) -> Vec<Vec<ConstraintIndex>> {
-        let constraints = self.constraints.clone();
-
-        // Mapping of regions to the previous region and constraint index that led to it.
-        let mut previous = FxHashMap();
-        // Regions yet to be visited.
-        let mut next = vec![r0];
-        // Regions that have been visited.
-        let mut visited = FxHashSet();
-        // Ends of paths.
-        let mut end_regions = FxHashSet();
-
-        // When we've still got points to visit...
-        while let Some(current) = next.pop() {
-            // ...take the next point...
-            debug!(
-                "find_constraint_paths_from_region: current={:?} visited={:?} next={:?}",
-                current, visited, next
-            );
-            // ...but make sure not to visit this point again...
-            visited.insert(current);
-
-            // ...find the edges containing it...
-            let mut upcoming = Vec::new();
-            for (index, constraint) in constraints.iter_enumerated() {
-                if constraint.sub == current {
-                    // ...add the regions that join us with to the path we've taken...
-                    debug!(
-                        "find_constraint_paths_from_region: index={:?} constraint={:?}",
-                        index, constraint
-                    );
-                    let next_region = constraint.sup.clone();
-
-                    // ...unless we've visited it since this was added...
-                    if visited.contains(&next_region) {
-                        debug!("find_constraint_paths_from_region: skipping as visited");
-                        continue;
-                    }
-
-                    previous.insert(next_region, (index, Some(current)));
-                    upcoming.push(next_region);
-                }
-            }
-
-            if upcoming.is_empty() {
-                // If we didn't find any edges then this is the end of a path...
-                debug!(
-                    "find_constraint_paths_from_region: new end region current={:?}",
-                    current
-                );
-                end_regions.insert(current);
-            } else {
-                // ...but, if we did find edges, then add these to the regions yet to visit.
-                debug!(
-                    "find_constraint_paths_from_region: extend next upcoming={:?}",
-                    upcoming
-                );
-                next.extend(upcoming);
-            }
-        }
-
-        // Now we've visited each point, compute the final paths.
-        let mut paths: Vec<Vec<ConstraintIndex>> = Vec::new();
-        debug!(
-            "find_constraint_paths_from_region: end_regions={:?}",
-            end_regions
+    fn find_constraint_paths_between_regions(
+        &self,
+        from_region: RegionVid,
+        to_region: RegionVid,
+    ) -> Vec<Vec<ConstraintIndex>> {
+        let mut results = vec![];
+        self.find_constraint_paths_between_regions_helper(
+            from_region,
+            from_region,
+            to_region,
+            &mut FxHashSet::default(),
+            &mut vec![],
+            &mut results,
         );
-        for end_region in end_regions {
-            debug!(
-                "find_constraint_paths_from_region: end_region={:?}",
-                end_region
-            );
+        results
+    }
 
-            // Get the constraint and region that led to this end point.
-            // We can unwrap as we know if end_point was in the vector that it
-            // must also be in our previous map.
-            let (mut index, mut region) = previous.get(&end_region).unwrap();
-            debug!(
-                "find_constraint_paths_from_region: index={:?} region={:?}",
-                index, region
-            );
+    /// Helper for `find_constraint_paths_between_regions`.
+    fn find_constraint_paths_between_regions_helper(
+        &self,
+        from_region: RegionVid,
+        current_region: RegionVid,
+        to_region: RegionVid,
+        visited: &mut FxHashSet<RegionVid>,
+        stack: &mut Vec<ConstraintIndex>,
+        results: &mut Vec<Vec<ConstraintIndex>>,
+    ) {
+        let dependency_map = self.dependency_map.as_ref().unwrap();
 
-            // Keep track of the indices.
-            let mut path: Vec<ConstraintIndex> = vec![index];
-
-            while region.is_some() && region != Some(r0) {
-                let p = previous.get(&region.unwrap()).unwrap();
-                index = p.0;
-                region = p.1;
-
-                debug!(
-                    "find_constraint_paths_from_region: index={:?} region={:?}",
-                    index, region
-                );
-                path.push(index);
-            }
-
-            // Add to our paths.
-            paths.push(path);
+        // Check if we already visited this region.
+        if !visited.insert(current_region) {
+            return;
         }
 
-        debug!("find_constraint_paths_from_region: paths={:?}", paths);
-        paths
+        // Check if we reached the region we were looking for.
+        if current_region == to_region {
+            // Unless we started out searching for `'a ~> 'a`, which shouldn't have caused
+            // en error, then we must have traversed at least *some* constraint:
+            assert!(!stack.is_empty());
+
+            // The first constraint should be like `X: from_region`.
+            assert_eq!(self.constraints[stack[0]].sub, from_region);
+
+            // The last constraint should be like `to_region: Y`.
+            assert_eq!(self.constraints[*stack.last().unwrap()].sup, to_region);
+
+            results.push(stack.clone());
+            return;
+        }
+
+        self.constraints
+            .each_affected_by_dirty(dependency_map[current_region], |constraint| {
+                assert_eq!(self.constraints[constraint].sub, current_region);
+                stack.push(constraint);
+                self.find_constraint_paths_between_regions_helper(
+                    from_region,
+                    self.constraints[constraint].sup,
+                    to_region,
+                    visited,
+                    stack,
+                    results,
+                );
+                stack.pop();
+            });
     }
 
     /// This function will return true if a constraint is interesting and false if a constraint
     /// is not. It is useful in filtering constraint paths to only interesting points.
-    fn constraint_is_interesting(&self, index: &ConstraintIndex) -> bool {
-        self.constraints
-            .get(*index)
-            .filter(|constraint| {
-                debug!(
-                    "constraint_is_interesting: locations={:?} constraint={:?}",
-                    constraint.locations, constraint
-                );
-                if let Locations::Interesting(_) = constraint.locations {
-                    true
-                } else {
-                    false
-                }
-            })
-            .is_some()
+    fn constraint_is_interesting(&self, index: ConstraintIndex) -> bool {
+        let constraint = self.constraints[index];
+        debug!(
+            "constraint_is_interesting: locations={:?} constraint={:?}",
+            constraint.locations, constraint
+        );
+        if let Locations::Interesting(_) = constraint.locations {
+            true
+        } else {
+            false
+        }
     }
 
     /// This function classifies a constraint from a location.
     fn classify_constraint(
         &self,
-        index: &ConstraintIndex,
+        index: ConstraintIndex,
         mir: &Mir<'tcx>,
     ) -> Option<(ConstraintCategory, Span)> {
-        let constraint = self.constraints.get(*index)?;
+        let constraint = self.constraints[index];
         let span = constraint.locations.span(mir);
         let location = constraint.locations.from_location()?;
 
@@ -238,7 +205,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         outlived_fr: RegionVid,
         blame_span: Span,
     ) {
-        // Obviously uncool error reporting.
+        debug!("report_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
         let fr_name = self.to_error_region(fr);
         let outlived_fr_name = self.to_error_region(outlived_fr);
@@ -261,19 +228,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             None => format!("free region `{:?}`", outlived_fr),
         };
 
-        let constraints = self.find_constraint_paths_from_region(fr.clone());
-        let path = constraints.iter().min_by_key(|p| p.len()).unwrap();
+        // Find all paths
+        let constraint_paths = self.find_constraint_paths_between_regions(outlived_fr, fr);
+        debug!("report_error: constraint_paths={:#?}", constraint_paths);
+
+        // Find the shortest such path.
+        let path = constraint_paths.iter().min_by_key(|p| p.len()).unwrap();
         debug!("report_error: shortest_path={:?}", path);
 
-        let mut categorized_path = path.iter()
-            .filter_map(|index| self.classify_constraint(index, mir))
-            .collect::<Vec<(ConstraintCategory, Span)>>();
+        // Classify each of the constraints along the path.
+        let mut categorized_path: Vec<(ConstraintCategory, Span)> = path.iter()
+            .filter_map(|&index| self.classify_constraint(index, mir))
+            .collect();
         debug!("report_error: categorized_path={:?}", categorized_path);
 
+        // Find what appears to be the most interesting path to report to the user.
         categorized_path.sort_by(|p0, p1| p0.0.cmp(&p1.0));
         debug!("report_error: sorted_path={:?}", categorized_path);
 
-        if let Some((category, span)) = &categorized_path.first() {
+        // If we found something, cite that as the main cause of the problem.
+        if let Some((category, span)) = categorized_path.first() {
             let mut diag = infcx.tcx.sess.struct_span_err(
                 *span,
                 &format!(
