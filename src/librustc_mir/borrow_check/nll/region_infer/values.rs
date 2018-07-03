@@ -8,17 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::nll::region_infer::TrackCauses;
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::ty::RegionVid;
 use rustc_data_structures::bitvec::SparseBitMatrix;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt::Debug;
 use std::rc::Rc;
-
-use super::Cause;
 
 /// Maps between the various kinds of elements of a region value to
 /// the internal indices that w use.
@@ -32,7 +28,8 @@ pub(super) struct RegionValueElements {
 impl RegionValueElements {
     pub(super) fn new(mir: &Mir<'_>, num_universal_regions: usize) -> Self {
         let mut num_points = 0;
-        let statements_before_block = mir.basic_blocks()
+        let statements_before_block = mir
+            .basic_blocks()
             .iter()
             .map(|block_data| {
                 let v = num_points;
@@ -100,7 +97,8 @@ impl RegionValueElements {
             // be (BB2, 20).
             //
             // Nit: we could do a binary search here but I'm too lazy.
-            let (block, &first_index) = self.statements_before_block
+            let (block, &first_index) = self
+                .statements_before_block
                 .iter_enumerated()
                 .filter(|(_, first_index)| **first_index <= point_index)
                 .last()
@@ -180,18 +178,11 @@ impl ToElementIndex for RegionElementIndex {
 /// compact `SparseBitMatrix` representation, with one row per region
 /// variable. The columns consist of either universal regions or
 /// points in the CFG.
+#[derive(Clone)]
 pub(super) struct RegionValues {
     elements: Rc<RegionValueElements>,
     matrix: SparseBitMatrix<RegionVid, RegionElementIndex>,
-
-    /// If cause tracking is enabled, maps from a pair (r, e)
-    /// consisting of a region `r` that contains some element `e` to
-    /// the reason that the element is contained. There should be an
-    /// entry for every bit set to 1 in `SparseBitMatrix`.
-    causes: Option<CauseMap>,
 }
-
-type CauseMap = FxHashMap<(RegionVid, RegionElementIndex), Cause>;
 
 impl RegionValues {
     /// Creates a new set of "region values" that tracks causal information.
@@ -209,78 +200,21 @@ impl RegionValues {
                 RegionVid::new(num_region_variables),
                 RegionElementIndex::new(elements.num_elements()),
             ),
-            causes: Some(CauseMap::default()),
-        }
-    }
-
-    /// Duplicates the region values. If track_causes is false, then the
-    /// resulting value will not track causal information (and any existing
-    /// causal information is dropped). Otherwise, the causal information is
-    /// preserved and maintained. Tracking the causal information makes region
-    /// propagation significantly slower, so we prefer not to do it until an
-    /// error is reported.
-    pub(super) fn duplicate(&self, track_causes: TrackCauses) -> Self {
-        Self {
-            elements: self.elements.clone(),
-            matrix: self.matrix.clone(),
-            causes: if track_causes.0 {
-                self.causes.clone()
-            } else {
-                None
-            },
         }
     }
 
     /// Adds the given element to the value for the given region. Returns true if
     /// the element is newly added (i.e., was not already present).
-    pub(super) fn add_element<E: ToElementIndex>(
-        &mut self,
-        r: RegionVid,
-        elem: E,
-        cause: &Cause,
-    ) -> bool {
+    pub(super) fn add_element<E: ToElementIndex>(&mut self, r: RegionVid, elem: E) -> bool {
         let i = self.elements.index(elem);
-        self.add_internal(r, i, |_| cause.clone())
+        debug!("add(r={:?}, elem={:?})", r, elem);
+        self.matrix.add(r, i)
     }
 
     /// Add all elements in `r_from` to `r_to` (because e.g. `r_to:
     /// r_from`).
     pub(super) fn add_region(&mut self, r_to: RegionVid, r_from: RegionVid) -> bool {
         self.matrix.merge(r_from, r_to)
-    }
-
-    /// Internal method to add an element to a region.
-    ///
-    /// Takes a "lazy" cause -- this function will return the cause, but it will only
-    /// be invoked if cause tracking is enabled.
-    fn add_internal<F>(&mut self, r: RegionVid, i: RegionElementIndex, make_cause: F) -> bool
-    where
-        F: FnOnce(&CauseMap) -> Cause,
-    {
-        if self.matrix.add(r, i) {
-            debug!("add(r={:?}, i={:?})", r, self.elements.to_element(i));
-
-            if let Some(causes) = &mut self.causes {
-                let cause = make_cause(causes);
-                causes.insert((r, i), cause);
-            }
-
-            true
-        } else {
-            if let Some(causes) = &mut self.causes {
-                let cause = make_cause(causes);
-                let old_cause = causes.get_mut(&(r, i)).unwrap();
-                // #49998: compare using root cause alone to avoid
-                // useless traffic from similar outlives chains.
-
-                if cause < *old_cause {
-                    *old_cause = cause;
-                    return true;
-                }
-            }
-
-            false
-        }
     }
 
     /// True if the region `r` contains the given element.
@@ -396,20 +330,6 @@ impl RegionValues {
                 "{:?}[{}..={}]",
                 location1.block, location1.statement_index, location2.statement_index
             ));
-        }
-    }
-
-    /// Given a region `r` that contains the element `elem`, returns the `Cause`
-    /// that tells us *why* `elem` is found in that region.
-    ///
-    /// Returns None if cause tracking is disabled or `elem` is not
-    /// actually found in `r`.
-    pub(super) fn cause<T: ToElementIndex>(&self, r: RegionVid, elem: T) -> Option<Cause> {
-        let index = self.elements.index(elem);
-        if let Some(causes) = &self.causes {
-            causes.get(&(r, index)).cloned()
-        } else {
-            None
         }
     }
 }

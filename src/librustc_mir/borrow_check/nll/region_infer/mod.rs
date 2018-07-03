@@ -19,7 +19,7 @@ use rustc::infer::NLLRegionVariableOrigin;
 use rustc::infer::RegionVariableOrigin;
 use rustc::mir::{
     ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements, Local, Location,
-    Mir
+    Mir,
 };
 use rustc::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common;
@@ -75,8 +75,6 @@ pub struct RegionInferenceContext<'tcx> {
     universal_regions: UniversalRegions<'tcx>,
 }
 
-struct TrackCauses(bool);
-
 struct RegionDefinition<'tcx> {
     /// Why we created this variable. Mostly these will be
     /// `RegionVariableOrigin::NLL`, but some variables get created
@@ -105,13 +103,6 @@ pub(crate) enum Cause {
 
     /// point inserted because Local was dropped at the given Location
     DropVar(Local, Location),
-
-    /// point inserted because the type was live at the given Location,
-    /// but not as part of some local variable
-    LiveOther(Location),
-
-    /// part of the initial set of values for a universally quantified region
-    UniversalRegion(RegionVid),
 }
 
 /// A "type test" corresponds to an outlives constraint between a type
@@ -280,19 +271,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // Add all nodes in the CFG to liveness constraints
             for point_index in self.elements.all_point_indices() {
-                self.liveness_constraints.add_element(
-                    variable,
-                    point_index,
-                    &Cause::UniversalRegion(variable),
-                );
+                self.liveness_constraints.add_element(variable, point_index);
             }
 
             // Add `end(X)` into the set for X.
-            self.liveness_constraints.add_element(
-                variable,
-                variable,
-                &Cause::UniversalRegion(variable),
-            );
+            self.liveness_constraints.add_element(variable, variable);
         }
     }
 
@@ -337,26 +320,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// Returns `true` if this constraint is new and `false` is the
     /// constraint was already present.
-    pub(super) fn add_live_point(&mut self, v: RegionVid, point: Location, cause: &Cause) -> bool {
+    pub(super) fn add_live_point(&mut self, v: RegionVid, point: Location) -> bool {
         debug!("add_live_point({:?}, {:?})", v, point);
         assert!(self.inferred_values.is_none(), "values already inferred");
-        debug!("add_live_point: @{:?} Adding cause {:?}", point, cause);
 
         let element = self.elements.index(point);
-        if self.liveness_constraints.add_element(v, element, &cause) {
-            true
-        } else {
-            false
-        }
+        self.liveness_constraints.add_element(v, element)
     }
 
     /// Indicates that the region variable `sup` must outlive `sub` is live at the point `point`.
-    pub(super) fn add_outlives(
-        &mut self,
-        locations: Locations,
-        sup: RegionVid,
-        sub: RegionVid,
-    ) {
+    pub(super) fn add_outlives(&mut self, locations: Locations, sup: RegionVid, sub: RegionVid) {
         assert!(self.inferred_values.is_none(), "values already inferred");
         self.constraints.push(OutlivesConstraint {
             locations,
@@ -440,7 +413,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // The initial values for each region are derived from the liveness
         // constraints we have accumulated.
-        let mut inferred_values = self.liveness_constraints.duplicate(TrackCauses(false));
+        let mut inferred_values = self.liveness_constraints.clone();
 
         let dependency_map = self.dependency_map.as_ref().unwrap();
 
@@ -461,11 +434,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 debug!("propagate_constraints:   sub={:?}", constraint.sub);
                 debug!("propagate_constraints:   sup={:?}", constraint.sup);
 
-                self.constraints.each_affected_by_dirty(dependency_map[constraint.sup], |dep_idx| {
-                    if clean_bit_vec.remove(dep_idx.index()) {
-                        dirty_list.push(dep_idx);
-                    }
-                });
+                self.constraints.each_affected_by_dirty(
+                    dependency_map[constraint.sup],
+                    |dep_idx| {
+                        if clean_bit_vec.remove(dep_idx.index()) {
+                            dirty_list.push(dep_idx);
+                        }
+                    },
+                );
             }
 
             debug!("\n");
@@ -503,8 +479,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             if let Some(propagated_outlives_requirements) = &mut propagated_outlives_requirements {
-                if self.try_promote_type_test(infcx, mir, type_test,
-                                              propagated_outlives_requirements) {
+                if self.try_promote_type_test(
+                    infcx,
+                    mir,
+                    type_test,
+                    propagated_outlives_requirements,
+                ) {
                     continue;
                 }
             }
@@ -760,12 +740,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Test if `test` is true when applied to `lower_bound` at
     /// `point`, and returns true or false.
-    fn eval_region_test(
-        &self,
-        mir: &Mir<'tcx>,
-        lower_bound: RegionVid,
-        test: &RegionTest,
-    ) -> bool {
+    fn eval_region_test(&self, mir: &Mir<'tcx>, lower_bound: RegionVid, test: &RegionTest) -> bool {
         debug!(
             "eval_region_test(lower_bound={:?}, test={:?})",
             lower_bound, test
@@ -797,10 +772,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         sup_region: RegionVid,
         sub_region: RegionVid,
     ) -> bool {
-        debug!(
-            "eval_outlives({:?}: {:?})",
-            sup_region, sub_region
-        );
+        debug!("eval_outlives({:?}: {:?})", sup_region, sub_region);
 
         let inferred_values = self
             .inferred_values

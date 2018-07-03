@@ -14,7 +14,6 @@
 use borrow_check::location::LocationTable;
 use borrow_check::nll::constraint_set::ConstraintSet;
 use borrow_check::nll::facts::AllFacts;
-use borrow_check::nll::region_infer::Cause;
 use borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
 use borrow_check::nll::universal_regions::UniversalRegions;
 use dataflow::move_paths::MoveData;
@@ -312,7 +311,10 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
         debug!("sanitize_constant: expected_ty={:?}", expected_ty);
 
-        if let Err(terr) = self.cx.eq_types(expected_ty, constant.ty, location.boring()) {
+        if let Err(terr) = self
+            .cx
+            .eq_types(expected_ty, constant.ty, location.boring())
+        {
             span_mirbug!(
                 self,
                 constant,
@@ -615,7 +617,7 @@ crate struct MirTypeckRegionConstraints<'tcx> {
     /// not otherwise appear in the MIR -- in particular, the
     /// late-bound regions that it instantiates at call-sites -- and
     /// hence it must report on their liveness constraints.
-    crate liveness_set: Vec<(ty::Region<'tcx>, Location, Cause)>,
+    crate liveness_set: Vec<(ty::Region<'tcx>, Location)>,
 
     crate outlives_constraints: ConstraintSet,
 
@@ -771,12 +773,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn sub_types(
-        &mut self,
-        sub: Ty<'tcx>,
-        sup: Ty<'tcx>,
-        locations: Locations,
-    ) -> Fallible<()> {
+    fn sub_types(&mut self, sub: Ty<'tcx>, sup: Ty<'tcx>, locations: Locations) -> Fallible<()> {
         let param_env = self.param_env;
         self.fully_perform_op(
             locations,
@@ -808,7 +805,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     false
                 };
 
-                let locations = if is_temp { location.boring() } else { location.interesting() };
+                let locations = if is_temp {
+                    location.boring()
+                } else {
+                    location.interesting()
+                };
 
                 let place_ty = place.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = rv.ty(mir, tcx);
@@ -983,11 +984,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // output) types in the signature must be live, since
                 // all the inputs that fed into it were live.
                 for &late_bound_region in map.values() {
-                    self.constraints.liveness_set.push((
-                        late_bound_region,
-                        term_location,
-                        Cause::LiveOther(term_location),
-                    ));
+                    self.constraints
+                        .liveness_set
+                        .push((late_bound_region, term_location));
                 }
 
                 self.check_call_inputs(mir, term, &sig, args, term_location);
@@ -1507,10 +1506,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     );
 
                     // Hmm, are these constraints *really* boring?
-                    self.push_region_constraints(
-                        location.boring(),
-                        &closure_constraints,
-                    );
+                    self.push_region_constraints(location.boring(), &closure_constraints);
                 }
 
                 tcx.predicates_of(*def_id).instantiate(tcx, substs.substs)
