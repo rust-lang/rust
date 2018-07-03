@@ -420,15 +420,6 @@ impl<'a> State<'a> {
                     self.print_lifetime(lifetime)?;
                 }
             }
-            hir::TyImplTraitExistential(hir_id, _def_id, ref _lifetimes) => {
-                match self.ann.try_fetch_item(hir_id.id).map(|it| &it.node) {
-                    None => self.word_space("impl {{Trait}}")?,
-                    Some(&hir::ItemExistential(ref exist_ty)) => {
-                        self.print_bounds("impl", &exist_ty.bounds)?;
-                    },
-                    other => bug!("impl Trait pointed to {:#?}", other),
-                }
-            }
             hir::TyArray(ref ty, ref length) => {
                 self.s.word("[")?;
                 self.print_type(&ty)?;

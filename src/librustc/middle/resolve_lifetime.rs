@@ -625,122 +625,131 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |_, this| this.visit_ty(&mt.ty));
             }
-            hir::TyImplTraitExistential(item_id, _, ref lifetimes) => {
-                // Resolve the lifetimes that are applied to the existential type.
-                // These are resolved in the current scope.
-                // `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
-                // `fn foo<'a>() -> MyAnonTy<'a> { ... }`
-                //          ^                 ^this gets resolved in the current scope
-                for lifetime in lifetimes {
-                    self.visit_lifetime(lifetime);
+            hir::TyPath(hir::QPath::Resolved(None, ref path)) => {
+                if let Def::Existential(exist_ty_did) = path.def {
+                    assert!(exist_ty_did.is_local());
+                    // Resolve the lifetimes that are applied to the existential type.
+                    // These are resolved in the current scope.
+                    // `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
+                    // `fn foo<'a>() -> MyAnonTy<'a> { ... }`
+                    //          ^                 ^this gets resolved in the current scope
+                    for lifetime in &path.segments[0].args.as_ref().unwrap().args {
+                        if let hir::GenericArg::Lifetime(lifetime) = lifetime {
+                            self.visit_lifetime(lifetime);
 
-                    // Check for predicates like `impl for<'a> SomeTrait<impl OtherTrait<'a>>`
-                    // and ban them. Type variables instantiated inside binders aren't
-                    // well-supported at the moment, so this doesn't work.
-                    // In the future, this should be fixed and this error should be removed.
-                    let def = self.map.defs.get(&lifetime.id).cloned();
-                    if let Some(Region::LateBound(_, def_id, _)) = def {
-                        if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
-                            // Ensure that the parent of the def is an item, not HRTB
-                            let parent_id = self.tcx.hir.get_parent_node(node_id);
-                            let parent_impl_id = hir::ImplItemId { node_id: parent_id };
-                            let parent_trait_id = hir::TraitItemId { node_id: parent_id };
-                            let krate = self.tcx.hir.forest.krate();
-                            if !(krate.items.contains_key(&parent_id)
-                                || krate.impl_items.contains_key(&parent_impl_id)
-                                || krate.trait_items.contains_key(&parent_trait_id))
-                            {
-                                span_err!(
-                                    self.tcx.sess,
-                                    lifetime.span,
-                                    E0657,
-                                    "`impl Trait` can only capture lifetimes \
-                                     bound at the fn or impl level"
-                                );
-                                self.uninsert_lifetime_on_error(lifetime, def.unwrap());
+                            // Check for predicates like `impl for<'a> Trait<impl OtherTrait<'a>>`
+                            // and ban them. Type variables instantiated inside binders aren't
+                            // well-supported at the moment, so this doesn't work.
+                            // In the future, this should be fixed and this error should be removed.
+                            let def = self.map.defs.get(&lifetime.id).cloned();
+                            if let Some(Region::LateBound(_, def_id, _)) = def {
+                                if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
+                                    // Ensure that the parent of the def is an item, not HRTB
+                                    let parent_id = self.tcx.hir.get_parent_node(node_id);
+                                    let parent_impl_id = hir::ImplItemId { node_id: parent_id };
+                                    let parent_trait_id = hir::TraitItemId { node_id: parent_id };
+                                    let krate = self.tcx.hir.forest.krate();
+                                    if !(krate.items.contains_key(&parent_id)
+                                        || krate.impl_items.contains_key(&parent_impl_id)
+                                        || krate.trait_items.contains_key(&parent_trait_id))
+                                    {
+                                        span_err!(
+                                            self.tcx.sess,
+                                            lifetime.span,
+                                            E0657,
+                                            "`impl Trait` can only capture lifetimes \
+                                            bound at the fn or impl level"
+                                        );
+                                        self.uninsert_lifetime_on_error(lifetime, def.unwrap());
+                                    }
+                                }
                             }
                         }
                     }
-                }
 
-                // Resolve the lifetimes in the bounds to the lifetime defs in the generics.
-                // `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
-                // `abstract type MyAnonTy<'b>: MyTrait<'b>;`
-                //                          ^            ^ this gets resolved in the scope of
-                //                                         the exist_ty generics
-                let (generics, bounds) = match self.tcx.hir.expect_item(item_id.id).node {
-                    hir::ItemExistential(hir::ExistTy{ ref generics, ref bounds, .. }) => (
-                        generics,
-                        bounds,
-                    ),
-                    ref i => bug!("impl Trait pointed to non-existential type?? {:#?}", i),
-                };
+                    let id = self.tcx.hir.as_local_node_id(exist_ty_did).unwrap();
 
-                // We want to start our early-bound indices at the end of the parent scope,
-                // not including any parent `impl Trait`s.
-                let mut index = self.next_early_index_for_abstract_type();
-                debug!("visit_ty: index = {}", index);
+                    // Resolve the lifetimes in the bounds to the lifetime defs in the generics.
+                    // `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
+                    // `abstract type MyAnonTy<'b>: MyTrait<'b>;`
+                    //                          ^            ^ this gets resolved in the scope of
+                    //                                         the exist_ty generics
+                    let (generics, bounds) = match self.tcx.hir.expect_item(id).node {
+                        hir::ItemExistential(hir::ExistTy{ ref generics, ref bounds, .. }) => (
+                            generics,
+                            bounds,
+                        ),
+                        ref i => bug!("impl Trait pointed to non-existential type?? {:#?}", i),
+                    };
 
-                let mut elision = None;
-                let mut lifetimes = FxHashMap();
-                let mut type_count = 0;
-                for param in &generics.params {
-                    match param.kind {
-                        GenericParamKind::Lifetime { .. } => {
-                            let (name, reg) = Region::early(&self.tcx.hir, &mut index, &param);
-                            if let hir::ParamName::Plain(param_name) = name {
-                                if param_name.name == keywords::UnderscoreLifetime.name() {
-                                    // Pick the elided lifetime "definition" if one exists
-                                    // and use it to make an elision scope.
-                                    elision = Some(reg);
+                    // We want to start our early-bound indices at the end of the parent scope,
+                    // not including any parent `impl Trait`s.
+                    let mut index = self.next_early_index_for_abstract_type();
+                    debug!("visit_ty: index = {}", index);
+
+                    let mut elision = None;
+                    let mut lifetimes = FxHashMap();
+                    let mut type_count = 0;
+                    for param in &generics.params {
+                        match param.kind {
+                            GenericParamKind::Lifetime { .. } => {
+                                let (name, reg) = Region::early(&self.tcx.hir, &mut index, &param);
+                                if let hir::ParamName::Plain(param_name) = name {
+                                    if param_name.name == keywords::UnderscoreLifetime.name() {
+                                        // Pick the elided lifetime "definition" if one exists
+                                        // and use it to make an elision scope.
+                                        elision = Some(reg);
+                                    } else {
+                                        lifetimes.insert(name, reg);
+                                    }
                                 } else {
                                     lifetimes.insert(name, reg);
                                 }
-                            } else {
-                                lifetimes.insert(name, reg);
+                            }
+                            GenericParamKind::Type { .. } => {
+                                type_count += 1;
                             }
                         }
-                        GenericParamKind::Type { .. } => {
-                            type_count += 1;
-                        }
                     }
-                }
-                let next_early_index = index + type_count;
+                    let next_early_index = index + type_count;
 
-                if let Some(elision_region) = elision {
-                    let scope = Scope::Elision {
-                        elide: Elide::Exact(elision_region),
-                        s: self.scope,
-                    };
-                    self.with(scope, |_old_scope, this| {
+                    if let Some(elision_region) = elision {
+                        let scope = Scope::Elision {
+                            elide: Elide::Exact(elision_region),
+                            s: self.scope,
+                        };
+                        self.with(scope, |_old_scope, this| {
+                            let scope = Scope::Binder {
+                                lifetimes,
+                                next_early_index,
+                                s: this.scope,
+                                track_lifetime_uses: true,
+                                abstract_type_parent: false,
+                            };
+                            this.with(scope, |_old_scope, this| {
+                                this.visit_generics(generics);
+                                for bound in bounds {
+                                    this.visit_param_bound(bound);
+                                }
+                            });
+                        });
+                    } else {
                         let scope = Scope::Binder {
                             lifetimes,
                             next_early_index,
-                            s: this.scope,
+                            s: self.scope,
                             track_lifetime_uses: true,
                             abstract_type_parent: false,
                         };
-                        this.with(scope, |_old_scope, this| {
+                        self.with(scope, |_old_scope, this| {
                             this.visit_generics(generics);
                             for bound in bounds {
                                 this.visit_param_bound(bound);
                             }
                         });
-                    });
+                    }
                 } else {
-                    let scope = Scope::Binder {
-                        lifetimes,
-                        next_early_index,
-                        s: self.scope,
-                        track_lifetime_uses: true,
-                        abstract_type_parent: false,
-                    };
-                    self.with(scope, |_old_scope, this| {
-                        this.visit_generics(generics);
-                        for bound in bounds {
-                            this.visit_param_bound(bound);
-                        }
-                    });
+                    intravisit::walk_ty(self, ty)
                 }
             }
             _ => intravisit::walk_ty(self, ty),
