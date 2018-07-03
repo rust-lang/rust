@@ -1269,16 +1269,14 @@ impl Step for DocTest {
 
         files.sort();
 
+        let mut toolstate = ToolState::TestPass;
         for file in files {
-            let test_result = markdown_test(builder, compiler, &file);
-            if self.is_ext_doc {
-                let toolstate = if test_result {
-                    ToolState::TestPass
-                } else {
-                    ToolState::TestFail
-                };
-                builder.save_toolstate(self.name, toolstate);
+            if !markdown_test(builder, compiler, &file) {
+                toolstate = ToolState::TestFail;
             }
+        }
+        if self.is_ext_doc {
+            builder.save_toolstate(self.name, toolstate);
         }
     }
 }
