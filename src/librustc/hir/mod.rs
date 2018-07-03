@@ -1692,18 +1692,6 @@ pub enum Ty_ {
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
     TyTraitObject(HirVec<PolyTraitRef>, Lifetime),
-    /// An existentially quantified (there exists a type satisfying) `impl
-    /// Bound1 + Bound2 + Bound3` type where `Bound` is a trait or a lifetime.
-    ///
-    /// The `Item` is the generated
-    /// `existential type Foo<'a, 'b>: MyTrait<'a, 'b>;`.
-    ///
-    /// The `HirVec<Lifetime>` is the list of lifetimes applied as parameters
-    /// to the `abstract type`, e.g. the `'c` and `'d` in `-> Foo<'c, 'd>`.
-    /// This list is only a list of lifetimes and not type parameters
-    /// because all in-scope type parameters are captured by `impl Trait`,
-    /// so they are resolved directly through the parent `Generics`.
-    TyImplTraitExistential(ItemId, DefId, HirVec<Lifetime>),
     /// Unused for now
     TyTypeof(AnonConst),
     /// TyInfer means the type should be inferred instead of it having been
