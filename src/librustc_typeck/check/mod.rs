@@ -4951,14 +4951,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let supress_mismatch = self.check_impl_trait(span, seg, &generics);
             supress_errors.insert(index,
                 self.check_generic_arg_count(span, seg, &generics, false, supress_mismatch));
-            infer_lifetimes.insert(index, if let Some(ref data) = seg.args {
+            let inferred_lifetimes = if if let Some(ref data) = seg.args {
                 !data.args.iter().any(|arg| match arg {
                     GenericArg::Lifetime(_) => true,
                     _ => false,
                 })
             } else {
                 true
-            });
+            } {
+                generics.own_counts().lifetimes
+            } else {
+                0
+            };
+            infer_lifetimes.insert(index, inferred_lifetimes);
         }
 
         let has_self = path_segs.last().map(|PathSeg(def_id, _)| {
@@ -4997,15 +5002,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         true
                     } else {
                         if let Some(ref data) = segments[index].args {
-                            let lifetime_offset = if infer_lifetimes[&index] {
-                                defs.own_counts().lifetimes
-                            } else {
-                                0
-                            };
                             let self_offset = (defs.parent_count == 0 && has_self) as usize;
                             let param_idx =
                                 (param.index as usize - defs.parent_count - self_offset as usize)
-                                .saturating_sub(lifetime_offset);
+                                .saturating_sub(infer_lifetimes[&index]);
                             if let Some(arg) = data.args.get(param_idx) {
                                 match param.kind {
                                     GenericParamDefKind::Lifetime => match arg {
