@@ -45,6 +45,18 @@ impl Fingerprint {
         )
     }
 
+    // Combines two hashes in an order independent way. Make sure this is what
+    // you want.
+    #[inline]
+    pub fn combine_commutative(self, other: Fingerprint) -> Fingerprint {
+        let a = (self.1 as u128) << 64 | self.0 as u128;
+        let b = (other.1 as u128) << 64 | other.0 as u128;
+
+        let c = a.wrapping_add(b);
+
+        Fingerprint((c >> 64) as u64, c as u64)
+    }
+
     pub fn to_hex(&self) -> String {
         format!("{:x}{:x}", self.0, self.1)
     }

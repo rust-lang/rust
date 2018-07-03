@@ -14,7 +14,7 @@
 use hir;
 use hir::map::DefPathHash;
 use hir::def_id::{DefId, LocalDefId, CrateNum, CRATE_DEF_INDEX};
-use ich::{StableHashingContext, NodeIdHashingMode};
+use ich::{StableHashingContext, NodeIdHashingMode, Fingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
 use std::mem;
@@ -767,15 +767,21 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod {
 
         inner_span.hash_stable(hcx, hasher);
 
-        let mut item_ids: Vec<DefPathHash> = item_ids.iter().map(|id| {
-            let (def_path_hash, local_id) = id.id.to_stable_hash_key(hcx);
-            debug_assert_eq!(local_id, hir::ItemLocalId(0));
-            def_path_hash
-        }).collect();
+        // Combining the DefPathHashes directly is faster than feeding them
+        // into the hasher. Because we use a commutative combine, we also don't
+        // have to sort the array.
+        let item_ids_hash = item_ids
+            .iter()
+            .map(|id| {
+                let (def_path_hash, local_id) = id.id.to_stable_hash_key(hcx);
+                debug_assert_eq!(local_id, hir::ItemLocalId(0));
+                def_path_hash.0
+            }).fold(Fingerprint::ZERO, |a, b| {
+                a.combine_commutative(b)
+            });
 
-        item_ids.sort_unstable();
-
-        item_ids.hash_stable(hcx, hasher);
+        item_ids.len().hash_stable(hcx, hasher);
+        item_ids_hash.hash_stable(hcx, hasher);
     }
 }
 
