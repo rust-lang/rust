@@ -442,7 +442,7 @@ impl_stable_hash_via_hash!(::std::path::Path);
 impl_stable_hash_via_hash!(::std::path::PathBuf);
 
 impl<K, V, R, HCX> HashStable<HCX> for ::std::collections::HashMap<K, V, R>
-    where K: ToStableHashKey<HCX> + Eq + Hash,
+    where K: ToStableHashKey<HCX> + Eq + Hash + HashStable<HCX>,
           V: HashStable<HCX>,
           R: BuildHasher,
 {
@@ -502,19 +502,30 @@ pub fn hash_stable_hashmap<HCX, K, V, R, SK, F, W>(
     hcx: &mut HCX,
     hasher: &mut StableHasher<W>,
     map: &::std::collections::HashMap<K, V, R>,
-    to_stable_hash_key: F)
-    where K: Eq + Hash,
+    _to_stable_hash_key: F)
+    where K: Eq + Hash + HashStable<HCX>,
           V: HashStable<HCX>,
           R: BuildHasher,
           SK: HashStable<HCX> + Ord + Clone,
           F: Fn(&K, &HCX) -> SK,
           W: StableHasherResult,
 {
-    let mut entries: Vec<_> = map.iter()
-                                  .map(|(k, v)| (to_stable_hash_key(k, hcx), v))
-                                  .collect();
-    entries.sort_unstable_by(|&(ref sk1, _), &(ref sk2, _)| sk1.cmp(sk2));
-    entries.hash_stable(hcx, hasher);
+    // let mut entries: Vec<_> = map.iter()
+    //                               .map(|(k, v)| (to_stable_hash_key(k, hcx), v))
+    //                               .collect();
+    // entries.sort_unstable_by(|&(ref sk1, _), &(ref sk2, _)| sk1.cmp(sk2));
+    // entries.hash_stable(hcx, hasher);
+
+    let combined_hash = map.iter().map(|(k, v)| {
+        let mut hasher = StableHasher::new();
+        k.hash_stable(hcx, &mut hasher);
+        v.hash_stable(hcx, &mut hasher);
+        let hash: u128 = hasher.finish();
+        hash
+    }).fold(0u128, |a, b| a.wrapping_add(b));
+
+    map.len().hash_stable(hcx, hasher);
+    combined_hash.hash_stable(hcx, hasher);
 }
 
 
