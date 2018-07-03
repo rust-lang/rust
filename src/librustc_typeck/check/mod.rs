@@ -4987,7 +4987,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Substs::fill_single(&mut substs, defs, &mut |param: &ty::GenericParamDef, substs| {
                 if param.index == 0 && has_self {
                     if let GenericParamDefKind::Type { .. } = param.kind {
-                        // Handle Self first, so we can adjust the index to match the AST.
+                        // Handle `Self` first, so we can adjust the index to match the AST.
                         return opt_self_ty.map(|ty| ty.into()).unwrap_or_else(|| {
                             self.var_for_def(span, param)
                         });
@@ -5004,7 +5004,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if let Some(ref data) = segments[index].args {
                             let self_offset = (defs.parent_count == 0 && has_self) as usize;
                             let param_idx =
-                                (param.index as usize - defs.parent_count - self_offset as usize)
+                                (param.index as usize - defs.parent_count - self_offset)
                                 .saturating_sub(infer_lifetimes[&index]);
                             if let Some(arg) = data.args.get(param_idx) {
                                 match param.kind {

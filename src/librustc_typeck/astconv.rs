@@ -213,18 +213,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
-
-        // FIXME(varkor): Separating out the parameters is messy.
-        let lifetimes: Vec<_> = generic_args.args.iter().filter_map(|arg| match arg {
-            GenericArg::Lifetime(lt) => Some(lt),
-            _ => None,
-        }).collect();
-        let types: Vec<_> = generic_args.args.iter().filter_map(|arg| match arg {
-            GenericArg::Type(ty) => Some(ty),
-            _ => None,
-        }).collect();
-        let lt_provided = lifetimes.len();
-        let ty_provided = types.len();
+        let mut lt_provided = 0;
+        let mut ty_provided = 0;
+        for arg in &generic_args.args {
+            match arg {
+                GenericArg::Lifetime(_) => lt_provided += 1,
+                GenericArg::Type(_) => ty_provided += 1,
+            }
+        }
 
         let decl_generics = tcx.generics_of(def_id);
         let mut lt_accepted = 0;
@@ -274,30 +270,44 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             false
         };
 
-        let own_self = self_ty.is_some() as usize;
+        let self_offset = self_ty.is_some() as usize;
         let substs = Substs::for_item(tcx, def_id, |param, substs| {
-            match param.kind {
-                GenericParamDefKind::Lifetime => {
-                    let i = param.index as usize - own_self;
-                    if let Some(lt) = lifetimes.get(i) {
-                        self.ast_region_to_region(lt, Some(param)).into()
-                    } else {
-                        tcx.types.re_static.into()
-                    }
-                }
-                GenericParamDefKind::Type { has_default, .. } => {
-                    let i = param.index as usize;
-
-                    // Handle Self first, so we can adjust the index to match the AST.
-                    if let (0, Some(ty)) = (i, self_ty) {
+            if param.index == 0 {
+                if let Some(ty) = self_ty {
+                    if let GenericParamDefKind::Type { .. } = param.kind {
+                        // Handle `Self` first.
                         return ty.into();
                     }
+                }
+            }
 
-                    let i = i - (lt_accepted + own_self);
-                    if i < ty_provided {
-                        // A provided type parameter.
-                        self.ast_ty_to_ty(&types[i]).into()
-                    } else if infer_types {
+            let inferred_lifetimes = if lt_provided == 0 {
+                lt_accepted
+            } else {
+                0
+            };
+
+            let param_idx = (param.index as usize - self_offset).saturating_sub(inferred_lifetimes);
+
+            if let Some(arg) = generic_args.args.get(param_idx) {
+                match param.kind {
+                    GenericParamDefKind::Lifetime => match arg {
+                        GenericArg::Lifetime(lt) => {
+                            return self.ast_region_to_region(lt, Some(param)).into();
+                        }
+                        _ => {}
+                    }
+                    GenericParamDefKind::Type { .. } => match arg {
+                        GenericArg::Type(ty) => return self.ast_ty_to_ty(ty).into(),
+                        _ => {}
+                    }
+                }
+            }
+
+            match param.kind {
+                GenericParamDefKind::Lifetime => tcx.types.re_static.into(),
+                GenericParamDefKind::Type { has_default, .. } => {
+                    if infer_types {
                         // No type parameters were provided, we can infer all.
                         if !default_needs_object_self(param) {
                             self.ty_infer_for_def(param, span).into()
@@ -314,9 +324,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                         // careful!
                         if default_needs_object_self(param) {
                             struct_span_err!(tcx.sess, span, E0393,
-                                             "the type parameter `{}` must be explicitly \
-                                             specified",
-                                             param.name)
+                                                "the type parameter `{}` must be explicitly \
+                                                specified",
+                                                param.name)
                                 .span_label(span,
                                             format!("missing reference to `{}`", param.name))
                                 .note(&format!("because of the default `Self` reference, \
