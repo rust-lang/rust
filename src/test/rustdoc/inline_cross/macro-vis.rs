@@ -20,6 +20,12 @@
 // @has macro_vis/index.html '//a/@href' 'macro.some_macro.html'
 pub use qwop::some_macro;
 
+// @has macro_vis/macro.renamed_macro.html
+// @!has - '//pre' 'some_macro'
+// @has macro_vis/index.html '//a/@href' 'macro.renamed_macro.html'
+#[doc(inline)]
+pub use qwop::some_macro as renamed_macro;
+
 // @!has macro_vis/macro.other_macro.html
 // @!has macro_vis/index.html '//a/@href' 'macro.other_macro.html'
 // @!has - '//code' 'pub use qwop::other_macro;'
