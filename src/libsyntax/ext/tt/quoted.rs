@@ -13,7 +13,7 @@ use feature_gate::{self, emit_feature_err, Features, GateIssue};
 use parse::{token, ParseSess};
 use print::pprust;
 use symbol::keywords;
-use syntax_pos::{edition::Edition, BytePos, Span, DUMMY_SP};
+use syntax_pos::{edition::Edition, BytePos, Span};
 use tokenstream;
 use {ast, attr};
 

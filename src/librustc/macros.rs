@@ -71,7 +71,9 @@ macro_rules! __impl_stable_hash_field {
 
 #[macro_export]
 macro_rules! impl_stable_hash_for {
-    (enum $enum_name:path { $( $variant:ident $( ( $($field:ident $(-> $delegate:tt)?),* ) )* ),* $(,)? }) => {
+    // FIXME(mark-i-m): Some of these should be `?` rather than `*`. See the git blame and change
+    // them back when `?` is supported again.
+    (enum $enum_name:path { $( $variant:ident $( ( $($field:ident $(-> $delegate:tt)*),* ) )* ),* $(,)* }) => {
         impl<'a, 'tcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $enum_name {
             #[inline]
             fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
@@ -83,14 +85,15 @@ macro_rules! impl_stable_hash_for {
                 match *self {
                     $(
                         $variant $( ( $(ref $field),* ) )* => {
-                            $($( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)?) );*)*
+                            $($( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)*) );*)*
                         }
                     )*
                 }
             }
         }
     };
-    (struct $struct_name:path { $($field:ident $(-> $delegate:tt)?),*  $(,)? }) => {
+    // FIXME(mark-i-m): same here.
+    (struct $struct_name:path { $($field:ident $(-> $delegate:tt)*),*  $(,)* }) => {
         impl<'a, 'tcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $struct_name {
             #[inline]
             fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
@@ -100,11 +103,12 @@ macro_rules! impl_stable_hash_for {
                     $(ref $field),*
                 } = *self;
 
-                $( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)?) );*
+                $( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)*) );*
             }
         }
     };
-    (tuple_struct $struct_name:path { $($field:ident $(-> $delegate:tt)?),*  $(,)? }) => {
+    // FIXME(mark-i-m): same here.
+    (tuple_struct $struct_name:path { $($field:ident $(-> $delegate:tt)*),*  $(,)* }) => {
         impl<'a, 'tcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $struct_name {
             #[inline]
             fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
@@ -114,7 +118,7 @@ macro_rules! impl_stable_hash_for {
                     $(ref $field),*
                 ) = *self;
 
-                $( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)?) );*
+                $( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)*) );*
             }
         }
     };
