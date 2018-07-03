@@ -1,4 +1,5 @@
 use std::fmt::Write;
+use std::mem;
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
@@ -9,14 +10,13 @@ use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt, TypeAndMut};
 use rustc::ty::query::TyCtxtAt;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use rustc::mir::interpret::FrameInfo;
-use syntax::codemap::{self, Span};
-use syntax::ast::Mutability;
 use rustc::mir::interpret::{
-    GlobalId, Value, Scalar,
+    FrameInfo, GlobalId, Value, Scalar,
     EvalResult, EvalErrorKind, Pointer, ConstValue,
 };
-use std::mem;
+
+use syntax::codemap::{self, Span};
+use syntax::ast::Mutability;
 
 use super::{Place, PlaceExtra, Memory,
             HasMemory, MemoryKind,
@@ -206,7 +206,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         let layout = self.layout_of(ty)?;
         assert!(!layout.is_unsized(), "cannot alloc memory for unsized type");
 
-        self.memory.allocate(layout.size, layout.align, Some(MemoryKind::Stack))
+        self.memory.allocate(layout.size, layout.align, MemoryKind::Stack)
     }
 
     pub fn memory(&self) -> &Memory<'a, 'mir, 'tcx, M> {
@@ -246,7 +246,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
             ConstValue::ByRef(alloc, offset) => {
                 // FIXME: Allocate new AllocId for all constants inside
-                let id = self.memory.allocate_value(alloc.clone(), Some(MemoryKind::Stack))?;
+                let id = self.memory.allocate_value(alloc.clone(), MemoryKind::Stack)?;
                 Ok(Value::ByRef(Pointer::new(id, offset).into(), alloc.align))
             },
             ConstValue::ScalarPair(a, b) => Ok(Value::ScalarPair(a, b)),

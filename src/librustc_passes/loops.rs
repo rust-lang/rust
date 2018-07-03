@@ -17,7 +17,7 @@ use rustc::hir::{self, Destination};
 use syntax::ast;
 use syntax_pos::Span;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum LoopKind {
     Loop(hir::LoopSource),
     WhileLoop,
@@ -34,12 +34,13 @@ impl LoopKind {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum Context {
     Normal,
     Loop(LoopKind),
     Closure,
     LabeledBlock,
+    AnonConst,
 }
 
 #[derive(Copy, Clone)]
@@ -69,6 +70,10 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
 
     fn visit_impl_item(&mut self, i: &'hir hir::ImplItem) {
         self.with_context(Normal, |v| intravisit::walk_impl_item(v, i));
+    }
+
+    fn visit_anon_const(&mut self, c: &'hir hir::AnonConst) {
+        self.with_context(AnonConst, |v| intravisit::walk_anon_const(v, c));
     }
 
     fn visit_expr(&mut self, e: &'hir hir::Expr) {
@@ -194,7 +199,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
                 .span_label(span, "cannot break inside of a closure")
                 .emit();
             }
-            Normal => {
+            Normal | AnonConst => {
                 struct_span_err!(self.sess, span, E0268, "`{}` outside of loop", name)
                 .span_label(span, "cannot break outside of a loop")
                 .emit();

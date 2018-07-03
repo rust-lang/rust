@@ -1,3 +1,6 @@
+use std::fmt;
+use std::error::Error;
+
 use rustc::hir;
 use rustc::mir::interpret::{ConstEvalErr};
 use rustc::mir;
@@ -14,9 +17,6 @@ use rustc::mir::interpret::{
     Value, Scalar, AllocId, Allocation, ConstValue,
 };
 use super::{Place, EvalContext, StackPopCleanup, ValTy, PlaceExtra, Memory, MemoryKind};
-
-use std::fmt;
-use std::error::Error;
 
 pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -152,7 +152,7 @@ fn eval_body_using_ecx<'a, 'mir, 'tcx>(
     let ptr = ecx.memory.allocate(
         layout.size,
         layout.align,
-        None,
+        MemoryKind::Stack,
     )?;
     let internally_mutable = !layout.ty.is_freeze(tcx, param_env, mir.span);
     let is_static = tcx.is_static(cid.instance.def_id());
@@ -486,7 +486,7 @@ pub fn const_variant_index<'a, 'tcx>(
     let (ptr, align) = match value {
         Value::ScalarPair(..) | Value::Scalar(_) => {
             let layout = ecx.layout_of(val.ty)?;
-            let ptr = ecx.memory.allocate(layout.size, layout.align, Some(MemoryKind::Stack))?.into();
+            let ptr = ecx.memory.allocate(layout.size, layout.align, MemoryKind::Stack)?.into();
             ecx.write_value_to_ptr(value, ptr, layout.align, val.ty)?;
             (ptr, layout.align)
         },
@@ -515,7 +515,7 @@ pub fn const_value_to_allocation_provider<'a, 'tcx>(
             ());
         let value = ecx.const_to_value(val.val)?;
         let layout = ecx.layout_of(val.ty)?;
-        let ptr = ecx.memory.allocate(layout.size, layout.align, Some(MemoryKind::Stack))?;
+        let ptr = ecx.memory.allocate(layout.size, layout.align, MemoryKind::Stack)?;
         ecx.write_value_to_ptr(value, ptr.into(), layout.align, val.ty)?;
         let alloc = ecx.memory.get(ptr.alloc_id)?;
         Ok(tcx.intern_const_alloc(alloc.clone()))

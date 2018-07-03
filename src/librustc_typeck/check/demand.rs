@@ -264,9 +264,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 (&ty::TyStr, &ty::TySlice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprLit(_) = expr.node {
                         if let Ok(src) = cm.span_to_snippet(sp) {
-                            return Some((sp,
-                                         "consider removing the leading `b`",
-                                         src[1..].to_string()));
+                            if src.starts_with("b\"") {
+                                return Some((sp,
+                                             "consider removing the leading `b`",
+                                             src[1..].to_string()));
+                            }
                         }
                     }
                 },
@@ -274,9 +276,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 (&ty::TySlice(arr), &ty::TyStr) if arr == self.tcx.types.u8 => {
                     if let hir::ExprLit(_) = expr.node {
                         if let Ok(src) = cm.span_to_snippet(sp) {
-                            return Some((sp,
-                                         "consider adding a leading `b`",
-                                         format!("b{}", src)));
+                            if src.starts_with("\"") {
+                                return Some((sp,
+                                             "consider adding a leading `b`",
+                                             format!("b{}", src)));
+                            }
                         }
                     }
                 }

@@ -103,6 +103,7 @@ pub struct LoweringContext<'a> {
     loop_scopes: Vec<NodeId>,
     is_in_loop_condition: bool,
     is_in_trait_impl: bool,
+    is_in_anon_const: bool,
 
     /// What to do when we encounter either an "anonymous lifetime
     /// reference". The term "anonymous" is meant to encompass both
@@ -230,6 +231,7 @@ pub fn lower_crate(
         node_id_to_hir_id: IndexVec::new(),
         is_generator: false,
         is_in_trait_impl: false,
+        is_in_anon_const: false,
         lifetimes_to_define: Vec::new(),
         is_collecting_in_band_lifetimes: false,
         in_scope_lifetimes: Vec::new(),
@@ -968,31 +970,30 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_loop_destination(&mut self, destination: Option<(NodeId, Label)>) -> hir::Destination {
-        match destination {
-            Some((id, label)) => {
-                let target_id = if let Def::Label(loop_id) = self.expect_full_def(id) {
-                    Ok(self.lower_node_id(loop_id).node_id)
-                } else {
-                    Err(hir::LoopIdError::UnresolvedLabel)
-                };
-                hir::Destination {
-                    label: self.lower_label(Some(label)),
-                    target_id,
+        let target_id = if self.is_in_anon_const {
+            Err(hir::LoopIdError::OutsideLoopScope)
+        } else {
+            match destination {
+                Some((id, _)) => {
+                    if let Def::Label(loop_id) = self.expect_full_def(id) {
+                        Ok(self.lower_node_id(loop_id).node_id)
+                    } else {
+                        Err(hir::LoopIdError::UnresolvedLabel)
+                    }
+                }
+                None => {
+                    self.loop_scopes
+                        .last()
+                        .map(|innermost_loop_id| *innermost_loop_id)
+                        .map(|id| Ok(self.lower_node_id(id).node_id))
+                        .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
+                        .into()
                 }
             }
-            None => {
-                let target_id = self.loop_scopes
-                    .last()
-                    .map(|innermost_loop_id| *innermost_loop_id)
-                    .map(|id| Ok(self.lower_node_id(id).node_id))
-                    .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
-                    .into();
-
-                hir::Destination {
-                    label: None,
-                    target_id,
-                }
-            }
+        };
+        hir::Destination {
+            label: self.lower_label(destination.map(|(_, label)| label)),
+            target_id,
         }
     }
 
@@ -1306,13 +1307,20 @@ impl<'a> LoweringContext<'a> {
             lctx.items.insert(exist_ty_id.node_id, exist_ty_item);
 
             // `impl Trait` now just becomes `Foo<'a, 'b, ..>`
-            hir::TyImplTraitExistential(
-                hir::ItemId {
-                    id: exist_ty_id.node_id
-                },
-                DefId::local(exist_ty_def_index),
-                lifetimes,
-            )
+            let path = P(hir::Path {
+                span: exist_ty_span,
+                def: Def::Existential(DefId::local(exist_ty_def_index)),
+                segments: hir_vec![hir::PathSegment {
+                    infer_types: false,
+                    ident: Ident::new(keywords::Invalid.name(), exist_ty_span),
+                    args: Some(P(hir::GenericArgs {
+                        parenthesized: false,
+                        bindings: HirVec::new(),
+                        args: lifetimes,
+                    }))
+                }],
+            });
+            hir::TyPath(hir::QPath::Resolved(None, path))
         })
     }
 
@@ -1321,7 +1329,7 @@ impl<'a> LoweringContext<'a> {
         exist_ty_id: NodeId,
         parent_index: DefIndex,
         bounds: &hir::GenericBounds,
-    ) -> (HirVec<hir::Lifetime>, HirVec<hir::GenericParam>) {
+    ) -> (HirVec<hir::GenericArg>, HirVec<hir::GenericParam>) {
         // This visitor walks over impl trait bounds and creates defs for all lifetimes which
         // appear in the bounds, excluding lifetimes that are created within the bounds.
         // e.g. 'a, 'b, but not 'c in `impl for<'c> SomeTrait<'a, 'b, 'c>`
@@ -1332,7 +1340,7 @@ impl<'a> LoweringContext<'a> {
             collect_elided_lifetimes: bool,
             currently_bound_lifetimes: Vec<hir::LifetimeName>,
             already_defined_lifetimes: HashSet<hir::LifetimeName>,
-            output_lifetimes: Vec<hir::Lifetime>,
+            output_lifetimes: Vec<hir::GenericArg>,
             output_lifetime_params: Vec<hir::GenericParam>,
         }
 
@@ -1416,11 +1424,11 @@ impl<'a> LoweringContext<'a> {
                     && !self.already_defined_lifetimes.contains(&name) {
                     self.already_defined_lifetimes.insert(name);
 
-                    self.output_lifetimes.push(hir::Lifetime {
+                    self.output_lifetimes.push(hir::GenericArg::Lifetime(hir::Lifetime {
                         id: self.context.next_id().node_id,
                         span: lifetime.span,
                         name,
-                    });
+                    }));
 
                     // We need to manually create the ids here, because the
                     // definitions will go into the explicit `existential type`
@@ -3440,13 +3448,22 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_anon_const(&mut self, c: &AnonConst) -> hir::AnonConst {
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(c.id);
+        let was_in_loop_condition = self.is_in_loop_condition;
+        self.is_in_loop_condition = false;
+        let was_in_anon_const = self.is_in_anon_const;
+        self.is_in_anon_const = true;
 
-        hir::AnonConst {
+        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(c.id);
+        let anon_const = hir::AnonConst {
             id: node_id,
             hir_id,
             body: self.lower_body(None, |this| this.lower_expr(&c.value)),
-        }
+        };
+
+        self.is_in_anon_const = was_in_anon_const;
+        self.is_in_loop_condition = was_in_loop_condition;
+
+        anon_const
     }
 
     fn lower_expr(&mut self, e: &Expr) -> hir::Expr {

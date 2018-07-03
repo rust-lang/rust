@@ -8,17 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    |_:  [_; return || {}] | {};
-    //~^ ERROR return statement outside of function body
+// run-rustfix
 
-    [(); return || {}];
-    //~^ ERROR return statement outside of function body
+#![allow(dead_code)]
 
-    [(); return |ice| {}];
-    //~^ ERROR return statement outside of function body
-
-    [(); return while let Some(n) = Some(0) {}];
-    //~^ ERROR return statement outside of function body
-    //~^^ ERROR irrefutable while-let pattern
+fn missing_discourses() -> Result<isize, ()> {
+    Ok(1)
 }
+
+fn forbidden_narratives() -> Result<isize, ()> {
+    Ok(missing_discourses()?)
+    //~^ ERROR try expression alternatives have incompatible types
+    //~| HELP try wrapping with a success variant
+}
+
+fn main() {}

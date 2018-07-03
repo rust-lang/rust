@@ -1115,11 +1115,11 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 }
                 tcx.layout_raw(param_env.and(normalized))?
             }
-            ty::TyParam(_) => {
-                return Err(LayoutError::Unknown(ty));
-            }
-            ty::TyGeneratorWitness(..) | ty::TyInfer(_) | ty::TyError => {
+            ty::TyGeneratorWitness(..) | ty::TyInfer(_) => {
                 bug!("LayoutDetails::compute: unexpected type `{}`", ty)
+            }
+            ty::TyParam(_) | ty::TyError => {
+                return Err(LayoutError::Unknown(ty));
             }
         })
     }

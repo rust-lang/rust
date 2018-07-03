@@ -4213,6 +4213,21 @@ impl From<!> for TryFromIntError {
     }
 }
 
+// no possible bounds violation
+macro_rules! try_from_unbounded {
+    ($source:ty, $($target:ty),*) => {$(
+        #[unstable(feature = "try_from", issue = "33417")]
+        impl TryFrom<$source> for $target {
+            type Error = TryFromIntError;
+
+            #[inline]
+            fn try_from(value: $source) -> Result<Self, Self::Error> {
+                Ok(value as $target)
+            }
+        }
+    )*}
+}
+
 // only negative bounds
 macro_rules! try_from_lower_bounded {
     ($source:ty, $($target:ty),*) => {$(
@@ -4311,20 +4326,27 @@ try_from_both_bounded!(i128, u64, u32, u16, u8);
 try_from_upper_bounded!(usize, isize);
 try_from_lower_bounded!(isize, usize);
 
-try_from_upper_bounded!(usize, u8);
-try_from_upper_bounded!(usize, i8, i16);
-try_from_both_bounded!(isize, u8);
-try_from_both_bounded!(isize, i8);
-
 #[cfg(target_pointer_width = "16")]
 mod ptr_try_from_impls {
     use super::TryFromIntError;
     use convert::TryFrom;
 
-    // Fallible across platfoms, only implementation differs
+    try_from_upper_bounded!(usize, u8);
+    try_from_unbounded!(usize, u16, u32, u64, u128);
+    try_from_upper_bounded!(usize, i8, i16);
+    try_from_unbounded!(usize, i32, i64, i128);
+
+    try_from_both_bounded!(isize, u8);
     try_from_lower_bounded!(isize, u16, u32, u64, u128);
+    try_from_both_bounded!(isize, i8);
+    try_from_unbounded!(isize, i16, i32, i64, i128);
+
+    rev!(try_from_upper_bounded, usize, u32, u64, u128);
     rev!(try_from_lower_bounded, usize, i8, i16);
     rev!(try_from_both_bounded, usize, i32, i64, i128);
+
+    rev!(try_from_upper_bounded, isize, u16, u32, u64, u128);
+    rev!(try_from_both_bounded, isize, i32, i64, i128);
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -4332,11 +4354,25 @@ mod ptr_try_from_impls {
     use super::TryFromIntError;
     use convert::TryFrom;
 
-    // Fallible across platfoms, only implementation differs
-    try_from_both_bounded!(isize, u16);
+    try_from_upper_bounded!(usize, u8, u16);
+    try_from_unbounded!(usize, u32, u64, u128);
+    try_from_upper_bounded!(usize, i8, i16, i32);
+    try_from_unbounded!(usize, i64, i128);
+
+    try_from_both_bounded!(isize, u8, u16);
     try_from_lower_bounded!(isize, u32, u64, u128);
+    try_from_both_bounded!(isize, i8, i16);
+    try_from_unbounded!(isize, i32, i64, i128);
+
+    rev!(try_from_unbounded, usize, u32);
+    rev!(try_from_upper_bounded, usize, u64, u128);
     rev!(try_from_lower_bounded, usize, i8, i16, i32);
     rev!(try_from_both_bounded, usize, i64, i128);
+
+    rev!(try_from_unbounded, isize, u16);
+    rev!(try_from_upper_bounded, isize, u32, u64, u128);
+    rev!(try_from_unbounded, isize, i32);
+    rev!(try_from_both_bounded, isize, i64, i128);
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -4344,11 +4380,25 @@ mod ptr_try_from_impls {
     use super::TryFromIntError;
     use convert::TryFrom;
 
-    // Fallible across platfoms, only implementation differs
-    try_from_both_bounded!(isize, u16, u32);
+    try_from_upper_bounded!(usize, u8, u16, u32);
+    try_from_unbounded!(usize, u64, u128);
+    try_from_upper_bounded!(usize, i8, i16, i32, i64);
+    try_from_unbounded!(usize, i128);
+
+    try_from_both_bounded!(isize, u8, u16, u32);
     try_from_lower_bounded!(isize, u64, u128);
+    try_from_both_bounded!(isize, i8, i16, i32);
+    try_from_unbounded!(isize, i64, i128);
+
+    rev!(try_from_unbounded, usize, u32, u64);
+    rev!(try_from_upper_bounded, usize, u128);
     rev!(try_from_lower_bounded, usize, i8, i16, i32, i64);
     rev!(try_from_both_bounded, usize, i128);
+
+    rev!(try_from_unbounded, isize, u16, u32);
+    rev!(try_from_upper_bounded, isize, u64, u128);
+    rev!(try_from_unbounded, isize, i32, i64);
+    rev!(try_from_both_bounded, isize, i128);
 }
 
 #[doc(hidden)]

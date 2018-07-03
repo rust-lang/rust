@@ -1095,6 +1095,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     hir::TyStr => tcx.mk_str()
                 }
             }
+            Def::Existential(exist_ty_did) => {
+                assert!(exist_ty_did.is_local());
+                let lifetimes = &path.segments[0].args.as_ref().unwrap().args;
+                self.impl_trait_ty_to_ty(exist_ty_did, lifetimes)
+            }
             Def::Err => {
                 self.set_tainted_by_errors();
                 return self.tcx().types.err;
@@ -1139,9 +1144,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             hir::TyTraitObject(ref bounds, ref lifetime) => {
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime)
-            }
-            hir::TyImplTraitExistential(_, def_id, ref lifetimes) => {
-                self.impl_trait_ty_to_ty(def_id, lifetimes)
             }
             hir::TyPath(hir::QPath::Resolved(ref maybe_qself, ref path)) => {
                 debug!("ast_ty_to_ty: maybe_qself={:?} path={:?}", maybe_qself, path);
@@ -1195,7 +1197,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     pub fn impl_trait_ty_to_ty(
         &self,
         def_id: DefId,
-        lifetimes: &[hir::Lifetime],
+        lifetimes: &[hir::GenericArg],
     ) -> Ty<'tcx> {
         debug!("impl_trait_ty_to_ty(def_id={:?}, lifetimes={:?})", def_id, lifetimes);
         let tcx = self.tcx();
@@ -1208,7 +1210,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // Our own parameters are the resolved lifetimes.
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
-                        self.ast_region_to_region(&lifetimes[i], None).into()
+                        if let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] {
+                            self.ast_region_to_region(lifetime, None).into()
+                        } else {
+                            bug!()
+                        }
                     }
                     _ => bug!()
                 }

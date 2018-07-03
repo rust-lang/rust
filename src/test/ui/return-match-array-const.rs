@@ -9,16 +9,9 @@
 // except according to those terms.
 
 fn main() {
-    |_:  [_; return || {}] | {};
-    //~^ ERROR return statement outside of function body
+    [(); return match 0 { n => n }]; //~ ERROR: return statement outside of function body
 
-    [(); return || {}];
-    //~^ ERROR return statement outside of function body
+    [(); return match 0 { 0 => 0 }]; //~ ERROR: return statement outside of function body
 
-    [(); return |ice| {}];
-    //~^ ERROR return statement outside of function body
-
-    [(); return while let Some(n) = Some(0) {}];
-    //~^ ERROR return statement outside of function body
-    //~^^ ERROR irrefutable while-let pattern
+    [(); return match () { 'a' => 0, _ => 0 }]; //~ ERROR: return statement outside of function body
 }
