@@ -1132,10 +1132,16 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
         };
 
         let mut path = if let Some(second) = split.next() {
-            second
+            second.to_owned()
         } else {
             return Err(())
         };
+
+        if path == "self" || path == "Self" {
+            if let Some(id) = *cx.current_item_id.borrow() {
+                path = cx.tcx.hir.name(id).as_str().to_string();
+            }
+        }
 
         let ty = cx.resolver.borrow_mut()
                             .with_scope(*id,

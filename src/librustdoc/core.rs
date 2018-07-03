@@ -82,7 +82,8 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     pub fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
     pub all_fake_def_ids: RefCell<FxHashSet<DefId>>,
     /// Maps (type_id, trait_id) -> auto trait impl
-    pub generated_synthetics: RefCell<FxHashSet<(DefId, DefId)>>
+    pub generated_synthetics: RefCell<FxHashSet<(DefId, DefId)>>,
+    pub current_item_id: RefCell<Option<NodeId>>,
 }
 
 impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
@@ -349,6 +350,7 @@ pub fn run_core(search_paths: SearchPaths,
                 fake_def_ids: RefCell::new(FxHashMap()),
                 all_fake_def_ids: RefCell::new(FxHashSet()),
                 generated_synthetics: RefCell::new(FxHashSet()),
+                current_item_id: RefCell::new(None),
             };
             debug!("crate: {:?}", tcx.hir.krate());
 

@@ -113,6 +113,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                             name: ast::Name, sd: &hir::VariantData,
                             generics: &hir::Generics) -> Struct {
         debug!("Visiting struct");
+        *self.cx.current_item_id.borrow_mut() = Some(item.id);
         let struct_type = struct_type_from_def(&*sd);
         Struct {
             id: item.id,
@@ -132,6 +133,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                             name: ast::Name, sd: &hir::VariantData,
                             generics: &hir::Generics) -> Union {
         debug!("Visiting union");
+        *self.cx.current_item_id.borrow_mut() = Some(item.id);
         let struct_type = struct_type_from_def(&*sd);
         Union {
             id: item.id,
@@ -147,10 +149,11 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
         }
     }
 
-    pub fn visit_enum_def(&mut self, it: &hir::Item,
+    pub fn visit_enum_def(&mut self, item: &hir::Item,
                           name: ast::Name, def: &hir::EnumDef,
                           params: &hir::Generics) -> Enum {
         debug!("Visiting enum");
+        *self.cx.current_item_id.borrow_mut() = Some(item.id);
         Enum {
             name,
             variants: def.variants.iter().map(|v| Variant {
@@ -161,13 +164,13 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 def: v.node.data.clone(),
                 whence: v.span,
             }).collect(),
-            vis: it.vis.clone(),
-            stab: self.stability(it.id),
-            depr: self.deprecation(it.id),
+            vis: item.vis.clone(),
+            stab: self.stability(item.id),
+            depr: self.deprecation(item.id),
             generics: params.clone(),
-            attrs: it.attrs.clone(),
-            id: it.id,
-            whence: it.span,
+            attrs: item.attrs.clone(),
+            id: item.id,
+            whence: item.span,
         }
     }
 
@@ -177,6 +180,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                     gen: &hir::Generics,
                     body: hir::BodyId) -> Function {
         debug!("Visiting fn");
+        *self.cx.current_item_id.borrow_mut() = Some(item.id);
         Function {
             id: item.id,
             vis: item.vis.clone(),
@@ -196,6 +200,7 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                               vis: hir::Visibility, id: ast::NodeId,
                               m: &hir::Mod,
                               name: Option<ast::Name>) -> Module {
+        *self.cx.current_item_id.borrow_mut() = Some(id);
         let mut om = Module::new(name);
         om.where_outer = span;
         om.where_inner = m.inner;
