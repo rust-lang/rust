@@ -1,9 +1,10 @@
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{Size, Align, LayoutOf};
+use rustc::mir::interpret::{Scalar, Value, Pointer, EvalResult};
+
 use syntax::ast::Mutability;
 
-use rustc::mir::interpret::{Scalar, Value, Pointer, EvalResult};
-use super::{EvalContext, Machine};
+use super::{EvalContext, Machine, MemoryKind};
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
@@ -30,7 +31,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let vtable = self.memory.allocate(
             ptr_size * (3 + methods.len() as u64),
             ptr_align,
-            None,
+            MemoryKind::Stack,
         )?;
 
         let drop = ::monomorphize::resolve_drop_in_place(*self.tcx, ty);
