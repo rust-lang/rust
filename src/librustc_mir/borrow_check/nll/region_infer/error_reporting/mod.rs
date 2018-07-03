@@ -140,13 +140,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         index: ConstraintIndex,
         mir: &Mir<'tcx>,
-    ) -> Option<(ConstraintCategory, Span)> {
+    ) -> (ConstraintCategory, Span) {
         let constraint = self.constraints[index];
         let span = constraint.locations.span(mir);
-        let location = constraint.locations.from_location()?;
+        let location = constraint.locations.from_location().unwrap_or(Location::START);
 
         if !self.constraint_is_interesting(index) {
-            return Some((ConstraintCategory::Boring, span));
+            return (ConstraintCategory::Boring, span);
         }
 
         let data = &mir[location.block];
@@ -178,7 +178,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         };
 
-        Some((category, span))
+        (category, span)
     }
 
     /// Report an error because the universal region `fr` was required to outlive
@@ -231,7 +231,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // Classify each of the constraints along the path.
         let mut categorized_path: Vec<(ConstraintCategory, Span)> = path.iter()
-            .filter_map(|&index| self.classify_constraint(index, mir))
+            .map(|&index| self.classify_constraint(index, mir))
             .collect();
         debug!("report_error: categorized_path={:?}", categorized_path);
 
