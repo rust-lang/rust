@@ -1709,7 +1709,6 @@ impl LintPass for SoftLints {
     }
 }
 
-
 declare_lint! {
     pub ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
     Allow,
@@ -1742,5 +1741,46 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             );
             err.emit()
         }
+    }
+}
+
+declare_lint! {
+    UNNAMEABLE_TEST_FUNCTIONS,
+    Warn,
+    "detects an function that cannot be named being marked as #[test]"
+}
+
+pub struct UnnameableTestFunctions;
+
+impl LintPass for UnnameableTestFunctions {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNNAMEABLE_TEST_FUNCTIONS)
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestFunctions {
+    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+        match it.node {
+            hir::ItemFn(..) => {
+                for attr in &it.attrs {
+                    if attr.name() == "test" {
+                        let parent = cx.tcx.hir.get_parent(it.id);
+                        match cx.tcx.hir.find(parent) {
+                            Some(hir_map::NodeItem(hir::Item {node: hir::ItemMod(_), ..})) |
+                            None => {}
+                            _ => {
+                                cx.struct_span_lint(
+                                    UNNAMEABLE_TEST_FUNCTIONS,
+                                    attr.span,
+                                    "cannot test inner function",
+                                ).emit();
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            _ => return,
+        };
     }
 }
