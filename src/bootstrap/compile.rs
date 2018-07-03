@@ -50,6 +50,10 @@ impl Step for Std {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.all_krates("std")
+            .path("src/libcore")
+            .path("src/liballoc")
+            .path("src/libstd_unicode")
+            .path("src/rustc/compiler_builtins_shim")
     }
 
     fn make_run(run: RunConfig) {
@@ -85,6 +89,12 @@ impl Step for Std {
                 copy_musl_third_party_objects(builder, target, &libdir);
             }
 
+            builder.ensure(CoreLink {
+                compiler: from,
+                target_compiler: compiler,
+                target,
+            });
+
             builder.ensure(StdLink {
                 compiler: from,
                 target_compiler: compiler,
@@ -100,21 +110,44 @@ impl Step for Std {
 
         let out_dir = builder.cargo_out(compiler, Mode::Std, target);
         builder.clear_if_dirty(&out_dir, &builder.rustc(compiler));
-        let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
-        std_cargo(builder, &compiler, target, &mut cargo);
+        let mut core_cargo_invoc = builder.cargo(compiler, Mode::Std, target, "build");
+        core_cargo(builder, &compiler, target, &mut core_cargo_invoc);
+        let std_cargo_invoc = if builder.no_std(target) != Some(true) {
+            let mut std_cargo_invoc = builder.cargo(compiler, Mode::Std, target, "build");
+            std_cargo(builder, &compiler, target, &mut std_cargo_invoc);
+            Some(std_cargo_invoc)
+        } else {
+            None
+        };
 
         let _folder = builder.fold_output(|| format!("stage{}-std", compiler.stage));
         builder.info(&format!("Building stage{} std artifacts ({} -> {})", compiler.stage,
                 &compiler.host, target));
         run_cargo(builder,
-                  &mut cargo,
-                  &libstd_stamp(builder, compiler, target),
+                  &mut core_cargo_invoc,
+                  &libcore_stamp(builder, compiler, target),
                   false);
-
-        builder.ensure(StdLink {
+        builder.ensure(CoreLink {
             compiler: builder.compiler(compiler.stage, builder.config.build),
             target_compiler: compiler,
             target,
+        });
+        if let Some(mut std_cargo_invoc) = std_cargo_invoc {
+            run_cargo(builder,
+                      &mut std_cargo_invoc,
+                      &libstd_stamp(builder, compiler, target),
+                      false);
+            builder.ensure(StdLink {
+                compiler: builder.compiler(compiler.stage, builder.config.build),
+                target_compiler: compiler,
+                target,
+            });
+        }
+
+        builder.ensure(tool::CleanTools {
+            compiler,
+            target,
+            cause: Mode::Std,
         });
     }
 }
@@ -133,65 +166,113 @@ fn copy_musl_third_party_objects(builder: &Builder,
     }
 }
 
+fn mac_os_deployment_env_var(cargo: &mut Command) {
+    if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
+        cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
+    }
+}
+
+/// Configure cargo to compile a few no_std crates like core,
+/// adding appropriate env vars and such.
+pub fn core_cargo(builder: &Builder,
+                  _compiler: &Compiler,
+                  _target: Interned<String>,
+                  cargo: &mut Command) {
+    mac_os_deployment_env_var(cargo);
+
+    // for no-std targets we only compile a few no_std crates
+    cargo.arg("--features").arg("c mem")
+        .args(&["-p", "alloc"])
+        .args(&["-p", "compiler_builtins"])
+        .args(&["-p", "std_unicode"])
+        .arg("--manifest-path")
+        .arg(builder.src.join("src/rustc/compiler_builtins_shim/Cargo.toml"));
+}
+
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
 pub fn std_cargo(builder: &Builder,
                  compiler: &Compiler,
                  target: Interned<String>,
                  cargo: &mut Command) {
-    if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
-        cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
+    mac_os_deployment_env_var(cargo);
+
+    let mut features = builder.std_features();
+
+    // When doing a local rebuild we tell cargo that we're stage1 rather than
+    // stage0. This works fine if the local rust and being-built rust have the
+    // same view of what the default allocator is, but fails otherwise. Since
+    // we don't have a way to express an allocator preference yet, work
+    // around the issue in the case of a local rebuild with jemalloc disabled.
+    if compiler.stage == 0 && builder.local_rebuild && !builder.config.use_jemalloc {
+        features.push_str(" force_alloc_system");
     }
 
-    if builder.no_std(target) == Some(true) {
-        // for no-std targets we only compile a few no_std crates
-        cargo.arg("--features").arg("c mem")
-            .args(&["-p", "alloc"])
-            .args(&["-p", "compiler_builtins"])
-            .args(&["-p", "std_unicode"])
-            .arg("--manifest-path")
-            .arg(builder.src.join("src/rustc/compiler_builtins_shim/Cargo.toml"));
-    } else {
-        let mut features = builder.std_features();
+    if compiler.stage != 0 && builder.config.sanitizers {
+        // This variable is used by the sanitizer runtime crates, e.g.
+        // rustc_lsan, to build the sanitizer runtime from C code
+        // When this variable is missing, those crates won't compile the C code,
+        // so we don't set this variable during stage0 where llvm-config is
+        // missing
+        // We also only build the runtimes when --enable-sanitizers (or its
+        // config.toml equivalent) is used
+        let llvm_config = builder.ensure(native::Llvm {
+            target: builder.config.build,
+            emscripten: false,
+        });
+        cargo.env("LLVM_CONFIG", llvm_config);
+    }
 
-        // When doing a local rebuild we tell cargo that we're stage1 rather than
-        // stage0. This works fine if the local rust and being-built rust have the
-        // same view of what the default allocator is, but fails otherwise. Since
-        // we don't have a way to express an allocator preference yet, work
-        // around the issue in the case of a local rebuild with jemalloc disabled.
-        if compiler.stage == 0 && builder.local_rebuild && !builder.config.use_jemalloc {
-            features.push_str(" force_alloc_system");
-        }
+    cargo.arg("--features").arg(features)
+        .arg("--manifest-path")
+        .arg(builder.src.join("src/libstd/Cargo.toml"));
 
-        if compiler.stage != 0 && builder.config.sanitizers {
-            // This variable is used by the sanitizer runtime crates, e.g.
-            // rustc_lsan, to build the sanitizer runtime from C code
-            // When this variable is missing, those crates won't compile the C code,
-            // so we don't set this variable during stage0 where llvm-config is
-            // missing
-            // We also only build the runtimes when --enable-sanitizers (or its
-            // config.toml equivalent) is used
-            let llvm_config = builder.ensure(native::Llvm {
-                target: builder.config.build,
-                emscripten: false,
-            });
-            cargo.env("LLVM_CONFIG", llvm_config);
+    if let Some(target) = builder.config.target_config.get(&target) {
+        if let Some(ref jemalloc) = target.jemalloc {
+            cargo.env("JEMALLOC_OVERRIDE", jemalloc);
         }
+    }
+    if target.contains("musl") {
+        if let Some(p) = builder.musl_root(target) {
+            cargo.env("MUSL_ROOT", p);
+        }
+    }
+}
 
-        cargo.arg("--features").arg(features)
-            .arg("--manifest-path")
-            .arg(builder.src.join("src/libstd/Cargo.toml"));
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+struct CoreLink {
+    pub compiler: Compiler,
+    pub target_compiler: Compiler,
+    pub target: Interned<String>,
+}
 
-        if let Some(target) = builder.config.target_config.get(&target) {
-            if let Some(ref jemalloc) = target.jemalloc {
-                cargo.env("JEMALLOC_OVERRIDE", jemalloc);
-            }
-        }
-        if target.contains("musl") {
-            if let Some(p) = builder.musl_root(target) {
-                cargo.env("MUSL_ROOT", p);
-            }
-        }
+impl Step for CoreLink {
+    type Output = ();
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.never()
+    }
+
+    /// Link all libcore rlibs/dylibs into the sysroot location.
+    ///
+    /// Links those artifacts generated by `compiler` to a the `stage` compiler's
+    /// sysroot for the specified `host` and `target`.
+    ///
+    /// Note that this assumes that `compiler` has already generated the
+    /// libraries for `target`, and this method will find them in the relevant
+    /// output directory.
+    fn run(self, builder: &Builder) {
+        let compiler = self.compiler;
+        let target_compiler = self.target_compiler;
+        let target = self.target;
+        builder.info(&format!("Copying stage{} core from stage{} ({} -> {} / {})",
+                target_compiler.stage,
+                compiler.stage,
+                &compiler.host,
+                target_compiler.host,
+                target));
+        let libdir = builder.sysroot_libdir(target_compiler, target);
+        add_to_sysroot(builder, &libdir, &libcore_stamp(builder, compiler, target));
     }
 }
 
@@ -236,12 +317,6 @@ impl Step for StdLink {
             // for reason why the sanitizers are not built in stage0.
             copy_apple_sanitizer_dylibs(builder, &builder.native_dir(target), "osx", &libdir);
         }
-
-        builder.ensure(tool::CleanTools {
-            compiler: target_compiler,
-            target,
-            cause: Mode::Std,
-        });
     }
 }
 
@@ -369,6 +444,7 @@ impl Step for Test {
         }
 
         let out_dir = builder.cargo_out(compiler, Mode::Test, target);
+        builder.clear_if_dirty(&out_dir, &libcore_stamp(builder, compiler, target));
         builder.clear_if_dirty(&out_dir, &libstd_stamp(builder, compiler, target));
         let mut cargo = builder.cargo(compiler, Mode::Test, target, "build");
         test_cargo(builder, &compiler, target, &mut cargo);
@@ -394,9 +470,7 @@ pub fn test_cargo(builder: &Builder,
                   _compiler: &Compiler,
                   _target: Interned<String>,
                   cargo: &mut Command) {
-    if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
-        cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
-    }
+    mac_os_deployment_env_var(cargo);
     cargo.arg("--manifest-path")
         .arg(builder.src.join("src/libtest/Cargo.toml"));
 }
@@ -490,6 +564,7 @@ impl Step for Rustc {
             target: builder.config.build,
         });
         let cargo_out = builder.cargo_out(compiler, Mode::Rustc, target);
+        builder.clear_if_dirty(&cargo_out, &libcore_stamp(builder, compiler, target));
         builder.clear_if_dirty(&cargo_out, &libstd_stamp(builder, compiler, target));
         builder.clear_if_dirty(&cargo_out, &libtest_stamp(builder, compiler, target));
 
@@ -790,6 +865,12 @@ fn copy_lld_to_sysroot(builder: &Builder,
     builder.copy(&lld_install_root.join("bin").join(&exe), &dst.join(&exe));
 }
 
+/// Cargo's output path for libcore in a given stage, compiled
+/// by a particular compiler for the specified target.
+pub fn libcore_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
+    builder.cargo_out(compiler, Mode::Std, target).join(".libcore.stamp")
+}
+
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
 pub fn libstd_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
@@ -921,6 +1002,7 @@ impl Step for Assemble {
             for stage in 0..min(target_compiler.stage, builder.config.keep_stage.unwrap()) {
                 let target_compiler = builder.compiler(stage, target_compiler.host);
                 let target = target_compiler.host;
+                builder.ensure(CoreLink { compiler, target_compiler, target });
                 builder.ensure(StdLink { compiler, target_compiler, target });
                 builder.ensure(TestLink { compiler, target_compiler, target });
                 builder.ensure(RustcLink { compiler, target_compiler, target });
