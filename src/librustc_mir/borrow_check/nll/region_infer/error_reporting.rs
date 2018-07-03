@@ -64,13 +64,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn find_constraint_paths_between_regions(
         &self,
         from_region: RegionVid,
-        to_region: RegionVid,
+        target_test: impl Fn(RegionVid) -> bool,
     ) -> Vec<Vec<ConstraintIndex>> {
         let mut results = vec![];
         self.find_constraint_paths_between_regions_helper(
             from_region,
             from_region,
-            to_region,
+            &target_test,
             &mut FxHashSet::default(),
             &mut vec![],
             &mut results,
@@ -83,7 +83,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         from_region: RegionVid,
         current_region: RegionVid,
-        to_region: RegionVid,
+        target_test: &impl Fn(RegionVid) -> bool,
         visited: &mut FxHashSet<RegionVid>,
         stack: &mut Vec<ConstraintIndex>,
         results: &mut Vec<Vec<ConstraintIndex>>,
@@ -96,18 +96,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         // Check if we reached the region we were looking for.
-        if current_region == to_region {
-            // Unless we started out searching for `'a ~> 'a`, which shouldn't have caused
-            // en error, then we must have traversed at least *some* constraint:
-            assert!(!stack.is_empty());
-
-            // The first constraint should be like `X: from_region`.
-            assert_eq!(self.constraints[stack[0]].sub, from_region);
-
-            // The last constraint should be like `to_region: Y`.
-            assert_eq!(self.constraints[*stack.last().unwrap()].sup, to_region);
-
-            results.push(stack.clone());
+        if target_test(current_region) {
+            if !stack.is_empty() {
+                assert_eq!(self.constraints[stack[0]].sub, from_region);
+                results.push(stack.clone());
+            }
             return;
         }
 
@@ -118,7 +111,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 self.find_constraint_paths_between_regions_helper(
                     from_region,
                     self.constraints[constraint].sup,
-                    to_region,
+                    target_test,
                     visited,
                     stack,
                     results,
@@ -229,7 +222,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         };
 
         // Find all paths
-        let constraint_paths = self.find_constraint_paths_between_regions(outlived_fr, fr);
+        let constraint_paths = self.find_constraint_paths_between_regions(outlived_fr, |r| r == fr);
         debug!("report_error: constraint_paths={:#?}", constraint_paths);
 
         // Find the shortest such path.
