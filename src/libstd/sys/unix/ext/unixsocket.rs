@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![stable(feature = "unix_socket", since = "1.10.0")]
-
 //! Unix-specific networking functionality
 
 #[cfg(unix)]
@@ -144,20 +142,6 @@ impl<'a> fmt::Display for AsciiEscaped<'a> {
     }
 }
 
-/// A Unix stream socket.
-///
-/// # Examples
-///
-/// ```no_run
-/// use std::os::unix::net::UnixStream;
-/// use std::io::prelude::*;
-///
-/// let mut stream = UnixStream::connect("/path/to/my/socket").unwrap();
-/// stream.write_all(b"hello world").unwrap();
-/// let mut response = String::new();
-/// stream.read_to_string(&mut response).unwrap();
-/// println!("{}", response);
-/// ```
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct UnixStream(Socket);
 

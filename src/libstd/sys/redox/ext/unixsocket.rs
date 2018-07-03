@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![stable(feature = "unix_socket", since = "1.10.0")]
-
 use fmt;
 use io::{self, Error, ErrorKind, Initializer};
 use net::Shutdown;
