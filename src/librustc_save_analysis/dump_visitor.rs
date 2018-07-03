@@ -1238,6 +1238,16 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 // trait.
                 self.visit_ty(ty)
             }
+            ast::ImplItemKind::Existential(ref bounds) => {
+                // FIXME uses of the assoc type should ideally point to this
+                // 'def' and the name here should be a ref to the def in the
+                // trait.
+                for bound in bounds.iter() {
+                    if let ast::GenericBound::Trait(ref trait_ref, _) = *bound {
+                        self.process_path(trait_ref.trait_ref.ref_id, &trait_ref.trait_ref.path)
+                    }
+                }
+            }
             ast::ImplItemKind::Macro(_) => {}
         }
     }
@@ -1475,6 +1485,36 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                 }
 
                 self.visit_ty(&ty);
+                self.process_generic_params(ty_params, item.span, &qualname, item.id);
+            }
+            Existential(ref _bounds, ref ty_params) => {
+                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
+                // FIXME do something with _bounds
+                let value = String::new();
+                let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Type);
+                if !self.span.filter_generated(sub_span, item.span) {
+                    let span = self.span_from_span(sub_span.expect("No span found for typedef"));
+                    let id = ::id_from_node_id(item.id, &self.save_ctxt);
+
+                    self.dumper.dump_def(
+                        &access_from!(self.save_ctxt, item),
+                        Def {
+                            kind: DefKind::Type,
+                            id,
+                            span,
+                            name: item.ident.to_string(),
+                            qualname: qualname.clone(),
+                            value,
+                            parent: None,
+                            children: vec![],
+                            decl_id: None,
+                            docs: self.save_ctxt.docs_for_attrs(&item.attrs),
+                            sig: sig::item_signature(item, &self.save_ctxt),
+                            attributes: lower_attributes(item.attrs.clone(), &self.save_ctxt),
+                        },
+                    );
+                }
+
                 self.process_generic_params(ty_params, item.span, &qualname, item.id);
             }
             Mac(_) => (),

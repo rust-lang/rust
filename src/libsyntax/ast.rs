@@ -1394,6 +1394,7 @@ pub enum ImplItemKind {
     Const(P<Ty>, P<Expr>),
     Method(MethodSig, P<Block>),
     Type(P<Ty>),
+    Existential(GenericBounds),
     Macro(Mac),
 }
 
@@ -2132,6 +2133,10 @@ pub enum ItemKind {
     ///
     /// E.g. `type Foo = Bar<u8>;`
     Ty(P<Ty>, Generics),
+    /// An existential type declaration (`existential type`).
+    ///
+    /// E.g. `existential type Foo: Bar + Boo;`
+    Existential(GenericBounds, Generics),
     /// An enum definition (`enum` or `pub enum`).
     ///
     /// E.g. `enum Foo<A, B> { C<A>, D<B> }`
@@ -2183,6 +2188,7 @@ impl ItemKind {
             ItemKind::ForeignMod(..) => "foreign module",
             ItemKind::GlobalAsm(..) => "global asm",
             ItemKind::Ty(..) => "type alias",
+            ItemKind::Existential(..) => "existential type",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",
             ItemKind::Union(..) => "union",

@@ -212,6 +212,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data @ DefPathData::Trait(..) |
             data @ DefPathData::AssocTypeInTrait(..) |
             data @ DefPathData::AssocTypeInImpl(..) |
+            data @ DefPathData::AssocExistentialInImpl(..) |
             data @ DefPathData::ValueNs(..) |
             data @ DefPathData::Module(..) |
             data @ DefPathData::TypeParam(..) |

@@ -207,7 +207,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                 Def::AssociatedTy(..) | Def::PrimTy(..) | Def::Fn(..) | Def::Const(..) |
                 Def::Static(..) | Def::StructCtor(..) | Def::VariantCtor(..) | Def::Method(..) |
                 Def::AssociatedConst(..) | Def::Local(..) | Def::Upvar(..) | Def::Label(..) |
-                Def::Existential(..) |
+                Def::Existential(..) | Def::AssociatedExistential(..) |
                 Def::Macro(..) | Def::GlobalAsm(..) | Def::Err =>
                     bug!("TypeParametersFromOuterFunction should only be used with Def::SelfTy or \
                          Def::TyParam")
@@ -535,6 +535,7 @@ impl<'a> PathSource<'a> {
                 Def::Struct(..) | Def::Union(..) | Def::Enum(..) |
                 Def::Trait(..) | Def::TyAlias(..) | Def::AssociatedTy(..) |
                 Def::PrimTy(..) | Def::TyParam(..) | Def::SelfTy(..) |
+                Def::Existential(..) |
                 Def::TyForeign(..) => true,
                 _ => false,
             },
@@ -2148,6 +2149,7 @@ impl<'a> Resolver<'a> {
         match item.node {
             ItemKind::Enum(_, ref generics) |
             ItemKind::Ty(_, ref generics) |
+            ItemKind::Existential(_, ref generics) |
             ItemKind::Struct(_, ref generics) |
             ItemKind::Union(_, ref generics) |
             ItemKind::Fn(_, _, ref generics, _) => {
@@ -2485,6 +2487,18 @@ impl<'a> Resolver<'a> {
                                                 |n, s| TypeNotMemberOfTrait(n, s));
 
                                             this.visit_ty(ty);
+                                        }
+                                        ImplItemKind::Existential(ref bounds) => {
+                                            // If this is a trait impl, ensure the type
+                                            // exists in trait
+                                            this.check_trait_item(impl_item.ident,
+                                                                TypeNS,
+                                                                impl_item.span,
+                                                |n, s| TypeNotMemberOfTrait(n, s));
+
+                                            for bound in bounds {
+                                                this.visit_param_bound(bound);
+                                            }
                                         }
                                         ImplItemKind::Macro(_) =>
                                             panic!("unexpanded macro in resolve!"),

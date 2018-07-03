@@ -419,6 +419,9 @@ declare_features! (
     // Allows macro invocations in `extern {}` blocks
     (active, macros_in_extern, "1.27.0", Some(49476), None),
 
+    // `existential type`
+    (active, existential_type, "1.28.0", Some(34511), None),
+
     // unstable #[target_feature] directives
     (active, arm_target_feature, "1.27.0", Some(44839), None),
     (active, aarch64_target_feature, "1.27.0", Some(44839), None),
@@ -1643,6 +1646,15 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
+            ast::ItemKind::Existential(..) => {
+                gate_feature_post!(
+                    &self,
+                    existential_type,
+                    i.span,
+                    "existential types are unstable"
+                );
+            }
+
             _ => {}
         }
 
@@ -1842,6 +1854,15 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, const_fn, ii.span, "const fn is unstable");
                 }
             }
+            ast::ImplItemKind::Existential(..) => {
+                gate_feature_post!(
+                    &self,
+                    existential_type,
+                    ii.span,
+                    "existential types are unstable"
+                );
+            }
+
             ast::ImplItemKind::Type(_) if !ii.generics.params.is_empty() => {
                 gate_feature_post!(&self, generic_associated_types, ii.span,
                                    "generic associated types are unstable");

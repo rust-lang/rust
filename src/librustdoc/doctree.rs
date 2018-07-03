@@ -37,6 +37,7 @@ pub struct Module {
     pub mods: Vec<Module>,
     pub id: NodeId,
     pub typedefs: Vec<Typedef>,
+    pub existentials: Vec<Existential>,
     pub statics: Vec<Static>,
     pub constants: Vec<Constant>,
     pub traits: Vec<Trait>,
@@ -68,6 +69,7 @@ impl Module {
             fns        : Vec::new(),
             mods       : Vec::new(),
             typedefs   : Vec::new(),
+            existentials: Vec::new(),
             statics    : Vec::new(),
             constants  : Vec::new(),
             traits     : Vec::new(),
@@ -158,6 +160,17 @@ pub struct Function {
 pub struct Typedef {
     pub ty: P<hir::Ty>,
     pub gen: hir::Generics,
+    pub name: Name,
+    pub id: ast::NodeId,
+    pub attrs: hir::HirVec<ast::Attribute>,
+    pub whence: Span,
+    pub vis: hir::Visibility,
+    pub stab: Option<attr::Stability>,
+    pub depr: Option<attr::Deprecation>,
+}
+
+pub struct Existential {
+    pub exist_ty: hir::ExistTy,
     pub name: Name,
     pub id: ast::NodeId,
     pub attrs: hir::HirVec<ast::Attribute>,

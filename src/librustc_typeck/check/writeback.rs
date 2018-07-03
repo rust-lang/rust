@@ -17,9 +17,10 @@ use rustc::hir;
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::InferCtxt;
+use rustc::ty::subst::UnpackedKind;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::adjustment::{Adjust, Adjustment};
-use rustc::ty::fold::{TypeFoldable, TypeFolder};
+use rustc::ty::fold::{TypeFoldable, TypeFolder, BottomUpFolder};
 use rustc::util::nodemap::DefIdSet;
 use syntax::ast;
 use syntax_pos::Span;
@@ -388,11 +389,65 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         for (&def_id, anon_defn) in self.fcx.anon_types.borrow().iter() {
             let node_id = self.tcx().hir.as_local_node_id(def_id).unwrap();
             let instantiated_ty = self.resolve(&anon_defn.concrete_ty, &node_id);
-            let definition_ty = self.fcx.infer_anon_definition_from_instantiation(
+            let mut definition_ty = self.fcx.infer_anon_definition_from_instantiation(
                 def_id,
                 anon_defn,
                 instantiated_ty,
             );
+
+            let generics = self.tcx().generics_of(def_id);
+
+            // named existential type, not an impl trait
+            if generics.parent.is_none() {
+                // prevent
+                // * `fn foo<T>() -> Foo<T>`
+                // * `fn foo<T: Bound + Other>() -> Foo<T>`
+                // from being defining
+
+                // Also replace all generic params with the ones from the existential type
+                // definition so
+                // ```rust
+                // existential type Foo<T>: 'static;
+                // fn foo<U>() -> Foo<U> { .. }
+                // ```
+                // figures out the concrete type with `U`, but the stored type is with `T`
+                definition_ty = definition_ty.fold_with(&mut BottomUpFolder {
+                    tcx: self.tcx().global_tcx(),
+                    fldop: |ty| {
+                        // find a type parameter
+                        if let ty::TyParam(..) = ty.sty {
+                            // look it up in the substitution list
+                            assert_eq!(anon_defn.substs.len(), generics.params.len());
+                            for (subst, param) in anon_defn.substs.iter().zip(&generics.params) {
+                                if let UnpackedKind::Type(subst) = subst.unpack() {
+                                    if subst == ty {
+                                        // found it in the substitution list, replace with the
+                                        // parameter from the existential type
+                                        return self
+                                            .tcx()
+                                            .global_tcx()
+                                            .mk_ty_param(param.index, param.name);
+                                    }
+                                }
+                            }
+                            self.tcx()
+                                .sess
+                                .struct_span_err(
+                                    span,
+                                    &format!(
+                                        "type parameter `{}` is part of concrete type but not used \
+                                        in parameter list for existential type",
+                                        ty,
+                                    ),
+                                )
+                                .emit();
+                            return self.tcx().types.err;
+                        }
+                        ty
+                    },
+                });
+            }
+
             let old = self.tables.concrete_existential_types.insert(def_id, definition_ty);
             if let Some(old) = old {
                 if old != definition_ty {

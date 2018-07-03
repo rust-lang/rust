@@ -13,11 +13,12 @@ use constrained_type_params::{identify_constrained_type_params, Parameter};
 
 use hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
-use rustc::ty::{self, Lift, Ty, TyCtxt, GenericParamDefKind};
-use rustc::ty::subst::Substs;
+use rustc::ty::{self, Lift, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
+use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::util::ExplicitSelf;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::middle::lang_items;
+use rustc::infer::anon_types::may_define_existential_type;
 
 use syntax::ast;
 use syntax::feature_gate::{self, GateIssue};
@@ -209,6 +210,10 @@ fn check_associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     fcx.register_wf_obligation(ty, span, code.clone());
                 }
             }
+            ty::AssociatedKind::Existential => {
+                // FIXME(oli-obk) implement existential types in trait impls
+                unimplemented!()
+            }
         }
 
         implied_bounds
@@ -282,7 +287,7 @@ fn check_type_defn<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
 
-        check_where_clauses(tcx, fcx, item.span, def_id);
+        check_where_clauses(tcx, fcx, item.span, def_id, None);
 
         vec![] // no implied bounds in a struct def'n
     });
@@ -291,7 +296,7 @@ fn check_type_defn<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn check_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &hir::Item) {
     let trait_def_id = tcx.hir.local_def_id(item.id);
     for_item(tcx, item).with_fcx(|fcx, _| {
-        check_where_clauses(tcx, fcx, item.span, trait_def_id);
+        check_where_clauses(tcx, fcx, item.span, trait_def_id, None);
         vec![]
     });
 }
@@ -357,7 +362,7 @@ fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
 
-        check_where_clauses(tcx, fcx, item.span, item_def_id);
+        check_where_clauses(tcx, fcx, item.span, item_def_id, None);
 
         fcx.impl_implied_bounds(item_def_id, item.span)
     });
@@ -369,6 +374,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
     fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
     span: Span,
     def_id: DefId,
+    return_ty: Option<Ty<'tcx>>,
 ) {
     use ty::subst::Subst;
     use rustc::ty::TypeFoldable;
@@ -482,7 +488,12 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
         traits::Obligation::new(cause, fcx.param_env, pred)
     });
 
-    let predicates = predicates.instantiate_identity(fcx.tcx);
+    let mut predicates = predicates.instantiate_identity(fcx.tcx);
+
+    if let Some(return_ty) = return_ty {
+        predicates.predicates.extend(check_existential_types(tcx, fcx, def_id, span, return_ty));
+    }
+
     let predicates = fcx.normalize_associated_types_in(span, &predicates);
 
     debug!("check_where_clauses: predicates={:?}", predicates.predicates);
@@ -521,7 +532,79 @@ fn check_fn_or_method<'a, 'fcx, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     // FIXME(#25759) return types should not be implied bounds
     implied_bounds.push(sig.output());
 
-    check_where_clauses(tcx, fcx, span, def_id);
+    check_where_clauses(tcx, fcx, span, def_id, Some(sig.output()));
+}
+
+fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'gcx>,
+    fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
+    fn_def_id: DefId,
+    span: Span,
+    ty: Ty<'tcx>,
+) -> Vec<ty::Predicate<'tcx>> {
+    trace!("check_existential_types: {:?}, {:?}", ty, ty.sty);
+    let mut substituted_predicates = Vec::new();
+    ty.fold_with(&mut ty::fold::BottomUpFolder {
+        tcx: fcx.tcx,
+        fldop: |ty| {
+            if let ty::TyAnon(def_id, substs) = ty.sty {
+                trace!("check_existential_types: anon_ty, {:?}, {:?}", def_id, substs);
+                let anon_node_id = tcx.hir.as_local_node_id(def_id).unwrap();
+                if may_define_existential_type(tcx, fn_def_id, anon_node_id) {
+                    let generics = tcx.generics_of(def_id);
+                    trace!("check_existential_types may define. Generics: {:#?}", generics);
+                    for (subst, param) in substs.iter().zip(&generics.params) {
+                        if let ty::subst::UnpackedKind::Type(ty) = subst.unpack() {
+                            match ty.sty {
+                                ty::TyParam(..) => {},
+                                // prevent `fn foo() -> Foo<u32>` from being defining
+                                _ => {
+                                    tcx
+                                        .sess
+                                        .struct_span_err(
+                                            span,
+                                            "non-defining existential type use in defining scope",
+                                        )
+                                        .span_note(
+                                            tcx.def_span(param.def_id),
+                                            &format!(
+                                                "used non-generic type {} for generic parameter",
+                                                ty,
+                                            ),
+                                        )
+                                        .emit();
+                                    return tcx.types.err;
+                                },
+                            } // match ty
+                        } // if let Type = subst
+                    } // for (subst, param)
+                } // if may_define_existential_type
+
+                // now register the bounds on the parameters of the existential type
+                // so the parameters given by the function need to fulfil them
+                // ```rust
+                // existential type Foo<T: Bar>: 'static;
+                // fn foo<U>() -> Foo<U> { .. *}
+                // ```
+                // becomes
+                // ```rust
+                // existential type Foo<T: Bar>: 'static;
+                // fn foo<U: Bar>() -> Foo<U> { .. *}
+                // ```
+                let predicates = tcx.predicates_of(def_id);
+                trace!("check_existential_types may define. adding predicates: {:#?}", predicates);
+                for &pred in predicates.predicates.iter() {
+                    let substituted_pred = pred.subst(fcx.tcx, substs);
+                    // Avoid duplication of predicates that contain no parameters, for example.
+                    if !predicates.predicates.contains(&substituted_pred) {
+                        substituted_predicates.push(substituted_pred);
+                    }
+                }
+            } // if let TyAnon
+            ty
+        },
+    });
+    substituted_predicates
 }
 
 fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,

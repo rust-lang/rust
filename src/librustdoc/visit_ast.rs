@@ -439,6 +439,19 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                 };
                 om.typedefs.push(t);
             },
+            hir::ItemKind::Existential(ref exist_ty) => {
+                let t = Existential {
+                    exist_ty: exist_ty.clone(),
+                    name,
+                    id: item.id,
+                    attrs: item.attrs.clone(),
+                    whence: item.span,
+                    vis: item.vis.clone(),
+                    stab: self.stability(item.id),
+                    depr: self.deprecation(item.id),
+                };
+                om.existentials.push(t);
+            },
             hir::ItemKind::Static(ref ty, ref mut_, ref exp) => {
                 let s = Static {
                     type_: ty.clone(),
@@ -523,9 +536,6 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
                     om.impls.push(i);
                 }
             },
-            hir::ItemKind::Existential(_) => {
-                // FIXME(oli-obk): actually generate docs for real existential items
-            }
         }
     }
 

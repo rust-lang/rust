@@ -622,6 +622,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
                 }
                 self.visit_nested_body(body_id)
             }
+            hir::ImplItemKind::Existential(..) |
             hir::ImplItemKind::Type(..) => {}
         }
     }

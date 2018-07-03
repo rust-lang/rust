@@ -158,8 +158,10 @@ pub enum TypeVariants<'tcx> {
     TyProjection(ProjectionTy<'tcx>),
 
     /// Anonymized (`impl Trait`) type found in a return type.
-    /// The DefId comes from the `impl Trait` ast::Ty node, and the
-    /// substitutions are for the generics of the function in question.
+    /// The DefId comes either from
+    /// * the `impl Trait` ast::Ty node,
+    /// * or the `existential type` declaration
+    /// The substitutions are for the generics of the function in question.
     /// After typeck, the concrete type can be found in the `types` map.
     TyAnon(DefId, &'tcx Substs<'tcx>),
 

@@ -321,6 +321,7 @@ pub enum EntryKind<'tcx> {
     Impl(Lazy<ImplData<'tcx>>),
     Method(Lazy<MethodData<'tcx>>),
     AssociatedType(AssociatedContainer),
+    AssociatedExistential(AssociatedContainer),
     AssociatedConst(AssociatedContainer, ConstQualif, Lazy<RenderedConst>),
 }
 
@@ -382,6 +383,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
             EntryKind::Method(ref method_data) => {
                 method_data.hash_stable(hcx, hasher);
             }
+            EntryKind::AssociatedExistential(associated_container) |
             EntryKind::AssociatedType(associated_container) => {
                 associated_container.hash_stable(hcx, hasher);
             }

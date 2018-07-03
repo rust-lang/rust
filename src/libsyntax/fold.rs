@@ -912,6 +912,10 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
         ItemKind::Ty(t, generics) => {
             ItemKind::Ty(folder.fold_ty(t), folder.fold_generics(generics))
         }
+        ItemKind::Existential(bounds, generics) => ItemKind::Existential(
+            folder.fold_bounds(bounds),
+            folder.fold_generics(generics),
+        ),
         ItemKind::Enum(enum_definition, generics) => {
             let generics = folder.fold_generics(generics);
             let variants = enum_definition.variants.move_map(|x| folder.fold_variant(x));
@@ -1002,6 +1006,9 @@ pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T)
                                folder.fold_block(body))
             }
             ast::ImplItemKind::Type(ty) => ast::ImplItemKind::Type(folder.fold_ty(ty)),
+            ast::ImplItemKind::Existential(bounds) => {
+                ast::ImplItemKind::Existential(folder.fold_bounds(bounds))
+            },
             ast::ImplItemKind::Macro(mac) => ast::ImplItemKind::Macro(folder.fold_mac(mac))
         },
         span: folder.new_span(i.span),

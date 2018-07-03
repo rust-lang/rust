@@ -627,6 +627,30 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             }
             hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
                 if let Def::Existential(exist_ty_did) = path.def {
+                    let id = self.tcx.hir.as_local_node_id(exist_ty_did).unwrap();
+
+                    // Resolve the lifetimes in the bounds to the lifetime defs in the generics.
+                    // `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
+                    // `abstract type MyAnonTy<'b>: MyTrait<'b>;`
+                    //                          ^            ^ this gets resolved in the scope of
+                    //                                         the exist_ty generics
+                    let (generics, bounds) = match self.tcx.hir.expect_item(id).node {
+                        // named existential types don't need these hacks
+                        hir::ItemKind::Existential(hir::ExistTy{ impl_trait_fn: None, .. }) => {
+                            intravisit::walk_ty(self, ty);
+                            return;
+                        },
+                        hir::ItemKind::Existential(hir::ExistTy{
+                            ref generics,
+                            ref bounds,
+                            ..
+                        }) => (
+                            generics,
+                            bounds,
+                        ),
+                        ref i => bug!("impl Trait pointed to non-existential type?? {:#?}", i),
+                    };
+
                     assert!(exist_ty_did.is_local());
                     // Resolve the lifetimes that are applied to the existential type.
                     // These are resolved in the current scope.
@@ -666,23 +690,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             }
                         }
                     }
-
-                    let id = self.tcx.hir.as_local_node_id(exist_ty_did).unwrap();
-
-                    // Resolve the lifetimes in the bounds to the lifetime defs in the generics.
-                    // `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
-                    // `abstract type MyAnonTy<'b>: MyTrait<'b>;`
-                    //                          ^            ^ this gets resolved in the scope of
-                    //                                         the exist_ty generics
-                    let (generics, bounds) = match self.tcx.hir.expect_item(id).node {
-                        hir::ItemKind::Existential(
-                            hir::ExistTy { ref generics, ref bounds, .. }
-                        ) => (
-                            generics,
-                            bounds,
-                        ),
-                        ref i => bug!("impl Trait pointed to non-existential type?? {:#?}", i),
-                    };
 
                     // We want to start our early-bound indices at the end of the parent scope,
                     // not including any parent `impl Trait`s.
@@ -845,6 +852,35 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 self.with(scope, |_old_scope, this| {
                     this.visit_generics(generics);
                     this.visit_ty(ty);
+                });
+            }
+            Existential(ref bounds) => {
+                let generics = &impl_item.generics;
+                let mut index = self.next_early_index();
+                let mut next_early_index = index;
+                debug!("visit_ty: index = {}", index);
+                let lifetimes = generics.params.iter().filter_map(|param| match param.kind {
+                    GenericParamKind::Lifetime { .. } => {
+                        Some(Region::early(&self.tcx.hir, &mut index, param))
+                    }
+                    GenericParamKind::Type { .. } => {
+                        next_early_index += 1;
+                        None
+                    }
+                }).collect();
+
+                let scope = Scope::Binder {
+                    lifetimes,
+                    next_early_index,
+                    s: self.scope,
+                    track_lifetime_uses: true,
+                    abstract_type_parent: true,
+                };
+                self.with(scope, |_old_scope, this| {
+                    this.visit_generics(generics);
+                    for bound in bounds {
+                        this.visit_param_bound(bound);
+                    }
                 });
             }
             Const(_, _) => {
@@ -1213,6 +1249,7 @@ fn compute_object_lifetime_defaults(
             hir::ItemKind::Struct(_, ref generics)
             | hir::ItemKind::Union(_, ref generics)
             | hir::ItemKind::Enum(_, ref generics)
+            | hir::ItemKind::Existential(hir::ExistTy { ref generics, impl_trait_fn: None, .. })
             | hir::ItemKind::Ty(_, ref generics)
             | hir::ItemKind::Trait(_, _, ref generics, ..) => {
                 let result = object_lifetime_defaults_for_item(tcx, generics);

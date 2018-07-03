@@ -1410,6 +1410,7 @@ fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let kind = match impl_item.node {
         hir::ImplItemKind::Const(..) => ty::AssociatedKind::Const,
         hir::ImplItemKind::Method(..) => ty::AssociatedKind::Method,
+        hir::ImplItemKind::Existential(..) => ty::AssociatedKind::Existential,
         hir::ImplItemKind::Type(_) => ty::AssociatedKind::Type
     };
 
@@ -1503,6 +1504,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          err.emit()
                     }
                 }
+                hir::ImplItemKind::Existential(..) |
                 hir::ImplItemKind::Type(_) => {
                     if ty_trait_item.kind == ty::AssociatedKind::Type {
                         if ty_trait_item.defaultness.has_value() {

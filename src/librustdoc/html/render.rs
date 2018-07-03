@@ -1570,6 +1570,7 @@ struct AllTypes {
     macros: HashSet<ItemEntry>,
     functions: HashSet<ItemEntry>,
     typedefs: HashSet<ItemEntry>,
+    existentials: HashSet<ItemEntry>,
     statics: HashSet<ItemEntry>,
     constants: HashSet<ItemEntry>,
     keywords: HashSet<ItemEntry>,
@@ -1586,6 +1587,7 @@ impl AllTypes {
             macros: HashSet::with_capacity(100),
             functions: HashSet::with_capacity(100),
             typedefs: HashSet::with_capacity(100),
+            existentials: HashSet::with_capacity(100),
             statics: HashSet::with_capacity(100),
             constants: HashSet::with_capacity(100),
             keywords: HashSet::with_capacity(100),
@@ -1607,6 +1609,7 @@ impl AllTypes {
                 ItemType::Macro => self.macros.insert(ItemEntry::new(new_url, name)),
                 ItemType::Function => self.functions.insert(ItemEntry::new(new_url, name)),
                 ItemType::Typedef => self.typedefs.insert(ItemEntry::new(new_url, name)),
+                ItemType::Existential => self.existentials.insert(ItemEntry::new(new_url, name)),
                 ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
                 ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
                 _ => true,
@@ -1650,6 +1653,7 @@ impl fmt::Display for AllTypes {
         print_entries(f, &self.macros, "Macros", "macros")?;
         print_entries(f, &self.functions, "Functions", "functions")?;
         print_entries(f, &self.typedefs, "Typedefs", "typedefs")?;
+        print_entries(f, &self.existentials, "Existentials", "existentials")?;
         print_entries(f, &self.statics, "Statics", "statics")?;
         print_entries(f, &self.constants, "Constants", "constants")
     }
@@ -4400,6 +4404,7 @@ fn item_ty_to_strs(ty: &ItemType) -> (&'static str, &'static str) {
         ItemType::AssociatedConst => ("associated-consts", "Associated Constants"),
         ItemType::ForeignType     => ("foreign-types", "Foreign Types"),
         ItemType::Keyword         => ("keywords", "Keywords"),
+        ItemType::Existential     => ("existentials", "Existentials"),
     }
 }
 

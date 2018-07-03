@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-rustfix
 
-// Point at the captured immutable outer variable
+#![feature(existential_type)]
 
-fn foo(mut f: Box<FnMut()>) {
-    f();
-}
+fn main() {}
 
-fn main() {
-    let y = true;
-    foo(Box::new(move || y = false) as Box<_>); //~ ERROR cannot assign to captured outer variable
+existential type Cmp<T>: 'static;
+
+// not a defining use, because it doesn't define *all* possible generics
+fn cmp() -> Cmp<u32> { //~ ERROR non-defining existential type use in defining scope
+    5u32
 }
