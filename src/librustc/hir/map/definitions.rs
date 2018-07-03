@@ -23,6 +23,7 @@ use rustc_data_structures::indexed_vec::{IndexVec};
 use rustc_data_structures::stable_hasher::StableHasher;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use session::CrateDisambiguator;
+use std::borrow::Borrow;
 use std::fmt::Write;
 use std::hash::Hash;
 use syntax::ast;
@@ -388,6 +389,13 @@ pub enum DefPathData {
 pub struct DefPathHash(pub Fingerprint);
 
 impl_stable_hash_for!(tuple_struct DefPathHash { fingerprint });
+
+impl Borrow<Fingerprint> for DefPathHash {
+    #[inline]
+    fn borrow(&self) -> &Fingerprint {
+        &self.0
+    }
+}
 
 impl Definitions {
     /// Create new empty definition map.
