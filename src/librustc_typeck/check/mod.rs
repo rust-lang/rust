@@ -4944,11 +4944,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
         let mut infer_lifetimes = FxHashMap();
+        let mut supress_errors = FxHashMap();
         for &PathSeg(def_id, index) in &path_segs {
             let seg = &segments[index];
             let generics = self.tcx.generics_of(def_id);
             let supress_mismatch = self.check_impl_trait(span, seg, &generics);
-            self.check_generic_arg_count(span, seg, &generics, false, supress_mismatch);
+            supress_errors.insert(index,
+                self.check_generic_arg_count(span, seg, &generics, false, supress_mismatch));
             infer_lifetimes.insert(index, if let Some(ref data) = seg.args {
                 !data.args.iter().any(|arg| match arg {
                     GenericArg::Lifetime(_) => true,
@@ -4991,34 +4993,38 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     .iter()
                     .find(|&PathSeg(did, _)| *did == def_id) {
 
-                    if let Some(ref data) = segments[index].args {
-                        let lifetime_offset = if infer_lifetimes[&index] {
-                            defs.own_counts().lifetimes
-                        } else {
-                            0
-                        };
-                        let self_offset = (defs.parent_count == 0 && has_self) as usize;
-                        let param_idx =
-                            (param.index as usize - defs.parent_count - self_offset as usize)
-                            .saturating_sub(lifetime_offset);
-                        if let Some(arg) = data.args.get(param_idx) {
-                            match param.kind {
-                                GenericParamDefKind::Lifetime => match arg {
-                                    GenericArg::Lifetime(lt) => {
-                                        return AstConv::ast_region_to_region(self,
-                                            lt, Some(param)).into();
+                    if supress_errors[&index] {
+                        true
+                    } else {
+                        if let Some(ref data) = segments[index].args {
+                            let lifetime_offset = if infer_lifetimes[&index] {
+                                defs.own_counts().lifetimes
+                            } else {
+                                0
+                            };
+                            let self_offset = (defs.parent_count == 0 && has_self) as usize;
+                            let param_idx =
+                                (param.index as usize - defs.parent_count - self_offset as usize)
+                                .saturating_sub(lifetime_offset);
+                            if let Some(arg) = data.args.get(param_idx) {
+                                match param.kind {
+                                    GenericParamDefKind::Lifetime => match arg {
+                                        GenericArg::Lifetime(lt) => {
+                                            return AstConv::ast_region_to_region(self,
+                                                lt, Some(param)).into();
+                                        }
+                                        _ => {}
                                     }
-                                    _ => {}
-                                }
-                                GenericParamDefKind::Type { .. } => match arg {
-                                    GenericArg::Type(ty) => return self.to_ty(ty).into(),
-                                    _ => {}
+                                    GenericParamDefKind::Type { .. } => match arg {
+                                        GenericArg::Type(ty) => return self.to_ty(ty).into(),
+                                        _ => {}
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    segments[index].infer_types
+                        segments[index].infer_types
+                    }
                 } else {
                     true
                 };
@@ -5129,7 +5135,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                segment: &hir::PathSegment,
                                generics: &ty::Generics,
                                is_method_call: bool,
-                               supress_mismatch_error: bool) {
+                               supress_mismatch_error: bool)
+                               -> bool {
+        let mut supress_errors = false;
         let (mut lifetimes, mut types) = (vec![], vec![]);
         let infer_types = segment.infer_types;
         let mut bindings = vec![];
@@ -5173,8 +5181,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // To prevent derived errors to accumulate due to extra
             // type parameters, we force instantiate_value_path to
             // use inference variables instead of the provided types.
-            // FIXME(varkor)
-            // *segment = None;
+            supress_errors = true;
             let span = types[ty_accepted].span;
             Some((struct_span_err!(self.tcx.sess, span, E0087,
                                   "too many type parameters provided: \
@@ -5206,18 +5213,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let note_msg = "the late bound lifetime parameter is introduced here";
             if !is_method_call && (lifetimes.len() > lt_accepted ||
                                    lifetimes.len() < lt_accepted && !infer_lifetimes) {
+                supress_errors = true;
                 let mut err = self.tcx.sess.struct_span_err(lifetimes[0].span, primary_msg);
                 err.span_note(span_late, note_msg);
                 err.emit();
-                // FIXME(varkor)
-                // *segment = None;
             } else {
                 let mut multispan = MultiSpan::from_span(lifetimes[0].span);
                 multispan.push_span_label(span_late, note_msg.to_string());
                 self.tcx.lint_node(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
                                    lifetimes[0].id, multispan, primary_msg);
             }
-            return;
+            return supress_errors;
         }
 
         let count_lifetime_params = |n| {
@@ -5241,6 +5247,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } {
             err.span_label(span, format!("expected {}", expected_text)).emit();
         }
+
+        supress_errors
     }
 
     /// Report error if there is an explicit type parameter when using `impl Trait`.
