@@ -11,9 +11,9 @@
 #![feature(rustc_attrs)]
 #![feature(infer_outlives_requirements)]
 
-// #[rustc_outlives]
-struct Foo<'a, T> {
-    bar: std::slice::IterMut<'a, T> //~ ERROR 16:5: 16:36: the parameter type `T` may not live long enough [E0309]
+#[rustc_outlives]
+struct Foo<'a, T> { //~ ERROR 15:1: 17:2: rustc_outlives
+    bar: std::slice::IterMut<'a, T>
 }
 
 fn main() {}

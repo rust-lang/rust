@@ -15,6 +15,7 @@ use rustc::ty::subst::{Kind, Subst, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 
+use super::explicit::ExplicitPredicatesMap;
 use super::utils::*;
 
 /// Infer predicates for the items in the crate.
@@ -24,7 +25,7 @@ use super::utils::*;
 ///     now be filled with inferred predicates.
 pub fn infer_predicates<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
-    explicit_map: &FxHashMap<DefId, RequiredPredicates<'tcx>>,
+    explicit_map: &mut ExplicitPredicatesMap<'tcx>,
 ) -> FxHashMap<DefId, RequiredPredicates<'tcx>> {
     debug!("infer_predicates");
 
@@ -55,7 +56,7 @@ pub struct InferVisitor<'cx, 'tcx: 'cx> {
     tcx: TyCtxt<'cx, 'tcx, 'tcx>,
     global_inferred_outlives: &'cx mut FxHashMap<DefId, RequiredPredicates<'tcx>>,
     predicates_added: &'cx mut bool,
-    explicit_map: &'cx FxHashMap<DefId, RequiredPredicates<'tcx>>,
+    explicit_map: &'cx mut ExplicitPredicatesMap<'tcx>,
 }
 
 impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
@@ -93,7 +94,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
                         field_ty,
                         self.global_inferred_outlives,
                         &mut item_required_predicates,
-                        self.explicit_map,
+                        &mut self.explicit_map,
                     );
                 }
             }
@@ -129,7 +130,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
     field_ty: Ty<'tcx>,
     global_inferred_outlives: &FxHashMap<DefId, RequiredPredicates<'tcx>>,
     required_predicates: &mut RequiredPredicates<'tcx>,
-    explicit_map: &FxHashMap<DefId, RequiredPredicates<'tcx>>,
+    explicit_map: &mut ExplicitPredicatesMap<'tcx>,
 ) {
     for ty in field_ty.walk() {
         match ty.sty {
@@ -257,53 +258,54 @@ pub fn check_explicit_predicates<'tcx>(
     def_id: &DefId,
     substs: &[Kind<'tcx>],
     required_predicates: &mut RequiredPredicates<'tcx>,
-    explicit_map: &FxHashMap<DefId, RequiredPredicates<'tcx>>,
+    explicit_map: &mut ExplicitPredicatesMap<'tcx>,
     ignore_self_ty: bool,
 ) {
     debug!("def_id = {:?}", &def_id);
     debug!("substs = {:?}", &substs);
     debug!("explicit_map =  {:?}", explicit_map);
     debug!("required_predicates = {:?}", required_predicates);
-    if let Some(explicit_predicates) = explicit_map.get(def_id) {
-        for outlives_predicate in explicit_predicates.iter() {
-            debug!("outlives_predicate = {:?}", &outlives_predicate);
+    let explicit_predicates = explicit_map.explicit_predicates_of(tcx, *def_id);
 
-            // Careful: If we are inferring the effects of a `dyn Trait<..>`
-            // type, then when we look up the predicates for `Trait`,
-            // we may find some that reference `Self`. e.g., perhaps the
-            // definition of `Trait` was:
-            //
-            // ```
-            // trait Trait<'a, T> where Self: 'a  { .. }
-            // ```
-            //
-            // we want to ignore such predicates here, because
-            // there is no type parameter for them to affect. Consider
-            // a struct containing `dyn Trait`:
-            //
-            // ```
-            // struct MyStruct<'x, X> { field: Box<dyn Trait<'x, X>> }
-            // ```
-            //
-            // The `where Self: 'a` predicate refers to the *existential, hidden type*
-            // that is represented by the `dyn Trait`, not to the `X` type parameter
-            // (or any other generic parameter) declared on `MyStruct`.
-            //
-            // Note that we do this check for self **before** applying `substs`. In the
-            // case that `substs` come from a `dyn Trait` type, our caller will have
-            // included `Self = dyn Trait<'x, X>` as the value for `Self`. If we were
-            // to apply the substs, and not filter this predicate, we might then falsely
-            // conclude that e.g. `X: 'x` was a reasonable inferred requirement.
-            if let UnpackedKind::Type(ty) = outlives_predicate.0.unpack() {
-                if ty.is_self() && ignore_self_ty {
-                    debug!("skipping self ty = {:?}", &ty);
-                    continue;
-                }
+    for outlives_predicate in explicit_predicates.iter() {
+        debug!("outlives_predicate = {:?}", &outlives_predicate);
+
+        // Careful: If we are inferring the effects of a `dyn Trait<..>`
+        // type, then when we look up the predicates for `Trait`,
+        // we may find some that reference `Self`. e.g., perhaps the
+        // definition of `Trait` was:
+        //
+        // ```
+        // trait Trait<'a, T> where Self: 'a  { .. }
+        // ```
+        //
+        // we want to ignore such predicates here, because
+        // there is no type parameter for them to affect. Consider
+        // a struct containing `dyn Trait`:
+        //
+        // ```
+        // struct MyStruct<'x, X> { field: Box<dyn Trait<'x, X>> }
+        // ```
+        //
+        // The `where Self: 'a` predicate refers to the *existential, hidden type*
+        // that is represented by the `dyn Trait`, not to the `X` type parameter
+        // (or any other generic parameter) declared on `MyStruct`.
+        //
+        // Note that we do this check for self **before** applying `substs`. In the
+        // case that `substs` come from a `dyn Trait` type, our caller will have
+        // included `Self = dyn Trait<'x, X>` as the value for `Self`. If we were
+        // to apply the substs, and not filter this predicate, we might then falsely
+        // conclude that e.g. `X: 'x` was a reasonable inferred requirement.
+        if let UnpackedKind::Type(ty) = outlives_predicate.0.unpack() {
+            if ty.is_self() && ignore_self_ty {
+                debug!("skipping self ty = {:?}", &ty);
+                continue;
             }
-
-            let predicate = outlives_predicate.subst(tcx, substs);
-            debug!("predicate = {:?}", &predicate);
-            insert_outlives_predicate(tcx, predicate.0.into(), predicate.1, required_predicates);
         }
+
+        let predicate = outlives_predicate.subst(tcx, substs);
+        debug!("predicate = {:?}", &predicate);
+        insert_outlives_predicate(tcx, predicate.0.into(), predicate.1, required_predicates);
     }
+    // }
 }

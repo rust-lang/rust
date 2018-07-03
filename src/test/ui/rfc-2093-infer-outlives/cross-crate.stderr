@@ -1,17 +1,12 @@
-error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/cross-crate.rs:16:5
+error: rustc_outlives
+  --> $DIR/cross-crate.rs:15:1
    |
-LL | struct Foo<'a, T> {
-   |                - help: consider adding an explicit lifetime bound `T: 'a`...
-LL |     bar: std::slice::IterMut<'a, T> //~ ERROR 16:5: 16:36: the parameter type `T` may not live long enough [E0309]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / struct Foo<'a, T> { //~ ERROR 15:1: 17:2: rustc_outlives
+LL | |     bar: std::slice::IterMut<'a, T>
+LL | | }
+   | |_^
    |
-note: ...so that the type `T` will meet its required lifetime bounds
-  --> $DIR/cross-crate.rs:16:5
-   |
-LL |     bar: std::slice::IterMut<'a, T> //~ ERROR 16:5: 16:36: the parameter type `T` may not live long enough [E0309]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: T : 'a
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0309`.
