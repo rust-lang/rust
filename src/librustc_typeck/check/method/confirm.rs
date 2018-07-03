@@ -323,12 +323,26 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // parameters from the type and those from the method.
         assert_eq!(method_generics.parent_count, parent_substs.len());
 
+        let inferred_lifetimes = if if let Some(ref data) = segment.args {
+            !data.args.iter().any(|arg| match arg {
+                GenericArg::Lifetime(_) => true,
+                _ => false,
+            })
+        } else {
+            true
+        } {
+            method_generics.own_counts().lifetimes
+        } else {
+            0
+        };
+
         Substs::for_item(self.tcx, pick.item.def_id, |param, _| {
-            let i = param.index as usize;
-            if i < parent_substs.len() {
-                parent_substs[i]
+            let param_idx = param.index as usize;
+            if param_idx < parent_substs.len() {
+                parent_substs[param_idx]
             } else {
-                let param_idx = i - parent_substs.len();
+                let param_idx = (param.index as usize - parent_substs.len())
+                    .saturating_sub(inferred_lifetimes);
 
                 if let Some(ref data) = segment.args {
                     if let Some(arg) = data.args.get(param_idx) {
