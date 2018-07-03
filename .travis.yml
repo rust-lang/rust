@@ -30,7 +30,7 @@ matrix:
 
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--enable-extended --enable-profiler"
+        RUST_CONFIGURE_ARGS="--enable-extended --enable-profiler --enable-lldb"
         SRC=.
         DEPLOY_ALT=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
@@ -85,7 +85,7 @@ matrix:
     # OSX 10.7 and `xcode7` is the latest Xcode able to compile LLVM for 10.7.
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-full-tools --enable-profiler"
+        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-full-tools --enable-profiler --enable-lldb"
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
@@ -99,7 +99,7 @@ matrix:
 
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler"
+        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --enable-lldb"
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
@@ -233,7 +233,8 @@ install:
         osx)
           if [[ "$RUST_CHECK_TARGET" == dist ]]; then
             travis_retry brew update &&
-            travis_retry brew install xz;
+            travis_retry brew install xz &&
+            travis_retry brew install swig;
           fi &&
           travis_retry curl -fo /usr/local/bin/sccache https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-02-sccache-x86_64-apple-darwin &&
             chmod +x /usr/local/bin/sccache &&
