@@ -395,15 +395,8 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             };
             let param_env = ty::ParamEnv::reveal_all();
 
-            match tcx.const_eval(param_env.and(cid)) {
-                Ok(val) => collect_const(tcx, val, instance.substs, &mut neighbors),
-                Err(err) => {
-                    let span = tcx.def_span(def_id);
-                    err.report_as_error(
-                        tcx.at(span),
-                        "could not evaluate static initializer",
-                    );
-                }
+            if let Ok(val) = tcx.const_eval(param_env.and(cid)) {
+                collect_const(tcx, val, instance.substs, &mut neighbors);
             }
         }
         MonoItem::Fn(instance) => {
