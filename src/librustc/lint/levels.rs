@@ -22,6 +22,7 @@ use session::Session;
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap::MultiSpan;
+use syntax::feature_gate;
 use syntax::symbol::Symbol;
 use util::nodemap::FxHashMap;
 
@@ -221,6 +222,28 @@ impl<'a> LintLevelsBuilder<'a> {
                         continue
                     }
                 };
+                if word.is_scoped() {
+                    if !self.sess.features_untracked().tool_lints {
+                        feature_gate::emit_feature_err(&sess.parse_sess,
+                                                       "tool_lints",
+                                                       word.span,
+                                                       feature_gate::GateIssue::Language,
+                                                       &format!("scoped lint `{}` is experimental",
+                                                                word.ident));
+                    }
+
+                    if !attr::is_known_lint_tool(word) {
+                        span_err!(
+                            sess,
+                            word.span,
+                            E0710,
+                            "an unknown tool name found in scoped lint: `{}`.",
+                            word.ident
+                        );
+                    }
+
+                    continue
+                }
                 let name = word.name();
                 match store.check_lint_name(&name.as_str()) {
                     CheckLintNameResult::Ok(ids) => {

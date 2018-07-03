@@ -90,11 +90,18 @@ pub fn is_known(attr: &Attribute) -> bool {
 }
 
 const RUST_KNOWN_TOOL: &[&str] = &["clippy", "rustfmt"];
+const RUST_KNOWN_LINT_TOOL: &[&str] = &["clippy"];
 
 pub fn is_known_tool(attr: &Attribute) -> bool {
     let tool_name =
         attr.path.segments.iter().next().expect("empty path in attribute").ident.name;
     RUST_KNOWN_TOOL.contains(&tool_name.as_str().as_ref())
+}
+
+pub fn is_known_lint_tool(m_item: &MetaItem) -> bool {
+    let tool_name =
+        m_item.ident.segments.iter().next().expect("empty path in meta item").ident.name;
+    RUST_KNOWN_LINT_TOOL.contains(&tool_name.as_str().as_ref())
 }
 
 impl NestedMetaItem {
@@ -289,6 +296,10 @@ impl MetaItem {
 
     pub fn is_meta_item_list(&self) -> bool {
         self.meta_item_list().is_some()
+    }
+
+    pub fn is_scoped(&self) -> bool {
+        self.ident.segments.len() > 1
     }
 }
 
