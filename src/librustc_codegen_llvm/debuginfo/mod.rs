@@ -22,7 +22,7 @@ use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 
 use llvm;
 use llvm::ValueRef;
-use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray, DIFlags};
+use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilder, DISubprogram, DIArray, DIFlags};
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum};
 use rustc::ty::subst::{Substs, UnpackedKind};
@@ -70,7 +70,7 @@ const DW_TAG_arg_variable: c_uint = 0x101;
 pub struct CrateDebugContext<'a, 'tcx> {
     llcontext: &'a llvm::Context,
     llmod: &'a llvm::Module,
-    builder: DIBuilderRef,
+    builder: &'a DIBuilder,
     created_files: RefCell<FxHashMap<(Symbol, Symbol), DIFile>>,
     created_enum_disr_types: RefCell<FxHashMap<(DefId, layout::Primitive), DIType>>,
 

@@ -15,7 +15,7 @@
 // https://reviews.llvm.org/D26769
 
 use super::debuginfo::{
-    DIBuilderRef, DIDescriptor_opaque, DIDescriptor, DIFile, DILexicalBlock, DISubprogram, DIType_opaque,
+    DIBuilder, DIDescriptor_opaque, DIDescriptor, DIFile, DILexicalBlock, DISubprogram, DIType_opaque,
     DIType, DIBasicType, DIDerivedType, DICompositeType, DIScope_opaque, DIScope, DIVariable,
     DIGlobalVariable, DIArray_opaque, DIArray, DISubrange, DITemplateTypeParameter, DIEnumerator,
     DINameSpace, DIFlags,
@@ -433,8 +433,7 @@ pub type InlineAsmDiagHandler = unsafe extern "C" fn(SMDiagnosticRef, *const c_v
 pub mod debuginfo {
     use super::Metadata_opaque;
 
-    extern { pub type DIBuilder_opaque; }
-    pub type DIBuilderRef = *mut DIBuilder_opaque;
+    extern { pub type DIBuilder; }
 
     pub type DIDescriptor_opaque = Metadata_opaque;
     pub type DIDescriptor = *mut DIDescriptor_opaque;
@@ -1369,13 +1368,13 @@ extern "C" {
 
     pub fn LLVMRustMetadataAsValue(C: &Context, MD: MetadataRef) -> ValueRef;
 
-    pub fn LLVMRustDIBuilderCreate(M: &Module) -> DIBuilderRef;
+    pub fn LLVMRustDIBuilderCreate(M: &Module) -> &DIBuilder;
 
-    pub fn LLVMRustDIBuilderDispose(Builder: DIBuilderRef);
+    pub fn LLVMRustDIBuilderDispose(Builder: &DIBuilder);
 
-    pub fn LLVMRustDIBuilderFinalize(Builder: DIBuilderRef);
+    pub fn LLVMRustDIBuilderFinalize(Builder: &DIBuilder);
 
-    pub fn LLVMRustDIBuilderCreateCompileUnit(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateCompileUnit(Builder: &DIBuilder,
                                               Lang: c_uint,
                                               File: DIFile,
                                               Producer: *const c_char,
@@ -1385,17 +1384,17 @@ extern "C" {
                                               SplitName: *const c_char)
                                               -> DIDescriptor;
 
-    pub fn LLVMRustDIBuilderCreateFile(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateFile(Builder: &DIBuilder,
                                        Filename: *const c_char,
                                        Directory: *const c_char)
                                        -> DIFile;
 
-    pub fn LLVMRustDIBuilderCreateSubroutineType(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateSubroutineType(Builder: &DIBuilder,
                                                  File: DIFile,
                                                  ParameterTypes: DIArray)
                                                  -> DICompositeType;
 
-    pub fn LLVMRustDIBuilderCreateFunction(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateFunction(Builder: &DIBuilder,
                                            Scope: DIDescriptor,
                                            Name: *const c_char,
                                            LinkageName: *const c_char,
@@ -1412,21 +1411,21 @@ extern "C" {
                                            Decl: Option<NonNull<DIDescriptor_opaque>>)
                                            -> DISubprogram;
 
-    pub fn LLVMRustDIBuilderCreateBasicType(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateBasicType(Builder: &DIBuilder,
                                             Name: *const c_char,
                                             SizeInBits: u64,
                                             AlignInBits: u32,
                                             Encoding: c_uint)
                                             -> DIBasicType;
 
-    pub fn LLVMRustDIBuilderCreatePointerType(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreatePointerType(Builder: &DIBuilder,
                                               PointeeTy: DIType,
                                               SizeInBits: u64,
                                               AlignInBits: u32,
                                               Name: *const c_char)
                                               -> DIDerivedType;
 
-    pub fn LLVMRustDIBuilderCreateStructType(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateStructType(Builder: &DIBuilder,
                                              Scope: Option<NonNull<DIDescriptor_opaque>>,
                                              Name: *const c_char,
                                              File: DIFile,
@@ -1441,7 +1440,7 @@ extern "C" {
                                              UniqueId: *const c_char)
                                              -> DICompositeType;
 
-    pub fn LLVMRustDIBuilderCreateMemberType(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateMemberType(Builder: &DIBuilder,
                                              Scope: DIDescriptor,
                                              Name: *const c_char,
                                              File: DIFile,
@@ -1453,19 +1452,19 @@ extern "C" {
                                              Ty: DIType)
                                              -> DIDerivedType;
 
-    pub fn LLVMRustDIBuilderCreateLexicalBlock(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateLexicalBlock(Builder: &DIBuilder,
                                                Scope: DIScope,
                                                File: DIFile,
                                                Line: c_uint,
                                                Col: c_uint)
                                                -> DILexicalBlock;
 
-    pub fn LLVMRustDIBuilderCreateLexicalBlockFile(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateLexicalBlockFile(Builder: &DIBuilder,
                                                    Scope: DIScope,
                                                    File: DIFile)
                                                    -> DILexicalBlock;
 
-    pub fn LLVMRustDIBuilderCreateStaticVariable(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateStaticVariable(Builder: &DIBuilder,
                                                  Context: Option<NonNull<DIScope_opaque>>,
                                                  Name: *const c_char,
                                                  LinkageName: *const c_char,
@@ -1478,7 +1477,7 @@ extern "C" {
                                                  AlignInBits: u32)
                                                  -> DIGlobalVariable;
 
-    pub fn LLVMRustDIBuilderCreateVariable(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateVariable(Builder: &DIBuilder,
                                            Tag: c_uint,
                                            Scope: DIDescriptor,
                                            Name: *const c_char,
@@ -1491,31 +1490,31 @@ extern "C" {
                                            AlignInBits: u32)
                                            -> DIVariable;
 
-    pub fn LLVMRustDIBuilderCreateArrayType(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateArrayType(Builder: &DIBuilder,
                                             Size: u64,
                                             AlignInBits: u32,
                                             Ty: DIType,
                                             Subscripts: DIArray)
                                             -> DIType;
 
-    pub fn LLVMRustDIBuilderCreateVectorType(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateVectorType(Builder: &DIBuilder,
                                              Size: u64,
                                              AlignInBits: u32,
                                              Ty: DIType,
                                              Subscripts: DIArray)
                                              -> DIType;
 
-    pub fn LLVMRustDIBuilderGetOrCreateSubrange(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderGetOrCreateSubrange(Builder: &DIBuilder,
                                                 Lo: i64,
                                                 Count: i64)
                                                 -> DISubrange;
 
-    pub fn LLVMRustDIBuilderGetOrCreateArray(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderGetOrCreateArray(Builder: &DIBuilder,
                                              Ptr: *const Option<NonNull<DIDescriptor_opaque>>,
                                              Count: c_uint)
                                              -> DIArray;
 
-    pub fn LLVMRustDIBuilderInsertDeclareAtEnd(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderInsertDeclareAtEnd(Builder: &DIBuilder,
                                                Val: ValueRef,
                                                VarInfo: DIVariable,
                                                AddrOps: *const i64,
@@ -1524,12 +1523,12 @@ extern "C" {
                                                InsertAtEnd: BasicBlockRef)
                                                -> ValueRef;
 
-    pub fn LLVMRustDIBuilderCreateEnumerator(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateEnumerator(Builder: &DIBuilder,
                                              Name: *const c_char,
                                              Val: u64)
                                              -> DIEnumerator;
 
-    pub fn LLVMRustDIBuilderCreateEnumerationType(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateEnumerationType(Builder: &DIBuilder,
                                                   Scope: DIScope,
                                                   Name: *const c_char,
                                                   File: DIFile,
@@ -1540,7 +1539,7 @@ extern "C" {
                                                   ClassType: DIType)
                                                   -> DIType;
 
-    pub fn LLVMRustDIBuilderCreateUnionType(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateUnionType(Builder: &DIBuilder,
                                             Scope: DIScope,
                                             Name: *const c_char,
                                             File: DIFile,
@@ -1555,7 +1554,7 @@ extern "C" {
 
     pub fn LLVMSetUnnamedAddr(GlobalVar: ValueRef, UnnamedAddr: Bool);
 
-    pub fn LLVMRustDIBuilderCreateTemplateTypeParameter(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateTemplateTypeParameter(Builder: &DIBuilder,
                                                         Scope: Option<NonNull<DIScope_opaque>>,
                                                         Name: *const c_char,
                                                         Ty: DIType,
@@ -1565,13 +1564,13 @@ extern "C" {
                                                         -> DITemplateTypeParameter;
 
 
-    pub fn LLVMRustDIBuilderCreateNameSpace(Builder: DIBuilderRef,
+    pub fn LLVMRustDIBuilderCreateNameSpace(Builder: &DIBuilder,
                                             Scope: Option<NonNull<DIScope_opaque>>,
                                             Name: *const c_char,
                                             File: DIFile,
                                             LineNo: c_uint)
                                             -> DINameSpace;
-    pub fn LLVMRustDICompositeTypeSetTypeArray(Builder: DIBuilderRef,
+    pub fn LLVMRustDICompositeTypeSetTypeArray(Builder: &DIBuilder,
                                                CompositeType: DIType,
                                                TypeArray: DIArray);
 
