@@ -7,7 +7,7 @@ use hir::def_id::DefId;
 
 use super::{EvalResult, Pointer, PointerArithmetic, Allocation};
 
-/// Represents a constant value in Rust. ByVal and ScalarPair are optimizations which
+/// Represents a constant value in Rust. Scalar and ScalarPair are optimizations which
 /// matches Value's optimizations for easy conversions between these two types
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
 pub enum ConstValue<'tcx> {
@@ -72,7 +72,7 @@ impl<'tcx> ConstValue<'tcx> {
 /// A `Value` represents a single self-contained Rust value.
 ///
 /// A `Value` can either refer to a block of memory inside an allocation (`ByRef`) or to a primitve
-/// value held directly, outside of any allocation (`ByVal`).  For `ByRef`-values, we remember
+/// value held directly, outside of any allocation (`Scalar`).  For `ByRef`-values, we remember
 /// whether the pointer is supposed to be aligned or not (also see Place).
 ///
 /// For optimization of a few very common cases, there is also a representation for a pair of
