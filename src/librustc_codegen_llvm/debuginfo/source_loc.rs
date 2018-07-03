@@ -81,16 +81,22 @@ impl InternalDebugLocation {
 
 pub fn set_debug_location(bx: &Builder, debug_location: InternalDebugLocation) {
     let metadata_node = match debug_location {
-        KnownLocation { scope, line, .. } => {
-            // Always set the column to zero like Clang and GCC
-            let col = UNKNOWN_COLUMN_NUMBER;
+        KnownLocation { scope, line, col } => {
+            // For MSVC, set the column number to zero.
+            // Otherwise, emit it. This mimics clang behaviour.
+            // See discussion in https://github.com/rust-lang/rust/issues/42921
+            let col_used =  if bx.cx.sess().target.target.options.is_like_msvc {
+                UNKNOWN_COLUMN_NUMBER
+            } else {
+                col as c_uint
+            };
             debug!("setting debug location to {} {}", line, col);
 
             unsafe {
                 llvm::LLVMRustDIBuilderCreateDebugLocation(
                     debug_context(bx.cx).llcontext,
                     line as c_uint,
-                    col as c_uint,
+                    col_used,
                     scope,
                     ptr::null_mut())
             }
