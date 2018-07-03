@@ -322,41 +322,32 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.
         assert_eq!(method_generics.parent_count, parent_substs.len());
-        let provided = &segment.args;
-        let own_counts = method_generics.own_counts();
-        // FIXME(varkor): Separating out the parameters is messy.
-        let lifetimes: Vec<_> = provided.iter().flat_map(|data| {
-                data.args.iter().filter_map(|arg| match arg {
-                GenericArg::Lifetime(ty) => Some(ty),
-                _ => None,
-            })
-        }).collect();
-        let types: Vec<_> = provided.iter().flat_map(|data| {
-                data.args.iter().filter_map(|arg| match arg {
-                GenericArg::Type(ty) => Some(ty),
-                _ => None,
-            })
-        }).collect();
+
         Substs::for_item(self.tcx, pick.item.def_id, |param, _| {
             let i = param.index as usize;
             if i < parent_substs.len() {
                 parent_substs[i]
             } else {
-                match param.kind {
-                    GenericParamDefKind::Lifetime => {
-                        let idx = i - parent_substs.len();
-                        if let Some(lifetime) = lifetimes.get(idx) {
-                            return AstConv::ast_region_to_region(
-                                self.fcx, lifetime, Some(param)).into();
-                        }
-                    }
-                    GenericParamDefKind::Type { .. } => {
-                        let idx = i - parent_substs.len() - own_counts.lifetimes;
-                        if let Some(ast_ty) = types.get(idx) {
-                            return self.to_ty(ast_ty).into();
+                let param_idx = i - parent_substs.len();
+
+                if let Some(ref data) = segment.args {
+                    if let Some(arg) = data.args.get(param_idx) {
+                        match param.kind {
+                            GenericParamDefKind::Lifetime => match arg {
+                                GenericArg::Lifetime(lt) => {
+                                    return AstConv::ast_region_to_region(
+                                        self.fcx, lt, Some(param)).into();
+                                }
+                                _ => {}
+                            }
+                            GenericParamDefKind::Type { .. } => match arg {
+                                GenericArg::Type(ty) => return self.to_ty(ty).into(),
+                                _ => {}
+                            }
                         }
                     }
                 }
+
                 self.var_for_def(self.span, param)
             }
         })
