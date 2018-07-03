@@ -13,7 +13,7 @@
 use llvm;
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{Opcode, IntPredicate, RealPredicate, False, OperandBundleDef};
-use llvm::{ValueRef, BasicBlockRef, BuilderRef};
+use llvm::{ValueRef, BasicBlockRef};
 use common::*;
 use type_::Type;
 use value::Value;
@@ -32,7 +32,7 @@ use syntax_pos::Span;
 // All Builders must have an llfn associated with them
 #[must_use]
 pub struct Builder<'a, 'll: 'a, 'tcx: 'll> {
-    pub llbuilder: BuilderRef,
+    pub llbuilder: &'ll llvm::Builder,
     pub cx: &'a CodegenCx<'ll, 'tcx>,
 }
 
@@ -599,7 +599,6 @@ impl Builder<'a, 'll, 'tcx> {
         flags: MemFlags,
     ) -> ValueRef {
         debug!("Store {:?} -> {:?} ({:?})", Value(val), Value(ptr), flags);
-        assert!(!self.llbuilder.is_null());
         self.count_insn("store");
         let ptr = self.check_store(val, ptr);
         unsafe {
