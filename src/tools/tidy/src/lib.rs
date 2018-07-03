@@ -56,7 +56,6 @@ pub mod libcoretest;
 fn filter_dirs(path: &Path) -> bool {
     let skip = [
         "src/dlmalloc",
-        "src/jemalloc",
         "src/llvm",
         "src/llvm-emscripten",
         "src/libbacktrace",

@@ -1468,8 +1468,7 @@ impl Step for CrateNotDefault {
     type Output = ();
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.path("src/liballoc_jemalloc")
-            .path("src/librustc_asan")
+        run.path("src/librustc_asan")
             .path("src/librustc_lsan")
             .path("src/librustc_msan")
             .path("src/librustc_tsan")
@@ -1486,7 +1485,6 @@ impl Step for CrateNotDefault {
             target: run.target,
             test_kind,
             krate: match run.path {
-                _ if run.path.ends_with("src/liballoc_jemalloc") => "alloc_jemalloc",
                 _ if run.path.ends_with("src/librustc_asan") => "rustc_asan",
                 _ if run.path.ends_with("src/librustc_lsan") => "rustc_lsan",
                 _ if run.path.ends_with("src/librustc_msan") => "rustc_msan",
@@ -1525,7 +1523,6 @@ impl Step for Crate {
         run = run.krate("test");
         for krate in run.builder.in_tree_crates("std") {
             if krate.is_local(&run.builder)
-                && !krate.name.contains("jemalloc")
                 && !(krate.name.starts_with("rustc_") && krate.name.ends_with("san"))
                 && krate.name != "dlmalloc"
             {

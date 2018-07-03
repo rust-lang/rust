@@ -16,7 +16,6 @@ pub fn target() -> TargetResult {
     base.features = "+mips32r2,+soft-float".to_string();
     base.max_atomic_width = Some(32);
     // see #36994
-    base.exe_allocation_crate = None;
     base.crt_static_default = false;
     Ok(Target {
         llvm_target: "mips-unknown-linux-musl".to_string(),

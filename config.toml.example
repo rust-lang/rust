@@ -270,12 +270,6 @@
 # Adding debuginfo makes them several times larger.
 #debuginfo-tools = false
 
-# Whether or not jemalloc is built and enabled
-#use-jemalloc = true
-
-# Whether or not jemalloc is built with its debug option set
-#debug-jemalloc = false
-
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
 
@@ -390,10 +384,6 @@
 # against. Note that if this is specified we don't compile LLVM at all for this
 # target.
 #llvm-config = "../path/to/llvm/root/bin/llvm-config"
-
-# Path to the custom jemalloc static library to link into the standard library
-# by default. This is only used if jemalloc is still enabled above
-#jemalloc = "/path/to/jemalloc/libjemalloc_pic.a"
 
 # If this target is for Android, this option will be required to specify where
 # the NDK for the target lives. This is used to find the C compiler to link and

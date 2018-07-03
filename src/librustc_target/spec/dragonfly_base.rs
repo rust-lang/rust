@@ -33,7 +33,6 @@ pub fn opts() -> TargetOptions {
         pre_link_args: args,
         position_independent_executables: true,
         relro_level: RelroLevel::Full,
-        exe_allocation_crate: super::maybe_jemalloc(),
         .. Default::default()
     }
 }

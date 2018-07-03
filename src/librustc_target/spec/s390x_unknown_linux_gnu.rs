@@ -20,7 +20,6 @@ pub fn target() -> TargetResult {
     base.features = "-vector".to_string();
     base.max_atomic_width = Some(64);
     // see #36994
-    base.exe_allocation_crate = None;
     base.min_global_align = Some(16);
 
     Ok(Target {

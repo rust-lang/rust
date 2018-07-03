@@ -29,7 +29,6 @@ pub fn target() -> TargetResult {
             max_atomic_width: Some(64),
 
             // see #36994
-            exe_allocation_crate: None,
 
             ..super::linux_base::opts()
         },

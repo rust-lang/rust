@@ -696,11 +696,6 @@ class RustBuild(object):
                 backends = self.get_toml('codegen-backends')
                 if backends is None or not 'emscripten' in backends:
                     continue
-            if module.endswith("jemalloc"):
-                if self.get_toml('use-jemalloc') == 'false':
-                    continue
-                if self.get_toml('jemalloc'):
-                    continue
             if module.endswith("lld"):
                 config = self.get_toml('lld')
                 if config is None or config == 'false':
