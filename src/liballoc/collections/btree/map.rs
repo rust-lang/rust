@@ -149,12 +149,11 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
     fn clone(&self) -> BTreeMap<K, V> {
-        fn clone_subtree<K: Clone, V: Clone>(node: node::NodeRef<marker::Immut,
-                                                                 K,
-                                                                 V,
-                                                                 marker::LeafOrInternal>)
-                                             -> BTreeMap<K, V> {
-
+        fn clone_subtree<'a, K: Clone, V: Clone>(
+            node: node::NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>
+        ) -> BTreeMap<K, V>
+        where K: 'a, V: 'a,
+        {
             match node.force() {
                 Leaf(leaf) => {
                     let mut out_tree = BTreeMap {
@@ -1080,7 +1079,11 @@ impl<K: Ord, V> BTreeMap<K, V> {
 
     /// Calculates the number of elements if it is incorrect.
     fn recalc_length(&mut self) {
-        fn dfs<K, V>(node: NodeRef<marker::Immut, K, V, marker::LeafOrInternal>) -> usize {
+        fn dfs<'a, K, V>(
+            node: NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal>
+        ) -> usize
+        where K: 'a, V: 'a
+        {
             let mut res = node.len();
 
             if let Internal(node) = node.force() {

@@ -229,8 +229,12 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemUse(..) => {}
             // The interface is empty
             hir::ItemGlobalAsm(..) => {}
-            // Checked by visit_ty
-            hir::ItemExistential(..) => {}
+            hir::ItemExistential(..) => {
+                if item_level.is_some() {
+                    // Reach the (potentially private) type and the API being exposed
+                    self.reach(item.id).ty().predicates();
+                }
+            }
             // Visit everything
             hir::ItemConst(..) | hir::ItemStatic(..) |
             hir::ItemFn(..) | hir::ItemTy(..) => {
@@ -389,17 +393,6 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             }
             module_id = self.tcx.hir.get_parent_node(module_id);
         }
-    }
-
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        if let hir::TyImplTraitExistential(item_id, _, _) = ty.node {
-            if self.get(item_id.id).is_some() {
-                // Reach the (potentially private) type and the API being exposed
-                self.reach(item_id.id).ty().predicates();
-            }
-        }
-
-        intravisit::walk_ty(self, ty);
     }
 }
 
@@ -1568,8 +1561,15 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             hir::ItemUse(..) => {}
             // No subitems
             hir::ItemGlobalAsm(..) => {}
-            // Checked in visit_ty
-            hir::ItemExistential(..) => {}
+            hir::ItemExistential(..) => {
+                // Check the traits being exposed, as they're separate,
+                // e.g. `impl Iterator<Item=T>` has two predicates,
+                // `X: Iterator` and `<X as Iterator>::Item == T`,
+                // where `X` is the `impl Iterator<Item=T>` itself,
+                // stored in `predicates_of`, not in the `Ty` itself.
+
+                self.check(item.id, self.inner_visibility).predicates();
+            }
             // Subitems of these items have inherited publicity
             hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
             hir::ItemTy(..) => {
@@ -1665,20 +1665,6 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
 
     fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem) {
         // handled in `visit_item` above
-    }
-
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        if let hir::TyImplTraitExistential(ref exist_item, _, _) = ty.node {
-            // Check the traits being exposed, as they're separate,
-            // e.g. `impl Iterator<Item=T>` has two predicates,
-            // `X: Iterator` and `<X as Iterator>::Item == T`,
-            // where `X` is the `impl Iterator<Item=T>` itself,
-            // stored in `predicates_of`, not in the `Ty` itself.
-
-            self.check(exist_item.id, self.inner_visibility).predicates();
-        }
-
-        intravisit::walk_ty(self, ty);
     }
 
     // Don't recurse into expressions in array sizes or const initializers
