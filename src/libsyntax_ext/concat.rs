@@ -55,10 +55,17 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
             }
             _ => {
                 let mut err = cx.struct_span_err(e.span, "expected a literal");
+                let msg = cx.codemap().span_to_snippet(e.span).unwrap_or_else(
+                    |_| pprust::expr_to_string(&e)
+                );
                 err.span_suggestion(
                     e.span,
                     "consider changing this to",
-                    format!("\"{{}}\", {}", pprust::expr_to_string(&e))
+                    format!("\"{{}}\", {}", msg)
+                );
+                err.span_note(
+                    e.span,
+                    "you might be missing a string literal to format with",
                 );
                 err.emit();
             }
