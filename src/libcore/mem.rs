@@ -635,7 +635,7 @@ pub unsafe fn uninitialized<T>() -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
-        ptr::swap_nonoverlapping(x, y, 1);
+        ptr::swap_nonoverlapping_one(x, y);
     }
 }
 
