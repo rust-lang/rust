@@ -392,8 +392,6 @@ extern { pub type PassManagerBuilder_opaque; }
 pub type PassManagerBuilderRef = *mut PassManagerBuilder_opaque;
 extern { pub type Use_opaque; }
 pub type UseRef = *mut Use_opaque;
-extern { pub type TargetData_opaque; }
-pub type TargetDataRef = *mut TargetData_opaque;
 extern { pub type ObjectFile_opaque; }
 pub type ObjectFileRef = *mut ObjectFile_opaque;
 extern { pub type SectionIterator_opaque; }
@@ -1263,12 +1261,6 @@ extern "C" {
 
     /// Writes a module to the specified path. Returns 0 on success.
     pub fn LLVMWriteBitcodeToFile(M: &Module, Path: *const c_char) -> c_int;
-
-    /// Creates target data from a target layout string.
-    pub fn LLVMCreateTargetData(StringRep: *const c_char) -> TargetDataRef;
-
-    /// Disposes target data.
-    pub fn LLVMDisposeTargetData(TD: TargetDataRef);
 
     /// Creates a pass manager.
     pub fn LLVMCreatePassManager() -> PassManagerRef;

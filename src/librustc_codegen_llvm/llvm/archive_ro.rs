@@ -25,8 +25,8 @@ pub struct ArchiveRO {
 unsafe impl Send for ArchiveRO {}
 
 pub struct Iter<'a> {
-    archive: &'a ArchiveRO,
     ptr: super::ArchiveIteratorRef,
+    _data: marker::PhantomData<&'a ArchiveRO>,
 }
 
 pub struct Child<'a> {
@@ -73,7 +73,7 @@ impl ArchiveRO {
         unsafe {
             Iter {
                 ptr: super::LLVMRustArchiveIteratorNew(self.ptr),
-                archive: self,
+                _data: marker::PhantomData,
             }
         }
     }

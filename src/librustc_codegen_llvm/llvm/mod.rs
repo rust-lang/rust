@@ -11,7 +11,6 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-#![allow(dead_code)]
 #![deny(bare_trait_objects)]
 
 pub use self::IntPredicate::*;
@@ -177,25 +176,6 @@ impl Attribute {
     }
 }
 
-// Memory-managed interface to target data.
-
-struct TargetData {
-    lltd: TargetDataRef,
-}
-
-impl Drop for TargetData {
-    fn drop(&mut self) {
-        unsafe {
-            LLVMDisposeTargetData(self.lltd);
-        }
-    }
-}
-
-fn mk_target_data(string_rep: &str) -> TargetData {
-    let string_rep = CString::new(string_rep).unwrap();
-    TargetData { lltd: unsafe { LLVMCreateTargetData(string_rep.as_ptr()) } }
-}
-
 // Memory-managed interface to object files.
 
 pub struct ObjectFile {
@@ -251,13 +231,6 @@ pub fn get_param(llfn: ValueRef, index: c_uint) -> ValueRef {
         assert!(index < LLVMCountParams(llfn),
             "out of bounds argument access: {} out of {} arguments", index, LLVMCountParams(llfn));
         LLVMGetParam(llfn, index)
-    }
-}
-
-fn get_params(llfn: ValueRef) -> Vec<ValueRef> {
-    unsafe {
-        let num_params = LLVMCountParams(llfn);
-        (0..num_params).map(|idx| LLVMGetParam(llfn, idx)).collect()
     }
 }
 
