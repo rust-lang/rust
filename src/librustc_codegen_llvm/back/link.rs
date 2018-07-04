@@ -816,7 +816,7 @@ fn link_natively(sess: &Session,
             if sess.target.target.options.is_like_msvc && linker_not_found {
                 sess.note_without_error("the msvc targets depend on the msvc linker \
                     but `link.exe` was not found");
-                sess.note_without_error("please ensure that VS 2013 or VS 2015 was installed \
+                sess.note_without_error("please ensure that VS 2013, VS 2015 or VS 2017 was installed \
                     with the Visual C++ option");
             }
             sess.abort_if_errors();
