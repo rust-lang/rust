@@ -235,6 +235,7 @@ use ptr;
 ///
 /// See the [module-level documentation](index.html) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[repr(transparent)]
 pub struct Cell<T> {
     value: UnsafeCell<T>,
 }
@@ -1395,6 +1396,7 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
 /// ```
 #[lang = "unsafe_cell"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[repr(transparent)]
 pub struct UnsafeCell<T: ?Sized> {
     value: T,
 }

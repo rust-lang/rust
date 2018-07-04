@@ -2665,6 +2665,7 @@ impl<T: ?Sized> PartialOrd for *mut T {
            reason = "use NonNull instead and consider PhantomData<T> \
                      (if you also use #[may_dangle]), Send, and/or Sync")]
 #[doc(hidden)]
+#[repr(transparent)]
 pub struct Unique<T: ?Sized> {
     pointer: NonZero<*const T>,
     // NOTE: this marker has no consequences for variance, but is necessary
@@ -2813,6 +2814,7 @@ impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
 /// such as Box, Rc, Arc, Vec, and LinkedList. This is the case because they
 /// provide a public API that follows the normal shared XOR mutable rules of Rust.
 #[stable(feature = "nonnull", since = "1.25.0")]
+#[repr(transparent)]
 pub struct NonNull<T: ?Sized> {
     pointer: NonZero<*const T>,
 }

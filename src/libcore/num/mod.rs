@@ -48,6 +48,7 @@ macro_rules! nonzero_integers {
             /// ```
             #[stable(feature = "nonzero", since = "1.28.0")]
             #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+            #[repr(transparent)]
             pub struct $Ty(NonZero<$Int>);
 
             impl $Ty {
@@ -123,6 +124,7 @@ nonzero_integers! {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, Hash)]
+#[repr(transparent)]
 pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")]
                        pub T);
 

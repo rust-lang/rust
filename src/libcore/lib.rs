@@ -122,6 +122,7 @@
 #![feature(const_slice_len)]
 #![feature(const_str_as_bytes)]
 #![feature(const_str_len)]
+#![cfg_attr(stage0, feature(repr_transparent))]
 
 #[prelude_import]
 #[allow(unused)]
