@@ -15,6 +15,7 @@ use rustc::hir;
 use rustc::mir::{Mir, Place};
 use rustc::mir::{Projection, ProjectionElem};
 use rustc::ty::{self, TyCtxt};
+use std::cmp::max;
 
 pub(super) fn places_conflict<'gcx, 'tcx>(
     tcx: TyCtxt<'_, 'gcx, 'tcx>,
@@ -394,27 +395,77 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
                 | (ProjectionElem::Index(..), ProjectionElem::ConstantIndex { .. })
                 | (ProjectionElem::Index(..), ProjectionElem::Subslice { .. })
                 | (ProjectionElem::ConstantIndex { .. }, ProjectionElem::Index(..))
-                | (ProjectionElem::ConstantIndex { .. }, ProjectionElem::ConstantIndex { .. })
-                | (ProjectionElem::ConstantIndex { .. }, ProjectionElem::Subslice { .. })
-                | (ProjectionElem::Subslice { .. }, ProjectionElem::Index(..))
-                | (ProjectionElem::Subslice { .. }, ProjectionElem::ConstantIndex { .. })
-                | (ProjectionElem::Subslice { .. }, ProjectionElem::Subslice { .. }) => {
+                | (ProjectionElem::Subslice { .. }, ProjectionElem::Index(..)) => {
                     // Array indexes (`a[0]` vs. `a[i]`). These can either be disjoint
                     // (if the indexes differ) or equal (if they are the same), so this
                     // is the recursive case that gives "equal *or* disjoint" its meaning.
-                    //
-                    // Note that by construction, MIR at borrowck can't subdivide
-                    // `Subslice` accesses (e.g. `a[2..3][i]` will never be present) - they
-                    // are only present in slice patterns, and we "merge together" nested
-                    // slice patterns. That means we don't have to think about these. It's
-                    // probably a good idea to assert this somewhere, but I'm too lazy.
-                    //
-                    // FIXME(#8636) we might want to return Disjoint if
-                    // both projections are constant and disjoint.
-                    debug!("place_element_conflict: DISJOINT-OR-EQ-ARRAY");
+                    debug!("place_element_conflict: DISJOINT-OR-EQ-ARRAY-INDEX");
                     Overlap::EqualOrDisjoint
                 }
-
+                (ProjectionElem::ConstantIndex { offset: o1, min_length: _, from_end: false },
+                    ProjectionElem::ConstantIndex { offset: o2, min_length: _, from_end: false })
+                | (ProjectionElem::ConstantIndex { offset: o1, min_length: _, from_end: true },
+                    ProjectionElem::ConstantIndex {
+                        offset: o2, min_length: _, from_end: true }) => {
+                    if o1 == o2 {
+                        debug!("place_element_conflict: DISJOINT-OR-EQ-ARRAY-CONSTANT-INDEX");
+                        Overlap::EqualOrDisjoint
+                    } else {
+                        debug!("place_element_conflict: DISJOINT-ARRAY-CONSTANT-INDEX");
+                        Overlap::Disjoint
+                    }
+                }
+                (ProjectionElem::ConstantIndex {
+                    offset: offset_from_begin, min_length: min_length1, from_end: false },
+                    ProjectionElem::ConstantIndex {
+                        offset: offset_from_end, min_length: min_length2, from_end: true })
+                | (ProjectionElem::ConstantIndex {
+                    offset: offset_from_end, min_length: min_length1, from_end: true },
+                   ProjectionElem::ConstantIndex {
+                       offset: offset_from_begin, min_length: min_length2, from_end: false }) => {
+                    // both patterns matched so it must be at least the greater of the two
+                    let min_length = max(min_length1, min_length2);
+                    // offset_from_end can be in range [1..min_length], -1 for last and min_length
+                    // for first, min_length - offset_from_end gives minimal possible offset from
+                    // the beginning
+                    if *offset_from_begin >= min_length - offset_from_end {
+                        debug!("place_element_conflict: DISJOINT-OR-EQ-ARRAY-CONSTANT-INDEX-FE");
+                        Overlap::EqualOrDisjoint
+                    } else {
+                        debug!("place_element_conflict: DISJOINT-ARRAY-CONSTANT-INDEX-FE");
+                        Overlap::Disjoint
+                    }
+                }
+                (ProjectionElem::ConstantIndex { offset, min_length: _, from_end: false },
+                 ProjectionElem::Subslice {from, .. })
+                | (ProjectionElem::Subslice {from, .. },
+                    ProjectionElem::ConstantIndex { offset, min_length: _, from_end: false }) => {
+                    if offset >= from {
+                        debug!(
+                            "place_element_conflict: DISJOINT-OR-EQ-ARRAY-CONSTANT-INDEX-SUBSLICE");
+                        Overlap::EqualOrDisjoint
+                    } else {
+                        debug!("place_element_conflict: DISJOINT-ARRAY-CONSTANT-INDEX-SUBSLICE");
+                        Overlap::Disjoint
+                    }
+                }
+                (ProjectionElem::ConstantIndex { offset, min_length: _, from_end: true },
+                 ProjectionElem::Subslice {from: _, to })
+                | (ProjectionElem::Subslice {from: _, to },
+                    ProjectionElem::ConstantIndex { offset, min_length: _, from_end: true }) => {
+                    if offset > to {
+                        debug!("place_element_conflict: \
+                               DISJOINT-OR-EQ-ARRAY-CONSTANT-INDEX-SUBSLICE-FE");
+                        Overlap::EqualOrDisjoint
+                    } else {
+                        debug!("place_element_conflict: DISJOINT-ARRAY-CONSTANT-INDEX-SUBSLICE-FE");
+                        Overlap::Disjoint
+                    }
+                }
+                (ProjectionElem::Subslice { .. }, ProjectionElem::Subslice { .. }) => {
+                    debug!("place_element_conflict: DISJOINT-OR-EQ-ARRAY-SUBSLICES");
+                     Overlap::EqualOrDisjoint
+                }
                 (ProjectionElem::Deref, _)
                 | (ProjectionElem::Field(..), _)
                 | (ProjectionElem::Index(..), _)
