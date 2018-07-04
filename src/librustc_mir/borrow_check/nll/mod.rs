@@ -296,7 +296,7 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     let _: io::Result<()> = do catch {
         let mut file =
             pretty::create_dump_file(infcx.tcx, "regioncx.dot", None, "nll", &0, source)?;
-        regioncx.dump_graphviz(&mut file)?;
+        regioncx.dump_graphviz_raw_constraints(&mut file)?;
     };
 }
 

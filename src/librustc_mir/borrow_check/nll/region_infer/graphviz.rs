@@ -19,15 +19,18 @@ use std::io::{self, Write};
 use super::*;
 use borrow_check::nll::constraints::OutlivesConstraint;
 
-
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Write out the region constraint graph.
-    pub(crate) fn dump_graphviz(&self, mut w: &mut dyn Write) -> io::Result<()> {
-        dot::render(self, &mut w)
+    pub(crate) fn dump_graphviz_raw_constraints(&self, mut w: &mut dyn Write) -> io::Result<()> {
+        dot::render(&RawConstraints { regioncx: self }, &mut w)
     }
 }
 
-impl<'this, 'tcx> dot::Labeller<'this> for RegionInferenceContext<'tcx> {
+struct RawConstraints<'a, 'tcx: 'a> {
+    regioncx: &'a RegionInferenceContext<'tcx>
+}
+
+impl<'a, 'this, 'tcx> dot::Labeller<'this> for RawConstraints<'a, 'tcx> {
     type Node = RegionVid;
     type Edge = OutlivesConstraint;
 
@@ -48,16 +51,16 @@ impl<'this, 'tcx> dot::Labeller<'this> for RegionInferenceContext<'tcx> {
     }
 }
 
-impl<'this, 'tcx> dot::GraphWalk<'this> for RegionInferenceContext<'tcx> {
+impl<'a, 'this, 'tcx> dot::GraphWalk<'this> for RawConstraints<'a, 'tcx> {
     type Node = RegionVid;
     type Edge = OutlivesConstraint;
 
     fn nodes(&'this self) -> dot::Nodes<'this, RegionVid> {
-        let vids: Vec<RegionVid> = self.definitions.indices().collect();
+        let vids: Vec<RegionVid> = self.regioncx.definitions.indices().collect();
         vids.into_cow()
     }
     fn edges(&'this self) -> dot::Edges<'this, OutlivesConstraint> {
-        (&self.constraints.raw[..]).into_cow()
+        (&self.regioncx.constraints.raw[..]).into_cow()
     }
 
     // Render `a: b` as `a <- b`, indicating the flow
