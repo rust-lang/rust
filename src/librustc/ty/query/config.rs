@@ -87,6 +87,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::normalize_projection_ty<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::implied_outlives_bounds<'tcx> {
+    fn describe(_tcx: TyCtxt, goal: CanonicalTyGoal<'tcx>) -> String {
+        format!("computing implied outlives bounds for `{:?}`", goal)
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::dropck_outlives<'tcx> {
     fn describe(_tcx: TyCtxt, goal: CanonicalTyGoal<'tcx>) -> String {
         format!("computing dropck types for `{:?}`", goal)

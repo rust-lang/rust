@@ -56,6 +56,7 @@ CloneTypeFoldableAndLiftImpls! {
     ::ty::BoundRegion,
     ::ty::ClosureKind,
     ::ty::IntVarValue,
+    ::ty::ParamTy,
     ::syntax_pos::Span,
 }
 
