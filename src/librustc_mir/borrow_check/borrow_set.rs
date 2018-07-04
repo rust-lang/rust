@@ -237,8 +237,9 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
                             TwoPhaseActivation::NotActivated
                         }
                         _ => {
-                            // Double check: We should have found an activation for every pending
-                            // activation.
+                            // Double check: This borrow is indeed a two-phase borrow (that is,
+                            // we are 'transitioning' from `NotActivated` to `ActivatedAt`) and
+                            // we've not found any other activations (checked above).
                             assert_eq!(
                                 borrow_data.activation_location,
                                 TwoPhaseActivation::NotActivated,
@@ -330,7 +331,8 @@ impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
             );
         };
 
-        // Consider the borrow not activated.
+        // Consider the borrow not activated to start. When we find an activation, we'll update
+        // this field.
         let borrow_data = &mut self.idx_vec[borrow_index];
         borrow_data.activation_location = TwoPhaseActivation::NotActivated;
 
