@@ -36,7 +36,7 @@ impl MirPass for SanityCheck {
                           src: MirSource, mir: &mut Mir<'tcx>) {
         let def_id = src.def_id;
         let id = tcx.hir.as_local_node_id(def_id).unwrap();
-        if !tcx.has_attr(def_id, "rustc_mir_borrowck") {
+        if !tcx.has_attr(def_id, "rustc_mir") {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.item_path_str(def_id));
             return;
         } else {
