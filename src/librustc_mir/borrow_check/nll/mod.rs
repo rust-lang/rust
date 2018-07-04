@@ -22,8 +22,8 @@ use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Mir};
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc::util::nodemap::FxHashMap;
 use std::collections::BTreeSet;
-use std::fmt::Debug;
 use std::env;
+use std::fmt::Debug;
 use std::io;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -166,15 +166,10 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
         }
 
         if infcx.tcx.sess.opts.debugging_opts.polonius {
-            let algorithm = env::var("POLONIUS_ALGORITHM")
-                .unwrap_or(String::from("DatafrogOpt"));
+            let algorithm = env::var("POLONIUS_ALGORITHM").unwrap_or(String::from("DatafrogOpt"));
             let algorithm = Algorithm::from_str(&algorithm).unwrap();
             debug!("compute_regions: using polonius algorithm {:?}", algorithm);
-            Some(Rc::new(Output::compute(
-                &all_facts,
-                algorithm,
-                false,
-            )))
+            Some(Rc::new(Output::compute(&all_facts, algorithm, false)))
         } else {
             None
         }

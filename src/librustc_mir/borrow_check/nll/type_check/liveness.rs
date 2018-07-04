@@ -84,22 +84,28 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
     fn add_liveness_constraints(&mut self, bb: BasicBlock, simulate_buffer: &mut LocalSet) {
         debug!("add_liveness_constraints(bb={:?})", bb);
 
-        self.liveness
-            .regular
-            .simulate_block(self.mir, bb, simulate_buffer, |location, live_locals| {
+        self.liveness.regular.simulate_block(
+            self.mir,
+            bb,
+            simulate_buffer,
+            |location, live_locals| {
                 for live_local in live_locals.iter() {
                     let live_local_ty = self.mir.local_decls[live_local].ty;
                     Self::push_type_live_constraint(&mut self.cx, live_local_ty, location);
                 }
-            });
+            },
+        );
 
         let mut all_live_locals: Vec<(Location, Vec<Local>)> = vec![];
 
-        self.liveness
-            .drop
-            .simulate_block(self.mir, bb, simulate_buffer, |location, live_locals| {
+        self.liveness.drop.simulate_block(
+            self.mir,
+            bb,
+            simulate_buffer,
+            |location, live_locals| {
                 all_live_locals.push((location, live_locals.iter().collect()));
-            });
+            },
+        );
         debug!(
             "add_liveness_constraints: all_live_locals={:#?}",
             all_live_locals
