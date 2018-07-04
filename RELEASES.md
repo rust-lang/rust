@@ -56,6 +56,7 @@ Stabilized APIs
 - [`fmt::Alignment`]
 - [`hash_map::Entry::or_default`]
 - [`iter::repeat_with`]
+- [`num::NonZeroUsize`]
 - [`num::NonZeroU128`]
 - [`num::NonZeroU16`]
 - [`num::NonZeroU32`]
@@ -125,6 +126,7 @@ Compatibility Notes
 [`fmt::Alignment`]: https://doc.rust-lang.org/std/fmt/enum.Alignment.html
 [`hash_map::Entry::or_default`]: https://doc.rust-lang.org/std/collections/btree_map/enum.Entry.html#method.or_default
 [`iter::repeat_with`]: https://doc.rust-lang.org/std/iter/fn.repeat_with.html
+[`num::NonZeroUsize`]: https://doc.rust-lang.org/std/num/struct.NonZeroUsize.html
 [`num::NonZeroU128`]: https://doc.rust-lang.org/std/num/struct.NonZeroU128.html
 [`num::NonZeroU16`]: https://doc.rust-lang.org/std/num/struct.NonZeroU16.html
 [`num::NonZeroU32`]: https://doc.rust-lang.org/std/num/struct.NonZeroU32.html
