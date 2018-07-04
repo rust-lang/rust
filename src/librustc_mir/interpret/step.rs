@@ -2,16 +2,12 @@
 //!
 //! The main entry point is the `step` method.
 
-use std::hash::Hash;
-
 use rustc::mir;
 
 use rustc::mir::interpret::EvalResult;
 use super::{EvalContext, Machine};
 
-impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M>
-    where M: Clone + Eq + Hash,
-{
+impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn inc_step_counter_and_detect_loops(&mut self) -> EvalResult<'tcx, ()> {
         /// The number of steps between loop detector snapshots.
         /// Should be a power of two for performance reasons.

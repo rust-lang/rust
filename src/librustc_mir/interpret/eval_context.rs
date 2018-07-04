@@ -163,7 +163,7 @@ pub(crate) struct InfiniteLoopDetector<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mi
 }
 
 impl<'a, 'mir, 'tcx, M> Default for InfiniteLoopDetector<'a, 'mir, 'tcx, M>
-    where M: Eq + Hash + Machine<'mir, 'tcx>,
+    where M: Machine<'mir, 'tcx>,
           'tcx: 'a + 'mir,
 {
     fn default() -> Self {
@@ -175,7 +175,7 @@ impl<'a, 'mir, 'tcx, M> Default for InfiniteLoopDetector<'a, 'mir, 'tcx, M>
 }
 
 impl<'a, 'mir, 'tcx, M> InfiniteLoopDetector<'a, 'mir, 'tcx, M>
-    where M: Clone + Eq + Hash + Machine<'mir, 'tcx>,
+    where M: Machine<'mir, 'tcx>,
           'tcx: 'a + 'mir,
 {
     /// Returns `true` if the loop detector has not yet observed a snapshot.
@@ -302,9 +302,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         param_env: ty::ParamEnv<'tcx>,
         machine: M,
         memory_data: M::MemoryData,
-    ) -> Self
-        where M: Eq + Hash
-    {
+    ) -> Self {
         EvalContext {
             machine,
             tcx,
@@ -612,9 +610,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         &mut self,
         rvalue: &mir::Rvalue<'tcx>,
         place: &mir::Place<'tcx>,
-    ) -> EvalResult<'tcx>
-        where M: Clone + Eq + Hash,
-    {
+    ) -> EvalResult<'tcx> {
         let dest = self.eval_place(place)?;
         let dest_ty = self.place_ty(place);
 
