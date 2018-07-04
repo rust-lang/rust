@@ -381,7 +381,7 @@ impl str {
                 } else {
                     s.extend(c.to_lowercase());
                 }
-                
+
                 // The next possible interval of lowercase `char`s start after `c`.
                 lower = i + c.len_utf8();
             }
