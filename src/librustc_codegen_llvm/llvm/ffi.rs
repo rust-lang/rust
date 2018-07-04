@@ -384,8 +384,6 @@ extern { pub type Metadata; }
 extern { pub type BasicBlock_opaque; }
 pub type BasicBlockRef = *mut BasicBlock_opaque;
 extern { pub type Builder; }
-extern { pub type ExecutionEngine_opaque; }
-pub type ExecutionEngineRef = *mut ExecutionEngine_opaque;
 extern { pub type MemoryBuffer_opaque; }
 pub type MemoryBufferRef = *mut MemoryBuffer_opaque;
 extern { pub type PassManager_opaque; }
