@@ -15,7 +15,6 @@ use rustc::hir::{self, ImplPolarity};
 use rustc::traits::{Clause, Clauses, DomainGoal, Goal, PolyDomainGoal, ProgramClause,
                     WhereClause, FromEnv, WellFormed};
 use rustc::ty::query::Providers;
-use rustc::ty::subst::Substs;
 use rustc::ty::{self, Slice, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use std::mem;
@@ -225,10 +224,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
 
     // `Self: Trait<P1..Pn>`
     let trait_pred = ty::TraitPredicate {
-        trait_ref: ty::TraitRef {
-            def_id,
-            substs: Substs::identity_for_item(tcx, def_id),
-        },
+        trait_ref: ty::TraitRef::identity(tcx, def_id),
     };
 
     // `Implemented(Self: Trait<P1..Pn>)`
@@ -256,10 +252,8 @@ fn program_clauses_for_trait<'a, 'tcx>(
     // ```
 
     // `FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn>)`, for each where clause WC
-    // FIXME: Remove the [1..] slice; this is a hack because the query
-    // predicates_of currently includes the trait itself (`Self: Trait<P1..Pn>`).
-    let where_clauses = &tcx.predicates_of(def_id).predicates;
-    let implied_bound_clauses = where_clauses[1..]
+    let where_clauses = &tcx.predicates_defined_on(def_id).predicates;
+    let implied_bound_clauses = where_clauses
         .into_iter()
         .map(|wc| wc.lower())
 

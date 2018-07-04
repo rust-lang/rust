@@ -1237,6 +1237,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let mut candidates: Vec<EvaluatedCandidate> =
             candidates?.into_iter().filter_map(|c| c).collect();
 
+        debug!("winnowed to {} candidates for {:?}: {:?}",
+               candidates.len(),
+               stack,
+               candidates);
+
         // If there are STILL multiple candidate, we can further
         // reduce the list by dropping duplicates -- including
         // resolving specializations.

@@ -67,6 +67,7 @@ pub fn provide(providers: &mut Providers) {
         type_of,
         generics_of,
         predicates_of,
+        predicates_defined_on,
         explicit_predicates_of,
         super_predicates_of,
         type_param_predicates,
@@ -274,10 +275,9 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ItemTrait(_, _, ref generics, ..) => {
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_node_id {
-                        result.predicates.push(ty::TraitRef {
-                            def_id: item_def_id,
-                            substs: Substs::identity_for_item(tcx, item_def_id)
-                        }.to_predicate());
+                        result.predicates.push(
+                            ty::TraitRef::identity(tcx, item_def_id).to_predicate()
+                        );
                     }
                     generics
                 }
@@ -1306,10 +1306,10 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx>(
     })
 }
 
-fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           def_id: DefId)
-                           -> ty::GenericPredicates<'tcx> {
-    let explicit = explicit_predicates_of(tcx, def_id);
+fn predicates_defined_on<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   def_id: DefId)
+                                   -> ty::GenericPredicates<'tcx> {
+    let explicit = tcx.explicit_predicates_of(def_id);
     let predicates = if tcx.sess.features_untracked().infer_outlives_requirements {
         [&explicit.predicates[..], &tcx.inferred_outlives_of(def_id)[..]].concat()
     } else { explicit.predicates };
@@ -1320,9 +1320,35 @@ fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            def_id: DefId)
                            -> ty::GenericPredicates<'tcx> {
+    let ty::GenericPredicates { parent, mut predicates } =
+        tcx.predicates_defined_on(def_id);
+
+    if tcx.is_trait(def_id) {
+        // For traits, add `Self: Trait` predicate. This is
+        // not part of the predicates that a user writes, but it
+        // is something that one must prove in order to invoke a
+        // method or project an associated type.
+        //
+        // In the chalk setup, this predicate is not part of the
+        // "predicates" for a trait item. But it is useful in
+        // rustc because if you directly (e.g.) invoke a trait
+        // method like `Trait::method(...)`, you must naturally
+        // prove that the trait applies to the types that were
+        // used, and adding the predicate into this list ensures
+        // that this is done.
+        predicates.push(ty::TraitRef::identity(tcx, def_id).to_predicate());
+    }
+
+    ty::GenericPredicates { parent, predicates }
+}
+
+fn explicit_predicates_of<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+) -> ty::GenericPredicates<'tcx> {
     use rustc::hir::map::*;
     use rustc::hir::*;
 
@@ -1337,7 +1363,10 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let icx = ItemCtxt::new(tcx, def_id);
     let no_generics = hir::Generics::empty();
     let ast_generics = match node {
-        NodeTraitItem(item) => &item.generics,
+        NodeTraitItem(item) => {
+            &item.generics
+        }
+
         NodeImplItem(item) => &item.generics,
 
         NodeItem(item) => {
@@ -1355,10 +1384,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ItemUnion(_, ref generics) => generics,
 
                 ItemTrait(_, _, ref generics, .., ref items) => {
-                    is_trait = Some((ty::TraitRef {
-                        def_id,
-                        substs: Substs::identity_for_item(tcx, def_id)
-                    }, items));
+                    is_trait = Some((ty::TraitRef::identity(tcx, def_id), items));
                     generics
                 }
                 ItemExistential(ref exist_ty) => {
@@ -1405,12 +1431,8 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // and the explicit where-clauses, but to get the full set of predicates
     // on a trait we need to add in the supertrait bounds and bounds found on
     // associated types.
-    if let Some((trait_ref, _)) = is_trait {
+    if let Some((_trait_ref, _)) = is_trait {
         predicates = tcx.super_predicates_of(def_id).predicates;
-
-        // Add in a predicate that `Self:Trait` (where `Trait` is the
-        // current trait).  This is needed for builtin bounds.
-        predicates.push(trait_ref.to_poly_trait_ref().to_predicate());
     }
 
     // In default impls, we can assume that the self type implements

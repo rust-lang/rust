@@ -23,7 +23,6 @@ use hir::def_id::DefId;
 use lint;
 use traits;
 use ty::{self, Ty, TyCtxt, TypeFoldable};
-use ty::subst::Substs;
 use ty::util::ExplicitSelf;
 use std::borrow::Cow;
 use syntax::ast;
@@ -173,10 +172,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         trait_def_id: DefId,
         supertraits_only: bool) -> bool
     {
-        let trait_ref = ty::Binder::dummy(ty::TraitRef {
-            def_id: trait_def_id,
-            substs: Substs::identity_for_item(self, trait_def_id)
-        });
+        let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(self, trait_def_id));
         let predicates = if supertraits_only {
             self.super_predicates_of(trait_def_id)
         } else {
@@ -391,10 +387,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
                     // Compute supertraits of current trait lazily.
                     if supertraits.is_none() {
-                        let trait_ref = ty::Binder::bind(ty::TraitRef {
-                            def_id: trait_def_id,
-                            substs: Substs::identity_for_item(self, trait_def_id)
-                        });
+                        let trait_ref = ty::Binder::bind(
+                            ty::TraitRef::identity(self, trait_def_id),
+                        );
                         supertraits = Some(traits::supertraits(self, trait_ref).collect());
                     }
 

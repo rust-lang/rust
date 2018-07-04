@@ -364,15 +364,16 @@ fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 /// Checks where clauses and inline bounds that are declared on def_id.
-fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
-                                    fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
-                                    span: Span,
-                                    def_id: DefId) {
+fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'gcx>,
+    fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
+    span: Span,
+    def_id: DefId,
+) {
     use ty::subst::Subst;
     use rustc::ty::TypeFoldable;
 
-    let mut predicates = fcx.tcx.predicates_of(def_id);
-    let mut substituted_predicates = Vec::new();
+    let predicates = fcx.tcx.predicates_of(def_id);
 
     let generics = tcx.generics_of(def_id);
     let is_our_default = |def: &ty::GenericParamDef| {
@@ -433,7 +434,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
         }
     });
     // Now we build the substituted predicates.
-    for &pred in predicates.predicates.iter() {
+    let default_obligations = predicates.predicates.iter().flat_map(|&pred| {
         struct CountParams { params: FxHashSet<u32> }
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
@@ -455,21 +456,37 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
         let substituted_pred = pred.subst(fcx.tcx, substs);
         // Don't check non-defaulted params, dependent defaults (including lifetimes)
         // or preds with multiple params.
-        if substituted_pred.references_error() || param_count.params.len() > 1
-            || has_region {
-            continue;
+        if {
+            substituted_pred.references_error() || param_count.params.len() > 1
+                || has_region
+        } {
+                None
+        } else if predicates.predicates.contains(&substituted_pred) {
+            // Avoid duplication of predicates that contain no parameters, for example.
+            None
+        } else {
+            Some(substituted_pred)
         }
-        // Avoid duplication of predicates that contain no parameters, for example.
-        if !predicates.predicates.contains(&substituted_pred) {
-            substituted_predicates.push(substituted_pred);
-        }
-    }
+    }).map(|pred| {
+        // convert each of those into an obligation. So if you have
+        // something like `struct Foo<T: Copy = String>`, we would
+        // take that predicate `T: Copy`, substitute to `String: Copy`
+        // (actually that happens in the previous `flat_map` call),
+        // and then try to prove it (in this case, we'll fail).
+        //
+        // Note the subtle difference from how we handle `predicates`
+        // below: there, we are not trying to prove those predicates
+        // to be *true* but merely *well-formed*.
+        let pred = fcx.normalize_associated_types_in(span, &pred);
+        let cause = traits::ObligationCause::new(span, fcx.body_id, traits::ItemObligation(def_id));
+        traits::Obligation::new(cause, fcx.param_env, pred)
+    });
 
-    predicates.predicates.extend(substituted_predicates);
     let predicates = predicates.instantiate_identity(fcx.tcx);
     let predicates = fcx.normalize_associated_types_in(span, &predicates);
 
-    let obligations =
+    debug!("check_where_clauses: predicates={:?}", predicates.predicates);
+    let wf_obligations =
         predicates.predicates
                     .iter()
                     .flat_map(|p| ty::wf::predicate_obligations(fcx,
@@ -478,7 +495,8 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                                                                 p,
                                                                 span));
 
-    for obligation in obligations {
+    for obligation in wf_obligations.chain(default_obligations) {
+        debug!("next obligation cause: {:?}", obligation.cause);
         fcx.register_predicate(obligation);
     }
 }
