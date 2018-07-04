@@ -188,6 +188,19 @@ pub unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 }
 
 #[inline]
+pub(crate) unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
+    // For types smaller than the block optimization below,
+    // just swap directly to avoid pessimizing codegen.
+    if mem::size_of::<T>() < 32 {
+        let z = read(x);
+        copy_nonoverlapping(y, x, 1);
+        write(y, z);
+    } else {
+        swap_nonoverlapping(x, y, 1);
+    }
+}
+
+#[inline]
 unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     // The approach here is to utilize simd to swap x & y efficiently. Testing reveals
     // that swapping either 32 bytes or 64 bytes at a time is most efficient for intel
