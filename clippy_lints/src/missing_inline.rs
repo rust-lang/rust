@@ -83,6 +83,17 @@ impl MissingInline {
     }
 }
 
+fn is_executable<'a, 'tcx>(cx: &LateContext<'a, 'tcx>) -> bool {
+    use rustc::session::config::CrateType;
+
+    cx.tcx.sess.crate_types.get().iter().any(|t: &CrateType| {
+        match t {
+            CrateType::CrateTypeExecutable => true,
+            _ => false,
+        }
+    })
+}
+
 impl LintPass for MissingInline {
     fn get_lints(&self) -> LintArray {
         lint_array![MISSING_INLINE_IN_PUBLIC_ITEMS]
@@ -91,19 +102,15 @@ impl LintPass for MissingInline {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx hir::Item) {
+        if is_executable(cx) {
+            return;
+        }
+
         if !cx.access_levels.is_exported(it.id) {
             return;
         }
         match it.node {
             hir::ItemFn(..) => {
-                // ignore main()
-                if it.name == "main" {
-                    let def_id = cx.tcx.hir.local_def_id(it.id);
-                    let def_key = cx.tcx.hir.def_key(def_id);
-                    if def_key.parent == Some(hir::def_id::CRATE_DEF_INDEX) {
-                        return;
-                    }
-                }
                 let desc = "a function";
                 self.check_missing_inline_attrs(cx, &it.attrs, it.span, desc);
             },
@@ -148,6 +155,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx hir::ImplItem) {
         use rustc::ty::{TraitContainer, ImplContainer};
+        if is_executable(cx) {
+            return;
+        }
 
         // If the item being implemented is not exported, then we don't need #[inline]
         if !cx.access_levels.is_exported(impl_item.id) {

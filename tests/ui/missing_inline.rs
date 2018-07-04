@@ -11,7 +11,7 @@
  *   except according to those terms.
  */
 #![warn(missing_inline_in_public_items)]
-
+#![crate_type = "dylib"]
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
 #![allow(dead_code, non_snake_case)]
@@ -34,12 +34,12 @@ pub fn pub_foo() {} // missing #[inline]
 
 #[allow(missing_inline_in_public_items)]
 pub fn pub_foo_no_inline() {}
-fn main() {}
 
 trait Bar {
     fn Bar_a(); // ok
     fn Bar_b() {} // ok
 }
+
 
 pub trait PubBar {
     fn PubBar_a(); // ok
