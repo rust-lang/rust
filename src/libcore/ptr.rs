@@ -42,10 +42,9 @@
 //!
 //! * The result of casting a reference to a pointer is valid for as long as the
 //!   underlying object is live.
-//! * All pointers to types with a [size of zero][zst] are valid for all
-//!   operations of size zero.
-//! * A [null] pointer is *never* valid, except when it points to a zero-sized
-//!   type.
+//! * A [null] pointer is *never* valid.
+//! * All pointers (except for the null pointer) are valid for all operations of
+//!   [size zero][zst].
 //!
 //! These axioms, along with careful use of [`offset`] for pointer arithmentic,
 //! are enough to correctly implement many useful things in unsafe code. Still,
