@@ -222,7 +222,7 @@ impl<'a> LintLevelsBuilder<'a> {
                         continue
                     }
                 };
-                if word.is_scoped() {
+                if let Some(lint_tool) = word.is_scoped() {
                     if !self.sess.features_untracked().tool_lints {
                         feature_gate::emit_feature_err(&sess.parse_sess,
                                                        "tool_lints",
@@ -232,12 +232,12 @@ impl<'a> LintLevelsBuilder<'a> {
                                                                 word.ident));
                     }
 
-                    if !attr::is_known_lint_tool(word) {
+                    if !attr::is_known_lint_tool(lint_tool) {
                         span_err!(
                             sess,
-                            word.span,
+                            lint_tool.span,
                             E0710,
-                            "an unknown tool name found in scoped lint: `{}`.",
+                            "an unknown tool name found in scoped lint: `{}`",
                             word.ident
                         );
                     }

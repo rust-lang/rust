@@ -98,10 +98,8 @@ pub fn is_known_tool(attr: &Attribute) -> bool {
     RUST_KNOWN_TOOL.contains(&tool_name.as_str().as_ref())
 }
 
-pub fn is_known_lint_tool(m_item: &MetaItem) -> bool {
-    let tool_name =
-        m_item.ident.segments.iter().next().expect("empty path in meta item").ident.name;
-    RUST_KNOWN_LINT_TOOL.contains(&tool_name.as_str().as_ref())
+pub fn is_known_lint_tool(m_item: Ident) -> bool {
+    RUST_KNOWN_LINT_TOOL.contains(&m_item.as_str().as_ref())
 }
 
 impl NestedMetaItem {
@@ -298,8 +296,12 @@ impl MetaItem {
         self.meta_item_list().is_some()
     }
 
-    pub fn is_scoped(&self) -> bool {
-        self.ident.segments.len() > 1
+    pub fn is_scoped(&self) -> Option<Ident> {
+        if self.ident.segments.len() > 1 {
+            Some(self.ident.segments[0].ident)
+        } else {
+            None
+        }
     }
 }
 
