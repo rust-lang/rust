@@ -134,6 +134,7 @@ pub mod minmax;
 pub mod misc;
 pub mod misc_early;
 pub mod missing_doc;
+pub mod missing_inline;
 pub mod multiple_crate_versions;
 pub mod mut_mut;
 pub mod mut_reference;
@@ -364,6 +365,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box let_if_seq::LetIfSeq);
     reg.register_late_lint_pass(box eval_order_dependence::EvalOrderDependence);
     reg.register_late_lint_pass(box missing_doc::MissingDoc::new());
+    reg.register_late_lint_pass(box missing_inline::MissingInline::new());
     reg.register_late_lint_pass(box ok_if_let::Pass);
     reg.register_late_lint_pass(box if_let_redundant_pattern_matching::Pass);
     reg.register_late_lint_pass(box partialeq_ne_impl::Pass);
@@ -422,6 +424,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::WRONG_PUB_SELF_CONVENTION,
         misc::FLOAT_CMP_CONST,
         missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS,
+        missing_inline::MISSING_INLINE_IN_PUBLIC_ITEMS,
         panic_unimplemented::UNIMPLEMENTED,
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,
