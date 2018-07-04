@@ -64,21 +64,21 @@ pub struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [(String, String)]);
 /// All lines are used in documentation tests.
 enum Line<'a> {
     Hidden(&'a str),
-    Shown(&'a str),
+    Shown(Cow<'a, str>),
 }
 
 impl<'a> Line<'a> {
-    fn for_html(self) -> Option<&'a str> {
+    fn for_html(self) -> Option<Cow<'a, str>> {
         match self {
             Line::Shown(l) => Some(l),
             Line::Hidden(_) => None,
         }
     }
 
-    fn for_code(self) -> &'a str {
+    fn for_code(self) -> Cow<'a, str> {
         match self {
-            Line::Shown(l) |
-            Line::Hidden(l) => l,
+            Line::Shown(l) => l,
+            Line::Hidden(l) => Cow::Borrowed(l),
         }
     }
 }
@@ -91,7 +91,7 @@ impl<'a> Line<'a> {
 fn map_line(s: &str) -> Line {
     let trimmed = s.trim();
     if trimmed.starts_with("##") {
-        Line::Shown(&trimmed[1..])
+        Line::Shown(Cow::Owned(s.replacen("##", "#", 1)))
     } else if trimmed.starts_with("# ") {
         // # text
         Line::Hidden(&trimmed[2..])
@@ -99,7 +99,7 @@ fn map_line(s: &str) -> Line {
         // We cannot handle '#text' because it could be #[attr].
         Line::Hidden("")
     } else {
-        Line::Shown(s)
+        Line::Shown(Cow::Borrowed(s))
     }
 }
 
@@ -168,7 +168,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
             }
         }
         let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
-        let text = lines.collect::<Vec<&str>>().join("\n");
+        let text = lines.collect::<Vec<Cow<str>>>().join("\n");
         PLAYGROUND.with(|play| {
             // insert newline to clearly separate it from the
             // previous block so we can shorten the html output
@@ -179,7 +179,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                 }
                 let test = origtext.lines()
                     .map(|l| map_line(l).for_code())
-                    .collect::<Vec<&str>>().join("\n");
+                    .collect::<Vec<Cow<str>>>().join("\n");
                 let krate = krate.as_ref().map(|s| &**s);
                 let (test, _) = test::make_test(&test, krate, false,
                                            &Default::default());
@@ -477,7 +477,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
                 }
                 if let Some(offset) = offset {
                     let lines = test_s.lines().map(|l| map_line(l).for_code());
-                    let text = lines.collect::<Vec<&str>>().join("\n");
+                    let text = lines.collect::<Vec<Cow<str>>>().join("\n");
                     nb_lines += doc[prev_offset..offset].lines().count();
                     let line = tests.get_line() + (nb_lines - 1);
                     let filename = tests.get_filename();
