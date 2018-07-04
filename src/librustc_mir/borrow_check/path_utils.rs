@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::borrow_set::{BorrowSet, BorrowData, TwoPhaseUse};
+use borrow_check::borrow_set::{BorrowSet, BorrowData, TwoPhaseActivation};
 use borrow_check::places_conflict;
 use borrow_check::Context;
 use borrow_check::ShallowOrDeep;
@@ -83,11 +83,11 @@ pub(super) fn is_active<'tcx>(
 
     let activation_location = match borrow_data.activation_location {
         // If this is not a 2-phase borrow, it is always active.
-        None => return true,
+        TwoPhaseActivation::NotTwoPhase => return true,
         // And if the unique 2-phase use is not an activation, then it is *never* active.
-        Some((TwoPhaseUse::SharedUse, _)) => return false,
-        // Otherwise, we derive info from the activation point `v`:
-        Some((TwoPhaseUse::MutActivate, v)) => v,
+        TwoPhaseActivation::NotActivated => return false,
+        // Otherwise, we derive info from the activation point `loc`:
+        TwoPhaseActivation::ActivatedAt(loc) => loc,
     };
 
     // Otherwise, it is active for every location *except* in between
