@@ -206,7 +206,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             &Place::Local(..) => {
                 // locals are safe
             }
-            &Place::Static(box Static { def_id, ty: _ }) => {
+            &Place::Static(Static { def_id, ty: _ }) => {
                 if self.tcx.is_static(def_id) == Some(hir::Mutability::MutMutable) {
                     self.require_unsafe("use of mutable static");
                 } else if self.tcx.is_foreign_item(def_id) {

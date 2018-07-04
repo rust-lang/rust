@@ -425,7 +425,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
 
         let result = match *place {
             mir::Place::Local(_) => bug!(), // handled above
-            mir::Place::Static(box mir::Static { def_id, ty }) => {
+            mir::Place::Static(mir::Static { def_id, ty }) => {
                 let layout = cx.layout_of(self.monomorphize(&ty));
                 PlaceRef::new_sized(consts::get_static(cx, def_id), layout, layout.align)
             },
