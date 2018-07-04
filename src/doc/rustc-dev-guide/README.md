@@ -5,6 +5,10 @@ some new part of the compiler that they haven't worked on before.
 
 [You can read the latest version of the guide here.](https://rust-lang-nursery.github.io/rustc-guide/)
 
+You may also find the rustdocs [for the compiler itself][rustdocs] useful.
+
+[rustdocs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
+
 The guide can be useful today, but it has a lot of work still go.
 Once it gets more complete, the plan is probably to move it into the
 [main Rust repository](https://github.com/rust-lang/rust/).
