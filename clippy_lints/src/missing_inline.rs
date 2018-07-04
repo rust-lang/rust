@@ -67,19 +67,17 @@ declare_clippy_lint! {
 
 pub struct MissingInline;
 
-impl MissingInline {
-    fn check_missing_inline_attrs(&self, cx: &LateContext,
-                                  attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
-        let has_inline = attrs
-            .iter()
-            .any(|a| a.name() == "inline" );
-        if !has_inline {
-            cx.span_lint(
-                MISSING_INLINE_IN_PUBLIC_ITEMS,
-                sp,
-                &format!("missing `#[inline]` for {}", desc),
-            );
-        }
+fn check_missing_inline_attrs(cx: &LateContext,
+                              attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
+    let has_inline = attrs
+        .iter()
+        .any(|a| a.name() == "inline" );
+    if !has_inline {
+        cx.span_lint(
+            MISSING_INLINE_IN_PUBLIC_ITEMS,
+            sp,
+            &format!("missing `#[inline]` for {}", desc),
+        );
     }
 }
 
@@ -112,7 +110,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
         match it.node {
             hir::ItemFn(..) => {
                 let desc = "a function";
-                self.check_missing_inline_attrs(cx, &it.attrs, it.span, desc);
+                check_missing_inline_attrs(cx, &it.attrs, it.span, desc);
             },
             hir::ItemTrait(ref _is_auto, ref _unsafe, ref _generics,
                            ref _bounds, ref trait_items)  => {
@@ -129,7 +127,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
                                 // an impl is not provided
                                 let desc = "a default trait method";
                                 let item = cx.tcx.hir.expect_trait_item(tit.id.node_id);
-                                self.check_missing_inline_attrs(cx, &item.attrs,
+                                check_missing_inline_attrs(cx, &item.attrs,
                                                                 item.span, desc);
                             }
                         },
@@ -195,6 +193,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             },
         }
 
-        self.check_missing_inline_attrs(cx, &impl_item.attrs, impl_item.span, desc);
+        check_missing_inline_attrs(cx, &impl_item.attrs, impl_item.span, desc);
     }
 }
