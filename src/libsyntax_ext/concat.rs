@@ -14,7 +14,6 @@ use syntax::ext::build::AstBuilder;
 use syntax::symbol::Symbol;
 use syntax_pos;
 use syntax::tokenstream;
-use syntax::print::pprust;
 
 use std::string::String;
 
@@ -55,15 +54,7 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
             }
             _ => {
                 let mut err = cx.struct_span_err(e.span, "expected a literal");
-                let msg = cx.codemap().span_to_snippet(e.span).unwrap_or_else(
-                    |_| pprust::expr_to_string(&e)
-                );
-                err.span_suggestion(
-                    e.span,
-                    "consider changing this to",
-                    format!("\"{{}}\", {}", msg)
-                );
-                err.span_note(
+                err.span_help(
                     e.span,
                     "you might be missing a string literal to format with",
                 );

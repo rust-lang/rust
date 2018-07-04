@@ -2,7 +2,13 @@ error: expected a literal
   --> $DIR/bad_hello.rs:12:14
    |
 LL |     println!(3 + 4); //~ ERROR expected a literal
-   |              ^^^^^ help: consider changing this to: `"{}", 3 + 4`
+   |              ^^^^^
+   |
+help: you might be missing a string literal to format with
+  --> $DIR/bad_hello.rs:12:14
+   |
+LL |     println!(3 + 4); //~ ERROR expected a literal
+   |              ^^^^^
 
 error: aborting due to previous error
 
