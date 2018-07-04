@@ -625,6 +625,12 @@ pub struct Pinned;
 #[unstable(feature = "pin", issue = "49150")]
 impl !Unpin for Pinned {}
 
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized + 'a> Unpin for &'a T {}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized + 'a> Unpin for &'a mut T {}
+
 /// Implementations of `Copy` for primitive types.
 ///
 /// Implementations that cannot be described in Rust
