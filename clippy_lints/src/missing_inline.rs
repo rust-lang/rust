@@ -26,32 +26,50 @@ use syntax::codemap::Span;
 /// out for specific methods where this might not make sense.
 ///
 /// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// pub fn foo() {} // missing #[inline]
+/// fn ok() {} // ok
+/// #[inline] pub fn bar() {} // ok
+/// #[inline(always)] pub fn baz() {} // ok
+///
+/// pub trait Bar {
+///   fn bar(); // ok
+///   fn def_bar() {} // missing #[inline]
+/// }
+///
+/// struct Baz;
+/// impl Baz {
+///    fn priv() {} // ok
+/// }
+///
+/// impl Bar for Baz {
+///   fn bar() {} // ok - Baz is not exported
+/// }
+///
+/// pub struct PubBaz;
+/// impl PubBaz {
+///    fn priv() {} // ok
+///    pub not_ptriv() {} // missing #[inline]
+/// }
+///
+/// impl Bar for PubBaz {
+///    fn bar() {} // missing #[inline]
+///    fn def_bar() {} // missing #[inline]
+/// }
+/// ```
 declare_clippy_lint! {
     pub MISSING_INLINE_IN_PUBLIC_ITEMS,
     restriction,
     "detects missing #[inline] attribute for public callables (functions, trait methods, methods...)"
 }
 
-pub struct MissingInline {}
-
-impl ::std::default::Default for MissingInline {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+pub struct MissingInline;
 
 impl MissingInline {
-    pub fn new() -> Self {
-        Self {}
-    }
-
     fn check_missing_inline_attrs(&self, cx: &LateContext,
                                   attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
-        // If we're building a test harness, FIXME: is this relevant?
-        // if cx.sess().opts.test {
-        //    return;
-        // }
-
         let has_inline = attrs
             .iter()
             .any(|a| a.name() == "inline" );
@@ -91,6 +109,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             },
             hir::ItemTrait(ref _is_auto, ref _unsafe, ref _generics,
                            ref _bounds, ref trait_items)  => {
+                // note: we need to check if the trait is exported so we can't use
+                // `LateLintPass::check_trait_item` here.
                 for tit in trait_items {
                     let tit_ = cx.tcx.hir.trait_item(tit.id);
                     match tit_.node {
@@ -134,12 +154,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             return;
         }
 
+        let desc = match impl_item.node {
+            hir::ImplItemKind::Method(..) => "a method",
+            hir::ImplItemKind::Const(..) |
+            hir::ImplItemKind::Type(_) => return,
+        };
+
         let def_id = cx.tcx.hir.local_def_id(impl_item.id);
         match cx.tcx.associated_item(def_id).container {
             TraitContainer(cid) => {
-                let n = cx.tcx.hir.as_local_node_id(cid);
-                if n.is_some() {
-                    if !cx.access_levels.is_exported(n.unwrap()) {
+                if let Some(n) = cx.tcx.hir.as_local_node_id(cid) {
+                    if !cx.access_levels.is_exported(n) {
                         // If a trait is being implemented for an item, and the
                         // trait is not exported, we don't need #[inline]
                         return;
@@ -149,9 +174,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             ImplContainer(cid) => {
                 if cx.tcx.impl_trait_ref(cid).is_some() {
                     let trait_ref = cx.tcx.impl_trait_ref(cid).unwrap();
-                    let n = cx.tcx.hir.as_local_node_id(trait_ref.def_id);
-                    if n.is_some() {
-                        if !cx.access_levels.is_exported(n.unwrap()) {
+                    if let Some(n) = cx.tcx.hir.as_local_node_id(trait_ref.def_id) {
+                        if !cx.access_levels.is_exported(n) {
                             // If a trait is being implemented for an item, and the
                             // trait is not exported, we don't need #[inline]
                             return;
@@ -161,11 +185,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             },
         }
 
-        let desc = match impl_item.node {
-            hir::ImplItemKind::Method(..) => "a method",
-            hir::ImplItemKind::Const(..) |
-            hir::ImplItemKind::Type(_) => return,
-        };
         self.check_missing_inline_attrs(cx, &impl_item.attrs, impl_item.span, desc);
     }
 }
