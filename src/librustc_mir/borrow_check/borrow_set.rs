@@ -237,6 +237,14 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
                             TwoPhaseActivation::NotActivated
                         }
                         _ => {
+                            // Double check: We should have found an activation for every pending
+                            // activation.
+                            assert_eq!(
+                                borrow_data.activation_location,
+                                TwoPhaseActivation::NotActivated,
+                                "never found an activation for this borrow!",
+                            );
+
                             self.activation_map
                                 .entry(location)
                                 .or_insert(Vec::new())
@@ -321,6 +329,10 @@ impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
                 assigned_place,
             );
         };
+
+        // Consider the borrow not activated.
+        let borrow_data = &mut self.idx_vec[borrow_index];
+        borrow_data.activation_location = TwoPhaseActivation::NotActivated;
 
         // Insert `temp` into the list of pending activations. From
         // now on, we'll be on the lookout for a use of it. Note that
