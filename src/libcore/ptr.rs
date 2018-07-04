@@ -21,14 +21,15 @@
 //! rust does not yet have a formal memory model, determining whether an
 //! arbitrary pointer is valid for a given operation can be tricky.
 //!
-//! There are two types of operations on memory, reads and writes. It is
-//! possible for a `*mut` to be valid for one operation and not the other. Since
-//! a `*const` can only be read and not written, it has no such ambiguity. For
-//! example, a `*mut` is not valid for writes if a a reference exists which
-//! [refers to the same memory][aliasing]. Therefore, each function in this
-//! module will document which operations must be valid on any `*mut` arguments.
+//! There are two types of operations on memory, reads and writes. A single
+//! pointer can be valid for any combination of these operations. For example, a
+//! pointer is not valid for writes if a `&mut` exists which [refers to the same
+//! memory][aliasing]. The set of operations for which a pointer argument must
+//! be valid is explicitly documented for each function. This is not strictly
+//! necessary for `*const` arguments, as they can only be used for reads and
+//! never for writes.
 //!
-//! Additionally, some functions (e.g. [`copy`]) take a single pointer but
+//! Some functions (e.g. [`copy`]) take a single pointer but
 //! operate on many values. In this case, the function will state the size of
 //! the operation for which the pointer must be valid. For example,
 //! `copy::<T>(&src, &mut dst, 3)` requires `dst` to be valid for writes of
@@ -36,8 +37,21 @@
 //! be valid for an operation but omits the size of that operation, the size is
 //! implied to be `size_of::<T>()` bytes.
 //!
-//! For more information on the safety implications of dereferencing raw
-//! pointers, see the both the [book] and the section in the reference devoted
+//! While we can't yet define whether an arbitrary pointer is a valid one, there
+//! are a few rules regarding validity:
+//!
+//! * The result of casting a reference to a pointer is valid for as long as the
+//!   underlying object is live.
+//! * All pointers to types with a [size of zero][zst] are valid for all
+//!   operations of size zero.
+//! * A [null] pointer is *never* valid, except when it points to a zero-sized
+//!   type.
+//!
+//! These axioms, along with careful use of [`offset`] for pointer arithmentic,
+//! are enough to correctly implement many useful things in unsafe code. Still,
+//! unsafe code should be carefully examined since some of the finer
+//! details—notably the [aliasing] rules—are not yet settled. For more
+//! information, see the [book] as well as the section in the reference devoted
 //! to [undefined behavior][ub].
 //!
 //! ## Alignment
@@ -50,7 +64,10 @@
 //! [aliasing]: ../../nomicon/aliasing.html
 //! [book]: ../../book/second-edition/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
 //! [ub]: ../../reference/behavior-considered-undefined.html
+//! [null]: ./fn.null.html
+//! [zst]: ../../nomicon/exotic-sizes.html#zero-sized-types-zsts
 //! [`copy`]: ../../std/ptr/fn.copy.html
+//! [`offset`]: ../../std/primitive.pointer.html#method.offset
 //! [`read_unaligned`]: ./fn.read_unaligned.html
 //! [`write_unaligned`]: ./fn.write_unaligned.html
 
