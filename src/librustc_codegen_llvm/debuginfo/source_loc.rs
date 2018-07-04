@@ -15,7 +15,7 @@ use super::metadata::UNKNOWN_COLUMN_NUMBER;
 use super::FunctionDebugContext;
 
 use llvm;
-use llvm::debuginfo::{DIScope_opaque, DIScope};
+use llvm::debuginfo::DIScope;
 use builder::Builder;
 
 use libc::c_uint;
@@ -26,7 +26,10 @@ use syntax_pos::{Span, Pos};
 ///
 /// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...).
 pub fn set_source_location(
-    debug_context: &FunctionDebugContext, bx: &Builder, scope: Option<NonNull<DIScope_opaque>>, span: Span
+    debug_context: &FunctionDebugContext<'ll>,
+    bx: &Builder<'_, 'll, '_>,
+    scope: Option<&'ll DIScope>,
+    span: Span,
 ) {
     let function_debug_context = match *debug_context {
         FunctionDebugContext::DebugInfoDisabled => return,
@@ -40,7 +43,7 @@ pub fn set_source_location(
     let dbg_loc = if function_debug_context.source_locations_enabled.get() {
         debug!("set_source_location: {}", bx.sess().codemap().span_to_string(span));
         let loc = span_start(bx.cx, span);
-        InternalDebugLocation::new(scope.unwrap().as_ptr(), loc.line, loc.col.to_usize())
+        InternalDebugLocation::new(scope.unwrap(), loc.line, loc.col.to_usize())
     } else {
         UnknownLocation
     };
@@ -53,7 +56,7 @@ pub fn set_source_location(
 /// they are disabled when beginning to codegen a new function. This functions
 /// switches source location emitting on and must therefore be called before the
 /// first real statement/expression of the function is codegened.
-pub fn start_emitting_source_locations(dbg_context: &FunctionDebugContext) {
+pub fn start_emitting_source_locations(dbg_context: &FunctionDebugContext<'ll>) {
     match *dbg_context {
         FunctionDebugContext::RegularContext(ref data) => {
             data.source_locations_enabled.set(true)
@@ -64,13 +67,13 @@ pub fn start_emitting_source_locations(dbg_context: &FunctionDebugContext) {
 
 
 #[derive(Copy, Clone, PartialEq)]
-pub enum InternalDebugLocation {
-    KnownLocation { scope: DIScope, line: usize, col: usize },
+pub enum InternalDebugLocation<'ll> {
+    KnownLocation { scope: &'ll DIScope, line: usize, col: usize },
     UnknownLocation
 }
 
-impl InternalDebugLocation {
-    pub fn new(scope: DIScope, line: usize, col: usize) -> InternalDebugLocation {
+impl InternalDebugLocation<'ll> {
+    pub fn new(scope: &'ll DIScope, line: usize, col: usize) -> Self {
         KnownLocation {
             scope,
             line,
@@ -79,7 +82,7 @@ impl InternalDebugLocation {
     }
 }
 
-pub fn set_debug_location(bx: &Builder, debug_location: InternalDebugLocation) {
+pub fn set_debug_location(bx: &Builder<'_, 'll, '_>, debug_location: InternalDebugLocation<'ll>) {
     let metadata_node = match debug_location {
         KnownLocation { scope, line, col } => {
             // For MSVC, set the column number to zero.

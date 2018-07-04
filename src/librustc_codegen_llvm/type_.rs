@@ -14,7 +14,6 @@ pub use llvm::Type;
 
 use llvm;
 use llvm::{Bool, False, True, TypeKind};
-use llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 
 use context::CodegenCx;
 
@@ -265,10 +264,10 @@ impl Type {
 
     pub fn float_width(&self) -> usize {
         match self.kind() {
-            Float => 32,
-            Double => 64,
-            X86_FP80 => 80,
-            FP128 | PPC_FP128 => 128,
+            TypeKind::Float => 32,
+            TypeKind::Double => 64,
+            TypeKind::X86_FP80 => 80,
+            TypeKind::FP128 | TypeKind::PPC_FP128 => 128,
             _ => bug!("llvm_float_width called on a non-float type")
         }
     }

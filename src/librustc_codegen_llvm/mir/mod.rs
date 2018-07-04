@@ -11,7 +11,7 @@
 use common::{C_i32, C_null};
 use libc::c_uint;
 use llvm::{self, ValueRef, BasicBlockRef};
-use llvm::debuginfo::DIScope_opaque;
+use llvm::debuginfo::DIScope;
 use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
 use rustc::ty::layout::{LayoutOf, TyLayout};
 use rustc::mir::{self, Mir};
@@ -29,7 +29,6 @@ use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;
 
 use std::iter;
-use std::ptr::NonNull;
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -48,7 +47,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
 
     mir: &'a mir::Mir<'tcx>,
 
-    debug_context: debuginfo::FunctionDebugContext,
+    debug_context: FunctionDebugContext<'ll>,
 
     llfn: ValueRef,
 
@@ -100,7 +99,7 @@ pub struct FunctionCx<'a, 'll: 'a, 'tcx: 'll> {
     locals: IndexVec<mir::Local, LocalRef<'tcx>>,
 
     /// Debug information for MIR scopes.
-    scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope>,
+    scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope<'ll>>,
 
     /// If this function is being monomorphized, this contains the type substitutions used.
     param_substs: &'tcx Substs<'tcx>,
@@ -117,12 +116,12 @@ impl FunctionCx<'a, 'll, 'tcx> {
         )
     }
 
-    pub fn set_debug_loc(&mut self, bx: &Builder, source_info: mir::SourceInfo) {
+    pub fn set_debug_loc(&mut self, bx: &Builder<'_, 'll, '_>, source_info: mir::SourceInfo) {
         let (scope, span) = self.debug_loc(source_info);
         debuginfo::set_source_location(&self.debug_context, bx, scope, span);
     }
 
-    pub fn debug_loc(&mut self, source_info: mir::SourceInfo) -> (Option<NonNull<DIScope_opaque>>, Span) {
+    pub fn debug_loc(&mut self, source_info: mir::SourceInfo) -> (Option<&'ll DIScope>, Span) {
         // Bail out if debug info emission is not enabled.
         match self.debug_context {
             FunctionDebugContext::DebugInfoDisabled |
@@ -162,14 +161,14 @@ impl FunctionCx<'a, 'll, 'tcx> {
     // corresponding to span's containing source scope.  If so, we need to create a DIScope
     // "extension" into that file.
     fn scope_metadata_for_loc(&self, scope_id: mir::SourceScope, pos: BytePos)
-                               -> Option<NonNull<DIScope_opaque>> {
+                               -> Option<&'ll DIScope> {
         let scope_metadata = self.scopes[scope_id].scope_metadata;
         if pos < self.scopes[scope_id].file_start_pos ||
            pos >= self.scopes[scope_id].file_end_pos {
             let cm = self.cx.sess().codemap();
             let defining_crate = self.debug_context.get_ref(DUMMY_SP).defining_crate;
-            NonNull::new(debuginfo::extend_scope_to_file(self.cx,
-                                            scope_metadata.unwrap().as_ptr(),
+            Some(debuginfo::extend_scope_to_file(self.cx,
+                                            scope_metadata.unwrap(),
                                             &cm.lookup_char_pos(pos).file,
                                             defining_crate))
         } else {
@@ -281,7 +280,7 @@ pub fn codegen_mir(
                         span: decl.source_info.span,
                         scope: decl.visibility_scope,
                     });
-                    declare_local(&bx, &fx.debug_context, name, layout.ty, scope.unwrap().as_ptr(),
+                    declare_local(&bx, &fx.debug_context, name, layout.ty, scope.unwrap(),
                         VariableAccess::DirectVariable { alloca: place.llval },
                         VariableKind::LocalVariable, span);
                 }
@@ -416,7 +415,7 @@ fn create_funclets(
 fn arg_local_refs(
     bx: &Builder<'a, 'll, 'tcx>,
     fx: &FunctionCx<'a, 'll, 'tcx>,
-    scopes: &IndexVec<mir::SourceScope, debuginfo::MirDebugScope>,
+    scopes: &IndexVec<mir::SourceScope, debuginfo::MirDebugScope<'ll>>,
     memory_locals: &BitVector<mir::Local>,
 ) -> Vec<LocalRef<'tcx>> {
     let mir = fx.mir;
@@ -473,7 +472,7 @@ fn arg_local_refs(
                     bx,
                     &fx.debug_context,
                     arg_decl.name.unwrap_or(keywords::Invalid.name()),
-                    arg_ty, scope.as_ptr(),
+                    arg_ty, scope,
                     variable_access,
                     VariableKind::ArgumentVariable(arg_index + 1),
                     DUMMY_SP
@@ -552,7 +551,7 @@ fn arg_local_refs(
                     &fx.debug_context,
                     arg_decl.name.unwrap_or(keywords::Invalid.name()),
                     arg.layout.ty,
-                    scope.as_ptr(),
+                    scope,
                     variable_access,
                     VariableKind::ArgumentVariable(arg_index + 1),
                     DUMMY_SP
@@ -603,7 +602,7 @@ fn arg_local_refs(
                     &fx.debug_context,
                     decl.debug_name,
                     ty,
-                    scope.as_ptr(),
+                    scope,
                     variable_access,
                     VariableKind::LocalVariable,
                     DUMMY_SP

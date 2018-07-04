@@ -31,7 +31,7 @@ use super::ModuleKind;
 use abi;
 use back::link;
 use back::write::{self, OngoingCodegen};
-use llvm::{ValueRef, Vector, get_param};
+use llvm::{TypeKind, ValueRef, get_param};
 use llvm;
 use metadata;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -349,10 +349,10 @@ fn cast_shift_rhs<'ll, F, G>(op: hir::BinOpKind,
     if op.is_shift() {
         let mut rhs_llty = val_ty(rhs);
         let mut lhs_llty = val_ty(lhs);
-        if rhs_llty.kind() == Vector {
+        if rhs_llty.kind() == TypeKind::Vector {
             rhs_llty = rhs_llty.element_type()
         }
-        if lhs_llty.kind() == Vector {
+        if lhs_llty.kind() == TypeKind::Vector {
             lhs_llty = lhs_llty.element_type()
         }
         let rhs_sz = rhs_llty.int_width();

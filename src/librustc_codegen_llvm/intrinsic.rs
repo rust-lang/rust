@@ -12,7 +12,7 @@
 
 use intrinsics::{self, Intrinsic};
 use llvm;
-use llvm::{ValueRef};
+use llvm::{TypeKind, ValueRef};
 use abi::{Abi, FnType, LlvmType, PassMode};
 use mir::place::PlaceRef;
 use mir::operand::{OperandRef, OperandValue};
@@ -1060,7 +1060,7 @@ fn generic_simd_intrinsic(
                   found `{}` with length {}",
                  in_len, in_ty,
                  ret_ty, out_len);
-        require!(llret_ty.element_type().kind() == llvm::Integer,
+        require!(llret_ty.element_type().kind() == TypeKind::Integer,
                  "expected return type with integer elements, found `{}` with non-integer `{}`",
                  ret_ty,
                  ret_ty.simd_type(tcx));

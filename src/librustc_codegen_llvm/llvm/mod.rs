@@ -16,7 +16,6 @@
 
 pub use self::IntPredicate::*;
 pub use self::RealPredicate::*;
-pub use self::TypeKind::*;
 pub use self::AtomicRmwBinOp::*;
 pub use self::MetadataType::*;
 pub use self::CodeGenOptSize::*;
