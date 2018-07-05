@@ -118,8 +118,13 @@ impl Step for ToolBuild {
         let mut duplicates = Vec::new();
         let is_expected = compile::stream_cargo(builder, &mut cargo, &mut |msg| {
             // Only care about big things like the RLS/Cargo for now
-            if tool != "rls" && tool != "cargo" && tool != "clippy-driver" {
-                return
+            match tool {
+                | "rls"
+                | "cargo"
+                | "clippy-driver"
+                => {}
+
+                _ => return,
             }
             let (id, features, filenames) = match msg {
                 compile::CargoMessage::CompilerArtifact {
