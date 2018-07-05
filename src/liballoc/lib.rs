@@ -106,6 +106,7 @@
 #![feature(ptr_internals)]
 #![feature(ptr_offset_from)]
 #![feature(rustc_attrs)]
+#![feature(slice_index_methods)]
 #![feature(specialization)]
 #![feature(split_ascii_whitespace)]
 #![feature(staged_api)]

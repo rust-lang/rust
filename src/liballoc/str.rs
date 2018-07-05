@@ -360,17 +360,34 @@ impl str {
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_lowercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
+        let mut lower = 0;
         for (i, c) in self[..].char_indices() {
-            if c == 'Σ' {
-                // Σ maps to σ, except at the end of a word where it maps to ς.
-                // This is the only conditional (contextual) but language-independent mapping
-                // in `SpecialCasing.txt`,
-                // so hard-code it rather than have a generic "condition" mechanism.
-                // See https://github.com/rust-lang/rust/issues/26035
-                map_uppercase_sigma(self, i, &mut s)
-            } else {
-                s.extend(c.to_lowercase());
+            // Lowercase `char`s are inserted into `s` in slices,
+            // uppercase `char`s are converted to lowercase and inserted individually.
+            if c.is_uppercase() {
+                if lower != i {
+                    unsafe {
+                        // lower..i is an interval of lowercase `char`s before `c`.
+                        s.push_str((lower..i).get_unchecked(self));
+                    }
+                }
+                if c == 'Σ' {
+                    // Σ maps to σ, except at the end of a word where it maps to ς.
+                    // This is the only conditional (contextual) but language-independent mapping
+                    // in `SpecialCasing.txt`,
+                    // so hard-code it rather than have a generic "condition" mechanism.
+                    // See https://github.com/rust-lang/rust/issues/26035
+                    map_uppercase_sigma(self, i, &mut s);
+                } else {
+                    s.extend(c.to_lowercase());
+                }
+
+                // The next possible interval of lowercase `char`s start after `c`.
+                lower = i + c.len_utf8();
             }
+        }
+        unsafe {
+            s.push_str((lower..self.len()).get_unchecked(self));
         }
         return s;
 
@@ -423,7 +440,26 @@ impl str {
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_uppercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
-        s.extend(self.chars().flat_map(|c| c.to_uppercase()));
+        let mut lower = 0;
+        for (i, c) in self[..].char_indices() {
+            // Uppercase `char`s are inserted into `s` in slices,
+            // lowercase `char`s are converted to uppercase and inserted individually.
+            if c.is_lowercase() {
+                if lower != i {
+                    unsafe {
+                        // lower..i is an interval of uppercase `char`s before `c`.
+                        s.push_str((lower..i).get_unchecked(self));
+                    }
+                }
+                s.extend(c.to_uppercase());
+
+                // The next possible interval of uppercase `char`s start after `c`.
+                lower = i + c.len_utf8();
+            }
+        }
+        unsafe {
+            s.push_str((lower..self.len()).get_unchecked(self));
+        }
         return s;
     }
 
