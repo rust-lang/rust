@@ -10,6 +10,8 @@
 
 // compile-flags: -Z borrowck=compare
 
+#![recursion_limit = "128"]
+
 use std::cell::Cell;
 use std::mem::swap;
 
@@ -121,6 +123,16 @@ fn special_characters() {
     assert!(!val);
 }
 
+fn punch_card() -> impl std::fmt::Debug {
+    ..=..=.. ..    .. .. .. ..    .. .. .. ..    .. ..=.. ..
+    ..=.. ..=..    .. .. .. ..    .. .. .. ..    ..=..=..=..
+    ..=.. ..=..    ..=.. ..=..    .. ..=..=..    .. ..=.. ..
+    ..=..=.. ..    ..=.. ..=..    ..=.. .. ..    .. ..=.. ..
+    ..=.. ..=..    ..=.. ..=..    .. ..=.. ..    .. ..=.. ..
+    ..=.. ..=..    ..=.. ..=..    .. .. ..=..    .. ..=.. ..
+    ..=.. ..=..    .. ..=..=..    ..=..=.. ..    .. ..=.. ..
+}
+
 pub fn main() {
     strange();
     funny();
@@ -135,4 +147,5 @@ pub fn main() {
     fishy();
     union();
     special_characters();
+    punch_card();
 }
