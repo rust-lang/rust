@@ -18,7 +18,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::sync::Lrc;
 
 use base;
-use common::{self, CodegenCx, C_null, C_undef, C_usize};
+use common::{CodegenCx, C_null, C_undef, C_usize};
 use builder::{Builder, MemFlags};
 use value::Value;
 use type_of::LayoutLlvmExt;
@@ -310,10 +310,6 @@ impl<'a, 'tcx> OperandValue {
             OperandValue::Pair(a, b) => {
                 for (i, &x) in [a, b].iter().enumerate() {
                     let llptr = bx.struct_gep(dest.llval, i as u64);
-                    // Make sure to always store i1 as i8.
-                    if common::val_ty(x) == Type::i1(bx.cx) {
-                        assert_eq!(common::val_ty(llptr), Type::i8p(bx.cx));
-                    }
                     let val = base::from_immediate(bx, x);
                     bx.store_with_flags(val, llptr, dest.align, flags);
                 }

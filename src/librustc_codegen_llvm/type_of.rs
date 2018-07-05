@@ -363,7 +363,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
 
         // Make sure to return the same type `immediate_llvm_type` would when
         // dealing with an immediate pair.  This means that `(bool, bool)` is
-        // effectively represented as `{i8, i8}` in memory and `{i1, i1}` as an
+        // effectively represented as `{i8, i8}` in memory and two `i1`s as an
         // immediate, just like `bool` is typically `i8` in memory and only `i1`
         // when immediate.  We need to load/store `bool` as `i8` to avoid
         // crippling LLVM optimizations or triggering other LLVM bugs with `i1`.

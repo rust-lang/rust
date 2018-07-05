@@ -38,3 +38,17 @@ pub fn pair_and_or((a, b): (bool, bool)) -> (bool, bool) {
     // CHECK: or i1 %arg0.0, %arg0.1
     (a && b, a || b)
 }
+
+// CHECK: define void @pair_branches(i1 zeroext %arg0.0, i1 zeroext %arg0.1)
+#[no_mangle]
+pub fn pair_branches((a, b): (bool, bool)) {
+    // Make sure it can branch directly on the unpacked bool args
+    // CHECK: br i1 %arg0.0
+    if a {
+        println!("Hello!");
+    }
+    // CHECK: br i1 %arg0.1
+    if b {
+        println!("Goodbye!");
+    }
+}

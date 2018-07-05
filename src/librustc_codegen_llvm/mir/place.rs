@@ -16,7 +16,7 @@ use rustc::mir::tcx::PlaceTy;
 use rustc_data_structures::indexed_vec::Idx;
 use base;
 use builder::Builder;
-use common::{CodegenCx, C_undef, C_usize, C_u8, C_u32, C_uint, C_null, C_uint_big, val_ty};
+use common::{CodegenCx, C_undef, C_usize, C_u8, C_u32, C_uint, C_null, C_uint_big};
 use consts;
 use type_of::LayoutLlvmExt;
 use type_::Type;
@@ -128,10 +128,6 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         } else if let layout::Abi::ScalarPair(ref a, ref b) = self.layout.abi {
             let load = |i, scalar: &layout::Scalar| {
                 let llptr = bx.struct_gep(self.llval, i as u64);
-                // Make sure to always load i1 as i8.
-                if scalar.is_bool() {
-                    assert_eq!(val_ty(llptr), Type::i8p(bx.cx));
-                }
                 let load = bx.load(llptr, self.align);
                 scalar_load_metadata(load, scalar);
                 if scalar.is_bool() {
