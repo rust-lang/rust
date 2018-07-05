@@ -189,6 +189,7 @@ pub fn run_core(search_paths: SearchPaths,
 
     let intra_link_resolution_failure_name = lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE.name;
     let warnings_lint_name = lint::builtin::WARNINGS.name;
+    let missing_docs = rustc_lint::builtin::MISSING_DOCS.name;
     let lints = lint::builtin::HardwiredLints.get_lints()
                     .iter()
                     .chain(rustc_lint::SoftLints.get_lints())
@@ -236,12 +237,22 @@ pub fn run_core(search_paths: SearchPaths,
             sessopts, cpath, diagnostic_handler, codemap,
         );
 
-        let shutdown_lints = [lint::builtin::UNUSED_IMPORTS,
-                              lint::builtin::UNUSED_EXTERN_CRATES];
-
-        for l in &shutdown_lints {
-            sess.driver_lint_caps.insert(lint::LintId::of(l), lint::Allow);
-        }
+        lint::builtin::HardwiredLints.get_lints()
+                                     .into_iter()
+                                     .chain(rustc_lint::SoftLints.get_lints().into_iter())
+                                     .filter_map(|lint| {
+                                         if lint.name == warnings_lint_name ||
+                                            lint.name == intra_link_resolution_failure_name ||
+                                            lint.name == missing_docs {
+                                             None
+                                         } else {
+                                             Some(lint)
+                                         }
+                                     })
+                                     .for_each(|l| {
+                                         sess.driver_lint_caps.insert(lint::LintId::of(l),
+                                                                      lint::Allow);
+                                     });
 
         let codegen_backend = rustc_driver::get_codegen_backend(&sess);
         let cstore = Rc::new(CStore::new(codegen_backend.metadata_loader()));

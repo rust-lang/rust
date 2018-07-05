@@ -283,7 +283,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
 }
 
 declare_lint! {
-    MISSING_DOCS,
+    pub MISSING_DOCS,
     Allow,
     "detects missing documentation for public members"
 }
