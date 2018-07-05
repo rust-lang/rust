@@ -1,4 +1,4 @@
-Steps to publish a new clippy version
+Steps to publish a new Clippy version
 
 - Bump `package.version` in `./Cargo.toml` (no need to manually bump `dependencies.clippy_lints.version`).
 - Write a changelog entry.
