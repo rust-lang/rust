@@ -4488,8 +4488,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         for UseError { mut err, candidates, node_id, better } in self.use_injections.drain(..) {
             let (span, found_use) = UsePlacementFinder::check(krate, node_id);
             if !candidates.is_empty() {
-                let crate_in_paths = self.session.features_untracked().crate_in_paths;
-                show_candidates(&mut err, span, &candidates, better, found_use, crate_in_paths);
+                show_candidates(&mut err, span, &candidates, better, found_use);
             }
             err.emit();
         }
@@ -4703,8 +4702,7 @@ fn show_candidates(err: &mut DiagnosticBuilder,
                    span: Option<Span>,
                    candidates: &[ImportSuggestion],
                    better: bool,
-                   found_use: bool,
-                   crate_in_paths: bool) {
+                   found_use: bool) {
 
     // we want consistent results across executions, but candidates are produced
     // by iterating through a hash map, so make sure they are ordered:
@@ -4728,12 +4726,7 @@ fn show_candidates(err: &mut DiagnosticBuilder,
             } else {
                 "\n"
             };
-            let crate_prefix = if crate_in_paths {
-                "crate::"
-            } else {
-                ""
-            };
-            *candidate = format!("use {}{};\n{}", crate_prefix, candidate, additional_newline);
+            *candidate = format!("use {};\n{}", candidate, additional_newline);
         }
 
         err.span_suggestions(span, &msg, path_strings);
