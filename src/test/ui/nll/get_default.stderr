@@ -56,6 +56,18 @@ LL | | }
    | |_^
 
 error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Mir)
+  --> $DIR/get_default.rs:45:17
+   |
+LL |         match map.get() {
+   |               --- immutable borrow occurs here
+LL |             Some(v) => {
+LL |                 map.set(String::new()); // Both AST and MIR error here
+   |                 ^^^ mutable borrow occurs here
+...
+LL |                 return v;
+   |                        - borrow later used here
+
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Mir)
   --> $DIR/get_default.rs:51:17
    |
 LL |         match map.get() {
@@ -75,18 +87,6 @@ LL | |             Some(v) => {
 LL | |     }
 LL | | }
    | |_^
-
-error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Mir)
-  --> $DIR/get_default.rs:45:17
-   |
-LL |         match map.get() {
-   |               --- immutable borrow occurs here
-LL |             Some(v) => {
-LL |                 map.set(String::new()); // Both AST and MIR error here
-   |                 ^^^ mutable borrow occurs here
-...
-LL |                 return v;
-   |                        - borrow later used here
 
 error: aborting due to 6 previous errors
 
