@@ -4232,16 +4232,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
     }
 
-    /// When name resolution fails, this method can be used to look up candidate
-    /// entities with the expected name. It allows filtering them using the
-    /// supplied predicate (which should be used to only accept the types of
-    /// definitions expected e.g. traits). The lookup spans across all crates.
-    ///
-    /// NOTE: The method does not look into imports, but this is not a problem,
-    /// since we report the definitions (thus, the de-aliased imports).
-    fn lookup_import_candidates<FilterFn>(&mut self,
+    fn lookup_import_candidates_from_module<FilterFn>(&mut self,
                                           lookup_name: Name,
                                           namespace: Namespace,
+                                          start_module: &'a ModuleData<'a>,
                                           filter_fn: FilterFn)
                                           -> Vec<ImportSuggestion>
         where FilterFn: Fn(Def) -> bool
@@ -4249,7 +4243,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         let mut candidates = Vec::new();
         let mut worklist = Vec::new();
         let mut seen_modules = FxHashSet();
-        worklist.push((self.graph_root, Vec::new(), false));
+        worklist.push((start_module, Vec::new(), false));
 
         while let Some((in_module,
                         path_segments,
@@ -4316,6 +4310,23 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
 
         candidates
+    }
+
+    /// When name resolution fails, this method can be used to look up candidate
+    /// entities with the expected name. It allows filtering them using the
+    /// supplied predicate (which should be used to only accept the types of
+    /// definitions expected e.g. traits). The lookup spans across all crates.
+    ///
+    /// NOTE: The method does not look into imports, but this is not a problem,
+    /// since we report the definitions (thus, the de-aliased imports).
+    fn lookup_import_candidates<FilterFn>(&mut self,
+                                          lookup_name: Name,
+                                          namespace: Namespace,
+                                          filter_fn: FilterFn)
+                                          -> Vec<ImportSuggestion>
+        where FilterFn: Fn(Def) -> bool
+    {
+        self.lookup_import_candidates_from_module(lookup_name, namespace, self.graph_root, filter_fn)
     }
 
     fn find_module(&mut self,
