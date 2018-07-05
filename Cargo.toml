@@ -70,7 +70,9 @@ features = [
   "wincon",
   "winnt",
   # no idea where these come from
+  "basetsd",
   "lmcons",
+  "memoryapi",
   "minschannel",
   "minwinbase",
   "ntsecapi",
