@@ -86,7 +86,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
-#![cfg_attr(not(stage0), feature(cfg_target_has_atomic_cas))]
 #![feature(coerce_unsized)]
 #![feature(collections_range)]
 #![feature(const_fn)]
@@ -163,8 +162,10 @@ mod boxed {
 #[cfg(test)]
 mod boxed_test;
 pub mod collections;
-#[cfg_attr(stage0, cfg(target_has_atomic = "ptr"))]
-#[cfg_attr(not(stage0), cfg(all(target_has_atomic = "ptr", target_has_atomic_cas)))]
+#[cfg(any(
+    all(stage0, target_has_atomic = "ptr"),
+    all(not(stage0), target_has_atomic = "ptr", target_has_atomic = "cas")
+))]
 pub mod sync;
 pub mod rc;
 pub mod raw_vec;

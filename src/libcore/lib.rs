@@ -79,7 +79,6 @@
 #![feature(associated_type_defaults)]
 #![feature(attr_literals)]
 #![feature(cfg_target_has_atomic)]
-#![cfg_attr(not(stage0), feature(cfg_target_has_atomic_cas))]
 #![feature(concat_idents)]
 #![feature(const_fn)]
 #![feature(const_int_ops)]

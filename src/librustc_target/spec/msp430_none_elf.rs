@@ -37,7 +37,6 @@ pub fn target() -> TargetResult {
             // There are no atomic CAS instructions available in the MSP430
             // instruction set
             max_atomic_width: Some(16),
-
             atomic_cas: false,
 
             // Because these devices have very little resources having an

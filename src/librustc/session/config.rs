@@ -1408,7 +1408,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
         }
     }
     if atomic_cas {
-        ret.insert((Symbol::intern("target_has_atomic_cas"), None));
+        ret.insert((Symbol::intern("target_has_atomic"), Some(Symbol::intern("cas"))));
     }
     if sess.opts.debug_assertions {
         ret.insert((Symbol::intern("debug_assertions"), None));
