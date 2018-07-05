@@ -20,6 +20,7 @@
 - [Macro expansion](./macro-expansion.md)
 - [Name resolution](./name-resolution.md)
 - [The HIR (High-level IR)](./hir.md)
+    - [Lowering AST to HIR](./lowering.md)
 - [The `ty` module: representing types](./ty.md)
 - [Type inference](./type-inference.md)
 - [Trait solving (old-style)](./traits/resolution.md)
