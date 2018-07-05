@@ -744,6 +744,7 @@ All notable changes to this project will be documented in this file.
 [`misaligned_transmute`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#misaligned_transmute
 [`misrefactored_assign_op`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#misrefactored_assign_op
 [`missing_docs_in_private_items`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#missing_docs_in_private_items
+[`missing_inline_in_public_items`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#missing_inline_in_public_items
 [`mixed_case_hex_literals`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mixed_case_hex_literals
 [`module_inception`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#module_inception
 [`modulo_one`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#modulo_one
