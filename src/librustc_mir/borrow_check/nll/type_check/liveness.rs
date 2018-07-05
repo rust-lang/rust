@@ -21,7 +21,7 @@ use rustc::traits::query::type_op::TypeOp;
 use rustc::ty::{Ty, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use std::rc::Rc;
-use util::liveness::LivenessResults;
+use util::liveness::{LivenessResults, LocalSet};
 
 use super::TypeChecker;
 
@@ -49,8 +49,10 @@ pub(super) fn generate<'gcx, 'tcx>(
         drop_data: FxHashMap(),
     };
 
+    let mut simulate_buffer = liveness.make_simulate_buffer(mir);
+
     for bb in mir.basic_blocks().indices() {
-        generator.add_liveness_constraints(bb);
+        generator.add_liveness_constraints(bb, &mut simulate_buffer);
     }
 }
 
@@ -79,24 +81,31 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
     ///
     /// > If a variable V is live at point P, then all regions R in the type of V
     /// > must include the point P.
-    fn add_liveness_constraints(&mut self, bb: BasicBlock) {
+    fn add_liveness_constraints(&mut self, bb: BasicBlock, simulate_buffer: &mut LocalSet) {
         debug!("add_liveness_constraints(bb={:?})", bb);
 
-        self.liveness
-            .regular
-            .simulate_block(self.mir, bb, |location, live_locals| {
+        self.liveness.regular.simulate_block(
+            self.mir,
+            bb,
+            simulate_buffer,
+            |location, live_locals| {
                 for live_local in live_locals.iter() {
                     let live_local_ty = self.mir.local_decls[live_local].ty;
                     Self::push_type_live_constraint(&mut self.cx, live_local_ty, location);
                 }
-            });
+            },
+        );
 
         let mut all_live_locals: Vec<(Location, Vec<Local>)> = vec![];
-        self.liveness
-            .drop
-            .simulate_block(self.mir, bb, |location, live_locals| {
+
+        self.liveness.drop.simulate_block(
+            self.mir,
+            bb,
+            simulate_buffer,
+            |location, live_locals| {
                 all_live_locals.push((location, live_locals.iter().collect()));
-            });
+            },
+        );
         debug!(
             "add_liveness_constraints: all_live_locals={:#?}",
             all_live_locals

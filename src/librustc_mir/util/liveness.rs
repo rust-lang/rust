@@ -33,19 +33,19 @@
 //! generator yield points, all pre-existing references are invalidated, so this
 //! doesn't matter).
 
-use rustc::mir::*;
-use rustc::mir::visit::{PlaceContext, Visitor};
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::indexed_set::IdxSetBuf;
-use rustc_data_structures::work_queue::WorkQueue;
-use util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
-use rustc::ty::item_path;
 use rustc::mir::visit::MirVisitable;
-use std::path::{Path, PathBuf};
-use std::fs;
+use rustc::mir::visit::{PlaceContext, Visitor};
+use rustc::mir::*;
+use rustc::ty::item_path;
 use rustc::ty::TyCtxt;
+use rustc_data_structures::indexed_set::IdxSetBuf;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_data_structures::work_queue::WorkQueue;
+use std::fs;
 use std::io::{self, Write};
+use std::path::{Path, PathBuf};
 use transform::MirSource;
+use util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
 
 pub type LocalSet = IdxSetBuf<Local>;
 
@@ -110,6 +110,13 @@ impl LivenessResults {
             ),
         }
     }
+
+    /// Create an empty `LocalSet` buffer to be mutably shared accross different calls to
+    /// `simulate_block`, hence reducing memory allocation.
+    pub fn make_simulate_buffer<'tcx>(&self, mir: &Mir<'tcx>) -> LocalSet {
+        let locals = mir.local_decls.len();
+        LocalSet::new_empty(locals)
+    }
 }
 
 /// Compute which local variables are live within the given function
@@ -117,12 +124,14 @@ impl LivenessResults {
 /// considered to make a variable live (e.g., do drops count?).
 pub fn liveness_of_locals<'tcx>(mir: &Mir<'tcx>, mode: LivenessMode) -> LivenessResult {
     let locals = mir.local_decls.len();
-    let def_use: IndexVec<_, _> = mir.basic_blocks()
+    let def_use: IndexVec<_, _> = mir
+        .basic_blocks()
         .iter()
         .map(|b| block(mode, b, locals))
         .collect();
 
-    let mut outs: IndexVec<_, _> = mir.basic_blocks()
+    let mut outs: IndexVec<_, _> = mir
+        .basic_blocks()
         .indices()
         .map(|_| LocalSet::new_empty(locals))
         .collect();
@@ -161,14 +170,19 @@ impl LivenessResult {
     /// basic block `block`.  At each point within `block`, invokes
     /// the callback `op` with the current location and the set of
     /// variables that are live on entry to that location.
-    pub fn simulate_block<'tcx, OP>(&self, mir: &Mir<'tcx>, block: BasicBlock, mut callback: OP)
-    where
+    pub fn simulate_block<'tcx, OP>(
+        &self,
+        mir: &Mir<'tcx>,
+        block: BasicBlock,
+        buffer: &mut LocalSet,
+        mut callback: OP,
+    ) where
         OP: FnMut(Location, &LocalSet),
     {
         let data = &mir[block];
 
         // Get a copy of the bits on exit from the block.
-        let mut bits = self.outs[block].clone();
+        buffer.overwrite(&self.outs[block]);
 
         // Start with the maximal statement index -- i.e., right before
         // the terminator executes.
@@ -189,8 +203,12 @@ impl LivenessResult {
         };
         // Visit the various parts of the basic block in reverse. If we go
         // forward, the logic in `add_def` and `add_use` would be wrong.
-        visitor.update_bits_and_do_callback(terminator_location, &data.terminator, &mut bits,
-                                            &mut callback);
+        visitor.update_bits_and_do_callback(
+            terminator_location,
+            &data.terminator,
+            buffer,
+            &mut callback,
+        );
 
         // Compute liveness before each statement (in rev order) and invoke callback.
         for statement in data.statements.iter().rev() {
@@ -200,8 +218,12 @@ impl LivenessResult {
                 statement_index,
             };
             visitor.defs_uses.clear();
-            visitor.update_bits_and_do_callback(statement_location, statement, &mut bits,
-                                                &mut callback);
+            visitor.update_bits_and_do_callback(
+                statement_location,
+                statement,
+                buffer,
+                &mut callback,
+            );
         }
     }
 }
@@ -336,10 +358,13 @@ impl DefsUsesVisitor {
     /// Update `bits` with the effects of `value` and call `callback`. We
     /// should always visit in reverse order. This method assumes that we have
     /// not visited anything before; if you have, clear `bits` first.
-    fn update_bits_and_do_callback<'tcx, OP>(&mut self, location: Location,
-                                             value: &impl MirVisitable<'tcx>, bits: &mut LocalSet,
-                                             callback: &mut OP)
-    where
+    fn update_bits_and_do_callback<'tcx, OP>(
+        &mut self,
+        location: Location,
+        value: &impl MirVisitable<'tcx>,
+        bits: &mut LocalSet,
+        callback: &mut OP,
+    ) where
         OP: FnMut(Location, &LocalSet),
     {
         value.apply(location, self);
@@ -438,7 +463,8 @@ pub fn write_mir_fn<'a, 'tcx>(
     write_mir_intro(tcx, src, mir, w)?;
     for block in mir.basic_blocks().indices() {
         let print = |w: &mut dyn Write, prefix, result: &IndexVec<BasicBlock, LocalSet>| {
-            let live: Vec<String> = mir.local_decls
+            let live: Vec<String> = mir
+                .local_decls
                 .indices()
                 .filter(|i| result[block].contains(i))
                 .map(|i| format!("{:?}", i))
