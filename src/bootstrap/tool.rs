@@ -13,6 +13,7 @@ use std::env;
 use std::iter;
 use std::path::PathBuf;
 use std::process::{Command, exit};
+use std::collections::HashSet;
 
 use Mode;
 use Compiler;
@@ -183,12 +184,29 @@ impl Step for ToolBuild {
                       typically means that something was recompiled because \
                       a transitive dependency has different features activated \
                       than in a previous build:\n");
+            println!("the following dependencies are duplicated although they \
+                      have the same features enabled:");
+            for (id, cur, prev) in &duplicates {
+                println!("  {}", id);
+                if cur.2 == prev.2 {
+                    // same features
+                    println!("    `{}` ({:?})\n    `{}` ({:?})", cur.0, cur.1, prev.0, prev.1);
+                }
+            }
+            println!("the following dependencies have different features:");
             for (id, cur, prev) in duplicates {
                 println!("  {}", id);
-                println!("    `{}` enabled features {:?} at {:?}",
-                         cur.0, cur.2, cur.1);
-                println!("    `{}` enabled features {:?} at {:?}",
-                         prev.0, prev.2, prev.1);
+                if cur.2 == prev.2 {
+                    continue;
+                }
+                let cur_features: HashSet<_> = cur.2.into_iter().collect();
+                let prev_features: HashSet<_> = prev.2.into_iter().collect();
+                let cur_extra: Vec<_> = cur_features.difference(&prev_features).collect();
+                let prev_extra: Vec<_> = prev_features.difference(&cur_features).collect();
+                println!("    `{}` additionally enabled features {:?} at {:?}",
+                         cur.0, cur_extra, cur.1);
+                println!("    `{}` additionally enabled features {:?} at {:?}",
+                         prev.0, prev_extra, prev.1);
             }
             println!("");
             panic!("tools should not compile multiple copies of the same crate");
