@@ -178,7 +178,10 @@ pub fn run_core(search_paths: SearchPaths,
                 force_unstable_if_unmarked: bool,
                 edition: Edition,
                 cg: CodegenOptions,
-                error_format: ErrorOutputType) -> (clean::Crate, RenderInfo)
+                error_format: ErrorOutputType,
+                cmd_lints: Vec<(String, lint::Level)>,
+                lint_cap: Option<lint::Level>,
+                describe_lints: bool) -> (clean::Crate, RenderInfo)
 {
     // Parse, resolve, and typecheck the given crate.
 
@@ -200,6 +203,7 @@ pub fn run_core(search_paths: SearchPaths,
                             Some((lint.name_lower(), lint::Allow))
                         }
                     })
+                    .chain(cmd_lints.into_iter())
                     .collect::<Vec<_>>();
 
     let host_triple = TargetTriple::from_triple(config::host_triple());
@@ -213,7 +217,7 @@ pub fn run_core(search_paths: SearchPaths,
         } else {
             vec![]
         },
-        lint_cap: Some(lint::Forbid),
+        lint_cap: Some(lint_cap.unwrap_or_else(|| lint::Forbid)),
         cg,
         externs,
         target_triple: triple.unwrap_or(host_triple),
@@ -226,6 +230,7 @@ pub fn run_core(search_paths: SearchPaths,
         },
         error_format,
         edition,
+        describe_lints,
         ..config::basic_options()
     };
     driver::spawn_thread_pool(sessopts, move |sessopts| {
