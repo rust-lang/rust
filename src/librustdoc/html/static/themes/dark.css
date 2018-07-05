@@ -108,7 +108,7 @@ pre {
 
 .content .highlighted {
 	color: #eee !important;
-	background-color: #333;
+	background-color: #616161;
 }
 .content .highlighted a, .content .highlighted span { color: #eee !important; }
 .content .highlighted.trait { background-color: #013191; }
