@@ -2264,7 +2264,7 @@ fn document_stability(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) 
 }
 
 fn document_non_exhaustive(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
-    if item.non_exhaustive {
+    if item.is_non_exhaustive() {
         write!(w, "<div class='non-exhaustive'><div class='stab non-exhaustive'>")?;
         write!(w, "<details><summary><span class=microscope>🔬</span>")?;
 

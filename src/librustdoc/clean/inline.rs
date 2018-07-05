@@ -111,7 +111,6 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name, visited: &mut FxHa
         visibility: Some(clean::Public),
         stability: cx.tcx.lookup_stability(did).clean(cx),
         deprecation: cx.tcx.lookup_deprecation(did).clean(cx),
-        non_exhaustive: false,
         def_id: did,
     });
     Some(ret)
@@ -413,7 +412,6 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
         visibility: Some(clean::Inherited),
         stability: tcx.lookup_stability(did).clean(cx),
         deprecation: tcx.lookup_deprecation(did).clean(cx),
-        non_exhaustive: false,
         def_id: did,
     });
 }

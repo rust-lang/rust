@@ -229,7 +229,6 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                 def_id: self.next_def_id(def_id.krate),
                 stability: None,
                 deprecation: None,
-                non_exhaustive: false,
                 inner: ImplItem(Impl {
                     unsafety: hir::Unsafety::Normal,
                     generics: new_generics,

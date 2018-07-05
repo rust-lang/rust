@@ -99,7 +99,6 @@ pub trait DocFolder : Sized {
             inner,
             stability,
             deprecation,
-            non_exhaustive
         } = item;
 
         let inner = match inner {
@@ -108,7 +107,7 @@ pub trait DocFolder : Sized {
         };
 
         Some(Item { attrs, name, source, inner, visibility,
-                    stability, deprecation, non_exhaustive, def_id })
+                    stability, deprecation, def_id })
     }
 
     fn fold_mod(&mut self, m: Module) -> Module {
