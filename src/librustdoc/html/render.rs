@@ -414,13 +414,13 @@ impl ToJson for Type {
     fn to_json(&self) -> Json {
         match self.name {
             Some(ref name) => {
-                let mut data = BTreeMap::new();
-                data.insert("n".to_owned(), name.to_json());
+                let mut data = Vec::with_capacity(2);
+                data.push(name.to_json());
                 if let Some(ref generics) = self.generics {
-                    data.insert("g".to_owned(), generics.to_json());
+                    data.push(generics.to_json());
                 }
-                Json::Object(data)
-            },
+                Json::Array(data)
+            }
             None => Json::Null
         }
     }
@@ -439,14 +439,12 @@ impl ToJson for IndexItemFunctionType {
         if self.inputs.iter().chain(self.output.iter()).any(|ref i| i.name.is_none()) {
             Json::Null
         } else {
-            let mut data = BTreeMap::new();
-            if !self.inputs.is_empty() {
-                data.insert("i".to_owned(), self.inputs.to_json());
-            }
+            let mut data = Vec::with_capacity(2);
+            data.push(self.inputs.to_json());
             if let Some(ref output) = self.output {
-                data.insert("o".to_owned(), output.to_json());
+                data.push(output.to_json());
             }
-            Json::Object(data)
+            Json::Array(data)
         }
     }
 }
@@ -963,9 +961,11 @@ themePicker.onblur = handleThemeButtonsBlur;
     // with rustdoc running in parallel.
     all_indexes.sort();
     let mut w = try_err!(File::create(&dst), &dst);
-    try_err!(writeln!(&mut w, "var searchIndex = {{}};"), &dst);
+    try_err!(writeln!(&mut w, "var N = null;var searchIndex = {{}};"), &dst);
     for index in &all_indexes {
-        try_err!(writeln!(&mut w, "{}", *index), &dst);
+        try_err!(write_minify_replacer(&mut w, &*index, enable_minification,
+                                       &[(minifier::js::Keyword::Null, "N")]),
+                 &dst);
     }
     try_err!(writeln!(&mut w, "initSearch(searchIndex);"), &dst);
 
@@ -1073,6 +1073,19 @@ fn write_minify(dst: PathBuf, contents: &str, enable_minification: bool) -> Resu
         }
     } else {
         write(dst, contents.as_bytes())
+    }
+}
+
+fn write_minify_replacer<W: Write>(dst: &mut W,
+                                   contents: &str,
+                                   enable_minification: bool,
+                                   keywords_to_replace: &[(minifier::js::Keyword, &str)])
+                                   -> io::Result<()> {
+    if enable_minification {
+        writeln!(dst, "{}",
+                 minifier::js::minify_and_replace_keywords(contents, keywords_to_replace))
+    } else {
+        writeln!(dst, "{}", contents)
     }
 }
 
