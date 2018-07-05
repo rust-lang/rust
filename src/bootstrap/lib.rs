@@ -115,6 +115,7 @@
 
 #![deny(warnings)]
 #![feature(core_intrinsics)]
+#![feature(drain_filter)]
 
 #[macro_use]
 extern crate build_helper;
