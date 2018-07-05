@@ -93,8 +93,8 @@ impl FromStr for ArchiveKind {
 }
 
 #[allow(missing_copy_implementations)]
-pub enum RustString_opaque {}
-type RustStringRef = *mut RustString_opaque;
+extern { pub type RustString; }
+type RustStringRef = *mut RustString;
 type RustStringRepr = *mut RefCell<Vec<u8>>;
 
 /// Appending to a Rust string -- used by RawRustStringOstream.

@@ -378,48 +378,48 @@ pub enum ThreadLocalMode {
 extern { pub type Module; }
 extern { pub type Context; }
 extern { pub type Type; }
-extern { pub type Value_opaque; }
-pub type ValueRef = *mut Value_opaque;
+extern { pub type Value; }
+pub type ValueRef = *mut Value;
 extern { pub type Metadata; }
-extern { pub type BasicBlock_opaque; }
-pub type BasicBlockRef = *mut BasicBlock_opaque;
+extern { pub type BasicBlock; }
+pub type BasicBlockRef = *mut BasicBlock;
 extern { pub type Builder; }
-extern { pub type MemoryBuffer_opaque; }
-pub type MemoryBufferRef = *mut MemoryBuffer_opaque;
-extern { pub type PassManager_opaque; }
-pub type PassManagerRef = *mut PassManager_opaque;
-extern { pub type PassManagerBuilder_opaque; }
-pub type PassManagerBuilderRef = *mut PassManagerBuilder_opaque;
-extern { pub type Use_opaque; }
-pub type UseRef = *mut Use_opaque;
-extern { pub type ObjectFile_opaque; }
-pub type ObjectFileRef = *mut ObjectFile_opaque;
-extern { pub type SectionIterator_opaque; }
-pub type SectionIteratorRef = *mut SectionIterator_opaque;
-extern { pub type Pass_opaque; }
-pub type PassRef = *mut Pass_opaque;
+extern { pub type MemoryBuffer; }
+pub type MemoryBufferRef = *mut MemoryBuffer;
+extern { pub type PassManager; }
+pub type PassManagerRef = *mut PassManager;
+extern { pub type PassManagerBuilder; }
+pub type PassManagerBuilderRef = *mut PassManagerBuilder;
+extern { pub type Use; }
+pub type UseRef = *mut Use;
+extern { pub type ObjectFile; }
+pub type ObjectFileRef = *mut ObjectFile;
+extern { pub type SectionIterator; }
+pub type SectionIteratorRef = *mut SectionIterator;
+extern { pub type Pass; }
+pub type PassRef = *mut Pass;
 extern { pub type TargetMachine; }
 pub type TargetMachineRef = *const TargetMachine;
-extern { pub type Archive_opaque; }
-pub type ArchiveRef = *mut Archive_opaque;
-extern { pub type ArchiveIterator_opaque; }
-pub type ArchiveIteratorRef = *mut ArchiveIterator_opaque;
-extern { pub type ArchiveChild_opaque; }
-pub type ArchiveChildRef = *mut ArchiveChild_opaque;
-extern { pub type Twine_opaque; }
-pub type TwineRef = *mut Twine_opaque;
-extern { pub type DiagnosticInfo_opaque; }
-pub type DiagnosticInfoRef = *mut DiagnosticInfo_opaque;
-extern { pub type DebugLoc_opaque; }
-pub type DebugLocRef = *mut DebugLoc_opaque;
-extern { pub type SMDiagnostic_opaque; }
-pub type SMDiagnosticRef = *mut SMDiagnostic_opaque;
-extern { pub type RustArchiveMember_opaque; }
-pub type RustArchiveMemberRef = *mut RustArchiveMember_opaque;
-extern { pub type OperandBundleDef_opaque; }
-pub type OperandBundleDefRef = *mut OperandBundleDef_opaque;
-extern { pub type Linker_opaque; }
-pub type LinkerRef = *mut Linker_opaque;
+extern { pub type Archive; }
+pub type ArchiveRef = *mut Archive;
+extern { pub type ArchiveIterator; }
+pub type ArchiveIteratorRef = *mut ArchiveIterator;
+extern { pub type ArchiveChild; }
+pub type ArchiveChildRef = *mut ArchiveChild;
+extern { pub type Twine; }
+pub type TwineRef = *mut Twine;
+extern { pub type DiagnosticInfo; }
+pub type DiagnosticInfoRef = *mut DiagnosticInfo;
+extern { pub type DebugLoc; }
+pub type DebugLocRef = *mut DebugLoc;
+extern { pub type SMDiagnostic; }
+pub type SMDiagnosticRef = *mut SMDiagnostic;
+extern { pub type RustArchiveMember; }
+pub type RustArchiveMemberRef = *mut RustArchiveMember;
+extern { pub type OperandBundleDef; }
+pub type OperandBundleDefRef = *mut OperandBundleDef;
+extern { pub type Linker; }
+pub type LinkerRef = *mut Linker;
 
 pub type DiagnosticHandler = unsafe extern "C" fn(DiagnosticInfoRef, *mut c_void);
 pub type InlineAsmDiagHandler = unsafe extern "C" fn(SMDiagnosticRef, *const c_void, c_uint);
@@ -552,7 +552,7 @@ extern "C" {
     pub fn LLVMRustMetadataTypeInContext(C: &Context) -> &Type;
 
     // Operations on all values
-    pub fn LLVMTypeOf(Val: &Value_opaque) -> &Type;
+    pub fn LLVMTypeOf(Val: &Value) -> &Type;
     pub fn LLVMGetValueName(Val: ValueRef) -> *const c_char;
     pub fn LLVMSetValueName(Val: ValueRef, Name: *const c_char);
     pub fn LLVMReplaceAllUsesWith(OldVal: ValueRef, NewVal: ValueRef);
@@ -758,7 +758,7 @@ extern "C" {
     pub fn LLVMDisposeBuilder(Builder: &Builder);
 
     // Metadata
-    pub fn LLVMSetCurrentDebugLocation(Builder: &Builder, L: Option<NonNull<Value_opaque>>);
+    pub fn LLVMSetCurrentDebugLocation(Builder: &Builder, L: Option<NonNull<Value>>);
     pub fn LLVMGetCurrentDebugLocation(Builder: &Builder) -> ValueRef;
     pub fn LLVMSetInstDebugLocation(Builder: &Builder, Inst: ValueRef);
 
@@ -784,7 +784,7 @@ extern "C" {
                                NumArgs: c_uint,
                                Then: BasicBlockRef,
                                Catch: BasicBlockRef,
-                               Bundle: Option<NonNull<OperandBundleDef_opaque>>,
+                               Bundle: Option<NonNull<OperandBundleDef>>,
                                Name: *const c_char)
                                -> ValueRef;
     pub fn LLVMBuildLandingPad(B: &'a Builder,
@@ -797,14 +797,14 @@ extern "C" {
     pub fn LLVMBuildUnreachable(B: &Builder) -> ValueRef;
 
     pub fn LLVMRustBuildCleanupPad(B: &Builder,
-                                   ParentPad: Option<NonNull<Value_opaque>>,
+                                   ParentPad: Option<NonNull<Value>>,
                                    ArgCnt: c_uint,
                                    Args: *const ValueRef,
                                    Name: *const c_char)
                                    -> ValueRef;
     pub fn LLVMRustBuildCleanupRet(B: &Builder,
                                    CleanupPad: ValueRef,
-                                   UnwindBB: Option<NonNull<BasicBlock_opaque>>)
+                                   UnwindBB: Option<NonNull<BasicBlock>>)
                                    -> ValueRef;
     pub fn LLVMRustBuildCatchPad(B: &Builder,
                                  ParentPad: ValueRef,
@@ -814,8 +814,8 @@ extern "C" {
                                  -> ValueRef;
     pub fn LLVMRustBuildCatchRet(B: &Builder, Pad: ValueRef, BB: BasicBlockRef) -> ValueRef;
     pub fn LLVMRustBuildCatchSwitch(Builder: &Builder,
-                                    ParentPad: Option<NonNull<Value_opaque>>,
-                                    BB: Option<NonNull<BasicBlock_opaque>>,
+                                    ParentPad: Option<NonNull<Value>>,
+                                    BB: Option<NonNull<BasicBlock>>,
                                     NumHandlers: c_uint,
                                     Name: *const c_char)
                                     -> ValueRef;
@@ -1126,7 +1126,7 @@ extern "C" {
                              Fn: ValueRef,
                              Args: *const ValueRef,
                              NumArgs: c_uint,
-                             Bundle: Option<NonNull<OperandBundleDef_opaque>>,
+                             Bundle: Option<NonNull<OperandBundleDef>>,
                              Name: *const c_char)
                              -> ValueRef;
     pub fn LLVMBuildSelect(B: &Builder,
@@ -1680,7 +1680,7 @@ extern "C" {
                                 -> LLVMRustResult;
     pub fn LLVMRustArchiveMemberNew(Filename: *const c_char,
                                     Name: *const c_char,
-                                    Child: Option<NonNull<ArchiveChild_opaque>>)
+                                    Child: Option<NonNull<ArchiveChild>>)
                                     -> RustArchiveMemberRef;
     pub fn LLVMRustArchiveMemberFree(Member: RustArchiveMemberRef);
 
