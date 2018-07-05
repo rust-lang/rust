@@ -541,13 +541,14 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                 if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
                     decl.debug_name = ident.name;
 
-                    let bm = *hir.tables.pat_binding_modes()
-                                        .get(pat.hir_id)
-                                        .expect("missing binding mode");
-                    if bm == ty::BindByValue(hir::MutMutable) {
-                        decl.mutability = Mutability::Mut;
+                    if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
+                        if bm == ty::BindByValue(hir::MutMutable) {
+                            decl.mutability = Mutability::Mut;
+                        } else {
+                            decl.mutability = Mutability::Not;
+                        }
                     } else {
-                        decl.mutability = Mutability::Not;
+                        tcx.sess.delay_span_bug(pat.span, "missing binding mode");
                     }
                 }
             }

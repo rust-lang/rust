@@ -840,6 +840,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     fn walk_pat(&mut self, cmt_discr: mc::cmt<'tcx>, pat: &hir::Pat, match_mode: MatchMode) {
         debug!("walk_pat(cmt_discr={:?}, pat={:?})", cmt_discr, pat);
 
+        let tcx = self.tcx();
         let ExprUseVisitor { ref mc, ref mut delegate, param_env } = *self;
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |cmt_pat, pat| {
             if let PatKind::Binding(_, canonical_id, ..) = pat.node {
@@ -849,34 +850,36 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                     pat,
                     match_mode,
                 );
-                let bm = *mc.tables.pat_binding_modes().get(pat.hir_id)
-                                                     .expect("missing binding mode");
-                debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
+                if let Some(&bm) = mc.tables.pat_binding_modes().get(pat.hir_id) {
+                    debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
 
-                // pat_ty: the type of the binding being produced.
-                let pat_ty = return_if_err!(mc.node_ty(pat.hir_id));
-                debug!("walk_pat: pat_ty={:?}", pat_ty);
+                    // pat_ty: the type of the binding being produced.
+                    let pat_ty = return_if_err!(mc.node_ty(pat.hir_id));
+                    debug!("walk_pat: pat_ty={:?}", pat_ty);
 
-                // Each match binding is effectively an assignment to the
-                // binding being produced.
-                let def = Def::Local(canonical_id);
-                if let Ok(ref binding_cmt) = mc.cat_def(pat.hir_id, pat.span, pat_ty, def) {
-                    delegate.mutate(pat.id, pat.span, binding_cmt, MutateMode::Init);
-                }
+                    // Each match binding is effectively an assignment to the
+                    // binding being produced.
+                    let def = Def::Local(canonical_id);
+                    if let Ok(ref binding_cmt) = mc.cat_def(pat.hir_id, pat.span, pat_ty, def) {
+                        delegate.mutate(pat.id, pat.span, binding_cmt, MutateMode::Init);
+                    }
 
-                // It is also a borrow or copy/move of the value being matched.
-                match bm {
-                    ty::BindByReference(m) => {
-                        if let ty::TyRef(r, _, _) = pat_ty.sty {
-                            let bk = ty::BorrowKind::from_mutbl(m);
-                            delegate.borrow(pat.id, pat.span, &cmt_pat, r, bk, RefBinding);
+                    // It is also a borrow or copy/move of the value being matched.
+                    match bm {
+                        ty::BindByReference(m) => {
+                            if let ty::TyRef(r, _, _) = pat_ty.sty {
+                                let bk = ty::BorrowKind::from_mutbl(m);
+                                delegate.borrow(pat.id, pat.span, &cmt_pat, r, bk, RefBinding);
+                            }
+                        }
+                        ty::BindByValue(..) => {
+                            let mode = copy_or_move(mc, param_env, &cmt_pat, PatBindingMove);
+                            debug!("walk_pat binding consuming pat");
+                            delegate.consume_pat(pat, &cmt_pat, mode);
                         }
                     }
-                    ty::BindByValue(..) => {
-                        let mode = copy_or_move(mc, param_env, &cmt_pat, PatBindingMove);
-                        debug!("walk_pat binding consuming pat");
-                        delegate.consume_pat(pat, &cmt_pat, mode);
-                    }
+                } else {
+                    tcx.sess.delay_span_bug(pat.span, "missing binding mode");
                 }
             }
         }));

@@ -9,16 +9,11 @@
 // except according to those terms.
 
 fn main() {
-    |_:  [_; return || {}] | {};
-    //~^ ERROR return statement outside of function body
+    loop {
+        |_: [_; break]| {} //~ ERROR: `break` outside of loop
+    }
 
-    [(); return || {}];
-    //~^ ERROR return statement outside of function body
-
-    [(); return |ice| {}];
-    //~^ ERROR return statement outside of function body
-
-    [(); return while let Some(n) = Some(0) {}];
-    //~^ ERROR return statement outside of function body
-    //~^^ ERROR irrefutable while-let pattern
+    loop {
+        |_: [_; continue]| {} //~ ERROR: `continue` outside of loop
+    }
 }

@@ -54,16 +54,16 @@ impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
 
                 // Skip anything that looks like `&foo` or `&mut foo`, only look
                 // for by-value bindings
-                let bm = match self.bccx.tables.pat_binding_modes().get(hir_id) {
-                    Some(&bm) => bm,
-                    None => span_bug!(span, "missing binding mode"),
-                };
-                match bm {
-                    ty::BindByValue(hir::MutMutable) => {}
-                    _ => return,
-                }
+                if let Some(&bm) = self.bccx.tables.pat_binding_modes().get(hir_id) {
+                    match bm {
+                        ty::BindByValue(hir::MutMutable) => {}
+                        _ => return,
+                    }
 
-                mutables.entry(ident.name).or_insert(Vec::new()).push((hir_id, span));
+                    mutables.entry(ident.name).or_insert(Vec::new()).push((hir_id, span));
+                } else {
+                    tcx.sess.delay_span_bug(span, "missing binding mode");
+                }
             });
         }
 

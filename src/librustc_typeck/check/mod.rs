@@ -3827,7 +3827,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // this can only happen if the `break` was not
                     // inside a loop at all, which is caught by the
                     // loop-checking pass.
-                    assert!(self.tcx.sess.err_count() > 0);
+                    if self.tcx.sess.err_count() == 0 {
+                        self.tcx.sess.delay_span_bug(expr.span,
+                            "break was outside loop, but no error was emitted");
+                    }
 
                     // We still need to assign a type to the inner expression to
                     // prevent the ICE in #43162.
@@ -3960,7 +3963,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // is nil. This makes sense because infinite loops
                 // (which would have type !) are only possible iff we
                 // permit break with a value [1].
-                assert!(ctxt.coerce.is_some() || ctxt.may_break); // [1]
+                if ctxt.coerce.is_none() && !ctxt.may_break {
+                    // [1]
+                    self.tcx.sess.delay_span_bug(body.span, "no coercion, but loop may not break");
+                }
                 ctxt.coerce.map(|c| c.complete(self)).unwrap_or(self.tcx.mk_nil())
             }
             hir::ExprMatch(ref discrim, ref arms, match_src) => {

@@ -1,15 +1,34 @@
 error[E0572]: return statement outside of function body
   --> $DIR/issue-51714.rs:12:14
    |
-LL |     |_:  [_; return || {}] | {}
+LL |     |_:  [_; return || {}] | {};
    |              ^^^^^^^^^^^^
 
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-51714.rs:17:10
+  --> $DIR/issue-51714.rs:15:10
    |
 LL |     [(); return || {}];
    |          ^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error[E0572]: return statement outside of function body
+  --> $DIR/issue-51714.rs:18:10
+   |
+LL |     [(); return |ice| {}];
+   |          ^^^^^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0572`.
+error[E0572]: return statement outside of function body
+  --> $DIR/issue-51714.rs:21:10
+   |
+LL |     [(); return while let Some(n) = Some(0) {}];
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0165]: irrefutable while-let pattern
+  --> $DIR/issue-51714.rs:21:27
+   |
+LL |     [(); return while let Some(n) = Some(0) {}];
+   |                           ^^^^^^^ irrefutable pattern
+
+error: aborting due to 5 previous errors
+
+Some errors occurred: E0165, E0572.
+For more information about an error, try `rustc --explain E0165`.
