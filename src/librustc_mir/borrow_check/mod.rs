@@ -1182,26 +1182,37 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // We need to report back the list of mutable upvars that were
                 // moved into the closure and subsequently used by the closure,
                 // in order to populate our used_mut set.
-                if let AggregateKind::Closure(def_id, _) = &**aggregate_kind {
-                    let BorrowCheckResult {
-                        used_mut_upvars, ..
-                    } = self.tcx.mir_borrowck(*def_id);
-                    debug!("{:?} used_mut_upvars={:?}", def_id, used_mut_upvars);
-                    for field in used_mut_upvars {
-                        match operands[field.index()] {
-                            Operand::Move(Place::Local(local)) => {
-                                self.used_mut.insert(local);
-                            }
-                            Operand::Move(ref place @ Place::Projection(_)) => {
-                                if let Some(field) = self.is_upvar_field_projection(place) {
-                                    self.used_mut_upvars.push(field);
+                match **aggregate_kind {
+                    AggregateKind::Closure(def_id, _)
+                    | AggregateKind::Generator(def_id, _, _) => {
+                        let BorrowCheckResult {
+                            used_mut_upvars, ..
+                        } = self.tcx.mir_borrowck(def_id);
+                        debug!("{:?} used_mut_upvars={:?}", def_id, used_mut_upvars);
+                        for field in used_mut_upvars {
+                            // This relies on the current way that by-value
+                            // captures of a closure are copied/moved directly
+                            // when generating MIR.
+                            match operands[field.index()] {
+                                Operand::Move(Place::Local(local))
+                                | Operand::Copy(Place::Local(local)) => {
+                                    self.used_mut.insert(local);
                                 }
+                                Operand::Move(ref place @ Place::Projection(_))
+                                | Operand::Copy(ref place @ Place::Projection(_)) => {
+                                    if let Some(field) = self.is_upvar_field_projection(place) {
+                                        self.used_mut_upvars.push(field);
+                                    }
+                                }
+                                Operand::Move(Place::Static(..))
+                                | Operand::Copy(Place::Static(..))
+                                | Operand::Constant(..) => {}
                             }
-                            Operand::Move(Place::Static(..))
-                            | Operand::Copy(..)
-                            | Operand::Constant(..) => {}
                         }
                     }
+                    AggregateKind::Adt(..)
+                    | AggregateKind::Array(..)
+                    | AggregateKind::Tuple { .. } => (),
                 }
 
                 for operand in operands {
@@ -1941,6 +1952,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
             }
             RootPlace {
+                place: _,
+                is_local_mutation_allowed: LocalMutationIsAllowed::Yes,
+            } => {}
+            RootPlace {
                 place: place @ Place::Projection(_),
                 is_local_mutation_allowed: _,
             } => {
@@ -2115,13 +2130,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         match *place {
             Place::Projection(ref proj) => match proj.elem {
                 ProjectionElem::Field(field, _ty) => {
-                    let is_projection_from_ty_closure = proj
-                        .base
-                        .ty(self.mir, self.tcx)
-                        .to_ty(self.tcx)
-                        .is_closure();
+                    let base_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
 
-                    if is_projection_from_ty_closure {
+                    if  base_ty.is_closure() || base_ty.is_generator() {
                         Some(field)
                     } else {
                         None
