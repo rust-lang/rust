@@ -518,7 +518,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     } else {
                         err.span_label(arm_span, msg);
                     }
-                }
+                },
+                hir::MatchSource::TryDesugar => { // Issue #51632
+                    if let Ok(try_snippet) = self.tcx.sess.codemap().span_to_snippet(arm_span) {
+                        err.span_suggestion_with_applicability(
+                            arm_span,
+                            "try wrapping with a success variant",
+                            format!("Ok({})", try_snippet),
+                            Applicability::MachineApplicable
+                        );
+                    }
+                },
                 _ => {
                     let msg = "match arm with an incompatible type";
                     if self.tcx.sess.codemap().is_multiline(arm_span) {
@@ -1312,7 +1322,12 @@ impl<'tcx> ObligationCause<'tcx> {
         match self.code {
             CompareImplMethodObligation { .. } => Error0308("method not compatible with trait"),
             MatchExpressionArm { source, .. } => Error0308(match source {
-                hir::MatchSource::IfLetDesugar { .. } => "`if let` arms have incompatible types",
+                hir::MatchSource::IfLetDesugar { .. } => {
+                    "`if let` arms have incompatible types"
+                },
+                hir::MatchSource::TryDesugar => {
+                    "try expression alternatives have incompatible types"
+                },
                 _ => "match arms have incompatible types",
             }),
             IfExpression => Error0308("if and else have incompatible types"),
