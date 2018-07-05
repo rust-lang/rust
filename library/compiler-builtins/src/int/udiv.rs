@@ -211,6 +211,7 @@ intrinsics! {
 
     #[use_c_shim_if(all(target_arch = "arm",
                         not(target_os = "ios"),
+                        not(target_env = "msvc"),
                         not(thumbv6m)))]
     /// Returns `n % d`
     pub extern "C" fn __umodsi3(n: u32, d: u32) -> u32 {
@@ -220,6 +221,7 @@ intrinsics! {
 
     #[use_c_shim_if(all(target_arch = "arm",
                         not(target_os = "ios"),
+                        not(target_env = "msvc"),
                         not(thumbv6m)))]
     /// Returns `n / d` and sets `*rem = n % d`
     pub extern "C" fn __udivmodsi4(n: u32, d: u32, rem: Option<&mut u32>) -> u32 {

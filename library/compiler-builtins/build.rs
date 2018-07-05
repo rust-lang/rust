@@ -297,7 +297,7 @@ mod c {
             }
         }
 
-        if target_arch == "arm" && target_os != "ios" {
+        if target_arch == "arm" && target_os != "ios" && target_env != "msvc" {
             sources.extend(
                 &[
                     "arm/aeabi_div0.c",
@@ -348,7 +348,7 @@ mod c {
             }
         }
 
-        if llvm_target[0] == "armv7" {
+        if llvm_target[0] == "armv7" && target_env != "msvc" {
             sources.extend(
                 &[
                     "arm/sync_fetch_and_add_4.S",

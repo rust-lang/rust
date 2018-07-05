@@ -4,7 +4,7 @@ use core::intrinsics;
 // calling convention which can't be implemented using a normal Rust function.
 // NOTE The only difference between the iOS and non-iOS versions of those functions is that the iOS
 // versions use 3 leading underscores in the names of called functions instead of 2.
-#[cfg(not(target_os = "ios"))]
+#[cfg(not(any(target_os = "ios", target_env = "msvc")))]
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn __aeabi_uidivmod() {
