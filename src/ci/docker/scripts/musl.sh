@@ -32,11 +32,17 @@ shift
 
 export CFLAGS="-fPIC $CFLAGS"
 
-MUSL=musl-1.1.18
+# FIXME: remove the patch when upate to 1.1.20
+MUSL=musl-1.1.19
 
 # may have been downloaded in a previous run
 if [ ! -d $MUSL ]; then
   curl https://www.musl-libc.org/releases/$MUSL.tar.gz | tar xzf -
+  # Patch to fix https://github.com/rust-lang/rust/issues/48967
+  cd $MUSL && \
+    curl "https://git.musl-libc.org/cgit/musl/patch/?id=610c5a8524c3d6cd3ac5a5f1231422e7648a3791" |\
+    patch -p1 && \
+    cd -
 fi
 
 cd $MUSL
