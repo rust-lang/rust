@@ -22,7 +22,6 @@ pub fn target() -> TargetResult {
     base.position_independent_executables = false;
     base.disable_redzone = true;
     base.no_default_libraries = false;
-    base.exe_allocation_crate = None;
     base.stack_probes = true;
 
     Ok(Target {

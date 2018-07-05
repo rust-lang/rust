@@ -39,10 +39,6 @@ tempfile = "3.0"
 env_logger = { version = "0.5", default-features = false }
 
 [features]
-# Used to communicate the feature to `rustc_target` in the same manner that the
-# `rustc` driver script communicate this.
-jemalloc = ["rustc_target/jemalloc"]
-
 # This is used to convince Cargo to separately cache builds of `rustc_codegen_llvm`
 # when this option is enabled or not. That way we can build two, cache two
 # artifacts, and have nice speedy rebuilds.

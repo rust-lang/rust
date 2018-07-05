@@ -42,7 +42,7 @@ RUN sh /scripts/sccache.sh
 ENV HOST=x86_64-unknown-haiku
 ENV TARGET=target.$HOST
 
-ENV RUST_CONFIGURE_ARGS --disable-jemalloc \
+ENV RUST_CONFIGURE_ARGS \
   --set=$TARGET.cc=x86_64-unknown-haiku-gcc \
   --set=$TARGET.cxx=x86_64-unknown-haiku-g++ \
   --set=$TARGET.llvm-config=/bin/llvm-config-haiku

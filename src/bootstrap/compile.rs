@@ -163,16 +163,7 @@ pub fn std_cargo(builder: &Builder,
             .arg("--manifest-path")
             .arg(builder.src.join("src/rustc/compiler_builtins_shim/Cargo.toml"));
     } else {
-        let mut features = builder.std_features();
-
-        // When doing a local rebuild we tell cargo that we're stage1 rather than
-        // stage0. This works fine if the local rust and being-built rust have the
-        // same view of what the default allocator is, but fails otherwise. Since
-        // we don't have a way to express an allocator preference yet, work
-        // around the issue in the case of a local rebuild with jemalloc disabled.
-        if compiler.stage == 0 && builder.local_rebuild && !builder.config.use_jemalloc {
-            features.push_str(" force_alloc_system");
-        }
+        let features = builder.std_features();
 
         if compiler.stage != 0 && builder.config.sanitizers {
             // This variable is used by the sanitizer runtime crates, e.g.
@@ -193,11 +184,6 @@ pub fn std_cargo(builder: &Builder,
             .arg("--manifest-path")
             .arg(builder.src.join("src/libstd/Cargo.toml"));
 
-        if let Some(target) = builder.config.target_config.get(&target) {
-            if let Some(ref jemalloc) = target.jemalloc {
-                cargo.env("JEMALLOC_OVERRIDE", jemalloc);
-            }
-        }
         if target.contains("musl") {
             if let Some(p) = builder.musl_root(target) {
                 cargo.env("MUSL_ROOT", p);

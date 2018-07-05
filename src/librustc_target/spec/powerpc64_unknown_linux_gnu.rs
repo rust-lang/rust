@@ -21,7 +21,6 @@ pub fn target() -> TargetResult {
     base.relro_level = RelroLevel::Partial;
 
     // see #36994
-    base.exe_allocation_crate = None;
 
     Ok(Target {
         llvm_target: "powerpc64-unknown-linux-gnu".to_string(),

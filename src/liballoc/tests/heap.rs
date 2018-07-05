@@ -14,7 +14,7 @@ use std::alloc::{Global, Alloc, Layout};
 /// https://github.com/rust-lang/rust/issues/45955
 ///
 /// Note that `#[global_allocator]` is not used,
-/// so `liballoc_jemalloc` is linked (on some platforms).
+/// so `System` and `Global` might be backed by different allocators.
 #[test]
 fn alloc_system_overaligned_request() {
     check_overalign_requests(System)

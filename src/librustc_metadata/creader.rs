@@ -841,7 +841,6 @@ impl<'a> CrateLoader<'a> {
             needs_allocator = needs_allocator || data.root.needs_allocator;
         });
         if !needs_allocator {
-            self.sess.injected_allocator.set(None);
             self.sess.allocator_kind.set(None);
             return
         }
@@ -849,20 +848,18 @@ impl<'a> CrateLoader<'a> {
         // At this point we've determined that we need an allocator. Let's see
         // if our compilation session actually needs an allocator based on what
         // we're emitting.
-        let mut need_lib_alloc = false;
-        let mut need_exe_alloc = false;
+        let mut need_alloc = false;
         for ct in self.sess.crate_types.borrow().iter() {
             match *ct {
-                config::CrateTypeExecutable => need_exe_alloc = true,
+                config::CrateTypeExecutable |
                 config::CrateTypeDylib |
                 config::CrateTypeProcMacro |
                 config::CrateTypeCdylib |
-                config::CrateTypeStaticlib => need_lib_alloc = true,
+                config::CrateTypeStaticlib => need_alloc = true,
                 config::CrateTypeRlib => {}
             }
         }
-        if !need_lib_alloc && !need_exe_alloc {
-            self.sess.injected_allocator.set(None);
+        if !need_alloc {
             self.sess.allocator_kind.set(None);
             return
         }
@@ -901,57 +898,13 @@ impl<'a> CrateLoader<'a> {
         });
         if global_allocator.is_some() {
             self.sess.allocator_kind.set(Some(AllocatorKind::Global));
-            self.sess.injected_allocator.set(None);
             return
         }
 
-        // Ok we haven't found a global allocator but we still need an
-        // allocator. At this point we'll either fall back to the "library
-        // allocator" or the "exe allocator" depending on a few variables. Let's
-        // figure out which one.
-        //
-        // Note that here we favor linking to the "library allocator" as much as
-        // possible. If we're not creating rustc's version of libstd
-        // (need_lib_alloc and prefer_dynamic) then we select `None`, and if the
-        // exe allocation crate doesn't exist for this target then we also
-        // select `None`.
-        let exe_allocation_crate_data =
-            if need_lib_alloc && !self.sess.opts.cg.prefer_dynamic {
-                None
-            } else {
-                self.sess
-                    .target
-                    .target
-                    .options
-                    .exe_allocation_crate
-                    .as_ref()
-                    .map(|name| {
-                        // We've determined that we're injecting an "exe allocator" which means
-                        // that we're going to load up a whole new crate. An example of this is
-                        // that we're producing a normal binary on Linux which means we need to
-                        // load the `alloc_jemalloc` crate to link as an allocator.
-                        let name = Symbol::intern(name);
-                        let (cnum, data) = self.resolve_crate(&None,
-                                                              name,
-                                                              name,
-                                                              None,
-                                                              None,
-                                                              DUMMY_SP,
-                                                              PathKind::Crate,
-                                                              DepKind::Implicit);
-                        self.sess.injected_allocator.set(Some(cnum));
-                        data
-                    })
-            };
-
-        let allocation_crate_data = exe_allocation_crate_data.or_else(|| {
-            // No allocator was injected
-            self.sess.injected_allocator.set(None);
-
-            if attr::contains_name(&krate.attrs, "default_lib_allocator") {
-                // Prefer self as the allocator if there's a collision
-                return None;
-            }
+        let allocation_crate_data = if attr::contains_name(&krate.attrs, "default_lib_allocator") {
+            // Prefer self as the allocator if there's a collision
+            None
+        } else {
             // We're not actually going to inject an allocator, we're going to
             // require that something in our crate graph is the default lib
             // allocator. This is typically libstd, so this'll rarely be an
@@ -963,7 +916,7 @@ impl<'a> CrateLoader<'a> {
                 }
             });
             allocator
-        });
+        };
 
         match allocation_crate_data {
             Some(data) => {
@@ -977,8 +930,7 @@ impl<'a> CrateLoader<'a> {
                     .map(|s| s as &str);
                 let alloc_kind = match kind_str {
                     None |
-                    Some("lib") => AllocatorKind::DefaultLib,
-                    Some("exe") => AllocatorKind::DefaultExe,
+                    Some("lib") => AllocatorKind::Default,
                     Some(other) => {
                         self.sess.err(&format!("Allocator kind {} not known", other));
                         return;
@@ -994,7 +946,7 @@ impl<'a> CrateLoader<'a> {
                                    that implements the GlobalAlloc trait.");
                     return;
                 }
-                self.sess.allocator_kind.set(Some(AllocatorKind::DefaultLib));
+                self.sess.allocator_kind.set(Some(AllocatorKind::Default));
             }
         }
 

@@ -63,7 +63,6 @@
 
 use hir::def_id::CrateNum;
 
-use session;
 use session::config;
 use ty::TyCtxt;
 use middle::cstore::{self, DepKind};
@@ -225,7 +224,6 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // quite yet, so do so here.
     activate_injected_dep(*sess.injected_panic_runtime.get(), &mut ret,
                           &|cnum| tcx.is_panic_runtime(cnum));
-    activate_injected_allocator(sess, &mut ret);
 
     // When dylib B links to dylib A, then when using B we must also link to A.
     // It could be the case, however, that the rlib for A is present (hence we
@@ -304,7 +302,6 @@ fn attempt_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<DependencyLis
     // that here and activate them.
     activate_injected_dep(*sess.injected_panic_runtime.get(), &mut ret,
                           &|cnum| tcx.is_panic_runtime(cnum));
-    activate_injected_allocator(sess, &mut ret);
 
     Some(ret)
 }
@@ -333,18 +330,6 @@ fn activate_injected_dep(injected: Option<CrateNum>,
     if let Some(injected) = injected {
         let idx = injected.as_usize() - 1;
         assert_eq!(list[idx], Linkage::NotLinked);
-        list[idx] = Linkage::Static;
-    }
-}
-
-fn activate_injected_allocator(sess: &session::Session,
-                               list: &mut DependencyList) {
-    let cnum = match sess.injected_allocator.get() {
-        Some(cnum) => cnum,
-        None => return,
-    };
-    let idx = cnum.as_usize() - 1;
-    if list[idx] == Linkage::NotLinked {
         list[idx] = Linkage::Static;
     }
 }
