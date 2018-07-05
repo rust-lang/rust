@@ -173,11 +173,14 @@ pub fn rewrite_with_alignment<T: AlignedItem>(
         let rest_span = mk_sp(init_last_pos, span.hi());
         let rest_str = rewrite_with_alignment(rest, context, shape, rest_span, one_line_width)?;
         Some(
-            result + spaces + "\n"
+            result
+                + spaces
+                + "\n"
                 + &shape
                     .indent
                     .block_indent(context.config)
-                    .to_string(context.config) + &rest_str,
+                    .to_string(context.config)
+                + &rest_str,
         )
     }
 }

@@ -97,11 +97,10 @@ impl ListItem {
     }
 
     pub fn is_different_group(&self) -> bool {
-        self.inner_as_ref().contains('\n') || self.pre_comment.is_some()
-            || self
-                .post_comment
-                .as_ref()
-                .map_or(false, |s| s.contains('\n'))
+        self.inner_as_ref().contains('\n') || self.pre_comment.is_some() || self
+            .post_comment
+            .as_ref()
+            .map_or(false, |s| s.contains('\n'))
     }
 
     pub fn is_multiline(&self) -> bool {

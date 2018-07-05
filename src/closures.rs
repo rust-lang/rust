@@ -363,7 +363,8 @@ where
                 })
                 .unwrap_or(false)
         })
-        .count() > 1
+        .count()
+        > 1
 }
 
 fn is_block_closure_forced(context: &RewriteContext, expr: &ast::Expr) -> bool {

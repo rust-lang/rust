@@ -72,7 +72,8 @@ pub fn rewrite_string<'a>(
     // succeed.
     let mut max_chars = shape
         .width
-        .checked_sub(fmt.opener.len() + ender_length + 1)? + 1;
+        .checked_sub(fmt.opener.len() + ender_length + 1)?
+        + 1;
 
     // Snip a line at a time from `orig` until it is used up. Push the snippet
     // onto result.

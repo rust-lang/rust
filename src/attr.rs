@@ -194,7 +194,8 @@ fn has_newlines_before_after_comment(comment: &str) -> (&str, &str) {
             .rev()
             .take_while(|c| c.is_whitespace())
             .filter(|&c| c == '\n')
-            .count() > 1
+            .count()
+            > 1
     };
     (if mlb { "\n" } else { "" }, if mla { "\n" } else { "" })
 }

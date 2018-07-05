@@ -38,7 +38,8 @@ fn main() {
 
     let exit_code = match execute(&opts) {
         Ok((exit_mode, summary)) => {
-            if summary.has_operational_errors() || summary.has_parsing_errors()
+            if summary.has_operational_errors()
+                || summary.has_parsing_errors()
                 || ((summary.has_diff || summary.has_check_errors())
                     && exit_mode == ExitCodeMode::Check)
             {

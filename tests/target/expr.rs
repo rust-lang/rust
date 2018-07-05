@@ -14,15 +14,15 @@ fn foo() -> bool {
         self.codemap.span_to_filename(s) == self.codemap.span_to_filename(m.inner);
 
     let some_val = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa * bbbb
-        / (bbbbbb - function_call(x, *very_long_pointer, y)) + 1000;
+        / (bbbbbb - function_call(x, *very_long_pointer, y))
+        + 1000;
 
     some_ridiculously_loooooooooooooooooooooong_function(
         10000 * 30000000000 + 40000 / 1002200000000 - 50000 * sqrt(-1),
         trivial_value,
     );
     (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-        + a
-        + aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        + a + aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
         + aaaaa);
 
     {
@@ -358,7 +358,8 @@ fn issue1749() {
         {
             {
                 if self.shape[(r as f32 + self.x_offset) as usize]
-                    [(c as f32 + self.y_offset) as usize] != 0
+                    [(c as f32 + self.y_offset) as usize]
+                    != 0
                 {
                     // hello
                 }
