@@ -117,7 +117,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
 pub fn codegen_static_initializer<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,
     def_id: DefId)
-    -> Result<ValueRef, ConstEvalErr<'tcx>>
+    -> Result<(ValueRef, &'tcx Allocation), ConstEvalErr<'tcx>>
 {
     let instance = ty::Instance::mono(cx.tcx, def_id);
     let cid = GlobalId {
@@ -131,7 +131,7 @@ pub fn codegen_static_initializer<'a, 'tcx>(
         ConstVal::Value(ConstValue::ByRef(alloc, n)) if n.bytes() == 0 => alloc,
         _ => bug!("static const eval returned {:#?}", static_),
     };
-    Ok(const_alloc_to_llvm(cx, alloc))
+    Ok((const_alloc_to_llvm(cx, alloc), alloc))
 }
 
 impl<'a, 'tcx> FunctionCx<'a, 'tcx> {

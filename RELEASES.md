@@ -65,6 +65,7 @@ Cargo
 -----
 - [`cargo-metadata` now includes `authors`, `categories`, `keywords`,
   `readme`, and `repository` fields.][cargo/5386]
+- [`cargo-metadata` now includes a package's `metadata` table.][cargo/5360]
 - [Added the `--target-dir` optional argument.][cargo/5393] This allows you to specify
   a different directory than `target` for placing compilation artifacts.
 - [Cargo will be adding automatic target inference for binaries, benchmarks,
@@ -114,6 +115,7 @@ Compatibility Notes
 [cargo/5203]: https://github.com/rust-lang/cargo/pull/5203/
 [cargo/5335]: https://github.com/rust-lang/cargo/pull/5335/
 [cargo/5359]: https://github.com/rust-lang/cargo/pull/5359/
+[cargo/5360]: https://github.com/rust-lang/cargo/pull/5360/
 [cargo/5386]: https://github.com/rust-lang/cargo/pull/5386/
 [cargo/5393]: https://github.com/rust-lang/cargo/pull/5393/
 [`DoubleEndedIterator::rfind`]: https://doc.rust-lang.org/std/iter/trait.DoubleEndedIterator.html#method.rfind
