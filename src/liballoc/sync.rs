@@ -886,13 +886,14 @@ impl<T: ?Sized> Arc<T> {
         // holder.
         //
         // The acquire label here ensures a happens-before relationship with any
-        // writes to `strong` prior to decrements of the `weak` count (via drop,
-        // which uses Release).
+        // writes to `strong` (in particular in `Weak::upgrade`) prior to decrements
+        // of the `weak` count (via `Weak::drop`, which uses release).  If the upgraded
+        // weak ref was never dropped, the CAS here will fail so we do not care to synchronize.
         if self.inner().weak.compare_exchange(1, usize::MAX, Acquire, Relaxed).is_ok() {
-            // Due to the previous acquire read, this will observe any writes to
-            // `strong` that were due to upgrading weak pointers; only strong
-            // clones remain, which require that the strong count is > 1 anyway.
-            let unique = self.inner().strong.load(Relaxed) == 1;
+            // This needs to be an `Acquire` to synchronize with the decrement of the `strong`
+            // counter in `drop` -- the only access that happens when any but the last reference
+            // is being dropped.
+            let unique = self.inner().strong.load(Acquire) == 1;
 
             // The release write here synchronizes with a read in `downgrade`,
             // effectively preventing the above read of `strong` from happening
