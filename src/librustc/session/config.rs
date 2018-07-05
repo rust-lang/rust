@@ -98,6 +98,7 @@ pub enum Lto {
 #[derive(Clone, PartialEq, Hash)]
 pub enum CrossLangLto {
     LinkerPlugin(PathBuf),
+    LinkerPluginAuto,
     NoLink,
     Disabled
 }
@@ -106,6 +107,7 @@ impl CrossLangLto {
     pub fn embed_bitcode(&self) -> bool {
         match *self {
             CrossLangLto::LinkerPlugin(_) |
+            CrossLangLto::LinkerPluginAuto |
             CrossLangLto::NoLink => true,
             CrossLangLto::Disabled => false,
         }
@@ -1020,7 +1022,7 @@ macro_rules! options {
                 let mut bool_arg = None;
                 if parse_opt_bool(&mut bool_arg, v) {
                     *slot = if bool_arg.unwrap() {
-                        CrossLangLto::NoLink
+                        CrossLangLto::LinkerPluginAuto
                     } else {
                         CrossLangLto::Disabled
                     };
