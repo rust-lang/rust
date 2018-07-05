@@ -261,9 +261,12 @@ pub trait FnTypeExt<'a, 'tcx> {
     fn new_vtable(cx: &CodegenCx<'a, 'tcx>,
                   sig: ty::FnSig<'tcx>,
                   extra_args: &[Ty<'tcx>]) -> Self;
-    fn unadjusted(cx: &CodegenCx<'a, 'tcx>,
-                  sig: ty::FnSig<'tcx>,
-                  extra_args: &[Ty<'tcx>]) -> Self;
+    fn new_internal(
+        cx: &CodegenCx<'a, 'tcx>,
+        sig: ty::FnSig<'tcx>,
+        extra_args: &[Ty<'tcx>],
+        mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgType<'tcx, Ty<'tcx>>,
+    ) -> Self;
     fn adjust_for_abi(&mut self,
                       cx: &CodegenCx<'a, 'tcx>,
                       abi: Abi);
@@ -285,40 +288,40 @@ impl<'a, 'tcx> FnTypeExt<'a, 'tcx> for FnType<'tcx, Ty<'tcx>> {
     fn new(cx: &CodegenCx<'a, 'tcx>,
                sig: ty::FnSig<'tcx>,
                extra_args: &[Ty<'tcx>]) -> Self {
-        let mut fn_ty = FnType::unadjusted(cx, sig, extra_args);
-        fn_ty.adjust_for_abi(cx, sig.abi);
-        fn_ty
+        FnType::new_internal(cx, sig, extra_args, |ty, _| {
+            ArgType::new(cx.layout_of(ty))
+        })
     }
 
     fn new_vtable(cx: &CodegenCx<'a, 'tcx>,
                       sig: ty::FnSig<'tcx>,
                       extra_args: &[Ty<'tcx>]) -> Self {
-        let mut fn_ty = FnType::unadjusted(cx, sig, extra_args);
-        // Don't pass the vtable, it's not an argument of the virtual fn.
-        {
-            let self_arg = &mut fn_ty.args[0];
-            match self_arg.mode {
-                PassMode::Pair(data_ptr, _) => {
-                    self_arg.mode = PassMode::Direct(data_ptr);
-                }
-                _ => bug!("FnType::new_vtable: non-pair self {:?}", self_arg)
+        FnType::new_internal(cx, sig, extra_args, |ty, arg_idx| {
+            let mut layout = cx.layout_of(ty);
+            // Don't pass the vtable, it's not an argument of the virtual fn.
+            // Instead, pass just the (thin pointer) first field of `*dyn Trait`.
+            if arg_idx == Some(0) {
+                // FIXME(eddyb) `layout.field(cx, 0)` is not enough because e.g.
+                // `Box<dyn Trait>` has a few newtype wrappers around the raw
+                // pointer, so we'd have to "dig down" to find `*dyn Trait`.
+                let pointee = layout.ty.builtin_deref(true)
+                    .unwrap_or_else(|| {
+                        bug!("FnType::new_vtable: non-pointer self {:?}", layout)
+                    }).ty;
+                let fat_ptr_ty = cx.tcx.mk_mut_ptr(pointee);
+                layout = cx.layout_of(fat_ptr_ty).field(cx, 0);
             }
-
-            let pointee = self_arg.layout.ty.builtin_deref(true)
-                .unwrap_or_else(|| {
-                    bug!("FnType::new_vtable: non-pointer self {:?}", self_arg)
-                }).ty;
-            let fat_ptr_ty = cx.tcx.mk_mut_ptr(pointee);
-            self_arg.layout = cx.layout_of(fat_ptr_ty).field(cx, 0);
-        }
-        fn_ty.adjust_for_abi(cx, sig.abi);
-        fn_ty
+            ArgType::new(layout)
+        })
     }
 
-    fn unadjusted(cx: &CodegenCx<'a, 'tcx>,
-                      sig: ty::FnSig<'tcx>,
-                      extra_args: &[Ty<'tcx>]) -> Self {
-        debug!("FnType::unadjusted({:?}, {:?})", sig, extra_args);
+    fn new_internal(
+        cx: &CodegenCx<'a, 'tcx>,
+        sig: ty::FnSig<'tcx>,
+        extra_args: &[Ty<'tcx>],
+        mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgType<'tcx, Ty<'tcx>>,
+    ) -> Self {
+        debug!("FnType::new_internal({:?}, {:?})", sig, extra_args);
 
         use self::Abi::*;
         let conv = match cx.sess().target.target.adjust_abi(sig.abi) {
@@ -435,8 +438,9 @@ impl<'a, 'tcx> FnTypeExt<'a, 'tcx> for FnType<'tcx, Ty<'tcx>> {
             }
         };
 
-        let arg_of = |ty: Ty<'tcx>, is_return: bool| {
-            let mut arg = ArgType::new(cx.layout_of(ty));
+        let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| {
+            let is_return = arg_idx.is_none();
+            let mut arg = mk_arg_type(ty, arg_idx);
             if arg.layout.is_zst() {
                 // For some forsaken reason, x86_64-pc-windows-gnu
                 // doesn't ignore zero-sized struct arguments.
@@ -479,14 +483,16 @@ impl<'a, 'tcx> FnTypeExt<'a, 'tcx> for FnType<'tcx, Ty<'tcx>> {
             arg
         };
 
-        FnType {
-            ret: arg_of(sig.output(), true),
-            args: inputs.iter().chain(extra_args.iter()).map(|ty| {
-                arg_of(ty, false)
+        let mut fn_ty = FnType {
+            ret: arg_of(sig.output(), None),
+            args: inputs.iter().chain(extra_args).enumerate().map(|(i, ty)| {
+                arg_of(ty, Some(i))
             }).collect(),
             variadic: sig.variadic,
             conv,
-        }
+        };
+        fn_ty.adjust_for_abi(cx, sig.abi);
+        fn_ty
     }
 
     fn adjust_for_abi(&mut self,
