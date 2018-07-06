@@ -458,6 +458,8 @@ declare_features! (
 
     // Scoped attributes
     (active, tool_attributes, "1.25.0", Some(44690), None),
+    // Scoped lints
+    (active, tool_lints, "1.28.0", Some(44690), None),
 
     // allow irrefutable patterns in if-let and while-let statements (RFC 2086)
     (active, irrefutable_let_patterns, "1.27.0", Some(44495), None),
