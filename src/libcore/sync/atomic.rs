@@ -371,6 +371,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(stage0, target_has_atomic = "cas"))]
     pub fn swap(&self, val: bool, order: Ordering) -> bool {
         unsafe { atomic_swap(self.v.get(), val as u8, order) != 0 }
     }
@@ -401,6 +402,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(stage0, target_has_atomic = "cas"))]
     pub fn compare_and_swap(&self, current: bool, new: bool, order: Ordering) -> bool {
         match self.compare_exchange(current, new, order, strongest_failure_ordering(order)) {
             Ok(x) => x,
@@ -446,6 +448,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
+    #[cfg(any(stage0, target_has_atomic = "cas"))]
     pub fn compare_exchange(&self,
                             current: bool,
                             new: bool,
@@ -537,6 +540,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(stage0, target_has_atomic = "cas"))]
     pub fn fetch_and(&self, val: bool, order: Ordering) -> bool {
         unsafe { atomic_and(self.v.get(), val as u8, order) != 0 }
     }
@@ -568,6 +572,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(stage0, target_has_atomic = "cas"))]
     pub fn fetch_nand(&self, val: bool, order: Ordering) -> bool {
         // We can't use atomic_nand here because it can result in a bool with
         // an invalid value. This happens because the atomic operation is done
@@ -610,6 +615,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(stage0, target_has_atomic = "cas"))]
     pub fn fetch_or(&self, val: bool, order: Ordering) -> bool {
         unsafe { atomic_or(self.v.get(), val as u8, order) != 0 }
     }
@@ -640,6 +646,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(stage0, target_has_atomic = "cas"))]
     pub fn fetch_xor(&self, val: bool, order: Ordering) -> bool {
         unsafe { atomic_xor(self.v.get(), val as u8, order) != 0 }
     }
@@ -786,6 +793,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(stage0, target_has_atomic = "cas"))]
     pub fn swap(&self, ptr: *mut T, order: Ordering) -> *mut T {
         unsafe { atomic_swap(self.p.get() as *mut usize, ptr as usize, order) as *mut T }
     }
@@ -815,6 +823,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(any(stage0, target_has_atomic = "cas"))]
     pub fn compare_and_swap(&self, current: *mut T, new: *mut T, order: Ordering) -> *mut T {
         match self.compare_exchange(current, new, order, strongest_failure_ordering(order)) {
             Ok(x) => x,
@@ -853,6 +862,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "extended_compare_and_swap", since = "1.10.0")]
+    #[cfg(any(stage0, target_has_atomic = "cas"))]
     pub fn compare_exchange(&self,
                             current: *mut T,
                             new: *mut T,
@@ -1138,6 +1148,7 @@ assert_eq!(some_var.swap(10, Ordering::Relaxed), 5);
 ```"),
                 #[inline]
                 #[$stable]
+                #[cfg(any(stage0, target_has_atomic = "cas"))]
                 pub fn swap(&self, val: $int_type, order: Ordering) -> $int_type {
                     unsafe { atomic_swap(self.v.get(), val, order) }
                 }
@@ -1170,6 +1181,7 @@ assert_eq!(some_var.load(Ordering::Relaxed), 10);
 ```"),
                 #[inline]
                 #[$stable]
+                #[cfg(any(stage0, target_has_atomic = "cas"))]
                 pub fn compare_and_swap(&self,
                                         current: $int_type,
                                         new: $int_type,
@@ -1223,6 +1235,7 @@ assert_eq!(some_var.load(Ordering::Relaxed), 10);
 ```"),
                 #[inline]
                 #[$stable_cxchg]
+                #[cfg(any(stage0, target_has_atomic = "cas"))]
                 pub fn compare_exchange(&self,
                                         current: $int_type,
                                         new: $int_type,
@@ -1677,6 +1690,7 @@ atomic_int!{
 }
 
 #[inline]
+#[cfg(any(stage0, target_has_atomic = "cas"))]
 fn strongest_failure_ordering(order: Ordering) -> Ordering {
     match order {
         Release => Relaxed,
@@ -1713,6 +1727,7 @@ unsafe fn atomic_load<T>(dst: *const T, order: Ordering) -> T {
 }
 
 #[inline]
+#[cfg(any(stage0, target_has_atomic = "cas"))]
 unsafe fn atomic_swap<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xchg_acq(dst, val),
@@ -1751,6 +1766,7 @@ unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 #[inline]
+#[cfg(any(stage0, target_has_atomic = "cas"))]
 unsafe fn atomic_compare_exchange<T>(dst: *mut T,
                                      old: T,
                                      new: T,
