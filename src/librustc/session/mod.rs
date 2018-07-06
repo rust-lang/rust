@@ -42,7 +42,7 @@ use syntax::feature_gate::AttributeType;
 use syntax_pos::{MultiSpan, Span};
 use util::profiling::SelfProfiler;
 
-use rustc_target::spec::{LinkerFlavor, PanicStrategy};
+use rustc_target::spec::PanicStrategy;
 use rustc_target::spec::{Target, TargetTriple};
 use rustc_data_structures::flock;
 use jobserver::Client;
@@ -607,13 +607,6 @@ impl Session {
             .panic
             .unwrap_or(self.target.target.options.panic_strategy)
     }
-    pub fn linker_flavor(&self) -> LinkerFlavor {
-        self.opts
-            .debugging_opts
-            .linker_flavor
-            .unwrap_or(self.target.target.linker_flavor)
-    }
-
     pub fn fewer_names(&self) -> bool {
         let more_names = self.opts
             .output_types
