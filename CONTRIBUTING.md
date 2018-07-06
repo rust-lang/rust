@@ -1,4 +1,4 @@
-# Contributing to rust-clippy
+# Contributing to Clippy
 
 Hello fellow Rustacean! Great to see your interest in compiler internals and lints!
 
@@ -63,7 +63,7 @@ an AST expression). `match_def_path()` in Clippy's `utils` module can also be us
 
 ## Writing code
 
-Compiling clippy from scratch can take almost a minute or more depending on your machine.
+Compiling Clippy from scratch can take almost a minute or more depending on your machine.
 However, since Rust 1.24.0 incremental compilation is enabled by default and compile times for small changes should be quick.
 
 [Llogiq's blog post on lints](https://llogiq.github.io/2015/06/04/workflows.html) is a nice primer
@@ -74,7 +74,7 @@ of this.
 
 ### Author lint
 
-There is also the internal `author` lint to generate clippy code that detects the offending pattern. It does not work for all of the Rust syntax, but can give a good starting point.
+There is also the internal `author` lint to generate Clippy code that detects the offending pattern. It does not work for all of the Rust syntax, but can give a good starting point.
 
 First, create a new UI test file in the `tests/ui/` directory with the pattern you want to match:
 
@@ -148,7 +148,7 @@ Therefore you should use `tests/ui/update-all-references.sh` (after running
 ### Testing manually
 
 Manually testing against an example file is useful if you have added some
-`println!`s and test suite output becomes unreadable.  To try clippy with your
+`println!`s and test suite output becomes unreadable.  To try Clippy with your
 local modifications, run `cargo run --bin clippy-driver -- -L ./target/debug input.rs` from the
 working copy root.
 

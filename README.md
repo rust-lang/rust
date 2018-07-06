@@ -1,6 +1,6 @@
-We are currently in the process of discussing Clippy 1.0 via the RFC process in https://github.com/rust-lang/rfcs/pull/2476 . The RFC's goal is to clarify policies around lint categorizations and the policy around which lints should be in the compiler and which lints should be in clippy. Please leave your thoughts on the RFC PR.
+We are currently in the process of discussing Clippy 1.0 via the RFC process in https://github.com/rust-lang/rfcs/pull/2476 . The RFC's goal is to clarify policies around lint categorizations and the policy around which lints should be in the compiler and which lints should be in Clippy. Please leave your thoughts on the RFC PR.
 
-# rust-clippy
+# Clippy
 
 [![Build Status](https://travis-ci.org/rust-lang-nursery/rust-clippy.svg?branch=master)](https://travis-ci.org/rust-lang-nursery/rust-clippy)
 [![Windows Build status](https://ci.appveyor.com/api/projects/status/id677xpw1dguo7iw?svg=true)](https://ci.appveyor.com/project/rust-lang-libs/rust-clippy)
@@ -11,7 +11,7 @@ A collection of lints to catch common mistakes and improve your [Rust](https://g
 
 [There are 273 lints included in this crate!](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)
 
-We have a bunch of lint categories to allow you to choose how much clippy is supposed to ~~annoy~~ help you:
+We have a bunch of lint categories to allow you to choose how much Clippy is supposed to ~~annoy~~ help you:
 
 * `clippy` (everything that has no false positives)
 * `clippy_pedantic` (everything)
@@ -33,11 +33,11 @@ Table of contents:
 ## Usage
 
 Since this is a tool for helping the developer of a library or application
-write better code, it is recommended not to include clippy as a hard dependency.
+write better code, it is recommended not to include Clippy as a hard dependency.
 Options include using it as an optional dependency, as a cargo subcommand, or
 as an included feature during build. All of these options are detailed below.
 
-As a general rule clippy will only work with the *latest* Rust nightly for now.
+As a general rule Clippy will only work with the *latest* Rust nightly for now.
 
 To install Rust nightly, the recommended way is to use [rustup](https://rustup.rs/):
 
@@ -47,7 +47,7 @@ rustup install nightly
 
 ### As a cargo subcommand (`cargo clippy`)
 
-One way to use clippy is by installing clippy through cargo as a cargo
+One way to use Clippy is by installing Clippy through cargo as a cargo
 subcommand.
 
 ```terminal
@@ -56,7 +56,7 @@ cargo +nightly install clippy
 
 (The `+nightly` is not necessary if your default `rustup` install is nightly)
 
-Now you can run clippy by invoking `cargo +nightly clippy`.
+Now you can run Clippy by invoking `cargo +nightly clippy`.
 
 To update the subcommand together with the latest nightly use the [rust-update](rust-update) script or run:
 
@@ -66,16 +66,16 @@ cargo +nightly install --force clippy
 ```
 
 In case you are not using rustup, you need to set the environment flag
-`SYSROOT` during installation so clippy knows where to find `librustc` and
+`SYSROOT` during installation so Clippy knows where to find `librustc` and
 similar crates.
 
 ```terminal
 SYSROOT=/path/to/rustc/sysroot cargo install clippy
 ```
 
-### Running clippy from the command line without installing it
+### Running Clippy from the command line without installing it
 
-To have cargo compile your crate with clippy without clippy installation
+To have cargo compile your crate with Clippy without Clippy installation
 in your code, you can use:
 
 ```terminal
@@ -83,7 +83,7 @@ cargo run --bin cargo-clippy --manifest-path=path_to_clippys_Cargo.toml
 ```
 
 *[Note](https://github.com/rust-lang-nursery/rust-clippy/wiki#a-word-of-warning):*
-Be sure that clippy was compiled with the same version of rustc that cargo invokes here!
+Be sure that Clippy was compiled with the same version of rustc that cargo invokes here!
 
 ## Configuration
 
@@ -117,7 +117,7 @@ You can add options  to `allow`/`warn`/`deny`:
 Note: `deny` produces errors instead of warnings.
 
 For convenience, `cargo clippy` automatically defines a `cargo-clippy`
-feature. This lets you set lint levels and compile with or without clippy
+feature. This lets you set lint levels and compile with or without Clippy
 transparently:
 
 ```rust
@@ -126,12 +126,12 @@ transparently:
 
 ## Updating rustc
 
-Sometimes, rustc moves forward without clippy catching up. Therefore updating
-rustc may leave clippy a non-functional state until we fix the resulting
+Sometimes, rustc moves forward without Clippy catching up. Therefore updating
+rustc may leave Clippy a non-functional state until we fix the resulting
 breakage.
 
 You can use the [rust-update](rust-update) script to update rustc only if
-clippy would also update correctly.
+Clippy would also update correctly.
 
 ## License
 

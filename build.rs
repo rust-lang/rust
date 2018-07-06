@@ -1,8 +1,8 @@
-//! This build script ensures that clippy is not compiled with an
+//! This build script ensures that Clippy is not compiled with an
 //! incompatible version of rust. It will panic with a descriptive
 //! error message instead.
 //!
-//! We specifially want to ensure that clippy is only built with a
+//! We specifially want to ensure that Clippy is only built with a
 //! rustc version that is newer or equal to the one specified in the
 //! `min_version.txt` file.
 //!
@@ -63,7 +63,7 @@ fn check_rustc_version() {
         eprintln!(
             "\n{} {}",
             Red.bold().paint("error:"),
-            "clippy requires a nightly version of Rust."
+            "Clippy requires a nightly version of Rust."
         );
         print_version_err(&current_version, &*current_date_str);
         eprintln!(
@@ -80,7 +80,7 @@ fn check_rustc_version() {
         eprintln!(
             "\n{} {}",
             Red.bold().paint("error:"),
-            "clippy does not support this version of rustc nightly."
+            "Clippy does not support this version of rustc nightly."
         );
         eprintln!(
             "> {}{}{}",

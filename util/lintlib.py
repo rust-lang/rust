@@ -44,7 +44,7 @@ def parse_lints(lints, filepath):
                     last_comment.append(line[3:])
                 elif line.startswith("declare_lint!"):
                     import sys
-                    print "don't use `declare_lint!` in clippy, use `declare_clippy_lint!` instead"
+                    print "don't use `declare_lint!` in Clippy, use `declare_clippy_lint!` instead"
                     sys.exit(42)
                 elif line.startswith("declare_clippy_lint!"):
                     comment = False
