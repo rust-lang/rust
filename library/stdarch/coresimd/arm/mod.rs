@@ -7,6 +7,11 @@
 //! [arm_dat]: https://developer.arm.com/technologies/neon/intrinsics
 #![allow(non_camel_case_types)]
 
+#[cfg(target_feature = "mclass")]
+mod cmsis;
+#[cfg(target_feature = "mclass")]
+pub use self::cmsis::*;
+
 mod v6;
 pub use self::v6::*;
 
