@@ -45,6 +45,7 @@ use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
 use core::ptr;
 use core::iter::FusedIterator;
+use core::unicode::conversions;
 
 use borrow::{Borrow, ToOwned};
 use boxed::Box;
@@ -369,7 +370,18 @@ impl str {
                 // See https://github.com/rust-lang/rust/issues/26035
                 map_uppercase_sigma(self, i, &mut s)
             } else {
-                s.extend(c.to_lowercase());
+                match conversions::to_lower(c) {
+                    [a, '\0', _] => s.push(a),
+                    [a, b, '\0'] => {
+                        s.push(a);
+                        s.push(b);
+                    }
+                    [a, b, c] => {
+                        s.push(a);
+                        s.push(b);
+                        s.push(c);
+                    }
+                }
             }
         }
         return s;
@@ -423,7 +435,20 @@ impl str {
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_uppercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
-        s.extend(self.chars().flat_map(|c| c.to_uppercase()));
+        for c in self[..].chars() {
+            match conversions::to_upper(c) {
+                [a, '\0', _] => s.push(a),
+                [a, b, '\0'] => {
+                    s.push(a);
+                    s.push(b);
+                }
+                [a, b, c] => {
+                    s.push(a);
+                    s.push(b);
+                    s.push(c);
+                }
+            }
+        }
         return s;
     }
 
