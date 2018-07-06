@@ -84,6 +84,8 @@ fn inferred_outlives_crate<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     crate_num: CrateNum,
 ) -> Lrc<CratePredicatesMap<'tcx>> {
+    assert_eq!(crate_num, LOCAL_CRATE);
+
     // Compute a map from each struct/enum/union S to the **explicit**
     // outlives predicates (`T: 'a`, `'a: 'b`) that the user wrote.
     // Typically there won't be many of these, except in older code where
@@ -92,8 +94,9 @@ fn inferred_outlives_crate<'tcx>(
     // for the type.
 
     // Compute the inferred predicates
-    let exp = explicit::explicit_predicates(tcx, crate_num);
-    let global_inferred_outlives = implicit_infer::infer_predicates(tcx, &exp);
+    let mut exp_map = explicit::ExplicitPredicatesMap::new();
+
+    let global_inferred_outlives = implicit_infer::infer_predicates(tcx, &mut exp_map);
 
     // Convert the inferred predicates into the "collected" form the
     // global data structure expects.
