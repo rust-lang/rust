@@ -261,7 +261,6 @@ use core::convert::From;
 
 use alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
 use string::String;
-use sync::is_dangling;
 use vec::Vec;
 
 struct RcBox<T: ?Sized> {
@@ -1190,6 +1189,12 @@ impl<T> Weak<T> {
             ptr: NonNull::dangling(),
         }
     }
+}
+
+pub(crate) fn is_dangling<T: ?Sized>(ptr: NonNull<T>) -> bool {
+    let address = ptr.as_ptr() as *mut () as usize;
+    let align = align_of_val(unsafe { ptr.as_ref() });
+    address == align
 }
 
 impl<T: ?Sized> Weak<T> {
