@@ -339,6 +339,20 @@ impl<'a, I: Iterator<Item = Event<'a>>> SummaryLine<'a, I> {
     }
 }
 
+fn check_if_allowed_tag(t: &Tag) -> bool {
+    match *t {
+        Tag::Paragraph
+        | Tag::CodeBlock(_)
+        | Tag::Item
+        | Tag::Emphasis
+        | Tag::Strong
+        | Tag::Code
+        | Tag::Link(_, _)
+        | Tag::BlockQuote => true,
+        _ => false,
+    }
+}
+
 impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
     type Item = Event<'a>;
 
@@ -350,12 +364,28 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
             self.started = true;
         }
         let event = self.inner.next();
-        match event {
-            Some(Event::Start(..)) => self.depth += 1,
-            Some(Event::End(..)) => self.depth -= 1,
-            _ => {}
+        let mut is_start = true;
+        let is_allowed_tag = match event {
+            Some(Event::Start(ref c)) => {
+                self.depth += 1;
+                check_if_allowed_tag(c)
+            }
+            Some(Event::End(ref c)) => {
+                self.depth -= 1;
+                is_start = false;
+                check_if_allowed_tag(c)
+            }
+            _ => true,
+        };
+        if is_allowed_tag == false {
+            if is_start {
+                Some(Event::Start(Tag::Paragraph))
+            } else {
+                Some(Event::End(Tag::Paragraph))
+            }
+        } else {
+            event
         }
-        event
     }
 }
 
@@ -688,8 +718,7 @@ impl<'a> fmt::Display for MarkdownSummaryLine<'a> {
             }
         };
 
-        let p = Parser::new_with_broken_link_callback(md, Options::empty(),
-                                                      Some(&replacer));
+        let p = Parser::new_with_broken_link_callback(md, Options::empty(), Some(&replacer));
 
         let mut s = String::new();
 
