@@ -2060,7 +2060,7 @@ ignore = [
 If you want to ignore every file under `examples/`, put the following to your config file:
 
 ```toml
-ignore [
+ignore = [
     "examples",
 ]
 ```
