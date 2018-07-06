@@ -1,4 +1,4 @@
-error[E0658]: experimental attribute (see issue #51088)
+error[E0658]: experimental attribute (see issue #52090)
   --> $DIR/feature-gate-wasm_import_module.rs:11:1
    |
 LL | #[wasm_import_module = "test"] //~ ERROR: experimental
