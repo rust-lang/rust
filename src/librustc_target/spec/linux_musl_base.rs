@@ -60,6 +60,15 @@ pub fn opts() -> TargetOptions {
     base.pre_link_objects_exe_crt.push("crti.o".to_string());
     base.post_link_objects_crt.push("crtn.o".to_string());
 
+    // On some architectures (e.g. aarch64) musl depends on some libgcc
+    // functions (__addtf3, __multf3, __subtf3) for long double arithmetic that
+    // it uses internally. Unfortunately we don't provide these functions in
+    // compiler-builtins, so we instead need to get them from libgcc.
+    //
+    // This is not a problem if we are linking to libc dynamically since the
+    // libgcc dependency will automatically get picked up by the linker then.
+    base.post_link_objects_crt.push("-lgcc".to_string());
+
     // These targets statically link libc by default
     base.crt_static_default = true;
     // These targets allow the user to choose between static and dynamic linking.
