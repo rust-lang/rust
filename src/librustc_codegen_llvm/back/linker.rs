@@ -471,8 +471,7 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn cross_lang_lto(&mut self) {
         match self.sess.opts.debugging_opts.cross_lang_lto {
-            CrossLangLto::Disabled |
-            CrossLangLto::NoLink => {
+            CrossLangLto::Disabled => {
                 // Nothing to do
             }
             CrossLangLto::LinkerPluginAuto => {

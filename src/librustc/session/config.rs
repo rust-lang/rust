@@ -99,7 +99,6 @@ pub enum Lto {
 pub enum CrossLangLto {
     LinkerPlugin(PathBuf),
     LinkerPluginAuto,
-    NoLink,
     Disabled
 }
 
@@ -107,8 +106,7 @@ impl CrossLangLto {
     pub fn enabled(&self) -> bool {
         match *self {
             CrossLangLto::LinkerPlugin(_) |
-            CrossLangLto::LinkerPluginAuto |
-            CrossLangLto::NoLink => true,
+            CrossLangLto::LinkerPluginAuto => true,
             CrossLangLto::Disabled => false,
         }
     }
@@ -1031,8 +1029,7 @@ macro_rules! options {
             }
 
             *slot = match v {
-                None |
-                Some("no-link") => CrossLangLto::NoLink,
+                None => CrossLangLto::LinkerPluginAuto,
                 Some(path) => CrossLangLto::LinkerPlugin(PathBuf::from(path)),
             };
             true
@@ -3147,7 +3144,7 @@ mod tests {
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.debugging_opts.cross_lang_lto = CrossLangLto::NoLink;
+        opts.debugging_opts.cross_lang_lto = CrossLangLto::LinkerPluginAuto;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
     }
 
