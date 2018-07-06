@@ -421,7 +421,7 @@ declare_features! (
     (active, wasm_custom_section, "1.26.0", Some(51088), None),
 
     // The #![wasm_import_module] attribute
-    (active, wasm_import_module, "1.26.0", Some(51088), None),
+    (active, wasm_import_module, "1.26.0", Some(52090), None),
 
     // Allows keywords to be escaped for use as identifiers
     (active, raw_identifiers, "1.26.0", Some(48589), None),

@@ -68,6 +68,7 @@ use rustc::session::search_paths::SearchPaths;
 use rustc::session::config::{ErrorOutputType, RustcOptGroup, Externs, CodegenOptions};
 use rustc::session::config::{nightly_options, build_codegen_options};
 use rustc_target::spec::TargetTriple;
+use rustc::session::config::get_cmd_lint_options;
 
 #[macro_use]
 pub mod externalfiles;
@@ -307,6 +308,28 @@ pub fn opts() -> Vec<RustcOptGroup> {
              o.optflag("",
                        "disable-minification",
                        "Disable minification applied on JS files")
+        }),
+        unstable("warn", |o| {
+            o.optmulti("W", "warn", "Set lint warnings", "OPT")
+        }),
+        unstable("allow", |o| {
+            o.optmulti("A", "allow", "Set lint allowed", "OPT")
+        }),
+        unstable("deny", |o| {
+            o.optmulti("D", "deny", "Set lint denied", "OPT")
+        }),
+        unstable("forbid", |o| {
+            o.optmulti("F", "forbid", "Set lint forbidden", "OPT")
+        }),
+        unstable("cap-lints", |o| {
+            o.optmulti(
+                "",
+                "cap-lints",
+                "Set the most restrictive lint level. \
+                 More restrictive lints are capped at this \
+                 level. By default, it is at `forbid` level.",
+                "LEVEL",
+            )
         }),
     ]
 }
@@ -640,6 +663,8 @@ where R: 'static + Send,
         *x == "force-unstable-if-unmarked"
     });
 
+    let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
+
     let (tx, rx) = channel();
 
     rustc_driver::monitor(move || syntax::with_globals(move || {
@@ -648,7 +673,8 @@ where R: 'static + Send,
         let (mut krate, renderinfo) =
             core::run_core(paths, cfgs, externs, Input::File(cratefile), triple, maybe_sysroot,
                            display_warnings, crate_name.clone(),
-                           force_unstable_if_unmarked, edition, cg, error_format);
+                           force_unstable_if_unmarked, edition, cg, error_format,
+                           lint_opts, lint_cap, describe_lints);
 
         info!("finished with rustc");
 
