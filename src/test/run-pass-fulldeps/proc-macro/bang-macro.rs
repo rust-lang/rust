@@ -11,7 +11,7 @@
 // aux-build:bang-macro.rs
 // ignore-stage1
 
-#![feature(proc_macro_non_items)]
+#![feature(proc_macro_hygiene)]
 
 extern crate bang_macro;
 use bang_macro::rewrite;

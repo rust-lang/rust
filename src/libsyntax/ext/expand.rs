@@ -645,8 +645,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let (kind, gate) = match *item {
             Annotatable::Item(ref item) => {
                 match item.node {
-                    ItemKind::Mod(_) if self.cx.ecfg.proc_macro_mod() => return,
-                    ItemKind::Mod(_) => ("modules", "proc_macro_mod"),
+                    ItemKind::Mod(_) if self.cx.ecfg.proc_macro_hygiene() => return,
+                    ItemKind::Mod(_) => ("modules", "proc_macro_hygiene"),
                     _ => return,
                 }
             }
@@ -654,9 +654,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             Annotatable::ImplItem(_) => return,
             Annotatable::ForeignItem(_) => return,
             Annotatable::Stmt(_) |
-            Annotatable::Expr(_) if self.cx.ecfg.proc_macro_expr() => return,
-            Annotatable::Stmt(_) => ("statements", "proc_macro_expr"),
-            Annotatable::Expr(_) => ("expressions", "proc_macro_expr"),
+            Annotatable::Expr(_) if self.cx.ecfg.proc_macro_hygiene() => return,
+            Annotatable::Stmt(_) => ("statements", "proc_macro_hygiene"),
+            Annotatable::Expr(_) => ("expressions", "proc_macro_hygiene"),
         };
         emit_feature_err(
             self.cx.parse_sess,
@@ -668,7 +668,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     fn gate_proc_macro_expansion(&self, span: Span, fragment: &Option<AstFragment>) {
-        if self.cx.ecfg.proc_macro_gen() {
+        if self.cx.ecfg.proc_macro_hygiene() {
             return
         }
         let fragment = match fragment {
@@ -691,7 +691,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 if let ast::ItemKind::MacroDef(_) = i.node {
                     emit_feature_err(
                         self.parse_sess,
-                        "proc_macro_gen",
+                        "proc_macro_hygiene",
                         self.span,
                         GateIssue::Language,
                         &format!("procedural macros cannot expand to macro definitions"),
@@ -885,12 +885,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             AstFragmentKind::ImplItems => return,
             AstFragmentKind::ForeignItems => return,
         };
-        if self.cx.ecfg.proc_macro_non_items() {
+        if self.cx.ecfg.proc_macro_hygiene() {
             return
         }
         emit_feature_err(
             self.cx.parse_sess,
-            "proc_macro_non_items",
+            "proc_macro_hygiene",
             span,
             GateIssue::Language,
             &format!("procedural macros cannot be expanded to {}", kind),
@@ -1612,10 +1612,7 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_custom_derive = custom_derive,
         fn enable_format_args_nl = format_args_nl,
         fn macros_in_extern_enabled = macros_in_extern,
-        fn proc_macro_mod = proc_macro_mod,
-        fn proc_macro_gen = proc_macro_gen,
-        fn proc_macro_expr = proc_macro_expr,
-        fn proc_macro_non_items = proc_macro_non_items,
+        fn proc_macro_hygiene = proc_macro_hygiene,
     }
 
     fn enable_custom_inner_attributes(&self) -> bool {
