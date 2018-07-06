@@ -47,6 +47,7 @@ static EXCEPTIONS: &'static [&'static str] = &[
     "selectors",          // MPL-2.0, rustdoc
     "clippy_lints",       // MPL-2.0, rls
     "colored",            // MPL-2.0, rustfmt
+    "ordslice",           // Apache-2.0, rls
 ];
 
 /// Which crates to check against the whitelist?
