@@ -1182,7 +1182,54 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                 fcx.tcx.sess.err("language item required, but not found: `panic_info`");
             }
         }
+    }
 
+    // Check that a function marked as `#[alloc_error_handler]` has signature `fn(Layout) -> !`
+    if let Some(alloc_error_handler_did) = fcx.tcx.lang_items().oom() {
+        if alloc_error_handler_did == fcx.tcx.hir.local_def_id(fn_id) {
+            if let Some(alloc_layout_did) = fcx.tcx.lang_items().alloc_layout() {
+                if declared_ret_ty.sty != ty::TyNever {
+                    fcx.tcx.sess.span_err(
+                        decl.output.span(),
+                        "return type should be `!`",
+                    );
+                }
+
+                let inputs = fn_sig.inputs();
+                let span = fcx.tcx.hir.span(fn_id);
+                if inputs.len() == 1 {
+                    let arg_is_alloc_layout = match inputs[0].sty {
+                        ty::TyAdt(ref adt, _) => {
+                            adt.did == alloc_layout_did
+                        },
+                        _ => false,
+                    };
+
+                    if !arg_is_alloc_layout {
+                        fcx.tcx.sess.span_err(
+                            decl.inputs[0].span,
+                            "argument should be `Layout`",
+                        );
+                    }
+
+                    if let Node::NodeItem(item) = fcx.tcx.hir.get(fn_id) {
+                        if let Item_::ItemFn(_, _, ref generics, _) = item.node {
+                            if !generics.params.is_empty() {
+                                fcx.tcx.sess.span_err(
+                                    span,
+                                    "`#[alloc_error_handler]` function should have no type \
+                                     parameters",
+                                );
+                            }
+                        }
+                    }
+                } else {
+                    fcx.tcx.sess.span_err(span, "function should have one argument");
+                }
+            } else {
+                fcx.tcx.sess.err("language item required, but not found: `alloc_layout`");
+            }
+        }
     }
 
     (fcx, gen_ty)

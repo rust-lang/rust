@@ -8,24 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type = "bin"]
-#![feature(lang_items)]
-#![feature(panic_implementation)]
-#![no_main]
-#![no_std]
+// compile-flags:-C panic=abort
 
-use core::alloc::Layout;
-use core::panic::PanicInfo;
+#![feature(alloc_error_handler, panic_implementation)]
+#![no_std]
+#![no_main]
+
+struct Layout;
+
+#[alloc_error_handler]
+fn oom() -> ! { //~ ERROR function should have one argument
+    loop {}
+}
 
 #[panic_implementation]
-fn panic(_: &PanicInfo) -> ! {
-    loop {}
-}
-
-#[lang = "eh_personality"]
-fn eh() {}
-
-#[lang = "oom"]
-fn oom(_: Layout) -> ! {
-    loop {}
-}
+fn panic(_: &core::panic::PanicInfo) -> ! { loop {} }

@@ -187,6 +187,8 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
             }
         } else if attribute.check_name("panic_implementation") {
             return Some((Symbol::intern("panic_impl"), attribute.span))
+        } else if attribute.check_name("alloc_error_handler") {
+            return Some((Symbol::intern("oom"), attribute.span))
         }
     }
 
@@ -308,6 +310,7 @@ language_item_table! {
     BoxFreeFnLangItem,               "box_free",                box_free_fn;
     DropInPlaceFnLangItem,           "drop_in_place",           drop_in_place_fn;
     OomLangItem,                     "oom",                     oom;
+    AllocLayoutLangItem,             "alloc_layout",            alloc_layout;
 
     StartFnLangItem,                 "start",                   start_fn;
 
