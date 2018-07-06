@@ -27,7 +27,7 @@ cfg-if = "0.1"
 auxv = "0.3.3"
 quickcheck = "0.6"
 rand = "0.5"
-cupid = "0.5.0"
+cupid = "0.6.0"
 
 [[example]]
 name = "hex"
