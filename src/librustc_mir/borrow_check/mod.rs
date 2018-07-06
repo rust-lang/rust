@@ -366,7 +366,7 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// at the time we detect and report a reservation error.
     reservation_error_reported: FxHashSet<Place<'tcx>>,
     /// This field keeps track of errors reported in the checking of moved variables,
-    /// so that we don't report report seemingly duplicate errors.
+    /// so that we don't report seemingly duplicate errors.
     moved_error_reported: FxHashSet<Place<'tcx>>,
     /// This field keeps track of all the local variables that are declared mut and are mutated.
     /// Used for the warning issued by an unused mutable local variable.
