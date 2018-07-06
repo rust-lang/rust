@@ -137,7 +137,7 @@ fn make_opts() -> Options {
         opts.optopt(
             "",
             "file-lines",
-            "Format specified line ranges. Run with `--help file-lines` for \
+            "Format specified line ranges. Run with `--help=file-lines` for \
              more detail (unstable).",
             "JSON",
         );
