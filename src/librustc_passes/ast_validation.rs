@@ -164,6 +164,35 @@ impl<'a> AstValidator<'a> {
                 "only lifetime parameters can be used in this context");
         }
     }
+
+    /// The `dyn` keyword cannot be used as the name of a type (see #50405).
+    fn forbid_dyn(&self, item: &Item) {
+        if item.ident == keywords::Dyn.ident() {
+            match item.node {
+                ItemKind::Enum(..) |
+                ItemKind::Trait(..) |
+                ItemKind::TraitAlias(..) |
+                ItemKind::Struct(..) |
+                ItemKind::Ty(..) |
+                ItemKind::Union(..) => {
+                    span_err!(self.session, item.span, E0705, "types cannot be named `dyn`");
+                }
+
+                ItemKind::ExternCrate(..) |
+                ItemKind::Use(..) |
+                ItemKind::Static(..) |
+                ItemKind::Const(..) |
+                ItemKind::Fn(..) |
+                ItemKind::Mod(..) |
+                ItemKind::ForeignMod(..) |
+                ItemKind::GlobalAsm(..) |
+                ItemKind::Impl(..) |
+                ItemKind::Mac(..) |
+                ItemKind::MacroDef(..) => {
+                }
+            }
+        }
+    }
 }
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
@@ -265,6 +294,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_item(&mut self, item: &'a Item) {
+        self.forbid_dyn(item);
+
         match item.node {
             ItemKind::Impl(unsafety, polarity, _, _, Some(..), ref ty, ref impl_items) => {
                 self.invalid_visibility(&item.vis, None);

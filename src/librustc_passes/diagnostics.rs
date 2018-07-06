@@ -297,6 +297,20 @@ loop {
     break;
 }
 ```
+"##,
+
+E0705: r##"
+Traits and other types cannot be named `dyn`.
+
+Example of erroneous code:
+
+```compile_fail,E0705
+trait dyn { }
+```
+
+`dyn` is a contextual keyword that is used to designate a dynamic
+trait type (e.g., `dyn Debug`). Traits, structs, and other type
+definitions cannot be named `dyn`.
 "##
 }
 
