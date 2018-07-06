@@ -104,7 +104,7 @@ pub enum CrossLangLto {
 }
 
 impl CrossLangLto {
-    pub fn embed_bitcode(&self) -> bool {
+    pub fn enabled(&self) -> bool {
         match *self {
             CrossLangLto::LinkerPlugin(_) |
             CrossLangLto::LinkerPluginAuto |
