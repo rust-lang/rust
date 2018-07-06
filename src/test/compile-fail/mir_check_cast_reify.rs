@@ -45,7 +45,7 @@ fn bar<'a>(x: &'a u32) -> &'static u32 {
     // as part of checking the `ReifyFnPointer`.
     let f: fn(_) -> _ = foo;
     //~^ WARNING not reporting region error due to nll
-    //~| ERROR free region `'a` does not outlive free region `'static`
+    //~| ERROR unsatisfied lifetime constraints
     f(x)
 }
 

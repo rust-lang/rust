@@ -253,13 +253,34 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         value.fold_with(&mut RegionFolder::new(self, skipped_regions, &mut f))
     }
 
-    pub fn for_each_free_region<T,F>(self,
-                                     value: &T,
-                                     callback: F)
-        where F: FnMut(ty::Region<'tcx>),
-              T: TypeFoldable<'tcx>,
-    {
-        value.visit_with(&mut RegionVisitor {
+    /// Invoke `callback` on every region appearing free in `value`.
+    pub fn for_each_free_region(
+        self,
+        value: &impl TypeFoldable<'tcx>,
+        mut callback: impl FnMut(ty::Region<'tcx>),
+    ) {
+        self.any_free_region_meets(value, |r| {
+            callback(r);
+            false
+        });
+    }
+
+    /// True if `callback` returns true for every region appearing free in `value`.
+    pub fn all_free_regions_meet(
+        self,
+        value: &impl TypeFoldable<'tcx>,
+        mut callback: impl FnMut(ty::Region<'tcx>) -> bool,
+    ) -> bool {
+        !self.any_free_region_meets(value, |r| !callback(r))
+    }
+
+    /// True if `callback` returns true for some region appearing free in `value`.
+    pub fn any_free_region_meets(
+        self,
+        value: &impl TypeFoldable<'tcx>,
+        callback: impl FnMut(ty::Region<'tcx>) -> bool,
+    ) -> bool {
+        return value.visit_with(&mut RegionVisitor {
             outer_index: ty::INNERMOST,
             callback
         });
@@ -287,25 +308,22 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         impl<'tcx, F> TypeVisitor<'tcx> for RegionVisitor<F>
-            where F : FnMut(ty::Region<'tcx>)
+            where F: FnMut(ty::Region<'tcx>) -> bool
         {
             fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> bool {
                 self.outer_index.shift_in(1);
-                t.skip_binder().visit_with(self);
+                let result = t.skip_binder().visit_with(self);
                 self.outer_index.shift_out(1);
-
-                false // keep visiting
+                result
             }
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
                 match *r {
                     ty::ReLateBound(debruijn, _) if debruijn < self.outer_index => {
-                        /* ignore bound regions */
+                        false // ignore bound regions, keep visiting
                     }
                     _ => (self.callback)(r),
                 }
-
-                false // keep visiting
             }
         }
     }

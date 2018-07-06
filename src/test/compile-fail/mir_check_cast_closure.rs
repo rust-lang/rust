@@ -14,7 +14,7 @@
 
 fn bar<'a, 'b>() -> fn(&'a u32, &'b u32) -> &'a u32 {
     let g: fn(_, _) -> _ = |_x, y| y;
-    //~^ ERROR free region `'b` does not outlive free region `'a`
+    //~^ ERROR unsatisfied lifetime constraints
     g
     //~^ WARNING not reporting region error due to nll
 }

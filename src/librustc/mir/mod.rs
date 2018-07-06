@@ -15,7 +15,7 @@
 use graphviz::IntoCow;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
-use hir::{self, InlineAsm};
+use hir::{self, HirId, InlineAsm};
 use middle::region;
 use mir::interpret::{EvalErrorKind, Scalar, Value};
 use mir::visit::MirVisitable;
@@ -378,6 +378,15 @@ impl<'tcx> IndexMut<BasicBlock> for Mir<'tcx> {
 pub enum ClearCrossCrate<T> {
     Clear,
     Set(T),
+}
+
+impl<T> ClearCrossCrate<T> {
+    pub fn assert_crate_local(self) -> T {
+        match self {
+            ClearCrossCrate::Clear => bug!("unwrapping cross-crate data"),
+            ClearCrossCrate::Set(v) => v,
+        }
+    }
 }
 
 impl<T: serialize::Encodable> serialize::UseSpecializedEncodable for ClearCrossCrate<T> {}
@@ -784,6 +793,9 @@ impl<'tcx> LocalDecl<'tcx> {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct UpvarDecl {
     pub debug_name: Name,
+
+    /// `HirId` of the captured variable
+    pub var_hir_id: ClearCrossCrate<HirId>,
 
     /// If true, the capture is behind a reference.
     pub by_ref: bool,

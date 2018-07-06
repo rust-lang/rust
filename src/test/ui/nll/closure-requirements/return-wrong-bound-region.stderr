@@ -4,11 +4,14 @@ warning: not reporting region error due to nll
 LL |     expect_sig(|a, b| b); // ought to return `a`
    |                       ^
 
-error: free region `ReFree(DefId(0/1:9 ~ return_wrong_bound_region[317d]::test[0]::{{closure}}[0]), BrAnon(2))` does not outlive free region `ReFree(DefId(0/1:9 ~ return_wrong_bound_region[317d]::test[0]::{{closure}}[0]), BrAnon(1))`
+error: unsatisfied lifetime constraints
   --> $DIR/return-wrong-bound-region.rs:21:23
    |
 LL |     expect_sig(|a, b| b); // ought to return `a`
-   |                       ^
+   |                 -  -  ^ free region requires that `'1` must outlive `'2`
+   |                 |  |
+   |                 |  lifetime `'1` appears in this argument
+   |                 lifetime `'2` appears in this argument
 
 note: No external requirements
   --> $DIR/return-wrong-bound-region.rs:21:16
@@ -27,7 +30,7 @@ note: No external requirements
 LL | / fn test() {
 LL | |     expect_sig(|a, b| b); // ought to return `a`
 LL | |     //~^ WARN not reporting region error due to nll
-LL | |     //~| ERROR does not outlive free region
+LL | |     //~| ERROR
 LL | | }
    | |_^
    |

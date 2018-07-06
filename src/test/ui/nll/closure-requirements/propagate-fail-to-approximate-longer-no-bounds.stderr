@@ -4,11 +4,16 @@ warning: not reporting region error due to nll
 LL |         demand_y(x, y, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: argument requires that data must outlive free region `ReFree(DefId(0/1:18 ~ propagate_fail_to_approximate_longer_no_bounds[317d]::supply[0]::{{closure}}[0]), BrAnon(2))`
+error: unsatisfied lifetime constraints
   --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:47:9
    |
+LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
+   |                                                ---------  - lifetime `'1` appears in this argument
+   |                                                |
+   |                                                lifetime `'2` appears in this argument
+LL |         // Only works if 'x: 'y:
 LL |         demand_y(x, y, x.get())
-   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
 
 note: No external requirements
   --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:45:47
@@ -18,7 +23,7 @@ LL |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
 LL | |         //~^ WARN not reporting region error due to nll
-LL | |         //~| ERROR argument requires that data must outlive free region
+LL | |         //~| ERROR
 LL | |     });
    | |_____^
    |

@@ -534,6 +534,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
             };
             let mut decl = UpvarDecl {
                 debug_name: keywords::Invalid.name(),
+                var_hir_id: ClearCrossCrate::Set(var_hir_id),
                 by_ref,
                 mutability: Mutability::Not,
             };

@@ -31,11 +31,11 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: number of external vids: 3
    = note: where '_#1r: '_#2r
 
-error: argument requires that data must outlive free region `ReFree(DefId(0/0:8 ~ projection_one_region_trait_bound_closure[317d]::no_relationships_late[0]), BrNamed(crate0:DefIndex(1:16), 'a))`
+error: unsatisfied lifetime constraints
   --> $DIR/projection-one-region-trait-bound-closure.rs:47:5
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: No external requirements
   --> $DIR/projection-one-region-trait-bound-closure.rs:43:1
@@ -45,7 +45,7 @@ LL | | where
 LL | |     T: Anything<'b>,
 LL | | {
 ...  |
-LL | |     //~| ERROR argument requires that data must outlive free region
+LL | |     //~| ERROR
 LL | | }
    | |_^
    |
@@ -70,11 +70,11 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: number of external vids: 4
    = note: where '_#2r: '_#3r
 
-error: argument requires that data must outlive free region `ReEarlyBound(0, 'a)`
+error: unsatisfied lifetime constraints
   --> $DIR/projection-one-region-trait-bound-closure.rs:58:5
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: No external requirements
   --> $DIR/projection-one-region-trait-bound-closure.rs:53:1
@@ -84,7 +84,7 @@ LL | | where
 LL | |     T: Anything<'b>,
 LL | |     'a: 'a,
 ...  |
-LL | |     //~| ERROR argument requires that data must outlive free region
+LL | |     //~| ERROR
 LL | | }
    | |_^
    |
@@ -110,11 +110,11 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
    = note: number of external vids: 4
    = note: where '_#2r: '_#3r
 
-error: argument requires that data must outlive free region `ReEarlyBound(0, 'a)`
+error: unsatisfied lifetime constraints
   --> $DIR/projection-one-region-trait-bound-closure.rs:79:5
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
 
 note: No external requirements
   --> $DIR/projection-one-region-trait-bound-closure.rs:64:1
@@ -124,7 +124,7 @@ LL | | where
 LL | |     T: Anything<'b>,
 LL | |     T::AssocType: 'a,
 ...  |
-LL | |     //~| ERROR argument requires that data must outlive free region
+LL | |     //~| ERROR
 LL | | }
    | |_^
    |

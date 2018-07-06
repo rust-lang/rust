@@ -18,5 +18,5 @@ fn use_val<'a>(val: &'a u8) -> &'a u8 {
 
 fn main() {
     let orig: u8 = 5;
-    move || use_val(&orig); //~ ERROR free region `` does not outlive free region `'_#1r`
+    move || use_val(&orig); //~ ERROR
 }
