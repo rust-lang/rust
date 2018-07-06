@@ -32,12 +32,14 @@ extern crate rand;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 
+mod arc;
 mod binary_heap;
 mod btree;
 mod cow_str;
 mod fmt;
 mod heap;
 mod linked_list;
+mod rc;
 mod slice;
 mod str;
 mod string;
