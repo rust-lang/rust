@@ -12,7 +12,8 @@ of such structures include but are not limited to
 * `if let`
     * Converted to `match`
 * Universal `impl Trait`
-    * Converted to generic arguments (but with some flags, to know that the user didn't write them)
+    * Converted to generic arguments
+      (but with some flags, to know that the user didn't write them)
 * Existential `impl Trait`
     * Converted to a virtual `existential type` declaration
 
@@ -34,14 +35,14 @@ sanity checks in `src/librustc/hir/map/hir_id_validator.rs`:
   which produces both a new `NodeId` as well as automatically lowering it
   for you so you also get the `HirId`.
 
-If you are creating new `DefId`s, since each `DefId` needs to have a corresponding
-`NodeId`, it is adviseable to add these `NodeId`s to the `AST` so you don't have
-to generate new ones during lowering. This has the advantage of creating a
-way to find the `DefId` of something via its `NodeId`. If lowering needs this
-`DefId` in multiple places, you can't generate a new `NodeId` in all those places
-because you'd also get a new `DefId` then. With a `NodeId` from the `AST` this is
-not an issue.
+If you are creating new `DefId`s, since each `DefId` needs to have a
+corresponding `NodeId`, it is adviseable to add these `NodeId`s to the
+`AST` so you don't have to generate new ones during lowering. This has
+the advantage of creating a way to find the `DefId` of something via its
+`NodeId`. If lowering needs this `DefId` in multiple places, you can't
+generate a new `NodeId` in all those places because you'd also get a new
+`DefId` then. With a `NodeId` from the `AST` this is not an issue.
 
-Having the `NodeId` also allows the `DefCollector` to generate the `DefId`s instead
-of lowering having to do it on the fly. Centralizing the `DefId` generation in one
-place makes it easier to refactor and reason about.
+Having the `NodeId` also allows the `DefCollector` to generate the `DefId`s
+instead of lowering having to do it on the fly. Centralizing the `DefId`
+generation in one place makes it easier to refactor and reason about.

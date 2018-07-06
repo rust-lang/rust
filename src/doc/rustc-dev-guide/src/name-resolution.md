@@ -36,9 +36,9 @@ hierarchy, it's types vs. values vs. macros.
 ## Scopes and ribs
 
 A name is visible only in certain area in the source code. This forms a
-hierarchical structure, but not necessarily a simple one ‒ if one scope is part
-of another, it doesn't mean the name visible in the outer one is also visible in
-the inner one, or that it refers to the same thing.
+hierarchical structure, but not necessarily a simple one ‒ if one scope is
+part of another, it doesn't mean the name visible in the outer one is also
+visible in the inner one, or that it refers to the same thing.
 
 To cope with that, the compiler introduces the concept of Ribs. This is
 abstraction of a scope. Every time the set of visible names potentially changes,
@@ -54,9 +54,9 @@ example:
 When searching for a name, the stack of ribs is traversed from the innermost
 outwards. This helps to find the closest meaning of the name (the one not
 shadowed by anything else). The transition to outer rib may also change the
-rules what names are usable ‒ if there are nested functions (not closures), the
-inner one can't access parameters and local bindings of the outer one, even
-though they should be visible by ordinary scoping rules. An example:
+rules what names are usable ‒ if there are nested functions (not closures),
+the inner one can't access parameters and local bindings of the outer one,
+even though they should be visible by ordinary scoping rules. An example:
 
 ```rust
 fn do_something<T: Default>(val: T) { // <- New rib in both types and values (1)
