@@ -40,7 +40,6 @@ use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::attr;
 use syntax_pos::{Span, DUMMY_SP};
-use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -169,12 +168,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        // note that we *do* visit nested bodies, because we override `visit_nested_body` below
-        NestedVisitorMap::None
-    }
-
+impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
         let item_id = self.tcx.hir.body_owner(body_id);
         let item_def_id = self.tcx.hir.local_def_id(item_id);
@@ -206,8 +200,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         euv::ExprUseVisitor::new(self, tcx, param_env, &region_scope_tree, self.tables, None)
             .consume_body(body);
 
-        self.visit_body(body);
-
+        self.visit_expr(&body.value);
         self.in_fn = outer_in_fn;
         self.tables = outer_tables;
         self.param_env = outer_param_env;
@@ -216,27 +209,29 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
 
     fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt) {
         match stmt.node {
-            hir::StmtDecl(ref decl, node_id) => {
-                self.visit_id(node_id);
-                self.visit_decl(decl);
+            hir::StmtDecl(ref decl, _node_id) => {
                 match &decl.node {
                     hir::DeclLocal(local) => {
                         self.promotable = false;
-
                         if self.remove_mut_rvalue_borrow(&local.pat) {
                             if let Some(init) = &local.init {
                                 self.mut_rvalue_borrows.insert(init.id);
                             }
+                        }
+
+                        match local.init {
+                            Some(ref expr) => self.visit_expr(&expr),
+                            None => {},
                         }
                     }
                     // Item statements are allowed
                     hir::DeclItem(_) => {}
                 }
             }
-            hir::StmtExpr(ref box_expr, node_id) |
-            hir::StmtSemi(ref box_expr, node_id) => {
+            hir::StmtExpr(ref box_expr, _node_id) |
+            hir::StmtSemi(ref box_expr, _node_id) => {
                 self.visit_expr(box_expr);
-                self.visit_id(node_id);
+                self.promotable = false;
             }
         }
     }
@@ -293,12 +288,18 @@ fn check_expr<'a, 'tcx>(
             v.promotable = false;
         }
         hir::ExprUnary(op, ref expr) => {
-            v.visit_expr(expr);
+            if v.tables.is_method_call(e) {
+                v.promotable = false;
+            }
             if op == hir::UnDeref {
                 v.promotable = false;
             }
+            v.visit_expr(expr);
         }
         hir::ExprBinary(op, ref lhs, ref rhs) => {
+            if v.tables.is_method_call(e) {
+                v.promotable = false;
+            }
             v.visit_expr(lhs);
             v.visit_expr(rhs);
             match v.tables.node_id_to_type(lhs.hir_id).sty {
@@ -324,7 +325,6 @@ fn check_expr<'a, 'tcx>(
             }
         }
         hir::ExprPath(ref qpath) => {
-            v.visit_qpath(qpath, e.id, e.span);
             let def = v.tables.qpath_def(qpath, e.hir_id);
             match def {
                 Def::VariantCtor(..) | Def::StructCtor(..) |
@@ -450,11 +450,8 @@ fn check_expr<'a, 'tcx>(
 
         hir::ExprLit(_) => {}
 
-        hir::ExprAddrOf(ref _mutability, ref expr) => {
-            v.visit_expr(expr);
-        }
-
-        hir::ExprRepeat(ref expr, ref _anon_cast) => {
+        hir::ExprAddrOf(_, ref expr) |
+        hir::ExprRepeat(ref expr, _) => {
             v.visit_expr(expr);
         }
 
@@ -520,14 +517,10 @@ fn check_expr<'a, 'tcx>(
 
             v.visit_expr(expr);
             for index in hirvec_arm.iter() {
-                match *index {
-                    ref arm => {
-                        v.visit_expr(&*arm.body);
-                        match arm.guard {
-                            Some(ref expr) => v.visit_expr(&expr),
-                            None => {},
-                        }
-                    }
+                v.visit_expr(&*index.body);
+                match index.guard {
+                    Some(ref expr) => v.visit_expr(&expr),
+                    None => {},
                 }
             }
             v.promotable = false;
