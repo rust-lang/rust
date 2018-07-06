@@ -45,6 +45,7 @@
 - [Type checking](./type-checking.md)
     - [Method Lookup](./method-lookup.md)
     - [Variance](./variance.md)
+    - [Existential Types](./existential-types.md)
 - [The MIR (Mid-level IR)](./mir/index.md)
     - [MIR construction](./mir/construction.md)
     - [MIR visitor and traversal](./mir/visitor.md)
