@@ -182,6 +182,38 @@ impl<'a> GccLinker<'a> {
             self.hinted_static = false;
         }
     }
+
+    fn push_cross_lang_lto_args(&mut self, plugin_path: Option<&OsStr>) {
+        if let Some(plugin_path) = plugin_path {
+            let mut arg = OsString::from("-plugin=");
+            arg.push(plugin_path);
+            self.linker_arg(&arg);
+        }
+
+        let opt_level = match self.sess.opts.optimize {
+            config::OptLevel::No => "O0",
+            config::OptLevel::Less => "O1",
+            config::OptLevel::Default => "O2",
+            config::OptLevel::Aggressive => "O3",
+            config::OptLevel::Size => "Os",
+            config::OptLevel::SizeMin => "Oz",
+        };
+
+        self.linker_arg(&format!("-plugin-opt={}", opt_level));
+        self.linker_arg(&format!("-plugin-opt=mcpu={}", self.sess.target_cpu()));
+
+        match self.sess.opts.cg.lto {
+            config::Lto::Thin |
+            config::Lto::ThinLocal => {
+                self.linker_arg(&format!("-plugin-opt=thin"));
+            }
+            config::Lto::Fat |
+            config::Lto::Yes |
+            config::Lto::No => {
+                // default to regular LTO
+            }
+        }
+    }
 }
 
 impl<'a> Linker for GccLinker<'a> {
@@ -443,32 +475,11 @@ impl<'a> Linker for GccLinker<'a> {
             CrossLangLto::NoLink => {
                 // Nothing to do
             }
+            CrossLangLto::LinkerPluginAuto => {
+                self.push_cross_lang_lto_args(None);
+            }
             CrossLangLto::LinkerPlugin(ref path) => {
-                self.linker_arg(&format!("-plugin={}", path.display()));
-
-                let opt_level = match self.sess.opts.optimize {
-                    config::OptLevel::No => "O0",
-                    config::OptLevel::Less => "O1",
-                    config::OptLevel::Default => "O2",
-                    config::OptLevel::Aggressive => "O3",
-                    config::OptLevel::Size => "Os",
-                    config::OptLevel::SizeMin => "Oz",
-                };
-
-                self.linker_arg(&format!("-plugin-opt={}", opt_level));
-                self.linker_arg(&format!("-plugin-opt=mcpu={}", self.sess.target_cpu()));
-
-                match self.sess.opts.cg.lto {
-                    config::Lto::Thin |
-                    config::Lto::ThinLocal => {
-                        self.linker_arg(&format!("-plugin-opt=thin"));
-                    }
-                    config::Lto::Fat |
-                    config::Lto::Yes |
-                    config::Lto::No => {
-                        // default to regular LTO
-                    }
-                }
+                self.push_cross_lang_lto_args(Some(path.as_os_str()));
             }
         }
     }

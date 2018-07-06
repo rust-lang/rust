@@ -13,6 +13,7 @@ use std::env;
 use std::iter;
 use std::path::PathBuf;
 use std::process::{Command, exit};
+use std::collections::HashSet;
 
 use Mode;
 use Compiler;
@@ -122,8 +123,13 @@ impl Step for ToolBuild {
         let mut duplicates = Vec::new();
         let is_expected = compile::stream_cargo(builder, &mut cargo, &mut |msg| {
             // Only care about big things like the RLS/Cargo for now
-            if tool != "rls" && tool != "cargo" && tool != "clippy-driver" {
-                return
+            match tool {
+                | "rls"
+                | "cargo"
+                | "clippy-driver"
+                => {}
+
+                _ => return,
             }
             let (id, features, filenames) = match msg {
                 compile::CargoMessage::CompilerArtifact {
@@ -182,12 +188,22 @@ impl Step for ToolBuild {
                       typically means that something was recompiled because \
                       a transitive dependency has different features activated \
                       than in a previous build:\n");
+            println!("the following dependencies are duplicated although they \
+                      have the same features enabled:");
+            for (id, cur, prev) in duplicates.drain_filter(|(_, cur, prev)| cur.2 == prev.2) {
+                println!("  {}", id);
+                // same features
+                println!("    `{}` ({:?})\n    `{}` ({:?})", cur.0, cur.1, prev.0, prev.1);
+            }
+            println!("the following dependencies have different features:");
             for (id, cur, prev) in duplicates {
                 println!("  {}", id);
-                println!("    `{}` enabled features {:?} at {:?}",
-                         cur.0, cur.2, cur.1);
-                println!("    `{}` enabled features {:?} at {:?}",
-                         prev.0, prev.2, prev.1);
+                let cur_features: HashSet<_> = cur.2.into_iter().collect();
+                let prev_features: HashSet<_> = prev.2.into_iter().collect();
+                println!("    `{}` additionally enabled features {:?} at {:?}",
+                         cur.0, &cur_features - &prev_features, cur.1);
+                println!("    `{}` additionally enabled features {:?} at {:?}",
+                         prev.0, &prev_features - &cur_features, prev.1);
             }
             println!("");
             panic!("tools should not compile multiple copies of the same crate");
