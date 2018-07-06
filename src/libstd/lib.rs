@@ -233,8 +233,9 @@
 // std is implemented with unstable features, many of which are internal
 // compiler details that will never be stable
 #![feature(alloc)]
-#![feature(allocator_api)]
+#![feature(alloc_error_handler)]
 #![feature(alloc_system)]
+#![feature(allocator_api)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]

@@ -20,9 +20,14 @@ fn panic(_: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-#[alloc_error_handler]
-fn oom(_: core::alloc::Layout) -> ! {
-    loop {}
-}
-
 extern crate alloc;
+
+#[global_allocator]
+static A: MyAlloc = MyAlloc;
+
+struct MyAlloc;
+
+unsafe impl core::alloc::GlobalAlloc for MyAlloc {
+    unsafe fn alloc(&self, _: core::alloc::Layout) -> *mut u8 { 0 as _ }
+    unsafe fn dealloc(&self, _: *mut u8, _: core::alloc::Layout) {}
+}
