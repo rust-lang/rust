@@ -1855,7 +1855,7 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug, Hash)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub enum GenericParamDefKind {
     Lifetime,
     Type {
@@ -1865,8 +1865,6 @@ pub enum GenericParamDefKind {
         synthetic: Option<hir::SyntheticTyParamKind>,
     },
 }
-
-impl Eq for GenericParamDefKind {}
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub struct GenericParamDef {

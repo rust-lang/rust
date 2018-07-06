@@ -68,7 +68,7 @@ impl<'a> AstValidator<'a> {
                                         vis.span,
                                         E0449,
                                         "unnecessary visibility qualifier");
-        if vis.node.is_public() {
+        if vis.node.is_pub() {
             err.span_label(vis.span, "`pub` not permitted here because it's implied");
         }
         if let Some(note) = note {

@@ -1581,7 +1581,8 @@ impl TyKind {
     pub fn is_implicit_self(&self) -> bool {
         if let TyKind::ImplicitSelf = *self { true } else { false }
     }
-    pub(crate) fn is_empty_tuple(&self) -> bool {
+
+    crate fn is_unit(&self) -> bool {
         if let TyKind::Tup(ref tys) = *self { tys.is_empty() } else { false }
     }
 }
@@ -1982,7 +1983,7 @@ pub enum VisibilityKind {
 }
 
 impl VisibilityKind {
-    pub fn is_public(&self) -> bool {
+    pub fn is_pub(&self) -> bool {
         if let VisibilityKind::Public = *self { true } else { false }
     }
 }

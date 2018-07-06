@@ -568,7 +568,7 @@ impl Generics {
 
 /// Synthetic Type Parameters are converted to an other form during lowering, this allows
 /// to track the original form they had. Useful for error messages.
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum SyntheticTyParamKind {
     ImplTrait
 }

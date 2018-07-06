@@ -101,9 +101,7 @@ fn is_proc_macro_attr(attr: &ast::Attribute) -> bool {
 
 impl<'a> CollectProcMacros<'a> {
     fn check_not_pub_in_root(&self, vis: &ast::Visibility, sp: Span) {
-        if self.is_proc_macro_crate &&
-           self.in_root &&
-           vis.node.is_public() {
+        if self.is_proc_macro_crate && self.in_root && vis.node.is_pub() {
             self.handler.span_err(sp,
                                   "`proc-macro` crate types cannot \
                                    export any items other than functions \
@@ -181,7 +179,7 @@ impl<'a> CollectProcMacros<'a> {
             Vec::new()
         };
 
-        if self.in_root && item.vis.node.is_public() {
+        if self.in_root && item.vis.node.is_pub() {
             self.derives.push(ProcMacroDerive {
                 span: item.span,
                 trait_name,
@@ -206,7 +204,7 @@ impl<'a> CollectProcMacros<'a> {
             return;
         }
 
-        if self.in_root && item.vis.node.is_public() {
+        if self.in_root && item.vis.node.is_pub() {
             self.attr_macros.push(ProcMacroDef {
                 span: item.span,
                 function_name: item.ident,
@@ -229,7 +227,7 @@ impl<'a> CollectProcMacros<'a> {
             return;
         }
 
-        if self.in_root && item.vis.node.is_public() {
+        if self.in_root && item.vis.node.is_pub() {
             self.bang_macros.push(ProcMacroDef {
                 span: item.span,
                 function_name: item.ident,

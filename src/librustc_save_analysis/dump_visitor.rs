@@ -65,14 +65,14 @@ macro_rules! down_cast_data {
 macro_rules! access_from {
     ($save_ctxt:expr, $vis:expr, $id:expr) => {
         Access {
-            public: $vis.node.is_public(),
+            public: $vis.node.is_pub(),
             reachable: $save_ctxt.analysis.access_levels.is_reachable($id),
         }
     };
 
     ($save_ctxt:expr, $item:expr) => {
         Access {
-            public: $item.vis.node.is_public(),
+            public: $item.vis.node.is_pub(),
             reachable: $save_ctxt.analysis.access_levels.is_reachable($item.id),
         }
     };
@@ -523,7 +523,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     .iter()
                     .enumerate()
                     .filter_map(|(i, f)| {
-                        if include_priv_fields || f.vis.node.is_public() {
+                        if include_priv_fields || f.vis.node.is_pub() {
                             f.ident
                                 .map(|i| i.to_string())
                                 .or_else(|| Some(i.to_string()))
