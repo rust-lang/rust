@@ -126,14 +126,14 @@ fn self_arg() -> Local {
     Local::new(1)
 }
 
-struct SuspensionPoint {
+struct SuspensionPoint<V: Idx> {
     state: u32,
     resume: BasicBlock,
     drop: Option<BasicBlock>,
-    storage_liveness: liveness::LocalSet,
+    storage_liveness: liveness::LocalSet<V>,
 }
 
-struct TransformVisitor<'a, 'tcx: 'a> {
+struct TransformVisitor<'a, 'tcx: 'a, V: Idx> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     state_adt_ref: &'tcx AdtDef,
     state_substs: &'tcx Substs<'tcx>,
@@ -145,16 +145,16 @@ struct TransformVisitor<'a, 'tcx: 'a> {
     remap: HashMap<Local, (Ty<'tcx>, usize)>,
 
     // A map from a suspension point in a block to the locals which have live storage at that point
-    storage_liveness: HashMap<BasicBlock, liveness::LocalSet>,
+    storage_liveness: HashMap<BasicBlock, liveness::LocalSet<V>>,
 
     // A list of suspension points, generated during the transform
-    suspension_points: Vec<SuspensionPoint>,
+    suspension_points: Vec<SuspensionPoint<V>>,
 
     // The original RETURN_PLACE local
     new_ret_local: Local,
 }
 
-impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
+impl<'a, 'tcx, V: Idx> TransformVisitor<'a, 'tcx, V> {
     // Make a GeneratorState rvalue
     fn make_state(&self, idx: usize, val: Operand<'tcx>) -> Rvalue<'tcx> {
         let adt = AggregateKind::Adt(self.state_adt_ref, idx, self.state_substs, None);
@@ -191,7 +191,7 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
+impl<'a, 'tcx, V: Idx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx, V> {
     fn visit_local(&mut self,
                    local: &mut Local,
                    _: PlaceContext<'tcx>,
@@ -317,9 +317,9 @@ fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
     new_ret_local
 }
 
-struct StorageIgnored(liveness::LocalSet);
+struct StorageIgnored<V: Idx>(liveness::LocalSet<V>);
 
-impl<'tcx> Visitor<'tcx> for StorageIgnored {
+impl<'tcx, V: Idx> Visitor<'tcx> for StorageIgnored<V> {
     fn visit_statement(&mut self,
                        _block: BasicBlock,
                        statement: &Statement<'tcx>,
@@ -332,9 +332,9 @@ impl<'tcx> Visitor<'tcx> for StorageIgnored {
     }
 }
 
-struct BorrowedLocals(liveness::LocalSet);
+struct BorrowedLocals<V: Idx>(liveness::LocalSet<V>);
 
-fn mark_as_borrowed<'tcx>(place: &Place<'tcx>, locals: &mut BorrowedLocals) {
+fn mark_as_borrowed<'tcx, V: Idx>(place: &Place<'tcx>, locals: &mut BorrowedLocals<V>) {
     match *place {
         Place::Local(l) => { locals.0.add(&l); },
         Place::Static(..) => (),
@@ -349,7 +349,7 @@ fn mark_as_borrowed<'tcx>(place: &Place<'tcx>, locals: &mut BorrowedLocals) {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for BorrowedLocals {
+impl<'tcx, V: Idx> Visitor<'tcx> for BorrowedLocals<V> {
     fn visit_rvalue(&mut self,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
@@ -361,12 +361,12 @@ impl<'tcx> Visitor<'tcx> for BorrowedLocals {
     }
 }
 
-fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn locals_live_across_suspend_points<'a, 'tcx, V: Idx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                mir: &Mir<'tcx>,
                                                source: MirSource,
                                                movable: bool) ->
-                                               (liveness::LocalSet,
-                                                HashMap<BasicBlock, liveness::LocalSet>) {
+                                               (liveness::LocalSet<V>,
+                                                HashMap<BasicBlock, liveness::LocalSet<V>>) {
     let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
     let node_id = tcx.hir.as_local_node_id(source.def_id).unwrap();
 
@@ -460,7 +460,7 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     (set, storage_liveness_map)
 }
 
-fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn compute_layout<'a, 'tcx, V: Idx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             source: MirSource,
                             upvars: Vec<Ty<'tcx>>,
                             interior: Ty<'tcx>,
@@ -468,7 +468,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             mir: &mut Mir<'tcx>)
     -> (HashMap<Local, (Ty<'tcx>, usize)>,
         GeneratorLayout<'tcx>,
-        HashMap<BasicBlock, liveness::LocalSet>)
+        HashMap<BasicBlock, liveness::LocalSet<V>>)
 {
     // Use a liveness analysis to compute locals which are live across a suspension point
     let (live_locals, storage_liveness) = locals_live_across_suspend_points(tcx,
@@ -524,10 +524,10 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     (remap, layout, storage_liveness)
 }
 
-fn insert_switch<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn insert_switch<'a, 'tcx, V: Idx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            mir: &mut Mir<'tcx>,
                            cases: Vec<(u32, BasicBlock)>,
-                           transform: &TransformVisitor<'a, 'tcx>,
+                           transform: &TransformVisitor<'a, 'tcx, V>,
                            default: TerminatorKind<'tcx>) {
     let default_block = insert_term_block(mir, default);
 
@@ -608,9 +608,9 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn create_generator_drop_shim<'a, 'tcx>(
+fn create_generator_drop_shim<'a, 'tcx, V: Idx>(
                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                transform: &TransformVisitor<'a, 'tcx>,
+                transform: &TransformVisitor<'a, 'tcx, V>,
                 def_id: DefId,
                 source: MirSource,
                 gen_ty: Ty<'tcx>,
@@ -719,9 +719,9 @@ fn insert_panic_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert_block
 }
 
-fn create_generator_resume_function<'a, 'tcx>(
+fn create_generator_resume_function<'a, 'tcx, V: Idx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        transform: TransformVisitor<'a, 'tcx>,
+        transform: TransformVisitor<'a, 'tcx, V>,
         def_id: DefId,
         source: MirSource,
         mir: &mut Mir<'tcx>) {
@@ -790,10 +790,10 @@ fn insert_clean_drop<'a, 'tcx>(mir: &mut Mir<'tcx>) -> BasicBlock {
     drop_clean
 }
 
-fn create_cases<'a, 'tcx, F>(mir: &mut Mir<'tcx>,
-                          transform: &TransformVisitor<'a, 'tcx>,
+fn create_cases<'a, 'tcx, F, V: Idx>(mir: &mut Mir<'tcx>,
+                          transform: &TransformVisitor<'a, 'tcx, V>,
                           target: F) -> Vec<(u32, BasicBlock)>
-    where F: Fn(&SuspensionPoint) -> Option<BasicBlock> {
+    where F: Fn(&SuspensionPoint<V>) -> Option<BasicBlock> {
     let source_info = source_info(mir);
 
     transform.suspension_points.iter().filter_map(|point| {

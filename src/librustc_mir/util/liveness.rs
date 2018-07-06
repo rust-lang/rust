@@ -47,18 +47,18 @@ use rustc::ty::TyCtxt;
 use std::io::{self, Write};
 use transform::MirSource;
 
-pub type LocalSet = IdxSetBuf<Local>;
+pub type LocalSet<V: Idx> = IdxSetBuf<V>;
 
 /// This gives the result of the liveness analysis at the boundary of
 /// basic blocks. You can use `simulate_block` to obtain the
 /// intra-block results.
-pub struct LivenessResult {
+pub struct LivenessResult<V: Idx> {
     /// Liveness mode in use when these results were computed.
     pub mode: LivenessMode,
 
     /// Live variables on exit to each basic block. This is equal to
     /// the union of the `ins` for each successor.
-    pub outs: IndexVec<BasicBlock, LocalSet>,
+    pub outs: IndexVec<BasicBlock, LocalSet<V>>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -80,18 +80,18 @@ pub struct LivenessMode {
 }
 
 /// A combination of liveness results, used in NLL.
-pub struct LivenessResults {
+pub struct LivenessResults<V: Idx> {
     /// Liveness results where a regular use makes a variable X live,
     /// but not a drop.
-    pub regular: LivenessResult,
+    pub regular: LivenessResult<V>,
 
     /// Liveness results where a drop makes a variable X live,
     /// but not a regular use.
-    pub drop: LivenessResult,
+    pub drop: LivenessResult<V>,
 }
 
-impl LivenessResults {
-    pub fn compute<'tcx>(mir: &Mir<'tcx>) -> LivenessResults {
+impl<V: Idx> LivenessResults<V> {
+    pub fn compute<'tcx>(mir: &Mir<'tcx>) -> LivenessResults<V> {
         LivenessResults {
             regular: liveness_of_locals(
                 &mir,
@@ -115,7 +115,7 @@ impl LivenessResults {
 /// Compute which local variables are live within the given function
 /// `mir`. The liveness mode `mode` determines what sorts of uses are
 /// considered to make a variable live (e.g., do drops count?).
-pub fn liveness_of_locals<'tcx>(mir: &Mir<'tcx>, mode: LivenessMode) -> LivenessResult {
+pub fn liveness_of_locals<'tcx, V: Idx>(mir: &Mir<'tcx>, mode: LivenessMode) -> LivenessResult<V> {
     let locals = mir.local_decls.len();
     let def_use: IndexVec<_, _> = mir.basic_blocks()
         .iter()
@@ -156,14 +156,16 @@ pub fn liveness_of_locals<'tcx>(mir: &Mir<'tcx>, mode: LivenessMode) -> Liveness
     LivenessResult { mode, outs }
 }
 
-impl LivenessResult {
+impl<V> LivenessResult<V>
+where V:Idx
+{
     /// Walks backwards through the statements/terminator in the given
     /// basic block `block`.  At each point within `block`, invokes
     /// the callback `op` with the current location and the set of
     /// variables that are live on entry to that location.
     pub fn simulate_block<'tcx, OP>(&self, mir: &Mir<'tcx>, block: BasicBlock, mut callback: OP)
     where
-        OP: FnMut(Location, &LocalSet),
+        OP: FnMut(Location, &LocalSet<V>),
     {
         let data = &mir[block];
 
@@ -281,24 +283,25 @@ pub fn categorize<'tcx>(context: PlaceContext<'tcx>, mode: LivenessMode) -> Opti
     }
 }
 
-struct DefsUsesVisitor {
+struct DefsUsesVisitor<V: Idx> {
     mode: LivenessMode,
-    defs_uses: DefsUses,
+    defs_uses: DefsUses<V>,
 }
 
 #[derive(Eq, PartialEq, Clone)]
-struct DefsUses {
-    defs: LocalSet,
-    uses: LocalSet,
+struct DefsUses<V: Idx>
+{
+    defs: LocalSet<V>,
+    uses: LocalSet<V>,
 }
 
-impl DefsUses {
+impl<V: Idx> DefsUses<V> {
     fn clear(&mut self) {
         self.uses.clear();
         self.defs.clear();
     }
 
-    fn apply(&self, bits: &mut LocalSet) -> bool {
+    fn apply(&self, bits: &mut LocalSet<V>) -> bool {
         bits.subtract(&self.defs) | bits.union(&self.uses)
     }
 
@@ -332,15 +335,17 @@ impl DefsUses {
     }
 }
 
-impl DefsUsesVisitor {
+impl<V> DefsUsesVisitor<V>
+where V: Idx
+{
     /// Update `bits` with the effects of `value` and call `callback`. We
     /// should always visit in reverse order. This method assumes that we have
     /// not visited anything before; if you have, clear `bits` first.
     fn update_bits_and_do_callback<'tcx, OP>(&mut self, location: Location,
-                                             value: &impl MirVisitable<'tcx>, bits: &mut LocalSet,
+                                             value: &impl MirVisitable<'tcx>, bits: &mut LocalSet<V>,
                                              callback: &mut OP)
     where
-        OP: FnMut(Location, &LocalSet),
+        OP: FnMut(Location, &LocalSet<V>),
     {
         value.apply(location, self);
         self.defs_uses.apply(bits);
@@ -348,7 +353,7 @@ impl DefsUsesVisitor {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for DefsUsesVisitor {
+impl<'tcx, V: Idx> Visitor<'tcx> for DefsUsesVisitor<V> {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext<'tcx>, _: Location) {
         match categorize(context, self.mode) {
             Some(DefUse::Def) => {
@@ -364,7 +369,7 @@ impl<'tcx> Visitor<'tcx> for DefsUsesVisitor {
     }
 }
 
-fn block<'tcx>(mode: LivenessMode, b: &BasicBlockData<'tcx>, locals: usize) -> DefsUses {
+fn block<'tcx, V: Idx>(mode: LivenessMode, b: &BasicBlockData<'tcx>, locals: usize) -> DefsUses<V> {
     let mut visitor = DefsUsesVisitor {
         mode,
         defs_uses: DefsUses {
@@ -388,12 +393,12 @@ fn block<'tcx>(mode: LivenessMode, b: &BasicBlockData<'tcx>, locals: usize) -> D
     visitor.defs_uses
 }
 
-pub fn dump_mir<'a, 'tcx>(
+pub fn dump_mir<'a, 'tcx, V: Idx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pass_name: &str,
     source: MirSource,
     mir: &Mir<'tcx>,
-    result: &LivenessResult,
+    result: &LivenessResult<V>,
 ) {
     if !dump_enabled(tcx, pass_name, source) {
         return;
@@ -405,13 +410,13 @@ pub fn dump_mir<'a, 'tcx>(
     dump_matched_mir_node(tcx, pass_name, &node_path, source, mir, result);
 }
 
-fn dump_matched_mir_node<'a, 'tcx>(
+fn dump_matched_mir_node<'a, 'tcx, V: Idx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pass_name: &str,
     node_path: &str,
     source: MirSource,
     mir: &Mir<'tcx>,
-    result: &LivenessResult,
+    result: &LivenessResult<V>,
 ) {
     let mut file_path = PathBuf::new();
     file_path.push(Path::new(&tcx.sess.opts.debugging_opts.dump_mir_dir));
@@ -428,12 +433,12 @@ fn dump_matched_mir_node<'a, 'tcx>(
     });
 }
 
-pub fn write_mir_fn<'a, 'tcx>(
+pub fn write_mir_fn<'a, 'tcx, V :Idx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     src: MirSource,
     mir: &Mir<'tcx>,
     w: &mut dyn Write,
-    result: &LivenessResult,
+    result: &LivenessResult<V>,
 ) -> io::Result<()> {
     write_mir_intro(tcx, src, mir, w)?;
     for block in mir.basic_blocks().indices() {

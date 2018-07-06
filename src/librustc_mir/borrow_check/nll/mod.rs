@@ -22,6 +22,7 @@ use rustc::infer::InferCtxt;
 use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Mir};
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc::util::nodemap::FxHashMap;
+use rustc_data_structures::indexed_vec::Idx;
 use std::collections::BTreeSet;
 use std::fmt::Debug;
 use std::env;
@@ -207,9 +208,9 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     (regioncx, polonius_output, closure_region_requirements)
 }
 
-fn dump_mir_results<'a, 'gcx, 'tcx>(
+fn dump_mir_results<'a, 'gcx, 'tcx, V: Idx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-    liveness: &LivenessResults,
+    liveness: &LivenessResults<V>,
     source: MirSource,
     mir: &Mir<'tcx>,
     regioncx: &RegionInferenceContext,
@@ -405,7 +406,7 @@ impl ToRegionVid for RegionVid {
     }
 }
 
-fn live_variable_set(regular: &LocalSet, drops: &LocalSet) -> String {
+fn live_variable_set<V: Idx>(regular: &LocalSet<V>, drops: &LocalSet<V>) -> String {
     // sort and deduplicate:
     let all_locals: BTreeSet<_> = regular.iter().chain(drops.iter()).collect();
 
