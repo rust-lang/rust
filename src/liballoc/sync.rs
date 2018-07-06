@@ -981,13 +981,12 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
 
 impl Arc<Any + Send + Sync> {
     #[inline]
-    #[unstable(feature = "rc_downcast", issue = "44608")]
+    #[stable(feature = "rc_downcast", since = "1.29.0")]
     /// Attempt to downcast the `Arc<Any + Send + Sync>` to a concrete type.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_downcast)]
     /// use std::any::Any;
     /// use std::sync::Arc;
     ///
