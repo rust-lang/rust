@@ -13,9 +13,10 @@ use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::definitions::DefPathData;
 use rustc::hir::{self, ImplPolarity};
 use rustc::traits::{
-    Clause, Clauses, DomainGoal, Goal, PolyDomainGoal, ProgramClause, WhereClauseAtom,
+    Clause, Clauses, DomainGoal, FromEnv, Goal, PolyDomainGoal, ProgramClause, WellFormed,
+    WhereClause,
 };
-use rustc::ty::subst::Substs;
+use rustc::ty::query::Providers;
 use rustc::ty::{self, Slice, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use std::mem;
@@ -139,11 +140,13 @@ impl<'tcx> IntoFromEnvGoal for DomainGoal<'tcx> {
 
 impl<'tcx> IntoWellFormedGoal for DomainGoal<'tcx> {
     fn into_wellformed_goal(self) -> DomainGoal<'tcx> {
-        use self::DomainGoal::*;
+        use self::WhereClause::*;
+
         match self {
-            Holds(wc_atom) => WellFormed(wc_atom),
-            WellFormed(..) | FromEnv(..) | WellFormedTy(..) | FromEnvTy(..) | Normalize(..)
-            | RegionOutlives(..) | TypeOutlives(..) => self,
+            DomainGoal::Holds(Implemented(trait_ref)) => {
+                DomainGoal::WellFormed(WellFormed::Trait(trait_ref))
+            }
+            other => other,
         }
     }
 }
@@ -256,6 +259,8 @@ fn program_clauses_for_trait<'a, 'tcx>(
 
     let clauses = iter::once(Clause::ForAll(ty::Binder::dummy(implemented_from_env)));
 
+    let where_clauses = &tcx.predicates_defined_on(def_id).predicates;
+
     // Rule Implied-Bound-From-Trait
     //
     // For each where clause WC:
@@ -266,7 +271,6 @@ fn program_clauses_for_trait<'a, 'tcx>(
     // ```
 
     // `FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn>)`, for each where clause WC
-    let where_clauses = &tcx.predicates_defined_on(def_id).predicates;
     let implied_bound_clauses = where_clauses
         .into_iter()
         .map(|wc| wc.lower())
@@ -276,16 +280,8 @@ fn program_clauses_for_trait<'a, 'tcx>(
             goal: goal.into_from_env_goal(),
             hypotheses,
         }))
-        .map(|wc| implied_bound_from_trait(tcx, trait_pred, wc));
-    let wellformed_clauses = wellformed_from_bound(tcx, trait_pred, &where_clauses[1..]);
-    tcx.mk_clauses(clauses.chain(implied_bound_clauses).chain(wellformed_clauses))
-}
+        .map(Clause::ForAll);
 
-fn wellformed_from_bound<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    trait_pred: ty::TraitPredicate<'tcx>,
-    where_clauses: &[ty::Predicate<'tcx>],
-) -> iter::Once<Clause<'tcx>> {
     // Rule WellFormed-TraitRef
     //
     // For each where clause WC:
@@ -293,26 +289,27 @@ fn wellformed_from_bound<'a, 'tcx>(
     //   WellFormed(Self: Trait<P1..Pn>) :- Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)
     // }
 
-    // WellFormed(Self: Trait<P1..Pn>)
-    let wellformed_trait = DomainGoal::WellFormed(WhereClauseAtom::Implemented(trait_pred));
-    // Implemented(Self: Trait<P1..Pn>)
-    let impl_trait = ty::Binder::dummy(DomainGoal::Holds(WhereClauseAtom::Implemented(trait_pred)));
-    // WellFormed(WC)
-    let wellformed_wc = where_clause
-        .lower()
-        .map_bound(|wc| wc.into_wellformed_goal());
-    // Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)
-    let mut wcs = vec![impl_trait];
-    wcs.extend(wellformed_wcs);
+    let wellformed_clauses = where_clauses
+        .into_iter()
+        .map(|wc| wc.lower())
+        // WellFormed(Self: Trait<P1..Pn>) :- Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)
+        .map(|wc| {
+            wc.map_bound(|goal| ProgramClause {
+                goal: goal.into_wellformed_goal(),
+                hypotheses: tcx.mk_goals(
+                    where_clauses
+                        .into_iter()
+                        .map(|wc| Goal::from_poly_domain_goal(wc.lower(), tcx)),
+                ),
+            })
+        })
+        .map(Clause::ForAll);
 
-    let clause = ProgramClause {
-        goal: wellformed_trait,
-        hypotheses: tcx.mk_goals(
-            wcs.into_iter()
-                .map(|wc| Goal::from_poly_domain_goal(wc, tcx)),
-        ),
-    };
-    iter::once(Clause::ForAll(ty::Binder::dummy(clause)))
+    tcx.mk_clauses(
+        clauses
+            .chain(implied_bound_clauses)
+            .chain(wellformed_clauses),
+    )
 }
 
 fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
