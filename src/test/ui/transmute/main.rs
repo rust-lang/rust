@@ -31,12 +31,16 @@ unsafe fn sizes() {
 }
 
 unsafe fn ptrs() {
-    let x: u8 = transmute("test"); //~ ERROR transmute called with types of different sizes
+    let x: u8 = transmute("test");
+    //~^ WARN transmutation from a type with an unspecified layout
+    //~| ERROR transmute called with types of different sizes
 }
 
 union Foo { x: () }
 unsafe fn vary() {
-    let x: Foo = transmute(10); //~ ERROR transmute called with types of different sizes
+    let x: Foo = transmute(10);
+    //~^ WARN transmutation to a type with an unspecified layout
+    //~| ERROR transmute called with types of different sizes
 }
 
 fn main() {}

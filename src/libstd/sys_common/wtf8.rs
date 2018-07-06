@@ -32,7 +32,6 @@ use char;
 use fmt;
 use hash::{Hash, Hasher};
 use iter::FromIterator;
-use mem;
 use ops;
 use rc::Rc;
 use slice;
@@ -366,12 +365,12 @@ impl Wtf8Buf {
     /// Converts this `Wtf8Buf` into a boxed `Wtf8`.
     #[inline]
     pub fn into_box(self) -> Box<Wtf8> {
-        unsafe { mem::transmute(self.bytes.into_boxed_slice()) }
+        unsafe { Box::from_raw(Box::into_raw(self.bytes.into_boxed_slice()) as *mut Wtf8) }
     }
 
     /// Converts a `Box<Wtf8>` into a `Wtf8Buf`.
     pub fn from_box(boxed: Box<Wtf8>) -> Wtf8Buf {
-        let bytes: Box<[u8]> = unsafe { mem::transmute(boxed) };
+        let bytes: Box<[u8]> = unsafe { Box::from_raw(Box::into_raw(boxed) as *mut [u8]) };
         Wtf8Buf { bytes: bytes.into_vec() }
     }
 }
@@ -493,7 +492,7 @@ impl Wtf8 {
     /// marked unsafe.
     #[inline]
     unsafe fn from_bytes_unchecked(value: &[u8]) -> &Wtf8 {
-        mem::transmute(value)
+        &*(value as *const _ as *const Wtf8)
     }
 
     /// Creates a mutable WTF-8 slice from a mutable WTF-8 byte slice.
@@ -502,7 +501,7 @@ impl Wtf8 {
     /// marked unsafe.
     #[inline]
     unsafe fn from_mut_bytes_unchecked(value: &mut [u8]) -> &mut Wtf8 {
-        mem::transmute(value)
+        &mut *(value as *mut _ as *mut Wtf8)
     }
 
     /// Returns the length, in WTF-8 bytes.
@@ -651,13 +650,13 @@ impl Wtf8 {
     #[inline]
     pub fn into_box(&self) -> Box<Wtf8> {
         let boxed: Box<[u8]> = self.bytes.into();
-        unsafe { mem::transmute(boxed) }
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut Wtf8) }
     }
 
     /// Creates a boxed, empty `Wtf8`.
     pub fn empty_box() -> Box<Wtf8> {
         let boxed: Box<[u8]> = Default::default();
-        unsafe { mem::transmute(boxed) }
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut Wtf8) }
     }
 
     #[inline]

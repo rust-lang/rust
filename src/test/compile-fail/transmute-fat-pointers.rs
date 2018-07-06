@@ -15,11 +15,17 @@
 use std::mem::transmute;
 
 fn a<T, U: ?Sized>(x: &[T]) -> &U {
-    unsafe { transmute(x) } //~ ERROR transmute called with types of different sizes
+    unsafe { transmute(x) }
+    //~^ WARN transmutation to a type with an unspecified layout
+    //~| WARN transmutation from a type with an unspecified layout
+    //~| ERROR transmute called with types of different sizes
 }
 
 fn b<T: ?Sized, U: ?Sized>(x: &T) -> &U {
-    unsafe { transmute(x) } //~ ERROR transmute called with types of different sizes
+    unsafe { transmute(x) }
+    //~^ WARN transmutation to a type with an unspecified layout
+    //~| WARN transmutation from a type with an unspecified layout
+    //~| ERROR transmute called with types of different sizes
 }
 
 fn c<T, U>(x: &T) -> &U {
@@ -28,14 +34,20 @@ fn c<T, U>(x: &T) -> &U {
 
 fn d<T, U>(x: &[T]) -> &[U] {
     unsafe { transmute(x) }
+    //~^ WARN transmutation to a type with an unspecified layout
+    //~| WARN transmutation from a type with an unspecified layout
 }
 
 fn e<T: ?Sized, U>(x: &T) -> &U {
-    unsafe { transmute(x) } //~ ERROR transmute called with types of different sizes
+    unsafe { transmute(x) }
+    //~^ WARN transmutation from a type with an unspecified layout
+    //~| ERROR transmute called with types of different sizes
 }
 
 fn f<T, U: ?Sized>(x: &T) -> &U {
-    unsafe { transmute(x) } //~ ERROR transmute called with types of different sizes
+    unsafe { transmute(x) }
+    //~^ WARN transmutation to a type with an unspecified layout
+    //~| ERROR transmute called with types of different sizes
 }
 
 fn main() { }

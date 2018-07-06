@@ -25,9 +25,8 @@ pub use self::if_arc::*;
 mod if_arc {
     use super::*;
     use core::marker::PhantomData;
-    use core::mem;
-    use core::ptr::{self, NonNull};
     use sync::Arc;
+    use core::ptr;
 
     /// A way of waking up a specific task.
     ///
@@ -92,9 +91,9 @@ mod if_arc {
     {
         fn from(rc: Arc<T>) -> Self {
             unsafe {
-                let ptr = mem::transmute::<Arc<T>, NonNull<ArcWrapped<T>>>(rc);
-                Waker::new(ptr)
+                Waker::new(rc.into_ptr::<ArcWrapped<T>>())
             }
+
         }
     }
 
@@ -105,8 +104,7 @@ mod if_arc {
     /// will call `wake.wake()` if awoken after being converted to a `Waker`.
     #[inline]
     pub unsafe fn local_waker<W: Wake + 'static>(wake: Arc<W>) -> LocalWaker {
-        let ptr = mem::transmute::<Arc<W>, NonNull<ArcWrapped<W>>>(wake);
-        LocalWaker::new(ptr)
+        LocalWaker::new(wake.into_ptr::<ArcWrapped<W>>())
     }
 
     struct NonLocalAsLocal<T>(ArcWrapped<T>);
@@ -142,8 +140,7 @@ mod if_arc {
     #[inline]
     pub fn local_waker_from_nonlocal<W: Wake + 'static>(wake: Arc<W>) -> LocalWaker {
         unsafe {
-            let ptr = mem::transmute::<Arc<W>, NonNull<NonLocalAsLocal<W>>>(wake);
-            LocalWaker::new(ptr)
+            LocalWaker::new(wake.into_ptr::<NonLocalAsLocal<W>>())
         }
     }
 }

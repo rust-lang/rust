@@ -51,7 +51,7 @@ extern crate unwind;
 
 use alloc::boxed::Box;
 use core::intrinsics;
-use core::mem;
+use core::any::Any;
 use core::raw;
 use core::panic::BoxMeUp;
 
@@ -105,7 +105,8 @@ pub unsafe extern "C" fn __rust_maybe_catch_panic(f: fn(*mut u8),
     if intrinsics::try(f, data, &mut payload as *mut _ as *mut _) == 0 {
         0
     } else {
-        let obj = mem::transmute::<_, raw::TraitObject>(imp::cleanup(payload));
+        let raw = &Box::into_raw(imp::cleanup(payload));
+        let obj = *(raw as *const *mut (Any + Send) as *const raw::TraitObject);
         *data_ptr = obj.data as usize;
         *vtable_ptr = obj.vtable as usize;
         1

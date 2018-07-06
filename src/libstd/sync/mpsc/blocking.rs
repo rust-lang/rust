@@ -13,7 +13,6 @@
 use thread::{self, Thread};
 use sync::atomic::{AtomicBool, Ordering};
 use sync::Arc;
-use mem;
 use time::Instant;
 
 struct Inner {
@@ -64,14 +63,14 @@ impl SignalToken {
     /// flag.
     #[inline]
     pub unsafe fn cast_to_usize(self) -> usize {
-        mem::transmute(self.inner)
+        Arc::into_raw(self.inner) as usize
     }
 
     /// Convert from an unsafe usize value. Useful for retrieving a pipe's state
     /// flag.
     #[inline]
     pub unsafe fn cast_from_usize(signal_ptr: usize) -> SignalToken {
-        SignalToken { inner: mem::transmute(signal_ptr) }
+        SignalToken { inner: Arc::from_raw(signal_ptr as *const _) }
     }
 }
 

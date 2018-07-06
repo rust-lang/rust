@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use hir;
 use hir::def::Def;
 use hir::def_id::DefId;
-use ty::{self, Ty, TyCtxt};
+use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use ty::layout::{LayoutError, Pointer, SizeSkeleton};
+use ty::{self, Ty, AdtKind, TyCtxt, TypeFoldable};
+use ty::subst::Substs;
 
 use rustc_target::spec::abi::Abi::RustIntrinsic;
+use syntax_pos::DUMMY_SP;
 use syntax_pos::Span;
-use hir::intravisit::{self, Visitor, NestedVisitorMap};
-use hir;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut visitor = ItemVisitor {
@@ -64,17 +66,171 @@ fn unpack_option_like<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty
 }
 
+/// Check if this enum can be safely exported based on the
+/// "nullable pointer optimization". Currently restricted
+/// to function pointers and references, but could be
+/// expanded to cover NonZero raw pointers and newtypes.
+/// FIXME: This duplicates code in codegen.
+pub fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  def: &'tcx ty::AdtDef,
+                                  substs: &Substs<'tcx>)
+                                  -> bool {
+    if def.variants.len() == 2 {
+        let data_idx;
+
+        if def.variants[0].fields.is_empty() {
+            data_idx = 1;
+        } else if def.variants[1].fields.is_empty() {
+            data_idx = 0;
+        } else {
+            return false;
+        }
+
+        if def.variants[data_idx].fields.len() == 1 {
+            match def.variants[data_idx].fields[0].ty(tcx, substs).sty {
+                ty::TyFnPtr(_) => {
+                    return true;
+                }
+                ty::TyRef(..) => {
+                    return true;
+                }
+                _ => {}
+            }
+        }
+    }
+    false
+}
+
 impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
         self.tcx.fn_sig(def_id).abi() == RustIntrinsic &&
         self.tcx.item_name(def_id) == "transmute"
     }
 
+    /// Calculate whether a type has a specified layout.
+    ///
+    /// The function returns `None` in indeterminate cases (such as `TyError`).
+    fn is_layout_specified(&self, ty: Ty<'tcx>) -> Option<bool> {
+        match ty.sty {
+            // These types have a specified layout
+            // Reference: Primitive type layout
+            ty::TyBool |
+            ty::TyChar |
+            ty::TyInt(_) |
+            ty::TyUint(_) |
+            ty::TyFloat(_) |
+            // Reference: Pointers and references layout
+            ty::TyFnPtr(_) => Some(true),
+            // Reference: Array layout (depends on the contained type)
+            ty::TyArray(ty, _) => self.is_layout_specified(ty),
+            // Reference: Tuple layout (only specified if empty)
+            ty::TyTuple(ref tys) => Some(tys.is_empty()),
+
+            // Cases with definitely unspecified layouts
+            ty::TyClosure(_, _) |
+            ty::TyGenerator(_, _, _) |
+            ty::TyGeneratorWitness(_) => Some(false),
+            // Currently ZST, but does not seem to be guaranteed
+            ty::TyFnDef(_, _) => Some(false),
+            // Unsized types
+            ty::TyForeign(_) |
+            ty::TyNever |
+            ty::TyStr |
+            ty::TySlice(_) |
+            ty::TyDynamic(_, _) => Some(false),
+
+            // Indeterminate cases
+            ty::TyInfer(_) |
+            // should we report `Some(false)` for TyParam(_)? It this possible to reach this branch?
+            ty::TyParam(_) |
+            ty::TyError => None,
+
+            // The “it’s complicated™” cases
+            // Reference: Pointers and references layout
+            ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) |
+            ty::TyRef(_, pointee, _) => {
+                let pointee = self.tcx.normalize_erasing_regions(self.param_env, pointee);
+                // Pointers to unsized types have no specified layout.
+                Some(pointee.is_sized(self.tcx.at(DUMMY_SP), self.param_env))
+            }
+            ty::TyProjection(_) | ty::TyAnon(_, _) => {
+                let normalized = self.tcx.normalize_erasing_regions(self.param_env, ty);
+                if ty == normalized {
+                    None
+                } else {
+                    self.is_layout_specified(normalized)
+                }
+            }
+            ty::TyAdt(def, substs) => {
+                // Documentation guarantees 0-size.
+                if def.is_phantom_data() {
+                    return Some(true);
+                }
+                match def.adt_kind() {
+                    AdtKind::Struct | AdtKind::Union => {
+                        if !def.repr.c() && !def.repr.transparent() && !def.repr.simd() {
+                            return Some(false);
+                        }
+                        // FIXME: do we guarantee 0-sizedness for structs with 0 fields?
+                        // If not, they should cause Some(false) here.
+                        let mut seen_none = false;
+                        for field in &def.non_enum_variant().fields {
+                            let field_ty = field.ty(self.tcx, substs);
+                            match self.is_layout_specified(field_ty) {
+                                Some(true) => continue,
+                                None => {
+                                    seen_none = true;
+                                    continue;
+                                }
+                                x => return x,
+                            }
+                        }
+                        return if seen_none { None } else { Some(true) };
+                    }
+                    AdtKind::Enum => {
+                        if !def.repr.c() && def.repr.int.is_none() {
+                            if !is_repr_nullable_ptr(self.tcx, def, substs) {
+                                return Some(false);
+                            }
+                        }
+                        return Some(true);
+                    }
+                }
+            }
+        }
+    }
+
     fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>) {
+        // Check for unspecified types before checking for same size.
+        assert!(!from.has_infer_types());
+        assert!(!to.has_infer_types());
+
+        let unspecified_layout = |msg, ty| {
+            if ::std::env::var("RUSTC_BOOTSTRAP").is_ok() {
+                struct_span_warn!(self.tcx.sess, span, E0912, "{}", msg)
+                    .note(&format!("{} has an unspecified layout", ty))
+                    .note("this will become a hard error in the future")
+                    .emit();
+            } else {
+                struct_span_err!(self.tcx.sess, span, E0912, "{}", msg)
+                    .note(&format!("{} has an unspecified layout", ty))
+                    .note("this will become a hard error in the future")
+                    .emit();
+            }
+        };
+
+        if self.is_layout_specified(from) == Some(false) {
+            unspecified_layout("transmutation from a type with an unspecified layout", from);
+        }
+
+        if self.is_layout_specified(to) == Some(false) {
+            unspecified_layout("transmutation to a type with an unspecified layout", to);
+        }
+
+        // Check for same size using the skeletons.
         let sk_from = SizeSkeleton::compute(from, self.tcx, self.param_env);
         let sk_to = SizeSkeleton::compute(to, self.tcx, self.param_env);
 
-        // Check for same size using the skeletons.
         if let (Ok(sk_from), Ok(sk_to)) = (sk_from, sk_to) {
             if sk_from.same_size(sk_to) {
                 return;
