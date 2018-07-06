@@ -721,29 +721,29 @@ impl<'a> Builder<'a> {
         // This is for the original compiler, but if we're forced to use stage 1, then
         // std/test/rustc stamps won't exist in stage 2, so we need to get those from stage 1, since
         // we copy the libs forward.
-        let compiler = if self.force_use_stage1(compiler, target) {
+        let cmp = if self.force_use_stage1(compiler, target) {
             self.compiler(1, compiler.host)
         } else {
             compiler
         };
 
         let libstd_stamp = match cmd {
-            "check" => check::libstd_stamp(self, compiler, target),
-            _ => compile::libstd_stamp(self, compiler, target),
+            "check" => check::libstd_stamp(self, cmp, target),
+            _ => compile::libstd_stamp(self, cmp, target),
         };
 
         let libtest_stamp = match cmd {
-            "check" => check::libtest_stamp(self, compiler, target),
-            _ => compile::libstd_stamp(self, compiler, target),
+            "check" => check::libtest_stamp(self, cmp, target),
+            _ => compile::libstd_stamp(self, cmp, target),
         };
 
         let librustc_stamp = match cmd {
-            "check" => check::librustc_stamp(self, compiler, target),
-            _ => compile::librustc_stamp(self, compiler, target),
+            "check" => check::librustc_stamp(self, cmp, target),
+            _ => compile::librustc_stamp(self, cmp, target),
         };
 
         if cmd == "doc" {
-            if mode == Mode::Rustc || mode == Mode::ToolRustc {
+            if mode == Mode::Rustc || mode == Mode::ToolRustc || mode == Mode::Codegen {
                 // This is the intended out directory for compiler documentation.
                 my_out = self.compiler_doc_out(target);
             }
