@@ -425,9 +425,10 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
                        offset: offset_from_begin, min_length: min_length2, from_end: false }) => {
                     // both patterns matched so it must be at least the greater of the two
                     let min_length = max(min_length1, min_length2);
-                    // offset_from_end can be in range [1..min_length], -1 for last and min_length
-                    // for first, min_length - offset_from_end gives minimal possible offset from
-                    // the beginning
+                    // `offset_from_end` can be in range `[1..min_length]`, 1 indicates the last
+                    // element (like -1 in Python) and `min_length` the first.
+                    // Therefore, `min_length - offset_from_end` gives the minimal possible
+                    // offset from the beginning
                     if *offset_from_begin >= min_length - offset_from_end {
                         debug!("place_element_conflict: DISJOINT-OR-EQ-ARRAY-CONSTANT-INDEX-FE");
                         Overlap::EqualOrDisjoint
