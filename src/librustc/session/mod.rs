@@ -19,6 +19,7 @@ use lint;
 use lint::builtin::BuiltinLintDiagnostics;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
+use mir::PluginIntrinsics;
 use session::search_paths::PathKind;
 use session::config::{OutputType};
 use ty::tls;
@@ -26,7 +27,8 @@ use util::nodemap::{FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 use util::common::ProfileQueriesMsg;
 
-use rustc_data_structures::sync::{self, Lrc, Lock, LockCell, OneThread, Once, RwLock};
+use rustc_data_structures::sync::{self, Lrc, Lock, LockCell, OneThread, Once,
+                                  RwLock, ArcCell, };
 
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder, DiagnosticId};
@@ -54,6 +56,7 @@ use std::fmt;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+use std::sync::Arc;
 use std::sync::mpsc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -92,6 +95,7 @@ pub struct Session {
     pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
     pub plugin_llvm_passes: OneThread<RefCell<Vec<String>>>,
     pub plugin_attributes: OneThread<RefCell<Vec<(String, AttributeType)>>>,
+    pub plugin_intrinsics: ArcCell<PluginIntrinsics>,
     pub crate_types: Once<Vec<config::CrateType>>,
     pub dependency_formats: Once<dependency_format::Dependencies>,
     /// The crate_disambiguator is constructed out of all the `-C metadata`
@@ -1109,6 +1113,7 @@ pub fn build_session_(
         one_time_diagnostics: Lock::new(FxHashSet()),
         plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
         plugin_attributes: OneThread::new(RefCell::new(Vec::new())),
+        plugin_intrinsics: ArcCell::new(Arc::new(HashMap::new())),
         crate_types: Once::new(),
         dependency_formats: Once::new(),
         crate_disambiguator: Once::new(),

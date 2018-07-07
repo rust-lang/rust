@@ -29,6 +29,7 @@ use rustc_data_structures::small_vec::SmallVec;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::sync::ReadGuard;
 use rustc_serialize as serialize;
+use std::collections::HashMap;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Formatter, Write};
 use std::ops::{Index, IndexMut};
@@ -2922,4 +2923,40 @@ impl<'tcx> TypeFoldable<'tcx> for Literal<'tcx> {
             Literal::Promoted { .. } => false,
         }
     }
+}
+pub type PluginIntrinsics = HashMap<String, Box<PluginIntrinsicCodegen>>;
+pub trait PluginIntrinsicCodegen: Sync + Send {
+    /// Codegen a plugin-defined intrinsic. This is intended to be used to
+    /// "return" values based on the monomorphized and erased types of the
+    /// function call. Codegen will codegen the `extra_stmts` and then insert
+    /// an unconditional branch to the exit block.
+    ///
+    /// Consider this to be highly unstable; it will likely change without
+    /// warning. There is also no spec for this, it is 100% implementation
+    /// defined, and may not be implemented at all for some codegen backends.
+    ///
+    /// If the codegen backend is multithreaded, this will be called from
+    /// any number of threads, hence `Sync + Send`.
+    ///
+    /// YOU ARE RESPONSIBLE FOR THE SAFETY OF THE EXTRA STATEMENTS.
+    /// You have been warned. Good luck, have fun.
+    fn codegen_simple_intrinsic<'a, 'tcx>(&self,
+                                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                          source_info: SourceInfo,
+                                          sig: &ty::FnSig<'tcx>,
+                                          parent_mir: &Mir<'tcx>,
+                                          parent_param_substs: &'tcx Substs<'tcx>,
+                                          args: &Vec<Operand<'tcx>>,
+                                          dest: Place<'tcx>,
+                                          extra_stmts: &mut Vec<StatementKind<'tcx>>)
+        where 'tcx: 'a;
+
+    /// The following are used for during typeck:
+
+    /// The number of generic parameters expected.
+    fn generic_parameter_count<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> usize;
+    /// The types of the input args.
+    fn inputs<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<Ty<'tcx>>;
+    /// The return type.
+    fn output<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx>;
 }
