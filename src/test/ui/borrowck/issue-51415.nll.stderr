@@ -1,0 +1,9 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/issue-51415.rs:16:47
+   |
+LL |     let opt = a.iter().enumerate().find(|(_, &s)| {
+   |                                               ^ cannot move out of borrowed content
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.
