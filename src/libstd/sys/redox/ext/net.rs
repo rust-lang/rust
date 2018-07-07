@@ -67,6 +67,33 @@ impl SocketAddr {
     pub fn as_pathname(&self) -> Option<&Path> {
         None
     }
+
+    /// Returns true if and only if the address is unnamed.
+    ///
+    /// # Examples
+    ///
+    /// A named address:
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixListener;
+    ///
+    /// let socket = UnixListener::bind("/tmp/sock").unwrap();
+    /// let addr = socket.local_addr().expect("Couldn't get local address");
+    /// assert_eq!(addr.is_unnamed(), false);
+    /// ```
+    ///
+    /// An unnamed address:
+    ///
+    /// ```
+    /// use std::os::unix::net::UnixDatagram;
+    ///
+    /// let socket = UnixDatagram::unbound().unwrap();
+    /// let addr = socket.local_addr().expect("Couldn't get local address");
+    /// assert_eq!(addr.is_unnamed(), true);
+    /// ```
+    pub fn is_unnamed(&self) -> bool {
+        false
+    }
 }
 impl fmt::Debug for SocketAddr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
