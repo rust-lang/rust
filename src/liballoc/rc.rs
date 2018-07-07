@@ -620,13 +620,12 @@ impl<T: Clone> Rc<T> {
 
 impl Rc<Any> {
     #[inline]
-    #[unstable(feature = "rc_downcast", issue = "44608")]
+    #[stable(feature = "rc_downcast", since = "1.29.0")]
     /// Attempt to downcast the `Rc<Any>` to a concrete type.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_downcast)]
     /// use std::any::Any;
     /// use std::rc::Rc;
     ///
