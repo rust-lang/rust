@@ -4289,6 +4289,25 @@ macro_rules! try_from_both_bounded {
     )*}
 }
 
+macro_rules! try_bool_from {
+    ($($source:ty),*) => {$(
+        #[unstable(feature = "try_from", issue = "33417")]
+        impl TryFrom<$source> for bool {
+            type Error = TryFromIntError;
+
+            #[inline]
+            fn try_from(u: $source) -> Result<bool, TryFromIntError> {
+                if u == 1 {
+                    Ok(true)
+                } else if u == 0 {
+                    Ok(false)
+                } else {
+                    Err(TryFromIntError(()))
+                }
+            }
+        }
+    )*}
+}
 macro_rules! rev {
     ($mac:ident, $source:ty, $($target:ty),*) => {$(
         $mac!($target, $source);
@@ -4305,6 +4324,9 @@ try_from_both_bounded!(i16, i8);
 try_from_both_bounded!(i32, i16, i8);
 try_from_both_bounded!(i64, i32, i16, i8);
 try_from_both_bounded!(i128, i64, i32, i16, i8);
+
+// Integer -> Boolean
+try_bool_from! { u8, u16, u32, u64, u128, i8, i16, i32, i64, i128 }
 
 // unsigned-to-signed
 try_from_upper_bounded!(u8, i8);
