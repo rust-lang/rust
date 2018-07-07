@@ -44,7 +44,6 @@ pub mod process;
 pub mod raw;
 pub mod thread;
 pub mod net;
-pub(crate) mod unixsocket;
 
 /// A prelude for conveniently writing platform-specific code.
 ///
