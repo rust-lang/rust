@@ -11,7 +11,7 @@ LL |     let mut lines_to_use: Vec<&CrateId> = Vec::new();
    |         ---------------- lifetime `'2` appears in the type of `lines_to_use`
 LL |         //~^ NOTE cannot infer an appropriate lifetime
 LL |     let push_id = |installed_id: &CrateId| {
-   |                    ------------ lifetime `'1` appears in this argument
+   |                                  - let's call the lifetime of this reference `'1`
 ...
 LL |         lines_to_use.push(installed_id);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
