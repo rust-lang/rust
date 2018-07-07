@@ -19,7 +19,7 @@ use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Mir};
+use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Mir, Local};
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
@@ -208,9 +208,9 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     (regioncx, polonius_output, closure_region_requirements)
 }
 
-fn dump_mir_results<'a, 'gcx, 'tcx, V: Idx>(
+fn dump_mir_results<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-    liveness: &LivenessResults<V>,
+    liveness: &LivenessResults<Local>,
     source: MirSource,
     mir: &Mir<'tcx>,
     regioncx: &RegionInferenceContext,
@@ -406,7 +406,7 @@ impl ToRegionVid for RegionVid {
     }
 }
 
-fn live_variable_set<V: Idx>(regular: &LocalSet<V>, drops: &LocalSet<V>) -> String {
+fn live_variable_set(regular: &LocalSet<Local>, drops: &LocalSet<Local>) -> String {
     // sort and deduplicate:
     let all_locals: BTreeSet<_> = regular.iter().chain(drops.iter()).collect();
 

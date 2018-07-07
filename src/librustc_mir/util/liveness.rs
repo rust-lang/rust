@@ -40,6 +40,7 @@ use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::work_queue::WorkQueue;
 use util::pretty::{dump_enabled, write_basic_block, write_mir_intro};
 use rustc::ty::item_path;
+use rustc::mir::Local;
 use rustc::mir::visit::MirVisitable;
 use std::path::{Path, PathBuf};
 use std::fs;
@@ -59,6 +60,28 @@ pub struct LivenessResult<V: Idx> {
     /// Live variables on exit to each basic block. This is equal to
     /// the union of the `ins` for each successor.
     pub outs: IndexVec<BasicBlock, LocalSet<V>>,
+}
+
+trait LiveVariableMap {
+    type LiveVar;
+
+    fn from_local(&self, local: Local) -> Option<Self::LiveVar>;
+    fn from_live_var(&self, local: Self::LiveVar) -> Local;
+}
+
+#[derive(Eq, PartialEq, Clone)]
+struct IdentityMap;
+
+impl LiveVariableMap for IdentityMap {
+    type LiveVar = Local;
+
+    fn from_local(&self, local: Local) -> Option<Self::LiveVar> {
+        Some(local)
+    }
+
+    fn from_live_var(&self, local: Self::LiveVar) -> Local {
+        local
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -91,7 +114,7 @@ pub struct LivenessResults<V: Idx> {
 }
 
 impl<V: Idx> LivenessResults<V> {
-    pub fn compute<'tcx>(mir: &Mir<'tcx>) -> LivenessResults<V> {
+    pub fn compute<'tcx>(mir: &Mir<'tcx>, map: &dyn LiveVariableMap<LiveVar = V>) -> LivenessResults<V> {
         LivenessResults {
             regular: liveness_of_locals(
                 &mir,
@@ -187,6 +210,7 @@ where V:Idx
             defs_uses: DefsUses {
                 defs: LocalSet::new_empty(locals),
                 uses: LocalSet::new_empty(locals),
+                map: &IdentityMap {},
             },
         };
         // Visit the various parts of the basic block in reverse. If we go
@@ -283,25 +307,26 @@ pub fn categorize<'tcx>(context: PlaceContext<'tcx>, mode: LivenessMode) -> Opti
     }
 }
 
-struct DefsUsesVisitor<V: Idx> {
+struct DefsUsesVisitor<'lv> {
     mode: LivenessMode,
-    defs_uses: DefsUses<V>,
+    defs_uses: DefsUses<'lv>,
 }
 
 #[derive(Eq, PartialEq, Clone)]
-struct DefsUses<V: Idx>
+struct DefsUses<'lv>
 {
-    defs: LocalSet<V>,
-    uses: LocalSet<V>,
+    defs: LocalSet<Local>,
+    uses: LocalSet<Local>,
+    map: &'lv dyn LiveVariableMap<LiveVar=Local>,
 }
 
-impl<V: Idx> DefsUses<V> {
+impl<'lv> DefsUses<'lv> {
     fn clear(&mut self) {
         self.uses.clear();
         self.defs.clear();
     }
 
-    fn apply(&self, bits: &mut LocalSet<V>) -> bool {
+    fn apply(&self, bits: &mut LocalSet<Local>) -> bool {
         bits.subtract(&self.defs) | bits.union(&self.uses)
     }
 
@@ -315,8 +340,10 @@ impl<V: Idx> DefsUses<V> {
         //     X = 5
         //     // Defs = {}, Uses = {X}
         //     use(X)
-        self.uses.remove(&index);
-        self.defs.add(&index);
+        if let Some(v_index) = self.map.from_local(index) {
+            self.uses.remove(&v_index);
+            self.defs.add(&v_index);
+        }
     }
 
     fn add_use(&mut self, index: Local) {
@@ -330,22 +357,23 @@ impl<V: Idx> DefsUses<V> {
         //     X = 5
         //     // Defs = {}, Uses = {X}
         //     use(X)
-        self.defs.remove(&index);
-        self.uses.add(&index);
+        if let Some(v_index) = self.map.from_local(index) {
+            self.defs.remove(&v_index);
+            self.uses.add(&v_index);
+        }
     }
 }
 
-impl<V> DefsUsesVisitor<V>
-where V: Idx
+impl<'lv> DefsUsesVisitor<'lv>
 {
     /// Update `bits` with the effects of `value` and call `callback`. We
     /// should always visit in reverse order. This method assumes that we have
     /// not visited anything before; if you have, clear `bits` first.
     fn update_bits_and_do_callback<'tcx, OP>(&mut self, location: Location,
-                                             value: &impl MirVisitable<'tcx>, bits: &mut LocalSet<V>,
+                                             value: &impl MirVisitable<'tcx>, bits: &mut LocalSet<Local>,
                                              callback: &mut OP)
     where
-        OP: FnMut(Location, &LocalSet<V>),
+        OP: FnMut(Location, &LocalSet<Local>),
     {
         value.apply(location, self);
         self.defs_uses.apply(bits);
@@ -353,7 +381,7 @@ where V: Idx
     }
 }
 
-impl<'tcx, V: Idx> Visitor<'tcx> for DefsUsesVisitor<V> {
+impl<'tcx, 'lv> Visitor<'tcx> for DefsUsesVisitor<'lv> {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext<'tcx>, _: Location) {
         match categorize(context, self.mode) {
             Some(DefUse::Def) => {
@@ -369,12 +397,13 @@ impl<'tcx, V: Idx> Visitor<'tcx> for DefsUsesVisitor<V> {
     }
 }
 
-fn block<'tcx, V: Idx>(mode: LivenessMode, b: &BasicBlockData<'tcx>, locals: usize) -> DefsUses<V> {
+fn block<'tcx, 'lv>(mode: LivenessMode, b: &BasicBlockData<'tcx>, locals: usize) -> DefsUses<'lv> {
     let mut visitor = DefsUsesVisitor {
         mode,
         defs_uses: DefsUses {
             defs: LocalSet::new_empty(locals),
             uses: LocalSet::new_empty(locals),
+            map: &IdentityMap {},
         },
     };
 
@@ -398,7 +427,7 @@ pub fn dump_mir<'a, 'tcx, V: Idx>(
     pass_name: &str,
     source: MirSource,
     mir: &Mir<'tcx>,
-    result: &LivenessResult<V>,
+    result: &LivenessResult<Local>,
 ) {
     if !dump_enabled(tcx, pass_name, source) {
         return;
@@ -442,7 +471,7 @@ pub fn write_mir_fn<'a, 'tcx, V :Idx>(
 ) -> io::Result<()> {
     write_mir_intro(tcx, src, mir, w)?;
     for block in mir.basic_blocks().indices() {
-        let print = |w: &mut dyn Write, prefix, result: &IndexVec<BasicBlock, LocalSet>| {
+        let print = |w: &mut dyn Write, prefix, result: &IndexVec<BasicBlock, LocalSet<V>>| {
             let live: Vec<String> = mir.local_decls
                 .indices()
                 .filter(|i| result[block].contains(i))
