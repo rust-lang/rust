@@ -45,6 +45,46 @@ clippy_lints = { version = "0.0.211", path = "clippy_lints" }
 regex = "1"
 semver = "0.9"
 
+# Not actually needed right now but required to make sure that clippy/ and cargo build
+# with the same set of features in rust-lang/rust
+num-traits = "0.2" # enable the default feature
+backtrace = "0.3"
+
+# keep in sync with `cargo`'s `Cargo.toml'
+[target.'cfg(windows)'.dependencies.winapi]
+version = "0.3"
+features = [
+  # keep in sync with `cargo`'s `Cargo.toml'
+  "handleapi",
+  "jobapi",
+  "jobapi2",
+  "minwindef",
+  "ntdef",
+  "ntstatus",
+  "processenv",
+  "processthreadsapi",
+  "psapi",
+  "synchapi",
+  "winerror",
+  "winbase",
+  "wincon",
+  "winnt",
+  # no idea where these come from
+  "basetsd",
+  "lmcons",
+  "memoryapi",
+  "minschannel",
+  "minwinbase",
+  "ntsecapi",
+  "profileapi",
+  "schannel",
+  "securitybaseapi",
+  "synchapi",
+  "sysinfoapi",
+  "timezoneapi",
+  "wincrypt",
+]
+
 [dev-dependencies]
 cargo_metadata = "0.5"
 compiletest_rs = "0.3.7"

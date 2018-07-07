@@ -108,7 +108,8 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             return;
         }
         if let Categorization::Rvalue(..) = cmt.cat {
-            if let Some(NodeStmt(st)) = map.find(map.get_parent_node(cmt.id)) {
+            let id = map.hir_to_node_id(cmt.hir_id);
+            if let Some(NodeStmt(st)) = map.find(map.get_parent_node(id)) {
                 if let StmtDecl(ref decl, _) = st.node {
                     if let DeclLocal(ref loc) = decl.node {
                         if let Some(ref ex) = loc.init {

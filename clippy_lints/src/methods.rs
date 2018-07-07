@@ -840,7 +840,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             .iter()
                             .any(|k| k.matches(first_arg_ty, first_arg, self_ty, is_copy, &implitem.generics));
                         then {
-                            let lint = if item.vis == hir::Visibility::Public {
+                            let lint = if item.vis.node == hir::VisibilityKind::Public {
                                 WRONG_PUB_SELF_CONVENTION
                             } else {
                                 WRONG_SELF_CONVENTION

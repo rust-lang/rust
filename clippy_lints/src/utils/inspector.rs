@@ -51,14 +51,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             return;
         }
         println!("impl item `{}`", item.ident.name);
-        match item.vis {
-            hir::Visibility::Public => println!("public"),
-            hir::Visibility::Crate(_) => println!("visible crate wide"),
-            hir::Visibility::Restricted { ref path, .. } => println!(
+        match item.vis.node {
+            hir::VisibilityKind::Public => println!("public"),
+            hir::VisibilityKind::Crate(_) => println!("visible crate wide"),
+            hir::VisibilityKind::Restricted { ref path, .. } => println!(
                 "visible in module `{}`",
                 print::to_string(print::NO_ANN, |s| s.print_path(path, false))
             ),
-            hir::Visibility::Inherited => println!("visibility inherited from outer item"),
+            hir::VisibilityKind::Inherited => println!("visibility inherited from outer item"),
         }
         if item.defaultness.is_default() {
             println!("default");
@@ -343,14 +343,14 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
 fn print_item(cx: &LateContext, item: &hir::Item) {
     let did = cx.tcx.hir.local_def_id(item.id);
     println!("item `{}`", item.name);
-    match item.vis {
-        hir::Visibility::Public => println!("public"),
-        hir::Visibility::Crate(_) => println!("visible crate wide"),
-        hir::Visibility::Restricted { ref path, .. } => println!(
+    match item.vis.node {
+        hir::VisibilityKind::Public => println!("public"),
+        hir::VisibilityKind::Crate(_) => println!("visible crate wide"),
+        hir::VisibilityKind::Restricted { ref path, .. } => println!(
             "visible in module `{}`",
             print::to_string(print::NO_ANN, |s| s.print_path(path, false))
         ),
-        hir::Visibility::Inherited => println!("visibility inherited from outer item"),
+        hir::VisibilityKind::Inherited => println!("visibility inherited from outer item"),
     }
     match item.node {
         hir::ItemExternCrate(ref _renamed_from) => {
