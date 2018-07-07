@@ -325,6 +325,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     _ => (self.callback)(r),
                 }
             }
+
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+                // We're only interested in types involving regions
+                if ty.flags.intersects(TypeFlags::HAS_FREE_REGIONS) {
+                    ty.super_visit_with(self)
+                } else {
+                    false // keep visiting
+                }
+            }
         }
     }
 }
