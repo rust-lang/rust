@@ -17,6 +17,7 @@ use rustc_data_structures::work_queue::WorkQueue;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::{self, Mir, BasicBlock, BasicBlockData, Location, Statement, Terminator};
+use rustc::mir::traversal;
 use rustc::session::Session;
 
 use std::borrow::Borrow;
@@ -332,7 +333,7 @@ pub(crate) trait DataflowResultsConsumer<'a, 'tcx: 'a> {
 
     fn analyze_results(&mut self, flow_uninit: &mut Self::FlowState) {
         let flow = flow_uninit;
-        for bb in self.mir().basic_blocks().indices() {
+        for (bb, _) in traversal::reverse_postorder(self.mir()) {
             flow.reset_to_entry_of(bb);
             self.process_basic_block(bb, flow);
         }
