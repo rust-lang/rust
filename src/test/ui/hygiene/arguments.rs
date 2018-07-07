@@ -23,5 +23,5 @@ macro m($t:ty, $e:expr) {
 
 fn main() {
     struct S;
-    m!(S, S);
+    m!(S, S); //~ ERROR cannot find type `S` in this scope
 }

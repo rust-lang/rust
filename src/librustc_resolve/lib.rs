@@ -55,7 +55,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 
 use syntax::visit::{self, FnKind, Visitor};
 use syntax::attr;
-use syntax::ast::{Arm, IsAsync, BindingMode, Block, Crate, Expr, ExprKind};
+use syntax::ast::{CRATE_NODE_ID, Arm, IsAsync, BindingMode, Block, Crate, Expr, ExprKind};
 use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParamKind, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
@@ -1891,7 +1891,12 @@ impl<'a> Resolver<'a> {
 
         ident.span = ident.span.modern();
         loop {
-            module = unwrap_or!(self.hygienic_lexical_parent(module, &mut ident.span), break);
+            let (opt_module, poisoned) = if record_used {
+                self.hygienic_lexical_parent_with_compatibility_fallback(module, &mut ident.span)
+            } else {
+                (self.hygienic_lexical_parent(module, &mut ident.span), false)
+            };
+            module = unwrap_or!(opt_module, break);
             let orig_current_module = self.current_module;
             self.current_module = module; // Lexical resolutions can never be a privacy error.
             let result = self.resolve_ident_in_module_unadjusted(
@@ -1900,7 +1905,19 @@ impl<'a> Resolver<'a> {
             self.current_module = orig_current_module;
 
             match result {
-                Ok(binding) => return Some(LexicalScopeBinding::Item(binding)),
+                Ok(binding) => {
+                    if poisoned {
+                        self.session.buffer_lint_with_diagnostic(
+                            lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
+                            CRATE_NODE_ID, ident.span,
+                            &format!("cannot find {} `{}` in this scope", ns.descr(), ident),
+                            lint::builtin::BuiltinLintDiagnostics::
+                                ProcMacroDeriveResolutionFallback(ident.span),
+                        );
+                    }
+                    return Some(LexicalScopeBinding::Item(binding))
+                }
+                _ if poisoned => break,
                 Err(Undetermined) => return None,
                 Err(Determined) => {}
             }
@@ -1935,7 +1952,7 @@ impl<'a> Resolver<'a> {
         None
     }
 
-    fn hygienic_lexical_parent(&mut self, mut module: Module<'a>, span: &mut Span)
+    fn hygienic_lexical_parent(&mut self, module: Module<'a>, span: &mut Span)
                                -> Option<Module<'a>> {
         if !module.expansion.is_descendant_of(span.ctxt().outer()) {
             return Some(self.macro_def_scope(span.remove_mark()));
@@ -1945,22 +1962,41 @@ impl<'a> Resolver<'a> {
             return Some(module.parent.unwrap());
         }
 
-        let mut module_expansion = module.expansion.modern(); // for backward compatibility
-        while let Some(parent) = module.parent {
-            let parent_expansion = parent.expansion.modern();
-            if module_expansion.is_descendant_of(parent_expansion) &&
-               parent_expansion != module_expansion {
-                return if parent_expansion.is_descendant_of(span.ctxt().outer()) {
-                    Some(parent)
-                } else {
-                    None
-                };
-            }
-            module = parent;
-            module_expansion = parent_expansion;
+        None
+    }
+
+    fn hygienic_lexical_parent_with_compatibility_fallback(
+        &mut self, module: Module<'a>, span: &mut Span) -> (Option<Module<'a>>, /* poisoned */ bool
+    ) {
+        if let module @ Some(..) = self.hygienic_lexical_parent(module, span) {
+            return (module, false);
         }
 
-        None
+        // We need to support the next case under a deprecation warning
+        // ```
+        // struct MyStruct;
+        // ---- begin: this comes from a proc macro derive
+        // mod implementation_details {
+        //     // Note that `MyStruct` is not in scope here.
+        //     impl SomeTrait for MyStruct { ... }
+        // }
+        // ---- end
+        // ```
+        // So we have to fall back to the module's parent during lexical resolution in this case.
+        if let Some(parent) = module.parent {
+            // Inner module is inside the macro, parent module is outside of the macro.
+            if module.expansion != parent.expansion &&
+            module.expansion.is_descendant_of(parent.expansion) {
+                // The macro is a proc macro derive
+                if module.expansion.looks_like_proc_macro_derive() {
+                    if parent.expansion.is_descendant_of(span.ctxt().outer()) {
+                        return (module.parent, true);
+                    }
+                }
+            }
+        }
+
+        (None, false)
     }
 
     fn resolve_ident_in_module(&mut self,
@@ -4037,8 +4073,9 @@ impl<'a> Resolver<'a> {
         let mut search_module = self.current_module;
         loop {
             self.get_traits_in_module_containing_item(ident, ns, search_module, &mut found_traits);
-            search_module =
-                unwrap_or!(self.hygienic_lexical_parent(search_module, &mut ident.span), break);
+            search_module = unwrap_or!(
+                self.hygienic_lexical_parent(search_module, &mut ident.span), break
+            );
         }
 
         if let Some(prelude) = self.prelude {
@@ -4395,12 +4432,6 @@ impl<'a> Resolver<'a> {
             (TypeNS, _) => "type",
         };
 
-        let namespace = match ns {
-            ValueNS => "value",
-            MacroNS => "macro",
-            TypeNS => "type",
-        };
-
         let msg = format!("the name `{}` is defined multiple times", name);
 
         let mut err = match (old_binding.is_extern_crate(), new_binding.is_extern_crate()) {
@@ -4418,7 +4449,7 @@ impl<'a> Resolver<'a> {
 
         err.note(&format!("`{}` must be defined only once in the {} namespace of this {}",
                           name,
-                          namespace,
+                          ns.descr(),
                           container));
 
         err.span_label(span, format!("`{}` re{} here", name, new_participle));

@@ -316,6 +316,12 @@ declare_lint! {
     "checks the object safety of where clauses"
 }
 
+declare_lint! {
+    pub PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
+    Warn,
+    "detects proc macro derives using inaccessible names from parent modules"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -372,6 +378,7 @@ impl LintPass for HardwiredLints {
             DUPLICATE_MACRO_EXPORTS,
             INTRA_DOC_LINK_RESOLUTION_FAILURE,
             WHERE_CLAUSES_OBJECT_SAFETY,
+            PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         )
     }
 }
@@ -384,6 +391,7 @@ pub enum BuiltinLintDiagnostics {
     BareTraitObject(Span, /* is_global */ bool),
     AbsPathWithModule(Span),
     DuplicatedMacroExports(ast::Ident, Span, Span),
+    ProcMacroDeriveResolutionFallback(Span),
 }
 
 impl BuiltinLintDiagnostics {
@@ -419,6 +427,10 @@ impl BuiltinLintDiagnostics {
             BuiltinLintDiagnostics::DuplicatedMacroExports(ident, earlier_span, later_span) => {
                 db.span_label(later_span, format!("`{}` already exported", ident));
                 db.span_note(earlier_span, "previous macro export is now shadowed");
+            }
+            BuiltinLintDiagnostics::ProcMacroDeriveResolutionFallback(span) => {
+                db.span_label(span, "names from parent modules are not \
+                                     accessible without an explicit import");
             }
         }
     }

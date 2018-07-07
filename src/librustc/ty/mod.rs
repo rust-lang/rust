@@ -2724,7 +2724,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn adjust_ident(self, mut ident: Ident, scope: DefId, block: NodeId) -> (Ident, DefId) {
         ident = ident.modern();
         let target_expansion = match scope.krate {
-            LOCAL_CRATE => self.hir.definitions().opaque_expansion_that_defined(scope.index),
+            LOCAL_CRATE => self.hir.definitions().expansion_that_defined(scope.index),
             _ => Mark::root(),
         };
         let scope = match ident.span.adjust(target_expansion) {

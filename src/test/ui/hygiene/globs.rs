@@ -57,11 +57,25 @@ macro n($i:ident) {
                 }
             }
         }
+        macro n_with_super($j:ident) {
+            mod test {
+                use super::*;
+                fn g() {
+                    let _: u32 = $i();
+                    let _: () = f();
+                    super::$j();
+                }
+            }
+        }
 
-        n!(f);
+        n!(f); //~ ERROR cannot find function `f` in this scope
+        n_with_super!(f);
         mod test2 {
             super::n! {
                 f //~ ERROR cannot find function `f` in this scope
+            }
+            super::n_with_super! {
+                f
             }
         }
     }

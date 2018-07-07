@@ -72,26 +72,16 @@ pub enum Transparency {
 }
 
 impl Mark {
-    fn fresh_with_data(mark_data: MarkData, data: &mut HygieneData) -> Self {
-        data.marks.push(mark_data);
-        Mark(data.marks.len() as u32 - 1)
-    }
-
     pub fn fresh(parent: Mark) -> Self {
         HygieneData::with(|data| {
-            Mark::fresh_with_data(MarkData {
+            data.marks.push(MarkData {
                 parent,
                 // By default expansions behave like `macro_rules`.
                 default_transparency: Transparency::SemiTransparent,
                 is_builtin: false,
                 expn_info: None,
-            }, data)
-        })
-    }
-
-    pub fn fresh_cloned(clone_from: Mark) -> Self {
-        HygieneData::with(|data| {
-            Mark::fresh_with_data(data.marks[clone_from.0 as usize].clone(), data)
+            });
+            Mark(data.marks.len() as u32 - 1)
         })
     }
 
@@ -125,17 +115,6 @@ impl Mark {
                        self.0, old_info, info);
             }
             *old_info = Some(info);
-        })
-    }
-
-    // FIXME: This operation doesn't really make sense when single macro expansion
-    // can produce tokens with different transparencies. Figure out how to avoid it.
-    pub fn modern(mut self) -> Mark {
-        HygieneData::with(|data| {
-            while data.marks[self.0 as usize].default_transparency != Transparency::Opaque {
-                self = data.marks[self.0 as usize].parent;
-            }
-            self
         })
     }
 
@@ -192,6 +171,24 @@ impl Mark {
             }
 
             b
+        })
+    }
+
+    // Used for enabling some compatibility fallback in resolve.
+    #[inline]
+    pub fn looks_like_proc_macro_derive(self) -> bool {
+        HygieneData::with(|data| {
+            let mark_data = &data.marks[self.0 as usize];
+            if mark_data.default_transparency == Transparency::Opaque {
+                if let Some(expn_info) = &mark_data.expn_info {
+                    if let ExpnFormat::MacroAttribute(name) = expn_info.format {
+                        if name.as_str().starts_with("derive(") {
+                            return true;
+                        }
+                    }
+                }
+            }
+            false
         })
     }
 }
@@ -285,6 +282,7 @@ impl SyntaxContext {
         })
     }
 
+    /// Extend a syntax context with a given mark and default transparency for that mark.
     pub fn apply_mark(self, mark: Mark) -> SyntaxContext {
         assert_ne!(mark, Mark::root());
         self.apply_mark_with_transparency(

@@ -129,6 +129,16 @@ pub enum Namespace {
     MacroNS,
 }
 
+impl Namespace {
+    pub fn descr(self) -> &'static str {
+        match self {
+            TypeNS => "type",
+            ValueNS => "value",
+            MacroNS => "macro",
+        }
+    }
+}
+
 /// Just a helper ‒ separate structure for each namespace.
 #[derive(Copy, Clone, Default, Debug)]
 pub struct PerNS<T> {
