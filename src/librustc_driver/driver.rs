@@ -1279,7 +1279,11 @@ where
                 middle::liveness::check_crate(tcx)
             });
 
-            time(sess, "borrow checking", || borrowck::check_crate(tcx));
+            time(sess, "borrow checking", || {
+                if tcx.use_ast_borrowck() {
+                    borrowck::check_crate(tcx);
+                }
+            });
 
             time(sess,
                  "MIR borrow checking",
