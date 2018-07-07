@@ -261,6 +261,7 @@ impl Builder {
         self.rust_version = self.version("rust", "x86_64-unknown-linux-gnu");
         self.cargo_version = self.version("cargo", "x86_64-unknown-linux-gnu");
         self.rls_version = self.version("rls", "x86_64-unknown-linux-gnu");
+        self.clippy_version = self.version("clippy", "x86_64-unknown-linux-gnu");
         self.rustfmt_version = self.version("rustfmt", "x86_64-unknown-linux-gnu");
         self.llvm_tools_version = self.version("llvm-tools", "x86_64-unknown-linux-gnu");
 
