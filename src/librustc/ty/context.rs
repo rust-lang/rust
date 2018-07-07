@@ -1354,6 +1354,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         !self.sess.opts.debugging_opts.disable_ast_check_for_mutation_in_guard
     }
 
+    /// If true, we should use the AST-based borrowck (we may *also* use
+    /// the MIR-based borrowck).
+    pub fn use_ast_borrowck(self) -> bool {
+        self.borrowck_mode().use_ast()
+    }
+
     /// If true, we should use the MIR-based borrowck (we may *also* use
     /// the AST-based borrowck).
     pub fn use_mir_borrowck(self) -> bool {

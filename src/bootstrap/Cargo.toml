@@ -36,7 +36,7 @@ test = false
 [dependencies]
 build_helper = { path = "../build_helper" }
 cmake = "0.1.23"
-filetime = "0.1"
+filetime = "0.2"
 num_cpus = "1.0"
 getopts = "0.2"
 cc = "1.0.1"
