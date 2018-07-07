@@ -512,18 +512,20 @@ impl Error for JoinPathsError {
 ///
 /// # Unix
 ///
-/// Returns the value of the 'HOME' environment variable if it is set
-/// and not equal to the empty string. Otherwise, it tries to determine the
-/// home directory by invoking the `getpwuid_r` function on the UID of the
-/// current user.
+/// - Returns the value of the 'HOME' environment variable if it is set
+///   (including to an empty string).
+/// - Otherwise, it tries to determine the home directory by invoking the `getpwuid_r` function
+///   using the UID of the current user. An empty home directory field returned from the
+///   `getpwuid_r` function is considered to be a valid value.
+/// - Returns `None` if the current user has no entry in the /etc/passwd file.
 ///
 /// # Windows
 ///
-/// Returns the value of the 'HOME' environment variable if it is
-/// set and not equal to the empty string. Otherwise, returns the value of the
-/// 'USERPROFILE' environment variable if it is set and not equal to the empty
-/// string. If both do not exist, [`GetUserProfileDirectory`][msdn] is used to
-/// return the appropriate path.
+/// - Returns the value of the 'HOME' environment variable if it is set
+///   (including to an empty string).
+/// - Otherwise, returns the value of the 'USERPROFILE' environment variable if it is set
+///   (including to an empty string).
+/// - If both do not exist, [`GetUserProfileDirectory`][msdn] is used to return the path.
 ///
 /// [msdn]: https://msdn.microsoft.com/en-us/library/windows/desktop/bb762280(v=vs.85).aspx
 ///
@@ -533,10 +535,13 @@ impl Error for JoinPathsError {
 /// use std::env;
 ///
 /// match env::home_dir() {
-///     Some(path) => println!("{}", path.display()),
+///     Some(path) => println!("Your home directory, probably: {}", path.display()),
 ///     None => println!("Impossible to get your home dir!"),
 /// }
 /// ```
+#[rustc_deprecated(since = "1.29.0",
+    reason = "This function's behavior is unexpected and probably not what you want. \
+              Consider using the home_dir function from crates.io/crates/dirs instead.")]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn home_dir() -> Option<PathBuf> {
     os_imp::home_dir()
