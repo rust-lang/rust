@@ -53,15 +53,13 @@ impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
     }
 }
 
-/// Every two-phase borrow has *exactly one* use (or else it is not a
-/// proper two-phase borrow under our current definition). However, not
-/// all uses are actually ones that activate the reservation.. In
-/// particular, a shared borrow of a `&mut` does not activate the
-/// reservation.
+/// Location where a two phase borrow is activated, if a borrow
+/// is in fact a two phase borrow.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-crate enum TwoPhaseUse {
-    MutActivate,
-    SharedUse,
+crate enum TwoPhaseActivation {
+    NotTwoPhase,
+    NotActivated,
+    ActivatedAt(Location),
 }
 
 #[derive(Debug)]
@@ -69,9 +67,8 @@ crate struct BorrowData<'tcx> {
     /// Location where the borrow reservation starts.
     /// In many cases, this will be equal to the activation location but not always.
     crate reserve_location: Location,
-    /// Location where the borrow is activated. None if this is not a
-    /// 2-phase borrow.
-    crate activation_location: Option<(TwoPhaseUse, Location)>,
+    /// Location where the borrow is activated.
+    crate activation_location: TwoPhaseActivation,
     /// What kind of borrow this is
     crate kind: mir::BorrowKind,
     /// The region for which this borrow is live
@@ -115,19 +112,6 @@ impl<'tcx> BorrowSet<'tcx> {
         for (block, block_data) in traversal::preorder(mir) {
             visitor.visit_basic_block_data(block, block_data);
         }
-
-        // Double check: We should have found an activation for every pending
-        // activation.
-        assert_eq!(
-            visitor
-                .pending_activations
-                .iter()
-                .find(|&(_local, &borrow_index)| visitor.idx_vec[borrow_index]
-                    .activation_location
-                    .is_none()),
-            None,
-            "never found an activation for this borrow!",
-        );
 
         BorrowSet {
             borrows: visitor.idx_vec,
@@ -183,7 +167,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
                 kind,
                 region,
                 reserve_location: location,
-                activation_location: None,
+                activation_location: TwoPhaseActivation::NotTwoPhase,
                 borrowed_place: borrowed_place.clone(),
                 assigned_place: assigned_place.clone(),
             };
@@ -232,38 +216,43 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
                         return;
                     }
 
-                    if let Some(other_activation) = borrow_data.activation_location {
+                    if let TwoPhaseActivation::ActivatedAt(other_location) =
+                            borrow_data.activation_location {
                         span_bug!(
                             self.mir.source_info(location).span,
                             "found two uses for 2-phase borrow temporary {:?}: \
                              {:?} and {:?}",
                             temp,
                             location,
-                            other_activation,
+                            other_location,
                         );
                     }
 
                     // Otherwise, this is the unique later use
                     // that we expect.
-
-                    let two_phase_use;
-
-                    match context {
+                    borrow_data.activation_location = match context {
                         // The use of TMP in a shared borrow does not
                         // count as an actual activation.
                         PlaceContext::Borrow { kind: mir::BorrowKind::Shared, .. } => {
-                            two_phase_use = TwoPhaseUse::SharedUse;
+                            TwoPhaseActivation::NotActivated
                         }
                         _ => {
-                            two_phase_use = TwoPhaseUse::MutActivate;
+                            // Double check: This borrow is indeed a two-phase borrow (that is,
+                            // we are 'transitioning' from `NotActivated` to `ActivatedAt`) and
+                            // we've not found any other activations (checked above).
+                            assert_eq!(
+                                borrow_data.activation_location,
+                                TwoPhaseActivation::NotActivated,
+                                "never found an activation for this borrow!",
+                            );
+
                             self.activation_map
                                 .entry(location)
                                 .or_insert(Vec::new())
                                 .push(borrow_index);
+                            TwoPhaseActivation::ActivatedAt(location)
                         }
-                    }
-
-                    borrow_data.activation_location = Some((two_phase_use, location));
+                    };
                 }
 
                 None => {}
@@ -341,6 +330,11 @@ impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
                 assigned_place,
             );
         };
+
+        // Consider the borrow not activated to start. When we find an activation, we'll update
+        // this field.
+        let borrow_data = &mut self.idx_vec[borrow_index];
+        borrow_data.activation_location = TwoPhaseActivation::NotActivated;
 
         // Insert `temp` into the list of pending activations. From
         // now on, we'll be on the lookout for a use of it. Note that
