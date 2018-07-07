@@ -1,53 +1,49 @@
 
 # min-llvm-version 4.0
-# ignore-mingw
+# ignore-msvc
 
 -include ../tools.mk
 
-# This test makes sure that the expected .llvmbc sections for use by
-# linker-based LTO are available in object files when compiling with
-# -Z cross-lang-lto
+# This test makes sure that the object files we generate are actually
+# LLVM bitcode files (as used by linker LTO plugins) when compiling with
+# -Z cross-lang-lto.
 
-LLVMBC_SECTION_NAME=\\.llvmbc
+ASSERT_IS_BITCODE_OBJ=llvm-bcanalyzer # this only succeeds for bitcode files
+EXTRACT_OBJS=(cd $(TMPDIR); rm -f ./*.o; llvm-ar x $(1))
 
-ifeq ($(UNAME),Darwin)
-	LLVMBC_SECTION_NAME=__bitcode
-endif
-
-
-OBJDUMP=llvm-objdump
-SECTION_HEADERS=$(OBJDUMP) -section-headers
-
-BUILD_LIB=$(RUSTC) lib.rs -Copt-level=2 -Z cross-lang-lto=no-link -Ccodegen-units=1
-
-BUILD_EXE=$(RUSTC) main.rs -Copt-level=2 -Z cross-lang-lto=no-link -Ccodegen-units=1 --emit=obj
+BUILD_LIB=$(RUSTC) lib.rs -Copt-level=2 -Z cross-lang-lto=on -Ccodegen-units=1
+BUILD_EXE=$(RUSTC) main.rs -Copt-level=2 -Z cross-lang-lto=on -Ccodegen-units=1 --emit=obj
 
 all: staticlib staticlib-fat-lto staticlib-thin-lto rlib exe cdylib rdylib
 
 staticlib: lib.rs
 	$(BUILD_LIB) --crate-type=staticlib -o $(TMPDIR)/liblib.a
-	[ "$$($(SECTION_HEADERS) $(TMPDIR)/liblib.a | grep -c $(LLVMBC_SECTION_NAME))" -ne "0" ]
+	$(call EXTRACT_OBJS, liblib.a)
+	$(ASSERT_IS_BITCODE_OBJ) $(TMPDIR)/liblib.lib0.rcgu.o
 
 staticlib-fat-lto: lib.rs
 	$(BUILD_LIB) --crate-type=staticlib -o $(TMPDIR)/liblib-fat-lto.a -Clto=fat
-	[ "$$($(SECTION_HEADERS) $(TMPDIR)/liblib-fat-lto.a | grep -c $(LLVMBC_SECTION_NAME))" -ne "0" ]
+	$(call EXTRACT_OBJS, liblib-fat-lto.a)
+	$(ASSERT_IS_BITCODE_OBJ) $(TMPDIR)/liblib-fat-lto.lib0.rcgu.o
 
 staticlib-thin-lto: lib.rs
 	$(BUILD_LIB) --crate-type=staticlib -o $(TMPDIR)/liblib-thin-lto.a -Clto=thin
-	[ "$$($(SECTION_HEADERS) $(TMPDIR)/liblib-thin-lto.a | grep -c $(LLVMBC_SECTION_NAME))" -ne "0" ]
+	$(call EXTRACT_OBJS, liblib-thin-lto.a)
+	$(ASSERT_IS_BITCODE_OBJ) $(TMPDIR)/liblib-thin-lto.lib0.rcgu.o
 
 rlib: lib.rs
 	$(BUILD_LIB) --crate-type=rlib -o $(TMPDIR)/liblib.rlib
-	[ "$$($(SECTION_HEADERS) $(TMPDIR)/liblib.rlib | grep -c $(LLVMBC_SECTION_NAME))" -ne "0" ]
+	$(call EXTRACT_OBJS, liblib.rlib)
+	$(ASSERT_IS_BITCODE_OBJ) $(TMPDIR)/liblib.lib0.rcgu.o
 
 cdylib: lib.rs
 	$(BUILD_LIB) --crate-type=cdylib --emit=obj -o $(TMPDIR)/cdylib.o
-	[ "$$($(SECTION_HEADERS) $(TMPDIR)/cdylib.o | grep -c $(LLVMBC_SECTION_NAME))" -ne "0" ]
+	$(ASSERT_IS_BITCODE_OBJ) $(TMPDIR)/cdylib.o
 
 rdylib: lib.rs
 	$(BUILD_LIB) --crate-type=dylib --emit=obj -o $(TMPDIR)/rdylib.o
-	[ "$$($(SECTION_HEADERS) $(TMPDIR)/rdylib.o | grep -c $(LLVMBC_SECTION_NAME))" -ne "0" ]
+	$(ASSERT_IS_BITCODE_OBJ) $(TMPDIR)/rdylib.o
 
 exe: lib.rs
 	$(BUILD_EXE) -o $(TMPDIR)/exe.o
-	[ "$$($(SECTION_HEADERS) $(TMPDIR)/exe.o | grep -c $(LLVMBC_SECTION_NAME))" -ne "0" ]
+	$(ASSERT_IS_BITCODE_OBJ) $(TMPDIR)/exe.o

@@ -288,10 +288,10 @@ impl ModuleConfig {
         self.no_builtins = no_builtins || sess.target.target.options.no_builtins;
         self.time_passes = sess.time_passes();
         self.inline_threshold = sess.opts.cg.inline_threshold;
-        self.obj_is_bitcode = sess.target.target.options.obj_is_bitcode;
+        self.obj_is_bitcode = sess.target.target.options.obj_is_bitcode ||
+                              sess.opts.debugging_opts.cross_lang_lto.enabled();
         let embed_bitcode = sess.target.target.options.embed_bitcode ||
-                            sess.opts.debugging_opts.embed_bitcode ||
-                            sess.opts.debugging_opts.cross_lang_lto.embed_bitcode();
+                            sess.opts.debugging_opts.embed_bitcode;
         if embed_bitcode {
             match sess.opts.optimize {
                 config::OptLevel::No |
@@ -1365,7 +1365,7 @@ fn execute_work_item(cgcx: &CodegenContext,
             // Don't run LTO passes when cross-lang LTO is enabled. The linker
             // will do that for us in this case.
             let needs_lto = needs_lto &&
-                !cgcx.opts.debugging_opts.cross_lang_lto.embed_bitcode();
+                !cgcx.opts.debugging_opts.cross_lang_lto.enabled();
 
             if needs_lto {
                 Ok(WorkItemResult::NeedsLTO(module))
