@@ -8,10 +8,7 @@ LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    = note: FromEnv(F: std::ops::Fn<(&'a (u8, u16),)>) :- FromEnv(Self: Foo<F>).
    = note: Implemented(Self: Foo<F>) :- FromEnv(Self: Foo<F>).
    = note: ProjectionEq(<F as std::ops::FnOnce<(&'a (u8, u16),)>>::Output == &'a u8) :- FromEnv(Self: Foo<F>).
-   = note: WellFormed(Self: Foo<F>) :- Implemented(Self: Foo<F>), WellFormed(F: std::marker::Sized).
-   = note: WellFormed(Self: Foo<F>) :- Implemented(Self: Foo<F>), forall<> { WellFormed(<F as std::ops::FnOnce<(&'a (u8, u16),)>>::Output == &'a u8) }.
-   = note: WellFormed(Self: Foo<F>) :- Implemented(Self: Foo<F>), forall<> { WellFormed(F: std::ops::Fn<(&'a (u8, u16),)>) }.
-   = note: WellFormed(Self: Foo<F>) :- Implemented(Self: Foo<F>), WellFormed(F: std::marker::Sized), forall<> { WellFormed(F: std::ops::Fn<(&'a (u8, u16),)>) }, forall<> { WellFormed(<F as std::ops::FnOnce<(&'a (u8, u16),)>>::Output == &'a u8) }.
+   = note: WellFormed(Self: Foo<F>) :- Implemented(Self: Foo<F>), WellFormed(F: std::marker::Sized), forall<> { WellFormed(F: std::ops::Fn<(&'a (u8, u16),)>) }, forall<> { ProjectionEq(<F as std::ops::FnOnce<(&'a (u8, u16),)>>::Output == &'a u8) }.
 
 error: aborting due to previous error
 
