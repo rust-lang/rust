@@ -681,8 +681,14 @@ where R: 'static + Send,
             }
         }
 
+        if !plugins.is_empty() && plugin_path.is_none() {
+            eprintln!("ERROR: You must pass --plugin-path to use --plugins");
+            std::process::exit(1);
+        }
+
+
         // Load all plugins/passes into a PluginManager
-        let path = plugin_path.unwrap_or("/tmp/rustdoc/plugins".to_string());
+        let path = plugin_path.unwrap_or("/usr/lib64/rustdoc/plugins".to_string());
         let mut pm = plugins::PluginManager::new(PathBuf::from(path));
         for pass in &passes {
             let plugin = match passes::PASSES.iter()
