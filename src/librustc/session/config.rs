@@ -1816,7 +1816,7 @@ pub fn build_session_options_and_crate_config(
         early_error(
                 ErrorOutputType::default(),
                 &format!(
-                    "Edition {} is unstable an only\
+                    "Edition {} is unstable and only \
                     available for nightly builds of rustc.",
                     edition,
                 )
