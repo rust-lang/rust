@@ -40,7 +40,6 @@ use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::attr;
 use syntax_pos::{Span, DUMMY_SP};
-use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -65,7 +64,7 @@ fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert!(def_id.is_local());
 
     let node_id = tcx.hir.as_local_node_id(def_id)
-                     .expect("rvalue_promotable_map invoked with non-local def-id");
+        .expect("rvalue_promotable_map invoked with non-local def-id");
     let body_id = tcx.hir.body_owned_by(node_id);
     let body_hir_id = tcx.hir.node_to_hir_id(body_id.node_id);
     tcx.rvalue_promotable_map(def_id).contains(&body_hir_id.local_id)
@@ -94,7 +93,7 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // `def_id` should be a `Body` owner
     let node_id = tcx.hir.as_local_node_id(def_id)
-                     .expect("rvalue_promotable_map invoked with non-local def-id");
+        .expect("rvalue_promotable_map invoked with non-local def-id");
     let body_id = tcx.hir.body_owned_by(node_id);
     visitor.visit_nested_body(body_id);
 
@@ -117,7 +116,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     // Returns true iff all the values of the type are promotable.
     fn type_has_only_promotable_values(&mut self, ty: Ty<'gcx>) -> bool {
         ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) &&
-        !ty.needs_drop(self.tcx, self.param_env)
+            !ty.needs_drop(self.tcx, self.param_env)
     }
 
     fn handle_const_fn_call(&mut self, def_id: DefId, ret_ty: Ty<'gcx>, span: Span) {
@@ -133,9 +132,9 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
 
         if let Some(&attr::Stability {
             rustc_const_unstable: Some(attr::RustcConstUnstable {
-                feature: ref feature_name
-            }),
-        .. }) = self.tcx.lookup_stability(def_id) {
+                                           feature: ref feature_name
+                                       }),
+            .. }) = self.tcx.lookup_stability(def_id) {
             self.promotable &=
                 // feature-gate is enabled,
                 self.tcx.features()
@@ -143,11 +142,11 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
                     .iter()
                     .any(|&(ref sym, _)| sym == feature_name) ||
 
-                // this comes from a crate with the feature-gate enabled,
-                !def_id.is_local() ||
+                    // this comes from a crate with the feature-gate enabled,
+                    !def_id.is_local() ||
 
-                // this comes from a macro that has #[allow_internal_unstable]
-                span.allows_unstable();
+                    // this comes from a macro that has #[allow_internal_unstable]
+                    span.allows_unstable();
         }
     }
 
@@ -169,12 +168,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        // note that we *do* visit nested bodies, because we override `visit_nested_body` below
-        NestedVisitorMap::None
-    }
-
+impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
         let item_id = self.tcx.hir.body_owner(body_id);
         let item_def_id = self.tcx.hir.local_def_id(item_id);
@@ -206,8 +200,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         euv::ExprUseVisitor::new(self, tcx, param_env, &region_scope_tree, self.tables, None)
             .consume_body(body);
 
-        self.visit_body(body);
-
+        self.visit_expr(&body.value);
         self.in_fn = outer_in_fn;
         self.tables = outer_tables;
         self.param_env = outer_param_env;
@@ -216,27 +209,31 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
 
     fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt) {
         match stmt.node {
-            hir::StmtDecl(ref decl, _) => {
+            hir::StmtDecl(ref decl, _node_id) => {
                 match &decl.node {
                     hir::DeclLocal(local) => {
                         self.promotable = false;
-
                         if self.remove_mut_rvalue_borrow(&local.pat) {
                             if let Some(init) = &local.init {
                                 self.mut_rvalue_borrows.insert(init.id);
                             }
+                        }
+
+                        match local.init {
+                            Some(ref expr) => self.visit_expr(&expr),
+                            None => {},
                         }
                     }
                     // Item statements are allowed
                     hir::DeclItem(_) => {}
                 }
             }
-            hir::StmtExpr(..) |
-            hir::StmtSemi(..) => {
+            hir::StmtExpr(ref box_expr, _node_id) |
+            hir::StmtSemi(ref box_expr, _node_id) => {
+                self.visit_expr(box_expr);
                 self.promotable = false;
             }
         }
-        intravisit::walk_stmt(self, stmt);
     }
 
     fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
@@ -246,20 +243,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         let node_ty = self.tables.node_id_to_type(ex.hir_id);
         check_expr(self, ex, node_ty);
         check_adjustments(self, ex);
-
-        if let hir::ExprMatch(ref discr, ref arms, _) = ex.node {
-            // Compute the most demanding borrow from all the arms'
-            // patterns and set that on the discriminator.
-            let mut mut_borrow = false;
-            for pat in arms.iter().flat_map(|arm| &arm.pats) {
-                mut_borrow = self.remove_mut_rvalue_borrow(pat);
-            }
-            if mut_borrow {
-                self.mut_rvalue_borrows.insert(discr.id);
-            }
-        }
-
-        intravisit::walk_expr(self, ex);
 
         // Handle borrows on (or inside the autorefs of) this expression.
         if self.mut_rvalue_borrows.remove(&ex.id) {
@@ -271,6 +254,16 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         }
         self.promotable &= outer;
     }
+
+    fn visit_block(&mut self, block: &'tcx hir::Block) {
+        for index in block.stmts.iter() {
+            self.visit_stmt(index)
+        }
+        match block.expr {
+            Some(ref box_expr) => { self.visit_expr(&*box_expr) },
+            None => {},
+        }
+    }
 }
 
 /// This function is used to enforce the constraints on
@@ -279,7 +272,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
 /// every nested expression. If the expression is not part
 /// of a const/static item, it is qualified for promotion
 /// instead of producing errors.
-fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node_ty: Ty<'tcx>) {
+fn check_expr<'a, 'tcx>(
+    v: &mut CheckCrateVisitor<'a, 'tcx>,
+    e: &'tcx hir::Expr, node_ty: Ty<'tcx>) {
     match node_ty.sty {
         ty::TyAdt(def, _) if def.has_dtor(v.tcx) => {
             v.promotable = false;
@@ -288,25 +283,30 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
     }
 
     match e.node {
-        hir::ExprUnary(..) |
-        hir::ExprBinary(..) |
-        hir::ExprIndex(..) if v.tables.is_method_call(e) => {
+        hir::ExprBox(ref expr) => {
+            v.visit_expr(&expr);
             v.promotable = false;
         }
-        hir::ExprBox(_) => {
-            v.promotable = false;
-        }
-        hir::ExprUnary(op, _) => {
+        hir::ExprUnary(op, ref expr) => {
+            if v.tables.is_method_call(e) {
+                v.promotable = false;
+            }
             if op == hir::UnDeref {
                 v.promotable = false;
             }
+            v.visit_expr(expr);
         }
-        hir::ExprBinary(op, ref lhs, _) => {
+        hir::ExprBinary(op, ref lhs, ref rhs) => {
+            if v.tables.is_method_call(e) {
+                v.promotable = false;
+            }
+            v.visit_expr(lhs);
+            v.visit_expr(rhs);
             match v.tables.node_id_to_type(lhs.hir_id).sty {
                 ty::TyRawPtr(_) => {
                     assert!(op.node == hir::BiEq || op.node == hir::BiNe ||
-                            op.node == hir::BiLe || op.node == hir::BiLt ||
-                            op.node == hir::BiGe || op.node == hir::BiGt);
+                        op.node == hir::BiLe || op.node == hir::BiLt ||
+                        op.node == hir::BiGe || op.node == hir::BiGt);
 
                     v.promotable = false;
                 }
@@ -314,6 +314,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
         hir::ExprCast(ref from, _) => {
+            v.visit_expr(from);
             debug!("Checking const cast(id={})", from.id);
             match v.tables.cast_kinds().get(from.hir_id) {
                 None => v.tcx.sess.delay_span_bug(e.span, "no kind for cast"),
@@ -379,7 +380,11 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
                 }
             }
         }
-        hir::ExprCall(ref callee, _) => {
+        hir::ExprCall(ref callee, ref hirvec) => {
+            v.visit_expr(callee);
+            for index in hirvec.iter() {
+                v.visit_expr(index)
+            }
             let mut callee = &**callee;
             loop {
                 callee = match callee.node {
@@ -413,7 +418,10 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
                 _ => v.promotable = false
             }
         }
-        hir::ExprMethodCall(..) => {
+        hir::ExprMethodCall(ref _pathsegment, ref _span, ref hirvec) => {
+            for index in hirvec.iter() {
+                v.visit_expr(index)
+            }
             if let Some(def) = v.tables.type_dependent_defs().get(e.hir_id) {
                 let def_id = def.def_id();
                 match v.tcx.associated_item(def_id).container {
@@ -424,7 +432,14 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
                 v.tcx.sess.delay_span_bug(e.span, "no type-dependent def for method call");
             }
         }
-        hir::ExprStruct(..) => {
+        hir::ExprStruct(ref _qpath, ref hirvec, ref option_expr) => {
+            for index in hirvec.iter() {
+                v.visit_expr(&index.expr);
+            }
+            match *option_expr {
+                Some(ref expr) => { v.visit_expr(&expr) },
+                None => {},
+            }
             if let ty::TyAdt(adt, ..) = v.tables.expr_ty(e).sty {
                 // unsafe_cell_type doesn't necessarily exist with no_core
                 if Some(adt.did) == v.tcx.lang_items().unsafe_cell_type() {
@@ -433,11 +448,16 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
 
-        hir::ExprLit(_) |
-        hir::ExprAddrOf(..) |
-        hir::ExprRepeat(..) => {}
+        hir::ExprLit(_) => {}
 
-        hir::ExprClosure(..) => {
+        hir::ExprAddrOf(_, ref expr) |
+        hir::ExprRepeat(ref expr, _) => {
+            v.visit_expr(expr);
+        }
+
+        hir::ExprClosure(_capture_clause, ref _box_fn_decl,
+                         body_id, _span, _option_generator_movability) => {
+            v.visit_nested_body(body_id);
             // Paths in constant contexts cannot refer to local variables,
             // as there are none, and thus closures can't have upvars there.
             if v.tcx.with_freevars(e.id, |fv| !fv.is_empty()) {
@@ -445,7 +465,8 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
 
-        hir::ExprField(ref expr, _) => {
+        hir::ExprField(ref expr, _ident) => {
+            v.visit_expr(expr);
             if let Some(def) = v.tables.expr_ty(expr).ty_adt_def() {
                 if def.is_union() {
                     v.promotable = false
@@ -453,32 +474,113 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
 
-        hir::ExprBlock(..) |
-        hir::ExprIndex(..) |
-        hir::ExprArray(_) |
-        hir::ExprType(..) |
-        hir::ExprTup(..) => {}
+        hir::ExprBlock(ref box_block, ref _option_label) => {
+            v.visit_block(box_block);
+        }
+
+        hir::ExprIndex(ref lhs, ref rhs) => {
+            if v.tables.is_method_call(e) {
+                v.promotable = false;
+            }
+            v.visit_expr(lhs);
+            v.visit_expr(rhs);
+        }
+
+        hir::ExprArray(ref hirvec) => {
+            for index in hirvec.iter() {
+                v.visit_expr(index)
+            }
+        }
+
+        hir::ExprType(ref expr, ref _ty) => {
+            v.visit_expr(expr);
+        }
+
+        hir::ExprTup(ref hirvec) => {
+            for index in hirvec.iter() {
+                v.visit_expr(index)
+            }
+        }
+
 
         // Conditional control flow (possible to implement).
-        hir::ExprMatch(..) |
-        hir::ExprIf(..) |
+        hir::ExprMatch(ref expr, ref hirvec_arm, ref _match_source) => {
+            // Compute the most demanding borrow from all the arms'
+            // patterns and set that on the discriminator.
+            let mut mut_borrow = false;
+            for pat in hirvec_arm.iter().flat_map(|arm| &arm.pats) {
+                mut_borrow = v.remove_mut_rvalue_borrow(pat);
+            }
+            if mut_borrow {
+                v.mut_rvalue_borrows.insert(expr.id);
+            }
+
+            v.visit_expr(expr);
+            for index in hirvec_arm.iter() {
+                v.visit_expr(&*index.body);
+                match index.guard {
+                    Some(ref expr) => v.visit_expr(&expr),
+                    None => {},
+                }
+            }
+            v.promotable = false;
+        }
+
+        hir::ExprIf(ref lhs, ref rhs, ref option_expr) => {
+            v.visit_expr(lhs);
+            v.visit_expr(rhs);
+            match option_expr {
+                Some(ref expr) => v.visit_expr(&expr),
+                None => {},
+            }
+            v.promotable = false;
+        }
 
         // Loops (not very meaningful in constants).
-        hir::ExprWhile(..) |
-        hir::ExprLoop(..) |
+        hir::ExprWhile(ref expr, ref box_block, ref _option_label) => {
+            v.visit_expr(expr);
+            v.visit_block(box_block);
+            v.promotable = false;
+        }
+
+        hir::ExprLoop(ref box_block, ref _option_label, ref _loop_source) => {
+            v.visit_block(box_block);
+            v.promotable = false;
+        }
 
         // More control flow (also not very meaningful).
-        hir::ExprBreak(..) |
-        hir::ExprContinue(_) |
-        hir::ExprRet(_) |
+        hir::ExprBreak(_, ref option_expr) | hir::ExprRet(ref option_expr) => {
+            match *option_expr {
+                Some(ref expr) => { v.visit_expr(&expr) },
+                None => {},
+            }
+            v.promotable = false;
+        }
+
+        hir::ExprContinue(_) => {
+            v.promotable = false;
+        }
 
         // Generator expressions
-        hir::ExprYield(_) |
+        hir::ExprYield(ref expr) => {
+            v.visit_expr(&expr);
+            v.promotable = false;
+        }
 
         // Expressions with side-effects.
-        hir::ExprAssign(..) |
-        hir::ExprAssignOp(..) |
-        hir::ExprInlineAsm(..) => {
+        hir::ExprAssignOp(_, ref lhs, ref rhs) | hir::ExprAssign(ref lhs, ref rhs) => {
+            v.visit_expr(lhs);
+            v.visit_expr(rhs);
+            v.promotable = false;
+        }
+
+        hir::ExprInlineAsm(ref _inline_asm, ref hirvec_lhs, ref hirvec_rhs) => {
+            for index in hirvec_lhs.iter() {
+                v.visit_expr(index)
+            }
+            for index in hirvec_rhs.iter() {
+                v.visit_expr(index)
+            }
             v.promotable = false;
         }
     }
