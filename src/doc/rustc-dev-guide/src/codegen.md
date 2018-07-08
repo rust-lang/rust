@@ -1,7 +1,7 @@
 # Code generation
 
-Code generation or "codegen" is the part of the compiler that actually generates
-an executable binary. rustc uses LLVM for code generation.
+Code generation or "codegen" is the part of the compiler that actually
+generates an executable binary. rustc uses LLVM for code generation.
 
 ## What is LLVM?
 
@@ -24,8 +24,9 @@ many compiler projects, including the `clang` C compiler and our beloved
 
 LLVM's "format `X`" is called LLVM IR. It is basically assembly code with
 additional low-level types and annotations added. These annotations are helpful
-for doing optimizations on the LLVM IR and outputed machine code. The end result
-of all this is (at long last) something executable (e.g. an ELF object or wasm).
+for doing optimizations on the LLVM IR and outputed machine code. The end
+result of all this is (at long last) something executable (e.g. an ELF object
+or wasm).
 
 There are a few benefits to using LLVM:
 
@@ -38,8 +39,8 @@ There are a few benefits to using LLVM:
   clang, and a bunch of other languages were able to compile to wasm! (Well,
   there was some extra stuff to be done, but we were 90% there anyway).
 - We and other compiler projects benefit from each other. For example, when the
-  [Spectre and Meltdown security vulnerabilities][spectre] were discovered, only LLVM
-  needed to be patched.
+  [Spectre and Meltdown security vulnerabilities][spectre] were discovered,
+  only LLVM needed to be patched.
 
 [spectre]: https://meltdownattack.com/
 
