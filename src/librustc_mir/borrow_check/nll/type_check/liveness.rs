@@ -22,7 +22,7 @@ use rustc::ty::{Ty, TypeFoldable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use std::rc::Rc;
-use util::liveness::LivenessResults;
+use util::liveness::{LivenessResults, LiveVariableMap};
 
 use super::TypeChecker;
 
@@ -34,10 +34,10 @@ use super::TypeChecker;
 ///
 /// NB. This computation requires normalization; therefore, it must be
 /// performed before
-pub(super) fn generate<'gcx, 'tcx>(
+pub(super) fn generate<'gcx, 'tcx, V: LiveVariableMap>(
     cx: &mut TypeChecker<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
-    liveness: &LivenessResults<Local>,
+    liveness: &LivenessResults<V>,
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) {
@@ -55,16 +55,17 @@ pub(super) fn generate<'gcx, 'tcx>(
     }
 }
 
-struct TypeLivenessGenerator<'gen, 'typeck, 'flow, 'gcx, 'tcx>
+struct TypeLivenessGenerator<'gen, 'typeck, 'flow, 'gcx, 'tcx, V: LiveVariableMap>
 where
     'typeck: 'gen,
     'flow: 'gen,
     'tcx: 'typeck + 'flow,
     'gcx: 'tcx,
+    V: 'gen,
 {
     cx: &'gen mut TypeChecker<'typeck, 'gcx, 'tcx>,
     mir: &'gen Mir<'tcx>,
-    liveness: &'gen LivenessResults<Local>,
+    liveness: &'gen LivenessResults<V>,
     flow_inits: &'gen mut FlowAtLocation<MaybeInitializedPlaces<'flow, 'gcx, 'tcx>>,
     move_data: &'gen MoveData<'tcx>,
     drop_data: FxHashMap<Ty<'tcx>, DropData<'tcx>>,
@@ -75,7 +76,7 @@ struct DropData<'tcx> {
     region_constraint_data: Option<Rc<Vec<QueryRegionConstraint<'tcx>>>>,
 }
 
-impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flow, 'gcx, 'tcx> {
+impl<'gen, 'typeck, 'flow, 'gcx, 'tcx, V:LiveVariableMap> TypeLivenessGenerator<'gen, 'typeck, 'flow, 'gcx, 'tcx, V> {
     /// Liveness constraints:
     ///
     /// > If a variable V is live at point P, then all regions R in the type of V
@@ -92,7 +93,7 @@ impl<'gen, 'typeck, 'flow, 'gcx, 'tcx> TypeLivenessGenerator<'gen, 'typeck, 'flo
                 }
             });
 
-        let mut all_live_locals: Vec<(Location, Vec<Local>)> = vec![];
+        let mut all_live_locals: Vec<(Location, Vec<V::LiveVar>)> = vec![];
         self.liveness
             .drop
             .simulate_block(self.mir, bb, |location, live_locals| {
