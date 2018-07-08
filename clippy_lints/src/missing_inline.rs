@@ -169,28 +169,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
         };
 
         let def_id = cx.tcx.hir.local_def_id(impl_item.id);
-        match cx.tcx.associated_item(def_id).container {
-            TraitContainer(cid) => {
-                if let Some(n) = cx.tcx.hir.as_local_node_id(cid) {
-                    if !cx.access_levels.is_exported(n) {
-                        // If a trait is being implemented for an item, and the
-                        // trait is not exported, we don't need #[inline]
-                        return;
-                    }
+        let trait_def_id = match cx.tcx.associated_item(def_id).container {
+            TraitContainer(cid) => Some(cid),
+            ImplContainer(cid) => cx.tcx.impl_trait_ref(cid).map(|t| t.def_id),
+        };
+
+        if let Some(trait_def_id) = trait_def_id {
+            if let Some(n) = cx.tcx.hir.as_local_node_id(trait_def_id) {
+                if !cx.access_levels.is_exported(n) {
+                    // If a trait is being implemented for an item, and the
+                    // trait is not exported, we don't need #[inline]
+                    return;
                 }
-            },
-            ImplContainer(cid) => {
-                if cx.tcx.impl_trait_ref(cid).is_some() {
-                    let trait_ref = cx.tcx.impl_trait_ref(cid).unwrap();
-                    if let Some(n) = cx.tcx.hir.as_local_node_id(trait_ref.def_id) {
-                        if !cx.access_levels.is_exported(n) {
-                            // If a trait is being implemented for an item, and the
-                            // trait is not exported, we don't need #[inline]
-                            return;
-                        }
-                    }
-                }
-            },
+            }
         }
 
         check_missing_inline_attrs(cx, &impl_item.attrs, impl_item.span, desc);
