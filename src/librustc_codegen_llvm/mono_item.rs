@@ -33,7 +33,6 @@ use std::fmt;
 
 pub use rustc::mir::mono::MonoItem;
 
-pub use rustc_mir::monomorphize::item::*;
 pub use rustc_mir::monomorphize::item::MonoItemExt as BaseMonoItemExt;
 
 pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {

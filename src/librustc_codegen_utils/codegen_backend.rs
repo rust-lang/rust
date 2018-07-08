@@ -22,15 +22,13 @@
 #![feature(box_syntax)]
 
 use std::any::Any;
-use std::io::prelude::*;
-use std::io::{self, Cursor};
+use std::io::{self, Write};
 use std::fs::File;
 use std::path::Path;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::sync::Lrc;
-use ar::{Archive, Builder, Header};
 use flate2::Compression;
 use flate2::write::DeflateEncoder;
 
@@ -81,89 +79,21 @@ pub trait CodegenBackend {
     ) -> Result<(), CompileIncomplete>;
 }
 
-pub struct DummyCodegenBackend;
-
-impl CodegenBackend for DummyCodegenBackend {
-    fn metadata_loader(&self) -> Box<MetadataLoader + Sync> {
-        box DummyMetadataLoader(())
-    }
-
-    fn provide(&self, _providers: &mut Providers) {
-        bug!("DummyCodegenBackend::provide");
-    }
-
-    fn provide_extern(&self, _providers: &mut Providers) {
-        bug!("DummyCodegenBackend::provide_extern");
-    }
-
-    fn codegen_crate<'a, 'tcx>(
-        &self,
-        _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        _rx: mpsc::Receiver<Box<Any + Send>>
-    ) -> Box<Any> {
-        bug!("DummyCodegenBackend::codegen_backend");
-    }
-
-    fn join_codegen_and_link(
-        &self,
-        _ongoing_codegen: Box<Any>,
-        _sess: &Session,
-        _dep_graph: &DepGraph,
-        _outputs: &OutputFilenames,
-    ) -> Result<(), CompileIncomplete> {
-        bug!("DummyCodegenBackend::join_codegen_and_link");
-    }
-}
-
-pub struct DummyMetadataLoader(());
-
-impl MetadataLoader for DummyMetadataLoader {
-    fn get_rlib_metadata(
-        &self,
-        _target: &Target,
-        _filename: &Path
-    ) -> Result<MetadataRef, String> {
-        bug!("DummyMetadataLoader::get_rlib_metadata");
-    }
-
-    fn get_dylib_metadata(
-        &self,
-        _target: &Target,
-        _filename: &Path
-    ) -> Result<MetadataRef, String> {
-        bug!("DummyMetadataLoader::get_dylib_metadata");
-    }
-}
-
 pub struct NoLlvmMetadataLoader;
 
 impl MetadataLoader for NoLlvmMetadataLoader {
     fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<MetadataRef, String> {
-        let file = File::open(filename)
+        let mut file = File::open(filename)
             .map_err(|e| format!("metadata file open err: {:?}", e))?;
-        let mut archive = Archive::new(file);
 
-        while let Some(entry_result) = archive.next_entry() {
-            let mut entry = entry_result
-                .map_err(|e| format!("metadata section read err: {:?}", e))?;
-            if entry.header().identifier() == "rust.metadata.bin" {
-                let mut buf = Vec::new();
-                io::copy(&mut entry, &mut buf).unwrap();
-                let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
-                return Ok(rustc_erase_owner!(buf.map_owner_box()));
-            }
-        }
-
-        Err("Couldn't find metadata section".to_string())
+        let mut buf = Vec::new();
+        io::copy(&mut file, &mut buf).unwrap();
+        let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
+        return Ok(rustc_erase_owner!(buf.map_owner_box()));
     }
 
-    fn get_dylib_metadata(
-        &self,
-        _target: &Target,
-        _filename: &Path,
-    ) -> Result<MetadataRef, String> {
-        // FIXME: Support reading dylibs from llvm enabled rustc
-        self.get_rlib_metadata(_target, _filename)
+    fn get_dylib_metadata(&self, target: &Target, filename: &Path) -> Result<MetadataRef, String> {
+        self.get_rlib_metadata(target, filename)
     }
 }
 
@@ -205,8 +135,13 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         providers.target_features_whitelist = |_tcx, _cnum| {
             Lrc::new(FxHashMap()) // Just a dummy
         };
+        providers.is_reachable_non_generic = |_tcx, _defid| true;
+        providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());
+        providers.wasm_custom_sections = |_tcx, _crate| Lrc::new(Vec::new());
     }
-    fn provide_extern(&self, _providers: &mut Providers) {}
+    fn provide_extern(&self, providers: &mut Providers) {
+        providers.is_reachable_non_generic = |_tcx, _defid| true;
+    }
 
     fn codegen_crate<'a, 'tcx>(
         &self,
@@ -225,7 +160,8 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
                 collector::MonoItemCollectionMode::Eager
             ).0.iter()
         );
-        ::rustc::middle::dependency_format::calculate(tcx);
+        // FIXME: Fix this
+        // ::rustc::middle::dependency_format::calculate(tcx);
         let _ = tcx.link_args(LOCAL_CRATE);
         let _ = tcx.native_libraries(LOCAL_CRATE);
         for mono_item in
@@ -280,9 +216,8 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
             } else {
                 &ongoing_codegen.metadata.raw_data
             };
-            let mut builder = Builder::new(File::create(&output_name).unwrap());
-            let header = Header::new("rust.metadata.bin".to_string(), metadata.len() as u64);
-            builder.append(&header, Cursor::new(metadata)).unwrap();
+            let mut file = File::create(&output_name).unwrap();
+            file.write_all(metadata).unwrap();
         }
 
         sess.abort_if_errors();

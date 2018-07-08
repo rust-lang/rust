@@ -16,7 +16,7 @@ use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
 use rustc_target::spec::PanicStrategy;
 use rustc_target::abi::FloatTy;
-use mono_item::DefPathBasedNames;
+use rustc_mir::monomorphize::item::DefPathBasedNames;
 use type_::Type;
 
 use std::fmt::Write;

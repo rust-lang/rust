@@ -56,6 +56,7 @@ use builder::{Builder, MemFlags};
 use callee;
 use common::{C_bool, C_bytes_in_context, C_i32, C_usize};
 use rustc_mir::monomorphize::collector::{self, MonoItemCollectionMode};
+use rustc_mir::monomorphize::item::DefPathBasedNames;
 use common::{self, C_struct_in_context, C_array, val_ty};
 use consts;
 use context::{self, CodegenCx};
@@ -67,7 +68,7 @@ use monomorphize::Instance;
 use monomorphize::partitioning::{self, PartitioningStrategy, CodegenUnit, CodegenUnitExt};
 use rustc_codegen_utils::symbol_names_test;
 use time_graph;
-use mono_item::{MonoItem, BaseMonoItemExt, MonoItemExt, DefPathBasedNames};
+use mono_item::{MonoItem, BaseMonoItemExt, MonoItemExt};
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use rustc::util::nodemap::{FxHashMap, FxHashSet, DefIdSet};
@@ -92,7 +93,7 @@ use syntax::ast;
 
 use mir::operand::OperandValue;
 
-pub use rustc_codegen_utils::check_for_rustc_errors_attr;
+use rustc_codegen_utils::check_for_rustc_errors_attr;
 
 pub struct StatRecorder<'a, 'tcx: 'a> {
     cx: &'a CodegenCx<'a, 'tcx>,

@@ -58,11 +58,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ar"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
 name = "arena"
 version = "0.0.0"
 dependencies = [
@@ -2031,7 +2026,6 @@ dependencies = [
 name = "rustc_codegen_utils"
 version = "0.0.0"
 dependencies = [
- "ar 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
@@ -2072,7 +2066,6 @@ dependencies = [
 name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
- "ar 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "arena 0.0.0",
  "env_logger 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "graphviz 0.0.0",
@@ -3077,7 +3070,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum aho-corasick 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)" = "f0ba20154ea1f47ce2793322f049c5646cc6d0fa9759d5f333f286e507bf8080"
 "checksum ammonia 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fd4c682378117e4186a492b2252b9537990e1617f44aed9788b9a1149de45477"
 "checksum ansi_term 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
-"checksum ar 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "35c7a5669cb64f085739387e1308b74e6d44022464b7f1b63bbd4ceb6379ec31"
 "checksum arrayvec 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)" = "a1e964f9e24d588183fcb43503abda40d288c8657dfc27311516ce2f05675aef"
 "checksum assert_cli 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "98589b0e465a6c510d95fceebd365bb79bedece7f6e18a480897f2015f85ec51"
 "checksum atty 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)" = "2fc4a1aa4c24c0718a250f0681885c1af91419d242f29eb8f2ab28502d80dbd1"

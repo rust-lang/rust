@@ -59,7 +59,6 @@ static WHITELIST_CRATES: &'static [CrateVersion] = &[
 /// Whitelist of crates rustc is allowed to depend on. Avoid adding to the list if possible.
 static WHITELIST: &'static [Crate] = &[
     Crate("aho-corasick"),
-    Crate("ar"),
     Crate("arrayvec"),
     Crate("atty"),
     Crate("backtrace"),
