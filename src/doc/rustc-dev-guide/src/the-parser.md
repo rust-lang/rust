@@ -22,10 +22,10 @@ The `syntax` crate contains several main players,
 - and a [visit module] for walking the AST and inspecting or mutating the AST
   nodes.
 
-The main entrypoint to the parser is via the various `parse_*` functions
-in the [parser module]. They let you do things like turn a filemap into a
-token stream, create a parser from the token stream, and then execute the
-parser to get a `Crate` (the root AST node).
+The main entrypoint to the parser is via the various `parse_*` functions in the
+[parser module]. They let you do things like turn a [`FileMap`][filemap] (e.g.
+the source in a single file) into a token stream, create a parser from the
+token stream, and then execute the parser to get a `Crate` (the root AST node).
 
 To minimise the amount of copying that is done, both the `StringReader` and
 `Parser` have lifetimes which bind them to the parent `ParseSess`. This contains
@@ -40,3 +40,4 @@ all the information needed while parsing, as well as the `CodeMap` itself.
 [`Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/parse/parser/struct.Parser.html
 [`StringReader`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/parse/lexer/struct.StringReader.html
 [visit module]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/visit/index.html
+[filemap]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/codemap/struct.FileMap.html
