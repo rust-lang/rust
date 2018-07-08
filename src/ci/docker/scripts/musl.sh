@@ -72,3 +72,6 @@ cmake ../libunwind-release_$LLVM \
 hide_output make -j$(nproc)
 cp lib/libunwind.a /musl-$TAG/lib
 cd ../ && rm -rf libunwind-build
+
+# Copy libgcc since musl may depend on symbols defined in it
+cp $($CC $CFLAGS -print-libgcc-file-name) /musl-$TAG/lib
