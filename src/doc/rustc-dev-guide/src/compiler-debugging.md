@@ -1,8 +1,3 @@
----
-layout: default
-title: Debugging the Compiler
----
-
 **Note: This is copied from the 
 [rust-forge](https://github.com/rust-lang-nursery/rust-forge). If anything needs
  updating, please open an issue or make a PR on the github repo.**
