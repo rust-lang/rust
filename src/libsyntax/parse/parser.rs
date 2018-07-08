@@ -6135,6 +6135,22 @@ impl<'a> Parser<'a> {
                 err.span_suggestion_short_with_applicability(
                     self.span, msg, "".to_string(), Applicability::MachineApplicable
                 );
+                if !items.is_empty() {  // Issue #51603
+                    let previous_item = &items[items.len()-1];
+                    let previous_item_kind_name = match previous_item.node {
+                        // say "braced struct" because tuple-structs and
+                        // braceless-empty-struct declarations do take a semicolon
+                        ItemKind::Struct(..) => Some("braced struct"),
+                        ItemKind::Enum(..) => Some("enum"),
+                        ItemKind::Trait(..) => Some("trait"),
+                        ItemKind::Union(..) => Some("union"),
+                        _ => None,
+                    };
+                    if let Some(name) = previous_item_kind_name {
+                        err.help(&format!("{} declarations are not followed by a semicolon",
+                                          name));
+                    }
+                }
             } else {
                 err.span_label(self.span, "expected item");
             }
