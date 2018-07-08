@@ -356,9 +356,9 @@ impl File {
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    /// let mut f = File::open("foo.txt")?;
-    /// # Ok(())
-    /// # }
+    ///     let mut f = File::open("foo.txt")?;
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn open<P: AsRef<Path>>(path: P) -> io::Result<File> {
