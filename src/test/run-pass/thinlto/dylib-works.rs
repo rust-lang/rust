@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:dylib.rs
-// min-llvm-version 4.0
 
 extern crate dylib;
 

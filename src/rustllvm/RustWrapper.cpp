@@ -492,13 +492,8 @@ inline LLVMRustDIFlags visibility(LLVMRustDIFlags F) {
   return static_cast<LLVMRustDIFlags>(static_cast<uint32_t>(F) & 0x3);
 }
 
-#if LLVM_VERSION_GE(4, 0)
 static DINode::DIFlags fromRust(LLVMRustDIFlags Flags) {
   DINode::DIFlags Result = DINode::DIFlags::FlagZero;
-#else
-static unsigned fromRust(LLVMRustDIFlags Flags) {
-  unsigned Result = 0;
-#endif
 
   switch (visibility(Flags)) {
   case LLVMRustDIFlags::FlagPrivate:
@@ -565,14 +560,12 @@ static unsigned fromRust(LLVMRustDIFlags Flags) {
   if (isSet(Flags & LLVMRustDIFlags::FlagBitField)) {
     Result |= DINode::DIFlags::FlagBitField;
   }
-#if LLVM_RUSTLLVM || LLVM_VERSION_GE(4, 0)
   if (isSet(Flags & LLVMRustDIFlags::FlagNoReturn)) {
     Result |= DINode::DIFlags::FlagNoReturn;
   }
   if (isSet(Flags & LLVMRustDIFlags::FlagMainSubprogram)) {
     Result |= DINode::DIFlags::FlagMainSubprogram;
   }
-#endif
 
   return Result;
 }
@@ -612,14 +605,8 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateCompileUnit(
     unsigned RuntimeVer, const char *SplitName) {
   auto *File = unwrapDI<DIFile>(FileRef);
 
-#if LLVM_VERSION_GE(4, 0)
   return wrap(Builder->createCompileUnit(Lang, File, Producer, isOptimized,
                                          Flags, RuntimeVer, SplitName));
-#else
-  return wrap(Builder->createCompileUnit(Lang, File->getFilename(),
-      File->getDirectory(), Producer, isOptimized,
-      Flags, RuntimeVer, SplitName));
-#endif
 }
 
 extern "C" LLVMMetadataRef
@@ -657,11 +644,7 @@ extern "C" LLVMMetadataRef
 LLVMRustDIBuilderCreateBasicType(LLVMRustDIBuilderRef Builder, const char *Name,
                                  uint64_t SizeInBits, uint32_t AlignInBits,
                                  unsigned Encoding) {
-  return wrap(Builder->createBasicType(Name, SizeInBits,
-#if LLVM_VERSION_LE(3, 9)
-                                       AlignInBits,
-#endif
-                                       Encoding));
+  return wrap(Builder->createBasicType(Name, SizeInBits, Encoding));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreatePointerType(
@@ -722,7 +705,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
     LLVMMetadataRef Decl = nullptr, uint32_t AlignInBits = 0) {
   llvm::GlobalVariable *InitVal = cast<llvm::GlobalVariable>(unwrap(V));
 
-#if LLVM_VERSION_GE(4, 0)
   llvm::DIExpression *InitExpr = nullptr;
   if (llvm::ConstantInt *IntVal = llvm::dyn_cast<llvm::ConstantInt>(InitVal)) {
     InitExpr = Builder->createConstantValueExpression(
@@ -741,12 +723,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
   InitVal->setMetadata("dbg", VarExpr);
 
   return wrap(VarExpr);
-#else
-  return wrap(Builder->createGlobalVariable(
-      unwrapDI<DIDescriptor>(Context), Name, LinkageName,
-      unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
-      InitVal, unwrapDIPtr<MDNode>(Decl)));
-#endif
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariable(
@@ -757,12 +733,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariable(
   if (Tag == 0x100) { // DW_TAG_auto_variable
     return wrap(Builder->createAutoVariable(
         unwrapDI<DIDescriptor>(Scope), Name, unwrapDI<DIFile>(File), LineNo,
-        unwrapDI<DIType>(Ty), AlwaysPreserve, fromRust(Flags)
-#if LLVM_VERSION_GE(4, 0)
-        ,
-  AlignInBits
-#endif
-        ));
+        unwrapDI<DIType>(Ty), AlwaysPreserve, fromRust(Flags), AlignInBits));
   } else {
     return wrap(Builder->createParameterVariable(
         unwrapDI<DIDescriptor>(Scope), Name, ArgNo, unwrapDI<DIFile>(File),

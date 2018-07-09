@@ -256,12 +256,12 @@ fn check_llvm_version(builder: &Builder, llvm_config: &Path) {
     let version = output(cmd.arg("--version"));
     let mut parts = version.split('.').take(2)
         .filter_map(|s| s.parse::<u32>().ok());
-    if let (Some(major), Some(minor)) = (parts.next(), parts.next()) {
-        if major > 3 || (major == 3 && minor >= 9) {
+    if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
+        if major >= 5 {
             return
         }
     }
-    panic!("\n\nbad LLVM version: {}, need >=3.9\n\n", version)
+    panic!("\n\nbad LLVM version: {}, need >=5.0\n\n", version)
 }
 
 fn configure_cmake(builder: &Builder,

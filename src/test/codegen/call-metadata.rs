@@ -12,8 +12,6 @@
 // scalar value.
 
 // compile-flags: -C no-prepopulate-passes
-// min-llvm-version 4.0
-
 
 #![crate_type = "lib"]
 

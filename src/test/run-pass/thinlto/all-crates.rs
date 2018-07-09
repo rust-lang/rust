@@ -10,7 +10,6 @@
 
 // compile-flags: -Clto=thin
 // no-prefer-dynamic
-// min-llvm-version 4.0
 
 fn main() {
     println!("hello!");

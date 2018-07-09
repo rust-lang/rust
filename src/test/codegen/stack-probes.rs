@@ -21,7 +21,6 @@
 // ignore-wasm
 // ignore-emscripten
 // ignore-windows
-// min-system-llvm-version 5.0
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]

@@ -22,7 +22,7 @@ use builder::Builder;
 use common::{CodegenCx, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::Instance;
-use abi::{ArgAttribute, ArgTypeExt, FnType, FnTypeExt, PassMode};
+use abi::{ArgTypeExt, FnType, FnTypeExt, PassMode};
 use type_::Type;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
@@ -430,10 +430,6 @@ fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
         None
     };
 
-    let deref_op = unsafe {
-        [llvm::LLVMRustDIBuilderCreateOpDeref()]
-    };
-
     mir.args_iter().enumerate().map(|(arg_index, local)| {
         let arg_decl = &mir.local_decls[local];
 
@@ -543,21 +539,11 @@ fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
             if arg_index > 0 || mir.upvar_decls.is_empty() {
                 // The Rust ABI passes indirect variables using a pointer and a manual copy, so we
                 // need to insert a deref here, but the C ABI uses a pointer and a copy using the
-                // byval attribute, for which LLVM does the deref itself, so we must not add it.
-                // Starting with D31439 in LLVM 5, it *always* does the deref itself.
-                let mut variable_access = VariableAccess::DirectVariable {
+                // byval attribute, for which LLVM always does the deref itself,
+                // so we must not add it.
+                let variable_access = VariableAccess::DirectVariable {
                     alloca: place.llval
                 };
-                if unsafe { llvm::LLVMRustVersionMajor() < 5 } {
-                    if let PassMode::Indirect(ref attrs) = arg.mode {
-                        if !attrs.contains(ArgAttribute::ByVal) {
-                            variable_access = VariableAccess::IndirectVariable {
-                                alloca: place.llval,
-                                address_operations: &deref_op,
-                            };
-                        }
-                    }
-                }
 
                 declare_local(
                     bx,
