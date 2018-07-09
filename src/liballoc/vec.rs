@@ -810,7 +810,7 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap_remove(&mut self, index: usize) -> T {
         unsafe {
-            // We replace self[index] with the last element. Note that if the 
+            // We replace self[index] with the last element. Note that if the
             // bounds check on hole succeeds there must be a last element (which
             // can be self[index] itself).
             let hole: *mut T = &mut self[index];
