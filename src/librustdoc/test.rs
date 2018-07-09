@@ -232,31 +232,35 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         ..config::basic_options().clone()
     };
 
+    // Shuffle around a few input and output handles here. We're going to pass
+    // an explicit handle into rustc to collect output messages, but we also
+    // want to catch the error message that rustc prints when it fails.
+    //
+    // We take our thread-local stderr (likely set by the test runner) and replace
+    // it with a sink that is also passed to rustc itself. When this function
+    // returns the output of the sink is copied onto the output of our own thread.
+    //
+    // The basic idea is to not use a default Handler for rustc, and then also
+    // not print things by default to the actual stderr.
+    struct Sink(Arc<Mutex<Vec<u8>>>);
+    impl Write for Sink {
+        fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+            Write::write(&mut *self.0.lock().unwrap(), data)
+        }
+        fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    }
+    struct Bomb(Arc<Mutex<Vec<u8>>>, Box<Write+Send>);
+    impl Drop for Bomb {
+        fn drop(&mut self) {
+            let _ = self.1.write_all(&self.0.lock().unwrap());
+        }
+    }
+    let data = Arc::new(Mutex::new(Vec::new()));
+
+    let old = io::set_panic(Some(box Sink(data.clone())));
+    let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
+
     let (libdir, outdir) = driver::spawn_thread_pool(sessopts, |sessopts| {
-        // Shuffle around a few input and output handles here. We're going to pass
-        // an explicit handle into rustc to collect output messages, but we also
-        // want to catch the error message that rustc prints when it fails.
-        //
-        // We take our thread-local stderr (likely set by the test runner) and replace
-        // it with a sink that is also passed to rustc itself. When this function
-        // returns the output of the sink is copied onto the output of our own thread.
-        //
-        // The basic idea is to not use a default Handler for rustc, and then also
-        // not print things by default to the actual stderr.
-        struct Sink(Arc<Mutex<Vec<u8>>>);
-        impl Write for Sink {
-            fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-                Write::write(&mut *self.0.lock().unwrap(), data)
-            }
-            fn flush(&mut self) -> io::Result<()> { Ok(()) }
-        }
-        struct Bomb(Arc<Mutex<Vec<u8>>>, Box<Write+Send>);
-        impl Drop for Bomb {
-            fn drop(&mut self) {
-                let _ = self.1.write_all(&self.0.lock().unwrap());
-            }
-        }
-        let data = Arc::new(Mutex::new(Vec::new()));
         let codemap = Lrc::new(CodeMap::new_doctest(
             sessopts.file_path_mapping(), filename.clone(), line as isize - line_offset as isize
         ));
@@ -264,8 +268,6 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
                                                         Some(codemap.clone()),
                                                         false,
                                                         false);
-        let old = io::set_panic(Some(box Sink(data.clone())));
-        let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 
         // Compile the code
         let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
