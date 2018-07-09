@@ -89,7 +89,7 @@ mod back {
     mod command;
     pub mod linker;
     pub mod link;
-    mod lto;
+    pub mod lto;
     pub mod symbol_export;
     pub mod write;
     mod rpath;
