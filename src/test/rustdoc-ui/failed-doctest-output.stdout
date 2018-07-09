@@ -1,0 +1,21 @@
+
+running 1 test
+test src/test/rustdoc-ui/failed-doctest-output.rs - SomeStruct (line 16) ... FAILED
+
+failures:
+
+---- src/test/rustdoc-ui/failed-doctest-output.rs - SomeStruct (line 16) stdout ----
+thread 'src/test/rustdoc-ui/failed-doctest-output.rs - SomeStruct (line 16)' panicked at 'test executable failed:
+
+thread 'main' panicked at 'oh no', src/test/rustdoc-ui/failed-doctest-output.rs:3:1
+note: Run with `RUST_BACKTRACE=1` for a backtrace.
+
+', librustdoc/test.rs:367:17
+note: Run with `RUST_BACKTRACE=1` for a backtrace.
+
+
+failures:
+    src/test/rustdoc-ui/failed-doctest-output.rs - SomeStruct (line 16)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
+
