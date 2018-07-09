@@ -84,6 +84,13 @@ use syntax::{ast, ptr};
 
 pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -> Option<String> {
     debug!("rewrite_chain {:?}", shape);
+    match context.config.indent_style() {
+        IndentStyle::Block => rewrite_chain_block(expr, context, shape),
+        IndentStyle::Visual => rewrite_chain_visual(expr, context, shape),
+    }
+}
+
+fn rewrite_chain_block(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -> Option<String> {
     let total_span = expr.span;
     let (parent, subexpr_list) = make_subexpr_list(expr, context);
 
@@ -96,14 +103,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let prefix_try_num = subexpr_list.iter().rev().take_while(|e| is_try(e)).count();
 
     // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
-    let parent_shape = if is_block_expr(context, &parent, "\n") {
-        match context.config.indent_style() {
-            IndentStyle::Block => shape,
-            IndentStyle::Visual => shape.visual_indent(0),
-        }
-    } else {
-        shape
-    };
+    let parent_shape = shape;
     let parent_rewrite = parent
         .rewrite(context, parent_shape)
         .map(|parent_rw| parent_rw + &"?".repeat(prefix_try_num))?;
@@ -114,29 +114,14 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     // Decide how to layout the rest of the chain. `extend` is true if we can
     // put the first non-parent item on the same line as the parent.
     let (nested_shape, extend) = if !parent_rewrite_contains_newline && is_continuable(&parent) {
-        match context.config.indent_style() {
-            IndentStyle::Block => {
-                // TODO this is naive since if the first child is on the same line
-                // as the parent, then we should look at that, instead of the parent.
-                // Can we make the parent the first two things then?
-                let shape = if parent_is_block {
-                    shape
-                } else {
-                    chain_indent(context, shape.add_offset(parent_rewrite.len()))
-                };
-                (shape, is_small_parent)
-            }
-            // TODO is this right?
-            IndentStyle::Visual => (chain_indent(context, shape.add_offset(parent_rewrite.len())), true),
-        }
+        let shape = if parent_is_block {
+            shape
+        } else {
+            chain_indent(context, shape.add_offset(parent_rewrite.len()))
+        };
+        (shape, is_small_parent)
     } else if parent_is_block {
-        match context.config.indent_style() {
-            // Try to put the first child on the same line with parent's last line
-            IndentStyle::Block => (parent_shape, true),
-            // The parent is a block, so align the rest of the chain with the closing
-            // brace.
-            IndentStyle::Visual => (parent_shape, false),
-        }
+        (parent_shape, true)
     } else {
         (
             chain_indent(context, shape.add_offset(parent_rewrite.len())),
@@ -147,21 +132,13 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let other_child_shape = nested_shape.with_max_width(context.config);
 
     let first_child_shape = if extend {
-        match context.config.indent_style() {
-            IndentStyle::Block => {
-                let offset = trimmed_last_line_width(&parent_rewrite) + prefix_try_num;
-                if parent_is_block {
-                    parent_shape.offset_left(offset)?
-                } else {
-                    parent_shape
-                        .block_indent(context.config.tab_spaces())
-                        .offset_left(offset)?
-                }
-            }
-            IndentStyle::Visual => {
-                let overhead = last_line_width(&parent_rewrite);
-                parent_shape.offset_left(overhead)?
-            }
+        let offset = trimmed_last_line_width(&parent_rewrite) + prefix_try_num;
+        if parent_is_block {
+            parent_shape.offset_left(offset)?
+        } else {
+            parent_shape
+                .block_indent(context.config.tab_spaces())
+                .offset_left(offset)?
         }
     } else {
         other_child_shape
@@ -179,9 +156,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let mut is_block_like = Vec::with_capacity(subexpr_list.len());
     is_block_like.push(true);
     for (i, expr) in subexpr_list.iter().skip(1).rev().enumerate() {
-        // TODO should only use first_child_shape if expr is block like
         let shape = if *is_block_like.last().unwrap() && !(extend && i == 0) {
-            // TODO change the name of the shapes
             first_child_shape
         } else {
             other_child_shape
@@ -303,7 +278,6 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let first_connector = if is_small_parent
         || fits_single_line
         || last_line_extendable(&parent_rewrite)
-        || context.config.indent_style() == IndentStyle::Visual
     {
         ""
     } else {
@@ -314,7 +288,6 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         let second_connector = if fits_single_line
             || rewrites[1] == "?"
             || last_line_extendable(&rewrites[0])
-            || context.config.indent_style() == IndentStyle::Visual
         {
             ""
         } else {
@@ -337,11 +310,203 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         )
     };
     let result = format!("{}{}", result, "?".repeat(suffix_try_num));
-    if context.config.indent_style() == IndentStyle::Visual {
-        wrap_str(result, context.config.max_width(), shape)
-    } else {
-        Some(result)
+    Some(result)
+}
+
+fn rewrite_chain_visual(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -> Option<String> {
+    let total_span = expr.span;
+    let (parent, subexpr_list) = make_subexpr_list(expr, context);
+
+    // Bail out if the chain is just try sugar, i.e., an expression followed by
+    // any number of `?`s.
+    if chain_only_try(&subexpr_list) {
+        return rewrite_try(&parent, subexpr_list.len(), context, shape);
     }
+    let suffix_try_num = subexpr_list.iter().take_while(|e| is_try(e)).count();
+    let prefix_try_num = subexpr_list.iter().rev().take_while(|e| is_try(e)).count();
+
+    // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
+    let parent_shape = if is_block_expr(context, &parent, "\n") {
+        shape.visual_indent(0)
+    } else {
+        shape
+    };
+    let parent_rewrite = parent
+        .rewrite(context, parent_shape)
+        .map(|parent_rw| parent_rw + &"?".repeat(prefix_try_num))?;
+    let parent_rewrite_contains_newline = parent_rewrite.contains('\n');
+    let is_small_parent = shape.offset + parent_rewrite.len() <= context.config.tab_spaces();
+    let parent_is_block = is_block_expr(context, &parent, &parent_rewrite);
+
+    // Decide how to layout the rest of the chain. `extend` is true if we can
+    // put the first non-parent item on the same line as the parent.
+    let (nested_shape, extend) = if !parent_rewrite_contains_newline && is_continuable(&parent) {
+        (shape.visual_indent(0), true)
+    } else if parent_is_block {
+        (parent_shape, false)
+    } else {
+        (
+            shape.visual_indent(0),
+            false,
+        )
+    };
+
+    let other_child_shape = nested_shape.with_max_width(context.config);
+
+    let first_child_shape = if extend {
+        let overhead = last_line_width(&parent_rewrite);
+        parent_shape.offset_left(overhead)?
+    } else {
+        other_child_shape
+    };
+    debug!(
+        "child_shapes {:?} {:?}",
+        first_child_shape, other_child_shape
+    );
+
+    let subexpr_num = subexpr_list.len();
+    let last_subexpr = &subexpr_list[suffix_try_num];
+    let subexpr_list = &subexpr_list[suffix_try_num..subexpr_num - prefix_try_num];
+
+    let mut rewrites: Vec<String> = Vec::with_capacity(subexpr_list.len());
+    let mut is_block_like = Vec::with_capacity(subexpr_list.len());
+    is_block_like.push(true);
+    for (i, expr) in subexpr_list.iter().skip(1).rev().enumerate() {
+        let shape = if *is_block_like.last().unwrap() && !(extend && i == 0) {
+            first_child_shape
+        } else {
+            other_child_shape
+        };
+        let rewrite = rewrite_chain_subexpr(expr, total_span, context, shape)?;
+        is_block_like.push(is_block_expr(context, expr, &rewrite));
+        rewrites.push(rewrite);
+    }
+
+    // Total of all items excluding the last.
+    let extend_last_subexpr = if is_small_parent {
+        rewrites.len() == 1 && last_line_extendable(&rewrites[0])
+    } else {
+        rewrites.is_empty() && last_line_extendable(&parent_rewrite)
+    };
+    let almost_total = if extend_last_subexpr {
+        last_line_width(&parent_rewrite)
+    } else {
+        rewrites.iter().fold(0, |a, b| a + b.len()) + parent_rewrite.len()
+    } + suffix_try_num;
+    let one_line_budget = if rewrites.is_empty() {
+        shape.width
+    } else {
+        min(shape.width, context.config.width_heuristics().chain_width)
+    };
+    let all_in_one_line = !parent_rewrite_contains_newline
+        && rewrites.iter().all(|s| !s.contains('\n'))
+        && almost_total < one_line_budget;
+    let last_shape = if is_block_like[rewrites.len()] {
+        first_child_shape
+    } else {
+        other_child_shape
+    }.sub_width(shape.rhs_overhead(context.config) + suffix_try_num)?;
+
+    // Rewrite the last child. The last child of a chain requires special treatment. We need to
+    // know whether 'overflowing' the last child make a better formatting:
+    //
+    // A chain with overflowing the last child:
+    // ```
+    // parent.child1.child2.last_child(
+    //     a,
+    //     b,
+    //     c,
+    // )
+    // ```
+    //
+    // A chain without overflowing the last child (in vertical layout):
+    // ```
+    // parent
+    //     .child1
+    //     .child2
+    //     .last_child(a, b, c)
+    // ```
+    //
+    // In particular, overflowing is effective when the last child is a method with a multi-lined
+    // block-like argument (e.g. closure):
+    // ```
+    // parent.child1.child2.last_child(|a, b, c| {
+    //     let x = foo(a, b, c);
+    //     let y = bar(a, b, c);
+    //
+    //     // ...
+    //
+    //     result
+    // })
+    // ```
+
+    // `rewrite_last` rewrites the last child on its own line. We use a closure here instead of
+    // directly calling `rewrite_chain_subexpr()` to avoid exponential blowup.
+    let rewrite_last = || rewrite_chain_subexpr(last_subexpr, total_span, context, last_shape);
+    let (last_subexpr_str, fits_single_line) = if all_in_one_line || extend_last_subexpr {
+        // First we try to 'overflow' the last child and see if it looks better than using
+        // vertical layout.
+        parent_shape.offset_left(almost_total).map(|shape| {
+            if let Some(rw) = rewrite_chain_subexpr(last_subexpr, total_span, context, shape) {
+                // We allow overflowing here only if both of the following conditions match:
+                // 1. The entire chain fits in a single line except the last child.
+                // 2. `last_child_str.lines().count() >= 5`.
+                let line_count = rw.lines().count();
+                let fits_single_line = almost_total + first_line_width(&rw) <= one_line_budget;
+                if fits_single_line && line_count >= 5 {
+                    (Some(rw), true)
+                } else {
+                    // We could not know whether overflowing is better than using vertical layout,
+                    // just by looking at the overflowed rewrite. Now we rewrite the last child
+                    // on its own line, and compare two rewrites to choose which is better.
+                    match rewrite_last() {
+                        Some(ref new_rw) if !fits_single_line => (Some(new_rw.clone()), false),
+                        Some(ref new_rw) if new_rw.lines().count() >= line_count => {
+                            (Some(rw), fits_single_line)
+                        }
+                        new_rw @ Some(..) => (new_rw, false),
+                        _ => (Some(rw), fits_single_line),
+                    }
+                }
+            } else {
+                (rewrite_last(), false)
+            }
+        })?
+    } else {
+        (rewrite_last(), false)
+    };
+    rewrites.push(last_subexpr_str?);
+    // We should never look at this, since we only look at the block-ness of the
+    // previous item in the chain.
+    is_block_like.push(false);
+
+    let connector = if fits_single_line && !parent_rewrite_contains_newline {
+        // Yay, we can put everything on one line.
+        Cow::from("")
+    } else {
+        // Use new lines.
+        if *context.force_one_line_chain.borrow() {
+            return None;
+        }
+        nested_shape.indent.to_string_with_newline(context.config)
+    };
+
+    let result = if is_small_parent && rewrites.len() > 1 {
+        format!(
+            "{}{}{}",
+            parent_rewrite,
+            rewrites[0],
+            join_rewrites(&rewrites[1..], &is_block_like[2..], &connector),
+        )
+    } else {
+        format!(
+            "{}{}",
+            parent_rewrite,
+            join_rewrites(&rewrites, &is_block_like[1..], &connector),
+        )
+    };
+    let result = format!("{}{}", result, "?".repeat(suffix_try_num));
+    wrap_str(result, context.config.max_width(), shape)
 }
 
 // True if the chain is only `?`s.
@@ -421,12 +586,9 @@ fn make_subexpr_list(expr: &ast::Expr, context: &RewriteContext) -> (ast::Expr, 
 }
 
 fn chain_indent(context: &RewriteContext, shape: Shape) -> Shape {
-    match context.config.indent_style() {
-        IndentStyle::Visual => shape.visual_indent(0),
-        IndentStyle::Block => shape
-            .block_indent(context.config.tab_spaces())
-            .with_max_width(context.config),
-    }
+    IndentStyle::Block => shape
+        .block_indent(context.config.tab_spaces())
+        .with_max_width(context.config),
 }
 
 // Returns the expression's subexpression, if it exists. When the subexpr
