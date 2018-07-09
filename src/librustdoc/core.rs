@@ -241,6 +241,8 @@ pub fn run_core(search_paths: SearchPaths,
                                      .into_iter()
                                      .chain(rustc_lint::SoftLints.get_lints().into_iter())
                                      .filter_map(|lint| {
+                                         // We don't want to whitelist *all* lints so let's
+                                         // ignore those ones.
                                          if lint.name == warnings_lint_name ||
                                             lint.name == intra_link_resolution_failure_name ||
                                             lint.name == missing_docs {
