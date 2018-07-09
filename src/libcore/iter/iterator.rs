@@ -34,7 +34,7 @@ fn _assert_is_object_safe(_: &Iterator<Item=()>) {}
         _Self="&str",
         label="`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
     ),
-    label="`{Self}` is not an iterator; maybe try calling `.iter()` or a similar method"
+    label="`{Self}` is not an iterator"
 )]
 #[doc(spotlight)]
 pub trait Iterator {
