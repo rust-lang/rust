@@ -155,13 +155,13 @@ matrix:
     - env: IMAGE=dist-x86_64-netbsd DEPLOY=1
       if: branch = auto
     - env: IMAGE=asmjs
-      if: branch = auto
+      if: branch = auto OR type = pull_request
     - env: IMAGE=i686-gnu
       if: branch = auto
     - env: IMAGE=i686-gnu-nopt
       if: branch = auto
     - env: IMAGE=wasm32-unknown
-      if: branch = auto
+      if: branch = auto OR type = pull_request
     - env: IMAGE=x86_64-gnu
       if: branch = auto
     - env: IMAGE=x86_64-gnu-full-bootstrap
