@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow::Borrow;
-use fmt;
-use hash::{Hash, BuildHasher};
-use iter::{Chain, FromIterator, FusedIterator};
-use ops::{BitOr, BitAnd, BitXor, Sub};
+use core::borrow::Borrow;
+use core::fmt;
+use core::hash::{Hash, BuildHasher};
+use core::iter::{Chain, FromIterator, FusedIterator};
+use core::ops::{BitOr, BitAnd, BitXor, Sub};
 
 use super::Recover;
 use super::map::{self, HashMap, Keys, RandomState};
@@ -1403,6 +1403,7 @@ fn assert_covariance() {
 mod test_set {
     use super::HashSet;
     use super::super::map::RandomState;
+    use vec::Vec;
 
     #[test]
     fn test_zero_capacities() {
@@ -1712,7 +1713,7 @@ mod test_set {
 
     #[test]
     fn test_replace() {
-        use hash;
+        use core::hash;
 
         #[derive(Debug)]
         struct Foo(&'static str, i32);

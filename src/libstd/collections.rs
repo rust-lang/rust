@@ -431,27 +431,51 @@ pub use alloc_crate::collections::{LinkedList, VecDeque};
 pub use alloc_crate::collections::{binary_heap, btree_map, btree_set};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::collections::{linked_list, vec_deque};
-
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::hash_map::HashMap;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::hash_set::HashSet;
+pub use alloc_crate::collections::{HashMap, HashSet};
 
-#[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-pub use alloc_crate::collections::CollectionAllocErr;
-
-mod hash;
-
+// We can't just re-export the modules directly since they are unstable in liballoc
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod hash_map {
     //! A hash map implemented with linear probing and Robin Hood bucket stealing.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub use super::hash::map::*;
+    pub use alloc_crate::collections::hash_map::*;
 }
-
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod hash_set {
     //! A hash set implemented as a `HashMap` where the value is `()`.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub use super::hash::set::*;
+    pub use alloc_crate::collections::hash_set::*;
+}
+
+#[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+pub use alloc_crate::collections::CollectionAllocErr;
+
+#[cfg(not(stage0))]
+#[cfg_attr(not(test), lang = "hashmap_random_keys")]
+#[cfg_attr(test, allow(dead_code))]
+fn hashmap_random_keys() -> (u64, u64) {
+    use sys;
+    use cell::Cell;
+
+    // Historically this function did not cache keys from the OS and instead
+    // simply always called `rand::thread_rng().gen()` twice. In #31356 it
+    // was discovered, however, that because we re-seed the thread-local RNG
+    // from the OS periodically that this can cause excessive slowdown when
+    // many hash maps are created on a thread. To solve this performance
+    // trap we cache the first set of randomly generated keys per-thread.
+    //
+    // Later in #36481 it was discovered that exposing a deterministic
+    // iteration order allows a form of DOS attack. To counter that we
+    // increment one of the seeds on every RandomState creation, giving
+    // every corresponding HashMap a different iteration order.
+    thread_local!(static KEYS: Cell<(u64, u64)> = {
+        Cell::new(sys::hashmap_random_keys())
+    });
+
+    KEYS.with(|keys| {
+        let (k0, k1) = keys.get();
+        keys.set((k0.wrapping_add(1), k1));
+        (k0, k1)
+    })
 }

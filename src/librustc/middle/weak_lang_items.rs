@@ -166,4 +166,5 @@ weak_lang_items! {
     eh_personality,     EhPersonalityLangItem,      rust_eh_personality;
     eh_unwind_resume,   EhUnwindResumeLangItem,     rust_eh_unwind_resume;
     oom,                OomLangItem,                rust_oom;
+    hashmap_random_keys,HashMapRandomKeysLangItem,  rust_hashmap_random_keys;
 }

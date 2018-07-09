@@ -355,6 +355,8 @@ language_item_table! {
     AlignOffsetLangItem,             "align_offset",            align_offset_fn;
 
     TerminationTraitLangItem,        "termination",             termination;
+
+    HashMapRandomKeysLangItem,       "hashmap_random_keys",     hashmap_random_keys;
 }
 
 impl<'a, 'tcx, 'gcx> TyCtxt<'a, 'tcx, 'gcx> {

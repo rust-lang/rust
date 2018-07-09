@@ -264,7 +264,6 @@
 #![feature(fnbox)]
 #![feature(futures_api)]
 #![feature(generator_trait)]
-#![feature(hashmap_internals)]
 #![feature(int_error_internals)]
 #![feature(integer_atomics)]
 #![feature(into_cow)]
@@ -323,6 +322,7 @@
 #![feature(float_internals)]
 #![feature(panic_info_message)]
 #![feature(panic_implementation)]
+#![feature(alloc_hashmap)]
 
 #![default_lib_allocator]
 

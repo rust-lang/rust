@@ -10,13 +10,13 @@
 
 use alloc::{Global, Alloc, Layout, LayoutErr, handle_alloc_error};
 use collections::CollectionAllocErr;
-use hash::{BuildHasher, Hash, Hasher};
-use marker;
-use mem::{size_of, needs_drop};
-use mem;
-use ops::{Deref, DerefMut};
-use ptr::{self, Unique, NonNull};
-use hint;
+use core::hash::{BuildHasher, Hash, Hasher};
+use core::marker;
+use core::mem::{size_of, needs_drop};
+use core::mem;
+use core::ops::{Deref, DerefMut};
+use core::ptr::{self, Unique, NonNull};
+use core::hint;
 
 use self::BucketState::*;
 

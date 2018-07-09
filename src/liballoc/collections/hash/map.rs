@@ -12,16 +12,14 @@ use self::Entry::*;
 use self::VacantEntryState::*;
 
 use collections::CollectionAllocErr;
-use cell::Cell;
-use borrow::Borrow;
-use cmp::max;
-use fmt::{self, Debug};
+use core::borrow::Borrow;
+use core::cmp::max;
+use core::fmt::{self, Debug};
 #[allow(deprecated)]
-use hash::{Hash, Hasher, BuildHasher, SipHasher13};
-use iter::{FromIterator, FusedIterator};
-use mem::{self, replace};
-use ops::{Deref, Index};
-use sys;
+use core::hash::{Hash, Hasher, BuildHasher, SipHasher13};
+use core::iter::{FromIterator, FusedIterator};
+use core::mem::{self, replace};
+use core::ops::{Deref, Index};
 
 use super::table::{self, Bucket, EmptyBucket, Fallibility, FullBucket, FullBucketMut, RawTable,
                    SafeHash};
@@ -2561,7 +2559,7 @@ impl<'a, K, V, S> Extend<(&'a K, &'a V)> for HashMap<K, V, S>
 /// instances are unlikely to produce the same result for the same values.
 ///
 /// [`HashMap`]: struct.HashMap.html
-/// [`Hasher`]: ../../hash/trait.Hasher.html
+/// [`Hasher`]: ../../../std/hash/trait.Hasher.html
 ///
 /// # Examples
 ///
@@ -2592,29 +2590,22 @@ impl RandomState {
     /// ```
     #[inline]
     #[allow(deprecated)]
-    // rand
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn new() -> RandomState {
-        // Historically this function did not cache keys from the OS and instead
-        // simply always called `rand::thread_rng().gen()` twice. In #31356 it
-        // was discovered, however, that because we re-seed the thread-local RNG
-        // from the OS periodically that this can cause excessive slowdown when
-        // many hash maps are created on a thread. To solve this performance
-        // trap we cache the first set of randomly generated keys per-thread.
-        //
-        // Later in #36481 it was discovered that exposing a deterministic
-        // iteration order allows a form of DOS attack. To counter that we
-        // increment one of the seeds on every RandomState creation, giving
-        // every corresponding HashMap a different iteration order.
-        thread_local!(static KEYS: Cell<(u64, u64)> = {
-            Cell::new(sys::hashmap_random_keys())
-        });
+        // Use a weak lang item to get random keys without a hard dependency
+        // on libstd.
+        #[cfg(not(stage0))]
+        #[allow(improper_ctypes)]
+        extern {
+            #[lang = "hashmap_random_keys"]
+            #[unwind(allowed)]
+            fn hashmap_random_keys() -> (u64, u64);
+        }
+        #[cfg(stage0)]
+        unsafe fn hashmap_random_keys() -> (u64, u64) { (0, 0) }
 
-        KEYS.with(|keys| {
-            let (k0, k1) = keys.get();
-            keys.set((k0.wrapping_add(1), k1));
-            RandomState { k0: k0, k1: k1 }
-        })
+        let (k0, k1) = unsafe { hashmap_random_keys() };
+        RandomState { k0: k0, k1: k1 }
     }
 }
 
@@ -2634,7 +2625,7 @@ impl BuildHasher for RandomState {
 /// not be relied upon over releases.
 ///
 /// [`RandomState`]: struct.RandomState.html
-/// [`Hasher`]: ../../hash/trait.Hasher.html
+/// [`Hasher`]: ../../../std/hash/trait.Hasher.html
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
 #[allow(deprecated)]
 #[derive(Clone, Debug)]
@@ -2768,11 +2759,12 @@ mod test_map {
     use super::HashMap;
     use super::Entry::{Occupied, Vacant};
     use super::RandomState;
-    use cell::RefCell;
+    use core::cell::RefCell;
     use rand::{thread_rng, Rng};
-    use realstd::collections::CollectionAllocErr::*;
-    use realstd::mem::size_of;
-    use realstd::usize;
+    use collections::CollectionAllocErr::*;
+    use std::mem::size_of;
+    use std::usize;
+    use vec::Vec;
 
     #[test]
     fn test_zero_capacities() {
