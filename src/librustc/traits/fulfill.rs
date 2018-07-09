@@ -87,8 +87,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         }
     }
 
-    /// Attempts to select obligations using `selcx`. If `only_new_obligations` is true, then it
-    /// only attempts to select obligations that haven't been seen before.
+    /// Attempts to select obligations using `selcx`.
     fn select(&mut self, selcx: &mut SelectionContext<'a, 'gcx, 'tcx>)
               -> Result<(),Vec<FulfillmentError<'tcx>>> {
         debug!("select(obligation-forest-size={})", self.predicates.len());
