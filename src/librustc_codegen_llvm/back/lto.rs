@@ -20,12 +20,13 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config::{self, Lto};
 use rustc::util::common::time_ext;
+use rustc_data_structures::fx::FxHashMap;
 use time_graph::Timeline;
 use {ModuleCodegen, ModuleLlvm, ModuleKind, ModuleSource};
 
 use libc;
 
-use std::ffi::CString;
+use std::ffi::{CString, CStr};
 use std::ptr;
 use std::slice;
 use std::sync::Arc;
@@ -774,5 +775,71 @@ impl ThinModule {
         timeline.record("no-ae");
 
         Ok(module)
+    }
+}
+
+
+#[derive(Debug)]
+pub struct ThinLTOImports {
+    // key = llvm name of importing module, value = list of modules it imports from
+    imports: FxHashMap<String, Vec<String>>,
+}
+
+impl ThinLTOImports {
+
+    /// Load the ThinLTO import map from ThinLTOData.
+    unsafe fn from_thin_lto_data(data: *const llvm::ThinLTOData) -> ThinLTOImports {
+        let raw_data: *const llvm::ThinLTOModuleImports =
+            llvm::LLVMRustGetThinLTOModuleImports(data);
+
+        assert!(!raw_data.is_null());
+
+        let mut imports = FxHashMap();
+        let mut module_ptr = raw_data;
+        let mut module_index = 0;
+
+        loop {
+            let mut entry_ptr: *const llvm::ThinLTOModuleName = *module_ptr;
+
+            if entry_ptr.is_null() {
+                break;
+            }
+
+            let importing_module_name = CStr::from_ptr(*entry_ptr)
+                .to_str()
+                .expect("Non-utf8 LLVM module name encountered")
+                .to_owned();
+
+            entry_ptr = entry_ptr.offset(1);
+
+            let mut imported_modules = vec![];
+
+            loop {
+                let imported_module_name = *entry_ptr;
+
+                if imported_module_name.is_null() {
+                    break
+                }
+
+                let imported_module_name = CStr::from_ptr(imported_module_name)
+                    .to_str()
+                    .expect("Non-utf8 LLVM module name encountered")
+                    .to_owned();
+
+                imported_modules.push(imported_module_name);
+                entry_ptr = entry_ptr.offset(1);
+            }
+
+            imports.insert(importing_module_name, imported_modules);
+
+            module_ptr = module_ptr.offset(1);
+            module_index += 1;
+        }
+
+        assert_eq!(module_index, imports.len());
+
+        ThinLTOImports {
+            imports
+        }
     }
 }
