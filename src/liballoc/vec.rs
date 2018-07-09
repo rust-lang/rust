@@ -809,9 +809,13 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap_remove(&mut self, index: usize) -> T {
-        let length = self.len();
-        self.swap(index, length - 1);
-        self.pop().unwrap()
+        unsafe {
+            // We replace self[index] with the last element. Note that this is
+            // safe even when index == self.len() - 1, as pop() only uses
+            // ptr::read and leaves the memory at self[index] untouched.
+            let hole: *mut T = &mut self[index];
+            ptr::replace(hole, self.pop().unwrap())
+        }
     }
 
     /// Inserts an element at position `index` within the vector, shifting all
