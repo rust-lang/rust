@@ -63,13 +63,13 @@ including:
 
   Example: `./x.py test src/tools/tidy`
 
-- **Unittests** – The Rust standard library and many of the Rust packages
+- **Unit tests** – The Rust standard library and many of the Rust packages
   include typical Rust `#[test]` unittests.  Under the hood, `x.py` will run
   `cargo test` on each package to run all the tests.
 
   Example: `./x.py test src/libstd`
 
-- **Doctests** – Example code embedded within Rust documentation is executed
+- **Doc tests** – Example code embedded within Rust documentation is executed
   via `rustdoc --test`.  Examples:
 
   `./x.py test src/doc` – Runs `rustdoc --test` for all documentation in
@@ -78,12 +78,12 @@ including:
   `./x.py test --doc src/libstd` – Runs `rustdoc --test` on the standard
   library.
 
-- **Linkchecker** – A small tool for verifying `href` links within
+- **Link checker** – A small tool for verifying `href` links within
   documentation.
 
   Example: `./x.py test src/tools/linkchecker`
 
-- **Distcheck** – This verifies that the source distribution tarball created
+- **Dist check** – This verifies that the source distribution tarball created
   by the build system will unpack, build, and run all tests.
 
   Example: `./x.py test distcheck`
@@ -93,7 +93,7 @@ including:
   directory).  This includes things such as cargo, clippy, rustfmt, rls, miri,
   bootstrap (testing the Rust build system itself), etc.
 
-- **Cargotest** – This is a small tool which runs `cargo test` on a few
+- **Cargo test** – This is a small tool which runs `cargo test` on a few
   significant projects (such as `servo`, `ripgrep`, `tokei`, etc.) just to
   ensure there aren't any significant regressions.
 
