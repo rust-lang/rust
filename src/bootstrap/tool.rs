@@ -594,6 +594,15 @@ tool_extended!((self, builder),
     };
     Miri, miri, "src/tools/miri", "miri", {};
     Rls, rls, "src/tools/rls", "rls", {
+        let clippy = builder.ensure(Clippy {
+            compiler: self.compiler,
+            target: self.target,
+            extra_features: Vec::new(),
+        });
+        let channel = &builder.config.channel;
+        if clippy.is_some() && channel != "stable" && channel != "beta" {
+            self.extra_features.push("clippy".to_owned());
+        }
         builder.ensure(native::Openssl {
             target: self.target,
         });
