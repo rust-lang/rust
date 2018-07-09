@@ -29,7 +29,7 @@ use super::ModuleCodegen;
 use super::ModuleKind;
 
 use abi;
-use back::link;
+use back::{link, lto};
 use back::write::{self, OngoingCodegen, create_target_machine};
 use llvm::{ContextRef, ModuleRef, ValueRef, Vector, get_param};
 use llvm;
@@ -1370,6 +1370,27 @@ mod temp_stable_hash_impls {
     }
 }
 
+#[allow(unused)]
+fn load_thin_lto_imports(sess: &Session) -> lto::ThinLTOImports {
+    let path = rustc_incremental::in_incr_comp_dir_sess(
+        sess,
+        lto::THIN_LTO_IMPORTS_INCR_COMP_FILE_NAME
+    );
+
+    if !path.exists() {
+        return lto::ThinLTOImports::new_empty();
+    }
+
+    match lto::ThinLTOImports::load_from_file(&path) {
+        Ok(imports) => imports,
+        Err(e) => {
+            let msg = format!("Error while trying to load ThinLTO import data \
+                               for incremental compilation: {}", e);
+            sess.fatal(&msg)
+        }
+    }
+}
+
 pub fn define_custom_section(cx: &CodegenCx, def_id: DefId) {
     use rustc::mir::interpret::GlobalId;
 
@@ -1408,3 +1429,4 @@ pub fn define_custom_section(cx: &CodegenCx, def_id: DefId) {
         );
     }
 }
+
