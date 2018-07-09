@@ -340,3 +340,18 @@ pub trait CliOptions {
     fn apply_to(self, config: &mut Config);
     fn config_path(&self) -> Option<&Path>;
 }
+
+/// The edition of the compiler (RFC 2052)
+configuration_option_enum!{ Edition:
+    Edition2015,
+    Edition2018,
+}
+
+impl Edition {
+    pub(crate) fn to_libsyntax_pos_edition(&self) -> syntax_pos::edition::Edition {
+        match self {
+            Edition::Edition2015 => syntax_pos::edition::Edition::Edition2015,
+            Edition::Edition2018 => syntax_pos::edition::Edition::Edition2018,
+        }
+    }
+}

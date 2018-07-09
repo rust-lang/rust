@@ -31,9 +31,9 @@ use utils::{last_line_width, left_most_sub_expr, stmt_expr};
 //     statement without needing a semi-colon), then adding or removing braces
 //     can change whether it is treated as an expression or statement.
 
-// FIXME(topecongiro) Format async closures (#2813).
 pub fn rewrite_closure(
     capture: ast::CaptureBy,
+    asyncness: ast::IsAsync,
     movability: ast::Movability,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
@@ -43,8 +43,9 @@ pub fn rewrite_closure(
 ) -> Option<String> {
     debug!("rewrite_closure {:?}", body);
 
-    let (prefix, extra_offset) =
-        rewrite_closure_fn_decl(capture, movability, fn_decl, body, span, context, shape)?;
+    let (prefix, extra_offset) = rewrite_closure_fn_decl(
+        capture, asyncness, movability, fn_decl, body, span, context, shape,
+    )?;
     // 1 = space between `|...|` and body.
     let body_shape = shape.offset_left(extra_offset)?;
 
@@ -198,6 +199,7 @@ fn rewrite_closure_block(
 // Return type is (prefix, extra_offset)
 fn rewrite_closure_fn_decl(
     capture: ast::CaptureBy,
+    asyncness: ast::IsAsync,
     movability: ast::Movability,
     fn_decl: &ast::FnDecl,
     body: &ast::Expr,
@@ -205,12 +207,12 @@ fn rewrite_closure_fn_decl(
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<(String, usize)> {
+    let is_async = if asyncness.is_async() { "async " } else { "" };
     let mover = if capture == ast::CaptureBy::Value {
         "move "
     } else {
         ""
     };
-
     let immovable = if movability == ast::Movability::Static {
         "static "
     } else {
@@ -219,7 +221,7 @@ fn rewrite_closure_fn_decl(
     // 4 = "|| {".len(), which is overconservative when the closure consists of
     // a single expression.
     let nested_shape = shape
-        .shrink_left(mover.len() + immovable.len())?
+        .shrink_left(is_async.len() + mover.len() + immovable.len())?
         .sub_width(4)?;
 
     // 1 = |
@@ -265,7 +267,7 @@ fn rewrite_closure_fn_decl(
         config: context.config,
     };
     let list_str = write_list(&item_vec, &fmt)?;
-    let mut prefix = format!("{}{}|{}|", immovable, mover, list_str);
+    let mut prefix = format!("{}{}{}|{}|", is_async, immovable, mover, list_str);
 
     if !ret_str.is_empty() {
         if prefix.contains('\n') {
@@ -289,7 +291,9 @@ pub fn rewrite_last_closure(
     expr: &ast::Expr,
     shape: Shape,
 ) -> Option<String> {
-    if let ast::ExprKind::Closure(capture, _, movability, ref fn_decl, ref body, _) = expr.node {
+    if let ast::ExprKind::Closure(capture, asyncness, movability, ref fn_decl, ref body, _) =
+        expr.node
+    {
         let body = match body.node {
             ast::ExprKind::Block(ref block, _)
                 if !is_unsafe_block(block)
@@ -300,7 +304,7 @@ pub fn rewrite_last_closure(
             _ => body,
         };
         let (prefix, extra_offset) = rewrite_closure_fn_decl(
-            capture, movability, fn_decl, body, expr.span, context, shape,
+            capture, asyncness, movability, fn_decl, body, expr.span, context, shape,
         )?;
         // If the closure goes multi line before its body, do not overflow the closure.
         if prefix.contains('\n') {
