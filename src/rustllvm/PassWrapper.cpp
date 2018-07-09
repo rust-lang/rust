@@ -798,6 +798,11 @@ LLVMRustPGOAvailable() {
 #endif
 }
 
+// We encode the ThinLTO module import map as a nested null-terminated list to
+// get it into Rust.
+typedef const char* LLVMRustThinLTOModuleName;
+typedef LLVMRustThinLTOModuleName* LLVMRustThinLTOModuleImports;
+
 #if LLVM_VERSION_GE(4, 0)
 
 // Here you'll find an implementation of ThinLTO as used by the Rust compiler
@@ -1099,6 +1104,52 @@ LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
   return true;
 }
 
+/// Converts the LLVMRustThinLTOData::ImportLists map into a nested list. The
+/// first level is a null-terminated array with an entry for each module. Each
+/// entry is a pointer that points to a null-termined array of module names. The
+/// first entry is always the name of the *importing* module, the following
+/// entries are  the names of the modules it imports from. Each module name is
+/// a regular C string.
+extern "C" LLVMRustThinLTOModuleImports*
+LLVMRustGetThinLTOModuleImports(const LLVMRustThinLTOData *Data) {
+  // Allocate number of module +1. This is a null-terminated array.
+  LLVMRustThinLTOModuleImports* thinLTOModuleImports =
+    new LLVMRustThinLTOModuleImports[Data->ImportLists.size() + 1];
+  size_t module_index = 0;
+
+  for (const auto & module : Data->ImportLists) {
+    StringRef module_id = module.getKey();
+    const auto& imports = module.getValue();
+
+    // Allocate number of imported module + 2, one extra for the name of the
+    // importing module and another one for null-termination.
+    LLVMRustThinLTOModuleImports imports_array =
+      new LLVMRustThinLTOModuleName[imports.size() + 2];
+
+    // The first value is always the name of the *importing* module.
+    imports_array[0] = strndup(module_id.data(), module_id.size());
+
+    size_t imports_array_index = 1;
+    for (const auto imported_module_id : imports.keys()) {
+      // The following values are the names of the imported modules.
+      imports_array[imports_array_index] = strndup(imported_module_id.data(),
+                                                   imported_module_id.size());
+      imports_array_index += 1;
+    }
+
+    assert(imports_array_index == imports.size() + 1);
+    imports_array[imports_array_index] = nullptr;
+
+    thinLTOModuleImports[module_index] = imports_array;
+    module_index += 1;
+  }
+
+  assert(module_index == Data->ImportLists.size());
+  thinLTOModuleImports[module_index] = nullptr;
+
+  return thinLTOModuleImports;
+}
+
 // This struct and various functions are sort of a hack right now, but the
 // problem is that we've got in-memory LLVM modules after we generate and
 // optimize all codegen-units for one compilation in rustc. To be compatible
@@ -1277,6 +1328,11 @@ LLVMRustPrepareThinLTOInternalize(const LLVMRustThinLTOData *Data, LLVMModuleRef
 
 extern "C" bool
 LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data, LLVMModuleRef M) {
+  report_fatal_error("ThinLTO not available");
+}
+
+extern "C" LLVMRustThinLTOModuleImports
+LLVMRustGetLLVMRustThinLTOModuleImports(const LLVMRustThinLTOData *Data) {
   report_fatal_error("ThinLTO not available");
 }
 
