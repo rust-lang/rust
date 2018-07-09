@@ -33,6 +33,7 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate syntax;
+extern crate syntax_pos;
 extern crate toml;
 extern crate unicode_segmentation;
 
@@ -793,6 +794,7 @@ fn format_input_inner<T: Write>(
     config: &Config,
     mut out: Option<&mut T>,
 ) -> Result<(Summary, FileMap, FormatReport), (ErrorKind, Summary)> {
+    syntax_pos::hygiene::set_default_edition(config.edition().to_libsyntax_pos_edition());
     let mut summary = Summary::default();
     if config.disable_all_formatting() {
         // When the input is from stdin, echo back the input.
